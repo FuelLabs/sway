@@ -20,7 +20,7 @@ use crate::{
     types::*,
 };
 use sway_ast::intrinsics::Intrinsic;
-use sway_error::error::{CompileError, Hint};
+use sway_error::error::CompileError;
 use sway_ir::{Context, *};
 use sway_types::{
     constants,
@@ -676,7 +676,7 @@ impl<'eng> FnCompiler<'eng> {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,
-                        hint: Hint::new("This argument must be a copy type".to_string()),
+                        hint: "This argument must be a copy type".to_string(),
                     });
                 }
                 let key_value = self.compile_expression_to_value(context, md_mgr, key_exp)?;
@@ -700,7 +700,7 @@ impl<'eng> FnCompiler<'eng> {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,
-                        hint: Hint::new("This argument must be raw_ptr".to_string()),
+                        hint: "This argument must be raw_ptr".to_string(),
                     });
                 }
                 let key_value = self.compile_expression_to_value(context, md_mgr, &key_exp)?;
@@ -1138,7 +1138,7 @@ impl<'eng> FnCompiler<'eng> {
                     .add_metadatum(context, span_md_idx);
                 compiled_args
                     .into_iter()
-                    .zip(field_types.into_iter())
+                    .zip(field_types)
                     .enumerate()
                     .for_each(|(insert_idx, (field_val, field_type))| {
                         let gep_val = self
@@ -2133,7 +2133,7 @@ impl<'eng> FnCompiler<'eng> {
         // Fill it in.
         insert_values
             .into_iter()
-            .zip(field_types.into_iter())
+            .zip(field_types)
             .enumerate()
             .for_each(|(insert_idx, (insert_val, field_type))| {
                 let gep_val = self.current_block.ins(context).get_elem_ptr_with_idx(
@@ -2328,7 +2328,7 @@ impl<'eng> FnCompiler<'eng> {
 
             init_values
                 .into_iter()
-                .zip(init_types.into_iter())
+                .zip(init_types)
                 .enumerate()
                 .for_each(|(insert_idx, (field_val, field_type))| {
                     let gep_val = self

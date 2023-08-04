@@ -3,17 +3,21 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{Span, Spanned};
 
 use crate::{
     engine_threading::*,
-    error::*,
     language::{parsed::Supertrait, ty, CallPath},
-    semantic_analysis::{declaration::insert_supertraits_into_namespace, TypeCheckContext},
+    semantic_analysis::{
+        declaration::{insert_supertraits_into_namespace, SupertraitOf},
+        TypeCheckContext,
+    },
     type_system::priv_prelude::*,
     types::*,
-    CompileResult,
 };
 
 #[derive(Debug, Clone)]
@@ -85,42 +89,39 @@ impl From<&Supertrait> for TraitConstraint {
 impl CollectTypesMetadata for TraitConstraint {
     fn collect_types_metadata(
         &self,
+        handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
-    ) -> CompileResult<Vec<TypeMetadata>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         let mut res = vec![];
-        for type_arg in self.type_arguments.iter() {
-            res.extend(check!(
-                type_arg.type_id.collect_types_metadata(ctx),
-                continue,
-                warnings,
-                errors
-            ));
-        }
-        if errors.is_empty() {
-            ok(res, warnings, errors)
-        } else {
-            err(warnings, errors)
-        }
+        handler.scope(|handler| {
+            for type_arg in self.type_arguments.iter() {
+                res.extend(
+                    match type_arg.type_id.collect_types_metadata(handler, ctx) {
+                        Ok(res) => res,
+                        Err(_) => continue,
+                    },
+                );
+            }
+            Ok(res)
+        })
     }
 }
 
 impl TraitConstraint {
-    pub(crate) fn type_check(&mut self, mut ctx: TypeCheckContext) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
+    pub(crate) fn type_check(
+        &mut self,
+        handler: &Handler,
+        mut ctx: TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
         // Right now we don't have the ability to support defining a type for a
         // trait constraint using a callpath directly, so we check to see if the
         // user has done this and we disallow it.
         if !self.trait_name.prefixes.is_empty() {
-            errors.push(CompileError::UnimplementedWithHelp(
+            return Err(handler.emit_err(CompileError::UnimplementedWithHelp(
                 "Using module paths to define trait constraints is not supported yet.",
                 "try importing the trait with a \"use\" statement instead",
                 self.trait_name.span(),
-            ));
-            return err(warnings, errors);
+            )));
         }
 
         // Right now we aren't supporting generic traits in trait constraints
@@ -135,7 +136,7 @@ impl TraitConstraint {
         //
         // TODO: implement a fix for the above in a future PR
         if !self.type_arguments.is_empty() {
-            errors.push(CompileError::Unimplemented(
+            return Err(handler.emit_err(CompileError::Unimplemented(
                 "Using generic traits in trait constraints is not supported yet.",
                 Span::join_all(
                     self.type_arguments
@@ -143,37 +144,34 @@ impl TraitConstraint {
                         .map(|x| x.span())
                         .collect::<Vec<_>>(),
                 ),
-            ));
-            return err(warnings, errors);
+            )));
         }
 
         // Type check the type arguments.
         for type_argument in self.type_arguments.iter_mut() {
-            type_argument.type_id = check!(
-                ctx.resolve_type_without_self(type_argument.type_id, &type_argument.span, None),
-                ctx.engines
-                    .te()
-                    .insert(ctx.engines(), TypeInfo::ErrorRecovery),
-                warnings,
-                errors
-            );
+            type_argument.type_id = ctx
+                .resolve_type_without_self(
+                    handler,
+                    type_argument.type_id,
+                    &type_argument.span,
+                    None,
+                )
+                .unwrap_or_else(|err| {
+                    ctx.engines
+                        .te()
+                        .insert(ctx.engines(), TypeInfo::ErrorRecovery(err))
+                });
         }
 
-        if errors.is_empty() {
-            ok((), warnings, errors)
-        } else {
-            err(warnings, errors)
-        }
+        Ok(())
     }
 
     pub(crate) fn insert_into_namespace(
+        handler: &Handler,
         mut ctx: TypeCheckContext,
         type_id: TypeId,
         trait_constraint: &TraitConstraint,
-    ) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
+    ) -> Result<(), ErrorEmitted> {
         let decl_engine = ctx.engines.de();
 
         let TraitConstraint {
@@ -185,29 +183,26 @@ impl TraitConstraint {
 
         match ctx
             .namespace
-            .resolve_call_path(trait_name)
-            .ok(&mut warnings, &mut errors)
+            .resolve_call_path(handler, trait_name)
+            .ok()
             .cloned()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
                 let mut trait_decl = decl_engine.get_trait(&decl_id);
 
                 // Monomorphize the trait declaration.
-                check!(
-                    ctx.monomorphize(
-                        &mut trait_decl,
-                        &mut type_arguments,
-                        EnforceTypeArguments::Yes,
-                        &trait_name.span()
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                ctx.monomorphize(
+                    handler,
+                    &mut trait_decl,
+                    &mut type_arguments,
+                    EnforceTypeArguments::Yes,
+                    &trait_name.span(),
+                )?;
 
                 // Insert the interface surface and methods from this trait into
                 // the namespace.
                 trait_decl.insert_interface_surface_and_items_into_namespace(
+                    handler,
                     ctx.by_ref(),
                     trait_name,
                     &type_arguments,
@@ -216,26 +211,27 @@ impl TraitConstraint {
 
                 // Recursively make the interface surfaces and methods of the
                 // supertraits available to this trait.
-                check!(
-                    insert_supertraits_into_namespace(
-                        ctx.by_ref(),
-                        type_id,
-                        &trait_decl.supertraits
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                insert_supertraits_into_namespace(
+                    handler,
+                    ctx.by_ref(),
+                    type_id,
+                    &trait_decl.supertraits,
+                    &SupertraitOf::Trait,
+                )?;
             }
-            Some(ty::TyDecl::AbiDecl { .. }) => errors.push(CompileError::AbiAsSupertrait {
-                span: trait_name.span(),
-            }),
-            _ => errors.push(CompileError::TraitNotFound {
-                name: trait_name.to_string(),
-                span: trait_name.span(),
-            }),
+            Some(ty::TyDecl::AbiDecl { .. }) => {
+                handler.emit_err(CompileError::AbiAsSupertrait {
+                    span: trait_name.span(),
+                });
+            }
+            _ => {
+                handler.emit_err(CompileError::TraitNotFound {
+                    name: trait_name.to_string(),
+                    span: trait_name.span(),
+                });
+            }
         }
 
-        ok((), warnings, errors)
+        Ok(())
     }
 }

@@ -64,7 +64,7 @@ impl AbstractProgram {
             .entries
             .into_iter()
             .map(|entry| entry.ops)
-            .chain(self.non_entries.into_iter())
+            .chain(self.non_entries)
             .map(AbstractInstructionSet::optimize)
             .map(AbstractInstructionSet::verify)
             .collect::<Result<Vec<_>, _>>()?;

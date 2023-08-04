@@ -67,7 +67,7 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
             coins,
             asset_id,
             ..
-        } => vec![*params, *coins, *asset_id]
+        } => [*params, *coins, *asset_id]
             .iter()
             .flat_map(|val| get_symbols(context, *val).to_vec())
             .collect(),
@@ -118,7 +118,8 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
         Instruction::Store { dst_val_ptr: _, .. } => vec![],
         Instruction::FuelVm(FuelVmInstruction::Gtf { .. })
         | Instruction::FuelVm(FuelVmInstruction::ReadRegister(_))
-        | Instruction::FuelVm(FuelVmInstruction::Revert(_)) => vec![],
+        | Instruction::FuelVm(FuelVmInstruction::Revert(_))
+        | Instruction::FuelVm(FuelVmInstruction::WideBinaryOp { .. }) => vec![],
     }
 }
 
@@ -168,6 +169,7 @@ fn get_stored_symbols(context: &Context, val: Value) -> Vec<Symbol> {
                 vec![]
             }
             FuelVmInstruction::StateStoreQuadWord { stored_val: _, .. } => vec![],
+            FuelVmInstruction::WideBinaryOp { .. } => vec![],
         },
     }
 }
@@ -206,6 +208,17 @@ pub fn dce(
     let mut num_symbol_uses: HashMap<Symbol, u32> = HashMap::new();
     let mut stores_of_sym: HashMap<Symbol, Vec<Value>> = HashMap::new();
 
+    // Every argument is assumed to be loaded from (from the caller),
+    // so stores to it shouldn't be deliminated.
+    for sym in function
+        .args_iter(context)
+        .flat_map(|arg| get_symbols(context, arg.1))
+    {
+        num_symbol_uses
+            .entry(sym)
+            .and_modify(|count| *count += 1)
+            .or_insert(1);
+    }
     // Go through each instruction and update use_count.
     for (_block, inst) in function.instruction_iter(context) {
         for sym in get_loaded_symbols(context, inst) {

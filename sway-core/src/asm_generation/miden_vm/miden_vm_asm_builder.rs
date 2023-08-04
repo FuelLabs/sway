@@ -11,11 +11,13 @@ use crate::{
         ProgramKind,
     },
     asm_lang::Label,
-    error::*,
     metadata::MetadataManager,
 };
 
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_ir::{Context, *};
 use sway_types::Span;
 
@@ -115,8 +117,12 @@ pub struct MidenVMAsmBuilderResult {
 pub type MidenVMAbiResult = ();
 
 impl<'ir, 'eng> AsmBuilder for MidenVMAsmBuilder<'ir, 'eng> {
-    fn compile_function(&mut self, function: Function) -> CompileResult<()> {
-        self.compile_function(function)
+    fn compile_function(
+        &mut self,
+        handler: &Handler,
+        function: Function,
+    ) -> Result<(), ErrorEmitted> {
+        self.compile_function(handler, function)
     }
 
     fn finalize(&self) -> AsmBuilderResult {
@@ -165,7 +171,7 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
 
     fn copy_contract_code_to_memory(
         &self,
-        s: &mut MidenVMAsmSection,
+        s: &MidenVMAsmSection,
         data_size: u32,
         data_offset: u32,
     ) {
@@ -215,7 +221,11 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
     }
 
     /// compiles some value and ensures it is on the top of the stack
-    fn push_value_to_stack(&mut self, value: &Value) -> CompileResult<()> {
+    fn push_value_to_stack(
+        &mut self,
+        handler: &Handler,
+        value: &Value,
+    ) -> Result<(), ErrorEmitted> {
         todo!()
     }
 
@@ -226,6 +236,7 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
 
     fn compile_conditional_branch(
         &mut self,
+        handler: &Handler,
         cond_value: &Value,
         true_block: &BranchToWithArgs,
         false_block: &BranchToWithArgs,
@@ -235,7 +246,7 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
         // generate the body
         // generate the `else`
         // generate the else block
-        self.push_value_to_stack(cond_value);
+        let _ = self.push_value_to_stack(handler, cond_value);
         self.compile_branch(true_block);
         self.compile_branch(true_block);
         // todo need to figure out how to handle the compile results here
@@ -270,7 +281,7 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
             function.get_name(self.context)
         )
     }
-    pub(super) fn compile_instruction(&mut self, instr_val: &Value) {
+    pub(super) fn compile_instruction(&mut self, handler: &Handler, instr_val: &Value) {
         if let Some(instruction) = instr_val.get_instruction(self.context) {
             match instruction {
                 Instruction::AsmBlock(asm, args) => todo!(),
@@ -293,7 +304,7 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
                     cond_value,
                     true_block,
                     false_block,
-                } => self.compile_conditional_branch(cond_value, true_block, false_block),
+                } => self.compile_conditional_branch(handler, cond_value, true_block, false_block),
                 Instruction::ContractCall {
                     params,
                     coins,
@@ -342,10 +353,11 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
 
     fn compile_asm_block(
         &mut self,
+        handler: &Handler,
         instr_val: &Value,
         asm: &AsmBlock,
         asm_args: &[AsmArg],
-    ) -> CompileResult<()> {
+    ) -> Result<(), ErrorEmitted> {
         todo!();
     }
 
@@ -411,7 +423,11 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
         todo!();
     }
 
-    fn compile_get_storage_key(&mut self, instr_val: &Value) -> CompileResult<()> {
+    fn compile_get_storage_key(
+        &mut self,
+        handler: &Handler,
+        instr_val: &Value,
+    ) -> Result<(), ErrorEmitted> {
         todo!();
     }
 
@@ -448,7 +464,12 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
         todo!();
     }
 
-    fn compile_load(&mut self, instr_val: &Value, src_val: &Value) -> CompileResult<()> {
+    fn compile_load(
+        &mut self,
+        handler: &Handler,
+        instr_val: &Value,
+        src_val: &Value,
+    ) -> Result<(), ErrorEmitted> {
         todo!();
     }
 
@@ -491,50 +512,62 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
 
     fn compile_state_access_quad_word(
         &mut self,
+        handler: &Handler,
         instr_val: &Value,
         val: &Value,
         key: &Value,
         number_of_slots: &Value,
         access_type: StateAccessType,
-    ) -> CompileResult<()> {
+    ) -> Result<(), ErrorEmitted> {
         todo!();
     }
 
-    fn compile_state_load_word(&mut self, instr_val: &Value, key: &Value) -> CompileResult<()> {
+    fn compile_state_load_word(
+        &mut self,
+        handler: &Handler,
+        instr_val: &Value,
+        key: &Value,
+    ) -> Result<(), ErrorEmitted> {
         todo!();
     }
 
     fn compile_state_store_word(
         &mut self,
+        handler: &Handler,
         instr_val: &Value,
         store_val: &Value,
         key: &Value,
-    ) -> CompileResult<()> {
+    ) -> Result<(), ErrorEmitted> {
         todo!();
     }
 
     fn compile_store(
         &mut self,
+        handler: &Handler,
         instr_val: &Value,
         dst_val: &Value,
         stored_val: &Value,
-    ) -> CompileResult<()> {
+    ) -> Result<(), ErrorEmitted> {
         todo!();
     }
 
-    pub fn compile_function(&mut self, function: Function) -> CompileResult<()> {
+    pub fn compile_function(
+        &mut self,
+        handler: &Handler,
+        function: Function,
+    ) -> Result<(), ErrorEmitted> {
         if function.get_name(self.context).to_lowercase() != "main" {
             self.set_active_procedure(&function);
         }
-        self.compile_code_block(function.block_iter(self.context));
+        self.compile_code_block(handler, function.block_iter(self.context));
         self.end_active_procedure();
-        ok((), vec![], vec![])
+        Ok(())
     }
 
-    fn compile_code_block(&mut self, block: BlockIterator) {
+    fn compile_code_block(&mut self, handler: &Handler, block: BlockIterator) {
         for block in block {
             for instr_val in block.instruction_iter(self.context) {
-                self.compile_instruction(&instr_val);
+                self.compile_instruction(handler, &instr_val);
             }
         }
     }
@@ -620,6 +653,7 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
             Unit => vec![DirectOp::push(MidenStackValue::Unit)],
             Bool(b) => vec![DirectOp::push(b)],
             Uint(x) => vec![DirectOp::push(x)],
+            U256(x) => todo!(),
             B256(_) => todo!(),
             String(_) => todo!(),
             Array(_) => todo!(),

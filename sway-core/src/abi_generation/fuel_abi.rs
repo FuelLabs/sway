@@ -11,13 +11,13 @@ use crate::{
     TypeArgument, TypeEngine, TypeId, TypeInfo, TypeParameter,
 };
 
-pub struct JsonAbiContext<'a> {
+pub struct AbiContext<'a> {
     pub program: &'a TyProgram,
-    pub json_abi_with_callpaths: bool,
+    pub abi_with_callpaths: bool,
 }
 
-pub fn generate_json_abi_program(
-    ctx: &mut JsonAbiContext,
+pub fn generate_program_abi(
+    ctx: &mut AbiContext,
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
     types: &mut Vec<program_abi::TypeDeclaration>,
@@ -26,11 +26,11 @@ pub fn generate_json_abi_program(
         TyProgramKind::Contract { abi_entries, .. } => {
             let functions = abi_entries
                 .iter()
-                .map(|x| x.generate_json_abi_function(ctx, type_engine, decl_engine, types))
+                .map(|x| x.generate_abi_function(ctx, type_engine, decl_engine, types))
                 .collect();
-            let logged_types = generate_json_logged_types(ctx, type_engine, decl_engine, types);
-            let messages_types = generate_json_messages_types(ctx, type_engine, decl_engine, types);
-            let configurables = generate_json_configurables(ctx, type_engine, decl_engine, types);
+            let logged_types = generate_logged_types(ctx, type_engine, decl_engine, types);
+            let messages_types = generate_messages_types(ctx, type_engine, decl_engine, types);
+            let configurables = generate_configurables(ctx, type_engine, decl_engine, types);
             program_abi::ProgramABI {
                 types: types.to_vec(),
                 functions,
@@ -41,15 +41,11 @@ pub fn generate_json_abi_program(
         }
         TyProgramKind::Script { main_function, .. }
         | TyProgramKind::Predicate { main_function, .. } => {
-            let functions = vec![main_function.generate_json_abi_function(
-                ctx,
-                type_engine,
-                decl_engine,
-                types,
-            )];
-            let logged_types = generate_json_logged_types(ctx, type_engine, decl_engine, types);
-            let messages_types = generate_json_messages_types(ctx, type_engine, decl_engine, types);
-            let configurables = generate_json_configurables(ctx, type_engine, decl_engine, types);
+            let functions =
+                vec![main_function.generate_abi_function(ctx, type_engine, decl_engine, types)];
+            let logged_types = generate_logged_types(ctx, type_engine, decl_engine, types);
+            let messages_types = generate_messages_types(ctx, type_engine, decl_engine, types);
+            let configurables = generate_configurables(ctx, type_engine, decl_engine, types);
             program_abi::ProgramABI {
                 types: types.to_vec(),
                 functions,
@@ -68,8 +64,8 @@ pub fn generate_json_abi_program(
     }
 }
 
-fn generate_json_logged_types(
-    ctx: &mut JsonAbiContext,
+fn generate_logged_types(
+    ctx: &mut AbiContext,
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
     types: &mut Vec<program_abi::TypeDeclaration>,
@@ -81,15 +77,15 @@ fn generate_json_logged_types(
         .iter()
         .map(|(_, type_id)| program_abi::TypeDeclaration {
             type_id: type_id.index(),
-            type_field: type_id.get_json_type_str(ctx, type_engine, decl_engine, *type_id),
-            components: type_id.get_json_type_components(
+            type_field: type_id.get_abi_type_str(ctx, type_engine, decl_engine, *type_id),
+            components: type_id.get_abi_type_components(
                 ctx,
                 type_engine,
                 decl_engine,
                 types,
                 *type_id,
             ),
-            type_parameters: type_id.get_json_type_parameters(
+            type_parameters: type_id.get_abi_type_parameters(
                 ctx,
                 type_engine,
                 decl_engine,
@@ -111,7 +107,7 @@ fn generate_json_logged_types(
             application: program_abi::TypeApplication {
                 name: "".to_string(),
                 type_id: type_id.index(),
-                type_arguments: type_id.get_json_type_arguments(
+                type_arguments: type_id.get_abi_type_arguments(
                     ctx,
                     type_engine,
                     decl_engine,
@@ -123,8 +119,8 @@ fn generate_json_logged_types(
         .collect()
 }
 
-fn generate_json_messages_types(
-    ctx: &mut JsonAbiContext,
+fn generate_messages_types(
+    ctx: &mut AbiContext,
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
     types: &mut Vec<program_abi::TypeDeclaration>,
@@ -136,15 +132,15 @@ fn generate_json_messages_types(
         .iter()
         .map(|(_, type_id)| program_abi::TypeDeclaration {
             type_id: type_id.index(),
-            type_field: type_id.get_json_type_str(ctx, type_engine, decl_engine, *type_id),
-            components: type_id.get_json_type_components(
+            type_field: type_id.get_abi_type_str(ctx, type_engine, decl_engine, *type_id),
+            components: type_id.get_abi_type_components(
                 ctx,
                 type_engine,
                 decl_engine,
                 types,
                 *type_id,
             ),
-            type_parameters: type_id.get_json_type_parameters(
+            type_parameters: type_id.get_abi_type_parameters(
                 ctx,
                 type_engine,
                 decl_engine,
@@ -166,7 +162,7 @@ fn generate_json_messages_types(
             application: program_abi::TypeApplication {
                 name: "".to_string(),
                 type_id: type_id.index(),
-                type_arguments: type_id.get_json_type_arguments(
+                type_arguments: type_id.get_abi_type_arguments(
                     ctx,
                     type_engine,
                     decl_engine,
@@ -178,8 +174,8 @@ fn generate_json_messages_types(
         .collect()
 }
 
-fn generate_json_configurables(
-    ctx: &mut JsonAbiContext,
+fn generate_configurables(
+    ctx: &mut AbiContext,
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
     types: &mut Vec<program_abi::TypeDeclaration>,
@@ -194,20 +190,20 @@ fn generate_json_configurables(
                  type_ascription, ..
              }| program_abi::TypeDeclaration {
                 type_id: type_ascription.type_id.index(),
-                type_field: type_ascription.type_id.get_json_type_str(
+                type_field: type_ascription.type_id.get_abi_type_str(
                     ctx,
                     type_engine,
                     decl_engine,
                     type_ascription.type_id,
                 ),
-                components: type_ascription.type_id.get_json_type_components(
+                components: type_ascription.type_id.get_abi_type_components(
                     ctx,
                     type_engine,
                     decl_engine,
                     types,
                     type_ascription.type_id,
                 ),
-                type_parameters: type_ascription.type_id.get_json_type_parameters(
+                type_parameters: type_ascription.type_id.get_abi_type_parameters(
                     ctx,
                     type_engine,
                     decl_engine,
@@ -235,7 +231,7 @@ fn generate_json_configurables(
                 application: program_abi::TypeApplication {
                     name: "".to_string(),
                     type_id: type_ascription.type_id.index(),
-                    type_arguments: type_ascription.type_id.get_json_type_arguments(
+                    type_arguments: type_ascription.type_id.get_abi_type_arguments(
                         ctx,
                         type_engine,
                         decl_engine,
@@ -251,9 +247,9 @@ fn generate_json_configurables(
 
 impl TypeId {
     /// Gives back a string that represents the type, considering what it resolves to
-    pub(self) fn get_json_type_str(
+    pub(self) fn get_abi_type_str(
         &self,
-        ctx: &mut JsonAbiContext,
+        ctx: &mut AbiContext,
         type_engine: &TypeEngine,
         decl_engine: &DeclEngine,
         resolved_type_id: TypeId,
@@ -263,19 +259,19 @@ impl TypeId {
                 "generic {}",
                 type_engine
                     .get(*self)
-                    .json_abi_str(ctx, type_engine, decl_engine)
+                    .abi_str(ctx, type_engine, decl_engine)
             )
         } else {
             match (type_engine.get(*self), type_engine.get(resolved_type_id)) {
                 (TypeInfo::Custom { .. }, TypeInfo::Struct { .. }) => type_engine
                     .get(resolved_type_id)
-                    .json_abi_str(ctx, type_engine, decl_engine),
+                    .abi_str(ctx, type_engine, decl_engine),
                 (TypeInfo::Custom { .. }, TypeInfo::Enum { .. }) => type_engine
                     .get(resolved_type_id)
-                    .json_abi_str(ctx, type_engine, decl_engine),
+                    .abi_str(ctx, type_engine, decl_engine),
                 (TypeInfo::Custom { .. }, TypeInfo::Alias { .. }) => type_engine
                     .get(resolved_type_id)
-                    .json_abi_str(ctx, type_engine, decl_engine),
+                    .abi_str(ctx, type_engine, decl_engine),
                 (TypeInfo::Tuple(fields), TypeInfo::Tuple(resolved_fields)) => {
                     assert_eq!(fields.len(), resolved_fields.len());
                     let field_strs = fields
@@ -293,12 +289,12 @@ impl TypeId {
                         "generic {}",
                         type_engine
                             .get(*self)
-                            .json_abi_str(ctx, type_engine, decl_engine)
+                            .abi_str(ctx, type_engine, decl_engine)
                     )
                 }
                 _ => type_engine
                     .get(*self)
-                    .json_abi_str(ctx, type_engine, decl_engine),
+                    .abi_str(ctx, type_engine, decl_engine),
             }
         }
     }
@@ -308,9 +304,9 @@ impl TypeId {
     /// basically the IDs of some set of `program_abi::TypeDeclaration`s. The method below also
     /// updates the provide list of `program_abi::TypeDeclaration`s  to add the newly discovered
     /// types.
-    pub(self) fn get_json_type_parameters(
+    pub(self) fn get_abi_type_parameters(
         &self,
-        ctx: &mut JsonAbiContext,
+        ctx: &mut AbiContext,
         type_engine: &TypeEngine,
         decl_engine: &DeclEngine,
         types: &mut Vec<program_abi::TypeDeclaration>,
@@ -322,7 +318,7 @@ impl TypeId {
                 .get_type_parameters(type_engine, decl_engine)
                 .map(|v| {
                     v.iter()
-                        .map(|v| v.get_json_type_parameter(ctx, type_engine, decl_engine, types))
+                        .map(|v| v.get_abi_type_parameter(ctx, type_engine, decl_engine, types))
                         .collect::<Vec<_>>()
                 }),
         }
@@ -331,9 +327,9 @@ impl TypeId {
     /// actually resolves to. These components are essentially of type of
     /// `program_abi::TypeApplication`.  The method below also updates the provided list of
     /// `program_abi::TypeDeclaration`s  to add the newly discovered types.
-    pub(self) fn get_json_type_components(
+    pub(self) fn get_abi_type_components(
         &self,
-        ctx: &mut JsonAbiContext,
+        ctx: &mut AbiContext,
         type_engine: &TypeEngine,
         decl_engine: &DeclEngine,
         types: &mut Vec<program_abi::TypeDeclaration>,
@@ -348,20 +344,20 @@ impl TypeId {
                     .iter()
                     .map(|x| program_abi::TypeDeclaration {
                         type_id: x.type_argument.initial_type_id.index(),
-                        type_field: x.type_argument.initial_type_id.get_json_type_str(
+                        type_field: x.type_argument.initial_type_id.get_abi_type_str(
                             ctx,
                             type_engine,
                             decl_engine,
                             x.type_argument.type_id,
                         ),
-                        components: x.type_argument.initial_type_id.get_json_type_components(
+                        components: x.type_argument.initial_type_id.get_abi_type_components(
                             ctx,
                             type_engine,
                             decl_engine,
                             types,
                             x.type_argument.type_id,
                         ),
-                        type_parameters: x.type_argument.initial_type_id.get_json_type_parameters(
+                        type_parameters: x.type_argument.initial_type_id.get_abi_type_parameters(
                             ctx,
                             type_engine,
                             decl_engine,
@@ -380,16 +376,13 @@ impl TypeId {
                         .map(|x| program_abi::TypeApplication {
                             name: x.name.to_string(),
                             type_id: x.type_argument.initial_type_id.index(),
-                            type_arguments: x
-                                .type_argument
-                                .initial_type_id
-                                .get_json_type_arguments(
-                                    ctx,
-                                    type_engine,
-                                    decl_engine,
-                                    types,
-                                    x.type_argument.type_id,
-                                ),
+                            type_arguments: x.type_argument.initial_type_id.get_abi_type_arguments(
+                                ctx,
+                                type_engine,
+                                decl_engine,
+                                types,
+                                x.type_argument.type_id,
+                            ),
                         })
                         .collect(),
                 )
@@ -403,20 +396,20 @@ impl TypeId {
                     .iter()
                     .map(|x| program_abi::TypeDeclaration {
                         type_id: x.type_argument.initial_type_id.index(),
-                        type_field: x.type_argument.initial_type_id.get_json_type_str(
+                        type_field: x.type_argument.initial_type_id.get_abi_type_str(
                             ctx,
                             type_engine,
                             decl_engine,
                             x.type_argument.type_id,
                         ),
-                        components: x.type_argument.initial_type_id.get_json_type_components(
+                        components: x.type_argument.initial_type_id.get_abi_type_components(
                             ctx,
                             type_engine,
                             decl_engine,
                             types,
                             x.type_argument.type_id,
                         ),
-                        type_parameters: x.type_argument.initial_type_id.get_json_type_parameters(
+                        type_parameters: x.type_argument.initial_type_id.get_abi_type_parameters(
                             ctx,
                             type_engine,
                             decl_engine,
@@ -435,16 +428,13 @@ impl TypeId {
                         .map(|x| program_abi::TypeApplication {
                             name: x.name.to_string(),
                             type_id: x.type_argument.initial_type_id.index(),
-                            type_arguments: x
-                                .type_argument
-                                .initial_type_id
-                                .get_json_type_arguments(
-                                    ctx,
-                                    type_engine,
-                                    decl_engine,
-                                    types,
-                                    x.type_argument.type_id,
-                                ),
+                            type_arguments: x.type_argument.initial_type_id.get_abi_type_arguments(
+                                ctx,
+                                type_engine,
+                                decl_engine,
+                                types,
+                                x.type_argument.type_id,
+                            ),
                         })
                         .collect(),
                 )
@@ -452,22 +442,22 @@ impl TypeId {
             TypeInfo::Array(..) => {
                 if let TypeInfo::Array(elem_ty, _) = type_engine.get(resolved_type_id) {
                     // The `program_abi::TypeDeclaration`s needed for the array element type
-                    let elem_json_ty = program_abi::TypeDeclaration {
+                    let elem_abi_ty = program_abi::TypeDeclaration {
                         type_id: elem_ty.initial_type_id.index(),
-                        type_field: elem_ty.initial_type_id.get_json_type_str(
+                        type_field: elem_ty.initial_type_id.get_abi_type_str(
                             ctx,
                             type_engine,
                             decl_engine,
                             elem_ty.type_id,
                         ),
-                        components: elem_ty.initial_type_id.get_json_type_components(
+                        components: elem_ty.initial_type_id.get_abi_type_components(
                             ctx,
                             type_engine,
                             decl_engine,
                             types,
                             elem_ty.type_id,
                         ),
-                        type_parameters: elem_ty.initial_type_id.get_json_type_parameters(
+                        type_parameters: elem_ty.initial_type_id.get_abi_type_parameters(
                             ctx,
                             type_engine,
                             decl_engine,
@@ -475,14 +465,14 @@ impl TypeId {
                             elem_ty.type_id,
                         ),
                     };
-                    types.push(elem_json_ty);
+                    types.push(elem_abi_ty);
 
                     // Generate the JSON data for the array. This is basically a single
                     // `program_abi::TypeApplication` for the array element type
                     Some(vec![program_abi::TypeApplication {
                         name: "__array_element".to_string(),
                         type_id: elem_ty.initial_type_id.index(),
-                        type_arguments: elem_ty.initial_type_id.get_json_type_arguments(
+                        type_arguments: elem_ty.initial_type_id.get_abi_type_arguments(
                             ctx,
                             type_engine,
                             decl_engine,
@@ -501,20 +491,20 @@ impl TypeId {
                         .iter()
                         .map(|x| program_abi::TypeDeclaration {
                             type_id: x.initial_type_id.index(),
-                            type_field: x.initial_type_id.get_json_type_str(
+                            type_field: x.initial_type_id.get_abi_type_str(
                                 ctx,
                                 type_engine,
                                 decl_engine,
                                 x.type_id,
                             ),
-                            components: x.initial_type_id.get_json_type_components(
+                            components: x.initial_type_id.get_abi_type_components(
                                 ctx,
                                 type_engine,
                                 decl_engine,
                                 types,
                                 x.type_id,
                             ),
-                            type_parameters: x.initial_type_id.get_json_type_parameters(
+                            type_parameters: x.initial_type_id.get_abi_type_parameters(
                                 ctx,
                                 type_engine,
                                 decl_engine,
@@ -533,7 +523,7 @@ impl TypeId {
                             .map(|x| program_abi::TypeApplication {
                                 name: "__tuple_element".to_string(),
                                 type_id: x.initial_type_id.index(),
-                                type_arguments: x.initial_type_id.get_json_type_arguments(
+                                type_arguments: x.initial_type_id.get_abi_type_arguments(
                                     ctx,
                                     type_engine,
                                     decl_engine,
@@ -561,20 +551,20 @@ impl TypeId {
                         )
                         .map(|(v, p)| program_abi::TypeDeclaration {
                             type_id: v.initial_type_id.index(),
-                            type_field: v.initial_type_id.get_json_type_str(
+                            type_field: v.initial_type_id.get_abi_type_str(
                                 ctx,
                                 type_engine,
                                 decl_engine,
                                 p.type_id,
                             ),
-                            components: v.initial_type_id.get_json_type_components(
+                            components: v.initial_type_id.get_abi_type_components(
                                 ctx,
                                 type_engine,
                                 decl_engine,
                                 types,
                                 p.type_id,
                             ),
-                            type_parameters: v.initial_type_id.get_json_type_parameters(
+                            type_parameters: v.initial_type_id.get_abi_type_parameters(
                                 ctx,
                                 type_engine,
                                 decl_engine,
@@ -585,7 +575,7 @@ impl TypeId {
                         .collect::<Vec<_>>();
                     types.extend(type_args);
 
-                    resolved_type_id.get_json_type_components(
+                    resolved_type_id.get_abi_type_components(
                         ctx,
                         type_engine,
                         decl_engine,
@@ -598,7 +588,7 @@ impl TypeId {
             }
             TypeInfo::Alias { .. } => {
                 if let TypeInfo::Alias { ty, .. } = type_engine.get(resolved_type_id) {
-                    ty.initial_type_id.get_json_type_components(
+                    ty.initial_type_id.get_abi_type_components(
                         ctx,
                         type_engine,
                         decl_engine,
@@ -618,9 +608,9 @@ impl TypeId {
     /// actually resolves to. These arguments are essentially of type of
     /// `program_abi::TypeApplication`. The method below also updates the provided list of
     /// `program_abi::TypeDeclaration`s  to add the newly discovered types.
-    pub(self) fn get_json_type_arguments(
+    pub(self) fn get_abi_type_arguments(
         &self,
-        ctx: &mut JsonAbiContext,
+        ctx: &mut AbiContext,
         type_engine: &TypeEngine,
         decl_engine: &DeclEngine,
         types: &mut Vec<program_abi::TypeDeclaration>,
@@ -633,25 +623,25 @@ impl TypeId {
                 ..
             } => (!type_arguments.is_empty()).then_some({
                 let resolved_params = resolved_params.unwrap_or_default();
-                let json_type_arguments = type_arguments
+                let abi_type_arguments = type_arguments
                     .iter()
                     .zip(resolved_params.iter())
                     .map(|(v, p)| program_abi::TypeDeclaration {
                         type_id: v.initial_type_id.index(),
-                        type_field: v.initial_type_id.get_json_type_str(
+                        type_field: v.initial_type_id.get_abi_type_str(
                             ctx,
                             type_engine,
                             decl_engine,
                             p.type_id,
                         ),
-                        components: v.initial_type_id.get_json_type_components(
+                        components: v.initial_type_id.get_abi_type_components(
                             ctx,
                             type_engine,
                             decl_engine,
                             types,
                             p.type_id,
                         ),
-                        type_parameters: v.initial_type_id.get_json_type_parameters(
+                        type_parameters: v.initial_type_id.get_abi_type_parameters(
                             ctx,
                             type_engine,
                             decl_engine,
@@ -660,14 +650,14 @@ impl TypeId {
                         ),
                     })
                     .collect::<Vec<_>>();
-                types.extend(json_type_arguments);
+                types.extend(abi_type_arguments);
 
                 type_arguments
                     .iter()
                     .map(|arg| program_abi::TypeApplication {
                         name: "".to_string(),
                         type_id: arg.initial_type_id.index(),
-                        type_arguments: arg.initial_type_id.get_json_type_arguments(
+                        type_arguments: arg.initial_type_id.get_abi_type_arguments(
                             ctx,
                             type_engine,
                             decl_engine,
@@ -680,25 +670,25 @@ impl TypeId {
             TypeInfo::Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(&decl_ref);
                 // Here, type_id for each type parameter should contain resolved types
-                let json_type_arguments = decl
+                let abi_type_arguments = decl
                     .type_parameters
                     .iter()
                     .map(|v| program_abi::TypeDeclaration {
                         type_id: v.type_id.index(),
-                        type_field: v.type_id.get_json_type_str(
+                        type_field: v.type_id.get_abi_type_str(
                             ctx,
                             type_engine,
                             decl_engine,
                             v.type_id,
                         ),
-                        components: v.type_id.get_json_type_components(
+                        components: v.type_id.get_abi_type_components(
                             ctx,
                             type_engine,
                             decl_engine,
                             types,
                             v.type_id,
                         ),
-                        type_parameters: v.type_id.get_json_type_parameters(
+                        type_parameters: v.type_id.get_abi_type_parameters(
                             ctx,
                             type_engine,
                             decl_engine,
@@ -707,7 +697,7 @@ impl TypeId {
                         ),
                     })
                     .collect::<Vec<_>>();
-                types.extend(json_type_arguments);
+                types.extend(abi_type_arguments);
 
                 Some(
                     decl.type_parameters
@@ -715,7 +705,7 @@ impl TypeId {
                         .map(|arg| program_abi::TypeApplication {
                             name: "".to_string(),
                             type_id: arg.type_id.index(),
-                            type_arguments: arg.type_id.get_json_type_arguments(
+                            type_arguments: arg.type_id.get_abi_type_arguments(
                                 ctx,
                                 type_engine,
                                 decl_engine,
@@ -730,25 +720,25 @@ impl TypeId {
             TypeInfo::Struct(decl_ref) => {
                 let decl = decl_engine.get_struct(&decl_ref);
                 // Here, type_id for each type parameter should contain resolved types
-                let json_type_arguments = decl
+                let abi_type_arguments = decl
                     .type_parameters
                     .iter()
                     .map(|v| program_abi::TypeDeclaration {
                         type_id: v.type_id.index(),
-                        type_field: v.type_id.get_json_type_str(
+                        type_field: v.type_id.get_abi_type_str(
                             ctx,
                             type_engine,
                             decl_engine,
                             v.type_id,
                         ),
-                        components: v.type_id.get_json_type_components(
+                        components: v.type_id.get_abi_type_components(
                             ctx,
                             type_engine,
                             decl_engine,
                             types,
                             v.type_id,
                         ),
-                        type_parameters: v.type_id.get_json_type_parameters(
+                        type_parameters: v.type_id.get_abi_type_parameters(
                             ctx,
                             type_engine,
                             decl_engine,
@@ -757,7 +747,7 @@ impl TypeId {
                         ),
                     })
                     .collect::<Vec<_>>();
-                types.extend(json_type_arguments);
+                types.extend(abi_type_arguments);
 
                 Some(
                     decl.type_parameters
@@ -765,7 +755,7 @@ impl TypeId {
                         .map(|arg| program_abi::TypeApplication {
                             name: "".to_string(),
                             type_id: arg.type_id.index(),
-                            type_arguments: arg.type_id.get_json_type_arguments(
+                            type_arguments: arg.type_id.get_abi_type_arguments(
                                 ctx,
                                 type_engine,
                                 decl_engine,
@@ -782,9 +772,9 @@ impl TypeId {
 }
 
 impl TypeInfo {
-    pub fn json_abi_str(
+    pub fn abi_str(
         &self,
-        ctx: &mut JsonAbiContext,
+        ctx: &mut AbiContext,
         type_engine: &TypeEngine,
         decl_engine: &DeclEngine,
     ) -> String {
@@ -800,6 +790,7 @@ impl TypeInfo {
                 IntegerBits::Sixteen => "u16",
                 IntegerBits::ThirtyTwo => "u32",
                 IntegerBits::SixtyFour => "u64",
+                IntegerBits::V256 => "u256",
             }
             .into(),
             Boolean => "bool".into(),
@@ -807,7 +798,7 @@ impl TypeInfo {
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
-                    .map(|field| field.json_abi_str(ctx, type_engine, decl_engine))
+                    .map(|field| field.abi_str(ctx, type_engine, decl_engine))
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
@@ -815,7 +806,7 @@ impl TypeInfo {
             B256 => "b256".into(),
             Numeric => "u64".into(), // u64 is the default
             Contract => "contract".into(),
-            ErrorRecovery => "unknown due to error".into(),
+            ErrorRecovery(_) => "unknown due to error".into(),
             Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
                 format!("enum {}", call_path_display(ctx, &decl.call_path))
@@ -830,7 +821,7 @@ impl TypeInfo {
             Array(elem_ty, length) => {
                 format!(
                     "[{}; {}]",
-                    elem_ty.json_abi_str(ctx, type_engine, decl_engine),
+                    elem_ty.abi_str(ctx, type_engine, decl_engine),
                     length.val()
                 )
             }
@@ -838,20 +829,20 @@ impl TypeInfo {
             RawUntypedPtr => "raw untyped ptr".into(),
             RawUntypedSlice => "raw untyped slice".into(),
             Ptr(ty) => {
-                format!("__ptr {}", ty.json_abi_str(ctx, type_engine, decl_engine))
+                format!("__ptr {}", ty.abi_str(ctx, type_engine, decl_engine))
             }
             Slice(ty) => {
-                format!("__slice {}", ty.json_abi_str(ctx, type_engine, decl_engine))
+                format!("__slice {}", ty.abi_str(ctx, type_engine, decl_engine))
             }
-            Alias { ty, .. } => ty.json_abi_str(ctx, type_engine, decl_engine),
+            Alias { ty, .. } => ty.abi_str(ctx, type_engine, decl_engine),
         }
     }
 }
 
 /// `call_path_display`  returns the provided `call_path` without the first prefix in case it is equal to the program name.
 /// If the program name is `my_program` and the `call_path` is `my_program::MyStruct` then this function returns only `MyStruct`.
-fn call_path_display(ctx: &mut JsonAbiContext, call_path: &CallPath) -> String {
-    if !ctx.json_abi_with_callpaths {
+fn call_path_display(ctx: &mut AbiContext, call_path: &CallPath) -> String {
+    if !ctx.abi_with_callpaths {
         return call_path.suffix.as_str().to_string();
     }
     let mut buf = String::new();
@@ -875,9 +866,9 @@ fn call_path_display(ctx: &mut JsonAbiContext, call_path: &CallPath) -> String {
 }
 
 impl TyFunctionDecl {
-    pub(self) fn generate_json_abi_function(
+    pub(self) fn generate_abi_function(
         &self,
-        ctx: &mut JsonAbiContext,
+        ctx: &mut AbiContext,
         type_engine: &TypeEngine,
         decl_engine: &DeclEngine,
         types: &mut Vec<program_abi::TypeDeclaration>,
@@ -888,20 +879,20 @@ impl TyFunctionDecl {
             .iter()
             .map(|x| program_abi::TypeDeclaration {
                 type_id: x.type_argument.initial_type_id.index(),
-                type_field: x.type_argument.initial_type_id.get_json_type_str(
+                type_field: x.type_argument.initial_type_id.get_abi_type_str(
                     ctx,
                     type_engine,
                     decl_engine,
                     x.type_argument.type_id,
                 ),
-                components: x.type_argument.initial_type_id.get_json_type_components(
+                components: x.type_argument.initial_type_id.get_abi_type_components(
                     ctx,
                     type_engine,
                     decl_engine,
                     types,
                     x.type_argument.type_id,
                 ),
-                type_parameters: x.type_argument.type_id.get_json_type_parameters(
+                type_parameters: x.type_argument.type_id.get_abi_type_parameters(
                     ctx,
                     type_engine,
                     decl_engine,
@@ -914,20 +905,20 @@ impl TyFunctionDecl {
         // The single `program_abi::TypeDeclaration` needed for the output
         let output_type = program_abi::TypeDeclaration {
             type_id: self.return_type.initial_type_id.index(),
-            type_field: self.return_type.initial_type_id.get_json_type_str(
+            type_field: self.return_type.initial_type_id.get_abi_type_str(
                 ctx,
                 type_engine,
                 decl_engine,
                 self.return_type.type_id,
             ),
-            components: self.return_type.type_id.get_json_type_components(
+            components: self.return_type.type_id.get_abi_type_components(
                 ctx,
                 type_engine,
                 decl_engine,
                 types,
                 self.return_type.type_id,
             ),
-            type_parameters: self.return_type.type_id.get_json_type_parameters(
+            type_parameters: self.return_type.type_id.get_abi_type_parameters(
                 ctx,
                 type_engine,
                 decl_engine,
@@ -949,7 +940,7 @@ impl TyFunctionDecl {
                 .map(|x| program_abi::TypeApplication {
                     name: x.name.to_string(),
                     type_id: x.type_argument.initial_type_id.index(),
-                    type_arguments: x.type_argument.initial_type_id.get_json_type_arguments(
+                    type_arguments: x.type_argument.initial_type_id.get_abi_type_arguments(
                         ctx,
                         type_engine,
                         decl_engine,
@@ -961,7 +952,7 @@ impl TyFunctionDecl {
             output: program_abi::TypeApplication {
                 name: "".to_string(),
                 type_id: self.return_type.initial_type_id.index(),
-                type_arguments: self.return_type.initial_type_id.get_json_type_arguments(
+                type_arguments: self.return_type.initial_type_id.get_abi_type_arguments(
                     ctx,
                     type_engine,
                     decl_engine,
@@ -969,14 +960,12 @@ impl TyFunctionDecl {
                     self.return_type.type_id,
                 ),
             },
-            attributes: generate_json_abi_attributes_map(&self.attributes),
+            attributes: generate_attributes_map(&self.attributes),
         }
     }
 }
 
-fn generate_json_abi_attributes_map(
-    attr_map: &AttributesMap,
-) -> Option<Vec<program_abi::Attribute>> {
+fn generate_attributes_map(attr_map: &AttributesMap) -> Option<Vec<program_abi::Attribute>> {
     if attr_map.is_empty() {
         None
     } else {
@@ -997,22 +986,22 @@ fn generate_json_abi_attributes_map(
 impl TypeParameter {
     /// Returns the initial type ID of a TypeParameter. Also updates the provided list of types to
     /// append the current TypeParameter as a `program_abi::TypeDeclaration`.
-    pub(self) fn get_json_type_parameter(
+    pub(self) fn get_abi_type_parameter(
         &self,
-        ctx: &mut JsonAbiContext,
+        ctx: &mut AbiContext,
         type_engine: &TypeEngine,
         decl_engine: &DeclEngine,
         types: &mut Vec<program_abi::TypeDeclaration>,
     ) -> usize {
         let type_parameter = program_abi::TypeDeclaration {
             type_id: self.initial_type_id.index(),
-            type_field: self.initial_type_id.get_json_type_str(
+            type_field: self.initial_type_id.get_abi_type_str(
                 ctx,
                 type_engine,
                 decl_engine,
                 self.type_id,
             ),
-            components: self.initial_type_id.get_json_type_components(
+            components: self.initial_type_id.get_abi_type_components(
                 ctx,
                 type_engine,
                 decl_engine,
@@ -1027,14 +1016,14 @@ impl TypeParameter {
 }
 
 impl TypeArgument {
-    pub(self) fn json_abi_str(
+    pub(self) fn abi_str(
         &self,
-        ctx: &mut JsonAbiContext,
+        ctx: &mut AbiContext,
         type_engine: &TypeEngine,
         decl_engine: &DeclEngine,
     ) -> String {
         type_engine
             .get(self.type_id)
-            .json_abi_str(ctx, type_engine, decl_engine)
+            .abi_str(ctx, type_engine, decl_engine)
     }
 }

@@ -3,12 +3,14 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
-    error::*,
     language::{CallPath, Visibility},
     transform,
     type_system::*,
@@ -98,17 +100,19 @@ impl MonomorphizeHelper for TyStructDecl {
 }
 
 impl TyStructDecl {
-    pub(crate) fn expect_field(&self, field_to_access: &Ident) -> CompileResult<&TyStructField> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn expect_field(
+        &self,
+        handler: &Handler,
+        field_to_access: &Ident,
+    ) -> Result<&TyStructField, ErrorEmitted> {
         match self
             .fields
             .iter()
             .find(|TyStructField { name, .. }| name.as_str() == field_to_access.as_str())
         {
-            Some(field) => ok(field, warnings, errors),
+            Some(field) => Ok(field),
             None => {
-                errors.push(CompileError::FieldNotFound {
+                return Err(handler.emit_err(CompileError::FieldNotFound {
                     available_fields: self
                         .fields
                         .iter()
@@ -118,8 +122,7 @@ impl TyStructDecl {
                     field_name: field_to_access.clone(),
                     struct_name: self.call_path.suffix.clone(),
                     span: field_to_access.span(),
-                });
-                err(warnings, errors)
+                }));
             }
         }
     }

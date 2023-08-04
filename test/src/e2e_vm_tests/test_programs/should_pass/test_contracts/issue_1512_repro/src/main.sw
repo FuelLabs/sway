@@ -17,7 +17,7 @@ pub struct U128 {
     lower: u64,
 }
 
-pub trait From {
+pub trait AltFrom {
     fn from(h: u64, l: u64) -> Self;
 } {
 }
@@ -29,7 +29,7 @@ impl core::ops::Eq for U128 {
 }
 
 /// Function for creating U128 from its u64 components
-impl From for U128 {
+impl AltFrom for U128 {
     fn from(h: u64, l: u64) -> U128 {
         U128 {
             upper: h,
@@ -91,28 +91,28 @@ impl U128 {
     // TO DO : mul, div, inequalities, etc.
 }
 
-// Downcast from u64 to u32, losing precision
-fn u64_to_u32(a: u64) -> u32 {
-    let result: u32 = a;
-    result
-}
-
 // Multiply two u64 values, producing a U128
 pub fn mul64(a: u64, b: u64) -> U128 {
     // Split a and b into 32-bit lo and hi components
-    let a_lo = u64_to_u32(a);
-    let a_hi = u64_to_u32(a >> 32);
-    let b_lo = u64_to_u32(b);
-    let b_hi = u64_to_u32(b >> 32);
+    let a_lo = (a & 0x00000000ffffffff).try_as_u32().unwrap();
+    let a_hi = (a >> 32).try_as_u32().unwrap();
+    let b_lo = (b & 0x00000000ffffffff).try_as_u32().unwrap();
+    let b_hi = (b >> 32).try_as_u32().unwrap();
 
     // Calculate low, high, and mid multiplications
-    let ab_hi: u64 = a_hi * b_hi;
-    let ab_mid: u64 = a_hi * b_lo;
-    let ba_mid: u64 = b_hi * a_lo;
-    let ab_lo: u64 = a_lo * b_lo;
+    let ab_hi = (a_hi * b_hi).as_u64();
+    let ab_mid = (a_hi * b_lo).as_u64();
+    let ba_mid = (b_hi * a_lo).as_u64();
+    let ab_lo = (a_lo * b_lo).as_u64();
 
     // Calculate the carry bit
-    let carry_bit: u64 = (u64_to_u32(ab_mid) + u64_to_u32(ba_mid) + (ab_lo >> 32)) >> 32;
+    let carry_bit = (
+        (
+            ab_mid.try_as_u32().unwrap() +
+            ba_mid.try_as_u32().unwrap() +
+            (ab_lo >> 32).try_as_u32().unwrap()
+        ) >> 32
+    ).as_u64();
 
     // low result is what's left after the (overflowing) multiplication of a and b
     let result_lo: u64 = a * b;

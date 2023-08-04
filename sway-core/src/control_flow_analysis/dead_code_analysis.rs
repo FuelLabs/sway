@@ -12,8 +12,11 @@ use crate::{
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
 use std::collections::{BTreeSet, HashMap};
-use sway_error::warning::{CompileWarning, Warning};
 use sway_error::{error::CompileError, type_error::TypeError};
+use sway_error::{
+    handler::Handler,
+    warning::{CompileWarning, Warning},
+};
 use sway_types::{constants::ALLOW_DEAD_CODE_NAME, span::Span, Ident, Named, Spanned};
 
 impl<'cfg> ControlFlowGraph<'cfg> {
@@ -561,7 +564,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_type_alias_declaration(engines, &type_alias, graph, entry_node)?;
             Ok(leaves.to_vec())
         }
-        ty::TyDecl::ErrorRecovery(_) | ty::TyDecl::GenericTypeForFunctionScope(_) => {
+        ty::TyDecl::ErrorRecovery(..) | ty::TyDecl::GenericTypeForFunctionScope(_) => {
             Ok(leaves.to_vec())
         }
     }
@@ -1488,8 +1491,8 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new()));
 
             let resolved_type_of_parent = match resolved_type_of_parent
-                .expect_struct(engines, field_instantiation_span)
-                .value
+                .expect_struct(&Handler::default(), engines, field_instantiation_span)
+                .ok()
             {
                 Some(struct_decl_ref) => decl_engine.get_struct(&struct_decl_ref).call_path,
                 None => {
@@ -2249,7 +2252,7 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
             ty::TyDecl::ImplTrait { .. } => false,
             ty::TyDecl::AbiDecl { .. } => false,
             ty::TyDecl::GenericTypeForFunctionScope { .. } => false,
-            ty::TyDecl::ErrorRecovery(_) => false,
+            ty::TyDecl::ErrorRecovery(..) => false,
             ty::TyDecl::StorageDecl { .. } => false,
         },
         ty::TyAstNodeContent::Expression(_) => false,

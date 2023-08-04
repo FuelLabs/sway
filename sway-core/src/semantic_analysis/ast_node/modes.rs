@@ -1,6 +1,8 @@
-#[derive(Clone, Copy, PartialEq, Eq, Default)]
+use crate::{decl_engine::DeclId, language::ty::TyAbiDecl};
+
+#[derive(Clone, PartialEq, Eq, Default)]
 pub enum AbiMode {
-    ImplAbiFn,
+    ImplAbiFn(sway_types::Ident, Option<DeclId<TyAbiDecl>>),
     #[default]
     NonAbi,
 }

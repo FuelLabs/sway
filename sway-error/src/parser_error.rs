@@ -1,4 +1,4 @@
-use sway_ast::token::PunctKind;
+use sway_types::ast::PunctKind;
 use sway_types::{Ident, Span};
 use thiserror::Error;
 

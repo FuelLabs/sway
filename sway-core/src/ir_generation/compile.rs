@@ -14,7 +14,7 @@ use super::{
     function::FnCompiler,
 };
 
-use sway_error::error::CompileError;
+use sway_error::{error::CompileError, handler::Handler};
 use sway_ir::{metadata::combine as md_combine, *};
 use sway_types::Spanned;
 
@@ -294,7 +294,7 @@ fn compile_declarations(
             | ty::TyDecl::GenericTypeForFunctionScope { .. }
             | ty::TyDecl::StorageDecl { .. }
             | ty::TyDecl::TypeAliasDecl { .. }
-            | ty::TyDecl::ErrorRecovery(_) => (),
+            | ty::TyDecl::ErrorRecovery(..) => (),
         }
     }
     Ok(())
@@ -531,10 +531,10 @@ fn compile_abi_method(
     engines: &Engines,
 ) -> Result<Function, CompileError> {
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
-    let get_selector_result = ast_fn_decl.to_fn_selector_value(engines);
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
-    let selector = match get_selector_result.ok(&mut warnings, &mut errors) {
+    let handler = Handler::default();
+    let get_selector_result = ast_fn_decl.to_fn_selector_value(&handler, engines);
+    let (errors, _warnings) = handler.consume();
+    let selector = match get_selector_result.ok() {
         Some(selector) => selector,
         None => {
             return if !errors.is_empty() {

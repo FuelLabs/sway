@@ -17,7 +17,7 @@ impl u64 {
     ///     assert(val == 0);
     // }
     /// ```
-    pub fn min() -> u64 {
+    pub fn min() -> Self {
         0
     }
 
@@ -38,7 +38,7 @@ impl u64 {
     ///     assert(val == 18446744073709551615);
     /// }
     /// ```
-    pub fn max() -> u64 {
+    pub fn max() -> Self {
         18446744073709551615
     }
 
@@ -58,7 +58,7 @@ impl u64 {
     ///     assert(bits == 64);
     /// }
     /// ```
-    pub fn bits() -> u32 {
+    pub fn bits() -> u64 {
         64
     }
 }
@@ -80,7 +80,7 @@ impl u32 {
     ///     assert(val == 0u32);
     /// }
     /// ```
-    pub fn min() -> u32 {
+    pub fn min() -> Self {
         0
     }
 
@@ -101,7 +101,7 @@ impl u32 {
     ///     assert(val == 4294967295u32);
     /// }
     /// ```
-    pub fn max() -> u32 {
+    pub fn max() -> Self {
         4294967295
     }
 
@@ -121,7 +121,7 @@ impl u32 {
     ///     assert(bits == 32);
     /// }
     /// ```
-    pub fn bits() -> u32 {
+    pub fn bits() -> u64 {
         32
     }
 }
@@ -143,7 +143,7 @@ impl u16 {
     ///     assert(val == 0u16);
     /// }
     /// ```
-    pub fn min() -> u16 {
+    pub fn min() -> Self {
         0
     }
 
@@ -164,7 +164,7 @@ impl u16 {
     ///     assert(val == 65535u16);
     /// }
     /// ```
-    pub fn max() -> u16 {
+    pub fn max() -> Self {
         65535
     }
 
@@ -184,7 +184,7 @@ impl u16 {
     ///     assert(bits == 16);
     /// }
     /// ```
-    pub fn bits() -> u32 {
+    pub fn bits() -> u64 {
         16
     }
 }
@@ -206,7 +206,7 @@ impl u8 {
     ///     assert(val == 0u8);
     /// }
     /// ```
-    pub fn min() -> u8 {
+    pub fn min() -> Self {
         0
     }
 
@@ -227,7 +227,7 @@ impl u8 {
     ///     assert(val == 255u8);
     /// }
     /// ```
-    pub fn max() -> u8 {
+    pub fn max() -> Self {
         255
     }
 
@@ -246,7 +246,7 @@ impl u8 {
     ///     assert(bits == 8);
     /// }
     /// ```
-    pub fn bits() -> u32 {
+    pub fn bits() -> u64 {
         8
     }
 }
@@ -268,7 +268,7 @@ impl b256 {
     ///     assert(val == ZERO_B256);
     /// }
     /// ```
-    pub fn min() -> b256 {
+    pub fn min() -> Self {
         0x0000000000000000000000000000000000000000000000000000000000000000
     }
 
@@ -289,7 +289,7 @@ impl b256 {
     ///     assert(val == 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
     /// }
     /// ```
-    pub fn max() -> b256 {
+    pub fn max() -> Self {
         0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
     }
 

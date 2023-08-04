@@ -41,8 +41,8 @@ impl From<b256> for Address {
     ///    let address = Address::from(ZERO_B256);
     /// }
     /// ```
-    fn from(bits: b256) -> Address {
-        Address { value: bits }
+    fn from(bits: b256) -> Self {
+        Self { value: bits }
     }
 
     /// Casts an `Address` to raw `b256` data.

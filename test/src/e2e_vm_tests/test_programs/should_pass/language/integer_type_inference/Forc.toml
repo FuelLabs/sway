@@ -4,3 +4,6 @@ entry = "main.sw"
 implicit-std = false
 license = "Apache-2.0"
 name = "integer_type_inference"
+
+[dependencies]
+std = { path = "../../../../../../../sway-lib-std" }

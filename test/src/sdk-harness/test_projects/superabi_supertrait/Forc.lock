@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-824ED47D4233019F'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-824ED47D4233019F'
+dependencies = ['core']
+
+[[package]]
+name = 'superabi_supertrait'
+source = 'member'
+dependencies = ['std']
