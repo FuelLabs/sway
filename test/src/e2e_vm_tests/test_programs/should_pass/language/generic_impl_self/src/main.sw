@@ -166,7 +166,7 @@ fn generic_impl_self_test() {
     assert(f.first && f.second);
 
     let g: DoubleIdentity<u32, u64> = double_identity(10u32, 43u64);
-    assert((g.first + 33u32) == g.second);
+    assert((g.first + 33u32).as_u64() == g.second);
 
     let h = DoubleIdentity::<u64, bool>::new(3u64, false);
     assert(!h.second);
@@ -182,10 +182,10 @@ fn generic_impl_self_test() {
 
     let m: DoubleIdentity<Data<u8>, Data<u64>> = DoubleIdentity {
         first: Data { value: 1u8 },
-        second: Data { value: 2u8 },
+        second: Data { value: 2u64 },
         third: 1u64,
     };
-    assert(m.second.value == (m.first.value + m.third));
+    assert(m.second.value == (m.first.value.as_u64() + m.third));
 
     let n = DoubleIdentity::<Data<u8>, Data<u8>>::new(Data::<u8>::new(3u8), Data::<u8>::new(4u8));
     assert(n.third == 10u64);

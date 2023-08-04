@@ -84,7 +84,7 @@ impl Parse for ty::TyDecl {
             ty::TyDecl::ImplTrait(decl) => decl.parse(ctx),
             ty::TyDecl::AbiDecl(decl) => decl.parse(ctx),
             ty::TyDecl::GenericTypeForFunctionScope(decl) => decl.parse(ctx),
-            ty::TyDecl::ErrorRecovery(_) => {}
+            ty::TyDecl::ErrorRecovery(_, _) => {}
             ty::TyDecl::StorageDecl(decl) => decl.parse(ctx),
             ty::TyDecl::TypeAliasDecl(decl) => decl.parse(ctx),
         }
@@ -884,7 +884,7 @@ impl Parse for ty::TyFunctionParameter {
             .try_unwrap()
         {
             token.typed = Some(typed_token);
-            token.type_def = Some(TypeDefinition::TypeId(self.type_argument.type_id));
+            token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
         }
         collect_type_argument(ctx, &self.type_argument);
     }
@@ -921,7 +921,7 @@ impl Parse for ty::TyStructField {
             .try_unwrap()
         {
             token.typed = Some(TypedAstToken::TypedStructField(self.clone()));
-            token.type_def = Some(TypeDefinition::TypeId(self.type_argument.type_id));
+            token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
         }
         collect_type_argument(ctx, &self.type_argument);
     }

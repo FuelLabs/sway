@@ -147,9 +147,9 @@ fn compute_dom_tree(
                 .pred_iter(context)
                 .filter(|p| **p != picked_pred && po.block_to_po.contains_key(p))
             {
-                if matches!(dom_tree[p].parent, Some(_)) {
+                if dom_tree[p].parent.is_some() {
                     // if doms[p] already calculated
-                    new_idom = intersect(po, &mut dom_tree, *p, new_idom);
+                    new_idom = intersect(po, &dom_tree, *p, new_idom);
                 }
             }
             let b_node = dom_tree.get_mut(b).unwrap();
@@ -167,7 +167,7 @@ fn compute_dom_tree(
     // using the partially computed dominator tree.
     fn intersect(
         po: &PostOrder,
-        dom_tree: &mut DomTree,
+        dom_tree: &DomTree,
         mut finger1: Block,
         mut finger2: Block,
     ) -> Block {

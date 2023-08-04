@@ -71,7 +71,7 @@ Implementing an ABI for a contract is accomplished with `impl <ABI name> for Con
 {{#include ../../../../examples/wallet_smart_contract/src/main.sw:abi_impl}}
 ```
 
-You may notice once again the similarities between [traits](../advanced/traits.md) and ABIs. And, indeed, as a bonus, you can specify methods in addition to the interface surface of an ABI, just like a trait. By implementing the methods in the interface surface, you get the extra method implementations For Free™.
+You may notice once again the similarities between [traits](../advanced/traits.md) and ABIs. And, indeed, as a bonus, you can define methods in addition to the interface surface of an ABI, just like a trait. These pre-implemented ABI methods automatically become available as part of the contract interface that implements the corresponding ABI.
 
 Note that the above implementation of the ABI follows the [Checks, Effects, Interactions](https://docs.soliditylang.org/en/v0.6.11/security-considerations.html#re-entrancy) pattern.
 

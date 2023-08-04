@@ -141,7 +141,7 @@ fn inputs_owner() -> Result<Identity, AuthError> {
 
     // Note: `inputs_count` is guaranteed to be at least 1 for any valid tx.
     while i < inputs {
-        let type_of_input = input_type(i);
+        let type_of_input = input_type(i.as_u64());
         match type_of_input {
             Input::Coin => (),
             Input::Message => (),
@@ -153,7 +153,7 @@ fn inputs_owner() -> Result<Identity, AuthError> {
         }
 
         // type == InputCoin or InputMessage.
-        let owner_of_input = input_owner(i);
+        let owner_of_input = input_owner(i.as_u64());
         if candidate.is_none() {
             // This is the first input seen of the correct type.
             candidate = owner_of_input;

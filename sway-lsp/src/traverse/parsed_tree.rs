@@ -56,10 +56,10 @@ impl<'a> ParsedTree<'a> {
 
     fn collect_parse_module(&self, parse_module: &ParseModule) {
         self.ctx.tokens.insert(
-            to_ident_key(&Ident::new(parse_module.span.clone())),
+            to_ident_key(&Ident::new(parse_module.module_kind_span.clone())),
             Token::from_parsed(
-                AstToken::LibrarySpan(parse_module.span.clone()),
-                SymbolKind::Module,
+                AstToken::LibrarySpan(parse_module.module_kind_span.clone()),
+                SymbolKind::Keyword,
             ),
         );
         for (
@@ -165,7 +165,7 @@ impl Parse for UseStatement {
 impl Parse for Expression {
     fn parse(&self, ctx: &ParseContext) {
         match &self.kind {
-            ExpressionKind::Error(part_spans) => {
+            ExpressionKind::Error(part_spans, _) => {
                 for span in part_spans.iter() {
                     ctx.tokens.insert(
                         to_ident_key(&Ident::new(span.clone())),
@@ -585,9 +585,14 @@ impl Parse for StructExpression {
             );
         }
         let name = &self.call_path_binding.inner.suffix;
+        let symbol_kind = if name.as_str() == "Self" {
+            SymbolKind::SelfKeyword
+        } else {
+            SymbolKind::Struct
+        };
         ctx.tokens.insert(
             to_ident_key(name),
-            Token::from_parsed(AstToken::StructExpression(self.clone()), SymbolKind::Struct),
+            Token::from_parsed(AstToken::StructExpression(self.clone()), symbol_kind),
         );
         let type_arguments = &self.call_path_binding.type_arguments.to_vec();
         type_arguments.iter().for_each(|type_arg| {
@@ -1087,6 +1092,7 @@ fn literal_to_symbol_kind(value: &Literal) -> SymbolKind {
         | Literal::U16(..)
         | Literal::U32(..)
         | Literal::U64(..)
+        | Literal::U256(..)
         | Literal::Numeric(..) => SymbolKind::NumericLiteral,
         Literal::String(..) => SymbolKind::StringLiteral,
         Literal::B256(..) => SymbolKind::ByteLiteral,

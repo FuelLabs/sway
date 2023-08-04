@@ -8,6 +8,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+use sway_error::handler::Handler;
 
 use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type, BuildTarget};
 use sway_utils::constants;
@@ -391,10 +392,13 @@ impl PackageManifestFile {
     /// Parse and return the associated project's program type.
     pub fn program_type(&self) -> Result<TreeType> {
         let entry_string = self.entry_string()?;
-        let parse_res = parse_tree_type(entry_string);
-        parse_res
-            .value
-            .ok_or_else(|| parsing_failed(&self.project.name, parse_res.errors))
+        let handler = Handler::default();
+        let parse_res = parse_tree_type(&handler, entry_string);
+
+        parse_res.map_err(|_| {
+            let (errors, _warnings) = handler.consume();
+            parsing_failed(&self.project.name, errors)
+        })
     }
 
     /// Given the current directory and expected program type,

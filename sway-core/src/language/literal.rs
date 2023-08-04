@@ -15,6 +15,7 @@ pub enum Literal {
     U16(u16),
     U32(u32),
     U64(u64),
+    U256(u64),
     String(span::Span),
     Numeric(u64),
     Boolean(bool),
@@ -38,6 +39,10 @@ impl Hash for Literal {
                 x.hash(state);
             }
             U64(x) => {
+                state.write_u8(4);
+                x.hash(state);
+            }
+            U256(x) => {
                 state.write_u8(4);
                 x.hash(state);
             }
@@ -68,6 +73,7 @@ impl PartialEq for Literal {
             (Self::U16(l0), Self::U16(r0)) => l0 == r0,
             (Self::U32(l0), Self::U32(r0)) => l0 == r0,
             (Self::U64(l0), Self::U64(r0)) => l0 == r0,
+            (Self::U256(l0), Self::U256(r0)) => l0 == r0,
             (Self::String(l0), Self::String(r0)) => *l0.as_str() == *r0.as_str(),
             (Self::Numeric(l0), Self::Numeric(r0)) => l0 == r0,
             (Self::Boolean(l0), Self::Boolean(r0)) => l0 == r0,
@@ -84,6 +90,7 @@ impl fmt::Display for Literal {
             Literal::U16(content) => content.to_string(),
             Literal::U32(content) => content.to_string(),
             Literal::U64(content) => content.to_string(),
+            Literal::U256(content) => content.to_string(),
             Literal::Numeric(content) => content.to_string(),
             Literal::String(content) => content.as_str().to_string(),
             Literal::Boolean(content) => content.to_string(),
@@ -132,6 +139,7 @@ impl Literal {
             Literal::U16(_) => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
             Literal::U32(_) => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
             Literal::U64(_) => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+            Literal::U256(_) => TypeInfo::UnsignedInteger(IntegerBits::V256),
             Literal::Boolean(_) => TypeInfo::Boolean,
             Literal::B256(_) => TypeInfo::B256,
         }

@@ -43,7 +43,7 @@ impl raw_ptr {
     ///     assert(ptr != offset_ptr);
     /// }
     /// ```
-    pub fn add<T>(self, count: u64) -> raw_ptr {
+    pub fn add<T>(self, count: u64) -> Self {
         __ptr_add::<T>(self, count)
     }
 
@@ -69,7 +69,7 @@ impl raw_ptr {
     ///     assert(ptr == subbed_offset);
     /// }
     /// ```
-    pub fn sub<T>(self, count: u64) -> raw_ptr {
+    pub fn sub<T>(self, count: u64) -> Self {
         __ptr_sub::<T>(self, count)
     }
 
@@ -121,7 +121,7 @@ impl raw_ptr {
     ///     assert(ptr_2.read::<u64>() == 5);
     /// }
     /// ```
-    pub fn copy_to<T>(self, dst: raw_ptr, count: u64) {
+    pub fn copy_to<T>(self, dst: Self, count: u64) {
         let len = __mul(count, __size_of::<T>());
         asm(dst: dst, src: self, len: len) {
             mcp dst src len;
@@ -223,7 +223,7 @@ impl raw_ptr {
     ///     assert(ptr_2.read_byte() == 5u8);
     /// }
     /// ```
-    pub fn copy_bytes_to(self, dst: raw_ptr, count: u64) {
+    pub fn copy_bytes_to(self, dst: Self, count: u64) {
         asm(dst: dst, src: self, len: count) {
             mcp dst src len;
         };
@@ -251,7 +251,7 @@ impl raw_ptr {
     ///     assert(offset_ptr_1 == offset_ptr_1);
     /// }
     /// ```
-    pub fn add_uint_offset(self, offset: u64) -> raw_ptr {
+    pub fn add_uint_offset(self, offset: u64) -> Self {
         asm(ptr: self, offset: offset, new) {
             add new ptr offset;
             new: raw_ptr
@@ -280,7 +280,7 @@ impl raw_ptr {
     ///     assert(ptr == subbed_offset);
     /// }
     /// ```
-    pub fn sub_uint_offset(self, offset: u64) -> raw_ptr {
+    pub fn sub_uint_offset(self, offset: u64) -> Self {
         asm(ptr: self, offset: offset, new) {
             sub new ptr offset;
             new: raw_ptr

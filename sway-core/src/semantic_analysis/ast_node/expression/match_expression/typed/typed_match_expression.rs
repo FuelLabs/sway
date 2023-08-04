@@ -1,7 +1,7 @@
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
 
 use crate::{
-    error::{err, ok},
     language::{parsed::*, ty, *},
     semantic_analysis::{
         ast_node::expression::typed_expression::{
@@ -9,38 +9,39 @@ use crate::{
         },
         TypeCheckContext,
     },
-    CompileError, CompileResult, TypeInfo,
+    CompileError, TypeInfo,
 };
 
 impl ty::TyMatchExpression {
     pub(crate) fn type_check(
+        handler: &Handler,
         ctx: TypeCheckContext,
         typed_value: ty::TyExpression,
         branches: Vec<MatchBranch>,
         span: Span,
-    ) -> CompileResult<(ty::TyMatchExpression, Vec<ty::TyScrutinee>)> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
+    ) -> Result<(ty::TyMatchExpression, Vec<ty::TyScrutinee>), ErrorEmitted> {
         // type check all of the branches
         let mut typed_branches = vec![];
         let mut typed_scrutinees = vec![];
         let mut ctx =
             ctx.with_help_text("all branches of a match statement must return the same type");
-        for branch in branches.into_iter() {
-            let (typed_branch, typed_scrutinee) = check!(
-                ty::TyMatchBranch::type_check(ctx.by_ref(), &typed_value, branch),
-                continue,
-                warnings,
-                errors
-            );
-            typed_branches.push(typed_branch);
-            typed_scrutinees.push(typed_scrutinee);
-        }
 
-        if !errors.is_empty() {
-            return err(warnings, errors);
-        }
+        handler.scope(|handler| {
+            for branch in branches.into_iter() {
+                let (typed_branch, typed_scrutinee) = match ty::TyMatchBranch::type_check(
+                    handler,
+                    ctx.by_ref(),
+                    &typed_value,
+                    branch,
+                ) {
+                    Ok(res) => res,
+                    Err(_) => continue,
+                };
+                typed_branches.push(typed_branch);
+                typed_scrutinees.push(typed_scrutinee);
+            }
+            Ok(())
+        })?;
 
         let typed_exp = ty::TyMatchExpression {
             value_type_id: typed_value.return_type,
@@ -48,16 +49,14 @@ impl ty::TyMatchExpression {
             return_type_id: ctx.type_annotation(),
             span,
         };
-        ok((typed_exp, typed_scrutinees), warnings, errors)
+        Ok((typed_exp, typed_scrutinees))
     }
 
     pub(crate) fn convert_to_typed_if_expression(
         self,
+        handler: &Handler,
         mut ctx: TypeCheckContext,
-    ) -> CompileResult<ty::TyExpression> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
+    ) -> Result<ty::TyExpression, ErrorEmitted> {
         let type_engine = ctx.engines.te();
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
@@ -75,12 +74,18 @@ impl ty::TyMatchExpression {
                 for (left_req, right_req) in disjunction.into_iter().rev() {
                     let joined_span = Span::join(left_req.span.clone(), right_req.span.clone());
                     let args = vec![left_req, right_req];
-                    let new_condition = check!(
-                        ty::TyExpression::core_ops_eq(ctx.by_ref(), args, joined_span),
-                        continue,
-                        warnings,
-                        errors
-                    );
+                    let new_condition = match ty::TyExpression::core_ops_eq(
+                        handler,
+                        ctx.by_ref(),
+                        args,
+                        joined_span,
+                    ) {
+                        Ok(res) => res,
+                        Err(_) => {
+                            continue;
+                        }
+                    };
+
                     disj_conditional = Some(match disj_conditional {
                         Some(inner_condition) => {
                             let joined_span = Span::join(
@@ -125,18 +130,19 @@ impl ty::TyMatchExpression {
                 (None, Some(conditional)) => {
                     // TODO: figure out if this argument matters or not
                     let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
-                    check!(
-                        instantiate_if_expression(
-                            ctx,
-                            conditional,
-                            result.clone(),
-                            Some(result), // TODO: this is a really bad hack and we should not do this
-                            result_span,
-                        ),
-                        continue,
-                        warnings,
-                        errors
-                    )
+                    match instantiate_if_expression(
+                        handler,
+                        ctx,
+                        conditional,
+                        result.clone(),
+                        Some(result), // TODO: this is a really bad hack and we should not do this
+                        result_span,
+                    ) {
+                        Ok(res) => res,
+                        Err(_) => {
+                            continue;
+                        }
+                    }
                 }
                 (Some(prev_if_exp), None) => {
                     let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
@@ -145,33 +151,35 @@ impl ty::TyMatchExpression {
                         return_type: type_engine.insert(engines, TypeInfo::Boolean),
                         span: result_span.clone(),
                     };
-                    check!(
-                        instantiate_if_expression(
-                            ctx,
-                            conditional,
-                            result,
-                            Some(prev_if_exp),
-                            result_span,
-                        ),
-                        continue,
-                        warnings,
-                        errors
-                    )
+                    match instantiate_if_expression(
+                        handler,
+                        ctx,
+                        conditional,
+                        result,
+                        Some(prev_if_exp),
+                        result_span,
+                    ) {
+                        Ok(res) => res,
+                        Err(_) => {
+                            continue;
+                        }
+                    }
                 }
                 (Some(prev_if_exp), Some(conditional)) => {
                     let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
-                    check!(
-                        instantiate_if_expression(
-                            ctx,
-                            conditional,
-                            result,
-                            Some(prev_if_exp),
-                            result_span,
-                        ),
-                        continue,
-                        warnings,
-                        errors
-                    )
+                    match instantiate_if_expression(
+                        handler,
+                        ctx,
+                        conditional,
+                        result,
+                        Some(prev_if_exp),
+                        result_span,
+                    ) {
+                        Ok(res) => res,
+                        Err(_) => {
+                            continue;
+                        }
+                    }
                 }
             });
         }
@@ -215,16 +223,15 @@ impl ty::TyMatchExpression {
                         return_type: self.return_type_id,
                         span: self.span,
                     };
-                    return ok(typed_if_exp, warnings, errors);
+                    return Ok(typed_if_exp);
                 }
 
-                errors.push(CompileError::Internal(
+                Err(handler.emit_err(CompileError::Internal(
                     "unable to convert match exp to if exp",
                     self.span,
-                ));
-                err(warnings, errors)
+                )))
             }
-            Some(typed_if_exp) => ok(typed_if_exp, warnings, errors),
+            Some(typed_if_exp) => Ok(typed_if_exp),
         }
     }
 }

@@ -598,7 +598,7 @@ impl<T> AsRawSlice for Vec<T> {
 }
 
 impl<T> From<raw_slice> for Vec<T> {
-    fn from(slice: raw_slice) -> Vec<T> {
+    fn from(slice: raw_slice) -> Self {
         let buf = RawVec {
             ptr: slice.ptr(),
             cap: slice.len::<T>(),

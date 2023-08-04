@@ -1,13 +1,15 @@
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    error::*,
     language::{ty, CallPath},
     semantic_analysis::*,
     type_system::priv_prelude::*,
 };
 
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 use std::{
@@ -132,36 +134,33 @@ impl TypeParameter {
     /// [TypeParameter]. This will also insert this new list into the current
     /// namespace.
     pub(crate) fn type_check_type_params(
+        handler: &Handler,
         mut ctx: TypeCheckContext,
         type_params: Vec<TypeParameter>,
-    ) -> CompileResult<Vec<TypeParameter>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
+    ) -> Result<Vec<TypeParameter>, ErrorEmitted> {
         let mut new_type_params: Vec<TypeParameter> = vec![];
 
-        for type_param in type_params.into_iter() {
-            new_type_params.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_param),
-                continue,
-                warnings,
-                errors
-            ));
-        }
+        handler.scope(|handler| {
+            for type_param in type_params.into_iter() {
+                new_type_params.push(
+                    match TypeParameter::type_check(handler, ctx.by_ref(), type_param) {
+                        Ok(res) => res,
+                        Err(_) => continue,
+                    },
+                )
+            }
 
-        if errors.is_empty() {
-            ok(new_type_params, warnings, errors)
-        } else {
-            err(warnings, errors)
-        }
+            Ok(new_type_params)
+        })
     }
 
     /// Type checks a [TypeParameter] (including its [TraitConstraint]s) and
     /// inserts into into the current namespace.
-    fn type_check(mut ctx: TypeCheckContext, type_parameter: TypeParameter) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
+    fn type_check(
+        handler: &Handler,
+        mut ctx: TypeCheckContext,
+        type_parameter: TypeParameter,
+    ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
@@ -176,12 +175,7 @@ impl TypeParameter {
 
         // Type check the trait constraints.
         for trait_constraint in trait_constraints.iter_mut() {
-            check!(
-                trait_constraint.type_check(ctx.by_ref()),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
+            trait_constraint.type_check(handler, ctx.by_ref())?;
         }
 
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
@@ -196,12 +190,12 @@ impl TypeParameter {
 
         // Insert the trait constraints into the namespace.
         for trait_constraint in trait_constraints.iter() {
-            check!(
-                TraitConstraint::insert_into_namespace(ctx.by_ref(), type_id, trait_constraint),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
+            TraitConstraint::insert_into_namespace(
+                handler,
+                ctx.by_ref(),
+                type_id,
+                trait_constraint,
+            )?;
         }
 
         // When type parameter is from parent then it was already inserted.
@@ -213,23 +207,22 @@ impl TypeParameter {
                         type_id: sy_type_id,
                         ..
                     }) => {
-                        append!(
-                            ctx.engines().te().unify(
-                                ctx.engines(),
-                                type_id,
-                                *sy_type_id,
-                                &trait_constraints_span,
-                                "",
-                                None
-                            ),
-                            warnings,
-                            errors
+                        ctx.engines().te().unify(
+                            handler,
+                            ctx.engines(),
+                            type_id,
+                            *sy_type_id,
+                            &trait_constraints_span,
+                            "",
+                            None,
                         );
                     }
-                    _ => errors.push(CompileError::Internal(
-                        "Unexpected TyDeclaration for TypeParameter.",
-                        name_ident.span(),
-                    )),
+                    _ => {
+                        handler.emit_err(CompileError::Internal(
+                            "Unexpected TyDeclaration for TypeParameter.",
+                            name_ident.span(),
+                        ));
+                    }
                 }
             }
         } else {
@@ -240,8 +233,8 @@ impl TypeParameter {
                     name: name_ident.clone(),
                     type_id,
                 });
-            ctx.insert_symbol(name_ident.clone(), type_parameter_decl)
-                .ok(&mut warnings, &mut errors);
+            ctx.insert_symbol(handler, name_ident.clone(), type_parameter_decl)
+                .ok();
         }
 
         let type_parameter = TypeParameter {
@@ -252,139 +245,127 @@ impl TypeParameter {
             trait_constraints_span,
             is_from_parent,
         };
-        ok(type_parameter, warnings, errors)
+        Ok(type_parameter)
     }
 
     /// Creates a [DeclMapping] from a list of [TypeParameter]s.
     pub(crate) fn gather_decl_mapping_from_trait_constraints(
-        mut ctx: TypeCheckContext,
+        handler: &Handler,
+        ctx: &TypeCheckContext,
         type_parameters: &[TypeParameter],
         access_span: &Span,
-    ) -> CompileResult<DeclMapping> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
+    ) -> Result<DeclMapping, ErrorEmitted> {
         let mut interface_item_refs: InterfaceItemMap = BTreeMap::new();
         let mut item_refs: ItemMap = BTreeMap::new();
         let mut impld_item_refs: ItemMap = BTreeMap::new();
 
-        for type_param in type_parameters.iter() {
-            let TypeParameter {
-                type_id,
-                trait_constraints,
-                ..
-            } = type_param;
+        handler.scope(|handler| {
+            for type_param in type_parameters.iter() {
+                let TypeParameter {
+                    type_id,
+                    trait_constraints,
+                    ..
+                } = type_param;
 
-            // Check to see if the trait constraints are satisfied.
-            check!(
-                ctx.namespace
+                // Check to see if the trait constraints are satisfied.
+                match ctx
+                    .namespace
                     .implemented_traits
                     .check_if_trait_constraints_are_satisfied_for_type(
+                        handler,
                         *type_id,
                         trait_constraints,
                         access_span,
-                        ctx.engines()
-                    ),
-                continue,
-                warnings,
-                errors
-            );
+                        ctx.engines(),
+                    ) {
+                    Ok(res) => res,
+                    Err(_) => continue,
+                }
 
-            for trait_constraint in trait_constraints.iter() {
-                let TraitConstraint {
-                    trait_name,
-                    type_arguments: trait_type_arguments,
-                } = trait_constraint;
+                for trait_constraint in trait_constraints.iter() {
+                    let TraitConstraint {
+                        trait_name,
+                        type_arguments: trait_type_arguments,
+                    } = trait_constraint;
 
-                let (trait_interface_item_refs, trait_item_refs, trait_impld_item_refs) = check!(
-                    handle_trait(ctx.by_ref(), *type_id, trait_name, trait_type_arguments),
-                    continue,
-                    warnings,
-                    errors
-                );
-                interface_item_refs.extend(trait_interface_item_refs);
-                item_refs.extend(trait_item_refs);
-                impld_item_refs.extend(trait_impld_item_refs);
+                    let (trait_interface_item_refs, trait_item_refs, trait_impld_item_refs) =
+                        match handle_trait(handler, ctx, *type_id, trait_name, trait_type_arguments)
+                        {
+                            Ok(res) => res,
+                            Err(_) => continue,
+                        };
+                    interface_item_refs.extend(trait_interface_item_refs);
+                    item_refs.extend(trait_item_refs);
+                    impld_item_refs.extend(trait_impld_item_refs);
+                }
             }
-        }
 
-        if errors.is_empty() {
             let decl_mapping = DeclMapping::from_interface_and_item_and_impld_decl_refs(
                 interface_item_refs,
                 item_refs,
                 impld_item_refs,
             );
-            ok(decl_mapping, warnings, errors)
-        } else {
-            err(warnings, errors)
-        }
+            Ok(decl_mapping)
+        })
     }
 }
 
 fn handle_trait(
-    mut ctx: TypeCheckContext,
+    handler: &Handler,
+    ctx: &TypeCheckContext,
     type_id: TypeId,
     trait_name: &CallPath,
     type_arguments: &[TypeArgument],
-) -> CompileResult<(InterfaceItemMap, ItemMap, ItemMap)> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-
+) -> Result<(InterfaceItemMap, ItemMap, ItemMap), ErrorEmitted> {
     let decl_engine = ctx.engines.de();
 
     let mut interface_item_refs: InterfaceItemMap = BTreeMap::new();
     let mut item_refs: ItemMap = BTreeMap::new();
     let mut impld_item_refs: ItemMap = BTreeMap::new();
 
-    match ctx
-        .namespace
-        .resolve_call_path(trait_name)
-        .ok(&mut warnings, &mut errors)
-        .cloned()
-    {
-        Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
-            let trait_decl = decl_engine.get_trait(&decl_id);
+    handler.scope(|handler| {
+        match ctx
+            .namespace
+            .resolve_call_path(handler, trait_name)
+            .ok()
+            .cloned()
+        {
+            Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
+                let trait_decl = decl_engine.get_trait(&decl_id);
 
-            let (trait_interface_item_refs, trait_item_refs, trait_impld_item_refs) = trait_decl
-                .retrieve_interface_surface_and_items_and_implemented_items_for_type(
-                    ctx.by_ref(),
-                    type_id,
-                    trait_name,
-                    type_arguments,
-                );
-            interface_item_refs.extend(trait_interface_item_refs);
-            item_refs.extend(trait_item_refs);
-            impld_item_refs.extend(trait_impld_item_refs);
+                let (trait_interface_item_refs, trait_item_refs, trait_impld_item_refs) =
+                    trait_decl.retrieve_interface_surface_and_items_and_implemented_items_for_type(
+                        ctx,
+                        type_id,
+                        trait_name,
+                        type_arguments,
+                    );
+                interface_item_refs.extend(trait_interface_item_refs);
+                item_refs.extend(trait_item_refs);
+                impld_item_refs.extend(trait_impld_item_refs);
 
-            for supertrait in trait_decl.supertraits.iter() {
-                let (
-                    supertrait_interface_item_refs,
-                    supertrait_item_refs,
-                    supertrait_impld_item_refs,
-                ) = check!(
-                    handle_trait(ctx.by_ref(), type_id, &supertrait.name, &[]),
-                    continue,
-                    warnings,
-                    errors
-                );
-                interface_item_refs.extend(supertrait_interface_item_refs);
-                item_refs.extend(supertrait_item_refs);
-                impld_item_refs.extend(supertrait_impld_item_refs);
+                for supertrait in trait_decl.supertraits.iter() {
+                    let (
+                        supertrait_interface_item_refs,
+                        supertrait_item_refs,
+                        supertrait_impld_item_refs,
+                    ) = match handle_trait(handler, ctx, type_id, &supertrait.name, &[]) {
+                        Ok(res) => res,
+                        Err(_) => continue,
+                    };
+                    interface_item_refs.extend(supertrait_interface_item_refs);
+                    item_refs.extend(supertrait_item_refs);
+                    impld_item_refs.extend(supertrait_impld_item_refs);
+                }
+            }
+            _ => {
+                handler.emit_err(CompileError::TraitNotFound {
+                    name: trait_name.to_string(),
+                    span: trait_name.span(),
+                });
             }
         }
-        _ => errors.push(CompileError::TraitNotFound {
-            name: trait_name.to_string(),
-            span: trait_name.span(),
-        }),
-    }
 
-    if errors.is_empty() {
-        ok(
-            (interface_item_refs, item_refs, impld_item_refs),
-            warnings,
-            errors,
-        )
-    } else {
-        err(warnings, errors)
-    }
+        Ok((interface_item_refs, item_refs, impld_item_refs))
+    })
 }

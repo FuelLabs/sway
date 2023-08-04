@@ -10,10 +10,8 @@ use crate::{
     },
 };
 use std::{fmt::Write, ops::Range};
-use sway_ast::{
-    expr::LoopControlFlow, token::Delimiter, IfCondition, IfExpr, MatchBranch, MatchBranchKind,
-};
-use sway_types::Spanned;
+use sway_ast::{expr::LoopControlFlow, IfCondition, IfExpr, MatchBranch, MatchBranchKind};
+use sway_types::{ast::Delimiter, Spanned};
 
 impl Format for IfExpr {
     fn format(

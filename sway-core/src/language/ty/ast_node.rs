@@ -3,13 +3,14 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Span};
 
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    error::*,
     language::{parsed::TreeType, ty::*, Visibility},
+    semantic_analysis::TypeCheckContext,
     transform::AttributeKind,
     type_system::*,
     types::*,
@@ -87,17 +88,24 @@ impl ReplaceSelfType for TyAstNode {
 }
 
 impl ReplaceDecls for TyAstNode {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
+    fn replace_decls_inner(
+        &mut self,
+        decl_mapping: &DeclMapping,
+        handler: &Handler,
+        ctx: &TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.replace_decls(decl_mapping, engines)
+                exp.replace_decls(decl_mapping, handler, ctx)
             }
             TyAstNodeContent::Declaration(TyDecl::VariableDecl(ref mut decl)) => {
-                decl.body.replace_decls(decl_mapping, engines);
+                decl.body.replace_decls(decl_mapping, handler, ctx)
             }
-            TyAstNodeContent::Declaration(_) => {}
-            TyAstNodeContent::Expression(ref mut expr) => expr.replace_decls(decl_mapping, engines),
-            TyAstNodeContent::SideEffect(_) => (),
+            TyAstNodeContent::Declaration(_) => Ok(()),
+            TyAstNodeContent::Expression(ref mut expr) => {
+                expr.replace_decls(decl_mapping, handler, ctx)
+            }
+            TyAstNodeContent::SideEffect(_) => Ok(()),
         }
     }
 }
@@ -120,9 +128,10 @@ impl UpdateConstantExpression for TyAstNode {
 impl CollectTypesMetadata for TyAstNode {
     fn collect_types_metadata(
         &self,
+        handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
-    ) -> CompileResult<Vec<TypeMetadata>> {
-        self.content.collect_types_metadata(ctx)
+    ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
+        self.content.collect_types_metadata(handler, ctx)
     }
 }
 
@@ -354,14 +363,15 @@ impl HashWithEngines for TyAstNodeContent {
 impl CollectTypesMetadata for TyAstNodeContent {
     fn collect_types_metadata(
         &self,
+        handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
-    ) -> CompileResult<Vec<TypeMetadata>> {
+    ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         use TyAstNodeContent::*;
         match self {
-            Declaration(decl) => decl.collect_types_metadata(ctx),
-            Expression(expr) => expr.collect_types_metadata(ctx),
-            ImplicitReturnExpression(expr) => expr.collect_types_metadata(ctx),
-            SideEffect(_) => ok(vec![], vec![], vec![]),
+            Declaration(decl) => decl.collect_types_metadata(handler, ctx),
+            Expression(expr) => expr.collect_types_metadata(handler, ctx),
+            ImplicitReturnExpression(expr) => expr.collect_types_metadata(handler, ctx),
+            SideEffect(_) => Ok(vec![]),
         }
     }
 }

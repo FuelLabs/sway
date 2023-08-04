@@ -715,6 +715,36 @@ fn instruction_to_doc<'a>(
                         .append(md_namer.md_idx_to_doc(context, metadata)),
                     ))
                 }
+                FuelVmInstruction::WideBinaryOp {
+                    op,
+                    arg1,
+                    arg2,
+                    result,
+                } => {
+                    let op_str = match op {
+                        BinaryOpKind::Add => "add",
+                        BinaryOpKind::Sub => "sub",
+                        BinaryOpKind::Mul => "mul",
+                        BinaryOpKind::Div => "div",
+                        BinaryOpKind::And => "and",
+                        BinaryOpKind::Or => "or",
+                        BinaryOpKind::Xor => "xor",
+                        BinaryOpKind::Mod => "mod",
+                        BinaryOpKind::Rsh => "rsh",
+                        BinaryOpKind::Lsh => "lsh",
+                    };
+                    maybe_constant_to_doc(context, md_namer, namer, arg1)
+                        .append(maybe_constant_to_doc(context, md_namer, namer, arg2))
+                        .append(Doc::line(
+                            Doc::text(format!(
+                                "wide {op_str} {}, {} to {}",
+                                namer.name(context, arg1),
+                                namer.name(context, arg2),
+                                namer.name(context, result),
+                            ))
+                            .append(md_namer.md_idx_to_doc(context, metadata)),
+                        ))
+                }
             },
             Instruction::GetElemPtr {
                 base,
@@ -929,6 +959,20 @@ impl Constant {
             ConstantValue::Unit => "unit ()".into(),
             ConstantValue::Bool(b) => format!("bool {}", if *b { "true" } else { "false" }),
             ConstantValue::Uint(v) => format!("{} {}", self.ty.as_string(context), v),
+            ConstantValue::U256(v) => {
+                // TODO u256 limited to u64
+                let mut bytes = vec![0u8; 24];
+                bytes.extend(&v.to_be_bytes());
+                assert!(bytes.len() == 32);
+                format!(
+                    "u256 0x{}",
+                    bytes
+                        .iter()
+                        .map(|b| format!("{b:02x}"))
+                        .collect::<Vec<String>>()
+                        .concat()
+                )
+            }
             ConstantValue::B256(bs) => format!(
                 "b256 0x{}",
                 bs.iter()

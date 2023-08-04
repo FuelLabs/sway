@@ -1,5 +1,6 @@
+use sway_error::handler::{ErrorEmitted, Handler};
+
 use crate::{
-    error::*,
     language::{parsed::*, ty, ModName},
     semantic_analysis::*,
 };
@@ -8,36 +9,41 @@ impl ty::TyModule {
     /// Type-check the given parsed module to produce a typed module.
     ///
     /// Recursively type-checks submodules first.
-    pub fn type_check(mut ctx: TypeCheckContext, parsed: &ParseModule) -> CompileResult<Self> {
+    pub fn type_check(
+        handler: &Handler,
+        mut ctx: TypeCheckContext,
+        parsed: &ParseModule,
+    ) -> Result<Self, ErrorEmitted> {
         let ParseModule {
             submodules,
             tree,
             attributes,
             span,
+            ..
         } = parsed;
 
         // Type-check submodules first in order of declaration.
-        let mut submodules_res = ok(vec![], vec![], vec![]);
-        for (name, submodule) in submodules {
-            let submodule_res = ty::TySubmodule::type_check(ctx.by_ref(), name.clone(), submodule);
-            submodules_res = submodules_res.flat_map(|mut submodules| {
-                submodule_res.map(|submodule| {
-                    submodules.push((name.clone(), submodule));
-                    submodules
-                })
-            });
-        }
+        let submodules_res = submodules
+            .iter()
+            .map(|(name, submodule)| {
+                Ok((
+                    name.clone(),
+                    ty::TySubmodule::type_check(handler, ctx.by_ref(), name.clone(), submodule)?,
+                ))
+            })
+            .collect::<Result<Vec<_>, _>>();
 
         // TODO: Ordering should be solved across all modules prior to the beginning of type-check.
         let ordered_nodes_res = node_dependencies::order_ast_nodes_by_dependency(
+            handler,
             ctx.engines(),
             tree.root_nodes.clone(),
         );
 
         let typed_nodes_res = ordered_nodes_res
-            .flat_map(|ordered_nodes| Self::type_check_nodes(ctx.by_ref(), ordered_nodes));
+            .and_then(|ordered_nodes| Self::type_check_nodes(handler, ctx.by_ref(), ordered_nodes));
 
-        submodules_res.flat_map(|submodules| {
+        submodules_res.and_then(|submodules| {
             typed_nodes_res.map(|all_nodes| Self {
                 span: span.clone(),
                 submodules,
@@ -49,33 +55,33 @@ impl ty::TyModule {
     }
 
     fn type_check_nodes(
+        handler: &Handler,
         mut ctx: TypeCheckContext,
         nodes: Vec<AstNode>,
-    ) -> CompileResult<Vec<ty::TyAstNode>> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+    ) -> Result<Vec<ty::TyAstNode>, ErrorEmitted> {
         let typed_nodes = nodes
             .into_iter()
-            .map(|node| ty::TyAstNode::type_check(ctx.by_ref(), node))
-            .filter_map(|res| res.ok(&mut warnings, &mut errors))
+            .map(|node| ty::TyAstNode::type_check(handler, ctx.by_ref(), node))
+            .filter_map(|res| res.ok())
             .collect();
-        ok(typed_nodes, warnings, errors)
+        Ok(typed_nodes)
     }
 }
 
 impl ty::TySubmodule {
     pub fn type_check(
+        handler: &Handler,
         parent_ctx: TypeCheckContext,
         mod_name: ModName,
         submodule: &ParseSubmodule,
-    ) -> CompileResult<Self> {
+    ) -> Result<Self, ErrorEmitted> {
         let ParseSubmodule {
             module,
             mod_name_span,
             visibility,
         } = submodule;
         parent_ctx.enter_submodule(mod_name, *visibility, module.span.clone(), |submod_ctx| {
-            let module_res = ty::TyModule::type_check(submod_ctx, module);
+            let module_res = ty::TyModule::type_check(handler, submod_ctx, module);
             module_res.map(|module| ty::TySubmodule {
                 module,
                 mod_name_span: mod_name_span.clone(),

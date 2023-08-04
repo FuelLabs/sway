@@ -20,8 +20,8 @@ impl core::ops::Eq for B512 {
 
 /// Functions for casting between `B512` and an array of two `b256`s.
 impl From<(b256, b256)> for B512 {
-    fn from(components: (b256, b256)) -> B512 {
-        B512 {
+    fn from(components: (b256, b256)) -> Self {
+        Self {
             bytes: [components.0, components.1],
         }
     }
@@ -48,8 +48,8 @@ impl B512 {
     ///     let zero = B512::new();
     /// }
     /// ```
-    pub fn new() -> B512 {
-        B512 {
+    pub fn new() -> Self {
+        Self {
             bytes: [ZERO_B256, ZERO_B256],
         }
     }

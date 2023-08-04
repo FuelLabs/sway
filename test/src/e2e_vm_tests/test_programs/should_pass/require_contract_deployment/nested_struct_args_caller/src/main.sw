@@ -3,7 +3,7 @@ script;
 use nested_struct_args_abi::*;
 
 fn main() -> bool {
-    let contract_id = 0xa16f173a7e49805781eeb4b797fad3debb42a443c4208555904a106b43a75368;
+    let contract_id = 0xfa4bb608c7de0db473862926816eb23d17469ec2ef08685aab3c4ddd1892f9a8;
     let caller = abi(NestedStructArgs, contract_id);
 
     let param_one = StructOne {
