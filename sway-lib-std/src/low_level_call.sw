@@ -49,7 +49,7 @@ pub struct CallParams {
 /// ```
 ///
 /// ```sway
-/// use std::low_level_call::{contract_id_to_bytes, call_with_raw_payload, CallParams, ptr_as_bytes};
+/// use std::low_level_call::{bytes::Bytes, contract_id_to_bytes, call_with_raw_payload, CallParams, ptr_as_bytes};
 ///
 /// fn call_with_reference_type_arg(target: ContractId, function_selector: Bytes, calldata: Bytes, call_params: CallParams) {
 ///     let mut payload = Bytes::new();
@@ -86,7 +86,7 @@ fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
 /// # Examples
 ///
 /// ```sway
-/// use std::low_level_call::{contract_id_to_bytes, call_with_raw_payload, CallParams, ptr_as_bytes};
+/// use std::low_level_call::{bytes::Bytes, contract_id_to_bytes, call_with_raw_payload, CallParams, ptr_as_bytes};
 ///
 /// fn call_with_reference_type_arg(target: ContractId, function_selector: Bytes, calldata: Bytes, call_params: CallParams) {
 ///     let mut payload = Bytes::new();
@@ -130,7 +130,7 @@ fn ptr_as_bytes(ptr: raw_ptr) -> Bytes {
 /// # Examples
 ///
 /// ```sway
-/// use std::low_level_call::{contract_id_to_bytes, call_with_raw_payload, CallParams};
+/// use std::low_level_call::{bytes::Bytes, contract_id_to_bytes, call_with_raw_payload, CallParams};
 ///
 /// fn call_with_copy_type_arg(target: ContractId, function_selector: Bytes, calldata: Bytes, call_params: CallParams) {
 ///     let mut payload = Bytes::new();
@@ -167,7 +167,7 @@ fn call_with_raw_payload(payload: Bytes, call_params: CallParams) {
 /// # Examples
 ///
 /// ```sway
-/// use std::low_level_call::{create_payload, call_with_raw_payload, CallParams};
+/// use std::low_level_call::{bytes::Bytes, create_payload, call_with_raw_payload, CallParams};
 ///
 /// fn call_contract(target: ContractId, function_selector: Bytes, calldata: Bytes, call_params: CallParams, single_value_type_arg: bool) {
 ///     let payload = create_payload(target, function_selector, calldata, single_value_type_arg);
@@ -218,7 +218,7 @@ fn create_payload(
 /// # Examples
 ///
 /// ```sway
-/// use std::low_level_call::{call_with_function_selector, CallParams};
+/// use std::low_level_call::{bytes::Bytes, call_with_function_selector, CallParams};
 ///
 /// fn call_contract(target: ContractId, function_selector: Bytes, calldata: Bytes, call_params: CallParams, single_value_type_arg: bool) {
 ///     call_with_function_selector(target, function_selector, calldata, single_value_type_arg, call_params);
