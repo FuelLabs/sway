@@ -34,9 +34,14 @@ pub enum EcRecoverError {
 ///     let hi = 0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c;
 ///     let lo = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
 ///     let msg_hash = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
+///     let pub_hi = 0xD73A188181464CC84AE267E45041AEF6AB938F278E636AA1D02D3014C1BEF74E;
+///     let pub_lo = 0xC44415635160ACFC87A84300EED97928C949A2D958FC0947C535F7539C59AE75;
 ///     let signature: B512 = B512::from((hi, lo));
 ///     // A recovered public key pair.
 ///     let public_key = ec_recover(signature, msg_hash).unwrap();
+/// 
+///     assert(public_key.bytes[0] == pub_hi);
+///     assert(public_key.bytes[1] == pub_lo);
 /// }
 /// ```
 pub fn ec_recover(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverError> {
@@ -74,9 +79,11 @@ pub fn ec_recover(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverErro
 ///     let hi = 0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c;
 ///     let lo = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
 ///     let msg_hash = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
+///     let address = Address::from(0x7AAE2D980BE4C3275C72CE5B527FA23FFB97B766966559DD062E2B78FD9D3766);
 ///     let signature: B512 = B512::from((hi, lo));
 ///     // A recovered Fuel address.
 ///     let result_address = ec_recover_address(signature, msg_hash).unwrap();
+///     assert(result_address == address);
 /// }
 /// ```
 pub fn ec_recover_address(signature: B512, msg_hash: b256) -> Result<Address, EcRecoverError> {
