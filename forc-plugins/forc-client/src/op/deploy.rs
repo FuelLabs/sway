@@ -33,14 +33,15 @@ pub struct DeployedContract {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeploymentArtifact {
-    transaction_id: Bytes32,
-    salt: Salt,
+    transaction_id: String,
+    salt: String,
     network_endpoint: String,
     chain_id: ChainId,
-    contract_id: ContractId,
+    contract_id: String,
     deployment_size: usize,
     deployed_block_id: String,
 }
+
 
 impl DeploymentArtifact {
     pub fn to_file(
@@ -297,11 +298,11 @@ pub async fn deploy_pkg(
                 // Create a deployment articact.
                 let deployment_size = bytecode.len();
                 let deployment_artifact = DeploymentArtifact {
-                    transaction_id: tx.id(&chain_id),
-                    salt,
+                    transaction_id: format!("0x{}", tx.id(&chain_id)),
+                    salt: format!("0x{}", salt),
                     network_endpoint: node_url.to_string(),
                     chain_id,
-                    contract_id,
+                    contract_id: format!("0x{}", contract_id),
                     deployment_size,
                     deployed_block_id: block_id,
                 };
