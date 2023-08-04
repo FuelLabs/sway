@@ -254,11 +254,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         arg2,
                         result,
                     } => self.compile_wide_binary_op(instr_val, op, arg1, arg2, result),
-                    FuelVmInstruction::WideCmpOp {
-                        op,
-                        arg1,
-                        arg2,
-                    } => self.compile_wide_cmp_op(instr_val, op, arg1, arg2),
+                    FuelVmInstruction::WideCmpOp { op, arg1, arg2 } => {
+                        self.compile_wide_cmp_op(instr_val, op, arg1, arg2)
+                    }
                 },
                 Instruction::GetElemPtr {
                     base,
@@ -569,7 +567,6 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
         Ok(())
     }
-
 
     fn compile_binary_op(
         &mut self,

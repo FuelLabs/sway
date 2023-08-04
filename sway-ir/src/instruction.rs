@@ -407,9 +407,7 @@ impl Instruction {
                 FuelVmInstruction::WideBinaryOp {
                     arg1, arg2, result, ..
                 } => vec![*result, *arg1, *arg2],
-                FuelVmInstruction::WideCmpOp {
-                    arg1, arg2, ..
-                } => vec![*arg1, *arg2],
+                FuelVmInstruction::WideCmpOp { arg1, arg2, .. } => vec![*arg1, *arg2],
             },
         }
     }
@@ -563,9 +561,7 @@ impl Instruction {
                     replace(arg2);
                     replace(result);
                 }
-                FuelVmInstruction::WideCmpOp {
-                    arg1, arg2, ..
-                } => {
+                FuelVmInstruction::WideCmpOp { arg1, arg2, .. } => {
                     replace(arg1);
                     replace(arg2);
                 }
@@ -745,19 +741,10 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
         )
     }
 
-    pub fn wide_cmp_op(
-        self,
-        op: Predicate,
-        arg1: Value,
-        arg2: Value,
-    ) -> Value {
+    pub fn wide_cmp_op(self, op: Predicate, arg1: Value, arg2: Value) -> Value {
         make_instruction!(
             self,
-            Instruction::FuelVm(FuelVmInstruction::WideCmpOp {
-                op,
-                arg1,
-                arg2,
-            })
+            Instruction::FuelVm(FuelVmInstruction::WideCmpOp { op, arg1, arg2 })
         )
     }
 

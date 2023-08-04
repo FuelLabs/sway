@@ -118,15 +118,15 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
         Instruction::Store { dst_val_ptr: _, .. } => vec![],
         Instruction::FuelVm(FuelVmInstruction::Gtf { .. })
         | Instruction::FuelVm(FuelVmInstruction::ReadRegister(_))
-        | Instruction::FuelVm(FuelVmInstruction::Revert(_))  => vec![],
+        | Instruction::FuelVm(FuelVmInstruction::Revert(_)) => vec![],
         Instruction::FuelVm(FuelVmInstruction::WideBinaryOp { arg1, arg2, .. })
         | Instruction::FuelVm(FuelVmInstruction::WideCmpOp { arg1, arg2, .. }) => {
             get_symbols(context, *arg1)
-            .iter()
-            .cloned()
-            .chain(get_symbols(context, *arg2).iter().cloned())
-            .collect()
-        },
+                .iter()
+                .cloned()
+                .chain(get_symbols(context, *arg2).iter().cloned())
+                .collect()
+        }
     }
 }
 
@@ -178,7 +178,7 @@ fn get_stored_symbols(context: &Context, val: Value) -> Vec<Symbol> {
             FuelVmInstruction::StateStoreQuadWord { stored_val: _, .. } => vec![],
             FuelVmInstruction::WideBinaryOp { result, .. } => {
                 get_symbols(context, *result).to_vec()
-            },
+            }
             FuelVmInstruction::WideCmpOp { .. } => vec![],
         },
     }

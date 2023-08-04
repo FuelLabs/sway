@@ -744,7 +744,7 @@ fn instruction_to_doc<'a>(
                             ))
                             .append(md_namer.md_idx_to_doc(context, metadata)),
                         ))
-                },
+                }
                 FuelVmInstruction::WideCmpOp { op, arg1, arg2 } => {
                     let pred_str = match op {
                         Predicate::Equal => "eq",
