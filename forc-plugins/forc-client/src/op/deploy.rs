@@ -8,14 +8,20 @@ use crate::{
 use anyhow::{bail, Context, Result};
 use forc_pkg::{self as pkg, PackageManifestFile};
 use forc_tx::Gas;
+use forc_util::default_output_directory;
 use fuel_core_client::client::types::TransactionStatus;
 use fuel_core_client::client::FuelClient;
+use fuel_crypto::fuel_types::ChainId;
 use fuel_tx::{Output, Salt, TransactionBuilder};
 use fuel_vm::prelude::*;
 use futures::FutureExt;
 use pkg::BuiltPackage;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+};
 use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
 use tracing::info;
@@ -23,6 +29,38 @@ use tracing::info;
 #[derive(Debug)]
 pub struct DeployedContract {
     pub id: fuel_tx::ContractId,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeploymentArtifact {
+    transaction_id: Bytes32,
+    salt: Salt,
+    network_endpoint: String,
+    chain_id: ChainId,
+    contract_id: ContractId,
+    deployment_size: usize,
+    deployed_block_id: String,
+}
+
+impl DeploymentArtifact {
+    pub fn to_file(
+        &self,
+        output_dir: &Path,
+        pkg_name: &str,
+        contract_id: ContractId,
+    ) -> Result<()> {
+        if !output_dir.exists() {
+            std::fs::create_dir_all(output_dir)?;
+        }
+
+        let deployment_artifact_json = format!("{pkg_name}-deployment-0x{contract_id}");
+        let deployments_path = output_dir
+            .join(deployment_artifact_json)
+            .with_extension("json");
+        let deployments_file = std::fs::File::create(deployments_path)?;
+        serde_json::to_writer_pretty(&deployments_file, &self)?;
+        Ok(())
+    }
 }
 
 type ContractSaltMap = BTreeMap<String, Salt>;
@@ -241,6 +279,7 @@ pub async fn deploy_pkg(
         .await?;
 
     let tx = Transaction::from(tx);
+    let chain_id = client.chain_info().await?.consensus_parameters.chain_id;
 
     let deployment_request = client.submit_and_await_commit(&tx).map(|res| match res {
         Ok(logs) => match logs {
@@ -254,6 +293,28 @@ pub async fn deploy_pkg(
                 info!("\nNetwork: {node_url}");
                 info!("Contract ID: 0x{contract_id}");
                 info!("Deployed in block {}", &block_id);
+
+                // Create a deployment articact.
+                let deployment_size = bytecode.len();
+                let deployment_artifact = DeploymentArtifact {
+                    transaction_id: tx.id(&chain_id),
+                    salt,
+                    network_endpoint: node_url.to_string(),
+                    chain_id,
+                    contract_id,
+                    deployment_size,
+                    deployed_block_id: block_id,
+                };
+
+                let output_dir = command
+                    .pkg
+                    .output_directory
+                    .as_ref()
+                    .map(PathBuf::from)
+                    .unwrap_or_else(|| default_output_directory(manifest.dir()))
+                    .join("deployments");
+                deployment_artifact.to_file(&output_dir, pkg_name, contract_id)?;
+
                 Ok(contract_id)
             }
             e => {
