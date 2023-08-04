@@ -851,7 +851,7 @@ async fn go_to_definition_for_paths() {
         req_char: 17,
         def_line: 74,
         def_start_char: 5,
-        def_end_char: 9,
+        def_end_char: 37,
         def_path: "sway-lib-core/src/primitives.sw",
     };
     // b256
