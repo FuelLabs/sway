@@ -336,7 +336,7 @@ pub(crate) fn type_check_method_application(
         &method.type_parameters,
         &call_path.span(),
     )?;
-    method.replace_decls(&decl_mapping, handler, &ctx)?;
+    method.replace_decls(&decl_mapping, handler, &mut ctx)?;
     let return_type = method.return_type.type_id;
     let new_decl_ref = decl_engine
         .insert(method)

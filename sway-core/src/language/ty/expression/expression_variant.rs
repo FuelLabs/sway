@@ -886,7 +886,7 @@ impl ReplaceDecls for TyExpressionVariant {
         &mut self,
         decl_mapping: &DeclMapping,
         handler: &Handler,
-        ctx: &TypeCheckContext,
+        ctx: &mut TypeCheckContext,
     ) -> Result<(), ErrorEmitted> {
         handler.scope(|handler| {
             use TyExpressionVariant::*;
@@ -932,8 +932,18 @@ impl ReplaceDecls for TyExpressionVariant {
                         };
                     }
 
-                    let decl_engine = ctx.engines().de();
+                    let engines = ctx.engines();
+                    let decl_engine = engines.de();
                     let mut method = ctx.engines().de().get(fn_ref);
+
+                    // Retrieve the implemented traits for the type parameters and insert them in the namespace.
+                    for type_param in method.type_parameters.iter() {
+                        let TypeParameter { type_id, .. } = type_param;
+
+                        ctx.namespace
+                            .insert_trait_implementation_for_type(engines, *type_id);
+                    }
+
                     // Handle the trait constraints. This includes checking to see if the trait
                     // constraints are satisfied and replacing old decl ids based on the
                     let inner_decl_mapping =
