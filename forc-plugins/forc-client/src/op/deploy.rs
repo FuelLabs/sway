@@ -42,7 +42,6 @@ pub struct DeploymentArtifact {
     deployed_block_id: String,
 }
 
-
 impl DeploymentArtifact {
     pub fn to_file(
         &self,
