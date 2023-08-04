@@ -100,7 +100,13 @@ impl Entry {
             ConstantValue::Undef | ConstantValue::Unit => Entry::new_word(0, size, name),
             ConstantValue::Bool(b) => Entry::new_word(u64::from(*b), size, name),
             ConstantValue::Uint(u) => Entry::new_word(*u, size, name),
-
+            ConstantValue::U256(u) => {
+                // TODO u256 limited to u64
+                let mut bytes = vec![0u8; 24];
+                bytes.extend(&u.to_be_bytes());
+                assert!(bytes.len() == 32);
+                Entry::new_byte_array(bytes.to_vec(), size, name)
+            }
             ConstantValue::B256(bs) => Entry::new_byte_array(bs.to_vec(), size, name),
             ConstantValue::String(bs) => Entry::new_byte_array(bs.clone(), size, name),
 
@@ -122,7 +128,7 @@ impl Entry {
             Datum::ByteArray(bs) if bs.len() % 8 == 0 => bs.clone(),
             Datum::ByteArray(bs) => bs
                 .iter()
-                .chain(vec![0; 8].iter())
+                .chain([0; 8].iter())
                 .copied()
                 .take((bs.len() + 7) & 0xfffffff8_usize)
                 .collect(),

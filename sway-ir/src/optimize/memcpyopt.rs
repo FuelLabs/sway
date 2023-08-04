@@ -264,7 +264,8 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
     for (value, replace_with) in replaces.into_iter() {
         match replace_with {
             ReplaceWith::InPlaceLocal(replacement_var) => {
-                let Some(Instruction::GetLocal(redundant_var)) = value.get_instruction(context) else {
+                let Some(Instruction::GetLocal(redundant_var)) = value.get_instruction(context)
+                else {
                     panic!("earlier match now fails");
                 };
                 if redundant_var.is_mutable(context) {
@@ -419,7 +420,7 @@ fn local_copy_prop(
         escaped_symbols: &EscapedSymbols,
         inst: Value,
         src_val_ptr: Value,
-        dest_to_copies: &mut FxHashMap<Symbol, FxHashSet<Value>>,
+        dest_to_copies: &FxHashMap<Symbol, FxHashSet<Value>>,
         replacements: &mut FxHashMap<Value, Replacement>,
     ) -> bool {
         // For every `memcpy` that src_val_ptr is a destination of,
@@ -565,7 +566,7 @@ fn local_copy_prop(
                             escaped_symbols,
                             inst,
                             *src_val_ptr,
-                            &mut dest_to_copies,
+                            &dest_to_copies,
                             &mut replacements,
                         );
                     }
@@ -586,7 +587,7 @@ fn local_copy_prop(
                             escaped_symbols,
                             inst,
                             src_val_ptr,
-                            &mut dest_to_copies,
+                            &dest_to_copies,
                             &mut replacements,
                         ) {
                             gen_new_copy(

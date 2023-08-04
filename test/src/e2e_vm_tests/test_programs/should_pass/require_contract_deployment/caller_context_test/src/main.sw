@@ -7,7 +7,7 @@ fn main() -> bool {
     let zero = b256::min();
     let gas: u64 = u64::max();
     let amount: u64 = 11;
-    let other_contract_id = ContractId::from(0x98f8c4077c4f23d4def9693f8464fc4bf83b2295735cf2cfd027d99b9d4bbdcc);
+    let other_contract_id = ContractId::from(0x419a6e9cbe1fc4122755f7aea3403331216b34a5fbd85a2388055bcc5cceb936);
     let base_asset_id = BASE_ASSET_ID;
 
     let test_contract = abi(ContextTesting, other_contract_id.into());

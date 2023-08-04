@@ -22,6 +22,7 @@
 
 use std::hash::{Hash, Hasher};
 
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
@@ -31,6 +32,7 @@ use crate::{
         self, TyAbiDecl, TyConstantDecl, TyEnumDecl, TyFunctionDecl, TyImplTrait, TyStorageDecl,
         TyStructDecl, TyTraitDecl, TyTraitFn,
     },
+    semantic_analysis::TypeCheckContext,
     type_system::*,
 };
 
@@ -195,14 +197,15 @@ where
     pub(crate) fn replace_decls_and_insert_new_with_parent(
         &self,
         decl_mapping: &DeclMapping,
-        engines: &Engines,
-    ) -> Self {
-        let decl_engine = engines.de();
+        handler: &Handler,
+        ctx: &TypeCheckContext,
+    ) -> Result<Self, ErrorEmitted> {
+        let decl_engine = ctx.engines().de();
         let mut decl = decl_engine.get(&self.id);
-        decl.replace_decls(decl_mapping, engines);
-        decl_engine
+        decl.replace_decls(decl_mapping, handler, ctx)?;
+        Ok(decl_engine
             .insert(decl)
-            .with_parent(decl_engine, self.id.into())
+            .with_parent(decl_engine, self.id.into()))
     }
 }
 
@@ -334,13 +337,19 @@ where
 }
 
 impl ReplaceDecls for DeclRefFunction {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
+    fn replace_decls_inner(
+        &mut self,
+        decl_mapping: &DeclMapping,
+        _handler: &Handler,
+        ctx: &TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
+        let engines = ctx.engines();
         let decl_engine = engines.de();
         if let Some(new_decl_ref) = decl_mapping.find_match(self.id.into()) {
             if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
                 self.id = new_decl_ref;
             }
-            return;
+            return Ok(());
         }
         let all_parents = decl_engine.find_all_parents(engines, &self.id);
         for parent in all_parents.iter() {
@@ -348,9 +357,10 @@ impl ReplaceDecls for DeclRefFunction {
                 if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
                     self.id = new_decl_ref;
                 }
-                return;
+                return Ok(());
             }
         }
+        Ok(())
     }
 }
 

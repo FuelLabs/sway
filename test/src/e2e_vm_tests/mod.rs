@@ -187,8 +187,8 @@ impl TestContext {
                             harness::test_json_abi(&name, &compiled)
                         })
                         .await;
-                        result?;
                         output.push_str(&out);
+                        result?;
                     }
                     Ok(())
                 }
@@ -319,34 +319,35 @@ impl TestContext {
                     harness::compile_and_run_unit_tests(&name, &context.run_config, true).await;
                 *output = out;
 
-                let tested_pkgs = result.expect("failed to compile and run unit tests");
-                let failed: Vec<String> = tested_pkgs
-                    .into_iter()
-                    .flat_map(|tested_pkg| {
-                        tested_pkg
-                            .tests
-                            .into_iter()
-                            .filter(|test| !test.passed())
-                            .map(move |test| {
-                                format!(
-                                    "{}: Test '{}' failed with state {:?}, expected: {:?}",
-                                    tested_pkg.built.descriptor.name,
-                                    test.name,
-                                    test.state,
-                                    test.condition,
-                                )
-                            })
-                    })
-                    .collect();
+                result.map(|tested_pkgs| {
+                    let failed: Vec<String> = tested_pkgs
+                        .into_iter()
+                        .flat_map(|tested_pkg| {
+                            tested_pkg
+                                .tests
+                                .into_iter()
+                                .filter(|test| !test.passed())
+                                .map(move |test| {
+                                    format!(
+                                        "{}: Test '{}' failed with state {:?}, expected: {:?}",
+                                        tested_pkg.built.descriptor.name,
+                                        test.name,
+                                        test.state,
+                                        test.condition,
+                                    )
+                                })
+                        })
+                        .collect();
 
-                if !failed.is_empty() {
-                    panic!(
-                        "For {name}\n{} tests failed:\n{}",
-                        failed.len(),
-                        failed.into_iter().collect::<String>()
-                    );
-                }
-                Ok(())
+                    if !failed.is_empty() {
+                        println!("FAILED!! output:\n{}", output);
+                        panic!(
+                            "For {name}\n{} tests failed:\n{}",
+                            failed.len(),
+                            failed.into_iter().collect::<String>()
+                        );
+                    }
+                })
             }
 
             category => Err(anyhow::Error::msg(format!(

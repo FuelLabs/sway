@@ -236,6 +236,12 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                             stored_val: dst_val,
                             key,
                         } => self.verify_state_store_word(dst_val, key)?,
+                        FuelVmInstruction::WideBinaryOp {
+                            op,
+                            arg1,
+                            arg2,
+                            result,
+                        } => self.verify_wide_binary_op(op, arg1, arg2, result)?,
                     },
                     Instruction::GetElemPtr {
                         base,
@@ -306,6 +312,33 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         Ok(())
     }
 
+    fn verify_wide_binary_op(
+        &self,
+        _: &BinaryOpKind,
+        arg1: &Value,
+        arg2: &Value,
+        result: &Value,
+    ) -> Result<(), IrError> {
+        let arg1_ty = arg1
+            .get_type(self.context)
+            .ok_or(IrError::VerifyBinaryOpIncorrectArgType)?;
+        let arg2_ty = arg2
+            .get_type(self.context)
+            .ok_or(IrError::VerifyBinaryOpIncorrectArgType)?;
+        let result_ty = result
+            .get_type(self.context)
+            .ok_or(IrError::VerifyBinaryOpIncorrectArgType)?;
+
+        if arg1_ty.is_ptr(self.context)
+            && arg2_ty.is_ptr(self.context)
+            && result_ty.is_ptr(self.context)
+        {
+            Ok(())
+        } else {
+            Err(IrError::VerifyBinaryOpIncorrectArgType)
+        }
+    }
+
     fn verify_binary_op(
         &self,
         _op: &BinaryOpKind,
@@ -372,6 +405,8 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
             if !caller_arg_type.eq(self.context, callee_arg_type) {
                 return Err(IrError::VerifyCallArgTypeMismatch(
                     callee_content.name.clone(),
+                    caller_arg_type.as_string(self.context),
+                    callee_arg_type.as_string(self.context),
                 ));
             }
         }
@@ -545,20 +580,18 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         // unwrap it and try to fetch the field type (which will fail for arrays) otherwise (i.e.,
         // not a constant int or not a struct) fetch the array element type, which will fail for
         // non-arrays.
-        let index_ty = indices.iter().fold(Some(base_ty), |ty, idx_val| {
-            ty.and_then(|ty| {
-                idx_val
-                    .get_constant(self.context)
-                    .and_then(|const_ref| {
-                        if let ConstantValue::Uint(n) = const_ref.value {
-                            Some(n)
-                        } else {
-                            None
-                        }
-                    })
-                    .and_then(|idx| ty.get_field_type(self.context, idx))
-                    .or_else(|| ty.get_array_elem_type(self.context))
-            })
+        let index_ty = indices.iter().try_fold(base_ty, |ty, idx_val| {
+            idx_val
+                .get_constant(self.context)
+                .and_then(|const_ref| {
+                    if let ConstantValue::Uint(n) = const_ref.value {
+                        Some(n)
+                    } else {
+                        None
+                    }
+                })
+                .and_then(|idx| ty.get_field_type(self.context, idx))
+                .or_else(|| ty.get_array_elem_type(self.context))
         });
 
         if self.opt_ty_not_eq(&Some(elem_inner_ty), &index_ty) {

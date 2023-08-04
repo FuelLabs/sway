@@ -1,6 +1,8 @@
+use crate::diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic};
+
 use core::fmt;
 
-use sway_types::{integer_bits::IntegerBits, Ident, SourceId, Span, Spanned};
+use sway_types::{Ident, SourceId, Span, Spanned};
 
 // TODO: since moving to using Idents instead of strings,
 // the warning_content will usually contain a duplicate of the span.
@@ -51,10 +53,6 @@ pub enum Warning {
     },
     NonScreamingSnakeCaseConstName {
         name: Ident,
-    },
-    LossOfPrecision {
-        initial_type: IntegerBits,
-        cast_to: IntegerBits,
     },
     UnusedReturnValue {
         r#type: String,
@@ -177,12 +175,6 @@ impl fmt::Display for Warning {
                     to_screaming_snake_case(name.as_str()),
                 )
             },
-            LossOfPrecision {
-                initial_type,
-                cast_to,
-            } => write!(f,
-                "This cast, from integer type of width {initial_type} to integer type of width {cast_to}, will lose precision."
-            ),
             UnusedReturnValue { r#type } => write!(
                 f,
                 "This returns a value of type {type}, which is not assigned to anything and is \
@@ -251,6 +243,44 @@ impl fmt::Display for Warning {
             ModulePrivacyDisabled => write!(f, "Module privacy rules will soon change to make modules private by default.
                                             You can enable the new behavior with the --experimental-private-modules flag, which will become the default behavior in a later release.
                                             More details are available in the related RFC: https://github.com/FuelLabs/sway-rfcs/blob/master/rfcs/0008-private-modules.md"),
+        }
+    }
+}
+
+impl ToDiagnostic for CompileWarning {
+    fn to_diagnostic(&self, source_engine: &sway_types::SourceEngine) -> Diagnostic {
+        let code = Code::warnings;
+        use sway_types::style::*;
+        use Warning::*;
+        match &self.warning_content {
+            NonScreamingSnakeCaseConstName { name } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Constant name is not idiomatic".to_string())),
+                issue: Issue::warning(
+                    source_engine,
+                    name.span(),
+                    format!("Constant \"{name}\" should be SCREAMING_SNAKE_CASE")
+                ),
+                hints: vec![
+                    Hint::warning(
+                        source_engine,
+                        name.span(),
+                        format!("\"{name}\" should be SCREAMING_SNAKE_CASE, like \"{}\".", to_screaming_snake_case(name.as_str()))
+                    ),
+                ],
+                help: vec![
+                    "In Sway, ABIs, structs, traits, and enums are CapitalCase.".to_string(),
+                    "Modules, variables, and functions are snake_case, while constants are SCREAMING_SNAKE_CASE.".to_string(),
+                    format!("Consider renaming the constant to, e.g., \"{}\".", to_screaming_snake_case(name.as_str())),
+                ],
+            },
+           _ => Diagnostic {
+                    // TODO: Temporary we use self here to achieve backward compatibility.
+                    //       In general, self must not be used and will not be used once we
+                    //       switch to our own #[error] macro. All the values for the formating
+                    //       of a diagnostic must come from the enum variant parameters.
+                    issue: Issue::warning(source_engine, self.span(), format!("{}", self.warning_content)),
+                    ..Default::default()
+                }
         }
     }
 }

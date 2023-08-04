@@ -2,10 +2,9 @@ use crate::{Parse, ParseResult, ParseToEnd, Parser};
 
 use sway_ast::brackets::{Braces, Parens, SquareBrackets};
 use sway_ast::keywords::{CloseAngleBracketToken, OpenAngleBracketToken};
-use sway_ast::token::Delimiter;
 use sway_error::handler::ErrorEmitted;
 use sway_error::parser_error::ParseErrorKind;
-use sway_types::{Span, Spanned};
+use sway_types::{ast::Delimiter, Span, Spanned};
 
 pub trait ParseBracket<T>: Sized {
     fn try_parse(parser: &mut Parser) -> ParseResult<Option<Self>>

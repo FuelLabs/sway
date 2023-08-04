@@ -1,5 +1,6 @@
 // Add test modules here:
 
+mod abi_impl_methods_callable;
 mod auth;
 mod block;
 mod call_frames;
@@ -16,6 +17,7 @@ mod generics_in_abi;
 mod hashing;
 mod logging;
 mod low_level_call;
+mod low_level_call_bytes;
 mod messages;
 mod methods;
 mod option_field_order;
@@ -35,6 +37,8 @@ mod storage_map_nested;
 mod storage_string;
 mod storage_vec;
 mod storage_vec_nested;
+mod superabi;
+mod superabi_supertrait;
 mod token_ops;
 mod tx_fields;
 mod type_aliases;

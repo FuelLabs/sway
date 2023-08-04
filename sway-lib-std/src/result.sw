@@ -97,7 +97,7 @@ impl<T, E> Result<T, E> {
     /// ```
     pub fn is_ok(self) -> bool {
         match self {
-            Result::Ok(_) => true,
+            Self::Ok(_) => true,
             _ => false,
         }
     }
@@ -126,7 +126,7 @@ impl<T, E> Result<T, E> {
     /// ```
     pub fn is_err(self) -> bool {
         match self {
-            Result::Ok(_) => false,
+            Self::Ok(_) => false,
             _ => true,
         }
     }
@@ -165,7 +165,7 @@ impl<T, E> Result<T, E> {
     /// ```
     pub fn unwrap(self) -> T {
         match self {
-            Result::Ok(inner_value) => inner_value,
+            Self::Ok(inner_value) => inner_value,
             _ => revert(0),
         }
     }
@@ -198,8 +198,8 @@ impl<T, E> Result<T, E> {
     /// ```
     pub fn unwrap_or(self, default: T) -> T {
         match self {
-            Result::Ok(inner_value) => inner_value,
-            Result::Err(_) => default,
+            Self::Ok(inner_value) => inner_value,
+            Self::Err(_) => default,
         }
     }
 

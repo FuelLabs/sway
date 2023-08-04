@@ -1,15 +1,17 @@
 use crate::{
     decl_engine::{DeclRefConstant, DeclRefFunction},
     engine_threading::*,
-    error::*,
     language::{ty, CallPath, Visibility},
     type_system::*,
-    CompileResult, Ident,
+    Ident,
 };
 
 use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};
 
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{span::Span, Spanned};
 
 use std::collections::{HashMap, VecDeque};
@@ -90,38 +92,54 @@ impl Namespace {
     }
 
     /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
-    pub(crate) fn resolve_symbol(&self, symbol: &Ident) -> CompileResult<&ty::TyDecl> {
-        self.root.resolve_symbol(&self.mod_path, symbol)
+    pub(crate) fn resolve_symbol(
+        &self,
+        handler: &Handler,
+        symbol: &Ident,
+    ) -> Result<&ty::TyDecl, ErrorEmitted> {
+        self.root.resolve_symbol(handler, &self.mod_path, symbol)
     }
 
     /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
-    pub(crate) fn resolve_call_path(&self, call_path: &CallPath) -> CompileResult<&ty::TyDecl> {
-        self.root.resolve_call_path(&self.mod_path, call_path)
+    pub(crate) fn resolve_call_path(
+        &self,
+        handler: &Handler,
+        call_path: &CallPath,
+    ) -> Result<&ty::TyDecl, ErrorEmitted> {
+        self.root
+            .resolve_call_path(handler, &self.mod_path, call_path)
     }
 
     /// Short-hand for calling [Root::resolve_call_path_with_visibility_check] on `root` with the `mod_path`.
     pub(crate) fn resolve_call_path_with_visibility_check(
         &self,
+        handler: &Handler,
         engines: &Engines,
         call_path: &CallPath,
-    ) -> CompileResult<&ty::TyDecl> {
-        self.root
-            .resolve_call_path_with_visibility_check(engines, &self.mod_path, call_path)
+    ) -> Result<&ty::TyDecl, ErrorEmitted> {
+        self.root.resolve_call_path_with_visibility_check(
+            handler,
+            engines,
+            &self.mod_path,
+            call_path,
+        )
     }
 
     /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
     #[allow(clippy::too_many_arguments)] // TODO: remove lint bypass once private modules are no longer experimental
     pub(crate) fn resolve_type_with_self(
         &mut self,
+        handler: &Handler,
         engines: &Engines,
         type_id: TypeId,
         self_type: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
-    ) -> CompileResult<TypeId> {
+    ) -> Result<TypeId, ErrorEmitted> {
         let mod_path = self.mod_path.clone();
         engines.te().resolve_with_self(
+            handler,
             engines,
             type_id,
             self_type,
@@ -136,13 +154,15 @@ impl Namespace {
     /// Short-hand for calling [Root::resolve_type_without_self] on `root` and with the `mod_path`.
     pub(crate) fn resolve_type_without_self(
         &mut self,
+        handler: &Handler,
         engines: &Engines,
         type_id: TypeId,
         span: &Span,
         type_info_prefix: Option<&Path>,
-    ) -> CompileResult<TypeId> {
+    ) -> Result<TypeId, ErrorEmitted> {
         let mod_path = self.mod_path.clone();
         engines.te().resolve(
+            handler,
             engines,
             type_id,
             span,
@@ -157,32 +177,25 @@ impl Namespace {
     /// resolve it), find items matching in the namespace.
     pub(crate) fn find_items_for_type(
         &mut self,
+        handler: &Handler,
         mut type_id: TypeId,
         item_prefix: &Path,
         item_name: &Ident,
         self_type: TypeId,
         engines: &Engines,
-    ) -> CompileResult<Vec<ty::TyTraitItem>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
+    ) -> Result<Vec<ty::TyTraitItem>, ErrorEmitted> {
         let type_engine = engines.te();
         let _decl_engine = engines.de();
 
         // If the type that we are looking for is the error recovery type, then
         // we want to return the error case without creating a new error
         // message.
-        if let TypeInfo::ErrorRecovery = type_engine.get(type_id) {
-            return err(warnings, errors);
+        if let TypeInfo::ErrorRecovery(err) = type_engine.get(type_id) {
+            return Err(err);
         }
 
         // grab the local module
-        let local_module = check!(
-            self.root().check_submodule(&self.mod_path),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let local_module = self.root().check_submodule(handler, &self.mod_path)?;
 
         // grab the local items from the local module
         let local_items = local_module.get_items_for_type(engines, type_id);
@@ -190,8 +203,9 @@ impl Namespace {
         type_id.replace_self_type(engines, self_type);
 
         // resolve the type
-        let type_id = check!(
-            type_engine.resolve(
+        let type_id = type_engine
+            .resolve(
+                handler,
                 engines,
                 type_id,
                 &item_name.span(),
@@ -199,19 +213,11 @@ impl Namespace {
                 None,
                 self,
                 item_prefix,
-            ),
-            type_engine.insert(engines, TypeInfo::ErrorRecovery),
-            warnings,
-            errors
-        );
+            )
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
 
         // grab the module where the type itself is declared
-        let type_module = check!(
-            self.root().check_submodule(item_prefix),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let type_module = self.root().check_submodule(handler, item_prefix)?;
 
         // grab the items from where the type is declared
         let mut type_items = type_module.get_items_for_type(engines, type_id);
@@ -236,7 +242,7 @@ impl Namespace {
             }
         }
 
-        ok(matching_item_decl_refs, warnings, errors)
+        Ok(matching_item_decl_refs)
     }
 
     /// Given a name and a type (plus a `self_type` to potentially
@@ -249,6 +255,7 @@ impl Namespace {
     #[allow(clippy::too_many_arguments)] // TODO: remove lint bypass once private modules are no longer experimental
     pub(crate) fn find_method_for_type(
         &mut self,
+        handler: &Handler,
         type_id: TypeId,
         method_prefix: &Path,
         method_name: &Ident,
@@ -257,21 +264,27 @@ impl Namespace {
         args_buf: &VecDeque<ty::TyExpression>,
         as_trait: Option<TypeInfo>,
         engines: &Engines,
-    ) -> CompileResult<DeclRefFunction> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
+        try_inserting_trait_impl_on_failure: bool,
+    ) -> Result<DeclRefFunction, ErrorEmitted> {
         let decl_engine = engines.de();
         let type_engine = engines.te();
 
-        let unify_check = UnifyCheck::non_dynamic_equality(engines);
+        let eq_check = UnifyCheck::non_dynamic_equality(engines);
+        let coercion_check = UnifyCheck::coercion(engines);
 
-        let matching_item_decl_refs = check!(
-            self.find_items_for_type(type_id, method_prefix, method_name, self_type, engines,),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        // default numeric types to u64
+        if type_engine.contains_numeric(decl_engine, type_id) {
+            type_engine.decay_numeric(handler, engines, type_id, &method_name.span())?;
+        }
+
+        let matching_item_decl_refs = self.find_items_for_type(
+            handler,
+            type_id,
+            method_prefix,
+            method_name,
+            self_type,
+            engines,
+        )?;
 
         let matching_method_decl_refs = matching_item_decl_refs
             .into_iter()
@@ -294,9 +307,9 @@ impl Namespace {
                         .parameters
                         .iter()
                         .zip(args_buf.iter())
-                        .all(|(p, a)| unify_check.check(p.type_argument.type_id, a.return_type))
+                        .all(|(p, a)| coercion_check.check(p.type_argument.type_id, a.return_type))
                     && (matches!(type_engine.get(annotation_type), TypeInfo::Unknown)
-                        || unify_check.check(annotation_type, method.return_type.type_id))
+                        || coercion_check.check(annotation_type, method.return_type.type_id))
                 {
                     maybe_method_decl_refs.push(decl_ref);
                 }
@@ -330,23 +343,13 @@ impl Namespace {
                                             .iter()
                                             .zip(trait_decl.trait_type_arguments.clone())
                                         {
-                                            let p1_type_id = check!(
-                                                self.resolve_type_without_self(
-                                                    engines, p1.type_id, &p1.span, None
-                                                ),
-                                                return err(warnings, errors),
-                                                warnings,
-                                                errors
-                                            );
-                                            let p2_type_id = check!(
-                                                self.resolve_type_without_self(
-                                                    engines, p2.type_id, &p2.span, None
-                                                ),
-                                                return err(warnings, errors),
-                                                warnings,
-                                                errors
-                                            );
-                                            if !unify_check.check(p1_type_id, p2_type_id) {
+                                            let p1_type_id = self.resolve_type_without_self(
+                                                handler, engines, p1.type_id, &p1.span, None,
+                                            )?;
+                                            let p2_type_id = self.resolve_type_without_self(
+                                                handler, engines, p2.type_id, &p2.span, None,
+                                            )?;
+                                            if !eq_check.check(p1_type_id, p2_type_id) {
                                                 params_equal = false;
                                                 break;
                                             }
@@ -422,13 +425,14 @@ impl Namespace {
                             .collect::<Vec<String>>();
                         // Sort so the output of the error is always the same.
                         trait_strings.sort();
-                        errors.push(CompileError::MultipleApplicableItemsInScope {
-                            method_name: method_name.as_str().to_string(),
-                            type_name: engines.help_out(type_id).to_string(),
-                            as_traits: trait_strings,
-                            span: method_name.span(),
-                        });
-                        return err(warnings, errors);
+                        return Err(handler.emit_err(
+                            CompileError::MultipleApplicableItemsInScope {
+                                method_name: method_name.as_str().to_string(),
+                                type_name: engines.help_out(type_id).to_string(),
+                                as_traits: trait_strings,
+                                span: method_name.span(),
+                            },
+                        ));
                     }
                 } else if qualified_call_path.is_some() {
                     // When we use a qualified path the expected method should be in trait_methods.
@@ -444,26 +448,45 @@ impl Namespace {
         };
 
         if let Some(method_decl_ref) = matching_method_decl_ref {
-            return ok(method_decl_ref, warnings, errors);
+            return Ok(method_decl_ref);
         }
 
-        if !args_buf
-            .get(0)
-            .map(|x| type_engine.get(x.return_type))
-            .eq(&Some(TypeInfo::ErrorRecovery), engines)
+        if let Some(TypeInfo::ErrorRecovery(err)) =
+            args_buf.get(0).map(|x| type_engine.get(x.return_type))
         {
+            Err(err)
+        } else {
+            if try_inserting_trait_impl_on_failure {
+                // Retrieve the implemented traits for the type and insert them in the namespace.
+                // insert_trait_implementation_for_type is already called when we do type check of structs, enums, arrays and tuples.
+                // In cases such as blanket trait implementation and usage of builtin types a method may not be found because
+                // insert_trait_implementation_for_type has yet to be called for that type.
+                self.insert_trait_implementation_for_type(engines, type_id);
+
+                return self.find_method_for_type(
+                    handler,
+                    type_id,
+                    method_prefix,
+                    method_name,
+                    self_type,
+                    annotation_type,
+                    args_buf,
+                    as_trait,
+                    engines,
+                    false,
+                );
+            }
             let type_name = if let Some(call_path) = qualified_call_path {
                 format!("{} as {}", engines.help_out(type_id), call_path)
             } else {
                 engines.help_out(type_id).to_string()
             };
-            errors.push(CompileError::MethodNotFound {
+            Err(handler.emit_err(CompileError::MethodNotFound {
                 method_name: method_name.clone(),
                 type_name,
                 span: method_name.span(),
-            });
+            }))
         }
-        err(warnings, errors)
     }
 
     /// Given a name and a type (plus a `self_type` to potentially
@@ -475,20 +498,20 @@ impl Namespace {
     /// found.
     pub(crate) fn find_constant_for_type(
         &mut self,
+        handler: &Handler,
         type_id: TypeId,
         item_name: &Ident,
         self_type: TypeId,
         engines: &Engines,
-    ) -> CompileResult<DeclRefConstant> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
-        let matching_item_decl_refs = check!(
-            self.find_items_for_type(type_id, &Vec::<Ident>::new(), item_name, self_type, engines,),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+    ) -> Result<Option<DeclRefConstant>, ErrorEmitted> {
+        let matching_item_decl_refs = self.find_items_for_type(
+            handler,
+            type_id,
+            &Vec::<Ident>::new(),
+            item_name,
+            self_type,
+            engines,
+        )?;
 
         let matching_constant_decl_refs = matching_item_decl_refs
             .into_iter()
@@ -498,72 +521,88 @@ impl Namespace {
             })
             .collect::<Vec<_>>();
 
-        if let Some(constant_decl_ref) = matching_constant_decl_refs.first() {
-            ok(constant_decl_ref.clone(), warnings, errors)
-        } else {
-            err(warnings, errors)
-        }
+        Ok(matching_constant_decl_refs.first().cloned())
     }
 
     /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.
     pub(crate) fn star_import(
         &mut self,
+        handler: &Handler,
         src: &Path,
         engines: &Engines,
         is_absolute: bool,
-    ) -> CompileResult<()> {
+    ) -> Result<(), ErrorEmitted> {
         self.root
-            .star_import(src, &self.mod_path, engines, is_absolute)
+            .star_import(handler, src, &self.mod_path, engines, is_absolute)
     }
 
     /// Short-hand for performing a [Module::variant_star_import] with `mod_path` as the destination.
     pub(crate) fn variant_star_import(
         &mut self,
+        handler: &Handler,
         src: &Path,
         engines: &Engines,
         enum_name: &Ident,
         is_absolute: bool,
-    ) -> CompileResult<()> {
-        self.root
-            .variant_star_import(src, &self.mod_path, engines, enum_name, is_absolute)
+    ) -> Result<(), ErrorEmitted> {
+        self.root.variant_star_import(
+            handler,
+            src,
+            &self.mod_path,
+            engines,
+            enum_name,
+            is_absolute,
+        )
     }
 
     /// Short-hand for performing a [Module::self_import] with `mod_path` as the destination.
     pub(crate) fn self_import(
         &mut self,
+        handler: &Handler,
         engines: &Engines,
         src: &Path,
         alias: Option<Ident>,
         is_absolute: bool,
-    ) -> CompileResult<()> {
+    ) -> Result<(), ErrorEmitted> {
         self.root
-            .self_import(engines, src, &self.mod_path, alias, is_absolute)
+            .self_import(handler, engines, src, &self.mod_path, alias, is_absolute)
     }
 
     /// Short-hand for performing a [Module::item_import] with `mod_path` as the destination.
     pub(crate) fn item_import(
         &mut self,
+        handler: &Handler,
         engines: &Engines,
         src: &Path,
         item: &Ident,
         alias: Option<Ident>,
         is_absolute: bool,
-    ) -> CompileResult<()> {
-        self.root
-            .item_import(engines, src, item, &self.mod_path, alias, is_absolute)
+    ) -> Result<(), ErrorEmitted> {
+        self.root.item_import(
+            handler,
+            engines,
+            src,
+            item,
+            &self.mod_path,
+            alias,
+            is_absolute,
+        )
     }
 
     /// Short-hand for performing a [Module::variant_import] with `mod_path` as the destination.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn variant_import(
         &mut self,
+        handler: &Handler,
         engines: &Engines,
         src: &Path,
         enum_name: &Ident,
         variant_name: &Ident,
         alias: Option<Ident>,
         is_absolute: bool,
-    ) -> CompileResult<()> {
+    ) -> Result<(), ErrorEmitted> {
         self.root.variant_import(
+            handler,
             engines,
             src,
             enum_name,
@@ -608,6 +647,7 @@ impl Namespace {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn insert_trait_implementation(
         &mut self,
+        handler: &Handler,
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
@@ -616,12 +656,13 @@ impl Namespace {
         trait_decl_span: Option<Span>,
         is_impl_self: bool,
         engines: &Engines,
-    ) -> CompileResult<()> {
+    ) -> Result<(), ErrorEmitted> {
         // Use trait name with full path, improves consistency between
         // this inserting and getting in `get_methods_for_type_and_trait_name`.
         let full_trait_name = trait_name.to_fullpath(self);
 
         self.implemented_traits.insert(
+            handler,
             full_trait_name,
             trait_type_args,
             type_id,
@@ -634,7 +675,7 @@ impl Namespace {
     }
 
     pub(crate) fn get_items_for_type_and_trait_name(
-        &mut self,
+        &self,
         engines: &Engines,
         type_id: TypeId,
         trait_name: &CallPath,

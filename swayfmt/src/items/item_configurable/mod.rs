@@ -10,8 +10,8 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{keywords::Token, token::Delimiter, ConfigurableField, ItemConfigurable};
-use sway_types::Spanned;
+use sway_ast::{keywords::Token, ConfigurableField, ItemConfigurable};
+use sway_types::{ast::Delimiter, Spanned};
 
 #[cfg(test)]
 mod tests;

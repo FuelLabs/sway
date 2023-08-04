@@ -16,12 +16,14 @@ pub(crate) use virtual_register::*;
 use crate::{
     asm_generation::fuel::{data_section::DataId, register_allocator::RegisterPool},
     asm_lang::allocated_ops::{AllocatedOpcode, AllocatedRegister},
-    error::*,
     language::AsmRegister,
     Ident,
 };
 
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{span::Span, Spanned};
 
 use either::Either;
@@ -260,752 +262,351 @@ impl Op {
     }
 
     pub(crate) fn parse_opcode(
+        handler: &Handler,
         name: &Ident,
         args: &[VirtualRegister],
         immediate: &Option<Ident>,
         whole_op_span: Span,
-    ) -> CompileResult<VirtualOp> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        ok(
-            match name.as_str() {
-                /* Arithmetic/Logic (ALU) Instructions */
-                "add" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::ADD(r1, r2, r3)
-                }
-                "addi" => {
-                    let (r1, r2, imm) = check!(
-                        two_regs_imm_12(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::ADDI(r1, r2, imm)
-                }
-                "and" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::AND(r1, r2, r3)
-                }
-                "andi" => {
-                    let (r1, r2, imm) = check!(
-                        two_regs_imm_12(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::ANDI(r1, r2, imm)
-                }
-                "div" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::DIV(r1, r2, r3)
-                }
-                "divi" => {
-                    let (r1, r2, imm) = check!(
-                        two_regs_imm_12(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::DIVI(r1, r2, imm)
-                }
-                "eq" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::EQ(r1, r2, r3)
-                }
-                "exp" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::EXP(r1, r2, r3)
-                }
-                "expi" => {
-                    let (r1, r2, imm) = check!(
-                        two_regs_imm_12(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::EXPI(r1, r2, imm)
-                }
-                "gt" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::GT(r1, r2, r3)
-                }
-                "lt" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::LT(r1, r2, r3)
-                }
-                "mlog" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::MLOG(r1, r2, r3)
-                }
-                "mod" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::MOD(r1, r2, r3)
-                }
-                "modi" => {
-                    let (r1, r2, imm) = check!(
-                        two_regs_imm_12(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::MODI(r1, r2, imm)
-                }
-                "move" => {
-                    let (r1, r2) = check!(
-                        two_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::MOVE(r1, r2)
-                }
-                "movi" => {
-                    let (r1, imm) = check!(
-                        single_reg_imm_18(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::MOVI(r1, imm)
-                }
-                "mroo" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::MROO(r1, r2, r3)
-                }
-                "mul" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::MUL(r1, r2, r3)
-                }
-                "muli" => {
-                    let (r1, r2, imm) = check!(
-                        two_regs_imm_12(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::MULI(r1, r2, imm)
-                }
-                "noop" => VirtualOp::NOOP,
-                "not" => {
-                    let (r1, r2) = check!(
-                        two_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::NOT(r1, r2)
-                }
-                "or" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::OR(r1, r2, r3)
-                }
-                "ori" => {
-                    let (r1, r2, imm) = check!(
-                        two_regs_imm_12(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::ORI(r1, r2, imm)
-                }
-                "sll" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::SLL(r1, r2, r3)
-                }
-                "slli" => {
-                    let (r1, r2, imm) = check!(
-                        two_regs_imm_12(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::SLLI(r1, r2, imm)
-                }
-                "srl" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::SRL(r1, r2, r3)
-                }
-                "srli" => {
-                    let (r1, r2, imm) = check!(
-                        two_regs_imm_12(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::SRLI(r1, r2, imm)
-                }
-                "sub" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::SUB(r1, r2, r3)
-                }
-                "subi" => {
-                    let (r1, r2, imm) = check!(
-                        two_regs_imm_12(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::SUBI(r1, r2, imm)
-                }
-                "xor" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::XOR(r1, r2, r3)
-                }
-                "xori" => {
-                    let (r1, r2, imm) = check!(
-                        two_regs_imm_12(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::XORI(r1, r2, imm)
-                }
+    ) -> Result<VirtualOp, ErrorEmitted> {
+        Ok(match name.as_str() {
+            /* Arithmetic/Logic (ALU) Instructions */
+            "add" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::ADD(r1, r2, r3)
+            }
+            "addi" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::ADDI(r1, r2, imm)
+            }
+            "and" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::AND(r1, r2, r3)
+            }
+            "andi" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::ANDI(r1, r2, imm)
+            }
+            "div" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::DIV(r1, r2, r3)
+            }
+            "divi" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::DIVI(r1, r2, imm)
+            }
+            "eq" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::EQ(r1, r2, r3)
+            }
+            "exp" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::EXP(r1, r2, r3)
+            }
+            "expi" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::EXPI(r1, r2, imm)
+            }
+            "gt" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::GT(r1, r2, r3)
+            }
+            "lt" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::LT(r1, r2, r3)
+            }
+            "mlog" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::MLOG(r1, r2, r3)
+            }
+            "mod" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::MOD(r1, r2, r3)
+            }
+            "modi" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::MODI(r1, r2, imm)
+            }
+            "move" => {
+                let (r1, r2) = two_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::MOVE(r1, r2)
+            }
+            "movi" => {
+                let (r1, imm) = single_reg_imm_18(handler, args, immediate, whole_op_span)?;
+                VirtualOp::MOVI(r1, imm)
+            }
+            "mroo" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::MROO(r1, r2, r3)
+            }
+            "mul" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::MUL(r1, r2, r3)
+            }
+            "muli" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::MULI(r1, r2, imm)
+            }
+            "noop" => VirtualOp::NOOP,
+            "not" => {
+                let (r1, r2) = two_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::NOT(r1, r2)
+            }
+            "or" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::OR(r1, r2, r3)
+            }
+            "ori" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::ORI(r1, r2, imm)
+            }
+            "sll" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SLL(r1, r2, r3)
+            }
+            "slli" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SLLI(r1, r2, imm)
+            }
+            "srl" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SRL(r1, r2, r3)
+            }
+            "srli" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SRLI(r1, r2, imm)
+            }
+            "sub" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SUB(r1, r2, r3)
+            }
+            "subi" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SUBI(r1, r2, imm)
+            }
+            "xor" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::XOR(r1, r2, r3)
+            }
+            "xori" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::XORI(r1, r2, imm)
+            }
 
-                /* Control Flow Instructions */
-                "jmp" => {
-                    let r1 = check!(
-                        single_reg(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::JMP(r1)
-                }
-                "ji" => {
-                    let imm = check!(
-                        single_imm_24(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::JI(imm)
-                }
-                "jne" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::JNE(r1, r2, r3)
-                }
-                "jnei" => {
-                    let (r1, r2, imm) = check!(
-                        two_regs_imm_12(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::JNEI(r1, r2, imm)
-                }
-                "jnzi" => {
-                    let (r1, imm) = check!(
-                        single_reg_imm_18(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::JNZI(r1, imm)
-                }
-                "ret" => {
-                    let r1 = check!(
-                        single_reg(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::RET(r1)
-                }
+            /* Control Flow Instructions */
+            "jmp" => {
+                let r1 = single_reg(handler, args, immediate, whole_op_span)?;
+                VirtualOp::JMP(r1)
+            }
+            "ji" => {
+                let imm = single_imm_24(handler, args, immediate, whole_op_span)?;
+                VirtualOp::JI(imm)
+            }
+            "jne" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::JNE(r1, r2, r3)
+            }
+            "jnei" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::JNEI(r1, r2, imm)
+            }
+            "jnzi" => {
+                let (r1, imm) = single_reg_imm_18(handler, args, immediate, whole_op_span)?;
+                VirtualOp::JNZI(r1, imm)
+            }
+            "ret" => {
+                let r1 = single_reg(handler, args, immediate, whole_op_span)?;
+                VirtualOp::RET(r1)
+            }
 
-                /* Memory Instructions */
-                "aloc" => {
-                    let r1 = check!(
-                        single_reg(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::ALOC(r1)
-                }
-                "cfei" => {
-                    let imm = check!(
-                        single_imm_24(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::CFEI(imm)
-                }
-                "cfsi" => {
-                    let imm = check!(
-                        single_imm_24(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::CFSI(imm)
-                }
-                "lb" => {
-                    let (r1, r2, imm) = check!(
-                        two_regs_imm_12(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::LB(r1, r2, imm)
-                }
-                "lw" => {
-                    let (r1, r2, imm) = check!(
-                        two_regs_imm_12(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::LW(r1, r2, imm)
-                }
-                "mcl" => {
-                    let (r1, r2) = check!(
-                        two_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::MCL(r1, r2)
-                }
-                "mcli" => {
-                    let (r1, imm) = check!(
-                        single_reg_imm_18(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::MCLI(r1, imm)
-                }
-                "mcp" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::MCP(r1, r2, r3)
-                }
-                "mcpi" => {
-                    let (r1, r2, imm) = check!(
-                        two_regs_imm_12(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::MCPI(r1, r2, imm)
-                }
-                "meq" => {
-                    let (r1, r2, r3, r4) = check!(
-                        four_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::MEQ(r1, r2, r3, r4)
-                }
-                "sb" => {
-                    let (r1, r2, imm) = check!(
-                        two_regs_imm_12(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::SB(r1, r2, imm)
-                }
-                "sw" => {
-                    let (r1, r2, imm) = check!(
-                        two_regs_imm_12(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::SW(r1, r2, imm)
-                }
+            /* Memory Instructions */
+            "aloc" => {
+                let r1 = single_reg(handler, args, immediate, whole_op_span)?;
+                VirtualOp::ALOC(r1)
+            }
+            "cfei" => {
+                let imm = single_imm_24(handler, args, immediate, whole_op_span)?;
+                VirtualOp::CFEI(imm)
+            }
+            "cfsi" => {
+                let imm = single_imm_24(handler, args, immediate, whole_op_span)?;
+                VirtualOp::CFSI(imm)
+            }
+            "lb" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::LB(r1, r2, imm)
+            }
+            "lw" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::LW(r1, r2, imm)
+            }
+            "mcl" => {
+                let (r1, r2) = two_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::MCL(r1, r2)
+            }
+            "mcli" => {
+                let (r1, imm) = single_reg_imm_18(handler, args, immediate, whole_op_span)?;
+                VirtualOp::MCLI(r1, imm)
+            }
+            "mcp" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::MCP(r1, r2, r3)
+            }
+            "mcpi" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::MCPI(r1, r2, imm)
+            }
+            "meq" => {
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::MEQ(r1, r2, r3, r4)
+            }
+            "sb" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SB(r1, r2, imm)
+            }
+            "sw" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SW(r1, r2, imm)
+            }
 
-                /* Contract Instructions */
-                "bal" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::BAL(r1, r2, r3)
-                }
-                "bhei" => {
-                    let r1 = check!(
-                        single_reg(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::BHEI(r1)
-                }
-                "bhsh" => {
-                    let (r1, r2) = check!(
-                        two_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::BHSH(r1, r2)
-                }
-                "burn" => {
-                    let r1 = check!(
-                        single_reg(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::BURN(r1)
-                }
-                "call" => {
-                    let (r1, r2, r3, r4) = check!(
-                        four_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::CALL(r1, r2, r3, r4)
-                }
-                "cb" => {
-                    let r1 = check!(
-                        single_reg(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::CB(r1)
-                }
-                "ccp" => {
-                    let (r1, r2, r3, r4) = check!(
-                        four_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::CCP(r1, r2, r3, r4)
-                }
-                "croo" => {
-                    let (r1, r2) = check!(
-                        two_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::CROO(r1, r2)
-                }
-                "csiz" => {
-                    let (r1, r2) = check!(
-                        two_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::CSIZ(r1, r2)
-                }
+            /* Contract Instructions */
+            "bal" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::BAL(r1, r2, r3)
+            }
+            "bhei" => {
+                let r1 = single_reg(handler, args, immediate, whole_op_span)?;
+                VirtualOp::BHEI(r1)
+            }
+            "bhsh" => {
+                let (r1, r2) = two_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::BHSH(r1, r2)
+            }
+            "burn" => {
+                let r1 = single_reg(handler, args, immediate, whole_op_span)?;
+                VirtualOp::BURN(r1)
+            }
+            "call" => {
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::CALL(r1, r2, r3, r4)
+            }
+            "cb" => {
+                let r1 = single_reg(handler, args, immediate, whole_op_span)?;
+                VirtualOp::CB(r1)
+            }
+            "ccp" => {
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::CCP(r1, r2, r3, r4)
+            }
+            "croo" => {
+                let (r1, r2) = two_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::CROO(r1, r2)
+            }
+            "csiz" => {
+                let (r1, r2) = two_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::CSIZ(r1, r2)
+            }
 
-                "ldc" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::LDC(r1, r2, r3)
-                }
-                "log" => {
-                    let (r1, r2, r3, r4) = check!(
-                        four_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::LOG(r1, r2, r3, r4)
-                }
-                "logd" => {
-                    let (r1, r2, r3, r4) = check!(
-                        four_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::LOGD(r1, r2, r3, r4)
-                }
-                "mint" => {
-                    let r1 = check!(
-                        single_reg(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::MINT(r1)
-                }
-                "retd" => {
-                    let (r1, r2) = check!(
-                        two_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::RETD(r1, r2)
-                }
-                "rvrt" => {
-                    let r1 = check!(
-                        single_reg(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::RVRT(r1)
-                }
-                "smo" => {
-                    let (r1, r2, r3, r4) = check!(
-                        four_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::SMO(r1, r2, r3, r4)
-                }
-                "scwq" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::SCWQ(r1, r2, r3)
-                }
-                "srw" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::SRW(r1, r2, r3)
-                }
-                "srwq" => {
-                    let (r1, r2, r3, r4) = check!(
-                        four_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::SRWQ(r1, r2, r3, r4)
-                }
-                "sww" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::SWW(r1, r2, r3)
-                }
-                "swwq" => {
-                    let (r1, r2, r3, r4) = check!(
-                        four_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::SWWQ(r1, r2, r3, r4)
-                }
-                "time" => {
-                    let (r1, r2) = check!(
-                        two_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::TIME(r1, r2)
-                }
-                "tr" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::TR(r1, r2, r3)
-                }
-                "tro" => {
-                    let (r1, r2, r3, r4) = check!(
-                        four_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::TRO(r1, r2, r3, r4)
-                }
+            "ldc" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::LDC(r1, r2, r3)
+            }
+            "log" => {
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::LOG(r1, r2, r3, r4)
+            }
+            "logd" => {
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::LOGD(r1, r2, r3, r4)
+            }
+            "mint" => {
+                let r1 = single_reg(handler, args, immediate, whole_op_span)?;
+                VirtualOp::MINT(r1)
+            }
+            "retd" => {
+                let (r1, r2) = two_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::RETD(r1, r2)
+            }
+            "rvrt" => {
+                let r1 = single_reg(handler, args, immediate, whole_op_span)?;
+                VirtualOp::RVRT(r1)
+            }
+            "smo" => {
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SMO(r1, r2, r3, r4)
+            }
+            "scwq" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SCWQ(r1, r2, r3)
+            }
+            "srw" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SRW(r1, r2, r3)
+            }
+            "srwq" => {
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SRWQ(r1, r2, r3, r4)
+            }
+            "sww" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SWW(r1, r2, r3)
+            }
+            "swwq" => {
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SWWQ(r1, r2, r3, r4)
+            }
+            "time" => {
+                let (r1, r2) = two_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::TIME(r1, r2)
+            }
+            "tr" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::TR(r1, r2, r3)
+            }
+            "tro" => {
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::TRO(r1, r2, r3, r4)
+            }
 
-                /* Cryptographic Instructions */
-                "ecr" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::ECR(r1, r2, r3)
-                }
-                "k256" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::K256(r1, r2, r3)
-                }
-                "s256" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::S256(r1, r2, r3)
-                }
+            /* Cryptographic Instructions */
+            "ecr" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::ECR(r1, r2, r3)
+            }
+            "k256" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::K256(r1, r2, r3)
+            }
+            "s256" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::S256(r1, r2, r3)
+            }
 
-                /* Other Instructions */
-                "flag" => {
-                    let r1 = check!(
-                        single_reg(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::FLAG(r1)
-                }
-                "gm" => {
-                    let (r1, imm) = check!(
-                        single_reg_imm_18(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::GM(r1, imm)
-                }
-                "gtf" => {
-                    let (r1, r2, imm) = check!(
-                        two_regs_imm_12(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::GTF(r1, r2, imm)
-                }
+            /* Other Instructions */
+            "flag" => {
+                let r1 = single_reg(handler, args, immediate, whole_op_span)?;
+                VirtualOp::FLAG(r1)
+            }
+            "gm" => {
+                let (r1, imm) = single_reg_imm_18(handler, args, immediate, whole_op_span)?;
+                VirtualOp::GM(r1, imm)
+            }
+            "gtf" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::GTF(r1, r2, imm)
+            }
 
-                /* Non-VM Instructions */
-                "blob" => {
-                    let imm = check!(
-                        single_imm_24(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::BLOB(imm)
-                }
-                _ => {
-                    errors.push(CompileError::UnrecognizedOp {
-                        op_name: name.clone(),
-                        span: name.span(),
-                    });
-                    return err(warnings, errors);
-                }
-            },
-            warnings,
-            errors,
-        )
+            /* Non-VM Instructions */
+            "blob" => {
+                let imm = single_imm_24(handler, args, immediate, whole_op_span)?;
+                VirtualOp::BLOB(imm)
+            }
+            _ => {
+                return Err(handler.emit_err(CompileError::UnrecognizedOp {
+                    op_name: name.clone(),
+                    span: name.span(),
+                }));
+            }
+        })
     }
 
     pub(crate) fn registers(&self) -> BTreeSet<&VirtualRegister> {
@@ -1067,14 +668,13 @@ impl Op {
 }
 
 fn single_reg(
+    handler: &Handler,
     args: &[VirtualRegister],
     immediate: &Option<Ident>,
     whole_op_span: Span,
-) -> CompileResult<VirtualRegister> {
-    let warnings = vec![];
-    let mut errors = vec![];
+) -> Result<VirtualRegister, ErrorEmitted> {
     if args.len() > 1 {
-        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+        handler.emit_err(CompileError::IncorrectNumberOfAsmRegisters {
             expected: 1,
             received: args.len(),
             span: whole_op_span.clone(),
@@ -1084,33 +684,33 @@ fn single_reg(
     let reg = match args.get(0) {
         Some(reg) => reg,
         _ => {
-            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span,
-                expected: 1,
-                received: args.len(),
-            });
-            return err(warnings, errors);
+            return Err(
+                handler.emit_err(CompileError::IncorrectNumberOfAsmRegisters {
+                    span: whole_op_span,
+                    expected: 1,
+                    received: args.len(),
+                }),
+            );
         }
     };
     match immediate {
         None => (),
         Some(i) => {
-            errors.push(CompileError::UnnecessaryImmediate { span: i.span() });
+            handler.emit_err(CompileError::UnnecessaryImmediate { span: i.span() });
         }
     };
 
-    ok(reg.clone(), warnings, errors)
+    Ok(reg.clone())
 }
 
 fn two_regs(
+    handler: &Handler,
     args: &[VirtualRegister],
     immediate: &Option<Ident>,
     whole_op_span: Span,
-) -> CompileResult<(VirtualRegister, VirtualRegister)> {
-    let warnings = vec![];
-    let mut errors = vec![];
+) -> Result<(VirtualRegister, VirtualRegister), ErrorEmitted> {
     if args.len() > 2 {
-        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+        handler.emit_err(CompileError::IncorrectNumberOfAsmRegisters {
             span: whole_op_span.clone(),
             expected: 2,
             received: args.len(),
@@ -1120,36 +720,41 @@ fn two_regs(
     let (reg, reg2) = match (args.get(0), args.get(1)) {
         (Some(reg), Some(reg2)) => (reg, reg2),
         _ => {
-            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span,
-                expected: 2,
-                received: args.len(),
-            });
-            return err(warnings, errors);
+            return Err(
+                handler.emit_err(CompileError::IncorrectNumberOfAsmRegisters {
+                    span: whole_op_span,
+                    expected: 2,
+                    received: args.len(),
+                }),
+            );
         }
     };
     match immediate {
         None => (),
-        Some(i) => errors.push(CompileError::UnnecessaryImmediate { span: i.span() }),
+        Some(i) => {
+            handler.emit_err(CompileError::UnnecessaryImmediate { span: i.span() });
+        }
     };
 
-    ok((reg.clone(), reg2.clone()), warnings, errors)
+    Ok((reg.clone(), reg2.clone()))
 }
 
 fn four_regs(
+    handler: &Handler,
     args: &[VirtualRegister],
     immediate: &Option<Ident>,
     whole_op_span: Span,
-) -> CompileResult<(
-    VirtualRegister,
-    VirtualRegister,
-    VirtualRegister,
-    VirtualRegister,
-)> {
-    let warnings = vec![];
-    let mut errors = vec![];
+) -> Result<
+    (
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+    ),
+    ErrorEmitted,
+> {
     if args.len() > 4 {
-        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+        handler.emit_err(CompileError::IncorrectNumberOfAsmRegisters {
             span: whole_op_span.clone(),
             expected: 4,
             received: args.len(),
@@ -1159,18 +764,19 @@ fn four_regs(
     let (reg, reg2, reg3, reg4) = match (args.get(0), args.get(1), args.get(2), args.get(3)) {
         (Some(reg), Some(reg2), Some(reg3), Some(reg4)) => (reg, reg2, reg3, reg4),
         _ => {
-            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span,
-                expected: 4,
-                received: args.len(),
-            });
-            return err(warnings, errors);
+            return Err(
+                handler.emit_err(CompileError::IncorrectNumberOfAsmRegisters {
+                    span: whole_op_span,
+                    expected: 4,
+                    received: args.len(),
+                }),
+            );
         }
     };
     match immediate {
         None => (),
         Some(i) => {
-            errors.push(CompileError::MissingImmediate { span: i.span() });
+            handler.emit_err(CompileError::MissingImmediate { span: i.span() });
         }
     };
 
@@ -1203,22 +809,17 @@ fn four_regs(
     // Immediate Value.
     pub type ImmediateValue = u32;
 
-    ok(
-        (reg.clone(), reg2.clone(), reg3.clone(), reg4.clone()),
-        warnings,
-        errors,
-    )
+    Ok((reg.clone(), reg2.clone(), reg3.clone(), reg4.clone()))
 }
 
 fn three_regs(
+    handler: &Handler,
     args: &[VirtualRegister],
     immediate: &Option<Ident>,
     whole_op_span: Span,
-) -> CompileResult<(VirtualRegister, VirtualRegister, VirtualRegister)> {
-    let warnings = vec![];
-    let mut errors = vec![];
+) -> Result<(VirtualRegister, VirtualRegister, VirtualRegister), ErrorEmitted> {
     if args.len() > 3 {
-        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+        handler.emit_err(CompileError::IncorrectNumberOfAsmRegisters {
             span: whole_op_span.clone(),
             expected: 3,
             received: args.len(),
@@ -1228,32 +829,32 @@ fn three_regs(
     let (reg, reg2, reg3) = match (args.get(0), args.get(1), args.get(2)) {
         (Some(reg), Some(reg2), Some(reg3)) => (reg, reg2, reg3),
         _ => {
-            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span,
-                expected: 3,
-                received: args.len(),
-            });
-            return err(warnings, errors);
+            return Err(
+                handler.emit_err(CompileError::IncorrectNumberOfAsmRegisters {
+                    span: whole_op_span,
+                    expected: 3,
+                    received: args.len(),
+                }),
+            );
         }
     };
     match immediate {
         None => (),
         Some(i) => {
-            errors.push(CompileError::UnnecessaryImmediate { span: i.span() });
+            handler.emit_err(CompileError::UnnecessaryImmediate { span: i.span() });
         }
     };
 
-    ok((reg.clone(), reg2.clone(), reg3.clone()), warnings, errors)
+    Ok((reg.clone(), reg2.clone(), reg3.clone()))
 }
 fn single_imm_24(
+    handler: &Handler,
     args: &[VirtualRegister],
     immediate: &Option<Ident>,
     whole_op_span: Span,
-) -> CompileResult<VirtualImmediate24> {
-    let warnings = vec![];
-    let mut errors = vec![];
+) -> Result<VirtualImmediate24, ErrorEmitted> {
     if !args.is_empty() {
-        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+        handler.emit_err(CompileError::IncorrectNumberOfAsmRegisters {
             span: whole_op_span.clone(),
             expected: 0,
             received: args.len(),
@@ -1261,16 +862,16 @@ fn single_imm_24(
     }
     let (imm, imm_span): (u64, _) = match immediate {
         None => {
-            errors.push(CompileError::MissingImmediate {
+            return Err(handler.emit_err(CompileError::MissingImmediate {
                 span: whole_op_span,
-            });
-            return err(warnings, errors);
+            }));
         }
         Some(i) => match i.as_str()[1..].parse() {
             Ok(o) => (o, i.span()),
             Err(_) => {
-                errors.push(CompileError::InvalidImmediateValue { span: i.span() });
-                return err(warnings, errors);
+                return Err(
+                    handler.emit_err(CompileError::InvalidImmediateValue { span: i.span() })
+                );
             }
         },
     };
@@ -1278,22 +879,20 @@ fn single_imm_24(
     let imm = match VirtualImmediate24::new(imm, imm_span) {
         Ok(o) => o,
         Err(e) => {
-            errors.push(e);
-            return err(warnings, errors);
+            return Err(handler.emit_err(e));
         }
     };
 
-    ok(imm, warnings, errors)
+    Ok(imm)
 }
 fn single_reg_imm_18(
+    handler: &Handler,
     args: &[VirtualRegister],
     immediate: &Option<Ident>,
     whole_op_span: Span,
-) -> CompileResult<(VirtualRegister, VirtualImmediate18)> {
-    let warnings = vec![];
-    let mut errors = vec![];
+) -> Result<(VirtualRegister, VirtualImmediate18), ErrorEmitted> {
     if args.len() > 1 {
-        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+        handler.emit_err(CompileError::IncorrectNumberOfAsmRegisters {
             span: whole_op_span.clone(),
             expected: 1,
             received: args.len(),
@@ -1302,26 +901,27 @@ fn single_reg_imm_18(
     let reg = match args.get(0) {
         Some(reg) => reg,
         _ => {
-            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span,
-                expected: 1,
-                received: args.len(),
-            });
-            return err(warnings, errors);
+            return Err(
+                handler.emit_err(CompileError::IncorrectNumberOfAsmRegisters {
+                    span: whole_op_span,
+                    expected: 1,
+                    received: args.len(),
+                }),
+            );
         }
     };
     let (imm, imm_span): (u64, _) = match immediate {
         None => {
-            errors.push(CompileError::MissingImmediate {
+            return Err(handler.emit_err(CompileError::MissingImmediate {
                 span: whole_op_span,
-            });
-            return err(warnings, errors);
+            }));
         }
         Some(i) => match i.as_str()[1..].parse() {
             Ok(o) => (o, i.span()),
             Err(_) => {
-                errors.push(CompileError::InvalidImmediateValue { span: i.span() });
-                return err(warnings, errors);
+                return Err(
+                    handler.emit_err(CompileError::InvalidImmediateValue { span: i.span() })
+                );
             }
         },
     };
@@ -1329,22 +929,20 @@ fn single_reg_imm_18(
     let imm = match VirtualImmediate18::new(imm, imm_span) {
         Ok(o) => o,
         Err(e) => {
-            errors.push(e);
-            return err(warnings, errors);
+            return Err(handler.emit_err(e));
         }
     };
 
-    ok((reg.clone(), imm), warnings, errors)
+    Ok((reg.clone(), imm))
 }
 fn two_regs_imm_12(
+    handler: &Handler,
     args: &[VirtualRegister],
     immediate: &Option<Ident>,
     whole_op_span: Span,
-) -> CompileResult<(VirtualRegister, VirtualRegister, VirtualImmediate12)> {
-    let warnings = vec![];
-    let mut errors = vec![];
+) -> Result<(VirtualRegister, VirtualRegister, VirtualImmediate12), ErrorEmitted> {
     if args.len() > 2 {
-        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+        handler.emit_err(CompileError::IncorrectNumberOfAsmRegisters {
             span: whole_op_span.clone(),
             expected: 2,
             received: args.len(),
@@ -1353,26 +951,27 @@ fn two_regs_imm_12(
     let (reg, reg2) = match (args.get(0), args.get(1)) {
         (Some(reg), Some(reg2)) => (reg, reg2),
         _ => {
-            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span,
-                expected: 2,
-                received: args.len(),
-            });
-            return err(warnings, errors);
+            return Err(
+                handler.emit_err(CompileError::IncorrectNumberOfAsmRegisters {
+                    span: whole_op_span,
+                    expected: 2,
+                    received: args.len(),
+                }),
+            );
         }
     };
     let (imm, imm_span): (u64, _) = match immediate {
         None => {
-            errors.push(CompileError::MissingImmediate {
+            return Err(handler.emit_err(CompileError::MissingImmediate {
                 span: whole_op_span,
-            });
-            return err(warnings, errors);
+            }));
         }
         Some(i) => match i.as_str()[1..].parse() {
             Ok(o) => (o, i.span()),
             Err(_) => {
-                errors.push(CompileError::InvalidImmediateValue { span: i.span() });
-                return err(warnings, errors);
+                return Err(
+                    handler.emit_err(CompileError::InvalidImmediateValue { span: i.span() })
+                );
             }
         },
     };
@@ -1380,12 +979,11 @@ fn two_regs_imm_12(
     let imm = match VirtualImmediate12::new(imm, imm_span) {
         Ok(o) => o,
         Err(e) => {
-            errors.push(e);
-            return err(warnings, errors);
+            return Err(handler.emit_err(e));
         }
     };
 
-    ok((reg.clone(), reg2.clone(), imm), warnings, errors)
+    Ok((reg.clone(), reg2.clone(), imm))
 }
 
 impl fmt::Display for Op {
@@ -1440,6 +1038,7 @@ impl fmt::Display for VirtualOp {
             SUBI(a, b, c) => write!(fmtr, "subi {a} {b} {c}"),
             XOR(a, b, c) => write!(fmtr, "xor {a} {b} {c}"),
             XORI(a, b, c) => write!(fmtr, "xori {a} {b} {c}"),
+            WQOP(a, b, c, d) => write!(fmtr, "wqop {a} {b} {c} {d}"),
 
             /* Control Flow Instructions */
             JMP(a) => write!(fmtr, "jmp {a}"),

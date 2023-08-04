@@ -7,7 +7,8 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{token::Delimiter, CodeBlockContents};
+use sway_ast::CodeBlockContents;
+use sway_types::ast::Delimiter;
 
 impl Format for CodeBlockContents {
     fn format(

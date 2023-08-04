@@ -16,7 +16,7 @@ env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
   RUST_VERSION: 1.71.0
-  NIGHTLY_RUST_VERSION: nightly-2023-02-08
+  NIGHTLY_RUST_VERSION: nightly-2023-04-01
 
 jobs:
   build-sway-lib-core:
@@ -240,7 +240,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.18.2
+        image: ghcr.io/fuellabs/fuel-core:v0.19.1
         ports:
           - 4000:4000
     steps:

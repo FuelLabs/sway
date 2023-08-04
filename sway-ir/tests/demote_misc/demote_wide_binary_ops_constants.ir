@@ -1,0 +1,22 @@
+script {
+    entry fn main() -> u256 {
+        entry():
+        v0 = const u256 0x0000000000000000000000000000000000000000000000000000000000000001
+        v1 = const u256 0x0000000000000000000000000000000000000000000000000000000000000002
+        v2 = add v0, v1
+        ret u256 v2
+    }
+}
+
+// regex: VAL=v\d+
+// regex: ID=[[:alpha:]0-9_]+
+
+// check: v0 = get_local ptr u256, __wide_lhs
+// check: v1 = const u256 0x0000000000000000000000000000000000000000000000000000000000000001
+// check: store v1 to v0
+// check: v2 = get_local ptr u256, __wide_rhs
+// check: v3 = const u256 0x0000000000000000000000000000000000000000000000000000000000000002
+// check: store v3 to v2
+// check: v4 = get_local ptr u256, __wide_result
+// check: wide add v0, v2 to v4
+// check: v5 = load v4
