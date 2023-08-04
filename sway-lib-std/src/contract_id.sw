@@ -16,7 +16,7 @@ impl core::ops::Eq for ContractId {
 }
 
 /// Functions for casting between the `b256` and `ContractId` types.
-impl From<b256> for ContractId { HEAD
+impl From<b256> for ContractId { 
     /// Casts raw `b256` data to a `ContractId`.
     /// 
     /// # Arguments
