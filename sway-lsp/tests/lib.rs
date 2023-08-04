@@ -690,7 +690,7 @@ async fn go_to_definition_for_paths() {
     };
     // DeepStruct
     let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
-    definition_check_with_req_offset(&mut service, &mut go_to, 33, 9, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 33, 37, &mut i).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
