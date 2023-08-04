@@ -339,7 +339,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
 
     fn verify_wide_modular_op(
         &self,
-        op: &BinaryOpKind,
+        _op: &BinaryOpKind,
         result: &Value,
         arg1: &Value,
         arg2: &Value,
@@ -371,7 +371,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
 
     fn verify_wide_binary_op(
         &self,
-        op: &BinaryOpKind,
+        _op: &BinaryOpKind,
         result: &Value,
         arg1: &Value,
         arg2: &Value,
