@@ -109,21 +109,12 @@ pub(crate) enum AllocatedOpcode {
         AllocatedRegister,
         VirtualImmediate06,
     ),
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     WQCM(
         AllocatedRegister,
         AllocatedRegister,
         AllocatedRegister,
         VirtualImmediate06,
     ),
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
     /* Conrol Flow Instructions */
     JMP(AllocatedRegister),
@@ -279,16 +270,7 @@ impl AllocatedOpcode {
             WQOP(_, _, _, _) => vec![],
             WQML(_, _, _, _) => vec![],
             WQDV(_, _, _, _) => vec![],
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             WQCM(r1, _, _, _) => vec![r1],
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
             /* Control Flow Instructions */
             JMP(_r1) => vec![],
@@ -405,16 +387,7 @@ impl fmt::Display for AllocatedOpcode {
             WQOP(a, b, c, d) => write!(fmtr, "wqop {a} {b} {c} {d}"),
             WQML(a, b, c, d) => write!(fmtr, "wqml {a} {b} {c} {d}"),
             WQDV(a, b, c, d) => write!(fmtr, "wqdv {a} {b} {c} {d}"),
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             WQCM(a, b, c, d) => write!(fmtr, "wqcm {a} {b} {c} {d}"),
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
             /* Control Flow Instructions */
             JMP(a) => write!(fmtr, "jmp {a}"),
@@ -569,7 +542,7 @@ impl AllocatedOp {
                 op::WQDV::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
             }
             WQCM(a, b, c, d) => {
-                op::WQCM::new(a.to_reg_id(), b.to_reg_id(),  c.to_reg_id(), d.value.into()).into()
+                op::WQCM::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
             }
 
             /* Control Flow Instructions */

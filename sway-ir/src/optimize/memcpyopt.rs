@@ -4,9 +4,9 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    get_symbol, get_symbols, AnalysisResults, Block, Context, EscapedSymbols, Function,
-    Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type, Value,
-    ValueDatum, ESCAPED_SYMBOLS_NAME,
+    get_symbol, get_symbols, AnalysisResults, Block, Context, EscapedSymbols,
+    Function, Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type,
+    Value, ValueDatum, ESCAPED_SYMBOLS_NAME,
 };
 
 pub const MEMCPYOPT_NAME: &str = "memcpyopt";

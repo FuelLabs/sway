@@ -54,9 +54,6 @@ impl VirtualImmediate06 {
         }
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     pub fn wide_cmp(op: WideCmp, rhs_indirect: bool) -> VirtualImmediate06 {
         VirtualImmediate06 {
             value: (op as u8) | if rhs_indirect { 32u8 } else { 0 },
@@ -67,47 +64,11 @@ impl VirtualImmediate06 {
         let lhs = if lhs_indirect { 16u8 } else { 0 };
         let rhs = if rhs_indirect { 32u8 } else { 0 };
         VirtualImmediate06 { value: lhs | rhs }
-=======
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-    pub fn wide_mul(lhs_indirect: bool, rhs_indirect: bool) -> VirtualImmediate06 {
-        let lhs = if lhs_indirect { 16u8 } else { 0 };
-        let rhs = if rhs_indirect { 32u8 } else { 0 };
-        VirtualImmediate06 {
-            value: lhs | rhs,
-        }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     }
 
     pub fn wide_div(rhs_indirect: bool) -> VirtualImmediate06 {
         let rhs = if rhs_indirect { 32u8 } else { 0 };
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         VirtualImmediate06 { value: rhs }
-=======
-        VirtualImmediate06 {
-            value: rhs,
-        }
->>>>>>> Stashed changes
-=======
-        VirtualImmediate06 {
-            value: rhs,
-        }
->>>>>>> Stashed changes
-=======
-        VirtualImmediate06 {
-            value: rhs,
-        }
->>>>>>> Stashed changes
     }
 }
 
