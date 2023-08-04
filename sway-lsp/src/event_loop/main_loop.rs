@@ -17,7 +17,7 @@ use std::{fmt, time::Instant};
 
 pub fn run(config: Config, connection: Connection) -> anyhow::Result<()> {
     tracing::info!("initial config: {:#?}", config);
-    ServerStateExt::new(connection.sender).run(connection.receiver)
+    ServerStateExt::new(connection.sender, config).run(connection.receiver)
 }
 
 enum Event {
@@ -33,19 +33,21 @@ pub(crate) enum Task {
 
 impl fmt::Debug for Event {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let debug_non_verbose = |not: &Notification, f: &mut fmt::Formatter<'_>| {
-            f.debug_struct("Notification")
-                .field("method", &not.method)
-                .finish()
-        };
-
         match self {
             Event::Lsp(lsp_server::Message::Notification(not)) => {
                 if notification_is::<lsp_types::notification::DidOpenTextDocument>(not)
                     || notification_is::<lsp_types::notification::DidChangeTextDocument>(not)
                 {
-                    return debug_non_verbose(not, f);
+                    return f.debug_struct("Notification")
+                    .field("method", &not.method)
+                    .finish();
                 }
+            }
+            Event::Lsp(lsp_server::Message::Request(req)) => {
+                return f.debug_struct("Request")
+                    .field("id", &req.id)
+                    .field("method", &req.method)
+                    .finish();
             }
             Event::Task(Task::Response(resp)) => {
                 return f
@@ -121,6 +123,13 @@ impl ServerStateExt {
                 }
             }
         }
+
+        let loop_duration = loop_start.elapsed();
+        if loop_duration > std::time::Duration::from_millis(100) {
+            tracing::warn!("overly long loop turn took {loop_duration:?} : {event_dbg_msg}");
+        } else {
+            tracing::info!("loop turn took {loop_duration:?} : {event_dbg_msg}");
+        }
         Ok(())
     }
 
@@ -185,9 +194,9 @@ impl ServerStateExt {
             // requests. Instead, we run these request handlers on higher priority
             // threads in the threadpool.
             //.on_latency_sensitive::<lsp_types::request::Completion>(handlers::handle_completion)
-            // .on_latency_sensitive::<lsp_types::request::SemanticTokensFullRequest>(
-            //     handlers::handle_semantic_tokens_full,
-            // )
+            .on_latency_sensitive::<lsp_types::request::SemanticTokensFullRequest>(
+                handlers::handle_semantic_tokens_full_snap,
+            )
             // Formatting is not caused by the user typing,
             // but it does qualify as latency-sensitive
             // because a delay before formatting is applied
@@ -216,11 +225,11 @@ impl ServerStateExt {
             not: Some(not),
             server_state: self,
         }
-        //.on_sync_mut::<notifs::Cancel>(handlers::handle_cancel)?
+        .on_sync_mut::<notifs::Cancel>(handlers::handle_cancel)?
         .on_sync_mut::<notifs::DidOpenTextDocument>(handlers::handle_did_open_text_document)?
-        .on_sync_mut::<notifs::DidChangeTextDocument>(handlers::handle_did_change_text_document)?
-        //.on_sync_mut::<notifs::DidSaveTextDocument>(handlers::handle_did_save_text_document)?
-        //.on_sync_mut::<notifs::DidChangeWatchedFiles>(handlers::handle_did_change_watched_files)?
+        .on_did_change::<notifs::DidChangeTextDocument>(handlers::handle_did_change_text_document)?
+        .on_sync_mut::<notifs::DidSaveTextDocument>(handlers::handle_did_save_text_document)?
+        // .on_sync_mut::<notifs::DidChangeWatchedFiles>(handlers::handle_did_change_watched_files)?
         .finish();
         Ok(())
     }

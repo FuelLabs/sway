@@ -16,6 +16,8 @@ pub async fn handle_did_open_text_document_async(
     state: &ServerState,
     params: DidOpenTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
+    tracing::info!("did_open async begin");
+
     let (uri, session) = state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)?;
@@ -28,6 +30,7 @@ pub async fn handle_did_open_text_document_async(
             .parse_project(uri, params.text_document.uri, session.clone())
             .await;
     }
+    tracing::info!("did_open async end");
     Ok(())
 }
 
@@ -35,6 +38,8 @@ pub async fn handle_did_change_text_document_async(
     state: &ServerState,
     params: DidChangeTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
+    tracing::info!("did_change async begin");
+
     let (uri, session) = state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)?;
@@ -42,6 +47,8 @@ pub async fn handle_did_change_text_document_async(
     state
         .parse_project(uri, params.text_document.uri, session.clone())
         .await;
+
+    tracing::info!("did_change async end");
     Ok(())
 }
 
@@ -56,6 +63,7 @@ pub(crate) async fn handle_did_save_text_document_async(
     state
         .parse_project(uri, params.text_document.uri, session.clone())
         .await;
+
     Ok(())
 }
 
@@ -82,6 +90,8 @@ pub(crate) fn handle_did_open_text_document(
     ext: &mut ServerStateExt,
     params: DidOpenTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
+    tracing::info!("did_open begin");
+
     let (uri, session) = ext
         .state
         .sessions
@@ -93,6 +103,8 @@ pub(crate) fn handle_did_open_text_document(
             ext.state.diagnostics(&uri, session),
         );
     }
+
+    tracing::info!("did_open end");
     Ok(())
 }
 
@@ -101,6 +113,7 @@ pub(crate) fn handle_did_change_text_document(
     ext: &mut ServerStateExt,
     params: DidChangeTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
+    tracing::info!("did_change begin");
     let (uri, session) = ext
         .state
         .sessions
@@ -112,6 +125,7 @@ pub(crate) fn handle_did_change_text_document(
             ext.state.diagnostics(&uri, session),
         );
     }
+    tracing::info!("did_change end");
     Ok(())
 }
 
@@ -135,10 +149,11 @@ pub(crate) fn handle_did_save_text_document(
 }
 
 #[cfg(feature = "custom-event-loop")]
-pub(crate) fn handle_cancel(state: &mut ServerStateExt, params: lsp_types::CancelParams) {
+pub(crate) fn handle_cancel(state: &mut ServerStateExt, params: lsp_types::CancelParams) -> Result<(), LanguageServerError> {
     let id: lsp_server::RequestId = match params.id {
         lsp_types::NumberOrString::Number(id) => id.into(),
         lsp_types::NumberOrString::String(id) => id.into(),
     };
     state.cancel(id);
+    Ok(())
 }

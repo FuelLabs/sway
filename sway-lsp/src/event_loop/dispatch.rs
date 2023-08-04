@@ -366,4 +366,57 @@ impl<'a> NotificationDispatcher<'a> {
             }
         }
     }
+
+    //experiemental 
+    pub(crate) fn on_did_change<N>(
+        &mut self,
+        f: fn(&mut ServerStateExt, N::Params) -> Result<(), LanguageServerError>,
+    ) -> anyhow::Result<&mut Self>
+    where
+        N: lsp_types::notification::Notification<Params = lsp_types::DidChangeTextDocumentParams>,
+        N::Params: DeserializeOwned + Send,
+    {
+        let not = match self.not.take() {
+            Some(it) => it,
+            None => return Ok(self),
+        };
+        let params = match not.extract::<N::Params>(N::METHOD) {
+            Ok(it) => it,
+            Err(ExtractError::JsonError { method, error }) => {
+                panic!("Invalid request\nMethod: {method}\n error: {error}",)
+            }
+            Err(ExtractError::MethodMismatch(not)) => {
+                self.not = Some(not);
+                return Ok(self);
+            }
+        };
+
+        tracing::info!("did_change begin before thread");
+
+        self.server_state
+        .event_loop_state
+        .task_pool
+        .handle
+        .spawn(ThreadIntent::Worker, {
+            let state = self.server_state.snapshot();
+            move || {
+                let (uri, session) = state.sessions
+                    .uri_and_session_from_workspace(&params.text_document.uri).unwrap();
+                session.write_changes_to_file(&uri, params.content_changes).unwrap();
+                if session.parse_project(&uri).unwrap() {
+                    eprintln!("project parsed!!!!");
+                }
+                //f(world, params)
+
+                // dummy task for now
+                Task::Response(lsp_server::Response::new_err(
+                    1.into(),
+                    lsp_server::ErrorCode::ContentModified as i32,
+                    "content modified".to_string(),
+                ))
+            }
+        }); 
+        tracing::info!("did_change thread spawned");
+        Ok(self)
+    }
 }

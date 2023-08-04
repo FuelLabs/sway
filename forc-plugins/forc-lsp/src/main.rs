@@ -12,9 +12,14 @@ use clap::Parser;
 )]
 struct App {}
 
-#[tokio::main]
-async fn main() {
-    App::parse();
+// #[tokio::main]
+// async fn main() {
+//     App::parse();
+//     sway_lsp::start().await
+// }
 
-    sway_lsp::start().await
+fn main() {
+    eprintln!("STARTING FORC-LSP");
+    App::parse();
+    sway_lsp::start_custom_event_loop();
 }

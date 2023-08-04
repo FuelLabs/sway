@@ -57,8 +57,9 @@ pub struct ServerStateSnapshot {
 }
 
 impl ServerStateExt {
-    pub fn new(sender: crossbeam_channel::Sender<lsp_server::Message>) -> ServerStateExt {
+    pub fn new(sender: crossbeam_channel::Sender<lsp_server::Message>, config: Config) -> ServerStateExt {
         let state = ServerState::default();
+        *state.config.write() = config;
         let event_loop_state = EventLoopState::new(sender);
         ServerStateExt {
             state,
