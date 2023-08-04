@@ -157,9 +157,16 @@ pub enum FuelVmInstruction {
     },
     WideBinaryOp {
         op: BinaryOpKind,
+        result: Value,
         arg1: Value,
         arg2: Value,
+    },
+    WideModularOp {
+        op: BinaryOpKind,
         result: Value,
+        arg1: Value,
+        arg2: Value,
+        arg3: Value,
     },
     WideCmpOp {
         op: Predicate,
@@ -301,6 +308,9 @@ impl Instruction {
             Instruction::FuelVm(FuelVmInstruction::WideCmpOp { .. }) => {
                 Some(Type::get_bool(context))
             }
+            Instruction::FuelVm(FuelVmInstruction::WideModularOp { result, .. }) => {
+                result.get_type(context)
+            }
         }
     }
 
@@ -408,6 +418,13 @@ impl Instruction {
                     arg1, arg2, result, ..
                 } => vec![*result, *arg1, *arg2],
                 FuelVmInstruction::WideCmpOp { arg1, arg2, .. } => vec![*arg1, *arg2],
+                FuelVmInstruction::WideModularOp {
+                    result,
+                    arg1,
+                    arg2,
+                    arg3,
+                    ..
+                } => vec![*result, *arg1, *arg2, *arg3],
             },
         }
     }
@@ -565,6 +582,18 @@ impl Instruction {
                     replace(arg1);
                     replace(arg2);
                 }
+                FuelVmInstruction::WideModularOp {
+                    result,
+                    arg1,
+                    arg2,
+                    arg3,
+                    ..
+                } => {
+                    replace(result);
+                    replace(arg1);
+                    replace(arg2);
+                    replace(arg3);
+                }
             },
         }
     }
@@ -586,7 +615,8 @@ impl Instruction {
             | Instruction::Store { .. }
             | Instruction::Ret(..)
             | Instruction::FuelVm(FuelVmInstruction::WideBinaryOp { .. })
-            | Instruction::FuelVm(FuelVmInstruction::WideCmpOp { .. }) => true,
+            | Instruction::FuelVm(FuelVmInstruction::WideCmpOp { .. })
+            | Instruction::FuelVm(FuelVmInstruction::WideModularOp { .. }) => true,
 
             Instruction::UnaryOp { .. }
             | Instruction::BinaryOp { .. }
@@ -737,6 +767,26 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
                 arg1,
                 arg2,
                 result
+            })
+        )
+    }
+
+    pub fn wide_modular_op(
+        self,
+        op: BinaryOpKind,
+        result: Value,
+        arg1: Value,
+        arg2: Value,
+        arg3: Value,
+    ) -> Value {
+        make_instruction!(
+            self,
+            Instruction::FuelVm(FuelVmInstruction::WideModularOp {
+                op,
+                result,
+                arg1,
+                arg2,
+                arg3,
             })
         )
     }

@@ -79,6 +79,12 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
         VirtualImmediate06,
     ),
+    WQAM(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+    ),
 
     /* Control Flow Instructions */
     JMP(VirtualRegister),
@@ -235,6 +241,7 @@ impl VirtualOp {
             WQML(r1, r2, r3, _) => vec![r1, r2, r3],
             WQDV(r1, r2, r3, _) => vec![r1, r2, r3],
             WQCM(r1, r2, r3, _) => vec![r1, r2, r3],
+            WQAM(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
 
             /* Control Flow Instructions */
             JMP(r1) => vec![r1],
@@ -348,6 +355,7 @@ impl VirtualOp {
             WQML(r1, r2, r3, _) => vec![r1, r2, r3],
             WQDV(r1, r2, r3, _) => vec![r1, r2, r3],
             WQCM(_, r2, r3, _) => vec![r2, r3],
+            WQAM(_, r2, r3, r4) => vec![r2, r3, r4],
 
             /* Control Flow Instructions */
             JMP(r1) => vec![r1],
@@ -461,6 +469,7 @@ impl VirtualOp {
             WQML(_, _, _, _) => vec![],
             WQDV(_, _, _, _) => vec![],
             WQCM(r1, _, _, _) => vec![r1],
+            WQAM(r1, _, _, _) => vec![r1],
 
             /* Control Flow Instructions */
             JMP(_r1) => vec![],
@@ -729,6 +738,12 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
                 i.clone(),
+            ),
+            WQAM(r1, r2, r3, r4) => Self::WQAM(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
             ),
 
             /* Control Flow Instructions */
@@ -1171,6 +1186,12 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
                 imm.clone(),
+            ),
+            WQAM(reg1, reg2, reg3, reg4) => AllocatedOpcode::WQAM(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                map_reg(&mapping, reg4),
             ),
 
             /* Control Flow Instructions */

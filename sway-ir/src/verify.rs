@@ -238,10 +238,17 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                         } => self.verify_state_store_word(dst_val, key)?,
                         FuelVmInstruction::WideBinaryOp {
                             op,
+                            result,
                             arg1,
                             arg2,
+                        } => self.verify_wide_binary_op(op, result, arg1, arg2)?,
+                        FuelVmInstruction::WideModularOp {
+                            op,
                             result,
-                        } => self.verify_wide_binary_op(op, arg1, arg2, result)?,
+                            arg1,
+                            arg2,
+                            arg3,
+                        } => self.verify_wide_modular_op(op, result, arg1, arg2, arg3)?,
                         FuelVmInstruction::WideCmpOp { op, arg1, arg2 } => {
                             self.verify_wide_cmp(op, arg1, arg2)?
                         }
@@ -330,31 +337,63 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         }
     }
 
-    fn verify_wide_binary_op(
+    fn verify_wide_modular_op(
         &self,
-        _: &BinaryOpKind,
+        op: &BinaryOpKind,
+        result: &Value,
         arg1: &Value,
         arg2: &Value,
-        result: &Value,
+        arg3: &Value,
     ) -> Result<(), IrError> {
+        let result_ty = result
+            .get_type(self.context)
+            .ok_or(IrError::VerifyBinaryOpIncorrectArgType)?;
         let arg1_ty = arg1
             .get_type(self.context)
             .ok_or(IrError::VerifyBinaryOpIncorrectArgType)?;
         let arg2_ty = arg2
             .get_type(self.context)
             .ok_or(IrError::VerifyBinaryOpIncorrectArgType)?;
-        let result_ty = result
+        let arg3_ty = arg3
             .get_type(self.context)
             .ok_or(IrError::VerifyBinaryOpIncorrectArgType)?;
 
-        if arg1_ty.is_ptr(self.context)
-            && arg2_ty.is_ptr(self.context)
-            && result_ty.is_ptr(self.context)
+        if !arg1_ty.is_ptr(self.context)
+            || !arg2_ty.is_ptr(self.context)
+            || !arg3_ty.is_ptr(self.context)
+            || !result_ty.is_ptr(self.context)
         {
-            Ok(())
-        } else {
-            Err(IrError::VerifyBinaryOpIncorrectArgType)
+            return Err(IrError::VerifyBinaryOpIncorrectArgType);
         }
+
+        Ok(())
+    }
+
+    fn verify_wide_binary_op(
+        &self,
+        op: &BinaryOpKind,
+        result: &Value,
+        arg1: &Value,
+        arg2: &Value,
+    ) -> Result<(), IrError> {
+        let result_ty = result
+            .get_type(self.context)
+            .ok_or(IrError::VerifyBinaryOpIncorrectArgType)?;
+        let arg1_ty = arg1
+            .get_type(self.context)
+            .ok_or(IrError::VerifyBinaryOpIncorrectArgType)?;
+        let arg2_ty = arg2
+            .get_type(self.context)
+            .ok_or(IrError::VerifyBinaryOpIncorrectArgType)?;
+
+        if !arg1_ty.is_ptr(self.context)
+            || !arg2_ty.is_ptr(self.context)
+            || !result_ty.is_ptr(self.context)
+        {
+            return Err(IrError::VerifyBinaryOpIncorrectArgType);
+        }
+
+        Ok(())
     }
 
     fn verify_binary_op(

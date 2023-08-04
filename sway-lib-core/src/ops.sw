@@ -188,6 +188,12 @@ pub trait Mod {
     fn modulo(self, other: Self) -> Self;
 }
 
+impl Mod for u256 {
+    fn modulo(self, other: Self) -> Self {
+        __mod(self, other)
+    }
+}
+
 impl Mod for u64 {
     fn modulo(self, other: Self) -> Self {
         __mod(self, other)

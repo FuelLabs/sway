@@ -10,8 +10,8 @@
 ///   values.
 /// - Fuel WIde binary operators: Demote binary operands bigger than 64 bits.
 use crate::{
-    asm::AsmArg, AnalysisResults, BinaryOpKind, Context, FuelVmInstruction, Function, Instruction,
-    IrError, Pass, PassMutability, Predicate, ScopedPass, Type, Value,
+    asm::AsmArg, AnalysisResults, BinaryOpKind, Constant, Context, FuelVmInstruction, Function,
+    Instruction, IrError, Pass, PassMutability, Predicate, ScopedPass, Type, Value,
 };
 
 use rustc_hash::FxHashMap;
@@ -342,7 +342,7 @@ fn wide_binary_op_demotion(context: &mut Context, function: Function) -> Result<
                     (Some(256), Some(256)) => {
                         use BinaryOpKind::*;
                         match op {
-                            Add | Sub | Mul | Div => Some((block, instr_val)),
+                            Add | Sub | Mul | Div | Mod => Some((block, instr_val)),
                             _ => todo!(),
                         }
                     }
@@ -451,21 +451,58 @@ fn wide_binary_op_demotion(context: &mut Context, function: Function) -> Result<
             (true, arg2)
         };
 
+        // For MOD we need a local zero as RHS of the add operation
+        let (wide_op, get_local_zero) = match op {
+            BinaryOpKind::Mod => {
+                let initializer = Constant::new_uint(context, 256, 0);
+                let local_zero = function.new_unique_local_var(
+                    context,
+                    "__wide_zero".to_owned(),
+                    operand_ty,
+                    Some(initializer),
+                    true,
+                );
+                let get_local_zero =
+                    Value::new_instruction(context, Instruction::GetLocal(local_zero))
+                        .add_metadatum(context, binary_op_metadata);
+
+                (
+                    Value::new_instruction(
+                        context,
+                        Instruction::FuelVm(FuelVmInstruction::WideModularOp {
+                            op,
+                            result: get_result_local,
+                            arg1: get_arg1,
+                            arg2: get_local_zero,
+                            arg3: get_arg2,
+                        }),
+                    )
+                    .add_metadatum(context, binary_op_metadata),
+                    Some(get_local_zero),
+                )
+            }
+            _ => (
+                Value::new_instruction(
+                    context,
+                    Instruction::FuelVm(FuelVmInstruction::WideBinaryOp {
+                        op,
+                        arg1: get_arg1,
+                        arg2: get_arg2,
+                        result: get_result_local,
+                    }),
+                )
+                .add_metadatum(context, binary_op_metadata),
+                None,
+            ),
+        };
+
         // Assert all operands are pointers
         assert!(get_arg1.get_type(context).unwrap().is_ptr(context));
         assert!(get_arg2.get_type(context).unwrap().is_ptr(context));
         assert!(get_result_local.get_type(context).unwrap().is_ptr(context));
-
-        let wide_op = Value::new_instruction(
-            context,
-            Instruction::FuelVm(FuelVmInstruction::WideBinaryOp {
-                op,
-                arg1: get_arg1,
-                arg2: get_arg2,
-                result: get_result_local,
-            }),
-        )
-        .add_metadatum(context, binary_op_metadata);
+        if let Some(get_local_zero) = &get_local_zero {
+            assert!(get_local_zero.get_type(context).unwrap().is_ptr(context));
+        }
 
         // We don't have an actual instruction _inserter_ yet, just an appender, so we need to find
         // the ptr_to_int instruction index and insert instructions manually.
@@ -496,6 +533,11 @@ fn wide_binary_op_demotion(context: &mut Context, function: Function) -> Result<
         if let Some((get_rhs_local, store_rhs_local)) = rhs_store {
             block_instrs.insert(idx, store_rhs_local);
             block_instrs.insert(idx, get_rhs_local);
+        }
+
+        // Only for MOD
+        if let Some(get_local_zero) = get_local_zero {
+            block_instrs.insert(idx, get_local_zero);
         }
 
         // lhs
