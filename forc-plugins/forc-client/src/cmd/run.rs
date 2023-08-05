@@ -61,7 +61,7 @@ pub struct Command {
     /// Amount to unlock for spending a predicate.
     #[clap(long)]
     pub spend_amount: Option<u64>,
-    /// Receiveng address of the spent predicate assets.
+    /// Receiving address of the spent predicate assets.
     #[clap(long)]
     pub receive_address: Option<Bech32Address>,
 }

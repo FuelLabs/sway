@@ -49,7 +49,7 @@ pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
             .is_ok()
         {
             let is_predicate = false;
-            let script_pkg_receipts = run_script_pkg(
+            let script_pkg_receipts = run_pkg(
                 &command,
                 &built.descriptor.manifest_file,
                 &built,
@@ -62,7 +62,7 @@ pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
             .is_ok()
         {
             let is_predicate = true;
-            let script_pkg_receipts = run_script_pkg(
+            let script_pkg_receipts = run_pkg(
                 &command,
                 &built.descriptor.manifest_file,
                 &built,
