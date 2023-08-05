@@ -8,7 +8,11 @@ use sway_error::{
 };
 
 use crate::{
-    language::{parsed::*, ty, Visibility},
+    language::{
+        parsed::*,
+        ty::{self, TyCodeBlock},
+        Visibility,
+    },
     semantic_analysis::*,
     type_system::*,
 };
@@ -22,9 +26,26 @@ impl ty::TyFunctionDecl {
         is_method: bool,
         is_in_impl_self: bool,
     ) -> Result<Self, ErrorEmitted> {
+        let mut ty_fn_decl = Self::type_check_signature(
+            handler,
+            ctx.by_ref(),
+            fn_decl.clone(),
+            is_method,
+            is_in_impl_self,
+        )?;
+        Self::type_check_body(handler, ctx, fn_decl, &mut ty_fn_decl)
+    }
+
+    pub fn type_check_signature(
+        handler: &Handler,
+        mut ctx: TypeCheckContext,
+        fn_decl: FunctionDeclaration,
+        is_method: bool,
+        is_in_impl_self: bool,
+    ) -> Result<Self, ErrorEmitted> {
         let FunctionDeclaration {
             name,
-            body,
+            body: _,
             parameters,
             span,
             attributes,
@@ -102,6 +123,72 @@ impl ty::TyFunctionDecl {
             )
             .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
 
+        let (visibility, is_contract_call) = if is_method {
+            if is_in_impl_self {
+                (visibility, false)
+            } else {
+                (Visibility::Public, false)
+            }
+        } else {
+            (visibility, matches!(ctx.abi_mode(), AbiMode::ImplAbiFn(..)))
+        };
+
+        let function_decl = ty::TyFunctionDecl {
+            name,
+            body: TyCodeBlock::default(),
+            parameters: new_parameters,
+            implementing_type: None,
+            span,
+            attributes,
+            return_type,
+            type_parameters: new_type_parameters,
+            visibility,
+            is_contract_call,
+            purity,
+            where_clause,
+        };
+
+        Ok(function_decl)
+    }
+
+    pub fn type_check_body(
+        handler: &Handler,
+        mut ctx: TypeCheckContext,
+        fn_decl: FunctionDeclaration,
+        ty_fn_decl: &mut Self,
+    ) -> Result<Self, ErrorEmitted> {
+        let FunctionDeclaration { body, .. } = fn_decl;
+
+        let ty::TyFunctionDecl {
+            parameters,
+            purity,
+            return_type,
+            type_parameters,
+            ..
+        } = ty_fn_decl;
+
+        let type_engine = ctx.engines.te();
+        let engines = ctx.engines();
+
+        // create a namespace for the function
+        let mut fn_namespace = ctx.namespace.clone();
+        let mut ctx = ctx
+            .by_ref()
+            .scoped(&mut fn_namespace)
+            .with_purity(*purity)
+            .with_const_shadowing_mode(ConstShadowingMode::Sequential)
+            .disallow_functions();
+
+        // Insert the previously type checked type parameters into the current namespace.
+        for p in type_parameters {
+            p.insert_into_namespace(handler, ctx.by_ref())?;
+        }
+
+        // Insert the previously type checked function parameters into the namespace.
+        for p in parameters {
+            p.insert_into_namespace(handler, ctx.by_ref());
+        }
+
         // type check the function body
         //
         // If there are no implicit block returns, then we do not want to type check them, so we
@@ -109,7 +196,7 @@ impl ty::TyFunctionDecl {
         let (body, _implicit_block_return) = {
             let ctx = ctx
                 .by_ref()
-                .with_purity(purity)
+                .with_purity(*purity)
                 .with_help_text("Function body's return type does not match up with its return type annotation.")
                 .with_type_annotation(return_type.type_id);
             ty::TyCodeBlock::type_check(handler, ctx, body).unwrap_or_else(|err| {
@@ -134,16 +221,6 @@ impl ty::TyFunctionDecl {
             return_type.type_id,
         )?;
 
-        let (visibility, is_contract_call) = if is_method {
-            if is_in_impl_self {
-                (visibility, false)
-            } else {
-                (Visibility::Public, false)
-            }
-        } else {
-            (visibility, matches!(ctx.abi_mode(), AbiMode::ImplAbiFn(..)))
-        };
-
         return_type.type_id.check_type_parameter_bounds(
             handler,
             &ctx,
@@ -151,22 +228,8 @@ impl ty::TyFunctionDecl {
             vec![],
         )?;
 
-        let function_decl = ty::TyFunctionDecl {
-            name,
-            body,
-            parameters: new_parameters,
-            implementing_type: None,
-            span,
-            attributes,
-            return_type,
-            type_parameters: new_type_parameters,
-            visibility,
-            is_contract_call,
-            purity,
-            where_clause,
-        };
-
-        Ok(function_decl)
+        ty_fn_decl.body = body;
+        Ok(ty_fn_decl.clone())
     }
 }
 
