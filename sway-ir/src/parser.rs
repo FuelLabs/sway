@@ -176,6 +176,7 @@ mod ir_builder {
 
             rule operation() -> IrAstOperation
                 = op_asm()
+                / op_wide_binary()
                 / op_branch()
                 / op_bitcast()
                 / op_unary()
@@ -227,6 +228,11 @@ mod ir_builder {
             rule op_unary() -> IrAstOperation
                 = op: unary_op_kind() arg1:id() {
                     IrAstOperation::UnaryOp(op, arg1)
+                }
+
+            rule op_wide_binary() -> IrAstOperation
+                = "wide" _ op:binary_op_kind() arg1:id() comma() arg2:id() "to" _ result:id()  {
+                    IrAstOperation::WideBinaryOp(op, arg1, arg2, result)
                 }
 
             rule op_binary() -> IrAstOperation
@@ -703,6 +709,7 @@ mod ir_builder {
         StateStoreQuadWord(String, String, String),
         StateStoreWord(String, String),
         Store(String, String),
+        WideBinaryOp(BinaryOpKind, String, String, String),
     }
 
     #[derive(Debug)]
@@ -1017,10 +1024,7 @@ mod ir_builder {
         ) {
             let block = named_blocks.get(&ir_block.label).unwrap();
             for ins in ir_block.instructions {
-                let opt_metadata = ins
-                    .metadata
-                    .map(|mdi| self.md_map.get(&mdi).unwrap())
-                    .copied();
+                let opt_metadata = ins.metadata.and_then(|mdi| self.md_map.get(&mdi)).copied();
                 let ins_val = match ins.op {
                     IrAstOperation::Asm(args, return_type, return_name, ops, meta_idx) => {
                         let args = args
@@ -1075,6 +1079,15 @@ mod ir_builder {
                     IrAstOperation::UnaryOp(op, arg) => block
                         .ins(context)
                         .unary_op(op, *val_map.get(&arg).unwrap())
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::WideBinaryOp(op, arg1, arg2, result) => block
+                        .ins(context)
+                        .wide_binary_op(
+                            op,
+                            *val_map.get(&arg1).unwrap(),
+                            *val_map.get(&arg2).unwrap(),
+                            *val_map.get(&result).unwrap(),
+                        )
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::BinaryOp(op, arg1, arg2) => block
                         .ins(context)

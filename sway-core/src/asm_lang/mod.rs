@@ -1038,6 +1038,7 @@ impl fmt::Display for VirtualOp {
             SUBI(a, b, c) => write!(fmtr, "subi {a} {b} {c}"),
             XOR(a, b, c) => write!(fmtr, "xor {a} {b} {c}"),
             XORI(a, b, c) => write!(fmtr, "xori {a} {b} {c}"),
+            WQOP(a, b, c, d) => write!(fmtr, "wqop {a} {b} {c} {d}"),
 
             /* Control Flow Instructions */
             JMP(a) => write!(fmtr, "jmp {a}"),

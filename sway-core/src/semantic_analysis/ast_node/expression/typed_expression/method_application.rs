@@ -36,7 +36,7 @@ pub(crate) fn type_check_method_application(
             .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
         args_buf.push_back(
             ty::TyExpression::type_check(handler, ctx, arg.clone())
-                .unwrap_or_else(|_| ty::TyExpression::error(span.clone(), engines)),
+                .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines)),
         );
     }
 
@@ -115,8 +115,9 @@ pub(crate) fn type_check_method_application(
                         .with_type_annotation(type_annotation);
                     contract_call_params_map.insert(
                         param.name.to_string(),
-                        ty::TyExpression::type_check(handler, ctx, param.value)
-                            .unwrap_or_else(|_| ty::TyExpression::error(span.clone(), engines)),
+                        ty::TyExpression::type_check(handler, ctx, param.value).unwrap_or_else(
+                            |err| ty::TyExpression::error(err, span.clone(), engines),
+                        ),
                     );
                 }
                 _ => {
@@ -331,11 +332,11 @@ pub(crate) fn type_check_method_application(
     // constraint with new decl ids based on the new type.
     let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
         handler,
-        ctx.by_ref(),
+        &ctx,
         &method.type_parameters,
         &call_path.span(),
     )?;
-    method.replace_decls(&decl_mapping, ctx.engines());
+    method.replace_decls(&decl_mapping, handler, &ctx)?;
     let return_type = method.return_type.type_id;
     let new_decl_ref = decl_engine
         .insert(method)
@@ -370,40 +371,34 @@ fn unify_arguments_and_parameters(
     let engines = ctx.engines();
     let mut typed_arguments_and_names = vec![];
 
-    let mut error_emitted = None;
-    for (arg, param) in arguments.into_iter().zip(parameters.iter()) {
-        // unify the type of the argument with the type of the param
-        let (warnings, errors) = type_engine.unify_with_self(
-            engines,
-            arg.return_type,
-            param.type_argument.type_id,
-            ctx.self_type(),
-            &arg.span,
-            "This argument's type is not castable to the declared parameter type.",
-            Some(CompileError::ArgumentParameterTypeMismatch {
-                span: arg.span.clone(),
-                provided: engines.help_out(arg.return_type).to_string(),
-                should_be: engines.help_out(param.type_argument.type_id).to_string(),
-            }),
-        );
-        for warn in warnings {
-            handler.emit_warn(warn);
-        }
-        for err in errors.clone() {
-            error_emitted = Some(handler.emit_err(err));
-        }
-        if !errors.is_empty() {
-            continue;
-        }
+    handler.scope(|handler| {
+        for (arg, param) in arguments.into_iter().zip(parameters.iter()) {
+            // unify the type of the argument with the type of the param
+            let unify_res = handler.scope(|handler| {
+                type_engine.unify_with_self(
+                    handler,
+                    engines,
+                    arg.return_type,
+                    param.type_argument.type_id,
+                    ctx.self_type(),
+                    &arg.span,
+                    "This argument's type is not castable to the declared parameter type.",
+                    Some(CompileError::ArgumentParameterTypeMismatch {
+                        span: arg.span.clone(),
+                        provided: engines.help_out(arg.return_type).to_string(),
+                        should_be: engines.help_out(param.type_argument.type_id).to_string(),
+                    }),
+                );
+                Ok(())
+            });
+            if unify_res.is_err() {
+                continue;
+            }
 
-        typed_arguments_and_names.push((param.name.clone(), arg));
-    }
-
-    if let Some(err) = error_emitted {
-        Err(err)
-    } else {
+            typed_arguments_and_names.push((param.name.clone(), arg));
+        }
         Ok(typed_arguments_and_names)
-    }
+    })
 }
 
 pub(crate) fn resolve_method_name(
@@ -425,7 +420,7 @@ pub(crate) fn resolve_method_name(
             // type check the call path
             let type_id = call_path_binding
                 .type_check_with_type_info(handler, &mut ctx)
-                .unwrap_or_else(|_| type_engine.insert(engines, TypeInfo::ErrorRecovery));
+                .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
 
             // find the module that the symbol is in
             let type_info_prefix = ctx

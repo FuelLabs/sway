@@ -3,14 +3,15 @@ use crate::{Parse, ParseToEnd, Peek};
 use core::marker::PhantomData;
 use sway_ast::keywords::Keyword;
 use sway_ast::literal::Literal;
-use sway_ast::token::{
-    Delimiter, DocComment, Group, Punct, PunctKind, Spacing, TokenStream, TokenTree,
-};
+use sway_ast::token::{DocComment, Group, Punct, Spacing, TokenStream, TokenTree};
 use sway_ast::PubToken;
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::parser_error::{ParseError, ParseErrorKind};
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{
+    ast::{Delimiter, PunctKind},
+    Ident, Span, Spanned,
+};
 
 pub struct Parser<'a, 'e> {
     token_trees: &'a [TokenTree],

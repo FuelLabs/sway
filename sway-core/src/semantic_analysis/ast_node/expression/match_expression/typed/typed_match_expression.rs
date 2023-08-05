@@ -26,23 +26,22 @@ impl ty::TyMatchExpression {
         let mut ctx =
             ctx.with_help_text("all branches of a match statement must return the same type");
 
-        let mut error_emitted = None;
-        for branch in branches.into_iter() {
-            let (typed_branch, typed_scrutinee) =
-                match ty::TyMatchBranch::type_check(handler, ctx.by_ref(), &typed_value, branch) {
+        handler.scope(|handler| {
+            for branch in branches.into_iter() {
+                let (typed_branch, typed_scrutinee) = match ty::TyMatchBranch::type_check(
+                    handler,
+                    ctx.by_ref(),
+                    &typed_value,
+                    branch,
+                ) {
                     Ok(res) => res,
-                    Err(err) => {
-                        error_emitted = Some(err);
-                        continue;
-                    }
+                    Err(_) => continue,
                 };
-            typed_branches.push(typed_branch);
-            typed_scrutinees.push(typed_scrutinee);
-        }
-
-        if let Some(err) = error_emitted {
-            return Err(err);
-        }
+                typed_branches.push(typed_branch);
+                typed_scrutinees.push(typed_scrutinee);
+            }
+            Ok(())
+        })?;
 
         let typed_exp = ty::TyMatchExpression {
             value_type_id: typed_value.return_type,

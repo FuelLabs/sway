@@ -31,7 +31,7 @@ impl Handler {
     /// Emit the error `err`.
     pub fn emit_err(&self, err: CompileError) -> ErrorEmitted {
         self.inner.borrow_mut().errors.push(err);
-        ErrorEmitted
+        ErrorEmitted { _priv: () }
     }
 
     /// Emit the warning `warn`.
@@ -39,12 +39,29 @@ impl Handler {
         self.inner.borrow_mut().warnings.push(warn);
     }
 
-    pub fn has_error(&self) -> bool {
+    pub fn has_errors(&self) -> bool {
         !self.inner.borrow().errors.is_empty()
     }
 
-    pub fn has_warning(&self) -> bool {
+    pub fn has_warnings(&self) -> bool {
         !self.inner.borrow().warnings.is_empty()
+    }
+
+    pub fn scope<T>(
+        &self,
+        f: impl FnOnce(&Handler) -> Result<T, ErrorEmitted>,
+    ) -> Result<T, ErrorEmitted> {
+        let scoped_handler = Handler::default();
+        let closure_res = f(&scoped_handler);
+        let had_errors = scoped_handler.has_errors();
+
+        self.append(scoped_handler);
+
+        if had_errors {
+            Err(ErrorEmitted { _priv: () })
+        } else {
+            closure_res
+        }
     }
 
     /// Extract all the errors from this handler.
@@ -71,8 +88,10 @@ impl Handler {
 }
 
 /// Proof that an error was emitted through a `Handler`.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ErrorEmitted;
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ErrorEmitted {
+    _priv: (),
+}
 
 /// We want compile errors and warnings to retain their ordering, since typically
 /// they are grouped by relevance. However, we want to deduplicate them.

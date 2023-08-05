@@ -5,10 +5,9 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_ast::{
-    keywords::CommaToken, punctuated::Punctuated, token::PunctKind, ConfigurableField,
-    StorageField, TypeField,
+    keywords::CommaToken, punctuated::Punctuated, ConfigurableField, StorageField, TypeField,
 };
-use sway_types::{Ident, Spanned};
+use sway_types::{ast::PunctKind, Ident, Spanned};
 
 impl<T, P> Format for Punctuated<T, P>
 where

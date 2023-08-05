@@ -217,7 +217,7 @@ impl Session {
             } = value.unwrap();
 
             // Get a reference to the typed program AST.
-            let typed_program = typed.as_ref().ok_or_else(|| {
+            let typed_program = typed.as_ref().ok().ok_or_else(|| {
                 *diagnostics = get_diagnostics(&warnings, &errors);
                 LanguageServerError::FailedToParse
             })?;

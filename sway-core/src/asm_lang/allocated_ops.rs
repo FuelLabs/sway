@@ -91,6 +91,12 @@ pub(crate) enum AllocatedOpcode {
     SUBI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
     XOR(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     XORI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
+    WQOP(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        VirtualImmediate06,
+    ),
 
     /* Conrol Flow Instructions */
     JMP(AllocatedRegister),
@@ -243,6 +249,7 @@ impl AllocatedOpcode {
             SUBI(r1, _r2, _i) => vec![r1],
             XOR(r1, _r2, _r3) => vec![r1],
             XORI(r1, _r2, _i) => vec![r1],
+            WQOP(_, _, _, _) => vec![],
 
             /* Control Flow Instructions */
             JMP(_r1) => vec![],
@@ -356,6 +363,7 @@ impl fmt::Display for AllocatedOpcode {
             SUBI(a, b, c) => write!(fmtr, "subi {a} {b} {c}"),
             XOR(a, b, c) => write!(fmtr, "xor  {a} {b} {c}"),
             XORI(a, b, c) => write!(fmtr, "xori {a} {b} {c}"),
+            WQOP(a, b, c, d) => write!(fmtr, "wqop {a} {b} {c} {d}"),
 
             /* Control Flow Instructions */
             JMP(a) => write!(fmtr, "jmp {a}"),
@@ -500,6 +508,9 @@ impl AllocatedOp {
             SUBI(a, b, c) => op::SUBI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
             XOR(a, b, c) => op::XOR::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             XORI(a, b, c) => op::XORI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            WQOP(a, b, c, d) => {
+                op::WQOP::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
+            }
 
             /* Control Flow Instructions */
             JMP(a) => op::JMP::new(a.to_reg_id()).into(),

@@ -8,8 +8,8 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{token::Delimiter, ItemImpl, ItemImplItem};
-use sway_types::Spanned;
+use sway_ast::{ItemImpl, ItemImplItem};
+use sway_types::{ast::Delimiter, Spanned};
 
 #[cfg(test)]
 mod tests;

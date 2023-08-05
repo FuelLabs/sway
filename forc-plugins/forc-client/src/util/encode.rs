@@ -4,7 +4,7 @@ use fuel_abi_types::abi::full_program::FullTypeApplication;
 
 /// A wrapper around fuels_core::types::Token, which enables serde de/serialization.
 #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-pub(crate) struct Token(fuels_core::types::Token);
+pub(crate) struct Token(pub(crate) fuels_core::types::Token);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Type {

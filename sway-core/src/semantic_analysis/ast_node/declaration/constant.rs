@@ -41,7 +41,7 @@ impl ty::TyConstantDecl {
                 EnforceTypeArguments::No,
                 None,
             )
-            .unwrap_or_else(|_| type_engine.insert(engines, TypeInfo::ErrorRecovery));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
 
         let mut ctx = ctx
             .by_ref()
@@ -65,7 +65,7 @@ impl ty::TyConstantDecl {
                 }
 
                 let value =
-                    result.unwrap_or_else(|_| ty::TyExpression::error(name.span(), engines));
+                    result.unwrap_or_else(|err| ty::TyExpression::error(err, name.span(), engines));
 
                 Some(value)
             }

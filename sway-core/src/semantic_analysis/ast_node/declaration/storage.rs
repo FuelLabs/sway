@@ -23,32 +23,26 @@ impl ty::TyStorageDecl {
         md_mgr: &mut MetadataManager,
         module: Module,
     ) -> Result<Vec<StorageSlot>, ErrorEmitted> {
-        let mut error_emitted = None;
-        let storage_slots = self
-            .fields
-            .iter()
-            .enumerate()
-            .map(|(i, f)| {
-                f.get_initialized_storage_slots(
-                    engines,
-                    context,
-                    md_mgr,
-                    module,
-                    &StateIndex::new(i),
-                )
-            })
-            .filter_map(|s| {
-                s.map_err(|e| error_emitted = Some(handler.emit_err(e)))
-                    .ok()
-            })
-            .flatten()
-            .collect::<Vec<_>>();
+        handler.scope(|handler| {
+            let storage_slots = self
+                .fields
+                .iter()
+                .enumerate()
+                .map(|(i, f)| {
+                    f.get_initialized_storage_slots(
+                        engines,
+                        context,
+                        md_mgr,
+                        module,
+                        &StateIndex::new(i),
+                    )
+                })
+                .filter_map(|s| s.map_err(|e| handler.emit_err(e)).ok())
+                .flatten()
+                .collect::<Vec<_>>();
 
-        if let Some(err) = error_emitted {
-            Err(err)
-        } else {
             Ok(storage_slots)
-        }
+        })
     }
 }
 

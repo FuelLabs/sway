@@ -21,6 +21,7 @@ use std::{
     fmt,
     fs::{self, File},
     hash::{Hash, Hasher},
+    io::Write,
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
@@ -428,35 +429,43 @@ impl BuiltPackage {
         Ok(())
     }
 
-    /// Writes the ABI in JSON format to the given `path`.
-    pub fn write_json_abi(&self, path: &Path, minify: MinifyOpts) -> Result<()> {
+    pub fn json_abi_string(&self, minify_json_abi: bool) -> Result<Option<String>> {
         match &self.program_abi {
             ProgramABI::Fuel(program_abi) => {
                 if !program_abi.functions.is_empty() {
-                    let file = File::create(path)?;
-                    let res = if minify.json_abi {
-                        serde_json::to_writer(&file, &program_abi)
+                    let json_string = if minify_json_abi {
+                        serde_json::to_string(&program_abi)
                     } else {
-                        serde_json::to_writer_pretty(&file, &program_abi)
-                    };
-                    res?
+                        serde_json::to_string_pretty(&program_abi)
+                    }?;
+                    Ok(Some(json_string))
+                } else {
+                    Ok(None)
                 }
             }
             ProgramABI::Evm(program_abi) => {
                 if !program_abi.is_empty() {
-                    let file = File::create(path)?;
-                    let res = if minify.json_abi {
-                        serde_json::to_writer(&file, &program_abi)
+                    let json_string = if minify_json_abi {
+                        serde_json::to_string(&program_abi)
                     } else {
-                        serde_json::to_writer_pretty(&file, &program_abi)
-                    };
-                    res?
+                        serde_json::to_string_pretty(&program_abi)
+                    }?;
+                    Ok(Some(json_string))
+                } else {
+                    Ok(None)
                 }
             }
             // TODO?
-            ProgramABI::MidenVM(_) => (),
+            ProgramABI::MidenVM(_) => Ok(None),
         }
+    }
 
+    /// Writes the ABI in JSON format to the given `path`.
+    pub fn write_json_abi(&self, path: &Path, minify: MinifyOpts) -> Result<()> {
+        if let Some(json_abi_string) = self.json_abi_string(minify.json_abi)? {
+            let mut file = File::create(path)?;
+            file.write_all(json_abi_string.as_bytes())?;
+        }
         Ok(())
     }
 
@@ -1800,8 +1809,8 @@ pub fn compile(
         Ok(programs) => programs,
     };
     let typed_program = match programs.typed.as_ref() {
-        None => return fail(handler),
-        Some(typed_program) => typed_program,
+        Err(_) => return fail(handler),
+        Ok(typed_program) => typed_program,
     };
 
     if profile.print_ast {
@@ -1813,7 +1822,7 @@ pub fn compile(
 
     let namespace = typed_program.root.namespace.clone().into();
 
-    if handler.has_error() {
+    if handler.has_errors() {
         return fail(handler);
     }
 
@@ -1893,7 +1902,7 @@ pub fn compile(
         metrics
     );
 
-    let errored = handler.has_error() || (handler.has_warning() && profile.error_on_warnings);
+    let errored = handler.has_errors() || (handler.has_warnings() && profile.error_on_warnings);
 
     let compiled = match bc_res {
         Ok(compiled) if !errored => compiled,
@@ -2663,7 +2672,7 @@ pub fn check(
         };
 
         match programs.typed.as_ref() {
-            Some(typed_program) => {
+            Ok(typed_program) => {
                 if let TreeType::Library = typed_program.kind.tree_type() {
                     let mut namespace = typed_program.root.namespace.clone();
                     namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
@@ -2681,7 +2690,7 @@ pub fn check(
 
                 source_map.insert_dependency(manifest.dir());
             }
-            None => {
+            Err(_) => {
                 results.push((programs_res.ok(), handler));
                 return Ok(results);
             }
