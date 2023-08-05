@@ -1,6 +1,31 @@
 library;
 
 impl u64 {
+    /// Converts the `u64` to a sequence of little-endian bytes.
+    /// 
+    /// # Returns
+    ///
+    /// * [[u8; 8]] - An array of 8 `u8` bytes that compose the `u64`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::assert::assert;
+    ///
+    /// fn foo() {
+    ///     let x: u64 = 578437695752307201;
+    ///     let result = x.to_le_bytes();
+    ///
+    ///     assert(result[0] == 1_u8);
+    ///     assert(result[1] == 2_u8);
+    ///     assert(result[2] == 3_u8);
+    ///     assert(result[3] == 4_u8);
+    ///     assert(result[4] == 5_u8);
+    ///     assert(result[5] == 6_u8);
+    ///     assert(result[6] == 7_u8);
+    ///     assert(result[7] == 8_u8);
+    /// }
+    /// ```
     pub fn to_le_bytes(self) -> [u8; 8] {
         let output = [0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8];
 
@@ -40,6 +65,28 @@ impl u64 {
         }
     }
 
+    /// Converts a sequence of little-endian bytes to a `u64`.
+    ///
+    /// # Arguments
+    /// 
+    /// * `bytes`: [[u8; 8]] - A sequence of 8 `u8` bytes that represent a `u64`.
+    ///
+    /// # Returns
+    /// 
+    /// * [u64] - The resulting `u64` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::assert::assert;
+    ///
+    /// fn foo() {
+    ///     let bytes = [1_u8, 2_u8, 3_u8, 4_u8, 5_u8, 6_u8, 7_u8, 8_u8];
+    ///     let result = u64::from_le_bytes(bytes);
+    ///
+    ///     assert(result == 578437695752307201);
+    /// }
+    /// ```
     pub fn from_le_bytes(bytes: [u8; 8]) -> Self {
         let a = bytes[0];
         let b = bytes[1];
@@ -70,6 +117,31 @@ impl u64 {
         }
     }
 
+    /// Converts the `u64` to a sequence of big-endian bytes.
+    /// 
+    /// # Returns
+    ///
+    /// * [[u8; 8]] - An array of 8 `u8` bytes that compose the `u64`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::assert::assert;
+    ///
+    /// fn foo() {
+    ///     let x: u64 = 578437695752307201;
+    ///     let result = x.to_be_bytes();
+    ///
+    ///     assert(result[0] == 8_u8);
+    ///     assert(result[1] == 7_u8);
+    ///     assert(result[2] == 6_u8);
+    ///     assert(result[3] == 5_u8);
+    ///     assert(result[4] == 4_u8);
+    ///     assert(result[5] == 3_u8);
+    ///     assert(result[6] == 2_u8);
+    ///     assert(result[7] == 1_u8);
+    /// }
+    /// ```
     pub fn to_be_bytes(self) -> [u8; 8] {
         let output = [0; 8];
 
@@ -109,6 +181,28 @@ impl u64 {
         }
     }
 
+    /// Converts a sequence of big-endian bytes to a `u64`.
+    ///
+    /// # Arguments
+    /// 
+    /// * `bytes`: [[u8; 8]] - A sequence of 8 `u8` bytes that represent a `u64`.
+    ///
+    /// # Returns
+    /// 
+    /// * [u64] - The resulting `u64` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::assert::assert;
+    ///
+    /// fn foo() {
+    ///     let bytes = [8_u8, 7_u8, 6_u8, 5_u8, 4_u8, 3_u8, 2_u8, 1_u8];
+    ///     let result = u64::from_be_bytes(bytes);
+    ///
+    ///     assert(result == 578437695752307201);
+    /// }
+    /// ```
     pub fn from_be_bytes(bytes: [u8; 8]) -> Self {
         let a = bytes[0];
         let b = bytes[1];
@@ -141,12 +235,50 @@ impl u64 {
 }
 
 impl u32 {
+    /// Extends a `u32` to a `u64`.
+    ///
+    /// # Returns
+    ///
+    /// * [u64] - The converted `u32` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::assert::assert;
+    ///
+    /// fn foo() {
+    ///     let val = 10u32;
+    ///     let result = val.as_u64();
+    ///     assert(result == 10);
+    /// }
+    /// ```
     pub fn as_u64(self) -> u64 {
         asm(input: self) {
             input: u64
         }
     }
 
+    /// Converts the `u32` to a sequence of little-endian bytes.
+    /// 
+    /// # Returns
+    ///
+    /// * [[u8; 4]] - An array of 4 `u8` bytes that compose the `u32`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::assert::assert;
+    ///
+    /// fn foo() {
+    ///     let x: u32 = 67305985;
+    ///     let result = x.to_le_bytes();
+    /// 
+    ///     assert(result[0] == 1_u8);
+    ///     assert(result[1] == 2_u8);
+    ///     assert(result[2] == 3_u8);
+    ///     assert(result[3] == 4_u8);
+    /// }
+    /// ```
     pub fn to_le_bytes(self) -> [u8; 4] {
         let output = [0_u8, 0_u8, 0_u8, 0_u8];
 
@@ -170,6 +302,28 @@ impl u32 {
         }
     }
 
+    /// Converts a sequence of little-endian bytes to a `u32`.
+    ///
+    /// # Arguments
+    /// 
+    /// * `bytes`: [[u8; 4]] - A sequence of 4 `u8` bytes that represent a `u32`.
+    ///
+    /// # Returns
+    /// 
+    /// * [u32] - The resulting `u32` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::assert::assert;
+    ///
+    /// fn foo() {
+    ///     let bytes = [1_u8, 2_u8, 3_u8, 4_u8];
+    ///     let result = u32::from_le_bytes(bytes);
+    ///
+    ///     assert(result == 67305985_u32);
+    /// }
+    /// ```
     pub fn from_le_bytes(bytes: [u8; 4]) -> Self {
         asm(a: bytes[0], b: bytes[1], c: bytes[2], d: bytes[3], i: 0x8, j: 0x10, k: 0x18, r1, r2, r3) {
             sll  r1 c j;
@@ -182,6 +336,27 @@ impl u32 {
         }
     }
 
+    /// Converts the `u32` to a sequence of big-endian bytes.
+    /// 
+    /// # Returns
+    ///
+    /// * [[u8; 4]] - An array of 4 `u8` bytes that compose the `u32`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::assert::assert;
+    ///
+    /// fn foo() {
+    ///     let x: u32 = 67305985;
+    ///     let result = x.to_be_bytes();
+    ///
+    ///     assert(result[0] == 4_u8);
+    ///     assert(result[1] == 3_u8);
+    ///     assert(result[2] == 2_u8);
+    ///     assert(result[3] == 1_u8);
+    /// }
+    /// ```
     pub fn to_be_bytes(self) -> [u8; 4] {
         let output = [0_u8, 0_u8, 0_u8, 0_u8];
 
@@ -205,6 +380,28 @@ impl u32 {
         }
     }
 
+    /// Converts a sequence of big-endian bytes to a `u32`.
+    ///
+    /// # Arguments
+    /// 
+    /// * `bytes`: [[u8; 4]] - A sequence of 4 `u8` bytes that represent a `u32`.
+    ///
+    /// # Returns
+    /// 
+    /// * [u32] - The resulting `u32` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::assert::assert;
+    ///
+    /// fn foo() {
+    ///     let bytes = [4_u8, 3_u8, 2_u8, 1_u8];
+    ///     let result = u32::from_be_bytes(bytes);
+    ///
+    ///     assert(result == 67305985_u32);
+    /// }
+    /// ```
     pub fn from_be_bytes(bytes: [u8; 4]) -> Self {
         asm(a: bytes[0], b: bytes[1], c: bytes[2], d: bytes[3], i: 0x8, j: 0x10, k: 0x18, r1, r2, r3) {
             sll  r1 a k;
@@ -219,18 +416,71 @@ impl u32 {
 }
 
 impl u16 {
+    /// Extends a `u16` to a `u32`.
+    ///
+    /// # Returns
+    ///
+    /// * [u32] - The converted `u16` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::assert::assert;
+    ///
+    /// fn foo() {
+    ///     let val = 10u16;
+    ///     let result = val.as_u32();
+    ///     assert(result == 10u32);
+    /// }
+    /// ```
     pub fn as_u32(self) -> u32 {
         asm(input: self) {
             input: u32
         }
     }
 
+    /// Extends a `u16` to a `u64`.
+    ///
+    /// # Returns
+    ///
+    /// * [u64] - The converted `u16` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::assert::assert;
+    ///
+    /// fn foo() {
+    ///     let val = 10u16;
+    ///     let result = val.as_u64();
+    ///     assert(result == 10);
+    /// }
+    /// ```
     pub fn as_u64(self) -> u64 {
         asm(input: self) {
             input: u64
         }
     }
 
+    /// Converts the `u16` to a sequence of little-endian bytes.
+    /// 
+    /// # Returns
+    ///
+    /// * [[u8; 2]] - An array of 2 `u8` bytes that compose the `u16`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::assert::assert;
+    ///
+    /// fn foo() {
+    ///     let x: u16 = 513;
+    ///     let result = x.to_le_bytes();
+    /// 
+    ///     assert(result[0] == 1_u8);
+    ///     assert(result[1] == 2_u8);
+    /// }
+    /// ```
     pub fn to_le_bytes(self) -> [u8; 2] {
         let output = [0_u8, 0_u8];
 
@@ -246,6 +496,28 @@ impl u16 {
         }
     }
 
+    /// Converts a sequence of little-endian bytes to a `u16`.
+    ///
+    /// # Arguments
+    /// 
+    /// * `bytes`: [[u8; 2]] - A sequence of 2 `u8` bytes that represent a `u16`.
+    ///
+    /// # Returns
+    /// 
+    /// * [u16] - The resulting `u16` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::assert::assert;
+    ///
+    /// fn foo() {
+    ///     let bytes = [1_u8, 2_u8];
+    ///     let result = u16::from_le_bytes(bytes);
+    ///
+    ///     assert(result == 513_u16);
+    /// }
+    /// ```
     pub fn from_le_bytes(bytes: [u8; 2]) -> Self {
         asm(a: bytes[0], b: bytes[1], i: 0x8, r1) {
             sll  r1 b i;
@@ -254,6 +526,25 @@ impl u16 {
         }
     }
 
+    /// Converts the `u16` to a sequence of big-endian bytes.
+    /// 
+    /// # Returns
+    ///
+    /// * [[u8; 2]] - An array of 2 `u8` bytes that compose the `u16`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::assert::assert;
+    ///
+    /// fn foo() {
+    ///     let x: u16 = 513;
+    ///     let result = x.to_be_bytes();
+    ///
+    ///     assert(result[0] == 2_u8);
+    ///     assert(result[1] == 1_u8);
+    /// }
+    /// ```
     pub fn to_be_bytes(self) -> [u8; 2] {
         let output = [0_u8, 0_u8];
 
@@ -268,6 +559,28 @@ impl u16 {
         }
     }
 
+    /// Converts a sequence of big-endian bytes to a `u16`.
+    ///
+    /// # Arguments
+    /// 
+    /// * `bytes`: [[u8; 2]] - A sequence of 2 `u8` bytes that represent a `u16`.
+    ///
+    /// # Returns
+    /// 
+    /// * [u32] - The resulting `u16` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::assert::assert;
+    ///
+    /// fn foo() {
+    ///     let bytes = [2_u8, 1_u8];
+    ///     let result = u16::from_be_bytes(bytes);
+    /// 
+    ///     assert(result == 513_u16);
+    /// }
+    /// ```
     pub fn from_be_bytes(bytes: [u8; 2]) -> Self {
         asm(a: bytes[0], b: bytes[1], i: 0x8, r1) {
             sll  r1 a i;
@@ -278,18 +591,69 @@ impl u16 {
 }
 
 impl u8 {
+    /// Extends a `u8` to a `u16`.
+    ///
+    /// # Returns
+    ///
+    /// * [u16] - The converted `u8` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::assert::assert;
+    ///
+    /// fn foo() {
+    ///     let val = 2u8;
+    ///     let result = val.as_u16();
+    ///     assert(result == 2u16);
+    /// }
+    /// ```
     pub fn as_u16(self) -> u16 {
         asm(input: self) {
             input: u16
         }
     }
 
+    /// Extends a `u8` to a `u32`.
+    ///
+    /// # Returns
+    ///
+    /// * [u32] - The converted `u8` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::assert::assert;
+    ///
+    /// fn foo() {
+    ///     let val = 2u8;
+    ///     let result = val.as_u32();
+    ///     assert(result == 2u32);
+    /// }
+    /// ```
     pub fn as_u32(self) -> u32 {
         asm(input: self) {
             input: u32
         }
     }
 
+    /// Extends a `u8` to a `u64`.
+    ///
+    /// # Returns
+    ///
+    /// * [u64] - The converted `u8` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::assert::assert;
+    ///
+    /// fn foo() {
+    ///     let val = 2u8;
+    ///     let result = val.as_u64();
+    ///     assert(result == 2);
+    /// }
+    /// ```
     pub fn as_u64(self) -> u64 {
         asm(input: self) {
             input: u64
@@ -298,6 +662,28 @@ impl u8 {
 }
 
 impl b256 {
+    /// Converts the `b256` to a sequence of little-endian bytes.
+    /// 
+    /// # Returns
+    ///
+    /// * [[u8; 32]] - An array of 32 `u8` bytes that compose the `b256`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::assert::assert;
+    ///
+    /// fn foo() {
+    ///     let bytes = [32_u8, 31_u8, 30_u8, 29_u8, 28_u8, 27_u8, 26_u8, 25_u8, 24_u8, 23_u8,
+    ///             22_u8, 21_u8, 20_u8, 19_u8, 18_u8, 17_u8, 16_u8, 15_u8, 14_u8, 13_u8,
+    ///             12_u8, 11_u8, 10_u8, 9_u8, 8_u8, 7_u8, 6_u8, 5_u8, 4_u8, 3_u8,
+    ///             2_u8, 1_u8];
+    ///
+    ///     let x = b256::from_le_bytes(bytes);
+    ///
+    ///     assert(x == 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20);
+    /// }
+    /// ```
     pub fn to_le_bytes(self) -> [u8; 32] {
         let (a, b, c, d): (u64, u64, u64, u64) = asm(r1: self) {r1: (u64, u64, u64, u64)};
         let a = a.to_le_bytes();
@@ -315,6 +701,31 @@ impl b256 {
         output
     }
 
+    /// Converts a sequence of little-endian bytes to a `b256`.
+    ///
+    /// # Arguments
+    /// 
+    /// * `bytes`: [[u8; 32]] - A sequence of 32 `u8` bytes that represent a `b256`.
+    ///
+    /// # Returns
+    /// 
+    /// * [b256] - The resulting `b256` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::assert::assert;
+    ///
+    /// fn foo() {
+    ///     let bytes = [32_u8, 31_u8, 30_u8, 29_u8, 28_u8, 27_u8, 26_u8, 25_u8, 24_u8, 23_u8,
+    ///             22_u8, 21_u8, 20_u8, 19_u8, 18_u8, 17_u8, 16_u8, 15_u8, 14_u8, 13_u8,
+    ///             12_u8, 11_u8, 10_u8, 9_u8, 8_u8, 7_u8, 6_u8, 5_u8, 4_u8, 3_u8,
+    ///             2_u8, 1_u8];
+    ///
+    ///     let x = b256::from_le_bytes(bytes);
+    ///
+    ///     assert(x == 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20);
+    /// ```
     pub fn from_le_bytes(bytes: [u8; 32]) -> Self {
         let a = u64::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7]]);
         let b = u64::from_le_bytes([bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]]);
@@ -328,6 +739,28 @@ impl b256 {
         }
     }
 
+    /// Converts the `b256` to a sequence of big-endian bytes.
+    /// 
+    /// # Returns
+    ///
+    /// * [[u8; 32]] - An array of 32 `u8` bytes that compose the `b256`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::assert::assert;
+    ///
+    /// fn foo() {
+    ///     let x: b256 = 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20;
+    ///     let bytes = x.to_be_bytes();
+    ///
+    ///     let mut i: u8 = 0;
+    ///     while i < 32_u8 {
+    ///         assert(bytes[i.as_u64()] == i + 1_u8);
+    ///         i += 1_u8;
+    ///     }
+    /// }
+    /// ```
     pub fn to_be_bytes(self) -> [u8; 32] {
         let (a, b, c, d): (u64, u64, u64, u64) = asm(r1: self) {r1: (u64, u64, u64, u64)};
         let a = a.to_be_bytes();
@@ -343,6 +776,31 @@ impl b256 {
         output
     }
 
+    /// Converts a sequence of big-endian bytes to a `b256`.
+    ///
+    /// # Arguments
+    /// 
+    /// * `bytes`: [[u8; 32]] - A sequence of 32 `u8` bytes that represent a `b256`.
+    ///
+    /// # Returns
+    /// 
+    /// * [b256] - The resulting `b256` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::assert::assert;
+    ///
+    /// fn foo() {
+    ///     let bytes = [1_u8, 2_u8, 3_u8, 4_u8, 5_u8, 6_u8, 7_u8, 8_u8, 9_u8, 10_u8,
+    ///             11_u8, 12_u8, 13_u8, 14_u8, 15_u8, 16_u8, 17_u8, 18_u8, 19_u8, 20_u8,
+    ///             21_u8, 22_u8, 23_u8, 24_u8, 25_u8, 26_u8, 27_u8, 28_u8, 29_u8, 30_u8,
+    ///             31_u8, 32_u8];
+    ///     let x = b256::from_be_bytes(bytes);
+    ///
+    ///     assert(x == 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20);
+    /// }
+    /// ```
     pub fn from_be_bytes(bytes: [u8; 32]) -> Self {
         let a = u64::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7]]);
         let b = u64::from_be_bytes([bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]]);
