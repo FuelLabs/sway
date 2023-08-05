@@ -10,12 +10,11 @@ use anyhow::{anyhow, bail, Context, Result};
 use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
 use forc_util::tx_utils::format_log_receipts;
 use fuel_core_client::client::FuelClient;
-use fuel_crypto::SecretKey;
 use fuel_tx::{AssetId, ContractId, Transaction, TransactionBuilder};
-use fuels_accounts::{predicate::Predicate, provider::Provider, wallet::{Wallet, WalletUnlocked}, Account};
+use fuels_accounts::{predicate::Predicate, provider::Provider, Account};
 use fuels_core::types::transaction::TxParameters;
 use pkg::BuiltPackage;
-use std::{fs, time::Duration};
+use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};
 use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
@@ -168,8 +167,6 @@ pub async fn run_script_pkg(
             .receive_address
             .as_ref()
             .ok_or_else(|| anyhow!("To spend a predicate, --receive-address should be provided"))?;
-        println!("receive-address {receive_address}");
-        println!("spend_amount {spend_amount}");
         let asset_id = AssetId::default();
         let cons_params = client.chain_info().await?.consensus_parameters.into();
         let tx_params = TxParameters::new(
@@ -179,14 +176,8 @@ pub async fn run_script_pkg(
         );
         let provider = Provider::new(client, cons_params);
 
-        let private_key = SecretKey::from_str("0xde97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c")?;
-        let test_account = WalletUnlocked::new_from_private_key(private_key, Some(provider.clone()));
-
-        println!("{:?}", compiled.bytecode.bytes.clone());
         let predicate =
             Predicate::from_code(compiled.bytecode.bytes.clone()).with_provider(provider).with_data(unresolved_bytes);
-        println!("{predicate:?}");
-        test_account.transfer(predicate.address(), 100, asset_id, tx_params).await?;
 
         if command.dry_run {
             Ok(RanScript { receipts: vec![] })
