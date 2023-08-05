@@ -67,7 +67,7 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
             coins,
             asset_id,
             ..
-        } => vec![*params, *coins, *asset_id]
+        } => [*params, *coins, *asset_id]
             .iter()
             .flat_map(|val| get_symbols(context, *val).to_vec())
             .collect(),
@@ -118,7 +118,8 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
         Instruction::Store { dst_val_ptr: _, .. } => vec![],
         Instruction::FuelVm(FuelVmInstruction::Gtf { .. })
         | Instruction::FuelVm(FuelVmInstruction::ReadRegister(_))
-        | Instruction::FuelVm(FuelVmInstruction::Revert(_)) => vec![],
+        | Instruction::FuelVm(FuelVmInstruction::Revert(_))
+        | Instruction::FuelVm(FuelVmInstruction::WideBinaryOp { .. }) => vec![],
     }
 }
 
@@ -168,6 +169,7 @@ fn get_stored_symbols(context: &Context, val: Value) -> Vec<Symbol> {
                 vec![]
             }
             FuelVmInstruction::StateStoreQuadWord { stored_val: _, .. } => vec![],
+            FuelVmInstruction::WideBinaryOp { .. } => vec![],
         },
     }
 }

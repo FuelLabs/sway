@@ -9,7 +9,7 @@ use crate::{
 };
 use dashmap::DashMap;
 use forc_pkg::PackageManifestFile;
-use lsp_types::Url;
+use lsp_types::{Diagnostic, Url};
 use parking_lot::RwLock;
 use std::{path::PathBuf, sync::Arc};
 use tokio::task;
@@ -45,47 +45,42 @@ impl ServerState {
         Ok(())
     }
 
-    async fn publish_diagnostics(&self, uri: &Url, workspace_uri: &Url, session: Arc<Session>) {
-        let diagnostics_res = {
-            let mut diagnostics_to_publish = vec![];
-            let config = &self.config.read();
-            let engines = session.engines.read();
-            let tokens = session.token_map().tokens_for_file(engines.se(), uri);
-            match config.debug.show_collected_tokens_as_warnings {
-                // If collected_tokens_as_warnings is Parsed or Typed,
-                // take over the normal error and warning display behavior
-                // and instead show the either the parsed or typed tokens as warnings.
-                // This is useful for debugging the lsp parser.
-                Warnings::Parsed => {
-                    diagnostics_to_publish = debug::generate_warnings_for_parsed_tokens(tokens)
+    pub(crate) fn diagnostics(&self, uri: &Url, session: Arc<Session>) -> Vec<Diagnostic> {
+        let mut diagnostics_to_publish = vec![];
+        let config = &self.config.read();
+        let engines = session.engines.read();
+        let tokens = session.token_map().tokens_for_file(engines.se(), uri);
+        match config.debug.show_collected_tokens_as_warnings {
+            // If collected_tokens_as_warnings is Parsed or Typed,
+            // take over the normal error and warning display behavior
+            // and instead show the either the parsed or typed tokens as warnings.
+            // This is useful for debugging the lsp parser.
+            Warnings::Parsed => {
+                diagnostics_to_publish = debug::generate_warnings_for_parsed_tokens(tokens)
+            }
+            Warnings::Typed => {
+                diagnostics_to_publish = debug::generate_warnings_for_typed_tokens(tokens)
+            }
+            Warnings::Default => {
+                let diagnostics = session.wait_for_parsing();
+                if config.diagnostic.show_warnings {
+                    diagnostics_to_publish.extend(diagnostics.warnings);
                 }
-                Warnings::Typed => {
-                    diagnostics_to_publish = debug::generate_warnings_for_typed_tokens(tokens)
-                }
-                Warnings::Default => {
-                    let diagnostics = session.wait_for_parsing();
-                    if config.diagnostic.show_warnings {
-                        diagnostics_to_publish.extend(diagnostics.warnings);
-                    }
-                    if config.diagnostic.show_errors {
-                        diagnostics_to_publish.extend(diagnostics.errors);
-                    }
+                if config.diagnostic.show_errors {
+                    diagnostics_to_publish.extend(diagnostics.errors);
                 }
             }
-            diagnostics_to_publish
-        };
-
-        // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
-        // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
-        self.client
-            .publish_diagnostics(workspace_uri.clone(), diagnostics_res, None)
-            .await;
+        }
+        diagnostics_to_publish
     }
 
     pub(crate) async fn parse_project(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
         let should_publish = run_blocking_parse_project(uri.clone(), session.clone()).await;
         if should_publish {
-            self.publish_diagnostics(&uri, &workspace_uri, session)
+            // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
+            // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
+            self.client
+                .publish_diagnostics(workspace_uri.clone(), self.diagnostics(&uri, session), None)
                 .await;
         }
     }

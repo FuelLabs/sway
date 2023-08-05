@@ -420,7 +420,7 @@ fn local_copy_prop(
         escaped_symbols: &EscapedSymbols,
         inst: Value,
         src_val_ptr: Value,
-        dest_to_copies: &mut FxHashMap<Symbol, FxHashSet<Value>>,
+        dest_to_copies: &FxHashMap<Symbol, FxHashSet<Value>>,
         replacements: &mut FxHashMap<Value, Replacement>,
     ) -> bool {
         // For every `memcpy` that src_val_ptr is a destination of,
@@ -566,7 +566,7 @@ fn local_copy_prop(
                             escaped_symbols,
                             inst,
                             *src_val_ptr,
-                            &mut dest_to_copies,
+                            &dest_to_copies,
                             &mut replacements,
                         );
                     }
@@ -587,7 +587,7 @@ fn local_copy_prop(
                             escaped_symbols,
                             inst,
                             src_val_ptr,
-                            &mut dest_to_copies,
+                            &dest_to_copies,
                             &mut replacements,
                         ) {
                             gen_new_copy(

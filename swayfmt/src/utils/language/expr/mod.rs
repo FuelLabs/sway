@@ -13,10 +13,9 @@ use sway_ast::{
     brackets::Parens,
     keywords::{CommaToken, DotToken},
     punctuated::Punctuated,
-    token::Delimiter,
     Braces, CodeBlockContents, Expr, ExprStructField, MatchBranch, PathExpr, PathExprSegment,
 };
-use sway_types::Spanned;
+use sway_types::{ast::Delimiter, Spanned};
 
 pub(crate) mod abi_cast;
 pub(crate) mod asm_block;
@@ -36,7 +35,7 @@ impl Format for Expr {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         match self {
-            Self::Error(_) => {}
+            Self::Error(_, _) => {}
             Self::Path(path) => path.format(formatted_code, formatter)?,
             Self::Literal(lit) => lit.format(formatted_code, formatter)?,
             Self::AbiCast { abi_token, args } => {
@@ -609,7 +608,7 @@ pub(super) fn debug_expr(
     field_width: Option<usize>,
     body_width: Option<usize>,
     expr_width: usize,
-    formatter: &mut Formatter,
+    formatter: &Formatter,
 ) {
     println!(
         "DEBUG:\nline: {buf}\nfield: {:?}, body: {:?}, expr: {expr_width}, Shape::width: {}",
@@ -742,7 +741,7 @@ impl LeafSpans for Expr {
 /// Collects various expr field's ByteSpans.
 fn expr_leaf_spans(expr: &Expr) -> Vec<ByteSpan> {
     match expr {
-        Expr::Error(_) => vec![expr.span().into()],
+        Expr::Error(_, _) => vec![expr.span().into()],
         Expr::Path(path) => path.leaf_spans(),
         Expr::Literal(literal) => literal.leaf_spans(),
         Expr::AbiCast { abi_token, args } => {

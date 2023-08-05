@@ -2,16 +2,16 @@ use core::fmt::Write;
 use hashbrown::hash_map::RawEntryMut;
 use hashbrown::HashMap;
 use std::sync::RwLock;
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::integer_bits::IntegerBits;
 
 use crate::concurrent_slab::ListDisplay;
-use crate::error::{err, ok};
 use crate::{
-    concurrent_slab::ConcurrentSlab, decl_engine::*, engine_threading::*, error::*, language::ty,
+    concurrent_slab::ConcurrentSlab, decl_engine::*, engine_threading::*, language::ty,
     namespace::Path, type_system::priv_prelude::*, Namespace,
 };
 
-use sway_error::{error::CompileError, type_error::TypeError, warning::CompileWarning};
+use sway_error::{error::CompileError, type_error::TypeError};
 use sway_types::{span::Span, Ident, Spanned};
 
 #[derive(Debug, Default)]
@@ -94,6 +94,7 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn monomorphize<T>(
         &self,
+        handler: &Handler,
         engines: &Engines,
         value: &mut T,
         type_arguments: &mut [TypeArgument],
@@ -101,29 +102,26 @@ impl TypeEngine {
         call_site_span: &Span,
         namespace: &mut Namespace,
         mod_path: &Path,
-    ) -> CompileResult<()>
+    ) -> Result<(), ErrorEmitted>
     where
         T: MonomorphizeHelper + SubstTypes,
     {
-        let mut warnings = vec![];
-        let mut errors = vec![];
         match (
             value.type_parameters().is_empty(),
             type_arguments.is_empty(),
         ) {
-            (true, true) => ok((), warnings, errors),
+            (true, true) => Ok(()),
             (false, true) => {
                 if let EnforceTypeArguments::Yes = enforce_type_arguments {
-                    errors.push(CompileError::NeedsTypeArguments {
+                    return Err(handler.emit_err(CompileError::NeedsTypeArguments {
                         name: value.name().clone(),
                         span: call_site_span.clone(),
-                    });
-                    return err(warnings, errors);
+                    }));
                 }
                 let type_mapping =
                     TypeSubstMap::from_type_parameters(engines, value.type_parameters());
                 value.subst(&type_mapping, engines);
-                ok((), warnings, errors)
+                Ok(())
             }
             (true, false) => {
                 let type_arguments_span = type_arguments
@@ -131,11 +129,10 @@ impl TypeEngine {
                     .map(|x| x.span.clone())
                     .reduce(Span::join)
                     .unwrap_or_else(|| value.name().span());
-                errors.push(CompileError::DoesNotTakeTypeArguments {
+                Err(handler.emit_err(CompileError::DoesNotTakeTypeArguments {
                     name: value.name().clone(),
                     span: type_arguments_span,
-                });
-                err(warnings, errors)
+                }))
             }
             (false, false) => {
                 let type_arguments_span = type_arguments
@@ -144,16 +141,18 @@ impl TypeEngine {
                     .reduce(Span::join)
                     .unwrap_or_else(|| value.name().span());
                 if value.type_parameters().len() != type_arguments.len() {
-                    errors.push(CompileError::IncorrectNumberOfTypeArguments {
-                        given: type_arguments.len(),
-                        expected: value.type_parameters().len(),
-                        span: type_arguments_span,
-                    });
-                    return err(warnings, errors);
+                    return Err(
+                        handler.emit_err(CompileError::IncorrectNumberOfTypeArguments {
+                            given: type_arguments.len(),
+                            expected: value.type_parameters().len(),
+                            span: type_arguments_span,
+                        }),
+                    );
                 }
                 for type_argument in type_arguments.iter_mut() {
-                    type_argument.type_id = check!(
-                        self.resolve(
+                    type_argument.type_id = self
+                        .resolve(
+                            handler,
                             engines,
                             type_argument.type_id,
                             &type_argument.span,
@@ -161,11 +160,8 @@ impl TypeEngine {
                             None,
                             namespace,
                             mod_path,
-                        ),
-                        self.insert(engines, TypeInfo::ErrorRecovery),
-                        warnings,
-                        errors
-                    );
+                        )
+                        .unwrap_or_else(|err| self.insert(engines, TypeInfo::ErrorRecovery(err)));
                 }
                 let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
                     value
@@ -179,7 +175,7 @@ impl TypeEngine {
                         .collect(),
                 );
                 value.subst(&type_mapping, engines);
-                ok((), warnings, errors)
+                Ok(())
             }
         }
     }
@@ -190,6 +186,7 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn unify_with_self(
         &self,
+        handler: &Handler,
         engines: &Engines,
         mut received: TypeId,
         mut expected: TypeId,
@@ -197,10 +194,18 @@ impl TypeEngine {
         span: &Span,
         help_text: &str,
         err_override: Option<CompileError>,
-    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
+    ) {
         received.replace_self_type(engines, self_type);
         expected.replace_self_type(engines, self_type);
-        self.unify(engines, received, expected, span, help_text, err_override)
+        self.unify(
+            handler,
+            engines,
+            received,
+            expected,
+            span,
+            help_text,
+            err_override,
+        )
     }
 
     /// Make the types of `received` and `expected` equivalent (or produce an
@@ -210,25 +215,26 @@ impl TypeEngine {
     /// `expected`, except in cases where `received` has more type information
     /// than `expected` (e.g. when `expected` is a generic type and `received`
     /// is not).
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn unify(
         &self,
+        handler: &Handler,
         engines: &Engines,
         received: TypeId,
         expected: TypeId,
         span: &Span,
         help_text: &str,
         err_override: Option<CompileError>,
-    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
+    ) {
         if !UnifyCheck::coercion(engines).check(received, expected) {
             // create a "mismatched type" error unless the `err_override`
             // argument has been provided
-            let mut errors = vec![];
             match err_override {
                 Some(err_override) => {
-                    errors.push(err_override);
+                    handler.emit_err(err_override);
                 }
                 None => {
-                    errors.push(CompileError::TypeError(TypeError::MismatchedType {
+                    handler.emit_err(CompileError::TypeError(TypeError::MismatchedType {
                         expected: engines.help_out(expected).to_string(),
                         received: engines.help_out(received).to_string(),
                         help_text: help_text.to_string(),
@@ -236,18 +242,17 @@ impl TypeEngine {
                     }));
                 }
             }
-            return (vec![], errors);
+            return;
         }
-        let (warnings, errors) =
-            normalize_err(Unifier::new(engines, help_text).unify(received, expected, span));
-        if errors.is_empty() {
-            (warnings, errors)
-        } else if err_override.is_some() {
-            // return the errors from unification unless the `err_override`
-            // argument has been provided
-            (warnings, vec![err_override.unwrap()])
-        } else {
-            (warnings, errors)
+        let h = Handler::default();
+        Unifier::new(engines, help_text).unify(handler, received, expected, span);
+        match err_override {
+            Some(err_override) if h.has_errors() => {
+                handler.emit_err(err_override);
+            }
+            _ => {
+                handler.append(h);
+            }
         }
     }
 
@@ -297,7 +302,7 @@ impl TypeEngine {
             | TypeInfo::SelfType
             | TypeInfo::B256
             | TypeInfo::Contract
-            | TypeInfo::ErrorRecovery
+            | TypeInfo::ErrorRecovery(..)
             | TypeInfo::Storage { .. }
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
@@ -309,64 +314,34 @@ impl TypeEngine {
     /// Resolve all inner types that still are a [TypeInfo::Numeric] to a concrete `u64`
     pub(crate) fn decay_numeric(
         &self,
+        handler: &Handler,
         engines: &Engines,
         type_id: TypeId,
         span: &Span,
-    ) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
+    ) -> Result<(), ErrorEmitted> {
         let decl_engine = engines.de();
 
         match &self.get(type_id) {
             TypeInfo::Enum(decl_ref) => {
                 for variant_type in decl_engine.get_enum(decl_ref).variants.iter() {
-                    check!(
-                        self.decay_numeric(engines, variant_type.type_argument.type_id, span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    )
+                    self.decay_numeric(handler, engines, variant_type.type_argument.type_id, span)?;
                 }
             }
             TypeInfo::Struct(decl_ref) => {
                 for field in decl_engine.get_struct(decl_ref).fields.iter() {
-                    check!(
-                        self.decay_numeric(engines, field.type_argument.type_id, span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    )
+                    self.decay_numeric(handler, engines, field.type_argument.type_id, span)?;
                 }
             }
             TypeInfo::Tuple(fields) => {
                 for field_type in fields {
-                    check!(
-                        self.decay_numeric(engines, field_type.type_id, span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    )
+                    self.decay_numeric(handler, engines, field_type.type_id, span)?;
                 }
             }
-            TypeInfo::Array(elem_ty, _length) => check!(
-                self.decay_numeric(engines, elem_ty.type_id, span),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ),
-            TypeInfo::Ptr(targ) => check!(
-                self.decay_numeric(engines, targ.type_id, span),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ),
-            TypeInfo::Slice(targ) => check!(
-                self.decay_numeric(engines, targ.type_id, span),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ),
+            TypeInfo::Array(elem_ty, _length) => {
+                self.decay_numeric(handler, engines, elem_ty.type_id, span)?
+            }
+            TypeInfo::Ptr(targ) => self.decay_numeric(handler, engines, targ.type_id, span)?,
+            TypeInfo::Slice(targ) => self.decay_numeric(handler, engines, targ.type_id, span)?,
 
             TypeInfo::Unknown
             | TypeInfo::UnknownGeneric { .. }
@@ -380,28 +355,24 @@ impl TypeEngine {
             | TypeInfo::SelfType
             | TypeInfo::B256
             | TypeInfo::Contract
-            | TypeInfo::ErrorRecovery
+            | TypeInfo::ErrorRecovery(..)
             | TypeInfo::Storage { .. }
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Alias { .. } => {}
             TypeInfo::Numeric => {
-                check!(
-                    CompileResult::from(self.unify(
-                        engines,
-                        type_id,
-                        self.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
-                        span,
-                        "",
-                        None,
-                    )),
-                    (),
-                    warnings,
-                    errors,
+                self.unify(
+                    handler,
+                    engines,
+                    type_id,
+                    self.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+                    span,
+                    "",
+                    None,
                 );
             }
         }
-        ok((), warnings, errors)
+        Ok(())
     }
 
     /// Resolve the type of the given [TypeId], replacing any instances of
@@ -410,6 +381,7 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn resolve(
         &self,
+        handler: &Handler,
         engines: &Engines,
         type_id: TypeId,
         span: &Span,
@@ -417,9 +389,7 @@ impl TypeEngine {
         type_info_prefix: Option<&Path>,
         namespace: &mut Namespace,
         mod_path: &Path,
-    ) -> CompileResult<TypeId> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    ) -> Result<TypeId, ErrorEmitted> {
         let decl_engine = engines.de();
         let module_path = type_info_prefix.unwrap_or(mod_path);
         let type_id = match self.get(type_id) {
@@ -429,8 +399,13 @@ impl TypeEngine {
             } => {
                 match namespace
                     .root()
-                    .resolve_call_path_with_visibility_check(engines, module_path, &call_path)
-                    .ok(&mut warnings, &mut errors)
+                    .resolve_call_path_with_visibility_check(
+                        handler,
+                        engines,
+                        module_path,
+                        &call_path,
+                    )
+                    .ok()
                     .cloned()
                 {
                     Some(ty::TyDecl::StructDecl(ty::StructDecl {
@@ -441,20 +416,16 @@ impl TypeEngine {
                         let mut new_copy = decl_engine.get_struct(&original_id);
 
                         // monomorphize the copy, in place
-                        check!(
-                            self.monomorphize(
-                                engines,
-                                &mut new_copy,
-                                &mut type_arguments.unwrap_or_default(),
-                                enforce_type_arguments,
-                                span,
-                                namespace,
-                                mod_path,
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors,
-                        );
+                        self.monomorphize(
+                            handler,
+                            engines,
+                            &mut new_copy,
+                            &mut type_arguments.unwrap_or_default(),
+                            enforce_type_arguments,
+                            span,
+                            namespace,
+                            mod_path,
+                        )?;
 
                         // insert the new copy in the decl engine
                         let new_decl_ref = decl_engine.insert(new_copy);
@@ -476,20 +447,16 @@ impl TypeEngine {
                         let mut new_copy = decl_engine.get_enum(&original_id);
 
                         // monomorphize the copy, in place
-                        check!(
-                            self.monomorphize(
-                                engines,
-                                &mut new_copy,
-                                &mut type_arguments.unwrap_or_default(),
-                                enforce_type_arguments,
-                                span,
-                                namespace,
-                                mod_path,
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
+                        self.monomorphize(
+                            handler,
+                            engines,
+                            &mut new_copy,
+                            &mut type_arguments.unwrap_or_default(),
+                            enforce_type_arguments,
+                            span,
+                            namespace,
+                            mod_path,
+                        )?;
 
                         // insert the new copy in the decl engine
                         let new_decl_ref = decl_engine.insert(new_copy);
@@ -521,17 +488,18 @@ impl TypeEngine {
                         ty::GenericTypeForFunctionScope { type_id, .. },
                     )) => type_id,
                     _ => {
-                        errors.push(CompileError::UnknownTypeName {
+                        let err = handler.emit_err(CompileError::UnknownTypeName {
                             name: call_path.to_string(),
                             span: call_path.span(),
                         });
-                        self.insert(engines, TypeInfo::ErrorRecovery)
+                        self.insert(engines, TypeInfo::ErrorRecovery(err))
                     }
                 }
             }
             TypeInfo::Array(mut elem_ty, n) => {
-                elem_ty.type_id = check!(
-                    self.resolve(
+                elem_ty.type_id = self
+                    .resolve(
+                        handler,
                         engines,
                         elem_ty.type_id,
                         span,
@@ -539,11 +507,8 @@ impl TypeEngine {
                         None,
                         namespace,
                         mod_path,
-                    ),
-                    self.insert(engines, TypeInfo::ErrorRecovery),
-                    warnings,
-                    errors
-                );
+                    )
+                    .unwrap_or_else(|err| self.insert(engines, TypeInfo::ErrorRecovery(err)));
 
                 let type_id = self.insert(engines, TypeInfo::Array(elem_ty, n));
 
@@ -554,8 +519,9 @@ impl TypeEngine {
             }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
-                    type_argument.type_id = check!(
-                        self.resolve(
+                    type_argument.type_id = self
+                        .resolve(
+                            handler,
                             engines,
                             type_argument.type_id,
                             span,
@@ -563,11 +529,8 @@ impl TypeEngine {
                             None,
                             namespace,
                             mod_path,
-                        ),
-                        self.insert(engines, TypeInfo::ErrorRecovery),
-                        warnings,
-                        errors
-                    );
+                        )
+                        .unwrap_or_else(|err| self.insert(engines, TypeInfo::ErrorRecovery(err)));
                 }
 
                 let type_id = self.insert(engines, TypeInfo::Tuple(type_arguments));
@@ -579,7 +542,7 @@ impl TypeEngine {
             }
             _ => type_id,
         };
-        ok(type_id, warnings, errors)
+        Ok(type_id)
     }
 
     /// Replace any instances of the [TypeInfo::SelfType] variant with
@@ -587,6 +550,7 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn resolve_with_self(
         &self,
+        handler: &Handler,
         engines: &Engines,
         mut type_id: TypeId,
         self_type: TypeId,
@@ -595,9 +559,10 @@ impl TypeEngine {
         type_info_prefix: Option<&Path>,
         namespace: &mut Namespace,
         mod_path: &Path,
-    ) -> CompileResult<TypeId> {
+    ) -> Result<TypeId, ErrorEmitted> {
         type_id.replace_self_type(engines, self_type);
         self.resolve(
+            handler,
             engines,
             type_id,
             span,
@@ -622,12 +587,6 @@ impl TypeEngine {
         });
         builder
     }
-}
-
-fn normalize_err(
-    (w, e): (Vec<CompileWarning>, Vec<TypeError>),
-) -> (Vec<CompileWarning>, Vec<CompileError>) {
-    (w, e.into_iter().map(CompileError::from).collect())
 }
 
 pub(crate) trait MonomorphizeHelper {

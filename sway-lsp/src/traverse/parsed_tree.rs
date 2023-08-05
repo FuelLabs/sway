@@ -165,7 +165,7 @@ impl Parse for UseStatement {
 impl Parse for Expression {
     fn parse(&self, ctx: &ParseContext) {
         match &self.kind {
-            ExpressionKind::Error(part_spans) => {
+            ExpressionKind::Error(part_spans, _) => {
                 for span in part_spans.iter() {
                     ctx.tokens.insert(
                         to_ident_key(&Ident::new(span.clone())),
@@ -1092,6 +1092,7 @@ fn literal_to_symbol_kind(value: &Literal) -> SymbolKind {
         | Literal::U16(..)
         | Literal::U32(..)
         | Literal::U64(..)
+        | Literal::U256(..)
         | Literal::Numeric(..) => SymbolKind::NumericLiteral,
         Literal::String(..) => SymbolKind::StringLiteral,
         Literal::B256(..) => SymbolKind::ByteLiteral,

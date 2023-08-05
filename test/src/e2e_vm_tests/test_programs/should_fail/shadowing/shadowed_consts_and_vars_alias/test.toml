@@ -5,11 +5,53 @@ category = "fail"
 #check: $()const Y = 7;
 #nextln: $()Constant "Y" was already defined in scope.
 
+#check: $()error
+#sameln: $()Constants cannot be shadowed. Variable "Y" shadows constant with the same name.
+
+#check: $()const Y = 7;
+#nextln: $()Constant "Y" is declared here.
+
 #check: $()let Y = 4;
-#nextln: $()Variables cannot shadow constants. The variable "Y" shadows constant with the same name.
+#nextln: $()Shadowing via variable "Y" happens here.
+
+#check: $()error
+#sameln: $()Constants cannot be shadowed. Variable "Y" shadows imported constant with the same name.
+
+#check: $()use lib::X as Y;
+#nextln: $()Constant "Y" gets imported here as alias.
+
+#check: $()let Y = 4;
+#nextln: $()Shadowing via variable "Y" happens here.
+
+#check: $()pub const X = 5;
+#nextln: $()This is the original declaration of the imported constant "Y".
+
+#check: $()Consider renaming the variable "Y" or using a different alias for the imported constant.
+
+#check: $()error
+#sameln: $()Constants cannot be shadowed. Variable "M" shadows imported constant with the same name.
+
+#check: $()use lib::L as M;
+#nextln: $()Constant "M" gets imported here as alias.
 
 #check: $()let M = 4;
-#check: $()Variables cannot shadow constants. The variable "M" shadows constant with the same name.
+#nextln: $()Shadowing via variable "M" happens here.
+
+#check: $()pub const L = 5;
+#nextln: $()This is the original declaration of the imported constant "M".
+
+#check: $()Consider renaming the variable "M" or using a different alias for the imported constant.
+
+#check: $()error
+#sameln: $()Constants cannot be shadowed. Variable "R" shadows imported constant with the same name.
+
+#check: $()use lib::P as R;
+#nextln: $()Constant "R" gets imported here as alias.
 
 #check: $()let R = 5;
-#check: $()Variables cannot shadow constants. The variable "R" shadows constant with the same name.
+#nextln: $()Shadowing via variable "R" happens here.
+
+#check: $()pub const P = 5;
+#nextln: $()This is the original declaration of the imported constant "R".
+
+#check: $()Consider renaming the variable "R" or using a different alias for the imported constant.

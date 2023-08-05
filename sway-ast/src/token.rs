@@ -6,28 +6,6 @@ pub enum Spacing {
     Alone,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum PunctKind {
-    Semicolon,
-    Colon,
-    ForwardSlash,
-    Comma,
-    Star,
-    Add,
-    Sub,
-    LessThan,
-    GreaterThan,
-    Equals,
-    Dot,
-    Bang,
-    Percent,
-    Ampersand,
-    Caret,
-    Pipe,
-    Underscore,
-    Sharp,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct Punct {
     pub span: Span,
@@ -38,31 +16,6 @@ pub struct Punct {
 impl Spanned for Punct {
     fn span(&self) -> Span {
         self.span.clone()
-    }
-}
-
-impl PunctKind {
-    pub fn as_char(&self) -> char {
-        match self {
-            PunctKind::Semicolon => ';',
-            PunctKind::Colon => ':',
-            PunctKind::ForwardSlash => '/',
-            PunctKind::Comma => ',',
-            PunctKind::Star => '*',
-            PunctKind::Add => '+',
-            PunctKind::Sub => '-',
-            PunctKind::LessThan => '<',
-            PunctKind::GreaterThan => '>',
-            PunctKind::Equals => '=',
-            PunctKind::Dot => '.',
-            PunctKind::Bang => '!',
-            PunctKind::Percent => '%',
-            PunctKind::Ampersand => '&',
-            PunctKind::Caret => '^',
-            PunctKind::Pipe => '|',
-            PunctKind::Underscore => '_',
-            PunctKind::Sharp => '#',
-        }
     }
 }
 
@@ -79,30 +32,6 @@ pub type CommentedGroup = GenericGroup<CommentedTokenStream>;
 impl<T> Spanned for GenericGroup<T> {
     fn span(&self) -> Span {
         self.span.clone()
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Delimiter {
-    Parenthesis,
-    Brace,
-    Bracket,
-}
-
-impl Delimiter {
-    pub fn as_open_char(self) -> char {
-        match self {
-            Delimiter::Parenthesis => '(',
-            Delimiter::Brace => '{',
-            Delimiter::Bracket => '[',
-        }
-    }
-    pub fn as_close_char(self) -> char {
-        match self {
-            Delimiter::Parenthesis => ')',
-            Delimiter::Brace => '}',
-            Delimiter::Bracket => ']',
-        }
     }
 }
 

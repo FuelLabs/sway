@@ -1,3 +1,5 @@
+use sway_error::handler::Handler;
+
 use crate::{decl_engine::DeclEngine, language::ty, Namespace};
 
 // This analysis checks if an expression is known statically to evaluate
@@ -20,7 +22,7 @@ pub fn possibly_nonzero_u64_expression(
             None => false,
         },
         VariableExpression { name, .. } => {
-            match namespace.resolve_symbol(name).value {
+            match namespace.resolve_symbol(&Handler::default(), name).ok() {
                 Some(ty_decl) => {
                     match ty_decl {
                         ty::TyDecl::VariableDecl(var_decl) => {

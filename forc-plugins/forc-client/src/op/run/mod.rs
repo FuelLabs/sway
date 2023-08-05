@@ -48,7 +48,6 @@ pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
             .check_program_type(vec![TreeType::Script])
             .is_ok()
         {
-            println!("running script");
             let is_predicate = false;
             let script_pkg_receipts = run_script_pkg(
                 &command,
@@ -62,7 +61,6 @@ pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
             .check_program_type(vec![TreeType::Predicate])
             .is_ok()
         {
-            println!("spending predicate");
             let is_predicate = true;
             let script_pkg_receipts = run_script_pkg(
                 &command,
@@ -78,7 +76,7 @@ pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
     Ok(receipts)
 }
 
-pub async fn run_script_pkg(
+pub async fn run_pkg(
     command: &cmd::Run,
     manifest: &PackageManifestFile,
     compiled: &BuiltPackage,
@@ -110,7 +108,6 @@ pub async fn run_script_pkg(
         .as_deref()
         .or_else(|| manifest.network.as_ref().map(|nw| &nw.url[..]))
         .unwrap_or(crate::default::NODE_URL);
-
     let client = FuelClient::new(node_url)?;
     if let Some(script_data) = script_data {
         let contract_ids = command

@@ -2,24 +2,21 @@ use sway_types::{Span, Spanned};
 
 use crate::{
     decl_engine::DeclId,
-    error::*,
-    language::{
-        parsed,
-        ty::{self},
-        Visibility,
-    },
+    language::{parsed, ty, Visibility},
+};
+use sway_error::handler::{ErrorEmitted, Handler};
+
+use crate::{
     semantic_analysis::{AbiMode, TypeCheckContext},
     type_system::*,
 };
 
 impl ty::TyTraitFn {
     pub(crate) fn type_check(
+        handler: &Handler,
         mut ctx: TypeCheckContext,
         trait_fn: parsed::TraitFn,
-    ) -> CompileResult<ty::TyTraitFn> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
+    ) -> Result<ty::TyTraitFn, ErrorEmitted> {
         let parsed::TraitFn {
             name,
             span,
@@ -41,26 +38,28 @@ impl ty::TyTraitFn {
         // Type check the parameters.
         let mut typed_parameters = vec![];
         for param in parameters.into_iter() {
-            typed_parameters.push(check!(
-                ty::TyFunctionParameter::type_check_interface_parameter(ctx.by_ref(), param),
-                continue,
-                warnings,
-                errors
-            ));
+            typed_parameters.push(
+                match ty::TyFunctionParameter::type_check_interface_parameter(
+                    handler,
+                    ctx.by_ref(),
+                    param,
+                ) {
+                    Ok(res) => res,
+                    Err(_) => continue,
+                },
+            );
         }
 
         // Type check the return type.
-        return_type.type_id = check!(
-            ctx.resolve_type_with_self(
+        return_type.type_id = ctx
+            .resolve_type_with_self(
+                handler,
                 return_type.type_id,
                 &return_type.span,
                 EnforceTypeArguments::Yes,
-                None
-            ),
-            type_engine.insert(engines, TypeInfo::ErrorRecovery),
-            warnings,
-            errors,
-        );
+                None,
+            )
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
 
         let trait_fn = ty::TyTraitFn {
             name,
@@ -71,7 +70,7 @@ impl ty::TyTraitFn {
             attributes,
         };
 
-        ok(trait_fn, warnings, errors)
+        Ok(trait_fn)
     }
 
     /// This function is used in trait declarations to insert "placeholder"

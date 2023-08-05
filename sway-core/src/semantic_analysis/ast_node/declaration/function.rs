@@ -3,11 +3,11 @@ mod function_parameter;
 pub use function_parameter::*;
 use sway_error::{
     error::CompileError,
+    handler::{ErrorEmitted, Handler},
     warning::{CompileWarning, Warning},
 };
 
 use crate::{
-    error::*,
     language::{parsed::*, ty, Visibility},
     semantic_analysis::*,
     type_system::*,
@@ -16,14 +16,12 @@ use sway_types::{style::is_snake_case, Spanned};
 
 impl ty::TyFunctionDecl {
     pub fn type_check(
+        handler: &Handler,
         mut ctx: TypeCheckContext,
         fn_decl: FunctionDeclaration,
         is_method: bool,
         is_in_impl_self: bool,
-    ) -> CompileResult<Self> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
-
+    ) -> Result<Self, ErrorEmitted> {
         let FunctionDeclaration {
             name,
             body,
@@ -42,16 +40,15 @@ impl ty::TyFunctionDecl {
 
         // If functions aren't allowed in this location, return an error.
         if ctx.functions_disallowed() {
-            errors.push(CompileError::Unimplemented(
+            return Err(handler.emit_err(CompileError::Unimplemented(
                 "Nested function definitions are not allowed at this time.",
                 span,
-            ));
-            return err(warnings, errors);
+            )));
         }
 
         // Warn against non-snake case function names.
         if !is_snake_case(name.as_str()) {
-            warnings.push(CompileWarning {
+            handler.emit_warn(CompileWarning {
                 span: name.span(),
                 warning_content: Warning::NonSnakeCaseFunctionName { name: name.clone() },
             })
@@ -68,39 +65,33 @@ impl ty::TyFunctionDecl {
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
-        let new_type_parameters = check!(
-            TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let new_type_parameters =
+            TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters)?;
 
         // type check the function parameters, which will also insert them into the namespace
         let mut new_parameters = vec![];
-        for parameter in parameters.into_iter() {
-            new_parameters.push(check!(
-                ty::TyFunctionParameter::type_check(ctx.by_ref(), parameter),
-                continue,
-                warnings,
-                errors
-            ));
-        }
-        if !errors.is_empty() {
-            return err(warnings, errors);
-        }
+        handler.scope(|handler| {
+            for parameter in parameters.into_iter() {
+                new_parameters.push(
+                    match ty::TyFunctionParameter::type_check(handler, ctx.by_ref(), parameter) {
+                        Ok(val) => val,
+                        Err(_) => continue,
+                    },
+                );
+            }
+            Ok(())
+        })?;
 
         // type check the return type
-        return_type.type_id = check!(
-            ctx.resolve_type_with_self(
+        return_type.type_id = ctx
+            .resolve_type_with_self(
+                handler,
                 return_type.type_id,
                 &return_type.span,
                 EnforceTypeArguments::Yes,
-                None
-            ),
-            type_engine.insert(engines, TypeInfo::ErrorRecovery),
-            warnings,
-            errors,
-        );
+                None,
+            )
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
 
         // type check the function body
         //
@@ -112,15 +103,12 @@ impl ty::TyFunctionDecl {
                 .with_purity(purity)
                 .with_help_text("Function body's return type does not match up with its return type annotation.")
                 .with_type_annotation(return_type.type_id);
-            check!(
-                ty::TyCodeBlock::type_check(ctx, body),
+            ty::TyCodeBlock::type_check(handler, ctx, body).unwrap_or_else(|err| {
                 (
                     ty::TyCodeBlock { contents: vec![] },
-                    type_engine.insert(engines, TypeInfo::ErrorRecovery)
-                ),
-                warnings,
-                errors
-            )
+                    type_engine.insert(engines, TypeInfo::ErrorRecovery(err)),
+                )
+            })
         };
 
         // gather the return statements
@@ -130,12 +118,12 @@ impl ty::TyFunctionDecl {
             .flat_map(|node| node.gather_return_statements())
             .collect();
 
-        check!(
-            unify_return_statements(ctx.by_ref(), &return_statements, return_type.type_id),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        unify_return_statements(
+            handler,
+            ctx.by_ref(),
+            &return_statements,
+            return_type.type_id,
+        )?;
 
         let (visibility, is_contract_call) = if is_method {
             if is_in_impl_self {
@@ -147,14 +135,12 @@ impl ty::TyFunctionDecl {
             (visibility, matches!(ctx.abi_mode(), AbiMode::ImplAbiFn(..)))
         };
 
-        check!(
-            return_type
-                .type_id
-                .check_type_parameter_bounds(&ctx, &return_type.span, vec![]),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        return_type.type_id.check_type_parameter_bounds(
+            handler,
+            &ctx,
+            &return_type.span,
+            vec![],
+        )?;
 
         let function_decl = ty::TyFunctionDecl {
             name,
@@ -171,25 +157,24 @@ impl ty::TyFunctionDecl {
             where_clause,
         };
 
-        ok(function_decl, warnings, errors)
+        Ok(function_decl)
     }
 }
 
 /// Unifies the types of the return statements and the return type of the
 /// function declaration.
 fn unify_return_statements(
+    handler: &Handler,
     ctx: TypeCheckContext,
     return_statements: &[&ty::TyExpression],
     return_type: TypeId,
-) -> CompileResult<()> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-
+) -> Result<(), ErrorEmitted> {
     let type_engine = ctx.engines.te();
 
-    for stmt in return_statements.iter() {
-        check!(
-            CompileResult::from(type_engine.unify_with_self(
+    handler.scope(|handler| {
+        for stmt in return_statements.iter() {
+            type_engine.unify_with_self(
+                handler,
                 ctx.engines(),
                 stmt.return_type,
                 return_type,
@@ -197,18 +182,10 @@ fn unify_return_statements(
                 &stmt.span,
                 "Return statement must return the declared function return type.",
                 None,
-            )),
-            continue,
-            warnings,
-            errors
-        );
-    }
-
-    if errors.is_empty() {
-        ok((), warnings, errors)
-    } else {
-        err(warnings, errors)
-    }
+            );
+        }
+        Ok(())
+    })
 }
 
 #[test]
@@ -218,6 +195,7 @@ fn test_function_selector_behavior() {
     use sway_types::{integer_bits::IntegerBits, Ident, Span};
 
     let engines = Engines::default();
+    let handler = Handler::default();
     let decl = ty::TyFunctionDecl {
         purity: Default::default(),
         name: Ident::new_no_span("foo".into()),
@@ -233,10 +211,9 @@ fn test_function_selector_behavior() {
         where_clause: vec![],
     };
 
-    let selector_text = match decl.to_selector_name(&engines).value {
-        Some(value) => value,
-        _ => panic!("test failure"),
-    };
+    let selector_text = decl
+        .to_selector_name(&handler, &engines)
+        .expect("test failure");
 
     assert_eq!(selector_text, "foo()".to_string());
 
@@ -282,10 +259,9 @@ fn test_function_selector_behavior() {
         where_clause: vec![],
     };
 
-    let selector_text = match decl.to_selector_name(&engines).value {
-        Some(value) => value,
-        _ => panic!("test failure"),
-    };
+    let selector_text = decl
+        .to_selector_name(&handler, &engines)
+        .expect("test failure");
 
     assert_eq!(selector_text, "bar(str[5],u32)".to_string());
 }

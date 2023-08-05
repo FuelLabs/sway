@@ -18,7 +18,7 @@ pub struct Type(pub generational_arena::Index);
 pub enum TypeContent {
     Unit,
     Bool,
-    Uint(u8), // XXX u256 is not unreasonable and can't fit in a `u8`.
+    Uint(u16),
     B256,
     String(u64),
     Array(Type, u64),
@@ -51,6 +51,7 @@ impl Type {
         Self::get_or_create_unique_type(context, TypeContent::Bool);
         Self::get_or_create_unique_type(context, TypeContent::Uint(8));
         Self::get_or_create_unique_type(context, TypeContent::Uint(64));
+        Self::get_or_create_unique_type(context, TypeContent::Uint(256));
         Self::get_or_create_unique_type(context, TypeContent::B256);
         Self::get_or_create_unique_type(context, TypeContent::Slice);
     }
@@ -71,7 +72,7 @@ impl Type {
     }
 
     /// New unsigned integer type
-    pub fn new_uint(context: &mut Context, width: u8) -> Type {
+    pub fn new_uint(context: &mut Context, width: u16) -> Type {
         Self::get_or_create_unique_type(context, TypeContent::Uint(width))
     }
 
@@ -85,8 +86,13 @@ impl Type {
         Self::get_type(context, &TypeContent::Uint(64)).expect("create_basic_types not called")
     }
 
+    /// New u64 type
+    pub fn get_uint256(context: &Context) -> Type {
+        Self::get_type(context, &TypeContent::Uint(256)).expect("create_basic_types not called")
+    }
+
     /// Get unsigned integer type
-    pub fn get_uint(context: &Context, width: u8) -> Option<Type> {
+    pub fn get_uint(context: &Context, width: u16) -> Option<Type> {
         Self::get_type(context, &TypeContent::Uint(width))
     }
 
@@ -213,7 +219,7 @@ impl Type {
     }
 
     /// Is unsigned integer type of specific width
-    pub fn is_uint_of(&self, context: &Context, width: u8) -> bool {
+    pub fn is_uint_of(&self, context: &Context, width: u16) -> bool {
         matches!(*self.get_content(context), TypeContent::Uint(width_) if width == width_)
     }
 
@@ -267,7 +273,7 @@ impl Type {
     }
 
     /// Get width of an integer type.
-    pub fn get_uint_width(&self, context: &Context) -> Option<u8> {
+    pub fn get_uint_width(&self, context: &Context) -> Option<u16> {
         if let TypeContent::Uint(width) = self.get_content(context) {
             Some(*width)
         } else {
@@ -281,11 +287,9 @@ impl Type {
             return None;
         }
 
-        indices.iter().fold(Some(*self), |ty, idx| {
-            ty.and_then(|ty| {
-                ty.get_field_type(context, *idx)
-                    .or_else(|| ty.get_array_elem_type(context))
-            })
+        indices.iter().try_fold(*self, |ty, idx| {
+            ty.get_field_type(context, *idx)
+                .or_else(|| ty.get_array_elem_type(context))
         })
     }
 
@@ -294,7 +298,7 @@ impl Type {
     pub fn get_indexed_offset(&self, context: &Context, indices: &[Value]) -> Option<u64> {
         indices
             .iter()
-            .fold(Some((*self, 0)), |ty, idx| {
+            .try_fold((*self, 0), |(ty, accum_offset), idx| {
                 let Some(Constant {
                     value: ConstantValue::Uint(idx),
                     ty: _,
@@ -302,35 +306,33 @@ impl Type {
                 else {
                     return None;
                 };
-                ty.and_then(|(ty, accum_offset)| {
-                    if ty.is_struct(context) {
-                        // Sum up all sizes of all previous fields.
-                        let prev_idxs_offset = (0..(*idx)).try_fold(0, |accum, pre_idx| {
-                            ty.get_field_type(context, pre_idx)
-                                .map(|field_ty| field_ty.size_in_bytes(context) + accum)
-                        })?;
-                        ty.get_field_type(context, *idx)
-                            .map(|field_ty| (field_ty, accum_offset + prev_idxs_offset))
-                    } else if ty.is_union(context) {
-                        ty.get_field_type(context, *idx)
-                            .map(|field_ty| (field_ty, accum_offset))
-                    } else {
-                        assert!(
-                            ty.is_array(context),
-                            "Expected aggregate type when indexing using GEP. Got {}",
-                            ty.as_string(context)
-                        );
-                        // size_of_element * idx will be the offset of idx.
-                        ty.get_array_elem_type(context).map(|elm_ty| {
-                            let prev_idxs_offset = ty
-                                .get_array_elem_type(context)
-                                .unwrap()
-                                .size_in_bytes(context)
-                                * idx;
-                            (elm_ty, accum_offset + prev_idxs_offset)
-                        })
-                    }
-                })
+                if ty.is_struct(context) {
+                    // Sum up all sizes of all previous fields.
+                    let prev_idxs_offset = (0..(*idx)).try_fold(0, |accum, pre_idx| {
+                        ty.get_field_type(context, pre_idx)
+                            .map(|field_ty| field_ty.size_in_bytes(context) + accum)
+                    })?;
+                    ty.get_field_type(context, *idx)
+                        .map(|field_ty| (field_ty, accum_offset + prev_idxs_offset))
+                } else if ty.is_union(context) {
+                    ty.get_field_type(context, *idx)
+                        .map(|field_ty| (field_ty, accum_offset))
+                } else {
+                    assert!(
+                        ty.is_array(context),
+                        "Expected aggregate type when indexing using GEP. Got {}",
+                        ty.as_string(context)
+                    );
+                    // size_of_element * idx will be the offset of idx.
+                    ty.get_array_elem_type(context).map(|elm_ty| {
+                        let prev_idxs_offset = ty
+                            .get_array_elem_type(context)
+                            .unwrap()
+                            .size_in_bytes(context)
+                            * idx;
+                        (elm_ty, accum_offset + prev_idxs_offset)
+                    })
+                }
             })
             .map(|pair| pair.1)
     }
@@ -382,10 +384,8 @@ impl Type {
 
     pub fn size_in_bytes(&self, context: &Context) -> u64 {
         match self.get_content(context) {
-            TypeContent::Unit
-            | TypeContent::Bool
-            | TypeContent::Uint(_)
-            | TypeContent::Pointer(_) => 8,
+            TypeContent::Unit | TypeContent::Bool | TypeContent::Pointer(_) => 8,
+            TypeContent::Uint(bits) => (*bits as u64) / 8,
             TypeContent::Slice => 16,
             TypeContent::B256 => 32,
             TypeContent::String(n) => super::size_bytes_round_up_to_word_alignment!(*n),

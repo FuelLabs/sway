@@ -10,13 +10,20 @@ use crate::{
         },
         ProgramKind,
     },
-    asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualOp},
+    asm_lang::{
+        virtual_register::*, Label, Op, VirtualImmediate06, VirtualImmediate12, VirtualImmediate18,
+        VirtualOp,
+    },
     decl_engine::DeclRefFunction,
-    error::*,
     metadata::MetadataManager,
 };
 
-use sway_error::{error::CompileError, warning::CompileWarning, warning::Warning};
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+    warning::CompileWarning,
+    warning::Warning,
+};
 use sway_ir::*;
 use sway_types::{span::Span, Spanned};
 
@@ -83,8 +90,12 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
         self.func_to_labels(func)
     }
 
-    fn compile_function(&mut self, function: Function) -> CompileResult<()> {
-        self.compile_function(function)
+    fn compile_function(
+        &mut self,
+        handler: &Handler,
+        function: Function,
+    ) -> Result<(), ErrorEmitted> {
+        self.compile_function(handler, function)
     }
 
     fn finalize(&self) -> AsmBuilderResult {
@@ -138,26 +149,24 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
     pub(super) fn compile_instruction(
         &mut self,
+        handler: &Handler,
         instr_val: &Value,
         func_is_entry: bool,
-    ) -> CompileResult<()> {
+    ) -> Result<(), ErrorEmitted> {
         let Some(instruction) = instr_val.get_instruction(self.context) else {
-            return err(
-                vec![],
-                vec![CompileError::Internal(
-                    "Value not an instruction.",
-                    self.md_mgr
-                        .val_to_span(self.context, *instr_val)
-                        .unwrap_or_else(Span::dummy),
-                )],
-            );
+            return Err(handler.emit_err(CompileError::Internal(
+                "Value not an instruction.",
+                self.md_mgr
+                    .val_to_span(self.context, *instr_val)
+                    .unwrap_or_else(Span::dummy),
+            )));
         };
 
-        // The only instruction whose compilation returns a CompileResult itself is AsmBlock, which
+        // The only instruction whose compilation returns a Result itself is AsmBlock, which
         // we special-case here.  Ideally, the ASM block verification would happen much sooner,
         // perhaps during parsing.  https://github.com/FuelLabs/sway/issues/801
         if let Instruction::AsmBlock(asm, args) = instruction {
-            self.compile_asm_block(instr_val, asm, args)
+            self.compile_asm_block(handler, instr_val, asm, args)
         } else {
             // These matches all return `Result<(), CompileError>`.
             match instruction {
@@ -239,6 +248,12 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     FuelVmInstruction::StateStoreWord { stored_val, key } => {
                         self.compile_state_store_word(instr_val, stored_val, key)
                     }
+                    FuelVmInstruction::WideBinaryOp {
+                        op,
+                        arg1,
+                        arg2,
+                        result,
+                    } => self.compile_wide_binary_op(instr_val, op, arg1, arg2, result),
                 },
                 Instruction::GetElemPtr {
                     base,
@@ -273,36 +288,35 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     stored_val,
                 } => self.compile_store(instr_val, dst_val_ptr, stored_val),
             }
-            .into()
+            .map_err(|e| handler.emit_err(e))
         }
     }
 
     fn compile_asm_block(
         &mut self,
+        handler: &Handler,
         instr_val: &Value,
         asm: &AsmBlock,
         asm_args: &[AsmArg],
-    ) -> CompileResult<()> {
-        let mut warnings: Vec<CompileWarning> = Vec::new();
-        let mut errors: Vec<CompileError> = Vec::new();
+    ) -> Result<(), ErrorEmitted> {
         let mut inline_reg_map = HashMap::new();
         let mut inline_ops = Vec::new();
         for AsmArg { name, initializer } in asm_args {
-            assert_or_warn!(
-                ConstantRegister::parse_register_name(name.as_str()).is_none(),
-                warnings,
-                name.span().clone(),
-                Warning::ShadowingReservedRegister {
-                    reg_name: name.clone()
-                }
-            );
+            if ConstantRegister::parse_register_name(name.as_str()).is_some() {
+                handler.emit_warn(CompileWarning {
+                    span: name.span().clone(),
+                    warning_content: Warning::ShadowingReservedRegister {
+                        reg_name: name.clone(),
+                    },
+                });
+            }
+
             let arg_reg = match initializer {
                 Some(init_val) => {
                     let init_val_reg = match self.value_to_register(init_val) {
                         Ok(ivr) => ivr,
                         Err(e) => {
-                            errors.push(e);
-                            return err(warnings, errors);
+                            return Err(handler.emit_err(e));
                         }
                     };
                     match init_val_reg {
@@ -353,7 +367,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 })
                 .filter_map(|res| match res {
                     Err(e) => {
-                        errors.push(e);
+                        handler.emit_err(e);
                         None
                     }
                     Ok(o) => Some(o),
@@ -365,17 +379,13 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 .md_mgr
                 .md_to_span(self.context, op.metadata)
                 .unwrap_or_else(Span::dummy);
-            let opcode = check!(
-                Op::parse_opcode(
-                    &op.name,
-                    &replaced_registers,
-                    &op.immediate,
-                    op_span.clone(),
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
+            let opcode = Op::parse_opcode(
+                handler,
+                &op.name,
+                &replaced_registers,
+                &op.immediate,
+                op_span.clone(),
+            )?;
 
             inline_ops.push(Op {
                 opcode: either::Either::Left(opcode),
@@ -391,15 +401,14 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             let ret_reg = match realize_register(ret_reg_name.as_str()) {
                 Some(reg) => reg,
                 None => {
-                    errors.push(CompileError::UnknownRegister {
+                    return Err(handler.emit_err(CompileError::UnknownRegister {
                         initialized_registers: inline_reg_map
                             .keys()
                             .map(|name| name.to_string())
                             .collect::<Vec<_>>()
                             .join("\n"),
                         span: ret_reg_name.span(),
-                    });
-                    return err(warnings, errors);
+                    }));
                 }
             };
             let instr_reg = self.reg_seqr.next();
@@ -413,7 +422,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
         self.cur_bytecode.append(&mut inline_ops);
 
-        ok((), warnings, errors)
+        Ok(())
     }
 
     fn compile_bitcast(
@@ -472,6 +481,37 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         });
 
         self.reg_map.insert(*instr_val, res_reg);
+        Ok(())
+    }
+
+    fn compile_wide_binary_op(
+        &mut self,
+        instr_val: &Value,
+        op: &BinaryOpKind,
+        arg1: &Value,
+        arg2: &Value,
+        result: &Value,
+    ) -> Result<(), CompileError> {
+        let result_reg = self.value_to_register(result)?;
+        let val1_reg = self.value_to_register(arg1)?;
+        let val2_reg = self.value_to_register(arg2)?;
+
+        let opcode = match op {
+            BinaryOpKind::Add => VirtualOp::WQOP(
+                result_reg,
+                val1_reg,
+                val2_reg,
+                VirtualImmediate06::wide_op(crate::asm_lang::WideOperations::Add, true),
+            ),
+            _ => todo!(),
+        };
+
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(opcode),
+            comment: String::new(),
+            owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+        });
+
         Ok(())
     }
 
@@ -698,101 +738,96 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         // until then we can keep track of the constant values and add them once.
 
         let base_reg = self.value_to_register(base_val)?;
-        let (base_reg, const_offs, _) =
-            indices
-                .iter()
-                .fold(Ok((base_reg, 0, base_type)), |acc, idx_val| {
-                    // So we're folding to a Result, as unwrapping the constants can fail.
-                    acc.and_then(|(reg, offs, elem_ty)| {
-                        // If we find a constant index then we add its offset to `offs`.  Otherwise we grab
-                        // its value, which should be compiled already, and add it to reg.
-                        if elem_ty.is_struct(self.context) {
-                            // For structs the index must be a const uint.
-                            unwrap_constant_uint(idx_val).map(|idx| {
-                                let field_types = elem_ty.get_field_types(self.context);
-                                let field_type = field_types[idx];
-                                let field_offs_in_bytes = field_types
-                                    .iter()
-                                    .take(idx)
-                                    .map(|field_ty| ir_type_size_in_bytes(self.context, field_ty))
-                                    .sum::<u64>();
-                                (reg, offs + field_offs_in_bytes, field_type)
-                            })
-                        } else if elem_ty.is_union(self.context) {
-                            // For unions the index must also be a const uint.
-                            unwrap_constant_uint(idx_val).map(|idx| {
-                                let field_type = elem_ty.get_field_types(self.context)[idx];
-                                let union_size_in_bytes =
-                                    ir_type_size_in_bytes(self.context, &elem_ty);
-                                let field_size_in_bytes =
-                                    ir_type_size_in_bytes(self.context, &field_type);
-
-                                // The union fields are at offset (union_size - variant_size) due to left padding.
-                                (
-                                    reg,
-                                    offs + union_size_in_bytes - field_size_in_bytes,
-                                    field_type,
-                                )
-                            })
-                        } else if elem_ty.is_array(self.context) {
-                            // For arrays the index is a value.  We need to fetch it and add it to
-                            // the base.
-                            let array_elem_ty =
-                                elem_ty.get_array_elem_type(self.context).ok_or_else(|| {
-                                    CompileError::Internal(
-                                        "Failed to get elem type for known array",
-                                        owning_span.clone().unwrap_or_else(Span::dummy),
-                                    )
-                                })?;
-                            let array_elem_size =
-                                ir_type_size_in_bytes(self.context, &array_elem_ty);
-                            let size_reg = self.reg_seqr.next();
-                            self.immediate_to_reg(
-                                array_elem_size,
-                                size_reg.clone(),
-                                None,
-                                "get size of element",
-                                owning_span.clone(),
-                            );
-
-                            let index_reg = self.value_to_register(idx_val)?;
-                            let offset_reg = self.reg_seqr.next();
-
-                            self.cur_bytecode.push(Op {
-                                opcode: Either::Left(VirtualOp::MUL(
-                                    offset_reg.clone(),
-                                    index_reg,
-                                    size_reg,
-                                )),
-                                comment: "get offset to array element".into(),
-                                owning_span: owning_span.clone(),
-                            });
-                            self.cur_bytecode.push(Op {
-                                opcode: Either::Left(VirtualOp::ADD(
-                                    offset_reg.clone(),
-                                    reg,
-                                    offset_reg.clone(),
-                                )),
-                                comment: "add to array base".into(),
-                                owning_span: owning_span.clone(),
-                            });
-                            let member_type =
-                                elem_ty.get_array_elem_type(self.context).ok_or_else(|| {
-                                    CompileError::Internal(
-                                        "Can't get array elem type for GEP.",
-                                        sway_types::span::Span::dummy(),
-                                    )
-                                })?;
-
-                            Ok((offset_reg, offs, member_type))
-                        } else {
-                            Err(CompileError::Internal(
-                                "Cannot get element offset in non-aggregate.",
-                                sway_types::span::Span::dummy(),
-                            ))
-                        }
+        let (base_reg, const_offs, _) = indices.iter().try_fold(
+            (base_reg, 0, base_type),
+            |(reg, offs, elem_ty), idx_val| {
+                // So we're folding to a Result, as unwrapping the constants can fail.
+                // If we find a constant index then we add its offset to `offs`.  Otherwise we grab
+                // its value, which should be compiled already, and add it to reg.
+                if elem_ty.is_struct(self.context) {
+                    // For structs the index must be a const uint.
+                    unwrap_constant_uint(idx_val).map(|idx| {
+                        let field_types = elem_ty.get_field_types(self.context);
+                        let field_type = field_types[idx];
+                        let field_offs_in_bytes = field_types
+                            .iter()
+                            .take(idx)
+                            .map(|field_ty| ir_type_size_in_bytes(self.context, field_ty))
+                            .sum::<u64>();
+                        (reg, offs + field_offs_in_bytes, field_type)
                     })
-                })?;
+                } else if elem_ty.is_union(self.context) {
+                    // For unions the index must also be a const uint.
+                    unwrap_constant_uint(idx_val).map(|idx| {
+                        let field_type = elem_ty.get_field_types(self.context)[idx];
+                        let union_size_in_bytes = ir_type_size_in_bytes(self.context, &elem_ty);
+                        let field_size_in_bytes = ir_type_size_in_bytes(self.context, &field_type);
+
+                        // The union fields are at offset (union_size - variant_size) due to left padding.
+                        (
+                            reg,
+                            offs + union_size_in_bytes - field_size_in_bytes,
+                            field_type,
+                        )
+                    })
+                } else if elem_ty.is_array(self.context) {
+                    // For arrays the index is a value.  We need to fetch it and add it to
+                    // the base.
+                    let array_elem_ty =
+                        elem_ty.get_array_elem_type(self.context).ok_or_else(|| {
+                            CompileError::Internal(
+                                "Failed to get elem type for known array",
+                                owning_span.clone().unwrap_or_else(Span::dummy),
+                            )
+                        })?;
+                    let array_elem_size = ir_type_size_in_bytes(self.context, &array_elem_ty);
+                    let size_reg = self.reg_seqr.next();
+                    self.immediate_to_reg(
+                        array_elem_size,
+                        size_reg.clone(),
+                        None,
+                        "get size of element",
+                        owning_span.clone(),
+                    );
+
+                    let index_reg = self.value_to_register(idx_val)?;
+                    let offset_reg = self.reg_seqr.next();
+
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::MUL(
+                            offset_reg.clone(),
+                            index_reg,
+                            size_reg,
+                        )),
+                        comment: "get offset to array element".into(),
+                        owning_span: owning_span.clone(),
+                    });
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::ADD(
+                            offset_reg.clone(),
+                            reg,
+                            offset_reg.clone(),
+                        )),
+                        comment: "add to array base".into(),
+                        owning_span: owning_span.clone(),
+                    });
+                    let member_type =
+                        elem_ty.get_array_elem_type(self.context).ok_or_else(|| {
+                            CompileError::Internal(
+                                "Can't get array elem type for GEP.",
+                                sway_types::span::Span::dummy(),
+                            )
+                        })?;
+
+                    Ok((offset_reg, offs, member_type))
+                } else {
+                    Err(CompileError::Internal(
+                        "Cannot get element offset in non-aggregate.",
+                        sway_types::span::Span::dummy(),
+                    ))
+                }
+            },
+        )?;
 
         if const_offs == 0 {
             // No need to add anything.

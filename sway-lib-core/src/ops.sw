@@ -6,6 +6,12 @@ pub trait Add {
     fn add(self, other: Self) -> Self;
 }
 
+impl Add for u256 {
+    fn add(self, other: Self) -> Self {
+        __add(self, other)
+    }
+}
+
 impl Add for u64 {
     fn add(self, other: Self) -> Self {
         __add(self, other)
