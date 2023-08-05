@@ -150,7 +150,7 @@ pub async fn run_pkg(
         let minify_json_abi = true;
         let package_json_abi = compiled
             .json_abi_string(minify_json_abi)?
-           .ok_or_else(|| anyhow::anyhow!("Missing json abi string"))?;
+            .ok_or_else(|| anyhow::anyhow!("Missing json abi string"))?;
         let main_arg_handler = ScriptCallHandler::from_json_abi_str(&package_json_abi)?;
         let args = command.args.clone().unwrap_or_default();
         let args = args.iter().map(|arg| arg.as_str()).collect::<Vec<_>>();
@@ -173,8 +173,9 @@ pub async fn run_pkg(
         );
         let provider = Provider::new(client, cons_params);
 
-        let predicate =
-            Predicate::from_code(compiled.bytecode.bytes.clone()).with_provider(provider).with_data(unresolved_bytes);
+        let predicate = Predicate::from_code(compiled.bytecode.bytes.clone())
+            .with_provider(provider)
+            .with_data(unresolved_bytes);
 
         if command.dry_run {
             Ok(RanScript { receipts: vec![] })
