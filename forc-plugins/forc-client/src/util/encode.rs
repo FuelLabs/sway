@@ -5,7 +5,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 /// A wrapper around fuels_core::types::Token, which enables serde de/serialization.
 #[derive(Debug, PartialEq)]
-pub(crate) struct Token(fuels_core::types::Token);
+pub(crate) struct Token(pub(crate) fuels_core::types::Token);
 
 impl FromStr for Token {
     type Err = anyhow::Error;
