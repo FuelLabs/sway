@@ -133,41 +133,185 @@ pub fn heap_ptr() -> raw_ptr {
 }
 
 /// Error codes for particular operations.
+///
+/// # Additional Information
+///
+/// Normally, if the result of an ALU operation is mathematically undefined (e.g. dividing by zero), the VM panics. 
+/// However, if the `F_UNSAFEMATH` flag is set, $err is set to `true` and execution continues.
+///
+/// # Returns
+///
+/// * [u64] - A VM error code.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::{registers::error, flags::{disable_panic_on_unsafe_math, enable_panic_on_unsafe_math}};
+///
+/// fn foo() {
+///     disable_panic_on_unsafe_math();
+///     let bar = 1 / 0; 
+///     assert(error() == 1); 
+///     enable_panic_on_unsafe_math();
+/// }
+/// ```
 pub fn error() -> u64 {
     asm() { err }
 }
 
 /// Remaining gas globally.
+///
+/// # Returns
+///
+/// * [u64] - The remaining gas.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::registers::global_gas;
+///
+/// fn foo() {
+///     let gas = global_gas();
+///     assert(gas != 0);
+///     bar();
+///
+///     let gas_2 = global_gas();
+///     assert(gas_2 < gas);
+/// }
+///
+/// fn bar() {
+///     let val = 0;
+/// }
+/// ```
 pub fn global_gas() -> u64 {
     asm() { ggas }
 }
 
 /// Remaining gas in the context.
+///
+/// # Returns
+///
+/// * [u64] - The remaining gas for the curren context.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::registers::context_gas;
+///
+/// fn foo() {
+///     let gas = context_gas();
+///     let gas_2 = bar();
+///     assert(gas_2 < gas);
+/// }
+///
+/// fn bar() -> u64 {
+///     context_gas();
+/// }
+/// ```
 pub fn context_gas() -> u64 {
     asm() { cgas }
 }
 
 /// Get the amount of units of `call_frames::msg_asset_id()` being sent.
+///
+/// # Returns
+///
+/// * [u64] - The forwarded coins in the context.
+///
+/// # Examples
+/// ```sway
+/// use std::register::balance;
+///
+/// fn foo() {
+///     let bal = balance();
+///     assert(bal == 0);
+/// }
+/// ```
 pub fn balance() -> u64 {
     asm() { bal }
 }
 
 /// Pointer to the start of the currently-executing code.
+///
+/// # Returns
+///
+/// * [raw_ptr] - The memory location of the start of the currently-executing code.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::registers::instrs_start;
+///
+/// fn foo() {
+///     let is = instrs_start();
+///     assert(is.is_null() == false);
+/// }
+/// ```
 pub fn instrs_start() -> raw_ptr {
     asm() { is: raw_ptr }
 }
 
 /// Return value or pointer.
+///
+/// # Returns
+/// 
+/// * [u64] - The value or pointer stored in the return register of the VM for the current context.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::registers::return_value;
+///
+/// fn foo() {
+///     let ret = return_value();
+///     assert(ret == 0);
+/// }
+/// ```
 pub fn return_value() -> u64 {
     asm() { ret }
 }
 
 /// Return value length in bytes.
+///
+/// # Returns
+/// 
+/// * [u64] - The length in bytes of the value stored in the return register of the VM for the current context.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::registers::return_length;
+///
+/// fn foo() {
+///     let ret = return_length();
+///     assert(ret == 0);
+/// }
+/// ```
 pub fn return_length() -> u64 {
     asm() { retl }
 }
 
 /// Flags register.
+///
+/// # Returns
+///
+/// * [u64] - The current flags set within the VM.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::{registers::flags, flags::disable_panic_on_overflow};
+///
+/// const F_WRAPPING_DISABLE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000010;
+///
+/// fn foo() {
+///     let flag = flags();
+///     assert(flag == 0);
+///     disable_panic_on_overflow();
+///     let flag_2 = flags();
+///     assert(flag_2 == F_WRAPPING_DISABLE_MASK);
+/// }
+/// ```
 pub fn flags() -> u64 {
     asm() { flag }
 }
