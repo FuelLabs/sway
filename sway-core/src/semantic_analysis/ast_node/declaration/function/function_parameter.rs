@@ -62,8 +62,6 @@ impl ty::TyFunctionParameter {
             type_argument,
         };
 
-        insert_into_namespace(handler, ctx, &typed_parameter);
-
         Ok(typed_parameter)
     }
 
@@ -103,31 +101,27 @@ impl ty::TyFunctionParameter {
 
         Ok(typed_parameter)
     }
-}
 
-fn insert_into_namespace(
-    handler: &Handler,
-    ctx: TypeCheckContext,
-    typed_parameter: &ty::TyFunctionParameter,
-) {
-    let const_shadowing_mode = ctx.const_shadowing_mode();
-    let _ = ctx.namespace.insert_symbol(
-        handler,
-        typed_parameter.name.clone(),
-        ty::TyDecl::VariableDecl(Box::new(ty::TyVariableDecl {
-            name: typed_parameter.name.clone(),
-            body: ty::TyExpression {
-                expression: ty::TyExpressionVariant::FunctionParameter,
-                return_type: typed_parameter.type_argument.type_id,
-                span: typed_parameter.name.span(),
-            },
-            mutability: ty::VariableMutability::new_from_ref_mut(
-                typed_parameter.is_reference,
-                typed_parameter.is_mutable,
-            ),
-            return_type: typed_parameter.type_argument.type_id,
-            type_ascription: typed_parameter.type_argument.clone(),
-        })),
-        const_shadowing_mode,
-    );
+    pub fn insert_into_namespace(&self, handler: &Handler, ctx: TypeCheckContext) {
+        let const_shadowing_mode = ctx.const_shadowing_mode();
+        let _ = ctx.namespace.insert_symbol(
+            handler,
+            self.name.clone(),
+            ty::TyDecl::VariableDecl(Box::new(ty::TyVariableDecl {
+                name: self.name.clone(),
+                body: ty::TyExpression {
+                    expression: ty::TyExpressionVariant::FunctionParameter,
+                    return_type: self.type_argument.type_id,
+                    span: self.name.span(),
+                },
+                mutability: ty::VariableMutability::new_from_ref_mut(
+                    self.is_reference,
+                    self.is_mutable,
+                ),
+                return_type: self.type_argument.type_id,
+                type_ascription: self.type_argument.clone(),
+            })),
+            const_shadowing_mode,
+        );
+    }
 }

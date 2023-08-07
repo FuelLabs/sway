@@ -738,14 +738,10 @@ fn module_dead_code_analysis<'eng: 'cfg, 'cfg>(
     tree_type: &parsed::TreeType,
     graph: &mut ControlFlowGraph<'cfg>,
 ) -> Result<(), ErrorEmitted> {
-    module
-        .submodules
-        .iter()
-        .fold(Ok(()), |res, (_, submodule)| {
-            let tree_type = parsed::TreeType::Library;
-            res?;
-            module_dead_code_analysis(handler, engines, &submodule.module, &tree_type, graph)
-        })?;
+    module.submodules.iter().try_fold((), |_, (_, submodule)| {
+        let tree_type = parsed::TreeType::Library;
+        module_dead_code_analysis(handler, engines, &submodule.module, &tree_type, graph)
+    })?;
     let res = {
         ControlFlowGraph::append_module_to_dead_code_graph(
             engines,
