@@ -109,9 +109,7 @@ async fn run_blocking_parse_project(
         return Err(LanguageServerError::UnableToAcquirePermit);
     }
 
-    task::spawn_blocking(move || {
-        session::parse_project(&uri)
-    })
+    task::spawn_blocking(move || session::parse_project(&uri))
         .await
         .unwrap_or_else(|_| Err(LanguageServerError::FailedToParse))
 }

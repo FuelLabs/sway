@@ -23,13 +23,14 @@ use lsp_types::{
     TextDocumentContentChangeEvent, TextEdit, Url,
 };
 use parking_lot::RwLock;
-use pkg::manifest::ManifestFile;
+use pkg::{manifest::ManifestFile, BuildPlan};
 use std::{
     fs::File,
     io::Write,
+    ops::Deref,
     path::PathBuf,
     sync::{atomic::Ordering, Arc},
-    vec, ops::Deref,
+    vec,
 };
 use sway_core::{
     decl_engine::DeclEngine,
@@ -146,15 +147,12 @@ impl Session {
 
         *self.engines.write() = res.engines;
         *self.diagnostics.write() = res.diagnostics;
-        
-        res.token_map
-            .deref()
-            .iter()
-            .for_each(|item| {
-                let ((i, s), t) = item.pair();
-                self.token_map.insert((i.clone(), s.clone()), t.clone());
-            });
-        
+
+        res.token_map.deref().iter().for_each(|item| {
+            let ((i, s), t) = item.pair();
+            self.token_map.insert((i.clone(), s.clone()), t.clone());
+        });
+
         self.create_runnables(&res.typed, self.engines.read().de());
         self.save_lexed_program(res.lexed);
         self.save_parsed_program(res.parsed);
@@ -401,14 +399,13 @@ impl Session {
     }
 }
 
-/// Parses the project and returns true if the compiler diagnostics are new and should be published.
-pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
+/// Create a [BuildPlan] from the given [Url] appropriate for the language server.
+fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
     let manifest_dir = PathBuf::from(uri.path());
-    let manifest = ManifestFile::from_dir(&manifest_dir).map_err(|_| {
-        DocumentError::ManifestFileNotFound {
+    let manifest =
+        ManifestFile::from_dir(&manifest_dir).map_err(|_| DocumentError::ManifestFileNotFound {
             dir: uri.path().into(),
-        }
-    })?;
+        })?;
 
     let member_manifests =
         manifest
@@ -417,35 +414,29 @@ pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
                 dir: uri.path().into(),
             })?;
 
-    let lock_path =
-        manifest
-            .lock_path()
-            .map_err(|_| DocumentError::ManifestsLockPathFailed {
-                dir: uri.path().into(),
-            })?;
+    let lock_path = manifest
+        .lock_path()
+        .map_err(|_| DocumentError::ManifestsLockPathFailed {
+            dir: uri.path().into(),
+        })?;
 
     // TODO: Either we want LSP to deploy a local node in the background or we want this to
     // point to Fuel operated IPFS node.
     let ipfs_node = pkg::source::IPFSNode::Local;
-    let locked = false;
-    let offline = false;
+    pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, false, false, ipfs_node)
+        .map_err(LanguageServerError::BuildPlanFailed)
+}
 
-    let plan = pkg::BuildPlan::from_lock_and_manifests(
-        &lock_path,
-        &member_manifests,
-        locked,
-        offline,
-        ipfs_node,
-    )
-    .map_err(LanguageServerError::BuildPlanFailed)?;
-
+/// Parses the project and returns true if the compiler diagnostics are new and should be published.
+pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
+    let build_plan = build_plan(uri)?;
     let mut diagnostics = Diagnostics::default();
     let engines = Engines::default();
     let token_map = TokenMap::new();
     let tests_enabled = true;
 
     let results = pkg::check(
-        &plan,
+        &build_plan,
         BuildTarget::default(),
         true,
         tests_enabled,
@@ -498,7 +489,7 @@ pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
                 typed_tree.traverse_node(node)
             });
 
-            programs = Some((lexed,parsed,typed_program.clone()));
+            programs = Some((lexed, parsed, typed_program.clone()));
             diagnostics = get_diagnostics(&warnings, &errors);
         } else {
             // Collect tokens from dependencies and the standard library prelude.
@@ -512,9 +503,9 @@ pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
         }
     }
     let (lexed, parsed, typed) = programs.expect("Programs should be populated at this point.");
-    Ok(ParseResult { 
-        diagnostics, 
-        token_map, 
+    Ok(ParseResult {
+        diagnostics,
+        token_map,
         engines,
         lexed,
         parsed,
@@ -584,8 +575,7 @@ mod tests {
     fn parse_project_returns_manifest_file_not_found() {
         let dir = get_absolute_path("sway-lsp/tests/fixtures");
         let uri = get_url(&dir);
-        let result =
-            parse_project(&uri).expect_err("expected ManifestFileNotFound");
+        let result = parse_project(&uri).expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(
