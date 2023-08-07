@@ -23,10 +23,11 @@ use lsp_types::{
     TextDocumentContentChangeEvent, TextEdit, Url,
 };
 use parking_lot::RwLock;
-use pkg::manifest::ManifestFile;
+use pkg::{manifest::ManifestFile, BuildPlan};
 use std::{
     fs::File,
     io::Write,
+    ops::Deref,
     path::PathBuf,
     sync::{atomic::Ordering, Arc},
     vec,
@@ -54,6 +55,18 @@ pub struct CompiledProgram {
     pub typed: Option<ty::TyProgram>,
 }
 
+/// Used to write the result of compiling into so we can update
+/// the types in [Session] after successfully parsing.
+#[derive(Debug)]
+pub struct ParseResult {
+    pub(crate) diagnostics: Diagnostics,
+    pub(crate) token_map: TokenMap,
+    pub(crate) engines: Engines,
+    pub(crate) lexed: LexedProgram,
+    pub(crate) parsed: ParseProgram,
+    pub(crate) typed: ty::TyProgram,
+}
+
 /// A `Session` is used to store information about a single member in a workspace.
 /// It stores the parsed and typed Tokens, as well as the [TypeEngine] associated with the project.
 ///
@@ -68,9 +81,9 @@ pub struct Session {
     pub sync: SyncWorkspace,
     // Limit the number of threads that can wait to parse at the same time. One thread can be parsing
     // and one thread can be waiting to start parsing. All others will return the cached diagnostics.
-    parse_permits: Arc<Semaphore>,
+    pub parse_permits: Arc<Semaphore>,
     // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
-    diagnostics: Arc<RwLock<Diagnostics>>,
+    pub diagnostics: Arc<RwLock<Diagnostics>>,
 }
 
 impl Session {
@@ -89,18 +102,13 @@ impl Session {
 
     pub fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
         let manifest_dir = PathBuf::from(uri.path());
-
         // Create a new temp dir that clones the current workspace
         // and store manifest and temp paths
         self.sync.create_temp_dir_from_workspace(&manifest_dir)?;
-
         self.sync.clone_manifest_dir_to_temp()?;
-
         // iterate over the project dir, parse all sway files
         let _ = self.store_sway_files();
-
         self.sync.watch_and_sync_manifest();
-
         self.sync.manifest_dir().map_err(Into::into)
     }
 
@@ -128,140 +136,22 @@ impl Session {
         self.diagnostics.read().clone()
     }
 
-    /// Parses the project and returns true if the compiler diagnostics are new and should be published.
-    pub fn parse_project(&self, uri: &Url) -> Result<bool, LanguageServerError> {
-        // Acquire a permit to parse the project. If there are none available, return false. This way,
-        // we avoid publishing the same diagnostics multiple times.
-        let permit = self.parse_permits.try_acquire();
-        if permit.is_err() {
-            return Ok(false);
-        }
-
-        // Lock the diagnostics result to prevent multiple threads from parsing the project at the same time.
-        let mut diagnostics = self.diagnostics.write();
-
-        let manifest_dir = PathBuf::from(uri.path());
-        let locked = false;
-        let offline = false;
-
-        let manifest = ManifestFile::from_dir(&manifest_dir).map_err(|_| {
-            DocumentError::ManifestFileNotFound {
-                dir: uri.path().into(),
-            }
-        })?;
-
-        let member_manifests =
-            manifest
-                .member_manifests()
-                .map_err(|_| DocumentError::MemberManifestsFailed {
-                    dir: uri.path().into(),
-                })?;
-
-        let lock_path =
-            manifest
-                .lock_path()
-                .map_err(|_| DocumentError::ManifestsLockPathFailed {
-                    dir: uri.path().into(),
-                })?;
-
-        // TODO: Either we want LSP to deploy a local node in the background or we want this to
-        // point to Fuel operated IPFS node.
-        let ipfs_node = pkg::source::IPFSNode::Local;
-
-        let plan = pkg::BuildPlan::from_lock_and_manifests(
-            &lock_path,
-            &member_manifests,
-            locked,
-            offline,
-            ipfs_node,
-        )
-        .map_err(LanguageServerError::BuildPlanFailed)?;
-
-        let new_engines = Engines::default();
-        let tests_enabled = true;
-
-        let results = pkg::check(
-            &plan,
-            BuildTarget::default(),
-            true,
-            tests_enabled,
-            &new_engines,
-        )
-        .map_err(LanguageServerError::FailedToCompile)?;
-
-        // Acquire locks for the engines before clearing anything.
-        let mut engines = self.engines.write();
-
-        // Update the engines with the new data.
-        *engines = new_engines;
-
-        // Clear other data stores.
+    /// Write the result of parsing to the session.
+    /// This function should only be called after successfully parsing.
+    pub(crate) fn write_parse_result(&self, res: ParseResult) {
         self.token_map.clear();
         self.runnables.clear();
 
-        let results_len = results.len();
-        for (i, (value, handler)) in results.into_iter().enumerate() {
-            // We can convert these destructured elements to a Vec<Diagnostic> later on.
-            let (errors, warnings) = handler.consume();
+        *self.engines.write() = res.engines;
+        res.token_map.deref().iter().for_each(|item| {
+            let ((i, s), t) = item.pair();
+            self.token_map.insert((i.clone(), s.clone()), t.clone());
+        });
 
-            if value.is_none() {
-                // If there was an unrecoverable error in the parser
-                // make sure to still return the diagnostics.
-                *diagnostics = get_diagnostics(&warnings, &errors);
-                continue;
-            }
-            let Programs {
-                lexed,
-                parsed,
-                typed,
-            } = value.unwrap();
-
-            // Get a reference to the typed program AST.
-            let typed_program = typed.as_ref().ok().ok_or_else(|| {
-                *diagnostics = get_diagnostics(&warnings, &errors);
-                LanguageServerError::FailedToParse
-            })?;
-
-            // Create context with write guards to make readers wait until the update to token_map is complete.
-            // This operation is fast because we already have the compile results.
-            let ctx = ParseContext::new(&self.token_map, &engines, &typed_program.root.namespace);
-
-            // The final element in the results is the main program.
-            if i == results_len - 1 {
-                // First, populate our token_map with sway keywords.
-                lexed_tree::parse(&lexed, &ctx);
-
-                // Next, populate our token_map with un-typed yet parsed ast nodes.
-                let parsed_tree = ParsedTree::new(&ctx);
-                parsed_tree.collect_module_spans(&parsed);
-                self.parse_ast_to_tokens(&parsed, &ctx, |an, _ctx| parsed_tree.traverse_node(an));
-
-                // Finally, create runnables and populate our token_map with typed ast nodes.
-                self.create_runnables(typed_program, engines.de());
-
-                let typed_tree = TypedTree::new(&ctx);
-                typed_tree.collect_module_spans(typed_program);
-                self.parse_ast_to_typed_tokens(typed_program, &ctx, |node, _ctx| {
-                    typed_tree.traverse_node(node)
-                });
-
-                self.save_lexed_program(lexed.to_owned().clone());
-                self.save_parsed_program(parsed.to_owned().clone());
-                self.save_typed_program(typed_program.to_owned().clone());
-
-                *diagnostics = get_diagnostics(&warnings, &errors);
-            } else {
-                // Collect tokens from dependencies and the standard library prelude.
-                self.parse_ast_to_tokens(&parsed, &ctx, |an, ctx| {
-                    dependency::collect_parsed_declaration(an, ctx)
-                });
-
-                self.parse_ast_to_typed_tokens(typed_program, &ctx, |node, ctx| {
-                    dependency::collect_typed_declaration(node, ctx)
-                });
-            }
-        }
-        Ok(true)
+        self.create_runnables(&res.typed, self.engines.read().de());
+        self.compiled_program.write().lexed = Some(res.lexed);
+        self.compiled_program.write().parsed = Some(res.parsed);
+        self.compiled_program.write().typed = Some(res.typed);
     }
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
@@ -444,40 +334,6 @@ impl Session {
             })
     }
 
-    /// Parse the [ParseProgram] AST to populate the [TokenMap] with parsed AST nodes.
-    fn parse_ast_to_tokens(
-        &self,
-        parse_program: &ParseProgram,
-        ctx: &ParseContext,
-        f: impl Fn(&AstNode, &ParseContext),
-    ) {
-        let root_nodes = parse_program.root.tree.root_nodes.iter();
-        let sub_nodes = parse_program
-            .root
-            .submodules
-            .iter()
-            .flat_map(|(_, submodule)| &submodule.module.tree.root_nodes);
-
-        root_nodes.chain(sub_nodes).for_each(|n| f(n, ctx));
-    }
-
-    /// Parse the [ty::TyProgram] AST to populate the [TokenMap] with typed AST nodes.
-    fn parse_ast_to_typed_tokens(
-        &self,
-        typed_program: &ty::TyProgram,
-        ctx: &ParseContext,
-        f: impl Fn(&ty::TyAstNode, &ParseContext),
-    ) {
-        let root_nodes = typed_program.root.all_nodes.iter();
-        let sub_nodes = typed_program
-            .root
-            .submodules
-            .iter()
-            .flat_map(|(_, submodule)| submodule.module.all_nodes.iter());
-
-        root_nodes.chain(sub_nodes).for_each(|n| f(n, ctx));
-    }
-
     /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
     fn create_runnables(&self, typed_program: &ty::TyProgram, decl_engine: &DeclEngine) {
         // Insert runnable test functions.
@@ -509,24 +365,6 @@ impl Session {
         }
     }
 
-    /// Save the `LexedProgram` AST in the session.
-    fn save_lexed_program(&self, lexed_program: LexedProgram) {
-        let mut program = self.compiled_program.write();
-        program.lexed = Some(lexed_program);
-    }
-
-    /// Save the `ParseProgram` AST in the session.
-    fn save_parsed_program(&self, parse_program: ParseProgram) {
-        let mut program = self.compiled_program.write();
-        program.parsed = Some(parse_program);
-    }
-
-    /// Save the `TyProgram` AST in the session.
-    fn save_typed_program(&self, typed_program: ty::TyProgram) {
-        let mut program = self.compiled_program.write();
-        program.typed = Some(typed_program);
-    }
-
     /// Populate [Documents] with sway files found in the workspace.
     fn store_sway_files(&self) -> Result<(), LanguageServerError> {
         let temp_dir = self.sync.temp_dir()?;
@@ -536,6 +374,152 @@ impl Session {
         }
         Ok(())
     }
+}
+
+/// Create a [BuildPlan] from the given [Url] appropriate for the language server.
+fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
+    let manifest_dir = PathBuf::from(uri.path());
+    let manifest =
+        ManifestFile::from_dir(&manifest_dir).map_err(|_| DocumentError::ManifestFileNotFound {
+            dir: uri.path().into(),
+        })?;
+
+    let member_manifests =
+        manifest
+            .member_manifests()
+            .map_err(|_| DocumentError::MemberManifestsFailed {
+                dir: uri.path().into(),
+            })?;
+
+    let lock_path = manifest
+        .lock_path()
+        .map_err(|_| DocumentError::ManifestsLockPathFailed {
+            dir: uri.path().into(),
+        })?;
+
+    // TODO: Either we want LSP to deploy a local node in the background or we want this to
+    // point to Fuel operated IPFS node.
+    let ipfs_node = pkg::source::IPFSNode::Local;
+    pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, false, false, ipfs_node)
+        .map_err(LanguageServerError::BuildPlanFailed)
+}
+
+/// Parses the project and returns true if the compiler diagnostics are new and should be published.
+pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
+    let build_plan = build_plan(uri)?;
+    let mut diagnostics = Diagnostics::default();
+    let engines = Engines::default();
+    let token_map = TokenMap::new();
+    let tests_enabled = true;
+
+    let results = pkg::check(
+        &build_plan,
+        BuildTarget::default(),
+        true,
+        tests_enabled,
+        &engines,
+    )
+    .map_err(LanguageServerError::FailedToCompile)?;
+
+    let mut programs = None;
+    let results_len = results.len();
+    for (i, (value, handler)) in results.into_iter().enumerate() {
+        // We can convert these destructured elements to a Vec<Diagnostic> later on.
+        let (errors, warnings) = handler.consume();
+
+        if value.is_none() {
+            // If there was an unrecoverable error in the parser
+            // make sure to still return the diagnostics.
+            diagnostics = get_diagnostics(&warnings, &errors);
+            continue;
+        }
+        let Programs {
+            lexed,
+            parsed,
+            typed,
+        } = value.unwrap();
+
+        // Get a reference to the typed program AST.
+        let typed_program = typed.as_ref().ok().ok_or_else(|| {
+            diagnostics = get_diagnostics(&warnings, &errors);
+            LanguageServerError::FailedToParse
+        })?;
+
+        // Create context with write guards to make readers wait until the update to token_map is complete.
+        // This operation is fast because we already have the compile results.
+        let ctx = ParseContext::new(&token_map, &engines, &typed_program.root.namespace);
+
+        // The final element in the results is the main program.
+        if i == results_len - 1 {
+            // First, populate our token_map with sway keywords.
+            lexed_tree::parse(&lexed, &ctx);
+
+            // Next, populate our token_map with un-typed yet parsed ast nodes.
+            let parsed_tree = ParsedTree::new(&ctx);
+            parsed_tree.collect_module_spans(&parsed);
+            parse_ast_to_tokens(&parsed, &ctx, |an, _ctx| parsed_tree.traverse_node(an));
+
+            // Finally, populate our token_map with typed ast nodes.
+            let typed_tree = TypedTree::new(&ctx);
+            typed_tree.collect_module_spans(typed_program);
+            parse_ast_to_typed_tokens(typed_program, &ctx, |node, _ctx| {
+                typed_tree.traverse_node(node)
+            });
+
+            programs = Some((lexed, parsed, typed_program.clone()));
+            diagnostics = get_diagnostics(&warnings, &errors);
+        } else {
+            // Collect tokens from dependencies and the standard library prelude.
+            parse_ast_to_tokens(&parsed, &ctx, |an, ctx| {
+                dependency::collect_parsed_declaration(an, ctx)
+            });
+
+            parse_ast_to_typed_tokens(typed_program, &ctx, |node, ctx| {
+                dependency::collect_typed_declaration(node, ctx)
+            });
+        }
+    }
+    let (lexed, parsed, typed) = programs.expect("Programs should be populated at this point.");
+    Ok(ParseResult {
+        diagnostics,
+        token_map,
+        engines,
+        lexed,
+        parsed,
+        typed,
+    })
+}
+
+/// Parse the [ParseProgram] AST to populate the [TokenMap] with parsed AST nodes.
+fn parse_ast_to_tokens(
+    parse_program: &ParseProgram,
+    ctx: &ParseContext,
+    f: impl Fn(&AstNode, &ParseContext),
+) {
+    let root_nodes = parse_program.root.tree.root_nodes.iter();
+    let sub_nodes = parse_program
+        .root
+        .submodules
+        .iter()
+        .flat_map(|(_, submodule)| &submodule.module.tree.root_nodes);
+
+    root_nodes.chain(sub_nodes).for_each(|n| f(n, ctx));
+}
+
+/// Parse the [ty::TyProgram] AST to populate the [TokenMap] with typed AST nodes.
+fn parse_ast_to_typed_tokens(
+    typed_program: &ty::TyProgram,
+    ctx: &ParseContext,
+    f: impl Fn(&ty::TyAstNode, &ParseContext),
+) {
+    let root_nodes = typed_program.root.all_nodes.iter();
+    let sub_nodes = typed_program
+        .root
+        .submodules
+        .iter()
+        .flat_map(|(_, submodule)| submodule.module.all_nodes.iter());
+
+    root_nodes.chain(sub_nodes).for_each(|n| f(n, ctx));
 }
 
 #[cfg(test)]
@@ -566,11 +550,9 @@ mod tests {
 
     #[test]
     fn parse_project_returns_manifest_file_not_found() {
-        let session = Session::new();
         let dir = get_absolute_path("sway-lsp/tests/fixtures");
         let uri = get_url(&dir);
-        let result =
-            Session::parse_project(&session, &uri).expect_err("expected ManifestFileNotFound");
+        let result = parse_project(&uri).expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(
