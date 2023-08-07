@@ -177,6 +177,7 @@ mod ir_builder {
             rule operation() -> IrAstOperation
                 = op_asm()
                 / op_wide_binary()
+                / op_wide_cmp()
                 / op_branch()
                 / op_bitcast()
                 / op_unary()
@@ -230,9 +231,19 @@ mod ir_builder {
                     IrAstOperation::UnaryOp(op, arg1)
                 }
 
+            rule op_wide_modular_operation() -> IrAstOperation
+                = "wide" _ op:binary_op_kind() arg1:id() comma() arg2:id() comma() arg3:id() "to" _ result:id()  {
+                    IrAstOperation::WideModularOp(op, arg1, arg2, arg3, result)
+                }
+
             rule op_wide_binary() -> IrAstOperation
                 = "wide" _ op:binary_op_kind() arg1:id() comma() arg2:id() "to" _ result:id()  {
                     IrAstOperation::WideBinaryOp(op, arg1, arg2, result)
+                }
+
+            rule op_wide_cmp() -> IrAstOperation
+                = "wide" _ "cmp" _ op:cmp_pred() arg1:id() arg2:id() {
+                    IrAstOperation::WideCmp(op, arg1, arg2)
                 }
 
             rule op_binary() -> IrAstOperation
@@ -710,6 +721,8 @@ mod ir_builder {
         StateStoreWord(String, String),
         Store(String, String),
         WideBinaryOp(BinaryOpKind, String, String, String),
+        WideCmp(Predicate, String, String),
+        WideModularOp(BinaryOpKind, String, String, String, String),
     }
 
     #[derive(Debug)]
@@ -1087,6 +1100,24 @@ mod ir_builder {
                             *val_map.get(&arg1).unwrap(),
                             *val_map.get(&arg2).unwrap(),
                             *val_map.get(&result).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::WideModularOp(op, arg1, arg2, arg3, result) => block
+                        .ins(context)
+                        .wide_modular_op(
+                            op,
+                            *val_map.get(&result).unwrap(),
+                            *val_map.get(&arg1).unwrap(),
+                            *val_map.get(&arg2).unwrap(),
+                            *val_map.get(&arg3).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::WideCmp(op, arg1, arg2) => block
+                        .ins(context)
+                        .wide_cmp_op(
+                            op,
+                            *val_map.get(&arg1).unwrap(),
+                            *val_map.get(&arg2).unwrap(),
                         )
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::BinaryOp(op, arg1, arg2) => block

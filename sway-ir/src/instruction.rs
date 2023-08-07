@@ -155,12 +155,23 @@ pub enum FuelVmInstruction {
         stored_val: Value,
         key: Value,
     },
-
     WideBinaryOp {
         op: BinaryOpKind,
+        result: Value,
         arg1: Value,
         arg2: Value,
+    },
+    WideModularOp {
+        op: BinaryOpKind,
         result: Value,
+        arg1: Value,
+        arg2: Value,
+        arg3: Value,
+    },
+    WideCmpOp {
+        op: Predicate,
+        arg1: Value,
+        arg2: Value,
     },
 }
 
@@ -290,7 +301,14 @@ impl Instruction {
             | Instruction::MemCopyVal { .. }
             | Instruction::Store { .. } => Some(Type::get_unit(context)),
 
+            // Wide Operations
             Instruction::FuelVm(FuelVmInstruction::WideBinaryOp { result, .. }) => {
+                result.get_type(context)
+            }
+            Instruction::FuelVm(FuelVmInstruction::WideCmpOp { .. }) => {
+                Some(Type::get_bool(context))
+            }
+            Instruction::FuelVm(FuelVmInstruction::WideModularOp { result, .. }) => {
                 result.get_type(context)
             }
         }
@@ -399,6 +417,14 @@ impl Instruction {
                 FuelVmInstruction::WideBinaryOp {
                     arg1, arg2, result, ..
                 } => vec![*result, *arg1, *arg2],
+                FuelVmInstruction::WideCmpOp { arg1, arg2, .. } => vec![*arg1, *arg2],
+                FuelVmInstruction::WideModularOp {
+                    result,
+                    arg1,
+                    arg2,
+                    arg3,
+                    ..
+                } => vec![*result, *arg1, *arg2, *arg3],
             },
         }
     }
@@ -552,6 +578,22 @@ impl Instruction {
                     replace(arg2);
                     replace(result);
                 }
+                FuelVmInstruction::WideCmpOp { arg1, arg2, .. } => {
+                    replace(arg1);
+                    replace(arg2);
+                }
+                FuelVmInstruction::WideModularOp {
+                    result,
+                    arg1,
+                    arg2,
+                    arg3,
+                    ..
+                } => {
+                    replace(result);
+                    replace(arg1);
+                    replace(arg2);
+                    replace(arg3);
+                }
             },
         }
     }
@@ -572,7 +614,9 @@ impl Instruction {
             | Instruction::MemCopyVal { .. }
             | Instruction::Store { .. }
             | Instruction::Ret(..)
-            | Instruction::FuelVm(FuelVmInstruction::WideBinaryOp { .. }) => true,
+            | Instruction::FuelVm(FuelVmInstruction::WideBinaryOp { .. })
+            | Instruction::FuelVm(FuelVmInstruction::WideCmpOp { .. })
+            | Instruction::FuelVm(FuelVmInstruction::WideModularOp { .. }) => true,
 
             Instruction::UnaryOp { .. }
             | Instruction::BinaryOp { .. }
@@ -724,6 +768,33 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
                 arg2,
                 result
             })
+        )
+    }
+
+    pub fn wide_modular_op(
+        self,
+        op: BinaryOpKind,
+        result: Value,
+        arg1: Value,
+        arg2: Value,
+        arg3: Value,
+    ) -> Value {
+        make_instruction!(
+            self,
+            Instruction::FuelVm(FuelVmInstruction::WideModularOp {
+                op,
+                result,
+                arg1,
+                arg2,
+                arg3,
+            })
+        )
+    }
+
+    pub fn wide_cmp_op(self, op: Predicate, arg1: Value, arg2: Value) -> Value {
+        make_instruction!(
+            self,
+            Instruction::FuelVm(FuelVmInstruction::WideCmpOp { op, arg1, arg2 })
         )
     }
 
