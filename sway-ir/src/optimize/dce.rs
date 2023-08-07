@@ -120,7 +120,7 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
         | Instruction::FuelVm(FuelVmInstruction::ReadRegister(_))
         | Instruction::FuelVm(FuelVmInstruction::Revert(_)) => vec![],
         Instruction::FuelVm(FuelVmInstruction::WideUnaryOp { arg, .. }) => {
-            get_symbols(context, *arg).iter().cloned().collect()
+            get_symbols(context, *arg).to_vec()
         }
         Instruction::FuelVm(FuelVmInstruction::WideBinaryOp { arg1, arg2, .. })
         | Instruction::FuelVm(FuelVmInstruction::WideCmpOp { arg1, arg2, .. }) => {

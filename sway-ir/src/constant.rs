@@ -53,7 +53,7 @@ impl Constant {
     pub fn new_uint256(context: &mut Context, n: U256) -> Self {
         Constant {
             ty: Type::new_uint(context, 256),
-            value: ConstantValue::U256(n.into()),
+            value: ConstantValue::U256(n),
         }
     }
 
