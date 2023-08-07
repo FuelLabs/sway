@@ -141,10 +141,12 @@ impl Session {
     /// Write the result of parsing to the session.
     /// This function should only be called after successfully parsing.
     pub(crate) fn write_parse_result(&self, res: ParseResult) {
+        self.token_map.clear();
+        self.runnables.clear();
+
         *self.engines.write() = res.engines;
         *self.diagnostics.write() = res.diagnostics;
-        self.token_map.clear();
-
+        
         res.token_map
             .deref()
             .iter()
@@ -154,7 +156,6 @@ impl Session {
             });
         
         self.create_runnables(&res.typed, self.engines.read().de());
-
         self.save_lexed_program(res.lexed);
         self.save_parsed_program(res.parsed);
         self.save_typed_program(res.typed);
@@ -169,13 +170,7 @@ impl Session {
             return Err(LanguageServerError::UnableToAcquirePermit);
         }
 
-        // Lock the diagnostics result to prevent multiple threads from parsing the project at the same time.
-        //let mut diagnostics = self.diagnostics.write();
-
         let manifest_dir = PathBuf::from(uri.path());
-        let locked = false;
-        let offline = false;
-
         let manifest = ManifestFile::from_dir(&manifest_dir).map_err(|_| {
             DocumentError::ManifestFileNotFound {
                 dir: uri.path().into(),
@@ -199,6 +194,8 @@ impl Session {
         // TODO: Either we want LSP to deploy a local node in the background or we want this to
         // point to Fuel operated IPFS node.
         let ipfs_node = pkg::source::IPFSNode::Local;
+        let locked = false;
+        let offline = false;
 
         let plan = pkg::BuildPlan::from_lock_and_manifests(
             &lock_path,
@@ -222,17 +219,6 @@ impl Session {
             &new_engines,
         )
         .map_err(LanguageServerError::FailedToCompile)?;
-
-        // Acquire locks for the engines before clearing anything.
-        // let mut engines = self.engines.write();
-
-        // // Update the engines with the new data.
-        // *engines = new_engines;
-
-        // Clear other data stores.
-        // self.token_map.clear();
-        self.runnables.clear();
-
 
         let mut programs = None;
         let results_len = results.len();
@@ -270,12 +256,12 @@ impl Session {
                 // Next, populate our token_map with un-typed yet parsed ast nodes.
                 let parsed_tree = ParsedTree::new(&ctx);
                 parsed_tree.collect_module_spans(&parsed);
-                self.parse_ast_to_tokens(&parsed, &ctx, |an, _ctx| parsed_tree.traverse_node(an));
+                parse_ast_to_tokens(&parsed, &ctx, |an, _ctx| parsed_tree.traverse_node(an));
 
                 // Finally, populate our token_map with typed ast nodes.
                 let typed_tree = TypedTree::new(&ctx);
                 typed_tree.collect_module_spans(typed_program);
-                self.parse_ast_to_typed_tokens(typed_program, &ctx, |node, _ctx| {
+                parse_ast_to_typed_tokens(typed_program, &ctx, |node, _ctx| {
                     typed_tree.traverse_node(node)
                 });
 
@@ -283,11 +269,11 @@ impl Session {
                 diagnostics = get_diagnostics(&warnings, &errors);
             } else {
                 // Collect tokens from dependencies and the standard library prelude.
-                self.parse_ast_to_tokens(&parsed, &ctx, |an, ctx| {
+                parse_ast_to_tokens(&parsed, &ctx, |an, ctx| {
                     dependency::collect_parsed_declaration(an, ctx)
                 });
 
-                self.parse_ast_to_typed_tokens(typed_program, &ctx, |node, ctx| {
+                parse_ast_to_typed_tokens(typed_program, &ctx, |node, ctx| {
                     dependency::collect_typed_declaration(node, ctx)
                 });
             }
@@ -483,40 +469,6 @@ impl Session {
             })
     }
 
-    /// Parse the [ParseProgram] AST to populate the [TokenMap] with parsed AST nodes.
-    fn parse_ast_to_tokens(
-        &self,
-        parse_program: &ParseProgram,
-        ctx: &ParseContext,
-        f: impl Fn(&AstNode, &ParseContext),
-    ) {
-        let root_nodes = parse_program.root.tree.root_nodes.iter();
-        let sub_nodes = parse_program
-            .root
-            .submodules
-            .iter()
-            .flat_map(|(_, submodule)| &submodule.module.tree.root_nodes);
-
-        root_nodes.chain(sub_nodes).for_each(|n| f(n, ctx));
-    }
-
-    /// Parse the [ty::TyProgram] AST to populate the [TokenMap] with typed AST nodes.
-    fn parse_ast_to_typed_tokens(
-        &self,
-        typed_program: &ty::TyProgram,
-        ctx: &ParseContext,
-        f: impl Fn(&ty::TyAstNode, &ParseContext),
-    ) {
-        let root_nodes = typed_program.root.all_nodes.iter();
-        let sub_nodes = typed_program
-            .root
-            .submodules
-            .iter()
-            .flat_map(|(_, submodule)| submodule.module.all_nodes.iter());
-
-        root_nodes.chain(sub_nodes).for_each(|n| f(n, ctx));
-    }
-
     /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
     fn create_runnables(&self, typed_program: &ty::TyProgram, decl_engine: &DeclEngine) {
         // Insert runnable test functions.
@@ -575,6 +527,38 @@ impl Session {
         }
         Ok(())
     }
+}
+
+/// Parse the [ParseProgram] AST to populate the [TokenMap] with parsed AST nodes.
+fn parse_ast_to_tokens(
+    parse_program: &ParseProgram,
+    ctx: &ParseContext,
+    f: impl Fn(&AstNode, &ParseContext),
+) {
+    let root_nodes = parse_program.root.tree.root_nodes.iter();
+    let sub_nodes = parse_program
+        .root
+        .submodules
+        .iter()
+        .flat_map(|(_, submodule)| &submodule.module.tree.root_nodes);
+
+    root_nodes.chain(sub_nodes).for_each(|n| f(n, ctx));
+}
+
+/// Parse the [ty::TyProgram] AST to populate the [TokenMap] with typed AST nodes.
+fn parse_ast_to_typed_tokens(
+    typed_program: &ty::TyProgram,
+    ctx: &ParseContext,
+    f: impl Fn(&ty::TyAstNode, &ParseContext),
+) {
+    let root_nodes = typed_program.root.all_nodes.iter();
+    let sub_nodes = typed_program
+        .root
+        .submodules
+        .iter()
+        .flat_map(|(_, submodule)| submodule.module.all_nodes.iter());
+
+    root_nodes.chain(sub_nodes).for_each(|n| f(n, ctx));
 }
 
 #[cfg(test)]

@@ -95,8 +95,6 @@ impl ServerState {
             }
         }
     }
-
-    
 }
 
 /// Runs parse_project in a blocking thread, because parsing is not async.
