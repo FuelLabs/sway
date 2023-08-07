@@ -55,6 +55,8 @@ pub struct CompiledProgram {
     pub typed: Option<ty::TyProgram>,
 }
 
+/// Used to write the result of compiling into so we can update
+/// the types in [Session] after successfully parsing.
 #[derive(Debug)]
 pub struct ParseResult {
     pub(crate) diagnostics: Diagnostics,
@@ -100,18 +102,13 @@ impl Session {
 
     pub fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
         let manifest_dir = PathBuf::from(uri.path());
-
         // Create a new temp dir that clones the current workspace
         // and store manifest and temp paths
         self.sync.create_temp_dir_from_workspace(&manifest_dir)?;
-
         self.sync.clone_manifest_dir_to_temp()?;
-
         // iterate over the project dir, parse all sway files
         let _ = self.store_sway_files();
-
         self.sync.watch_and_sync_manifest();
-
         self.sync.manifest_dir().map_err(Into::into)
     }
 
@@ -154,9 +151,9 @@ impl Session {
         });
 
         self.create_runnables(&res.typed, self.engines.read().de());
-        self.save_lexed_program(res.lexed);
-        self.save_parsed_program(res.parsed);
-        self.save_typed_program(res.typed);
+        self.compiled_program.write().lexed = Some(res.lexed);
+        self.compiled_program.write().parsed = Some(res.parsed);
+        self.compiled_program.write().typed = Some(res.typed);
     }
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
@@ -368,24 +365,6 @@ impl Session {
             });
             self.runnables.insert(runnable.span().clone(), runnable);
         }
-    }
-
-    /// Save the `LexedProgram` AST in the session.
-    fn save_lexed_program(&self, lexed_program: LexedProgram) {
-        let mut program = self.compiled_program.write();
-        program.lexed = Some(lexed_program);
-    }
-
-    /// Save the `ParseProgram` AST in the session.
-    fn save_parsed_program(&self, parse_program: ParseProgram) {
-        let mut program = self.compiled_program.write();
-        program.parsed = Some(parse_program);
-    }
-
-    /// Save the `TyProgram` AST in the session.
-    fn save_typed_program(&self, typed_program: ty::TyProgram) {
-        let mut program = self.compiled_program.write();
-        program.typed = Some(typed_program);
     }
 
     /// Populate [Documents] with sway files found in the workspace.

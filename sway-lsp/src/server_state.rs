@@ -12,7 +12,7 @@ use forc_pkg::PackageManifestFile;
 use lsp_types::{Diagnostic, Url};
 use parking_lot::RwLock;
 use std::{path::PathBuf, sync::Arc};
-use tokio::task;
+use tokio::{task, sync::Semaphore};
 use tower_lsp::{jsonrpc, Client};
 
 /// `ServerState` is the primary mutable state of the language server
@@ -75,7 +75,7 @@ impl ServerState {
     }
 
     pub(crate) async fn parse_project(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
-        match run_blocking_parse_project(uri.clone(), session.clone()).await {
+        match run_blocking_parse_project(uri.clone(), session.parse_permits.clone()).await {
             Ok(parse_result) => {
                 session.write_parse_result(parse_result);
                 // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
@@ -100,15 +100,13 @@ impl ServerState {
 /// Runs parse_project in a blocking thread, because parsing is not async.
 async fn run_blocking_parse_project(
     uri: Url,
-    session: Arc<Session>,
+    parse_permits: Arc<Semaphore>,
 ) -> Result<ParseResult, LanguageServerError> {
     // Acquire a permit to parse the project. If there are none available, return false. This way,
     // we avoid publishing the same diagnostics multiple times.
-    let permit = session.parse_permits.try_acquire();
-    if permit.is_err() {
+    if parse_permits.try_acquire().is_err() {
         return Err(LanguageServerError::UnableToAcquirePermit);
     }
-
     task::spawn_blocking(move || session::parse_project(&uri))
         .await
         .unwrap_or_else(|_| Err(LanguageServerError::FailedToParse))
