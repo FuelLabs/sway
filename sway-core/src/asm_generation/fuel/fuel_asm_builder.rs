@@ -12,7 +12,7 @@ use crate::{
     },
     asm_lang::{
         virtual_register::*, Label, Op, VirtualImmediate06, VirtualImmediate12, VirtualImmediate18,
-        VirtualOp,
+        VirtualOp, WideCmp,
     },
     decl_engine::DeclRefFunction,
     metadata::MetadataManager,
@@ -286,10 +286,20 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     }
                     FuelVmInstruction::WideBinaryOp {
                         op,
+                        result,
                         arg1,
                         arg2,
-                        result,
                     } => self.compile_wide_binary_op(instr_val, op, arg1, arg2, result),
+                    FuelVmInstruction::WideCmpOp { op, arg1, arg2 } => {
+                        self.compile_wide_cmp_op(instr_val, op, arg1, arg2)
+                    }
+                    FuelVmInstruction::WideModularOp {
+                        op,
+                        result,
+                        arg1,
+                        arg2,
+                        arg3,
+                    } => self.compile_wide_modular_op(instr_val, op, result, arg1, arg2, arg3),
                 },
                 Instruction::GetElemPtr {
                     base,
@@ -539,6 +549,24 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 val2_reg,
                 VirtualImmediate06::wide_op(crate::asm_lang::WideOperations::Add, true),
             ),
+            BinaryOpKind::Sub => VirtualOp::WQOP(
+                result_reg,
+                val1_reg,
+                val2_reg,
+                VirtualImmediate06::wide_op(crate::asm_lang::WideOperations::Sub, true),
+            ),
+            BinaryOpKind::Mul => VirtualOp::WQML(
+                result_reg,
+                val1_reg,
+                val2_reg,
+                VirtualImmediate06::wide_mul(true, true),
+            ),
+            BinaryOpKind::Div => VirtualOp::WQDV(
+                result_reg,
+                val1_reg,
+                val2_reg,
+                VirtualImmediate06::wide_div(true),
+            ),
             _ => todo!(),
         };
 
@@ -547,6 +575,66 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             comment: String::new(),
             owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
         });
+
+        Ok(())
+    }
+
+    fn compile_wide_modular_op(
+        &mut self,
+        instr_val: &Value,
+        op: &BinaryOpKind,
+        result: &Value,
+        arg1: &Value,
+        arg2: &Value,
+        arg3: &Value,
+    ) -> Result<(), CompileError> {
+        let result_reg = self.value_to_register(result)?;
+        let val1_reg = self.value_to_register(arg1)?;
+        let val2_reg = self.value_to_register(arg2)?;
+        let val3_reg = self.value_to_register(arg3)?;
+
+        let opcode = match op {
+            BinaryOpKind::Mod => VirtualOp::WQAM(result_reg, val1_reg, val2_reg, val3_reg),
+            _ => todo!(),
+        };
+
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(opcode),
+            comment: String::new(),
+            owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+        });
+
+        Ok(())
+    }
+
+    fn compile_wide_cmp_op(
+        &mut self,
+        instr_val: &Value,
+        op: &Predicate,
+        arg1: &Value,
+        arg2: &Value,
+    ) -> Result<(), CompileError> {
+        let res_reg = self.reg_seqr.next();
+        let val1_reg = self.value_to_register(arg1)?;
+        let val2_reg = self.value_to_register(arg2)?;
+
+        let opcode = match op {
+            Predicate::Equal => VirtualOp::WQCM(
+                res_reg.clone(),
+                val1_reg,
+                val2_reg,
+                VirtualImmediate06::wide_cmp(WideCmp::Equality, true),
+            ),
+            _ => todo!(),
+        };
+
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(opcode),
+            comment: String::new(),
+            owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+        });
+
+        self.reg_map.insert(*instr_val, res_reg);
 
         Ok(())
     }
