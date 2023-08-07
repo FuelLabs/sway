@@ -78,7 +78,7 @@ pub struct Session {
     pub sync: SyncWorkspace,
     // Limit the number of threads that can wait to parse at the same time. One thread can be parsing
     // and one thread can be waiting to start parsing. All others will return the cached diagnostics.
-    parse_permits: Arc<Semaphore>,
+    pub parse_permits: Arc<Semaphore>,
     // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
     diagnostics: Arc<RwLock<Diagnostics>>,
 }
@@ -159,134 +159,6 @@ impl Session {
         self.save_lexed_program(res.lexed);
         self.save_parsed_program(res.parsed);
         self.save_typed_program(res.typed);
-    }
-
-    /// Parses the project and returns true if the compiler diagnostics are new and should be published.
-    pub fn parse_project(&self, uri: &Url) -> Result<ParseResult, LanguageServerError> {
-        // Acquire a permit to parse the project. If there are none available, return false. This way,
-        // we avoid publishing the same diagnostics multiple times.
-        let permit = self.parse_permits.try_acquire();
-        if permit.is_err() {
-            return Err(LanguageServerError::UnableToAcquirePermit);
-        }
-
-        let manifest_dir = PathBuf::from(uri.path());
-        let manifest = ManifestFile::from_dir(&manifest_dir).map_err(|_| {
-            DocumentError::ManifestFileNotFound {
-                dir: uri.path().into(),
-            }
-        })?;
-
-        let member_manifests =
-            manifest
-                .member_manifests()
-                .map_err(|_| DocumentError::MemberManifestsFailed {
-                    dir: uri.path().into(),
-                })?;
-
-        let lock_path =
-            manifest
-                .lock_path()
-                .map_err(|_| DocumentError::ManifestsLockPathFailed {
-                    dir: uri.path().into(),
-                })?;
-
-        // TODO: Either we want LSP to deploy a local node in the background or we want this to
-        // point to Fuel operated IPFS node.
-        let ipfs_node = pkg::source::IPFSNode::Local;
-        let locked = false;
-        let offline = false;
-
-        let plan = pkg::BuildPlan::from_lock_and_manifests(
-            &lock_path,
-            &member_manifests,
-            locked,
-            offline,
-            ipfs_node,
-        )
-        .map_err(LanguageServerError::BuildPlanFailed)?;
-
-        let mut diagnostics = Diagnostics::default();
-        let new_engines = Engines::default();
-        let token_map = TokenMap::new();
-        let tests_enabled = true;
-
-        let results = pkg::check(
-            &plan,
-            BuildTarget::default(),
-            true,
-            tests_enabled,
-            &new_engines,
-        )
-        .map_err(LanguageServerError::FailedToCompile)?;
-
-        let mut programs = None;
-        let results_len = results.len();
-        for (i, (value, handler)) in results.into_iter().enumerate() {
-            // We can convert these destructured elements to a Vec<Diagnostic> later on.
-            let (errors, warnings) = handler.consume();
-
-            if value.is_none() {
-                // If there was an unrecoverable error in the parser
-                // make sure to still return the diagnostics.
-                diagnostics = get_diagnostics(&warnings, &errors);
-                continue;
-            }
-            let Programs {
-                lexed,
-                parsed,
-                typed,
-            } = value.unwrap();
-
-            // Get a reference to the typed program AST.
-            let typed_program = typed.as_ref().ok().ok_or_else(|| {
-                diagnostics = get_diagnostics(&warnings, &errors);
-                LanguageServerError::FailedToParse
-            })?;
-
-            // Create context with write guards to make readers wait until the update to token_map is complete.
-            // This operation is fast because we already have the compile results.
-            let ctx = ParseContext::new(&token_map, &new_engines, &typed_program.root.namespace);
-
-            // The final element in the results is the main program.
-            if i == results_len - 1 {
-                // First, populate our token_map with sway keywords.
-                lexed_tree::parse(&lexed, &ctx);
-
-                // Next, populate our token_map with un-typed yet parsed ast nodes.
-                let parsed_tree = ParsedTree::new(&ctx);
-                parsed_tree.collect_module_spans(&parsed);
-                parse_ast_to_tokens(&parsed, &ctx, |an, _ctx| parsed_tree.traverse_node(an));
-
-                // Finally, populate our token_map with typed ast nodes.
-                let typed_tree = TypedTree::new(&ctx);
-                typed_tree.collect_module_spans(typed_program);
-                parse_ast_to_typed_tokens(typed_program, &ctx, |node, _ctx| {
-                    typed_tree.traverse_node(node)
-                });
-
-                programs = Some((lexed,parsed,typed_program.clone()));
-                diagnostics = get_diagnostics(&warnings, &errors);
-            } else {
-                // Collect tokens from dependencies and the standard library prelude.
-                parse_ast_to_tokens(&parsed, &ctx, |an, ctx| {
-                    dependency::collect_parsed_declaration(an, ctx)
-                });
-
-                parse_ast_to_typed_tokens(typed_program, &ctx, |node, ctx| {
-                    dependency::collect_typed_declaration(node, ctx)
-                });
-            }
-        }
-        let (lexed, parsed, typed) = programs.expect("Programs should be populated at this point.");
-        Ok(ParseResult { 
-            diagnostics, 
-            token_map, 
-            engines: new_engines,
-            lexed,
-            parsed,
-            typed,
-        })
     }
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
@@ -529,6 +401,127 @@ impl Session {
     }
 }
 
+/// Parses the project and returns true if the compiler diagnostics are new and should be published.
+pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
+    let manifest_dir = PathBuf::from(uri.path());
+    let manifest = ManifestFile::from_dir(&manifest_dir).map_err(|_| {
+        DocumentError::ManifestFileNotFound {
+            dir: uri.path().into(),
+        }
+    })?;
+
+    let member_manifests =
+        manifest
+            .member_manifests()
+            .map_err(|_| DocumentError::MemberManifestsFailed {
+                dir: uri.path().into(),
+            })?;
+
+    let lock_path =
+        manifest
+            .lock_path()
+            .map_err(|_| DocumentError::ManifestsLockPathFailed {
+                dir: uri.path().into(),
+            })?;
+
+    // TODO: Either we want LSP to deploy a local node in the background or we want this to
+    // point to Fuel operated IPFS node.
+    let ipfs_node = pkg::source::IPFSNode::Local;
+    let locked = false;
+    let offline = false;
+
+    let plan = pkg::BuildPlan::from_lock_and_manifests(
+        &lock_path,
+        &member_manifests,
+        locked,
+        offline,
+        ipfs_node,
+    )
+    .map_err(LanguageServerError::BuildPlanFailed)?;
+
+    let mut diagnostics = Diagnostics::default();
+    let engines = Engines::default();
+    let token_map = TokenMap::new();
+    let tests_enabled = true;
+
+    let results = pkg::check(
+        &plan,
+        BuildTarget::default(),
+        true,
+        tests_enabled,
+        &engines,
+    )
+    .map_err(LanguageServerError::FailedToCompile)?;
+
+    let mut programs = None;
+    let results_len = results.len();
+    for (i, (value, handler)) in results.into_iter().enumerate() {
+        // We can convert these destructured elements to a Vec<Diagnostic> later on.
+        let (errors, warnings) = handler.consume();
+
+        if value.is_none() {
+            // If there was an unrecoverable error in the parser
+            // make sure to still return the diagnostics.
+            diagnostics = get_diagnostics(&warnings, &errors);
+            continue;
+        }
+        let Programs {
+            lexed,
+            parsed,
+            typed,
+        } = value.unwrap();
+
+        // Get a reference to the typed program AST.
+        let typed_program = typed.as_ref().ok().ok_or_else(|| {
+            diagnostics = get_diagnostics(&warnings, &errors);
+            LanguageServerError::FailedToParse
+        })?;
+
+        // Create context with write guards to make readers wait until the update to token_map is complete.
+        // This operation is fast because we already have the compile results.
+        let ctx = ParseContext::new(&token_map, &engines, &typed_program.root.namespace);
+
+        // The final element in the results is the main program.
+        if i == results_len - 1 {
+            // First, populate our token_map with sway keywords.
+            lexed_tree::parse(&lexed, &ctx);
+
+            // Next, populate our token_map with un-typed yet parsed ast nodes.
+            let parsed_tree = ParsedTree::new(&ctx);
+            parsed_tree.collect_module_spans(&parsed);
+            parse_ast_to_tokens(&parsed, &ctx, |an, _ctx| parsed_tree.traverse_node(an));
+
+            // Finally, populate our token_map with typed ast nodes.
+            let typed_tree = TypedTree::new(&ctx);
+            typed_tree.collect_module_spans(typed_program);
+            parse_ast_to_typed_tokens(typed_program, &ctx, |node, _ctx| {
+                typed_tree.traverse_node(node)
+            });
+
+            programs = Some((lexed,parsed,typed_program.clone()));
+            diagnostics = get_diagnostics(&warnings, &errors);
+        } else {
+            // Collect tokens from dependencies and the standard library prelude.
+            parse_ast_to_tokens(&parsed, &ctx, |an, ctx| {
+                dependency::collect_parsed_declaration(an, ctx)
+            });
+
+            parse_ast_to_typed_tokens(typed_program, &ctx, |node, ctx| {
+                dependency::collect_typed_declaration(node, ctx)
+            });
+        }
+    }
+    let (lexed, parsed, typed) = programs.expect("Programs should be populated at this point.");
+    Ok(ParseResult { 
+        diagnostics, 
+        token_map, 
+        engines,
+        lexed,
+        parsed,
+        typed,
+    })
+}
+
 /// Parse the [ParseProgram] AST to populate the [TokenMap] with parsed AST nodes.
 fn parse_ast_to_tokens(
     parse_program: &ParseProgram,
@@ -589,11 +582,10 @@ mod tests {
 
     #[test]
     fn parse_project_returns_manifest_file_not_found() {
-        let session = Session::new();
         let dir = get_absolute_path("sway-lsp/tests/fixtures");
         let uri = get_url(&dir);
         let result =
-            Session::parse_project(&session, &uri).expect_err("expected ManifestFileNotFound");
+            parse_project(&uri).expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(

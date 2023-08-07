@@ -2,7 +2,7 @@
 
 use crate::{
     config::{Config, Warnings},
-    core::session::{ParseResult, Session},
+    core::session::{self, ParseResult, Session},
     error::{DirectoryError, DocumentError, LanguageServerError},
     utils::debug,
     utils::keyword_docs::KeywordDocs,
@@ -102,7 +102,16 @@ async fn run_blocking_parse_project(
     uri: Url,
     session: Arc<Session>,
 ) -> Result<ParseResult, LanguageServerError> {
-    task::spawn_blocking(move || session.parse_project(&uri))
+    // Acquire a permit to parse the project. If there are none available, return false. This way,
+    // we avoid publishing the same diagnostics multiple times.
+    let permit = session.parse_permits.try_acquire();
+    if permit.is_err() {
+        return Err(LanguageServerError::UnableToAcquirePermit);
+    }
+
+    task::spawn_blocking(move || {
+        session::parse_project(&uri)
+    })
         .await
         .unwrap_or_else(|_| Err(LanguageServerError::FailedToParse))
 }
