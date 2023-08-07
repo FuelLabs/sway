@@ -1,6 +1,7 @@
 //! [`Constant`] is a typed constant value.
 
 use crate::{context::Context, irtype::Type, pretty::DebugWithContext, value::Value};
+use sway_types::u256::U256;
 
 /// A [`Type`] and constant value, including [`ConstantValue::Undef`] for uninitialized constants.
 #[derive(Debug, Clone, DebugWithContext)]
@@ -16,7 +17,7 @@ pub enum ConstantValue {
     Unit,
     Bool(bool),
     Uint(u64),
-    U256(u64), // TODO u256 limited to u64 values
+    U256(U256),
     B256([u8; 32]),
     String(Vec<u8>),
     Array(Vec<Constant>),
@@ -38,13 +39,21 @@ impl Constant {
         }
     }
 
+    /// For numbers bigger than u64 see `new_uint256`.
     pub fn new_uint(context: &mut Context, nbits: u16, n: u64) -> Self {
         Constant {
             ty: Type::new_uint(context, nbits),
             value: match nbits {
-                256 => ConstantValue::U256(n),
+                256 => ConstantValue::U256(n.into()),
                 _ => ConstantValue::Uint(n),
             },
+        }
+    }
+
+    pub fn new_uint256(context: &mut Context, n: U256) -> Self {
+        Constant {
+            ty: Type::new_uint(context, 256),
+            value: ConstantValue::U256(n.into()),
         }
     }
 
@@ -95,6 +104,11 @@ impl Constant {
 
     pub fn get_uint(context: &mut Context, nbits: u16, value: u64) -> Value {
         let new_const = Constant::new_uint(context, nbits, value);
+        Value::new_constant(context, new_const)
+    }
+
+    pub fn get_uint256(context: &mut Context, value: U256) -> Value {
+        let new_const = Constant::new_uint256(context, value);
         Value::new_constant(context, new_const)
     }
 

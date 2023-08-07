@@ -13,7 +13,7 @@ use std::ops::Not;
 /// - Fuel WIde binary operators: Demote binary operands bigger than 64 bits.
 use crate::{
     asm::AsmArg, AnalysisResults, BinaryOpKind, Constant, Context, FuelVmInstruction, Function,
-    Instruction, IrError, Pass, PassMutability, Predicate, ScopedPass, Type, Value,
+    Instruction, IrError, Pass, PassMutability, Predicate, ScopedPass, Type, UnaryOpKind, Value,
 };
 
 use rustc_hash::FxHashMap;
@@ -38,10 +38,18 @@ pub fn misc_demotion(
     let asm_arg_res = asm_block_arg_demotion(context, function)?;
     let asm_ret_res = asm_block_ret_demotion(context, function)?;
     let addrof_res = ptr_to_int_demotion(context, function)?;
+
     let wide_binary_op_res = wide_binary_op_demotion(context, function)?;
     let wide_cmp_res = wide_cmp_demotion(context, function)?;
+    let wide_unary_op_res = wide_unary_op_demotion(context, function)?;
 
-    Ok(log_res || asm_arg_res || asm_ret_res || addrof_res || wide_binary_op_res || wide_cmp_res)
+    Ok(log_res
+        || asm_arg_res
+        || asm_ret_res
+        || addrof_res
+        || wide_unary_op_res
+        || wide_binary_op_res
+        || wide_cmp_res)
 }
 
 fn log_demotion(context: &mut Context, function: Function) -> Result<bool, IrError> {
@@ -700,6 +708,137 @@ fn wide_cmp_demotion(context: &mut Context, function: Function) -> Result<bool, 
         if let Some((get_rhs_local, store_rhs_local)) = rhs_store {
             block_instrs.insert(idx, store_rhs_local);
             block_instrs.insert(idx, get_rhs_local);
+        }
+
+        // lhs
+        if let Some((get_lhs_local, store_lhs_local)) = lhs_store {
+            block_instrs.insert(idx, store_lhs_local);
+            block_instrs.insert(idx, get_lhs_local);
+        }
+    }
+
+    Ok(true)
+}
+
+/// Find all unary operations on types bigger than 64 bits
+/// and demote them to fuel specific `wide ops`, that
+/// work only on pointers
+fn wide_unary_op_demotion(context: &mut Context, function: Function) -> Result<bool, IrError> {
+    // Find all intrinsics on wide operators
+    let candidates = function
+        .instruction_iter(context)
+        .filter_map(|(block, instr_val)| {
+            let instr = instr_val.get_instruction(context)?;
+
+            if let Instruction::UnaryOp { op, arg } = instr {
+                let arg_type = arg
+                    .get_type(context)
+                    .and_then(|x| x.get_uint_width(context));
+
+                match arg_type {
+                    Some(256) => {
+                        use UnaryOpKind::*;
+                        match op {
+                            Not => Some((block, instr_val)),
+                        }
+                    }
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if candidates.is_empty() {
+        return Ok(false);
+    }
+
+    // Now create a local for the result
+    // get ptr to each arg
+    // and store the result after
+    for (block, binary_op_instr_val) in candidates {
+        let Instruction::UnaryOp { arg, .. } = binary_op_instr_val
+            .get_instruction(context)
+            .cloned()
+            .unwrap() else {
+                continue;
+            };
+
+        let unary_op_metadata = binary_op_instr_val.get_metadata(context);
+
+        let arg_ty = arg.get_type(context).unwrap();
+        let arg_metadata = arg.get_metadata(context);
+
+        let result_local =
+            function.new_unique_local_var(context, "__wide_result".to_owned(), arg_ty, None, true);
+        let get_result_local = Value::new_instruction(context, Instruction::GetLocal(result_local))
+            .add_metadatum(context, unary_op_metadata);
+        let load_result_local =
+            Value::new_instruction(context, Instruction::Load(get_result_local))
+                .add_metadatum(context, unary_op_metadata);
+
+        // If arg1 is not a pointer, store it to a local
+        let lhs_store = arg_ty.is_ptr(context).not().then(|| {
+            let lhs_local = function.new_unique_local_var(
+                context,
+                "__wide_lhs".to_owned(),
+                arg_ty,
+                None,
+                false,
+            );
+            let get_lhs_local = Value::new_instruction(context, Instruction::GetLocal(lhs_local))
+                .add_metadatum(context, arg_metadata);
+            let store_lhs_local = Value::new_instruction(
+                context,
+                Instruction::Store {
+                    dst_val_ptr: get_lhs_local,
+                    stored_val: arg,
+                },
+            )
+            .add_metadatum(context, arg_metadata);
+            (get_lhs_local, store_lhs_local)
+        });
+
+        let (arg1_needs_insert, get_arg) = if let Some((lhs_local, _)) = &lhs_store {
+            (false, *lhs_local)
+        } else {
+            (true, arg)
+        };
+
+        // Assert all operands are pointers
+        assert!(get_arg.get_type(context).unwrap().is_ptr(context));
+        assert!(get_result_local.get_type(context).unwrap().is_ptr(context));
+
+        let wide_op = Value::new_instruction(
+            context,
+            Instruction::FuelVm(FuelVmInstruction::WideUnaryOp {
+                op: UnaryOpKind::Not,
+                arg: get_arg,
+                result: get_result_local,
+            }),
+        )
+        .add_metadatum(context, unary_op_metadata);
+
+        // We don't have an actual instruction _inserter_ yet, just an appender, so we need to find
+        // the ptr_to_int instruction index and insert instructions manually.
+        let block_instrs = &mut context.blocks[block.0].instructions;
+        let idx = block_instrs
+            .iter()
+            .position(|&instr_val| instr_val == binary_op_instr_val)
+            .unwrap();
+
+        block
+            .replace_instruction(context, binary_op_instr_val, load_result_local)
+            .unwrap();
+
+        let block_instrs = &mut context.blocks[block.0].instructions;
+
+        block_instrs.insert(idx, wide_op);
+        block_instrs.insert(idx, get_result_local);
+
+        if arg1_needs_insert {
+            block_instrs.insert(idx, get_arg);
         }
 
         // lhs

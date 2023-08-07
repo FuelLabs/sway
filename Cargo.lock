@@ -5699,7 +5699,9 @@ dependencies = [
  "fuel-crypto",
  "fuel-tx",
  "lazy_static",
+ "num-bigint",
  "serde",
+ "thiserror",
 ]
 
 [[package]]

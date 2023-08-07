@@ -2888,17 +2888,7 @@ fn literal_to_literal(
                         };
                         Literal::U64(value)
                     }
-                    // TODO u256 are limited to u64 literals for the moment
-                    LitIntType::U256 => {
-                        let value = match u64::try_from(parsed) {
-                            Ok(value) => value,
-                            Err(..) => {
-                                let error = ConvertParseTreeError::U64LiteralOutOfRange { span };
-                                return Err(handler.emit_err(error.into()));
-                            }
-                        };
-                        Literal::U256(value)
-                    }
+                    LitIntType::U256 => Literal::U256(parsed.into()),
                     LitIntType::I8 | LitIntType::I16 | LitIntType::I32 | LitIntType::I64 => {
                         let error = ConvertParseTreeError::SignedIntegersNotSupported { span };
                         return Err(handler.emit_err(error.into()));

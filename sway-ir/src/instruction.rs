@@ -155,6 +155,11 @@ pub enum FuelVmInstruction {
         stored_val: Value,
         key: Value,
     },
+    WideUnaryOp {
+        op: UnaryOpKind,
+        result: Value,
+        arg: Value,
+    },
     WideBinaryOp {
         op: BinaryOpKind,
         result: Value,
@@ -302,6 +307,9 @@ impl Instruction {
             | Instruction::Store { .. } => Some(Type::get_unit(context)),
 
             // Wide Operations
+            Instruction::FuelVm(FuelVmInstruction::WideUnaryOp { result, .. }) => {
+                result.get_type(context)
+            }
             Instruction::FuelVm(FuelVmInstruction::WideBinaryOp { result, .. }) => {
                 result.get_type(context)
             }
@@ -414,6 +422,7 @@ impl Instruction {
                     vec![*stored_val, *key, *number_of_slots]
                 }
                 FuelVmInstruction::StateStoreWord { stored_val, key } => vec![*stored_val, *key],
+                FuelVmInstruction::WideUnaryOp { arg, result, .. } => vec![*result, *arg],
                 FuelVmInstruction::WideBinaryOp {
                     arg1, arg2, result, ..
                 } => vec![*result, *arg1, *arg2],
@@ -571,6 +580,10 @@ impl Instruction {
                     replace(key);
                     replace(stored_val);
                 }
+                FuelVmInstruction::WideUnaryOp { arg, result, .. } => {
+                    replace(arg);
+                    replace(result);
+                }
                 FuelVmInstruction::WideBinaryOp {
                     arg1, arg2, result, ..
                 } => {
@@ -614,6 +627,7 @@ impl Instruction {
             | Instruction::MemCopyVal { .. }
             | Instruction::Store { .. }
             | Instruction::Ret(..)
+            | Instruction::FuelVm(FuelVmInstruction::WideUnaryOp { .. })
             | Instruction::FuelVm(FuelVmInstruction::WideBinaryOp { .. })
             | Instruction::FuelVm(FuelVmInstruction::WideCmpOp { .. })
             | Instruction::FuelVm(FuelVmInstruction::WideModularOp { .. }) => true,
@@ -751,6 +765,13 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
 
     pub fn unary_op(self, op: UnaryOpKind, arg: Value) -> Value {
         make_instruction!(self, Instruction::UnaryOp { op, arg })
+    }
+
+    pub fn wide_unary_op(self, op: UnaryOpKind, arg: Value, result: Value) -> Value {
+        make_instruction!(
+            self,
+            Instruction::FuelVm(FuelVmInstruction::WideUnaryOp { op, arg, result })
+        )
     }
 
     pub fn wide_binary_op(

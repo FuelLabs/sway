@@ -584,6 +584,9 @@ fn inline_instruction(
                 FuelVmInstruction::StateStoreWord { stored_val, key } => new_block
                     .ins(context)
                     .state_store_word(map_value(stored_val), map_value(key)),
+                FuelVmInstruction::WideUnaryOp { op, arg, result } => new_block
+                    .ins(context)
+                    .wide_unary_op(op, map_value(arg), map_value(result)),
                 FuelVmInstruction::WideBinaryOp {
                     op,
                     arg1,

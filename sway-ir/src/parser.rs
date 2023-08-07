@@ -24,7 +24,7 @@ pub fn parse<'eng>(
 // -------------------------------------------------------------------------------------------------
 
 mod ir_builder {
-    use sway_types::{ident::Ident, span::Span, SourceEngine};
+    use sway_types::{ident::Ident, span::Span, u256::U256, SourceEngine};
 
     type MdIdxRef = u64;
 
@@ -771,17 +771,14 @@ mod ir_builder {
                 IrAstConstValue::Undef(_) => ConstantValue::Undef,
                 IrAstConstValue::Unit => ConstantValue::Unit,
                 IrAstConstValue::Bool(b) => ConstantValue::Bool(*b),
-                IrAstConstValue::Hex256(bs) => {
-                    match val_ty {
-                        IrAstTy::U256 => {
-                            // TODO u256 limited to u64
-                            let n = u64::from_be_bytes(bs[24..].try_into().unwrap());
-                            ConstantValue::U256(n)
-                        }
-                        IrAstTy::B256 => ConstantValue::B256(*bs),
-                        _ => unreachable!("invalid type for hex number"),
+                IrAstConstValue::Hex256(bs) => match val_ty {
+                    IrAstTy::U256 => {
+                        let n = U256::from_be_bytes(bs);
+                        ConstantValue::U256(n)
                     }
-                }
+                    IrAstTy::B256 => ConstantValue::B256(*bs),
+                    _ => unreachable!("invalid type for hex number"),
+                },
                 IrAstConstValue::Number(n) => ConstantValue::Uint(*n),
                 IrAstConstValue::String(bs) => ConstantValue::String(bs.clone()),
                 IrAstConstValue::Array(el_ty, els) => {
@@ -813,17 +810,14 @@ mod ir_builder {
                 IrAstConstValue::Undef(_) => unreachable!("Can't convert 'undef' to a value."),
                 IrAstConstValue::Unit => Constant::get_unit(context),
                 IrAstConstValue::Bool(b) => Constant::get_bool(context, *b),
-                IrAstConstValue::Hex256(bs) => {
-                    match val_ty {
-                        IrAstTy::U256 => {
-                            // TODO u256 limited to u64
-                            let n = u64::from_be_bytes(bs[24..].try_into().unwrap());
-                            Constant::get_uint(context, 256, n)
-                        }
-                        IrAstTy::B256 => Constant::get_b256(context, *bs),
-                        _ => unreachable!("invalid type for hex number"),
+                IrAstConstValue::Hex256(bs) => match val_ty {
+                    IrAstTy::U256 => {
+                        let n = U256::from_be_bytes(bs);
+                        Constant::get_uint256(context, n)
                     }
-                }
+                    IrAstTy::B256 => Constant::get_b256(context, *bs),
+                    _ => unreachable!("invalid type for hex number"),
+                },
                 IrAstConstValue::Number(n) => Constant::get_uint(context, 64, *n),
                 IrAstConstValue::String(s) => Constant::get_string(context, s.clone()),
                 IrAstConstValue::Array(..) => {
