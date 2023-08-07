@@ -294,7 +294,7 @@ pub async fn deploy_pkg(
                 info!("Contract ID: 0x{contract_id}");
                 info!("Deployed in block {}", &block_id);
 
-                // Create a deployment articact.
+                // Create a deployment artifact.
                 let deployment_size = bytecode.len();
                 let deployment_artifact = DeploymentArtifact {
                     transaction_id: format!("0x{}", tx.id(&chain_id)),
