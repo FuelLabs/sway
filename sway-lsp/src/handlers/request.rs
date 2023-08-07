@@ -53,9 +53,12 @@ pub(crate) fn handle_document_symbol(
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
-        Ok((uri, session)) => Ok(session
-            .symbol_information(&uri)
-            .map(DocumentSymbolResponse::Flat)),
+        Ok((uri, session)) => {
+            let _ = session.wait_for_parsing();
+            Ok(session
+                .symbol_information(&uri)
+                .map(DocumentSymbolResponse::Flat))
+        }
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)
