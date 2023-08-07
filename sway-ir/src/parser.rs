@@ -176,6 +176,7 @@ mod ir_builder {
 
             rule operation() -> IrAstOperation
                 = op_asm()
+                / op_wide_unary()
                 / op_wide_binary()
                 / op_wide_cmp()
                 / op_branch()
@@ -234,6 +235,11 @@ mod ir_builder {
             rule op_wide_modular_operation() -> IrAstOperation
                 = "wide" _ op:binary_op_kind() arg1:id() comma() arg2:id() comma() arg3:id() "to" _ result:id()  {
                     IrAstOperation::WideModularOp(op, arg1, arg2, arg3, result)
+                }
+
+            rule op_wide_unary() -> IrAstOperation
+                = "wide" _ op:unary_op_kind() arg:id() "to" _ result:id()  {
+                    IrAstOperation::WideUnaryOp(op, arg, result)
                 }
 
             rule op_wide_binary() -> IrAstOperation
@@ -720,6 +726,7 @@ mod ir_builder {
         StateStoreQuadWord(String, String, String),
         StateStoreWord(String, String),
         Store(String, String),
+        WideUnaryOp(UnaryOpKind, String, String),
         WideBinaryOp(BinaryOpKind, String, String, String),
         WideCmp(Predicate, String, String),
         WideModularOp(BinaryOpKind, String, String, String, String),
@@ -1086,6 +1093,15 @@ mod ir_builder {
                     IrAstOperation::UnaryOp(op, arg) => block
                         .ins(context)
                         .unary_op(op, *val_map.get(&arg).unwrap())
+                        .add_metadatum(context, opt_metadata),
+                    // Wide Operations
+                    IrAstOperation::WideUnaryOp(op, arg, result) => block
+                        .ins(context)
+                        .wide_unary_op(
+                            op,
+                            *val_map.get(&arg).unwrap(),
+                            *val_map.get(&result).unwrap(),
+                        )
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::WideBinaryOp(op, arg1, arg2, result) => block
                         .ins(context)

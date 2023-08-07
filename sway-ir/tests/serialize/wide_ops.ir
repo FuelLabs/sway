@@ -19,6 +19,9 @@ script {
         wide mod v0, v0 to v0
 // check: wide mod v0, v0 to v0
 
+        wide not v0 to v0
+// check: wide not v0 to v0
+
         v5 = const unit ()
         ret () v5
     }
