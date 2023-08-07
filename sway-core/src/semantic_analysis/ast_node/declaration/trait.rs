@@ -54,10 +54,14 @@ impl ty::TyTraitDecl {
         let mut trait_namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut trait_namespace).with_self_type(self_type);
 
-        // Type check the type parameters. This will also insert them into the
-        // current namespace.
+        // Type check the type parameters.
         let new_type_parameters =
             TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters)?;
+
+        // Insert them into the current namespace.
+        for p in &new_type_parameters {
+            p.insert_into_namespace(handler, ctx.by_ref())?;
+        }
 
         // Recursively make the interface surfaces and methods of the
         // supertraits available to this trait.
