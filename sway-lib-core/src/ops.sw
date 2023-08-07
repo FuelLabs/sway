@@ -128,6 +128,12 @@ pub trait Subtract {
     fn subtract(self, other: Self) -> Self;
 }
 
+impl Subtract for u256 {
+    fn subtract(self, other: Self) -> Self {
+        __sub(self, other)
+    }
+}
+
 impl Subtract for u64 {
     fn subtract(self, other: Self) -> Self {
         __sub(self, other)
@@ -190,6 +196,12 @@ pub trait Multiply {
     /// }
     /// ```
     fn multiply(self, other: Self) -> Self;
+}
+
+impl Multiply for u256 {
+    fn multiply(self, other: Self) -> Self {
+        __mul(self, other)
+    }
 }
 
 impl Multiply for u64 {
@@ -274,6 +286,12 @@ pub trait Divide {
     fn divide(self, other: Self) -> Self;
 }
 
+impl Divide for u256 {
+    fn divide(self, other: Self) -> Self {
+        __div(self, other)
+    }
+}
+
 impl Divide for u64 {
     fn divide(self, other: Self) -> Self {
         __div(self, other)
@@ -338,6 +356,12 @@ pub trait Mod {
     /// }
     /// ```
     fn modulo(self, other: Self) -> Self;
+}
+
+impl Mod for u256 {
+    fn modulo(self, other: Self) -> Self {
+        __mod(self, other)
+    }
 }
 
 impl Mod for u64 {
@@ -476,6 +500,12 @@ pub trait Eq {
 }
 
 impl Eq for bool {
+    fn eq(self, other: Self) -> bool {
+        __eq(self, other)
+    }
+}
+
+impl Eq for u256 {
     fn eq(self, other: Self) -> bool {
         __eq(self, other)
     }
