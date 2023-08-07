@@ -143,8 +143,6 @@ impl Session {
         self.runnables.clear();
 
         *self.engines.write() = res.engines;
-        // *self.diagnostics.write() = res.diagnostics;
-
         res.token_map.deref().iter().for_each(|item| {
             let ((i, s), t) = item.pair();
             self.token_map.insert((i.clone(), s.clone()), t.clone());
