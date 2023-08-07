@@ -97,6 +97,30 @@ pub(crate) enum AllocatedOpcode {
         AllocatedRegister,
         VirtualImmediate06,
     ),
+    WQML(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        VirtualImmediate06,
+    ),
+    WQDV(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        VirtualImmediate06,
+    ),
+    WQCM(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        VirtualImmediate06,
+    ),
+    WQAM(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+    ),
 
     /* Conrol Flow Instructions */
     JMP(AllocatedRegister),
@@ -250,6 +274,10 @@ impl AllocatedOpcode {
             XOR(r1, _r2, _r3) => vec![r1],
             XORI(r1, _r2, _i) => vec![r1],
             WQOP(_, _, _, _) => vec![],
+            WQML(_, _, _, _) => vec![],
+            WQDV(_, _, _, _) => vec![],
+            WQCM(r1, _, _, _) => vec![r1],
+            WQAM(_, _, _, _) => vec![],
 
             /* Control Flow Instructions */
             JMP(_r1) => vec![],
@@ -364,6 +392,10 @@ impl fmt::Display for AllocatedOpcode {
             XOR(a, b, c) => write!(fmtr, "xor  {a} {b} {c}"),
             XORI(a, b, c) => write!(fmtr, "xori {a} {b} {c}"),
             WQOP(a, b, c, d) => write!(fmtr, "wqop {a} {b} {c} {d}"),
+            WQML(a, b, c, d) => write!(fmtr, "wqml {a} {b} {c} {d}"),
+            WQDV(a, b, c, d) => write!(fmtr, "wqdv {a} {b} {c} {d}"),
+            WQCM(a, b, c, d) => write!(fmtr, "wqcm {a} {b} {c} {d}"),
+            WQAM(a, b, c, d) => write!(fmtr, "wqam {a} {b} {c} {d}"),
 
             /* Control Flow Instructions */
             JMP(a) => write!(fmtr, "jmp {a}"),
@@ -510,6 +542,18 @@ impl AllocatedOp {
             XORI(a, b, c) => op::XORI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
             WQOP(a, b, c, d) => {
                 op::WQOP::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
+            }
+            WQML(a, b, c, d) => {
+                op::WQML::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
+            }
+            WQDV(a, b, c, d) => {
+                op::WQDV::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
+            }
+            WQCM(a, b, c, d) => {
+                op::WQCM::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
+            }
+            WQAM(a, b, c, d) => {
+                op::WQAM::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
 
             /* Control Flow Instructions */
