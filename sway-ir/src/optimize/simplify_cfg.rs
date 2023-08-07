@@ -35,6 +35,7 @@ pub fn simplify_cfg(
     modified |= remove_dead_blocks(context, &function)?;
     modified |= merge_blocks(context, &function)?;
     modified |= unlink_empty_blocks(context, &function)?;
+    modified |= remove_dead_blocks(context, &function)?;
     Ok(modified)
 }
 
@@ -46,7 +47,10 @@ fn unlink_empty_blocks(context: &mut Context, function: &Function) -> Result<boo
         .filter_map(|block| {
             match block.get_terminator(context) {
                 // Except for a branch, we don't want anything else.
-                Some(Instruction::Branch(to_block)) if block.num_instructions(context) <= 1 => {
+                // If the block has PHI nodes, then values merge here. Cannot remove the block.
+                Some(Instruction::Branch(to_block))
+                    if block.num_instructions(context) <= 1 && block.num_args(context) == 0 =>
+                {
                     Some((block, to_block.clone()))
                 }
                 _ => None,

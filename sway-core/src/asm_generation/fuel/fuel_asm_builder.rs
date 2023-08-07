@@ -48,6 +48,9 @@ pub struct FuelAsmBuilder<'ir, 'eng> {
     // storage types.
     pub(super) reg_map: HashMap<Value, VirtualRegister>,
     pub(super) ptr_map: HashMap<LocalVar, Storage>,
+    // PHIs need a register to which predecessor blocks will copy the value to.
+    // That VirtualRegister is then copied to another one in the block, mapped by reg_map.
+    pub(super) phi_reg_map: HashMap<Value, VirtualRegister>,
 
     // The currently compiled function has an end label which is at the end of the function body
     // but before the call cleanup, and a copy of the $retv for when the return value is a reference
@@ -118,6 +121,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             block_label_map: HashMap::new(),
             reg_map: HashMap::new(),
             ptr_map: HashMap::new(),
+            phi_reg_map: HashMap::new(),
             return_ctxs: Vec::new(),
             locals_ctxs: Vec::new(),
             context,
@@ -145,6 +149,38 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 .map(|ops| AbstractInstructionSet { ops })
                 .collect(),
         ))
+    }
+
+    pub(super) fn compile_block(
+        &mut self,
+        handler: &Handler,
+        block: &Block,
+        func_is_entry: bool,
+    ) -> Result<(), ErrorEmitted> {
+        if block
+            .get_function(self.context)
+            .get_entry_block(self.context)
+            != *block
+        {
+            // If the block has an arg, copy value from its phi_reg_map vreg to a new one.
+            for arg in block.arg_iter(self.context) {
+                let phi_reg = self.phi_reg_map.entry(*arg).or_insert(self.reg_seqr.next());
+                // Associate a new virtual register for this arg and copy phi_reg to it.
+                let arg_reg = self.reg_seqr.next();
+                self.reg_map.insert(*arg, arg_reg.clone());
+                self.cur_bytecode.push(Op::register_move(
+                    arg_reg.clone(),
+                    phi_reg.clone(),
+                    "parameter from branch to block argument",
+                    None,
+                ));
+            }
+        }
+
+        for instr_val in block.instruction_iter(self.context) {
+            self.compile_instruction(handler, &instr_val, func_is_entry)?;
+        }
+        Ok(())
     }
 
     pub(super) fn compile_instruction(
@@ -720,15 +756,12 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             // We only need a MOVE here if param is actually assigned to a register
             if let Ok(local_reg) = self.value_to_register(param) {
                 let phi_val = to_block.block.get_arg(self.context, i).unwrap();
-                let phi_reg = self.value_to_register(&phi_val).unwrap_or_else(|_| {
-                    // We must re-use the arg register, but if this is the first time we've seen it
-                    // we add it to the register map now.
-                    let reg = self.reg_seqr.next();
-                    self.reg_map.insert(phi_val, reg.clone());
-                    reg
-                });
+                let phi_reg = self
+                    .phi_reg_map
+                    .entry(phi_val)
+                    .or_insert(self.reg_seqr.next());
                 self.cur_bytecode.push(Op::register_move(
-                    phi_reg,
+                    phi_reg.clone(),
                     local_reg,
                     "parameter from branch to block argument",
                     None,
