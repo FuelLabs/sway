@@ -1,3 +1,4 @@
+mod encode;
 use crate::{
     cmd,
     util::{
@@ -17,6 +18,8 @@ use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
 use tokio::time::timeout;
 use tracing::info;
+
+use self::encode::ScriptCallHandler;
 
 pub struct RanScript {
     pub receipts: Vec<fuel_tx::Receipt>,
@@ -57,9 +60,26 @@ pub async fn run_pkg(
     manifest: &PackageManifestFile,
     compiled: &BuiltPackage,
 ) -> Result<RanScript> {
-    let input_data = command.data.as_deref().unwrap_or("");
-    let data = input_data.strip_prefix("0x").unwrap_or(input_data);
-    let script_data = hex::decode(data).expect("Invalid hex");
+    let script_data = match (&command.data, &command.args) {
+        (None, Some(args)) => {
+            let minify_json_abi = true;
+            let package_json_abi = compiled
+                .json_abi_string(minify_json_abi)?
+                .ok_or_else(|| anyhow::anyhow!("Missing json abi string"))?;
+            let main_arg_handler = ScriptCallHandler::from_json_abi_str(&package_json_abi)?;
+            let args = args.iter().map(|arg| arg.as_str()).collect::<Vec<_>>();
+            let unresolved_bytes = main_arg_handler.encode_arguments(args.as_slice())?;
+            unresolved_bytes.resolve(0)
+        }
+        (Some(_), Some(_)) => {
+            bail!("Both --args and --data provided, must choose one.")
+        }
+        _ => {
+            let input_data = command.data.as_deref().unwrap_or("");
+            let data = input_data.strip_prefix("0x").unwrap_or(input_data);
+            hex::decode(data).expect("Invalid hex")
+        }
+    };
 
     let node_url = command
         .node_url
@@ -82,6 +102,7 @@ pub async fn run_pkg(
     } else {
         WalletSelectionMode::ForcWallet
     };
+
     let tx = TransactionBuilder::script(compiled.bytecode.bytes.clone(), script_data)
         .gas_limit(command.gas.limit)
         .gas_price(command.gas.price)
