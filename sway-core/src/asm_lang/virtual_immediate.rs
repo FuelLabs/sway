@@ -9,6 +9,12 @@ use std::fmt;
 #[repr(u8)]
 pub enum WideOperations {
     Add = 0,
+    Sub = 1,
+}
+
+#[repr(u8)]
+pub enum WideCmp {
+    Equality = 0,
 }
 
 /// 6-bit immediate value type
@@ -46,6 +52,23 @@ impl VirtualImmediate06 {
         VirtualImmediate06 {
             value: (op as u8) | if rhs_indirect { 32u8 } else { 0 },
         }
+    }
+
+    pub fn wide_cmp(op: WideCmp, rhs_indirect: bool) -> VirtualImmediate06 {
+        VirtualImmediate06 {
+            value: (op as u8) | if rhs_indirect { 32u8 } else { 0 },
+        }
+    }
+
+    pub fn wide_mul(lhs_indirect: bool, rhs_indirect: bool) -> VirtualImmediate06 {
+        let lhs = if lhs_indirect { 16u8 } else { 0 };
+        let rhs = if rhs_indirect { 32u8 } else { 0 };
+        VirtualImmediate06 { value: lhs | rhs }
+    }
+
+    pub fn wide_div(rhs_indirect: bool) -> VirtualImmediate06 {
+        let rhs = if rhs_indirect { 32u8 } else { 0 };
+        VirtualImmediate06 { value: rhs }
     }
 }
 
