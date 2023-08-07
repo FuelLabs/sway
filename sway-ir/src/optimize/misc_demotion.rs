@@ -1,3 +1,5 @@
+use std::ops::Not;
+
 /// Miscellaneous value demotion.
 ///
 /// This pass demotes miscellaneous 'by-value' types to 'by-reference' pointer types, based on
@@ -605,7 +607,7 @@ fn wide_cmp_demotion(context: &mut Context, function: Function) -> Result<bool, 
         let arg2_metadata = arg2.get_metadata(context);
 
         // If arg1 is not a pointer, store it to a local
-        let lhs_store = if !arg1_ty.is_ptr(context) {
+        let lhs_store = arg1_ty.is_ptr(context).not().then(|| {
             let lhs_local = function.new_unique_local_var(
                 context,
                 "__wide_lhs".to_owned(),
@@ -623,10 +625,8 @@ fn wide_cmp_demotion(context: &mut Context, function: Function) -> Result<bool, 
                 },
             )
             .add_metadatum(context, arg1_metadata);
-            Some((get_lhs_local, store_lhs_local))
-        } else {
-            None
-        };
+            (get_lhs_local, store_lhs_local)
+        });
 
         let (arg1_needs_insert, get_arg1) = if let Some((lhs_local, _)) = &lhs_store {
             (false, *lhs_local)
@@ -635,7 +635,7 @@ fn wide_cmp_demotion(context: &mut Context, function: Function) -> Result<bool, 
         };
 
         // If arg2 is not a pointer, store it to a local
-        let rhs_store = if !arg2_ty.is_ptr(context) {
+        let rhs_store = arg2_ty.is_ptr(context).not().then(|| {
             let rhs_local = function.new_unique_local_var(
                 context,
                 "__wide_rhs".to_owned(),
@@ -653,10 +653,8 @@ fn wide_cmp_demotion(context: &mut Context, function: Function) -> Result<bool, 
                 },
             )
             .add_metadatum(context, arg2_metadata);
-            Some((get_rhs_local, store_lhs_local))
-        } else {
-            None
-        };
+            (get_rhs_local, store_lhs_local)
+        });
 
         let (arg2_needs_insert, get_arg2) = if let Some((rhs_local, _)) = &rhs_store {
             (false, *rhs_local)
