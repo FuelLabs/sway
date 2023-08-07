@@ -151,6 +151,7 @@ pub fn inline_in_module(
             return true;
         }
 
+        // See https://github.com/FuelLabs/sway/pull/4899
         if func.args_iter(ctx).any(|(_name, arg_val)| {
             arg_val.get_type(ctx).map_or(false, |ty| {
                 ty.is_ptr(ctx) || !(ty.is_unit(ctx) | ty.is_bool(ctx) | ty.is_uint(ctx))
@@ -595,6 +596,22 @@ fn inline_instruction(
                     map_value(arg2),
                     map_value(result),
                 ),
+                FuelVmInstruction::WideModularOp {
+                    op,
+                    result,
+                    arg1,
+                    arg2,
+                    arg3,
+                } => new_block.ins(context).wide_modular_op(
+                    op,
+                    map_value(result),
+                    map_value(arg1),
+                    map_value(arg2),
+                    map_value(arg3),
+                ),
+                FuelVmInstruction::WideCmpOp { op, arg1, arg2 } => new_block
+                    .ins(context)
+                    .wide_cmp_op(op, map_value(arg1), map_value(arg2)),
             },
             Instruction::GetElemPtr {
                 base,

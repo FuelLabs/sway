@@ -12,7 +12,7 @@ use crate::{
     },
     asm_lang::{
         virtual_register::*, Label, Op, VirtualImmediate06, VirtualImmediate12, VirtualImmediate18,
-        VirtualOp,
+        VirtualOp, WideCmp,
     },
     decl_engine::DeclRefFunction,
     metadata::MetadataManager,
@@ -48,6 +48,9 @@ pub struct FuelAsmBuilder<'ir, 'eng> {
     // storage types.
     pub(super) reg_map: HashMap<Value, VirtualRegister>,
     pub(super) ptr_map: HashMap<LocalVar, Storage>,
+    // PHIs need a register to which predecessor blocks will copy the value to.
+    // That VirtualRegister is then copied to another one in the block, mapped by reg_map.
+    pub(super) phi_reg_map: HashMap<Value, VirtualRegister>,
 
     // The currently compiled function has an end label which is at the end of the function body
     // but before the call cleanup, and a copy of the $retv for when the return value is a reference
@@ -118,6 +121,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             block_label_map: HashMap::new(),
             reg_map: HashMap::new(),
             ptr_map: HashMap::new(),
+            phi_reg_map: HashMap::new(),
             return_ctxs: Vec::new(),
             locals_ctxs: Vec::new(),
             context,
@@ -145,6 +149,38 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 .map(|ops| AbstractInstructionSet { ops })
                 .collect(),
         ))
+    }
+
+    pub(super) fn compile_block(
+        &mut self,
+        handler: &Handler,
+        block: &Block,
+        func_is_entry: bool,
+    ) -> Result<(), ErrorEmitted> {
+        if block
+            .get_function(self.context)
+            .get_entry_block(self.context)
+            != *block
+        {
+            // If the block has an arg, copy value from its phi_reg_map vreg to a new one.
+            for arg in block.arg_iter(self.context) {
+                let phi_reg = self.phi_reg_map.entry(*arg).or_insert(self.reg_seqr.next());
+                // Associate a new virtual register for this arg and copy phi_reg to it.
+                let arg_reg = self.reg_seqr.next();
+                self.reg_map.insert(*arg, arg_reg.clone());
+                self.cur_bytecode.push(Op::register_move(
+                    arg_reg.clone(),
+                    phi_reg.clone(),
+                    "parameter from branch to block argument",
+                    None,
+                ));
+            }
+        }
+
+        for instr_val in block.instruction_iter(self.context) {
+            self.compile_instruction(handler, &instr_val, func_is_entry)?;
+        }
+        Ok(())
     }
 
     pub(super) fn compile_instruction(
@@ -250,10 +286,20 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     }
                     FuelVmInstruction::WideBinaryOp {
                         op,
+                        result,
                         arg1,
                         arg2,
-                        result,
                     } => self.compile_wide_binary_op(instr_val, op, arg1, arg2, result),
+                    FuelVmInstruction::WideCmpOp { op, arg1, arg2 } => {
+                        self.compile_wide_cmp_op(instr_val, op, arg1, arg2)
+                    }
+                    FuelVmInstruction::WideModularOp {
+                        op,
+                        result,
+                        arg1,
+                        arg2,
+                        arg3,
+                    } => self.compile_wide_modular_op(instr_val, op, result, arg1, arg2, arg3),
                 },
                 Instruction::GetElemPtr {
                     base,
@@ -503,6 +549,24 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 val2_reg,
                 VirtualImmediate06::wide_op(crate::asm_lang::WideOperations::Add, true),
             ),
+            BinaryOpKind::Sub => VirtualOp::WQOP(
+                result_reg,
+                val1_reg,
+                val2_reg,
+                VirtualImmediate06::wide_op(crate::asm_lang::WideOperations::Sub, true),
+            ),
+            BinaryOpKind::Mul => VirtualOp::WQML(
+                result_reg,
+                val1_reg,
+                val2_reg,
+                VirtualImmediate06::wide_mul(true, true),
+            ),
+            BinaryOpKind::Div => VirtualOp::WQDV(
+                result_reg,
+                val1_reg,
+                val2_reg,
+                VirtualImmediate06::wide_div(true),
+            ),
             _ => todo!(),
         };
 
@@ -511,6 +575,66 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             comment: String::new(),
             owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
         });
+
+        Ok(())
+    }
+
+    fn compile_wide_modular_op(
+        &mut self,
+        instr_val: &Value,
+        op: &BinaryOpKind,
+        result: &Value,
+        arg1: &Value,
+        arg2: &Value,
+        arg3: &Value,
+    ) -> Result<(), CompileError> {
+        let result_reg = self.value_to_register(result)?;
+        let val1_reg = self.value_to_register(arg1)?;
+        let val2_reg = self.value_to_register(arg2)?;
+        let val3_reg = self.value_to_register(arg3)?;
+
+        let opcode = match op {
+            BinaryOpKind::Mod => VirtualOp::WQAM(result_reg, val1_reg, val2_reg, val3_reg),
+            _ => todo!(),
+        };
+
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(opcode),
+            comment: String::new(),
+            owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+        });
+
+        Ok(())
+    }
+
+    fn compile_wide_cmp_op(
+        &mut self,
+        instr_val: &Value,
+        op: &Predicate,
+        arg1: &Value,
+        arg2: &Value,
+    ) -> Result<(), CompileError> {
+        let res_reg = self.reg_seqr.next();
+        let val1_reg = self.value_to_register(arg1)?;
+        let val2_reg = self.value_to_register(arg2)?;
+
+        let opcode = match op {
+            Predicate::Equal => VirtualOp::WQCM(
+                res_reg.clone(),
+                val1_reg,
+                val2_reg,
+                VirtualImmediate06::wide_cmp(WideCmp::Equality, true),
+            ),
+            _ => todo!(),
+        };
+
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(opcode),
+            comment: String::new(),
+            owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+        });
+
+        self.reg_map.insert(*instr_val, res_reg);
 
         Ok(())
     }
@@ -632,15 +756,12 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             // We only need a MOVE here if param is actually assigned to a register
             if let Ok(local_reg) = self.value_to_register(param) {
                 let phi_val = to_block.block.get_arg(self.context, i).unwrap();
-                let phi_reg = self.value_to_register(&phi_val).unwrap_or_else(|_| {
-                    // We must re-use the arg register, but if this is the first time we've seen it
-                    // we add it to the register map now.
-                    let reg = self.reg_seqr.next();
-                    self.reg_map.insert(phi_val, reg.clone());
-                    reg
-                });
+                let phi_reg = self
+                    .phi_reg_map
+                    .entry(phi_val)
+                    .or_insert(self.reg_seqr.next());
                 self.cur_bytecode.push(Op::register_move(
-                    phi_reg,
+                    phi_reg.clone(),
                     local_reg,
                     "parameter from branch to block argument",
                     None,
