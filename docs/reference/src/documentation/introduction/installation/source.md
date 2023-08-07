@@ -4,7 +4,7 @@ The `Sway toolchain` can be built directly from the [`Sway repository`](https://
 
 ## Installation & Updating
 
-In the root of the repository `/sway/<here>` build [`forc`](https://fuellabs.github.io/sway/master/book/forc/commands/index.html) with the following command:
+In the root of the repository `/sway/<here>` build [`forc`](https://fuellabs.github.io/sway/v0.43.2/book/forc/commands/index.html) with the following command:
 
 ```bash
 cargo build
