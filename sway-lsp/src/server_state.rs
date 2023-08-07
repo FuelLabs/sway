@@ -2,7 +2,7 @@
 
 use crate::{
     config::{Config, Warnings},
-    core::session::Session,
+    core::session::{ParseResult, Session},
     error::{DirectoryError, DocumentError, LanguageServerError},
     utils::debug,
     utils::keyword_docs::KeywordDocs,
@@ -75,28 +75,38 @@ impl ServerState {
     }
 
     pub(crate) async fn parse_project(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
-        let should_publish = run_blocking_parse_project(uri.clone(), session.clone()).await;
-        if should_publish {
-            // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
-            // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
-            self.client
-                .publish_diagnostics(workspace_uri.clone(), self.diagnostics(&uri, session), None)
-                .await;
+        match run_blocking_parse_project(uri.clone(), session.clone()).await {
+            Ok(parse_result) => {
+                session.write_parse_result(parse_result);
+                // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
+                // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
+                self.client
+                    .publish_diagnostics(
+                        workspace_uri.clone(),
+                        self.diagnostics(&uri, session),
+                        None,
+                    )
+                    .await;
+            }
+            Err(err) => {
+                if matches!(err, LanguageServerError::FailedToParse) {
+                    tracing::error!("Error parsing project: {:?}", err);
+                }
+            }
         }
     }
+
+    
 }
 
 /// Runs parse_project in a blocking thread, because parsing is not async.
-async fn run_blocking_parse_project(uri: Url, session: Arc<Session>) -> bool {
-    task::spawn_blocking(move || match session.parse_project(&uri) {
-        Ok(should_publish) => should_publish,
-        Err(err) => {
-            tracing::error!("{}", err);
-            matches!(err, LanguageServerError::FailedToParse)
-        }
-    })
-    .await
-    .unwrap_or_default()
+async fn run_blocking_parse_project(
+    uri: Url,
+    session: Arc<Session>,
+) -> Result<ParseResult, LanguageServerError> {
+    task::spawn_blocking(move || session.parse_project(&uri))
+        .await
+        .unwrap_or_else(|_| Err(LanguageServerError::FailedToParse))
 }
 
 /// `Sessions` is a collection of [Session]s, each of which represents a project

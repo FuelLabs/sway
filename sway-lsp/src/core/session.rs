@@ -29,7 +29,7 @@ use std::{
     io::Write,
     path::PathBuf,
     sync::{atomic::Ordering, Arc},
-    vec,
+    vec, ops::Deref,
 };
 use sway_core::{
     decl_engine::DeclEngine,
@@ -52,6 +52,16 @@ pub struct CompiledProgram {
     pub lexed: Option<LexedProgram>,
     pub parsed: Option<ParseProgram>,
     pub typed: Option<ty::TyProgram>,
+}
+
+#[derive(Debug)]
+pub struct ParseResult {
+    pub(crate) diagnostics: Diagnostics,
+    pub(crate) token_map: TokenMap,
+    pub(crate) engines: Engines,
+    pub(crate) lexed: LexedProgram,
+    pub(crate) parsed: ParseProgram,
+    pub(crate) typed: ty::TyProgram,
 }
 
 /// A `Session` is used to store information about a single member in a workspace.
@@ -128,17 +138,39 @@ impl Session {
         self.diagnostics.read().clone()
     }
 
+    /// Write the result of parsing to the session.
+    /// This function should only be called after successfully parsing.
+    pub(crate) fn write_parse_result(&self, res: ParseResult) {
+        *self.engines.write() = res.engines;
+        *self.diagnostics.write() = res.diagnostics;
+        self.token_map.clear();
+
+        res.token_map
+            .deref()
+            .iter()
+            .for_each(|item| {
+                let ((i, s), t) = item.pair();
+                self.token_map.insert((i.clone(), s.clone()), t.clone());
+            });
+        
+        self.create_runnables(&res.typed, self.engines.read().de());
+
+        self.save_lexed_program(res.lexed);
+        self.save_parsed_program(res.parsed);
+        self.save_typed_program(res.typed);
+    }
+
     /// Parses the project and returns true if the compiler diagnostics are new and should be published.
-    pub fn parse_project(&self, uri: &Url) -> Result<bool, LanguageServerError> {
+    pub fn parse_project(&self, uri: &Url) -> Result<ParseResult, LanguageServerError> {
         // Acquire a permit to parse the project. If there are none available, return false. This way,
         // we avoid publishing the same diagnostics multiple times.
         let permit = self.parse_permits.try_acquire();
         if permit.is_err() {
-            return Ok(false);
+            return Err(LanguageServerError::UnableToAcquirePermit);
         }
 
         // Lock the diagnostics result to prevent multiple threads from parsing the project at the same time.
-        let mut diagnostics = self.diagnostics.write();
+        //let mut diagnostics = self.diagnostics.write();
 
         let manifest_dir = PathBuf::from(uri.path());
         let locked = false;
@@ -177,7 +209,9 @@ impl Session {
         )
         .map_err(LanguageServerError::BuildPlanFailed)?;
 
+        let mut diagnostics = Diagnostics::default();
         let new_engines = Engines::default();
+        let token_map = TokenMap::new();
         let tests_enabled = true;
 
         let results = pkg::check(
@@ -190,15 +224,17 @@ impl Session {
         .map_err(LanguageServerError::FailedToCompile)?;
 
         // Acquire locks for the engines before clearing anything.
-        let mut engines = self.engines.write();
+        // let mut engines = self.engines.write();
 
-        // Update the engines with the new data.
-        *engines = new_engines;
+        // // Update the engines with the new data.
+        // *engines = new_engines;
 
         // Clear other data stores.
-        self.token_map.clear();
+        // self.token_map.clear();
         self.runnables.clear();
 
+
+        let mut programs = None;
         let results_len = results.len();
         for (i, (value, handler)) in results.into_iter().enumerate() {
             // We can convert these destructured elements to a Vec<Diagnostic> later on.
@@ -207,7 +243,7 @@ impl Session {
             if value.is_none() {
                 // If there was an unrecoverable error in the parser
                 // make sure to still return the diagnostics.
-                *diagnostics = get_diagnostics(&warnings, &errors);
+                diagnostics = get_diagnostics(&warnings, &errors);
                 continue;
             }
             let Programs {
@@ -218,13 +254,13 @@ impl Session {
 
             // Get a reference to the typed program AST.
             let typed_program = typed.as_ref().ok().ok_or_else(|| {
-                *diagnostics = get_diagnostics(&warnings, &errors);
+                diagnostics = get_diagnostics(&warnings, &errors);
                 LanguageServerError::FailedToParse
             })?;
 
             // Create context with write guards to make readers wait until the update to token_map is complete.
             // This operation is fast because we already have the compile results.
-            let ctx = ParseContext::new(&self.token_map, &engines, &typed_program.root.namespace);
+            let ctx = ParseContext::new(&token_map, &new_engines, &typed_program.root.namespace);
 
             // The final element in the results is the main program.
             if i == results_len - 1 {
@@ -236,20 +272,15 @@ impl Session {
                 parsed_tree.collect_module_spans(&parsed);
                 self.parse_ast_to_tokens(&parsed, &ctx, |an, _ctx| parsed_tree.traverse_node(an));
 
-                // Finally, create runnables and populate our token_map with typed ast nodes.
-                self.create_runnables(typed_program, engines.de());
-
+                // Finally, populate our token_map with typed ast nodes.
                 let typed_tree = TypedTree::new(&ctx);
                 typed_tree.collect_module_spans(typed_program);
                 self.parse_ast_to_typed_tokens(typed_program, &ctx, |node, _ctx| {
                     typed_tree.traverse_node(node)
                 });
 
-                self.save_lexed_program(lexed.to_owned().clone());
-                self.save_parsed_program(parsed.to_owned().clone());
-                self.save_typed_program(typed_program.to_owned().clone());
-
-                *diagnostics = get_diagnostics(&warnings, &errors);
+                programs = Some((lexed,parsed,typed_program.clone()));
+                diagnostics = get_diagnostics(&warnings, &errors);
             } else {
                 // Collect tokens from dependencies and the standard library prelude.
                 self.parse_ast_to_tokens(&parsed, &ctx, |an, ctx| {
@@ -261,7 +292,15 @@ impl Session {
                 });
             }
         }
-        Ok(true)
+        let (lexed, parsed, typed) = programs.expect("Programs should be populated at this point.");
+        Ok(ParseResult { 
+            diagnostics, 
+            token_map, 
+            engines: new_engines,
+            lexed,
+            parsed,
+            typed,
+        })
     }
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
