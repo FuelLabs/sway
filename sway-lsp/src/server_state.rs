@@ -2,17 +2,16 @@
 
 use crate::{
     config::{Config, Warnings},
-    core::session::{self, ParseResult, Session},
+    core::session::{self, Session},
     error::{DirectoryError, DocumentError, LanguageServerError},
     utils::debug,
-    utils::keyword_docs::KeywordDocs, capabilities::diagnostic::Diagnostics,
+    utils::keyword_docs::KeywordDocs,
 };
 use dashmap::DashMap;
 use forc_pkg::PackageManifestFile;
 use lsp_types::{Diagnostic, Url};
 use parking_lot::RwLock;
 use std::{path::PathBuf, sync::Arc};
-use tokio::{task, sync::Semaphore};
 use tower_lsp::{jsonrpc, Client};
 
 /// `ServerState` is the primary mutable state of the language server
@@ -75,17 +74,8 @@ impl ServerState {
     }
 
     pub(crate) async fn parse_project(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
-        eprintln!("parsing project called");
-        match run_blocking_parse_project(
-            uri.clone(), 
-            session.parse_permits.clone(),
-            session.diagnostics.clone(),
-        ).await {
-            Ok(parse_result) => {
-                eprintln!("parsing finished");
-                session.write_parse_result(parse_result);
-                eprintln!("parse result written");
-
+        match run_blocking_parse_project(uri.clone(), session.clone()).await {
+            Ok(_) => {
                 // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
                 // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
                 self.client
@@ -108,23 +98,23 @@ impl ServerState {
 /// Runs parse_project in a blocking thread, because parsing is not async.
 async fn run_blocking_parse_project(
     uri: Url,
-    parse_permits: Arc<Semaphore>,
-    diagnostics: Arc<RwLock<Diagnostics>>,
-) -> Result<ParseResult, LanguageServerError> {
+    session: Arc<Session>,
+) -> Result<(), LanguageServerError> {
     // Acquire a permit to parse the project. If there are none available, return false. This way,
     // we avoid publishing the same diagnostics multiple times.
-    if parse_permits.try_acquire().is_err() {
+    if session.parse_permits.try_acquire().is_err() {
         return Err(LanguageServerError::UnableToAcquirePermit);
     }
-    task::spawn_blocking(move || {
-        eprintln!("locking diagnostics");
+    tokio::task::spawn_blocking(move || {
         // Lock the diagnostics result to prevent multiple threads from parsing the project at the same time.
-        let mut diagnostics = diagnostics.write();
-
-        session::parse_project(&uri)
+        let mut diagnostics = session.diagnostics.write();
+        let parse_result = session::parse_project(&uri)?;
+        *diagnostics = parse_result.diagnostics.clone();
+        session.write_parse_result(parse_result);
+        Ok(())
     })
-        .await
-        .unwrap_or_else(|_| Err(LanguageServerError::FailedToParse))
+    .await
+    .unwrap_or_else(|_| Err(LanguageServerError::FailedToParse))
 }
 
 /// `Sessions` is a collection of [Session]s, each of which represents a project
