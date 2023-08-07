@@ -26,10 +26,14 @@ impl ty::TyEnumDecl {
         let mut decl_namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut decl_namespace);
 
-        // Type check the type parameters. This will also insert them into the
-        // current namespace.
+        // Type check the type parameters.
         let new_type_parameters =
             TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters)?;
+
+        // Insert them into the current namespace.
+        for p in &new_type_parameters {
+            p.insert_into_namespace(handler, ctx.by_ref())?;
+        }
 
         // type check the variants
         let mut variants_buf = vec![];
