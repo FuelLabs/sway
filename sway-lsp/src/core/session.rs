@@ -83,7 +83,7 @@ pub struct Session {
     // and one thread can be waiting to start parsing. All others will return the cached diagnostics.
     pub parse_permits: Arc<Semaphore>,
     // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
-    diagnostics: Arc<RwLock<Diagnostics>>,
+    pub diagnostics: Arc<RwLock<Diagnostics>>,
 }
 
 impl Session {

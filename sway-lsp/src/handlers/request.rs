@@ -273,7 +273,9 @@ pub(crate) fn handle_semantic_tokens_full(
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
         Ok((uri, session)) => {
+            eprintln!("handle_semantic_tokens_full is called, waiting for parsing");
             let _ = session.wait_for_parsing();
+            eprintln!("handle_semantic_tokens parsing is done");
             Ok(capabilities::semantic_tokens::semantic_tokens_full(
                 session, &uri,
             ))

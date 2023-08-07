@@ -5,7 +5,7 @@ use crate::{
     core::session::{self, ParseResult, Session},
     error::{DirectoryError, DocumentError, LanguageServerError},
     utils::debug,
-    utils::keyword_docs::KeywordDocs,
+    utils::keyword_docs::KeywordDocs, capabilities::diagnostic::Diagnostics,
 };
 use dashmap::DashMap;
 use forc_pkg::PackageManifestFile;
@@ -75,9 +75,17 @@ impl ServerState {
     }
 
     pub(crate) async fn parse_project(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
-        match run_blocking_parse_project(uri.clone(), session.parse_permits.clone()).await {
+        eprintln!("parsing project called");
+        match run_blocking_parse_project(
+            uri.clone(), 
+            session.parse_permits.clone(),
+            session.diagnostics.clone(),
+        ).await {
             Ok(parse_result) => {
+                eprintln!("parsing finished");
                 session.write_parse_result(parse_result);
+                eprintln!("parse result written");
+
                 // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
                 // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
                 self.client
@@ -101,13 +109,20 @@ impl ServerState {
 async fn run_blocking_parse_project(
     uri: Url,
     parse_permits: Arc<Semaphore>,
+    diagnostics: Arc<RwLock<Diagnostics>>,
 ) -> Result<ParseResult, LanguageServerError> {
     // Acquire a permit to parse the project. If there are none available, return false. This way,
     // we avoid publishing the same diagnostics multiple times.
     if parse_permits.try_acquire().is_err() {
         return Err(LanguageServerError::UnableToAcquirePermit);
     }
-    task::spawn_blocking(move || session::parse_project(&uri))
+    task::spawn_blocking(move || {
+        eprintln!("locking diagnostics");
+        // Lock the diagnostics result to prevent multiple threads from parsing the project at the same time.
+        let mut diagnostics = diagnostics.write();
+
+        session::parse_project(&uri)
+    })
         .await
         .unwrap_or_else(|_| Err(LanguageServerError::FailedToParse))
 }
