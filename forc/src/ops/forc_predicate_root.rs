@@ -1,5 +1,5 @@
 use crate::cli::PredicateRootCommand;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use forc_pkg::{self as pkg, build_with_options};
 use sway_core::BuildTarget;
 
@@ -8,7 +8,13 @@ pub fn predicate_root(command: PredicateRootCommand) -> Result<()> {
     // Building predicates will output the predicate root by default.
     // So to display all predicate roots in the current workspace we just need to build the
     // workspace with a member filter that filters out every project type other than predicates.
-    build_with_options(build_options)?;
+    build_with_options(build_options).map_err(|e| {
+        if e.to_string() == "Nothing to build after filter" {
+            anyhow!("No predicate found in the given project.")
+        } else {
+            e
+        }
+    })?;
     Ok(())
 }
 

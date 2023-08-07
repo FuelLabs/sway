@@ -1,5 +1,5 @@
 use crate::cli::ContractIdCommand;
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use forc_pkg::{self as pkg, build_with_options};
 use forc_tracing::println_green;
 use sway_core::{fuel_prelude::fuel_tx, BuildTarget};
@@ -27,7 +27,13 @@ pub fn contract_id(command: ContractIdCommand) -> Result<()> {
             please do so within the `[contract-dependencies]` table."
         )
     }
-    let built = build_with_options(build_options)?;
+    let built = build_with_options(build_options).map_err(|e| {
+        if e.to_string() == "Nothing to build after filter" {
+            anyhow!("No contract found in the given project.")
+        } else {
+            e
+        }
+    })?;
     for (pinned_contract, built_contract) in built.into_members() {
         let salt = command
             .salt

@@ -2161,6 +2161,9 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
     };
 
     let outputs = member_filter.filter_outputs(&build_plan, outputs);
+    if outputs.is_empty() {
+        bail!("Nothing to build after filter");
+    }
 
     // Build it!
     let mut built_workspace = Vec::new();
