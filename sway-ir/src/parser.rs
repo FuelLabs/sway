@@ -24,7 +24,7 @@ pub fn parse<'eng>(
 // -------------------------------------------------------------------------------------------------
 
 mod ir_builder {
-    use sway_types::{ident::Ident, span::Span, SourceEngine};
+    use sway_types::{ident::Ident, span::Span, u256::U256, SourceEngine};
 
     type MdIdxRef = u64;
 
@@ -176,6 +176,7 @@ mod ir_builder {
 
             rule operation() -> IrAstOperation
                 = op_asm()
+                / op_wide_unary()
                 / op_wide_binary()
                 / op_wide_cmp()
                 / op_branch()
@@ -234,6 +235,11 @@ mod ir_builder {
             rule op_wide_modular_operation() -> IrAstOperation
                 = "wide" _ op:binary_op_kind() arg1:id() comma() arg2:id() comma() arg3:id() "to" _ result:id()  {
                     IrAstOperation::WideModularOp(op, arg1, arg2, arg3, result)
+                }
+
+            rule op_wide_unary() -> IrAstOperation
+                = "wide" _ op:unary_op_kind() arg:id() "to" _ result:id()  {
+                    IrAstOperation::WideUnaryOp(op, arg, result)
                 }
 
             rule op_wide_binary() -> IrAstOperation
@@ -720,6 +726,7 @@ mod ir_builder {
         StateStoreQuadWord(String, String, String),
         StateStoreWord(String, String),
         Store(String, String),
+        WideUnaryOp(UnaryOpKind, String, String),
         WideBinaryOp(BinaryOpKind, String, String, String),
         WideCmp(Predicate, String, String),
         WideModularOp(BinaryOpKind, String, String, String, String),
@@ -771,17 +778,14 @@ mod ir_builder {
                 IrAstConstValue::Undef(_) => ConstantValue::Undef,
                 IrAstConstValue::Unit => ConstantValue::Unit,
                 IrAstConstValue::Bool(b) => ConstantValue::Bool(*b),
-                IrAstConstValue::Hex256(bs) => {
-                    match val_ty {
-                        IrAstTy::U256 => {
-                            // TODO u256 limited to u64
-                            let n = u64::from_be_bytes(bs[24..].try_into().unwrap());
-                            ConstantValue::U256(n)
-                        }
-                        IrAstTy::B256 => ConstantValue::B256(*bs),
-                        _ => unreachable!("invalid type for hex number"),
+                IrAstConstValue::Hex256(bs) => match val_ty {
+                    IrAstTy::U256 => {
+                        let n = U256::from_be_bytes(bs);
+                        ConstantValue::U256(n)
                     }
-                }
+                    IrAstTy::B256 => ConstantValue::B256(*bs),
+                    _ => unreachable!("invalid type for hex number"),
+                },
                 IrAstConstValue::Number(n) => ConstantValue::Uint(*n),
                 IrAstConstValue::String(bs) => ConstantValue::String(bs.clone()),
                 IrAstConstValue::Array(el_ty, els) => {
@@ -813,17 +817,14 @@ mod ir_builder {
                 IrAstConstValue::Undef(_) => unreachable!("Can't convert 'undef' to a value."),
                 IrAstConstValue::Unit => Constant::get_unit(context),
                 IrAstConstValue::Bool(b) => Constant::get_bool(context, *b),
-                IrAstConstValue::Hex256(bs) => {
-                    match val_ty {
-                        IrAstTy::U256 => {
-                            // TODO u256 limited to u64
-                            let n = u64::from_be_bytes(bs[24..].try_into().unwrap());
-                            Constant::get_uint(context, 256, n)
-                        }
-                        IrAstTy::B256 => Constant::get_b256(context, *bs),
-                        _ => unreachable!("invalid type for hex number"),
+                IrAstConstValue::Hex256(bs) => match val_ty {
+                    IrAstTy::U256 => {
+                        let n = U256::from_be_bytes(bs);
+                        Constant::get_uint256(context, n)
                     }
-                }
+                    IrAstTy::B256 => Constant::get_b256(context, *bs),
+                    _ => unreachable!("invalid type for hex number"),
+                },
                 IrAstConstValue::Number(n) => Constant::get_uint(context, 64, *n),
                 IrAstConstValue::String(s) => Constant::get_string(context, s.clone()),
                 IrAstConstValue::Array(..) => {
@@ -1092,6 +1093,15 @@ mod ir_builder {
                     IrAstOperation::UnaryOp(op, arg) => block
                         .ins(context)
                         .unary_op(op, *val_map.get(&arg).unwrap())
+                        .add_metadatum(context, opt_metadata),
+                    // Wide Operations
+                    IrAstOperation::WideUnaryOp(op, arg, result) => block
+                        .ins(context)
+                        .wide_unary_op(
+                            op,
+                            *val_map.get(&arg).unwrap(),
+                            *val_map.get(&result).unwrap(),
+                        )
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::WideBinaryOp(op, arg1, arg2, result) => block
                         .ins(context)

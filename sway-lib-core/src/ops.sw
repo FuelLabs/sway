@@ -426,7 +426,12 @@ impl Not for bool {
     }
 }
 
-/// Trait to evaluate if two types are equal.
+impl Not for u256 {
+    fn not(self) -> Self {
+        __not(self)
+    }
+}
+
 pub trait Eq {
     /// Evaluates if two values of the same type are equal.
     ///
