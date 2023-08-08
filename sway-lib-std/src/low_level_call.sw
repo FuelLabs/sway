@@ -21,7 +21,7 @@ fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
     let mut target_bytes = Bytes::with_capacity(32);
     target_bytes.len = 32;
 
-    __addr_of(contract_id).copy_bytes_to(target_bytes.buf.ptr, 32);
+    __addr_of(contract_id).copy_to(target_bytes.buf.ptr(), 32);
 
     target_bytes
 }
@@ -34,7 +34,7 @@ fn ptr_as_bytes(ptr: raw_ptr) -> Bytes {
     // Need to copy pointer to heap so it has an address and can be copied onto the bytes buffer
     let mut ptr_on_heap = Vec::new();
     ptr_on_heap.push(ptr);
-    ptr_on_heap.buf.ptr.copy_bytes_to(bytes.buf.ptr, 8);
+    ptr_on_heap.buf.ptr().copy_to(bytes.buf.ptr(), 8);
 
     bytes
 }
@@ -42,7 +42,7 @@ fn ptr_as_bytes(ptr: raw_ptr) -> Bytes {
 /// Call a target contract with an already-encoded payload.
 /// `payload` : The encoded payload to be called.
 fn call_with_raw_payload(payload: Bytes, call_params: CallParams) {
-    asm(r1: payload.buf.ptr, r2: call_params.coins, r3: call_params.asset_id, r4: call_params.gas) {
+    asm(r1: payload.buf.ptr(), r2: call_params.coins, r3: call_params.asset_id, r4: call_params.gas) {
         call r1 r2 r3 r4;
     };
 }
@@ -72,7 +72,7 @@ fn create_payload(
     if (single_value_type_arg) {
         payload.append(calldata); // When calldata is copy type, just pass calldata
     } else {
-        payload.append(ptr_as_bytes(calldata.buf.ptr)); // When calldata is reference type, need to get pointer as bytes
+        payload.append(ptr_as_bytes(calldata.buf.ptr())); // When calldata is reference type, need to get pointer as bytes
     };
 
     payload

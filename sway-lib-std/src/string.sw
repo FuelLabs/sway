@@ -264,26 +264,26 @@ fn string_test_into_raw_slice() {
     let mut string = String::new();
 
     let raw_slice: raw_slice = string.into();
-    assert(raw_slice.number_of_bytes() == 0);
+    assert(raw_slice.len() == 0);
 
     let mut bytes = Bytes::new();
     bytes.push(0u8);
     let string = String::from_ascii(bytes);
     let raw_slice = string.as_raw_slice();
-    assert(raw_slice.number_of_bytes() == 1);
-    assert(raw_slice.ptr().read_byte() == 0u8);
+    assert(raw_slice.len() == 1);
+    assert(raw_slice.ptr().read() == 0u8);
 
     let mut bytes = Bytes::new();
     bytes.push(0u8);
     bytes.push(1u8);
     let string = String::from_ascii(bytes);
     let mut raw_slice = string.as_raw_slice();
-    assert(raw_slice.number_of_bytes() == 2);
-    assert(raw_slice.ptr().add_uint_offset(1).read_byte() == 1u8);
+    assert(raw_slice.len() == 2);
+    assert(raw_slice.read(1) == 1u8);
 
     let mut raw_slice = string.as_raw_slice();
-    assert(raw_slice.number_of_bytes() == 2);
-    assert(raw_slice.ptr().read_byte() == 0u8);
+    assert(raw_slice.len() == 2);
+    assert(raw_slice.read(0) == 0u8);
 }
 
 #[test]

@@ -13,7 +13,7 @@ impl TryFrom<Bytes> for b256 {
         } else {
             let mut val = 0x0000000000000000000000000000000000000000000000000000000000000000;
             let ptr = __addr_of(val);
-            b.buf.ptr().copy_to::<b256>(ptr, 1);
+            b.buf.ptr().copy_to_t::<b256>(ptr, 1);
             Some(val)
         }
     }

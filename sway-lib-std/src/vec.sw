@@ -124,10 +124,10 @@ impl<T> Vec<T> {
 
         // Get a pointer to the end of the buffer, where the new element will
         // be inserted.
-        let end = self.buf.ptr().add::<T>(self.len);
+        let mut end = self.buf.ptr().add_t::<T>(self.len);
 
         // Write `value` at pointer `end`
-        end.write::<T>(value);
+        end.write_t::<T>(value);
 
         // Increment length.
         self.len += 1;
@@ -191,10 +191,10 @@ impl<T> Vec<T> {
         };
 
         // Get a pointer to the desired element using `index`
-        let ptr = self.buf.ptr().add::<T>(index);
+        let ptr = self.buf.ptr().add_t::<T>(index);
 
         // Read from `ptr`
-        Some(ptr.read::<T>())
+        Some(ptr.read_t::<T>())
     }
 
     /// Returns the number of elements in the vector, also referred to
@@ -261,15 +261,15 @@ impl<T> Vec<T> {
         let buf_start = self.buf.ptr();
 
         // Read the value at `index`
-        let ptr = buf_start.add::<T>(index);
-        let ret = ptr.read::<T>();
+        let ptr = buf_start.add_t::<T>(index);
+        let ret = ptr.read_t::<T>();
 
         // Shift everything down to fill in that spot.
         let mut i = index;
         if self.len > 1 {
             while i < self.len {
-                let ptr = buf_start.add::<T>(i);
-                ptr.add::<T>(1).copy_to::<T>(ptr, 1);
+                let ptr = buf_start.add_t::<T>(i);
+                ptr.add_t::<T>(1).copy_to_t::<T>(ptr, 1);
                 i += 1;
             }
         }
@@ -309,18 +309,18 @@ impl<T> Vec<T> {
         let buf_start = self.buf.ptr();
 
         // The spot to put the new value
-        let index_ptr = buf_start.add::<T>(index);
+        let mut index_ptr = buf_start.add_t::<T>(index);
 
         // Shift everything over to make space.
         let mut i = self.len;
         while i > index {
-            let ptr = buf_start.add::<T>(i);
-            ptr.sub::<T>(1).copy_to::<T>(ptr, 1);
+            let ptr = buf_start.add_t::<T>(i);
+            ptr.sub_t::<T>(1).copy_to_t::<T>(ptr, 1);
             i -= 1;
         }
 
         // Write `element` at pointer `index`
-        index_ptr.write::<T>(element);
+        index_ptr.write_t::<T>(element);
 
         // Increment length.
         self.len += 1;
@@ -349,7 +349,7 @@ impl<T> Vec<T> {
             return None;
         }
         self.len -= 1;
-        Some(self.buf.ptr().add::<T>(self.len).read::<T>())
+        Some(self.buf.ptr().add_t::<T>(self.len).read_t::<T>())
     }
 
     /// Swaps two elements.
@@ -385,12 +385,12 @@ impl<T> Vec<T> {
             return;
         }
 
-        let element1_ptr = self.buf.ptr().add::<T>(element1_index);
-        let element2_ptr = self.buf.ptr().add::<T>(element2_index);
+        let element1_ptr = self.buf.ptr().add_t::<T>(element1_index);
+        let mut element2_ptr = self.buf.ptr().add_t::<T>(element2_index);
 
-        let element1_val: T = element1_ptr.read::<T>();
-        element2_ptr.copy_to::<T>(element1_ptr, 1);
-        element2_ptr.write::<T>(element1_val);
+        let element1_val: T = element1_ptr.read_t::<T>();
+        element2_ptr.copy_to_t::<T>(element1_ptr, 1);
+        element2_ptr.write_t::<T>(element1_val);
     }
 
     /// Updates an element at position `index` with a new element `value`.
@@ -421,16 +421,16 @@ impl<T> Vec<T> {
     pub fn set(ref mut self, index: u64, value: T) {
         assert(index < self.len);
 
-        let index_ptr = self.buf.ptr().add::<T>(index);
+        let mut index_ptr = self.buf.ptr().add_t::<T>(index);
 
-        index_ptr.write::<T>(value);
+        index_ptr.write_t::<T>(value);
     }
 }
 
 impl<T> AsRawSlice for Vec<T> {
     /// Returns a raw slice to all of the elements in the vector.
     fn as_raw_slice(self) -> raw_slice {
-        raw_slice::from_parts::<T>(self.buf.ptr(), self.len)
+        raw_slice::from_ptr_t::<T>(self.buf.ptr(), self.len)
     }
 }
 
@@ -438,7 +438,7 @@ impl<T> From<raw_slice> for Vec<T> {
     fn from(slice: raw_slice) -> Self {
         let buf = RawVec {
             ptr: slice.ptr(),
-            cap: slice.len::<T>(),
+            cap: slice.len_t::<T>(),
         };
         Self {
             buf,

@@ -1,6 +1,5 @@
 library;
 
-use ::alloc::alloc;
 use ::assert::assert;
 use ::hash::sha256;
 use ::option::Option::{self, *};

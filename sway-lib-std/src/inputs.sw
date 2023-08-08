@@ -144,7 +144,7 @@ pub fn input_predicate_data_pointer(index: u64) -> Option<raw_ptr> {
 /// return the data, otherwise reverts.
 pub fn input_predicate_data<T>(index: u64) -> T {
     match input_predicate_data_pointer(index) {
-        Some(d) => d.read::<T>(),
+        Some(d) => d.read_t::<T>(),
         None => revert(0),
     }
 }
@@ -209,7 +209,7 @@ pub fn input_predicate(index: u64) -> Bytes {
     match input_predicate_pointer(index) {
         Some(d) => {
             data_bytes.len = length;
-            d.copy_bytes_to(data_bytes.buf.ptr, length);
+            d.copy_to(data_bytes.buf.ptr(), length);
             data_bytes
         },
         None => revert(0),
@@ -265,11 +265,11 @@ pub fn input_message_data_length(index: u64) -> u16 {
 pub fn input_message_data(index: u64, offset: u64) -> Bytes {
     assert(valid_input_type(index, Input::Message));
     let data = __gtf::<raw_ptr>(index, GTF_INPUT_MESSAGE_DATA);
-    let data_with_offset = data.add_uint_offset(offset);
+    let data_with_offset = data.add(offset);
     let length = input_message_data_length(index).as_u64();
     let mut data_bytes = Bytes::with_capacity(length);
     data_bytes.len = length;
-    data_with_offset.copy_bytes_to(data_bytes.buf.ptr, length);
+    data_with_offset.copy_to(data_bytes.buf.ptr(), length);
     data_bytes
 }
 

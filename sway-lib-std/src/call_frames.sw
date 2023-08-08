@@ -44,15 +44,15 @@ pub fn code_size() -> u64 {
 
 /// Get the first parameter from the current call frame.
 pub fn first_param() -> u64 {
-    frame_ptr().add::<u64>(FIRST_PARAMETER_OFFSET).read()
+    frame_ptr().add_t::<u64>(FIRST_PARAMETER_OFFSET).read_t()
 }
 
 /// Get the second parameter from the current call frame.
 pub fn second_param<T>() -> T {
     if !is_reference_type::<T>() {
-        frame_ptr().add::<u64>(SECOND_PARAMETER_OFFSET).read::<T>()
+        frame_ptr().add_t::<u64>(SECOND_PARAMETER_OFFSET).read_t::<T>()
     } else {
-        frame_ptr().add::<u64>(SECOND_PARAMETER_OFFSET).read::<raw_ptr>().read::<T>()
+        frame_ptr().add_t::<u64>(SECOND_PARAMETER_OFFSET).read_t::<raw_ptr>().read_t::<T>()
     }
 }
 
@@ -60,7 +60,7 @@ pub fn second_param<T>() -> T {
 //
 /// Get a pointer to the previous (relative to the `frame_pointer` parameter) call frame using offsets from a pointer.
 pub fn get_previous_frame_pointer(frame_pointer: raw_ptr) -> raw_ptr {
-    let offset = frame_pointer.add::<u64>(SAVED_REGISTERS_OFFSET + PREV_FRAME_POINTER_OFFSET);
+    let offset = frame_pointer.add_t::<u64>(SAVED_REGISTERS_OFFSET + PREV_FRAME_POINTER_OFFSET);
     asm(res, ptr: offset) {
         lw res ptr i0;
         res: raw_ptr

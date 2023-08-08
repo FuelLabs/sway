@@ -1,6 +1,5 @@
 library;
 
-use ::alloc::{alloc, alloc_bytes, realloc_bytes};
 use ::hash::sha256;
 use ::option::Option::{self, *};
 use ::storage::storage_api::*;
@@ -15,9 +14,9 @@ use ::storage::storage_api::*;
 /// ### Examples
 ///
 /// ```sway
-/// use std::{alloc::alloc_bytes, storage::{write_slice, read_slice}, constants::ZERO_B256};
+/// use std::{storage::{write_slice, read_slice}, constants::ZERO_B256};
 ///
-/// let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
+/// let slice = raw_slice::alloc(1);
 /// assert(read_slice(ZERO_B256).is_none());
 /// write_slice(ZERO_B256, slice);
 /// let stored_slice = read_slice(ZERO_B256).unwrap();
@@ -26,19 +25,19 @@ use ::storage::storage_api::*;
 #[storage(read, write)]
 pub fn write_slice(key: b256, slice: raw_slice) {
     // Get the number of storage slots needed based on the size of bytes.
-    let number_of_bytes = slice.number_of_bytes();
-    let number_of_slots = (number_of_bytes + 31) >> 5;
-    let mut ptr = slice.ptr();
+    let len = slice.len();
+    let number_of_slots = (len + 31) >> 5;
 
     // The capacity needs to be a multiple of 32 bytes so we can 
     // make the 'quad' storage instruction store without accessing unallocated heap memory.
-    ptr = realloc_bytes(ptr, number_of_bytes, number_of_slots * 32);
+    let mut ptr = raw_slice::alloc(number_of_slots * 32).ptr();
+    ptr.copy_from(slice.ptr(), len);
 
     // Store `number_of_slots * 32` bytes starting at storage slot `key`.
     let _ = __state_store_quad(sha256(key), ptr, number_of_slots);
 
     // Store the length of the bytes
-    write(key, 0, number_of_bytes);
+    write(key, 0, len);
 }
 
 /// Load a raw_slice from storage.
@@ -53,9 +52,9 @@ pub fn write_slice(key: b256, slice: raw_slice) {
 /// ### Examples
 ///
 /// ```sway
-/// use std::{alloc::alloc_bytes, storage::{write_slice, read_slice}, constants::ZERO_B256};
+/// use std::{storage::{write_slice, read_slice}, constants::ZERO_B256};
 ///
-/// let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
+/// let slice = raw_slice::alloc(1);
 /// assert(read_slice(ZERO_B256).is_none());
 /// write_slice(ZERO_B256, slice);
 /// let stored_slice = read_slice(ZERO_B256).unwrap();
@@ -69,7 +68,7 @@ pub fn read_slice(key: b256) -> Option<raw_slice> {
         len => {
             // Get the number of storage slots needed based on the size.
             let number_of_slots = (len + 31) >> 5;
-            let ptr = alloc_bytes(number_of_slots * 32);
+            let ptr = raw_slice::alloc(number_of_slots * 32).ptr();
             // Load the stored slice into the pointer.
             let _ = __state_load_quad(sha256(key), ptr, number_of_slots);
             Some(asm(ptr: (ptr, len)) { ptr: raw_slice })
@@ -87,9 +86,9 @@ pub fn read_slice(key: b256) -> Option<raw_slice> {
 /// ### Examples
 ///
 /// ```sway
-/// use std::{alloc::alloc_bytes, storage::{clear_slice, write_slice, read_slice}, constants::ZERO_B256};
+/// use std::{storage::{clear_slice, write_slice, read_slice}, constants::ZERO_B256};
 ///
-/// let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
+/// let slice = raw_slice::alloc(1);
 /// write_slice(ZERO_B256, slice);
 /// assert(read_slice(ZERO_B256).is_some());
 /// let cleared = clear_slice(ZERO_B256);

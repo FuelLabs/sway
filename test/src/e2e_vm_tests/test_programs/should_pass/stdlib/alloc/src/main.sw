@@ -33,8 +33,8 @@ fn main() -> bool {
     // Allocate some memory
     let hp = heap_ptr();
     let ptr = alloc::<u64>(1);
-    assert(ptr == hp.sub::<u64>(1));
-    assert(heap_ptr() == hp.sub::<u64>(1));
+    assert(ptr == hp.sub_t::<u64>(1));
+    assert(heap_ptr() == hp.sub_t::<u64>(1));
 
     // Read from it
     let val = lw(ptr);
@@ -48,16 +48,16 @@ fn main() -> bool {
     // Grow it
     let hp = heap_ptr();
     let ptr = realloc::<u64>(ptr, 1, 2);
-    assert(ptr == hp.sub::<u64>(2));
-    assert(heap_ptr() == hp.sub::<u64>(2));
+    assert(ptr == hp.sub_t::<u64>(2));
+    assert(heap_ptr() == hp.sub_t::<u64>(2));
 
     // Make sure that reallocating an old allocation of size 0 does not cause a
     // panic.
     let hp = heap_ptr();
     let ptr = alloc::<u64>(0);
     let ptr = realloc::<u64>(ptr, 0, 2);
-    assert(ptr == hp.sub::<u64>(2));
-    assert(heap_ptr() == hp.sub::<u64>(2));
+    assert(ptr == hp.sub_t::<u64>(2));
+    assert(heap_ptr() == hp.sub_t::<u64>(2));
 
     true
 }

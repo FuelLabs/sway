@@ -126,14 +126,14 @@ pub fn tx_witness_data_length(index: u64) -> u64 {
 
 /// Get the witness data at `index`.
 pub fn tx_witness_data<T>(index: u64) -> T {
-    __gtf::<raw_ptr>(index, GTF_WITNESS_DATA).read::<T>()
+    __gtf::<raw_ptr>(index, GTF_WITNESS_DATA).read_t::<T>()
 }
 
 /// Get the transaction receipts root.
 /// Reverts if not a transaction-script.
 pub fn tx_receipts_root() -> b256 {
     match tx_type() {
-        Transaction::Script => __gtf::<raw_ptr>(0, GTF_SCRIPT_RECEIPTS_ROOT).read::<b256>(),
+        Transaction::Script => __gtf::<raw_ptr>(0, GTF_SCRIPT_RECEIPTS_ROOT).read_t::<b256>(),
         _ => revert(0),
     }
 }
@@ -164,14 +164,14 @@ pub fn tx_script_data_start_pointer() -> raw_ptr {
 pub fn tx_script_data<T>() -> T {
     let ptr = tx_script_data_start_pointer();
     // TODO some safety checks on the input data? We are going to assume it is the right type for now.
-    ptr.read::<T>()
+    ptr.read_t::<T>()
 }
 
 /// Get the script bytecode.
 /// Must be cast to a `u64` array, with sufficient length to contain the bytecode.
 /// Bytecode will be padded to next whole word.
 pub fn tx_script_bytecode<T>() -> T {
-    tx_script_start_pointer().read::<T>()
+    tx_script_start_pointer().read_t::<T>()
 }
 
 /// Get the hash of the script bytecode.
@@ -198,5 +198,5 @@ const TX_ID_OFFSET = 0;
 
 /// Get the ID of the current transaction.
 pub fn tx_id() -> b256 {
-    asm(ptr: TX_ID_OFFSET) { ptr: raw_ptr }.read()
+    asm(ptr: TX_ID_OFFSET) { ptr: raw_ptr }.read_t()
 }

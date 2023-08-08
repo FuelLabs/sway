@@ -17,7 +17,7 @@
       "logId": 0,
       "loggedType": {
         "name": "",
-        "type": 12,
+        "type": 11,
         "typeArguments": null
       }
     },
@@ -25,7 +25,7 @@
       "logId": 1,
       "loggedType": {
         "name": "",
-        "type": 12,
+        "type": 11,
         "typeArguments": null
       }
     },
@@ -33,7 +33,7 @@
       "logId": 2,
       "loggedType": {
         "name": "",
-        "type": 11,
+        "type": 10,
         "typeArguments": null
       }
     },
@@ -41,7 +41,7 @@
       "logId": 3,
       "loggedType": {
         "name": "",
-        "type": 11,
+        "type": 10,
         "typeArguments": null
       }
     },
@@ -49,7 +49,7 @@
       "logId": 4,
       "loggedType": {
         "name": "",
-        "type": 10,
+        "type": 9,
         "typeArguments": null
       }
     },
@@ -57,7 +57,7 @@
       "logId": 5,
       "loggedType": {
         "name": "",
-        "type": 10,
+        "type": 9,
         "typeArguments": null
       }
     },
@@ -65,7 +65,7 @@
       "logId": 6,
       "loggedType": {
         "name": "",
-        "type": 13,
+        "type": 12,
         "typeArguments": null
       }
     },
@@ -73,7 +73,7 @@
       "logId": 7,
       "loggedType": {
         "name": "",
-        "type": 13,
+        "type": 12,
         "typeArguments": null
       }
     },
@@ -113,7 +113,7 @@
       "logId": 12,
       "loggedType": {
         "name": "",
-        "type": 9,
+        "type": 8,
         "typeArguments": []
       }
     },
@@ -121,7 +121,7 @@
       "logId": 13,
       "loggedType": {
         "name": "",
-        "type": 9,
+        "type": 8,
         "typeArguments": []
       }
     },
@@ -225,7 +225,7 @@
         },
         {
           "name": "ContractId",
-          "type": 9,
+          "type": 8,
           "typeArguments": null
         }
       ],
@@ -235,7 +235,7 @@
     },
     {
       "components": null,
-      "type": "raw untyped ptr",
+      "type": "raw untyped slice",
       "typeId": 4,
       "typeParameters": null
     },
@@ -267,34 +267,17 @@
       "components": [
         {
           "name": "buf",
-          "type": 8,
+          "type": 4,
           "typeArguments": null
         },
         {
           "name": "len",
-          "type": 12,
+          "type": 11,
           "typeArguments": null
         }
       ],
       "type": "struct std::bytes::Bytes",
       "typeId": 7,
-      "typeParameters": null
-    },
-    {
-      "components": [
-        {
-          "name": "ptr",
-          "type": 4,
-          "typeArguments": null
-        },
-        {
-          "name": "cap",
-          "type": 12,
-          "typeArguments": null
-        }
-      ],
-      "type": "struct std::bytes::RawBytes",
-      "typeId": 8,
       "typeParameters": null
     },
     {
@@ -306,31 +289,31 @@
         }
       ],
       "type": "struct std::contract_id::ContractId",
-      "typeId": 9,
+      "typeId": 8,
       "typeParameters": null
     },
     {
       "components": null,
       "type": "u16",
-      "typeId": 10,
+      "typeId": 9,
       "typeParameters": null
     },
     {
       "components": null,
       "type": "u32",
-      "typeId": 11,
+      "typeId": 10,
       "typeParameters": null
     },
     {
       "components": null,
       "type": "u64",
-      "typeId": 12,
+      "typeId": 11,
       "typeParameters": null
     },
     {
       "components": null,
       "type": "u8",
-      "typeId": 13,
+      "typeId": 12,
       "typeParameters": null
     }
   ]

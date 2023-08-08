@@ -1,7 +1,6 @@
 //! Helper functions to sign and send messages.
 library;
 
-use ::alloc::alloc_bytes;
 use ::bytes::Bytes;
 use ::outputs::{Output, output_count, output_type};
 use ::revert::revert;
@@ -23,7 +22,7 @@ pub fn send_message(recipient: b256, msg_data: Bytes, coins: u64) {
     // If msg_data is empty, we just ignore it and pass `smo` a pointer to the inner value of recipient.
     if !msg_data.is_empty() {
         size = msg_data.len();
-        msg_data_pointer = msg_data.buf.ptr;
+        msg_data_pointer = msg_data.buf.ptr();
     }
 
     asm(r1: recipient_pointer, r2: msg_data_pointer, r3: size, r4: coins) {

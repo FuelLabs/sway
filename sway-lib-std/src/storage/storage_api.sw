@@ -1,6 +1,5 @@
 library;
 
-use ::alloc::alloc;
 use ::option::Option::{self, *};
 
 /// Store a stack value in storage. Will not work for heap values.
@@ -31,7 +30,7 @@ pub fn write<T>(slot: b256, offset: u64, value: T) {
 
     // Allocate enough memory on the heap for `value` as well as any potential padding required due 
     // to `offset`.
-    let padded_value = alloc::<u64>(number_of_slots * 32);
+    let padded_value = raw_slice::alloc_t::<u64>(number_of_slots * 32).ptr();
 
     // Read the values that currently exist in the affected storage slots.
     // NOTE: we can do better here by only reading from the slots that we know could be affected. 
@@ -41,7 +40,7 @@ pub fn write<T>(slot: b256, offset: u64, value: T) {
     let _ = __state_load_quad(slot, padded_value, number_of_slots);
 
     // Copy the value to be stored to `padded_value + offset`.
-    padded_value.add::<u64>(offset).write::<T>(value);
+    padded_value.add_t::<u64>(offset).write_t::<T>(value);
 
     // Now store back the data at `padded_value` which now contains the old data but partially 
     // overwritten by the new data in the desired locations.
@@ -79,13 +78,13 @@ pub fn read<T>(slot: b256, offset: u64) -> Option<T> {
 
     // Allocate a buffer for the result. Its size needs to be a multiple of 32 bytes so we can 
     // make the 'quad' storage instruction read without overflowing.
-    let result_ptr = alloc::<u64>(number_of_slots * 32);
+    let result_ptr = raw_slice::alloc_t::<u64>(number_of_slots * 32).ptr();
 
     // Read `number_of_slots * 32` bytes starting at storage slot `slot` and return an `Option` 
     // wrapping the value stored at `result_ptr + offset` if all the slots are valid. Otherwise, 
     // return `None`.
     if __state_load_quad(slot, result_ptr, number_of_slots) {
-        Some(result_ptr.add::<u64>(offset).read::<T>())
+        Some(result_ptr.add_t::<u64>(offset).read_t::<T>())
     } else {
         None
     }
