@@ -397,7 +397,7 @@ pub enum ConvertInputError {
     WitnessPredicateMismatch,
 }
 
-const EXAMPLES: &str = r#"EXAMPLES:
+const EXAMPLES: &str = r"EXAMPLES:
     # An example constructing a `create` transaction.
     forc tx create \
         --bytecode ./my-contract/out/debug/my-contract.bin \
@@ -453,7 +453,7 @@ const EXAMPLES: &str = r#"EXAMPLES:
         output contract-created \
             --contract-id 0xCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC \
             --state-root 0x0000000000000000000000000000000000000000000000000000000000000000
-"#;
+";
 
 impl ParseError {
     /// Print the error with clap's fancy formatting.
