@@ -612,9 +612,11 @@ impl Power for U256 {
 
 #[test]
 fn test_pow_u256() {
-    let num = 5;
-    assert_eq(num.pow(2), 25);
-    assert_eq(num.pow(3), 125);
-    assert_eq(num.pow(10), 9765625);
-    assert_eq(num.pow(0), 5)
+    let five = U256::from((0, 0, 0, 5));
+    let two = U256::from((0, 0, 0, 2));
+    let three = U256::from((0, 0, 0, 3));
+    let twenty_eight = U256::from((0, 0, 0, 28));
+    assert_eq(five.pow(two), U256::from((0, 0, 0, 25)));
+    assert_eq(five.pow(three), U256::from((0, 0, 0, 125)));
+    assert_eq(five.pow(twenty_eight), U256::from((0, 359414837200037395, 18446744073709551615, 18446744073709551615)));
 }
