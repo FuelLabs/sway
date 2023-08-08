@@ -7,7 +7,7 @@ use crate::{
     type_system::*, types::DeterministicallyAborts,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct TyCodeBlock {
     pub contents: Vec<TyAstNode>,
 }

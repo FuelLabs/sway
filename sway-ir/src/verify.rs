@@ -236,6 +236,9 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                             stored_val: dst_val,
                             key,
                         } => self.verify_state_store_word(dst_val, key)?,
+                        FuelVmInstruction::WideUnaryOp { op, result, arg } => {
+                            self.verify_wide_unary_op(op, result, arg)?
+                        }
                         FuelVmInstruction::WideBinaryOp {
                             op,
                             result,
@@ -390,6 +393,26 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
             || !arg2_ty.is_ptr(self.context)
             || !result_ty.is_ptr(self.context)
         {
+            return Err(IrError::VerifyBinaryOpIncorrectArgType);
+        }
+
+        Ok(())
+    }
+
+    fn verify_wide_unary_op(
+        &self,
+        _op: &UnaryOpKind,
+        result: &Value,
+        arg: &Value,
+    ) -> Result<(), IrError> {
+        let result_ty = result
+            .get_type(self.context)
+            .ok_or(IrError::VerifyBinaryOpIncorrectArgType)?;
+        let arg_ty = arg
+            .get_type(self.context)
+            .ok_or(IrError::VerifyBinaryOpIncorrectArgType)?;
+
+        if !arg_ty.is_ptr(self.context) || !result_ty.is_ptr(self.context) {
             return Err(IrError::VerifyBinaryOpIncorrectArgType);
         }
 

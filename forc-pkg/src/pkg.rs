@@ -1872,7 +1872,7 @@ pub fn compile(
                 metrics
             );
 
-            ops.extend(abi.into_iter());
+            ops.extend(abi);
 
             ProgramABI::Evm(ops)
         }
