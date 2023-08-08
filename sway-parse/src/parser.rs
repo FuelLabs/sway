@@ -1,9 +1,12 @@
 use crate::{Parse, ParseToEnd, Peek};
 
 use core::marker::PhantomData;
+use std::error::Error;
 use sway_ast::keywords::Keyword;
 use sway_ast::literal::Literal;
-use sway_ast::token::{DocComment, Group, Punct, Spacing, TokenStream, TokenTree};
+use sway_ast::token::{
+    DocComment, GenericTokenTree, Group, Punct, Spacing, TokenStream, TokenTree,
+};
 use sway_ast::PubToken;
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -12,6 +15,13 @@ use sway_types::{
     ast::{Delimiter, PunctKind},
     Ident, Span, Spanned,
 };
+
+pub enum ParseWithRecoveryResult<T> {
+    PeekFailed,
+    Ok(T),
+    Recovered(Box<[Span]>, ErrorEmitted),
+    RecoveryFailed(ErrorEmitted),
+}
 
 pub struct Parser<'a, 'e> {
     token_trees: &'a [TokenTree],
@@ -74,6 +84,76 @@ impl<'a, 'e> Parser<'a, 'e> {
         Peeker::with(self.token_trees).map(|(v, _)| v)
     }
 
+    pub fn guarded_parse_with_recovery<
+        P: Peek,
+        T: Parse,
+        F: for<'g> Fn(&mut Parser<'a, 'g>) -> bool,
+    >(
+        &mut self,
+        recovery: F,
+    ) -> ParseWithRecoveryResult<T> {
+        if self.peek::<P>().is_none() {
+            return ParseWithRecoveryResult::PeekFailed;
+        }
+
+        let handler = Handler::default();
+        let mut fork = Parser {
+            token_trees: self.token_trees,
+            full_span: self.full_span.clone(),
+            handler: &handler,
+        };
+
+        match fork.parse() {
+            Ok(result) => {
+                self.token_trees = fork.token_trees;
+                ParseWithRecoveryResult::Ok(result)
+            }
+            Err(error) => {
+                // allow caller to put fork in a good state again
+                while !recovery(&mut fork) {
+                    //TODO check if it is infinitely looping
+                }
+
+                // collect all tokens trees that were consumed by the fork
+                let first_fork_tt = &fork.token_trees[0];
+                let qty = self
+                    .token_trees
+                    .iter()
+                    .position(|tt| tt.span() == first_fork_tt.span())
+                    .expect("not finding fork head");
+
+                let garbage: Vec<_> = self
+                    .token_trees
+                    .iter()
+                    .take(qty)
+                    .map(|x| x.span())
+                    .collect();
+
+                // sync both parsers
+                self.token_trees = fork.token_trees;
+
+                ParseWithRecoveryResult::Recovered(garbage.into_boxed_slice(), error)
+            }
+        }
+    }
+
+    /// Parses a `T` in its canonical way.
+    /// Do not advance the parser on failure
+    pub fn try_parse<T: Parse>(&mut self) -> ParseResult<T> {
+        let mut fork = Self {
+            token_trees: self.token_trees,
+            full_span: self.full_span.clone(),
+            handler: self.handler,
+        };
+        match T::parse(&mut fork) {
+            Ok(result) => {
+                self.token_trees = fork.token_trees;
+                Ok(result)
+            }
+            Err(err) => Err(err),
+        }
+    }
+
     /// Parses a `T` in its canonical way.
     pub fn parse<T: Parse>(&mut self) -> ParseResult<T> {
         T::parse(self)
@@ -82,7 +162,9 @@ impl<'a, 'e> Parser<'a, 'e> {
     /// Parses `T` given that the guard `G` was successfully peeked.
     ///
     /// Useful to parse e.g., `$keyword $stuff` as a unit where `$keyword` is your guard.
-    pub fn guarded_parse<G: Peek, T: Parse>(&mut self) -> ParseResult<Option<T>> {
+    pub fn guarded_parse<G: Peek + std::fmt::Debug, T: Parse + std::fmt::Debug>(
+        &mut self,
+    ) -> ParseResult<Option<T>> {
         self.peek::<G>().map(|_| self.parse()).transpose()
     }
 

@@ -1,3 +1,4 @@
+use crate::parser::ParseWithRecoveryResult;
 use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed, Peek};
 
 use sway_ast::brackets::{Braces, Parens, SquareBrackets};
@@ -94,7 +95,7 @@ impl Parse for Expr {
 impl Parse for StatementLet {
     fn parse(parser: &mut Parser) -> ParseResult<Self> {
         let let_token = parser.parse()?;
-        let pattern = parser.parse()?;
+        let pattern = parser.try_parse()?;
         let ty_opt = match parser.take() {
             Some(colon_token) => Some((colon_token, parser.parse()?)),
             None => None,
@@ -182,8 +183,17 @@ fn parse_stmt<'a>(parser: &mut Parser<'a, '_>) -> ParseResult<StmtOrTail<'a>> {
     }
 
     // Try a `let` statement.
-    if let Some(slet) = parser.guarded_parse::<LetToken, _>()? {
-        return stmt(Statement::Let(slet));
+    match parser.guarded_parse_with_recovery::<LetToken, StatementLet, _>(|p| {
+        p.peek::<LetToken>().is_some() || p.take::<SemicolonToken>().is_some()
+    }) {
+        ParseWithRecoveryResult::PeekFailed => {}
+        ParseWithRecoveryResult::Ok(slet) => return stmt(Statement::Let(slet)),
+        ParseWithRecoveryResult::Recovered(span, error) => {
+            return stmt(Statement::Error(span, error));
+        }
+        ParseWithRecoveryResult::RecoveryFailed(error) => {
+            return Err(error);
+        }
     }
 
     // Try an `expr;` statement.

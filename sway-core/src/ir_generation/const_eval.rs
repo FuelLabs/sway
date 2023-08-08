@@ -693,6 +693,12 @@ fn const_eval_codeblock(
             ty::TyAstNodeContent::SideEffect(_) => Err(ConstEvalError::CannotBeEvaluatedToConst {
                 span: ast_node.span.clone(),
             }),
+            ty::TyAstNodeContent::Error(spans, _) => {
+                let span = Span::join_all(spans.iter().cloned());
+                Err(ConstEvalError::CompileError(
+                    CompileError::InvalidStatement { span },
+                ))
+            }
         };
 
         if result.is_err() {

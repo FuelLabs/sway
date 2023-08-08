@@ -541,6 +541,7 @@ impl Parse for Statement {
             Statement::Item(item) => {
                 item.value.parse(ctx);
             }
+            Statement::Error(_, _) => {}
         }
     }
 }

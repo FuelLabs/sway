@@ -171,7 +171,10 @@ fn parse_in_memory(
     engines: &Engines,
     src: Arc<str>,
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
+    dbg!(1);
     let module = sway_parse::parse_file(handler, src, None)?;
+    dbg!(1);
+
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
         &mut to_parsed_lang::Context::default(),
         handler,
@@ -935,4 +938,27 @@ fn test_unary_ordering() {
     } else {
         panic!("Was not ast node")
     };
+}
+
+#[test]
+fn test_parser_recovery() {
+    use crate::language::{self, parsed};
+    let handler = Handler::default();
+    let engines = Engines::default();
+    let prog = parse(
+        r#"
+    script;
+    fn main() -> bool {
+        let
+        let a = true;
+        true
+    }"#
+        .into(),
+        &handler,
+        &engines,
+        None,
+    );
+    let (lexed, parsed) = prog.unwrap();
+    assert!(handler.has_errors());
+    dbg!(handler);
 }

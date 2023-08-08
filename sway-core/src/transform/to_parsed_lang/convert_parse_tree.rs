@@ -2375,6 +2375,13 @@ fn statement_to_ast_nodes(
         Statement::Expr { expr, .. } => {
             vec![expr_to_ast_node(context, handler, engines, expr, true)?]
         }
+        Statement::Error(spans, error) => {
+            let span = Span::join_all(spans.iter().cloned());
+            vec![AstNode {
+                content: AstNodeContent::Error(spans, error),
+                span,
+            }]
+        }
     };
     Ok(ast_nodes)
 }

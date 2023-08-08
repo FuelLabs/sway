@@ -205,6 +205,10 @@ impl<'eng> FnCompiler<'eng> {
             // a side effect can be () because it just impacts the type system/namespacing.
             // There should be no new IR generated.
             ty::TyAstNodeContent::SideEffect(_) => Ok(None),
+            ty::TyAstNodeContent::Error(spans, err) => {
+                let span = Span::join_all(spans.iter().cloned());
+                Err(CompileError::InvalidStatement { span })
+            }
         }
     }
 

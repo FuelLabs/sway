@@ -43,6 +43,7 @@ fn format_statement(
                 }
             }
         }
+        Statement::Error(_, _) => todo!(),
     }
 
     Ok(())
@@ -94,6 +95,7 @@ impl LeafSpans for Statement {
                 }
                 collected_spans
             }
+            Statement::Error(_, _) => todo!(),
         }
     }
 }
