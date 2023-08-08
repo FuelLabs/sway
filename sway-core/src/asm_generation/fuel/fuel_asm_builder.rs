@@ -284,6 +284,11 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     FuelVmInstruction::StateStoreWord { stored_val, key } => {
                         self.compile_state_store_word(instr_val, stored_val, key)
                     }
+
+                    // Wide operations
+                    FuelVmInstruction::WideUnaryOp { op, result, arg } => {
+                        self.compile_wide_unary_op(instr_val, op, arg, result)
+                    }
                     FuelVmInstruction::WideBinaryOp {
                         op,
                         result,
@@ -527,6 +532,34 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         });
 
         self.reg_map.insert(*instr_val, res_reg);
+        Ok(())
+    }
+
+    fn compile_wide_unary_op(
+        &mut self,
+        instr_val: &Value,
+        op: &UnaryOpKind,
+        arg: &Value,
+        result: &Value,
+    ) -> Result<(), CompileError> {
+        let result_reg = self.value_to_register(result)?;
+        let val1_reg = self.value_to_register(arg)?;
+
+        let opcode = match op {
+            UnaryOpKind::Not => VirtualOp::WQOP(
+                result_reg,
+                val1_reg,
+                VirtualRegister::Constant(ConstantRegister::Zero),
+                VirtualImmediate06::wide_op(crate::asm_lang::WideOperations::Not, false),
+            ),
+        };
+
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(opcode),
+            comment: String::new(),
+            owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+        });
+
         Ok(())
     }
 

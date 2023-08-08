@@ -1,7 +1,7 @@
 use crate::{type_system::*, Engines};
 
 use sway_error::error::CompileError;
-use sway_types::{integer_bits::IntegerBits, span};
+use sway_types::{integer_bits::IntegerBits, span, u256::U256};
 
 use std::{
     fmt,
@@ -15,7 +15,7 @@ pub enum Literal {
     U16(u16),
     U32(u32),
     U64(u64),
-    U256(u64),
+    U256(U256),
     String(span::Span),
     Numeric(u64),
     Boolean(bool),

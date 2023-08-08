@@ -228,6 +228,12 @@ impl Not for bool {
     }
 }
 
+impl Not for u256 {
+    fn not(self) -> Self {
+        __not(self)
+    }
+}
+
 pub trait Eq {
     fn eq(self, other: Self) -> bool;
 } {
