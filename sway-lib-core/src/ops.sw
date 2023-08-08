@@ -432,6 +432,7 @@ impl Not for u256 {
     }
 }
 
+/// Trait to evaluate if two types are equal.
 pub trait Eq {
     /// Evaluates if two values of the same type are equal.
     ///
