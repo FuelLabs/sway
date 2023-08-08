@@ -367,9 +367,10 @@ fn wide_binary_op_demotion(context: &mut Context, function: Function) -> Result<
         let Instruction::BinaryOp { op, arg1, arg2 } = binary_op_instr_val
             .get_instruction(context)
             .cloned()
-            .unwrap() else {
-                continue;
-            };
+            .unwrap()
+        else {
+            continue;
+        };
 
         let binary_op_metadata = binary_op_instr_val.get_metadata(context);
 

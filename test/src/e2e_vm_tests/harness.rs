@@ -30,13 +30,11 @@ where
     let mut output = String::new();
 
     // Capture both stdout and stderr to buffers, run the code and save to a string.
-    let buf_stdout = Some(gag::BufferRedirect::stdout().unwrap());
-    let buf_stderr = Some(gag::BufferRedirect::stderr().unwrap());
+    let mut buf_stdout = gag::BufferRedirect::stdout().unwrap();
+    let mut buf_stderr = gag::BufferRedirect::stderr().unwrap();
 
     let result = func().await;
 
-    let mut buf_stdout = buf_stdout.unwrap();
-    let mut buf_stderr = buf_stderr.unwrap();
     buf_stdout.read_to_string(&mut output).unwrap();
     buf_stderr.read_to_string(&mut output).unwrap();
     drop(buf_stdout);
