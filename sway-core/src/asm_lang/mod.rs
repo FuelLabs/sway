@@ -1039,6 +1039,10 @@ impl fmt::Display for VirtualOp {
             XOR(a, b, c) => write!(fmtr, "xor {a} {b} {c}"),
             XORI(a, b, c) => write!(fmtr, "xori {a} {b} {c}"),
             WQOP(a, b, c, d) => write!(fmtr, "wqop {a} {b} {c} {d}"),
+            WQML(a, b, c, d) => write!(fmtr, "wqml {a} {b} {c} {d}"),
+            WQDV(a, b, c, d) => write!(fmtr, "wqdv {a} {b} {c} {d}"),
+            WQCM(a, b, c, d) => write!(fmtr, "wqcm {a} {b} {c} {d}"),
+            WQAM(a, b, c, d) => write!(fmtr, "wqam {a} {b} {c} {d}"),
 
             /* Control Flow Instructions */
             JMP(a) => write!(fmtr, "jmp {a}"),

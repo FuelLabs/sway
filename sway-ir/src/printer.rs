@@ -715,6 +715,19 @@ fn instruction_to_doc<'a>(
                         .append(md_namer.md_idx_to_doc(context, metadata)),
                     ))
                 }
+                FuelVmInstruction::WideUnaryOp { op, arg, result } => {
+                    let op_str = match op {
+                        UnaryOpKind::Not => "not",
+                    };
+                    maybe_constant_to_doc(context, md_namer, namer, arg).append(Doc::line(
+                        Doc::text(format!(
+                            "wide {op_str} {} to {}",
+                            namer.name(context, arg),
+                            namer.name(context, result),
+                        ))
+                        .append(md_namer.md_idx_to_doc(context, metadata)),
+                    ))
+                }
                 FuelVmInstruction::WideBinaryOp {
                     op,
                     arg1,
@@ -741,6 +754,50 @@ fn instruction_to_doc<'a>(
                                 namer.name(context, arg1),
                                 namer.name(context, arg2),
                                 namer.name(context, result),
+                            ))
+                            .append(md_namer.md_idx_to_doc(context, metadata)),
+                        ))
+                }
+                FuelVmInstruction::WideModularOp {
+                    op,
+                    result,
+                    arg1,
+                    arg2,
+                    arg3,
+                } => {
+                    let op_str = match op {
+                        BinaryOpKind::Mod => "mod",
+                        _ => unreachable!(),
+                    };
+                    maybe_constant_to_doc(context, md_namer, namer, arg1)
+                        .append(maybe_constant_to_doc(context, md_namer, namer, arg2))
+                        .append(maybe_constant_to_doc(context, md_namer, namer, arg3))
+                        .append(Doc::line(
+                            Doc::text(format!(
+                                "wide {op_str} {}, {}, {} to {}",
+                                namer.name(context, arg1),
+                                namer.name(context, arg2),
+                                namer.name(context, arg3),
+                                namer.name(context, result),
+                            ))
+                            .append(md_namer.md_idx_to_doc(context, metadata)),
+                        ))
+                }
+
+                FuelVmInstruction::WideCmpOp { op, arg1, arg2 } => {
+                    let pred_str = match op {
+                        Predicate::Equal => "eq",
+                        Predicate::LessThan => "lt",
+                        Predicate::GreaterThan => "gt",
+                    };
+                    maybe_constant_to_doc(context, md_namer, namer, arg1)
+                        .append(maybe_constant_to_doc(context, md_namer, namer, arg2))
+                        .append(Doc::line(
+                            Doc::text(format!(
+                                "{} = wide cmp {pred_str} {} {}",
+                                namer.name(context, ins_value),
+                                namer.name(context, arg1),
+                                namer.name(context, arg2),
                             ))
                             .append(md_namer.md_idx_to_doc(context, metadata)),
                         ))
@@ -960,10 +1017,7 @@ impl Constant {
             ConstantValue::Bool(b) => format!("bool {}", if *b { "true" } else { "false" }),
             ConstantValue::Uint(v) => format!("{} {}", self.ty.as_string(context), v),
             ConstantValue::U256(v) => {
-                // TODO u256 limited to u64
-                let mut bytes = vec![0u8; 24];
-                bytes.extend(&v.to_be_bytes());
-                assert!(bytes.len() == 32);
+                let bytes = v.to_be_bytes();
                 format!(
                     "u256 0x{}",
                     bytes

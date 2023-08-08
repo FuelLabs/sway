@@ -20,6 +20,8 @@ pub enum LanguageServerError {
     FailedToParse,
     #[error("Error formatting document: {0}")]
     FormatError(FormatterError),
+    #[error("Unable to acquire a semaphore permit for parsing")]
+    UnableToAcquirePermit,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]

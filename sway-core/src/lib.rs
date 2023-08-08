@@ -37,7 +37,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassManager,
     ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME,
-    MODULEPRINTER_NAME, RETDEMOTION_NAME,
+    MODULEPRINTER_NAME, RETDEMOTION_NAME, SIMPLIFYCFG_NAME,
 };
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
 use sway_types::SourceEngine;
@@ -621,10 +621,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
         // Run a DCE and simplify-cfg to clean up any obsolete instructions.
         pass_group.append_pass(DCE_NAME);
-        // XXX Oh no, if we add simplifycfg here it unearths a bug in the register allocator which
-        // manifests in the `should_pass/language/while_loops` test.  Fixing the register allocator
-        // is a very high priority but isn't a part of this change.
-        //pass_group.append_pass(SIMPLIFYCFG_NAME);
+        pass_group.append_pass(SIMPLIFYCFG_NAME);
     }
 
     if build_config.print_ir {
@@ -741,14 +738,10 @@ fn module_dead_code_analysis<'eng: 'cfg, 'cfg>(
     tree_type: &parsed::TreeType,
     graph: &mut ControlFlowGraph<'cfg>,
 ) -> Result<(), ErrorEmitted> {
-    module
-        .submodules
-        .iter()
-        .fold(Ok(()), |res, (_, submodule)| {
-            let tree_type = parsed::TreeType::Library;
-            res?;
-            module_dead_code_analysis(handler, engines, &submodule.module, &tree_type, graph)
-        })?;
+    module.submodules.iter().try_fold((), |_, (_, submodule)| {
+        let tree_type = parsed::TreeType::Library;
+        module_dead_code_analysis(handler, engines, &submodule.module, &tree_type, graph)
+    })?;
     let res = {
         ControlFlowGraph::append_module_to_dead_code_graph(
             engines,

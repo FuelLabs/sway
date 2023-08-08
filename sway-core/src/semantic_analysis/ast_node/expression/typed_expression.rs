@@ -38,7 +38,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
     warning::{CompileWarning, Warning},
 };
-use sway_types::{integer_bits::IntegerBits, Ident, Named, Span, Spanned};
+use sway_types::{integer_bits::IntegerBits, u256::U256, Ident, Named, Span, Spanned};
 
 use rustc_hash::FxHashSet;
 
@@ -1836,18 +1836,8 @@ impl ty::TyExpression {
                         }),
                         new_type,
                     ),
-                    //TODO u256 limited to u64 literals
-                    IntegerBits::V256 => (
-                        num.to_string().parse().map(Literal::U256).map_err(|e| {
-                            Literal::handle_parse_int_error(
-                                engines,
-                                e,
-                                TypeInfo::UnsignedInteger(IntegerBits::V256),
-                                span.clone(),
-                            )
-                        }),
-                        new_type,
-                    ),
+                    // Numerics are limited to u64 for now
+                    IntegerBits::V256 => (Ok(Literal::U256(U256::from(num))), new_type),
                 },
                 TypeInfo::Numeric => (
                     num.to_string().parse().map(Literal::Numeric).map_err(|e| {
