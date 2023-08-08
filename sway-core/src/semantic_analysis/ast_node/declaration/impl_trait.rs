@@ -45,10 +45,14 @@ impl ty::TyImplTrait {
             .with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
             .allow_functions();
 
-        // Type check the type parameters. This will also insert them into the
-        // current namespace.
+        // Type check the type parameters.
         let new_impl_type_parameters =
             TypeParameter::type_check_type_params(handler, ctx.by_ref(), impl_type_parameters)?;
+
+        // Insert them into the current namespace.
+        for p in &new_impl_type_parameters {
+            p.insert_into_namespace(handler, ctx.by_ref())?;
+        }
 
         // resolve the types of the trait type arguments
         for type_arg in trait_type_arguments.iter_mut() {
@@ -240,10 +244,14 @@ impl ty::TyImplTrait {
             is_absolute: false,
         };
 
-        // Type check the type parameters. This will also insert them into the
-        // current namespace.
+        // Type check the type parameters.
         let new_impl_type_parameters =
             TypeParameter::type_check_type_params(handler, ctx.by_ref(), impl_type_parameters)?;
+
+        // Insert them into the current namespace.
+        for p in &new_impl_type_parameters {
+            p.insert_into_namespace(handler, ctx.by_ref())?;
+        }
 
         // type check the type that we are implementing for
         implementing_for.type_id = ctx.resolve_type_without_self(

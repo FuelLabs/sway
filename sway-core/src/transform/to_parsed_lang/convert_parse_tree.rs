@@ -2361,13 +2361,13 @@ fn statement_to_ast_nodes(
         }
         Statement::Item(item) => {
             let nodes = item_to_ast_nodes(context, handler, engines, item, false, None)?;
-            nodes.iter().fold(Ok(()), |res, node| {
+            nodes.iter().try_fold((), |res, node| {
                 if ast_node_is_test_fn(node) {
                     let span = node.span.clone();
                     let error = ConvertParseTreeError::TestFnOnlyAllowedAtModuleLevel { span };
                     Err(handler.emit_err(error.into()))
                 } else {
-                    res
+                    Ok(res)
                 }
             })?;
             nodes
@@ -2888,17 +2888,7 @@ fn literal_to_literal(
                         };
                         Literal::U64(value)
                     }
-                    // TODO u256 are limited to u64 literals for the moment
-                    LitIntType::U256 => {
-                        let value = match u64::try_from(parsed) {
-                            Ok(value) => value,
-                            Err(..) => {
-                                let error = ConvertParseTreeError::U64LiteralOutOfRange { span };
-                                return Err(handler.emit_err(error.into()));
-                            }
-                        };
-                        Literal::U256(value)
-                    }
+                    LitIntType::U256 => Literal::U256(parsed.into()),
                     LitIntType::I8 | LitIntType::I16 | LitIntType::I32 | LitIntType::I64 => {
                         let error = ConvertParseTreeError::SignedIntegersNotSupported { span };
                         return Err(handler.emit_err(error.into()));
