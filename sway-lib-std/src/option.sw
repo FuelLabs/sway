@@ -184,7 +184,7 @@ impl<T> Option<T> {
     ///
     /// # Arguments
     ///
-    /// * `defulat`: [T] - The default value the function will revert to.
+    /// * `default`: [T] - The default value the function will revert to.
     ///
     /// # Returns
     ///
