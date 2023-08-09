@@ -1,4 +1,4 @@
-use crate::{Formatter, error::ParseFileError};
+use crate::{error::ParseFileError, Formatter};
 use std::path::PathBuf;
 use std::sync::Arc;
 use sway_ast::{attribute::Annotated, token::CommentedTokenStream, Module};
