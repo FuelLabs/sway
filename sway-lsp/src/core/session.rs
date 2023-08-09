@@ -138,7 +138,7 @@ impl Session {
 
     /// Write the result of parsing to the session.
     /// This function should only be called after successfully parsing.
-    pub(crate) fn write_parse_result(&self, res: ParseResult) {
+    pub fn write_parse_result(&self, res: ParseResult) {
         self.token_map.clear();
         self.runnables.clear();
 
