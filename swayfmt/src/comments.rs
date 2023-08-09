@@ -79,7 +79,7 @@ pub fn write_comments(
     range: Range<usize>,
     formatter: &mut Formatter,
 ) -> Result<bool, FormatterError> {
-    {        
+    {
         let mut comments_iter = formatter
             .comments_context
             .map
