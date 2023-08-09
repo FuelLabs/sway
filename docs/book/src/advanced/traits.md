@@ -109,7 +109,7 @@ trait Trait {
 }
 ```
 
-The initializer expression of an [associated constants](../basic/constants.md#associated-constants) in a trait definition may be omitted to indicate that each implementation of the `trait` for a given type must specify an initializer:
+The initializer expression of an [associated constants](../basics/constants.md#associated-constants) in a trait definition may be omitted to indicate that each implementation of the `trait` for a given type must specify an initializer:
 
 ```sway
 trait Trait {
@@ -117,7 +117,7 @@ trait Trait {
 }
 ```
 
-Check the `associated consts` section on [constants](../basic/constants.md) page.
+Check the `associated consts` section on [constants](../basics/constants.md) page.
 
 ## Use Cases
 
