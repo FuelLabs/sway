@@ -86,6 +86,12 @@ pub struct Session {
     pub diagnostics: Arc<RwLock<Diagnostics>>,
 }
 
+impl Default for Session {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Session {
     pub fn new() -> Self {
         Session {
