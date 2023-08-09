@@ -3,7 +3,7 @@
 A constant in Sway is similar to a variable; however, there are a few differences:
 
 - Constants are always evaluated at compile-time
-- Constants can be declared both inside of a [function](../index.md) and at global / `impl` scope.
+- Constants can be declared both inside of a [function](../functions/index.md) and at global / `impl` scope.
 - The `mut` keyword cannot be used with constants.
 
 ## Associated Constants

@@ -13,4 +13,4 @@ Get started with the basics of Sway:
 - [Methods and Associated Functions](./methods_and_associated_functions.md)
 - [Constants](./constants.md)
 - [Comments and Logging](./comments_and_logging.md)
-- [Control Flow](./control_flow.mdz)
+- [Control Flow](./control_flow.md)
