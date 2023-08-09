@@ -967,7 +967,7 @@ fn wide_shift_op_demotion(context: &mut Context, function: Function) -> Result<b
             Instruction::FuelVm(FuelVmInstruction::WideBinaryOp {
                 op,
                 arg1: get_arg1,
-                arg2: arg2,
+                arg2,
                 result: get_result_local,
             }),
         )
