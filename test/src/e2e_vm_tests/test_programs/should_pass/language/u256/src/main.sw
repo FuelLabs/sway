@@ -26,6 +26,12 @@ fn not_operator() -> u256 {
     !(a - b)
 }
 
+// returns 8
+fn shift_operators() -> u256 {
+    let a = 0x0000000000000000000000000000000000000000000000000000000000000002u256;
+    (a << 4) >> 2
+}
+
 fn main() -> u256 {
-    constants() + locals() + not_operator()
+    constants() + locals() + not_operator() + shift_operators()
 }

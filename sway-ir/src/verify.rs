@@ -374,7 +374,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
 
     fn verify_wide_binary_op(
         &self,
-        _op: &BinaryOpKind,
+        op: &BinaryOpKind,
         result: &Value,
         arg1: &Value,
         arg2: &Value,
@@ -389,11 +389,24 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
             .get_type(self.context)
             .ok_or(IrError::VerifyBinaryOpIncorrectArgType)?;
 
-        if !arg1_ty.is_ptr(self.context)
-            || !arg2_ty.is_ptr(self.context)
-            || !result_ty.is_ptr(self.context)
-        {
-            return Err(IrError::VerifyBinaryOpIncorrectArgType);
+        match op {
+            // Shifts rhs are 64 bits
+            BinaryOpKind::Lsh | BinaryOpKind::Rsh => {
+                if !arg1_ty.is_ptr(self.context)
+                    || !arg2_ty.is_uint64(self.context)
+                    || !result_ty.is_ptr(self.context)
+                {
+                    return Err(IrError::VerifyBinaryOpIncorrectArgType);
+                }
+            }
+            _ => {
+                if !arg1_ty.is_ptr(self.context)
+                    || !arg2_ty.is_ptr(self.context)
+                    || !result_ty.is_ptr(self.context)
+                {
+                    return Err(IrError::VerifyBinaryOpIncorrectArgType);
+                }
+            }
         }
 
         Ok(())
@@ -421,7 +434,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
 
     fn verify_binary_op(
         &self,
-        _op: &BinaryOpKind,
+        op: &BinaryOpKind,
         arg1: &Value,
         arg2: &Value,
     ) -> Result<(), IrError> {
@@ -431,8 +444,19 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         let arg2_ty = arg2
             .get_type(self.context)
             .ok_or(IrError::VerifyBinaryOpIncorrectArgType)?;
-        if !arg1_ty.eq(self.context, &arg2_ty) || !arg1_ty.is_uint(self.context) {
-            return Err(IrError::VerifyBinaryOpIncorrectArgType);
+
+        match op {
+            // Shifts can have the rhs with different type
+            BinaryOpKind::Lsh | BinaryOpKind::Rsh => {
+                if !arg1_ty.is_uint(self.context) || !arg2_ty.is_uint(self.context) {
+                    return Err(IrError::VerifyBinaryOpIncorrectArgType);
+                }
+            }
+            _ => {
+                if !arg1_ty.eq(self.context, &arg2_ty) || !arg1_ty.is_uint(self.context) {
+                    return Err(IrError::VerifyBinaryOpIncorrectArgType);
+                }
+            }
         }
 
         Ok(())

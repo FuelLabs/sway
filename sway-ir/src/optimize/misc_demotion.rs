@@ -40,6 +40,7 @@ pub fn misc_demotion(
     let addrof_res = ptr_to_int_demotion(context, function)?;
 
     let wide_binary_op_res = wide_binary_op_demotion(context, function)?;
+    let wide_shifts_op_res = wide_shift_op_demotion(context, function)?;
     let wide_cmp_res = wide_cmp_demotion(context, function)?;
     let wide_unary_op_res = wide_unary_op_demotion(context, function)?;
 
@@ -49,6 +50,7 @@ pub fn misc_demotion(
         || addrof_res
         || wide_unary_op_res
         || wide_binary_op_res
+        || wide_shifts_op_res
         || wide_cmp_res)
 }
 
@@ -840,6 +842,156 @@ fn wide_unary_op_demotion(context: &mut Context, function: Function) -> Result<b
 
         if arg1_needs_insert {
             block_instrs.insert(idx, get_arg);
+        }
+
+        // lhs
+        if let Some((get_lhs_local, store_lhs_local)) = lhs_store {
+            block_instrs.insert(idx, store_lhs_local);
+            block_instrs.insert(idx, get_lhs_local);
+        }
+    }
+
+    Ok(true)
+}
+
+/// Find all shift operations on types bigger than 64 bits
+/// and demote them to fuel specific `wide binary ops`, that
+/// work only on pointers
+fn wide_shift_op_demotion(context: &mut Context, function: Function) -> Result<bool, IrError> {
+    // Find all intrinsics on wide operators
+    let candidates = function
+        .instruction_iter(context)
+        .filter_map(|(block, instr_val)| {
+            let instr = instr_val.get_instruction(context)?;
+
+            if let Instruction::BinaryOp { op, arg1, arg2 } = instr {
+                let arg1_type = arg1
+                    .get_type(context)
+                    .and_then(|x| x.get_uint_width(context));
+                let arg2_type = arg2
+                    .get_type(context)
+                    .and_then(|x| x.get_uint_width(context));
+
+                match (arg1_type, arg2_type) {
+                    (Some(256), Some(64)) => {
+                        use BinaryOpKind::*;
+                        match op {
+                            Lsh | Rsh => Some((block, instr_val)),
+                            _ => todo!(),
+                        }
+                    }
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if candidates.is_empty() {
+        return Ok(false);
+    }
+
+    // Now create a local for the result
+    // get ptr to each arg
+    // and store the result after
+    for (block, binary_op_instr_val) in candidates {
+        let Instruction::BinaryOp { op, arg1, arg2 } = binary_op_instr_val
+            .get_instruction(context)
+            .cloned()
+            .unwrap()
+        else {
+            continue;
+        };
+
+        let binary_op_metadata = binary_op_instr_val.get_metadata(context);
+
+        let arg1_ty = arg1.get_type(context).unwrap();
+        let arg1_metadata = arg1.get_metadata(context);
+
+        let arg2_ty = arg2.get_type(context).unwrap();
+
+        let operand_ty = arg1.get_type(context).unwrap();
+
+        let result_local = function.new_unique_local_var(
+            context,
+            "__wide_result".to_owned(),
+            operand_ty,
+            None,
+            true,
+        );
+        let get_result_local = Value::new_instruction(context, Instruction::GetLocal(result_local))
+            .add_metadatum(context, binary_op_metadata);
+        let load_result_local =
+            Value::new_instruction(context, Instruction::Load(get_result_local))
+                .add_metadatum(context, binary_op_metadata);
+
+        // If arg1 is not a pointer, store it to a local
+        let lhs_store = if !arg1_ty.is_ptr(context) {
+            let lhs_local = function.new_unique_local_var(
+                context,
+                "__wide_lhs".to_owned(),
+                operand_ty,
+                None,
+                false,
+            );
+            let get_lhs_local = Value::new_instruction(context, Instruction::GetLocal(lhs_local))
+                .add_metadatum(context, arg1_metadata);
+            let store_lhs_local = Value::new_instruction(
+                context,
+                Instruction::Store {
+                    dst_val_ptr: get_lhs_local,
+                    stored_val: arg1,
+                },
+            )
+            .add_metadatum(context, arg1_metadata);
+            Some((get_lhs_local, store_lhs_local))
+        } else {
+            None
+        };
+
+        let (arg1_needs_insert, get_arg1) = if let Some((lhs_local, _)) = &lhs_store {
+            (false, *lhs_local)
+        } else {
+            (true, arg1)
+        };
+
+        // Assert result and lhs are pointers
+        // Assert rhs is u64
+        assert!(get_arg1.get_type(context).unwrap().is_ptr(context));
+        assert!(get_result_local.get_type(context).unwrap().is_ptr(context));
+        assert!(arg2_ty.is_uint64(context));
+
+        let wide_op = Value::new_instruction(
+            context,
+            Instruction::FuelVm(FuelVmInstruction::WideBinaryOp {
+                op,
+                arg1: get_arg1,
+                arg2: arg2,
+                result: get_result_local,
+            }),
+        )
+        .add_metadatum(context, binary_op_metadata);
+
+        // We don't have an actual instruction _inserter_ yet, just an appender, so we need to find
+        // the ptr_to_int instruction index and insert instructions manually.
+        let block_instrs = &mut context.blocks[block.0].instructions;
+        let idx = block_instrs
+            .iter()
+            .position(|&instr_val| instr_val == binary_op_instr_val)
+            .unwrap();
+
+        block
+            .replace_instruction(context, binary_op_instr_val, load_result_local)
+            .unwrap();
+
+        let block_instrs = &mut context.blocks[block.0].instructions;
+
+        block_instrs.insert(idx, wide_op);
+        block_instrs.insert(idx, get_result_local);
+
+        if arg1_needs_insert {
+            block_instrs.insert(idx, get_arg1);
         }
 
         // lhs
