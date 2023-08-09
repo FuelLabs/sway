@@ -4,6 +4,8 @@ use lsp_types::{Position, Url};
 use sway_core::{language::ty, type_system::TypeId, Engines};
 use sway_types::{Ident, SourceEngine, Span, Spanned};
 
+use rayon::{iter::IntoParallelIterator, prelude::ParallelIterator};
+
 // Re-export the TokenMapExt trait.
 pub use crate::core::token_map_ext::TokenMapExt;
 
@@ -27,6 +29,20 @@ impl TokenMap {
         TokenMapIter {
             inner_iter: self.0.iter(),
         }
+    }
+
+    pub fn par_iter(&self) {
+        let now = std::time::Instant::now();
+        let _ : Vec<_> = self.0.par_iter_mut().map(|item| {
+            item.clone()
+        }).collect();
+        eprintln!("JOSH par_iter time: {:?}", now.elapsed());
+
+        let now = std::time::Instant::now();
+        let _ : Vec<_> = self.iter().map(|x| {
+            x.clone()
+        }).collect();  
+        eprintln!("JOSH regular iter time: {:?}", now.elapsed());
     }
 
     /// Return an Iterator of tokens belonging to the provided [Url].

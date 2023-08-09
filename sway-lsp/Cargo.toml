@@ -10,7 +10,7 @@ repository.workspace = true
 
 [dependencies]
 anyhow = "1.0.41"
-dashmap = "5.4"
+dashmap = { version = "5.4", features = ["rayon"] }
 forc-pkg = { version = "0.43.2", path = "../forc-pkg" }
 forc-tracing = { version = "0.43.2", path = "../forc-tracing" }
 lsp-types = { version = "0.94", features = ["proposed"] }
@@ -19,6 +19,7 @@ notify-debouncer-mini = { version = "0.2.0" }
 parking_lot = "0.12.1"
 proc-macro2 = "1.0.5"
 quote = "1.0.9"
+rayon = "1.7.0"
 ropey = "1.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.60"

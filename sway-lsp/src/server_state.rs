@@ -77,6 +77,7 @@ impl ServerState {
     pub(crate) async fn parse_project(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
         let should_publish = run_blocking_parse_project(uri.clone(), session.clone()).await;
         if should_publish {
+            session.token_map().par_iter();
             // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
             // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
             self.client
