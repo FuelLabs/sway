@@ -8,7 +8,9 @@ fn benchmarks(c: &mut Criterion) {
     let position = Position::new(1716, 24);
 
     c.bench_function("hover", |b| {
-        b.iter(|| capabilities::hover::hover_data(session.clone(), &keyword_docs, uri.clone(), position))
+        b.iter(|| {
+            capabilities::hover::hover_data(session.clone(), &keyword_docs, uri.clone(), position)
+        })
     });
 
     c.bench_function("highlight", |b| {
@@ -24,13 +26,19 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("rename", |b| {
-        b.iter(|| capabilities::rename::rename(session.clone(), "new_token_name".to_string(), uri.clone(), position))
+        b.iter(|| {
+            capabilities::rename::rename(
+                session.clone(),
+                "new_token_name".to_string(),
+                uri.clone(),
+                position,
+            )
+        })
     });
-
 }
 
-criterion_group!{
+criterion_group! {
     name = benches;
-    config = Criterion::default().measurement_time(std::time::Duration::from_secs(60));
+    config = Criterion::default().measurement_time(std::time::Duration::from_secs(10));
     targets = benchmarks
 }
