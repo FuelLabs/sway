@@ -878,20 +878,16 @@ fn type_check_shift_binary_op(
         }));
     }
 
+    let return_type = type_engine.insert(engines, TypeInfo::Numeric);
+
     let lhs = arguments[0].clone();
     let lhs = ty::TyExpression::type_check(
         handler,
         ctx.by_ref()
             .with_help_text("Incorrect argument type")
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown)),
+            .with_type_annotation(engines.te().insert(engines, TypeInfo::Numeric)),
         lhs,
     )?;
-
-    // Numeric is still limited to 64 bits, so we need to be specific here
-    let return_type = match type_engine.get(lhs.return_type) {
-        TypeInfo::UnsignedInteger(IntegerBits::V256) => lhs.return_type,
-        _ => type_engine.insert(engines, TypeInfo::Numeric),
-    };
 
     let rhs = arguments[1].clone();
     let rhs = ty::TyExpression::type_check(
