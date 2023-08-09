@@ -1,15 +1,17 @@
 use crate::{
+    comments::write_comments,
     formatter::*,
     utils::map::byte_span::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
 use sway_ast::Literal;
+use sway_types::Spanned;
 
 impl Format for Literal {
     fn format(
         &self,
         formatted_code: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         match self {
             // TODO: do more digging into `Literal` and see if there is more formatting to do.
