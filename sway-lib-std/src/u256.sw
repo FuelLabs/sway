@@ -82,6 +82,41 @@ impl U256 {
         }
     }
 
+    /// Initializes a new `U256` with a value of 1.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::u256::U256;
+    ///
+    /// let init_one = U256::one();
+    /// let one_u256 = U256 { a: 0, b: 0, c: 0, d: 1 };
+    ///
+    /// assert(init_one == one_u256);
+    /// ```
+    pub fn one() -> Self {
+        Self {
+            a: 0,
+            b: 0,
+            c: 0,
+            d: 1,
+        }
+    }
+
+    /// Returns true if value is zero.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::u256::U256
+    ///
+    /// let zero_u256 = U256::new();
+    /// assert(zero_u256.is_zero());
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self.a == 0 && self.b == 0 && self.c == 0 && self.d == 0
+    }
+
     /// Safely downcast to `u64` without loss of precision.
     /// Returns `Err` if the `number > u64::max()`.
     ///
@@ -573,13 +608,18 @@ impl core::ops::Divide for U256 {
 }
 
 impl Power for U256 {
+    /// Fast exponentiation by squaring
+	/// https://en.wikipedia.org/wiki/Exponentiation_by_squaring
+	///
+	/// # Panics
+	///
+	/// Panics if the result overflows the type.
     fn pow(self, exponent: Self) -> Self {
         let mut value = self;
         let mut exp = exponent;
-        let one = Self::from((0, 0, 0, 1));
-        let zero = Self::from((0, 0, 0, 0));
+        let one = Self::one();
 
-        if exp == zero {
+        if exp.is_zero() {
             return one;
         }
 
@@ -589,7 +629,7 @@ impl Power for U256 {
             return Self::from((self.a, self.b, self.c, self.d));
         }
 
-        while exp & one == zero {
+        while (exp & one).is_zero() {
             value = value * value;
             exp >>= 1;
         }
@@ -619,4 +659,10 @@ fn test_pow_u256() {
     assert_eq(five.pow(two), U256::from((0, 0, 0, 25)));
     assert_eq(five.pow(three), U256::from((0, 0, 0, 125)));
     assert_eq(five.pow(twenty_eight), U256::from((0, 359414837200037395, 18446744073709551615, 18446744073709551615)));
+}
+
+#[test]
+fn test_is_zero() {
+    let zero_u256 = U256::new();
+    assert(zero_u256.is_zero());
 }
