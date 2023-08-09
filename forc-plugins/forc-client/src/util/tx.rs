@@ -15,7 +15,15 @@ use fuels_core::types::{
     transaction_builders::{create_coin_input, create_coin_message_input},
 };
 
-use forc_wallet::{account::derive_secret_key, new::new_wallet_cli, utils::default_wallet_path};
+use forc_wallet::{
+    account::derive_secret_key,
+    balance::{
+        collect_accounts_with_verification, print_account_balances, AccountBalances,
+        AccountVerification, AccountsMap,
+    },
+    new::new_wallet_cli,
+    utils::default_wallet_path,
+};
 
 /// The maximum time to wait for a transaction to be included in a block by the node
 pub const TX_SUBMIT_TIMEOUT_MS: u64 = 30_000u64;
@@ -52,6 +60,20 @@ fn ask_user_yes_no_question(question: &str) -> Result<bool> {
     // Trim the user input as it might have an additional space.
     let ans = ans.trim();
     Ok(ans == "y" || ans == "Y")
+}
+/// Collect and return balances of each account in the accounts map.
+async fn collect_account_balances(
+    accounts_map: &AccountsMap,
+    provider: &Provider,
+) -> Result<AccountBalances> {
+    let accounts: Vec<_> = accounts_map
+        .values()
+        .map(|addr| Wallet::from_address(addr.clone(), Some(provider.clone())))
+        .collect();
+
+    futures::future::try_join_all(accounts.iter().map(|acc| acc.get_balances()))
+        .await
+        .map_err(|e| anyhow::anyhow!("{e}"))
 }
 
 #[async_trait]
@@ -162,12 +184,33 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                         }
                     }
                     let prompt = format!(
-                        "\nPlease provide the password of your encrypted wallet vault at {wallet_path:?}:"
+                        "\nPlease provide the password of your encrypted wallet vault at {wallet_path:?}: "
                     );
                     let password = rpassword::prompt_password(prompt)?;
-                    // TODO: List all derived wallets via forc-wallet and let the users choose
-                    // account.
-                    let account_index = 0;
+                    let verification = AccountVerification::Yes(password.clone());
+                    let accounts = collect_accounts_with_verification(&wallet_path, verification)?;
+                    let provider = Provider::new(client.clone(), params);
+                    let account_balances = collect_account_balances(&accounts, &provider).await?;
+
+                    let total_balance = account_balances
+                        .iter()
+                        .flat_map(|account| account.values())
+                        .sum::<u64>();
+                    if total_balance == 0 {
+                        // TODO: Point to latest test-net faucet with account info added to the
+                        // link as a parameter.
+                        anyhow::bail!("Your wallet does not have any funds to pay for the deployment transaction.\
+                                      \nIf you are deploying to a testnet consider using the faucet.\
+                                      \nIf you are deploying to a local node, consider providing a chainConfig which funds your account.")
+                    }
+                    print_account_balances(&accounts, &account_balances);
+
+                    print!("\nPlease provide the index of account to use for signing: ");
+                    std::io::stdout().flush()?;
+                    let mut account_index = String::new();
+                    std::io::stdin().read_line(&mut account_index)?;
+                    let account_index = account_index.trim().parse::<usize>()?;
+
                     let secret_key = derive_secret_key(&wallet_path, account_index, &password).map_err(|e| {
                         if e.to_string().contains("Mac Mismatch") {
                             anyhow::anyhow!("Failed to access forc-wallet vault. Please check your password")
@@ -180,9 +223,8 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                     let public_key = PublicKey::from(&secret_key);
                     let hashed = public_key.hash();
                     let bech32 = Bech32Address::new(FUEL_BECH32_HRP, hashed);
-                    // TODO: Check for balance and suggest using the faucet.
                     let question = format!(
-                        "Do you accept to sign this transaction with {}? [y/N]: ",
+                        "Do you agree to sign this transaction with {}? [y/N]: ",
                         bech32
                     );
                     let accepted = ask_user_yes_no_question(&question)?;
