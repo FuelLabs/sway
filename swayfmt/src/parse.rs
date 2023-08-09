@@ -1,4 +1,4 @@
-use crate::error::ParseFileError;
+use crate::{Formatter, error::ParseFileError};
 use std::path::PathBuf;
 use std::sync::Arc;
 use sway_ast::{attribute::Annotated, token::CommentedTokenStream, Module};
@@ -36,8 +36,12 @@ pub fn parse_format<P: sway_parse::Parse + crate::Format>(input: &str) -> String
     })
     .unwrap();
 
+    // Allow test cases that include comments.
+    let mut formatter = Formatter::default();
+    formatter.with_comments_context(input);
+
     let mut buf = <_>::default();
-    parsed.format(&mut buf, &mut <_>::default()).unwrap();
+    parsed.format(&mut buf, &mut formatter).unwrap();
     buf
 }
 
