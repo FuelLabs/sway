@@ -247,31 +247,8 @@ pub fn type_info_to_symbol_kind(
 pub fn get_range_from_span(span: &Span) -> Range {
     let start = span.start_pos().line_col();
     let end = span.end_pos().line_col();
-
-    let start_line = start.0 as u32 - 1;
-    let start_character = start.1 as u32 - 1;
-
-    let end_line = end.0 as u32 - 1;
-    let end_character = end.1 as u32 - 1;
-
     Range {
-        start: Position::new(start_line, start_character),
-        end: Position::new(end_line, end_character),
-    }
-}
-
-pub fn get_range_from_span_opt(span: &Span) -> Range {
-    let start = span.start_pos_opt().line_col();
-    let end = span.end_pos_opt().line_col();
-
-    // let start_line = start.0 as u32 - 1;
-    // let start_character = start.1 as u32 - 1;
-
-    // let end_line = end.0 as u32 - 1;
-    // let end_character = end.1 as u32 - 1;
-
-    Range {
-        start: Position::new(start.0 as u32 - 1, start.1 as u32 - 1),
-        end: Position::new(end.0 as u32 - 1, end.1 as u32 - 1),
+        start: Position::new(start.0 as u32 - 1, start.1 as u32),
+        end: Position::new(end.0 as u32 - 1, end.1 as u32),
     }
 }

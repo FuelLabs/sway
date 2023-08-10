@@ -89,7 +89,7 @@ pub(crate) trait CodeAction<'a, T: Spanned> {
 
     fn indentation(&self) -> String {
         let (_, column) = self.decl().span().start_pos().line_col();
-        " ".repeat(column - 1)
+        " ".repeat(column)
     }
 
     /// Returns the declaration.

@@ -36,7 +36,7 @@ pub fn get_diagnostics(warnings: &[CompileWarning], errors: &[CompileError]) -> 
 }
 
 fn get_range((start, end): (LineCol, LineCol)) -> Range {
-    let pos = |lc: LineCol| Position::new(lc.line as u32 - 1, lc.col as u32 - 1);
+    let pos = |lc: LineCol| Position::new(lc.line as u32 - 1, lc.col as u32);
     let start = pos(start);
     let end = pos(end);
     Range { start, end }
