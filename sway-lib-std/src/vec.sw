@@ -378,7 +378,7 @@ impl<T> Vec<T> {
     ///
     /// * [T] - The element that was removed.
     ///
-    /// # Panics
+    /// # Reverts
     ///
     /// * If `index >= self.len`
     ///
@@ -432,7 +432,7 @@ impl<T> Vec<T> {
     ///
     /// * `element`: [T] - The element to be inserted.
     ///
-    /// # Panics
+    /// # Reverts
     ///
     /// * If `index > self.len`
     ///
@@ -519,7 +519,7 @@ impl<T> Vec<T> {
     /// * `element1_index`: [u64] - The index of the first element.
     /// * `element2_index`: [u64] - The index of the second element.
     ///
-    /// # Panics
+    /// # Reverts
     ///
     /// * If `element1_index` or `element2_index` is greater than or equal to the length of vector.
     ///
@@ -562,7 +562,7 @@ impl<T> Vec<T> {
     /// * `index`: [u64] - The index of the element to be set.
     /// * `value`: [T] - The value of the element to be set.
     ///
-    /// # Panics
+    /// # Reverts
     ///
     /// * If `index` is greater than or equal to the length of vector.
     ///

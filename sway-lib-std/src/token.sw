@@ -123,7 +123,7 @@ pub fn mint(amount: u64) {
 ///
 /// * `amount`: [u64] - The amount of tokens to burn.
 ///
-/// # Panics
+/// # Reverts
 ///
 /// * When the contract balance is less than `amount`.
 ///
@@ -158,7 +158,7 @@ pub fn burn(amount: u64) {
 /// * `asset_id`: [AssetId] - The token to transfer.
 /// * `to`: [Identity] - The recipient identity.
 ///
-/// # Panics
+/// # Reverts
 ///
 /// * When `amount` is greater than the contract balance for `asset_id`.
 /// * When `amount` is equal to zero.
@@ -230,7 +230,7 @@ pub fn force_transfer_to_contract(amount: u64, asset_id: AssetId, to: ContractId
 /// * `asset_id`: [AssetId] - The token to transfer.
 /// * `to`: [Address] - The recipient address.
 ///
-/// # Panics
+/// # Reverts
 ///
 /// * When `amount` is greater than the contract balance for `asset_id`.
 /// * When `amount` is equal to zero.

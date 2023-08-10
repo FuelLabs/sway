@@ -367,7 +367,7 @@ impl core::ops::Not for U128 {
 }
 
 impl core::ops::Add for U128 {
-    /// Add a `U128` to a `U128`. Panics on overflow.
+    /// Add a `U128` to a `U128`. Reverts on overflow.
     fn add(self, other: Self) -> Self {
         let mut upper_128 = self.upper.overflowing_add(other.upper);
 
@@ -392,7 +392,7 @@ impl core::ops::Add for U128 {
 }
 
 impl core::ops::Subtract for U128 {
-    /// Subtract a `U128` from a `U128`. Panics of overflow.
+    /// Subtract a `U128` from a `U128`. Reverts of overflow.
     fn subtract(self, other: Self) -> Self {
         // If trying to subtract a larger number, panic.
         assert(!(self < other));
@@ -412,7 +412,7 @@ impl core::ops::Subtract for U128 {
     }
 }
 impl core::ops::Multiply for U128 {
-    /// Multiply a `U128` with a `U128`. Panics of overflow.
+    /// Multiply a `U128` with a `U128`. Reverts of overflow.
     fn multiply(self, other: Self) -> Self {
         // in case both of the `U128` upper parts are bigger than zero,
         // it automatically means overflow, as any `U128` value
@@ -433,7 +433,7 @@ impl core::ops::Multiply for U128 {
 }
 
 impl core::ops::Divide for U128 {
-    /// Divide a `U128` by a `U128`. Panics if divisor is zero.
+    /// Divide a `U128` by a `U128`. Reverts if divisor is zero.
     fn divide(self, divisor: Self) -> Self {
         let zero = Self::from((0, 0));
 

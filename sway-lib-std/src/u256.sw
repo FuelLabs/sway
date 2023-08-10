@@ -387,7 +387,7 @@ impl core::ops::Not for U256 {
 }
 
 impl core::ops::Add for U256 {
-    /// Add a `U256` to a `U256`. Panics on overflow.
+    /// Add a `U256` to a `U256`. Reverts on overflow.
     fn add(self, other: Self) -> Self {
         let (word_1, word_2, word_3, word_4) = self.into();
         let (other_word_1, other_word_2, other_word_3, other_word_4) = other.into();
@@ -414,7 +414,7 @@ impl core::ops::Add for U256 {
 }
 
 impl core::ops::Subtract for U256 {
-    /// Subtract a `U256` from a `U256`. Panics of overflow.
+    /// Subtract a `U256` from a `U256`. Reverts of overflow.
     fn subtract(self, other: Self) -> Self {
         if self == other {
             return Self::min();
@@ -478,7 +478,7 @@ impl core::ops::Subtract for U256 {
 }
 
 impl core::ops::Multiply for U256 {
-    /// Multiply a `U256` with a `U256`. Panics on overflow.
+    /// Multiply a `U256` with a `U256`. Reverts on overflow.
     fn multiply(self, other: Self) -> Self {
         // Both upper words cannot be non-zero simultaneously. Otherwise, overflow is guaranteed.
         assert(self.a == 0 || other.a == 0);
@@ -574,7 +574,7 @@ impl core::ops::Multiply for U256 {
 }
 
 impl core::ops::Divide for U256 {
-    /// Divide a `U256` by a `U256`. Panics if divisor is zero.
+    /// Divide a `U256` by a `U256`. Reverts if divisor is zero.
     fn divide(self, divisor: Self) -> Self {
         let zero = Self::from((0, 0, 0, 0));
         let one = Self::from((0, 0, 0, 1));

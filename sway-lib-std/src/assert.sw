@@ -17,9 +17,9 @@ use ::error_signals::{FAILED_ASSERT_SIGNAL, FAILED_ASSERT_EQ_SIGNAL};
 ///
 /// * `condition`: [bool] - The condition which will be asserted to be `true`.
 ///
-/// # Panics
+/// # Reverts
 ///
-/// * Panics when `condition` is `false`.
+/// * Reverts when `condition` is `false`.
 ///
 /// # Examples
 ///
@@ -43,9 +43,9 @@ pub fn assert(condition: bool) {
 /// * `v1`: [T] - The first value to compare.
 /// * `v2`: [T] - The second value to compare.
 ///
-/// # Panics
+/// # Reverts
 ///
-/// * Panics when `v1` != `v2`.
+/// * Reverts when `v1` != `v2`.
 ///
 /// # Examples
 ///

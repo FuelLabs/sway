@@ -243,7 +243,7 @@ impl Bytes {
     /// * `index`: [u64] - The index of the element to be set.
     /// * `value`: [u8] - The value of the element to be set.
     ///
-    /// # Panics
+    /// # Reverts
     ///
     /// * When `index` is greater than or equal to the length of Bytes.
     ///
@@ -287,7 +287,7 @@ impl Bytes {
     /// * `index`: [u64] - The index at which to insert the element.
     /// * `element`: [u8] - The element to be inserted.
     ///
-    /// # Panics
+    /// # Reverts
     ///
     /// * When `index > len`.
     ///
@@ -353,7 +353,7 @@ impl Bytes {
     ///
     /// * [u8] - The element at the specified index.
     ///
-    /// # Panics
+    /// # Reverts
     ///
     /// * When `index >= self.len`.
     ///
@@ -404,7 +404,7 @@ impl Bytes {
     /// * `element1_index`: [u64] - The index of the first element.
     /// * `element2_index`: [u64] - The index of the second element.
     ///
-    /// # Panics
+    /// # Reverts
     ///
     /// * When `element1_index` or `element2_index` is greater than or equal to the length of `Bytes`.
     ///
@@ -608,7 +608,7 @@ impl Bytes {
     ///
     /// * `mid`: [u64] - Index at which the Bytes is to be split.
     ///
-    /// # Panics
+    /// # Reverts
     ///
     /// * When `mid > self.len`.
     ///

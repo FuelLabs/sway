@@ -55,7 +55,7 @@ pub enum Transaction {
 ///
 /// * [Transaction] - The type of the current transaction.
 ///
-/// # Panics
+/// # Reverts
 ///
 /// * When the transaction type is unrecognized. This should never happen.
 ///
@@ -159,7 +159,7 @@ pub fn tx_maturity() -> u32 {
 ///
 /// * [u64] - The script length for the transaction.
 ///
-/// # Panics
+/// # Reverts
 ///
 /// * When the transaction type is of type `Transaction::Create`.
 ///
@@ -186,7 +186,7 @@ pub fn tx_script_length() -> u64 {
 ///
 /// * [u64] - The script data length for the transaction.
 ///
-/// # Panics
+/// # Reverts
 ///
 /// * When the transaction type is of type `Transaction::Create`.
 ///
@@ -311,7 +311,7 @@ pub fn tx_witness_data<T>(index: u64) -> T {
 ///
 /// * [b256] - The transaction receipts root.
 ///
-/// # Panics
+/// # Reverts
 ///
 /// * When the transaction type is of type `Transaction::Create`.
 ///
@@ -338,7 +338,7 @@ pub fn tx_receipts_root() -> b256 {
 ///
 /// * [raw_ptr] - The transaction script start pointer.
 ///
-/// # Panics
+/// # Reverts
 ///
 /// * When the transaction type is of type `Transaction::Create`.
 ///
@@ -365,7 +365,7 @@ pub fn tx_script_start_pointer() -> raw_ptr {
 ///
 /// * [raw_ptr] - The transaction script data start pointer.
 ///
-/// # Panics
+/// # Reverts
 ///
 /// * When the transaction type is of type `Transaction::Create`.
 ///
@@ -400,7 +400,7 @@ pub fn tx_script_data_start_pointer() -> raw_ptr {
 ///
 /// * [T] - The script data, typed.
 ///
-/// # Panics
+/// # Reverts
 ///
 /// * When the transaction type is of type `Transaction::Create`.
 ///
@@ -431,7 +431,7 @@ pub fn tx_script_data<T>() -> T {
 ///
 /// * [T] - The script bytecode.
 ///
-/// # Panics
+/// # Reverts
 ///
 /// * When the transaction type is of type `Transaction::Create`.
 ///
@@ -456,7 +456,7 @@ pub fn tx_script_bytecode<T>() -> T {
 ///
 /// * [b256] - The hash of the script bytecode.
 ///
-/// # Panics
+/// # Reverts
 ///
 /// * When the transaction type is of type `Transaction::Create`.
 ///

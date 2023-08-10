@@ -154,9 +154,9 @@ impl<T> Option<T> {
     ///
     /// * [T] - The value contained by the option.
     ///
-    /// # Panics
+    /// # Reverts
     ///
-    /// * Panics if the `Option` is of the `None` variant.
+    /// * Reverts if the `Option` is of the `None` variant.
     ///
     /// # Examples
     ///

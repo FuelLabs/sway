@@ -136,7 +136,7 @@ pub fn heap_ptr() -> raw_ptr {
 ///
 /// # Additional Information
 ///
-/// Normally, if the result of an ALU operation is mathematically undefined (e.g. dividing by zero), the VM panics. 
+/// Normally, if the result of an ALU operation is mathematically undefined (e.g. dividing by zero), the VM Reverts. 
 /// However, if the `F_UNSAFEMATH` flag is set, $err is set to `true` and execution continues.
 ///
 /// # Returns

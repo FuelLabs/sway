@@ -156,9 +156,9 @@ impl<V> StorageKey<StorageVec<V>> {
     ///
     /// * [V] - The element that has been removed at the index.
     ///
-    /// # Panics
+    /// # Reverts
     ///
-    /// * Panics if index is larger or equal to length of the vec.
+    /// * Reverts if index is larger or equal to length of the vec.
     ///
     /// # Number of Storage Accesses
     ///
@@ -222,9 +222,9 @@ impl<V> StorageKey<StorageVec<V>> {
     ///
     /// * [V] - The element that has been removed at the index.
     ///
-    /// # Panics
+    /// # Reverts
     ///
-    /// * Panics if index is larger or equal to length of the vec.
+    /// * Reverts if index is larger or equal to length of the vec.
     ///
     /// # Number of Storage Accesses
     ///
@@ -277,9 +277,9 @@ impl<V> StorageKey<StorageVec<V>> {
     /// * `index`: [u64] - The index of the vec to set the value at
     /// * `value`: [V] - The value to be set
     ///
-    /// # Panics
+    /// # Reverts
     ///
-    /// * Panics if index is larger than or equal to the length of the vec.
+    /// * Reverts if index is larger than or equal to the length of the vec.
     ///
     /// # Number of Storage Accesses
     ///
@@ -328,9 +328,9 @@ impl<V> StorageKey<StorageVec<V>> {
     /// * `index`: [u64] - The index of the vec to insert the item into.
     /// * `value`: [V] - The value to insert into the vec.
     ///
-    /// # Panics
+    /// # Reverts
     ///
-    /// * Panics if index is larger than the length of the vec.
+    /// * Reverts if index is larger than the length of the vec.
     ///
     /// # Number of Storage Accesses
     ///
@@ -499,7 +499,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// * `element1_index`: [u64] - The index of the first element.
     /// * `element2_index`: [u64] - The index of the second element.
     ///
-    /// # Panics
+    /// # Reverts
     ///
     /// * If `element1_index` or `element2_index` is greater than the length of the vector.
     ///

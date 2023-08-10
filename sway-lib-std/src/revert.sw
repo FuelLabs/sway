@@ -15,9 +15,9 @@ use ::error_signals::FAILED_REQUIRE_SIGNAL;
 ///
 /// * `code`: [u64] - The code with which to revert the program.
 ///
-/// # Panics
+/// # Reverts
 ///
-/// * Panics unconditionally.
+/// * Reverts unconditionally.
 ///
 /// # Examples
 ///
@@ -40,9 +40,9 @@ pub fn revert(code: u64) {
 /// * `condition`: [bool] - The condition upon which to decide whether to revert or not.
 /// * `value`: [T] - The value which will be logged in case `condition` is `false`.
 ///
-/// # Panics
+/// # Reverts
 ///
-/// * Panics when `condition` is `false`.
+/// * Reverts when `condition` is `false`.
 ///
 /// # Examples
 ///

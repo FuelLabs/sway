@@ -131,7 +131,7 @@ impl String {
     ///
     /// * [String] - A `String` containing the ASCII encoded bytes.
     ///
-    /// # Panics
+    /// # Reverts
     /// 
     /// * When `s` is not a string literal.
     ///

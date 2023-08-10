@@ -48,7 +48,7 @@ pub enum Output {
 ///
 /// * [Output] - The type of the output at `index`.
 ///
-/// # Panics
+/// # Reverts
 ///
 /// * When the output type is unrecognized. This should never happen.
 /// 
@@ -87,7 +87,7 @@ pub fn output_type(index: u64) -> Output {
 ///
 /// * [u64] - A pointer to the output at `index`.
 ///
-/// # Panics
+/// # Reverts
 ///
 /// * When the output type is unrecognized. This should never happen.
 ///
@@ -115,7 +115,7 @@ pub fn output_pointer(index: u64) -> u64 {
 ///
 /// * [u64] - The transaction outputs count.
 ///
-/// # Panics
+/// # Reverts
 ///
 /// * When the output type is unrecognized. This should never happen.
 ///
@@ -154,7 +154,7 @@ pub fn output_count() -> u64 {
 ///
 /// * [u64] - The amount of coins to send for the output at `index`.
 ///
-/// # Panics
+/// # Reverts
 ///
 /// * When the output type is `Output::Contract`.
 /// * When the output type is unrecognized. This should never happen.
@@ -203,7 +203,7 @@ pub fn output_amount(index: u64) -> u64 {
 ///
 /// * [Option<ContractId>] - The AssetId of the output if it is a `Output::Coin`. None otherwise.
 ///
-/// # Panics
+/// # Reverts
 ///
 /// * When the output type is unrecognized. This should never happen.
 ///
@@ -235,7 +235,7 @@ pub fn output_asset_id(index: u64) -> Option<ContractId> {
 ///
 /// * [Option<b256>] - The reciever of the output if it is a `Output::Coin`. None otherwise.
 ///
-/// # Panics
+/// # Reverts
 ///
 /// * When the output type is unrecognized. This should never happen.
 ///

@@ -143,9 +143,9 @@ impl<T, E> Result<T, E> {
     ///
     /// * [T] - The value contained by the result.
     ///
-    /// # Panics
+    /// # Reverts
     ///
-    /// * Panics if the `Result` is of the `Err` variant.
+    /// * Reverts if the `Result` is of the `Err` variant.
     ///
     /// # Examples
     ///

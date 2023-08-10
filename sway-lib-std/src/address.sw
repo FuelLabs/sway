@@ -76,7 +76,7 @@ impl Address {
     /// * `amount`: [u64] - The amount of tokens to transfer.
     /// * `asset_id`: [AssetId] - The `AssetId` of the token to transfer.
     ///
-    /// # Panics
+    /// # Reverts
     ///
     /// * When `amount` is greater than the contract balance for `asset_id`.
     /// * When `amount` is equal to zero.

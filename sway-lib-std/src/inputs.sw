@@ -395,7 +395,7 @@ pub fn input_predicate_pointer(index: u64) -> Option<raw_ptr> {
 ///
 /// * [Bytes] - The predicate bytecode of the input at `index`, if the input's type is `Input::Coin` or `Input::Message`.
 ///
-/// # Panics
+/// # Reverts
 ///
 /// * When the input's type is not `Input::Coin` or `Input::Message`.
 ///
@@ -595,7 +595,7 @@ pub fn input_message_data_length(index: u64) -> u16 {
 ///
 /// * [Bytes] - The data of the input message at `index`, if the input's type is `Input::Message`.
 ///
-/// # Panics
+/// # Reverts
 ///
 /// * When the input's type is not `Input::Message`.
 ///

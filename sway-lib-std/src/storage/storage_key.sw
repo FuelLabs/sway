@@ -10,7 +10,7 @@ impl<T> StorageKey<T> {
     /// # Returns
     ///
     /// * [T] - Returns the value previously stored if a the storage slots read were
-    /// valid and contain `value`. Panics otherwise.
+    /// valid and contain `value`. Reverts otherwise.
     ///
     /// # Number of Storage Accesses
     ///
