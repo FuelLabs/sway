@@ -11,6 +11,32 @@ lazy_static! {
     static ref DUMMY_SPAN: Span = Span::new(Arc::from(""), 0, 0, None).unwrap();
 }
 
+pub struct PositionOpt<'a> {
+    input: &'a str,
+    pos: usize,
+}
+
+impl<'a> PositionOpt<'a> {
+    pub fn new(input: &'a str, pos: usize) -> Option<PositionOpt<'a>> {
+        input.get(pos..).map(|_| PositionOpt { input, pos })
+    }
+
+    #[inline]
+    pub fn line_col(&self) -> (usize, usize) {
+        if self.pos > self.input.len() {
+            panic!("position out of bounds");
+        }
+
+        let slice = &self.input[..self.pos];
+        let lines = slice.split('\n').collect::<Vec<_>>();
+        let line_count = lines.len();
+        let last_line_len = lines.last().unwrap_or(&"").chars().count();
+
+        (line_count, last_line_len)
+    }
+}
+
+
 pub struct Position {
     input: Arc<str>,
     pos: usize,
@@ -159,6 +185,14 @@ impl Span {
 
     pub fn end_pos(&self) -> Position {
         Position::new(self.src.clone(), self.end).unwrap()
+    }
+
+    pub fn start_pos_opt(&self) -> PositionOpt {
+        PositionOpt::new(&self.src, self.start).unwrap()
+    }
+
+    pub fn end_pos_opt(&self) -> PositionOpt {
+        PositionOpt::new(&self.src, self.end).unwrap()
     }
 
     pub fn split(&self) -> (Position, Position) {

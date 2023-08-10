@@ -55,10 +55,10 @@ impl TokenMap {
     {
         tokens
             .filter_map(|(ident, _)| {
-                let range = token::get_range_from_span(&ident.span());
-                if cursor_position >= range.start && cursor_position <= range.end {
-                    return Some(ident);
-                }
+                let range = token::get_range_from_span_opt(&ident.span());
+                // if cursor_position >= range.start && cursor_position <= range.end {
+                //     return Some(ident);
+                // }
                 None
             })
             .collect()
