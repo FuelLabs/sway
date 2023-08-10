@@ -118,7 +118,6 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         ast_block: &ty::TyCodeBlock,
     ) -> Result<Value, Vec<CompileError>> {
-        dbg!(1);
         self.compile_with_new_scope(|fn_compiler| {
             let mut errors = vec![];
 

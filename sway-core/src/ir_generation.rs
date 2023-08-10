@@ -20,7 +20,6 @@ pub fn compile_program<'eng>(
     include_tests: bool,
     engines: &'eng Engines,
 ) -> Result<Context<'eng>, Vec<CompileError>> {
-    dbg!(1);
     let declaration_engine = engines.de();
 
     let test_fns = match include_tests {

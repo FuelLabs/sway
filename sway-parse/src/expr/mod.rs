@@ -178,29 +178,11 @@ fn parse_stmt<'a>(parser: &mut Parser<'a, '_>) -> ParseResult<StmtOrTail<'a>> {
     }
 
     // Try a `let` statement.
-    // |p| {
-    //     p.peek::<LetToken>().is_some() || p.take::<SemicolonToken>().is_some()
-    // }
-    println!(
-        "{:?}",
-        parser
-            .debug_tokens()
-            .iter()
-            .map(|x| x.span().as_str().to_string())
-            .collect::<Vec<_>>()
-    );
     match parser.guarded_parse_with_recovery::<LetToken, StatementLet>() {
         Ok(None) => {}
         Ok(Some(slet)) => return stmt(Statement::Let(slet)),
         Err(recovery) => {
             let p = recovery.start();
-            println!(
-                "    {:?}",
-                p.debug_tokens()
-                    .iter()
-                    .map(|x| x.span().as_str().to_string())
-                    .collect::<Vec<_>>()
-            );
             let (spans, error) = recovery.finish(p);
             return stmt(Statement::Error(spans, error));
         }

@@ -317,7 +317,6 @@ pub(super) fn compile_function(
     is_entry: bool,
     test_decl_ref: Option<DeclRefFunction>,
 ) -> Result<Option<Function>, Vec<CompileError>> {
-    dbg!(1);
     // Currently monomorphization of generics is inlined into main() and the functions with generic
     // args are still present in the AST declarations, but they can be ignored.
     if !ast_fn_decl.type_parameters.is_empty() {
@@ -350,7 +349,6 @@ pub(super) fn compile_entry_function(
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_decl_ref: Option<DeclRefFunction>,
 ) -> Result<Function, Vec<CompileError>> {
-    dbg!(1);
     let is_entry = true;
     compile_function(
         engines,
@@ -406,7 +404,6 @@ fn compile_fn(
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_decl_ref: Option<DeclRefFunction>,
 ) -> Result<Function, Vec<CompileError>> {
-    dbg!(1);
     let type_engine = engines.te();
     let decl_engine = engines.de();
 

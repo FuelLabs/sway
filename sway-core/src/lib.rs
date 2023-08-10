@@ -171,9 +171,7 @@ fn parse_in_memory(
     engines: &Engines,
     src: Arc<str>,
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
-    dbg!(1);
     let module = sway_parse::parse_file(handler, src, None)?;
-    dbg!(1);
 
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
         &mut to_parsed_lang::Context::default(),
@@ -529,7 +527,6 @@ pub fn compile_to_asm(
     package_name: &str,
     metrics: &mut PerformanceData,
 ) -> Result<CompiledAsm, ErrorEmitted> {
-    dbg!(1);
     let ast_res = compile_to_ast(
         handler,
         engines,
@@ -550,7 +547,6 @@ pub fn ast_to_asm(
     programs: &Programs,
     build_config: &BuildConfig,
 ) -> Result<CompiledAsm, ErrorEmitted> {
-    dbg!(1);
     let typed_program = match &programs.typed {
         Ok(typed_program) => typed_program,
         Err(err) => return Err(*err),
@@ -572,7 +568,6 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     program: &ty::TyProgram,
     build_config: &BuildConfig,
 ) -> Result<FinalizedAsm, ErrorEmitted> {
-    dbg!(1);
     // the IR pipeline relies on type information being fully resolved.
     // If type information is found to still be generic or unresolved inside of
     // IR, this is considered an internal compiler error. To resolve this situation,
