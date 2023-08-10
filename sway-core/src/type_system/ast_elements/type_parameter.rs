@@ -188,16 +188,6 @@ impl TypeParameter {
             },
         );
 
-        // Insert the trait constraints into the namespace.
-        for trait_constraint in trait_constraints.iter() {
-            TraitConstraint::insert_into_namespace(
-                handler,
-                ctx.by_ref(),
-                type_id,
-                trait_constraint,
-            )?;
-        }
-
         // When type parameter is from parent then it was already inserted.
         // Instead of inserting a type with same name we unify them.
         if is_from_parent {
@@ -225,16 +215,6 @@ impl TypeParameter {
                     }
                 }
             }
-        } else {
-            // Insert the type parameter into the namespace as a dummy type
-            // declaration.
-            let type_parameter_decl =
-                ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
-                    name: name_ident.clone(),
-                    type_id,
-                });
-            ctx.insert_symbol(handler, name_ident.clone(), type_parameter_decl)
-                .ok();
         }
 
         let type_parameter = TypeParameter {
@@ -246,6 +226,43 @@ impl TypeParameter {
             is_from_parent,
         };
         Ok(type_parameter)
+    }
+
+    pub fn insert_into_namespace(
+        &self,
+        handler: &Handler,
+        mut ctx: TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
+        let Self {
+            is_from_parent,
+            name_ident,
+            type_id,
+            ..
+        } = self;
+
+        // Insert the trait constraints into the namespace.
+        for trait_constraint in self.trait_constraints.iter() {
+            TraitConstraint::insert_into_namespace(
+                handler,
+                ctx.by_ref(),
+                *type_id,
+                trait_constraint,
+            )?;
+        }
+
+        if !is_from_parent {
+            // Insert the type parameter into the namespace as a dummy type
+            // declaration.
+            let type_parameter_decl =
+                ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
+                    name: name_ident.clone(),
+                    type_id: *type_id,
+                });
+            ctx.insert_symbol(handler, name_ident.clone(), type_parameter_decl)
+                .ok();
+        }
+
+        Ok(())
     }
 
     /// Creates a [DeclMapping] from a list of [TypeParameter]s.
