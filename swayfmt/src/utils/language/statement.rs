@@ -43,7 +43,7 @@ fn format_statement(
                 }
             }
         }
-        Statement::Error(_, _) => todo!(),
+        Statement::Error(_, _) => {}
     }
 
     Ok(())
@@ -95,7 +95,9 @@ impl LeafSpans for Statement {
                 }
                 collected_spans
             }
-            Statement::Error(_, _) => todo!(),
+            Statement::Error(spans, _) => {
+                vec![sway_types::Span::join_all(spans.iter().cloned()).into()]
+            }
         }
     }
 }

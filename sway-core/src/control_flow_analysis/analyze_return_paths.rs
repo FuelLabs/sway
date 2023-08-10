@@ -18,17 +18,30 @@ impl<'cfg> ControlFlowGraph<'cfg> {
     pub(crate) fn construct_return_path_graph<'eng: 'cfg>(
         engines: &'eng Engines,
         module_nodes: &[ty::TyAstNode],
-    ) -> Result<Self, CompileError> {
+    ) -> Result<Self, Vec<CompileError>> {
+        let mut errors = vec![];
+
         let mut graph = ControlFlowGraph::default();
         // do a depth first traversal and cover individual inner ast nodes
         let mut leaves = vec![];
         for ast_entrypoint in module_nodes {
-            let l_leaves = connect_node(engines, ast_entrypoint, &mut graph, &leaves)?;
-            if let NodeConnection::NextStep(nodes) = l_leaves {
-                leaves = nodes;
+            match connect_node(engines, ast_entrypoint, &mut graph, &leaves) {
+                Ok(l_leaves) => {
+                    if let NodeConnection::NextStep(nodes) = l_leaves {
+                        leaves = nodes;
+                    }
+                }
+                Err(mut e) => {
+                    errors.append(&mut e);
+                }
             }
         }
-        Ok(graph)
+
+        if !errors.is_empty() {
+            Err(errors)
+        } else {
+            Ok(graph)
+        }
     }
 
     /// This function looks through the control flow graph and ensures that all paths that are
@@ -130,7 +143,7 @@ fn connect_node<'eng: 'cfg, 'cfg>(
     node: &ty::TyAstNode,
     graph: &mut ControlFlowGraph<'cfg>,
     leaves: &[NodeIndex],
-) -> Result<NodeConnection, CompileError> {
+) -> Result<NodeConnection, Vec<CompileError>> {
     match &node.content {
         ty::TyAstNodeContent::Expression(ty::TyExpression {
             expression: ty::TyExpressionVariant::Return(..),
@@ -171,7 +184,7 @@ fn connect_node<'eng: 'cfg, 'cfg>(
         )),
         ty::TyAstNodeContent::Error(spans, _) => {
             let span = Span::join_all(spans.iter().cloned());
-            return Err(CompileError::InvalidStatement { span });
+            return Err(vec![CompileError::InvalidStatement { span }]);
         }
     }
 }
@@ -182,7 +195,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
     decl: &ty::TyDecl,
     graph: &mut ControlFlowGraph<'cfg>,
     leaves: &[NodeIndex],
-) -> Result<Vec<NodeIndex>, CompileError> {
+) -> Result<Vec<NodeIndex>, Vec<CompileError>> {
     let decl_engine = engines.de();
     match decl {
         ty::TyDecl::TraitDecl(_)
@@ -236,7 +249,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     graph: &mut ControlFlowGraph<'cfg>,
     items: &[TyImplItem],
     entry_node: NodeIndex,
-) -> Result<(), CompileError> {
+) -> Result<(), Vec<CompileError>> {
     let decl_engine = engines.de();
     let mut methods_and_indexes = vec![];
     // insert method declarations into the graph
@@ -284,7 +297,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
     fn_decl: &ty::TyFunctionDecl,
     graph: &mut ControlFlowGraph<'cfg>,
     entry_node: NodeIndex,
-) -> Result<(), CompileError> {
+) -> Result<(), Vec<CompileError>> {
     let type_engine = engines.te();
     let fn_exit_node = graph.add_node(format!("\"{}\" fn exit", fn_decl.name.as_str()).into());
     let return_nodes =
@@ -311,17 +324,26 @@ fn depth_first_insertion_code_block<'eng: 'cfg, 'cfg>(
     node_content: &ty::TyCodeBlock,
     graph: &mut ControlFlowGraph<'cfg>,
     leaves: &[NodeIndex],
-) -> Result<ReturnStatementNodes, CompileError> {
+) -> Result<ReturnStatementNodes, Vec<CompileError>> {
+    let mut errors = vec![];
+
     let mut leaves = leaves.to_vec();
     let mut return_nodes = vec![];
     for node in node_content.contents.iter() {
-        let this_node = connect_node(engines, node, graph, &leaves)?;
-        match this_node {
-            NodeConnection::NextStep(nodes) => leaves = nodes,
-            NodeConnection::Return(node) => {
-                return_nodes.push(node);
-            }
+        match connect_node(engines, node, graph, &leaves) {
+            Ok(this_node) => match this_node {
+                NodeConnection::NextStep(nodes) => leaves = nodes,
+                NodeConnection::Return(node) => {
+                    return_nodes.push(node);
+                }
+            },
+            Err(mut e) => errors.append(&mut e),
         }
     }
-    Ok(return_nodes)
+
+    if !errors.is_empty() {
+        Err(errors)
+    } else {
+        Ok(return_nodes)
+    }
 }

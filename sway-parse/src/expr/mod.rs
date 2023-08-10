@@ -100,17 +100,12 @@ impl Parse for StatementLet {
             Some(colon_token) => Some((colon_token, parser.parse()?)),
             None => None,
         };
-        let eq_token: EqToken = parser.parse()?;
+        let eq_token: EqToken = parser.try_parse()?;
 
-        // Recover on missing expression.
-        // FIXME(Centril): We should point at right after `=`, not at it.
-        let on_err = |err| Expr::Error([eq_token.span()].into(), err);
-        let expr = parser.parse().unwrap_or_else(on_err);
+        let expr = parser.try_parse()?;
 
         // Recover on missing semicolon.
-        let semicolon_token = parser
-            .parse()
-            .unwrap_or_else(|_| SemicolonToken::new(eq_token.span()));
+        let semicolon_token = parser.try_parse()?;
 
         Ok(StatementLet {
             let_token,
@@ -183,16 +178,31 @@ fn parse_stmt<'a>(parser: &mut Parser<'a, '_>) -> ParseResult<StmtOrTail<'a>> {
     }
 
     // Try a `let` statement.
-    match parser.guarded_parse_with_recovery::<LetToken, StatementLet, _>(|p| {
-        p.peek::<LetToken>().is_some() || p.take::<SemicolonToken>().is_some()
-    }) {
-        ParseWithRecoveryResult::PeekFailed => {}
-        ParseWithRecoveryResult::Ok(slet) => return stmt(Statement::Let(slet)),
-        ParseWithRecoveryResult::Recovered(span, error) => {
-            return stmt(Statement::Error(span, error));
-        }
-        ParseWithRecoveryResult::RecoveryFailed(error) => {
-            return Err(error);
+    // |p| {
+    //     p.peek::<LetToken>().is_some() || p.take::<SemicolonToken>().is_some()
+    // }
+    println!(
+        "{:?}",
+        parser
+            .debug_tokens()
+            .iter()
+            .map(|x| x.span().as_str().to_string())
+            .collect::<Vec<_>>()
+    );
+    match parser.guarded_parse_with_recovery::<LetToken, StatementLet>() {
+        Ok(None) => {}
+        Ok(Some(slet)) => return stmt(Statement::Let(slet)),
+        Err(recovery) => {
+            let p = recovery.start();
+            println!(
+                "    {:?}",
+                p.debug_tokens()
+                    .iter()
+                    .map(|x| x.span().as_str().to_string())
+                    .collect::<Vec<_>>()
+            );
+            let (spans, error) = recovery.finish(p);
+            return stmt(Statement::Error(spans, error));
         }
     }
 

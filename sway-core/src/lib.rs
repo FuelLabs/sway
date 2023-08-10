@@ -529,6 +529,7 @@ pub fn compile_to_asm(
     package_name: &str,
     metrics: &mut PerformanceData,
 ) -> Result<CompiledAsm, ErrorEmitted> {
+    dbg!(1);
     let ast_res = compile_to_ast(
         handler,
         engines,
@@ -549,6 +550,7 @@ pub fn ast_to_asm(
     programs: &Programs,
     build_config: &BuildConfig,
 ) -> Result<CompiledAsm, ErrorEmitted> {
+    dbg!(1);
     let typed_program = match &programs.typed {
         Ok(typed_program) => typed_program,
         Err(err) => return Err(*err),
@@ -570,6 +572,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     program: &ty::TyProgram,
     build_config: &BuildConfig,
 ) -> Result<FinalizedAsm, ErrorEmitted> {
+    dbg!(1);
     // the IR pipeline relies on type information being fully resolved.
     // If type information is found to still be generic or unresolved inside of
     // IR, this is considered an internal compiler error. To resolve this situation,
@@ -584,7 +587,13 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     let mut ir = match ir_generation::compile_program(program, build_config.include_tests, engines)
     {
         Ok(ir) => ir,
-        Err(e) => return Err(handler.emit_err(e)),
+        Err(errors) => {
+            let mut last = None;
+            for e in errors {
+                last = Some(handler.emit_err(e))
+            }
+            return Err(last.unwrap());
+        }
     };
 
     // Find all the entry points for purity checking and DCE.
@@ -775,7 +784,7 @@ fn module_return_path_analysis(
     let graph = ControlFlowGraph::construct_return_path_graph(engines, &module.all_nodes);
     match graph {
         Ok(graph) => errors.extend(graph.analyze_return_paths(engines)),
-        Err(error) => errors.push(error),
+        Err(mut error) => errors.append(&mut error),
     }
 }
 

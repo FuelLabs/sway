@@ -1172,17 +1172,28 @@ fn braced_code_block_contents_to_code_block(
     let whole_block_span = braced_code_block_contents.span();
     let code_block_contents = braced_code_block_contents.into_inner();
     let contents = {
+        let mut error = None;
+
         let mut contents = Vec::new();
         for statement in code_block_contents.statements {
-            let ast_nodes = statement_to_ast_nodes(context, handler, engines, statement)?;
-            contents.extend(ast_nodes);
+            match statement_to_ast_nodes(context, handler, engines, statement) {
+                Ok(mut ast_nodes) => contents.append(&mut ast_nodes),
+                Err(e) => error = Some(e),
+            }
         }
+
         if let Some(expr) = code_block_contents.final_expr_opt {
             let final_ast_node = expr_to_ast_node(context, handler, engines, *expr, false)?;
             contents.push(final_ast_node);
         }
-        contents
+
+        if let Some(error) = error {
+            return Err(error);
+        } else {
+            contents
+        }
     };
+
     Ok(CodeBlock {
         contents,
         whole_block_span,
