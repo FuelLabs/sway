@@ -204,7 +204,7 @@ impl Session {
         &self,
         uri: &Url,
         position: Position,
-        trigger_char: String,
+        trigger_char: &str,
     ) -> Option<Vec<CompletionItem>> {
         let shifted_position = Position {
             line: position.line,

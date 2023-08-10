@@ -1695,7 +1695,8 @@ fn main() {
     let varo_u16: u16 = 300;
     let varo_u32: u32 = 300;
     let varo_u64: u64 = 300;
-    let a = func_struct1(Struct1 { field1: varb_u8, field2: varb_u16, field3: varb_u32, field4: varb_u64 });
+    let s1 = Struct1 { field1: varb_u8, field2: varb_u16, field3: varb_u32, field4: varb_u64 };
+    let a = func_struct1(s1);
     let b = func_struct2(Struct2 { field1: varc_u8, field2: varc_u16, field3: varc_u32, field4: varc_u64 });
     let c = func_struct3(Struct3 { field1: vard_u8, field2: vard_u16, field3: vard_u32, field4: vard_u64 });
     let d = func_struct4(Struct4 { field1: vare_u8, field2: vare_u16, field3: vare_u32, field4: vare_u64 });
@@ -1721,8 +1722,8 @@ fn main() {
     let x = func24(vary_u32, vary_u32);
     let y = func25(varz_u64, varz_u64);
     let z = func26(vara_u8, vara_u8);
-    let _ = func27(varb_u16, varb_u16);
-    let _ = func28(varc_u32, varc_u32);
-    let _ = func29(vard_u16, vard_u16);
-    let _ = func30(vare_u32, vare_u32);
+    let func27 = func27(varb_u16, varb_u16);
+    let func28 = func28(varc_u32, varc_u32);
+    let func29 = func29(vard_u16, vard_u16);
+    let func30 = func30(vare_u32, vare_u32);
 }

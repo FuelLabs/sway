@@ -7,7 +7,12 @@ fn benchmarks(c: &mut Criterion) {
     let position = Position::new(1716, 24);
 
     c.bench_function("tokens_for_file", |b| {
-        b.iter(|| session.token_map().tokens_for_file(engines.se(), &uri))
+        b.iter(|| {
+            let _: Vec<_> = session
+                .token_map()
+                .tokens_for_file(engines.se(), &uri)
+                .collect();
+        })
     });
 
     c.bench_function("idents_at_position", |b| {

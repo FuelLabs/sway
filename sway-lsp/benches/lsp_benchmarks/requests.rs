@@ -1,11 +1,37 @@
 use criterion::{black_box, criterion_group, Criterion};
-use lsp_types::Position;
-use sway_lsp::{capabilities, utils::keyword_docs::KeywordDocs};
+use lsp_types::{
+    CodeLens, CompletionResponse, DocumentSymbolResponse, Position, Range,
+    TextDocumentContentChangeEvent, TextDocumentIdentifier,
+};
+use sway_lsp::{capabilities, lsp_ext::OnEnterParams, utils::keyword_docs::KeywordDocs};
 
 fn benchmarks(c: &mut Criterion) {
     let (uri, session) = black_box(super::compile_test_project());
+    let config = sway_lsp::config::Config::default();
     let keyword_docs = KeywordDocs::new();
-    let position = Position::new(1716, 24);
+    let position = Position::new(1717, 24);
+    let range = Range::new(Position::new(1628, 0), Position::new(1728, 0));
+
+    c.bench_function("semantic_tokens", |b| {
+        b.iter(|| capabilities::semantic_tokens::semantic_tokens_full(session.clone(), &uri))
+    });
+
+    c.bench_function("document_symbol", |b| {
+        b.iter(|| {
+            session
+                .symbol_information(&uri)
+                .map(DocumentSymbolResponse::Flat)
+        })
+    });
+
+    c.bench_function("completion", |b| {
+        let position = Position::new(1698, 28);
+        b.iter(|| {
+            session
+                .completion_items(&uri, position, ".")
+                .map(CompletionResponse::Array)
+        })
+    });
 
     c.bench_function("hover", |b| {
         b.iter(|| {
@@ -19,6 +45,17 @@ fn benchmarks(c: &mut Criterion) {
 
     c.bench_function("goto_definition", |b| {
         b.iter(|| session.token_definition_response(uri.clone(), position))
+    });
+
+    c.bench_function("inlay_hints", |b| {
+        b.iter(|| {
+            capabilities::inlay_hints::inlay_hints(
+                session.clone(),
+                &uri,
+                &range,
+                &config.inlay_hints,
+            )
+        })
     });
 
     c.bench_function("prepare_rename", |b| {
@@ -35,10 +72,41 @@ fn benchmarks(c: &mut Criterion) {
             )
         })
     });
+
+    c.bench_function("code_action", |b| {
+        let range = Range::new(Position::new(4, 10), Position::new(4, 10));
+        b.iter(|| capabilities::code_actions::code_actions(session.clone(), &range, &uri, &uri))
+    });
+
+    c.bench_function("code_lens", |b| {
+        b.iter(|| {
+            let mut result = vec![];
+            session.runnables.iter().for_each(|item| {
+                let runnable = item.value();
+                result.push(CodeLens {
+                    range: runnable.range(),
+                    command: Some(runnable.command()),
+                    data: None,
+                });
+            });
+        })
+    });
+
+    c.bench_function("on_enter", |b| {
+        let params = OnEnterParams {
+            text_document: TextDocumentIdentifier::new(uri.clone()),
+            content_changes: vec![TextDocumentContentChangeEvent {
+                range: Some(Range::new(Position::new(3, 30), Position::new(3, 30))),
+                range_length: Some(0),
+                text: "\n".to_string(),
+            }],
+        };
+        b.iter(|| capabilities::on_enter::on_enter(&config.on_enter, &session, &uri, &params))
+    });
 }
 
 criterion_group! {
     name = benches;
-    config = Criterion::default().measurement_time(std::time::Duration::from_secs(10));
+    config = Criterion::default().measurement_time(std::time::Duration::from_secs(3));
     targets = benchmarks
 }
