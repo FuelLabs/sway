@@ -2,7 +2,7 @@ use crate::{
     lock::Lock,
     manifest::{BuildProfile, Dependency, ManifestFile, MemberManifestFiles, PackageManifestFile},
     source::{self, IPFSNode, Source},
-    CORE, PRELUDE, STD,
+    CORE, PRELUDE, STD, error::{ForcPkgError},
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
@@ -567,13 +567,13 @@ impl BuildPlan {
     ///
     /// To do so, it tries to read the manifet file at the target path and creates the plan with
     /// `BuildPlan::from_lock_and_manifest`.
-    pub fn from_build_opts(build_options: &BuildOpts) -> Result<Self> {
+    pub fn from_build_opts(build_options: &BuildOpts) -> Result<Self, ForcPkgError> {
         let path = &build_options.pkg.path;
 
         let manifest_dir = if let Some(ref path) = path {
             PathBuf::from(path)
         } else {
-            std::env::current_dir()?
+            std::env::current_dir().map_err(|e| ForcPkgError::FailedToGetCurrentDir(e))?
         };
 
         let manifest_file = ManifestFile::from_dir(&manifest_dir)?;
@@ -2704,16 +2704,6 @@ pub fn check(
     }
 
     Ok(results)
-}
-
-/// Format an error message for an absent `Forc.toml`.
-pub fn manifest_file_missing(dir: &Path) -> anyhow::Error {
-    let message = format!(
-        "could not find `{}` in `{}` or any parent directory",
-        constants::MANIFEST_FILE_NAME,
-        dir.display()
-    );
-    Error::msg(message)
 }
 
 /// Format an error message for failed parsing of a manifest.

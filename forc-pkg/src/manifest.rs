@@ -1,4 +1,4 @@
-use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
+use crate::{pkg::{manifest_file_missing, parsing_failed, wrong_program_type}, error::ForcPkgError};
 use anyhow::{anyhow, bail, Context, Result};
 use forc_tracing::println_yellow_err;
 use forc_util::{find_nested_manifest_dir, find_parent_manifest_dir, validate_name};
@@ -271,8 +271,8 @@ impl PackageManifestFile {
     /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
-    pub fn from_file(path: PathBuf) -> Result<Self> {
-        let path = path.canonicalize()?;
+    pub fn from_file(path: PathBuf) -> Result<Self, ForcPkgError> {
+        let path = path.canonicalize().map_err(|e| ForcPkgError::FailedToCanonicalize(path, e))?;
         let manifest = PackageManifest::from_file(&path)?;
         let manifest_file = Self { manifest, path };
         manifest_file.validate()?;
@@ -316,9 +316,9 @@ impl PackageManifestFile {
     ///
     /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
-    pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
+    pub fn from_dir(manifest_dir: &Path) -> Result<Self, ForcPkgError> {
         let dir = forc_util::find_parent_manifest_dir(manifest_dir)
-            .ok_or_else(|| manifest_file_missing(manifest_dir))?;
+            .ok_or_else(|| ForcPkgError::MissingFileInPathOrParents(constants::MANIFEST_FILE_NAME.to_string(), manifest_dir.to_path_buf()))?; 
         let path = dir.join(constants::MANIFEST_FILE_NAME);
         Self::from_file(path)
     }
@@ -328,7 +328,7 @@ impl PackageManifestFile {
     /// This checks:
     /// 1. Validity of the underlying `PackageManifest`.
     /// 2. Existence of the entry file.
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> Result<(), ForcPkgError> {
         self.manifest.validate()?;
         let mut entry_path = self.path.clone();
         entry_path.pop();
@@ -336,10 +336,7 @@ impl PackageManifestFile {
             .join(constants::SRC_DIR)
             .join(&self.project.entry);
         if !entry_path.exists() {
-            bail!(
-                "failed to validate path from entry field {:?} in Forc manifest file.",
-                self.project.entry
-            )
+            return Err(ForcPkgError::FailedToValidateFromEntry(self.project.entry))
         }
 
         // Check for nested packages.
@@ -494,19 +491,19 @@ impl PackageManifest {
     /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
-    pub fn from_file(path: &Path) -> Result<Self> {
+    pub fn from_file(path: &Path) -> Result<Self, ForcPkgError> {
         // While creating a `ManifestFile` we need to check if the given path corresponds to a
         // package or a workspace. While doing so, we should be printing the warnings if the given
         // file parses so that we only see warnings for the correct type of manifest.
         let mut warnings = vec![];
         let manifest_str = std::fs::read_to_string(path)
-            .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
+            .map_err(|e| ForcPkgError::FailedToReadManifest(path.to_path_buf(), e))?;
         let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
         let mut manifest: Self = serde_ignored::deserialize(toml_de, |path| {
             let warning = format!("  WARNING! unused manifest key: {path}");
             warnings.push(warning);
         })
-        .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
+        .map_err(|e| ForcPkgError::FailedToParseManifest(e.to_string()))?;
         for warning in warnings {
             println_yellow_err(&warning);
         }

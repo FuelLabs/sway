@@ -32,6 +32,7 @@ sway-error = { version = "0.43.2", path = "../sway-error" }
 sway-types = { version = "0.43.2", path = "../sway-types" }
 sway-utils = { version = "0.43.2", path = "../sway-utils" }
 tar = "0.4.38"
+thiserror = "1.0.44"
 toml = "0.5"
 tracing = "0.1"
 url = { version = "2.2", features = ["serde"] }

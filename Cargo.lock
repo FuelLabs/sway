@@ -1786,6 +1786,7 @@ dependencies = [
  "sway-utils",
  "sysinfo",
  "tar",
+ "thiserror",
  "toml 0.5.11",
  "tracing",
  "url",

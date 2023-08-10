@@ -8,6 +8,7 @@ pub mod lock;
 pub mod manifest;
 mod pkg;
 pub mod source;
+pub mod error;
 
 pub use lock::Lock;
 pub use manifest::{
