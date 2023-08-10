@@ -53,8 +53,10 @@ impl Format for ItemFn {
                 } else {
                     Self::open_curly_brace(formatted_code, formatter)?;
                     formatter.shape.block_indent(&formatter.config);
-                    write_comments(formatted_code, self.span().into(), formatter)?;
-                    formatter.shape.block_unindent(&formatter.config);
+                    let comments = write_comments(formatted_code, self.span().into(), formatter)?;
+                    if !comments {
+                        formatter.shape.block_unindent(&formatter.config);
+                    }
                     Self::close_curly_brace(formatted_code, formatter)?;
                 }
 
