@@ -101,7 +101,7 @@ impl CurlyBrace for AsmBlock {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        formatter.shape.block_indent(&formatter.config);
+        formatter.indent();
         match formatter.shape.code_line.line_style {
             LineStyle::Inline => {
                 write!(line, " {} ", Delimiter::Brace.as_open_char())?;
@@ -116,7 +116,7 @@ impl CurlyBrace for AsmBlock {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        formatter.shape.block_unindent(&formatter.config);
+        formatter.unindent();
         match formatter.shape.code_line.line_style {
             LineStyle::Inline => {
                 write!(line, " {}", Delimiter::Brace.as_close_char())?;
@@ -125,7 +125,7 @@ impl CurlyBrace for AsmBlock {
                 write!(
                     line,
                     "{}{}",
-                    formatter.shape.indent.to_string(&formatter.config)?,
+                    formatter.indent_str()?,
                     Delimiter::Brace.as_close_char()
                 )?;
             }
@@ -174,21 +174,13 @@ impl Format for AsmBlockContents {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         for (instruction, semicolon_token) in self.instructions.iter() {
-            write!(
-                formatted_code,
-                "{}",
-                formatter.shape.indent.to_string(&formatter.config)?
-            )?;
+            write!(formatted_code, "{}", formatter.indent_str()?)?;
             instruction.format(formatted_code, formatter)?;
             writeln!(formatted_code, "{}", semicolon_token.span().as_str())?
         }
         if let Some(final_expr) = &self.final_expr_opt {
             if formatter.shape.code_line.line_style == LineStyle::Multiline {
-                write!(
-                    formatted_code,
-                    "{}",
-                    formatter.shape.indent.to_string(&formatter.config)?
-                )?;
+                write!(formatted_code, "{}", formatter.indent_str()?)?;
                 final_expr.format(formatted_code, formatter)?;
                 writeln!(formatted_code)?;
             } else {
