@@ -149,6 +149,10 @@ impl<'a, 'e> Parser<'a, 'e> {
         }
         Ok(())
     }
+
+    pub fn full_span(&self) -> &Span {
+        &self.full_span
+    }
 }
 
 pub struct Peeker<'a> {

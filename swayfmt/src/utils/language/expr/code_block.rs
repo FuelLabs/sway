@@ -1,4 +1,5 @@
 use crate::{
+    comments::write_comments,
     config::items::ItemBraceStyle,
     formatter::{shape::LineStyle, *},
     utils::{
@@ -8,7 +9,7 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_ast::CodeBlockContents;
-use sway_types::ast::Delimiter;
+use sway_types::{ast::Delimiter, Spanned};
 
 impl Format for CodeBlockContents {
     fn format(
@@ -43,6 +44,15 @@ impl Format for CodeBlockContents {
                         writeln!(formatted_code)?;
                     }
                 }
+            }
+        } else {
+            let comments: bool = write_comments(
+                formatted_code,
+                self.span().start()..self.span().end(),
+                formatter,
+            )?;
+            if !comments {
+                formatter.shape.block_unindent(&formatter.config);
             }
         }
 
