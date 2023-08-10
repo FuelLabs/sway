@@ -1,6 +1,6 @@
 # Summary
 
-[The Sway Programming Language](./README.md)
+[The Sway Programming Language](./index.md)
 
 - [Introduction](./introduction/index.md)
   - [Installation](./introduction/installation.md)

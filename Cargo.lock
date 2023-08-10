@@ -3456,7 +3456,6 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "toml 0.7.6",
 ]
 
 [[package]]
@@ -5760,7 +5759,9 @@ dependencies = [
  "fuel-crypto",
  "fuel-tx",
  "lazy_static",
+ "num-bigint",
  "serde",
+ "thiserror",
 ]
 
 [[package]]

@@ -19,6 +19,13 @@ fn locals() -> u256 {
     result
 }
 
+// returns 2
+fn not_operator() -> u256 {
+    let a = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFu256;
+    let b = 0x0000000000000000000000000000000000000000000000000000000000000002u256;
+    !(a - b)
+}
+
 fn main() -> u256 {
-    constants() + locals()
+    constants() + locals() + not_operator()
 }

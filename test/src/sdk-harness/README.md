@@ -16,4 +16,4 @@ After a successful build of all the projects:
 cargo test
 ```
 
-For more on the usage of Forc for testing, see: <https://fuellabs.github.io/sway/latest/forc/commands/forc_test.html>
+For more on the usage of Forc for testing, see: <https://fuellabs.github.io/sway/master/book/forc/commands/forc_test.html>

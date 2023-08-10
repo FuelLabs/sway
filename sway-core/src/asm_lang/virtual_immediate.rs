@@ -10,6 +10,7 @@ use std::fmt;
 pub enum WideOperations {
     Add = 0,
     Sub = 1,
+    Not = 2,
 }
 
 #[repr(u8)]
