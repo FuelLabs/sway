@@ -2,6 +2,8 @@ script;
 
 fn main() {
     let
-    let y: bool = 0; // recovery witness
-    let x =
+    let a
+    let b =
+    let c = 1
+    let d = 1;
 }
