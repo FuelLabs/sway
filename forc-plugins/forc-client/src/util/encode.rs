@@ -1,8 +1,6 @@
-use std::str::FromStr;
-
 use anyhow::Context;
 use fuel_abi_types::abi::full_program::FullTypeApplication;
-use serde::{Deserialize, Deserializer, Serialize};
+use std::str::FromStr;
 use sway_types::u256::U256;
 
 /// A wrapper around fuels_core::types::Token, which enables serde de/serialization.

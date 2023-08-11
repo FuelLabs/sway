@@ -31,21 +31,21 @@ exclude = [
 ]
 
 [workspace.dependencies]
-# Depednencies from the `fuel-core` repository:
+# Dependencies from the `fuel-core` repository:
 fuel-core-client = { version = "0.20.3", default-features = false }
 
-# Depednencies from the `fuel-vm` repository:
+# Dependencies from the `fuel-vm` repository:
 fuel-asm = "0.35.3"
 fuel-crypto = "0.35.3"
 fuel-types = "0.35.3"
 fuel-tx = "0.35.3"
 fuel-vm = "0.35.3"
 
-# Depednencies from the `fuels-rs` repository:
-fuels-core = "0.44"
-fuels-accounts = "0.44"
+# Dependencies from the `fuels-rs` repository:
+fuels-core = "0.45"
+fuels-accounts = "0.45"
 
-# Depednencies from the `forc-wallet` repository:
+# Dependencies from the `forc-wallet` repository:
 forc-wallet = "0.2.4"
 
 [workspace.package]
@@ -56,11 +56,6 @@ license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
 
 [patch.crates-io]
-# Keep it until release of the `fuels-rs`.
-fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "upgrade/fuel-core-v0.20.1" }
-fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "upgrade/fuel-core-v0.20.1" }
 
 # Keep it until release of the `forc-wallet`.
 forc-wallet = { git = "https://github.com/FuelLabs/forc-wallet", branch = "upgrade/fuel-core-v0.20.1" }
-fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "upgrade/fuel-core-v0.20.1" }
-

@@ -9,15 +9,15 @@ publish = false
 [dependencies]
 assert_matches = "1.5.0"
 
-# Depednencies from the `fuel-core` repository:
-fuel-core = { version = "0.20.3", default-features = false }
-fuel-core-client = { version = "0.20.3", default-features = false }
+# Dependencies from the `fuel-core` repository:
+fuel-core = { version = "0.20", default-features = false }
+fuel-core-client = { version = "0.20", default-features = false }
 
-# Depednencies from the `fuel-vm` repository:
-fuel-vm = "0.35.3"
+# Dependencies from the `fuel-vm` repository:
+fuel-vm = "0.35"
 
-# Depednencies from the `fuels-rs` repository:
-fuels = { version = "0.44", features = ["fuel-core-lib"] }
+# Dependencies from the `fuels-rs` repository:
+fuels = { version = "0.45", features = ["fuel-core-lib"] }
 
 hex = "0.4.3"
 rand = "0.8"
@@ -32,7 +32,3 @@ name = "integration_tests"
 path = "test_projects/harness.rs"
 
 [workspace]
-
-# Keep it until release of the `fuels-rs`.
-[patch.crates-io]
-fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "upgrade/fuel-core-v0.20.1" }
