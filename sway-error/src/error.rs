@@ -287,9 +287,6 @@ pub enum CompileError {
     #[error("This opcode takes an immediate value but none was provided.")]
     MissingImmediate { span: Span },
 
-    #[error("This statement is invalid.")]
-    InvalidStatement { span: Span },
-
     #[error("This immediate value is invalid.")]
     InvalidImmediateValue { span: Span },
     #[error("Variant \"{variant_name}\" does not exist on enum \"{enum_name}\"")]
@@ -855,7 +852,6 @@ impl Spanned for CompileError {
             AbiShadowsSuperAbiMethod { span, .. } => span.clone(),
             ConflictingSuperAbiMethods { span, .. } => span.clone(),
             AbiSupertraitMethodCallAsContractCall { span, .. } => span.clone(),
-            InvalidStatement { span } => span.clone(),
         }
     }
 }

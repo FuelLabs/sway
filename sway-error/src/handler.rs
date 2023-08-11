@@ -80,10 +80,39 @@ impl Handler {
         }
     }
 
+    pub fn append_ref(&self, other: &Handler) {
+        let other = other.inner.borrow();
+
+        for warn in other.warnings.iter() {
+            self.emit_warn(warn.clone());
+        }
+        for err in other.errors.iter() {
+            self.emit_err(err.clone());
+        }
+    }
+
     pub fn dedup(&self) {
         let mut inner = self.inner.borrow_mut();
         inner.errors = dedup_unsorted(inner.errors.clone());
         inner.warnings = dedup_unsorted(inner.warnings.clone());
+    }
+
+    pub fn ok(&self) -> Result<(), ErrorEmitted> {
+        if !self.has_errors() {
+            Ok(())
+        } else {
+            Err(ErrorEmitted { _priv: () })
+        }
+    }
+
+    pub fn clear_errors(&self) {
+        let mut inner = self.inner.borrow_mut();
+        inner.errors.clear();
+    }
+
+    pub fn clear_warnings(&self) {
+        let mut inner = self.inner.borrow_mut();
+        inner.warnings.clear();
     }
 }
 

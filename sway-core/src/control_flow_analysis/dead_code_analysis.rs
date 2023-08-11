@@ -426,10 +426,7 @@ fn connect_node<'eng: 'cfg, 'cfg>(
                 exit_node,
             )
         }
-        ty::TyAstNodeContent::Error(spans, _) => {
-            let span = Span::join_all(spans.iter().cloned());
-            return Err(CompileError::InvalidStatement { span });
-        }
+        ty::TyAstNodeContent::Error(_, _) => (vec![], None),
     })
 }
 

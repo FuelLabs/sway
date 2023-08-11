@@ -53,7 +53,7 @@ impl DebugWithEngines for TyAstNode {
             Expression(exp) => DebugWithEngines::fmt(exp, f, engines),
             ImplicitReturnExpression(exp) => write!(f, "return {:?}", engines.help_out(exp)),
             SideEffect(_) => f.write_str(""),
-            Error(_, err) => f.write_str("error"),
+            Error(_, _) => f.write_str("error"),
         }
     }
 }

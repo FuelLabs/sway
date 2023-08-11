@@ -182,10 +182,7 @@ fn connect_node<'eng: 'cfg, 'cfg>(
         ty::TyAstNodeContent::Declaration(decl) => Ok(NodeConnection::NextStep(
             connect_declaration(engines, node, decl, graph, leaves)?,
         )),
-        ty::TyAstNodeContent::Error(spans, _) => {
-            let span = Span::join_all(spans.iter().cloned());
-            return Err(vec![CompileError::InvalidStatement { span }]);
-        }
+        ty::TyAstNodeContent::Error(_, _) => Ok(NodeConnection::NextStep(vec![])),
     }
 }
 

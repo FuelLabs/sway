@@ -196,6 +196,7 @@ fn parse_in_memory(
             submodules: Default::default(),
         },
     );
+
     Ok((lexed_program, parsed::ParseProgram { kind, root }))
 }
 
@@ -479,6 +480,9 @@ pub fn compile_to_ast(
         build_config,
         metrics
     );
+
+    // Fail compilation if we have errors
+    handler.ok()?;
 
     let (lexed_program, mut parsed_program) = match parse_program_opt {
         Ok(modules) => modules,
@@ -946,7 +950,6 @@ fn test_unary_ordering() {
 
 #[test]
 fn test_parser_recovery() {
-    use crate::language::{self, parsed};
     let handler = Handler::default();
     let engines = Engines::default();
     let prog = parse(
@@ -962,7 +965,7 @@ fn test_parser_recovery() {
         &engines,
         None,
     );
-    let (lexed, parsed) = prog.unwrap();
+    let (_, _) = prog.unwrap();
     assert!(handler.has_errors());
     dbg!(handler);
 }

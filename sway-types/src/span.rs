@@ -190,6 +190,15 @@ impl Span {
         }
     }
 
+    pub fn next_char(&self) -> Span {
+        Span {
+            src: self.src.clone(),
+            source_id: self.source_id,
+            start: self.end,
+            end: self.end + 1,
+        }
+    }
+
     /// This panics if the spans are not from the same file. This should
     /// only be used on spans that are actually next to each other.
     pub fn join(s1: Span, s2: Span) -> Span {

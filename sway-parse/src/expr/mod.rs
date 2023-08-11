@@ -1,4 +1,3 @@
-use crate::parser::ParseWithRecoveryResult;
 use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed, Peek};
 
 use sway_ast::brackets::{Braces, Parens, SquareBrackets};
@@ -7,7 +6,7 @@ use sway_ast::keywords::{
     AbiToken, AddEqToken, AsmToken, CommaToken, ConfigurableToken, ConstToken, DivEqToken,
     DoubleColonToken, EnumToken, EqToken, FalseToken, FnToken, IfToken, ImplToken, LetToken,
     OpenAngleBracketToken, PubToken, SemicolonToken, ShlEqToken, ShrEqToken, StarEqToken,
-    StorageToken, StructToken, SubEqToken, Token, TraitToken, TrueToken, TypeToken, UseToken,
+    StorageToken, StructToken, SubEqToken, TraitToken, TrueToken, TypeToken, UseToken,
 };
 use sway_ast::literal::{LitBool, LitBoolType};
 use sway_ast::punctuated::Punctuated;
@@ -94,8 +93,14 @@ impl Parse for Expr {
 
 impl Parse for StatementLet {
     fn parse(parser: &mut Parser) -> ParseResult<Self> {
-        let let_token = parser.parse()?;
-        let pattern = parser.try_parse()?;
+        let let_token: LetToken = parser.parse()?;
+        let pattern = parser.try_parse().map_err(|err| {
+            parser.emit_error_with_span(
+                ParseErrorKind::ExpectedPattern,
+                let_token.span().next_char(),
+            );
+            err
+        })?;
         let ty_opt = match parser.take() {
             Some(colon_token) => Some((colon_token, parser.parse()?)),
             None => None,
@@ -180,10 +185,10 @@ fn parse_stmt<'a>(parser: &mut Parser<'a, '_>) -> ParseResult<StmtOrTail<'a>> {
     // Try a `let` statement.
     match parser.guarded_parse_with_recovery::<LetToken, StatementLet>() {
         Ok(None) => {}
-        Ok(Some(slet)) => return stmt(Statement::Let(slet)),
-        Err(recovery) => {
-            let p = recovery.start();
-            let (spans, error) = recovery.finish(p);
+        Ok(Some(item)) => return stmt(Statement::Let(item)),
+        Err(r) => {
+            let (spans, error) =
+                r.recover_at_next_line_with_fallback_error(ParseErrorKind::InvalidStatement);
             return stmt(Statement::Error(spans, error));
         }
     }

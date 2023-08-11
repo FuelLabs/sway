@@ -1,9 +1,6 @@
-use crate::{token, Parse, ParseToEnd, Peek};
-
+use crate::{Parse, ParseToEnd, Peek};
 use core::marker::PhantomData;
 use std::cell::RefCell;
-use std::error::Error;
-use std::pin::Pin;
 use sway_ast::keywords::Keyword;
 use sway_ast::literal::Literal;
 use sway_ast::token::{
@@ -17,13 +14,6 @@ use sway_types::{
     ast::{Delimiter, PunctKind},
     Ident, Span, Spanned,
 };
-
-pub enum ParseWithRecoveryResult<T> {
-    PeekFailed,
-    Ok(T),
-    Recovered(Box<[Span]>, ErrorEmitted),
-    RecoveryFailed(ErrorEmitted),
-}
 
 pub struct Parser<'a, 'e> {
     token_trees: &'a [TokenTree],
@@ -88,7 +78,7 @@ impl<'a, 'e> Parser<'a, 'e> {
 
     pub fn guarded_parse_with_recovery<'original, P: Peek, T: Parse>(
         &'original mut self,
-    ) -> Result<Option<T>, Recovery<'original, 'a, 'e>> {
+    ) -> Result<Option<T>, Recoverer<'original, 'a, 'e>> {
         if self.peek::<P>().is_none() {
             return Ok(None);
         }
@@ -112,7 +102,7 @@ impl<'a, 'e> Parser<'a, 'e> {
                     full_span,
                     ..
                 } = fork;
-                Err(Recovery {
+                Err(Recoverer {
                     original: RefCell::new(self),
                     handler,
                     fork_token_trees: token_trees,
@@ -126,14 +116,16 @@ impl<'a, 'e> Parser<'a, 'e> {
     /// Parses a `T` in its canonical way.
     /// Do not advance the parser on failure
     pub fn try_parse<T: Parse>(&mut self) -> ParseResult<T> {
-        let mut fork = Self {
+        let handler = Handler::default();
+        let mut fork = Parser {
             token_trees: self.token_trees,
             full_span: self.full_span.clone(),
-            handler: self.handler,
+            handler: &handler,
         };
         match T::parse(&mut fork) {
             Ok(result) => {
                 self.token_trees = fork.token_trees;
+                self.handler.append(handler);
                 Ok(result)
             }
             Err(err) => Err(err),
@@ -222,24 +214,21 @@ impl<'a, 'e> Parser<'a, 'e> {
         &self.full_span
     }
     /// Consume all tokens that are in the current line.
+    /// Consume tokens while its line equals `line`.
     ///
     /// # Warning
     ///
     /// To calculate lines the original source code will be traversed multiple times.
-    pub fn consume_until_line_end(&mut self) {
-        let Some(first_token) = self.token_trees.get(0) else {
-            return;
-        };
-        let first_span = first_token.span();
-        let first_span_line = first_span.start_pos().line_col().0;
-
+    pub fn consume_while_line_equals(&mut self, line: usize) {
         loop {
             let Some(current_token) = self.token_trees.get(0) else {
-                return;
+                break;
             };
+
             let current_span = current_token.span();
             let current_span_line = current_span.start_pos().line_col().0;
-            if current_span_line != first_span_line {
+
+            if current_span_line != line {
                 break;
             } else {
                 self.token_trees = &self.token_trees[1..];
@@ -247,11 +236,21 @@ impl<'a, 'e> Parser<'a, 'e> {
         }
     }
 
-    // pub fn recover<'othere>(&mut self, recovery: Recovery<´_ , 'a, 'othere>) {
-    //     let f = recovery.inner.fork.as_ref().unwrap();
-    //     self.token_trees = f.token_trees;
-    //     // TODO emit parser diagnostics
-    // }
+    pub fn clear_errors(&mut self) {
+        self.handler.clear_errors();
+    }
+
+    pub fn clear_warnings(&mut self) {
+        self.handler.clear_errors();
+    }
+
+    pub fn has_errors(&self) -> bool {
+        self.handler.has_errors()
+    }
+
+    pub fn has_warnings(&self) -> bool {
+        self.handler.has_warnings()
+    }
 }
 
 pub struct Peeker<'a> {
@@ -361,7 +360,7 @@ impl<'a> Peeker<'a> {
     }
 }
 
-pub struct Recovery<'original, 'a, 'e> {
+pub struct Recoverer<'original, 'a, 'e> {
     original: RefCell<&'original mut Parser<'a, 'e>>,
     handler: Handler,
     fork_token_trees: &'a [TokenTree],
@@ -369,18 +368,74 @@ pub struct Recovery<'original, 'a, 'e> {
     error: ErrorEmitted,
 }
 
-impl<'original, 'a, 'e> Recovery<'original, 'a, 'e> {
-    pub fn start(&self) -> Parser<'a, '_> {
-        Parser {
+impl<'original, 'a, 'e> Recoverer<'original, 'a, 'e> {
+    /// This strategy consumes everything at the current line and emits the fallback error
+    /// if the forked parser does not contains any error.
+    pub fn recover_at_next_line_with_fallback_error(
+        &self,
+        kind: ParseErrorKind,
+    ) -> (Box<[Span]>, ErrorEmitted) {
+        let last_token_span = self.last_consumed_token().span();
+        let last_token_span_line = last_token_span.start_pos().line_col().0;
+        self.recover(|p| {
+            p.consume_while_line_equals(last_token_span_line);
+            if !p.has_errors() {
+                p.emit_error_with_span(kind, self.diff_span(p));
+            }
+        })
+    }
+
+    pub fn recover<'this>(
+        &'this self,
+        f: impl FnOnce(&mut Parser<'a, 'this>),
+    ) -> (Box<[Span]>, ErrorEmitted) {
+        let mut p = Parser {
             token_trees: self.fork_token_trees,
             full_span: self.fork_full_span.clone(),
             handler: &self.handler,
-        }
+        };
+        f(&mut p);
+        self.finish(p)
     }
 
-    pub fn abort(self) {}
+    pub fn starting_token(&self) -> &GenericTokenTree<TokenStream> {
+        let original = self.original.borrow();
+        &original.token_trees[0]
+    }
 
-    pub fn finish(&self, p: Parser<'a, '_>) -> (Box<[Span]>, ErrorEmitted) {
+    pub fn last_consumed_token(&self) -> &GenericTokenTree<TokenStream> {
+        // find the last token consumed by the fork
+        let original = self.original.borrow();
+        let fork_pos = original
+            .token_trees
+            .iter()
+            .position(|x| x.span() == self.fork_token_trees[0].span())
+            .unwrap();
+        &original.token_trees[fork_pos - 1]
+    }
+
+    pub fn diff_span<'this>(&self, p: &Parser<'a, 'this>) -> Span {
+        let original = self.original.borrow_mut();
+
+        // collect all tokens trees that were consumed by the fork
+        let first_fork_tt = &p.token_trees[0];
+        let qty = original
+            .token_trees
+            .iter()
+            .position(|tt| tt.span() == first_fork_tt.span())
+            .expect("not finding fork head");
+
+        let garbage: Vec<_> = original
+            .token_trees
+            .iter()
+            .take(qty)
+            .map(|x| x.span())
+            .collect();
+
+        Span::join_all(garbage)
+    }
+
+    fn finish(&self, p: Parser<'a, '_>) -> (Box<[Span]>, ErrorEmitted) {
         let mut original = self.original.borrow_mut();
 
         // collect all tokens trees that were consumed by the fork
@@ -399,8 +454,9 @@ impl<'original, 'a, 'e> Recovery<'original, 'a, 'e> {
             .collect();
 
         original.token_trees = p.token_trees;
+        original.handler.append_ref(&self.handler);
 
-        (garbage.into_boxed_slice(), self.error.clone())
+        (garbage.into_boxed_slice(), self.error)
     }
 }
 
