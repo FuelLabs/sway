@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-5D4308F3FD2F4B3B'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-5D4308F3FD2F4B3B'
+dependencies = ['core']
+
+[[package]]
+name = 'sway_project'
+source = 'member'
+dependencies = ['std']
