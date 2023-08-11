@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use crate::core::token::{LspSpan, Token};
+use crate::core::token::{Token, TokenIdent};
 use lsp_types::{Diagnostic, DiagnosticSeverity};
 use sway_core::{
     decl_engine::DeclEngine,
@@ -8,36 +8,36 @@ use sway_core::{
 
 pub(crate) fn generate_warnings_non_typed_tokens<I>(tokens: I) -> Vec<Diagnostic>
 where
-    I: Iterator<Item = (LspSpan, Token)>,
+    I: Iterator<Item = (TokenIdent, Token)>,
 {
     tokens
         .filter(|(_, token)| token.typed.is_none())
-        .map(|(lsp_span, _)| warning_from_lsp_span(&lsp_span))
+        .map(|(ident, _)| warning_from_ident(&ident))
         .collect()
 }
 
 pub(crate) fn generate_warnings_for_parsed_tokens<I>(tokens: I) -> Vec<Diagnostic>
 where
-    I: Iterator<Item = (LspSpan, Token)>,
+    I: Iterator<Item = (TokenIdent, Token)>,
 {
     tokens
-        .map(|(lsp_span, _)| warning_from_lsp_span(&lsp_span))
+        .map(|(ident, _)| warning_from_ident(&ident))
         .collect()
 }
 
 pub(crate) fn generate_warnings_for_typed_tokens<I>(tokens: I) -> Vec<Diagnostic>
 where
-    I: Iterator<Item = (LspSpan, Token)>,
+    I: Iterator<Item = (TokenIdent, Token)>,
 {
     tokens
         .filter(|(_, token)| token.typed.is_some())
-        .map(|(lsp_span, _)| warning_from_lsp_span(&lsp_span))
+        .map(|(ident, _)| warning_from_ident(&ident))
         .collect()
 }
 
-fn warning_from_lsp_span(lsp_span: &LspSpan) -> Diagnostic {
+fn warning_from_ident(ident: &TokenIdent) -> Diagnostic {
     Diagnostic {
-        range: lsp_span.range,
+        range: ident.range,
         severity: Some(DiagnosticSeverity::WARNING),
         message: "".to_string(),
         ..Default::default()

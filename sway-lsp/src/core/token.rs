@@ -163,26 +163,25 @@ impl Token {
         }
     }
 
-    /// Return the [LspSpan] of the declaration of the provided token.
-    pub fn declared_token_lsp_span(&self, engines: &Engines) -> Option<LspSpan> {
+    /// Return the [TokenIdent] of the declaration of the provided token.
+    pub fn declared_token_ident(&self, engines: &Engines) -> Option<TokenIdent> {
         self.type_def.as_ref().and_then(|type_def| match type_def {
-            TypeDefinition::TypeId(type_id) => lsp_span_of_type_id(engines, type_id),
-            TypeDefinition::Ident(ident) => Some(LspSpan::new(&ident.span(), engines.se())),
+            TypeDefinition::TypeId(type_id) => ident_of_type_id(engines, type_id),
+            TypeDefinition::Ident(ident) => Some(TokenIdent::new(&ident.span(), engines.se())),
         })
     }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct LspSpan {
+pub struct TokenIdent {
     pub name: String,
     pub range: Range,
     pub path: Option<PathBuf>,
     // pub is_raw_ident: bool,
 }
 
-impl LspSpan {
+impl TokenIdent {
     pub fn new(span: &Span, se: &SourceEngine) -> Self {
-        // let path = se.get_path(span.source_id());
         let path = span
             .source_id()
             .and_then(|source_id| Some(se.get_path(source_id)));
@@ -198,7 +197,7 @@ impl LspSpan {
     // }
 }
 
-impl std::hash::Hash for LspSpan {
+impl std::hash::Hash for TokenIdent {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.name.hash(state);
         self.range.start.line.hash(state);
@@ -225,8 +224,8 @@ pub fn desugared_op(prefixes: &[Ident]) -> bool {
 //     (ident.clone(), ident.span())
 // }
 
-/// Use the [TypeId] to look up the associated [TypeInfo] and return the [LspSpan] if one is found.
-pub fn lsp_span_of_type_id(engines: &Engines, type_id: &TypeId) -> Option<LspSpan> {
+/// Use the [TypeId] to look up the associated [TypeInfo] and return the [TokenIdent] if one is found.
+pub fn ident_of_type_id(engines: &Engines, type_id: &TypeId) -> Option<TokenIdent> {
     let ident = match engines.te().get(*type_id) {
         TypeInfo::UnknownGeneric { name, .. } => name,
         TypeInfo::Enum(decl_ref) => engines.de().get_enum(&decl_ref).call_path.suffix,
@@ -234,7 +233,7 @@ pub fn lsp_span_of_type_id(engines: &Engines, type_id: &TypeId) -> Option<LspSpa
         TypeInfo::Custom { call_path, .. } => call_path.suffix,
         _ => return None,
     };
-    Some(LspSpan::new(&ident.span(), engines.se()))
+    Some(TokenIdent::new(&ident.span(), engines.se()))
 }
 
 /// Intended to be used during traversal of the [sway_core::language::parsed::ParseProgram] AST.

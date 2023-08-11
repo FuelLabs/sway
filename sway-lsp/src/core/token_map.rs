@@ -1,4 +1,4 @@
-use crate::core::token::{self, LspSpan, Token, TypedAstToken};
+use crate::core::token::{self, Token, TokenIdent, TypedAstToken};
 use dashmap::DashMap;
 use lsp_types::{Position, Url};
 use sway_core::{language::ty, type_system::TypeId, Engines};
@@ -12,7 +12,7 @@ pub use crate::core::token_map_ext::TokenMapExt;
 ///
 /// The TokenMap is a wrapper around a [DashMap], which is a concurrent HashMap.
 #[derive(Debug, Default)]
-pub struct TokenMap(DashMap<LspSpan, Token>);
+pub struct TokenMap(DashMap<TokenIdent, Token>);
 
 impl TokenMap {
     /// Create a new token map.
@@ -33,7 +33,7 @@ impl TokenMap {
     pub fn tokens_for_file<'s>(
         &'s self,
         uri: &'s Url,
-    ) -> impl 's + Iterator<Item = (LspSpan, Token)> {
+    ) -> impl 's + Iterator<Item = (TokenIdent, Token)> {
         self.iter().flat_map(|(span, token)| {
             span.path.as_ref().and_then(|path| {
                 if path.to_str() == Some(uri.path()) {
@@ -45,11 +45,11 @@ impl TokenMap {
         })
     }
 
-    /// Given a cursor [Position], return the [LspSpan] of a token in the
+    /// Given a cursor [Position], return the [TokenIdent] of a token in the
     /// Iterator if one exists at that position.
-    pub fn spans_at_position<I>(&self, cursor_position: Position, tokens: I) -> Vec<LspSpan>
+    pub fn spans_at_position<I>(&self, cursor_position: Position, tokens: I) -> Vec<TokenIdent>
     where
-        I: Iterator<Item = (LspSpan, Token)>,
+        I: Iterator<Item = (TokenIdent, Token)>,
     {
         tokens
             .filter_map(|(span, _)| {
@@ -69,12 +69,12 @@ impl TokenMap {
         source_engine: &SourceEngine,
         uri: &Url,
         position: Position,
-    ) -> Option<(LspSpan, Token)> {
+    ) -> Option<(TokenIdent, Token)> {
         self.tokens_at_position(source_engine, uri, position, None)
             .iter()
-            .find_map(|(lsp_span, token)| {
+            .find_map(|(ident, token)| {
                 if let Some(TypedAstToken::TypedDeclaration(_)) = token.typed {
-                    Some((lsp_span.clone(), token.clone()))
+                    Some((ident.clone(), token.clone()))
                 } else {
                     None
                 }
@@ -82,14 +82,14 @@ impl TokenMap {
     }
 
     /// Returns the first collected tokens that is at the cursor position.
-    pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(LspSpan, Token)> {
+    pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(TokenIdent, Token)> {
         let tokens = self.tokens_for_file(uri);
         self.spans_at_position(position, tokens)
             .first()
-            .and_then(|lsp_span| {
-                self.try_get(&lsp_span).try_unwrap().map(|item| {
-                    let (lsp_span, token) = item.pair();
-                    (lsp_span.clone(), token.clone())
+            .and_then(|ident| {
+                self.try_get(&ident).try_unwrap().map(|item| {
+                    let (ident, token) = item.pair();
+                    (ident.clone(), token.clone())
                 })
             })
     }
@@ -107,36 +107,36 @@ impl TokenMap {
         uri: &Url,
         position: Position,
         functions_only: Option<bool>,
-    ) -> Vec<(LspSpan, Token)> {
+    ) -> Vec<(TokenIdent, Token)> {
         self.tokens_for_file(uri)
-            .filter_map(|(lsp_span, token)| {
+            .filter_map(|(ident, token)| {
                 let span = match token.typed {
                     Some(TypedAstToken::TypedFunctionDeclaration(decl))
                         if functions_only == Some(true) =>
                     {
-                        LspSpan::new(&decl.span, source_engine)
+                        TokenIdent::new(&decl.span, source_engine)
                     }
                     Some(TypedAstToken::TypedDeclaration(decl)) => {
-                        LspSpan::new(&decl.span(), source_engine)
+                        TokenIdent::new(&decl.span(), source_engine)
                     }
-                    _ => lsp_span.clone(),
+                    _ => ident.clone(),
                 };
                 if position >= span.range.start && position <= span.range.end {
-                    return self.try_get(&lsp_span).try_unwrap().map(|item| {
-                        let (lsp_span, token) = item.pair();
-                        (lsp_span.clone(), token.clone())
+                    return self.try_get(&ident).try_unwrap().map(|item| {
+                        let (ident, token) = item.pair();
+                        (ident.clone(), token.clone())
                     });
                 }
                 None
             })
-            .filter_map(|(lsp_span, token)| {
+            .filter_map(|(ident, token)| {
                 if functions_only == Some(true) {
                     if let Some(TypedAstToken::TypedFunctionDeclaration(_)) = token.typed {
-                        return Some((lsp_span, token));
+                        return Some((ident, token));
                     }
                     return None;
                 }
-                Some((lsp_span, token))
+                Some((ident, token))
             })
             .collect()
     }
@@ -150,8 +150,8 @@ impl TokenMap {
         engines: &Engines,
         type_id: &TypeId,
     ) -> Option<ty::TyDecl> {
-        token::lsp_span_of_type_id(engines, type_id)
-            .and_then(|decl_lsp_span| self.try_get(&decl_lsp_span).try_unwrap())
+        token::ident_of_type_id(engines, type_id)
+            .and_then(|decl_ident| self.try_get(&decl_ident).try_unwrap())
             .map(|item| item.value().clone())
             .and_then(|token| token.typed)
             .and_then(|typed_token| match typed_token {
@@ -178,21 +178,21 @@ impl TokenMap {
 }
 
 impl std::ops::Deref for TokenMap {
-    type Target = DashMap<LspSpan, Token>;
+    type Target = DashMap<TokenIdent, Token>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-/// A custom iterator for [TokenMap] that yields [LspSpan] and [Token] pairs.
+/// A custom iterator for [TokenMap] that yields [TokenIdent] and [Token] pairs.
 pub struct TokenMapIter<'s> {
-    inner_iter: dashmap::iter::Iter<'s, LspSpan, Token>,
+    inner_iter: dashmap::iter::Iter<'s, TokenIdent, Token>,
 }
 
 impl<'s> Iterator for TokenMapIter<'s> {
-    type Item = (LspSpan, Token);
+    type Item = (TokenIdent, Token);
 
-    /// Returns the next LspSpan in the [TokenMap].
+    /// Returns the next TokenIdent in the [TokenMap].
     ///
     /// If there are no more items, returns `None`.
     fn next(&mut self) -> Option<Self::Item> {

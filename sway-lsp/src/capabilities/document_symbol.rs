@@ -1,14 +1,14 @@
-use crate::core::token::{LspSpan, SymbolKind, Token};
+use crate::core::token::{SymbolKind, Token, TokenIdent};
 use lsp_types::{self, Location, SymbolInformation, Url};
 
 pub fn to_symbol_information<I>(tokens: I, url: Url) -> Vec<SymbolInformation>
 where
-    I: Iterator<Item = (LspSpan, Token)>,
+    I: Iterator<Item = (TokenIdent, Token)>,
 {
     let mut symbols: Vec<SymbolInformation> = vec![];
 
-    for (lsp_span, token) in tokens {
-        let symbol = symbol_info(&lsp_span, &token, url.clone());
+    for (ident, token) in tokens {
+        let symbol = symbol_info(&ident, &token, url.clone());
         symbols.push(symbol)
     }
 
@@ -46,11 +46,11 @@ pub(crate) fn symbol_kind(symbol_kind: &SymbolKind) -> lsp_types::SymbolKind {
 
 #[allow(warnings)]
 // TODO: the "deprecated: None" field is deprecated according to this library
-fn symbol_info(lsp_span: &LspSpan, token: &Token, url: Url) -> SymbolInformation {
+fn symbol_info(ident: &TokenIdent, token: &Token, url: Url) -> SymbolInformation {
     SymbolInformation {
-        name: lsp_span.name.to_string(),
+        name: ident.name.to_string(),
         kind: symbol_kind(&token.kind),
-        location: Location::new(url, lsp_span.range),
+        location: Location::new(url, ident.range),
         tags: None,
         container_name: None,
         deprecated: None,

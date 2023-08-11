@@ -1,4 +1,4 @@
-use crate::core::{token::LspSpan, token_map::TokenMap};
+use crate::core::{token::TokenIdent, token_map::TokenMap};
 use sway_core::{namespace::Module, Engines};
 
 pub(crate) mod dependency;
@@ -21,8 +21,8 @@ impl<'a> ParseContext<'a> {
         }
     }
 
-    pub fn lsp_span(&self, span: &sway_types::Span) -> LspSpan {
-        LspSpan::new(span, &self.engines.se())
+    pub fn ident(&self, span: &sway_types::Span) -> TokenIdent {
+        TokenIdent::new(span, &self.engines.se())
     }
 }
 

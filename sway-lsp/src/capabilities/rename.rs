@@ -1,7 +1,7 @@
 use crate::{
     core::{
         session::Session,
-        token::{LspSpan, SymbolKind, Token, TypedAstToken},
+        token::{SymbolKind, Token, TokenIdent, TypedAstToken},
         token_map::TokenMapExt,
     },
     error::{LanguageServerError, RenameError},
@@ -60,23 +60,23 @@ pub fn rename(
             .token_map()
             .iter()
             .all_references_of_token(&token, &engines)
-            .map(|(lsp_span, _)| lsp_span)
-            .collect::<Vec<LspSpan>>()
+            .map(|(ident, _)| ident)
+            .collect::<Vec<TokenIdent>>()
     })
     .into_iter()
-    .filter(|lsp_span| {
+    .filter(|ident| {
         // we want to rename the type that self refers to, not the self ident itself
-        lsp_span.name != "self"
+        ident.name != "self"
     })
-    .filter_map(|lsp_span| {
-        let mut range = lsp_span.range;
+    .filter_map(|ident| {
+        let mut range = ident.range;
         // JOSH PUT ME BACK
-        // if lsp_span.is_raw_ident() {
+        // if ident.is_raw_ident() {
         //     // Make sure the start char starts at the begining,
         //     // taking the r# tokens into account.
         //     range.start.character -= RAW_IDENTIFIER.len() as u32;
         // }
-        if let Some(path) = lsp_span.path {
+        if let Some(path) = ident.path {
             let url = get_url_from_path(&path).ok()?;
             if let Some(url) = session.sync.to_workspace_url(url) {
                 let edit = TextEdit::new(range, new_name.clone());
@@ -105,7 +105,7 @@ pub fn prepare_rename(
     url: Url,
     position: Position,
 ) -> Result<PrepareRenameResponse, LanguageServerError> {
-    let (lsp_span, token) = session
+    let (ident, token) = session
         .token_map()
         .token_at_position(&url, position)
         .ok_or(RenameError::TokenNotFound)?;
@@ -125,16 +125,16 @@ pub fn prepare_rename(
     }
 
     Ok(PrepareRenameResponse::RangeWithPlaceholder {
-        range: lsp_span.range,
-        placeholder: lsp_span.name.to_string(), // JOSH PUT ME BACK formatted_name(&lsp_span),
+        range: ident.range,
+        placeholder: ident.name.to_string(), // JOSH PUT ME BACK formatted_name(&ident),
     })
 }
 
 /// Returns the name of the identifier, prefixed with r# if the identifier is raw.
-// fn formatted_name(lsp_span: &LspSpan) -> String {
-//     let name = lsp_span.name.to_string();
+// fn formatted_name(ident: &TokenIdent) -> String {
+//     let name = ident.name.to_string();
 //     // Prefix r# onto the name if the ident is raw.
-//     if lsp_span.is_raw_ident() {
+//     if ident.is_raw_ident() {
 //         return format!("{RAW_IDENTIFIER}{name}");
 //     }
 //     name
@@ -146,13 +146,13 @@ fn is_token_in_workspace(
     engines: &Engines,
     token: &Token,
 ) -> Result<bool, LanguageServerError> {
-    let decl_lsp_span = token
-        .declared_token_lsp_span(engines)
+    let decl_ident = token
+        .declared_token_ident(engines)
         .ok_or(RenameError::TokenNotFound)?;
 
     // Check the span of the tokens defintions to determine if it's in the users workspace.
     let temp_path = &session.sync.temp_dir()?;
-    if let Some(path) = decl_lsp_span.path {
+    if let Some(path) = decl_ident.path {
         if !path.starts_with(temp_path) {
             return Err(LanguageServerError::RenameError(
                 RenameError::TokenNotPartOfWorkspace,
@@ -164,15 +164,15 @@ fn is_token_in_workspace(
 }
 
 /// Returns a `Vec<Ident>` containing the identifiers of all trait functions found.
-fn trait_interface_lsp_spans(
+fn trait_interface_idents(
     interface_surface: &[ty::TyTraitInterfaceItem],
     se: &SourceEngine,
-) -> Vec<LspSpan> {
+) -> Vec<TokenIdent> {
     interface_surface
         .iter()
         .flat_map(|item| match item {
             ty::TyTraitInterfaceItem::TraitFn(fn_decl) => {
-                Some(LspSpan::new(&fn_decl.name().span(), se))
+                Some(TokenIdent::new(&fn_decl.name().span(), se))
             }
             _ => None,
         })
@@ -185,7 +185,7 @@ fn find_all_methods_for_decl(
     engines: &Engines,
     url: &Url,
     position: Position,
-) -> Result<Vec<LspSpan>, LanguageServerError> {
+) -> Result<Vec<TokenIdent>, LanguageServerError> {
     // Find the parent declaration
     let (_, decl_token) = session
         .token_map()
@@ -201,14 +201,14 @@ fn find_all_methods_for_decl(
                 TypedAstToken::TypedDeclaration(decl) => match decl {
                     ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. }) => {
                         let abi_decl = engines.de().get_abi(decl_id);
-                        Some(trait_interface_lsp_spans(
+                        Some(trait_interface_idents(
                             &abi_decl.interface_surface,
                             engines.se(),
                         ))
                     }
                     ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. }) => {
                         let trait_decl = engines.de().get_trait(decl_id);
-                        Some(trait_interface_lsp_spans(
+                        Some(trait_interface_idents(
                             &trait_decl.interface_surface,
                             engines.se(),
                         ))
@@ -221,11 +221,11 @@ fn find_all_methods_for_decl(
                                 .iter()
                                 .filter_map(|item| match item {
                                     ty::TyTraitItem::Fn(fn_decl) => {
-                                        Some(LspSpan::new(&fn_decl.name().span(), &engines.se()))
+                                        Some(TokenIdent::new(&fn_decl.name().span(), &engines.se()))
                                     }
                                     _ => None,
                                 })
-                                .collect::<Vec<LspSpan>>(),
+                                .collect::<Vec<TokenIdent>>(),
                         )
                     }
                     _ => None,

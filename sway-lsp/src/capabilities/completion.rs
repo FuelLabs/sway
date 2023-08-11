@@ -1,4 +1,4 @@
-use crate::core::token::LspSpan;
+use crate::core::token::TokenIdent;
 use lsp_types::{
     CompletionItem, CompletionItemKind, CompletionItemLabelDetails, CompletionTextEdit, Position,
     Range, TextEdit,
@@ -12,7 +12,7 @@ use sway_core::{
 pub(crate) fn to_completion_items(
     namespace: &Items,
     engines: &Engines,
-    ident_to_complete: &LspSpan,
+    ident_to_complete: &TokenIdent,
     fn_decl: &TyFunctionDecl,
     position: Position,
 ) -> Vec<CompletionItem> {
