@@ -14,7 +14,7 @@ fn main() -> bool {
     let default_gas = 1_000_000_000_000;
 
     // the deployed fuel_coin Contract_Id:
-    let fuelcoin_id = ContractId::from(0x65a04f8f865d98dd97ea638d7c1ea7b807670226a5091ccd38bae3f2eeead286);
+    let fuelcoin_id = ContractId::from(0xd97252cce794750e8124447a6071cf26c7a889f0d53d8b2d14c4d8326242d543);
 
     // contract ID for sway/test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/balance_test_contract/
     let balance_test_id = ContractId::from(0x4a00baa517980432b9274a0e2f03c88735bdb483730816679c6eb37b4046d060);
