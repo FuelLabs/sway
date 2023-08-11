@@ -1892,8 +1892,9 @@ dependencies = [
 
 [[package]]
 name = "forc-wallet"
-version = "0.2.4"
-source = "git+https://github.com/FuelLabs/forc-wallet?branch=upgrade/fuel-core-v0.20.1#9dc1fb363e23055fa377e999da8fc629abab69f0"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8df9ef0ea688621e659a30aee08a3f67df3de0ab9340203736eabc074e223af2"
 dependencies = [
  "anyhow",
  "clap 4.3.19",
