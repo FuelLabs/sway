@@ -1,6 +1,6 @@
 use crate::core::{
     session::Session,
-    token::{get_range_from_span, SymbolKind, Token},
+    token::{LspSpan, SymbolKind, Token},
 };
 use lsp_types::{
     Range, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
@@ -10,26 +10,18 @@ use std::sync::{
     atomic::{AtomicU32, Ordering},
     Arc,
 };
-use sway_types::{Span, Spanned};
 
 // https://github.com/microsoft/vscode-extension-samples/blob/5ae1f7787122812dcc84e37427ca90af5ee09f14/semantic-tokens-sample/vscode.proposed.d.ts#L71
 pub fn semantic_tokens_full(session: Arc<Session>, url: &Url) -> Option<SemanticTokensResult> {
-    let engines = session.engines.read();
-    let tokens = session.token_map().tokens_for_file(engines.se(), url);
-
     // The tokens need sorting by their span so each token is sequential
     // If this step isn't done, then the bit offsets used for the lsp_types::SemanticToken are incorrect.
-    let mut tokens_sorted: Vec<_> = tokens.map(|(ident, token)| (ident.span(), token)).collect();
-
+    let mut tokens_sorted: Vec<_> = session.token_map().tokens_for_file(url).collect();
     tokens_sorted.sort_by(|(a_span, _), (b_span, _)| {
-        let a = (a_span.start(), a_span.end());
-        let b = (b_span.start(), b_span.end());
+        let a = (a_span.range.start, a_span.range.end);
+        let b = (b_span.range.start, b_span.range.end);
         a.cmp(&b)
     });
-
-    let semantic_tokens = semantic_tokens(&tokens_sorted);
-
-    Some(semantic_tokens.into())
+    Some(semantic_tokens(&tokens_sorted).into())
 }
 
 //-------------------------------
@@ -90,21 +82,19 @@ impl SemanticTokensBuilder {
     }
 }
 
-pub fn semantic_tokens(tokens_sorted: &[(Span, Token)]) -> SemanticTokens {
+pub fn semantic_tokens(tokens_sorted: &[(LspSpan, Token)]) -> SemanticTokens {
     static TOKEN_RESULT_COUNTER: AtomicU32 = AtomicU32::new(1);
     let id = TOKEN_RESULT_COUNTER
         .fetch_add(1, Ordering::SeqCst)
         .to_string();
     let mut builder = SemanticTokensBuilder::new(id);
 
-    for (span, token) in tokens_sorted.iter() {
+    for (lsp_span, token) in tokens_sorted.iter() {
         let ty = semantic_token_type(&token.kind);
         let token_index = type_index(ty);
         // TODO - improve with modifiers
         let modifier_bitset = 0;
-        let range = get_range_from_span(span);
-
-        builder.push(range, token_index, modifier_bitset);
+        builder.push(lsp_span.range, token_index, modifier_bitset);
     }
     builder.build()
 }

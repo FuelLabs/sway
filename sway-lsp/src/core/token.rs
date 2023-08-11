@@ -1,4 +1,5 @@
 use lsp_types::{Position, Range};
+use std::path::PathBuf;
 use sway_ast::Intrinsic;
 use sway_core::{
     language::{
@@ -15,7 +16,7 @@ use sway_core::{
     type_system::{TypeId, TypeInfo, TypeParameter},
     Engines, TraitConstraint, TypeArgument, TypeEngine,
 };
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, SourceEngine, Span, Spanned};
 
 /// The `AstToken` holds the types produced by the [sway_core::language::parsed::ParseProgram].
 /// These tokens have not been type-checked.
@@ -162,22 +163,49 @@ impl Token {
         }
     }
 
-    /// Return the [Ident] of the declaration of the provided token.
-    pub fn declared_token_ident(&self, engines: &Engines) -> Option<Ident> {
+    /// Return the [LspSpan] of the declaration of the provided token.
+    pub fn declared_token_lsp_span(&self, engines: &Engines) -> Option<LspSpan> {
         self.type_def.as_ref().and_then(|type_def| match type_def {
-            TypeDefinition::TypeId(type_id) => ident_of_type_id(engines, type_id),
-            TypeDefinition::Ident(ident) => Some(ident.clone()),
+            TypeDefinition::TypeId(type_id) => lsp_span_of_type_id(engines, type_id),
+            TypeDefinition::Ident(ident) => Some(LspSpan::new(&ident.span(), engines.se())),
         })
     }
+}
 
-    /// Return the [Span] of the declaration of the provided token. This is useful for
-    /// performaing == comparisons on spans. We need to do this instead of comparing
-    /// the [Ident] because the [PartialEq] implementation is only comparing the name.
-    pub fn declared_token_span(&self, engines: &Engines) -> Option<Span> {
-        self.type_def.as_ref().and_then(|type_def| match type_def {
-            TypeDefinition::TypeId(type_id) => Some(ident_of_type_id(engines, type_id)?.span()),
-            TypeDefinition::Ident(ident) => Some(ident.span()),
-        })
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct LspSpan {
+    pub name: String,
+    pub range: Range,
+    pub path: Option<PathBuf>,
+    // pub is_raw_ident: bool,
+}
+
+impl LspSpan {
+    pub fn new(span: &Span, se: &SourceEngine) -> Self {
+        // let path = se.get_path(span.source_id());
+        let path = span
+            .source_id()
+            .and_then(|source_id| Some(se.get_path(source_id)));
+        Self {
+            name: span.clone().str(),
+            range: get_range_from_span(&span),
+            path: path,
+        }
+    }
+
+    // pub fn is_raw_ident(&self) -> bool {
+    //     self.is_raw_ident
+    // }
+}
+
+impl std::hash::Hash for LspSpan {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        self.range.start.line.hash(state);
+        self.range.start.character.hash(state);
+        self.range.end.line.hash(state);
+        self.range.end.character.hash(state);
+        self.path.hash(state);
     }
 }
 
@@ -191,21 +219,22 @@ pub fn desugared_op(prefixes: &[Ident]) -> bool {
     false
 }
 
-/// We need to do this work around as the custom [PartialEq] for [Ident] impl
-/// only checks for the string, not the [Span].
-pub fn to_ident_key(ident: &Ident) -> (Ident, Span) {
-    (ident.clone(), ident.span())
-}
+// /// We need to do this work around as the custom [PartialEq] for [Ident] impl
+// /// only checks for the string, not the [Span].
+// pub fn to_ident_key(ident: &Ident) -> (Ident, Span) {
+//     (ident.clone(), ident.span())
+// }
 
-/// Use the [TypeId] to look up the associated [TypeInfo] and return the [Ident] if one is found.
-pub fn ident_of_type_id(engines: &Engines, type_id: &TypeId) -> Option<Ident> {
-    match engines.te().get(*type_id) {
-        TypeInfo::UnknownGeneric { name, .. } => Some(name),
-        TypeInfo::Enum(decl_ref) => Some(engines.de().get_enum(&decl_ref).call_path.suffix),
-        TypeInfo::Struct(decl_ref) => Some(engines.de().get_struct(&decl_ref).call_path.suffix),
-        TypeInfo::Custom { call_path, .. } => Some(call_path.suffix),
-        _ => None,
-    }
+/// Use the [TypeId] to look up the associated [TypeInfo] and return the [LspSpan] if one is found.
+pub fn lsp_span_of_type_id(engines: &Engines, type_id: &TypeId) -> Option<LspSpan> {
+    let ident = match engines.te().get(*type_id) {
+        TypeInfo::UnknownGeneric { name, .. } => name,
+        TypeInfo::Enum(decl_ref) => engines.de().get_enum(&decl_ref).call_path.suffix,
+        TypeInfo::Struct(decl_ref) => engines.de().get_struct(&decl_ref).call_path.suffix,
+        TypeInfo::Custom { call_path, .. } => call_path.suffix,
+        _ => return None,
+    };
+    Some(LspSpan::new(&ident.span(), engines.se()))
 }
 
 /// Intended to be used during traversal of the [sway_core::language::parsed::ParseProgram] AST.

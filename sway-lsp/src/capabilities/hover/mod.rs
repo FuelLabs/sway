@@ -3,7 +3,7 @@ pub(crate) mod hover_link_contents;
 use crate::{
     core::{
         session::Session,
-        token::{get_range_from_span, to_ident_key, SymbolKind, Token, TypedAstToken},
+        token::{SymbolKind, Token, TypedAstToken},
     },
     utils::{
         attributes::doc_comment_attributes, keyword_docs::KeywordDocs, markdown, markup::Markup,
@@ -16,7 +16,7 @@ use sway_core::{
 };
 
 use lsp_types::{self, Position, Url};
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Span, Spanned};
 
 use self::hover_link_contents::HoverLinkContents;
 
@@ -27,48 +27,44 @@ pub fn hover_data(
     url: Url,
     position: Position,
 ) -> Option<lsp_types::Hover> {
-    let engines = session.engines.read();
-    let (ident, token) = session
-        .token_map()
-        .token_at_position(engines.se(), &url, position)?;
-    let range = get_range_from_span(&ident.span());
+    let (lsp_span, token) = session.token_map().token_at_position(&url, position)?;
 
     // check if our token is a keyword
     if matches!(
         token.kind,
         SymbolKind::BoolLiteral | SymbolKind::Keyword | SymbolKind::SelfKeyword
     ) {
-        let name = ident.as_str();
-        let documentation = keyword_docs.get(name).unwrap();
+        let name = lsp_span.name;
+        let documentation = keyword_docs.get(&name).unwrap();
         let prefix = format!("\n```sway\n{name}\n```\n\n---\n\n");
         let formatted_doc = format!("{prefix}{documentation}");
         let content = Markup::new().text(&formatted_doc);
         let contents = lsp_types::HoverContents::Markup(markup_content(content));
         return Some(lsp_types::Hover {
             contents,
-            range: Some(range),
+            range: Some(lsp_span.range),
         });
     }
 
     let engines = session.engines.read();
-    let (decl_ident, decl_token) = match token.declared_token_ident(&engines) {
-        Some(decl_ident) => {
+    let (decl_lsp_span, decl_token) = match token.declared_token_lsp_span(&engines) {
+        Some(decl_lsp_span) => {
             let decl_token = session
                 .token_map()
-                .try_get(&to_ident_key(&decl_ident))
+                .try_get(&decl_lsp_span)
                 .try_unwrap()
                 .map(|item| item.value().clone())?;
-            (decl_ident, decl_token)
+            (decl_lsp_span, decl_token)
         }
         // The `TypeInfo` of the token does not contain an `Ident`. In this case,
         // we use the `Ident` of the token itself.
-        None => (ident, token),
+        None => (lsp_span.clone(), token),
     };
 
-    let contents = hover_format(session.clone(), &engines, &decl_token, &decl_ident);
+    let contents = hover_format(session.clone(), &engines, &decl_token, &decl_lsp_span.name);
     Some(lsp_types::Hover {
         contents,
-        range: Some(range),
+        range: Some(lsp_span.range),
     })
 }
 
@@ -126,11 +122,9 @@ fn hover_format(
     session: Arc<Session>,
     engines: &Engines,
     token: &Token,
-    ident: &Ident,
+    token_name: &str,
 ) -> lsp_types::HoverContents {
     let decl_engine = engines.de();
-
-    let token_name: String = ident.as_str().into();
     let doc_comment = format_doc_attributes(token);
 
     let format_name_with_type = |name: &str, type_id: &TypeId| -> String {
