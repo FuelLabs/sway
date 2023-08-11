@@ -136,8 +136,8 @@ fn enum_tests() {
     };
     let z: AssetId = 0x0000000000000000000000000000000000000000000000000000000000000001;
     let o = Some(x);
-    if let Some(AssetId { value }) = o {
-        assert(value == z.value);
+    if let Some(ContractId { value }) = o {
+        assert(value == z);
     }
 
     let value = match o {
@@ -148,7 +148,7 @@ fn enum_tests() {
     let id1 = lib::MyIdentity::ContractId(x);
     let id2 = lib::MyIdentity::ContractId(x);
     match id1 {
-        lib::MyIdentity::ContractId(AssetId { value }) => assert(value == 0x0000000000000000000000000000000000000000000000000000000000000001),
+        lib::MyIdentity::ContractId(ContractId { value }) => assert(value == 0x0000000000000000000000000000000000000000000000000000000000000001),
         _ => revert(42),
     }
     assert(id1 == id2); // test trait `Eq`
