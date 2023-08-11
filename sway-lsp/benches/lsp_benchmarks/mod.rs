@@ -1,3 +1,4 @@
+pub mod compile;
 pub mod requests;
 pub mod token_map;
 
