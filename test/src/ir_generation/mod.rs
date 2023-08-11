@@ -251,9 +251,9 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                 // Compile to IR.
                 let include_tests = true;
                 let mut ir = compile_program(typed_program, include_tests, &engines)
-                    .unwrap_or_else(|mut e| {
+                    .unwrap_or_else(|e| {
                         use sway_types::span::Spanned;
-                        let e = e.pop().unwrap();
+                        let e = e[0].clone();
                         let span = e.span();
                         panic!(
                             "Failed to compile test {}:\nError \"{e}\" at {}:{}\nCode: \"{}\"",

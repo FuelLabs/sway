@@ -76,6 +76,15 @@ impl<'a, 'e> Parser<'a, 'e> {
         Peeker::with(self.token_trees).map(|(v, _)| v)
     }
 
+    /// This function do three things
+    /// 1 - it peeks P;
+    /// 2 - it forks the current parse, and try to parse
+    /// T using the fork. If it success it put the original
+    /// parse at the same state as the forked;
+    /// 3 - if it fails ir returns a `Recoverer` together with the `ErrorEmited`.
+    ///
+    /// This recoverer can be used to put the forked parsed back in track and then
+    /// sync the original parser to allow the parsing to continue.
     pub fn guarded_parse_with_recovery<'original, P: Peek, T: Parse>(
         &'original mut self,
     ) -> Result<Option<T>, Recoverer<'original, 'a, 'e>> {
@@ -143,9 +152,7 @@ impl<'a, 'e> Parser<'a, 'e> {
     /// Parses `T` given that the guard `G` was successfully peeked.
     ///
     /// Useful to parse e.g., `$keyword $stuff` as a unit where `$keyword` is your guard.
-    pub fn guarded_parse<G: Peek + std::fmt::Debug, T: Parse + std::fmt::Debug>(
-        &mut self,
-    ) -> ParseResult<Option<T>> {
+    pub fn guarded_parse<G: Peek, T: Parse>(&mut self) -> ParseResult<Option<T>> {
         self.peek::<G>().map(|_| self.parse()).transpose()
     }
 
@@ -216,12 +223,11 @@ impl<'a, 'e> Parser<'a, 'e> {
     pub fn full_span(&self) -> &Span {
         &self.full_span
     }
-    /// Consume all tokens that are in the current line.
-    /// Consume tokens while its line equals `line`.
+    /// Consume tokens while its line equals to `line`.
     ///
     /// # Warning
     ///
-    /// To calculate lines the original source code will be traversed multiple times.
+    /// To calculate lines the original source code needs to be transversed.
     pub fn consume_while_line_equals(&mut self, line: usize) {
         loop {
             let Some(current_token) = self.token_trees.get(0) else {
@@ -388,6 +394,12 @@ impl<'original, 'a, 'e> Recoverer<'original, 'a, 'e> {
         })
     }
 
+    /// Starts the recover process. The callback will received the forked parser.
+    /// All the changes to this forked parser will be imposed into the original parser
+    /// including diagnostics.
+    ///
+    /// If the forked diagnostics are undesired they can be cleared calling `parser::clear_errors` or
+    /// `parser::clear_warnings`.
     pub fn recover<'this>(
         &'this self,
         f: impl FnOnce(&mut Parser<'a, 'this>),
@@ -401,11 +413,14 @@ impl<'original, 'a, 'e> Recoverer<'original, 'a, 'e> {
         self.finish(p)
     }
 
+    /// This is the token before the whole tentative parser started.
     pub fn starting_token(&self) -> &GenericTokenTree<TokenStream> {
         let original = self.original.borrow();
         &original.token_trees[0]
     }
 
+    /// This is the last consumed token of the forked parser. This the token
+    /// immediately before the forked parser head.
     pub fn last_consumed_token(&self) -> &GenericTokenTree<TokenStream> {
         // find the last token consumed by the fork
         let original = self.original.borrow();
@@ -417,6 +432,10 @@ impl<'original, 'a, 'e> Recoverer<'original, 'a, 'e> {
         &original.token_trees[fork_pos - 1]
     }
 
+    /// This return a span encopassing all tokens that were consumed by the `p` since the start
+    /// of the tentative parsing
+    ///
+    /// Thsi is useful to show one single error for all the consumed tokens.
     pub fn diff_span<'this>(&self, p: &Parser<'a, 'this>) -> Span {
         let original = self.original.borrow_mut();
 

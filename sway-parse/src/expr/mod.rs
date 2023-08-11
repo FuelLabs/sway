@@ -98,7 +98,10 @@ impl Parse for StatementLet {
         if parser.peek::<EqToken>().is_some() {
             return Err(parser.emit_error_with_span(
                 ParseErrorKind::ExpectedPattern,
-                let_token.span().next_char(),
+                let_token
+                    .span()
+                    .next_char_utf8()
+                    .unwrap_or_else(|| let_token.span()),
             ));
         }
         let pattern = parser.try_parse(true)?;

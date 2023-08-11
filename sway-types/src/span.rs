@@ -190,13 +190,21 @@ impl Span {
         }
     }
 
-    pub fn next_char(&self) -> Span {
-        Span {
+    /// Creates a new span that points to very next char of the current span.
+    ///
+    /// ```ignore
+    /// let
+    ///    ^ <- span returned
+    /// ^^^  <- original span
+    /// ```
+    pub fn next_char_utf8(&self) -> Option<Span> {
+        let char = self.src[self.end..].chars().next()?;
+        Some(Span {
             src: self.src.clone(),
             source_id: self.source_id,
             start: self.end,
-            end: self.end + 1,
-        }
+            end: self.end + char.len_utf8(),
+        })
     }
 
     /// This panics if the spans are not from the same file. This should

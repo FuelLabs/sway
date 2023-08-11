@@ -1,5 +1,6 @@
 category = "fail"
 
+# this is needed because __a appear in the snippet of a unrelated warning
 # check: __a
 
 # check: __a
