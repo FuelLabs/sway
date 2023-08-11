@@ -23,11 +23,7 @@ impl<T: Format + Spanned> Format for Annotated<T> {
         for attr in &self.attribute_list {
             attr.format(formatted_code, formatter)?;
 
-            write!(
-                formatted_code,
-                "{}",
-                &formatter.shape.indent.to_string(&formatter.config)?,
-            )?;
+            write!(formatted_code, "{}", &formatter.indent_str()?,)?;
         }
         // format `ItemKind`
         self.value.format(formatted_code, formatter)?;
