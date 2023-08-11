@@ -15,7 +15,7 @@ const DOC_COMMENT_START: &str = "///";
 
 /// If the change was an enter keypress or pasting multiple lines in a comment, it prefixes the line(s)
 /// with the appropriate comment start pattern (// or ///).
-pub(crate) fn on_enter(
+pub fn on_enter(
     config: &OnEnterConfig,
     session: &Arc<Session>,
     temp_uri: &Url,

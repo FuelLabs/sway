@@ -91,9 +91,9 @@ pub(crate) fn handle_completion(
 ) -> Result<Option<lsp_types::CompletionResponse>> {
     let trigger_char = params
         .context
-        .map(|ctx| ctx.trigger_character)
-        .unwrap_or_default()
-        .unwrap_or("".to_string());
+        .as_ref()
+        .and_then(|ctx| ctx.trigger_character.as_deref())
+        .unwrap_or("");
     let position = params.text_document_position.position;
     match state
         .sessions
@@ -229,7 +229,7 @@ pub(crate) fn handle_code_action(
         Ok((temp_uri, session)) => Ok(capabilities::code_actions(
             session,
             &params.range,
-            params.text_document,
+            &params.text_document.uri,
             &temp_uri,
         )),
         Err(err) => {
@@ -422,14 +422,14 @@ pub(crate) fn on_enter(
     state: &ServerState,
     params: lsp_ext::OnEnterParams,
 ) -> Result<Option<WorkspaceEdit>> {
-    let config = state.config.read().on_enter.clone();
+    let config = &state.config.read().on_enter;
     match state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
         Ok((uri, session)) => {
             // handle on_enter capabilities if they are enabled
-            Ok(capabilities::on_enter(&config, &session, &uri, &params))
+            Ok(capabilities::on_enter(config, &session, &uri, &params))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());
