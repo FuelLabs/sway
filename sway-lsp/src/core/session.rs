@@ -167,7 +167,7 @@ impl Session {
             .token_map
             .tokens_for_file(url)
             .all_references_of_token(&token, &engines)
-            .map(|(lsp_span, _)| lsp_span.range)
+            .map(|(ident, _)| ident.range)
             .collect();
 
         token_ranges.sort_by(|a, b| a.start.line.cmp(&b.start.line));
@@ -182,13 +182,13 @@ impl Session {
         let engines = self.engines.read();
         self.token_map
             .token_at_position(&uri, position)
-            .and_then(|(_, token)| token.declared_token_lsp_span(&engines))
-            .and_then(|decl_lsp_span| {
-                decl_lsp_span.path.and_then(|path| {
+            .and_then(|(_, token)| token.declared_token_ident(&engines))
+            .and_then(|decl_ident| {
+                decl_ident.path.and_then(|path| {
                     // We use ok() here because we don't care about propagating the error from from_file_path
                     Url::from_file_path(path).ok().and_then(|url| {
                         self.sync.to_workspace_url(url).map(|url| {
-                            GotoDefinitionResponse::Scalar(Location::new(url, decl_lsp_span.range))
+                            GotoDefinitionResponse::Scalar(Location::new(url, decl_ident.range))
                         })
                     })
                 })

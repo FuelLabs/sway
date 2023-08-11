@@ -1,6 +1,6 @@
 use crate::core::{
     session::Session,
-    token::{LspSpan, SymbolKind, Token},
+    token::{SymbolKind, Token, TokenIdent},
 };
 use lsp_types::{
     Range, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
@@ -82,19 +82,19 @@ impl SemanticTokensBuilder {
     }
 }
 
-pub fn semantic_tokens(tokens_sorted: &[(LspSpan, Token)]) -> SemanticTokens {
+pub fn semantic_tokens(tokens_sorted: &[(TokenIdent, Token)]) -> SemanticTokens {
     static TOKEN_RESULT_COUNTER: AtomicU32 = AtomicU32::new(1);
     let id = TOKEN_RESULT_COUNTER
         .fetch_add(1, Ordering::SeqCst)
         .to_string();
     let mut builder = SemanticTokensBuilder::new(id);
 
-    for (lsp_span, token) in tokens_sorted.iter() {
+    for (ident, token) in tokens_sorted.iter() {
         let ty = semantic_token_type(&token.kind);
         let token_index = type_index(ty);
         // TODO - improve with modifiers
         let modifier_bitset = 0;
-        builder.push(lsp_span.range, token_index, modifier_bitset);
+        builder.push(ident.range, token_index, modifier_bitset);
     }
     builder.build()
 }

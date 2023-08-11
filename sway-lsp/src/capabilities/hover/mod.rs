@@ -27,14 +27,14 @@ pub fn hover_data(
     url: Url,
     position: Position,
 ) -> Option<lsp_types::Hover> {
-    let (lsp_span, token) = session.token_map().token_at_position(&url, position)?;
+    let (ident, token) = session.token_map().token_at_position(&url, position)?;
 
     // check if our token is a keyword
     if matches!(
         token.kind,
         SymbolKind::BoolLiteral | SymbolKind::Keyword | SymbolKind::SelfKeyword
     ) {
-        let name = lsp_span.name;
+        let name = ident.name;
         let documentation = keyword_docs.get(&name).unwrap();
         let prefix = format!("\n```sway\n{name}\n```\n\n---\n\n");
         let formatted_doc = format!("{prefix}{documentation}");
@@ -42,29 +42,29 @@ pub fn hover_data(
         let contents = lsp_types::HoverContents::Markup(markup_content(content));
         return Some(lsp_types::Hover {
             contents,
-            range: Some(lsp_span.range),
+            range: Some(ident.range),
         });
     }
 
     let engines = session.engines.read();
-    let (decl_lsp_span, decl_token) = match token.declared_token_lsp_span(&engines) {
-        Some(decl_lsp_span) => {
+    let (decl_ident, decl_token) = match token.declared_token_ident(&engines) {
+        Some(decl_ident) => {
             let decl_token = session
                 .token_map()
-                .try_get(&decl_lsp_span)
+                .try_get(&decl_ident)
                 .try_unwrap()
                 .map(|item| item.value().clone())?;
-            (decl_lsp_span, decl_token)
+            (decl_ident, decl_token)
         }
         // The `TypeInfo` of the token does not contain an `Ident`. In this case,
         // we use the `Ident` of the token itself.
-        None => (lsp_span.clone(), token),
+        None => (ident.clone(), token),
     };
 
-    let contents = hover_format(session.clone(), &engines, &decl_token, &decl_lsp_span.name);
+    let contents = hover_format(session.clone(), &engines, &decl_token, &decl_ident.name);
     Some(lsp_types::Hover {
         contents,
-        range: Some(lsp_span.range),
+        range: Some(ident.range),
     })
 }
 
