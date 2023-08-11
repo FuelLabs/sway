@@ -399,7 +399,14 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                     return Err(IrError::VerifyBinaryOpIncorrectArgType);
                 }
             }
-            _ => {
+            BinaryOpKind::Add
+            | BinaryOpKind::Sub
+            | BinaryOpKind::Mul
+            | BinaryOpKind::Div
+            | BinaryOpKind::And
+            | BinaryOpKind::Or
+            | BinaryOpKind::Xor
+            | BinaryOpKind::Mod => {
                 if !arg1_ty.is_ptr(self.context)
                     || !arg2_ty.is_ptr(self.context)
                     || !result_ty.is_ptr(self.context)
@@ -452,7 +459,14 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                     return Err(IrError::VerifyBinaryOpIncorrectArgType);
                 }
             }
-            _ => {
+            BinaryOpKind::Add
+            | BinaryOpKind::Sub
+            | BinaryOpKind::Mul
+            | BinaryOpKind::Div
+            | BinaryOpKind::And
+            | BinaryOpKind::Or
+            | BinaryOpKind::Xor
+            | BinaryOpKind::Mod => {
                 if !arg1_ty.eq(self.context, &arg2_ty) || !arg1_ty.is_uint(self.context) {
                     return Err(IrError::VerifyBinaryOpIncorrectArgType);
                 }

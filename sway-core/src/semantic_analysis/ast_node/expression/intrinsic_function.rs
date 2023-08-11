@@ -885,7 +885,7 @@ fn type_check_shift_binary_op(
         handler,
         ctx.by_ref()
             .with_help_text("Incorrect argument type")
-            .with_type_annotation(engines.te().insert(engines, TypeInfo::Numeric)),
+            .with_type_annotation(return_type),
         lhs,
     )?;
 
