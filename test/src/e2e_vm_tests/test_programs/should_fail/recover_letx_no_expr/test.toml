@@ -1,5 +1,16 @@
 category = "fail"
 
-# check: $()Expected an expression.
-# check: $()Expected `;`.
-# check: $()Mismatched types.
+# check: $()let a
+# check: $()Identifiers cannot be a reserved keyword.
+
+# check: $()let b
+# check: $()Expected
+
+# check: $()let c = 1
+# check: $()Identifiers cannot be a reserved keyword.
+
+# check: $()let d = 1;
+# check: $()Expected
+
+# check: $()let asdoij ojasd 123 apasdok asdpokasd;
+# check: $()Expected

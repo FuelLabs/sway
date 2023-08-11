@@ -115,21 +115,24 @@ impl<'a, 'e> Parser<'a, 'e> {
 
     /// Parses a `T` in its canonical way.
     /// Do not advance the parser on failure
-    pub fn try_parse<T: Parse>(&mut self) -> ParseResult<T> {
+    pub fn try_parse<T: Parse>(&mut self, append_diagnostics: bool) -> ParseResult<T> {
         let handler = Handler::default();
         let mut fork = Parser {
             token_trees: self.token_trees,
             full_span: self.full_span.clone(),
             handler: &handler,
         };
-        match T::parse(&mut fork) {
+        let r = match T::parse(&mut fork) {
             Ok(result) => {
                 self.token_trees = fork.token_trees;
-                self.handler.append(handler);
                 Ok(result)
             }
             Err(err) => Err(err),
+        };
+        if append_diagnostics {
+            self.handler.append(handler);
         }
+        r
     }
 
     /// Parses a `T` in its canonical way.
@@ -418,12 +421,15 @@ impl<'original, 'a, 'e> Recoverer<'original, 'a, 'e> {
         let original = self.original.borrow_mut();
 
         // collect all tokens trees that were consumed by the fork
-        let first_fork_tt = &p.token_trees[0];
-        let qty = original
-            .token_trees
-            .iter()
-            .position(|tt| tt.span() == first_fork_tt.span())
-            .expect("not finding fork head");
+        let qty = if let Some(first_fork_tt) = p.token_trees.get(0) {
+            original
+                .token_trees
+                .iter()
+                .position(|tt| tt.span() == first_fork_tt.span())
+                .expect("not finding fork head")
+        } else {
+            original.token_trees.len()
+        };
 
         let garbage: Vec<_> = original
             .token_trees
@@ -439,12 +445,15 @@ impl<'original, 'a, 'e> Recoverer<'original, 'a, 'e> {
         let mut original = self.original.borrow_mut();
 
         // collect all tokens trees that were consumed by the fork
-        let first_fork_tt = &p.token_trees[0];
-        let qty = original
-            .token_trees
-            .iter()
-            .position(|tt| tt.span() == first_fork_tt.span())
-            .expect("not finding fork head");
+        let qty = if let Some(first_fork_tt) = p.token_trees.get(0) {
+            original
+                .token_trees
+                .iter()
+                .position(|tt| tt.span() == first_fork_tt.span())
+                .expect("not finding fork head")
+        } else {
+            original.token_trees.len()
+        };
 
         let garbage: Vec<_> = original
             .token_trees

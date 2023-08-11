@@ -136,7 +136,6 @@ impl<'eng> FnCompiler<'eng> {
                 }
             };
 
-            dbg!(&errors);
             if !errors.is_empty() {
                 Err(errors)
             } else {

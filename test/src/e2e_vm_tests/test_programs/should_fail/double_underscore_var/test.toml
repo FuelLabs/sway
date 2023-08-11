@@ -1,4 +1,6 @@
 category = "fail"
 
 # check: __a
+
+# check: __a
 # nextln: $()Identifiers cannot begin with a double underscore, as that naming convention is reserved for compiler intrinsics.

@@ -94,23 +94,24 @@ impl Parse for Expr {
 impl Parse for StatementLet {
     fn parse(parser: &mut Parser) -> ParseResult<Self> {
         let let_token: LetToken = parser.parse()?;
-        let pattern = parser.try_parse().map_err(|err| {
-            parser.emit_error_with_span(
+
+        if parser.peek::<EqToken>().is_some() {
+            return Err(parser.emit_error_with_span(
                 ParseErrorKind::ExpectedPattern,
                 let_token.span().next_char(),
-            );
-            err
-        })?;
+            ));
+        }
+        let pattern = parser.try_parse(true)?;
+
         let ty_opt = match parser.take() {
             Some(colon_token) => Some((colon_token, parser.parse()?)),
             None => None,
         };
-        let eq_token: EqToken = parser.try_parse()?;
-
-        let expr = parser.try_parse()?;
+        let eq_token: EqToken = parser.try_parse(true)?;
+        let expr = parser.try_parse(true)?;
 
         // Recover on missing semicolon.
-        let semicolon_token = parser.try_parse()?;
+        let semicolon_token = parser.try_parse(true)?;
 
         Ok(StatementLet {
             let_token,

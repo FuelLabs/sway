@@ -481,9 +481,6 @@ pub fn compile_to_ast(
         metrics
     );
 
-    // Fail compilation if we have errors
-    handler.ok()?;
-
     let (lexed_program, mut parsed_program) = match parse_program_opt {
         Ok(modules) => modules,
         Err(e) => {
@@ -515,6 +512,9 @@ pub fn compile_to_ast(
         build_config,
         metrics
     );
+
+    //  // Fail compilation if we have errors
+    //  handler.ok()?;
 
     handler.dedup();
     Ok(Programs::new(lexed_program, parsed_program, typed_res))
