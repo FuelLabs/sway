@@ -11,7 +11,7 @@ pub use crate::core::token_map_ext::TokenMapExt;
 /// It stores all of the tokens that have been parsed and typechecked by the sway compiler.
 ///
 /// The TokenMap is a wrapper around a [DashMap], which is a concurrent HashMap.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct TokenMap(DashMap<(Ident, Span), Token>);
 
 impl TokenMap {
