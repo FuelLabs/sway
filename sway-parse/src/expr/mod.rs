@@ -139,6 +139,7 @@ impl ParseToEnd for CodeBlockContents {
         let code_block_contents = CodeBlockContents {
             statements,
             final_expr_opt,
+            span: parser.full_span().clone(),
         };
         Ok((code_block_contents, consumed))
     }

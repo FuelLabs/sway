@@ -9,6 +9,7 @@ use std::{io, iter, slice};
 pub mod constants;
 
 pub mod ident;
+pub mod u256;
 pub use ident::*;
 
 pub mod integer_bits;

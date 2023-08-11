@@ -1,11 +1,13 @@
 use std::str::FromStr;
 
+use anyhow::Context;
 use fuel_abi_types::abi::full_program::FullTypeApplication;
 use serde::{Deserialize, Deserializer, Serialize};
+use sway_types::u256::U256;
 
 /// A wrapper around fuels_core::types::Token, which enables serde de/serialization.
 #[derive(Debug, PartialEq)]
-pub(crate) struct Token(fuels_core::types::Token);
+pub(crate) struct Token(pub(crate) fuels_core::types::Token);
 
 impl FromStr for Token {
     type Err = anyhow::Error;
@@ -87,10 +89,10 @@ impl Token {
                 let u64_val = value.parse::<u64>()?;
                 Ok(Token(fuels_core::types::Token::U64(u64_val)))
             }
-            //TODO u256 limited to u64 value
             Type::U256 => {
-                let u64_val = value.parse::<u64>()?;
-                Ok(Token(fuels_core::types::Token::U256(u64_val.into())))
+                let v = value.parse::<U256>().context("u256 literal out of range")?;
+                let bytes = v.to_be_bytes();
+                Ok(Token(fuels_core::types::Token::U256(bytes.into())))
             }
             Type::Bool => {
                 let bool_val = value.parse::<bool>()?;
