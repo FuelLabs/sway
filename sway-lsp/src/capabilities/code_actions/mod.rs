@@ -45,7 +45,7 @@ pub fn code_actions(
     let engines = session.engines.read();
     let (_, token) = session
         .token_map()
-        .token_at_position(engines.se(), temp_uri, range.start)?;
+        .token_at_position(temp_uri, range.start)?;
 
     let ctx = CodeActionContext {
         engines: &engines,
