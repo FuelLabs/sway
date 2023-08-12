@@ -1,11 +1,10 @@
 # Sway
 
-[![Twitter Follow](https://img.shields.io/twitter/follow/fuel_network?style=social)](https://twitter.com/fuel_network)
+[![Twitter Follow](https://img.shields.io/twitter/follow/SwayLang?style=social)](https://twitter.com/SwayLang)
 [![build](https://github.com/FuelLabs/sway/actions/workflows/ci.yml/badge.svg)](https://github.com/FuelLabs/sway/actions/workflows/ci.yml)
 [![crates.io](https://img.shields.io/crates/v/forc?label=latest)](https://crates.io/crates/forc)
 [![docs](https://docs.rs/forc/badge.svg)](https://docs.rs/forc/)
 [![discord](https://img.shields.io/badge/chat%20on-discord-orange?&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/xfpK4Pe)
-[![Website Status](https://img.shields.io/website?url=https%3A%2F%2Ffuel.network)](https://fuel.network)
 
 Sway is a language developed for the Fuel blockchain. It is heavily inspired by Rust and aims to bring modern language development and performance to the blockchain ecosystem.
 
