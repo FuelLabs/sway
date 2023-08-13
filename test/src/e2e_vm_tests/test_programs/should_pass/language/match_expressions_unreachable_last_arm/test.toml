@@ -8,7 +8,7 @@ category = "compile"
 #check: $()Enum::E(_) => 0,
 #nextln: $()Preceding match arms already match all possible values of "e".
 #nextln: $()Enum::E(1) => 0,
-#nextln: $()This match arm will never be matched.
+#nextln: $()This match arm is unreachable.
 
 #check: $()Match arm is unreachable. Pattern "Struct { x: false, y: 0, z }" will never be matched.
 
@@ -18,7 +18,7 @@ category = "compile"
 #check: $()Struct { x: false, y, z } => y + z.0,
 #nextln: $()Preceding match arms already match all possible values of "s1".
 #nextln: $()Struct { x: false, y: 0, z } => z.0,
-#nextln: $()This match arm will never be matched.
+#nextln: $()This match arm is unreachable.
 
 #check: $()Match arm is unreachable. Pattern "Struct { x: true, y: 0, z: (0, 0, 0) }" will never be matched.
 
@@ -28,7 +28,7 @@ category = "compile"
 #check: $()Struct { x: false, y, z } => y + z.0,
 #nextln: $()Preceding match arms already match all possible values of "s2".
 #nextln: $()Struct { x: true, y: 0, z: (0, 0, 0) } => 0,
-#nextln: $()This match arm will never be matched.
+#nextln: $()This match arm is unreachable.
 
 #check: $()Match arm is unreachable. Pattern "Struct { x: false, y: 0, z: (0, _, _) }" will never be matched.
 
@@ -38,7 +38,7 @@ category = "compile"
 #check: $()Struct { x: false, y, z } => y + z.0,
 #nextln: $()Preceding match arms already match all possible values of "s3".
 #nextln: $()Struct { x: false, y: 0, z: (0, _, _) } => 0,
-#nextln: $()This match arm will never be matched.
+#nextln: $()This match arm is unreachable.
 
 #check: $()Match arm is unreachable. Pattern "Struct { x: true, y: 0, z: _ }" will never be matched.
 
@@ -48,7 +48,7 @@ category = "compile"
 #check: $()Struct { x: false, y, z } => y + z.0,
 #nextln: $()Preceding match arms already match all possible values of "s4".
 #nextln: $()Struct { x: true, y: 0, z: _ } => 0,
-#nextln: $()This match arm will never be matched.
+#nextln: $()This match arm is unreachable.
 
 #check: $()Match arm is unreachable. Pattern "Struct { x: false, y, z: _ }" will never be matched.
 
@@ -58,7 +58,7 @@ category = "compile"
 #check: $()Struct { x: false, y, z } => y + z.0,
 #nextln: $()Preceding match arms already match all possible values of "s5".
 #nextln: $()Struct { x: false, y, z: _ } => y,
-#nextln: $()This match arm will never be matched.
+#nextln: $()This match arm is unreachable.
 
 #check: $()Match arm is unreachable. Pattern "Struct { x: true, y: 0, z: (0, 0, 0) }" will never be matched.
 
@@ -68,7 +68,7 @@ category = "compile"
 #check: $()Struct { x: false, y, z } => y + z.0,
 #nextln: $()Preceding match arms already match all possible values of "s6".
 #nextln: $()Struct { x: true, y: 0, z: (0, 0, 0) } => 0,
-#nextln: $()This match arm will never be matched.
+#nextln: $()This match arm is unreachable.
 
 #check: $()Match arm is unreachable. Pattern "(false, Enum::A, s, n)" will never be matched.
 
@@ -78,7 +78,7 @@ category = "compile"
 #check: $()(false, _, s, n) => n + s.y,
 #nextln: $()Preceding match arms already match all possible values of "t1".
 #nextln: $()(false, Enum::A, s, n) => n + s.y,
-#nextln: $()This match arm will never be matched.
+#nextln: $()This match arm is unreachable.
 
 #check: $()Match arm is unreachable. Pattern "(false, Enum::A, Struct { x: true, y, z:_ }, 0)" will never be matched.
 
@@ -88,7 +88,7 @@ category = "compile"
 #check: $()(false, _, s, n) => n + s.y,
 #nextln: $()Preceding match arms already match all possible values of "t2".
 #nextln: $()(false, Enum::A, Struct { x: true, y, z:_ }, 0) => y,
-#nextln: $()This match arm will never be matched.
+#nextln: $()This match arm is unreachable.
 
 #check: $()Match arm is unreachable. Pattern "(true, _, Struct { x: true, y, z: _}, 0)" will never be matched.
 
@@ -98,7 +98,7 @@ category = "compile"
 #check: $()(false, _, s, n) => n + s.y,
 #nextln: $()Preceding match arms already match all possible values of "t3".
 #nextln: $()(true, _, Struct { x: true, y, z: _}, 0) => y,
-#nextln: $()This match arm will never be matched.
+#nextln: $()This match arm is unreachable.
 
 #check: $()Match arm is unreachable. Pattern "(true, _, _, 0)" will never be matched.
 
@@ -108,7 +108,7 @@ category = "compile"
 #check: $()(false, _, s, n) => n + s.y,
 #nextln: $()Preceding match arms already match all possible values of "t4".
 #nextln: $()(true, _, _, 0) => 0,
-#nextln: $()This match arm will never be matched.
+#nextln: $()This match arm is unreachable.
 
 #check: $()Match arm is unreachable. Pattern "(true, _, Struct { x: _, y: _, z: (j, k, l)}, n)" will never be matched.
 
@@ -118,7 +118,7 @@ category = "compile"
 #check: $()(false, _, s, n) => n + s.y,
 #nextln: $()Preceding match arms already match all possible values of "t5".
 #nextln: $()(true, _, Struct { x: _, y: _, z: (j, k, l)}, n) => {
-#nextln: $()This match arm will never be matched.
+#nextln: $()This match arm is unreachable.
 
 #check: $()Match arm is unreachable. Pattern "(true, _, Struct { x: _, y: _, z: (_ , k, _)}, n)" will never be matched.
 
@@ -128,6 +128,6 @@ category = "compile"
 #check: $()(false, _, s, n) => n + s.y,
 #nextln: $()Preceding match arms already match all possible values of "t6".
 #nextln: $()(true, _, Struct { x: _, y: _, z: (_ , k, _)}, n) => {
-#nextln: $()This match arm will never be matched.
+#nextln: $()This match arm is unreachable.
 
 expected_warnings = 13

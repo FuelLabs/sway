@@ -649,15 +649,16 @@ impl ty::TyExpression {
 
         if let Some((last_arm_report, other_arms_reachability)) = arms_reachability.split_last() {
             // check reachable report for all the arms except the last one
-            for reachable_report in other_arms_reachability.iter() {
+            for (index, reachable_report) in other_arms_reachability.iter().enumerate() {
                 if !reachable_report.reachable {
                     handler.emit_warn(CompileWarning {
-                        span: reachable_report.span.clone(),
+                        span: reachable_report.scrutinee.span.clone(),
                         warning_content: Warning::MatchExpressionUnreachableArm {
                             match_value: value.span(),
-                            preceding_arms: Span::dummy(), // TODO-IG: Calculate.
+                            preceding_arms: Span::join_all(other_arms_reachability[..index].iter().map(|report| report.scrutinee.span.clone())),
                             unreachable_arm: reachable_report.scrutinee.span.clone(),
-                            is_last_catch_all_arm: false
+                            is_last_arm: false,
+                            is_catch_all_arm: false, // TODO-IG: It will never be true because we will add preceeding warning for that.
                         },
                     });
                 }
@@ -666,12 +667,13 @@ impl ty::TyExpression {
             // for the last one, give a different warning if it is an unreachable catch all arm
             if !last_arm_report.reachable {
                 handler.emit_warn(CompileWarning {
-                    span: last_arm_report.span.clone(),
+                    span: last_arm_report.scrutinee.span.clone(),
                     warning_content: Warning::MatchExpressionUnreachableArm {
                         match_value: value.span(),
-                        preceding_arms: Span::join_all(other_arms_reachability.iter().map(|report| report.span.clone())),
+                        preceding_arms: Span::join_all(other_arms_reachability.iter().map(|report| report.scrutinee.span.clone())),
                         unreachable_arm: last_arm_report.scrutinee.span.clone(),
-                        is_last_catch_all_arm: last_arm_report.scrutinee.is_catch_all()
+                        is_last_arm: true,
+                        is_catch_all_arm: last_arm_report.scrutinee.is_catch_all(),
                     },
                 });
             }
