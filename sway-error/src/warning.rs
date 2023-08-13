@@ -84,11 +84,11 @@ pub enum Warning {
     DeadStorageDeclarationForFunction {
         unneeded_attrib: String,
     },
-    MatchExpressionUnreachableArm,
-    MatchExpressionUnreachableCatchAllLastArm {
+    MatchExpressionUnreachableArm {
         match_value: Span,
-        other_arms: Span,
-        trailing_catch_all_arm: Span,
+        preceding_arms: Span,
+        unreachable_arm: Span,
+        is_last_catch_all_arm: bool,
     },
     UnrecognizedAttribute {
         attrib_name: Ident,
@@ -222,8 +222,7 @@ impl fmt::Display for Warning {
                 "This function's storage attributes declaration does not match its \
                  actual storage access pattern: '{unneeded_attrib}' attribute(s) can be removed."
             ),
-            MatchExpressionUnreachableArm => write!(f, "This match arm is unreachable."),
-            MatchExpressionUnreachableCatchAllLastArm { .. } => write!(f, "This match arm is unreachable."),
+            MatchExpressionUnreachableArm { .. } => write!(f, "This match arm is unreachable."),
             UnrecognizedAttribute {attrib_name} => write!(f, "Unknown attribute: \"{attrib_name}\"."),
             AttributeExpectedNumberOfArguments {attrib_name, received_args, expected_min_len, expected_max_len } => write!(
                 f,
@@ -279,12 +278,17 @@ impl ToDiagnostic for CompileWarning {
                     format!("Consider renaming the constant to, e.g., \"{}\".", to_screaming_snake_case(name.as_str())),
                 ],
             },
-            MatchExpressionUnreachableCatchAllLastArm { match_value, other_arms, trailing_catch_all_arm } => Diagnostic {
+            MatchExpressionUnreachableArm { match_value, preceding_arms, unreachable_arm, is_last_catch_all_arm } => Diagnostic {
                 reason: Some(Reason::new(code(2), "Match arm is unreachable".to_string())),
                 issue: Issue::warning(
                     source_engine,
-                    trailing_catch_all_arm.clone(),
-                    format!("Catch-all pattern \"{}\" in the last match arm will never be matched", trailing_catch_all_arm.as_str()),
+                    unreachable_arm.clone(),
+                    if *is_last_catch_all_arm {
+                        format!("Catch-all pattern \"{}\" in the last match arm will never be matched", unreachable_arm.as_str())
+                    }
+                    else {
+                        format!("Pattern \"{}\" will never be matched", unreachable_arm.as_str())
+                    },
                 ),
                 hints: vec![
                     Hint::info(
@@ -294,20 +298,30 @@ impl ToDiagnostic for CompileWarning {
                     ),
                     Hint::info(
                         source_engine,
-                        other_arms.clone(),
+                        preceding_arms.clone(),
                         format!("Preceding match arms already match all possible values of \"{}\".", match_value.as_str())
                     ),
                     Hint::warning(
                         source_engine,
-                        trailing_catch_all_arm.clone(),
-                        format!("This last catch-all arm will never be matched."),
+                        unreachable_arm.clone(),
+                        format!("This {}match arm will never be matched.", if *is_last_catch_all_arm { "last catch-all " } else { "" })
                     ),
                 ],
-                help: vec![
-                    format!("Catch-all patterns are often used in last match arms."),
-                    format!("But in this case, the preceding arms already match all possible values of \"{}\".", match_value.as_str()),
-                    format!("Therefore, the catch-all match arm \"{}\" is redundant. It will never be matched.", trailing_catch_all_arm.as_str()),
-                ],
+                help: if *is_last_catch_all_arm {
+                    vec![
+                        format!("Catch-all patterns are often used in last match arms."),
+                        format!("But in this case, the preceding arms already match all possible values of \"{}\".", match_value.as_str()),
+                        format!("Therefore, the last catch-all match arm \"{}\" is redundant. It will never be matched.", unreachable_arm.as_str()),
+                        format!("Consider removing the unreachable catch-all match arm, after carefully checking matching logic in all the arms."),
+                    ]
+                }
+                else {
+                    vec![
+                        format!("The preceding arms already match all possible values of \"{}\".", match_value.as_str()),
+                        format!("Therefore, the match arm \"{}\" is unreachable. It will never be matched.", unreachable_arm.as_str()),
+                        format!("Consider removing the unreachable match arm, after carefully checking matching logic in all the arms."),
+                    ]
+                }
             },
             //p`
            _ => Diagnostic {
