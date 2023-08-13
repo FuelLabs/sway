@@ -104,6 +104,47 @@ impl ty::TyScrutinee {
             Scrutinee::Error { err, .. } => Err(err),
         }
     }
+
+    /// Returns true if the `TyScrutinee` consists only of catch-all scrutinee variants, recursively.
+    /// Catch-all varaints are .., _, and variables.
+    /// E.g.: (_, x, Point { .. }) 
+    /// A catch-all scrutinee matches all the values of the corresponding type.
+    pub(crate) fn is_catch_all(&self) -> bool {
+        match &self.variant {
+            ty::TyScrutineeVariant::CatchAll => true,
+            ty::TyScrutineeVariant::Variable(_) => true,
+            ty::TyScrutineeVariant::Literal(_) => false,
+            ty::TyScrutineeVariant::Constant(_, _, _) => false,
+            ty::TyScrutineeVariant::StructScrutinee {
+                fields,
+                ..
+            } => {
+                let mut is_catch_all_struct_pattern = true;
+                for field in fields.iter() {
+                    is_catch_all_struct_pattern &= match &field.scrutinee {
+                        Some(scrutinee) => scrutinee.is_catch_all(),
+                        None => true,
+                    }
+                }
+                is_catch_all_struct_pattern
+            }
+            ty::TyScrutineeVariant::Or(elems) => {
+                let mut is_catch_all_or_pattern = true;
+                for elem in elems.iter() {
+                    is_catch_all_or_pattern &= elem.is_catch_all()
+                }
+                is_catch_all_or_pattern
+            }
+            ty::TyScrutineeVariant::Tuple(elems) => {
+                let mut is_catch_all_tuple_pattern = true;
+                for elem in elems.iter() {
+                    is_catch_all_tuple_pattern &= elem.is_catch_all()
+                }
+                is_catch_all_tuple_pattern
+            }
+            ty::TyScrutineeVariant::EnumScrutinee { .. } => false,
+        }
+    }
 }
 
 fn type_check_variable(

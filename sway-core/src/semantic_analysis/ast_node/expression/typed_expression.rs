@@ -646,14 +646,37 @@ impl ty::TyExpression {
             typed_scrutinees.clone(),
             span.clone(),
         )?;
-        for reachable_report in arms_reachability.into_iter() {
-            if !reachable_report.reachable {
-                handler.emit_warn(CompileWarning {
-                    span: reachable_report.span,
-                    warning_content: Warning::MatchExpressionUnreachableArm,
-                });
+
+        if let Some((last_arm_report, other_arms_reachability)) = arms_reachability.split_last() {
+            // check reachable report for all the arms except the last one
+            for reachable_report in other_arms_reachability.iter() {
+                if !reachable_report.reachable {
+                    handler.emit_warn(CompileWarning {
+                        span: reachable_report.span.clone(),
+                        warning_content: Warning::MatchExpressionUnreachableArm,
+                    });
+                }
+            }
+
+            // for the last one, give a different warning if it is an unreachable catch all arm
+            if !last_arm_report.reachable {
+                match last_arm_report.scrutinee.is_catch_all() {
+                    true => handler.emit_warn(CompileWarning {
+                        span: last_arm_report.span.clone(),
+                        warning_content: Warning::MatchExpressionUnreachableCatchAllLastArm {
+                            match_value: value.span(),
+                            other_arms: Span::join_all(other_arms_reachability.iter().map(|report| report.span.clone())),
+                            trailing_catch_all_arm: last_arm_report.scrutinee.span.clone()
+                        },
+                    }),
+                    false => handler.emit_warn(CompileWarning {
+                        span: last_arm_report.span.clone(),
+                        warning_content: Warning::MatchExpressionUnreachableArm,
+                    }),
+                }
             }
         }
+
         if witness_report.has_witnesses() {
             return Err(
                 handler.emit_err(CompileError::MatchExpressionNonExhaustive {

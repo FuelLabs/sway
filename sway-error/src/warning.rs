@@ -85,6 +85,11 @@ pub enum Warning {
         unneeded_attrib: String,
     },
     MatchExpressionUnreachableArm,
+    MatchExpressionUnreachableCatchAllLastArm {
+        match_value: Span,
+        other_arms: Span,
+        trailing_catch_all_arm: Span,
+    },
     UnrecognizedAttribute {
         attrib_name: Ident,
     },
@@ -218,6 +223,7 @@ impl fmt::Display for Warning {
                  actual storage access pattern: '{unneeded_attrib}' attribute(s) can be removed."
             ),
             MatchExpressionUnreachableArm => write!(f, "This match arm is unreachable."),
+            MatchExpressionUnreachableCatchAllLastArm { .. } => write!(f, "This match arm is unreachable."),
             UnrecognizedAttribute {attrib_name} => write!(f, "Unknown attribute: \"{attrib_name}\"."),
             AttributeExpectedNumberOfArguments {attrib_name, received_args, expected_min_len, expected_max_len } => write!(
                 f,
@@ -258,21 +264,52 @@ impl ToDiagnostic for CompileWarning {
                 issue: Issue::warning(
                     source_engine,
                     name.span(),
-                    format!("Constant \"{name}\" should be SCREAMING_SNAKE_CASE")
+                    format!("Constant \"{name}\" should be SCREAMING_SNAKE_CASE"),
                 ),
                 hints: vec![
                     Hint::warning(
                         source_engine,
                         name.span(),
-                        format!("\"{name}\" should be SCREAMING_SNAKE_CASE, like \"{}\".", to_screaming_snake_case(name.as_str()))
+                        format!("\"{name}\" should be SCREAMING_SNAKE_CASE, like \"{}\".", to_screaming_snake_case(name.as_str())),
                     ),
                 ],
                 help: vec![
-                    "In Sway, ABIs, structs, traits, and enums are CapitalCase.".to_string(),
-                    "Modules, variables, and functions are snake_case, while constants are SCREAMING_SNAKE_CASE.".to_string(),
+                    format!("In Sway, ABIs, structs, traits, and enums are CapitalCase."),
+                    format!("Modules, variables, and functions are snake_case, while constants are SCREAMING_SNAKE_CASE."),
                     format!("Consider renaming the constant to, e.g., \"{}\".", to_screaming_snake_case(name.as_str())),
                 ],
             },
+            MatchExpressionUnreachableCatchAllLastArm { match_value, other_arms, trailing_catch_all_arm } => Diagnostic {
+                reason: Some(Reason::new(code(2), "Match arm is unreachable".to_string())),
+                issue: Issue::warning(
+                    source_engine,
+                    trailing_catch_all_arm.clone(),
+                    format!("Catch-all pattern \"{}\" in the last match arm will never be matched", trailing_catch_all_arm.as_str()),
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        match_value.clone(),
+                        format!("This is the value to match on.")
+                    ),
+                    Hint::info(
+                        source_engine,
+                        other_arms.clone(),
+                        format!("Preceding match arms already match all possible values of \"{}\".", match_value.as_str())
+                    ),
+                    Hint::warning(
+                        source_engine,
+                        trailing_catch_all_arm.clone(),
+                        format!("This last catch-all arm will never be matched."),
+                    ),
+                ],
+                help: vec![
+                    format!("Catch-all patterns are often used in last match arms."),
+                    format!("But in this case, the preceding arms already match all possible values of \"{}\".", match_value.as_str()),
+                    format!("Therefore, the catch-all match arm \"{}\" is redundant. It will never be matched.", trailing_catch_all_arm.as_str()),
+                ],
+            },
+            //p`
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we
