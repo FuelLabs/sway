@@ -61,7 +61,7 @@ pub fn rename(
             .iter()
             .all_references_of_token(&token, &engines)
             .map(|(ident, _)| ident)
-            .collect::<Vec<TokenIdent>>()
+            .collect()
     })
     .into_iter()
     .filter(|ident| {
@@ -82,7 +82,6 @@ pub fn rename(
                 return Some((url, vec![edit]));
             };
         }
-
         None
     })
     .fold(HashMap::new(), |mut map, (k, mut v)| {
@@ -158,20 +157,19 @@ fn is_token_in_workspace(
             ));
         }
     }
-
     Ok(true)
 }
 
 /// Returns a `Vec<Ident>` containing the identifiers of all trait functions found.
-fn trait_interface_idents(
+fn trait_interface_idents<'s>(
     interface_surface: &[ty::TyTraitInterfaceItem],
     se: &SourceEngine,
-) -> Vec<TokenIdent> {
+) -> Vec<&'s TokenIdent> {
     interface_surface
         .iter()
         .flat_map(|item| match item {
             ty::TyTraitInterfaceItem::TraitFn(fn_decl) => {
-                Some(TokenIdent::new(&fn_decl.name(), se))
+                Some(&TokenIdent::new(&fn_decl.name(), se))
             }
             _ => None,
         })
@@ -179,12 +177,12 @@ fn trait_interface_idents(
 }
 
 /// Returns the `Ident`s of all methods found for an `AbiDecl`, `TraitDecl`, or `ImplTrait`.
-fn find_all_methods_for_decl(
+fn find_all_methods_for_decl<'s>(
     session: &Session,
     engines: &Engines,
     url: &Url,
     position: Position,
-) -> Result<Vec<TokenIdent>, LanguageServerError> {
+) -> Result<Vec<&'s TokenIdent>, LanguageServerError> {
     // Find the parent declaration
     let (_, decl_token) = session
         .token_map()
@@ -220,11 +218,11 @@ fn find_all_methods_for_decl(
                                 .iter()
                                 .filter_map(|item| match item {
                                     ty::TyTraitItem::Fn(fn_decl) => {
-                                        Some(TokenIdent::new(&fn_decl.name(), &engines.se()))
+                                        Some(&TokenIdent::new(&fn_decl.name(), &engines.se()))
                                     }
                                     _ => None,
                                 })
-                                .collect::<Vec<TokenIdent>>(),
+                                .collect()
                         )
                     }
                     _ => None,

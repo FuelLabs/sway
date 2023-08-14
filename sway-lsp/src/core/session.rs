@@ -150,8 +150,8 @@ impl Session {
 
         *self.engines.write() = res.engines;
         res.token_map.deref().iter().for_each(|item| {
-            let (s, t) = item.pair();
-            self.token_map.insert(s.clone(), t.clone());
+            let (i, t) = item.pair();
+            self.token_map.insert(i.clone(), t.clone());
         });
 
         self.create_runnables(&res.typed, self.engines.read().de());

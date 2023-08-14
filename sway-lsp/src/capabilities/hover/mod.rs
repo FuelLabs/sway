@@ -28,6 +28,7 @@ pub fn hover_data(
     position: Position,
 ) -> Option<lsp_types::Hover> {
     let (ident, token) = session.token_map().token_at_position(&url, position)?;
+    let range = ident.range;
 
     // check if our token is a keyword
     if matches!(
@@ -42,7 +43,7 @@ pub fn hover_data(
         let contents = lsp_types::HoverContents::Markup(markup_content(content));
         return Some(lsp_types::Hover {
             contents,
-            range: Some(ident.range),
+            range: Some(range),
         });
     }
 
@@ -53,18 +54,18 @@ pub fn hover_data(
                 .token_map()
                 .try_get(&decl_ident)
                 .try_unwrap()
-                .map(|item| item.value().clone())?;
+                .map(|item| item.value())?;
             (decl_ident, decl_token)
         }
         // The `TypeInfo` of the token does not contain an `Ident`. In this case,
         // we use the `Ident` of the token itself.
-        None => (ident.clone(), token),
+        None => (ident, token),
     };
 
     let contents = hover_format(session.clone(), &engines, &decl_token, &decl_ident.name);
     Some(lsp_types::Hover {
         contents,
-        range: Some(ident.range),
+        range: Some(range),
     })
 }
 

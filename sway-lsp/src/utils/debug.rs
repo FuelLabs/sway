@@ -6,9 +6,9 @@ use sway_core::{
     language::{ty, Literal},
 };
 
-pub(crate) fn generate_warnings_non_typed_tokens<I>(tokens: I) -> Vec<Diagnostic>
+pub(crate) fn generate_warnings_non_typed_tokens<'s, I>(tokens: I) -> Vec<Diagnostic>
 where
-    I: Iterator<Item = (TokenIdent, Token)>,
+    I: Iterator<Item = (&'s TokenIdent, &'s Token)>,
 {
     tokens
         .filter(|(_, token)| token.typed.is_none())
@@ -16,18 +16,18 @@ where
         .collect()
 }
 
-pub(crate) fn generate_warnings_for_parsed_tokens<I>(tokens: I) -> Vec<Diagnostic>
+pub(crate) fn generate_warnings_for_parsed_tokens<'s, I>(tokens: I) -> Vec<Diagnostic>
 where
-    I: Iterator<Item = (TokenIdent, Token)>,
+    I: Iterator<Item = (&'s TokenIdent, &'s Token)>,
 {
     tokens
         .map(|(ident, _)| warning_from_ident(&ident))
         .collect()
 }
 
-pub(crate) fn generate_warnings_for_typed_tokens<I>(tokens: I) -> Vec<Diagnostic>
+pub(crate) fn generate_warnings_for_typed_tokens<'s, I>(tokens: I) -> Vec<Diagnostic>
 where
-    I: Iterator<Item = (TokenIdent, Token)>,
+    I: Iterator<Item = (&'s TokenIdent, &'s Token)>,
 {
     tokens
         .filter(|(_, token)| token.typed.is_some())

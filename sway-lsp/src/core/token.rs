@@ -164,14 +164,23 @@ impl Token {
     }
 
     /// Return the [TokenIdent] of the declaration of the provided token.
-    pub fn declared_token_ident(&self, engines: &Engines) -> Option<TokenIdent> {
+    pub fn declared_token_ident<'s>(&self, engines: &Engines) -> Option<&'s TokenIdent> {
         self.type_def.as_ref().and_then(|type_def| match type_def {
             TypeDefinition::TypeId(type_id) => ident_of_type_id(engines, type_id),
-            TypeDefinition::Ident(ident) => Some(TokenIdent::new(&ident, engines.se())),
+            TypeDefinition::Ident(ident) => Some(&TokenIdent::new(&ident, engines.se())),
         })
     }
 }
 
+/// A more convenient [Ident] type for use in the language server.
+/// 
+/// This type is used as the key in the [TokenMap]. It's constructed during AST traversal
+/// where we compute the [Range] of the token and the convert [SourceId]'s to [PathBuf]'s.
+/// Although this introduces a small amount of overhead while traversing, precomputing this
+/// greatly speeds up performace in all other areas of the language server.
+/// 
+/// [TokenMap]: crate::core::token_map::TokenMap
+/// [SourceId]: sway_types::SourceId
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct TokenIdent {
     pub name: String,
@@ -222,7 +231,7 @@ pub fn desugared_op(prefixes: &[Ident]) -> bool {
 }
 
 /// Use the [TypeId] to look up the associated [TypeInfo] and return the [TokenIdent] if one is found.
-pub fn ident_of_type_id(engines: &Engines, type_id: &TypeId) -> Option<TokenIdent> {
+pub fn ident_of_type_id<'s>(engines: &Engines, type_id: &TypeId) -> Option<&'s TokenIdent> {
     let ident = match engines.te().get(*type_id) {
         TypeInfo::UnknownGeneric { name, .. } => name,
         TypeInfo::Enum(decl_ref) => engines.de().get_enum(&decl_ref).call_path.suffix,
@@ -230,7 +239,7 @@ pub fn ident_of_type_id(engines: &Engines, type_id: &TypeId) -> Option<TokenIden
         TypeInfo::Custom { call_path, .. } => call_path.suffix,
         _ => return None,
     };
-    Some(TokenIdent::new(&ident, engines.se()))
+    Some(&TokenIdent::new(&ident, engines.se()))
 }
 
 /// Intended to be used during traversal of the [sway_core::language::parsed::ParseProgram] AST.

@@ -1,12 +1,11 @@
 use crate::core::token::{SymbolKind, Token, TokenIdent};
 use lsp_types::{self, Location, SymbolInformation, Url};
 
-pub fn to_symbol_information<I>(tokens: I, url: Url) -> Vec<SymbolInformation>
+pub fn to_symbol_information<'s, I>(tokens: I, url: Url) -> Vec<SymbolInformation>
 where
-    I: Iterator<Item = (TokenIdent, Token)>,
+    I: Iterator<Item = (&'s TokenIdent, &'s Token)>,
 {
     let mut symbols: Vec<SymbolInformation> = vec![];
-
     for (ident, token) in tokens {
         let symbol = symbol_info(&ident, &token, url.clone());
         symbols.push(symbol)

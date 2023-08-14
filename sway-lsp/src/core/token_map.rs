@@ -30,31 +30,38 @@ impl TokenMap {
     }
 
     /// Return an Iterator of tokens belonging to the provided [Url].
-    pub fn tokens_for_file<'s>(
-        &'s self,
-        uri: &'s Url,
-    ) -> impl 's + Iterator<Item = (TokenIdent, Token)> {
-        self.iter().flat_map(|(span, token)| {
-            span.path.as_ref().and_then(|path| {
-                if path.to_str() == Some(uri.path()) {
-                    Some((span.clone(), token.clone()))
-                } else {
-                    None
-                }
-            })
+    // pub fn tokens_for_file<'s>(
+    //     &'s self,
+    //     uri: &'s Url,
+    // ) -> impl 's + Iterator<Item = (TokenIdent, Token)> {
+    //     self.iter().flat_map(|(ident, token)| {
+    //         ident.path.as_ref().and_then(|path| {
+    //             if path.to_str() == Some(uri.path()) {
+    //                 Some((ident.clone(), token.clone()))
+    //             } else {
+    //                 None
+    //             }
+    //         })
+    //     })
+    // }
+
+    /// Return an Iterator of tokens belonging to the provided [Url].
+    pub fn tokens_for_file<'s>(&'s self, uri: &'s Url) -> impl Iterator<Item = (&'s TokenIdent, &'s Token)> + 's {
+        self.iter().filter(|(ident, _)| {
+            ident.path.as_ref().map_or(false, |path| path.to_str() == Some(uri.path()))
         })
     }
 
     /// Given a cursor [Position], return the [TokenIdent] of a token in the
     /// Iterator if one exists at that position.
-    pub fn spans_at_position<I>(&self, cursor_position: Position, tokens: I) -> Vec<TokenIdent>
+    pub fn idents_at_position<'s, I>(&self, cursor_position: Position, tokens: I) -> Vec<&'s TokenIdent>
     where
-        I: Iterator<Item = (TokenIdent, Token)>,
+        I: Iterator<Item = (&'s TokenIdent, &'s Token)>,
     {
         tokens
-            .filter_map(|(span, _)| {
-                if cursor_position >= span.range.start && cursor_position <= span.range.end {
-                    return Some(span);
+            .filter_map(|(ident, _)| {
+                if cursor_position >= ident.range.start && cursor_position <= ident.range.end {
+                    return Some(ident);
                 }
                 None
             })
@@ -69,12 +76,12 @@ impl TokenMap {
         source_engine: &SourceEngine,
         uri: &Url,
         position: Position,
-    ) -> Option<(TokenIdent, Token)> {
+    ) -> Option<(&TokenIdent, &Token)> {
         self.tokens_at_position(source_engine, uri, position, None)
             .iter()
             .find_map(|(ident, token)| {
                 if let Some(TypedAstToken::TypedDeclaration(_)) = token.typed {
-                    Some((ident.clone(), token.clone()))
+                    Some((*ident, *token))
                 } else {
                     None
                 }
@@ -82,14 +89,14 @@ impl TokenMap {
     }
 
     /// Returns the first collected tokens that is at the cursor position.
-    pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(TokenIdent, Token)> {
+    pub fn token_at_position<'s>(&'s self, uri: &Url, position: Position) -> Option<(&'s TokenIdent, &'s Token)> {
         let tokens = self.tokens_for_file(uri);
-        self.spans_at_position(position, tokens)
+        self.idents_at_position(position, tokens)
             .first()
             .and_then(|ident| {
                 self.try_get(&ident).try_unwrap().map(|item| {
                     let (ident, token) = item.pair();
-                    (ident.clone(), token.clone())
+                    (ident, token)
                 })
             })
     }
@@ -101,13 +108,13 @@ impl TokenMap {
     /// just the spans of the token idents. For example, if we want to find out what function declaration
     /// the cursor is inside of, we need to search the body of the function declaration, not just the ident
     /// of the function declaration (the function name).
-    pub fn tokens_at_position(
-        &self,
+    pub fn tokens_at_position<'s>(
+        &'s self,
         source_engine: &SourceEngine,
         uri: &Url,
         position: Position,
         functions_only: Option<bool>,
-    ) -> Vec<(TokenIdent, Token)> {
+    ) -> Vec<(&'s TokenIdent, &'s Token)> {
         self.tokens_for_file(uri)
             .filter_map(|(ident, token)| {
                 let token_ident = match token.typed {
@@ -124,7 +131,7 @@ impl TokenMap {
                 if position >= token_ident.range.start && position <= token_ident.range.end {
                     return self.try_get(&ident).try_unwrap().map(|item| {
                         let (ident, token) = item.pair();
-                        (ident.clone(), token.clone())
+                        (ident, token)
                     });
                 }
                 None
@@ -190,15 +197,16 @@ pub struct TokenMapIter<'s> {
 }
 
 impl<'s> Iterator for TokenMapIter<'s> {
-    type Item = (TokenIdent, Token);
+    type Item = (&'s TokenIdent, &'s Token);
 
     /// Returns the next TokenIdent in the [TokenMap].
     ///
     /// If there are no more items, returns `None`.
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner_iter.next().map(|item| {
-            let (span, token) = item.pair();
-            (span.clone(), token.clone())
+        self.inner_iter.next().map(|ref item| {
+            //let (ident, token) = item.pair();
+            // (ident, token)
+            (item.key(), item.value())
         })
     }
 }
