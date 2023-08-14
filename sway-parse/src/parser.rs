@@ -245,14 +245,6 @@ impl<'a, 'e> Parser<'a, 'e> {
         }
     }
 
-    pub fn clear_errors(&mut self) {
-        self.handler.clear_errors();
-    }
-
-    pub fn clear_warnings(&mut self) {
-        self.handler.clear_errors();
-    }
-
     pub fn has_errors(&self) -> bool {
         self.handler.has_errors()
     }
@@ -482,7 +474,7 @@ impl<'original, 'a, 'e> Recoverer<'original, 'a, 'e> {
             .collect();
 
         original.token_trees = p.token_trees;
-        original.handler.append_ref(&self.handler);
+        original.handler.append(self.handler.clone());
 
         (garbage.into_boxed_slice(), self.error)
     }

@@ -513,9 +513,6 @@ pub fn compile_to_ast(
         metrics
     );
 
-    //  // Fail compilation if we have errors
-    //  handler.ok()?;
-
     handler.dedup();
     Ok(Programs::new(lexed_program, parsed_program, typed_res))
 }
