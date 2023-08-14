@@ -117,7 +117,7 @@ pub(crate) enum VirtualOp {
     BAL(VirtualRegister, VirtualRegister, VirtualRegister),
     BHEI(VirtualRegister),
     BHSH(VirtualRegister, VirtualRegister),
-    BURN(VirtualRegister),
+    BURN(VirtualRegister, VirtualRegister),
     CALL(
         VirtualRegister,
         VirtualRegister,
@@ -146,7 +146,7 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
         VirtualRegister,
     ),
-    MINT(VirtualRegister),
+    MINT(VirtualRegister, VirtualRegister),
     RETD(VirtualRegister, VirtualRegister),
     RVRT(VirtualRegister),
     SMO(
@@ -180,7 +180,7 @@ pub(crate) enum VirtualOp {
     ),
 
     /* Cryptographic Instructions */
-    ECR(VirtualRegister, VirtualRegister, VirtualRegister),
+    ECK1(VirtualRegister, VirtualRegister, VirtualRegister),
     K256(VirtualRegister, VirtualRegister, VirtualRegister),
     S256(VirtualRegister, VirtualRegister, VirtualRegister),
 
@@ -269,7 +269,7 @@ impl VirtualOp {
             BAL(r1, r2, r3) => vec![r1, r2, r3],
             BHEI(r1) => vec![r1],
             BHSH(r1, r2) => vec![r1, r2],
-            BURN(r1) => vec![r1],
+            BURN(r1, r2) => vec![r1, r2],
             CALL(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             CB(r1) => vec![r1],
             CCP(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
@@ -278,7 +278,7 @@ impl VirtualOp {
             LDC(r1, r2, r3) => vec![r1, r2, r3],
             LOG(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             LOGD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
-            MINT(r1) => vec![r1],
+            MINT(r1, r2) => vec![r1, r2],
             RETD(r1, r2) => vec![r1, r2],
             RVRT(r1) => vec![r1],
             SMO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
@@ -292,7 +292,7 @@ impl VirtualOp {
             TRO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
 
             /* Cryptographic Instructions */
-            ECR(r1, r2, r3) => vec![r1, r2, r3],
+            ECK1(r1, r2, r3) => vec![r1, r2, r3],
             K256(r1, r2, r3) => vec![r1, r2, r3],
             S256(r1, r2, r3) => vec![r1, r2, r3],
 
@@ -383,7 +383,7 @@ impl VirtualOp {
             BAL(_r1, r2, r3) => vec![r2, r3],
             BHEI(_r1) => vec![],
             BHSH(r1, r2) => vec![r1, r2],
-            BURN(r1) => vec![r1],
+            BURN(r1, r2) => vec![r1, r2],
             CALL(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             CB(r1) => vec![r1],
             CCP(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
@@ -392,7 +392,7 @@ impl VirtualOp {
             LDC(r1, r2, r3) => vec![r1, r2, r3],
             LOG(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             LOGD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
-            MINT(r1) => vec![r1],
+            MINT(r1, r2) => vec![r1, r2],
             RETD(r1, r2) => vec![r1, r2],
             RVRT(r1) => vec![r1],
             SMO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
@@ -406,7 +406,7 @@ impl VirtualOp {
             TRO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
 
             /* Cryptographic Instructions */
-            ECR(r1, r2, r3) => vec![r1, r2, r3],
+            ECK1(r1, r2, r3) => vec![r1, r2, r3],
             K256(r1, r2, r3) => vec![r1, r2, r3],
             S256(r1, r2, r3) => vec![r1, r2, r3],
 
@@ -497,7 +497,7 @@ impl VirtualOp {
             BAL(r1, _r2, _r3) => vec![r1],
             BHEI(r1) => vec![r1],
             BHSH(_r1, _r2) => vec![],
-            BURN(_r1) => vec![],
+            BURN(_r1, _r2) => vec![],
             CALL(_r1, _r2, _r3, _r4) => vec![],
             CB(_r1) => vec![],
             CCP(_r1, _r2, _r3, _r4) => vec![],
@@ -506,7 +506,7 @@ impl VirtualOp {
             LDC(_r1, _r2, _r3) => vec![],
             LOG(_r1, _r2, _r3, _r4) => vec![],
             LOGD(_r1, _r2, _r3, _r4) => vec![],
-            MINT(_r1) => vec![],
+            MINT(_r1, _r2) => vec![],
             RETD(_r1, _r2) => vec![],
             RVRT(_r1) => vec![],
             SMO(_r1, _r2, _r3, _r4) => vec![],
@@ -520,7 +520,7 @@ impl VirtualOp {
             TRO(_r1, _r2, _r3, _r4) => vec![],
 
             /* Cryptographic Instructions */
-            ECR(_r1, _r2, _r3) => vec![],
+            ECK1(_r1, _r2, _r3) => vec![],
             K256(_r1, _r2, _r3) => vec![],
             S256(_r1, _r2, _r3) => vec![],
 
@@ -819,7 +819,10 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
             ),
-            BURN(r1) => Self::BURN(update_reg(reg_to_reg_map, r1)),
+            BURN(r1, r2) => Self::BURN(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+            ),
             CALL(r1, r2, r3, r4) => Self::CALL(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
@@ -858,7 +861,10 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r3),
                 update_reg(reg_to_reg_map, r4),
             ),
-            MINT(r1) => Self::MINT(update_reg(reg_to_reg_map, r1)),
+            MINT(r1, r2) => Self::MINT(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+            ),
             RETD(r1, r2) => Self::RETD(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
@@ -914,7 +920,7 @@ impl VirtualOp {
             ),
 
             /* Cryptographic Instructions */
-            ECR(r1, r2, r3) => Self::ECR(
+            ECK1(r1, r2, r3) => Self::ECK1(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
@@ -1265,7 +1271,9 @@ impl VirtualOp {
             BHSH(reg1, reg2) => {
                 AllocatedOpcode::BHSH(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
             }
-            BURN(reg1) => AllocatedOpcode::BURN(map_reg(&mapping, reg1)),
+            BURN(reg1, reg2) => {
+                AllocatedOpcode::BURN(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
             CALL(reg1, reg2, reg3, reg4) => AllocatedOpcode::CALL(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
@@ -1302,7 +1310,9 @@ impl VirtualOp {
                 map_reg(&mapping, reg3),
                 map_reg(&mapping, reg4),
             ),
-            MINT(reg1) => AllocatedOpcode::MINT(map_reg(&mapping, reg1)),
+            MINT(reg1, reg2) => {
+                AllocatedOpcode::MINT(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
             RETD(reg1, reg2) => {
                 AllocatedOpcode::RETD(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
             }
@@ -1356,7 +1366,7 @@ impl VirtualOp {
             ),
 
             /* Cryptographic Instructions */
-            ECR(reg1, reg2, reg3) => AllocatedOpcode::ECR(
+            ECK1(reg1, reg2, reg3) => AllocatedOpcode::ECK1(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),

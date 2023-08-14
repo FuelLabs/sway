@@ -44,8 +44,8 @@ impl IdentityExample for Contract {
 
         // ANCHOR: different_executions
         match my_identity {
-            Identity::Address(address) => transfer_to_address(amount, token_id, address),
-            Identity::ContractId(contract_id) => force_transfer_to_contract(amount, token_id, contract_id),
+            Identity::Address(address) => transfer_to_address(address, token_id, amount),
+            Identity::ContractId(contract_id) => force_transfer_to_contract(contract_id, token_id, amount),
         };
         // ANCHOR_END: different_executions
     }

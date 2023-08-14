@@ -27,7 +27,7 @@
         },
         {
           "name": "asset_id",
-          "type": 2,
+          "type": 1,
           "typeArguments": null
         },
         {

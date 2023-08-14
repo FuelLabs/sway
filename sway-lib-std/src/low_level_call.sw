@@ -1,6 +1,7 @@
 //! Utilities to help with low level calls.
 library;
 
+use ::alias::AssetId;
 use ::assert::assert;
 use ::bytes::Bytes;
 use ::contract_id::ContractId;
@@ -11,7 +12,7 @@ use ::vec::Vec;
 /// A struct representing the call parameters of a function call.
 pub struct CallParams {
     coins: u64,
-    asset_id: ContractId,
+    asset_id: AssetId,
     gas: u64,
 }
 

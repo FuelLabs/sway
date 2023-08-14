@@ -164,12 +164,16 @@ pub mod tx_utils {
                 )
             })?;
             match receipt {
-                fuel_tx::Receipt::LogData { data, .. } => {
+                fuel_tx::Receipt::LogData {
+                    data: Some(data), ..
+                } => {
                     if let Some(v) = rec_value.pointer_mut("/LogData/data") {
                         *v = hex::encode(data).into();
                     }
                 }
-                fuel_tx::Receipt::ReturnData { data, .. } => {
+                fuel_tx::Receipt::ReturnData {
+                    data: Some(data), ..
+                } => {
                     if let Some(v) = rec_value.pointer_mut("/ReturnData/data") {
                         *v = hex::encode(data).into();
                     }

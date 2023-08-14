@@ -241,7 +241,7 @@ define_op_codes!(
     (Bal, BalOpcode, "bal", (ret: reg, asset: reg, contract: reg)),
     (Bhei, BheiOpcode, "bhei", (ret: reg)),
     (Bhsh, BhshOpcode, "bhsh", (addr: reg, height: reg)),
-    (Burn, BurnOpcode, "burn", (coins: reg)),
+    (Burn, BurnOpcode, "burn", (coins: reg, sub_id: reg)),
     (
         Call,
         CallOpcode,
@@ -270,7 +270,7 @@ define_op_codes!(
         "logd",
         (reg_a: reg, reg_b: reg, addr: reg, size: reg)
     ),
-    (Mint, MintOpcode, "mint", (coins: reg)),
+    (Mint, MintOpcode, "mint", (coins: reg, sub_id: reg)),
     (Retd, RetdOpcode, "retd", (addr: reg, size: reg)),
     (Rvrt, RvrtOpcode, "rvrt", (value: reg)),
     (
@@ -313,7 +313,7 @@ define_op_codes!(
         (addr: reg, output: reg, coins: reg, asset: reg)
     ),
     /* Cryptographic Instructions */
-    (Ecr, EcrOpcode, "ecr", (addr: reg, sig: reg, hash: reg)),
+    (Eck1, EcrOpcode, "eck1", (addr: reg, sig: reg, hash: reg)),
     (K256, K256Opcode, "k256", (addr: reg, data: reg, size: reg)),
     (S256, S256Opcode, "s256", (addr: reg, data: reg, size: reg)),
     /* Other Instructions */
