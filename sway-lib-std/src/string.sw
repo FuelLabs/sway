@@ -156,7 +156,7 @@ impl String {
         }
     }
 
-    /// Returns whether or not the `String` is empty.
+    /// Returns a `bool` indicating whether the `String` is empty.
     ///
     /// # Returns
     ///
@@ -172,8 +172,6 @@ impl String {
     ///     assert(string.is_empty());
     ///     string.push(0u8);
     ///     assert(!string.is_empty());
-    ///     string.clear();
-    ///     assert(string.is_empty());
     /// }
     /// ```
     pub fn is_empty(self) -> bool {

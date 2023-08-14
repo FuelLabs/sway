@@ -34,7 +34,7 @@ pub fn this_balance(asset_id: ContractId) -> u64 {
 /// # Arguments
 ///
 /// * `asset_id`: [ContractId] - The asset of which the balance should be returned.
-/// * `target`: [ContractId] - The contract of which the balance should be returned.
+/// * `target`: [ContractId] - The contract that contains the `asset_id`.
 ///
 /// # Returns
 ///
@@ -69,7 +69,6 @@ pub fn balance_of(asset_id: ContractId, target: ContractId) -> u64 {
 /// use std::context::msg_amount;
 /// 
 /// fn foo() {
-///     // Ensures that no assets are being transferred in this context
 ///     assert(msg_amount() == 0);
 /// }
 /// ```

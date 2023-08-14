@@ -44,7 +44,7 @@ library;
 /// 
 /// fn foo() {
 ///     let ptr = alloc::<u64>(2);
-///     assert(ptr.is_null() == false);
+///     assert(!ptr.is_null());
 /// }
 /// ```
 pub fn alloc<T>(count: u64) -> raw_ptr {
@@ -108,7 +108,7 @@ pub fn realloc<T>(ptr: raw_ptr, count: u64, new_count: u64) -> raw_ptr {
 /// 
 /// fn foo() {
 ///     let ptr = alloc_bytes(2);
-///     assert(ptr.is_null() == false);
+///     assert(!ptr.is_null());
 /// }
 /// ```
 pub fn alloc_bytes(count: u64) -> raw_ptr {

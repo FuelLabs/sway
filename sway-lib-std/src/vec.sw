@@ -343,7 +343,7 @@ impl<T> Vec<T> {
         self.len
     }
 
-    /// Returns whether the vector is empty or not.
+    /// Returns whether the vector is empty.
     ///
     /// # Returns
     ///
@@ -359,8 +359,6 @@ impl<T> Vec<T> {
     ///     assert(vec.is_empty());
     ///     vec.push(5);
     ///     assert(!vec.is_empty());
-    ///     vec.clear()
-    ///     assert(vec.is_empty());
     /// }
     /// ```
     pub fn is_empty(self) -> bool {
@@ -449,8 +447,8 @@ impl<T> Vec<T> {
     ///     vec.insert(1, 15);
     ///
     ///     assert(vec.get(0).unwrap() == 5);
-    ///     assert(vec.get(0).unwrap() == 15);
-    ///     assert(vec.get(0).unwrap() == 10);
+    ///     assert(vec.get(1).unwrap() == 15);
+    ///     assert(vec.get(2).unwrap() == 10);
     /// }
     /// ```
     pub fn insert(ref mut self, index: u64, element: T) {

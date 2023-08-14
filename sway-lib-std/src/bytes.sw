@@ -76,7 +76,6 @@ impl Bytes {
     ///
     /// fn foo() {
     ///     let bytes = Bytes::new();
-    ///     // does not allocate
     ///     assert(bytes.len() == 0);
     ///     assert(bytes.capacity() == 0);
     /// }
@@ -297,14 +296,14 @@ impl Bytes {
     /// use std::bytes::Byte;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let bytes = Bytes::new();
     ///     let a = 11u8;
     ///     let b = 11u8;
     ///     let c = 11u8;
     ///     let d = 11u8;
-    ///     vec.push(a);
-    ///     vec.push(b);
-    ///     vec.push(c);
+    ///     bytes.push(a);
+    ///     bytes.push(b);
+    ///     bytes.push(c);
     ///     bytes.insert(1, d);
     /// 
     ///     assert(bytes.get(0).unwrap() == a);
@@ -618,7 +617,10 @@ impl Bytes {
     /// use std:bytes::Bytes;
     ///
     /// fn foo() {
-    ///     let (mut bytes, a, b, c) = setup();
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(5u8);
+    ///     bytes.push(7u8);
+    ///     bytes.push(9u8);
     ///     assert(bytes.len() == 3);
     ///     let mid = 1;
     ///     let (left, right) = bytes.split_at(mid);
@@ -681,7 +683,7 @@ impl Bytes {
     ///     let second_cap = bytes2.capacity();
     ///     bytes.append(bytes2);
     ///     assert(bytes.len() == first_length + second_length);
-    ///     assert(bytes.capacity() == first_length + first_length);
+    ///     assert(bytes.capacity() == first_cap + second_cap);
     /// }
     /// ```
     pub fn append(ref mut self, ref mut other: self) {

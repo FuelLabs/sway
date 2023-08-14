@@ -88,7 +88,7 @@ impl Identity {
     ///
     /// fn foo() {
     ///     let identity = Identity::Address(Address::from(ZERO_B256));
-    ///     assert(identity.is_address() == true);
+    ///     assert(identity.is_address());
     /// }
     /// ```
     pub fn is_address(self) -> bool {
@@ -111,7 +111,7 @@ impl Identity {
     ///
     /// fn foo() {
     ///     let identity = Identity::ContractId(ContractId::from(ZERO_B256));
-    ///     assert(identity.is_contract_id() == true);
+    ///     assert(identity.is_contract_id());
     /// }
     /// ```
     pub fn is_contract_id(self) -> bool {
@@ -148,7 +148,6 @@ impl Identity {
     /// use std::constants::{BASE_ASSET_ID, ZERO_B256};
     ///
     /// fn foo() {
-    ///     // replace the zero Address/ContractId with your desired Address/ContractId
     ///     let to_address = Identity::Address(Address::from(ZERO_B256));
     ///     let to_contract_id = Identity::ContractId(ContractId::from(ZERO_B256));
     ///     to_address.transfer(500, BASE_ASSET_ID);
@@ -184,7 +183,6 @@ impl Identity {
     /// use std::constants::ZERO_B256;
     ///
     /// fn foo() {
-    ///     // replace the zero Address/ContractId with your desired Address/ContractId
     ///     let address_identity = Identity::Address(Address::from(ZERO_B256));
     ///     let contract_identity = Identity::ContractId(ContractId::from(ZERO_B256));
     ///     address_identity.mint_to(500);

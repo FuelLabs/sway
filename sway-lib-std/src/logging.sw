@@ -15,8 +15,6 @@ library;
 /// # Examples
 ///
 /// ```sway
-/// use std::logging::log;
-///
 /// fn foo() {
 ///     log("Fuel is blazingly fast");
 /// }

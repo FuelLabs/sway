@@ -45,7 +45,7 @@ pub fn overflow() -> u64 {
 ///
 /// fn foo() {
 ///     let pc = program_counter();
-///     assert(pc.is_null() == false);
+///     assert(!pc.is_null());
 /// }
 /// ```
 pub fn program_counter() -> raw_ptr {
@@ -65,7 +65,7 @@ pub fn program_counter() -> raw_ptr {
 ///
 /// fn foo() {
 ///     let ssp = stack_start_ptr();
-///     assert(ssp.is_null() == false);
+///     assert(!ssp.is_null());
 /// }
 /// ```
 pub fn stack_start_ptr() -> raw_ptr {
@@ -85,7 +85,7 @@ pub fn stack_start_ptr() -> raw_ptr {
 ///
 /// fn foo() {
 ///     let sp = stack_ptr();
-///     assert(sp.is_null() == false);
+///     assert(!sp.is_null());
 /// }
 /// ```
 pub fn stack_ptr() -> raw_ptr {
@@ -105,7 +105,7 @@ pub fn stack_ptr() -> raw_ptr {
 ///
 /// fn foo() {
 ///     let fp = frame_ptr();
-///     assert(fp.is_null() == false);
+///     assert(!fp.is_null());
 /// }
 /// ```
 pub fn frame_ptr() -> raw_ptr {
@@ -125,7 +125,7 @@ pub fn frame_ptr() -> raw_ptr {
 ///
 /// fn foo() {
 ///     let hp = heap_ptr();
-///     assert(hp.is_null() == false);
+///     assert(!hp.is_null());
 /// }
 /// ```
 pub fn heap_ptr() -> raw_ptr {
@@ -244,7 +244,7 @@ pub fn balance() -> u64 {
 ///
 /// fn foo() {
 ///     let is = instrs_start();
-///     assert(is.is_null() == false);
+///     assert(!is.is_null());
 /// }
 /// ```
 pub fn instrs_start() -> raw_ptr {

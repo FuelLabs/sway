@@ -8,8 +8,7 @@ use ::option::Option::{self, *};
 /// # Arguments
 ///
 /// * `slot`: [b256] - The storage slot at which the variable will be stored.
-/// * `offset`: [u64] - An offset, in words, from the beginning of `slot`, at which `value` should be
-///              stored.
+/// * `offset`: [u64] - An offset starting at the beginning of `slot` at which `value` should be stored.
 /// * `value`: [T] - The value to be stored.
 ///
 /// # Number of Storage Accesses
@@ -130,7 +129,7 @@ pub fn read<T>(slot: b256, offset: u64) -> Option<T> {
 /// use std::{storage::storage_api::{read, write, clear}, constants::ZERO_B256};
 ///
 /// fn foo() {
-///      let five = 5_u64;
+///     let five = 5_u64;
 ///     write(ZERO_B256, 0, five);
 ///     let cleared = clear::<u64>(ZERO_B256);
 ///     assert(cleared);

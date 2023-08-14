@@ -92,11 +92,11 @@ pub enum Option<T> {
 impl<T> Option<T> {
     // Querying the contained values
     //
-    /// Returns whether the option is a `Some` value.
+    /// Returns whether the option is the `Some` variant.
     ///
     /// # Returns
     ///
-    /// * [bool] - Returns `true` if the option is a `Some` value, otherwise `false`.
+    /// * [bool] - Returns `true` if the option is `Some`, otherwise `false`.
     /// 
     /// # Examples
     ///
@@ -116,11 +116,11 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns whether the option is a `None` value.
+    /// Returns whether the option is the `None` variant.
     ///
     /// # Returns
     ///
-    /// * Returns `true` if the option is a `None` value, otherwise `false`.
+    /// * [bool] - Returns `true` if the option is `None`, otherwise `false`.
     ///
     /// # Examples
     ///
@@ -156,7 +156,7 @@ impl<T> Option<T> {
     ///
     /// # Reverts
     ///
-    /// * Reverts if the `Option` is of the `None` variant.
+    /// * Reverts if the `Option` is the `None` variant.
     ///
     /// # Examples
     ///
@@ -170,7 +170,7 @@ impl<T> Option<T> {
     /// ```sway
     /// fn foo() {
     ///     let x: Option<u64> = None;
-    ///     assert(x.unwrap() == 42); // fails
+    ///     let value = x.unwrap(); // reverts
     /// }
     /// ```
     pub fn unwrap(self) -> T {
@@ -235,7 +235,7 @@ impl<T> Option<T> {
     ///         Result::Err => revert(0),
     ///     }
     ///
-    ///     let x:Option<u64> = None;
+    ///     let x: Option<u64> = None;
     ///     match x.ok_or(0) {
     ///         Result::Ok(_) => revert(0),
     ///         Result::Err(e) => assert(e == 0),

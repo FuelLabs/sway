@@ -31,8 +31,7 @@ pub enum AuthError {
 /// use std::auth::caller_is_external;
 /// 
 /// fn foo() {
-///     let is_external = caller_is_external();
-///     if is_external {
+///     if caller_is_external() {
 ///         log("Caller is external.")
 ///     } else {
 ///         log("Caller is a contract.")
@@ -50,7 +49,7 @@ pub fn caller_is_external() -> bool {
 ///
 /// # Additional Information
 ///
-/// If the caller is not internal, it is undefined behaviour to call this function.
+/// External calls result in undefined behaviour.
 ///
 /// # Returns
 ///
@@ -89,11 +88,8 @@ pub fn caller_contract_id() -> ContractId {
 /// # Examples
 ///
 /// ```sway
-/// use std::auth::msg_sender;
-///
 /// fn foo() {
-///     let sender = msg_sender();
-///     match sender {
+///     match msg_sender() {
 ///         Ok(Identity::Address(address)) => log(address),
 ///         Ok(Identity::ContractId(contract_id)) => log(contract_id),
 ///         Err(AuthError::InputsNotAllOwnedBySameAddress) => log("Inputs not all owned by same address."),
@@ -126,8 +122,7 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
 /// use std::auth::inputs_owner;
 ///
 /// fn foo() {
-///     let owner = inputs_owner();
-///     match owner {
+///     match inputs_owner() {
 ///         Ok(Identity::Address(address)) => log(address),
 ///         Ok(Identity::ContractId(_)) => log("Hell froze over."),
 ///         Err(AuthError::InputsNotAllOwnedBySameAddress) => log("Inputs not all owned by same address."),

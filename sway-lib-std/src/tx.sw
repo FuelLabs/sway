@@ -467,7 +467,6 @@ pub fn tx_script_bytecode<T>() -> T {
 ///
 /// fn foo() {
 ///     let script_bytecode_hash: b256 = tx_script_bytecode_hash();
-///     // Force only a particular script to be able to call this function.
 ///     assert(script_bytecode_hash == 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef);
 /// }
 /// ```

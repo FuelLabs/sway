@@ -38,8 +38,7 @@ const SECOND_PARAMETER_OFFSET: u64 = 74;
 /// fn foo() {
 ///     let this_contract = contract_id();
 ///     mint(50);
-///     // Transfer the newly minted tokens to the ZERO_B256 address from this contract
-///     Address::from(ZERO_B256).transfer(50, this_contract)
+///     Address::from(ZERO_B256).transfer(50, this_contract);
 /// }
 /// ```
 pub fn contract_id() -> ContractId {
@@ -59,7 +58,6 @@ pub fn contract_id() -> ContractId {
 /// 
 /// fn foo() {
 ///     let asset = msg_asset_id();
-///     // Replace BASE_ASSET_ID with your desired asset
 ///     assert(asset == BASE_ASSET_ID);
 /// }
 /// ```
@@ -140,7 +138,7 @@ pub fn first_param() -> u64 {
 /// use std::call_frames::second_param;
 ///
 /// fn foo() {
-///     let param = second_param();
+///     let param: u64 = second_param();
 ///     assert(param != 0);
 /// }
 /// ```
@@ -177,7 +175,7 @@ pub fn second_param<T>() -> T {
 /// fn foo() {
 ///     let current_call_frame = frame_ptr();
 ///     let previous_call_frame = get_previous_frame_pointer(current_call_frame);
-///     assert(previous_call_frame.is_null() == false);
+///     assert(!previous_call_frame.is_null());
 /// }
 /// ```
 pub fn get_previous_frame_pointer(frame_pointer: raw_ptr) -> raw_ptr {

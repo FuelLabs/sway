@@ -88,9 +88,8 @@ impl Address {
     /// use std::constants::{BASE_ASSET_ID, ZERO_B256};
     ///
     /// fn foo() {
-    ///     // replace the zero Address with your desired Address
     ///     let address = Address::from(ZERO_B256);
-    ///     address.transfer(500, BASE_ASSET_ID)
+    ///     address.transfer(500, BASE_ASSET_ID);
     /// }
     /// ```
     pub fn transfer(self, amount: u64, asset_id: AssetId) {
@@ -131,7 +130,6 @@ impl Address {
     /// use std::constants::ZERO_B256;
     ///
     /// fn foo() {
-    ///     // replace the zero Address with your desired Address
     ///     let address = Address::from(ZERO_B256);
     ///     address.mint_to(500);
     /// }

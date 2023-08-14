@@ -64,6 +64,7 @@ pub enum Output {
 ///         Output::Contract => { log("The output is a contract") },
 ///         Output::Change => { log("The output is change") },
 ///         Output::Variable => { log("The output is a variable") },
+///     };
 /// }
 /// ```
 pub fn output_type(index: u64) -> Output {
@@ -136,7 +137,7 @@ pub fn output_count() -> u64 {
     }
 }
 
-/// Get the amount of coins to send for the output at `index`.
+/// The amount of coins to send to the output at `index`.
 ///
 /// # Additional Information
 ///
@@ -152,7 +153,7 @@ pub fn output_count() -> u64 {
 ///
 /// # Returns
 ///
-/// * [u64] - The amount of coins to send for the output at `index`.
+/// * [u64] - The amount of coins to send to the output at `index`.
 ///
 /// # Reverts
 ///

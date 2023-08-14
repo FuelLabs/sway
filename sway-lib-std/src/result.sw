@@ -92,7 +92,7 @@ impl<T, E> Result<T, E> {
     ///     assert(x.is_ok());
     ///
     ///     let y: Result<u64, Error> = Result::Err(Error::NotFound));
-    ///     assert(!x.is_ok());
+    ///     assert(!y.is_ok());
     /// }
     /// ```
     pub fn is_ok(self) -> bool {
@@ -102,7 +102,7 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Returns whether a result contrains a error value.
+    /// Returns whether a result contains an error value.
     ///
     /// # Returns
     ///
@@ -121,7 +121,7 @@ impl<T, E> Result<T, E> {
     ///     assert(!x.is_err());
     ///
     ///     let y: Result<u64, Error> = Result::Err(Error::NotFound));
-    ///     assert(x.is_err());
+    ///     assert(y.is_err());
     /// }
     /// ```
     pub fn is_err(self) -> bool {
@@ -145,7 +145,7 @@ impl<T, E> Result<T, E> {
     ///
     /// # Reverts
     ///
-    /// * Reverts if the `Result` is of the `Err` variant.
+    /// * Reverts if the `Result` is the `Err` variant.
     ///
     /// # Examples
     ///
@@ -160,7 +160,7 @@ impl<T, E> Result<T, E> {
     ///     assert(x.unwrap() == 42);
     ///
     ///     let y: Result<u64, Error> = Result::Err(Error::NotFound));
-    ///     assert(x.unwrap() == 42); // reverts
+    ///     let val = y.unwrap(); // reverts
     /// }
     /// ```
     pub fn unwrap(self) -> T {
@@ -193,7 +193,7 @@ impl<T, E> Result<T, E> {
     ///     assert(x.unwrap_or(69) == 42);
     ///
     ///     let y: Result<u64, Error> = Result::Err(Error::NotFound));
-    ///     assert(x.unwrap_or(69) == 69);
+    ///     assert(y.unwrap_or(69) == 69);
     /// }
     /// ```
     pub fn unwrap_or(self, default: T) -> T {

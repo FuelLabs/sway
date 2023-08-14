@@ -90,7 +90,6 @@ impl ContractId {
     /// use std::constants::{BASE_ASSET_ID, ZERO_B256};
     ///
     /// fn foo() {
-    ///     // replace the zero ContractId with your desired ContractId
     ///     let contract_id = ContractId::from(ZERO_B256);
     ///     contract_id.transfer(500, BASE_ASSET_ID);
     /// }
@@ -123,7 +122,6 @@ impl ContractId {
     /// use std::constants::ZERO_B256;
     ///
     /// fn foo() {
-    ///     // replace the zero ContractId with your desired ContractId
     ///     let contract_id = ContractId::from(ZERO_B256);
     ///     contract_id.mint_to(500);
     /// }

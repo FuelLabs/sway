@@ -15,7 +15,6 @@ use ::contract_id::ContractId;
 /// use std::{call_frames::msg_asset_id, constants::BASE_ASSET_ID};
 ///
 /// fn foo() {
-///     // Ensures that assets being transferred are the base asset.
 ///     assert(BASE_ASSET_ID == msg_asset_id());
 /// }
 /// ```
@@ -30,8 +29,6 @@ pub const BASE_ASSET_ID = ContractId::from(ZERO_B256);
 ///
 /// fn foo() {
 ///     let base_asset_id = ContractId::from(ZERO_B256);
-///     
-///     // Ensures that assets being transferred are the base asset.
 ///     assert(base_asset_id == msg_asset_id());
 /// }
 /// ```

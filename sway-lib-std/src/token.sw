@@ -30,7 +30,6 @@ use ::outputs::{Output, output_amount, output_count, output_type};
 /// use std::{constants::ZERO_B256, token::mint_to};
 ///
 /// fn foo() {
-///     // replace the zero Address/ContractId with your desired Address/ContractId
 ///     let to_address = Identity::Address(Address::from(ZERO_B256));
 ///     let to_contract_id = Identity::ContractId(ContractId::from(ZERO_B256));
 ///     mint_to(500, to_address);
@@ -62,7 +61,6 @@ pub fn mint_to(amount: u64, to: Identity) {
 /// use std::{constants::ZERO_B256, token::mint_to_contract};
 ///
 /// fn foo() {
-///     // replace the zero ContractId with your desired ContractId
 ///     let to = ContractId::from(ZERO_B256);
 ///     mint_to_contract(500, to);
 /// }
@@ -86,7 +84,6 @@ pub fn mint_to_contract(amount: u64, to: ContractId) {
 /// use std::{constants::ZERO_B256, token::mint_to_address};
 ///
 /// fn foo() {
-///     // replace the zero Address with your desired Address
 ///     let to = Address::from(ZERO_B256);
 ///     mint_to_address(500, to);
 /// }
@@ -170,7 +167,6 @@ pub fn burn(amount: u64) {
 /// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, token::transfer};
 ///
 /// fn foo() {
-///     // replace the zero Address/ContractId with your desired Address/ContractId
 ///     let to_address = Identity::Address(Address::from(ZERO_B256));
 ///     let to_contract_id = Identity::ContractId(ContractId::from(ZERO_B256));
 ///     transfer(500, BASE_ASSET_ID, to_address);
@@ -210,7 +206,6 @@ pub fn transfer(amount: u64, asset_id: AssetId, to: Identity) {
 /// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, token::force_transfer_to_contract};
 ///
 /// fn foo() {
-///     // replace the zero ContractId with your desired ContractId
 ///     let to_contract_id = ContractId::from(ZERO_B256);
 ///     force_transfer_to_contract(500, BASE_ASSET_ID, to_contract_id);
 /// }
@@ -242,7 +237,6 @@ pub fn force_transfer_to_contract(amount: u64, asset_id: AssetId, to: ContractId
 /// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, token::transfer_to_address};
 ///
 /// fn foo() {
-///     // replace the zero Address with your desired Address
 ///     let to_address = Address::from(ZERO_B256);
 ///     transfer_to_address(500, BASE_ASSET_ID, to_address);
 /// }
