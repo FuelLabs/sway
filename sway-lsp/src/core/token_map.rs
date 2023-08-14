@@ -110,7 +110,7 @@ impl TokenMap {
     ) -> Vec<(TokenIdent, Token)> {
         self.tokens_for_file(uri)
             .filter_map(|(ident, token)| {
-                let span = match token.typed {
+                let token_ident = match token.typed {
                     Some(TypedAstToken::TypedFunctionDeclaration(decl))
                         if functions_only == Some(true) =>
                     {
@@ -121,7 +121,7 @@ impl TokenMap {
                     }
                     _ => ident.clone(),
                 };
-                if position >= span.range.start && position <= span.range.end {
+                if position >= token_ident.range.start && position <= token_ident.range.end {
                     return self.try_get(&ident).try_unwrap().map(|item| {
                         let (ident, token) = item.pair();
                         (ident.clone(), token.clone())

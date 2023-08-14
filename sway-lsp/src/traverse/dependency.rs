@@ -26,7 +26,7 @@ pub fn collect_parsed_declaration(node: &AstNode, ctx: &ParseContext) {
         };
 
         let token = Token::from_parsed(parsed_token, symbol_kind);
-        ctx.tokens.insert(ctx.ident(&ident.span()), token);
+        ctx.tokens.insert(ctx.ident(&ident), token);
     }
 }
 
@@ -44,7 +44,7 @@ pub fn collect_typed_declaration(node: &ty::TyAstNode, ctx: &ParseContext) {
             | ty::TyDecl::ConstantDecl(ty::ConstantDecl { name, .. }) => name.clone(),
             _ => return,
         };
-        let token_ident = ctx.ident(&ident.span());
+        let token_ident = ctx.ident(&ident);
         if let Some(mut token) = ctx.tokens.try_get_mut(&token_ident).try_unwrap() {
             token.typed = Some(typed_token);
             token.type_def = Some(TypeDefinition::Ident(ident));

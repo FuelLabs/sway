@@ -177,24 +177,25 @@ pub struct TokenIdent {
     pub name: String,
     pub range: Range,
     pub path: Option<PathBuf>,
-    // pub is_raw_ident: bool,
+    pub is_raw_ident: bool,
 }
 
 impl TokenIdent {
-    pub fn new(span: &Span, se: &SourceEngine) -> Self {
-        let path = span
+    pub fn new(ident: &Ident, se: &SourceEngine) -> Self {
+        let path = ident.span()
             .source_id()
             .and_then(|source_id| Some(se.get_path(source_id)));
         Self {
-            name: span.clone().str(),
-            range: get_range_from_span(&span),
+            name: ident.span().clone().str(),
+            range: get_range_from_span(&ident.span()),
             path: path,
+            is_raw_ident: ident.is_raw_ident(),
         }
     }
 
-    // pub fn is_raw_ident(&self) -> bool {
-    //     self.is_raw_ident
-    // }
+    pub fn is_raw_ident(&self) -> bool {
+        self.is_raw_ident
+    }
 }
 
 impl std::hash::Hash for TokenIdent {
@@ -205,6 +206,7 @@ impl std::hash::Hash for TokenIdent {
         self.range.end.line.hash(state);
         self.range.end.character.hash(state);
         self.path.hash(state);
+        self.is_raw_ident.hash(state);
     }
 }
 
@@ -217,12 +219,6 @@ pub fn desugared_op(prefixes: &[Ident]) -> bool {
     }
     false
 }
-
-// /// We need to do this work around as the custom [PartialEq] for [Ident] impl
-// /// only checks for the string, not the [Span].
-// pub fn to_ident_key(ident: &Ident) -> (Ident, Span) {
-//     (ident.clone(), ident.span())
-// }
 
 /// Use the [TypeId] to look up the associated [TypeInfo] and return the [TokenIdent] if one is found.
 pub fn ident_of_type_id(engines: &Engines, type_id: &TypeId) -> Option<TokenIdent> {

@@ -70,12 +70,11 @@ pub fn rename(
     })
     .filter_map(|ident| {
         let mut range = ident.range;
-        // JOSH PUT ME BACK
-        // if ident.is_raw_ident() {
-        //     // Make sure the start char starts at the begining,
-        //     // taking the r# tokens into account.
-        //     range.start.character -= RAW_IDENTIFIER.len() as u32;
-        // }
+        if ident.is_raw_ident() {
+            // Make sure the start char starts at the begining,
+            // taking the r# tokens into account.
+            range.start.character -= RAW_IDENTIFIER.len() as u32;
+        }
         if let Some(path) = ident.path {
             let url = get_url_from_path(&path).ok()?;
             if let Some(url) = session.sync.to_workspace_url(url) {
@@ -126,19 +125,19 @@ pub fn prepare_rename(
 
     Ok(PrepareRenameResponse::RangeWithPlaceholder {
         range: ident.range,
-        placeholder: ident.name.to_string(), // JOSH PUT ME BACK formatted_name(&ident),
+        placeholder: formatted_name(&ident),
     })
 }
 
 /// Returns the name of the identifier, prefixed with r# if the identifier is raw.
-// fn formatted_name(ident: &TokenIdent) -> String {
-//     let name = ident.name.to_string();
-//     // Prefix r# onto the name if the ident is raw.
-//     if ident.is_raw_ident() {
-//         return format!("{RAW_IDENTIFIER}{name}");
-//     }
-//     name
-// }
+fn formatted_name(ident: &TokenIdent) -> String {
+    let name = ident.name.to_string();
+    // Prefix r# onto the name if the ident is raw.
+    if ident.is_raw_ident() {
+        return format!("{RAW_IDENTIFIER}{name}");
+    }
+    name
+}
 
 /// Checks if the token is in the users workspace.
 fn is_token_in_workspace(
