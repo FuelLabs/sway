@@ -26,11 +26,10 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         let mut leaves = vec![];
         for ast_entrypoint in module_nodes {
             match connect_node(engines, ast_entrypoint, &mut graph, &leaves) {
-                Ok(l_leaves) => {
-                    if let NodeConnection::NextStep(nodes) = l_leaves {
-                        leaves = nodes;
-                    }
+                Ok(NodeConnection::NextStep(nodes)) => {
+                    leaves = nodes;
                 }
+                Ok(_) => {}
                 Err(mut e) => {
                     errors.append(&mut e);
                 }
