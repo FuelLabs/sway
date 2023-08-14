@@ -148,7 +148,7 @@ fn hover_format(
                     Some(format_variable_hover(
                         var_decl.mutability.is_mutable(),
                         &type_name,
-                        &token_name,
+                        token_name,
                     ))
                 }
                 ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
@@ -157,7 +157,7 @@ fn hover_format(
                     Some(format_visibility_hover(
                         struct_decl.visibility,
                         decl.friendly_type_name(),
-                        &token_name,
+                        token_name,
                     ))
                 }
                 ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. }) => {
@@ -166,7 +166,7 @@ fn hover_format(
                     Some(format_visibility_hover(
                         trait_decl.visibility,
                         decl.friendly_type_name(),
-                        &token_name,
+                        token_name,
                     ))
                 }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
@@ -175,7 +175,7 @@ fn hover_format(
                     Some(format_visibility_hover(
                         enum_decl.visibility,
                         decl.friendly_type_name(),
-                        &token_name,
+                        token_name,
                     ))
                 }
                 ty::TyDecl::AbiDecl(ty::AbiDecl { .. }) => {

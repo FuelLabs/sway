@@ -22,7 +22,7 @@ impl<'a> ParseContext<'a> {
     }
 
     pub fn ident(&self, ident: &sway_types::Ident) -> TokenIdent {
-        TokenIdent::new(ident, &self.engines.se())
+        TokenIdent::new(ident, self.engines.se())
     }
 }
 

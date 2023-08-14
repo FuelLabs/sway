@@ -167,7 +167,7 @@ impl Token {
     pub fn declared_token_ident(&self, engines: &Engines) -> Option<TokenIdent> {
         self.type_def.as_ref().and_then(|type_def| match type_def {
             TypeDefinition::TypeId(type_id) => ident_of_type_id(engines, type_id),
-            TypeDefinition::Ident(ident) => Some(TokenIdent::new(&ident, engines.se())),
+            TypeDefinition::Ident(ident) => Some(TokenIdent::new(ident, engines.se())),
         })
     }
 }
@@ -194,11 +194,11 @@ impl TokenIdent {
         let path = ident
             .span()
             .source_id()
-            .and_then(|source_id| Some(se.get_path(source_id)));
+            .map(|source_id| se.get_path(source_id));
         Self {
             name: ident.span().clone().str(),
             range: get_range_from_span(&ident.span()),
-            path: path,
+            path,
             is_raw_ident: ident.is_raw_ident(),
         }
     }

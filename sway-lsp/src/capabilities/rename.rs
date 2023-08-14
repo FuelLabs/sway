@@ -170,9 +170,7 @@ fn trait_interface_idents(
     interface_surface
         .iter()
         .flat_map(|item| match item {
-            ty::TyTraitInterfaceItem::TraitFn(fn_decl) => {
-                Some(TokenIdent::new(&fn_decl.name(), se))
-            }
+            ty::TyTraitInterfaceItem::TraitFn(fn_decl) => Some(TokenIdent::new(fn_decl.name(), se)),
             _ => None,
         })
         .collect()
@@ -220,7 +218,7 @@ fn find_all_methods_for_decl(
                                 .iter()
                                 .filter_map(|item| match item {
                                     ty::TyTraitItem::Fn(fn_decl) => {
-                                        Some(TokenIdent::new(&fn_decl.name(), &engines.se()))
+                                        Some(TokenIdent::new(fn_decl.name(), engines.se()))
                                     }
                                     _ => None,
                                 })
