@@ -10,8 +10,6 @@ impl u64 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let val = u64::min();
     ///     assert(val == 0);
@@ -31,8 +29,6 @@ impl u64 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let val = u64::max();
     ///     assert(val == 18446744073709551615);
@@ -51,8 +47,6 @@ impl u64 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let bits = u64::bits();
     ///     assert(bits == 64);
@@ -73,8 +67,6 @@ impl u32 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let val == u32::min();
     ///     assert(val == 0u32);
@@ -94,8 +86,6 @@ impl u32 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let val == u32:max();
     ///     assert(val == 4294967295u32);
@@ -114,8 +104,6 @@ impl u32 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let bits = u32::bits();
     ///     assert(bits == 32);
@@ -136,8 +124,6 @@ impl u16 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let val = u16::min();
     ///     assert(val == 0u16);
@@ -157,8 +143,6 @@ impl u16 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let val = u16::max();
     ///     assert(val == 65535u16);
@@ -177,8 +161,6 @@ impl u16 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    /// 
     /// fn foo() {
     ///     let bits = u16::bits();
     ///     assert(bits == 16);
@@ -199,8 +181,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    /// 
     /// fn foo() {
     ///     let val = u8::min();
     ///     assert(val == 0u8);
@@ -220,8 +200,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let val = u8::max();
     ///     assert(val == 255u8);
@@ -240,7 +218,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
     /// fn foo() {
     ///     let bits = u8::bits();
     ///     assert(bits == 8);
@@ -261,7 +238,7 @@ impl b256 {
     /// # Examples
     /// 
     /// ```sway
-    /// use std::{assert::assert, constants::ZERO_B256};
+    /// use std::constants::ZERO_B256;
     ///
     /// fn foo() {
     ///     let val = b256::min();
@@ -282,8 +259,6 @@ impl b256 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let val == b256::max();
     ///     assert(val == 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
@@ -302,8 +277,6 @@ impl b256 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let bits == b256::bits();
     ///     assert(bits == 256);        

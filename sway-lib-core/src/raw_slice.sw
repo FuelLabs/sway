@@ -39,12 +39,28 @@ pub trait AsRawSlice {
     fn as_raw_slice(self) -> raw_slice;
 }
 
-// Returns a `raw_slice` from a pointer and length.
+/// Returns a `raw_slice` from a pointer and length.
+///
+/// # Arguments
+///
+/// * `parts`: [(raw_ptr, u64)] - A location in memory and a length to become a `raw_slice`.
+///
+/// # Returns
+///
+/// * [raw_slice] - The newly created `raw_slice`.
 fn from_parts(parts: (raw_ptr, u64)) -> raw_slice {
     asm(ptr: parts) { ptr: raw_slice }
 }
 
-// Returns a pointer and length from a `raw_slice`.
+/// Returns a pointer and length from a `raw_slice`.
+///
+/// # Arguments
+///
+/// * `slice`: [raw_slice] - The slice to be broken into its parts.
+///
+/// # Returns
+///
+/// * [(raw_ptr, u64)] - A tuple of te location in memory of the original `raw_slice` and it's length.
 fn into_parts(slice: raw_slice) -> (raw_ptr, u64) {
     asm(ptr: slice) { ptr: (raw_ptr, u64) }
 }
@@ -69,6 +85,7 @@ impl raw_slice {
     /// fn foo() {
     ///     let ptr = alloc::<u64>(1);
     ///     let slice = raw_slice::from_parts::<u64>(ptr, 1);
+    ///     assert(slice.len::<u64>() == 1);
     /// }
     /// ```
     pub fn from_parts<T>(ptr: raw_ptr, count: u64) -> Self {

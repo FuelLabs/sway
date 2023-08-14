@@ -8,7 +8,7 @@ pub trait Add {
     ///
     /// # Arguments
     ///
-    /// * `other`: [Self] - The value to add of the same type.
+    /// * `other`: [Self] - The value to add to self.
     ///
     /// # Returns
     ///
@@ -23,9 +23,9 @@ pub trait Add {
     ///
     /// impl Add for MyStruct {
     ///     fn add(self, other: Self) -> Self {
-    ///         let result = self.val + other.val;
+    ///         let val = self.val + other.val;
     ///         Self {
-    ///             val: result
+    ///             val
     ///         }
     ///     }
     /// }
@@ -96,7 +96,7 @@ pub trait Subtract {
     ///
     /// # Arguments
     ///
-    /// * `other`: [Self] - The value to subtract of the same type.
+    /// * `other`: [Self] - The value to subtract from self.
     ///
     /// # Returns
     ///
@@ -111,9 +111,9 @@ pub trait Subtract {
     ///
     /// impl Subtract for MyStruct {
     ///     fn subtract(self, other: Self) -> Self {
-    ///         let result = self.val - other.val;
+    ///         let val = self.val - other.val;
     ///         Self {
-    ///             val: result
+    ///             val
     ///         }
     ///     }
     /// }
@@ -166,7 +166,7 @@ pub trait Multiply {
     ///
     /// # Arguments
     ///
-    /// * `other`: [Self] - The value to multiply of the same type.
+    /// * `other`: [Self] - The value to multiply with self.
     ///
     /// # Returns
     ///
@@ -181,9 +181,9 @@ pub trait Multiply {
     ///
     /// impl Multiply for MyStruct {
     ///     fn multiply(self, other: Self) -> Self {
-    ///         let result = self.val * other.val;
+    ///         let val = self.val * other.val;
     ///         Self {
-    ///             val: result
+    ///             val
     ///         }
     ///     }
     /// }
@@ -254,7 +254,7 @@ pub trait Divide {
     ///
     /// # Arguments
     ///
-    /// * `other`: [Self] - The value to divide of the same type.
+    /// * `other`: [Self] - The value to divide with self.
     ///
     /// # Returns
     ///
@@ -269,9 +269,9 @@ pub trait Divide {
     ///
     /// impl Divide for MyStruct {
     ///     fn divide(self, other: Self) -> Self {
-    ///         let result = self.val / other.val;
+    ///         let val = self.val / other.val;
     ///         Self {
-    ///             val: result
+    ///             val
     ///         }
     ///     }
     /// }
@@ -326,7 +326,7 @@ pub trait Mod {
     ///
     /// # Arguments
     ///
-    /// * `other`: [Self] - The value to mod of the same type.
+    /// * `other`: [Self] - The value to mod with self.
     ///
     /// # Returns
     ///
@@ -341,9 +341,9 @@ pub trait Mod {
     ///
     /// impl Mod for MyStruct {
     ///     fn modulo(self, other: Self) -> Self {
-    ///         let result = self.val % other.val;
+    ///         let val = self.val % other.val;
     ///         Self {
-    ///             val: result
+    ///             val
     ///         }
     ///     }
     /// }
@@ -414,7 +414,7 @@ pub trait Not {
     /// fn foo() {
     ///     let struct = MyStruct { val: true };
     ///     let result_struct = !struct;
-    ///     assert(result_struct.val == false); 
+    ///     assert(!result_struct.val); 
     /// }
     /// ```
     fn not(self) -> Self;
@@ -453,7 +453,7 @@ pub trait Eq {
     ///
     /// impl Eq for MyStruct {
     ///     fn eq(self, other: Self) -> bool {
-    ///         self.val == other.val;
+    ///         self.val == other.val
     ///     }
     /// }
     ///
@@ -461,7 +461,7 @@ pub trait Eq {
     ///     let struct1 = MyStruct { val: 2 };
     ///     let struct2 = MyStruct { val: 2 };
     ///     let result = struct1 == struct2;
-    ///     assert(result == true); 
+    ///     assert(result); 
     /// }
     /// ```
     fn eq(self, other: Self) -> bool;
@@ -489,7 +489,7 @@ pub trait Eq {
     ///
     /// impl Eq for MyStruct {
     ///     fn eq(self, other: Self) -> bool {
-    ///          self.val == other.val;
+    ///          self.val == other.val
     ///     }
     /// }
     ///
@@ -497,7 +497,7 @@ pub trait Eq {
     ///     let struct1 = MyStruct { val: 10 };
     ///     let struct2 = MyStruct { val: 2 };
     ///     let result = struct1 != struct2;
-    ///     assert(result == true); 
+    ///     assert(result); 
     /// }
     /// ```
     fn neq(self, other: Self) -> bool {
@@ -579,7 +579,7 @@ pub trait Ord {
     ///
     /// impl Ord for MyStruct {
     ///     fn gt(self, other: Self) -> bool {
-    ///         self.val > other.val;
+    ///         self.val > other.val
     ///     }
     /// }
     ///
@@ -587,7 +587,7 @@ pub trait Ord {
     ///     let struct1 = MyStruct { val: 10 };
     ///     let struct2 = MyStruct { val: 2 };
     ///     let result = struct1 > struct2;
-    ///     assert(result == true); 
+    ///     assert(result); 
     /// }
     /// ```
     fn gt(self, other: Self) -> bool;
@@ -611,7 +611,7 @@ pub trait Ord {
     ///
     /// impl Ord for MyStruct {
     ///     fn lt(self, other: Self) -> bool {
-    ///         self.val < other.val;
+    ///         self.val < other.val
     ///     }
     /// }
     ///
@@ -619,7 +619,7 @@ pub trait Ord {
     ///     let struct1 = MyStruct { val: 10 };
     ///     let struct2 = MyStruct { val: 2 };
     ///     let result = struct1 < struct2;
-    ///     assert(result == false); 
+    ///     assert(!result); 
     /// }
     /// ```
     fn lt(self, other: Self) -> bool;
@@ -718,9 +718,9 @@ pub trait BitwiseAnd {
     ///
     /// impl BitwiseAnd for MyStruct {
     ///     fn binary_and(self, other: Self) -> Self {
-    ///         let result = self.val & other.val;
+    ///         let val = self.val & other.val;
     ///         Self {
-    ///             val: result
+    ///             val
     ///         }
     ///     }
     /// }
@@ -780,9 +780,9 @@ pub trait BitwiseOr {
     ///
     /// impl BitwiseOr for MyStruct {
     ///     fn binary_or(self, other: Self) -> Self {
-    ///         let result = self.val | other.val;
+    ///         let val = self.val | other.val;
     ///         Self {
-    ///             val: result
+    ///             val
     ///         }
     ///     }
     /// }
@@ -842,9 +842,9 @@ pub trait BitwiseXor {
     ///
     /// impl BitwiseXOr for MyStruct {
     ///     fn binary_xor(self, other: Self) -> Self {
-    ///         let result = self.val ^ other.val;
+    ///         let val = self.val ^ other.val;
     ///         Self {
-    ///             val: result
+    ///             val
     ///         }
     ///     }
     /// }
@@ -975,13 +975,13 @@ trait OrdEq: Ord + Eq {
     ///
     /// impl Eq for MyStruct {
     ///     fn eq(self, other: Self) -> bool {
-    ///         self.val == other.val;
+    ///         self.val == other.val
     ///     }
     /// }
     ///
     /// impl Ord for MyStruct {
     ///     fn gt(self, other: Self) -> bool {
-    ///         self.val > other.val;
+    ///         self.val > other.val
     ///     }
     /// }
     ///
@@ -991,7 +991,7 @@ trait OrdEq: Ord + Eq {
     ///     let struct1 = MyStruct { val: 10 };
     ///     let struct2 = MyStruct { val: 10 };
     ///     let result = struct1 >= struct2;
-    ///     assert(result == true); 
+    ///     assert(result); 
     /// }
     /// ```
     fn ge(self, other: Self) -> bool {
@@ -1021,13 +1021,13 @@ trait OrdEq: Ord + Eq {
     ///
     /// impl Eq for MyStruct {
     ///     fn eq(self, other: Self) -> bool {
-    ///         self.val == other.val;
+    ///         self.val == other.val
     ///     }
     /// }
     ///
     /// impl Ord for MyStruct {
     ///     fn lt(self, other: Self) -> bool {
-    ///         self.val < other.val;
+    ///         self.val < other.val
     ///     }
     /// }
     ///
@@ -1037,7 +1037,7 @@ trait OrdEq: Ord + Eq {
     ///     let struct1 = MyStruct { val: 10 };
     ///     let struct2 = MyStruct { val: 10 };
     ///     let result = struct1 <= struct2;
-    ///     assert(result == true); 
+    ///     assert(result); 
     /// }
     /// ```
     fn le(self, other: Self) -> bool {
@@ -1072,9 +1072,9 @@ pub trait Shift {
     ///
     /// impl Shift for MyStruct {
     ///     fn lsh(self, other: u64) -> Self {
-    ///         let result = self.val << other;
+    ///         let val = self.val << other;
     ///         Self {
-    ///             val: result
+    ///             val
     ///         }
     ///     }
     /// }
@@ -1106,9 +1106,9 @@ pub trait Shift {
     ///
     /// impl Shift for MyStruct {
     ///     fn rsh(self, other: u64) -> Self {
-    ///         let result = self.val >> other;
+    ///         let val = self.val >> other;
     ///         Self {
-    ///             val: result
+    ///             val
     ///         }
     ///     }
     /// }

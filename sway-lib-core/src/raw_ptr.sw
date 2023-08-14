@@ -14,7 +14,7 @@ impl raw_ptr {
     /// 
     /// fn foo() {
     ///     let ptr = alloc::<u64>(2);
-    ///     assert(ptr.is_null() == false);
+    ///     assert(!ptr.is_null());
     /// }
     /// ```
     pub fn is_null(self) -> bool {
@@ -77,7 +77,7 @@ impl raw_ptr {
     ///
     /// # Returns
     ///
-    /// * [T] - The value at the pointer in memory.
+    /// * [T] - The value in memory at the location of the pointer.
     ///
     /// # Examples
     ///
@@ -105,7 +105,7 @@ impl raw_ptr {
     /// 
     /// # Arguments
     ///
-    /// * `dst`: [raw_ptr] - Pointer to the area in memory to copy the bytes to.
+    /// * `dst`: [raw_ptr] - Pointer to the location in memory to copy the bytes to.
     /// * `count`: [u64] - The number of `size_of<T>` bytes to copy.
     /// 
     /// # Examples
@@ -207,7 +207,7 @@ impl raw_ptr {
     /// 
     /// # Arguments
     ///
-    /// * `dst`: [raw_ptr] - Pointer to the area in memory to copy the bytes to.
+    /// * `dst`: [raw_ptr] - Pointer to the location in memory to copy the bytes to.
     /// * `count`: [u64] - The number of bytes to copy.
     /// 
     /// # Examples
