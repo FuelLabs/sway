@@ -24,6 +24,7 @@ use lsp_types::{
 };
 use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, BuildPlan};
+use rayon::iter::{ParallelBridge, ParallelIterator};
 use std::{
     fs::File,
     io::Write,
@@ -513,7 +514,7 @@ pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
 fn parse_ast_to_tokens(
     parse_program: &ParseProgram,
     ctx: &ParseContext,
-    f: impl Fn(&AstNode, &ParseContext),
+    f: impl Fn(&AstNode, &ParseContext) + Sync,
 ) {
     let root_nodes = parse_program.root.tree.root_nodes.iter();
     let sub_nodes = parse_program
@@ -522,14 +523,14 @@ fn parse_ast_to_tokens(
         .iter()
         .flat_map(|(_, submodule)| &submodule.module.tree.root_nodes);
 
-    root_nodes.chain(sub_nodes).for_each(|n| f(n, ctx));
+    root_nodes.chain(sub_nodes).par_bridge().for_each(|n| f(n, ctx));
 }
 
 /// Parse the [ty::TyProgram] AST to populate the [TokenMap] with typed AST nodes.
 fn parse_ast_to_typed_tokens(
     typed_program: &ty::TyProgram,
     ctx: &ParseContext,
-    f: impl Fn(&ty::TyAstNode, &ParseContext),
+    f: impl Fn(&ty::TyAstNode, &ParseContext) + Sync,
 ) {
     let root_nodes = typed_program.root.all_nodes.iter();
     let sub_nodes = typed_program
@@ -538,7 +539,7 @@ fn parse_ast_to_typed_tokens(
         .iter()
         .flat_map(|(_, submodule)| submodule.module.all_nodes.iter());
 
-    root_nodes.chain(sub_nodes).for_each(|n| f(n, ctx));
+    root_nodes.chain(sub_nodes).par_bridge().for_each(|n| f(n, ctx));
 }
 
 #[cfg(test)]
