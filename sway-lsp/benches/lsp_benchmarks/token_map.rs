@@ -16,7 +16,7 @@ fn benchmarks(c: &mut Criterion) {
         b.iter(|| {
             session
                 .token_map()
-                .spans_at_position(position, session.token_map().iter())
+                .idents_at_position(position, session.token_map().iter())
         })
     });
 
