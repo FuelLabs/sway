@@ -19,11 +19,14 @@ fn locals() -> u256 {
     result
 }
 
-// returns 2
-fn not_operator() -> u256 {
+// returns 9
+fn bitwise_operators() -> u256 {
     let a = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFu256;
-    let b = 0x0000000000000000000000000000000000000000000000000000000000000002u256;
-    !(a - b)
+    let b = 0x0000000000000000000000000000000000000000000000000000000000000003u256;
+    let c = 0x0000000000000000000000000000000000000000000000000000000000000002u256;
+    let d = 0x0000000000000000000000000000000000000000000000000000000000000004u256;
+    let e = 0x000000000000000000000000000000000000000000000000000000000000000Fu256;
+    !(a - b) & c | d ^ e
 }
 
 // returns 8
@@ -66,6 +69,40 @@ fn shift_operators() -> u256 {
     (a << 4) >> 2
 }
 
+
+// returns 0
+fn comparison_operators() -> u256 {
+    let a = 0x0000000000000000000000000000000000000000000000000000000000000001u256;
+    let b = 0x0000000000000000000000000000000000000000000000000000000000000002u256;
+    let c = 0x0000000000000000000000000000000000000000000000000000000000000003u256;
+    let d = 0x0000000000000000000000000000000000000000000000000000000000000003u256;
+    
+    assert(c == c);
+    assert(c <= c);
+    assert(c >= c);
+
+    assert(c == d);
+    assert(d == c);
+    assert(c <= d);
+    assert(c >= d);
+    assert(d <= c);
+    assert(d >= c);
+
+    assert(a < b);
+    assert(b < c);
+    assert(a < c);
+
+    assert(a <= b);
+    assert(b <= c);
+    assert(a <= c);
+
+    assert(b > a);
+    assert(c > b);
+    assert(c > a);
+
+    return 0x0000000000000000000000000000000000000000000000000000000000000000u256;
+}
+
 fn main() -> u256 {
-    constants() + locals() + not_operator() + shift_operators()
+    constants() + locals() + bitwise_operators() + shift_operators() + comparison_operators()
 }

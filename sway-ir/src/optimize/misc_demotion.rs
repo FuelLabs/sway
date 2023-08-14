@@ -354,7 +354,9 @@ fn wide_binary_op_demotion(context: &mut Context, function: Function) -> Result<
                     (Some(256), Some(256)) => {
                         use BinaryOpKind::*;
                         match op {
-                            Add | Sub | Mul | Div | Mod => Some((block, instr_val)),
+                            Add | Sub | Mul | Div | Mod | And | Or | Xor => {
+                                Some((block, instr_val))
+                            }
                             _ => todo!(),
                         }
                     }
@@ -585,8 +587,7 @@ fn wide_cmp_demotion(context: &mut Context, function: Function) -> Result<bool, 
                     (Some(256), Some(256)) => {
                         use Predicate::*;
                         match op {
-                            Equal => Some((block, instr_val)),
-                            _ => todo!(),
+                            Equal | LessThan | GreaterThan => Some((block, instr_val)),
                         }
                     }
                     _ => None,
