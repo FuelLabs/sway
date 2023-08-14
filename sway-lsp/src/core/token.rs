@@ -167,7 +167,7 @@ impl Token {
     pub fn declared_token_ident(&self, engines: &Engines) -> Option<TokenIdent> {
         self.type_def.as_ref().and_then(|type_def| match type_def {
             TypeDefinition::TypeId(type_id) => ident_of_type_id(engines, type_id),
-            TypeDefinition::Ident(ident) => Some(TokenIdent::new(&ident.span(), engines.se())),
+            TypeDefinition::Ident(ident) => Some(TokenIdent::new(&ident, engines.se())),
         })
     }
 }
@@ -182,7 +182,8 @@ pub struct TokenIdent {
 
 impl TokenIdent {
     pub fn new(ident: &Ident, se: &SourceEngine) -> Self {
-        let path = ident.span()
+        let path = ident
+            .span()
             .source_id()
             .and_then(|source_id| Some(se.get_path(source_id)));
         Self {
@@ -229,7 +230,7 @@ pub fn ident_of_type_id(engines: &Engines, type_id: &TypeId) -> Option<TokenIden
         TypeInfo::Custom { call_path, .. } => call_path.suffix,
         _ => return None,
     };
-    Some(TokenIdent::new(&ident.span(), engines.se()))
+    Some(TokenIdent::new(&ident, engines.se()))
 }
 
 /// Intended to be used during traversal of the [sway_core::language::parsed::ParseProgram] AST.
