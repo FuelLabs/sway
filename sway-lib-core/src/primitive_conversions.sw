@@ -10,8 +10,6 @@ impl u64 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let x: u64 = 578437695752307201;
     ///     let result = x.to_le_bytes();
@@ -78,8 +76,6 @@ impl u64 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let bytes = [1_u8, 2_u8, 3_u8, 4_u8, 5_u8, 6_u8, 7_u8, 8_u8];
     ///     let result = u64::from_le_bytes(bytes);
@@ -126,8 +122,6 @@ impl u64 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let x: u64 = 578437695752307201;
     ///     let result = x.to_be_bytes();
@@ -194,8 +188,6 @@ impl u64 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let bytes = [8_u8, 7_u8, 6_u8, 5_u8, 4_u8, 3_u8, 2_u8, 1_u8];
     ///     let result = u64::from_be_bytes(bytes);
@@ -244,8 +236,6 @@ impl u32 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let val = 10u32;
     ///     let result = val.as_u64();
@@ -267,8 +257,6 @@ impl u32 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let x: u32 = 67305985;
     ///     let result = x.to_le_bytes();
@@ -315,8 +303,6 @@ impl u32 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let bytes = [1_u8, 2_u8, 3_u8, 4_u8];
     ///     let result = u32::from_le_bytes(bytes);
@@ -345,8 +331,6 @@ impl u32 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let x: u32 = 67305985;
     ///     let result = x.to_be_bytes();
@@ -393,8 +377,6 @@ impl u32 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let bytes = [4_u8, 3_u8, 2_u8, 1_u8];
     ///     let result = u32::from_be_bytes(bytes);
@@ -425,8 +407,6 @@ impl u16 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let val = 10u16;
     ///     let result = val.as_u32();
@@ -448,8 +428,6 @@ impl u16 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let val = 10u16;
     ///     let result = val.as_u64();
@@ -471,8 +449,6 @@ impl u16 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let x: u16 = 513;
     ///     let result = x.to_le_bytes();
@@ -509,8 +485,6 @@ impl u16 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let bytes = [1_u8, 2_u8];
     ///     let result = u16::from_le_bytes(bytes);
@@ -535,8 +509,6 @@ impl u16 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let x: u16 = 513;
     ///     let result = x.to_be_bytes();
@@ -572,8 +544,6 @@ impl u16 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let bytes = [2_u8, 1_u8];
     ///     let result = u16::from_be_bytes(bytes);
@@ -600,8 +570,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let val = 2u8;
     ///     let result = val.as_u16();
@@ -623,8 +591,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let val = 2u8;
     ///     let result = val.as_u32();
@@ -646,8 +612,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let val = 2u8;
     ///     let result = val.as_u64();
@@ -671,8 +635,6 @@ impl b256 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let bytes = [32_u8, 31_u8, 30_u8, 29_u8, 28_u8, 27_u8, 26_u8, 25_u8, 24_u8, 23_u8,
     ///             22_u8, 21_u8, 20_u8, 19_u8, 18_u8, 17_u8, 16_u8, 15_u8, 14_u8, 13_u8,
@@ -714,8 +676,6 @@ impl b256 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let bytes = [32_u8, 31_u8, 30_u8, 29_u8, 28_u8, 27_u8, 26_u8, 25_u8, 24_u8, 23_u8,
     ///             22_u8, 21_u8, 20_u8, 19_u8, 18_u8, 17_u8, 16_u8, 15_u8, 14_u8, 13_u8,
@@ -748,8 +708,6 @@ impl b256 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let x: b256 = 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20;
     ///     let bytes = x.to_be_bytes();
@@ -789,8 +747,6 @@ impl b256 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::assert::assert;
-    ///
     /// fn foo() {
     ///     let bytes = [1_u8, 2_u8, 3_u8, 4_u8, 5_u8, 6_u8, 7_u8, 8_u8, 9_u8, 10_u8,
     ///             11_u8, 12_u8, 13_u8, 14_u8, 15_u8, 16_u8, 17_u8, 18_u8, 19_u8, 20_u8,
