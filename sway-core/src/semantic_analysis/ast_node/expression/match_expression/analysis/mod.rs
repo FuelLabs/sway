@@ -8,4 +8,4 @@ mod usefulness;
 mod witness_report;
 
 pub(crate) use usefulness::check_match_expression_usefulness;
-pub(crate) use reachable_report::ReachableReport;
+pub(in crate::semantic_analysis::ast_node::expression) use reachable_report::ReachableReport;

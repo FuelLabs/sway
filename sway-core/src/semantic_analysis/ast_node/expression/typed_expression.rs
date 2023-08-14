@@ -25,7 +25,7 @@ use crate::{
         ty::{self, TyImplItem},
         *,
     },
-    semantic_analysis::*,
+    semantic_analysis::{*, expression::ReachableReport},
     transform::to_parsed_lang::type_name_to_type_info_opt,
     type_system::*,
     Engines,

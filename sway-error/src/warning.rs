@@ -287,7 +287,7 @@ impl ToDiagnostic for CompileWarning {
                 ],
             },
             MatchExpressionUnreachableArm { match_value, preceding_arms, unreachable_arm, is_last_arm, is_catch_all_arm } => Diagnostic {
-                reason: Some(Reason::new(code(2), "Match arm is unreachable".to_string())),
+                reason: Some(Reason::new(code(1), "Match arm is unreachable".to_string())),
                 issue: Issue::warning(
                     source_engine,
                     unreachable_arm.clone(),
@@ -340,7 +340,7 @@ impl ToDiagnostic for CompileWarning {
                 }
             },
             MatchExpressionCatchAllArmMakesArmsBelowItUnreachable { match_value, catch_all_arm, following_arms, following_arms_count } => Diagnostic {
-                reason: Some(Reason::new(code(3), "Catch-all match arm makes arms below it unreachable".to_string())),
+                reason: Some(Reason::new(code(1), "Catch-all match arm makes arms below it unreachable".to_string())),
                 issue: Issue::warning(
                     source_engine,
                     catch_all_arm.clone(),
@@ -363,7 +363,7 @@ impl ToDiagnostic for CompileWarning {
                         format!(
                             "{}, coming after \"{}\", will never be matched.",
                             if *following_arms_count == 1 {
-                                "This arm".to_string()
+                                format!("This arm")
                             }
                             else {
                                 format!("These {following_arms_count} arms")
