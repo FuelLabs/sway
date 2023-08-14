@@ -19,8 +19,17 @@ fn locals() -> u256 {
     result
 }
 
-// returns 9
+// returns 11
 fn bitwise_operators() -> u256 {
+    let a = 18446744073709551615u64;
+    let b = 3u64;
+    let c = 2u64;
+    let d = 4u64;
+    let e = 15u64;
+
+    let r = !(a - b) & c | d ^ e;
+    assert(r == 11);
+
     let a = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFu256;
     let b = 0x0000000000000000000000000000000000000000000000000000000000000003u256;
     let c = 0x0000000000000000000000000000000000000000000000000000000000000002u256;
