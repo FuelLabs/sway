@@ -12,7 +12,7 @@ use crate::{
     },
     asm_lang::{
         virtual_register::*, Label, Op, VirtualImmediate06, VirtualImmediate12, VirtualImmediate18,
-        VirtualOp, WideCmp,
+        VirtualOp, WideCmp, WideOperations,
     },
     decl_engine::DeclRefFunction,
     metadata::MetadataManager,
@@ -580,13 +580,25 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 result_reg,
                 val1_reg,
                 val2_reg,
-                VirtualImmediate06::wide_op(crate::asm_lang::WideOperations::Add, true),
+                VirtualImmediate06::wide_op(WideOperations::Add, true),
             ),
             BinaryOpKind::Sub => VirtualOp::WQOP(
                 result_reg,
                 val1_reg,
                 val2_reg,
-                VirtualImmediate06::wide_op(crate::asm_lang::WideOperations::Sub, true),
+                VirtualImmediate06::wide_op(WideOperations::Sub, true),
+            ),
+            BinaryOpKind::Lsh => VirtualOp::WQOP(
+                result_reg,
+                val1_reg,
+                val2_reg,
+                VirtualImmediate06::wide_op(WideOperations::Lsh, false),
+            ),
+            BinaryOpKind::Rsh => VirtualOp::WQOP(
+                result_reg,
+                val1_reg,
+                val2_reg,
+                VirtualImmediate06::wide_op(WideOperations::Rsh, false),
             ),
             BinaryOpKind::Mul => VirtualOp::WQML(
                 result_reg,
