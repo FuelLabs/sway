@@ -387,6 +387,7 @@ fn type_check_trait_implementation(
                 .collect::<Vec<_>>(),
             block_span,
             engines,
+            true,
         )?;
 
     for (type_arg, type_param) in trait_type_arguments.iter().zip(trait_type_parameters) {

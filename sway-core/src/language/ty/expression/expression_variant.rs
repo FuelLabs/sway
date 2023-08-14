@@ -949,7 +949,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     let inner_decl_mapping =
                         TypeParameter::gather_decl_mapping_from_trait_constraints(
                             handler,
-                            ctx,
+                            ctx.by_ref(),
                             &method.type_parameters,
                             &method.name.span(),
                         )?;

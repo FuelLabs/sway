@@ -853,12 +853,13 @@ impl TraitMap {
 
     /// Checks to see if the trait constraints are satisfied for a given type.
     pub(crate) fn check_if_trait_constraints_are_satisfied_for_type(
-        &self,
+        &mut self,
         handler: &Handler,
         type_id: TypeId,
         constraints: &[TraitConstraint],
         access_span: &Span,
         engines: &Engines,
+        try_inserting_trait_impl_on_failure: bool,
     ) -> Result<(), ErrorEmitted> {
         let type_engine = engines.te();
         let _decl_engine = engines.de();
@@ -932,12 +933,24 @@ impl TraitMap {
 
         handler.scope(|handler| {
             for trait_name in required_traits_names.difference(&relevant_impld_traits_names) {
-                // TODO: use a better span
-                handler.emit_err(CompileError::TraitConstraintNotSatisfied {
-                    ty: engines.help_out(type_id).to_string(),
-                    trait_name: trait_name.to_string(),
-                    span: access_span.clone(),
-                });
+                if try_inserting_trait_impl_on_failure {
+                    self.insert_for_type(engines, type_id);
+                    return self.check_if_trait_constraints_are_satisfied_for_type(
+                        handler,
+                        type_id,
+                        constraints,
+                        access_span,
+                        engines,
+                        false,
+                    );
+                } else {
+                    // TODO: use a better span
+                    handler.emit_err(CompileError::TraitConstraintNotSatisfied {
+                        ty: engines.help_out(type_id).to_string(),
+                        trait_name: trait_name.to_string(),
+                        span: access_span.clone(),
+                    });
+                }
             }
             Ok(())
         })

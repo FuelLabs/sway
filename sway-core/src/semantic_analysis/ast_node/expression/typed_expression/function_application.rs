@@ -67,7 +67,7 @@ pub(crate) fn instantiate_function_application(
     // constraint with new decl ids based on the new type.
     let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
         handler,
-        &ctx,
+        ctx.by_ref(),
         &function_decl.type_parameters,
         &call_path_binding.span(),
     )?;
