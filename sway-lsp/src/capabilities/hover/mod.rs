@@ -35,8 +35,8 @@ pub fn hover_data(
         token.kind,
         SymbolKind::BoolLiteral | SymbolKind::Keyword | SymbolKind::SelfKeyword
     ) {
-        let name = ident.name;
-        let documentation = keyword_docs.get(&name).unwrap();
+        let name = &ident.name;
+        let documentation = keyword_docs.get(name).unwrap();
         let prefix = format!("\n```sway\n{name}\n```\n\n---\n\n");
         let formatted_doc = format!("{prefix}{documentation}");
         let content = Markup::new().text(&formatted_doc);
@@ -52,9 +52,9 @@ pub fn hover_data(
         Some(decl_ident) => {
             let decl_token = session
                 .token_map()
-                .try_get(&decl_ident)
-                .try_unwrap()
-                .map(|item| item.value())?;
+                .get(&decl_ident)?;
+                // .try_unwrap()
+                // .map(|item| item.value())?;
             (decl_ident, decl_token)
         }
         // The `TypeInfo` of the token does not contain an `Ident`. In this case,

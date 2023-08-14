@@ -3,6 +3,7 @@ use dashmap::DashMap;
 use lsp_types::{Position, Url};
 use sway_core::{language::ty, type_system::TypeId, Engines};
 use sway_types::{Ident, SourceEngine, Spanned};
+use std::collections::HashMap;
 
 // Re-export the TokenMapExt trait.
 pub use crate::core::token_map_ext::TokenMapExt;
@@ -10,24 +11,24 @@ pub use crate::core::token_map_ext::TokenMapExt;
 /// The TokenMap is the main data structure of the language server.
 /// It stores all of the tokens that have been parsed and typechecked by the sway compiler.
 ///
-/// The TokenMap is a wrapper around a [DashMap], which is a concurrent HashMap.
+/// The TokenMap is a wrapper around a [HashMap].
 #[derive(Debug, Default)]
-pub struct TokenMap(DashMap<TokenIdent, Token>);
+pub struct TokenMap(HashMap<TokenIdent, Token>);
 
 impl TokenMap {
     /// Create a new token map.
     pub fn new() -> TokenMap {
-        TokenMap(DashMap::new())
+        TokenMap(HashMap::new())
     }
 
-    /// Create a custom iterator for the TokenMap.
-    ///
-    /// The iterator returns ([Ident], [Token]) pairs.
-    pub fn iter(&self) -> TokenMapIter {
-        TokenMapIter {
-            inner_iter: self.0.iter(),
-        }
-    }
+    // /// Create a custom iterator for the TokenMap.
+    // ///
+    // /// The iterator returns ([Ident], [Token]) pairs.
+    // pub fn iter(&self) -> TokenMapIter {
+    //     TokenMapIter {
+    //         inner_iter: self.0.iter(),
+    //     }
+    // }
 
     /// Return an Iterator of tokens belonging to the provided [Url].
     // pub fn tokens_for_file<'s>(
@@ -94,9 +95,9 @@ impl TokenMap {
         self.idents_at_position(position, tokens)
             .first()
             .and_then(|ident| {
-                self.try_get(&ident).try_unwrap().map(|item| {
-                    let (ident, token) = item.pair();
-                    (ident, token)
+                self.get(&ident).map(|token| {
+                    // let (ident, token) = item.pair();
+                    (*ident, token)
                 })
             })
     }
@@ -129,8 +130,8 @@ impl TokenMap {
                     _ => ident.clone(),
                 };
                 if position >= token_ident.range.start && position <= token_ident.range.end {
-                    return self.try_get(&ident).try_unwrap().map(|item| {
-                        let (ident, token) = item.pair();
+                    return self.get(&ident).map(|token| {
+                        // let (ident, token) = item.pair();
                         (ident, token)
                     });
                 }
@@ -148,46 +149,19 @@ impl TokenMap {
             .collect()
     }
 
-    /// Uses the [TypeId] to find the associated [ty::TyDecl] in the TokenMap.
-    ///
-    /// This is useful when dealing with tokens that are of the [sway_core::language::ty::TyExpression] type in the AST.
-    /// For example, we can then use the `return_type` field which is a [TypeId] to retrieve the declaration Token.
-    pub fn declaration_of_type_id(
-        &self,
-        engines: &Engines,
-        type_id: &TypeId,
-    ) -> Option<ty::TyDecl> {
-        token::ident_of_type_id(engines, type_id)
-            .and_then(|decl_ident| self.try_get(&decl_ident).try_unwrap())
-            .map(|item| item.value().clone())
-            .and_then(|token| token.typed)
-            .and_then(|typed_token| match typed_token {
-                TypedAstToken::TypedDeclaration(dec) => Some(dec),
-                _ => None,
-            })
-    }
-
-    /// Returns the [ty::TyStructDecl] associated with the TypeId if it exists
-    /// within the TokenMap.
-    pub fn struct_declaration_of_type_id(
-        &self,
-        engines: &Engines,
-        type_id: &TypeId,
-    ) -> Option<ty::TyStructDecl> {
-        self.declaration_of_type_id(engines, type_id)
-            .and_then(|decl| match decl {
-                ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
-                    Some(engines.de().get_struct(&decl_id))
-                }
-                _ => None,
-            })
-    }
+   
 }
 
 impl std::ops::Deref for TokenMap {
-    type Target = DashMap<TokenIdent, Token>;
+    type Target = HashMap<TokenIdent, Token>;
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl std::ops::DerefMut for TokenMap {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 

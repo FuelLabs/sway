@@ -8,7 +8,7 @@ use crate::{
     core::{
         document::TextDocument,
         sync::SyncWorkspace,
-        token::TypedAstToken,
+        token::{TokenIdent, Token, TypedAstToken},
         token_map::{TokenMap, TokenMapExt},
     },
     error::{DocumentError, LanguageServerError},
@@ -60,7 +60,7 @@ pub struct CompiledProgram {
 #[derive(Debug)]
 pub struct ParseResult {
     pub(crate) diagnostics: Diagnostics,
-    pub(crate) token_map: TokenMap,
+    pub(crate) token_map: DashMap<TokenIdent, Token>,
     pub(crate) engines: Engines,
     pub(crate) lexed: LexedProgram,
     pub(crate) parsed: ParseProgram,
@@ -73,7 +73,7 @@ pub struct ParseResult {
 /// The API provides methods for responding to LSP requests from the server.
 #[derive(Debug)]
 pub struct Session {
-    token_map: TokenMap,
+    token_map: RwLock<TokenMap>,
     pub documents: Documents,
     pub runnables: DashMap<Span, Box<dyn Runnable>>,
     pub compiled_program: RwLock<CompiledProgram>,
@@ -95,7 +95,7 @@ impl Default for Session {
 impl Session {
     pub fn new() -> Self {
         Session {
-            token_map: TokenMap::new(),
+            token_map: RwLock::new(TokenMap::new()),
             documents: DashMap::new(),
             runnables: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
@@ -134,7 +134,7 @@ impl Session {
 
     /// Return a reference to the [TokenMap] of the current session.
     pub fn token_map(&self) -> &TokenMap {
-        &self.token_map
+        &self.token_map.read()
     }
 
     /// Wait for the cached [Diagnostics] to be unlocked after parsing and return a copy.
@@ -145,13 +145,13 @@ impl Session {
     /// Write the result of parsing to the session.
     /// This function should only be called after successfully parsing.
     pub fn write_parse_result(&self, res: ParseResult) {
-        self.token_map.clear();
+        self.token_map.write().clear();
         self.runnables.clear();
 
         *self.engines.write() = res.engines;
-        res.token_map.deref().iter().for_each(|item| {
+        res.token_map.iter().for_each(|item| {
             let (i, t) = item.pair();
-            self.token_map.insert(i.clone(), t.clone());
+            self.token_map.write().insert(i.clone(), t.clone());
         });
 
         self.create_runnables(&res.typed, self.engines.read().de());
@@ -161,10 +161,11 @@ impl Session {
     }
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
-        let (_, token) = self.token_map.token_at_position(url, position)?;
+        let (_, token) = self.token_map.read().token_at_position(url, position)?;
         let engines = self.engines.read();
         let mut token_ranges: Vec<_> = self
             .token_map
+            .read()
             .tokens_for_file(url)
             .all_references_of_token(&token, &engines)
             .map(|(ident, _)| ident.range)
@@ -181,6 +182,7 @@ impl Session {
     ) -> Option<GotoDefinitionResponse> {
         let engines = self.engines.read();
         self.token_map
+            .read()
             .token_at_position(&uri, position)
             .and_then(|(_, token)| token.declared_token_ident(&engines))
             .and_then(|decl_ident| {
@@ -206,9 +208,9 @@ impl Session {
             character: position.character - trigger_char.len() as u32 - 1,
         };
         let engines = self.engines.read();
-        let (ident_to_complete, _) = self.token_map.token_at_position(uri, shifted_position)?;
+        let (ident_to_complete, _) = self.token_map.read().token_at_position(uri, shifted_position)?;
         let fn_tokens =
-            self.token_map
+            self.token_map.read()
                 .tokens_at_position(engines.se(), uri, shifted_position, Some(true));
         let (_, fn_token) = fn_tokens.first()?;
         let compiled_program = &*self.compiled_program.read();
@@ -233,7 +235,8 @@ impl Session {
     }
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
-        let tokens = self.token_map.tokens_for_file(url);
+        let token_map = self.token_map.read();
+        let tokens = token_map.tokens_for_file(url);
         self.sync
             .to_workspace_url(url.clone())
             .map(|url| capabilities::document_symbol::to_symbol_information(tokens, url))
@@ -406,7 +409,7 @@ pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
     let build_plan = build_plan(uri)?;
     let mut diagnostics = Diagnostics::default();
     let engines = Engines::default();
-    let token_map = TokenMap::new();
+    let token_map = DashMap::new();
     let tests_enabled = true;
 
     let results = pkg::check(

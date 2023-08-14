@@ -3,13 +3,14 @@
 use crate::{
     core::{
         token::{
-            desugared_op, type_info_to_symbol_kind, AstToken, SymbolKind, Token, TypeDefinition,
+            desugared_op, type_info_to_symbol_kind, AstToken, SymbolKind, Token, TypeDefinition, TokenIdent,
         },
         token_map::TokenMap,
     },
     traverse::{Parse, ParseContext},
 };
 
+use dashmap::DashMap;
 use sway_core::{
     language::{
         parsed::{
@@ -1080,7 +1081,7 @@ fn collect_call_path_tree(
     ctx: &ParseContext,
     tree: &CallPathTree,
     token: &Token,
-    tokens: &TokenMap,
+    tokens: &DashMap<TokenIdent, Token>,
 ) {
     for ident in &tree.call_path.prefixes {
         tokens.insert(ctx.ident(&ident), token.clone());

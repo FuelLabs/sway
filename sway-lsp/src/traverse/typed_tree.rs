@@ -1,11 +1,11 @@
 #![allow(dead_code)]
 use crate::{
-    core::token::{
+    core::token::{self,
         type_info_to_symbol_kind, SymbolKind, Token, TokenIdent, TypeDefinition, TypedAstToken,
     },
     traverse::{Parse, ParseContext},
 };
-use dashmap::mapref::one::RefMut;
+use dashmap::{mapref::one::RefMut, DashMap};
 use sway_core::{
     decl_engine::{id::DeclId, InterfaceDeclId},
     language::{
@@ -14,7 +14,7 @@ use sway_core::{
         CallPathTree,
     },
     type_system::TypeArgument,
-    TraitConstraint, TypeId, TypeInfo,
+    TraitConstraint, TypeId, TypeInfo, Engines,
 };
 use sway_types::{Ident, Span, Spanned};
 use sway_utils::iter_prefixes;
@@ -329,9 +329,7 @@ impl Parse for ty::TyExpression {
                     {
                         token.typed = Some(TypedAstToken::TypedExpression(field.value.clone()));
 
-                        if let Some(struct_decl) = &ctx
-                            .tokens
-                            .struct_declaration_of_type_id(ctx.engines, &self.return_type)
+                        if let Some(struct_decl) = struct_declaration_of_type_id(&ctx.tokens, ctx.engines, &self.return_type)
                         {
                             struct_decl.fields.iter().for_each(|decl_field| {
                                 if decl_field.name == field.name {
@@ -1069,9 +1067,7 @@ impl Parse for ty::TyReassignment {
             if let ty::ProjectionKind::StructField { name } = proj_kind {
                 if let Some(mut token) = ctx.tokens.try_get_mut(&ctx.ident(&name)).try_unwrap() {
                     token.typed = Some(TypedAstToken::TypedReassignment(self.clone()));
-                    if let Some(struct_decl) = &ctx
-                        .tokens
-                        .struct_declaration_of_type_id(ctx.engines, &self.lhs_type)
+                    if let Some(struct_decl) = struct_declaration_of_type_id(&ctx.tokens, ctx.engines, &self.lhs_type)
                     {
                         struct_decl.fields.iter().for_each(|decl_field| {
                             if &decl_field.name == name {
@@ -1364,4 +1360,39 @@ fn collect_enum(ctx: &ParseContext, decl_id: &DeclId<ty::TyEnumDecl>, declaratio
     enum_decl.variants.iter().for_each(|variant| {
         variant.parse(ctx);
     });
+}
+
+/// Uses the [TypeId] to find the associated [ty::TyDecl] in the TokenMap.
+///
+/// This is useful when dealing with tokens that are of the [sway_core::language::ty::TyExpression] type in the AST.
+/// For example, we can then use the `return_type` field which is a [TypeId] to retrieve the declaration Token.
+pub fn declaration_of_type_id(
+    map: &DashMap<TokenIdent, Token>,
+    engines: &Engines,
+    type_id: &TypeId,
+) -> Option<ty::TyDecl> {
+    token::ident_of_type_id(engines, type_id)
+        .and_then(|decl_ident| map.try_get(&decl_ident).try_unwrap())
+        .map(|item| item.value().clone())
+        .and_then(|token| token.typed)
+        .and_then(|typed_token| match typed_token {
+            TypedAstToken::TypedDeclaration(dec) => Some(dec),
+            _ => None,
+        })
+}
+
+/// Returns the [ty::TyStructDecl] associated with the TypeId if it exists
+/// within the Map.
+pub fn struct_declaration_of_type_id(
+    map: &DashMap<TokenIdent, Token>,
+    engines: &Engines,
+    type_id: &TypeId,
+) -> Option<ty::TyStructDecl> {
+    declaration_of_type_id(map, engines, type_id)
+        .and_then(|decl| match decl {
+            ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
+                Some(engines.de().get_struct(&decl_id))
+            }
+            _ => None,
+        })
 }

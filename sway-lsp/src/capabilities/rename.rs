@@ -60,7 +60,7 @@ pub fn rename(
             .token_map()
             .iter()
             .all_references_of_token(&token, &engines)
-            .map(|(ident, _)| ident)
+            .map(|(ident, _)| ident.clone())
             .collect()
     })
     .into_iter()
@@ -75,7 +75,7 @@ pub fn rename(
             // taking the r# tokens into account.
             range.start.character -= RAW_IDENTIFIER.len() as u32;
         }
-        if let Some(path) = ident.path {
+        if let Some(path) = &ident.path {
             let url = get_url_from_path(&path).ok()?;
             if let Some(url) = session.sync.to_workspace_url(url) {
                 let edit = TextEdit::new(range, new_name.clone());
@@ -150,7 +150,7 @@ fn is_token_in_workspace(
 
     // Check the span of the tokens defintions to determine if it's in the users workspace.
     let temp_path = &session.sync.temp_dir()?;
-    if let Some(path) = decl_ident.path {
+    if let Some(path) = &decl_ident.path {
         if !path.starts_with(temp_path) {
             return Err(LanguageServerError::RenameError(
                 RenameError::TokenNotPartOfWorkspace,
@@ -164,25 +164,26 @@ fn is_token_in_workspace(
 fn trait_interface_idents<'s>(
     interface_surface: &[ty::TyTraitInterfaceItem],
     se: &SourceEngine,
-) -> Vec<&'s TokenIdent> {
+) -> Vec<TokenIdent> {
     interface_surface
         .iter()
-        .flat_map(|item| match item {
+        .filter_map(|item| match item {
             ty::TyTraitInterfaceItem::TraitFn(fn_decl) => {
-                Some(&TokenIdent::new(&fn_decl.name(), se))
+                Some(TokenIdent::new(&fn_decl.name(), se))
             }
             _ => None,
         })
         .collect()
 }
 
+
 /// Returns the `Ident`s of all methods found for an `AbiDecl`, `TraitDecl`, or `ImplTrait`.
-fn find_all_methods_for_decl<'s>(
+fn find_all_methods_for_decl(
     session: &Session,
     engines: &Engines,
     url: &Url,
     position: Position,
-) -> Result<Vec<&'s TokenIdent>, LanguageServerError> {
+) -> Result<Vec<TokenIdent>, LanguageServerError> {
     // Find the parent declaration
     let (_, decl_token) = session
         .token_map()
@@ -218,7 +219,7 @@ fn find_all_methods_for_decl<'s>(
                                 .iter()
                                 .filter_map(|item| match item {
                                     ty::TyTraitItem::Fn(fn_decl) => {
-                                        Some(&TokenIdent::new(&fn_decl.name(), &engines.se()))
+                                        Some(TokenIdent::new(&fn_decl.name(), &engines.se()))
                                     }
                                     _ => None,
                                 })
