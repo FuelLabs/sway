@@ -47,14 +47,14 @@ impl TokenMap {
 
     /// Given a cursor [Position], return the [TokenIdent] of a token in the
     /// Iterator if one exists at that position.
-    pub fn spans_at_position<I>(&self, cursor_position: Position, tokens: I) -> Vec<TokenIdent>
+    pub fn idents_at_position<I>(&self, cursor_position: Position, tokens: I) -> Vec<TokenIdent>
     where
         I: Iterator<Item = (TokenIdent, Token)>,
     {
         tokens
-            .filter_map(|(span, _)| {
-                if cursor_position >= span.range.start && cursor_position <= span.range.end {
-                    return Some(span);
+            .filter_map(|(ident, _)| {
+                if cursor_position >= ident.range.start && cursor_position <= ident.range.end {
+                    return Some(ident);
                 }
                 None
             })
@@ -84,7 +84,7 @@ impl TokenMap {
     /// Returns the first collected tokens that is at the cursor position.
     pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(TokenIdent, Token)> {
         let tokens = self.tokens_for_file(uri);
-        self.spans_at_position(position, tokens)
+        self.idents_at_position(position, tokens)
             .first()
             .and_then(|ident| {
                 self.try_get(&ident).try_unwrap().map(|item| {

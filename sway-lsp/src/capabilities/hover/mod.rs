@@ -28,21 +28,22 @@ pub fn hover_data(
     position: Position,
 ) -> Option<lsp_types::Hover> {
     let (ident, token) = session.token_map().token_at_position(&url, position)?;
+    let range = ident.range;
 
     // check if our token is a keyword
     if matches!(
         token.kind,
         SymbolKind::BoolLiteral | SymbolKind::Keyword | SymbolKind::SelfKeyword
     ) {
-        let name = ident.name;
-        let documentation = keyword_docs.get(&name).unwrap();
+        let name = &ident.name;
+        let documentation = keyword_docs.get(name).unwrap();
         let prefix = format!("\n```sway\n{name}\n```\n\n---\n\n");
         let formatted_doc = format!("{prefix}{documentation}");
         let content = Markup::new().text(&formatted_doc);
         let contents = lsp_types::HoverContents::Markup(markup_content(content));
         return Some(lsp_types::Hover {
             contents,
-            range: Some(ident.range),
+            range: Some(range),
         });
     }
 
@@ -64,7 +65,7 @@ pub fn hover_data(
     let contents = hover_format(session.clone(), &engines, &decl_token, &decl_ident.name);
     Some(lsp_types::Hover {
         contents,
-        range: Some(ident.range),
+        range: Some(range),
     })
 }
 
