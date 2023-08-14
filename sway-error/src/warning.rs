@@ -91,6 +91,11 @@ pub enum Warning {
         is_last_arm: bool,
         is_catch_all_arm: bool,
     },
+    MatchExpressionCatchAllArmMakesArmsBelowItUnreachable {
+        match_value: Span,
+        catch_all_arm: Span,
+        following_arms: Span,
+    },
     UnrecognizedAttribute {
         attrib_name: Ident,
     },
@@ -224,6 +229,7 @@ impl fmt::Display for Warning {
                  actual storage access pattern: '{unneeded_attrib}' attribute(s) can be removed."
             ),
             MatchExpressionUnreachableArm { .. } => write!(f, "This match arm is unreachable."),
+            MatchExpressionCatchAllArmMakesArmsBelowItUnreachable { .. } => write!(f, "This catch-all match arm makes all arms below it unreachable."),
             UnrecognizedAttribute {attrib_name} => write!(f, "Unknown attribute: \"{attrib_name}\"."),
             AttributeExpectedNumberOfArguments {attrib_name, received_args, expected_min_len, expected_max_len } => write!(
                 f,
@@ -332,7 +338,37 @@ impl ToDiagnostic for CompileWarning {
                     ]
                 }
             },
-            //p`
+            MatchExpressionCatchAllArmMakesArmsBelowItUnreachable { match_value, catch_all_arm, following_arms } => Diagnostic {
+                reason: Some(Reason::new(code(3), "Catch-all match arm makes arms below it unreachable".to_string())),
+                issue: Issue::warning(
+                    source_engine,
+                    catch_all_arm.clone(),
+                    format!("Match arms below catch-all arm \"{}\" will never be matched", catch_all_arm.as_str()),
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        match_value.clone(),
+                        format!("This is the value to match on.")
+                    ),
+                    Hint::warning(
+                        source_engine,
+                        catch_all_arm.clone(),
+                        format!("This catch-all match arm makes all arms below it unreachable.")
+                    ),
+                    Hint::info(
+                        source_engine,
+                        following_arms.clone(),
+                        format!("These arms, coming after \"{}\", will never be matched.", catch_all_arm.as_str())
+                    ),
+                ],
+                help: vec![
+                    format!("Catch-all patterns make sense only in last match arms."),
+                    format!("In this case, the catch-all \"{}\" pattern appears inside of the match expression.", catch_all_arm.as_str()),
+                    format!("As such, it makes all the match arms below it unreachable."),
+                    format!("Carefully check matching logic in all the arms and consider removing the catch-all arm or making it the last arm."),
+                ]
+            },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we

@@ -10,6 +10,7 @@ mod tuple_index_access;
 mod unsafe_downcast;
 
 use self::constant_expression::instantiate_constant_expression;
+
 pub(crate) use self::{
     enum_instantiation::*, function_application::*, if_expression::*, lazy_operator::*,
     method_application::*, struct_field_access::*, struct_instantiation::*, tuple_index_access::*,
@@ -647,24 +648,27 @@ impl ty::TyExpression {
             span.clone(),
         )?;
 
-        if let Some((last_arm_report, other_arms_reachability)) = arms_reachability.split_last() {
-            // check reachable report for all the arms except the last one
-            for (index, reachable_report) in other_arms_reachability.iter().enumerate() {
-                if !reachable_report.reachable {
-                    handler.emit_warn(CompileWarning {
-                        span: reachable_report.scrutinee.span.clone(),
-                        warning_content: Warning::MatchExpressionUnreachableArm {
-                            match_value: value.span(),
-                            preceding_arms: Span::join_all(other_arms_reachability[..index].iter().map(|report| report.scrutinee.span.clone())),
-                            unreachable_arm: reachable_report.scrutinee.span.clone(),
-                            is_last_arm: false,
-                            is_catch_all_arm: false, // TODO-IG: It will never be true because we will add preceeding warning for that.
-                        },
-                    });
+        // if there is an interior catch-all arm
+        if let Some(catch_all_arm_position) = interior_catch_all_arm_position(&arms_reachability) {
+            // show the warning that the arms below it are unreachable...
+            handler.emit_warn(CompileWarning {
+                span: arms_reachability[catch_all_arm_position].scrutinee.span.clone(),
+                warning_content: Warning::MatchExpressionCatchAllArmMakesArmsBelowItUnreachable {
+                    match_value: value.span(),
+                    catch_all_arm: arms_reachability[catch_all_arm_position].scrutinee.span.clone(),
+                    following_arms: Span::join_all(arms_reachability[catch_all_arm_position + 1..].iter().map(|report| report.scrutinee.span.clone())),
                 }
-            }
+            });
 
-            // for the last one, give a different warning if it is an unreachable catch all arm
+            //...but still check the arms above it for reachability
+            check_interior_non_catch_all_arms_for_reachability(handler, &value.span(), &arms_reachability[..catch_all_arm_position]);
+        }
+        // if there is more then one arm
+        else if let Some((last_arm_report, other_arms_reachability)) = arms_reachability.split_last() {
+            // check reachable report for all the arms except the last one
+            check_interior_non_catch_all_arms_for_reachability(handler, &value.span(), other_arms_reachability);
+
+            // for the last one, give a different warning if it is an unreachable catch-all arm
             if !last_arm_report.reachable {
                 handler.emit_warn(CompileWarning {
                     span: last_arm_report.scrutinee.span.clone(),
@@ -700,7 +704,37 @@ impl ty::TyExpression {
             },
         };
 
-        Ok(match_exp)
+        return Ok(match_exp);
+
+        /// Returns the position of the first match arm that is an "interior" arm, meaning:
+        ///  - arm is a catch-all arm
+        ///  - arm is not the last match arm
+        /// or `None` if such arm does not exist.
+        /// Note that the arm can be the first arm.
+        fn interior_catch_all_arm_position(arms_reachability: &[ReachableReport]) -> Option<usize> {
+            arms_reachability
+                .split_last()?
+                .1
+                .iter()
+                .position(|report| report.scrutinee.is_catch_all())
+        }
+
+        fn check_interior_non_catch_all_arms_for_reachability(handler: &Handler, match_value: &Span, arms_reachability: &[ReachableReport]) -> () {
+            for (index, reachable_report) in arms_reachability.iter().enumerate() {
+                if !reachable_report.reachable {
+                    handler.emit_warn(CompileWarning {
+                        span: reachable_report.scrutinee.span.clone(),
+                        warning_content: Warning::MatchExpressionUnreachableArm {
+                            match_value: match_value.clone(),
+                            preceding_arms: Span::join_all(arms_reachability[..index].iter().map(|report| report.scrutinee.span.clone())),
+                            unreachable_arm: reachable_report.scrutinee.span.clone(),
+                            is_last_arm: false,
+                            is_catch_all_arm: false,
+                        },
+                    });
+                }
+            }
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
