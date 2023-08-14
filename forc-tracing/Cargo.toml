@@ -1,6 +1,6 @@
 [package]
 name = "forc-tracing"
-version = "0.43.2"
+version = "0.44.0"
 description = "Tracing utility shared between forc crates."
 authors.workspace = true
 edition.workspace = true
