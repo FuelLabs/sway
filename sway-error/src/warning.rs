@@ -95,6 +95,7 @@ pub enum Warning {
         match_value: Span,
         catch_all_arm: Span,
         following_arms: Span,
+        following_arms_count: usize,
     },
     UnrecognizedAttribute {
         attrib_name: Ident,
@@ -338,7 +339,7 @@ impl ToDiagnostic for CompileWarning {
                     ]
                 }
             },
-            MatchExpressionCatchAllArmMakesArmsBelowItUnreachable { match_value, catch_all_arm, following_arms } => Diagnostic {
+            MatchExpressionCatchAllArmMakesArmsBelowItUnreachable { match_value, catch_all_arm, following_arms, following_arms_count } => Diagnostic {
                 reason: Some(Reason::new(code(3), "Catch-all match arm makes arms below it unreachable".to_string())),
                 issue: Issue::warning(
                     source_engine,
@@ -354,12 +355,21 @@ impl ToDiagnostic for CompileWarning {
                     Hint::warning(
                         source_engine,
                         catch_all_arm.clone(),
-                        format!("This catch-all match arm makes all arms below it unreachable.")
+                        format!("This catch-all arm makes all arms below it unreachable.")
                     ),
                     Hint::info(
                         source_engine,
                         following_arms.clone(),
-                        format!("These arms, coming after \"{}\", will never be matched.", catch_all_arm.as_str())
+                        format!(
+                            "{}, coming after \"{}\", will never be matched.",
+                            if *following_arms_count == 1 {
+                                "This arm".to_string()
+                            }
+                            else {
+                                format!("These {following_arms_count} arms")
+                            },
+                            catch_all_arm.as_str()
+                        )
                     ),
                 ],
                 help: vec![

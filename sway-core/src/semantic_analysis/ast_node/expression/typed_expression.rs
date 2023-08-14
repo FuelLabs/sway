@@ -657,6 +657,7 @@ impl ty::TyExpression {
                     match_value: value.span(),
                     catch_all_arm: arms_reachability[catch_all_arm_position].scrutinee.span.clone(),
                     following_arms: Span::join_all(arms_reachability[catch_all_arm_position + 1..].iter().map(|report| report.scrutinee.span.clone())),
+                    following_arms_count: arms_reachability[catch_all_arm_position + 1..].len()
                 }
             });
 

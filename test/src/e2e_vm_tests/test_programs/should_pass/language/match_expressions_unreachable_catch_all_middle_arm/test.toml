@@ -6,9 +6,9 @@ category = "compile"
 #nextln: $()This is the value to match on.
 
 #check: $()_ => 0,
-#nextln: $()This catch-all match arm makes all arms below it unreachable.
+#nextln: $()This catch-all arm makes all arms below it unreachable.
 #check: $()Enum::E(_) => 0,
-#nextln: $()These arms, coming after "_", will never be matched.
+#nextln: $()These 5 arms, coming after "_", will never be matched.
 
 #check: $()Catch-all match arm makes arms below it unreachable. Match arms below catch-all arm "_" will never be matched.
 
@@ -16,9 +16,9 @@ category = "compile"
 #nextln: $()This is the value to match on.
 
 #check: $()_ => 0,
-#nextln: $()This catch-all match arm makes all arms below it unreachable.
+#nextln: $()This catch-all arm makes all arms below it unreachable.
 #check: $()_ => 0,
-#nextln: $()These arms, coming after "_", will never be matched.
+#nextln: $()These 7 arms, coming after "_", will never be matched.
 
 #check: $()Catch-all match arm makes arms below it unreachable. Match arms below catch-all arm "x" will never be matched.
 
@@ -26,9 +26,9 @@ category = "compile"
 #nextln: $()This is the value to match on.
 
 #check: $()x => {
-#nextln: $()This catch-all match arm makes all arms below it unreachable.
+#nextln: $()This catch-all arm makes all arms below it unreachable.
 #check: $()Enum::E(_) => 0,
-#nextln: $()These arms, coming after "x", will never be matched.
+#nextln: $()These 5 arms, coming after "x", will never be matched.
 
 #check: $()Catch-all match arm makes arms below it unreachable. Match arms below catch-all arm "x" will never be matched.
 
@@ -36,9 +36,29 @@ category = "compile"
 #nextln: $()This is the value to match on.
 
 #check: $()x => {
-#nextln: $()This catch-all match arm makes all arms below it unreachable.
+#nextln: $()This catch-all arm makes all arms below it unreachable.
 #check: $()_ => 0,
-#nextln: $()These arms, coming after "x", will never be matched.
+#nextln: $()These 6 arms, coming after "x", will never be matched.
+
+#check: $()Catch-all match arm makes arms below it unreachable. Match arms below catch-all arm "x" will never be matched.
+
+#check: $()let _x = match e2_3 {
+#nextln: $()This is the value to match on.
+
+#check: $()x => {
+#nextln: $()This catch-all arm makes all arms below it unreachable.
+#check: $()Enum::E(_) => 0,
+#nextln: $()This arm, coming after "x", will never be matched.
+
+#check: $()Catch-all match arm makes arms below it unreachable. Match arms below catch-all arm "y" will never be matched.
+
+#check: $()let _x = match e2_4 {
+#nextln: $()This is the value to match on.
+
+#check: $()y => {
+#nextln: $()This catch-all arm makes all arms below it unreachable.
+#check: $()_ => 0,
+#nextln: $()This arm, coming after "y", will never be matched.
 
 #check: $()Catch-all match arm makes arms below it unreachable. Match arms below catch-all arm "_" will never be matched.
 
@@ -46,9 +66,9 @@ category = "compile"
 #nextln: $()This is the value to match on.
 
 #check: $()_ => 0,
-#nextln: $()This catch-all match arm makes all arms below it unreachable.
+#nextln: $()This catch-all arm makes all arms below it unreachable.
 #check: $()_ => 0,
-#nextln: $()These arms, coming after "_", will never be matched.
+#nextln: $()These 5 arms, coming after "_", will never be matched.
 
 #check: $()Catch-all match arm makes arms below it unreachable. Match arms below catch-all arm "x" will never be matched.
 
@@ -56,9 +76,9 @@ category = "compile"
 #nextln: $()This is the value to match on.
 
 #check: $()x => {
-#nextln: $()This catch-all match arm makes all arms below it unreachable.
+#nextln: $()This catch-all arm makes all arms below it unreachable.
 #check: $()_ => 0,
-#nextln: $()These arms, coming after "x", will never be matched.
+#nextln: $()These 6 arms, coming after "x", will never be matched.
 
 #check: $()Catch-all match arm makes arms below it unreachable. Match arms below catch-all arm "Struct { x, y, z }" will never be matched.
 
@@ -66,9 +86,9 @@ category = "compile"
 #nextln: $()This is the value to match on.
 
 #check: $()Struct { x, y, z } => if x { y } else { z.0 },
-#nextln: $()This catch-all match arm makes all arms below it unreachable.
+#nextln: $()This catch-all arm makes all arms below it unreachable.
 #check: $()_ => 0,
-#nextln: $()These arms, coming after "Struct { x, y, z }", will never be matched.
+#nextln: $()These 4 arms, coming after "Struct { x, y, z }", will never be matched.
 
 #check: $()Catch-all match arm makes arms below it unreachable. Match arms below catch-all arm "Struct { x:_, y:_, z:_ }" will never be matched.
 
@@ -76,9 +96,9 @@ category = "compile"
 #nextln: $()This is the value to match on.
 
 #check: $()Struct { x:_, y:_, z:_ } => 0,
-#nextln: $()This catch-all match arm makes all arms below it unreachable.
+#nextln: $()This catch-all arm makes all arms below it unreachable.
 #check: $()_ => 0,
-#nextln: $()These arms, coming after "Struct { x:_, y:_, z:_ }", will never be matched.
+#nextln: $()These 4 arms, coming after "Struct { x:_, y:_, z:_ }", will never be matched.
 
 #check: $()Catch-all match arm makes arms below it unreachable. Match arms below catch-all arm "Struct { x: a, y: b, z: c }" will never be matched.
 
@@ -86,9 +106,9 @@ category = "compile"
 #nextln: $()This is the value to match on.
 
 #check: $()Struct { x: a, y: b, z: c } => if a { b } else { c.0 },
-#nextln: $()This catch-all match arm makes all arms below it unreachable.
+#nextln: $()This catch-all arm makes all arms below it unreachable.
 #check: $()_ => 0,
-#nextln: $()These arms, coming after "Struct { x: a, y: b, z: c }", will never be matched.
+#nextln: $()These 4 arms, coming after "Struct { x: a, y: b, z: c }", will never be matched.
 
 #check: $()Catch-all match arm makes arms below it unreachable. Match arms below catch-all arm "Struct { x: a, y: b, z: (j, k, l) }" will never be matched.
 
@@ -96,9 +116,9 @@ category = "compile"
 #nextln: $()This is the value to match on.
 
 #check: $()Struct { x: a, y: b, z: (j, k, l) } => if a { b } else { j + k + l },
-#nextln: $()This catch-all match arm makes all arms below it unreachable.
+#nextln: $()This catch-all arm makes all arms below it unreachable.
 #check: $()_ => 0,
-#nextln: $()These arms, coming after "Struct { x: a, y: b, z: (j, k, l) }", will never be matched.
+#nextln: $()These 5 arms, coming after "Struct { x: a, y: b, z: (j, k, l) }", will never be matched.
 
 #check: $()Catch-all match arm makes arms below it unreachable. Match arms below catch-all arm "Struct { x: a, y: b, z: (_, _, _) }" will never be matched.
 
@@ -106,9 +126,9 @@ category = "compile"
 #nextln: $()This is the value to match on.
 
 #check: $()Struct { x: a, y: b, z: (_, _, _) } => if a { b } else { 0 },
-#nextln: $()This catch-all match arm makes all arms below it unreachable.
+#nextln: $()This catch-all arm makes all arms below it unreachable.
 #check: $()_ => 0,
-#nextln: $()These arms, coming after "Struct { x: a, y: b, z: (_, _, _) }", will never be matched.
+#nextln: $()These 6 arms, coming after "Struct { x: a, y: b, z: (_, _, _) }", will never be matched.
 
 #check: $()Catch-all match arm makes arms below it unreachable. Match arms below catch-all arm "_" will never be matched.
 
@@ -116,9 +136,9 @@ category = "compile"
 #nextln: $()This is the value to match on.
 
 #check: $()_ => 0,
-#nextln: $()This catch-all match arm makes all arms below it unreachable.
+#nextln: $()This catch-all arm makes all arms below it unreachable.
 #check: $()_ => 0,
-#nextln: $()These arms, coming after "_", will never be matched.
+#nextln: $()These 4 arms, coming after "_", will never be matched.
 
 #check: $()Catch-all match arm makes arms below it unreachable. Match arms below catch-all arm "x" will never be matched.
 
@@ -126,9 +146,9 @@ category = "compile"
 #nextln: $()This is the value to match on.
 
 #check: $()x => x.3,
-#nextln: $()This catch-all match arm makes all arms below it unreachable.
+#nextln: $()This catch-all arm makes all arms below it unreachable.
 #check: $()_ => 0,
-#nextln: $()These arms, coming after "x", will never be matched.
+#nextln: $()These 5 arms, coming after "x", will never be matched.
 
 #check: $()Catch-all match arm makes arms below it unreachable. Match arms below catch-all arm "(b, e, s, n)" will never be matched.
 
@@ -136,9 +156,9 @@ category = "compile"
 #nextln: $()This is the value to match on.
 
 #check: $()(b, e, s, n) => {
-#nextln: $()This catch-all match arm makes all arms below it unreachable.
+#nextln: $()This catch-all arm makes all arms below it unreachable.
 #check: $()_ => 0,
-#nextln: $()These arms, coming after "(b, e, s, n)", will never be matched.
+#nextln: $()These 4 arms, coming after "(b, e, s, n)", will never be matched.
 
 #check: $()Catch-all match arm makes arms below it unreachable. Match arms below catch-all arm "(_, _, _, _)" will never be matched.
 
@@ -146,9 +166,9 @@ category = "compile"
 #nextln: $()This is the value to match on.
 
 #check: $()(_, _, _, _) => 0,
-#nextln: $()This catch-all match arm makes all arms below it unreachable.
+#nextln: $()This catch-all arm makes all arms below it unreachable.
 #check: $()_ => 0,
-#nextln: $()These arms, coming after "(_, _, _, _)", will never be matched.
+#nextln: $()These 5 arms, coming after "(_, _, _, _)", will never be matched.
 
 #check: $()Catch-all match arm makes arms below it unreachable. Match arms below catch-all arm "(_, _, _, n)" will never be matched.
 
@@ -156,9 +176,9 @@ category = "compile"
 #nextln: $()This is the value to match on.
 
 #check: $()(_, _, _, n) => n,
-#nextln: $()This catch-all match arm makes all arms below it unreachable.
+#nextln: $()This catch-all arm makes all arms below it unreachable.
 #check: $()_ => 0,
-#nextln: $()These arms, coming after "(_, _, _, n)", will never be matched.
+#nextln: $()These 4 arms, coming after "(_, _, _, n)", will never be matched.
 
 #check: $()Catch-all match arm makes arms below it unreachable. Match arms below catch-all arm "(_, _, Struct { x, y, z: (j , k, l)}, n)" will never be matched.
 
@@ -166,9 +186,9 @@ category = "compile"
 #nextln: $()This is the value to match on.
 
 #check: $()(_, _, Struct { x, y, z: (j , k, l)}, n) => {
-#nextln: $()This catch-all match arm makes all arms below it unreachable.
+#nextln: $()This catch-all arm makes all arms below it unreachable.
 #check: $()_ => 0,
-#nextln: $()These arms, coming after "(_, _, Struct { x, y, z: (j , k, l)}, n)", will never be matched.
+#nextln: $()These 5 arms, coming after "(_, _, Struct { x, y, z: (j , k, l)}, n)", will never be matched.
 
 #check: $()Catch-all match arm makes arms below it unreachable. Match arms below catch-all arm "(_, _, Struct { x: _, y: _, z: (_ , k, _)}, n)" will never be matched.
 
@@ -176,8 +196,8 @@ category = "compile"
 #nextln: $()This is the value to match on.
 
 #check: $()(_, _, Struct { x: _, y: _, z: (_ , k, _)}, n) => {
-#nextln: $()This catch-all match arm makes all arms below it unreachable.
+#nextln: $()This catch-all arm makes all arms below it unreachable.
 #check: $()_ => 0,
-#nextln: $()These arms, coming after "(_, _, Struct { x: _, y: _, z: (_ , k, _)}, n)", will never be matched.
+#nextln: $()These 4 arms, coming after "(_, _, Struct { x: _, y: _, z: (_ , k, _)}, n)", will never be matched.
 
-expected_warnings = 18
+expected_warnings = 20

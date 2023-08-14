@@ -100,6 +100,34 @@ fn main() -> () {
         _ => 0,
     };
 
+    let e2_3 = Enum::A;
+
+    let _x = match e2_3 {
+        Enum::A => 0,
+        Enum::B => 0,
+        Enum::C => 0,
+        Enum::D => 0,
+        x => { 
+            poke(x);
+            0
+        },
+        Enum::E(_) => 0,
+    };
+
+    let e2_4 = Enum::A;
+
+    let _x = match e2_4 {
+        Enum::A => 0,
+        Enum::B => 0,
+        Enum::C => 0,
+        Enum::D => 0,
+        y => { 
+            poke(y);
+            0
+        },
+        _ => 0,
+    };
+
     let s1 = Struct::new();
 
     let _x = match s1 {
@@ -196,18 +224,20 @@ fn main() -> () {
         _ => 0,
     };
 
-    // BUG: Non-exhaustive match expression. Missing patterns `Struct { x: _, y: _, z: _ }`
+    // TODO: Once bug with Struct { .. } patterns and exhaustive match expressions is fixed, add this case as well.
     // let _x = match s {
     //     Struct { x: true, y, z } => y + z.0,
     //     Struct { x: false, y, z } => y + z.0,
     //     Struct { x, .. } => if x { 1 } else { 0 },
+    //     TODO
     // };
 
-    // BUG: Non-exhaustive match expression. Missing patterns `Struct { x: _, y: _, z: _ }`
+    // TODO: Once bug with Struct { .. } patterns and exhaustive match expressions is fixed, add this case as well.
     // let _x = match s {
     //     Struct { x: true, y, z } => y + z.0,
     //     Struct { x: false, y, z } => y + z.0,
     //     Struct { .. } => 0,
+    //     TODO
     // };
     
     let t1 = (false, Enum::A, Struct::new(), 0u32);
@@ -330,6 +360,28 @@ fn main() -> () {
         },
         _ => 0,
     };
+
+    // TODO: Once bug with Struct { .. } patterns and exhaustive match expressions is fixed, add this case as well.
+    // let _x = match t {
+    //     (true, _, s, n) => n + s.y,
+    //     (false, _, s, n) => n + s.y,
+    //     (b, e, s, 0) => {
+    //         poke(e);
+    //         if b { s.y } else { 0 }
+    //     },
+    // };
+
+    // TODO: Once bug with Struct { .. } patterns and exhaustive match expressions is fixed, add this case as well.
+    // let _x = match t5 {
+    //     (true, _, s, n) => n + s.y,
+    //     (false, _, s, n) => n + s.y,
+    //     (_, Enum::B, Struct { x: true, y: 0, z: (j, k, l)}, n) => {
+    //         poke(j);
+    //         poke(k);
+    //         poke(l);
+    //         n
+    //     },
+    // };
 
     poke(Enum::B);
     poke(Enum::C);
