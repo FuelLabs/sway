@@ -11,6 +11,8 @@ pub enum WideOperations {
     Add = 0,
     Sub = 1,
     Not = 2,
+    Lsh = 6,
+    Rsh = 7,
 }
 
 #[repr(u8)]
