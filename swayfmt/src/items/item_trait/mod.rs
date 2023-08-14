@@ -71,29 +71,17 @@ impl Format for ItemTrait {
         } else {
             for (annotated, semicolon_token) in trait_items {
                 for attr in &annotated.attribute_list {
-                    write!(
-                        formatted_code,
-                        "{}",
-                        &formatter.shape.indent.to_string(&formatter.config)?,
-                    )?;
+                    write!(formatted_code, "{}", &formatter.indent_str()?,)?;
                     attr.format(formatted_code, formatter)?;
                 }
                 match &annotated.value {
                     sway_ast::ItemTraitItem::Fn(fn_signature) => {
-                        write!(
-                            formatted_code,
-                            "{}",
-                            formatter.shape.indent.to_string(&formatter.config)?,
-                        )?;
+                        write!(formatted_code, "{}", formatter.indent_str()?,)?;
                         fn_signature.format(formatted_code, formatter)?;
                         writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
                     }
                     sway_ast::ItemTraitItem::Const(const_decl) => {
-                        write!(
-                            formatted_code,
-                            "{}",
-                            formatter.shape.indent.to_string(&formatter.config)?,
-                        )?;
+                        write!(formatted_code, "{}", formatter.indent_str()?,)?;
                         const_decl.format(formatted_code, formatter)?;
                         writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
                     }
@@ -106,11 +94,7 @@ impl Format for ItemTrait {
             write!(formatted_code, " ")?;
             Self::open_curly_brace(formatted_code, formatter)?;
             for trait_items in trait_defs.get() {
-                write!(
-                    formatted_code,
-                    "{}",
-                    formatter.shape.indent.to_string(&formatter.config)?
-                )?;
+                write!(formatted_code, "{}", formatter.indent_str()?)?;
                 // format `Annotated<ItemFn>`
                 trait_items.format(formatted_code, formatter)?;
             }
@@ -148,7 +132,7 @@ impl CurlyBrace for ItemTrait {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
-        formatter.shape.block_indent(&formatter.config);
+        formatter.indent();
         let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
@@ -166,7 +150,7 @@ impl CurlyBrace for ItemTrait {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        formatter.shape.block_unindent(&formatter.config);
+        formatter.unindent();
         write!(line, "\n{}", Delimiter::Brace.as_close_char())?;
         Ok(())
     }

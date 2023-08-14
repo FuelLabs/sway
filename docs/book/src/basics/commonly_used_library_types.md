@@ -33,7 +33,7 @@ Type `Option` represents an optional value: every `Option` is either `Some` and 
 - Initial values where `None` can be used as an initializer.
 - Return value for otherwise reporting simple errors, where `None` is returned on error.
 
-The implementation of `Option` matches on the variant: if it's `Ok` it returns the inner value, if it's `None`, it [reverts](https://github.com/FuelLabs/fuel-specs/blob/master/src/vm/instruction_set.md#rvrt-revert).
+The implementation of `Option` matches on the variant: if it's `Ok` it returns the inner value, if it's `None`, it [reverts](https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/instruction-set.md#rvrt-revert).
 <!-- option:example:end -->
 
 ```sway

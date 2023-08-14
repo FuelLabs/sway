@@ -3,6 +3,7 @@
 library;
 
 use ::address::Address;
+use ::alias::AssetId;
 use ::assert::assert;
 use ::bytes::Bytes;
 use ::constants::BASE_ASSET_ID;
@@ -152,9 +153,9 @@ pub fn input_predicate_data<T>(index: u64) -> T {
 /// If the input's type is `Input::Coin` return the asset ID as an `Some(id)`.
 /// If the input's type is `Input::Message` return the `BASE_ASSET_ID` as an `Some(id)`.
 /// Otherwise, returns `None`.
-pub fn input_asset_id(index: u64) -> Option<ContractId> {
+pub fn input_asset_id(index: u64) -> Option<AssetId> {
     match input_type(index) {
-        Input::Coin => Some(ContractId::from(__gtf::<b256>(index, GTF_INPUT_COIN_ASSET_ID))),
+        Input::Coin => Some(__gtf::<b256>(index, GTF_INPUT_COIN_ASSET_ID)),
         Input::Message => Some(BASE_ASSET_ID),
         Input::Contract => None,
     }

@@ -3,12 +3,12 @@ script;
 use contract_with_type_aliases_abi::*;
 
 fn main() {
-    let caller = abi(MyContract, 0xbd6247bd39fdb5659cfe97f377ab76bc408f79d916846e8f572067eae863686c);
+    let caller = abi(MyContract, 0xbd74e82536dd497dc73b8810ed5750b2b3b5b97a08d31e89b4135cb5360d447d);
 
-    let x = AssetId::from(0x0101010101010101010101010101010101010101010101010101010101010101);
+    let x: b256 = 0x0101010101010101010101010101010101010101010101010101010101010101;
 
     let y = [
-        contract_with_type_aliases_abi::IdentityAlias::ContractId(x),
+        contract_with_type_aliases_abi::IdentityAlias::ContractId(ContractId::from(x)),
         contract_with_type_aliases_abi::IdentityAlias::Address(Address::from(0x0202020202020202020202020202020202020202020202020202020202020202)),
     ];
 

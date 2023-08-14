@@ -86,6 +86,12 @@ pub struct Session {
     pub diagnostics: Arc<RwLock<Diagnostics>>,
 }
 
+impl Default for Session {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Session {
     pub fn new() -> Self {
         Session {
@@ -138,7 +144,7 @@ impl Session {
 
     /// Write the result of parsing to the session.
     /// This function should only be called after successfully parsing.
-    pub(crate) fn write_parse_result(&self, res: ParseResult) {
+    pub fn write_parse_result(&self, res: ParseResult) {
         self.token_map.clear();
         self.runnables.clear();
 
@@ -198,7 +204,7 @@ impl Session {
         &self,
         uri: &Url,
         position: Position,
-        trigger_char: String,
+        trigger_char: &str,
     ) -> Option<Vec<CompletionItem>> {
         let shifted_position = Position {
             line: position.line,

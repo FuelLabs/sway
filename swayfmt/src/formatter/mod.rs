@@ -7,7 +7,7 @@ pub use crate::{
     config::manifest::Config,
     error::{ConfigError, FormatterError},
 };
-use std::{fmt::Write, path::Path, sync::Arc};
+use std::{borrow::Cow, fmt::Write, path::Path, sync::Arc};
 use sway_core::BuildConfig;
 use sway_types::{SourceEngine, Spanned};
 
@@ -43,6 +43,18 @@ impl Formatter {
             config,
             ..Default::default()
         })
+    }
+
+    pub fn indent(&mut self) {
+        self.shape.block_indent(&self.config);
+    }
+
+    pub fn unindent(&mut self) {
+        self.shape.block_unindent(&self.config);
+    }
+
+    pub fn indent_str(&self) -> Result<Cow<'static, str>, FormatterError> {
+        self.shape.indent.to_string(&self.config)
     }
 
     /// Collect a mapping of Span -> Comment from unformatted input.
