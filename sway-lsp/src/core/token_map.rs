@@ -87,7 +87,7 @@ impl TokenMap {
         self.idents_at_position(position, tokens)
             .first()
             .and_then(|ident| {
-                self.try_get(&ident).try_unwrap().map(|item| {
+                self.try_get(ident).try_unwrap().map(|item| {
                     let (ident, token) = item.pair();
                     (ident.clone(), token.clone())
                 })
@@ -97,7 +97,7 @@ impl TokenMap {
     /// Returns all collected tokens that are at the given [Position] in the file.
     /// If `functions_only` is true, it only returns tokens of type [TypedAstToken::TypedFunctionDeclaration].
     ///
-    /// This is different from `spans_at_position` because this searches the spans of token bodies, not
+    /// This is different from `idents_at_position` because this searches the spans of token bodies, not
     /// just the spans of the token idents. For example, if we want to find out what function declaration
     /// the cursor is inside of, we need to search the body of the function declaration, not just the ident
     /// of the function declaration (the function name).
