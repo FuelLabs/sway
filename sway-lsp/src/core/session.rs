@@ -212,7 +212,6 @@ impl Session {
                 .tokens_at_position(engines.se(), uri, shifted_position, Some(true));
         let (_, fn_token) = fn_tokens.first()?;
         let compiled_program = &*self.compiled_program.read();
-
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.typed.clone() {
             let program = compiled_program.typed.clone()?;
             return Some(capabilities::completion::to_completion_items(

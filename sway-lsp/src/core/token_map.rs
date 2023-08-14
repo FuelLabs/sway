@@ -2,7 +2,7 @@ use crate::core::token::{self, Token, TokenIdent, TypedAstToken};
 use dashmap::DashMap;
 use lsp_types::{Position, Url};
 use sway_core::{language::ty, type_system::TypeId, Engines};
-use sway_types::{SourceEngine, Spanned};
+use sway_types::{Ident, SourceEngine, Spanned};
 
 // Re-export the TokenMapExt trait.
 pub use crate::core::token_map_ext::TokenMapExt;
@@ -114,10 +114,10 @@ impl TokenMap {
                     Some(TypedAstToken::TypedFunctionDeclaration(decl))
                         if functions_only == Some(true) =>
                     {
-                        TokenIdent::new(&decl.span, source_engine)
+                        TokenIdent::new(&Ident::new(decl.span.clone()), source_engine)
                     }
                     Some(TypedAstToken::TypedDeclaration(decl)) => {
-                        TokenIdent::new(&decl.span(), source_engine)
+                        TokenIdent::new(&Ident::new(decl.span().clone()), source_engine)
                     }
                     _ => ident.clone(),
                 };

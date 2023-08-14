@@ -6,7 +6,6 @@ use sway_core::language::{
     parsed::{AstNode, AstNodeContent, Declaration},
     ty,
 };
-use sway_types::Spanned;
 
 /// Insert Declaration tokens into the TokenMap.
 pub fn collect_parsed_declaration(node: &AstNode, ctx: &ParseContext) {

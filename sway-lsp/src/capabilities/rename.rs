@@ -10,7 +10,7 @@ use crate::{
 use lsp_types::{Position, PrepareRenameResponse, TextEdit, Url, WorkspaceEdit};
 use std::{collections::HashMap, sync::Arc};
 use sway_core::{language::ty, Engines};
-use sway_types::{SourceEngine, Spanned};
+use sway_types::SourceEngine;
 
 const RAW_IDENTIFIER: &str = "r#";
 
@@ -171,7 +171,7 @@ fn trait_interface_idents(
         .iter()
         .flat_map(|item| match item {
             ty::TyTraitInterfaceItem::TraitFn(fn_decl) => {
-                Some(TokenIdent::new(&fn_decl.name().span(), se))
+                Some(TokenIdent::new(&fn_decl.name(), se))
             }
             _ => None,
         })
@@ -220,7 +220,7 @@ fn find_all_methods_for_decl(
                                 .iter()
                                 .filter_map(|item| match item {
                                     ty::TyTraitItem::Fn(fn_decl) => {
-                                        Some(TokenIdent::new(&fn_decl.name().span(), &engines.se()))
+                                        Some(TokenIdent::new(&fn_decl.name(), &engines.se()))
                                     }
                                     _ => None,
                                 })

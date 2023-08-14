@@ -55,7 +55,8 @@ impl<'a> ParsedTree<'a> {
 
     fn collect_parse_module(&self, parse_module: &ParseModule) {
         self.ctx.tokens.insert(
-            self.ctx.ident(&Ident::new(parse_module.module_kind_span)),
+            self.ctx
+                .ident(&Ident::new(parse_module.module_kind_span.clone())),
             Token::from_parsed(
                 AstToken::LibrarySpan(parse_module.module_kind_span.clone()),
                 SymbolKind::Keyword,
@@ -179,7 +180,7 @@ impl Parse for Expression {
             ExpressionKind::Literal(value) => {
                 let symbol_kind = literal_to_symbol_kind(value);
                 ctx.tokens.insert(
-                    ctx.ident(&Ident::new(self.span)),
+                    ctx.ident(&Ident::new(self.span.clone())),
                     Token::from_parsed(AstToken::Expression(self.clone()), symbol_kind),
                 );
             }
@@ -504,7 +505,8 @@ impl Parse for Scrutinee {
                     AstToken::Scrutinee(self.clone()),
                     literal_to_symbol_kind(value),
                 );
-                ctx.tokens.insert(ctx.ident(&Ident::new(span)), token);
+                ctx.tokens
+                    .insert(ctx.ident(&Ident::new(span.clone())), token);
             }
             Scrutinee::Variable { name, .. } => {
                 ctx.tokens.insert(
@@ -540,8 +542,7 @@ impl Parse for Scrutinee {
                 }
                 let token =
                     Token::from_parsed(AstToken::Scrutinee(self.clone()), SymbolKind::Variant);
-                ctx.tokens
-                    .insert(ctx.ident(&call_path.suffix), token);
+                ctx.tokens.insert(ctx.ident(&call_path.suffix), token);
                 value.parse(ctx);
             }
             Scrutinee::AmbiguousSingleIdent(ident) => {
@@ -698,8 +699,7 @@ impl Parse for FunctionDeclaration {
             AstToken::Declaration(Declaration::FunctionDeclaration(self.clone())),
             SymbolKind::Function,
         );
-        ctx.tokens
-            .insert(ctx.ident(&self.name), token.clone());
+        ctx.tokens.insert(ctx.ident(&self.name), token.clone());
         self.body.contents.iter().for_each(|node| {
             node.parse(ctx);
         });
