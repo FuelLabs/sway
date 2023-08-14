@@ -47,7 +47,7 @@ fn insert_module_kind(ctx: &ParseContext, kind: &ModuleKind) {
 fn insert_keyword(ctx: &ParseContext, span: Span) {
     let ident = Ident::new(span);
     let token = Token::from_parsed(AstToken::Keyword(ident.clone()), SymbolKind::Keyword);
-    ctx.tokens.insert(ctx.ident(&ident.span()), token);
+    ctx.tokens.insert(ctx.ident(&ident), token);
 }
 
 impl Parse for ItemKind {
