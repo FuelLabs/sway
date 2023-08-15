@@ -234,7 +234,7 @@ pub async fn deploy_pkg(
         .add_output(Output::contract_created(contract_id, state_root))
         .finalize_signed(
             client.clone(),
-            command.unsigned,
+            command.default_signer,
             command.signing_key,
             wallet_mode,
         )
