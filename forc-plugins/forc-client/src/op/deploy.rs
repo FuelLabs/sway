@@ -18,7 +18,7 @@ use std::time::Duration;
 use std::{collections::BTreeMap, path::PathBuf};
 use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
-use tracing::info;
+use tracing::{info, warn};
 
 #[derive(Debug)]
 pub struct DeployedContract {
@@ -78,7 +78,11 @@ fn validate_and_parse_salts<'a>(
 ///
 /// When deploying a single contract, only that contract's ID is returned.
 pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
-    let command = apply_target(command)?;
+    let mut command = apply_target(command)?;
+    if command.unsigned {
+        warn!(" Warning: --unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
+        command.default_signer = true;
+    }
     let mut contract_ids = Vec::new();
     let curr_dir = if let Some(ref path) = command.pkg.path {
         PathBuf::from(path)
