@@ -849,7 +849,7 @@ async fn go_to_definition_for_paths() {
         req_uri: &uri,
         req_line: 13,
         req_char: 17,
-        def_line: 253,
+        def_line: 230,
         def_start_char: 5,
         def_end_char: 9,
         def_path: "sway-lib-core/src/primitives.sw",
@@ -1020,7 +1020,7 @@ async fn go_to_definition_for_consts() {
         req_uri: &uri,
         req_line: 9,
         req_char: 24,
-        def_line: 19,
+        def_line: 20,
         def_start_char: 5,
         def_end_char: 9,
         def_path: "sway-lib-std/src/contract_id.sw",
@@ -1055,7 +1055,7 @@ async fn go_to_definition_for_consts() {
         req_char: 73,
         def_line: 12,
         def_start_char: 10,
-        def_end_char: 19,
+        def_end_char: 20,
         def_path: "consts/src/more_consts.sw",
     };
     let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
