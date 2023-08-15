@@ -6,6 +6,7 @@ library;
 // Blockchain types
 use ::address::Address;
 use ::alias::{AssetId, SubId};
+use ::asset_id::AssetId;
 use ::contract_id::ContractId;
 use ::identity::Identity;
 
