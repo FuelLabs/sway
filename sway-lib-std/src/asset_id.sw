@@ -1,7 +1,7 @@
 //! Helper functions for generating an AssetId
 library;
 
-use ::alias::{AssetId, SubId};
+use ::alias::SubId;
 use ::constants::ZERO_B256;
 use ::contract_id::ContractId;
 use ::hash::sha256;
