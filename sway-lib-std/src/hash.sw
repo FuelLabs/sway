@@ -124,6 +124,7 @@ impl Hash for bool {
 }
 
 impl<A, B> Hash for (A, B) where A: Hash, B: Hash  {
+    #![inline(never)]
     fn hash(self, ref mut state: Hasher) {
         self.0.hash(state);
         self.1.hash(state);
@@ -262,12 +263,14 @@ impl<T> Hash for [T; 10] where T: Hash {
     }
 }
 
+#![inline(never)]
 pub fn sha256<T>(s: T) -> b256 where T: Hash {
     let mut hasher = Hasher::new();
     s.hash(hasher);
     hasher.sha256()
 }
 
+#![inline(never)]
 pub fn keccak256<T>(s: T) -> b256 where T: Hash {
     let mut hasher = Hasher::new();
     s.hash(hasher);
