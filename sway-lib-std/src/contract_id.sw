@@ -63,6 +63,12 @@ impl ContractId {
     }
 }
 
+impl Hash for ContractId {
+    fn hash(self, ref mut state: Hasher) {
+        self.value.hash(state);
+    }
+}
+
 impl ContractId {
     /// Mint `amount` coins of `sub_id` and send them  UNCONDITIONALLY to the contract at `to`.
     ///
@@ -91,11 +97,5 @@ impl ContractId {
             mint r1 r2;
         };
         self.transfer(sha256((ContractId::from(asm() { fp: b256 }), sub_id)), amount);
-    }
-}
-
-impl Hash for ContractId {
-    fn hash(self, ref mut state: Hasher) {
-        self.value.hash(state);
     }
 }
