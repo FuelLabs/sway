@@ -19,12 +19,6 @@ pub struct AssetId {
 }
 
 impl AssetId {
-    /// Represents bridged Ether on the main Fuel Network. Can be configured to represent another asset on another instance of the Fuel network.
-    pub const BASE_ASSET_ID: AssetId = AssetId {
-        /// sha256((ZERO_B256, ZERO_B256))). Prehashed to save gas.
-        value: 0xf5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b,
-    };
-
     /// Creates a new AssetId from a ContractId and SubId.
     ///
     /// # Arguments
@@ -115,3 +109,9 @@ impl AssetId {
 
     }
 }
+
+/// Represents bridged Ether on the main Fuel Network. Can be configured to represent another asset on another instance of the Fuel network.
+pub const BASE_ASSET_ID: AssetId = AssetId {
+    /// sha256((ZERO_B256, ZERO_B256))). Prehashed to save gas.
+    value: 0xf5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b,
+};

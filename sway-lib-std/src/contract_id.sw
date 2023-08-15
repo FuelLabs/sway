@@ -1,7 +1,8 @@
 //! A wrapper around the `b256` type to help enhance type-safety.
 library;
 
-use ::alias::{AssetId, SubId};
+use ::alias::SubId;
+use ::asset::AssetId;
 use ::convert::From;
 use ::hash::sha256;
 
