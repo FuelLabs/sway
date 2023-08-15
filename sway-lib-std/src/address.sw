@@ -2,7 +2,7 @@
 library;
 
 use ::alias::SubId;
-use ::asset::AssetId;
+use ::asset_id::AssetId;
 use ::call_frames::contract_id;
 use ::convert::From;
 use ::error_signals::FAILED_TRANSFER_TO_ADDRESS_SIGNAL;
@@ -67,7 +67,7 @@ impl Address {
         while index < number_of_outputs {
             if let Output::Variable = output_type(index) {
                 if output_amount(index) == 0 {
-                    asm(r1: self.value, r2: index, r3: amount, r4: asset_id) {
+                    asm(r1: self.value, r2: index, r3: amount, r4: asset_id.value) {
                         tro r1 r2 r3 r4;
                     };
                     return;

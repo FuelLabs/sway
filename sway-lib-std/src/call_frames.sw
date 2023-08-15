@@ -2,7 +2,7 @@
 //! [Call frames](https://fuellabs.github.io/fuel-specs/master/vm#call-frames) store metadata across untrusted inter-contract calls.
 library;
 
-use ::alias::AssetId;
+use ::asset_id::AssetId;
 use ::registers::frame_ptr;
 use ::contract_id::ContractId;
 use ::intrinsics::is_reference_type;
@@ -29,9 +29,13 @@ pub fn contract_id() -> ContractId {
 
 /// Get the `asset_id` of coins being sent from the current call frame.
 pub fn msg_asset_id() -> AssetId {
-    asm(asset_id) {
-        addi asset_id fp i32;
-        asset_id: b256
+    AssetId { 
+        value: { 
+            asm(asset_id) {
+                addi asset_id fp i32;
+                asset_id: b256
+            }
+        }
     }
 }
 

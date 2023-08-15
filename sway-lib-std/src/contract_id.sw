@@ -2,7 +2,7 @@
 library;
 
 use ::alias::SubId;
-use ::asset::AssetId;
+use ::asset_id::AssetId;
 use ::convert::From;
 use ::hash::sha256;
 
@@ -58,7 +58,7 @@ impl ContractId {
     /// contract_id.transfer(BASE_ASSET_ID, 500);
     /// ```
     pub fn transfer(self, asset_id: AssetId, amount: u64) {
-        asm(r1: amount, r2: asset_id, r3: self.value) {
+        asm(r1: amount, r2: asset_id.value, r3: self.value) {
             tr r3 r1 r2;
         }
     }

@@ -15,7 +15,7 @@ use ::hash::sha256;
 ///
 /// The SubId is used to differentiate between different assets that are created by the same contract.
 pub struct AssetId {
-    value: b256,
+    pub value: b256,
 }
 
 impl AssetId {
@@ -43,7 +43,7 @@ impl AssetId {
     /// }
     /// ```
     pub fn new(contract_id: ContractId, sub_id: SubId) -> Self {
-        let value = sha256((contract_id, sub_id))
+        let value = sha256((contract_id, sub_id));
         Self { value }
     }
 
@@ -72,7 +72,7 @@ impl AssetId {
     /// }
     /// ```
     pub fn standard(contract_id: ContractId) -> Self {
-        let value = sha256((contract_id, ZERO_B256))
+        let value = sha256((contract_id, ZERO_B256));
         Self { value }
     }
 
@@ -102,11 +102,10 @@ impl AssetId {
     ///     transfer(recipient, asset_id, amount);
     /// ```
     pub fn base_asset_id() -> Self {
+        /// sha256((ZERO_B256, ZERO_B256))). Prehashed to save gas.
         Self {
-            /// sha256((ZERO_B256, ZERO_B256))). Prehashed to save gas.
             value: 0xf5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b,
         }
-
     }
 }
 

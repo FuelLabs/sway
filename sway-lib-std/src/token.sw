@@ -3,7 +3,7 @@ library;
 
 use ::address::Address;
 use ::alias::SubId;
-use ::asset_id::AssetId
+use ::asset_id::AssetId;
 use ::call_frames::contract_id;
 use ::contract_id::ContractId;
 use ::error_signals::FAILED_TRANSFER_TO_ADDRESS_SIGNAL;
