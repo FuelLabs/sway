@@ -888,6 +888,7 @@ fn type_check_shift_binary_op(
             .with_type_annotation(return_type),
         lhs,
     )?;
+
     let rhs = arguments[1].clone();
     let rhs = ty::TyExpression::type_check(
         handler,

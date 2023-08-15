@@ -1,7 +1,9 @@
 //! A wrapper around the `b256` type to help enhance type-safety.
 library;
 
+use ::alias::{AssetId, SubId};
 use ::convert::From;
+use ::hash::sha256;
 
 /// The `ContractId` type, a struct wrapper around the inner `b256` value.
 pub struct ContractId {
@@ -76,8 +78,8 @@ impl ContractId {
     ///
     /// # Arguments
     ///
-    /// * `amount`: [u64] - The amount of tokens to transfer.
     /// * `asset_id`: [AssetId] - The `AssetId` of the token to transfer.
+    /// * `amount`: [u64] - The amount of tokens to transfer.
     ///
     /// # Reverts
     ///
@@ -91,19 +93,18 @@ impl ContractId {
     ///
     /// fn foo() {
     ///     let contract_id = ContractId::from(ZERO_B256);
-    ///     contract_id.transfer(500, BASE_ASSET_ID);
+    ///     contract_id.transfer(BASE_ASSET_ID, 500);
     /// }
     /// ```
-    pub fn transfer(self, amount: u64, asset_id: AssetId) {
-        asm(r1: amount, r2: asset_id.value, r3: self.value) {
+    pub fn transfer(self, asset_id: AssetId, amount: u64) {
+        asm(r1: amount, r2: asset_id, r3: self.value) {
             tr r3 r1 r2;
         }
     }
 }
 
 impl ContractId {
-    /// Mint `amount` coins of the current contract's `asset_id` and send them
-    /// UNCONDITIONALLY to the contract at `to`.
+    /// Mint `amount` coins of `sub_id` and send them  UNCONDITIONALLY to the contract at `to`.
     ///
     /// # Additional Information
     ///
@@ -114,6 +115,7 @@ impl ContractId {
     ///
     /// # Arguments
     ///
+    /// * `sub_id`: [SubId] - The  sub identfier of the asset which to mint.
     /// * `amount`: [u64] - The amount of tokens to mint.
     ///
     /// # Examples
@@ -123,17 +125,13 @@ impl ContractId {
     ///
     /// fn foo() {
     ///     let contract_id = ContractId::from(ZERO_B256);
-    ///     contract_id.mint_to(500);
+    ///     contract_id.mint_to(ZERO_B256, 500);
     /// }
     /// ```
-    pub fn mint_to(self, amount: u64) {
-        asm(r1: amount) {
-            mint r1;
+    pub fn mint_to(self, sub_id: SubId, amount: u64) {
+        asm(r1: amount, r2: sub_id) {
+            mint r1 r2;
         };
-        self.transfer(amount, Self::from(asm() { fp: b256 })); // Transfer the self contract token
+        self.transfer(sha256((ContractId::from(asm() { fp: b256 }), sub_id)), amount);
     }
 }
-
-/// The `AssetId` type is simply an alias for `ContractId` that represents the ID of a native asset
-/// which matches the ID of the contract that implements that asset.
-pub type AssetId = ContractId;

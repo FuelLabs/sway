@@ -2,9 +2,11 @@
 library;
 
 use ::address::Address;
+use ::alias::{AssetId, SubId};
 use ::call_frames::contract_id;
-use ::contract_id::{ContractId, AssetId};
+use ::contract_id::ContractId;
 use ::error_signals::FAILED_TRANSFER_TO_ADDRESS_SIGNAL;
+use ::hash::sha256;
 use ::identity::Identity;
 use ::revert::revert;
 use ::outputs::{Output, output_amount, output_count, output_type};
@@ -21,8 +23,9 @@ use ::outputs::{Output, output_amount, output_count, output_type};
 ///
 /// # Arguments
 ///
-/// * `amount`: [u64] - The amount of tokens to mint.
 /// * `to`: [Identity] - The recipient identity.
+/// * `sub_id`: [SubId] - The sub identfier of the asset which to mint.
+/// * `amount`: [u64] - The amount of tokens to mint.
 ///
 /// # Examples
 ///
@@ -32,13 +35,13 @@ use ::outputs::{Output, output_amount, output_count, output_type};
 /// fn foo() {
 ///     let to_address = Identity::Address(Address::from(ZERO_B256));
 ///     let to_contract_id = Identity::ContractId(ContractId::from(ZERO_B256));
-///     mint_to(500, to_address);
-///     mint_to(500, to_contract_id);
+///     mint_to(to_address, ZERO_B256, 500);
+///     mint_to(to_contract_id, ZERO_B256, 500);
 /// }
 /// ```
-pub fn mint_to(amount: u64, to: Identity) {
-    mint(amount);
-    transfer(amount, contract_id(), to);
+pub fn mint_to(to: Identity, sub_id: SubId, amount: u64) {
+    mint(sub_id, amount);
+    transfer(to, sha256((contract_id(), sub_id)), amount);
 }
 
 /// Mint `amount` coins of the current contract's `asset_id` and send them
@@ -52,8 +55,9 @@ pub fn mint_to(amount: u64, to: Identity) {
 ///
 /// # Arguments
 ///
-/// * `amount`: [u64] - The amount of tokens to mint.
 /// * `to`: [ContractId] - The recipient contract.
+/// * `sub_id`: [SubId] - The sub identfier of the asset which to mint.
+/// * `amount`: [u64] - The amount of tokens to mint.
 ///
 /// # Examples
 ///
@@ -62,12 +66,12 @@ pub fn mint_to(amount: u64, to: Identity) {
 ///
 /// fn foo() {
 ///     let to = ContractId::from(ZERO_B256);
-///     mint_to_contract(500, to);
+///     mint_to_contract(to, ZERO_B256, 500);
 /// }
 /// ```
-pub fn mint_to_contract(amount: u64, to: ContractId) {
-    mint(amount);
-    force_transfer_to_contract(amount, contract_id(), to);
+pub fn mint_to_contract(to: ContractId, sub_id: SubId, amount: u64) {
+    mint(sub_id, amount);
+    force_transfer_to_contract(to, sha256((contract_id(), sub_id)), amount);
 }
 
 /// Mint `amount` coins of the current contract's `asset_id` and send them to
@@ -75,8 +79,9 @@ pub fn mint_to_contract(amount: u64, to: ContractId) {
 ///
 /// # Arguments
 ///
-/// * `amount`: [u64] - The amount of tokens to mint.
 /// * `to`: [Address] - The recipient address.
+/// * `sub_id`: [SubId] - The sub identfier of the asset which to mint.
+/// * `amount`: [u64] - The amount of tokens to mint.
 ///
 /// # Examples
 ///
@@ -85,39 +90,41 @@ pub fn mint_to_contract(amount: u64, to: ContractId) {
 ///
 /// fn foo() {
 ///     let to = Address::from(ZERO_B256);
-///     mint_to_address(500, to);
+///     mint_to_address(to, ZERO_B256, 500);
 /// }
 /// ```
-pub fn mint_to_address(amount: u64, to: Address) {
-    mint(amount);
-    transfer_to_address(amount, contract_id(), to);
+pub fn mint_to_address(to: Address, sub_id: SubId, amount: u64) {
+    mint(sub_id, amount);
+    transfer_to_address(to, sha256((contract_id(), sub_id)), amount);
 }
 
-/// Mint `amount` coins of the current contract's `asset_id`. The newly minted tokens are owned by the current contract.
+/// Mint `amount` coins of the current contract's `sub_id`. The newly minted tokens are owned by the current contract.
 ///
 /// # Arguments
 ///
+/// * `sub_id`: [SubId] - The sub identfier of the asset which to mint.
 /// * `amount`: [u64] - The amount of tokens to mint.
 ///
 /// # Examples
 ///
 /// ```sway
-/// use std::token::mint;
+/// use std::{constants::ZERO_B256, token::mint};
 ///
 /// fn foo() {
-///     mint(500);
+///     mint(ZERO_B256, 500);
 /// }
 /// ```
-pub fn mint(amount: u64) {
-    asm(r1: amount) {
-        mint r1;
+pub fn mint(sub_id: SubId, amount: u64) {
+    asm(r1: amount, r2: sub_id) {
+        mint r1 r2;
     }
 }
 
-/// Burn `amount` coins of the current contract's `asset_id`. Burns them from the balance of the current contract.
+/// Burn `amount` coins of the current contract's `sub_id`. Burns them from the balance of the current contract.
 ///
 /// # Arguments
 ///
+/// * `sub_id`: [SubId] - The sub identfier of the asset which to burn.
 /// * `amount`: [u64] - The amount of tokens to burn.
 ///
 /// # Reverts
@@ -127,15 +134,15 @@ pub fn mint(amount: u64) {
 /// # Examples
 ///
 /// ```sway
-/// use std::token::burn;
+/// use std::{constants::ZERO_B256, token::burn};
 ///
 /// fn foo() {
-///     burn(500);
+///     burn(ZERO_B256, 500);
 /// }
 /// ```
-pub fn burn(amount: u64) {
-    asm(r1: amount) {
-        burn r1;
+pub fn burn(sub_id: SubId, amount: u64) {
+    asm(r1: amount, r2: sub_id) {
+        burn r1 r2;
     }
 }
 
@@ -151,9 +158,9 @@ pub fn burn(amount: u64) {
 ///
 /// # Arguments
 ///
-/// * `amount`: [u64] - The amount of tokens to transfer.
-/// * `asset_id`: [AssetId] - The token to transfer.
 /// * `to`: [Identity] - The recipient identity.
+/// * `asset_id`: [AssetId] - The token to transfer.
+/// * `amount`: [u64] - The amount of tokens to transfer.
 ///
 /// # Reverts
 ///
@@ -169,14 +176,14 @@ pub fn burn(amount: u64) {
 /// fn foo() {
 ///     let to_address = Identity::Address(Address::from(ZERO_B256));
 ///     let to_contract_id = Identity::ContractId(ContractId::from(ZERO_B256));
-///     transfer(500, BASE_ASSET_ID, to_address);
-///     transfer(500, BASE_ASSET_ID, to_contract_id);
+///     transfer(to_address, BASE_ASSET_ID, 500);
+///     transfer(to_contract_id, BASE_ASSET_ID, 500);
 /// }
 /// ```
-pub fn transfer(amount: u64, asset_id: AssetId, to: Identity) {
+pub fn transfer(to: Identity, asset_id: AssetId, amount: u64) {
     match to {
-        Identity::Address(addr) => transfer_to_address(amount, asset_id, addr),
-        Identity::ContractId(id) => force_transfer_to_contract(amount, asset_id, id),
+        Identity::Address(addr) => transfer_to_address(addr, asset_id, amount),
+        Identity::ContractId(id) => force_transfer_to_contract(id, asset_id, amount),
     };
 }
 
@@ -191,9 +198,9 @@ pub fn transfer(amount: u64, asset_id: AssetId, to: Identity) {
 ///
 /// # Arguments
 ///
-/// * `amount`: [u64] - The amount of tokens to transfer.
-/// * `asset_id`: [AssetId] - The token to transfer.
 /// * `to`: [ContractId] - The recipient contract.
+/// * `asset_id`: [AssetId] - The token to transfer.
+/// * `amount`: [u64] - The amount of tokens to transfer.
 ///
 /// # Reverts
 ///
@@ -207,11 +214,11 @@ pub fn transfer(amount: u64, asset_id: AssetId, to: Identity) {
 ///
 /// fn foo() {
 ///     let to_contract_id = ContractId::from(ZERO_B256);
-///     force_transfer_to_contract(500, BASE_ASSET_ID, to_contract_id);
+///     force_transfer_to_contract(to_contract_id, BASE_ASSET_ID, 500);
 /// }
 /// ```
-pub fn force_transfer_to_contract(amount: u64, asset_id: AssetId, to: ContractId) {
-    asm(r1: amount, r2: asset_id.value, r3: to.value) {
+pub fn force_transfer_to_contract(to: ContractId, asset_id: AssetId, amount: u64) {
+    asm(r1: amount, r2: asset_id, r3: to.value) {
         tr r3 r1 r2;
     }
 }
@@ -221,9 +228,9 @@ pub fn force_transfer_to_contract(amount: u64, asset_id: AssetId, to: ContractId
 ///
 /// # Arguments
 ///
-/// * `amount`: [u64] - The amount of tokens to transfer.
-/// * `asset_id`: [AssetId] - The token to transfer.
 /// * `to`: [Address] - The recipient address.
+/// * `asset_id`: [AssetId] - The token to transfer.
+/// * `amount`: [u64] - The amount of tokens to transfer.
 ///
 /// # Reverts
 ///
@@ -238,10 +245,10 @@ pub fn force_transfer_to_contract(amount: u64, asset_id: AssetId, to: ContractId
 ///
 /// fn foo() {
 ///     let to_address = Address::from(ZERO_B256);
-///     transfer_to_address(500, BASE_ASSET_ID, to_address);
+///     transfer_to_address(to_address, BASE_ASSET_ID, 500);
 /// }
 /// ```
-pub fn transfer_to_address(amount: u64, asset_id: AssetId, to: Address) {
+pub fn transfer_to_address(to: Address, asset_id: AssetId, amount: u64) {
     // maintain a manual index as we only have `while` loops in sway atm:
     let mut index = 0;
 
@@ -252,7 +259,7 @@ pub fn transfer_to_address(amount: u64, asset_id: AssetId, to: Address) {
     while index < number_of_outputs {
         if let Output::Variable = output_type(index) {
             if output_amount(index) == 0 {
-                asm(r1: to.value, r2: index, r3: amount, r4: asset_id.value) {
+                asm(r1: to.value, r2: index, r3: amount, r4: asset_id) {
                     tro r1 r2 r3 r4;
                 };
                 return;

@@ -1,10 +1,11 @@
 //! A wrapper around the `b256` type to help enhance type-safety.
 library;
 
+use ::alias::{AssetId, SubId};
 use ::call_frames::contract_id;
-use ::contract_id::{AssetId};
 use ::convert::From;
 use ::error_signals::FAILED_TRANSFER_TO_ADDRESS_SIGNAL;
+use ::hash::sha256;
 use ::revert::revert;
 use ::outputs::{Output, output_amount, output_count, output_type};
 
@@ -73,8 +74,8 @@ impl Address {
     ///
     /// # Arguments
     ///
-    /// * `amount`: [u64] - The amount of tokens to transfer.
     /// * `asset_id`: [AssetId] - The `AssetId` of the token to transfer.
+    /// * `amount`: [u64] - The amount of tokens to transfer.
     ///
     /// # Reverts
     ///
@@ -89,10 +90,10 @@ impl Address {
     ///
     /// fn foo() {
     ///     let address = Address::from(ZERO_B256);
-    ///     address.transfer(500, BASE_ASSET_ID);
+    ///     address.transfer(BASE_ASSET_ID, 500);
     /// }
     /// ```
-    pub fn transfer(self, amount: u64, asset_id: AssetId) {
+    pub fn transfer(self, asset_id: AssetId, amount: u64) {
         // maintain a manual index as we only have `while` loops in sway atm:
         let mut index = 0;
 
@@ -103,7 +104,7 @@ impl Address {
         while index < number_of_outputs {
             if let Output::Variable = output_type(index) {
                 if output_amount(index) == 0 {
-                    asm(r1: self.value, r2: index, r3: amount, r4: asset_id.value) {
+                    asm(r1: self.value, r2: index, r3: amount, r4: asset_id) {
                         tro r1 r2 r3 r4;
                     };
                     return;
@@ -122,6 +123,7 @@ impl Address {
     ///
     /// # Arguments
     ///
+    /// * `sub_id`: [SubId] - The sub id of the token to mint.
     /// * `amount`: [u64] - The amount of tokens to mint.
     ///
     /// # Examples
@@ -131,13 +133,13 @@ impl Address {
     ///
     /// fn foo() {
     ///     let address = Address::from(ZERO_B256);
-    ///     address.mint_to(500);
+    ///     address.mint_to(ZERO_B256, 500);
     /// }
     /// ```
-    pub fn mint_to(self, amount: u64) {
-        asm(r1: amount) {
-            mint r1;
+    pub fn mint_to(self, sub_id: SubId, amount: u64) {
+        asm(r1: amount, r2: sub_id) {
+            mint r1 r2;
         };
-        self.transfer(amount, contract_id());
+        self.transfer(sha256((contract_id(), sub_id)), amount);
     }
 }

@@ -165,11 +165,7 @@ impl Format for Expr {
                     MatchBranch::open_curly_brace(formatted_code, formatter)?;
                     let branches = branches.get();
                     for match_branch in branches.iter() {
-                        write!(
-                            formatted_code,
-                            "{}",
-                            formatter.shape.indent.to_string(&formatter.config)?
-                        )?;
+                        write!(formatted_code, "{}", formatter.indent_str()?)?;
                         match_branch.format(formatted_code, formatter)?;
                         writeln!(formatted_code)?;
                     }
@@ -195,11 +191,7 @@ impl Format for Expr {
                     |formatter| -> Result<(), FormatterError> {
                         // don't indent unless on new line
                         if formatted_code.ends_with('\n') {
-                            write!(
-                                formatted_code,
-                                "{}",
-                                formatter.shape.indent.to_string(&formatter.config)?
-                            )?;
+                            write!(formatted_code, "{}", formatter.indent_str()?)?;
                         }
                         func.format(formatted_code, formatter)?;
                         Self::open_parenthesis(formatted_code, formatter)?;
@@ -392,7 +384,7 @@ impl Format for Expr {
                         write!(
                             formatted_code,
                             "\n{}{} ",
-                            formatter.shape.indent.to_string(&formatter.config)?,
+                            formatter.indent_str()?,
                             ampersand_token.span().as_str()
                         )?;
                     }
@@ -413,7 +405,7 @@ impl Format for Expr {
                         write!(
                             formatted_code,
                             "\n{}{} ",
-                            formatter.shape.indent.to_string(&formatter.config)?,
+                            formatter.indent_str()?,
                             caret_token.span().as_str()
                         )?;
                     }
@@ -434,7 +426,7 @@ impl Format for Expr {
                         write!(
                             formatted_code,
                             "\n{}{} ",
-                            formatter.shape.indent.to_string(&formatter.config)?,
+                            formatter.indent_str()?,
                             pipe_token.span().as_str()
                         )?;
                     }
@@ -513,7 +505,7 @@ impl Format for Expr {
                         write!(
                             formatted_code,
                             "\n{}{} ",
-                            formatter.shape.indent.to_string(&formatter.config)?,
+                            formatter.indent_str()?,
                             double_ampersand_token.span().as_str()
                         )?;
                     }
@@ -538,7 +530,7 @@ impl Format for Expr {
                         write!(
                             formatted_code,
                             "\n{}{} ",
-                            formatter.shape.indent.to_string(&formatter.config)?,
+                            formatter.indent_str()?,
                             double_pipe_token.span().as_str()
                         )?;
                     }
@@ -648,11 +640,7 @@ fn format_method_call(
 ) -> Result<(), FormatterError> {
     // don't indent unless on new line
     if formatted_code.ends_with('\n') {
-        write!(
-            formatted_code,
-            "{}",
-            formatter.shape.indent.to_string(&formatter.config)?
-        )?;
+        write!(formatted_code, "{}", formatter.indent_str()?)?;
     }
     target.format(formatted_code, formatter)?;
     write!(formatted_code, "{}", dot_token.span().as_str())?;

@@ -1,6 +1,7 @@
 //! Utilities to help with low level calls.
 library;
 
+use ::alias::AssetId;
 use ::assert::assert;
 use ::bytes::Bytes;
 use ::contract_id::ContractId;
@@ -13,7 +14,7 @@ pub struct CallParams {
     /// Amount of the asset to transfer.
     coins: u64,
     /// AssetId of the asset to transfer.
-    asset_id: ContractId,
+    asset_id: AssetId,
     /// Gas to forward.
     gas: u64,
 }

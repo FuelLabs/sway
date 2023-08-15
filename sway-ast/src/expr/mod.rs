@@ -406,6 +406,13 @@ impl Spanned for MatchBranchKind {
 pub struct CodeBlockContents {
     pub statements: Vec<Statement>,
     pub final_expr_opt: Option<Box<Expr>>,
+    pub span: Span,
+}
+
+impl Spanned for CodeBlockContents {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
 }
 
 #[derive(Clone, Debug, Serialize)]

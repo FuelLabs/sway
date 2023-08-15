@@ -18,7 +18,7 @@ use ::contract_id::ContractId;
 ///     assert(BASE_ASSET_ID == msg_asset_id());
 /// }
 /// ```
-pub const BASE_ASSET_ID = ContractId::from(ZERO_B256);
+pub const BASE_ASSET_ID = ZERO_B256;
 
 /// A B256 of zero value.
 ///
@@ -28,8 +28,7 @@ pub const BASE_ASSET_ID = ContractId::from(ZERO_B256);
 /// use std::{call_frames::msg_asset_id, constants::ZERO_B256};
 ///
 /// fn foo() {
-///     let base_asset_id = ContractId::from(ZERO_B256);
-///     assert(base_asset_id == msg_asset_id());
+///     assert(ZERO_B256 == msg_asset_id());
 /// }
 /// ```
 pub const ZERO_B256 = 0x0000000000000000000000000000000000000000000000000000000000000000;

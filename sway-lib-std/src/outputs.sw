@@ -2,6 +2,7 @@
 //! This includes `Output::Coins`, `Input::Messages` and `Input::Contracts`.
 library;
 
+use ::alias::AssetId;
 use ::contract_id::ContractId;
 use ::revert::revert;
 use ::tx::{
@@ -202,7 +203,7 @@ pub fn output_amount(index: u64) -> u64 {
 ///
 /// # Returns
 ///
-/// * [Option<ContractId>] - The AssetId of the output if it is a `Output::Coin`. None otherwise.
+/// * [Option<AssetId>] - The AssetId of the output if it is a `Output::Coin`. None otherwise.
 ///
 /// # Reverts
 ///
@@ -218,9 +219,9 @@ pub fn output_amount(index: u64) -> u64 {
 ///     log(output_asset_id);
 /// }
 /// ```
-pub fn output_asset_id(index: u64) -> Option<ContractId> {
+pub fn output_asset_id(index: u64) -> Option<AssetId> {
     match output_type(index) {
-        Output::Coin => Option::Some(ContractId::from(__gtf::<b256>(index, GTF_OUTPUT_COIN_ASSET_ID))),
+        Output::Coin => Option::Some(__gtf::<b256>(index, GTF_OUTPUT_COIN_ASSET_ID)),
         _ => Option::None,
     }
 }

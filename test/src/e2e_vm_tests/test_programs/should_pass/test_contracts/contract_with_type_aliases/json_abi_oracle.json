@@ -6,7 +6,7 @@
       "inputs": [
         {
           "name": "x",
-          "type": 10,
+          "type": 3,
           "typeArguments": null
         },
         {
@@ -56,12 +56,12 @@
       "components": [
         {
           "name": "__tuple_element",
-          "type": 10,
+          "type": 3,
           "typeArguments": null
         },
         {
           "name": "__tuple_element",
-          "type": 10,
+          "type": 3,
           "typeArguments": null
         }
       ],
@@ -73,7 +73,7 @@
       "components": [
         {
           "name": "__tuple_element",
-          "type": 10,
+          "type": 3,
           "typeArguments": null
         },
         {
