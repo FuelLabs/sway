@@ -63,3 +63,19 @@ Also the default value of the "gas price" parameter is 0 for both `forc-deploy` 
 ```sh
 forc-deploy --node-url https://beta-3.fuel.network/graphql --gas-price 1
 ```
+
+## Deployment Artifacts
+
+forc-deploy stores deployment details in 'out/deployments' folder in project root directory for each deployment. An example deployment artifact can be seen below:
+
+```json
+{
+  "transaction_id": "0xec27bb7a4c8a3b8af98070666cf4e6ea22ca4b9950a0862334a1830520012f5d",
+  "salt": "0x9e35d1d5ef5724f29e649a3465033f5397d3ebb973c40a1d76bb35c253f0dec7",
+  "network_endpoint": "http://127.0.0.1:4000",
+  "chain_id": 0,
+  "contract_id": "0x767eeaa7af2621e637f9785552620e175d4422b17d4cf0d76335c38808608a7b",
+  "deployment_size": 68,
+  "deployed_block_id": "0x915c6f372252be6bc54bd70df6362dae9bf750ba652bf5582d9b31c7023ca6cf"
+}
+```
