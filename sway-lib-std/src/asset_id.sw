@@ -15,7 +15,7 @@ use ::hash::sha256;
 ///
 /// The SubId is used to differentiate between different assets that are created by the same contract.
 pub struct AssetId {
-    pub value: b256,
+    value: b256,
 }
 
 impl AssetId {
