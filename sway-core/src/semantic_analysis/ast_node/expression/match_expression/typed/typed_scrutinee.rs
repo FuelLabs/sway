@@ -107,7 +107,7 @@ impl ty::TyScrutinee {
 
     /// Returns true if the `TyScrutinee` consists only of catch-all scrutinee variants, recursively.
     /// Catch-all varaints are .., _, and variables.
-    /// E.g.: (_, x, Point { .. }) 
+    /// E.g.: (_, x, Point { .. })
     /// A catch-all scrutinee matches all the values of the corresponding type.
     pub(crate) fn is_catch_all(&self) -> bool {
         match &self.variant {
@@ -115,10 +115,7 @@ impl ty::TyScrutinee {
             ty::TyScrutineeVariant::Variable(_) => true,
             ty::TyScrutineeVariant::Literal(_) => false,
             ty::TyScrutineeVariant::Constant { .. } => false,
-            ty::TyScrutineeVariant::StructScrutinee {
-                fields,
-                ..
-            } => {
+            ty::TyScrutineeVariant::StructScrutinee { fields, .. } => {
                 let mut is_catch_all_struct_pattern = true;
                 for field in fields.iter() {
                     is_catch_all_struct_pattern &= match &field.scrutinee {

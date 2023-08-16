@@ -94,7 +94,10 @@ impl Diagnostic {
         for hint in self.labels() {
             let file = hint.source_path().unwrap();
 
-            if !include_issue_source && issue_is_in_source && file == self.issue.source_path().unwrap() {
+            if !include_issue_source
+                && issue_is_in_source
+                && file == self.issue.source_path().unwrap()
+            {
                 continue;
             }
 

@@ -25,7 +25,7 @@ use crate::{
         ty::{self, TyImplItem},
         *,
     },
-    semantic_analysis::{*, expression::ReachableReport},
+    semantic_analysis::{expression::ReachableReport, *},
     transform::to_parsed_lang::type_name_to_type_info_opt,
     type_system::*,
     Engines,
@@ -652,22 +652,42 @@ impl ty::TyExpression {
         if let Some(catch_all_arm_position) = interior_catch_all_arm_position(&arms_reachability) {
             // show the warning that the arms below it are unreachable...
             handler.emit_warn(CompileWarning {
-                span: arms_reachability[catch_all_arm_position].scrutinee.span.clone(),
+                span: arms_reachability[catch_all_arm_position]
+                    .scrutinee
+                    .span
+                    .clone(),
                 warning_content: Warning::MatchExpressionCatchAllArmMakesArmsBelowItUnreachable {
                     match_value: value.span(),
-                    catch_all_arm: arms_reachability[catch_all_arm_position].scrutinee.span.clone(),
-                    following_arms: Span::join_all(arms_reachability[catch_all_arm_position + 1..].iter().map(|report| report.scrutinee.span.clone())),
-                    following_arms_count: arms_reachability[catch_all_arm_position + 1..].len()
-                }
+                    catch_all_arm: arms_reachability[catch_all_arm_position]
+                        .scrutinee
+                        .span
+                        .clone(),
+                    following_arms: Span::join_all(
+                        arms_reachability[catch_all_arm_position + 1..]
+                            .iter()
+                            .map(|report| report.scrutinee.span.clone()),
+                    ),
+                    following_arms_count: arms_reachability[catch_all_arm_position + 1..].len(),
+                },
             });
 
             //...but still check the arms above it for reachability
-            check_interior_non_catch_all_arms_for_reachability(handler, &value.span(), &arms_reachability[..catch_all_arm_position]);
+            check_interior_non_catch_all_arms_for_reachability(
+                handler,
+                &value.span(),
+                &arms_reachability[..catch_all_arm_position],
+            );
         }
         // if there is more then one arm
-        else if let Some((last_arm_report, other_arms_reachability)) = arms_reachability.split_last() {
+        else if let Some((last_arm_report, other_arms_reachability)) =
+            arms_reachability.split_last()
+        {
             // check reachable report for all the arms except the last one
-            check_interior_non_catch_all_arms_for_reachability(handler, &value.span(), other_arms_reachability);
+            check_interior_non_catch_all_arms_for_reachability(
+                handler,
+                &value.span(),
+                other_arms_reachability,
+            );
 
             // for the last one, give a different warning if it is an unreachable catch-all arm
             if !last_arm_report.reachable {
@@ -675,7 +695,11 @@ impl ty::TyExpression {
                     span: last_arm_report.scrutinee.span.clone(),
                     warning_content: Warning::MatchExpressionUnreachableArm {
                         match_value: value.span(),
-                        preceding_arms: Span::join_all(other_arms_reachability.iter().map(|report| report.scrutinee.span.clone())),
+                        preceding_arms: Span::join_all(
+                            other_arms_reachability
+                                .iter()
+                                .map(|report| report.scrutinee.span.clone()),
+                        ),
                         unreachable_arm: last_arm_report.scrutinee.span.clone(),
                         is_last_arm: true,
                         is_catch_all_arm: last_arm_report.scrutinee.is_catch_all(),
@@ -720,14 +744,22 @@ impl ty::TyExpression {
                 .position(|report| report.scrutinee.is_catch_all())
         }
 
-        fn check_interior_non_catch_all_arms_for_reachability(handler: &Handler, match_value: &Span, arms_reachability: &[ReachableReport]) -> () {
+        fn check_interior_non_catch_all_arms_for_reachability(
+            handler: &Handler,
+            match_value: &Span,
+            arms_reachability: &[ReachableReport],
+        ) {
             for (index, reachable_report) in arms_reachability.iter().enumerate() {
                 if !reachable_report.reachable {
                     handler.emit_warn(CompileWarning {
                         span: reachable_report.scrutinee.span.clone(),
                         warning_content: Warning::MatchExpressionUnreachableArm {
                             match_value: match_value.clone(),
-                            preceding_arms: Span::join_all(arms_reachability[..index].iter().map(|report| report.scrutinee.span.clone())),
+                            preceding_arms: Span::join_all(
+                                arms_reachability[..index]
+                                    .iter()
+                                    .map(|report| report.scrutinee.span.clone()),
+                            ),
                             unreachable_arm: reachable_report.scrutinee.span.clone(),
                             is_last_arm: false,
                             is_catch_all_arm: false,

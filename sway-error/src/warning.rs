@@ -300,7 +300,7 @@ impl ToDiagnostic for CompileWarning {
                     Hint::info(
                         source_engine,
                         match_value.clone(),
-                        format!("This is the value to match on.")
+                        "This is the value to match on.".to_string()
                     ),
                     Hint::info(
                         source_engine,
@@ -350,12 +350,12 @@ impl ToDiagnostic for CompileWarning {
                     Hint::info(
                         source_engine,
                         match_value.clone(),
-                        format!("This is the value to match on.")
+                        "This is the value to match on.".to_string()
                     ),
                     Hint::warning(
                         source_engine,
                         catch_all_arm.clone(),
-                        format!("This catch-all arm makes all arms below it unreachable.")
+                        "This catch-all arm makes all arms below it unreachable.".to_string()
                     ),
                     Hint::info(
                         source_engine,
@@ -363,7 +363,7 @@ impl ToDiagnostic for CompileWarning {
                         format!(
                             "{}, coming after \"{}\", will never be matched.",
                             if *following_arms_count == 1 {
-                                format!("This arm")
+                                "This arm".to_string()
                             }
                             else {
                                 format!("These {following_arms_count} arms")

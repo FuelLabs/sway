@@ -910,7 +910,7 @@ impl ToDiagnostic for CompileError {
                     format!("Unlike variables, constants cannot be shadowed by other constants or variables."),
                     match (variable_or_constant.as_str(), constant_decl.clone() != Span::dummy()) {
                         ("Variable", false) => format!("Consider renaming either the variable \"{name}\" or the constant \"{name}\"."),
-                        ("Constant", false) => format!("Consider renaming one of the constants."),
+                        ("Constant", false) => "Consider renaming one of the constants.".to_string(),
                         (variable_or_constant, true) => format!(
                             "Consider renaming the {} \"{name}\" or using {} for the imported constant.",
                             variable_or_constant.to_lowercase(),
