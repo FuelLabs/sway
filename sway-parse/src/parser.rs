@@ -409,13 +409,19 @@ impl<'original, 'a, 'e> Recoverer<'original, 'a, 'e> {
         &self,
         kind: ParseErrorKind,
     ) -> (Box<[Span]>, ErrorEmitted) {
-        let last_token_span = self
-            .last_consumed_token()
-            .map(|x| x.span())
-            .unwrap_or_else(|| self.fork_token_trees[0].span());
-        let last_token_span_line = last_token_span.start_pos().line_col().0;
+        let line = if self.fork_token_trees.is_empty() {
+            None
+        } else {
+            self.last_consumed_token()
+                .map(|x| x.span())
+                .or_else(|| self.fork_token_trees.get(0).map(|x| x.span()))
+                .map(|x| x.start_pos().line_col().0)
+        };
+
         self.recover(|p| {
-            p.consume_while_line_equals(last_token_span_line);
+            if let Some(line) = line {
+                p.consume_while_line_equals(line);
+            }
             if !p.has_errors() {
                 p.emit_error_with_span(kind, self.diff_span(p));
             }
@@ -450,12 +456,15 @@ impl<'original, 'a, 'e> Recoverer<'original, 'a, 'e> {
     /// This is the last consumed token of the forked parser. This the token
     /// immediately before the forked parser head.
     pub fn last_consumed_token(&self) -> Option<&GenericTokenTree<TokenStream>> {
+        let fork_head_span = self.fork_token_trees.get(0)?.span();
+
         // find the last token consumed by the fork
         let original = self.original.borrow();
         let fork_pos = original
             .token_trees
             .iter()
-            .position(|x| x.span() == self.fork_token_trees[0].span())?;
+            .position(|x| x.span() == fork_head_span)?;
+
         let before_fork_pos = fork_pos.checked_sub(1)?;
         original.token_trees.get(before_fork_pos)
     }
