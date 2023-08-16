@@ -153,6 +153,8 @@ impl Module {
         };
         let mut ns = Namespace::init_root(Default::default());
         // This is pretty hacky but that's okay because of this code is being removed pretty soon
+        eprintln!("ns_name: {:?}", ns_name);
+        eprintln!("COMPLR namespace: {:#?}", ns);
         ns.root.module.name = ns_name;
         ns.root.module.is_external = true;
         ns.root.module.visibility = Visibility::Public;

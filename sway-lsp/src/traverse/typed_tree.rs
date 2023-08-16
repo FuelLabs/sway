@@ -66,7 +66,7 @@ impl Parse for ty::TyAstNode {
             ty::TyAstNodeContent::Declaration(declaration) => declaration.parse(ctx),
             ty::TyAstNodeContent::Expression(expression)
             | ty::TyAstNodeContent::ImplicitReturnExpression(expression) => expression.parse(ctx),
-            ty::TyAstNodeContent::SideEffect(side_effect) => side_effect.parse(ctx),
+            ty::TyAstNodeContent::SideEffect(side_effect) => side_effect.parse(ctx)
         };
     }
 }
@@ -183,6 +183,7 @@ impl Parse for ty::TySideEffect {
 
 impl Parse for ty::TyExpression {
     fn parse(&self, ctx: &ParseContext) {
+        //eprintln!("Parsing expression: {:?}", self.expression);
         match &self.expression {
             ty::TyExpressionVariant::Literal { .. } => {
                 if let Some(mut token) = ctx
@@ -278,6 +279,7 @@ impl Parse for ty::TyExpression {
                 ..
             } => {
                 if let Some(call_path) = call_path {
+                    eprintln!("VariableExpression: {:?}", call_path);
                     collect_call_path_prefixes(ctx, &call_path.prefixes);
                 }
                 if let Some(mut token) = ctx
@@ -567,6 +569,7 @@ impl Parse for ty::TyExpression {
                 reassignment.parse(ctx);
             }
             ty::TyExpressionVariant::Return(exp) => exp.parse(ctx),
+            _ => {}
         }
     }
 }
@@ -1156,6 +1159,7 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ty
 }
 
 fn collect_call_path_prefixes(ctx: &ParseContext, prefixes: &[Ident]) {
+    //eprintln!("collect_call_path_prefixes: {:?}", prefixes);
     for (mod_path, ident) in iter_prefixes(prefixes).zip(prefixes) {
         if let Some(mut token) = ctx.tokens.try_get_mut(&ctx.ident(ident)).try_unwrap() {
             token.typed = Some(TypedAstToken::Ident(ident.clone()));

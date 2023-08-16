@@ -123,6 +123,7 @@ impl CallPath {
 
             if !is_external {
                 if let Some(pkg_name) = &namespace.root().module.name {
+                    dbg!("pkg_name: {:#?}", pkg_name.clone());
                     prefixes.push(pkg_name.clone());
                 }
 

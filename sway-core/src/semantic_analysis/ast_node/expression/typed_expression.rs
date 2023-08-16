@@ -458,6 +458,11 @@ impl ty::TyExpression {
             Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) => {
                 let const_decl = decl_engine.get_constant(decl_id);
                 let decl_name = const_decl.name().clone();
+                //if decl_name.as_str() == "std" {
+                    dbg!("COMPILER = {:?}", CallPath::from(decl_name.clone()).to_fullpath(ctx.namespace));
+                    eprintln!("decl_name = {:#?}", decl_name);
+                    eprintln!("CallPath::from(decl_name.clone()) = {:#?}", CallPath::from(decl_name.clone()));
+                //}
                 ty::TyExpression {
                     return_type: const_decl.return_type,
                     expression: ty::TyExpressionVariant::ConstantExpression {

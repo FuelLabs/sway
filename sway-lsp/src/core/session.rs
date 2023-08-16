@@ -183,8 +183,12 @@ impl Session {
         let engines = self.engines.read();
         self.token_map
             .token_at_position(&uri, position)
-            .and_then(|(_, token)| token.declared_token_ident(&engines))
+            .and_then(|(_, token)| {
+                //eprintln!("token at position: {:#?}", token);
+                token.declared_token_ident(&engines)
+            })
             .and_then(|decl_ident| {
+                //eprintln!("decl_token_ident = {:#?}", decl_ident);
                 decl_ident.path.and_then(|path| {
                     // We use ok() here because we don't care about propagating the error from from_file_path
                     Url::from_file_path(path).ok().and_then(|url| {
@@ -451,7 +455,7 @@ pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
         if i == results_len - 1 {
             // First, populate our token_map with sway keywords.
             lexed_tree::parse(&lexed, &ctx);
-
+            
             // Next, populate our token_map with un-typed yet parsed ast nodes.
             let parsed_tree = ParsedTree::new(&ctx);
             parsed_tree.collect_module_spans(&parsed);

@@ -195,6 +195,13 @@ impl TokenIdent {
             .span()
             .source_id()
             .map(|source_id| se.get_path(source_id));
+        if path.is_none() {
+            if let Some(name) = ident.name_override_opt() {
+                if name == "std" {
+                    eprintln!("ERRROOORRRRRRR : {:#?}", ident);
+                }
+            }
+        }
         Self {
             name: ident.span().clone().str(),
             range: get_range_from_span(&ident.span()),

@@ -1610,7 +1610,12 @@ pub fn dependency_namespace(
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
     let name = Some(Ident::new_no_span(node_idx.name.clone()));
+    if node_idx.name == "std" {
+        dbg!("name = {:?}", node_idx.name.clone());
+        dbg!("ident = {:?}", &name);
+    }
     let mut namespace = if let Some(contract_id_value) = contract_id_value {
+        dbg!();
         namespace::Module::default_with_contract_id(engines, name.clone(), contract_id_value)?
     } else {
         namespace::Module::default()
@@ -1641,6 +1646,10 @@ pub fn dependency_namespace(
                 let contract_id_value = format!("0x{dep_contract_id}");
                 let node_idx = &graph[dep_node];
                 let name = Some(Ident::new_no_span(node_idx.name.clone()));
+                if node_idx.name == "std" {
+                    dbg!("name = {}", node_idx.name.clone());
+                    dbg!("ident = {:?}", &name);
+                }
                 let mut ns = namespace::Module::default_with_contract_id(
                     engines,
                     name.clone(),
@@ -1667,18 +1676,30 @@ pub fn dependency_namespace(
         }
     }
 
-    let _ = namespace.star_import_with_reexports(
+    let _ = {
+        namespace.star_import_with_reexports(
         &Handler::default(),
-        &[CORE, PRELUDE].map(|s| Ident::new_no_span(s.into())),
+        &[CORE, PRELUDE].map(|s| {
+            if s == "std" {
+                dbg!("name = {}", s);
+            }
+            Ident::new_no_span(s.into())
+        }),
         &[],
         engines,
         true,
-    );
+    )};
 
     if has_std_dep(graph, node) {
+        dbg!();
         let _ = namespace.star_import_with_reexports(
             &Handler::default(),
-            &[STD, PRELUDE].map(|s| Ident::new_no_span(s.into())),
+            &[STD, PRELUDE].map(|s| {
+                if s == "std" {
+                    dbg!("name = {}", s);
+                }
+                Ident::new_no_span(s.into())
+            }),
             &[],
             engines,
             true,
@@ -2436,8 +2457,11 @@ pub fn build(
 
         if let TreeType::Library = compiled.tree_type {
             let mut namespace = namespace::Module::from(compiled.namespace);
-            namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
-            lib_namespace_map.insert(node, namespace);
+            if pkg.name == "std" {
+                dbg!("name = {}", pkg.name.clone());
+            }
+            //namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
+            //lib_namespace_map.insert(node, namespace);
         }
         source_map.insert_dependency(descriptor.manifest_file.dir());
 
@@ -2675,17 +2699,22 @@ pub fn check(
             Ok(typed_program) => {
                 if let TreeType::Library = typed_program.kind.tree_type() {
                     let mut namespace = typed_program.root.namespace.clone();
-                    namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
-                    namespace.span = Some(
-                        Span::new(
-                            manifest.entry_string()?,
-                            0,
-                            0,
-                            Some(engines.se().get_source_id(&manifest.entry_path())),
-                        )
-                        .unwrap(),
-                    );
+                    // namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
+                    let span = Span::new(
+                        manifest.entry_string()?,
+                        0,
+                        0,
+                        Some(engines.se().get_source_id(&manifest.entry_path())),
+                    )
+                    .unwrap(); 
+                    namespace.span = Some(span.clone());
+                    namespace.name = Some(Ident::new_with_override(pkg.name.clone(), span));
                     lib_namespace_map.insert(node, namespace.module().clone());
+
+                    if pkg.name == "std" {
+                        dbg!("namespace.name = {:#?}", &namespace.name);
+                        dbg!("namespace.span = {:#?}", &namespace.span);
+                    }
                 }
 
                 source_map.insert_dependency(manifest.dir());
