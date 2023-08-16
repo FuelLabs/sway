@@ -66,7 +66,7 @@ forc-deploy --node-url https://beta-3.fuel.network/graphql --gas-price 1
 
 ## Deployment Artifacts
 
-forc-deploy stores deployment details in 'out/deployments' folder in project root directory for each deployment. An example deployment artifact can be seen below:
+forc-deploy saves the details of each deployment in the `out/deployments` folder within the project's root directory. Below is an example of a deployment artifact:
 
 ```json
 {
