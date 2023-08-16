@@ -17,7 +17,7 @@ use std::{path::PathBuf, str::FromStr};
 use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
 use tokio::time::timeout;
-use tracing::info;
+use tracing::{info, warn};
 
 use self::encode::ScriptCallHandler;
 
@@ -32,6 +32,11 @@ pub struct RanScript {
 ///
 /// When running a single script, only that script's receipts are returned.
 pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
+    let mut command = command;
+    if command.unsigned {
+        warn!(" Warning: --unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
+        command.default_signer = true;
+    }
     let mut receipts = Vec::new();
     let curr_dir = if let Some(path) = &command.pkg.path {
         PathBuf::from(path)
@@ -110,7 +115,7 @@ pub async fn run_pkg(
         .add_contracts(contract_ids)
         .finalize_signed(
             client.clone(),
-            command.unsigned,
+            command.default_signer,
             command.signing_key,
             wallet_mode,
         )

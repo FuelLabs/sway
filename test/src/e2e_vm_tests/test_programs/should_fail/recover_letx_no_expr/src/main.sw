@@ -1,6 +1,12 @@
 script;
 
 fn main() {
-    let y: bool = 0; // recovery witness
-    let x =
+    let
+    let = 1;
+    let a
+    let b =
+    let c = 1
+    let d = 1;
+    let asdoij ojasd 123 apasdok asdpokasd;
+    let e = 1;
 }

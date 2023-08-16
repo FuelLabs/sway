@@ -45,7 +45,7 @@ impl Wallet for Contract {
         // Note: `transfer_to_address()` is not a call and thus not an
         // interaction. Regardless, this code conforms to
         // checks-effects-interactions to avoid re-entrancy.
-        transfer_to_address(amount_to_send, BASE_ASSET_ID, recipient_address);
+        transfer_to_address(recipient_address, BASE_ASSET_ID, amount_to_send);
     }
 }
 // ANCHOR_END: abi_impl

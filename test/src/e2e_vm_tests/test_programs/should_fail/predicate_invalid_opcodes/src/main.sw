@@ -13,8 +13,8 @@ fn main() -> bool {
     bhsh r1 r2;
   };
 
-  asm(r1: 0) {
-    burn r1;
+  asm(r1: 0, r2: 0) {
+    burn r1 r2;
   };
 
   asm(r1: 0, r2: 0, r3: 0, r4: 0) {
@@ -62,8 +62,8 @@ fn main() -> bool {
     logd r1 r2 r3 r4;
   }
 
-  asm(r1: 0) {
-    mint r1;
+  asm(r1: 0, r2: 0) {
+    mint r1 r2;
   }
 
   // retd: There is no way of testing

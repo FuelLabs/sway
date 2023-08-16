@@ -1,4 +1,7 @@
 category = "fail"
 
+# this is needed because __a appear in the snippet of a unrelated warning
+# check: __a
+
 # check: __a
 # nextln: $()Identifiers cannot begin with a double underscore, as that naming convention is reserved for compiler intrinsics.
