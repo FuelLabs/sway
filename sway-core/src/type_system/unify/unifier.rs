@@ -123,6 +123,13 @@ impl<'a> Unifier<'a> {
                 )
             }
 
+            (r @ UnknownGeneric { .. }, e) if !self.occurs_check(r.clone(), &e) => {
+                self.replace_received_with_expected(handler, received, expected, &r, e, span)
+            }
+            (r, e @ UnknownGeneric { .. }) if !self.occurs_check(e.clone(), &r) => {
+                self.replace_expected_with_received(handler, received, expected, r, &e, span)
+            }
+
             // Type aliases and the types they encapsulate coerce to each other.
             (Alias { ty, .. }, _) => self.unify(handler, ty.type_id, expected, span),
             (_, Alias { ty, .. }) => self.unify(handler, received, ty.type_id, span),
@@ -243,12 +250,6 @@ impl<'a> Unifier<'a> {
                     trait_constraints: etc,
                 },
             ) if rn.as_str() == en.as_str() && rtc.eq(&etc, self.engines) => (),
-            (r @ UnknownGeneric { .. }, e) if !self.occurs_check(r.clone(), &e) => {
-                self.replace_received_with_expected(handler, received, expected, &r, e, span)
-            }
-            (r, e @ UnknownGeneric { .. }) if !self.occurs_check(e.clone(), &r) => {
-                self.replace_expected_with_received(handler, received, expected, r, &e, span)
-            }
 
             // If no previous attempts to unify were successful, raise an error.
             (TypeInfo::ErrorRecovery(_), _) => (),
