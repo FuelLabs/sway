@@ -24,6 +24,8 @@ pub enum ParseErrorKind {
     InvalidLiteralFieldName,
     #[error("Invalid statement.")]
     InvalidStatement,
+    #[error("Invalid item.")]
+    InvalidItem,
     #[error("Integer field names cannot have type suffixes.")]
     IntFieldWithTypeSuffix,
     #[error("Expected a field name.")]

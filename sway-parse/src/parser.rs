@@ -76,6 +76,39 @@ impl<'a, 'e> Parser<'a, 'e> {
         Peeker::with(self.token_trees).map(|(v, _)| v)
     }
 
+    pub fn parse_with_recovery<'original, T: Parse>(
+        &'original mut self,
+    ) -> Result<T, Recoverer<'original, 'a, 'e>> {
+        let handler = Handler::default();
+        let mut fork = Parser {
+            token_trees: self.token_trees,
+            full_span: self.full_span.clone(),
+            handler: &handler,
+        };
+
+        match fork.parse() {
+            Ok(result) => {
+                self.token_trees = fork.token_trees;
+                self.handler.append(handler);
+                Ok(result)
+            }
+            Err(error) => {
+                let Parser {
+                    token_trees,
+                    full_span,
+                    ..
+                } = fork;
+                Err(Recoverer {
+                    original: RefCell::new(self),
+                    handler,
+                    fork_token_trees: token_trees,
+                    fork_full_span: full_span,
+                    error,
+                })
+            }
+        }
+    }
+
     /// This function do three things
     /// 1 - it peeks P;
     /// 2 - it forks the current parse, and try to parse
@@ -376,7 +409,10 @@ impl<'original, 'a, 'e> Recoverer<'original, 'a, 'e> {
         &self,
         kind: ParseErrorKind,
     ) -> (Box<[Span]>, ErrorEmitted) {
-        let last_token_span = self.last_consumed_token().span();
+        let last_token_span = self
+            .last_consumed_token()
+            .map(|x| x.span())
+            .unwrap_or_else(|| self.fork_token_trees[0].span());
         let last_token_span_line = last_token_span.start_pos().line_col().0;
         self.recover(|p| {
             p.consume_while_line_equals(last_token_span_line);
@@ -413,15 +449,15 @@ impl<'original, 'a, 'e> Recoverer<'original, 'a, 'e> {
 
     /// This is the last consumed token of the forked parser. This the token
     /// immediately before the forked parser head.
-    pub fn last_consumed_token(&self) -> &GenericTokenTree<TokenStream> {
+    pub fn last_consumed_token(&self) -> Option<&GenericTokenTree<TokenStream>> {
         // find the last token consumed by the fork
         let original = self.original.borrow();
         let fork_pos = original
             .token_trees
             .iter()
-            .position(|x| x.span() == self.fork_token_trees[0].span())
-            .unwrap();
-        &original.token_trees[fork_pos - 1]
+            .position(|x| x.span() == self.fork_token_trees[0].span())?;
+        let before_fork_pos = fork_pos.checked_sub(1)?;
+        original.token_trees.get(before_fork_pos)
     }
 
     /// This return a span encopassing all tokens that were consumed by the `p` since the start
