@@ -693,6 +693,9 @@ fn const_eval_codeblock(
             ty::TyAstNodeContent::SideEffect(_) => Err(ConstEvalError::CannotBeEvaluatedToConst {
                 span: ast_node.span.clone(),
             }),
+            ty::TyAstNodeContent::Error(_, _) => {
+                unreachable!("error node found when generating IR");
+            }
         };
 
         if result.is_err() {

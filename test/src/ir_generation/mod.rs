@@ -253,6 +253,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                 let mut ir = compile_program(typed_program, include_tests, &engines)
                     .unwrap_or_else(|e| {
                         use sway_types::span::Spanned;
+                        let e = e[0].clone();
                         let span = e.span();
                         panic!(
                             "Failed to compile test {}:\nError \"{e}\" at {}:{}\nCode: \"{}\"",

@@ -20,6 +20,8 @@ pub enum ParseErrorKind {
     UnexpectedTokenAfterArrayIndex,
     #[error("Invalid literal to use as a field name.")]
     InvalidLiteralFieldName,
+    #[error("Invalid statement.")]
+    InvalidStatement,
     #[error("Integer field names cannot have type suffixes.")]
     IntFieldWithTypeSuffix,
     #[error("Expected a field name.")]
@@ -38,6 +40,8 @@ pub enum ParseErrorKind {
     MalformedAsmImmediate,
     #[error("Expected an identifier.")]
     ExpectedIdent,
+    #[error("Expected an pattern.")]
+    ExpectedPattern,
     #[error("Unexpected token after str length.")]
     UnexpectedTokenAfterStrLength,
     #[error("Expected a type.")]

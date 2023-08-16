@@ -12,5 +12,6 @@ pub(crate) fn instruct_node(
         ty::TyAstNodeContent::Expression(exp) => instruct_exp(ctx, handler, exp),
         ty::TyAstNodeContent::ImplicitReturnExpression(exp) => instruct_exp(ctx, handler, exp),
         ty::TyAstNodeContent::SideEffect(_) => Ok(()),
+        ty::TyAstNodeContent::Error(_, _) => Ok(()),
     }
 }
