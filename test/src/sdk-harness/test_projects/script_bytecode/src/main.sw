@@ -6,7 +6,7 @@ use std::tx::tx_script_bytecode;
 impl Hash for [u64; 35] {
     fn hash(self, ref mut state: Hasher) {
         let mut i = 0;
-        while(i < 35) {
+        while i < 35 {
             self[i].hash(state);
             i += 1;
         }

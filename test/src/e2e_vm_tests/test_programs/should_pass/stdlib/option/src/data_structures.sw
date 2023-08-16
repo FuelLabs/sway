@@ -42,8 +42,14 @@ impl Eq for MyEnum {
 impl Hash for MyEnum {
     fn hash(self, ref mut state: Hasher) {
         match self {
-            MyEnum::X(val) => val.hash(state),
-            MyEnum::Y(val) => val.hash(state),
+            MyEnum::X(val) => {
+                0_u8.hash(state);
+                val.hash(state);
+            }
+            MyEnum::Y(val) => {
+                1_u8.hash(state);
+                val.hash(state);
+            }
         }
     }
 }
@@ -114,16 +120,46 @@ impl Eq for Error {
 impl Hash for Error {
     fn hash(self, ref mut state: Hasher) {
         match self {
-            Error::BoolError(val) => val.hash(state),
-            Error::U8Error(val) => val.hash(state),
-            Error::U16Error(val) => val.hash(state),
-            Error::U32Error(val) => val.hash(state),
-            Error::U64Error(val) => val.hash(state),
-            Error::StructError(val) => val.hash(state),
-            Error::EnumError(val) => val.hash(state),
-            Error::TupleError(val) => val.hash(state),
-            Error::ArrayError(val) => val.hash(state),
-            Error::StringError(val) => state.write_str(val),
+            Error::BoolError(val) => {
+                0_u8.hash(state);
+                val.hash(state);
+            },
+            Error::U8Error(val) => {
+                1_u8.hash(state);
+                val.hash(state);
+            },
+            Error::U16Error(val) => {
+                2_u8.hash(state);
+                val.hash(state);
+            },
+            Error::U32Error(val) => {
+                3_u8.hash(state);
+                val.hash(state);
+            },
+            Error::U64Error(val) => {
+                4_u8.hash(state);
+                val.hash(state);
+            },
+            Error::StructError(val) => {
+                5_u8.hash(state);
+                val.hash(state);
+            },
+            Error::EnumError(val) => {
+                6_u8.hash(state);
+                val.hash(state);
+            },
+            Error::TupleError(val) => {
+                7_u8.hash(state);
+                val.hash(state);
+            },
+            Error::ArrayError(val) => {
+                8_u8.hash(state);
+                val.hash(state);
+            },
+            Error::StringError(val) => {
+                9_u8.hash(state);
+                state.write_str(val);
+            },
         }
     }
 }

@@ -50,9 +50,8 @@ where
 }
 fn test_none_ok_or<T, E>(_val: T, default: E)
 where
-    E: Eq,
+    E: Eq + Hash,
     T: Hash,
-    E: Hash
 {
     match None::<T>.ok_or(default) {
         Ok(_) => revert(0),

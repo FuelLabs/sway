@@ -107,6 +107,7 @@ impl Address {
 
 impl Hash for Address {
     fn hash(self, ref mut state: Hasher) {
-        self.value.hash(state);
+        let Address { value } = self;
+        value.hash(state);
     }
 }

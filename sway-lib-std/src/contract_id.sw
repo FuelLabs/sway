@@ -65,7 +65,8 @@ impl ContractId {
 
 impl Hash for ContractId {
     fn hash(self, ref mut state: Hasher) {
-        self.value.hash(state);
+        let ContractId { value } = self;
+        value.hash(state);
     }
 }
 
