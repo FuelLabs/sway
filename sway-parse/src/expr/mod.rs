@@ -6,7 +6,7 @@ use sway_ast::keywords::{
     AbiToken, AddEqToken, AsmToken, CommaToken, ConfigurableToken, ConstToken, DivEqToken,
     DoubleColonToken, EnumToken, EqToken, FalseToken, FnToken, IfToken, ImplToken, LetToken,
     OpenAngleBracketToken, PubToken, SemicolonToken, ShlEqToken, ShrEqToken, StarEqToken,
-    StorageToken, StructToken, SubEqToken, Token, TraitToken, TrueToken, TypeToken, UseToken,
+    StorageToken, StructToken, SubEqToken, TraitToken, TrueToken, TypeToken, UseToken,
 };
 use sway_ast::literal::{LitBool, LitBoolType};
 use sway_ast::punctuated::Punctuated;
@@ -93,23 +93,28 @@ impl Parse for Expr {
 
 impl Parse for StatementLet {
     fn parse(parser: &mut Parser) -> ParseResult<Self> {
-        let let_token = parser.parse()?;
-        let pattern = parser.parse()?;
+        let let_token: LetToken = parser.parse()?;
+
+        if parser.peek::<EqToken>().is_some() {
+            return Err(parser.emit_error_with_span(
+                ParseErrorKind::ExpectedPattern,
+                let_token
+                    .span()
+                    .next_char_utf8()
+                    .unwrap_or_else(|| let_token.span()),
+            ));
+        }
+        let pattern = parser.try_parse(true)?;
+
         let ty_opt = match parser.take() {
             Some(colon_token) => Some((colon_token, parser.parse()?)),
             None => None,
         };
-        let eq_token: EqToken = parser.parse()?;
-
-        // Recover on missing expression.
-        // FIXME(Centril): We should point at right after `=`, not at it.
-        let on_err = |err| Expr::Error([eq_token.span()].into(), err);
-        let expr = parser.parse().unwrap_or_else(on_err);
+        let eq_token: EqToken = parser.try_parse(true)?;
+        let expr = parser.try_parse(true)?;
 
         // Recover on missing semicolon.
-        let semicolon_token = parser
-            .parse()
-            .unwrap_or_else(|_| SemicolonToken::new(eq_token.span()));
+        let semicolon_token = parser.try_parse(true)?;
 
         Ok(StatementLet {
             let_token,
@@ -182,8 +187,14 @@ fn parse_stmt<'a>(parser: &mut Parser<'a, '_>) -> ParseResult<StmtOrTail<'a>> {
     }
 
     // Try a `let` statement.
-    if let Some(slet) = parser.guarded_parse::<LetToken, _>()? {
-        return stmt(Statement::Let(slet));
+    match parser.guarded_parse_with_recovery::<LetToken, StatementLet>() {
+        Ok(None) => {}
+        Ok(Some(item)) => return stmt(Statement::Let(item)),
+        Err(r) => {
+            let (spans, error) =
+                r.recover_at_next_line_with_fallback_error(ParseErrorKind::InvalidStatement);
+            return stmt(Statement::Error(spans, error));
+        }
     }
 
     // Try an `expr;` statement.

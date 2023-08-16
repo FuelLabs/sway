@@ -351,7 +351,7 @@ mod test {
         formatter.config.whitespace.tab_spaces = 24;
         let max_width = formatter.config.whitespace.max_width;
         formatter.shape.code_line.width = max_width;
-        formatter.shape.block_indent(&formatter.config);
+        formatter.indent();
 
         assert_eq!(max_width, formatter.shape.code_line.width);
         assert_eq!(24, formatter.shape.indent.block_indent);

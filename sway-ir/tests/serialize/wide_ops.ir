@@ -3,6 +3,7 @@ script {
         local u256 a
         entry():
         v0 = get_local ptr u256, a
+        v1 = const u64 2
 
         wide add v0, v0 to v0
 // check: wide add v0, v0 to v0
@@ -18,6 +19,12 @@ script {
 
         wide mod v0, v0 to v0
 // check: wide mod v0, v0 to v0
+
+        wide lsh v0, v1 to v0
+// check: wide lsh v0, v1 to v0
+
+        wide rsh v0, v1 to v0
+// check: wide rsh v0, v1 to v0
 
         wide not v0 to v0
 // check: wide not v0 to v0

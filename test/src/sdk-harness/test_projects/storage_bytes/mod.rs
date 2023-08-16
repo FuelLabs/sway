@@ -1,3 +1,4 @@
+use fuel_core::chain_config::ChainConfig;
 use fuels::accounts::wallet::WalletUnlocked;
 use fuels::prelude::*;
 
@@ -6,8 +7,20 @@ abigen!(Contract(
     abi = "test_projects/storage_bytes/out/debug/storage_bytes-abi.json",
 ));
 
+const GAS_LIMIT: u64 = 1_000_000_000;
+
 async fn setup() -> TestStorageBytesContract<WalletUnlocked> {
-    let wallet = launch_provider_and_get_wallet().await;
+    let mut chain_config = ChainConfig::local_testnet();
+    chain_config.block_gas_limit = 10 * GAS_LIMIT;
+    chain_config.transaction_parameters.max_gas_per_tx = GAS_LIMIT;
+    let mut wallets = launch_custom_provider_and_get_wallets(
+        WalletsConfig::new(Some(1), None, None),
+        None,
+        Some(chain_config),
+    )
+    .await;
+
+    let wallet = wallets.pop().unwrap();
     let id = Contract::load_from(
         "test_projects/storage_bytes/out/debug/storage_bytes.bin",
         LoadConfiguration::default(),
@@ -148,7 +161,7 @@ async fn stores_long_string_as_bytes() {
 
     assert_eq!(instance.methods().len().call().await.unwrap().value, 0);
 
-    let tx_params = TxParameters::default().set_gas_limit(12_000_000);
+    let tx_params = TxParameters::default().set_gas_limit(GAS_LIMIT);
     instance
         .methods()
         .store_bytes(input.clone().as_bytes().into())
@@ -162,7 +175,7 @@ async fn stores_long_string_as_bytes() {
         input.clone().as_bytes().len() as u64
     );
 
-    let tx_params = TxParameters::default().set_gas_limit(12_000_000);
+    let tx_params = TxParameters::default().set_gas_limit(GAS_LIMIT);
     instance
         .methods()
         .assert_stored_bytes(input.as_bytes().into())

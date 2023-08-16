@@ -108,6 +108,7 @@ impl Parse for AstNode {
             AstNodeContent::UseStatement(use_statement) => use_statement.parse(ctx),
             // include statements are handled throught [`collect_module_spans`]
             AstNodeContent::IncludeStatement(_) => {}
+            AstNodeContent::Error(_, _) => {}
         }
     }
 }

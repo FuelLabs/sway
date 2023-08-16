@@ -43,7 +43,8 @@ pub fn parse_file(
     source_id: Option<SourceId>,
 ) -> Result<Annotated<Module>, ErrorEmitted> {
     let ts = lex(handler, &src, 0, src.len(), source_id)?;
-    Parser::new(handler, &ts).parse_to_end().map(|(m, _)| m)
+    let (m, _) = Parser::new(handler, &ts).parse_to_end()?;
+    Ok(m)
 }
 
 pub fn parse_module_kind(

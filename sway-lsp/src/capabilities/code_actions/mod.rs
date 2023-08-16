@@ -17,7 +17,7 @@ use crate::core::{
 pub use crate::error::DocumentError;
 use lsp_types::{
     CodeAction as LspCodeAction, CodeActionDisabled, CodeActionKind, CodeActionOrCommand,
-    CodeActionResponse, Position, Range, TextDocumentIdentifier, TextEdit, Url, WorkspaceEdit,
+    CodeActionResponse, Position, Range, TextEdit, Url, WorkspaceEdit,
 };
 use serde_json::Value;
 use std::{collections::HashMap, sync::Arc};
@@ -36,10 +36,10 @@ pub(crate) struct CodeActionContext<'a> {
     uri: &'a Url,
 }
 
-pub(crate) fn code_actions(
+pub fn code_actions(
     session: Arc<Session>,
     range: &Range,
-    text_document: TextDocumentIdentifier,
+    uri: &Url,
     temp_uri: &Url,
 ) -> Option<CodeActionResponse> {
     let engines = session.engines.read();
@@ -51,7 +51,7 @@ pub(crate) fn code_actions(
         engines: &engines,
         tokens: session.token_map(),
         token: &token,
-        uri: &text_document.uri,
+        uri,
     };
 
     match token.typed.as_ref()? {
