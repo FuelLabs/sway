@@ -114,7 +114,7 @@ impl ty::TyScrutinee {
             ty::TyScrutineeVariant::CatchAll => true,
             ty::TyScrutineeVariant::Variable(_) => true,
             ty::TyScrutineeVariant::Literal(_) => false,
-            ty::TyScrutineeVariant::Constant(_, _, _) => false,
+            ty::TyScrutineeVariant::Constant { .. } => false,
             ty::TyScrutineeVariant::StructScrutinee {
                 fields,
                 ..
