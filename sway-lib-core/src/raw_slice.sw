@@ -60,7 +60,7 @@ fn from_parts(parts: (raw_ptr, u64)) -> raw_slice {
 ///
 /// # Returns
 ///
-/// * [(raw_ptr, u64)] - A tuple of te location in memory of the original `raw_slice` and it's length.
+/// * [(raw_ptr, u64)] - A tuple of the location in memory of the original `raw_slice` and its length.
 fn into_parts(slice: raw_slice) -> (raw_ptr, u64) {
     asm(ptr: slice) { ptr: (raw_ptr, u64) }
 }
