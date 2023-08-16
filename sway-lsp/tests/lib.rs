@@ -160,6 +160,26 @@ async fn did_open() {
 }
 
 #[tokio::test]
+async fn did_open2() {
+    // let (mut service, _) = LspService::new(ServerState::new);
+    // let _ = init_and_open(&mut service, e2e_test_dir().join("src/main.sw")).await;
+    // shutdown_and_exit(&mut service).await;
+
+    let (uri, sway_program) = load_sway_example(e2e_test_dir().join("src/main.sw"));
+    let state = ServerState::default();
+    let params = DidOpenTextDocumentParams {
+        text_document: TextDocumentItem {
+            uri,
+            language_id: "sway".to_string(),
+            version: 1,
+            text: sway_program,
+        },
+    };
+    let res = sway_lsp::handlers::notification::handle_did_open_text_document(&state, params).await;
+    assert!(res.is_ok());
+}
+
+#[tokio::test]
 async fn did_close() {
     let (mut service, _) = LspService::new(ServerState::new);
     let _ = init_and_open(&mut service, e2e_test_dir().join("src/main.sw")).await;

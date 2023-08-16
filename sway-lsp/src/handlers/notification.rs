@@ -7,7 +7,7 @@ use lsp_types::{
     DidSaveTextDocumentParams, FileChangeType,
 };
 
-pub(crate) async fn handle_did_open_text_document(
+pub async fn handle_did_open_text_document(
     state: &ServerState,
     params: DidOpenTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
