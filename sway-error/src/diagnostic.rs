@@ -82,16 +82,19 @@ impl Diagnostic {
     pub fn related_sources(&self, include_issue_source: bool) -> Vec<&SourcePath> {
         let mut source_files = vec![];
 
-        // All unwrappings are safe because we check the existence
-        // either in is_in_source() or in in_source_info().
-        if self.issue.is_in_source() && include_issue_source {
+        let issue_is_in_source = self.issue.is_in_source();
+
+        // All source_path() unwrappings are safe because we check the existence
+        // of source in case of issue, and self.labels() returns
+        // only labels that are in source.
+        if issue_is_in_source && include_issue_source {
             source_files.push(self.issue.source_path().unwrap());
         }
 
         for hint in self.labels() {
             let file = hint.source_path().unwrap();
 
-            if !include_issue_source && file == self.issue.source_path().unwrap() {
+            if !include_issue_source && issue_is_in_source && file == self.issue.source_path().unwrap() {
                 continue;
             }
 
