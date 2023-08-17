@@ -206,12 +206,18 @@ fn apply_target(command: cmd::Deploy) -> Result<cmd::Deploy> {
         if command.target.is_some() {
             bail!("Both `--testnet` and `--target` were specified: must choose one")
         }
+        if command.node_url.is_some() {
+            bail!("Both `--testnet` and `--node-url` were specified: must choose one")
+        }
         Some(Target::Beta4)
     } else {
         command.target.clone()
     };
 
     if let Some(target) = target {
+        if command.node_url.is_some() {
+            bail!("Both `--target` and `--node-url` were specified: must choose one")
+        }
         match target {
             cmd::deploy::Target::Beta2
             | cmd::deploy::Target::Beta3
