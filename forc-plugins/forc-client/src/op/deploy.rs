@@ -206,14 +206,16 @@ fn apply_target(command: cmd::Deploy) -> Result<cmd::Deploy> {
         if command.target.is_some() {
             bail!("Both `--testnet` and `--target` were specified: must choose one")
         }
-        Some(Target::Beta3)
+        Some(Target::Beta4)
     } else {
         command.target.clone()
     };
 
     if let Some(target) = target {
         match target {
-            cmd::deploy::Target::Beta2 | cmd::deploy::Target::Beta3 => {
+            cmd::deploy::Target::Beta2
+            | cmd::deploy::Target::Beta3
+            | cmd::deploy::Target::Beta4 => {
                 // If the user did not specified a gas price, we can use `1` as a gas price for
                 // beta test-nets.
                 let gas_price = if command.gas.price == 0 {
@@ -222,11 +224,22 @@ fn apply_target(command: cmd::Deploy) -> Result<cmd::Deploy> {
                     command.gas.price
                 };
 
+                // fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx is the default value for
+                // the gas.limit field.
+                let gas_limit = if command.gas.limit
+                    == fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx
+                    && target == cmd::deploy::Target::Beta4
+                {
+                    1
+                } else {
+                    command.gas.limit
+                };
+
                 let target_url = Some(target.target_url().to_string());
                 Ok(cmd::Deploy {
                     gas: Gas {
                         price: gas_price,
-                        ..command.gas
+                        limit: gas_limit,
                     },
                     node_url: target_url,
                     ..command
