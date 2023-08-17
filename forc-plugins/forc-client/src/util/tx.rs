@@ -16,7 +16,7 @@ use fuels_core::types::{
 };
 
 use forc_wallet::{
-    account::derive_secret_key,
+    account::{derive_secret_key, new_at_index_cli},
     balance::{
         collect_accounts_with_verification, print_account_balances, AccountBalances,
         AccountVerification, AccountsMap,
@@ -181,7 +181,10 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                     let accepted = ask_user_yes_no_question(&question)?;
                     if accepted {
                         new_wallet_cli(&wallet_path)?;
-                        println!("Wallet created successfully.")
+                        println!("Wallet created successfully.");
+                        // Derive first account for the fresh wallet we created.
+                        new_at_index_cli(&wallet_path, 0)?;
+                        println!("Account derived successfully.");
                     } else {
                         anyhow::bail!("Refused to create a new wallet. If you don't want to use forc-wallet, you can sign this transaction manually with --manual-signing flag.")
                     }
