@@ -1614,6 +1614,7 @@ async fn hover_docs_for_self_keywords() {
     hover.req_char = 24;
     hover.documentation = vec!["```sway\nstruct MyStruct\n```\n---\n\n---\n[2 implementations](command:sway.peekLocations?%5B%7B%22locations%22%3A%5B%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A4%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A2%7D%7D%2C%22uri%22%3A%22file","sway%2Fsway-lsp%2Ftests%2Ffixtures%2Fcompletion%2Fsrc%2Fmain.sw%22%7D%2C%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A14%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A6%7D%7D%2C%22uri%22%3A%22file","sway%2Fsway-lsp%2Ftests%2Ffixtures%2Fcompletion%2Fsrc%2Fmain.sw%22%7D%5D%7D%5D \"Go to implementations\")"];
     lsp::hover_request(&server, &hover);
+    let _ = server.shutdown();
 }
 
 #[tokio::test]
@@ -1637,124 +1638,121 @@ async fn hover_docs_for_boolean_keywords() {
     hover.req_char = 31;
     hover.documentation = vec!["\n```sway\ntrue\n```\n\n---\n\n A value of type [`bool`] representing logical **true**.\n\n Logically `true` is not equal to [`false`].\n\n ## Control structures that check for **true**\n\n Several of Sway's control structures will check for a `bool` condition evaluating to **true**.\n\n   * The condition in an [`if`] expression must be of type `bool`.\n     Whenever that condition evaluates to **true**, the `if` expression takes\n     on the value of the first block. If however, the condition evaluates\n     to `false`, the expression takes on value of the `else` block if there is one.\n\n   * [`while`] is another control flow construct expecting a `bool`-typed condition.\n     As long as the condition evaluates to **true**, the `while` loop will continually\n     evaluate its associated block.\n\n   * [`match`] arms can have guard clauses on them."];
     lsp::hover_request(&server, &hover);
+    let _ = server.shutdown();
 }
 
-// #[tokio::test]
-// async fn rename() {
-//     let (mut service, _) = LspService::new(ServerState::new);
-//     let uri = init_and_open(
-//         &mut service,
-//         test_fixtures_dir().join("renaming/src/main.sw"),
-//     )
-//     .await;
-//     let mut i = 0..;
+#[tokio::test]
+async fn rename() {
+    let server = ServerState::default();
+    let uri = open(&server, test_fixtures_dir().join("renaming/src/main.sw")).await;
 
-//     // Struct expression variable
-//     let rename = Rename {
-//         req_uri: &uri,
-//         req_line: 24,
-//         req_char: 19,
-//         new_name: "pnt", // from "point"
-//     };
-//     let _ = lsp::prepare_rename_request(&mut service, &rename);
-//     let _ = lsp::rename_request(&mut service, &rename);
+    // Struct expression variable
+    let rename = Rename {
+        req_uri: &uri,
+        req_line: 24,
+        req_char: 19,
+        new_name: "pnt", // from "point"
+    };
+    let _ = lsp::prepare_rename_request(&server, &rename);
+    let _ = lsp::rename_request(&server, &rename);
 
-//     // Enum
-//     let rename = Rename {
-//         req_uri: &uri,
-//         req_line: 21,
-//         req_char: 17,
-//         new_name: "MyEnum", // from "Color"
-//     };
-//     let _ = lsp::prepare_rename_request(&mut service, &rename);
-//     let _ = lsp::rename_request(&mut service, &rename);
+    // Enum
+    let rename = Rename {
+        req_uri: &uri,
+        req_line: 21,
+        req_char: 17,
+        new_name: "MyEnum", // from "Color"
+    };
+    let _ = lsp::prepare_rename_request(&server, &rename);
+    let _ = lsp::rename_request(&server, &rename);
 
-//     // Enum Variant
-//     let rename = Rename {
-//         req_uri: &uri,
-//         req_line: 21,
-//         req_char: 20,
-//         new_name: "Pink", // from "Red"
-//     };
-//     let _ = lsp::prepare_rename_request(&mut service, &rename);
-//     let _ = lsp::rename_request(&mut service, &rename);
+    // Enum Variant
+    let rename = Rename {
+        req_uri: &uri,
+        req_line: 21,
+        req_char: 20,
+        new_name: "Pink", // from "Red"
+    };
+    let _ = lsp::prepare_rename_request(&server, &rename);
+    let _ = lsp::rename_request(&server, &rename);
 
-//     // raw identifier syntax
-//     let rename = Rename {
-//         req_uri: &uri,
-//         req_line: 28,
-//         req_char: 16,
-//         new_name: "new_var_name", // from r#struct
-//     };
-//     let _ = lsp::prepare_rename_request(&mut service, &rename);
-//     let _ = lsp::rename_request(&mut service, &rename);
+    // raw identifier syntax
+    let rename = Rename {
+        req_uri: &uri,
+        req_line: 28,
+        req_char: 16,
+        new_name: "new_var_name", // from r#struct
+    };
+    let _ = lsp::prepare_rename_request(&server, &rename);
+    let _ = lsp::rename_request(&server, &rename);
 
-//     // Function name defined in external module
-//     let rename = Rename {
-//         req_uri: &uri,
-//         req_line: 33,
-//         req_char: 25,
-//         new_name: "better_func_name", // from test_fun
-//     };
-//     let _ = lsp::prepare_rename_request(&mut service, &rename);
-//     let _ = lsp::rename_request(&mut service, &rename);
+    // Function name defined in external module
+    let rename = Rename {
+        req_uri: &uri,
+        req_line: 33,
+        req_char: 25,
+        new_name: "better_func_name", // from test_fun
+    };
+    let _ = lsp::prepare_rename_request(&server, &rename);
+    let _ = lsp::rename_request(&server, &rename);
 
-//     // Function method in ABI declaration
-//     let rename = Rename {
-//         req_uri: &uri,
-//         req_line: 41,
-//         req_char: 16,
-//         new_name: "name_func_name", // from test_function
-//     };
-//     let _ = lsp::prepare_rename_request(&mut service, &rename);
-//     let _ = lsp::rename_request(&mut service, &rename);
+    // Function method in ABI declaration
+    let rename = Rename {
+        req_uri: &uri,
+        req_line: 41,
+        req_char: 16,
+        new_name: "name_func_name", // from test_function
+    };
+    let _ = lsp::prepare_rename_request(&server, &rename);
+    let _ = lsp::rename_request(&server, &rename);
 
-//     // Function method in ABI implementation
-//     let rename = Rename {
-//         req_uri: &uri,
-//         req_line: 45,
-//         req_char: 16,
-//         new_name: "name_func_name", // from test_function
-//     };
-//     let _ = lsp::prepare_rename_request(&mut service, &rename);
-//     let _ = lsp::rename_request(&mut service, &rename);
+    // Function method in ABI implementation
+    let rename = Rename {
+        req_uri: &uri,
+        req_line: 45,
+        req_char: 16,
+        new_name: "name_func_name", // from test_function
+    };
+    let _ = lsp::prepare_rename_request(&server, &rename);
+    let _ = lsp::rename_request(&server, &rename);
 
-//     // Fail to rename keyword
-//     let rename = Rename {
-//         req_uri: &uri,
-//         req_line: 11,
-//         req_char: 2,
-//         new_name: "StruCt", // from struct
-//     };
-//     assert_eq!(
-//         lsp::prepare_rename_request(&mut service, &rename),
-//         None
-//     );
+    // Fail to rename keyword
+    let rename = Rename {
+        req_uri: &uri,
+        req_line: 11,
+        req_char: 2,
+        new_name: "StruCt", // from struct
+    };
+    assert_eq!(
+        lsp::prepare_rename_request(&server, &rename),
+        None
+    );
 
-//     // Fail to rename module
-//     let rename = Rename {
-//         req_uri: &uri,
-//         req_line: 36,
-//         req_char: 13,
-//         new_name: "new_mod_name", // from std
-//     };
-//     assert_eq!(
-//         lsp::prepare_rename_request(&mut service, &rename),
-//         None
-//     );
+    // Fail to rename module
+    let rename = Rename {
+        req_uri: &uri,
+        req_line: 36,
+        req_char: 13,
+        new_name: "new_mod_name", // from std
+    };
+    assert_eq!(
+        lsp::prepare_rename_request(&server, &rename),
+        None
+    );
 
-//     // Fail to rename a type defined in a module outside of the users workspace
-//     let rename = Rename {
-//         req_uri: &uri,
-//         req_line: 36,
-//         req_char: 33,
-//         new_name: "NEW_TYPE_NAME", // from ZERO_B256
-//     };
-//     assert_eq!(
-//         lsp::prepare_rename_request(&mut service, &rename),
-//         None
-//     );
-// }
+    // Fail to rename a type defined in a module outside of the users workspace
+    let rename = Rename {
+        req_uri: &uri,
+        req_line: 36,
+        req_char: 33,
+        new_name: "NEW_TYPE_NAME", // from ZERO_B256
+    };
+    assert_eq!(
+        lsp::prepare_rename_request(&server, &rename),
+        None
+    );
+    let _ = server.shutdown();
+}
 
 // #[tokio::test]
 // async fn publish_diagnostics_dead_code_warning() {

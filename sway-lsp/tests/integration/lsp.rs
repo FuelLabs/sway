@@ -176,19 +176,6 @@ pub(crate) async fn document_symbol_request(
     document_symbol
 }
 
-// pub(crate) fn definition_request(uri: &Url, token_line: i32, token_char: i32, id: i64) -> Request {
-//     let params = json!({
-//         "textDocument": {
-//             "uri": uri,
-//         },
-//         "position": {
-//             "line": token_line,
-//             "character": token_char,
-//         }
-//     });
-//     build_request_with_id("textDocument/definition", params, id)
-// }
-
 pub(crate) async fn format_request(service: &mut LspService<ServerState>, uri: &Url) -> Request {
     let params = json!({
         "textDocument": {
@@ -474,51 +461,39 @@ pub(crate) fn hover_request<'a>(server: &ServerState, hover_docs: &'a HoverDocum
     }
 }
 
-pub(crate) async fn prepare_rename_request<'a>(
-    service: &mut LspService<ServerState>,
+pub(crate) fn prepare_rename_request<'a>(
+    server: &ServerState,
     rename: &'a Rename<'a>,
-    ids: &mut impl Iterator<Item = i64>,
 ) -> Option<PrepareRenameResponse> {
-    let params = json!({
-        "textDocument": {
-            "uri": rename.req_uri,
+    let params = TextDocumentPositionParams {
+        text_document: TextDocumentIdentifier {
+            uri: rename.req_uri.clone(),
         },
-        "position": {
-            "line": rename.req_line,
-            "character": rename.req_char
-        }
-    });
-    let rename = build_request_with_id("textDocument/prepareRename", params, ids.next().unwrap());
-    let response = call_request(service, rename.clone())
-        .await
-        .unwrap()
-        .unwrap();
-    let value = response.result().unwrap().clone();
-    let prepare_rename_res: Option<PrepareRenameResponse> = serde_json::from_value(value).unwrap();
-    prepare_rename_res
+        position: Position {
+            line: rename.req_line,
+            character: rename.req_char,
+        },
+    };
+    request::handle_prepare_rename(&server, params.clone()).unwrap()
 }
 
-pub(crate) async fn rename_request<'a>(
-    service: &mut LspService<ServerState>,
+pub(crate) fn rename_request<'a>(
+    server: &ServerState,
     rename: &'a Rename<'a>,
-    ids: &mut impl Iterator<Item = i64>,
 ) -> WorkspaceEdit {
-    let params = json!({
-        "textDocument": {
-            "uri": rename.req_uri,
+    let params = RenameParams {
+        text_document_position: TextDocumentPositionParams {
+            text_document: TextDocumentIdentifier {
+                uri: rename.req_uri.clone(),
+            },
+            position: Position {
+                line: rename.req_line,
+                character: rename.req_char,
+            },
         },
-        "position": {
-            "line": rename.req_line,
-            "character": rename.req_char
-        },
-        "newName": rename.new_name
-    });
-    let rename = build_request_with_id("textDocument/rename", params, ids.next().unwrap());
-    let response = call_request(service, rename.clone())
-        .await
-        .unwrap()
-        .unwrap();
-    let value = response.result().unwrap().clone();
-    let worspace_edit: Option<WorkspaceEdit> = serde_json::from_value(value).unwrap();
+        new_name: rename.new_name.to_string(),
+        work_done_progress_params: Default::default(),
+    };
+    let worspace_edit = request::handle_rename(&server, params.clone()).unwrap();
     worspace_edit.unwrap()
 }

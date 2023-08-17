@@ -133,7 +133,7 @@ pub fn handle_hover(
     }
 }
 
-pub(crate) fn handle_prepare_rename(
+pub fn handle_prepare_rename(
     state: &ServerState,
     params: lsp_types::TextDocumentPositionParams,
 ) -> Result<Option<PrepareRenameResponse>> {
@@ -157,7 +157,7 @@ pub(crate) fn handle_prepare_rename(
     }
 }
 
-pub(crate) fn handle_rename(
+pub fn handle_rename(
     state: &ServerState,
     params: RenameParams,
 ) -> Result<Option<WorkspaceEdit>> {
