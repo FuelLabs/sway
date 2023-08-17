@@ -106,7 +106,7 @@ impl ty::TyScrutinee {
     }
 
     /// Returns true if the `TyScrutinee` consists only of catch-all scrutinee variants, recursively.
-    /// Catch-all varaints are .., _, and variables.
+    /// Catch-all variants are .., _, and variables.
     /// E.g.: (_, x, Point { .. })
     /// A catch-all scrutinee matches all the values of the corresponding type.
     pub(crate) fn is_catch_all(&self) -> bool {
