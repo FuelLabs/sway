@@ -336,6 +336,20 @@ impl ty::TyImplTrait {
             vec![],
         )?;
 
+        // Unify the "self" type param and the type that we are implementing for
+        handler.scope(|h| {
+            type_engine.unify(
+                h,
+                engines,
+                implementing_for.type_id,
+                self_type_id,
+                &implementing_for.span,
+                "",
+                None
+            );
+            Ok(())
+        })?;
+
         let mut ctx = ctx
             .with_help_text("")
             .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
