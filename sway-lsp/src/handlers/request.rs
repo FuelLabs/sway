@@ -157,10 +157,7 @@ pub fn handle_prepare_rename(
     }
 }
 
-pub fn handle_rename(
-    state: &ServerState,
-    params: RenameParams,
-) -> Result<Option<WorkspaceEdit>> {
+pub fn handle_rename(state: &ServerState, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
     match state
         .sessions
         .uri_and_session_from_workspace(&params.text_document_position.text_document.uri)

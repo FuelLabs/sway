@@ -176,30 +176,24 @@ pub(crate) async fn document_symbol_request(
     document_symbol
 }
 
-pub(crate) async fn format_request(service: &mut LspService<ServerState>, uri: &Url) -> Request {
-    let params = json!({
-        "textDocument": {
-            "uri": uri,
+pub(crate) fn format_request(server: &ServerState, uri: &Url) {
+    let params = DocumentFormattingParams {
+        text_document: TextDocumentIdentifier { uri: uri.clone() },
+        options: FormattingOptions {
+            tab_size: 4,
+            insert_spaces: true,
+            ..Default::default()
         },
-        "options": {
-            "tabSize": 4,
-            "insertSpaces": true
-        },
-    });
-    let formatting = build_request_with_id("textDocument/formatting", params, 1);
-    let _response = call_request(service, formatting.clone()).await;
-    formatting
+        work_done_progress_params: Default::default(),
+    };
+    let response = request::handle_formatting(&server, params.clone()).unwrap();
+    assert!(!response.unwrap().is_empty());
 }
 
-pub(crate) async fn highlight_request(
-    server: &ServerState, 
-    uri: &Url
-) {
+pub(crate) fn highlight_request(server: &ServerState, uri: &Url) {
     let params = DocumentHighlightParams {
         text_document_position_params: TextDocumentPositionParams {
-            text_document: TextDocumentIdentifier {
-                uri: uri.clone(),
-            },
+            text_document: TextDocumentIdentifier { uri: uri.clone() },
             position: Position {
                 line: 45,
                 character: 37,
@@ -320,12 +314,10 @@ pub(crate) async fn code_lens_request(service: &mut LspService<ServerState>, uri
     code_lens
 }
 
-pub(crate) async fn completion_request(server: &ServerState,uri: &Url) {
+pub(crate) fn completion_request(server: &ServerState, uri: &Url) {
     let params = CompletionParams {
         text_document_position: TextDocumentPositionParams {
-            text_document: TextDocumentIdentifier {
-                uri: uri.clone(),
-            },
+            text_document: TextDocumentIdentifier { uri: uri.clone() },
             position: Position {
                 line: 19,
                 character: 8,
@@ -476,10 +468,7 @@ pub(crate) fn prepare_rename_request<'a>(
     request::handle_prepare_rename(&server, params.clone()).unwrap()
 }
 
-pub(crate) fn rename_request<'a>(
-    server: &ServerState,
-    rename: &'a Rename<'a>,
-) -> WorkspaceEdit {
+pub(crate) fn rename_request<'a>(server: &ServerState, rename: &'a Rename<'a>) -> WorkspaceEdit {
     let params = RenameParams {
         text_document_position: TextDocumentPositionParams {
             text_document: TextDocumentIdentifier {

@@ -1723,10 +1723,7 @@ async fn rename() {
         req_char: 2,
         new_name: "StruCt", // from struct
     };
-    assert_eq!(
-        lsp::prepare_rename_request(&server, &rename),
-        None
-    );
+    assert_eq!(lsp::prepare_rename_request(&server, &rename), None);
 
     // Fail to rename module
     let rename = Rename {
@@ -1735,10 +1732,7 @@ async fn rename() {
         req_char: 13,
         new_name: "new_mod_name", // from std
     };
-    assert_eq!(
-        lsp::prepare_rename_request(&server, &rename),
-        None
-    );
+    assert_eq!(lsp::prepare_rename_request(&server, &rename), None);
 
     // Fail to rename a type defined in a module outside of the users workspace
     let rename = Rename {
@@ -1747,10 +1741,7 @@ async fn rename() {
         req_char: 33,
         new_name: "NEW_TYPE_NAME", // from ZERO_B256
     };
-    assert_eq!(
-        lsp::prepare_rename_request(&server, &rename),
-        None
-    );
+    assert_eq!(lsp::prepare_rename_request(&server, &rename), None);
     let _ = server.shutdown();
 }
 
@@ -1782,7 +1773,7 @@ macro_rules! test_lsp_capability {
         let uri = open(&server, $entry_point).await;
 
         // Call the specific LSP capability function that was passed in.
-        let _ = $capability(&server, &uri).await;
+        let _ = $capability(&server, &uri);
         let _ = server.shutdown();
     }};
 }
@@ -1806,46 +1797,46 @@ macro_rules! lsp_capability_test {
 //     lsp::document_symbol_request,
 //     doc_comments_dir().join("src/main.sw")
 // );
-// lsp_capability_test!(
-//     format,
-//     lsp::format_request,
-//     doc_comments_dir().join("src/main.sw")
-// );
+lsp_capability_test!(
+    format,
+    lsp::format_request,
+    doc_comments_dir().join("src/main.sw")
+);
 lsp_capability_test!(
     highlight,
     lsp::highlight_request,
     doc_comments_dir().join("src/main.sw")
 );
-// lsp_capability_test!(
-//     code_action_abi,
-//     code_actions::code_action_abi_request,
-//     doc_comments_dir().join("src/main.sw")
-// );
-// lsp_capability_test!(
-//     code_action_function,
-//     code_actions::code_action_function_request,
-//     test_fixtures_dir().join("tokens/consts/src/main.sw")
-// );
-// lsp_capability_test!(
-//     code_action_trait_fn_request,
-//     code_actions::code_action_trait_fn_request,
-//     test_fixtures_dir().join("tokens/abi/src/main.sw")
-// );
-// lsp_capability_test!(
-//     code_action_struct,
-//     code_actions::code_action_struct_request,
-//     doc_comments_dir().join("src/main.sw")
-// );
-// lsp_capability_test!(
-//     code_action_struct_type_params,
-//     code_actions::code_action_struct_type_params_request,
-//     generic_impl_self_dir().join("src/main.sw")
-// );
-// lsp_capability_test!(
-//     code_action_struct_existing_impl,
-//     code_actions::code_action_struct_existing_impl_request,
-//     self_impl_reassignment_dir().join("src/main.sw")
-// );
+lsp_capability_test!(
+    code_action_abi,
+    code_actions::code_action_abi_request,
+    doc_comments_dir().join("src/main.sw")
+);
+lsp_capability_test!(
+    code_action_function,
+    code_actions::code_action_function_request,
+    test_fixtures_dir().join("tokens/consts/src/main.sw")
+);
+lsp_capability_test!(
+    code_action_trait_fn_request,
+    code_actions::code_action_trait_fn_request,
+    test_fixtures_dir().join("tokens/abi/src/main.sw")
+);
+lsp_capability_test!(
+    code_action_struct,
+    code_actions::code_action_struct_request,
+    doc_comments_dir().join("src/main.sw")
+);
+lsp_capability_test!(
+    code_action_struct_type_params,
+    code_actions::code_action_struct_type_params_request,
+    generic_impl_self_dir().join("src/main.sw")
+);
+lsp_capability_test!(
+    code_action_struct_existing_impl,
+    code_actions::code_action_struct_existing_impl_request,
+    self_impl_reassignment_dir().join("src/main.sw")
+);
 // lsp_capability_test!(
 //     code_lens,
 //     lsp::code_lens_request,
