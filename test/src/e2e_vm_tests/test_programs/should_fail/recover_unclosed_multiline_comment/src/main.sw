@@ -1,5 +1,8 @@
 contract;
 
+/
+/ Comments
+
 mod foo;
 mod bar;
 mod baz;
