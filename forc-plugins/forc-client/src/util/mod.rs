@@ -46,7 +46,7 @@ impl FromStr for Target {
             Ok(Target::Beta4)
         } else {
             anyhow::bail!(
-                "invalid testnet name provided. Possible values are 'beta-2', 'beta-3', 'latest'."
+                "invalid testnet name provided. Possible values are 'beta-2', 'beta-3', 'beta-4', 'latest'."
             )
         }
     }

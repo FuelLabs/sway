@@ -62,13 +62,13 @@ To interact with the latest testnet you can pass `--testnet` flag. Passing this 
 forc-deploy --testnet
 ```
 
-Also it is possible to pass exact node url while using `forc-deploy` or `forc-run` which can be done using `--node-url` flag.
+It is also possible to pass the exact node url while using `forc-deploy` or `forc-run` which can be done using `--node-url` flag.
 
 ```sh
 forc-deploy --node-url https://beta-3.fuel.network/graphql
 ```
 
-Finally you have `--target` option, which provides useful aliases to old testnets. For example if you want to deploy to `beta-3` you can use:
+Another alternative is the `--target` option, which provides useful aliases to all targets. For example if you want to deploy to `beta-3` you can use:
 
 ```sh
 forc-deploy --target beta-3
