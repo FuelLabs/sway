@@ -6,7 +6,7 @@ use crate::{GotoDefinition, HoverDocumentation, Rename};
 use assert_json_diff::assert_json_eq;
 use serde_json::json;
 use std::{borrow::Cow, path::Path};
-use sway_lsp::{server_state::ServerState, lsp_ext::ShowAstParams};
+use sway_lsp::{handlers::request, server_state::ServerState, lsp_ext::ShowAstParams};
 use sway_lsp_test_utils::extract_result_array;
 use tower::{Service, ServiceExt};
 use tower_lsp::{
@@ -135,7 +135,6 @@ pub(crate) async fn show_ast_request(
         Some(path) => path,
         None => Url::from_file_path(Path::new("/tmp")).unwrap(),
     };
-    use sway_lsp::handlers::request;
     let params = ShowAstParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         ast_kind: ast_kind.to_string(),
@@ -146,7 +145,7 @@ pub(crate) async fn show_ast_request(
     let expected = TextDocumentIdentifier { 
         uri: Url::parse(&format!("{save_path}/{ast_kind}.rs")).unwrap()
     };
-    assert_json_eq!(expected, response.unwrap().unwrap());
+    assert_eq!(expected, response.unwrap().unwrap());
 }
 
 pub(crate) async fn semantic_tokens_request(
@@ -177,18 +176,18 @@ pub(crate) async fn document_symbol_request(
     document_symbol
 }
 
-pub(crate) fn definition_request(uri: &Url, token_line: i32, token_char: i32, id: i64) -> Request {
-    let params = json!({
-        "textDocument": {
-            "uri": uri,
-        },
-        "position": {
-            "line": token_line,
-            "character": token_char,
-        }
-    });
-    build_request_with_id("textDocument/definition", params, id)
-}
+// pub(crate) fn definition_request(uri: &Url, token_line: i32, token_char: i32, id: i64) -> Request {
+//     let params = json!({
+//         "textDocument": {
+//             "uri": uri,
+//         },
+//         "position": {
+//             "line": token_line,
+//             "character": token_char,
+//         }
+//     });
+//     build_request_with_id("textDocument/definition", params, id)
+// }
 
 pub(crate) async fn format_request(service: &mut LspService<ServerState>, uri: &Url) -> Request {
     let params = json!({
@@ -390,28 +389,27 @@ pub(crate) async fn completion_request(
     completion
 }
 
-pub(crate) async fn definition_check<'a>(
-    service: &mut LspService<ServerState>,
+pub(crate) fn definition_check<'a>(
+    server: &ServerState,
     go_to: &'a GotoDefinition<'a>,
-    ids: &mut impl Iterator<Item = i64>,
-) -> Request {
-    let definition = definition_request(
-        go_to.req_uri,
-        go_to.req_line,
-        go_to.req_char,
-        ids.next().unwrap(),
-    );
-    let response = call_request(service, definition.clone())
-        .await
-        .unwrap()
-        .unwrap();
-    let value = response.result().unwrap();
-    let unwrapped_response = serde_json::from_value(value.clone()).unwrap_or_else(|error| {
+) {
+    let params = GotoDefinitionParams {
+        text_document_position_params: TextDocumentPositionParams {
+            text_document: TextDocumentIdentifier { uri: go_to.req_uri.clone() },
+            position: Position {
+                line: go_to.req_line,
+                character: go_to.req_char,
+            },
+        },
+        work_done_progress_params: Default::default(),
+        partial_result_params: Default::default(),
+    };
+    let res = request::handle_goto_definition(&server, params.clone()).unwrap();
+    let unwrapped_response = res.as_ref().unwrap_or_else(|| {
         panic!(
-            "Failed to deserialize response: {:?} input: {:#?} error: {}",
-            value.clone(),
-            definition.clone(),
-            error
+            "Failed to deserialize response: {:?} input: {:#?}",
+            res.clone(),
+            params.clone(),
         );
     });
     if let GotoDefinitionResponse::Scalar(response) = unwrapped_response {
@@ -436,11 +434,10 @@ pub(crate) async fn definition_check<'a>(
     } else {
         panic!(
             "Expected GotoDefinitionResponse::Scalar with input {:#?}, got {:?}",
-            definition.clone(),
-            value.clone(),
+            params.clone(),
+            res.clone(),
         );
     }
-    definition
 }
 
 pub(crate) async fn hover_request<'a>(

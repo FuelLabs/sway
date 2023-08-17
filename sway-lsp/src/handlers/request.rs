@@ -66,7 +66,7 @@ pub(crate) fn handle_document_symbol(
     }
 }
 
-pub(crate) fn handle_goto_definition(
+pub fn handle_goto_definition(
     state: &ServerState,
     params: lsp_types::GotoDefinitionParams,
 ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
