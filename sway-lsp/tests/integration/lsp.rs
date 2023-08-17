@@ -6,7 +6,7 @@ use crate::{GotoDefinition, HoverDocumentation, Rename};
 use assert_json_diff::assert_json_eq;
 use serde_json::json;
 use std::{borrow::Cow, path::Path};
-use sway_lsp::{handlers::request, server_state::ServerState, lsp_ext::ShowAstParams};
+use sway_lsp::{handlers::request, lsp_ext::ShowAstParams, server_state::ServerState};
 use sway_lsp_test_utils::extract_result_array;
 use tower::{Service, ServiceExt};
 use tower_lsp::{
@@ -142,8 +142,8 @@ pub(crate) async fn show_ast_request(
     };
 
     let response = request::handle_show_ast(server, params);
-    let expected = TextDocumentIdentifier { 
-        uri: Url::parse(&format!("{save_path}/{ast_kind}.rs")).unwrap()
+    let expected = TextDocumentIdentifier {
+        uri: Url::parse(&format!("{save_path}/{ast_kind}.rs")).unwrap(),
     };
     assert_eq!(expected, response.unwrap().unwrap());
 }
@@ -389,13 +389,12 @@ pub(crate) async fn completion_request(
     completion
 }
 
-pub(crate) fn definition_check<'a>(
-    server: &ServerState,
-    go_to: &'a GotoDefinition<'a>,
-) {
+pub(crate) fn definition_check<'a>(server: &ServerState, go_to: &'a GotoDefinition<'a>) {
     let params = GotoDefinitionParams {
         text_document_position_params: TextDocumentPositionParams {
-            text_document: TextDocumentIdentifier { uri: go_to.req_uri.clone() },
+            text_document: TextDocumentIdentifier {
+                uri: go_to.req_uri.clone(),
+            },
             position: Position {
                 line: go_to.req_line,
                 character: go_to.req_char,
@@ -440,41 +439,28 @@ pub(crate) fn definition_check<'a>(
     }
 }
 
-pub(crate) async fn hover_request<'a>(
-    service: &mut LspService<ServerState>,
-    hover_docs: &'a HoverDocumentation<'a>,
-    ids: &mut impl Iterator<Item = i64>,
-) -> Request {
-    let params = json!({
-        "textDocument": {
-            "uri": hover_docs.req_uri,
+pub(crate) fn hover_request<'a>(server: &ServerState, hover_docs: &'a HoverDocumentation<'a>) {
+    let params = HoverParams {
+        text_document_position_params: TextDocumentPositionParams {
+            text_document: TextDocumentIdentifier {
+                uri: hover_docs.req_uri.clone(),
+            },
+            position: Position {
+                line: hover_docs.req_line,
+                character: hover_docs.req_char,
+            },
         },
-        "position": {
-            "line": hover_docs.req_line,
-            "character": hover_docs.req_char
-        }
-    });
-    let hover = build_request_with_id("textDocument/hover", params, ids.next().unwrap());
-    let response = call_request(service, hover.clone()).await.unwrap().unwrap();
-    let value = response.result().unwrap();
-    let unwrapped_response = serde_json::from_value(value.clone()).unwrap_or_else(|error| {
+        work_done_progress_params: Default::default(),
+    };
+    let res = request::handle_hover(&server, params.clone()).unwrap();
+    let unwrapped_response = res.as_ref().unwrap_or_else(|| {
         panic!(
-            "Failed to deserialize response: {:?} input: {:#?} error: {}",
-            value.clone(),
-            hover.clone(),
-            error
+            "Failed to deserialize hover: {:?} input: {:#?}",
+            res.clone(),
+            params.clone(),
         );
     });
-    let hover_res: Hover = serde_json::from_value(unwrapped_response).unwrap_or_else(|error| {
-        panic!(
-            "Failed to deserialize hover: {:?} input: {:#?} error: {}",
-            value.clone(),
-            hover.clone(),
-            error
-        );
-    });
-
-    if let HoverContents::Markup(markup_content) = hover_res.contents {
+    if let HoverContents::Markup(markup_content) = &unwrapped_response.contents {
         hover_docs
             .documentation
             .iter()
@@ -482,11 +468,10 @@ pub(crate) async fn hover_request<'a>(
     } else {
         panic!(
             "Expected HoverContents::Markup with input {:#?}, got {:?}",
-            hover.clone(),
-            value.clone(),
+            res.clone(),
+            params.clone(),
         );
     }
-    hover
 }
 
 pub(crate) async fn prepare_rename_request<'a>(

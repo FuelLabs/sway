@@ -109,7 +109,7 @@ pub(crate) fn handle_completion(
     }
 }
 
-pub(crate) fn handle_hover(
+pub fn handle_hover(
     state: &ServerState,
     params: lsp_types::HoverParams,
 ) -> Result<Option<lsp_types::Hover>> {
