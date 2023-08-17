@@ -56,19 +56,25 @@ By default `--default-signer` flag would sign your transactions with the followi
 
 ## Interacting with the testnet
 
-While using `forc-deploy` or `forc-run` to interact with the testnet you need to pass the testnet end point with `--node-url`
+To interact with the latest testnet you can pass `--testnet` flag. Passing this flag will send transactions crafted by `forc-deploy` to `beta-4` testnet.
+
+```sh
+forc-deploy --testnet
+```
+
+Also it is possible to pass exact node url while using `forc-deploy` or `forc-run` which can be done using `--node-url` flag.
 
 ```sh
 forc-deploy --node-url https://beta-3.fuel.network/graphql
 ```
 
-Since deploying and running projects on the testnet cost gas, you will need coins to pay for them. You can get some using the [testnet faucet](https://faucet-beta-3.fuel.network/).
-
-Also the default value of the "gas price" parameter is 0 for both `forc-deploy` and `forc-run`. Without changing it you will get an error complaining about gas price being too low. While using testnet you can pass `--gas-price 1` to overcome this issue. So a complete command for deploying to the testnet would look like:
+Finally you have `--target` option, which provides useful aliases to old testnets. For example if you want to deploy to `beta-3` you can use:
 
 ```sh
-forc-deploy --node-url https://beta-3.fuel.network/graphql --gas-price 1
+forc-deploy --target beta-3
 ```
+
+Since deploying and running projects on the testnet cost gas, you will need coins to pay for them. You can get some using the [testnet faucet](https://faucet-beta-4.fuel.network/).
 
 ## Deployment Artifacts
 

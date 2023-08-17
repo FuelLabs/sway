@@ -56,7 +56,7 @@ pub struct Command {
     pub manual_signing: bool,
     /// Use preset configurations for deploying to a specific target.
     ///
-    /// Possible values are: [beta-1, beta-2, beta-3, latest]
+    /// Possible values are: [beta-1, beta-2, beta-3, beta-4, latest]
     #[clap(long)]
     pub target: Option<Target>,
     /// Use preset configuration for the latest testnet.
