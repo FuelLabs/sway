@@ -105,7 +105,7 @@ impl<T> Option<T> {
     /// ```
     pub fn is_some(self) -> bool {
         match self {
-            Option::Some(_) => true,
+            Self::Some(_) => true,
             _ => false,
         }
     }
@@ -123,7 +123,7 @@ impl<T> Option<T> {
     /// ```
     pub fn is_none(self) -> bool {
         match self {
-            Option::Some(_) => false,
+            Self::Some(_) => false,
             _ => true,
         }
     }
@@ -155,7 +155,7 @@ impl<T> Option<T> {
     /// ```
     pub fn unwrap(self) -> T {
         match self {
-            Option::Some(inner_value) => inner_value,
+            Self::Some(inner_value) => inner_value,
             _ => revert(0),
         }
     }
@@ -172,8 +172,8 @@ impl<T> Option<T> {
     /// ```
     pub fn unwrap_or(self, default: T) -> T {
         match self {
-            Option::Some(x) => x,
-            Option::None => default,
+            Self::Some(x) => x,
+            Self::None => default,
         }
     }
 
@@ -204,8 +204,8 @@ impl<T> Option<T> {
     /// ```
     pub fn ok_or<E>(self, err: E) -> Result<T, E> {
         match self {
-            Option::Some(v) => Result::Ok(v),
-            Option::None => Result::Err(err),
+            Self::Some(v) => Result::Ok(v),
+            Self::None => Result::Err(err),
         }
     }
 }

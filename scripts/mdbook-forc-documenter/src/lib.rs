@@ -11,7 +11,6 @@ use plugins::forc_plugins_from_path;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use toml::Value;
 
 mod commands;
 mod formatter;
@@ -36,7 +35,7 @@ impl Preprocessor for ForcDocumenter {
             .config
             .get_preprocessor(self.name())
             .and_then(|t| t.get("strict"))
-            .and_then(Value::as_bool)
+            .and_then(|val| val.as_bool())
             .unwrap_or(false);
 
         let possible_commands: Vec<String> = possible_forc_commands();

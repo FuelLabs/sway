@@ -23,7 +23,7 @@ pub struct InlayHint {
     pub label: String,
 }
 
-pub(crate) fn inlay_hints(
+pub fn inlay_hints(
     session: Arc<Session>,
     uri: &Url,
     range: &Range,

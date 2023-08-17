@@ -10,8 +10,8 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{keywords::Token, token::Delimiter, ConfigurableField, ItemConfigurable};
-use sway_types::Spanned;
+use sway_ast::{keywords::Token, ConfigurableField, ItemConfigurable};
+use sway_types::{ast::Delimiter, Spanned};
 
 #[cfg(test)]
 mod tests;
@@ -74,11 +74,7 @@ impl Format for ItemConfigurable {
                         for (field_index, (configurable_field, comma_token)) in
                             value_pairs_iter.clone()
                         {
-                            write!(
-                                formatted_code,
-                                "{}",
-                                &formatter.shape.indent.to_string(&formatter.config)?
-                            )?;
+                            write!(formatted_code, "{}", &formatter.indent_str()?)?;
 
                             // Add name
                             configurable_field.name.format(formatted_code, formatter)?;
@@ -135,7 +131,7 @@ impl CurlyBrace for ItemConfigurable {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
-        formatter.shape.block_indent(&formatter.config);
+        formatter.indent();
         let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
@@ -156,11 +152,11 @@ impl CurlyBrace for ItemConfigurable {
     ) -> Result<(), FormatterError> {
         // shrink_left would return error if the current indentation level is becoming < 0, in that
         // case we should use the Shape::default() which has 0 indentation level.
-        formatter.shape.block_unindent(&formatter.config);
+        formatter.unindent();
         write!(
             line,
             "{}{}",
-            formatter.shape.indent.to_string(&formatter.config)?,
+            formatter.indent_str()?,
             Delimiter::Brace.as_close_char()
         )?;
 

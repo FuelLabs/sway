@@ -11,6 +11,8 @@ use sway_core::{
     compile_ir_to_asm, compile_to_ast, ir_generation::compile_program, namespace, BuildTarget,
     Engines,
 };
+use sway_error::handler::Handler;
+
 use sway_ir::{
     create_inline_in_module_pass, register_known_passes, PassGroup, PassManager, ARGDEMOTION_NAME,
     CONSTDEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME, RETDEMOTION_NAME,
@@ -219,7 +221,8 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
 
                 let mut metrics = PerformanceData::default();
                 let sway_str = String::from_utf8_lossy(&sway_str);
-                let compile_res = compile_to_ast(
+                let handler = Handler::default(); let compile_res = compile_to_ast(
+                    &handler,
                     &engines,
                     Arc::from(sway_str),
                     core_lib.clone(),
@@ -227,12 +230,12 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                     "test_lib",
                     &mut metrics,
                 );
-                if !compile_res.errors.is_empty() {
+                let (errors, _warnings) = handler.consume();
+                if !errors.is_empty() {
                     panic!(
                         "Failed to compile test {}:\n{}",
                         path.display(),
-                        compile_res
-                            .errors
+                        errors
                             .iter()
                             .map(|err| err.to_string())
                             .collect::<Vec<_>>()
@@ -241,7 +244,6 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                     );
                 }
                 let programs = compile_res
-                    .value
                     .expect("there were no errors, so there should be a program");
 
                 let typed_program = programs.typed.as_ref().unwrap();
@@ -251,6 +253,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                 let mut ir = compile_program(typed_program, include_tests, &engines)
                     .unwrap_or_else(|e| {
                         use sway_types::span::Spanned;
+                        let e = e[0].clone();
                         let span = e.span();
                         panic!(
                             "Failed to compile test {}:\nError \"{e}\" at {}:{}\nCode: \"{}\"",
@@ -282,8 +285,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                         panic!(
                             "Failed to compile test {}:\n{}",
                             path.display(),
-                            compile_res
-                                .errors
+                                errors
                                 .iter()
                                 .map(|err| err.to_string())
                                 .collect::<Vec<_>>()
@@ -378,8 +380,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                                     panic!(
                                         "Failed to compile test {}:\n{}",
                                         path.display(),
-                                        compile_res
-                                            .errors
+                                            errors
                                             .iter()
                                             .map(|err| err.to_string())
                                             .collect::<Vec<_>>()
@@ -390,18 +391,19 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                             }
 
                             // Compile to ASM.
-                            let asm_result = compile_ir_to_asm(&ir, None);
+                            let handler = Handler::default();
+                            let asm_result = compile_ir_to_asm(&handler, &ir, None);
+                            let (errors, _warnings) = handler.consume();
 
-                            if !asm_result.is_ok() {
+                            if asm_result.is_err() || !errors.is_empty() {
                                 println!("Errors when compiling {test_file_name} IR to ASM:\n");
-                                for e in asm_result.errors {
+                                for e in errors {
                                     println!("{e}\n");
                                 }
                                 panic!();
                             };
 
                             let asm_output = asm_result
-                                .value
                                 .map(|asm| format!("{asm}"))
                                 .expect("Failed to stringify ASM for {test_file_name}.");
 
@@ -442,6 +444,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                     .unwrap_or_else(|e| panic!("{}: {e}\n{ir_output}", path.display()));
                 let parsed_ir_output = sway_ir::printer::to_string(&parsed_ir);
                 if ir_output != parsed_ir_output {
+                    println!("Deserialized IR:");
                     tracing::error!("{}", prettydiff::diff_lines(&ir_output, &parsed_ir_output));
                     panic!("{} failed IR (de)serialization.", path.display());
                 }
@@ -513,8 +516,8 @@ fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Modu
         }
     };
 
-    match res.value {
-        Some(typed_program) if res.is_ok() => {
+    match res.0 {
+        Some(typed_program) => {
             // Create a module for core and copy the compiled modules into it.  Unfortunately we
             // can't get mutable access to move them out so they're cloned.
             let core_module = typed_program.root.namespace.submodules().into_iter().fold(
@@ -531,7 +534,8 @@ fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Modu
             std_module
         }
         _ => {
-            for err in res.errors {
+            let (errors, _warnings) = res.1.consume();
+            for err in errors {
                 println!("{err:?}");
             }
             panic!("Failed to compile sway-lib-core for IR tests.");

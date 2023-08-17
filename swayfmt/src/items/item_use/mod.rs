@@ -9,11 +9,11 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{
-    token::{Delimiter, PunctKind},
-    ItemUse, UseTree,
+use sway_ast::{ItemUse, UseTree};
+use sway_types::{
+    ast::{Delimiter, PunctKind},
+    Spanned,
 };
-use sway_types::Spanned;
 
 #[cfg(test)]
 mod tests;
@@ -92,11 +92,8 @@ impl Format for UseTree {
                     LineStyle::Multiline => writeln!(
                         formatted_code,
                         "{}{}",
-                        formatter.shape.indent.to_string(&formatter.config)?,
-                        ord_vec.join(&format!(
-                            "\n{}",
-                            formatter.shape.indent.to_string(&formatter.config)?
-                        ))
+                        formatter.indent_str()?,
+                        ord_vec.join(&format!("\n{}", formatter.indent_str()?))
                     )?,
                     _ => {
                         let mut import_str = ord_vec.join(" ");
@@ -152,7 +149,7 @@ impl CurlyBrace for UseTree {
     ) -> Result<(), FormatterError> {
         match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
-                formatter.shape.block_indent(&formatter.config);
+                formatter.indent();
                 writeln!(line, "{}", Delimiter::Brace.as_open_char())?;
             }
             _ => write!(line, "{}", Delimiter::Brace.as_open_char())?,
@@ -166,11 +163,11 @@ impl CurlyBrace for UseTree {
     ) -> Result<(), FormatterError> {
         match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
-                formatter.shape.block_unindent(&formatter.config);
+                formatter.unindent();
                 write!(
                     line,
                     "{}{}",
-                    formatter.shape.indent.to_string(&formatter.config)?,
+                    formatter.indent_str()?,
                     Delimiter::Brace.as_close_char()
                 )?;
             }

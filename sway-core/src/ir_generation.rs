@@ -19,7 +19,7 @@ pub fn compile_program<'eng>(
     program: &ty::TyProgram,
     include_tests: bool,
     engines: &'eng Engines,
-) -> Result<Context<'eng>, CompileError> {
+) -> Result<Context<'eng>, Vec<CompileError>> {
     let declaration_engine = engines.de();
 
     let test_fns = match include_tests {
@@ -101,6 +101,9 @@ pub fn compile_program<'eng>(
     //println!("{ctx}");
 
     ctx.verify().map_err(|ir_error: sway_ir::IrError| {
-        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+        vec![CompileError::InternalOwned(
+            ir_error.to_string(),
+            Span::dummy(),
+        )]
     })
 }

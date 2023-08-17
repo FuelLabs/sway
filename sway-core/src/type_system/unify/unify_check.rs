@@ -379,8 +379,8 @@ impl<'a> UnifyCheck<'a> {
                             || matches!(ean, AbiName::Deferred)
                     }
 
-                    (ErrorRecovery, _) => true,
-                    (_, ErrorRecovery) => true,
+                    (ErrorRecovery(_), _) => true,
+                    (_, ErrorRecovery(_)) => true,
 
                     (a, b) => a.eq(&b, self.engines),
                 }
@@ -454,7 +454,7 @@ impl<'a> UnifyCheck<'a> {
                 (TypeInfo::Contract, TypeInfo::Contract) => true,
                 (TypeInfo::Boolean, TypeInfo::Boolean) => true,
                 (TypeInfo::B256, TypeInfo::B256) => true,
-                (TypeInfo::ErrorRecovery, TypeInfo::ErrorRecovery) => true,
+                (TypeInfo::ErrorRecovery(_), TypeInfo::ErrorRecovery(_)) => true,
                 (TypeInfo::Str(l), TypeInfo::Str(r)) => l.val() == r.val(),
                 (TypeInfo::UnsignedInteger(l), TypeInfo::UnsignedInteger(r)) => l == r,
                 (TypeInfo::RawUntypedPtr, TypeInfo::RawUntypedPtr) => true,

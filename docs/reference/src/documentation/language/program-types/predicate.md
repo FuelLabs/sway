@@ -8,11 +8,11 @@ Predicates can neither read from nor write to any contract state. Moreover, they
 
 ## Transfer Coins to a Predicate
 
-In Fuel, coins can be sent to an address uniquely representing a particular predicate's bytecode (the bytecode root, calculated [here](https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/id/contract.md)).
+In Fuel, coins can be sent to an address uniquely representing a particular predicate's bytecode (the bytecode root, calculated [here](https://github.com/FuelLabs/fuel-specs/blob/master/src/identifiers/contract-id.md)).
 
 ## Spending Predicate Coins
 
-The coin UTXOs become spendable not on the provision of a valid signature, but rather if the supplied predicate both has a root that matches their owner, and [evaluates](https://github.com/FuelLabs/fuel-specs/blob/master/src/vm/index.md#predicate-verification) to `true`.
+The coin UTXOs become spendable not on the provision of a valid signature, but rather if the supplied predicate both has a root that matches their owner, and [evaluates](https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/index.md#predicate-verification) to `true`.
 
 If a predicate reverts, or tries to access impure VM opcodes, the evaluation is automatically `false`.
 
@@ -22,7 +22,7 @@ Predicates may introspect the transaction spending their coins (inputs, outputs,
 
 ## Example
 
-Similar to a [script](script.md), a predicate consists of a single `main()` function which can take any number of arguments but must return a [Boolean](../built-ins/boolean.md). In order for the predicate to be valid, the returned [Boolean]((../built-ins/boolean.md)) value must be `true`.
+Similar to a [script](script.md), a predicate consists of a single `main()` function which can take any number of arguments but must return a [Boolean](../built-ins/boolean.md). In order for the predicate to be valid, the returned [Boolean](../built-ins/boolean.md) value must be `true`.
 
 ```sway
 {{#include ../../../code/language/program-types/predicates/simple_predicate/src/main.sw}}

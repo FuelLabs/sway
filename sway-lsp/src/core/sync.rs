@@ -45,6 +45,21 @@ impl SyncWorkspace {
         }
     }
 
+    /// Overwrite the contents of the tmp/folder with everything in
+    /// the current workspace.
+    pub fn resync(&self) -> Result<(), LanguageServerError> {
+        self.clone_manifest_dir_to_temp()?;
+        if let Some(manifest) = self
+            .manifest_path()
+            .and_then(|manifest_path| PackageManifestFile::from_dir(&manifest_path).ok())
+        {
+            if let Some(temp_manifest_path) = &self.temp_manifest_path() {
+                edit_manifest_dependency_paths(&manifest, temp_manifest_path)
+            }
+        }
+        Ok(())
+    }
+
     /// Clean up the temp directory that was created once the
     /// server closes down.
     pub(crate) fn remove_temp_dir(&self) {

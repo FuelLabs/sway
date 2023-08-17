@@ -7,7 +7,7 @@
 /// [SubstList](crate::type_system::SubstList) contained in this field is simply
 /// a template for usages of the declaration declared in that particular
 /// [TyDecl](crate::language::ty::TyDecl) node.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Template<T>(T)
 where
     T: Clone;

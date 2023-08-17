@@ -21,6 +21,7 @@ use std::{
     fmt,
     fs::{self, File},
     hash::{Hash, Hasher},
+    io::Write,
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
@@ -42,9 +43,9 @@ use sway_core::{
     semantic_analysis::namespace,
     source_map::SourceMap,
     transform::AttributeKind,
-    BuildTarget, CompileResult, Engines, FinalizedEntry,
+    BuildTarget, Engines, FinalizedEntry,
 };
-use sway_error::{error::CompileError, warning::CompileWarning};
+use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::{Ident, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
 use tracing::{info, warn};
@@ -428,35 +429,43 @@ impl BuiltPackage {
         Ok(())
     }
 
-    /// Writes the ABI in JSON format to the given `path`.
-    pub fn write_json_abi(&self, path: &Path, minify: MinifyOpts) -> Result<()> {
+    pub fn json_abi_string(&self, minify_json_abi: bool) -> Result<Option<String>> {
         match &self.program_abi {
             ProgramABI::Fuel(program_abi) => {
                 if !program_abi.functions.is_empty() {
-                    let file = File::create(path)?;
-                    let res = if minify.json_abi {
-                        serde_json::to_writer(&file, &program_abi)
+                    let json_string = if minify_json_abi {
+                        serde_json::to_string(&program_abi)
                     } else {
-                        serde_json::to_writer_pretty(&file, &program_abi)
-                    };
-                    res?
+                        serde_json::to_string_pretty(&program_abi)
+                    }?;
+                    Ok(Some(json_string))
+                } else {
+                    Ok(None)
                 }
             }
             ProgramABI::Evm(program_abi) => {
                 if !program_abi.is_empty() {
-                    let file = File::create(path)?;
-                    let res = if minify.json_abi {
-                        serde_json::to_writer(&file, &program_abi)
+                    let json_string = if minify_json_abi {
+                        serde_json::to_string(&program_abi)
                     } else {
-                        serde_json::to_writer_pretty(&file, &program_abi)
-                    };
-                    res?
+                        serde_json::to_string_pretty(&program_abi)
+                    }?;
+                    Ok(Some(json_string))
+                } else {
+                    Ok(None)
                 }
             }
             // TODO?
-            ProgramABI::MidenVM(_) => (),
+            ProgramABI::MidenVM(_) => Ok(None),
         }
+    }
 
+    /// Writes the ABI in JSON format to the given `path`.
+    pub fn write_json_abi(&self, path: &Path, minify: MinifyOpts) -> Result<()> {
+        if let Some(json_abi_string) = self.json_abi_string(minify.json_abi)? {
+            let mut file = File::create(path)?;
+            file.write_all(json_abi_string.as_bytes())?;
+        }
         Ok(())
     }
 
@@ -1658,7 +1667,8 @@ pub fn dependency_namespace(
         }
     }
 
-    namespace.star_import_with_reexports(
+    let _ = namespace.star_import_with_reexports(
+        &Handler::default(),
         &[CORE, PRELUDE].map(|s| Ident::new_no_span(s.into())),
         &[],
         engines,
@@ -1666,7 +1676,8 @@ pub fn dependency_namespace(
     );
 
     if has_std_dep(graph, node) {
-        namespace.star_import_with_reexports(
+        let _ = namespace.star_import_with_reexports(
+            &Handler::default(),
             &[STD, PRELUDE].map(|s| Ident::new_no_span(s.into())),
             &[],
             engines,
@@ -1761,17 +1772,27 @@ pub fn compile(
         sway_build_config(pkg.manifest_file.dir(), &entry_path, pkg.target, profile)?;
     let terse_mode = profile.terse;
     let reverse_results = profile.reverse_results;
-    let fail = |warnings, errors| {
-        print_on_failure(engines.se(), terse_mode, warnings, errors, reverse_results);
+    let fail = |handler: Handler| {
+        let (errors, warnings) = handler.consume();
+        print_on_failure(
+            engines.se(),
+            terse_mode,
+            &warnings,
+            &errors,
+            reverse_results,
+        );
         bail!("Failed to compile {}", pkg.name);
     };
     let source = pkg.manifest_file.entry_string()?;
+
+    let handler = Handler::default();
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
         "compile_to_ast",
         sway_core::compile_to_ast(
+            &handler,
             engines,
             source,
             namespace,
@@ -1782,13 +1803,14 @@ pub fn compile(
         Some(sway_build_config.clone()),
         metrics
     );
-    let programs = match ast_res.value.as_ref() {
-        None => return fail(&ast_res.warnings, &ast_res.errors),
-        Some(programs) => programs,
+
+    let programs = match ast_res {
+        Err(_) => return fail(handler),
+        Ok(programs) => programs,
     };
     let typed_program = match programs.typed.as_ref() {
-        None => return fail(&ast_res.warnings, &ast_res.errors),
-        Some(typed_program) => typed_program,
+        Err(_) => return fail(handler),
+        Ok(typed_program) => typed_program,
     };
 
     if profile.print_ast {
@@ -1800,14 +1822,14 @@ pub fn compile(
 
     let namespace = typed_program.root.namespace.clone().into();
 
-    if !ast_res.errors.is_empty() {
-        return fail(&ast_res.warnings, &ast_res.errors);
+    if handler.has_errors() {
+        return fail(handler);
     }
 
     let asm_res = time_expr!(
         "compile ast to asm",
         "compile_ast_to_asm",
-        sway_core::ast_to_asm(engines, &ast_res, &sway_build_config),
+        sway_core::ast_to_asm(&handler, engines, &programs, &sway_build_config),
         Some(sway_build_config.clone()),
         metrics
     );
@@ -1834,8 +1856,8 @@ pub fn compile(
         BuildTarget::EVM => {
             // Merge the ABI output of ASM gen with ABI gen to handle internal constructors
             // generated by the ASM backend.
-            let mut ops = match &asm_res.value {
-                Some(ref asm) => match &asm.0.abi {
+            let mut ops = match &asm_res {
+                Ok(ref asm) => match &asm.0.abi {
                     Some(ProgramABI::Evm(ops)) => ops.clone(),
                     _ => vec![],
                 },
@@ -1850,7 +1872,7 @@ pub fn compile(
                 metrics
             );
 
-            ops.extend(abi.into_iter());
+            ops.extend(abi);
 
             ProgramABI::Evm(ops)
         }
@@ -1859,7 +1881,6 @@ pub fn compile(
     };
 
     let entries = asm_res
-        .value
         .as_ref()
         .map(|asm| asm.0.entries.clone())
         .unwrap_or_default();
@@ -1867,29 +1888,30 @@ pub fn compile(
         .iter()
         .map(|finalized_entry| PkgEntry::from_finalized_entry(finalized_entry, engines))
         .collect::<anyhow::Result<_>>()?;
+
+    let asm = match asm_res {
+        Err(_) => return fail(handler),
+        Ok(asm) => asm,
+    };
+
     let bc_res = time_expr!(
         "compile asm to bytecode",
         "compile_asm_to_bytecode",
-        sway_core::asm_to_bytecode(asm_res, source_map, engines.se()),
+        sway_core::asm_to_bytecode(&handler, asm, source_map, engines.se()),
         Some(sway_build_config),
         metrics
     );
 
-    let errored =
-        !bc_res.errors.is_empty() || (!bc_res.warnings.is_empty() && profile.error_on_warnings);
+    let errored = handler.has_errors() || (handler.has_warnings() && profile.error_on_warnings);
 
-    let compiled = match bc_res.value {
-        Some(compiled) if !errored => compiled,
-        _ => return fail(&bc_res.warnings, &bc_res.errors),
+    let compiled = match bc_res {
+        Ok(compiled) if !errored => compiled,
+        _ => return fail(handler),
     };
 
-    print_warnings(
-        engines.se(),
-        terse_mode,
-        &pkg.name,
-        &bc_res.warnings,
-        &tree_type,
-    );
+    let (_, warnings) = handler.consume();
+
+    print_warnings(engines.se(), terse_mode, &pkg.name, &warnings, &tree_type);
 
     // TODO: This should probably be in `fuel_abi_json::generate_json_abi_program`?
     // If ABI requires knowing config offsets, they should be inputs to ABI gen.
@@ -1918,7 +1940,7 @@ pub fn compile(
         tree_type,
         bytecode,
         namespace,
-        warnings: bc_res.warnings,
+        warnings,
         metrics,
     };
     Ok(compiled_package)
@@ -2582,7 +2604,7 @@ pub fn check(
     terse_mode: bool,
     include_tests: bool,
     engines: &Engines,
-) -> anyhow::Result<Vec<CompileResult<Programs>>> {
+) -> anyhow::Result<Vec<(Option<Programs>, Handler)>> {
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     // During `check`, we don't compile so this stays empty.
@@ -2629,25 +2651,28 @@ pub fn check(
         .include_tests(include_tests);
 
         let mut metrics = PerformanceData::default();
+        let input = manifest.entry_string()?;
+        let handler = Handler::default();
         let programs_res = sway_core::compile_to_ast(
+            &handler,
             engines,
-            manifest.entry_string()?,
+            input,
             dep_namespace,
             Some(&build_config),
             &pkg.name,
             &mut metrics,
         );
 
-        let programs = match programs_res.value.as_ref() {
-            Some(programs) => programs,
+        let programs = match programs_res.as_ref() {
+            Ok(programs) => programs,
             _ => {
-                results.push(programs_res);
+                results.push((programs_res.ok(), handler));
                 return Ok(results);
             }
         };
 
         match programs.typed.as_ref() {
-            Some(typed_program) => {
+            Ok(typed_program) => {
                 if let TreeType::Library = typed_program.kind.tree_type() {
                     let mut namespace = typed_program.root.namespace.clone();
                     namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
@@ -2665,13 +2690,13 @@ pub fn check(
 
                 source_map.insert_dependency(manifest.dir());
             }
-            None => {
-                results.push(programs_res);
+            Err(_) => {
+                results.push((programs_res.ok(), handler));
                 return Ok(results);
             }
         }
 
-        results.push(programs_res)
+        results.push((programs_res.ok(), handler))
     }
 
     if results.is_empty() {

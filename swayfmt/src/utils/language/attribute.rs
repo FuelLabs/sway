@@ -6,11 +6,12 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{
-    attribute::{Annotated, Attribute, AttributeArg, AttributeDecl, AttributeHashKind},
-    token::{Delimiter, PunctKind},
+use sway_ast::attribute::{Annotated, Attribute, AttributeArg, AttributeDecl, AttributeHashKind};
+use sway_types::{
+    ast::{Delimiter, PunctKind},
+    constants::DOC_COMMENT_ATTRIBUTE_NAME,
+    Spanned,
 };
-use sway_types::{constants::DOC_COMMENT_ATTRIBUTE_NAME, Spanned};
 
 impl<T: Format + Spanned> Format for Annotated<T> {
     fn format(
@@ -22,11 +23,7 @@ impl<T: Format + Spanned> Format for Annotated<T> {
         for attr in &self.attribute_list {
             attr.format(formatted_code, formatter)?;
 
-            write!(
-                formatted_code,
-                "{}",
-                &formatter.shape.indent.to_string(&formatter.config)?,
-            )?;
+            write!(formatted_code, "{}", &formatter.indent_str()?,)?;
         }
         // format `ItemKind`
         self.value.format(formatted_code, formatter)?;

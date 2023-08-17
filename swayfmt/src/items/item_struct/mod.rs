@@ -11,8 +11,8 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{token::Delimiter, ItemStruct};
-use sway_types::Spanned;
+use sway_ast::ItemStruct;
+use sway_types::{ast::Delimiter, Spanned};
 
 #[cfg(test)]
 mod tests;
@@ -79,11 +79,7 @@ impl Format for ItemStruct {
 
                         let value_pairs_iter = value_pairs.iter().enumerate();
                         for (var_index, (type_field, comma_token)) in value_pairs_iter.clone() {
-                            write!(
-                                formatted_code,
-                                "{}",
-                                &formatter.shape.indent.to_string(&formatter.config)?
-                            )?;
+                            write!(formatted_code, "{}", &formatter.indent_str()?)?;
 
                             // Add name
                             type_field.name.format(formatted_code, formatter)?;
@@ -141,7 +137,7 @@ impl CurlyBrace for ItemStruct {
         line: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        formatter.shape.block_indent(&formatter.config);
+        formatter.indent();
         let brace_style = formatter.config.items.item_brace_style;
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
@@ -162,11 +158,11 @@ impl CurlyBrace for ItemStruct {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         // If shape is becoming left-most alligned or - indent just have the defualt shape
-        formatter.shape.block_unindent(&formatter.config);
+        formatter.unindent();
         write!(
             line,
             "{}{}",
-            formatter.shape.indent.to_string(&formatter.config)?,
+            formatter.indent_str()?,
             Delimiter::Brace.as_close_char()
         )?;
 

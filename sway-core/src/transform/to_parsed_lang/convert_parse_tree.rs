@@ -1172,17 +1172,28 @@ fn braced_code_block_contents_to_code_block(
     let whole_block_span = braced_code_block_contents.span();
     let code_block_contents = braced_code_block_contents.into_inner();
     let contents = {
+        let mut error = None;
+
         let mut contents = Vec::new();
         for statement in code_block_contents.statements {
-            let ast_nodes = statement_to_ast_nodes(context, handler, engines, statement)?;
-            contents.extend(ast_nodes);
+            match statement_to_ast_nodes(context, handler, engines, statement) {
+                Ok(mut ast_nodes) => contents.append(&mut ast_nodes),
+                Err(e) => error = Some(e),
+            }
         }
+
         if let Some(expr) = code_block_contents.final_expr_opt {
             let final_ast_node = expr_to_ast_node(context, handler, engines, *expr, false)?;
             contents.push(final_ast_node);
         }
-        contents
+
+        if let Some(error) = error {
+            return Err(error);
+        } else {
+            contents
+        }
     };
+
     Ok(CodeBlock {
         contents,
         whole_block_span,
@@ -1257,6 +1268,7 @@ pub(crate) fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
         "u16" => Some(TypeInfo::UnsignedInteger(IntegerBits::Sixteen)),
         "u32" => Some(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
         "u64" => Some(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+        "u256" => Some(TypeInfo::UnsignedInteger(IntegerBits::V256)),
         "bool" => Some(TypeInfo::Boolean),
         "unit" => Some(TypeInfo::Tuple(Vec::new())),
         "b256" => Some(TypeInfo::B256),
@@ -1598,7 +1610,7 @@ fn method_call_fields_to_method_application_expression(
             .collect::<Result<_, _>>()?,
     };
     let arguments = iter::once(*target)
-        .chain(args.into_inner().into_iter())
+        .chain(args.into_inner())
         .map(|expr| expr_to_expression(context, handler, engines, expr))
         .collect::<Result<_, _>>()?;
     Ok(Box::new(MethodApplicationExpression {
@@ -1625,10 +1637,10 @@ fn expr_func_app_to_expression_kind(
         ..
     } = match *func {
         Expr::Path(path_expr) => path_expr,
-        Expr::Error(_) => {
+        Expr::Error(_, err) => {
             // FIXME we can do better here and return function application expression here
             // if there are no parsing errors in the arguments
-            return Ok(ExpressionKind::Error(Box::new([span])));
+            return Ok(ExpressionKind::Error(Box::new([span]), err));
         }
         _ => {
             let error = ConvertParseTreeError::FunctionArbitraryExpression { span: func.span() };
@@ -1767,8 +1779,8 @@ fn expr_to_expression(
 ) -> Result<Expression, ErrorEmitted> {
     let span = expr.span();
     let expression = match expr {
-        Expr::Error(part_spans) => Expression {
-            kind: ExpressionKind::Error(part_spans),
+        Expr::Error(part_spans, err) => Expression {
+            kind: ExpressionKind::Error(part_spans, err),
             span,
         },
         Expr::Path(path_expr) => path_expr_to_expression(context, handler, engines, path_expr)?,
@@ -2360,19 +2372,26 @@ fn statement_to_ast_nodes(
         }
         Statement::Item(item) => {
             let nodes = item_to_ast_nodes(context, handler, engines, item, false, None)?;
-            nodes.iter().fold(Ok(()), |res, node| {
+            nodes.iter().try_fold((), |res, node| {
                 if ast_node_is_test_fn(node) {
                     let span = node.span.clone();
                     let error = ConvertParseTreeError::TestFnOnlyAllowedAtModuleLevel { span };
                     Err(handler.emit_err(error.into()))
                 } else {
-                    res
+                    Ok(res)
                 }
             })?;
             nodes
         }
         Statement::Expr { expr, .. } => {
             vec![expr_to_ast_node(context, handler, engines, expr, true)?]
+        }
+        Statement::Error(spans, error) => {
+            let span = Span::join_all(spans.iter().cloned());
+            vec![AstNode {
+                content: AstNodeContent::Error(spans, error),
+                span,
+            }]
         }
     };
     Ok(ast_nodes)
@@ -2887,6 +2906,7 @@ fn literal_to_literal(
                         };
                         Literal::U64(value)
                     }
+                    LitIntType::U256 => Literal::U256(parsed.into()),
                     LitIntType::I8 | LitIntType::I16 | LitIntType::I32 | LitIntType::I64 => {
                         let error = ConvertParseTreeError::SignedIntegersNotSupported { span };
                         return Err(handler.emit_err(error.into()));
@@ -3627,7 +3647,7 @@ fn pattern_to_scrutinee(
             },
             span,
         },
-        Pattern::Error(spans) => Scrutinee::Error { spans },
+        Pattern::Error(spans, err) => Scrutinee::Error { spans, err },
     };
     Ok(scrutinee)
 }
@@ -4128,7 +4148,7 @@ fn error_if_self_param_is_not_allowed(
 /// Walks all the cfg attributes in a map, evaluating them
 /// and returning false if any evaluated to false.
 pub fn cfg_eval(
-    context: &mut Context,
+    context: &Context,
     handler: &Handler,
     attrs_map: &AttributesMap,
 ) -> Result<bool, ErrorEmitted> {

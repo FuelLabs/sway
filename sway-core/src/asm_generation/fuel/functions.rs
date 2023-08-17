@@ -10,7 +10,6 @@ use crate::{
         VirtualOp,
     },
     decl_engine::DeclRef,
-    error::*,
     fuel_prelude::fuel_asm::GTFArgs,
     size_bytes_in_words, size_bytes_round_up_to_word_alignment,
 };
@@ -18,7 +17,10 @@ use crate::{
 use sway_ir::*;
 
 use either::Either;
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::Ident;
 
 use super::data_section::DataId;
@@ -140,7 +142,11 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         Ok(())
     }
 
-    pub fn compile_function(&mut self, function: Function) -> CompileResult<()> {
+    pub fn compile_function(
+        &mut self,
+        handler: &Handler,
+        function: Function,
+    ) -> Result<(), ErrorEmitted> {
         assert!(
             self.cur_bytecode.is_empty(),
             "can't do nested functions yet"
@@ -194,14 +200,11 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             });
         }
 
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
-
         let locals_alloc_result = self.alloc_locals(function);
 
         if func_is_entry {
-            let result = Into::<CompileResult<()>>::into(self.compile_external_args(function));
-            check!(result, return err(warnings, errors), warnings, errors);
+            self.compile_external_args(function)
+                .map_err(|e| handler.emit_err(e))?
         } else {
             // Make copies of the arg registers.
             self.compile_fn_call_args(function)
@@ -236,15 +239,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         for block in po.po_to_block.iter().rev() {
             let label = self.block_to_label(block);
             self.cur_bytecode.push(Op::unowned_jump_label(label));
-
-            for instr_val in block.instruction_iter(self.context) {
-                check!(
-                    self.compile_instruction(&instr_val, func_is_entry),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-            }
+            self.compile_block(handler, block, func_is_entry)?;
         }
 
         if !func_is_entry {
@@ -291,7 +286,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             self.non_entries.push(ops);
         }
 
-        ok((), warnings, errors)
+        Ok(())
     }
 
     fn compile_fn_call_args(&mut self, function: Function) {
@@ -645,6 +640,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
                     let ptr_ty = ptr.get_inner_type(self.context);
                     let var_size = match ptr_ty.get_content(self.context) {
+                        TypeContent::Uint(256) => 4,
                         TypeContent::Unit
                         | TypeContent::Bool
                         | TypeContent::Uint(_)

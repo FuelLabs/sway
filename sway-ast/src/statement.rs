@@ -1,3 +1,5 @@
+use sway_error::handler::ErrorEmitted;
+
 use crate::priv_prelude::*;
 
 #[allow(clippy::large_enum_variant)]
@@ -9,6 +11,8 @@ pub enum Statement {
         expr: Expr,
         semicolon_token_opt: Option<SemicolonToken>,
     },
+    // to handle parser recovery: Error represents an unknown statement
+    Error(Box<[Span]>, #[serde(skip_serializing)] ErrorEmitted),
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -33,6 +37,7 @@ impl Spanned for Statement {
                 None => expr.span(),
                 Some(semicolon_token) => Span::join(expr.span(), semicolon_token.span()),
             },
+            Statement::Error(spans, _) => Span::join_all(spans.iter().cloned()),
         }
     }
 }

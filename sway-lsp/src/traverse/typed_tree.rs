@@ -67,6 +67,7 @@ impl Parse for ty::TyAstNode {
             ty::TyAstNodeContent::Expression(expression)
             | ty::TyAstNodeContent::ImplicitReturnExpression(expression) => expression.parse(ctx),
             ty::TyAstNodeContent::SideEffect(side_effect) => side_effect.parse(ctx),
+            ty::TyAstNodeContent::Error(_, _) => {}
         };
     }
 }
@@ -84,7 +85,7 @@ impl Parse for ty::TyDecl {
             ty::TyDecl::ImplTrait(decl) => decl.parse(ctx),
             ty::TyDecl::AbiDecl(decl) => decl.parse(ctx),
             ty::TyDecl::GenericTypeForFunctionScope(decl) => decl.parse(ctx),
-            ty::TyDecl::ErrorRecovery(_) => {}
+            ty::TyDecl::ErrorRecovery(_, _) => {}
             ty::TyDecl::StorageDecl(decl) => decl.parse(ctx),
             ty::TyDecl::TypeAliasDecl(decl) => decl.parse(ctx),
         }

@@ -51,6 +51,7 @@ fn literal_to_string(literal: &Literal) -> String {
         Literal::U16(_) => "u16".into(),
         Literal::U32(_) => "u32".into(),
         Literal::U64(_) => "u64".into(),
+        Literal::U256(_) => "u256".into(),
         Literal::Numeric(_) => "u64".into(),
         Literal::String(len) => format!("str[{}]", len.as_str().len()),
         Literal::Boolean(_) => "bool".into(),
@@ -104,6 +105,7 @@ pub(crate) fn print_decl_engine_types(
                 format!("{expression:#?}")
             }
             ty::TyAstNodeContent::SideEffect(side_effect) => format!("{side_effect:#?}"),
+            ty::TyAstNodeContent::Error(_, _) => "error".to_string(),
         })
         .map(|s| format!("{s}\n"))
         .collect()

@@ -34,7 +34,7 @@ impl Wallet for Contract {
     fn send(amount: u64, recipient: Identity) {
         assert(msg_sender().unwrap() == Identity::Address(OWNER));
         storage.balance.write(storage.balance.read() - amount);
-        transfer(amount, BASE_ASSET_ID, recipient);
+        transfer(recipient, BASE_ASSET_ID, amount);
     }
 }
 // ANCHOR: implementation

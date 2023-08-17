@@ -13,10 +13,9 @@ use sway_ast::{
     brackets::Parens,
     keywords::{CommaToken, DotToken},
     punctuated::Punctuated,
-    token::Delimiter,
     Braces, CodeBlockContents, Expr, ExprStructField, MatchBranch, PathExpr, PathExprSegment,
 };
-use sway_types::Spanned;
+use sway_types::{ast::Delimiter, Spanned};
 
 pub(crate) mod abi_cast;
 pub(crate) mod asm_block;
@@ -36,7 +35,7 @@ impl Format for Expr {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         match self {
-            Self::Error(_) => {}
+            Self::Error(_, _) => {}
             Self::Path(path) => path.format(formatted_code, formatter)?,
             Self::Literal(lit) => lit.format(formatted_code, formatter)?,
             Self::AbiCast { abi_token, args } => {
@@ -166,11 +165,7 @@ impl Format for Expr {
                     MatchBranch::open_curly_brace(formatted_code, formatter)?;
                     let branches = branches.get();
                     for match_branch in branches.iter() {
-                        write!(
-                            formatted_code,
-                            "{}",
-                            formatter.shape.indent.to_string(&formatter.config)?
-                        )?;
+                        write!(formatted_code, "{}", formatter.indent_str()?)?;
                         match_branch.format(formatted_code, formatter)?;
                         writeln!(formatted_code)?;
                     }
@@ -196,11 +191,7 @@ impl Format for Expr {
                     |formatter| -> Result<(), FormatterError> {
                         // don't indent unless on new line
                         if formatted_code.ends_with('\n') {
-                            write!(
-                                formatted_code,
-                                "{}",
-                                formatter.shape.indent.to_string(&formatter.config)?
-                            )?;
+                            write!(formatted_code, "{}", formatter.indent_str()?)?;
                         }
                         func.format(formatted_code, formatter)?;
                         Self::open_parenthesis(formatted_code, formatter)?;
@@ -393,7 +384,7 @@ impl Format for Expr {
                         write!(
                             formatted_code,
                             "\n{}{} ",
-                            formatter.shape.indent.to_string(&formatter.config)?,
+                            formatter.indent_str()?,
                             ampersand_token.span().as_str()
                         )?;
                     }
@@ -414,7 +405,7 @@ impl Format for Expr {
                         write!(
                             formatted_code,
                             "\n{}{} ",
-                            formatter.shape.indent.to_string(&formatter.config)?,
+                            formatter.indent_str()?,
                             caret_token.span().as_str()
                         )?;
                     }
@@ -435,7 +426,7 @@ impl Format for Expr {
                         write!(
                             formatted_code,
                             "\n{}{} ",
-                            formatter.shape.indent.to_string(&formatter.config)?,
+                            formatter.indent_str()?,
                             pipe_token.span().as_str()
                         )?;
                     }
@@ -514,7 +505,7 @@ impl Format for Expr {
                         write!(
                             formatted_code,
                             "\n{}{} ",
-                            formatter.shape.indent.to_string(&formatter.config)?,
+                            formatter.indent_str()?,
                             double_ampersand_token.span().as_str()
                         )?;
                     }
@@ -539,7 +530,7 @@ impl Format for Expr {
                         write!(
                             formatted_code,
                             "\n{}{} ",
-                            formatter.shape.indent.to_string(&formatter.config)?,
+                            formatter.indent_str()?,
                             double_pipe_token.span().as_str()
                         )?;
                     }
@@ -609,7 +600,7 @@ pub(super) fn debug_expr(
     field_width: Option<usize>,
     body_width: Option<usize>,
     expr_width: usize,
-    formatter: &mut Formatter,
+    formatter: &Formatter,
 ) {
     println!(
         "DEBUG:\nline: {buf}\nfield: {:?}, body: {:?}, expr: {expr_width}, Shape::width: {}",
@@ -649,11 +640,7 @@ fn format_method_call(
 ) -> Result<(), FormatterError> {
     // don't indent unless on new line
     if formatted_code.ends_with('\n') {
-        write!(
-            formatted_code,
-            "{}",
-            formatter.shape.indent.to_string(&formatter.config)?
-        )?;
+        write!(formatted_code, "{}", formatter.indent_str()?)?;
     }
     target.format(formatted_code, formatter)?;
     write!(formatted_code, "{}", dot_token.span().as_str())?;
@@ -742,7 +729,7 @@ impl LeafSpans for Expr {
 /// Collects various expr field's ByteSpans.
 fn expr_leaf_spans(expr: &Expr) -> Vec<ByteSpan> {
     match expr {
-        Expr::Error(_) => vec![expr.span().into()],
+        Expr::Error(_, _) => vec![expr.span().into()],
         Expr::Path(path) => path.leaf_spans(),
         Expr::Literal(literal) => literal.leaf_spans(),
         Expr::AbiCast { abi_token, args } => {

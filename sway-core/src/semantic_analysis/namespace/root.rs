@@ -1,11 +1,13 @@
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::Spanned;
 use sway_utils::iter_prefixes;
 
 use crate::{
-    error::*,
     language::{ty, CallPath},
-    CompileResult, Engines, Ident,
+    Engines, Ident,
 };
 
 use super::{module::Module, namespace::Namespace, Path};
@@ -30,15 +32,16 @@ impl Root {
     /// then calling `resolve_symbol` with the resulting path and call_path's suffix.
     pub(crate) fn resolve_call_path(
         &self,
+        handler: &Handler,
         mod_path: &Path,
         call_path: &CallPath,
-    ) -> CompileResult<&ty::TyDecl> {
+    ) -> Result<&ty::TyDecl, ErrorEmitted> {
         let symbol_path: Vec<_> = mod_path
             .iter()
             .chain(&call_path.prefixes)
             .cloned()
             .collect();
-        self.resolve_symbol(&symbol_path, &call_path.suffix)
+        self.resolve_symbol(handler, &symbol_path, &call_path.suffix)
     }
 
     /// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
@@ -51,37 +54,25 @@ impl Root {
     /// and the symbol's own visibility
     pub(crate) fn resolve_call_path_with_visibility_check(
         &self,
+        handler: &Handler,
         engines: &Engines,
         mod_path: &Path,
         call_path: &CallPath,
-    ) -> CompileResult<&ty::TyDecl> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
-        let decl = check!(
-            self.resolve_call_path(mod_path, call_path),
-            return err(warnings, errors),
-            warnings,
-            errors,
-        );
+    ) -> Result<&ty::TyDecl, ErrorEmitted> {
+        let decl = self.resolve_call_path(handler, mod_path, call_path)?;
 
         // In case there are no prefixes we don't need to check visibility
         if call_path.prefixes.is_empty() {
-            return ok(decl, warnings, errors);
+            return Ok(decl);
         }
 
         // check the visibility of the call path elements
         // we don't check the first prefix because direct children are always accessible
         for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
-            let module = check!(
-                self.check_submodule(prefix),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
+            let module = self.check_submodule(handler, prefix)?;
             if module.visibility.is_private() {
                 let prefix_last = prefix[prefix.len() - 1].clone();
-                errors.push(CompileError::ImportPrivateModule {
+                handler.emit_err(CompileError::ImportPrivateModule {
                     span: prefix_last.span(),
                     name: prefix_last,
                 });
@@ -90,13 +81,13 @@ impl Root {
 
         // check the visibility of the symbol itself
         if !decl.visibility(engines.de()).is_public() {
-            errors.push(CompileError::ImportPrivateSymbol {
+            handler.emit_err(CompileError::ImportPrivateSymbol {
                 name: call_path.suffix.clone(),
                 span: call_path.suffix.span(),
             });
         }
 
-        ok(decl, warnings, errors)
+        Ok(decl)
     }
 
     /// Given a path to a module and the identifier of a symbol within that module, resolve its
@@ -106,23 +97,24 @@ impl Root {
     /// imports until we find the original declaration.
     pub(crate) fn resolve_symbol(
         &self,
+        handler: &Handler,
         mod_path: &Path,
         symbol: &Ident,
-    ) -> CompileResult<&ty::TyDecl> {
-        self.check_submodule(mod_path).flat_map(|module| {
+    ) -> Result<&ty::TyDecl, ErrorEmitted> {
+        self.check_submodule(handler, mod_path).and_then(|module| {
             let true_symbol = self[mod_path]
                 .use_aliases
                 .get(symbol.as_str())
                 .unwrap_or(symbol);
             match module.use_synonyms.get(symbol) {
-                Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. }, _)) => {
-                    ok(decl, vec![], vec![])
-                }
+                Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. }, _)) => Ok(decl),
                 Some((src_path, _, _, _)) if mod_path != src_path => {
                     // TODO: check that the symbol import is public?
-                    self.resolve_symbol(src_path, true_symbol)
+                    self.resolve_symbol(handler, src_path, true_symbol)
                 }
-                _ => CompileResult::from(module.check_symbol(true_symbol)),
+                _ => module
+                    .check_symbol(true_symbol)
+                    .map_err(|e| handler.emit_err(e)),
             }
         })
     }

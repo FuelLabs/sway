@@ -73,7 +73,8 @@ pub mod tests {
                 {body}
             }}
 
-            !0 = \"a.sw\""
+            !0 = \"a.sw\"
+            "
             ),
             &source_engine,
         )
@@ -87,7 +88,15 @@ pub mod tests {
             group.append_pass(pass);
         }
 
+        let before = context.to_string();
         let modified = pass_manager.run(&mut context, &group).unwrap();
+        let after = context.to_string();
+
+        // print diff to help debug
+        if std::env::args().any(|x| x == "--nocapture") {
+            println!("{}", prettydiff::diff_lines(&before, &after));
+        }
+
         assert_eq!(expected.is_some(), modified);
 
         let Some(expected) = expected else {
@@ -98,7 +107,7 @@ pub mod tests {
             .to_string()
             .lines()
             .filter_map(|x| {
-                if x.contains(", !0") {
+                if x.contains(", !") {
                     Some(format!("{}\n", x.trim()))
                 } else {
                     None

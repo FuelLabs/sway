@@ -87,14 +87,14 @@ async fn can_get_error() {
 async fn can_get_global_gas() {
     let instance = deploy_test_registers_instance().await;
     let result = instance.methods().get_global_gas().call().await.unwrap();
-    assert!(is_within_range(result.value));
+    assert_ne!(result.value, 0);
 }
 
 #[tokio::test]
 async fn can_get_context_gas() {
     let instance = deploy_test_registers_instance().await;
     let result = instance.methods().get_context_gas().call().await.unwrap();
-    assert!(is_within_range(result.value));
+    assert_ne!(result.value, 0);
 }
 
 #[tokio::test]

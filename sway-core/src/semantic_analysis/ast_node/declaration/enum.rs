@@ -1,15 +1,17 @@
+use sway_error::handler::{ErrorEmitted, Handler};
+
 use crate::{
-    error::*,
     language::{parsed::*, ty, CallPath},
     semantic_analysis::*,
     type_system::*,
 };
 
 impl ty::TyEnumDecl {
-    pub fn type_check(ctx: TypeCheckContext, decl: EnumDeclaration) -> CompileResult<Self> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
-
+    pub fn type_check(
+        handler: &Handler,
+        ctx: TypeCheckContext,
+        decl: EnumDeclaration,
+    ) -> Result<Self, ErrorEmitted> {
         let EnumDeclaration {
             name,
             type_parameters,
@@ -24,24 +26,24 @@ impl ty::TyEnumDecl {
         let mut decl_namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut decl_namespace);
 
-        // Type check the type parameters. This will also insert them into the
-        // current namespace.
-        let new_type_parameters = check!(
-            TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        // Type check the type parameters.
+        let new_type_parameters =
+            TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters)?;
+
+        // Insert them into the current namespace.
+        for p in &new_type_parameters {
+            p.insert_into_namespace(handler, ctx.by_ref())?;
+        }
 
         // type check the variants
         let mut variants_buf = vec![];
         for variant in variants {
-            variants_buf.push(check!(
-                ty::TyEnumVariant::type_check(ctx.by_ref(), variant.clone()),
-                continue,
-                warnings,
-                errors
-            ));
+            variants_buf.push(
+                match ty::TyEnumVariant::type_check(handler, ctx.by_ref(), variant.clone()) {
+                    Ok(res) => res,
+                    Err(_) => continue,
+                },
+            );
         }
 
         let mut call_path: CallPath = name.into();
@@ -56,41 +58,34 @@ impl ty::TyEnumDecl {
             attributes,
             visibility,
         };
-        ok(decl, warnings, errors)
+        Ok(decl)
     }
 }
 
 impl ty::TyEnumVariant {
     pub(crate) fn type_check(
+        handler: &Handler,
         mut ctx: TypeCheckContext,
         variant: EnumVariant,
-    ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
         let mut type_argument = variant.type_argument;
-        type_argument.type_id = check!(
-            ctx.resolve_type_with_self(
+        type_argument.type_id = ctx
+            .resolve_type_with_self(
+                handler,
                 type_argument.type_id,
                 &type_argument.span,
                 EnforceTypeArguments::Yes,
-                None
-            ),
-            type_engine.insert(engines, TypeInfo::ErrorRecovery),
-            warnings,
-            errors,
-        );
-        ok(
-            ty::TyEnumVariant {
-                name: variant.name.clone(),
-                type_argument,
-                tag: variant.tag,
-                span: variant.span,
-                attributes: variant.attributes,
-            },
-            vec![],
-            errors,
-        )
+                None,
+            )
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+        Ok(ty::TyEnumVariant {
+            name: variant.name.clone(),
+            type_argument,
+            tag: variant.tag,
+            span: variant.span,
+            attributes: variant.attributes,
+        })
     }
 }

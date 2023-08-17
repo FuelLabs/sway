@@ -8,7 +8,7 @@ impl CallFramesTest for Contract {
         contract_id()
     }
 
-    fn get_asset_id() -> ContractId {
+    fn get_asset_id() -> b256 {
         msg_asset_id()
     }
 

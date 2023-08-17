@@ -102,7 +102,7 @@ impl AsRawSlice for String {
 }
 
 impl From<raw_slice> for String {
-    fn from(slice: raw_slice) -> String {
+    fn from(slice: raw_slice) -> Self {
         Self {
             bytes: Bytes::from(slice),
         }

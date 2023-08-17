@@ -40,7 +40,7 @@ impl u64 {
         }
     }
 
-    pub fn from_le_bytes(bytes: [u8; 8]) -> u64 {
+    pub fn from_le_bytes(bytes: [u8; 8]) -> Self {
         let a = bytes[0];
         let b = bytes[1];
         let c = bytes[2];
@@ -109,7 +109,7 @@ impl u64 {
         }
     }
 
-    pub fn from_be_bytes(bytes: [u8; 8]) -> u64 {
+    pub fn from_be_bytes(bytes: [u8; 8]) -> Self {
         let a = bytes[0];
         let b = bytes[1];
         let c = bytes[2];
@@ -170,7 +170,7 @@ impl u32 {
         }
     }
 
-    pub fn from_le_bytes(bytes: [u8; 4]) -> u32 {
+    pub fn from_le_bytes(bytes: [u8; 4]) -> Self {
         asm(a: bytes[0], b: bytes[1], c: bytes[2], d: bytes[3], i: 0x8, j: 0x10, k: 0x18, r1, r2, r3) {
             sll  r1 c j;
             sll  r2 d k;
@@ -205,7 +205,7 @@ impl u32 {
         }
     }
 
-    pub fn from_be_bytes(bytes: [u8; 4]) -> u32 {
+    pub fn from_be_bytes(bytes: [u8; 4]) -> Self {
         asm(a: bytes[0], b: bytes[1], c: bytes[2], d: bytes[3], i: 0x8, j: 0x10, k: 0x18, r1, r2, r3) {
             sll  r1 a k;
             sll  r2 b j;
@@ -246,7 +246,7 @@ impl u16 {
         }
     }
 
-    pub fn from_le_bytes(bytes: [u8; 2]) -> u16 {
+    pub fn from_le_bytes(bytes: [u8; 2]) -> Self {
         asm(a: bytes[0], b: bytes[1], i: 0x8, r1) {
             sll  r1 b i;
             or   r1 a r1;
@@ -268,7 +268,7 @@ impl u16 {
         }
     }
 
-    pub fn from_be_bytes(bytes: [u8; 2]) -> u16 {
+    pub fn from_be_bytes(bytes: [u8; 2]) -> Self {
         asm(a: bytes[0], b: bytes[1], i: 0x8, r1) {
             sll  r1 a i;
             or   r1 r1 b;
@@ -315,7 +315,7 @@ impl b256 {
         output
     }
 
-    pub fn from_le_bytes(bytes: [u8; 32]) -> b256 {
+    pub fn from_le_bytes(bytes: [u8; 32]) -> Self {
         let a = u64::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7]]);
         let b = u64::from_le_bytes([bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]]);
         let c = u64::from_le_bytes([bytes[16], bytes[17], bytes[18], bytes[19], bytes[20], bytes[21], bytes[22], bytes[23]]);
@@ -343,7 +343,7 @@ impl b256 {
         output
     }
 
-    pub fn from_be_bytes(bytes: [u8; 32]) -> b256 {
+    pub fn from_be_bytes(bytes: [u8; 32]) -> Self {
         let a = u64::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7]]);
         let b = u64::from_be_bytes([bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]]);
         let c = u64::from_be_bytes([bytes[16], bytes[17], bytes[18], bytes[19], bytes[20], bytes[21], bytes[22], bytes[23]]);

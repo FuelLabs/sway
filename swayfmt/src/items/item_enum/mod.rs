@@ -11,11 +11,11 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{
-    token::{Delimiter, PunctKind},
-    ItemEnum,
+use sway_ast::ItemEnum;
+use sway_types::{
+    ast::{Delimiter, PunctKind},
+    Spanned,
 };
-use sway_types::Spanned;
 
 #[cfg(test)]
 mod tests;
@@ -77,11 +77,7 @@ impl Format for ItemEnum {
 
                         let value_pairs_iter = value_pairs.iter().enumerate();
                         for (var_index, (type_field, comma_token)) in value_pairs_iter.clone() {
-                            write!(
-                                formatted_code,
-                                "{}",
-                                &formatter.shape.indent.to_string(&formatter.config)?
-                            )?;
+                            write!(formatted_code, "{}", &formatter.indent_str()?)?;
 
                             // Add name
                             type_field.name.format(formatted_code, formatter)?;
@@ -147,14 +143,14 @@ impl CurlyBrace for ItemEnum {
         let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
-                // Add openning brace to the next line.
+                // Add opening brace to the next line.
                 writeln!(line, "\n{open_brace}")?;
-                formatter.shape.block_indent(&formatter.config);
+                formatter.indent();
             }
             _ => {
                 // Add opening brace to the same line
                 write!(line, " {open_brace}")?;
-                formatter.shape.block_indent(&formatter.config);
+                formatter.indent();
             }
         }
 
@@ -165,11 +161,11 @@ impl CurlyBrace for ItemEnum {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         // If shape is becoming left-most aligned or - indent just have the defualt shape
-        formatter.shape.block_unindent(&formatter.config);
+        formatter.unindent();
         write!(
             line,
             "{}{}",
-            formatter.shape.indent.to_string(&formatter.config)?,
+            formatter.indent_str()?,
             Delimiter::Brace.as_close_char()
         )?;
 

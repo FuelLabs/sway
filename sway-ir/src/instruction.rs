@@ -155,6 +155,29 @@ pub enum FuelVmInstruction {
         stored_val: Value,
         key: Value,
     },
+    WideUnaryOp {
+        op: UnaryOpKind,
+        result: Value,
+        arg: Value,
+    },
+    WideBinaryOp {
+        op: BinaryOpKind,
+        result: Value,
+        arg1: Value,
+        arg2: Value,
+    },
+    WideModularOp {
+        op: BinaryOpKind,
+        result: Value,
+        arg1: Value,
+        arg2: Value,
+        arg3: Value,
+    },
+    WideCmpOp {
+        op: Predicate,
+        arg1: Value,
+        arg2: Value,
+    },
 }
 
 /// Comparison operations.
@@ -282,6 +305,20 @@ impl Instruction {
             Instruction::MemCopyBytes { .. }
             | Instruction::MemCopyVal { .. }
             | Instruction::Store { .. } => Some(Type::get_unit(context)),
+
+            // Wide Operations
+            Instruction::FuelVm(FuelVmInstruction::WideUnaryOp { result, .. }) => {
+                result.get_type(context)
+            }
+            Instruction::FuelVm(FuelVmInstruction::WideBinaryOp { result, .. }) => {
+                result.get_type(context)
+            }
+            Instruction::FuelVm(FuelVmInstruction::WideCmpOp { .. }) => {
+                Some(Type::get_bool(context))
+            }
+            Instruction::FuelVm(FuelVmInstruction::WideModularOp { result, .. }) => {
+                result.get_type(context)
+            }
         }
     }
 
@@ -385,6 +422,18 @@ impl Instruction {
                     vec![*stored_val, *key, *number_of_slots]
                 }
                 FuelVmInstruction::StateStoreWord { stored_val, key } => vec![*stored_val, *key],
+                FuelVmInstruction::WideUnaryOp { arg, result, .. } => vec![*result, *arg],
+                FuelVmInstruction::WideBinaryOp {
+                    arg1, arg2, result, ..
+                } => vec![*result, *arg1, *arg2],
+                FuelVmInstruction::WideCmpOp { arg1, arg2, .. } => vec![*arg1, *arg2],
+                FuelVmInstruction::WideModularOp {
+                    result,
+                    arg1,
+                    arg2,
+                    arg3,
+                    ..
+                } => vec![*result, *arg1, *arg2, *arg3],
             },
         }
     }
@@ -531,6 +580,33 @@ impl Instruction {
                     replace(key);
                     replace(stored_val);
                 }
+                FuelVmInstruction::WideUnaryOp { arg, result, .. } => {
+                    replace(arg);
+                    replace(result);
+                }
+                FuelVmInstruction::WideBinaryOp {
+                    arg1, arg2, result, ..
+                } => {
+                    replace(arg1);
+                    replace(arg2);
+                    replace(result);
+                }
+                FuelVmInstruction::WideCmpOp { arg1, arg2, .. } => {
+                    replace(arg1);
+                    replace(arg2);
+                }
+                FuelVmInstruction::WideModularOp {
+                    result,
+                    arg1,
+                    arg2,
+                    arg3,
+                    ..
+                } => {
+                    replace(result);
+                    replace(arg1);
+                    replace(arg2);
+                    replace(arg3);
+                }
             },
         }
     }
@@ -550,7 +626,11 @@ impl Instruction {
             | Instruction::MemCopyBytes { .. }
             | Instruction::MemCopyVal { .. }
             | Instruction::Store { .. }
-            | Instruction::Ret(..) => true,
+            | Instruction::Ret(..)
+            | Instruction::FuelVm(FuelVmInstruction::WideUnaryOp { .. })
+            | Instruction::FuelVm(FuelVmInstruction::WideBinaryOp { .. })
+            | Instruction::FuelVm(FuelVmInstruction::WideCmpOp { .. })
+            | Instruction::FuelVm(FuelVmInstruction::WideModularOp { .. }) => true,
 
             Instruction::UnaryOp { .. }
             | Instruction::BinaryOp { .. }
@@ -685,6 +765,58 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
 
     pub fn unary_op(self, op: UnaryOpKind, arg: Value) -> Value {
         make_instruction!(self, Instruction::UnaryOp { op, arg })
+    }
+
+    pub fn wide_unary_op(self, op: UnaryOpKind, arg: Value, result: Value) -> Value {
+        make_instruction!(
+            self,
+            Instruction::FuelVm(FuelVmInstruction::WideUnaryOp { op, arg, result })
+        )
+    }
+
+    pub fn wide_binary_op(
+        self,
+        op: BinaryOpKind,
+        arg1: Value,
+        arg2: Value,
+        result: Value,
+    ) -> Value {
+        make_instruction!(
+            self,
+            Instruction::FuelVm(FuelVmInstruction::WideBinaryOp {
+                op,
+                arg1,
+                arg2,
+                result
+            })
+        )
+    }
+
+    pub fn wide_modular_op(
+        self,
+        op: BinaryOpKind,
+        result: Value,
+        arg1: Value,
+        arg2: Value,
+        arg3: Value,
+    ) -> Value {
+        make_instruction!(
+            self,
+            Instruction::FuelVm(FuelVmInstruction::WideModularOp {
+                op,
+                result,
+                arg1,
+                arg2,
+                arg3,
+            })
+        )
+    }
+
+    pub fn wide_cmp_op(self, op: Predicate, arg1: Value, arg2: Value) -> Value {
+        make_instruction!(
+            self,
+            Instruction::FuelVm(FuelVmInstruction::WideCmpOp { op, arg1, arg2 })
+        )
     }
 
     pub fn binary_op(self, op: BinaryOpKind, arg1: Value, arg2: Value) -> Value {

@@ -67,7 +67,7 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
             coins,
             asset_id,
             ..
-        } => vec![*params, *coins, *asset_id]
+        } => [*params, *coins, *asset_id]
             .iter()
             .flat_map(|val| get_symbols(context, *val).to_vec())
             .collect(),
@@ -119,6 +119,25 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
         Instruction::FuelVm(FuelVmInstruction::Gtf { .. })
         | Instruction::FuelVm(FuelVmInstruction::ReadRegister(_))
         | Instruction::FuelVm(FuelVmInstruction::Revert(_)) => vec![],
+        Instruction::FuelVm(FuelVmInstruction::WideUnaryOp { arg, .. }) => {
+            get_symbols(context, *arg).to_vec()
+        }
+        Instruction::FuelVm(FuelVmInstruction::WideBinaryOp { arg1, arg2, .. })
+        | Instruction::FuelVm(FuelVmInstruction::WideCmpOp { arg1, arg2, .. }) => {
+            get_symbols(context, *arg1)
+                .iter()
+                .cloned()
+                .chain(get_symbols(context, *arg2).iter().cloned())
+                .collect()
+        }
+        Instruction::FuelVm(FuelVmInstruction::WideModularOp {
+            arg1, arg2, arg3, ..
+        }) => get_symbols(context, *arg1)
+            .iter()
+            .cloned()
+            .chain(get_symbols(context, *arg2).iter().cloned())
+            .chain(get_symbols(context, *arg3).iter().cloned())
+            .collect(),
     }
 }
 
@@ -168,6 +187,14 @@ fn get_stored_symbols(context: &Context, val: Value) -> Vec<Symbol> {
                 vec![]
             }
             FuelVmInstruction::StateStoreQuadWord { stored_val: _, .. } => vec![],
+            FuelVmInstruction::WideUnaryOp { result, .. } => get_symbols(context, *result).to_vec(),
+            FuelVmInstruction::WideBinaryOp { result, .. } => {
+                get_symbols(context, *result).to_vec()
+            }
+            FuelVmInstruction::WideModularOp { result, .. } => {
+                get_symbols(context, *result).to_vec()
+            }
+            FuelVmInstruction::WideCmpOp { .. } => vec![],
         },
     }
 }
@@ -217,6 +244,7 @@ pub fn dce(
             .and_modify(|count| *count += 1)
             .or_insert(1);
     }
+
     // Go through each instruction and update use_count.
     for (_block, inst) in function.instruction_iter(context) {
         for sym in get_loaded_symbols(context, inst) {
@@ -225,6 +253,7 @@ pub fn dce(
                 .and_modify(|count| *count += 1)
                 .or_insert(1);
         }
+
         for stored_sym in get_stored_symbols(context, inst) {
             stores_of_sym
                 .entry(stored_sym)

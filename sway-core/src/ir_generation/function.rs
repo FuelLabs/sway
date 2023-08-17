@@ -20,7 +20,7 @@ use crate::{
     types::*,
 };
 use sway_ast::intrinsics::Intrinsic;
-use sway_error::error::{CompileError, Hint};
+use sway_error::error::CompileError;
 use sway_ir::{Context, *};
 use sway_types::{
     constants,
@@ -102,9 +102,9 @@ impl<'eng> FnCompiler<'eng> {
         }
     }
 
-    fn compile_with_new_scope<F, T>(&mut self, inner: F) -> Result<T, CompileError>
+    fn compile_with_new_scope<F, T, R>(&mut self, inner: F) -> Result<T, R>
     where
-        F: FnOnce(&mut FnCompiler) -> Result<T, CompileError>,
+        F: FnOnce(&mut FnCompiler) -> Result<T, R>,
     {
         self.lexical_map.enter_scope();
         let result = inner(self);
@@ -117,19 +117,29 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_block: &ty::TyCodeBlock,
-    ) -> Result<Value, CompileError> {
+    ) -> Result<Value, Vec<CompileError>> {
         self.compile_with_new_scope(|fn_compiler| {
+            let mut errors = vec![];
+
             let mut ast_nodes = ast_block.contents.iter();
-            loop {
+            let v = loop {
                 let ast_node = match ast_nodes.next() {
                     Some(ast_node) => ast_node,
-                    None => break Ok(Constant::get_unit(context)),
+                    None => break Constant::get_unit(context),
                 };
                 match fn_compiler.compile_ast_node(context, md_mgr, ast_node) {
-                    Ok(Some(val)) => break Ok(val),
+                    Ok(Some(val)) => break val,
                     Ok(None) => (),
-                    Err(err) => break Err(err),
+                    Err(e) => {
+                        errors.push(e);
+                    }
                 }
+            };
+
+            if !errors.is_empty() {
+                Err(errors)
+            } else {
+                Ok(v)
             }
         })
     }
@@ -205,6 +215,9 @@ impl<'eng> FnCompiler<'eng> {
             // a side effect can be () because it just impacts the type system/namespacing.
             // There should be no new IR generated.
             ty::TyAstNodeContent::SideEffect(_) => Ok(None),
+            ty::TyAstNodeContent::Error(_, _) => {
+                unreachable!("error node found when generating IR");
+            }
         }
     }
 
@@ -307,7 +320,11 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::StructExpression { fields, .. } => {
                 self.compile_struct_expr(context, md_mgr, fields, span_md_idx)
             }
-            ty::TyExpressionVariant::CodeBlock(cb) => self.compile_code_block(context, md_mgr, cb),
+            ty::TyExpressionVariant::CodeBlock(cb) => {
+                //TODO return all errors
+                self.compile_code_block(context, md_mgr, cb)
+                    .map_err(|mut x| x.pop().unwrap())
+            }
             ty::TyExpressionVariant::FunctionParameter => Err(CompileError::Internal(
                 "Unexpected function parameter declaration.",
                 ast_expr.span.clone(),
@@ -676,7 +693,7 @@ impl<'eng> FnCompiler<'eng> {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,
-                        hint: Hint::new("This argument must be a copy type".to_string()),
+                        hint: "This argument must be a copy type".to_string(),
                     });
                 }
                 let key_value = self.compile_expression_to_value(context, md_mgr, key_exp)?;
@@ -700,7 +717,7 @@ impl<'eng> FnCompiler<'eng> {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,
-                        hint: Hint::new("This argument must be raw_ptr".to_string()),
+                        hint: "This argument must be raw_ptr".to_string(),
                     });
                 }
                 let key_value = self.compile_expression_to_value(context, md_mgr, &key_exp)?;
@@ -1138,7 +1155,7 @@ impl<'eng> FnCompiler<'eng> {
                     .add_metadatum(context, span_md_idx);
                 compiled_args
                     .into_iter()
-                    .zip(field_types.into_iter())
+                    .zip(field_types)
                     .enumerate()
                     .for_each(|(insert_idx, (field_val, field_type))| {
                         let gep_val = self
@@ -1377,7 +1394,8 @@ impl<'eng> FnCompiler<'eng> {
                     &self.messages_types_map,
                     is_entry,
                     None,
-                )?
+                )
+                .map_err(|mut x| x.pop().unwrap())?
                 .unwrap();
                 self.recreated_fns.insert(fn_key, new_func);
                 new_func
@@ -1596,7 +1614,8 @@ impl<'eng> FnCompiler<'eng> {
             .function
             .create_block(context, Some("while_body".into()));
         self.current_block = body_block;
-        self.compile_code_block(context, md_mgr, body)?;
+        self.compile_code_block(context, md_mgr, body)
+            .map_err(|mut x| x.pop().unwrap())?;
         if !self.current_block.is_terminated(context) {
             self.current_block.ins(context).branch(cond_block, vec![]);
         }
@@ -2133,7 +2152,7 @@ impl<'eng> FnCompiler<'eng> {
         // Fill it in.
         insert_values
             .into_iter()
-            .zip(field_types.into_iter())
+            .zip(field_types)
             .enumerate()
             .for_each(|(insert_idx, (insert_val, field_type))| {
                 let gep_val = self.current_block.ins(context).get_elem_ptr_with_idx(
@@ -2328,7 +2347,7 @@ impl<'eng> FnCompiler<'eng> {
 
             init_values
                 .into_iter()
-                .zip(init_types.into_iter())
+                .zip(init_types)
                 .enumerate()
                 .for_each(|(insert_idx, (field_val, field_type))| {
                     let gep_val = self

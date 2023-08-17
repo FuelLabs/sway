@@ -43,7 +43,10 @@ pub struct Command {
     /// to [`crate::default::NODE_URL`].
     #[clap(long, env = "FUEL_NODE_URL")]
     pub node_url: Option<String>,
-    /// Do not sign the transaction
+    /// Sign the transaction with default signer that is pre-funded by fuel-core. Useful for testing against local node.
+    #[clap(long)]
+    pub default_signer: bool,
+    /// Deprecated in favor of `--default-signer`.
     #[clap(long)]
     pub unsigned: bool,
     /// Set the key to be used for signing.
