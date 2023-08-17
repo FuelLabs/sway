@@ -59,7 +59,7 @@ impl<T: Parse> Parse for Annotated<T> {
             attribute_list.push(attr);
         }
 
-        if let Some(_) = parser.check_empty() {
+        if parser.check_empty().is_some() {
             let error = parser.emit_error(ParseErrorKind::ExpectedAnItemAfterDocComment);
             Err(error)
         } else {
