@@ -316,6 +316,11 @@ impl ty::TyImplTrait {
         let new_impl_type_parameters =
             TypeParameter::type_check_type_params(handler, ctx.by_ref(), impl_type_parameters, Some(self_type_param))?;
 
+        // Insert them into the current namespace.
+        for p in &new_impl_type_parameters {
+            p.insert_into_namespace(handler, ctx.by_ref())?;
+        }
+
         // type check the type that we are implementing for
         implementing_for.type_id = ctx.resolve_type(
             handler,
