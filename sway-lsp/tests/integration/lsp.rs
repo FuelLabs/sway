@@ -7,7 +7,6 @@ use assert_json_diff::assert_json_eq;
 use serde_json::json;
 use std::{borrow::Cow, path::Path};
 use sway_lsp::{handlers::request, lsp_ext::ShowAstParams, server_state::ServerState};
-use sway_lsp_test_utils::extract_result_array;
 use tower::{Service, ServiceExt};
 use tower_lsp::{
     jsonrpc::{Id, Request, Response},
@@ -148,32 +147,29 @@ pub(crate) async fn show_ast_request(
     assert_eq!(expected, response.unwrap().unwrap());
 }
 
-pub(crate) async fn semantic_tokens_request(
-    service: &mut LspService<ServerState>,
-    uri: &Url,
-) -> Request {
-    let params = json!({
-        "textDocument": {
-            "uri": uri,
-        },
-    });
-    let semantic_tokens = build_request_with_id("textDocument/semanticTokens/full", params, 1);
-    let _response = call_request(service, semantic_tokens.clone()).await;
-    semantic_tokens
+pub(crate) fn semantic_tokens_request(server: &ServerState, uri: &Url) {
+    let params = SemanticTokensParams {
+        text_document: TextDocumentIdentifier { uri: uri.clone() },
+        work_done_progress_params: Default::default(),
+        partial_result_params: Default::default(),
+    };
+    let response = request::handle_semantic_tokens_full(&server, params.clone()).unwrap();
+    eprintln!("{:#?}", response);
+    if let Some(SemanticTokensResult::Tokens(tokens)) = response {
+        assert!(!tokens.data.is_empty());
+    }
 }
 
-pub(crate) async fn document_symbol_request(
-    service: &mut LspService<ServerState>,
-    uri: &Url,
-) -> Request {
-    let params = json!({
-        "textDocument": {
-            "uri": uri,
-        },
-    });
-    let document_symbol = build_request_with_id("textDocument/documentSymbol", params, 1);
-    let _response = call_request(service, document_symbol.clone()).await;
-    document_symbol
+pub(crate) fn document_symbol_request(server: &ServerState, uri: &Url) {
+    let params = DocumentSymbolParams {
+        text_document: TextDocumentIdentifier { uri: uri.clone() },
+        work_done_progress_params: Default::default(),
+        partial_result_params: Default::default(),
+    };
+    let response = request::handle_document_symbol(&server, params.clone()).unwrap();
+    if let Some(DocumentSymbolResponse::Flat(res)) = response {
+        assert!(!res.is_empty());
+    }
 }
 
 pub(crate) fn format_request(server: &ServerState, uri: &Url) {

@@ -2,10 +2,7 @@ pub mod integration;
 
 use crate::integration::{code_actions, lsp};
 use std::{fs, path::PathBuf};
-use sway_lsp::{
-    handlers::{notification, request},
-    server_state::ServerState,
-};
+use sway_lsp::{handlers::notification, server_state::ServerState};
 use sway_lsp_test_utils::{
     assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir,
     e2e_test_dir, generic_impl_self_dir, get_fixture, load_sway_example, runnables_test_dir,
@@ -43,6 +40,21 @@ pub(crate) struct Rename<'a> {
     req_line: u32,
     req_char: u32,
     new_name: &'a str,
+}
+
+async fn open(server: &ServerState, entry_point: PathBuf) -> Url {
+    let (uri, sway_program) = load_sway_example(entry_point);
+    let params = DidOpenTextDocumentParams {
+        text_document: TextDocumentItem {
+            uri: uri.clone(),
+            language_id: "sway".to_string(),
+            version: 1,
+            text: sway_program,
+        },
+    };
+    let res = notification::handle_did_open_text_document(&server, params).await;
+    assert!(res.is_ok());
+    uri
 }
 
 async fn init_and_open(service: &mut LspService<ServerState>, entry_point: PathBuf) -> Url {
@@ -124,15 +136,15 @@ async fn initialized() {
     lsp::initialized_notification(&mut service).await;
 }
 
-// #[tokio::test]
-// async fn initializes_only_once() {
-//     let (mut service, _) = LspService::new(ServerState::new);
-//     let initialize = lsp::initialize_request(&mut service).await;
-//     lsp::initialized_notification(&mut service).await;
-//     let response = lsp::call_request(&mut service, initialize).await;
-//     let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
-//     assert_eq!(response, Ok(Some(err)));
-// }
+#[tokio::test]
+async fn initializes_only_once() {
+    let (mut service, _) = LspService::new(ServerState::new);
+    let initialize = lsp::initialize_request(&mut service).await;
+    lsp::initialized_notification(&mut service).await;
+    let response = lsp::call_request(&mut service, initialize).await;
+    let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
+    assert_eq!(response, Ok(Some(err)));
+}
 
 #[tokio::test]
 async fn shutdown() {
@@ -146,45 +158,14 @@ async fn shutdown() {
     lsp::exit_notification(&mut service).await;
 }
 
-// #[tokio::test]
-// async fn refuses_requests_after_shutdown() {
-//     let (mut service, _) = LspService::new(ServerState::new);
-//     let _ = lsp::initialize_request(&mut service).await;
-//     let shutdown = lsp::shutdown_request(&mut service).await;
-//     let response = lsp::call_request(&mut service, shutdown).await;
-//     let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
-//     assert_eq!(response, Ok(Some(err)));
-// }
-
-// #[tokio::test]
-// async fn did_open() {
-//     let (mut service, _) = LspService::new(ServerState::new);
-//     let _ = init_and_open(&mut service, e2e_test_dir().join("src/main.sw")).await;
-//     shutdown_and_exit(&mut service).await;
-// }
-
-// not sure why we tested this
-// #[tokio::test]
-// async fn did_close() {
-//     let (mut service, _) = LspService::new(ServerState::new);
-//     let _ = init_and_open(&mut service, e2e_test_dir().join("src/main.sw")).await;
-//     lsp::did_close_notification(&mut service).await;
-//     shutdown_and_exit(&mut service).await;
-// }
-
-async fn open(server: &ServerState, entry_point: PathBuf) -> Url {
-    let (uri, sway_program) = load_sway_example(entry_point);
-    let params = DidOpenTextDocumentParams {
-        text_document: TextDocumentItem {
-            uri: uri.clone(),
-            language_id: "sway".to_string(),
-            version: 1,
-            text: sway_program,
-        },
-    };
-    let res = notification::handle_did_open_text_document(&server, params).await;
-    assert!(res.is_ok());
-    uri
+#[tokio::test]
+async fn refuses_requests_after_shutdown() {
+    let (mut service, _) = LspService::new(ServerState::new);
+    let _ = lsp::initialize_request(&mut service).await;
+    let shutdown = lsp::shutdown_request(&mut service).await;
+    let response = lsp::call_request(&mut service, shutdown).await;
+    let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
+    assert_eq!(response, Ok(Some(err)));
 }
 
 #[tokio::test]
@@ -195,6 +176,14 @@ async fn did_open() {
 }
 
 #[tokio::test]
+async fn did_close() {
+    let (mut service, _) = LspService::new(ServerState::new);
+    let _ = init_and_open(&mut service, e2e_test_dir().join("src/main.sw")).await;
+    lsp::did_close_notification(&mut service).await;
+    shutdown_and_exit(&mut service).await;
+}
+
+#[tokio::test]
 async fn did_change() {
     let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
@@ -202,26 +191,25 @@ async fn did_change() {
     shutdown_and_exit(&mut service).await;
 }
 
-// #[tokio::test]
-// async fn lsp_syncs_with_workspace_edits() {
-//     let (mut service, _) = LspService::new(ServerState::new);
-//     let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
-//     let mut i = 0..;
-//     let mut go_to = GotoDefinition {
-//         req_uri: &uri,
-//         req_line: 44,
-//         req_char: 24,
-//         def_line: 19,
-//         def_start_char: 7,
-//         def_end_char: 11,
-//         def_path: uri.as_str(),
-//     };
-//     let _ = lsp::definition_check(&server, &go_to);
-//     let _ = lsp::did_change_request(&mut service, &uri).await;
-//     go_to.def_line = 20;
-//     definition_check_with_req_offset(&server, &mut go_to, 45, 24);
-//     shutdown_and_exit(&mut service).await;
-// }
+#[tokio::test]
+async fn lsp_syncs_with_workspace_edits() {
+    let (mut service, _) = LspService::new(ServerState::new);
+    let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
+    let mut go_to = GotoDefinition {
+        req_uri: &uri,
+        req_line: 44,
+        req_char: 24,
+        def_line: 19,
+        def_start_char: 7,
+        def_end_char: 11,
+        def_path: uri.as_str(),
+    };
+    let _ = lsp::definition_check(&service.inner(), &go_to);
+    let _ = lsp::did_change_request(&mut service, &uri).await;
+    go_to.def_line = 20;
+    definition_check_with_req_offset(&service.inner(), &mut go_to, 45, 24);
+    shutdown_and_exit(&mut service).await;
+}
 
 #[tokio::test]
 async fn show_ast() {
@@ -1750,7 +1738,7 @@ async fn publish_diagnostics_dead_code_warning() {
     let (mut service, socket) = LspService::new(ServerState::new);
     let fixture = get_fixture(test_fixtures_dir().join("diagnostics/dead_code/expected.json"));
     let expected_requests = vec![fixture];
-    let socket_handle = assert_server_requests(socket, expected_requests, None).await;
+    let socket_handle = assert_server_requests(socket, expected_requests).await;
     let _ = init_and_open(
         &mut service,
         test_fixtures_dir().join("diagnostics/dead_code/src/main.sw"),
@@ -1787,16 +1775,16 @@ macro_rules! lsp_capability_test {
     };
 }
 
-// lsp_capability_test!(
-//     semantic_tokens,
-//     lsp::semantic_tokens_request,
-//     doc_comments_dir().join("src/main.sw")
-// );
-// lsp_capability_test!(
-//     document_symbol,
-//     lsp::document_symbol_request,
-//     doc_comments_dir().join("src/main.sw")
-// );
+lsp_capability_test!(
+    semantic_tokens,
+    lsp::semantic_tokens_request,
+    doc_comments_dir().join("src/main.sw")
+);
+lsp_capability_test!(
+    document_symbol,
+    lsp::document_symbol_request,
+    doc_comments_dir().join("src/main.sw")
+);
 lsp_capability_test!(
     format,
     lsp::format_request,

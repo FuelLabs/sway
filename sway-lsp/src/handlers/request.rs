@@ -45,7 +45,7 @@ pub(crate) fn handle_initialize(
     })
 }
 
-pub(crate) fn handle_document_symbol(
+pub fn handle_document_symbol(
     state: &ServerState,
     params: lsp_types::DocumentSymbolParams,
 ) -> Result<Option<lsp_types::DocumentSymbolResponse>> {
