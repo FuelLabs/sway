@@ -50,10 +50,14 @@ impl ty::TyImplTrait {
         let self_type_param = TypeParameter::new_self_type(engines, implementing_for.span());
         let self_type_id = self_type_param.type_id;
 
-        // Type check the type parameters. This will also insert them into the
-        // current namespace.
+        // Type check the type parameters
         let new_impl_type_parameters =
             TypeParameter::type_check_type_params(handler, ctx.by_ref(), impl_type_parameters, Some(self_type_param))?;
+
+        // Insert them into the current namespace.
+        for p in &new_impl_type_parameters {
+            p.insert_into_namespace(handler, ctx.by_ref())?;
+        }
 
         // resolve the types of the trait type arguments
         for type_arg in trait_type_arguments.iter_mut() {
@@ -116,7 +120,7 @@ impl ty::TyImplTrait {
                 // the following essentially is needed to map `Self` to `implementing_for`
                 // durting trait decl monomorphization
                 trait_decl.type_parameters.push(trait_decl.self_type.clone());
-                trait_type_arguments.push(TypeArgument::from(implementing_for.type_id));
+                trait_type_arguments.push(implementing_for.clone());
 
                 // monomorphize the trait declaration
                 ctx.monomorphize(
