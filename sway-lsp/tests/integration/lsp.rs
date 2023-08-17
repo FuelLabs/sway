@@ -191,49 +191,53 @@ pub(crate) async fn format_request(service: &mut LspService<ServerState>, uri: &
     formatting
 }
 
-pub(crate) async fn highlight_request(service: &mut LspService<ServerState>, uri: &Url) -> Request {
-    let params = json!({
-        "textDocument": {
-            "uri": uri,
+pub(crate) async fn highlight_request(
+    server: &ServerState, 
+    uri: &Url
+) {
+    let params = DocumentHighlightParams {
+        text_document_position_params: TextDocumentPositionParams {
+            text_document: TextDocumentIdentifier {
+                uri: uri.clone(),
+            },
+            position: Position {
+                line: 45,
+                character: 37,
+            },
         },
-        "position": {
-            "line": 45,
-            "character": 37
-        }
-    });
-    let highlight = build_request_with_id("textDocument/documentHighlight", params, 1);
-    let response = call_request(service, highlight.clone()).await;
-    let expected = Response::from_ok(
-        1.into(),
-        json!([
-            {
-                "range": {
-                    "end": {
-                        "character": 10,
-                        "line": 10
-                    },
-                    "start": {
-                        "character": 4,
-                        "line": 10
-                    }
-                }
+        work_done_progress_params: Default::default(),
+        partial_result_params: Default::default(),
+    };
+    let response = request::handle_document_highlight(&server, params.clone()).unwrap();
+    let expected = vec![
+        DocumentHighlight {
+            range: Range {
+                start: Position {
+                    line: 10,
+                    character: 4,
+                },
+                end: Position {
+                    line: 10,
+                    character: 10,
+                },
             },
-            {
-                "range": {
-                    "end": {
-                        "character": 41,
-                        "line": 45
-                    },
-                    "start": {
-                        "character": 35,
-                        "line": 45
-                    }
-                }
+            kind: None,
+        },
+        DocumentHighlight {
+            range: Range {
+                start: Position {
+                    line: 45,
+                    character: 35,
+                },
+                end: Position {
+                    line: 45,
+                    character: 41,
+                },
             },
-        ]),
-    );
-    assert_json_eq!(expected, response.ok().unwrap());
-    highlight
+            kind: None,
+        },
+    ];
+    assert_eq!(expected, response.unwrap());
 }
 
 pub(crate) async fn code_lens_request(service: &mut LspService<ServerState>, uri: &Url) -> Request {
@@ -316,64 +320,59 @@ pub(crate) async fn code_lens_request(service: &mut LspService<ServerState>, uri
     code_lens
 }
 
-pub(crate) async fn completion_request(
-    service: &mut LspService<ServerState>,
-    uri: &Url,
-) -> Request {
-    let params = json!({
-        "textDocument": {
-          "uri": uri
+pub(crate) async fn completion_request(server: &ServerState,uri: &Url) {
+    let params = CompletionParams {
+        text_document_position: TextDocumentPositionParams {
+            text_document: TextDocumentIdentifier {
+                uri: uri.clone(),
+            },
+            position: Position {
+                line: 19,
+                character: 8,
+            },
         },
-        "position": {
-          "line": 19,
-          "character": 8
+        work_done_progress_params: Default::default(),
+        partial_result_params: Default::default(),
+        context: Some(CompletionContext {
+            trigger_kind: CompletionTriggerKind::TRIGGER_CHARACTER,
+            trigger_character: Some(".".to_string()),
+        }),
+    };
+    let res = request::handle_completion(&server, params.clone()).unwrap();
+    let expected = CompletionResponse::Array(vec![
+        CompletionItem {
+            label: "a".to_string(),
+            kind: Some(CompletionItemKind::FIELD),
+            label_details: Some(CompletionItemLabelDetails {
+                detail: None,
+                description: Some("bool".to_string()),
+            }),
+            ..Default::default()
         },
-        "context": {
-          "triggerKind": 2,
-          "triggerCharacter": "."
-        }
-    });
-    let completion = build_request_with_id("textDocument/completion", params, 1);
-    let response = call_request(service, completion.clone()).await;
-    let actual_results = extract_result_array(response);
-    let expected_results = vec![
-        json!({
-          "kind": 5,
-          "label": "a",
-          "labelDetails": {
-            "description": "bool"
-          }
-        }),
-        json!({
-          "kind": 2,
-          "label": "get(…)",
-          "labelDetails": {
-            "description": "fn(self, MyStruct) -> MyStruct"
-          },
-          "textEdit": {
-            "newText": "get(foo)",
-            "range": {
-              "end": {
-                "character": 8,
-                "line": 19
-              },
-              "start": {
-                "character": 8,
-                "line": 19
-              }
-            }
-          }
-        }),
-    ];
-
-    assert_eq!(actual_results.len(), expected_results.len());
-    for expected in expected_results.iter() {
-        assert!(
-            actual_results.contains(expected),
-            "Expected {actual_results:?} to contain {expected:?}"
-        );
-    }
-    completion
+        CompletionItem {
+            label: "get(…)".to_string(),
+            kind: Some(CompletionItemKind::METHOD),
+            label_details: Some(CompletionItemLabelDetails {
+                detail: None,
+                description: Some("fn(self, MyStruct) -> MyStruct".to_string()),
+            }),
+            text_edit: Some(CompletionTextEdit::Edit(TextEdit {
+                range: Range {
+                    start: Position {
+                        line: 19,
+                        character: 8,
+                    },
+                    end: Position {
+                        line: 19,
+                        character: 8,
+                    },
+                },
+                new_text: "get(foo)".to_string(),
+            })),
+            ..Default::default()
+        },
+    ]);
+    assert_eq!(expected, res.unwrap());
 }
 
 pub(crate) fn definition_check<'a>(server: &ServerState, go_to: &'a GotoDefinition<'a>) {

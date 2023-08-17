@@ -1754,46 +1754,47 @@ async fn rename() {
     let _ = server.shutdown();
 }
 
-// #[tokio::test]
-// async fn publish_diagnostics_dead_code_warning() {
-//     let (mut service, socket) = LspService::new(ServerState::new);
-//     let fixture = get_fixture(test_fixtures_dir().join("diagnostics/dead_code/expected.json"));
-//     let expected_requests = vec![fixture];
-//     let socket_handle = assert_server_requests(socket, expected_requests, None).await;
-//     let _ = init_and_open(
-//         &mut service,
-//         test_fixtures_dir().join("diagnostics/dead_code/src/main.sw"),
-//     )
-//     .await;
-//     socket_handle
-//         .await
-//         .unwrap_or_else(|e| panic!("Test failed: {e:?}"));
-//     let _ = server.shutdown();
-// }
+#[tokio::test]
+async fn publish_diagnostics_dead_code_warning() {
+    let (mut service, socket) = LspService::new(ServerState::new);
+    let fixture = get_fixture(test_fixtures_dir().join("diagnostics/dead_code/expected.json"));
+    let expected_requests = vec![fixture];
+    let socket_handle = assert_server_requests(socket, expected_requests, None).await;
+    let _ = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("diagnostics/dead_code/src/main.sw"),
+    )
+    .await;
+    socket_handle
+        .await
+        .unwrap_or_else(|e| panic!("Test failed: {e:?}"));
+    shutdown_and_exit(&mut service).await;
+}
 
-// // This macro allows us to spin up a server / client for testing
-// // It initializes and performs the necessary handshake and then loads
-// // the sway example that was passed into `example_dir`.
-// // It then runs the specific capability to test before gracefully shutting down.
-// // The capability argument is an async function.
-// macro_rules! test_lsp_capability {
-//     ($entry_point:expr, $capability:expr) => {{
-//         let (mut service, _) = LspService::new(ServerState::new);
-//         let uri = init_and_open(&mut service, $entry_point).await;
-//         // Call the specific LSP capability function that was passed in.
-//         let _ = $capability(&mut service, &uri).await;
-//         shutdown_and_exit(&mut service).await;
-//     }};
-// }
+// This macro allows us to spin up a server / client for testing
+// It initializes and performs the necessary handshake and then loads
+// the sway example that was passed into `example_dir`.
+// It then runs the specific capability to test before gracefully shutting down.
+// The capability argument is an async function.
+macro_rules! test_lsp_capability {
+    ($entry_point:expr, $capability:expr) => {{
+        let server = ServerState::default();
+        let uri = open(&server, $entry_point).await;
 
-// macro_rules! lsp_capability_test {
-//     ($test:ident, $capability:expr, $entry_path:expr) => {
-//         #[tokio::test]
-//         async fn $test() {
-//             test_lsp_capability!($entry_path, $capability);
-//         }
-//     };
-// }
+        // Call the specific LSP capability function that was passed in.
+        let _ = $capability(&server, &uri).await;
+        let _ = server.shutdown();
+    }};
+}
+
+macro_rules! lsp_capability_test {
+    ($test:ident, $capability:expr, $entry_path:expr) => {
+        #[tokio::test]
+        async fn $test() {
+            test_lsp_capability!($entry_path, $capability);
+        }
+    };
+}
 
 // lsp_capability_test!(
 //     semantic_tokens,
@@ -1810,11 +1811,11 @@ async fn rename() {
 //     lsp::format_request,
 //     doc_comments_dir().join("src/main.sw")
 // );
-// lsp_capability_test!(
-//     highlight,
-//     lsp::highlight_request,
-//     doc_comments_dir().join("src/main.sw")
-// );
+lsp_capability_test!(
+    highlight,
+    lsp::highlight_request,
+    doc_comments_dir().join("src/main.sw")
+);
 // lsp_capability_test!(
 //     code_action_abi,
 //     code_actions::code_action_abi_request,
@@ -1850,8 +1851,8 @@ async fn rename() {
 //     lsp::code_lens_request,
 //     runnables_test_dir().join("src/main.sw")
 // );
-// lsp_capability_test!(
-//     completion,
-//     lsp::completion_request,
-//     test_fixtures_dir().join("completion/src/main.sw")
-// );
+lsp_capability_test!(
+    completion,
+    lsp::completion_request,
+    test_fixtures_dir().join("completion/src/main.sw")
+);

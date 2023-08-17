@@ -85,7 +85,7 @@ pub fn handle_goto_definition(
     }
 }
 
-pub(crate) fn handle_completion(
+pub fn handle_completion(
     state: &ServerState,
     params: lsp_types::CompletionParams,
 ) -> Result<Option<lsp_types::CompletionResponse>> {
@@ -183,7 +183,7 @@ pub fn handle_rename(
     }
 }
 
-pub(crate) fn handle_document_highlight(
+pub fn handle_document_highlight(
     state: &ServerState,
     params: lsp_types::DocumentHighlightParams,
 ) -> Result<Option<Vec<lsp_types::DocumentHighlight>>> {
@@ -204,7 +204,7 @@ pub(crate) fn handle_document_highlight(
     }
 }
 
-pub(crate) fn handle_formatting(
+pub fn handle_formatting(
     state: &ServerState,
     params: DocumentFormattingParams,
 ) -> Result<Option<Vec<lsp_types::TextEdit>>> {
@@ -218,7 +218,7 @@ pub(crate) fn handle_formatting(
         })
 }
 
-pub(crate) fn handle_code_action(
+pub fn handle_code_action(
     state: &ServerState,
     params: lsp_types::CodeActionParams,
 ) -> Result<Option<lsp_types::CodeActionResponse>> {
@@ -239,7 +239,7 @@ pub(crate) fn handle_code_action(
     }
 }
 
-pub(crate) fn handle_code_lens(
+pub fn handle_code_lens(
     state: &ServerState,
     params: lsp_types::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
@@ -267,7 +267,7 @@ pub(crate) fn handle_code_lens(
     }
 }
 
-pub(crate) fn handle_semantic_tokens_full(
+pub fn handle_semantic_tokens_full(
     state: &ServerState,
     params: SemanticTokensParams,
 ) -> Result<Option<SemanticTokensResult>> {

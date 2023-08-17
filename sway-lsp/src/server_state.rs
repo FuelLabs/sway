@@ -35,9 +35,6 @@ impl Default for ServerState {
 
 impl ServerState {
     pub fn new(client: Client) -> ServerState {
-        // let sessions = Arc::new(Sessions(DashMap::new()));
-        // let config = Arc::new(RwLock::new(Default::default()));
-        // let keyword_docs = Arc::new(KeywordDocs::new());
         ServerState {
             client: Some(client),
             ..Default::default()
