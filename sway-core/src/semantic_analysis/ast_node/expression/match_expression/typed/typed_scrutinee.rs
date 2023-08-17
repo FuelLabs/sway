@@ -115,30 +115,12 @@ impl ty::TyScrutinee {
             ty::TyScrutineeVariant::Variable(_) => true,
             ty::TyScrutineeVariant::Literal(_) => false,
             ty::TyScrutineeVariant::Constant { .. } => false,
-            ty::TyScrutineeVariant::StructScrutinee { fields, .. } => {
-                let mut is_catch_all_struct_pattern = true;
-                for field in fields.iter() {
-                    is_catch_all_struct_pattern &= match &field.scrutinee {
-                        Some(scrutinee) => scrutinee.is_catch_all(),
-                        None => true,
-                    }
-                }
-                is_catch_all_struct_pattern
-            }
-            ty::TyScrutineeVariant::Or(elems) => {
-                let mut is_catch_all_or_pattern = true;
-                for elem in elems.iter() {
-                    is_catch_all_or_pattern &= elem.is_catch_all()
-                }
-                is_catch_all_or_pattern
-            }
-            ty::TyScrutineeVariant::Tuple(elems) => {
-                let mut is_catch_all_tuple_pattern = true;
-                for elem in elems.iter() {
-                    is_catch_all_tuple_pattern &= elem.is_catch_all()
-                }
-                is_catch_all_tuple_pattern
-            }
+            ty::TyScrutineeVariant::StructScrutinee { fields, .. } => fields
+                .iter()
+                .filter_map(|x| x.scrutinee.as_ref())
+                .all(|x| x.is_catch_all()),
+            ty::TyScrutineeVariant::Or(elems) => elems.iter().all(|x| x.is_catch_all()),
+            ty::TyScrutineeVariant::Tuple(elems) => elems.iter().all(|x| x.is_catch_all()),
             ty::TyScrutineeVariant::EnumScrutinee { .. } => false,
         }
     }
