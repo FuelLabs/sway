@@ -255,6 +255,8 @@ pub fn handle_code_lens(
                     data: None,
                 });
             });
+            // Sort the results
+            result.sort_by(|a, b| a.range.start.line.cmp(&b.range.start.line));
             Ok(Some(result))
         }
         Err(err) => {

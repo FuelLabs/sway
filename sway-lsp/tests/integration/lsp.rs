@@ -234,84 +234,74 @@ pub(crate) fn highlight_request(server: &ServerState, uri: &Url) {
     assert_eq!(expected, response.unwrap());
 }
 
-pub(crate) async fn code_lens_request(service: &mut LspService<ServerState>, uri: &Url) -> Request {
-    let params = json!({
-        "textDocument": {
-            "uri": uri,
+pub(crate) fn code_lens_request(server: &ServerState, uri: &Url) {
+    let params = CodeLensParams {
+        text_document: TextDocumentIdentifier { uri: uri.clone() },
+        work_done_progress_params: Default::default(),
+        partial_result_params: Default::default(),
+    };
+    let response = request::handle_code_lens(&server, params.clone()).unwrap();
+    let expected = vec![
+        CodeLens {
+            range: Range {
+                start: Position {
+                    line: 2,
+                    character: 3,
+                },
+                end: Position {
+                    line: 2,
+                    character: 7,
+                },
+            },
+            command: Some(Command {
+                title: "▶︎ Run".to_string(),
+                command: "sway.runScript".to_string(),
+                arguments: None,
+            }),
+            data: None,
         },
-    });
-    let code_lens = build_request_with_id("textDocument/codeLens", params, 1);
-    let response = call_request(service, code_lens.clone()).await;
-    let actual_results = extract_result_array(response);
-    let expected_results = vec![
-        json!({
-          "command": {
-            "arguments": [
-              {
-                "name": "test_bar"
-              }
-            ],
-            "command": "sway.runTests",
-            "title": "▶︎ Run Test"
-          },
-          "range": {
-            "end": {
-              "character": 7,
-              "line": 11
+        CodeLens {
+            range: Range {
+                start: Position {
+                    line: 6,
+                    character: 0,
+                },
+                end: Position {
+                    line: 6,
+                    character: 7,
+                },
             },
-            "start": {
-              "character": 0,
-              "line": 11
-            }
-          }
-        }),
-        json!({
-          "command": {
-            "arguments": [
-              {
-                "name": "test_foo"
-              }
-            ],
-            "command": "sway.runTests",
-            "title": "▶︎ Run Test"
-          },
-          "range": {
-            "end": {
-              "character": 7,
-              "line": 6
+            command: Some(Command {
+                title: "▶︎ Run Test".to_string(),
+                command: "sway.runTests".to_string(),
+                arguments: Some(vec![json!({
+                    "name": "test_foo"
+                })]),
+            }),
+            data: None,
+        },
+        CodeLens {
+            range: Range {
+                start: Position {
+                    line: 11,
+                    character: 0,
+                },
+                end: Position {
+                    line: 11,
+                    character: 7,
+                },
             },
-            "start": {
-              "character": 0,
-              "line": 6
-            }
-          }
-        }),
-        json!({
-          "command": {
-            "command": "sway.runScript",
-            "title": "▶︎ Run"
-          },
-          "range": {
-            "end": {
-              "character": 7,
-              "line": 2
-            },
-            "start": {
-              "character": 3,
-              "line": 2
-            }
-          }
-        }),
+            command: Some(Command {
+                title: "▶︎ Run Test".to_string(),
+                command: "sway.runTests".to_string(),
+                arguments: Some(vec![json!({
+                    "name": "test_bar"
+                })]),
+            }),
+            data: None,
+        },
     ];
-
-    assert_eq!(actual_results.len(), expected_results.len());
-    for expected in expected_results.iter() {
-        assert!(
-            actual_results.contains(expected),
-            "Expected {actual_results:?} to contain {expected:?}"
-        );
-    }
-    code_lens
+    assert_eq!(expected, response.unwrap());
 }
 
 pub(crate) fn completion_request(server: &ServerState, uri: &Url) {

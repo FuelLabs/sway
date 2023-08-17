@@ -2,9 +2,9 @@
 //! The methods are used to build and send requests and notifications to the LSP service
 //! and assert the expected responses.
 
+use lsp_types::*;
 use std::collections::HashMap;
 use sway_lsp::{handlers::request, server_state::ServerState};
-use lsp_types::*;
 
 fn create_code_action(
     uri: Url,
@@ -428,5 +428,6 @@ pub(crate) fn code_action_struct_existing_impl_request(server: &ServerState, uri
         None,
     )));
 
-    assert_eq!(res.unwrap().unwrap(), expected);
+    let result = res.unwrap().unwrap();
+    assert_eq!(result, expected);
 }

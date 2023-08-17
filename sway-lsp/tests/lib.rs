@@ -1837,11 +1837,11 @@ lsp_capability_test!(
     code_actions::code_action_struct_existing_impl_request,
     self_impl_reassignment_dir().join("src/main.sw")
 );
-// lsp_capability_test!(
-//     code_lens,
-//     lsp::code_lens_request,
-//     runnables_test_dir().join("src/main.sw")
-// );
+lsp_capability_test!(
+    code_lens,
+    lsp::code_lens_request,
+    runnables_test_dir().join("src/main.sw")
+);
 lsp_capability_test!(
     completion,
     lsp::completion_request,
