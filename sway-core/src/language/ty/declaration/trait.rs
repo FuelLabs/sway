@@ -18,6 +18,7 @@ use super::TyDecl;
 pub struct TyTraitDecl {
     pub name: Ident,
     pub type_parameters: Vec<TypeParameter>,
+    pub self_type: TypeParameter,
     pub interface_surface: Vec<TyTraitInterfaceItem>,
     pub items: Vec<TyTraitItem>,
     pub supertraits: Vec<parsed::Supertrait>,
@@ -67,6 +68,7 @@ impl HashWithEngines for TyTraitDecl {
         let TyTraitDecl {
             name,
             type_parameters,
+            self_type,
             interface_surface,
             items,
             supertraits,
@@ -78,6 +80,7 @@ impl HashWithEngines for TyTraitDecl {
         } = self;
         name.hash(state);
         type_parameters.hash(state, engines);
+        self_type.hash(state, engines);
         interface_surface.hash(state, engines);
         items.hash(state, engines);
         supertraits.hash(state, engines);

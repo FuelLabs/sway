@@ -113,8 +113,7 @@ impl ty::TyImplTrait {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
                 let mut trait_decl = decl_engine.get_trait(&decl_id);
 
-                let self_type_param_for_trait_decl = TypeParameter::new_self_type(engines, trait_decl.span.clone());
-                trait_decl.type_parameters.push(self_type_param_for_trait_decl);
+                trait_decl.type_parameters.push(trait_decl.self_type.clone());
                 trait_type_arguments.push(TypeArgument::from(implementing_for.type_id));
 
                 // monomorphize the trait declaration
@@ -576,6 +575,7 @@ fn type_check_trait_implementation(
     // the trait name in the current impl block that we are type checking and
     // using the stub decl ids from the interface surface and the new
     // decl ids from the newly implemented methods.
+
     let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
         trait_type_parameters
             .iter()

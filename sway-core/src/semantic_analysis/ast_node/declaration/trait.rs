@@ -59,7 +59,7 @@ impl ty::TyTraitDecl {
 
         // Type check the type parameters.
         let new_type_parameters =
-            TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters, Some(self_type_param))?;
+            TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters, Some(self_type_param.clone()))?;
 
         // Insert them into the current namespace.
         for p in &new_type_parameters {
@@ -158,6 +158,7 @@ impl ty::TyTraitDecl {
         let typed_trait_decl = ty::TyTraitDecl {
             name,
             type_parameters: new_type_parameters,
+            self_type: self_type_param,
             interface_surface: new_interface_surface,
             items: new_items,
             supertraits,

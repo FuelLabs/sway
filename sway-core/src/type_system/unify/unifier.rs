@@ -123,6 +123,17 @@ impl<'a> Unifier<'a> {
                 )
             }
 
+            // When we don't know anything about either term, assume that
+            // they match and make the one we know nothing about reference the
+            // one we may know something about.
+            (Unknown, Unknown) => (),
+            (Unknown, e) => {
+                self.replace_received_with_expected(handler, received, expected, &Unknown, e, span)
+            }
+            (r, Unknown) => {
+                self.replace_expected_with_received(handler, received, expected, r, &Unknown, span)
+            }
+
             (r @ UnknownGeneric { .. }, e) if !self.occurs_check(r.clone(), &e) => {
                 self.replace_received_with_expected(handler, received, expected, &r, e, span)
             }
@@ -214,17 +225,6 @@ impl<'a> Unifier<'a> {
                 if r.eq(e, self.engines) =>
             {
                 // if they are the same, then it's ok
-            }
-
-            // When we don't know anything about either term, assume that
-            // they match and make the one we know nothing about reference the
-            // one we may know something about.
-            (Unknown, Unknown) => (),
-            (Unknown, e) => {
-                self.replace_received_with_expected(handler, received, expected, &Unknown, e, span)
-            }
-            (r, Unknown) => {
-                self.replace_expected_with_received(handler, received, expected, r, &Unknown, span)
             }
 
             (r @ Placeholder(_), e @ Placeholder(_)) => {
