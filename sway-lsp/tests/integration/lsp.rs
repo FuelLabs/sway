@@ -6,7 +6,7 @@ use crate::{GotoDefinition, HoverDocumentation, Rename};
 use assert_json_diff::assert_json_eq;
 use serde_json::json;
 use std::{borrow::Cow, path::Path};
-use sway_lsp::server_state::ServerState;
+use sway_lsp::{server_state::ServerState, lsp_ext::ShowAstParams};
 use sway_lsp_test_utils::extract_result_array;
 use tower::{Service, ServiceExt};
 use tower_lsp::{
@@ -124,32 +124,29 @@ pub(crate) async fn did_close_notification(service: &mut LspService<ServerState>
 }
 
 pub(crate) async fn show_ast_request(
-    service: &mut LspService<ServerState>,
+    server: &ServerState,
     uri: &Url,
     ast_kind: &str,
     save_path: Option<Url>,
-) -> Request {
+) {
     // The path where the AST will be written to.
     // If no path is provided, the default path is "/tmp"
     let save_path = match save_path {
         Some(path) => path,
         None => Url::from_file_path(Path::new("/tmp")).unwrap(),
     };
-    let params = json!({
-        "textDocument": {
-            "uri": uri
-        },
-        "astKind": ast_kind,
-        "savePath": save_path,
-    });
-    let show_ast = build_request_with_id("sway/show_ast", params, 1);
-    let response = call_request(service, show_ast.clone()).await;
-    let expected = Response::from_ok(
-        1.into(),
-        json!({ "uri": format!("{save_path}/{ast_kind}.rs") }),
-    );
-    assert_json_eq!(expected, response.ok().unwrap());
-    show_ast
+    use sway_lsp::handlers::request;
+    let params = ShowAstParams {
+        text_document: TextDocumentIdentifier { uri: uri.clone() },
+        ast_kind: ast_kind.to_string(),
+        save_path: save_path.clone(),
+    };
+
+    let response = request::handle_show_ast(server, params);
+    let expected = TextDocumentIdentifier { 
+        uri: Url::parse(&format!("{save_path}/{ast_kind}.rs")).unwrap()
+    };
+    assert_json_eq!(expected, response.unwrap().unwrap());
 }
 
 pub(crate) async fn semantic_tokens_request(

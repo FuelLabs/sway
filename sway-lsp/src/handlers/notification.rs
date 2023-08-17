@@ -21,7 +21,7 @@ pub async fn handle_did_open_text_document(
     Ok(())
 }
 
-pub(crate) async fn handle_did_change_text_document(
+pub async fn handle_did_change_text_document(
     state: &ServerState,
     params: DidChangeTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
