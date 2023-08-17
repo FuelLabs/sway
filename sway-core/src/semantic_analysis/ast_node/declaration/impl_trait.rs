@@ -113,6 +113,8 @@ impl ty::TyImplTrait {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
                 let mut trait_decl = decl_engine.get_trait(&decl_id);
 
+                // the following essentially is needed to map `Self` to `implementing_for`
+                // durting trait decl monomorphization
                 trait_decl.type_parameters.push(trait_decl.self_type.clone());
                 trait_type_arguments.push(TypeArgument::from(implementing_for.type_id));
 
@@ -125,6 +127,10 @@ impl ty::TyImplTrait {
                     EnforceTypeArguments::Yes,
                     &trait_name.span(),
                 )?;
+
+                // restore type parameters and type arguments
+                trait_decl.type_parameters.pop();
+                trait_type_arguments.pop();
 
                 // Unify the "self" type param from the trait declaration with
                 // the type that we are implementing for.
