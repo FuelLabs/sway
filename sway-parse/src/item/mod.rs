@@ -76,6 +76,16 @@ impl Parse for ItemKind {
 
         Ok(kind)
     }
+
+    fn error(
+        spans: Box<[sway_types::Span]>,
+        error: sway_error::handler::ErrorEmitted,
+    ) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        Some(ItemKind::Error(spans, error))
+    }
 }
 
 impl Parse for TypeField {
