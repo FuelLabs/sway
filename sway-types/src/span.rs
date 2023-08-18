@@ -30,7 +30,7 @@ impl<'a> Position<'a> {
         let slice = &self.input[..self.pos];
         let lines = slice.split('\n').collect::<Vec<_>>();
         let line_count = lines.len();
-        let last_line_len = lines.last().unwrap_or(&"").chars().count();
+        let last_line_len = lines.last().unwrap_or(&"").chars().count() + 1;
         (line_count, last_line_len)
     }
 }

@@ -123,7 +123,7 @@ fn hover_format(
     session: Arc<Session>,
     engines: &Engines,
     token: &Token,
-    token_name: &str,
+    ident_name: &str,
 ) -> lsp_types::HoverContents {
     let decl_engine = engines.de();
     let doc_comment = format_doc_attributes(token);
@@ -148,7 +148,7 @@ fn hover_format(
                     Some(format_variable_hover(
                         var_decl.mutability.is_mutable(),
                         &type_name,
-                        token_name,
+                        ident_name,
                     ))
                 }
                 ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
@@ -157,7 +157,7 @@ fn hover_format(
                     Some(format_visibility_hover(
                         struct_decl.visibility,
                         decl.friendly_type_name(),
-                        token_name,
+                        ident_name,
                     ))
                 }
                 ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. }) => {
@@ -166,7 +166,7 @@ fn hover_format(
                     Some(format_visibility_hover(
                         trait_decl.visibility,
                         decl.friendly_type_name(),
-                        token_name,
+                        ident_name,
                     ))
                 }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
@@ -175,12 +175,12 @@ fn hover_format(
                     Some(format_visibility_hover(
                         enum_decl.visibility,
                         decl.friendly_type_name(),
-                        token_name,
+                        ident_name,
                     ))
                 }
                 ty::TyDecl::AbiDecl(ty::AbiDecl { .. }) => {
                     hover_link_contents.add_implementations_for_decl(decl);
-                    Some(format!("{} {}", decl.friendly_type_name(), &token_name))
+                    Some(format!("{} {}", decl.friendly_type_name(), &ident_name))
                 }
                 _ => None,
             },

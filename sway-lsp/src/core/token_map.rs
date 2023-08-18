@@ -34,10 +34,10 @@ impl TokenMap {
         &'s self,
         uri: &'s Url,
     ) -> impl 's + Iterator<Item = (TokenIdent, Token)> {
-        self.iter().flat_map(|(span, token)| {
-            span.path.as_ref().and_then(|path| {
+        self.iter().flat_map(|(ident, token)| {
+            ident.path.as_ref().and_then(|path| {
                 if path.to_str() == Some(uri.path()) {
-                    Some((span.clone(), token.clone()))
+                    Some((ident.clone(), token.clone()))
                 } else {
                     None
                 }

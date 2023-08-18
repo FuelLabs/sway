@@ -282,7 +282,7 @@ pub fn get_range_from_span(span: &Span) -> Range {
     let start = span.start_pos().line_col();
     let end = span.end_pos().line_col();
     Range {
-        start: Position::new(start.0 as u32 - 1, start.1 as u32),
-        end: Position::new(end.0 as u32 - 1, end.1 as u32),
+        start: Position::new(start.0 as u32 - 1, start.1 as u32 - 1),
+        end: Position::new(end.0 as u32 - 1, end.1 as u32 - 1),
     }
 }
