@@ -211,8 +211,7 @@ impl Namespace {
         Ok(matching_item_decl_refs)
     }
 
-    /// Given a name and a type (plus a `self_type` to potentially
-    /// resolve it), find that method in the namespace. Requires `args_buf`
+    /// Given a name and a type, find that method in the namespace. Requires `args_buf`
     /// because of some special casing for the standard library where we pull
     /// the type from the arguments buffer.
     ///

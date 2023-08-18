@@ -183,6 +183,9 @@ impl TraitConstraint {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
                 let mut trait_decl = decl_engine.get_trait(&decl_id);
 
+                trait_decl.type_parameters.push(trait_decl.self_type.clone());
+                type_arguments.push(TypeArgument::from(type_id));
+
                 // Monomorphize the trait declaration.
                 ctx.monomorphize(
                     handler,
@@ -191,6 +194,10 @@ impl TraitConstraint {
                     EnforceTypeArguments::Yes,
                     &trait_name.span(),
                 )?;
+
+                // restore type parameters and type arguments
+                trait_decl.type_parameters.pop();
+                type_arguments.pop();
 
                 // Insert the interface surface and methods from this trait into
                 // the namespace.
