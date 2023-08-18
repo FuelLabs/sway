@@ -346,7 +346,7 @@ impl Parse for ItemAbi {
         self.abi_items
             .get()
             .iter()
-            .for_each(|(annotated, _)| match &annotated.value {
+            .for_each(|annotated| match &annotated.value {
                 sway_ast::ItemTraitItem::Fn(fn_sig, _) => fn_sig.parse(ctx),
                 sway_ast::ItemTraitItem::Const(item_const, _) => item_const.parse(ctx),
                 sway_ast::ItemTraitItem::Error(_, _) => {}

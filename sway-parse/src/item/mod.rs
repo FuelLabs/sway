@@ -575,7 +575,7 @@ mod tests {
             assert!(f_sig.is_some());
 
             assert_eq!(
-                attributes(&f_sig.unwrap().0.attribute_list),
+                attributes(&f_sig.unwrap().attribute_list),
                 vec![[("bar", Some(vec!["one", "two", "three"]))],]
             );
 
@@ -583,7 +583,7 @@ mod tests {
             assert!(g_sig.is_some());
 
             assert_eq!(
-                attributes(&g_sig.unwrap().0.attribute_list),
+                attributes(&g_sig.unwrap().attribute_list),
                 vec![[("foo", None)],]
             );
             assert!(decls.next().is_none());
