@@ -89,6 +89,7 @@ impl Parse for ItemKind {
             ItemKind::TypeAlias(item_type_alias) => {
                 item_type_alias.parse(ctx);
             }
+            ItemKind::Error(_, _) => {}
         }
     }
 }
