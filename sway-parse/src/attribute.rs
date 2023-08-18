@@ -92,7 +92,6 @@ impl<T: Parse> Parse for Annotated<T> {
     where
         Self: Sized,
     {
-        dbg!(1, std::any::type_name::<T>());
         T::error(spans, error).map(|value| Annotated {
             attribute_list: vec![],
             value,
