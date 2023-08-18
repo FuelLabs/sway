@@ -1,6 +1,6 @@
 [package]
 name = "sway-ir"
-version = "0.44.1"
+version = "0.44.2"
 description = "Sway intermediate representation."
 authors.workspace = true
 edition.workspace = true
@@ -16,6 +16,6 @@ generational-arena = "0.2"
 peg = "0.7"
 prettydiff = "0.6.4"
 rustc-hash = "1.1.0"
-sway-ir-macros = { version = "0.44.1", path = "sway-ir-macros" }
-sway-types = { version = "0.44.1", path = "../sway-types" }
-sway-utils = { version = "0.44.1", path = "../sway-utils" }
+sway-ir-macros = { version = "0.44.2", path = "sway-ir-macros" }
+sway-types = { version = "0.44.2", path = "../sway-types" }
+sway-utils = { version = "0.44.2", path = "../sway-utils" }
