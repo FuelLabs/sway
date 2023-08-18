@@ -5,12 +5,15 @@ use super::{ConstantDeclaration, FunctionDeclaration, FunctionParameter};
 use crate::{
     decl_engine::DeclRefTrait, engine_threading::*, language::*, transform, type_system::*,
 };
+use sway_error::handler::ErrorEmitted;
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 #[derive(Debug, Clone)]
 pub enum TraitItem {
     TraitFn(TraitFn),
     Constant(ConstantDeclaration),
+    // to handle parser recovery: Error represents an incomplete trait item
+    Error(Box<[Span]>, ErrorEmitted),
 }
 
 #[derive(Debug, Clone)]

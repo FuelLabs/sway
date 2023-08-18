@@ -17,7 +17,7 @@ impl Parse for ItemAbi {
         let abi_items: Braces<Vec<(Annotated<ItemTraitItem>, _)>> = parser.parse()?;
         for (annotated, _) in abi_items.get().iter() {
             #[allow(irrefutable_let_patterns)]
-            if let ItemTraitItem::Fn(fn_signature) = &annotated.value {
+            if let ItemTraitItem::Fn(fn_signature, _) = &annotated.value {
                 parser.ban_visibility_qualifier(&fn_signature.visibility)?;
             }
         }

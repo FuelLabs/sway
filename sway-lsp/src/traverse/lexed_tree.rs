@@ -300,9 +300,10 @@ impl Parse for ItemTrait {
         self.trait_items
             .get()
             .iter()
-            .for_each(|(annotated, _)| match &annotated.value {
-                sway_ast::ItemTraitItem::Fn(fn_sig) => fn_sig.parse(ctx),
-                sway_ast::ItemTraitItem::Const(item_const) => item_const.parse(ctx),
+            .for_each(|annotated| match &annotated.value {
+                sway_ast::ItemTraitItem::Fn(fn_sig, _) => fn_sig.parse(ctx),
+                sway_ast::ItemTraitItem::Const(item_const, _) => item_const.parse(ctx),
+                sway_ast::ItemTraitItem::Error(_, _) => {}
             });
 
         if let Some(trait_defs_opt) = &self.trait_defs_opt {
@@ -346,8 +347,9 @@ impl Parse for ItemAbi {
             .get()
             .iter()
             .for_each(|(annotated, _)| match &annotated.value {
-                sway_ast::ItemTraitItem::Fn(fn_sig) => fn_sig.parse(ctx),
-                sway_ast::ItemTraitItem::Const(item_const) => item_const.parse(ctx),
+                sway_ast::ItemTraitItem::Fn(fn_sig, _) => fn_sig.parse(ctx),
+                sway_ast::ItemTraitItem::Const(item_const, _) => item_const.parse(ctx),
+                sway_ast::ItemTraitItem::Error(_, _) => {}
             });
 
         if let Some(abi_defs_opt) = self.abi_defs_opt.as_ref() {
