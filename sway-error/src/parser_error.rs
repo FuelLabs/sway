@@ -8,6 +8,8 @@ pub enum ParseErrorKind {
     ExpectedImportNameGroupOrGlob,
     #[error("Expected an item.")]
     ExpectedAnItem,
+    #[error("Expected item after doc comment.")]
+    ExpectedAnItemAfterDocComment,
     #[error("Expected a comma or closing parenthesis in function arguments.")]
     ExpectedCommaOrCloseParenInFnArgs,
     #[error("Unrecognized op code.")]

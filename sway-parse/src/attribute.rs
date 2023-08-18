@@ -59,13 +59,18 @@ impl<T: Parse> Parse for Annotated<T> {
             attribute_list.push(attr);
         }
 
-        // Parse the `T` value.
-        let value = parser.parse()?;
+        if parser.check_empty().is_some() {
+            let error = parser.emit_error(ParseErrorKind::ExpectedAnItemAfterDocComment);
+            Err(error)
+        } else {
+            // Parse the `T` value.
+            let value = parser.parse()?;
 
-        Ok(Annotated {
-            attribute_list,
-            value,
-        })
+            Ok(Annotated {
+                attribute_list,
+                value,
+            })
+        }
     }
 }
 
