@@ -132,20 +132,29 @@ impl ParseToEnd for CodeBlockContents {
         mut parser: Parser<'a, '_>,
     ) -> ParseResult<(CodeBlockContents, ParserConsumed<'a>)> {
         let mut statements = Vec::new();
+
         let (final_expr_opt, consumed) = loop {
             if let Some(consumed) = parser.check_empty() {
                 break (None, consumed);
             }
-            match parse_stmt(&mut parser)? {
-                StmtOrTail::Stmt(s) => statements.push(s),
-                StmtOrTail::Tail(e, c) => break (Some(e), c),
+
+            match parser.parse_fn_with_recovery(parse_stmt) {
+                Ok(StmtOrTail::Stmt(s)) => statements.push(s),
+                Ok(StmtOrTail::Tail(e, c)) => break (Some(e), c),
+                Err(r) => {
+                    let (spans, error) = r
+                        .recover_at_next_line_with_fallback_error(ParseErrorKind::InvalidStatement);
+                    statements.push(Statement::Error(spans, error));
+                }
             }
         };
+
         let code_block_contents = CodeBlockContents {
             statements,
             final_expr_opt,
             span: parser.full_span().clone(),
         };
+
         Ok((code_block_contents, consumed))
     }
 }
@@ -187,14 +196,8 @@ fn parse_stmt<'a>(parser: &mut Parser<'a, '_>) -> ParseResult<StmtOrTail<'a>> {
     }
 
     // Try a `let` statement.
-    match parser.guarded_parse_with_recovery::<LetToken, StatementLet>() {
-        Ok(None) => {}
-        Ok(Some(item)) => return stmt(Statement::Let(item)),
-        Err(r) => {
-            let (spans, error) =
-                r.recover_at_next_line_with_fallback_error(ParseErrorKind::InvalidStatement);
-            return stmt(Statement::Error(spans, error));
-        }
+    if let Some(item) = parser.guarded_parse::<LetToken, StatementLet>()? {
+        return stmt(Statement::Let(item));
     }
 
     // Try an `expr;` statement.

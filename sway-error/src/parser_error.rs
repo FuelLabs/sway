@@ -8,6 +8,8 @@ pub enum ParseErrorKind {
     ExpectedImportNameGroupOrGlob,
     #[error("Expected an item.")]
     ExpectedAnItem,
+    #[error("Expected item after doc comment.")]
+    ExpectedAnItemAfterDocComment,
     #[error("Expected a comma or closing parenthesis in function arguments.")]
     ExpectedCommaOrCloseParenInFnArgs,
     #[error("Unrecognized op code.")]
@@ -22,6 +24,8 @@ pub enum ParseErrorKind {
     InvalidLiteralFieldName,
     #[error("Invalid statement.")]
     InvalidStatement,
+    #[error("Invalid item.")]
+    InvalidItem,
     #[error("Integer field names cannot have type suffixes.")]
     IntFieldWithTypeSuffix,
     #[error("Expected a field name.")]
