@@ -25,6 +25,8 @@ use forc_wallet::{
     utils::default_wallet_path,
 };
 
+use crate::default::BETA_4_FAUCET_URL;
+
 /// The maximum time to wait for a transaction to be included in a block by the node
 pub const TX_SUBMIT_TIMEOUT_MS: u64 = 30_000u64;
 
@@ -203,11 +205,14 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                     .flat_map(|account| account.values())
                     .sum::<u64>();
                 if total_balance == 0 {
-                    // TODO: Point to latest test-net faucet with account info added to the
-                    // link as a parameter.
-                    anyhow::bail!("Your wallet does not have any funds to pay for the deployment transaction.\
-                                      \nIf you are deploying to a testnet consider using the faucet.\
-                                      \nIf you are deploying to a local node, consider providing a chainConfig which funds your account.")
+                    let first_account = accounts
+                        .get(&0)
+                        .ok_or_else(|| anyhow::anyhow!("No account derived for this wallet"))?;
+                    let faucet_link = format!("{}/?address={first_account}", BETA_4_FAUCET_URL);
+                    anyhow::bail!("Your wallet does not have any funds to pay for the transaction.\
+                                      \n\nIf you are interacting with a testnet consider using the faucet.\
+                                      \n-> beta-4 network faucet: {faucet_link}\
+                                      \nIf you are interacting with a local node, consider providing a chainConfig which funds your account.")
                 }
                 print_account_balances(&accounts, &account_balances);
 
