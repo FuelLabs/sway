@@ -518,8 +518,8 @@ mod tests {
 
             let trait_item = decls.next();
             assert!(trait_item.is_some());
-            let (annotated, _) = trait_item.unwrap();
-            if let ItemTraitItem::Fn(_fn_sig) = &annotated.value {
+            let annotated = trait_item.unwrap();
+            if let ItemTraitItem::Fn(_fn_sig, _) = &annotated.value {
                 assert_eq!(
                     attributes(&annotated.attribute_list),
                     vec![[("foo", Some(vec!["one"]))], [("bar", None)]]
