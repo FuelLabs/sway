@@ -76,13 +76,13 @@ impl<'a, 'e> Parser<'a, 'e> {
         Peeker::with(self.token_trees).map(|(v, _)| v)
     }
 
-    pub fn parse_fn_with_recovery<
+    pub fn call_parsing_function_with_recovery<
         'original,
         T,
         F: FnOnce(&mut Parser<'a, '_>) -> ParseResult<T>,
     >(
         &'original mut self,
-        f: F,
+        parsing_function: F,
     ) -> Result<T, Recoverer<'original, 'a, 'e>> {
         let handler = Handler::default();
         let mut fork = Parser {
@@ -91,7 +91,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             handler: &handler,
         };
 
-        match f(&mut fork) {
+        match parsing_function(&mut fork) {
             Ok(result) => {
                 self.token_trees = fork.token_trees;
                 self.handler.append(handler);
@@ -117,34 +117,7 @@ impl<'a, 'e> Parser<'a, 'e> {
     pub fn parse_with_recovery<'original, T: Parse>(
         &'original mut self,
     ) -> Result<T, Recoverer<'original, 'a, 'e>> {
-        let handler = Handler::default();
-        let mut fork = Parser {
-            token_trees: self.token_trees,
-            full_span: self.full_span.clone(),
-            handler: &handler,
-        };
-
-        match fork.parse() {
-            Ok(result) => {
-                self.token_trees = fork.token_trees;
-                self.handler.append(handler);
-                Ok(result)
-            }
-            Err(error) => {
-                let Parser {
-                    token_trees,
-                    full_span,
-                    ..
-                } = fork;
-                Err(Recoverer {
-                    original: RefCell::new(self),
-                    handler,
-                    fork_token_trees: token_trees,
-                    fork_full_span: full_span,
-                    error,
-                })
-            }
-        }
+        self.call_parsing_function_with_recovery(|p| p.parse())
     }
 
     /// This function do three things
