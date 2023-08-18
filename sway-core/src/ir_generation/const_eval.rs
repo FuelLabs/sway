@@ -796,8 +796,11 @@ fn const_eval_intrinsic(
             }
         }
         Intrinsic::Lsh | Intrinsic::Rsh => {
+            assert!(args.len() == 2);
+            assert!(args[0].ty.is_uint(lookup.context));
+            assert!(args[1].ty.is_uint64(lookup.context));
+
             let ty = args[0].ty;
-            assert!(args.len() == 2 && args[1].ty.is_uint64(lookup.context));
 
             use ConstantValue::*;
             match (&args[0].value, &args[1].value) {
@@ -962,10 +965,11 @@ fn const_eval_intrinsic(
             span: intrinsic.span.clone(),
         }),
         Intrinsic::Not => {
-            // Not works only with uint/u256 at the moment
+            // `not` works only with uint/u256 at the moment
             // `bool` ops::Not implementation uses `__eq`.
 
             assert!(args.len() == 1);
+            assert!(args[0].ty.is_uint(lookup.context));
 
             let Some(arg) = args.into_iter().next() else {
                 unreachable!("Unexpected 'not' without any arguments");
