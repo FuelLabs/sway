@@ -760,7 +760,7 @@ fn item_abi_to_abi_declaration(
                 .abi_items
                 .into_inner()
                 .into_iter()
-                .map(|(annotated, _)| {
+                .map(|annotated| {
                     let attributes =
                         item_attrs_to_map(context, handler, &annotated.attribute_list)?;
                     if !cfg_eval(context, handler, &attributes)? {
