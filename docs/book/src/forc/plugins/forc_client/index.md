@@ -56,7 +56,7 @@ By default `--default-signer` flag would sign your transactions with the followi
 
 ## Interacting with the testnet
 
-To interact with the latest testnet you can pass `--testnet` flag. Passing this flag will send transactions crafted by `forc-deploy` to `beta-4` testnet.
+To interact with the latest testnet, use the `--testnet` flag. When this flag is passed, transactions created by `forc-deploy` will be sent to the `beta-4` testnet.
 
 ```sh
 forc-deploy --testnet
