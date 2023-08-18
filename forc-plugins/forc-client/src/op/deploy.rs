@@ -199,63 +199,55 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
 
 /// Applies specified target information to the provided arguments.
 ///
-/// Basically provides preset configurations for known test-nets.
+/// Provides preset configurations for known testnets.
 fn apply_target(command: cmd::Deploy) -> Result<cmd::Deploy> {
-    let deploy_to_latest_testnet = command.testnet;
-    let target = if deploy_to_latest_testnet {
-        if command.target.is_some() {
-            bail!("Both `--testnet` and `--target` were specified: must choose one")
-        }
-        if command.node_url.is_some() {
-            bail!("Both `--testnet` and `--node-url` were specified: must choose one")
-        }
-        Some(Target::Beta4)
-    } else {
-        command.target.clone()
+    let target = match (
+        command.testnet,
+        command.target.clone(),
+        command.node_url.clone(),
+    ) {
+        (true, None, None) => Some(Target::Beta4),
+        (false, Some(target), None) => Some(target),
+        (false, None, Some(node_url)) => Target::from_target_url(node_url.as_str()),
+        (false, None, None) => None,
+        _ => bail!("Only one of `--testnet`, `--target`, or `--node-url` should be specified"),
     };
 
+    // If the user specified a testnet target, we can override the gas price and limit.
     if let Some(target) = target {
-        if command.node_url.is_some() {
-            bail!("Both `--target` and `--node-url` were specified: must choose one")
-        }
-        match target {
-            cmd::deploy::Target::Beta2
-            | cmd::deploy::Target::Beta3
-            | cmd::deploy::Target::Beta4 => {
-                // If the user did not specified a gas price, we can use `1` as a gas price for
-                // beta test-nets.
-                let gas_price = if command.gas.price == 0 {
-                    1
-                } else {
-                    command.gas.price
-                };
+        if target.is_testnet() {
+            // If the user did not specify a gas price, we can use `1` as a gas price for
+            // beta test-nets.
+            let gas_price = if command.gas.price == 0 {
+                1
+            } else {
+                command.gas.price
+            };
 
-                // fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx is the default value for
-                // the gas.limit field.
-                let gas_limit = if command.gas.limit
-                    == fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx
-                    && target == cmd::deploy::Target::Beta4
-                {
-                    1
-                } else {
-                    command.gas.limit
-                };
+            // fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx is the default value for
+            // the gas.limit field.
+            let gas_limit = if command.gas.limit
+                == fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx
+                && target == cmd::deploy::Target::Beta4
+            {
+                1
+            } else {
+                command.gas.limit
+            };
 
-                let target_url = Some(target.target_url().to_string());
-                Ok(cmd::Deploy {
-                    gas: Gas {
-                        price: gas_price,
-                        limit: gas_limit,
-                    },
-                    node_url: target_url,
-                    ..command
-                })
-            }
-            cmd::deploy::Target::Local => Ok(command),
+            let target_url = Some(target.target_url().to_string());
+            return Ok(cmd::Deploy {
+                gas: Gas {
+                    price: gas_price,
+                    limit: gas_limit,
+                },
+                node_url: target_url,
+                ..command
+            });
         }
-    } else {
-        Ok(command)
     }
+
+    Ok(command)
 }
 
 /// Deploy a single pkg given deploy command and the manifest file

@@ -30,6 +30,23 @@ impl Target {
             Target::Local => NODE_URL,
         }
     }
+
+    pub fn from_target_url(target_url: &str) -> Option<Self> {
+        match target_url {
+            BETA_2_ENDPOINT_URL => Some(Target::Beta2),
+            BETA_3_ENDPOINT_URL => Some(Target::Beta3),
+            BETA_4_ENDPOINT_URL => Some(Target::Beta4),
+            NODE_URL => Some(Target::Local),
+            _ => None,
+        }
+    }
+
+    pub fn is_testnet(&self) -> bool {
+        match self {
+            Target::Beta2 | Target::Beta3 | Target::Beta4 => true,
+            Target::Local => false,
+        }
+    }
 }
 
 impl FromStr for Target {
