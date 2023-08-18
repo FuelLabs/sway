@@ -415,6 +415,14 @@ mod test {
         contract_to_manifest
     }
 
+    fn assert_cmd_eq(expected: cmd::Deploy, actual: cmd::Deploy) {
+        assert_eq!(expected.node_url, actual.node_url);
+        assert_eq!(expected.target, actual.target);
+        assert_eq!(expected.testnet, actual.testnet);
+        assert_eq!(expected.gas.price, actual.gas.price);
+        assert_eq!(expected.gas.limit, actual.gas.limit);
+    }
+
     #[test]
     fn test_parse_and_validate_salts_pass() {
         let mut manifests = setup_manifest_files();
@@ -494,5 +502,156 @@ mod test {
                 .to_string(),
             err_message,
         );
+    }
+
+    #[test]
+    fn test_apply_target_testnet() {
+        let input = cmd::Deploy {
+            target: None,
+            node_url: None,
+            testnet: true,
+            ..Default::default()
+        };
+        let expected = cmd::Deploy {
+            target: None,
+            node_url: Some("beta-4.fuel.network/graphql".to_string()),
+            testnet: true,
+            gas: Gas { price: 1, limit: 1 },
+            ..Default::default()
+        };
+        let actual = apply_target(input).unwrap();
+        assert_cmd_eq(expected, actual);
+    }
+
+    #[test]
+    fn test_apply_target_beta4() {
+        let input = cmd::Deploy {
+            target: Some(Target::Beta4),
+            node_url: None,
+            testnet: false,
+            ..Default::default()
+        };
+        let expected = cmd::Deploy {
+            target: Some(Target::Beta4),
+            node_url: Some("beta-4.fuel.network/graphql".to_string()),
+            testnet: false,
+            gas: Gas { price: 1, limit: 1 },
+            ..Default::default()
+        };
+        let actual = apply_target(input).unwrap();
+        assert_cmd_eq(expected, actual);
+    }
+
+    #[test]
+    fn test_apply_target_url_beta4() {
+        let input = cmd::Deploy {
+            target: None,
+            node_url: Some("beta-4.fuel.network/graphql".to_string()),
+            testnet: false,
+            ..Default::default()
+        };
+        let expected = cmd::Deploy {
+            target: None,
+            node_url: Some("beta-4.fuel.network/graphql".to_string()),
+            testnet: false,
+            gas: Gas { price: 1, limit: 1 },
+            ..Default::default()
+        };
+        let actual = apply_target(input).unwrap();
+        assert_cmd_eq(expected, actual);
+    }
+
+    #[test]
+    fn test_apply_target_beta4_custom_gas() {
+        let input = cmd::Deploy {
+            target: Some(Target::Beta4),
+            node_url: None,
+            testnet: false,
+            gas: Gas {
+                price: 12,
+                limit: 13,
+            },
+            ..Default::default()
+        };
+        let expected = cmd::Deploy {
+            target: Some(Target::Beta4),
+            node_url: Some("beta-4.fuel.network/graphql".to_string()),
+            testnet: false,
+            gas: Gas {
+                price: 12,
+                limit: 13,
+            },
+            ..Default::default()
+        };
+        let actual = apply_target(input).unwrap();
+        assert_cmd_eq(expected, actual);
+    }
+
+    #[test]
+    fn test_apply_target_beta3() {
+        let input = cmd::Deploy {
+            target: Some(Target::Beta3),
+            node_url: None,
+            testnet: false,
+            ..Default::default()
+        };
+        let expected = cmd::Deploy {
+            target: Some(Target::Beta3),
+            node_url: Some("beta-3.fuel.network/graphql".to_string()),
+            testnet: false,
+            gas: Gas {
+                price: 1,
+                limit: 100000000,
+            },
+            ..Default::default()
+        };
+        let actual = apply_target(input).unwrap();
+        assert_cmd_eq(expected, actual);
+    }
+
+    #[test]
+    fn test_apply_target_local() {
+        let input = cmd::Deploy {
+            target: Some(Target::Local),
+            node_url: None,
+            testnet: false,
+            ..Default::default()
+        };
+        let expected = cmd::Deploy {
+            target: Some(Target::Local),
+            node_url: None,
+            testnet: false,
+            ..Default::default()
+        };
+        let actual = apply_target(input).unwrap();
+        assert_cmd_eq(expected, actual);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Only one of `--testnet`, `--target`, or `--node-url` should be specified"
+    )]
+    fn test_apply_target_local_testnet() {
+        let input = cmd::Deploy {
+            target: Some(Target::Local),
+            node_url: None,
+            testnet: true,
+            ..Default::default()
+        };
+        apply_target(input).unwrap();
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Only one of `--testnet`, `--target`, or `--node-url` should be specified"
+    )]
+    fn test_apply_target_same_url() {
+        let input = cmd::Deploy {
+            target: Some(Target::Beta3),
+            node_url: Some("beta-3.fuel.network/graphql".to_string()),
+            testnet: false,
+            ..Default::default()
+        };
+        apply_target(input).unwrap();
     }
 }
