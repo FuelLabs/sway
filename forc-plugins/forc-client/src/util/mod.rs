@@ -12,12 +12,12 @@ pub enum Target {
     Beta2,
     Beta3,
     Beta4,
-    LATEST,
+    Local,
 }
 
 impl Default for Target {
     fn default() -> Self {
-        Self::LATEST
+        Self::Local
     }
 }
 
@@ -27,7 +27,7 @@ impl Target {
             Target::Beta2 => BETA_2_ENDPOINT_URL,
             Target::Beta3 => BETA_3_ENDPOINT_URL,
             Target::Beta4 => BETA_4_ENDPOINT_URL,
-            Target::LATEST => NODE_URL,
+            Target::Local => NODE_URL,
         }
     }
 }
@@ -36,18 +36,30 @@ impl FromStr for Target {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s == "latest" {
-            Ok(Target::LATEST)
-        } else if s == "beta-2" {
-            Ok(Target::Beta2)
-        } else if s == "beta-3" {
-            Ok(Target::Beta3)
-        } else if s == "beta-4" {
-            Ok(Target::Beta4)
-        } else {
-            anyhow::bail!(
-                "invalid testnet name provided. Possible values are 'beta-2', 'beta-3', 'beta-4', 'latest'."
-            )
+        match s {
+            "beta-2" => Ok(Target::Beta2),
+            "beta-3" => Ok(Target::Beta3),
+            "beta-4" => Ok(Target::Beta4),
+            "local" => Ok(Target::Local),
+            _ => anyhow::bail!(
+                "'{s}' is not a valid target name. Possible values: '{}', '{}', '{}', '{}'",
+                Target::Beta2,
+                Target::Beta3,
+                Target::Beta4,
+                Target::Local
+            ),
         }
+    }
+}
+
+impl std::fmt::Display for Target {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Target::Beta2 => "beta-2",
+            Target::Beta3 => "beta-3",
+            Target::Beta4 => "beta-4",
+            Target::Local => "local",
+        };
+        write!(f, "{}", s)
     }
 }

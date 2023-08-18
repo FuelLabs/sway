@@ -251,7 +251,7 @@ fn apply_target(command: cmd::Deploy) -> Result<cmd::Deploy> {
                     ..command
                 })
             }
-            cmd::deploy::Target::LATEST => Ok(command),
+            cmd::deploy::Target::Local => Ok(command),
         }
     } else {
         Ok(command)
