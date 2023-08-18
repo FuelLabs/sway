@@ -6,6 +6,8 @@ use sway_error::parser_error::ParseErrorKind;
 use sway_types::{ast::Delimiter, Ident, Spanned};
 
 pub trait Parse {
+    const FALLBACK_ERROR: ParseErrorKind = ParseErrorKind::InvalidItem;
+
     fn parse(parser: &mut Parser) -> ParseResult<Self>
     where
         Self: Sized;
@@ -110,7 +112,7 @@ where
                 Ok(value) => ret.push(value),
                 Err(r) => {
                     let (spans, error) =
-                        r.recover_at_next_line_with_fallback_error(ParseErrorKind::InvalidItem);
+                        r.recover_at_next_line_with_fallback_error(T::FALLBACK_ERROR);
                     if let Some(error) = T::error(spans, error) {
                         ret.push(error);
                     } else {
