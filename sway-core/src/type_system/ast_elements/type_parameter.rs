@@ -2,6 +2,7 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::{ty, CallPath},
+    namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::*,
     type_system::priv_prelude::*,
 };
@@ -295,7 +296,7 @@ impl TypeParameter {
                         trait_constraints,
                         access_span,
                         engines,
-                        true,
+                        TryInsertingTraitImplOnFailure::Yes,
                     ) {
                     Ok(res) => res,
                     Err(_) => continue,

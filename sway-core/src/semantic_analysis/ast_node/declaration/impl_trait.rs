@@ -14,6 +14,7 @@ use crate::{
         ty::{self, TyImplItem, TyTraitInterfaceItem, TyTraitItem},
         *,
     },
+    namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::{AbiMode, ConstShadowingMode, TypeCheckContext},
     type_system::*,
 };
@@ -387,7 +388,7 @@ fn type_check_trait_implementation(
                 .collect::<Vec<_>>(),
             block_span,
             engines,
-            true,
+            TryInsertingTraitImplOnFailure::Yes,
         )?;
 
     for (type_arg, type_param) in trait_type_arguments.iter().zip(trait_type_parameters) {

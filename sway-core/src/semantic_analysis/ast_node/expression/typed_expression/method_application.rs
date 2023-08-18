@@ -1,6 +1,7 @@
 use crate::{
     decl_engine::{DeclEngineInsert, DeclRefFunction, ReplaceDecls, UpdateConstantExpression},
     language::{parsed::*, ty, *},
+    namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::*,
     type_system::*,
 };
@@ -441,7 +442,7 @@ pub(crate) fn resolve_method_name(
                 &arguments,
                 None,
                 engines,
-                true,
+                TryInsertingTraitImplOnFailure::Yes,
             )?;
 
             (decl_ref, type_id)
@@ -480,7 +481,7 @@ pub(crate) fn resolve_method_name(
                 &arguments,
                 None,
                 engines,
-                true,
+                TryInsertingTraitImplOnFailure::Yes,
             )?;
 
             (decl_ref, type_id)
@@ -506,7 +507,7 @@ pub(crate) fn resolve_method_name(
                 &arguments,
                 None,
                 engines,
-                true,
+                TryInsertingTraitImplOnFailure::Yes,
             )?;
 
             (decl_ref, type_id)
@@ -531,7 +532,7 @@ pub(crate) fn resolve_method_name(
                 &arguments,
                 Some(as_trait.clone()),
                 engines,
-                true,
+                TryInsertingTraitImplOnFailure::Yes,
             )?;
 
             (decl_ref, type_id)

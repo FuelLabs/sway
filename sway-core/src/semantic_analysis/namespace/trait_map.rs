@@ -20,6 +20,8 @@ use crate::{
     ReplaceSelfType, TraitConstraint, TypeArgument, TypeInfo, TypeSubstMap, UnifyCheck,
 };
 
+use super::TryInsertingTraitImplOnFailure;
+
 #[derive(Clone, Debug)]
 struct TraitSuffix {
     name: Ident,
@@ -859,7 +861,7 @@ impl TraitMap {
         constraints: &[TraitConstraint],
         access_span: &Span,
         engines: &Engines,
-        try_inserting_trait_impl_on_failure: bool,
+        try_inserting_trait_impl_on_failure: TryInsertingTraitImplOnFailure,
     ) -> Result<(), ErrorEmitted> {
         let type_engine = engines.te();
         let _decl_engine = engines.de();
@@ -933,7 +935,10 @@ impl TraitMap {
 
         handler.scope(|handler| {
             for trait_name in required_traits_names.difference(&relevant_impld_traits_names) {
-                if try_inserting_trait_impl_on_failure {
+                if matches!(
+                    try_inserting_trait_impl_on_failure,
+                    TryInsertingTraitImplOnFailure::Yes
+                ) {
                     self.insert_for_type(engines, type_id);
                     return self.check_if_trait_constraints_are_satisfied_for_type(
                         handler,
@@ -941,7 +946,7 @@ impl TraitMap {
                         constraints,
                         access_span,
                         engines,
-                        false,
+                        TryInsertingTraitImplOnFailure::No,
                     );
                 } else {
                     // TODO: use a better span
