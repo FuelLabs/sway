@@ -1,9 +1,7 @@
-use std::path::PathBuf;
-
 use criterion::{black_box, criterion_group, Criterion};
 use lsp_types::{
-    CodeLens, CompletionResponse, DocumentSymbolResponse, Position, Range,
-    TextDocumentContentChangeEvent, TextDocumentIdentifier,
+    CompletionResponse, DocumentSymbolResponse, Position, Range, TextDocumentContentChangeEvent,
+    TextDocumentIdentifier,
 };
 use sway_lsp::{capabilities, lsp_ext::OnEnterParams, utils::keyword_docs::KeywordDocs};
 
