@@ -333,6 +333,22 @@ pub(crate) async fn code_lens_request(service: &mut LspService<ServerState>, uri
     code_lens
 }
 
+pub(crate) async fn code_lens_empty_request(
+    service: &mut LspService<ServerState>,
+    uri: &Url,
+) -> Request {
+    let params = json!({
+        "textDocument": {
+            "uri": uri,
+        },
+    });
+    let code_lens = build_request_with_id("textDocument/codeLens", params, 1);
+    let response = call_request(service, code_lens.clone()).await;
+    let actual_results = extract_result_array(response);
+    assert_eq!(actual_results.len(), 0);
+    code_lens
+}
+
 pub(crate) async fn completion_request(
     service: &mut LspService<ServerState>,
     uri: &Url,

@@ -40,9 +40,7 @@ pub fn e2e_test_dir() -> PathBuf {
 }
 
 pub fn runnables_test_dir() -> PathBuf {
-    sway_workspace_dir()
-        .join(e2e_unit_dir())
-        .join("script_multi_test")
+    test_fixtures_dir().join("runnables")
 }
 
 pub fn test_fixtures_dir() -> PathBuf {

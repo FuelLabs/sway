@@ -243,21 +243,27 @@ pub(crate) fn handle_code_lens(
     state: &ServerState,
     params: lsp_types::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
-    let mut result = vec![];
     match state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
-        Ok((_, session)) => {
+        Ok((url, session)) => {
+            let url_path = PathBuf::from(url.path());
+
             // Construct code lenses for runnable functions
-            session.runnables.iter().for_each(|item| {
-                let runnable = item.value();
-                result.push(CodeLens {
-                    range: runnable.range(),
-                    command: Some(runnable.command()),
-                    data: None,
-                });
-            });
+            let runnables_for_path = session.runnables.get(&url_path);
+            let result: Vec<CodeLens> = runnables_for_path
+                .map(|runnables| {
+                    runnables
+                        .iter()
+                        .map(|runnable| CodeLens {
+                            range: runnable.range().clone(),
+                            command: Some(runnable.command()),
+                            data: None,
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
             Ok(Some(result))
         }
         Err(err) => {
