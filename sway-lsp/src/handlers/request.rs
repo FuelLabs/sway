@@ -247,25 +247,7 @@ pub(crate) fn handle_code_lens(
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
-        Ok((url, session)) => {
-            let url_path = PathBuf::from(url.path());
-
-            // Construct code lenses for runnable functions
-            let runnables_for_path = session.runnables.get(&url_path);
-            let result: Vec<CodeLens> = runnables_for_path
-                .map(|runnables| {
-                    runnables
-                        .iter()
-                        .map(|runnable| CodeLens {
-                            range: runnable.range().clone(),
-                            command: Some(runnable.command()),
-                            data: None,
-                        })
-                        .collect()
-                })
-                .unwrap_or_default();
-            Ok(Some(result))
-        }
+        Ok((url, session)) => Ok(Some(capabilities::code_lens::code_lens(&session, &url))),
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)
