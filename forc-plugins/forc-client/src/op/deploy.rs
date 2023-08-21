@@ -116,7 +116,7 @@ fn validate_and_parse_salts<'a>(
 ///
 /// When deploying a single contract, only that contract's ID is returned.
 pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
-    let mut command = apply_target(command)?;
+    let mut command = apply_target(command).await?;
     if command.unsigned {
         warn!(" Warning: --unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
         command.default_signer = true;
@@ -200,7 +200,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
 /// Applies specified target information to the provided arguments.
 ///
 /// Provides preset configurations for known testnets.
-fn apply_target(command: cmd::Deploy) -> Result<cmd::Deploy> {
+async fn apply_target(command: cmd::Deploy) -> Result<cmd::Deploy> {
     let target = match (
         command.testnet,
         command.target.clone(),
@@ -216,24 +216,27 @@ fn apply_target(command: cmd::Deploy) -> Result<cmd::Deploy> {
     // If the user specified a testnet target, we can override the gas price and limit.
     if let Some(target) = target {
         if target.is_testnet() {
-            // If the user did not specify a gas price, we can use `1` as a gas price for
-            // beta test-nets.
+            let node_url = target.target_url();
+            let client = FuelClient::new(node_url)?;
+            // If the user did not specify a gas price, we will use the minimum gas price defined
+            // by the node.
             let gas_price = if command.gas.price == 0 {
-                1
+                let node_info = client.node_info().await?;
+                node_info.min_gas_price
             } else {
                 command.gas.price
             };
 
             // fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx is the default value for
-            // the gas.limit field.
-            let gas_limit = if command.gas.limit
-                == fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx
-                && target == cmd::deploy::Target::Beta4
-            {
-                1
-            } else {
-                command.gas.limit
-            };
+            // the gas.limit field. If the user left it as default we are getting max gas per tx
+            // from the node.
+            let gas_limit =
+                if command.gas.limit == fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx {
+                    let chain_info = client.chain_info().await?;
+                    chain_info.consensus_parameters.max_gas_per_tx
+                } else {
+                    command.gas.limit
+                };
 
             let target_url = Some(target.target_url().to_string());
             return Ok(cmd::Deploy {
@@ -263,7 +266,6 @@ pub async fn deploy_pkg(
         .or_else(|| manifest.network.as_ref().map(|nw| &nw.url[..]))
         .unwrap_or(crate::default::NODE_URL);
     let client = FuelClient::new(node_url)?;
-
     let bytecode = &compiled.bytecode.bytes;
 
     let mut storage_slots = compiled.storage_slots.clone();
