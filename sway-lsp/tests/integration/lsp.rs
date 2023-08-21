@@ -7,6 +7,7 @@ use assert_json_diff::assert_json_eq;
 use serde_json::json;
 use std::{borrow::Cow, path::Path};
 use sway_lsp::{handlers::request, lsp_ext::ShowAstParams, server_state::ServerState};
+use sway_utils::PerformanceData;
 use tower::{Service, ServiceExt};
 use tower_lsp::{
     jsonrpc::{Id, Request, Response},
@@ -178,6 +179,31 @@ pub(crate) fn format_request(server: &ServerState, uri: &Url) {
     };
     let response = request::handle_formatting(server, params).unwrap();
     assert!(!response.unwrap().is_empty());
+}
+
+
+pub(crate) async fn metrics_request(
+    service: &mut LspService<ServerState>,
+    uri: &Url,
+) -> Vec<(String, PerformanceData)> {
+    let params = json!({
+        "textDocument": {
+            "uri": uri,
+        },
+    });
+    let request = build_request_with_id("sway/metrics", params, 1);
+    let result = call_request(service, request.clone())
+        .await
+        .unwrap()
+        .unwrap();
+    let value = result.result().unwrap().as_array();
+    let mut res = vec![];
+    for v in value.unwrap().iter() {
+        let path = v.get(0).unwrap().as_str().unwrap();
+        let metric = serde_json::from_value(v.get(1).unwrap().clone()).unwrap();
+        res.push((path.to_string(), metric));
+    }
+    res
 }
 
 pub(crate) fn highlight_request(server: &ServerState, uri: &Url) {

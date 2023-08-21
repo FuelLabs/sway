@@ -43,8 +43,8 @@ use sway_core::{
     BuildTarget, Engines, Namespace, Programs,
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
-use sway_types::{SourceEngine, Spanned};
-use sway_utils::helpers::get_sway_files;
+use sway_types::{SourceEngine, SourceId, Span, Spanned};
+use sway_utils::{helpers::get_sway_files, PerformanceData};
 use tokio::sync::Semaphore;
 
 pub type Documents = DashMap<String, TextDocument>;
@@ -55,6 +55,7 @@ pub struct CompiledProgram {
     pub lexed: Option<LexedProgram>,
     pub parsed: Option<ParseProgram>,
     pub typed: Option<ty::TyProgram>,
+    pub metrics: Option<PerformanceData>,
 }
 
 /// Used to write the result of compiling into so we can update
@@ -86,6 +87,7 @@ pub struct Session {
     pub parse_permits: Arc<Semaphore>,
     // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
     pub diagnostics: Arc<RwLock<DiagnosticMap>>,
+    pub metrics: DashMap<SourceId, PerformanceData>,
 }
 
 impl Default for Session {
@@ -100,6 +102,7 @@ impl Session {
             token_map: TokenMap::new(),
             documents: DashMap::new(),
             runnables: DashMap::new(),
+            metrics: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
             engines: <_>::default(),
             sync: SyncWorkspace::new(),
@@ -149,6 +152,7 @@ impl Session {
     pub fn write_parse_result(&self, res: ParseResult) {
         self.token_map.clear();
         self.runnables.clear();
+        self.metrics.clear();
 
         *self.engines.write() = res.engines;
         res.token_map.deref().iter().for_each(|item| {
