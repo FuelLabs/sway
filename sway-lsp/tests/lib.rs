@@ -3,7 +3,10 @@ pub mod integration;
 use crate::integration::{code_actions, lsp};
 use lsp_types::*;
 use std::{fs, path::PathBuf};
-use sway_lsp::{handlers::{notification, request}, server_state::ServerState};
+use sway_lsp::{
+    handlers::{notification, request},
+    server_state::ServerState,
+};
 use sway_lsp_test_utils::{
     assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir,
     e2e_test_dir, generic_impl_self_dir, get_fixture, load_sway_example, runnables_test_dir,

@@ -397,7 +397,7 @@ pub(crate) fn definition_check<'a>(server: &ServerState, go_to: &'a GotoDefiniti
     }
 }
 
-pub (crate) fn definition_check_with_req_offset(
+pub(crate) fn definition_check_with_req_offset(
     server: &ServerState,
     go_to: &mut GotoDefinition<'_>,
     req_line: u32,
