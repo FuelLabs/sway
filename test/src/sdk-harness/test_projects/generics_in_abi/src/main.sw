@@ -1,6 +1,6 @@
 contract;
 
-use std::hash::sha256;
+use std::hash::*;
 
 struct SimpleGeneric<T> {
     single_generic_param: T,
@@ -42,6 +42,12 @@ abi MyContract {
     fn enum_w_generic(arg1: EnumWGeneric<u64>) -> EnumWGeneric<u64>;
 
     fn complex_test(arg1: MegaExample<str[2], b256>);
+}
+
+impl Hash for str[3] {
+    fn hash(self, ref mut state: Hasher) {
+        state.write_str(self);
+    }
 }
 
 impl MyContract for Contract {

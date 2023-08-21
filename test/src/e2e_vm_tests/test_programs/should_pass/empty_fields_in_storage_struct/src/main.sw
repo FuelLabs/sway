@@ -4,6 +4,8 @@ use std::bytes::Bytes;
 use std::storage::storage_bytes::*;
 use std::storage::storage_map::*;
 use std::storage::storage_vec::*;
+use std::hash::*;
+
 
 abi ReproAttempt {
     #[storage(read, write)]
@@ -76,8 +78,8 @@ storage {
         bar: StorageBytes {},
     },
     struct_of_maps: StructOfStorageMaps = StructOfStorageMaps {
-        foo: StorageMap {},
-        bar: StorageMap {},
+        foo: StorageMap::<u64, u64> {},
+        bar: StorageMap::<u64, u64> {},
     },
     struct_of_vecs: StructOfStorageVecs = StructOfStorageVecs {
         foo: StorageVec {},

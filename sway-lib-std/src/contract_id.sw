@@ -3,7 +3,7 @@ library;
 
 use ::alias::{AssetId, SubId};
 use ::convert::From;
-use ::hash::sha256;
+use ::hash::*;
 
 /// The `ContractId` type, a struct wrapper around the inner `b256` value.
 pub struct ContractId {
@@ -100,6 +100,13 @@ impl ContractId {
         asm(r1: amount, r2: asset_id, r3: self.value) {
             tr r3 r1 r2;
         }
+    }
+}
+
+impl Hash for ContractId {
+    fn hash(self, ref mut state: Hasher) {
+        let ContractId { value } = self;
+        value.hash(state);
     }
 }
 

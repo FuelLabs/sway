@@ -46,7 +46,7 @@ impl ReplaceDecls for TyStructExpressionField {
         &mut self,
         decl_mapping: &DeclMapping,
         handler: &Handler,
-        ctx: &TypeCheckContext,
+        ctx: &mut TypeCheckContext,
     ) -> Result<(), ErrorEmitted> {
         self.value.replace_decls(decl_mapping, handler, ctx)
     }

@@ -14,6 +14,7 @@ use crate::{
         ty::{self, TyImplItem, TyTraitInterfaceItem, TyTraitItem},
         *,
     },
+    namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::{AbiMode, ConstShadowingMode, TypeCheckContext},
     type_system::*,
 };
@@ -387,6 +388,7 @@ fn type_check_trait_implementation(
                 .collect::<Vec<_>>(),
             block_span,
             engines,
+            TryInsertingTraitImplOnFailure::Yes,
         )?;
 
     for (type_arg, type_param) in trait_type_arguments.iter().zip(trait_type_parameters) {
@@ -541,7 +543,7 @@ fn type_check_trait_implementation(
         match item {
             TyImplItem::Fn(decl_ref) => {
                 let mut method = decl_engine.get_function(decl_ref);
-                method.replace_decls(&decl_mapping, handler, &ctx)?;
+                method.replace_decls(&decl_mapping, handler, &mut ctx)?;
                 method.subst(&type_mapping, engines);
                 method.replace_self_type(engines, ctx.self_type());
                 all_items_refs.push(TyImplItem::Fn(
@@ -552,7 +554,7 @@ fn type_check_trait_implementation(
             }
             TyImplItem::Constant(decl_ref) => {
                 let mut const_decl = decl_engine.get_constant(decl_ref);
-                const_decl.replace_decls(&decl_mapping, handler, &ctx)?;
+                const_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
                 const_decl.subst(&type_mapping, engines);
                 const_decl.replace_self_type(engines, ctx.self_type());
                 all_items_refs.push(TyImplItem::Constant(decl_engine.insert(const_decl)));
