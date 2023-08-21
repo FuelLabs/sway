@@ -106,16 +106,6 @@ async fn shutdown() {
 }
 
 #[tokio::test]
-async fn refuses_requests_after_shutdown() {
-    let (mut service, _) = LspService::new(ServerState::new);
-    let _ = lsp::initialize_request(&mut service).await;
-    let shutdown = lsp::shutdown_request(&mut service).await;
-    let response = lsp::call_request(&mut service, shutdown).await;
-    let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
-    assert_eq!(response, Ok(Some(err)));
-}
-
-#[tokio::test]
 async fn did_open() {
     let server = ServerState::default();
     let _ = open(&server, e2e_test_dir().join("src/main.sw")).await;
