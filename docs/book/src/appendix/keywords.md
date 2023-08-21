@@ -3,7 +3,7 @@
 The following list contains keywords that are reserved for current or
 future use by the Sway language. As such, they cannot be used as
 identifiers. Identifiers are names of functions, variables,
-parameters, modules, constants, attributes, types, or
+parameters, modules, constants, attributes, types or
 traits, ect.
 
 ### [Keywords Currently in Use](#keywords-currently-in-use)
