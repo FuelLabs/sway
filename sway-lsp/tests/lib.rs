@@ -52,7 +52,7 @@ async fn open(server: &ServerState, entry_point: PathBuf) -> Url {
             text: sway_program,
         },
     };
-    let res = notification::handle_did_open_text_document(&server, params).await;
+    let res = notification::handle_did_open_text_document(server, params).await;
     assert!(res.is_ok());
     uri
 }
@@ -151,7 +151,7 @@ async fn lsp_syncs_with_workspace_edits() {
         def_end_char: 11,
         def_path: uri.as_str(),
     };
-    let _ = lsp::definition_check(service.inner(), &go_to);
+    lsp::definition_check(service.inner(), &go_to);
     let _ = lsp::did_change_request(&mut service, &uri).await;
     go_to.def_line = 20;
     definition_check_with_req_offset(service.inner(), &mut go_to, 45, 24);
@@ -162,7 +162,7 @@ async fn lsp_syncs_with_workspace_edits() {
 async fn show_ast() {
     let server = ServerState::default();
     let uri = open(&server, e2e_test_dir().join("src/main.sw")).await;
-    let _ = lsp::show_ast_request(&server, &uri, "typed", None).await;
+    lsp::show_ast_request(&server, &uri, "typed", None).await;
     let _ = server.shutdown_server();
 }
 
@@ -193,7 +193,7 @@ fn definition_check_with_req_offset<'a>(
 ) {
     go_to.req_line = req_line;
     go_to.req_char = req_char;
-    let _ = lsp::definition_check(server, go_to);
+    lsp::definition_check(server, go_to);
 }
 
 #[tokio::test]
@@ -214,7 +214,7 @@ async fn go_to_definition_for_fields() {
         def_path: "sway-lib-std/src/option.sw",
     };
     // Option
-    let _ = lsp::definition_check(&server, &opt_go_to);
+    lsp::definition_check(&server, &opt_go_to);
     definition_check_with_req_offset(&server, &mut opt_go_to, 5, 16);
     definition_check_with_req_offset(&server, &mut opt_go_to, 9, 9);
     definition_check_with_req_offset(&server, &mut opt_go_to, 9, 16);
@@ -233,7 +233,7 @@ async fn go_to_definition_for_fields() {
         def_path: "sway-lsp/tests/fixtures/tokens/fields/src/foo.sw",
     };
     // foo
-    let _ = lsp::definition_check(&server, &opt_go_to);
+    lsp::definition_check(&server, &opt_go_to);
 
     let opt_go_to = GotoDefinition {
         req_uri: &uri,
@@ -245,7 +245,7 @@ async fn go_to_definition_for_fields() {
         def_path: "sway-lsp/tests/fixtures/tokens/fields/src/foo.sw",
     };
     // Foo
-    let _ = lsp::definition_check(&server, &opt_go_to);
+    lsp::definition_check(&server, &opt_go_to);
 
     let _ = server.shutdown_server();
 }
@@ -269,7 +269,7 @@ async fn go_to_definition_inside_turbofish() {
         def_path: "sway-lib-std/src/option.sw",
     };
     // option.sw
-    let _ = lsp::definition_check(&server, &opt_go_to);
+    lsp::definition_check(&server, &opt_go_to);
     definition_check_with_req_offset(&server, &mut opt_go_to, 16, 17);
     definition_check_with_req_offset(&server, &mut opt_go_to, 17, 29);
     definition_check_with_req_offset(&server, &mut opt_go_to, 18, 19);
@@ -289,7 +289,7 @@ async fn go_to_definition_inside_turbofish() {
         def_path: "sway-lib-std/src/result.sw",
     };
     // result.sw
-    let _ = lsp::definition_check(&server, &res_go_to);
+    lsp::definition_check(&server, &res_go_to);
     definition_check_with_req_offset(&server, &mut res_go_to, 21, 25);
     definition_check_with_req_offset(&server, &mut res_go_to, 22, 36);
     definition_check_with_req_offset(&server, &mut res_go_to, 23, 27);
@@ -317,7 +317,7 @@ async fn go_to_definition_for_matches() {
         def_path: "sway-lsp/tests/fixtures/tokens/matches/src/main.sw",
     };
     // EXAMPLE_CONST
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 19, 18);
     definition_check_with_req_offset(&server, &mut go_to, 22, 18);
     definition_check_with_req_offset(&server, &mut go_to, 22, 30);
@@ -334,7 +334,7 @@ async fn go_to_definition_for_matches() {
         def_path: "sway-lsp/tests/fixtures/tokens/matches/src/main.sw",
     };
     // a => a + 1
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -346,7 +346,7 @@ async fn go_to_definition_for_matches() {
         def_path: "sway-lib-std/src/option.sw",
     };
     // Option
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 25, 33);
     definition_check_with_req_offset(&server, &mut go_to, 26, 11);
     definition_check_with_req_offset(&server, &mut go_to, 27, 11);
@@ -364,7 +364,7 @@ async fn go_to_definition_for_matches() {
         def_path: "sway-lib-std/src/option.sw",
     };
     // Some
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 27, 17);
     definition_check_with_req_offset(&server, &mut go_to, 28, 17);
     definition_check_with_req_offset(&server, &mut go_to, 28, 30);
@@ -379,7 +379,7 @@ async fn go_to_definition_for_matches() {
         def_path: "sway-lib-std/src/option.sw",
     };
     // None
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 27, 30);
 
     let go_to = GotoDefinition {
@@ -392,7 +392,7 @@ async fn go_to_definition_for_matches() {
         def_path: "sway-lsp/tests/fixtures/tokens/matches/src/main.sw",
     };
     // ExampleStruct
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -404,7 +404,7 @@ async fn go_to_definition_for_matches() {
         def_path: "sway-lsp/tests/fixtures/tokens/matches/src/main.sw",
     };
     // ExampleStruct.variable
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     let _ = server.shutdown_server();
 }
@@ -428,7 +428,7 @@ async fn go_to_definition_for_modules() {
         def_path: "sway-lsp/tests/fixtures/tokens/modules/src/test_mod.sw",
     };
     // mod test_mod;
-    let _ = lsp::definition_check(&server, &opt_go_to);
+    lsp::definition_check(&server, &opt_go_to);
 
     let _ = server.shutdown_server();
 
@@ -449,7 +449,7 @@ async fn go_to_definition_for_modules() {
         def_path: "sway-lsp/tests/fixtures/tokens/modules/src/test_mod/deep_mod.sw",
     };
     // mod deep_mod;
-    let _ = lsp::definition_check(&server, &opt_go_to);
+    lsp::definition_check(&server, &opt_go_to);
 
     let _ = server.shutdown_server();
 }
@@ -473,7 +473,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-std/src/lib.sw",
     };
     // std
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 12, 14);
     definition_check_with_req_offset(&server, &mut go_to, 18, 5);
     definition_check_with_req_offset(&server, &mut go_to, 24, 13);
@@ -489,7 +489,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-std/src/option.sw",
     };
     // option
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -501,7 +501,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-std/src/option.sw",
     };
     // Option
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 11, 14);
 
     let go_to = GotoDefinition {
@@ -514,7 +514,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-std/src/vm.sw",
     };
     // vm
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -526,7 +526,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-std/src/vm/evm.sw",
     };
     // evm
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -538,7 +538,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-std/src/vm/evm/evm_address.sw",
     };
     // evm_address
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -550,7 +550,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-std/src/vm/evm/evm_address.sw",
     };
     // EvmAddress
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -562,7 +562,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/test_mod.sw",
     };
     // test_mod
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 22, 7);
     definition_check_with_req_offset(&server, &mut go_to, 5, 5);
 
@@ -576,7 +576,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/test_mod.sw",
     };
     // test_fun
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -588,7 +588,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod.sw",
     };
     // deep_mod
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 6, 6);
     definition_check_with_req_offset(&server, &mut go_to, 27, 16);
     definition_check_with_req_offset(&server, &mut go_to, 28, 16);
@@ -607,7 +607,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
     };
     // deeper_mod
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 6, 16);
     definition_check_with_req_offset(&server, &mut go_to, 27, 28);
     definition_check_with_req_offset(&server, &mut go_to, 28, 28);
@@ -626,7 +626,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
     };
     // DeepEnum
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 28, 38);
     definition_check_with_req_offset(&server, &mut go_to, 29, 38);
     definition_check_with_req_offset(&server, &mut go_to, 30, 38);
@@ -641,7 +641,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
     };
     // DeepStruct
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 33, 37);
 
     let mut go_to = GotoDefinition {
@@ -654,7 +654,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
     };
     // DeepEnum::Variant
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 28, 48);
 
     let mut go_to = GotoDefinition {
@@ -667,7 +667,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
     };
     // DeepEnum::Number
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 30, 48);
 
     let mut go_to = GotoDefinition {
@@ -680,7 +680,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
     };
     // deep_fun
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 6, 28);
 
     let go_to = GotoDefinition {
@@ -693,7 +693,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-std/src/assert.sw",
     };
     // assert
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -705,7 +705,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-core/src/lib.sw",
     };
     // core
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -717,7 +717,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-core/src/primitives.sw",
     };
     // primitives
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 25, 20);
 
     let go_to = GotoDefinition {
@@ -730,7 +730,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/test_mod.sw",
     };
     // A def
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -742,7 +742,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/test_mod.sw",
     };
     // A impl
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 22, 14);
 
     let mut go_to = GotoDefinition {
@@ -755,7 +755,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/test_mod.sw",
     };
     // fun
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 22, 18);
 
     let mut go_to = GotoDefinition {
@@ -768,7 +768,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-std/src/constants.sw",
     };
     // constants
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 7, 11);
     definition_check_with_req_offset(&server, &mut go_to, 7, 23);
 
@@ -782,7 +782,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-std/src/constants.sw",
     };
     // ZERO_B256
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 7, 31);
 
     let go_to = GotoDefinition {
@@ -795,7 +795,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-core/src/primitives.sw",
     };
     // u64
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -807,7 +807,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-core/src/primitives.sw",
     };
     // b256
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 25, 31);
 
     // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/4211 is fixed.
@@ -821,7 +821,7 @@ async fn go_to_definition_for_paths() {
     //     def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
     // };
     // dfun
-    // let _ = lsp::definition_check(&server, &go_to);
+    // lsp::definition_check(&server, &go_to);
 
     let _ = server.shutdown_server();
 }
@@ -845,13 +845,13 @@ async fn go_to_definition_for_traits() {
         def_path: "sway-lsp/tests/fixtures/tokens/traits/src/traits.sw",
     };
 
-    let _ = lsp::definition_check(&server, &trait_go_to);
+    lsp::definition_check(&server, &trait_go_to);
     definition_check_with_req_offset(&server, &mut trait_go_to, 7, 10);
     definition_check_with_req_offset(&server, &mut trait_go_to, 10, 6);
     trait_go_to.req_line = 7;
     trait_go_to.req_char = 20;
     trait_go_to.def_line = 3;
-    let _ = lsp::definition_check(&server, &trait_go_to);
+    lsp::definition_check(&server, &trait_go_to);
     let _ = server.shutdown_server();
 }
 
@@ -874,7 +874,7 @@ async fn go_to_definition_for_variables() {
         def_path: uri.as_str(),
     };
     // Variable expressions
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     // Function arguments
     go_to.def_line = 20;
@@ -965,13 +965,13 @@ async fn go_to_definition_for_consts() {
         def_end_char: 9,
         def_path: "sway-lib-std/src/contract_id.sw",
     };
-    let _ = lsp::definition_check(&server, &contract_go_to);
+    lsp::definition_check(&server, &contract_go_to);
 
     contract_go_to.req_char = 34;
     contract_go_to.def_line = 20;
     contract_go_to.def_start_char = 7;
     contract_go_to.def_end_char = 11;
-    let _ = lsp::definition_check(&server, &contract_go_to);
+    lsp::definition_check(&server, &contract_go_to);
 
     // Constants defined in the same module
     let mut go_to = GotoDefinition {
@@ -983,7 +983,7 @@ async fn go_to_definition_for_consts() {
         def_end_char: 16,
         def_path: uri.as_str(),
     };
-    let _ = lsp::definition_check(&server, &contract_go_to);
+    lsp::definition_check(&server, &contract_go_to);
 
     go_to.def_line = 9;
     definition_check_with_req_offset(&server, &mut go_to, 21, 29);
@@ -998,7 +998,7 @@ async fn go_to_definition_for_consts() {
         def_end_char: 20,
         def_path: "consts/src/more_consts.sw",
     };
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     go_to.def_line = 13;
     go_to.def_start_char = 10;
@@ -1040,7 +1040,7 @@ async fn go_to_definition_for_functions() {
         def_path: uri.as_str(),
     };
     // Return type
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     go_to.def_line = 23;
     go_to.def_start_char = 9;
     go_to.def_end_char = 15;
@@ -1090,7 +1090,7 @@ async fn go_to_definition_for_structs() {
         def_path: uri.as_str(),
     };
     // Type Params
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     go_to.def_line = 3;
     go_to.def_start_char = 5;
     go_to.def_end_char = 9;
@@ -1109,7 +1109,7 @@ async fn go_to_definition_for_structs() {
         def_path: "sway-lib-std/src/option.sw",
     };
     // Type Params
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     // Call Path
     go_to = GotoDefinition {
@@ -1121,7 +1121,7 @@ async fn go_to_definition_for_structs() {
         def_end_char: 13,
         def_path: uri.as_str(),
     };
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 }
 
 #[tokio::test]
@@ -1143,7 +1143,7 @@ async fn go_to_definition_for_impls() {
         def_path: uri.as_str(),
     };
     // TestStruct
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 7, 33);
     definition_check_with_req_offset(&server, &mut go_to, 8, 17);
     definition_check_with_req_offset(&server, &mut go_to, 8, 27);
@@ -1158,7 +1158,7 @@ async fn go_to_definition_for_impls() {
         def_path: uri.as_str(),
     };
     // TestTrait
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 }
 
 #[tokio::test]
@@ -1180,7 +1180,7 @@ async fn go_to_definition_for_where_clause() {
         def_path: uri.as_str(),
     };
     // Trait1
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 7, 8);
 
     let go_to = GotoDefinition {
@@ -1193,7 +1193,7 @@ async fn go_to_definition_for_where_clause() {
         def_path: uri.as_str(),
     };
     // Trait2
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -1205,7 +1205,7 @@ async fn go_to_definition_for_where_clause() {
         def_path: uri.as_str(),
     };
     // A
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -1217,7 +1217,7 @@ async fn go_to_definition_for_where_clause() {
         def_path: uri.as_str(),
     };
     // B
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 }
 
 #[tokio::test]
@@ -1239,7 +1239,7 @@ async fn go_to_definition_for_enums() {
         def_path: uri.as_str(),
     };
     // Type Params
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     go_to.def_line = 8;
     go_to.def_start_char = 5;
     go_to.def_end_char = 10;
@@ -1278,7 +1278,7 @@ async fn go_to_definition_for_abi() {
         def_path: uri.as_str(),
     };
     // Return type
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     // Abi name
     go_to.def_line = 5;
@@ -1307,7 +1307,7 @@ async fn go_to_definition_for_storage() {
         def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
     };
     // storage
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 25, 8);
     definition_check_with_req_offset(&server, &mut go_to, 26, 8);
 
@@ -1321,7 +1321,7 @@ async fn go_to_definition_for_storage() {
         def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
     };
     // storage.var1
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
     definition_check_with_req_offset(&server, &mut go_to, 25, 17);
     definition_check_with_req_offset(&server, &mut go_to, 26, 17);
 
@@ -1335,7 +1335,7 @@ async fn go_to_definition_for_storage() {
         def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
     };
     // storage.var1.x
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -1347,7 +1347,7 @@ async fn go_to_definition_for_storage() {
         def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
     };
     // storage.var1.y
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -1359,7 +1359,7 @@ async fn go_to_definition_for_storage() {
         def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
     };
     // storage.var1.z
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -1371,7 +1371,7 @@ async fn go_to_definition_for_storage() {
         def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
     };
     // storage.var1.z.x
-    let _ = lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to);
 
     let _ = server.shutdown_server();
 }
