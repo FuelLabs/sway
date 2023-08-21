@@ -2,7 +2,7 @@ library;
 
 use ::alloc::alloc;
 use ::assert::assert;
-use ::hash::sha256;
+use ::hash::*;
 use ::option::Option::{self, *};
 use ::storage::storage_api::*;
 use ::storage::storage_key::*;

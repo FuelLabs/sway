@@ -1159,34 +1159,6 @@ fn test_eq() {
 }
 
 #[test()]
-fn test_sha256() {
-    use ::hash::sha256;
-    let (mut bytes, _a, _b, _c) = setup();
-    bytes.push(0u8);
-    bytes.push(0u8);
-    bytes.push(0u8);
-    bytes.push(0u8);
-    bytes.push(0u8);
-
-    // The u8 bytes [5, 7, 9, 0, 0, 0, 0, 0] are equivalent to the u64 integer "362268190631264256"
-    assert(sha256(362268190631264256) == bytes.sha256());
-}
-
-#[test()]
-fn test_keccak256() {
-    use ::hash::keccak256;
-    let (mut bytes, _a, _b, _c) = setup();
-    bytes.push(0u8);
-    bytes.push(0u8);
-    bytes.push(0u8);
-    bytes.push(0u8);
-    bytes.push(0u8);
-
-    // The u8 bytes [5, 7, 9, 0, 0, 0, 0, 0] are equivalent to the u64 integer "362268190631264256"
-    assert(keccak256(362268190631264256) == bytes.keccak256());
-}
-
-#[test()]
 fn test_as_raw_slice() {
     let val = 0x3497297632836282349729763283628234972976328362823497297632836282;
     let slice_1 = asm(ptr: (__addr_of(val), 32)) { ptr: raw_slice };

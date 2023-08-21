@@ -4,7 +4,7 @@ library;
 use ::address::Address;
 use ::b512::B512;
 use ::registers::error;
-use ::hash::sha256;
+use ::hash::*;
 use ::result::Result::{self, *};
 
 /// The error type used when the `ec_recover` function fails.
@@ -17,10 +17,10 @@ pub enum EcRecoverError {
 pub fn ec_recover(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverError> {
     let public_key = B512::new();
     let was_error = asm(buffer: public_key.bytes, sig: signature.bytes, hash: msg_hash) {
-        ecr buffer sig hash;
+        eck1 buffer sig hash;
         err
     };
-    // check the $err register to see if the `ecr` opcode succeeded
+    // check the $err register to see if the `eck1` opcode succeeded
     if was_error == 1 {
         Err(EcRecoverError::UnrecoverablePublicKey)
     } else {

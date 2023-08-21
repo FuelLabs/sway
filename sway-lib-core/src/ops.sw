@@ -543,6 +543,15 @@ pub trait Shift {
     fn rsh(self, other: u64) -> Self;
 }
 
+impl Shift for u256 {
+    fn lsh(self, other: u64) -> Self {
+        __lsh(self, other)
+    }
+    fn rsh(self, other: u64) -> Self {
+        __rsh(self, other)
+    }
+}
+
 impl Shift for u64 {
     fn lsh(self, other: u64) -> Self {
         __lsh(self, other)

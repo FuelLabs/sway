@@ -4,9 +4,11 @@ library;
 
 use ::assert::assert;
 use ::address::Address;
+use ::alias::{AssetId, SubId};
 use ::call_frames::contract_id;
 use ::constants::{ZERO_B256, BASE_ASSET_ID};
-use ::contract_id::{AssetId, ContractId};
+use ::contract_id::ContractId;
+use ::hash::*;
 use ::option::Option;
 
 /// The `Identity` type: either an `Address` or a `ContractId`.
@@ -16,6 +18,7 @@ pub enum Identity {
     ContractId: ContractId,
 }
 // ANCHOR_END: docs_identity
+
 impl core::ops::Eq for Identity {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
@@ -66,8 +69,8 @@ impl Identity {
     ///
     /// ### Arguments
     ///
-    /// * `amount` - The amount of tokens to transfer.
     /// * `asset_id` - The `AssetId` of the token to transfer.
+    /// * `amount` - The amount of tokens to transfer.
     ///
     /// ### Reverts
     ///
@@ -83,20 +86,19 @@ impl Identity {
     /// // replace the zero Address/ContractId with your desired Address/ContractId
     /// let to_address = Identity::Address(Address::from(ZERO_B256));
     /// let to_contract_id = Identity::ContractId(ContractId::from(ZERO_B256));
-    /// to_address.transfer(500, BASE_ASSET_ID);
-    /// to_contract_id.transfer(500, BASE_ASSET_ID);
+    /// to_address.transfer(BASE_ASSET_ID, 500);
+    /// to_contract_id.transfer(BASE_ASSET_ID, 500);
     /// ```
-    pub fn transfer(self, amount: u64, asset_id: AssetId) {
+    pub fn transfer(self, asset_id: AssetId, amount: u64) {
         match self {
-            Self::Address(addr) => addr.transfer(amount, asset_id),
-            Self::ContractId(id) => id.transfer(amount, asset_id),
+            Identity::Address(addr) => addr.transfer(asset_id, amount),
+            Identity::ContractId(id) => id.transfer(asset_id, amount),
         };
     }
 }
 
 impl Identity {
-    /// Mint `amount` coins of the current contract's `asset_id` and transfer them
-    /// to the Identity.
+    /// Mint `amount` coins of `sub_id` and transfer them to the Identity.
     ///
     /// > **_WARNING:_**
     /// >
@@ -106,6 +108,7 @@ impl Identity {
     ///
     /// ### Arguments
     ///
+    /// * `sub_id` - The  sub identfier of the asset which to mint.
     /// * `amount` - The amount of tokens to mint.
     ///
     /// ### Examples
@@ -116,14 +119,14 @@ impl Identity {
     /// // replace the zero Address/ContractId with your desired Address/ContractId
     /// let address_identity = Identity::Address(Address::from(ZERO_B256));
     /// let contract_identity = Identity::ContractId(ContractId::from(ZERO_B256));
-    /// address_identity.mint_to(500);
-    /// contract_identity.mint_to(500);
+    /// address_identity.mint_to(ZERO_B256, 500);
+    /// contract_identity.mint_to(ZERO_B256, 500);
     /// ```
-    pub fn mint_to(self, amount: u64) {
-        asm(r1: amount) {
-            mint r1;
+    pub fn mint_to(self, sub_id: SubId, amount: u64) {
+        asm(r1: amount, r2: sub_id) {
+            mint r1 r2;
         };
-        self.transfer(amount, contract_id());
+        self.transfer(sha256((contract_id(), sub_id)), amount);
     }
 }
 
@@ -140,9 +143,24 @@ fn test_address() {
 #[test]
 fn test_contract_id() {
     let id = BASE_ASSET_ID;
-    let identity = Identity::ContractId(id);
+    let identity = Identity::ContractId(ContractId::from(id));
     assert(!identity.is_address());
     assert(identity.is_contract_id());
-    assert(identity.as_contract_id().unwrap() == id);
+    assert(identity.as_contract_id().unwrap().value == id);
     assert(identity.as_address().is_none());
+}
+
+impl Hash for Identity {
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            Identity::Address(address) => {
+                0_u8.hash(state);
+                address.hash(state);
+            },
+            Identity::ContractId(id) => {
+                1_u8.hash(state);
+                id.hash(state);
+            },
+        }
+    }
 }

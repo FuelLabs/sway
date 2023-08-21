@@ -18,9 +18,11 @@ The supported operating systems include Linux and macOS; however, Windows is [`u
 
 `Cargo` may be used instead of [`Fuelup`](fuelup.md); however, the user needs to manage the toolchain themselves.
 
-The advantage of using `Cargo` is the installation of [`plugins`](https://fuellabs.github.io/sway/v0.43.2/book/forc/plugins/index.html) that have not been added into [`Fuelup`](fuelup.md).
+<!-- markdown-link-check-disable -->
+The advantage of using `Cargo` is the installation of [`plugins`](https://fuellabs.github.io/sway/v0.44.1/book/forc/plugins/index.html) that have not been added into [`Fuelup`](fuelup.md).
 
-The disadvantage occurs when [`Fuelup`](fuelup.md) and `Cargo` are used in tandem because the latest [`plugins`](https://fuellabs.github.io/sway/v0.43.2/book/forc/plugins/index.html) may not be recognized.
+The disadvantage occurs when [`Fuelup`](fuelup.md) and `Cargo` are used in tandem because the latest [`plugins`](https://fuellabs.github.io/sway/v0.44.1/book/forc/plugins/index.html) may not be recognized.
+<!-- markdown-link-check-enable -->
 
 ## Source
 

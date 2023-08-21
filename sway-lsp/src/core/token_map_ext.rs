@@ -3,9 +3,8 @@
 //!
 //! The `TokenMapExt` trait is implemented for any iterator that yields (Ident, Token) pairs.
 
-use crate::core::token::Token;
+use crate::core::token::{Token, TokenIdent};
 use sway_core::Engines;
-use sway_types::{Ident, Spanned};
 
 /// A trait for extending iterators with the `all_references_of_token` method.
 pub trait TokenMapExt: Sized {
@@ -22,7 +21,7 @@ pub trait TokenMapExt: Sized {
 /// Implement `TokenMapExt` for any iterator that yields (Ident, Token) pairs.
 impl<I> TokenMapExt for I
 where
-    I: Iterator<Item = (Ident, Token)>,
+    I: Iterator<Item = (TokenIdent, Token)>,
 {
     fn all_references_of_token<'s>(
         self,
@@ -46,17 +45,17 @@ pub struct AllReferencesOfToken<'s, I> {
 
 impl<'s, I> Iterator for AllReferencesOfToken<'s, I>
 where
-    I: Iterator<Item = (Ident, Token)>,
+    I: Iterator<Item = (TokenIdent, Token)>,
 {
-    type Item = (Ident, Token);
+    type Item = (TokenIdent, Token);
 
     fn next(&mut self) -> Option<Self::Item> {
         for (ident, token) in self.iter.by_ref() {
-            let decl_span_to_match = self.token_to_match.declared_token_span(self.engines);
-            let is_same_type = decl_span_to_match == token.declared_token_span(self.engines);
-            let is_decl_of_token = Some(&ident.span()) == decl_span_to_match.as_ref();
+            let decl_ident_to_match = self.token_to_match.declared_token_ident(self.engines);
+            let is_same_type = decl_ident_to_match == token.declared_token_ident(self.engines);
+            let is_decl_of_token = Some(&ident) == decl_ident_to_match.as_ref();
 
-            if decl_span_to_match.is_some() && is_same_type || is_decl_of_token {
+            if decl_ident_to_match.is_some() && is_same_type || is_decl_of_token {
                 return Some((ident, token));
             }
         }

@@ -8,7 +8,6 @@ fn main() -> bool {
     let id_2 = ContractId::from(ZERO_B256);
 
     assert(id_1 == id_2);
-    assert(id_1 == BASE_ASSET_ID);
     assert(ZERO_B256 == id_1.into());
 
     true

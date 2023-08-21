@@ -1,6 +1,8 @@
 contract;
 
 use std::storage::storage_vec::*;
+use std::hash::*;
+use std::identity::*;
 
 abi MyContract {
     #[storage(read, write)]
@@ -8,7 +10,7 @@ abi MyContract {
 }
 
 storage {
-    balances: StorageMap<Identity, u64> = StorageMap {},
+    balances: StorageMap<Identity, u64> = StorageMap::<Identity, u64> {},
     vec: StorageVec<u64> = StorageVec {},
 }
 

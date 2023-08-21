@@ -1,15 +1,14 @@
 #![allow(dead_code)]
-use crate::core::token::{get_range_from_span, Token};
+use crate::core::token::{Token, TokenIdent};
 use lsp_types::{Diagnostic, DiagnosticSeverity};
 use sway_core::{
     decl_engine::DeclEngine,
     language::{ty, Literal},
 };
-use sway_types::{Ident, Spanned};
 
 pub(crate) fn generate_warnings_non_typed_tokens<I>(tokens: I) -> Vec<Diagnostic>
 where
-    I: Iterator<Item = (Ident, Token)>,
+    I: Iterator<Item = (TokenIdent, Token)>,
 {
     tokens
         .filter(|(_, token)| token.typed.is_none())
@@ -19,7 +18,7 @@ where
 
 pub(crate) fn generate_warnings_for_parsed_tokens<I>(tokens: I) -> Vec<Diagnostic>
 where
-    I: Iterator<Item = (Ident, Token)>,
+    I: Iterator<Item = (TokenIdent, Token)>,
 {
     tokens
         .map(|(ident, _)| warning_from_ident(&ident))
@@ -28,7 +27,7 @@ where
 
 pub(crate) fn generate_warnings_for_typed_tokens<I>(tokens: I) -> Vec<Diagnostic>
 where
-    I: Iterator<Item = (Ident, Token)>,
+    I: Iterator<Item = (TokenIdent, Token)>,
 {
     tokens
         .filter(|(_, token)| token.typed.is_some())
@@ -36,11 +35,11 @@ where
         .collect()
 }
 
-fn warning_from_ident(ident: &Ident) -> Diagnostic {
+fn warning_from_ident(ident: &TokenIdent) -> Diagnostic {
     Diagnostic {
-        range: get_range_from_span(&ident.span()),
+        range: ident.range,
         severity: Some(DiagnosticSeverity::WARNING),
-        message: ident.as_str().to_string(),
+        message: "".to_string(),
         ..Default::default()
     }
 }
@@ -105,6 +104,7 @@ pub(crate) fn print_decl_engine_types(
                 format!("{expression:#?}")
             }
             ty::TyAstNodeContent::SideEffect(side_effect) => format!("{side_effect:#?}"),
+            ty::TyAstNodeContent::Error(_, _) => "error".to_string(),
         })
         .map(|s| format!("{s}\n"))
         .collect()

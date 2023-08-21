@@ -5,7 +5,8 @@ library;
 
 // Blockchain types
 use ::address::Address;
-use ::contract_id::{ContractId, AssetId};
+use ::alias::{AssetId, SubId};
+use ::contract_id::ContractId;
 use ::identity::Identity;
 
 // `StorageKey` API
