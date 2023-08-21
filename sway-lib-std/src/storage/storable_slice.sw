@@ -1,7 +1,7 @@
 library;
 
 use ::alloc::{alloc, alloc_bytes, realloc_bytes};
-use ::hash::sha256;
+use ::hash::*;
 use ::option::Option::{self, *};
 use ::storage::storage_api::*;
 

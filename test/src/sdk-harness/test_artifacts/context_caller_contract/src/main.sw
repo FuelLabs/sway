@@ -1,7 +1,7 @@
 contract;
 
 use context_testing_abi::ContextTesting;
-use std::{call_frames::contract_id, constants::ZERO_B256, token::mint, hash::sha256};
+use std::{call_frames::contract_id, constants::ZERO_B256, token::mint, hash::*};
 
 abi ContextCaller {
     fn call_get_this_balance_with_coins(send_amount: u64, context_id: ContractId) -> u64;

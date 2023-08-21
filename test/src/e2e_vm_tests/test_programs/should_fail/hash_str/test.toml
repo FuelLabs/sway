@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()__check_str_type::<S>();
+# nextln: $()Provided generic type is not of type str.

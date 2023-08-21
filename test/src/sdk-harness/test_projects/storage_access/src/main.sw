@@ -1,5 +1,7 @@
 contract;
 
+use std::hash::*;
+
 struct M {
     u: b256,
     v: u64,
@@ -52,7 +54,7 @@ struct S2 {
 storage {
     x: u64 = 0,
     y: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000,
-    map: StorageMap<u64, u64> = StorageMap {},
+    map: StorageMap<u64, u64> = StorageMap::<u64, u64> {},
     s: S = S {
         a: 0,
         b: 0x0000000000000000000000000000000000000000000000000000000000000000,
@@ -67,8 +69,8 @@ storage {
         d: 0x0000000000000000000000000000000000000000000000000000000000000000,
     },
     s2: S2 = S2 {
-        map0: StorageMap {},
-        map1: StorageMap {},
+        map0: StorageMap::<u64, u64> {},
+        map1: StorageMap::<u64, u64> {},
     },
     simple: Simple = Simple {
         x: 0,

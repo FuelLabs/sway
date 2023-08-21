@@ -6,7 +6,7 @@ use ::alias::{AssetId, SubId};
 use ::call_frames::contract_id;
 use ::contract_id::ContractId;
 use ::error_signals::FAILED_TRANSFER_TO_ADDRESS_SIGNAL;
-use ::hash::sha256;
+use ::hash::*;
 use ::identity::Identity;
 use ::revert::revert;
 use ::outputs::{Output, output_amount, output_count, output_type};

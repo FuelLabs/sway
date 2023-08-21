@@ -109,7 +109,7 @@ impl ReplaceDecls for TyConstantDecl {
         &mut self,
         decl_mapping: &DeclMapping,
         handler: &Handler,
-        ctx: &TypeCheckContext,
+        ctx: &mut TypeCheckContext,
     ) -> Result<(), ErrorEmitted> {
         if let Some(expr) = &mut self.value {
             expr.replace_decls(decl_mapping, handler, ctx)

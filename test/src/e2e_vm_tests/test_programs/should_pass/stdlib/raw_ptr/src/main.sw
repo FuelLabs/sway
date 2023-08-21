@@ -1,6 +1,12 @@
 script;
 
-use std::{alloc::alloc, hash::sha256, intrinsics::{size_of, size_of_val}};
+use std::{alloc::alloc, hash::*, intrinsics::{size_of, size_of_val}};
+
+fn sha256_str<T>(s: T) -> b256 {
+    let mut hasher = Hasher::new();
+    hasher.write_str(s);
+    hasher.sha256()
+}
 
 struct TestStruct {
     boo: bool,
@@ -79,8 +85,8 @@ fn main() -> bool {
     let read_small_string_1 = buf_ptr.read::<str[4]>();
     buf_ptr.write(small_string_2);
     let read_small_string_2 = buf_ptr.read::<str[4]>();
-    assert(sha256(small_string_1) == sha256(read_small_string_1));
-    assert(sha256(small_string_2) == sha256(read_small_string_2));
+    assert(sha256_str(small_string_1) == sha256_str(read_small_string_1));
+    assert(sha256_str(small_string_2) == sha256_str(read_small_string_2));
 
     let buf_ptr = alloc::<u64>(2);
     let large_string_1 = "fuelfuelfuel";
@@ -89,8 +95,8 @@ fn main() -> bool {
     let read_large_string_1 = buf_ptr.read::<str[12]>();
     buf_ptr.write(large_string_2);
     let read_large_string_2 = buf_ptr.read::<str[12]>();
-    assert(sha256(large_string_1) == sha256(read_large_string_1));
-    assert(sha256(large_string_2) == sha256(read_large_string_2));
+    assert(sha256_str(large_string_1) == sha256_str(read_large_string_1));
+    assert(sha256_str(large_string_2) == sha256_str(read_large_string_2));
 
     true
 }
