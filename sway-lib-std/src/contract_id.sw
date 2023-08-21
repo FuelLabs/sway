@@ -48,6 +48,12 @@ pub struct AssetId {
     value: b256,
 }
 
+impl core::ops::Eq for AssetId {
+    fn eq(self, other: Self) -> bool {
+        self.value == other.value
+    }
+}
+
 impl AssetId {
     /// Creates a new AssetId from a ContractId and SubId.
     ///
