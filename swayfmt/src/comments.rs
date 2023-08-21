@@ -152,7 +152,6 @@ pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
     let mut to_rewrite = formatted_code[last_formatted..].to_string();
 
     let formatted_leaf_spans = parse_snippet::<T>(&formatted_code[last_formatted..])
-        .map_err(|err| panic!("{}", &formatted_code[last_formatted..]))
         .unwrap()
         .leaf_spans();
 
