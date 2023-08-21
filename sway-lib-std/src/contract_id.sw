@@ -27,6 +27,13 @@ impl From<b256> for ContractId {
     }
 }
 
+impl Hash for ContractId {
+    fn hash(self, ref mut state: Hasher) {
+        let ContractId { value } = self;
+        value.hash(state);
+    }
+}
+
 /// An AssetId is used for interacting with an asset on the network. 
 ///
 /// # Additional Information
@@ -161,13 +168,6 @@ impl ContractId {
         asm(r1: amount, r2: asset_id.value, r3: self.value) {
             tr r3 r1 r2;
         }
-    }
-}
-
-impl Hash for ContractId {
-    fn hash(self, ref mut state: Hasher) {
-        let ContractId { value } = self;
-        value.hash(state);
     }
 }
 
