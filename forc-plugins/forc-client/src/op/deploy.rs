@@ -9,13 +9,13 @@ use anyhow::{bail, Context, Result};
 use forc_pkg::{self as pkg, PackageManifestFile};
 use forc_tx::Gas;
 use forc_util::default_output_directory;
-use fuel_core_client::client::types::TransactionStatus;
+use fuel_core_client::client::types::{ChainInfo, NodeInfo, TransactionStatus};
 use fuel_core_client::client::FuelClient;
 use fuel_crypto::fuel_types::ChainId;
 use fuel_tx::{Output, Salt, TransactionBuilder};
 use fuel_vm::prelude::*;
 use futures::FutureExt;
-use pkg::BuiltPackage;
+use pkg::{manifest::Network, BuiltPackage};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use std::{
@@ -116,11 +116,10 @@ fn validate_and_parse_salts<'a>(
 ///
 /// When deploying a single contract, only that contract's ID is returned.
 pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
-    let mut command = apply_target(command)?;
     if command.unsigned {
         warn!(" Warning: --unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
-        command.default_signer = true;
     }
+
     let mut contract_ids = Vec::new();
     let curr_dir = if let Some(ref path) = command.pkg.path {
         PathBuf::from(path)
@@ -197,10 +196,43 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
     Ok(contract_ids)
 }
 
-/// Applies specified target information to the provided arguments.
-///
-/// Provides preset configurations for known testnets.
-fn apply_target(command: cmd::Deploy) -> Result<cmd::Deploy> {
+/// Returns the gas to use for deployment, overriding default values if necessary.
+fn get_gas(command: &cmd::Deploy, node_info: NodeInfo, chain_info: ChainInfo) -> Gas {
+    // TODO: write unit tests for this function once https://github.com/FuelLabs/fuel-core/issues/1312 is resolved.
+    let price = if command.gas.price == 0 {
+        warn!(" Warning: Overriding gas price to the minimum gas price of the node.");
+        node_info.min_gas_price
+    } else {
+        command.gas.price
+    };
+
+    let limit = if command.gas.limit == 0 {
+        warn!(" Warning: Overriding gas limit to the minimum gas limit of the node.");
+        chain_info.consensus_parameters.max_gas_per_tx
+    } else {
+        command.gas.limit
+    };
+
+    Gas { price, limit }
+}
+
+/// Returns the client to use for deployment.
+fn get_node_url<'a>(
+    target: &'a Option<Target>,
+    manifest_network: &'a Option<Network>,
+) -> Result<&'a str> {
+    let node_url = match target {
+        Some(target) => target.target_url(),
+        None => manifest_network
+            .as_ref()
+            .map(|nw| &nw.url[..])
+            .unwrap_or(crate::default::NODE_URL),
+    };
+    Ok(node_url)
+}
+
+/// Returns the target to use for deployment parsed from the command arguments, if any.
+fn get_target(command: &cmd::Deploy) -> Result<Option<Target>> {
     let target = match (
         command.testnet,
         command.target.clone(),
@@ -212,42 +244,7 @@ fn apply_target(command: cmd::Deploy) -> Result<cmd::Deploy> {
         (false, None, None) => None,
         _ => bail!("Only one of `--testnet`, `--target`, or `--node-url` should be specified"),
     };
-
-    // If the user specified a testnet target, we can override the gas price and limit.
-    if let Some(target) = target {
-        if target.is_testnet() {
-            // If the user did not specify a gas price, we can use `1` as a gas price for
-            // beta test-nets.
-            let gas_price = if command.gas.price == 0 {
-                1
-            } else {
-                command.gas.price
-            };
-
-            // fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx is the default value for
-            // the gas.limit field.
-            let gas_limit = if command.gas.limit
-                == fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx
-                && target == cmd::deploy::Target::Beta4
-            {
-                1
-            } else {
-                command.gas.limit
-            };
-
-            let target_url = Some(target.target_url().to_string());
-            return Ok(cmd::Deploy {
-                gas: Gas {
-                    price: gas_price,
-                    limit: gas_limit,
-                },
-                node_url: target_url,
-                ..command
-            });
-        }
-    }
-
-    Ok(command)
+    Ok(target)
 }
 
 /// Deploy a single pkg given deploy command and the manifest file
@@ -257,11 +254,8 @@ pub async fn deploy_pkg(
     compiled: &BuiltPackage,
     salt: Salt,
 ) -> Result<DeployedContract> {
-    let node_url = command
-        .node_url
-        .as_deref()
-        .or_else(|| manifest.network.as_ref().map(|nw| &nw.url[..]))
-        .unwrap_or(crate::default::NODE_URL);
+    let target = get_target(command)?;
+    let node_url = get_node_url(&target, &manifest.network)?;
     let client = FuelClient::new(node_url)?;
 
     let bytecode = &compiled.bytecode.bytes;
@@ -280,14 +274,20 @@ pub async fn deploy_pkg(
         WalletSelectionMode::ForcWallet
     };
 
+    let gas = get_gas(
+        command,
+        client.node_info().await?,
+        client.chain_info().await?,
+    );
+
     let tx = TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots.clone())
-        .gas_limit(command.gas.limit)
-        .gas_price(command.gas.price)
+        .gas_limit(gas.limit)
+        .gas_price(gas.price)
         .maturity(command.maturity.maturity.into())
         .add_output(Output::contract_created(contract_id, state_root))
         .finalize_signed(
             client.clone(),
-            command.default_signer,
+            command.default_signer || command.unsigned,
             command.signing_key,
             wallet_mode,
         )
@@ -415,14 +415,6 @@ mod test {
         contract_to_manifest
     }
 
-    fn assert_cmd_eq(expected: cmd::Deploy, actual: cmd::Deploy) {
-        assert_eq!(expected.node_url, actual.node_url);
-        assert_eq!(expected.target, actual.target);
-        assert_eq!(expected.testnet, actual.testnet);
-        assert_eq!(expected.gas.price, actual.gas.price);
-        assert_eq!(expected.gas.limit, actual.gas.limit);
-    }
-
     #[test]
     fn test_parse_and_validate_salts_pass() {
         let mut manifests = setup_manifest_files();
@@ -505,153 +497,106 @@ mod test {
     }
 
     #[test]
-    fn test_apply_target_testnet() {
+    fn test_get_node_url_beta4_target() {
+        let actual = get_node_url(&Some(Target::Beta4), &None).unwrap();
+        assert_eq!("beta-4.fuel.network/graphql", actual);
+    }
+
+    #[test]
+    fn test_get_node_url_beta4_manifest() {
+        let network = Some(Network {
+            url: "beta-4.fuel.network/graphql".to_string(),
+        });
+        let actual = get_node_url(&None, &network).unwrap();
+        assert_eq!("beta-4.fuel.network/graphql", actual);
+    }
+
+    #[test]
+    fn test_get_target_testnet() {
         let input = cmd::Deploy {
             target: None,
             node_url: None,
             testnet: true,
             ..Default::default()
         };
-        let expected = cmd::Deploy {
-            target: None,
-            node_url: Some("beta-4.fuel.network/graphql".to_string()),
-            testnet: true,
-            gas: Gas { price: 1, limit: 1 },
-            ..Default::default()
-        };
-        let actual = apply_target(input).unwrap();
-        assert_cmd_eq(expected, actual);
+
+        let actual = get_target(&input).unwrap();
+        assert_eq!(Some(Target::Beta4), actual);
     }
 
     #[test]
-    fn test_apply_target_beta4() {
+    fn test_get_target_beta4() {
         let input = cmd::Deploy {
             target: Some(Target::Beta4),
             node_url: None,
             testnet: false,
             ..Default::default()
         };
-        let expected = cmd::Deploy {
-            target: Some(Target::Beta4),
-            node_url: Some("beta-4.fuel.network/graphql".to_string()),
-            testnet: false,
-            gas: Gas { price: 1, limit: 1 },
-            ..Default::default()
-        };
-        let actual = apply_target(input).unwrap();
-        assert_cmd_eq(expected, actual);
+        let actual = get_target(&input).unwrap();
+        assert_eq!(Some(Target::Beta4), actual);
     }
 
     #[test]
-    fn test_apply_target_url_beta4() {
+    fn test_get_target_url_beta4() {
         let input = cmd::Deploy {
             target: None,
             node_url: Some("beta-4.fuel.network/graphql".to_string()),
             testnet: false,
             ..Default::default()
         };
-        let expected = cmd::Deploy {
-            target: None,
-            node_url: Some("beta-4.fuel.network/graphql".to_string()),
-            testnet: false,
-            gas: Gas { price: 1, limit: 1 },
-            ..Default::default()
-        };
-        let actual = apply_target(input).unwrap();
-        assert_cmd_eq(expected, actual);
+        let actual = get_target(&input).unwrap();
+        assert_eq!(Some(Target::Beta4), actual);
     }
 
     #[test]
-    fn test_apply_target_beta4_custom_gas() {
-        let input = cmd::Deploy {
-            target: Some(Target::Beta4),
-            node_url: None,
-            testnet: false,
-            gas: Gas {
-                price: 12,
-                limit: 13,
-            },
-            ..Default::default()
-        };
-        let expected = cmd::Deploy {
-            target: Some(Target::Beta4),
-            node_url: Some("beta-4.fuel.network/graphql".to_string()),
-            testnet: false,
-            gas: Gas {
-                price: 12,
-                limit: 13,
-            },
-            ..Default::default()
-        };
-        let actual = apply_target(input).unwrap();
-        assert_cmd_eq(expected, actual);
-    }
-
-    #[test]
-    fn test_apply_target_beta3() {
+    fn test_get_target_beta3() {
         let input = cmd::Deploy {
             target: Some(Target::Beta3),
             node_url: None,
             testnet: false,
             ..Default::default()
         };
-        let expected = cmd::Deploy {
-            target: Some(Target::Beta3),
-            node_url: Some("beta-3.fuel.network/graphql".to_string()),
-            testnet: false,
-            gas: Gas {
-                price: 1,
-                limit: 100000000,
-            },
-            ..Default::default()
-        };
-        let actual = apply_target(input).unwrap();
-        assert_cmd_eq(expected, actual);
+        let actual = get_target(&input).unwrap();
+        assert_eq!(Some(Target::Beta3), actual);
     }
 
     #[test]
-    fn test_apply_target_local() {
+    fn test_get_target_local() {
         let input = cmd::Deploy {
             target: Some(Target::Local),
             node_url: None,
             testnet: false,
             ..Default::default()
         };
-        let expected = cmd::Deploy {
-            target: Some(Target::Local),
-            node_url: None,
-            testnet: false,
-            ..Default::default()
-        };
-        let actual = apply_target(input).unwrap();
-        assert_cmd_eq(expected, actual);
+        let actual = get_target(&input).unwrap();
+        assert_eq!(Some(Target::Local), actual);
     }
 
     #[test]
     #[should_panic(
         expected = "Only one of `--testnet`, `--target`, or `--node-url` should be specified"
     )]
-    fn test_apply_target_local_testnet() {
+    fn test_get_target_local_testnet() {
         let input = cmd::Deploy {
             target: Some(Target::Local),
             node_url: None,
             testnet: true,
             ..Default::default()
         };
-        apply_target(input).unwrap();
+        get_target(&input).unwrap();
     }
 
     #[test]
     #[should_panic(
         expected = "Only one of `--testnet`, `--target`, or `--node-url` should be specified"
     )]
-    fn test_apply_target_same_url() {
+    fn test_get_target_same_url() {
         let input = cmd::Deploy {
             target: Some(Target::Beta3),
             node_url: Some("beta-3.fuel.network/graphql".to_string()),
             testnet: false,
             ..Default::default()
         };
-        apply_target(input).unwrap();
+        get_target(&input).unwrap();
     }
 }

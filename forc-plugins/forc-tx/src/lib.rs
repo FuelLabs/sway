@@ -102,11 +102,9 @@ pub struct Script {
 pub struct Gas {
     /// Gas price for the transaction.
     #[clap(long = "gas-price", default_value_t = 0)]
-    #[devault("0")]
     pub price: u64,
     /// Gas limit for the transaction.
-    #[clap(long = "gas-limit", default_value_t = fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)]
-    #[devault("fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx")]
+    #[clap(long = "gas-limit", default_value_t = 0)]
     pub limit: u64,
 }
 
