@@ -97,7 +97,7 @@ impl ContractId {
         asm(r1: amount, r2: sub_id) {
             mint r1 r2;
         };
-        self.transfer(sha256((ContractId::from(asm() { fp: b256 }), sub_id)), amount);
+        self.transfer(AssetId::new(ContractId::from(asm() { fp: b256 }), sub_id), amount);
     }
 }
 
@@ -169,7 +169,7 @@ impl AssetId {
     /// }
     /// ```
     pub fn standard(contract_id: ContractId) -> Self {
-        let value = sha256((contract_id, ZERO_B256));
+        let value = sha256((contract_id, 0x0000000000000000000000000000000000000000000000000000000000000000));
         Self { value }
     }
 

@@ -102,7 +102,7 @@ impl Address {
         asm(r1: amount, r2: sub_id) {
             mint r1 r2;
         };
-        self.transfer(sha256((contract_id(), sub_id)), amount);
+        self.transfer(AssetId::new((contract_id(), sub_id), amount);
     }
 }
 
