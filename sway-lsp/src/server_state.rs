@@ -47,8 +47,7 @@ impl ServerState {
     pub(crate) fn diagnostics(&self, uri: &Url, session: Arc<Session>) -> Vec<Diagnostic> {
         let mut diagnostics_to_publish = vec![];
         let config = &self.config.read();
-        let engines = session.engines.read();
-        let tokens = session.token_map().tokens_for_file(engines.se(), uri);
+        let tokens = session.token_map().tokens_for_file(uri);
         match config.debug.show_collected_tokens_as_warnings {
             // If collected_tokens_as_warnings is Parsed or Typed,
             // take over the normal error and warning display behavior

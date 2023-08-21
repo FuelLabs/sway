@@ -1,5 +1,5 @@
 contract;
-use std::{hash::sha256, storage::storage_api::{read, write}};
+use std::{hash::*, storage::storage_api::{read, write}};
 use basic_storage_abi::*;
 
 const C1 = 1;
@@ -205,9 +205,15 @@ fn test_storage() {
     assert_streq(storage.str10.read(), "aaaaaaaaaa");
 }
 
+fn sha256_str<T>(s: T) -> b256 {
+    let mut hasher = Hasher::new();
+    hasher.write_str(s);
+    hasher.sha256()
+}
+
 // If these comparisons are done inline just above then it blows out the register allocator due to
 // all the ASM blocks.
 #[inline(never)]
 fn assert_streq<S1, S2>(lhs: S1, rhs: S2) {
-    assert(sha256(lhs) == sha256(rhs));
+    assert(sha256_str(lhs) == sha256_str(rhs));
 }

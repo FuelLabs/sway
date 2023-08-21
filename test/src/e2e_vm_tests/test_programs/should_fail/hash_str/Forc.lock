@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-15E86B6C35BC9C7F'
+
+[[package]]
+name = 'hash_str'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-15E86B6C35BC9C7F'
+dependencies = ['core']
