@@ -89,7 +89,11 @@ impl Format for ItemTrait {
                             writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
                         }
                     }
-                    ItemTraitItem::Error(_, _) => {}
+                    ItemTraitItem::Error(spans, _) => {
+                        for span in spans.iter() {
+                            write!(formatted_code, "{}", span.as_str())?;
+                        }
+                    }
                 }
             }
         }
@@ -125,9 +129,23 @@ impl Format for ItemTraitItem {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         match self {
-            ItemTraitItem::Fn(fn_decl, _) => fn_decl.format(formatted_code, formatter),
-            ItemTraitItem::Const(const_decl, _) => const_decl.format(formatted_code, formatter),
-            ItemTraitItem::Error(_, _) => Ok(()),
+            ItemTraitItem::Fn(fn_decl, _) => {
+                fn_decl.format(formatted_code, formatter)?;
+                writeln!(formatted_code, ";")?;
+                Ok(())
+            }
+            ItemTraitItem::Const(const_decl, _) => {
+                const_decl.format(formatted_code, formatter)?;
+                writeln!(formatted_code, ";")?;
+                Ok(())
+            }
+            ItemTraitItem::Error(spans, _) => {
+                for s in spans.iter() {
+                    writeln!(formatted_code, "{}", s.as_str())?;
+                }
+
+                Ok(())
+            }
         }
     }
 }
@@ -205,11 +223,18 @@ impl LeafSpans for ItemTraitItem {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         match &self {
-            ItemTraitItem::Fn(fn_sig, _) => collected_spans.append(&mut fn_sig.leaf_spans()),
-            ItemTraitItem::Const(const_decl, _) => {
-                collected_spans.append(&mut const_decl.leaf_spans())
+            ItemTraitItem::Fn(fn_sig, semicolon) => {
+                collected_spans.append(&mut fn_sig.leaf_spans());
+                collected_spans.extend(semicolon.as_ref().into_iter().flat_map(|x| x.leaf_spans()));
             }
-            ItemTraitItem::Error(_, _) => {}
+            ItemTraitItem::Const(const_decl, semicolon) => {
+                collected_spans.append(&mut const_decl.leaf_spans());
+                collected_spans.extend(semicolon.as_ref().into_iter().flat_map(|x| x.leaf_spans()));
+            }
+            ItemTraitItem::Error(spans, _) => {
+                let spans = spans.iter().cloned().map(Into::into);
+                collected_spans.extend(spans);
+            }
         };
         collected_spans
     }
