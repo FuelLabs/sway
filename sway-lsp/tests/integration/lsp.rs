@@ -397,6 +397,17 @@ pub(crate) fn definition_check<'a>(server: &ServerState, go_to: &'a GotoDefiniti
     }
 }
 
+pub (crate) fn definition_check_with_req_offset<'a>(
+    server: &ServerState,
+    go_to: &mut GotoDefinition<'a>,
+    req_line: u32,
+    req_char: u32,
+) {
+    go_to.req_line = req_line;
+    go_to.req_char = req_char;
+    definition_check(server, go_to);
+}
+
 pub(crate) fn hover_request<'a>(server: &ServerState, hover_docs: &'a HoverDocumentation<'a>) {
     let params = HoverParams {
         text_document_position_params: TextDocumentPositionParams {
