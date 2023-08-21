@@ -75,25 +75,17 @@ impl Format for ItemTrait {
                     attr.format(formatted_code, formatter)?;
                 }
                 match &item.value {
-                    sway_ast::ItemTraitItem::Fn(fn_signature, semicolon_token) => {
+                    sway_ast::ItemTraitItem::Fn(fn_signature, _) => {
                         write!(formatted_code, "{}", formatter.indent_str()?,)?;
                         fn_signature.format(formatted_code, formatter)?;
-                        if let Some(semicolon_token) = semicolon_token {
-                            writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
-                        }
+                        writeln!(formatted_code, ";")?;
                     }
-                    sway_ast::ItemTraitItem::Const(const_decl, semicolon_token) => {
+                    sway_ast::ItemTraitItem::Const(const_decl, _) => {
                         write!(formatted_code, "{}", formatter.indent_str()?,)?;
                         const_decl.format(formatted_code, formatter)?;
-                        if let Some(semicolon_token) = semicolon_token {
-                            writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
-                        }
+                        writeln!(formatted_code, ";")?;
                     }
-                    ItemTraitItem::Error(spans, _) => {
-                        for span in spans.iter() {
-                            write!(formatted_code, "{}", span.as_str())?;
-                        }
-                    }
+                    ItemTraitItem::Error(_, _) => {}
                 }
             }
         }
@@ -139,13 +131,7 @@ impl Format for ItemTraitItem {
                 writeln!(formatted_code, ";")?;
                 Ok(())
             }
-            ItemTraitItem::Error(spans, _) => {
-                for s in spans.iter() {
-                    writeln!(formatted_code, "{}", s.as_str())?;
-                }
-
-                Ok(())
-            }
+            ItemTraitItem::Error(_, _) => Ok(()),
         }
     }
 }
@@ -231,10 +217,7 @@ impl LeafSpans for ItemTraitItem {
                 collected_spans.append(&mut const_decl.leaf_spans());
                 collected_spans.extend(semicolon.as_ref().into_iter().flat_map(|x| x.leaf_spans()));
             }
-            ItemTraitItem::Error(spans, _) => {
-                let spans = spans.iter().cloned().map(Into::into);
-                collected_spans.extend(spans);
-            }
+            ItemTraitItem::Error(_, _) => {}
         };
         collected_spans
     }

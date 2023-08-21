@@ -37,18 +37,6 @@ impl Format for ItemAbi {
             // add indent + format item
             write!(formatted_code, "{}", formatter.indent_str()?)?;
             annotated.format(formatted_code, formatter)?;
-
-            if let Some(semicolon) = match &annotated.value {
-                sway_ast::ItemTraitItem::Fn(_, semicolon) => semicolon.as_ref(),
-                sway_ast::ItemTraitItem::Const(_, semicolon) => semicolon.as_ref(),
-                sway_ast::ItemTraitItem::Error(_, _) => None,
-            } {
-                writeln!(
-                    formatted_code,
-                    "{}",
-                    semicolon.ident().as_str() // SemicolonToken
-                )?;
-            }
         }
 
         if abi_items.is_empty() {
