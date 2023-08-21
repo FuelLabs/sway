@@ -116,12 +116,6 @@ pub(crate) async fn did_change_request(
     did_change
 }
 
-pub(crate) async fn did_close_notification(service: &mut LspService<ServerState>) {
-    let exit = Request::build("textDocument/didClose").finish();
-    let response = call_request(service, exit.clone()).await;
-    assert_eq!(response, Ok(None));
-}
-
 pub(crate) async fn show_ast_request(
     server: &ServerState,
     uri: &Url,

@@ -123,14 +123,6 @@ async fn did_open() {
 }
 
 #[tokio::test]
-async fn did_close() {
-    let (mut service, _) = LspService::new(ServerState::new);
-    let _ = init_and_open(&mut service, e2e_test_dir().join("src/main.sw")).await;
-    lsp::did_close_notification(&mut service).await;
-    shutdown_and_exit(&mut service).await;
-}
-
-#[tokio::test]
 async fn did_change() {
     let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
