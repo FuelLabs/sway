@@ -72,6 +72,8 @@ pub enum CompileError {
     MultipleDefinitionsOfName { name: Ident, span: Span },
     #[error("Constant \"{name}\" was already defined in scope.")]
     MultipleDefinitionsOfConstant { name: Ident, span: Span },
+    #[error("Type \"{name}\" was already defined in scope.")]
+    MultipleDefinitionsOfType { name: Ident, span: Span },
     #[error("Variable \"{}\" is already defined in match arm.", first_definition.as_str())]
     MultipleDefinitionsOfMatchArmVariable {
         match_value: Span,
@@ -144,11 +146,19 @@ pub enum CompileError {
         interface_name: InterfaceName,
         span: Span,
     },
+    #[error("Type \"{name}\" is not a part of {interface_name}'s interface surface.")]
+    TypeNotAPartOfInterfaceSurface {
+        name: Ident,
+        interface_name: InterfaceName,
+        span: Span,
+    },
     #[error("Constants are missing from this trait implementation: {missing_constants}")]
     MissingInterfaceSurfaceConstants {
         missing_constants: String,
         span: Span,
     },
+    #[error("Associated types are missing from this trait implementation: {missing_types}")]
+    MissingInterfaceSurfaceTypes { missing_types: String, span: Span },
     #[error("Functions are missing from this trait implementation: {missing_functions}")]
     MissingInterfaceSurfaceMethods {
         missing_functions: String,
@@ -684,6 +694,8 @@ pub enum CompileError {
         superabi1: String,
         superabi2: String,
     },
+    #[error("Associated types not supported in ABI.")]
+    AssociatedTypeNotSupportedInAbi { span: Span },
     #[error("Cannot call ABI supertrait's method as a contract method: \"{fn_name}\"")]
     AbiSupertraitMethodCallAsContractCall { fn_name: Ident, span: Span },
 }
@@ -712,6 +724,7 @@ impl Spanned for CompileError {
             MultipleDefinitionsOfFunction { span, .. } => span.clone(),
             MultipleDefinitionsOfName { span, .. } => span.clone(),
             MultipleDefinitionsOfConstant { span, .. } => span.clone(),
+            MultipleDefinitionsOfType { span, .. } => span.clone(),
             MultipleDefinitionsOfMatchArmVariable { duplicate, .. } => duplicate.clone(),
             AssignmentToNonMutable { span, .. } => span.clone(),
             MutableParameterNotSupported { span, .. } => span.clone(),
@@ -724,7 +737,9 @@ impl Spanned for CompileError {
             UnknownTrait { span, .. } => span.clone(),
             FunctionNotAPartOfInterfaceSurface { span, .. } => span.clone(),
             ConstantNotAPartOfInterfaceSurface { span, .. } => span.clone(),
+            TypeNotAPartOfInterfaceSurface { span, .. } => span.clone(),
             MissingInterfaceSurfaceConstants { span, .. } => span.clone(),
+            MissingInterfaceSurfaceTypes { span, .. } => span.clone(),
             MissingInterfaceSurfaceMethods { span, .. } => span.clone(),
             IncorrectNumberOfTypeArguments { span, .. } => span.clone(),
             DoesNotTakeTypeArguments { span, .. } => span.clone(),
@@ -862,6 +877,7 @@ impl Spanned for CompileError {
             ContractCallsItsOwnMethod { span } => span.clone(),
             AbiShadowsSuperAbiMethod { span, .. } => span.clone(),
             ConflictingSuperAbiMethods { span, .. } => span.clone(),
+            AssociatedTypeNotSupportedInAbi { span, .. } => span.clone(),
             AbiSupertraitMethodCallAsContractCall { span, .. } => span.clone(),
             TypeNotAllowed { span, .. } => span.clone(),
             ExpectedStringLiteral { span } => span.clone(),

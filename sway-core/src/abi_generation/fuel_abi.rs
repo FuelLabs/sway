@@ -840,6 +840,10 @@ impl TypeInfo {
                 format!("__slice {}", ty.abi_str(ctx, type_engine, decl_engine))
             }
             Alias { ty, .. } => ty.abi_str(ctx, type_engine, decl_engine),
+            TraitType {
+                name,
+                trait_type_id: _,
+            } => format!("trait type {}", name),
         }
     }
 }

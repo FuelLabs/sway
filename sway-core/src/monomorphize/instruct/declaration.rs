@@ -29,6 +29,7 @@ pub(crate) fn instruct_decl(
         ty::TyDecl::StorageDecl(_) => todo!(),
         ty::TyDecl::ErrorRecovery(_, _) => {}
         ty::TyDecl::TypeAliasDecl(_) => todo!(),
+        ty::TyDecl::TypeDecl(_) => todo!(),
     }
     Ok(())
 }

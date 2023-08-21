@@ -10,6 +10,7 @@ mod r#struct;
 mod supertrait;
 mod r#trait;
 mod trait_fn;
+mod trait_type;
 
 pub use abi::*;
 pub use function::*;
@@ -20,3 +21,4 @@ pub use r#trait::*;
 pub use storage::*;
 pub(crate) use supertrait::*;
 pub use trait_fn::*;
+pub use trait_type::*;

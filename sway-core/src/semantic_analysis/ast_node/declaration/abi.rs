@@ -113,8 +113,12 @@ impl ty::TyAbiDecl {
                     method.name.clone()
                 }
                 TraitItem::Constant(const_decl) => {
-                    let const_decl =
-                        ty::TyConstantDecl::type_check(handler, ctx.by_ref(), const_decl.clone())?;
+                    let const_decl = ty::TyConstantDecl::type_check(
+                        handler,
+                        ctx.by_ref(),
+                        const_decl.clone(),
+                        None,
+                    )?;
                     let decl_ref = ctx.engines.de().insert(const_decl.clone());
                     new_interface_surface
                         .push(ty::TyTraitInterfaceItem::Constant(decl_ref.clone()));
@@ -131,6 +135,28 @@ impl ty::TyAbiDecl {
                     )?;
 
                     const_name
+                }
+                TraitItem::Type(type_decl) => {
+                    handler.emit_err(CompileError::AssociatedTypeNotSupportedInAbi {
+                        span: type_decl.span.clone(),
+                    });
+
+                    let type_decl = ty::TyTraitType::type_check(handler, ctx.by_ref(), type_decl)?;
+                    let decl_ref = ctx.engines().de().insert(type_decl.clone());
+                    new_interface_surface.push(ty::TyTraitInterfaceItem::Type(decl_ref.clone()));
+
+                    let type_name = type_decl.name.clone();
+                    ctx.insert_symbol(
+                        handler,
+                        type_name.clone(),
+                        ty::TyDecl::TypeDecl(ty::TypeDecl {
+                            name: type_name.clone(),
+                            decl_id: *decl_ref.id(),
+                            decl_span: type_decl.span.clone(),
+                        }),
+                    )?;
+
+                    type_name
                 }
                 TraitItem::Error(_, _) => {
                     continue;
@@ -282,6 +308,22 @@ impl ty::TyAbiDecl {
                             const_shadowing_mode,
                         );
                     }
+                    ty::TyTraitInterfaceItem::Type(decl_ref) => {
+                        let type_decl = decl_engine.get_type(decl_ref);
+                        let type_name = type_decl.name;
+                        all_items.push(TyImplItem::Type(decl_ref.clone()));
+                        let const_shadowing_mode = ctx.const_shadowing_mode();
+                        let _ = ctx.namespace.insert_symbol(
+                            handler,
+                            type_name.clone(),
+                            ty::TyDecl::TypeDecl(ty::TypeDecl {
+                                name: type_name,
+                                decl_id: *decl_ref.id(),
+                                decl_span: type_decl.span.clone(),
+                            }),
+                            const_shadowing_mode,
+                        );
+                    }
                 }
             }
             for item in items.iter() {
@@ -331,6 +373,11 @@ impl ty::TyAbiDecl {
                         const_decl.replace_self_type(engines, type_id);
                         all_items.push(TyImplItem::Constant(ctx.engines.de().insert(const_decl)));
                     }
+                    ty::TyTraitItem::Type(decl_ref) => {
+                        let mut type_decl = decl_engine.get_type(decl_ref);
+                        type_decl.replace_self_type(engines, type_id);
+                        all_items.push(TyImplItem::Type(ctx.engines.de().insert(type_decl)));
+                    }
                 }
             }
             // Insert the methods of the ABI into the namespace.
@@ -347,6 +394,7 @@ impl ty::TyAbiDecl {
                 &all_items,
                 &self.span,
                 Some(self.span()),
+                false,
                 false,
             );
             Ok(())

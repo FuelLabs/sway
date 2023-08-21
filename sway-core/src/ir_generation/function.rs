@@ -199,6 +199,7 @@ impl<'eng> FnCompiler<'eng> {
                 ty::TyDecl::ErrorRecovery { .. } => unexpected_decl("error recovery"),
                 ty::TyDecl::StorageDecl { .. } => unexpected_decl("storage"),
                 ty::TyDecl::EnumVariantDecl { .. } => unexpected_decl("enum variant"),
+                ty::TyDecl::TypeDecl { .. } => unexpected_decl("trait type"),
             },
             ty::TyAstNodeContent::Expression(te) => {
                 // An expression with an ignored return value... I assume.

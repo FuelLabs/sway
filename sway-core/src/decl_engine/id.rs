@@ -1,6 +1,7 @@
 use std::marker::PhantomData;
 use std::{fmt, hash::Hash};
 
+use crate::language::ty::TyTraitType;
 use crate::{
     decl_engine::*,
     engine_threading::*,
@@ -133,6 +134,14 @@ impl SubstTypes for DeclId<TyTypeAliasDecl> {
         decl_engine.replace(*self, decl);
     }
 }
+impl SubstTypes for DeclId<TyTraitType> {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+        let decl_engine = engines.de();
+        let mut decl = decl_engine.get(self);
+        decl.subst(type_mapping, engines);
+        decl_engine.replace(*self, decl);
+    }
+}
 
 impl ReplaceSelfType for DeclId<TyFunctionDecl> {
     fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
@@ -183,6 +192,14 @@ impl ReplaceSelfType for DeclId<TyEnumDecl> {
     }
 }
 impl ReplaceSelfType for DeclId<TyTypeAliasDecl> {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
+        let decl_engine = engines.de();
+        let mut decl = decl_engine.get(self);
+        decl.replace_self_type(engines, self_type);
+        decl_engine.replace(*self, decl);
+    }
+}
+impl ReplaceSelfType for DeclId<TyTraitType> {
     fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);

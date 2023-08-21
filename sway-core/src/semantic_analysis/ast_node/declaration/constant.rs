@@ -11,7 +11,7 @@ use crate::{
         CallPath,
     },
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
-    Engines, TypeInfo,
+    Engines, SubstTypes, TypeInfo, TypeSubstMap,
 };
 
 impl ty::TyConstantDecl {
@@ -19,6 +19,7 @@ impl ty::TyConstantDecl {
         handler: &Handler,
         mut ctx: TypeCheckContext,
         decl: ConstantDeclaration,
+        type_subst_mapping: Option<&TypeSubstMap>,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
@@ -43,6 +44,11 @@ impl ty::TyConstantDecl {
                 None,
             )
             .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+
+        // this subst is required to replace associated types, namely TypeInfo::TraitType.
+        if let Some(type_subst_mapping) = type_subst_mapping {
+            type_ascription.type_id.subst(type_subst_mapping, engines);
+        }
 
         let mut ctx = ctx
             .by_ref()

@@ -120,6 +120,7 @@ impl TraitMap {
         impl_span: &Span,
         trait_decl_span: Option<Span>,
         is_impl_self: bool,
+        is_extending: bool,
         engines: &Engines,
     ) -> Result<(), ErrorEmitted> {
         let type_engine = engines.te();
@@ -144,6 +145,9 @@ impl TraitMap {
                     TyImplItem::Constant(decl_ref) => {
                         trait_items.insert(decl_ref.name().to_string(), item.clone());
                     }
+                    TyImplItem::Type(decl_ref) => {
+                        trait_items.insert(decl_ref.name().to_string(), item.clone());
+                    }
                 }
             }
 
@@ -157,6 +161,7 @@ impl TraitMap {
                     } else {
                         Some(trait_type_args.clone())
                     },
+                    root_type_id: None,
                 },
             );
             for TraitEntry {
@@ -190,6 +195,7 @@ impl TraitMap {
                         } else {
                             Some(map_trait_type_args.to_vec())
                         },
+                        root_type_id: None,
                     },
                 );
 
@@ -197,7 +203,7 @@ impl TraitMap {
                 let types_are_subset = unify_checker.check(type_id, *map_type_id);
                 let traits_are_subset = unify_checker.check(trait_type_id, map_trait_type_id);
 
-                if types_are_subset && traits_are_subset && !is_impl_self {
+                if !is_extending && types_are_subset && traits_are_subset && !is_impl_self {
                     let trait_name_str = format!(
                         "{}{}",
                         trait_name.suffix,
@@ -238,6 +244,18 @@ impl TraitMap {
                                 if map_trait_items.get(name).is_some() {
                                     handler.emit_err(CompileError::DuplicateDeclDefinedForType {
                                         decl_kind: "constant".into(),
+                                        decl_name: decl_ref.name().to_string(),
+                                        type_implementing_for: engines
+                                            .help_out(type_id)
+                                            .to_string(),
+                                        span: decl_ref.name().span(),
+                                    });
+                                }
+                            }
+                            ty::TyTraitItem::Type(decl_ref) => {
+                                if map_trait_items.get(name).is_some() {
+                                    handler.emit_err(CompileError::DuplicateDeclDefinedForType {
+                                        decl_kind: "type".into(),
                                         decl_name: decl_ref.name().to_string(),
                                         type_implementing_for: engines
                                             .help_out(type_id)
@@ -694,6 +712,13 @@ impl TraitMap {
                                 let new_ref = decl_engine.insert(decl);
                                 (name, TyImplItem::Constant(new_ref))
                             }
+                            ty::TyTraitItem::Type(decl_ref) => {
+                                let mut decl = decl_engine.get(decl_ref.id());
+                                decl.subst(&type_mapping, engines);
+                                decl.replace_self_type(engines, new_self_type);
+                                let new_ref = decl_engine.insert(decl);
+                                (name, TyImplItem::Type(new_ref))
+                            }
                         })
                         .collect();
                     trait_map.insert_inner(
@@ -885,6 +910,7 @@ impl TraitMap {
                         } else {
                             Some(suffix.args.to_vec())
                         },
+                        root_type_id: None,
                     },
                 );
                 if unify_check.check(type_id, key.type_id) {
@@ -911,6 +937,7 @@ impl TraitMap {
                         } else {
                             Some(constraint_type_arguments.clone())
                         },
+                        root_type_id: None,
                     },
                 );
                 (c.trait_name.suffix.clone(), constraint_type_id)

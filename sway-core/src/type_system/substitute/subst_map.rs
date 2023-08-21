@@ -11,6 +11,7 @@ type DestinationType = TypeId;
 
 /// The [TypeSubstMap] is used to create a mapping between a [SourceType] (LHS)
 /// and a [DestinationType] (RHS).
+#[derive(Clone)]
 pub struct TypeSubstMap {
     mapping: BTreeMap<SourceType, DestinationType>,
 }
@@ -294,6 +295,10 @@ impl TypeSubstMap {
         TypeSubstMap { mapping }
     }
 
+    pub(crate) fn extend(&mut self, subst_map: TypeSubstMap) {
+        self.mapping.extend(subst_map.mapping.iter());
+    }
+
     /// Given a [TypeId] `type_id`, find (or create) a match for `type_id` in
     /// this [TypeSubstMap] and return it, if there is a match. Importantly, this
     /// function is recursive, so any `type_id` it's given will undergo
@@ -423,6 +428,7 @@ impl TypeSubstMap {
                 ty.type_id = type_id;
                 type_engine.insert(engines, TypeInfo::Slice(ty))
             }),
+            TypeInfo::TraitType { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::Unknown
             | TypeInfo::StringArray(..)
             | TypeInfo::StringSlice

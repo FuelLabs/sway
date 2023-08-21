@@ -565,6 +565,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_type_alias_declaration(engines, &type_alias, graph, entry_node)?;
             Ok(leaves.to_vec())
         }
+        ty::TyDecl::TypeDecl(ty::TypeDecl { .. }) => Ok(leaves.to_vec()),
         ty::TyDecl::ErrorRecovery(..) | ty::TyDecl::GenericTypeForFunctionScope(_) => {
             Ok(leaves.to_vec())
         }
@@ -718,6 +719,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
                 methods_and_indexes.push((fn_decl.name.clone(), fn_decl_entry_node));
             }
             TyImplItem::Constant(_const_decl) => {}
+            TyImplItem::Type(_type_decl) => {}
         }
     }
     // we also want to add an edge from the methods back to the trait, so if a method gets called,
@@ -806,6 +808,7 @@ fn connect_abi_declaration(
                 }
             }
             ty::TyTraitInterfaceItem::Constant(_const_decl) => {}
+            ty::TyTraitInterfaceItem::Type(_type_decl) => {}
         }
     }
 
@@ -2227,6 +2230,9 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
             ty::TyDecl::VariableDecl(_) => false,
             ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_constant(decl_id).attributes)
+            }
+            ty::TyDecl::TypeDecl(ty::TypeDecl { decl_id, .. }) => {
+                allow_dead_code(decl_engine.get_type(decl_id).attributes)
             }
             ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_function(decl_id).attributes)

@@ -67,13 +67,24 @@ impl ty::TyDecl {
             }
             parsed::Declaration::ConstantDeclaration(decl) => {
                 let span = decl.span.clone();
-                let const_decl = match ty::TyConstantDecl::type_check(handler, ctx.by_ref(), decl) {
-                    Ok(res) => res,
-                    Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
-                };
+                let const_decl =
+                    match ty::TyConstantDecl::type_check(handler, ctx.by_ref(), decl, None) {
+                        Ok(res) => res,
+                        Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
+                    };
                 let typed_const_decl: ty::TyDecl = decl_engine.insert(const_decl.clone()).into();
                 ctx.insert_symbol(handler, const_decl.name().clone(), typed_const_decl.clone())?;
                 typed_const_decl
+            }
+            parsed::Declaration::TraitTypeDeclaration(decl) => {
+                let span = decl.span.clone();
+                let type_decl = match ty::TyTraitType::type_check(handler, ctx.by_ref(), decl) {
+                    Ok(res) => res,
+                    Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
+                };
+                let typed_type_decl: ty::TyDecl = decl_engine.insert(type_decl.clone()).into();
+                ctx.insert_symbol(handler, type_decl.name().clone(), typed_type_decl.clone())?;
+                typed_type_decl
             }
             parsed::Declaration::EnumDeclaration(decl) => {
                 let span = decl.span.clone();
@@ -118,8 +129,7 @@ impl ty::TyDecl {
                 for supertrait in trait_decl.supertraits.iter_mut() {
                     let _ = ctx
                         .namespace
-                        .resolve_call_path(handler, &supertrait.name)
-                        .cloned()
+                        .resolve_call_path(handler, engines, &supertrait.name)
                         .map(|supertrait_decl| {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
                                 name: supertrait_name,
@@ -160,11 +170,9 @@ impl ty::TyDecl {
                 // insert those since we do not allow calling contract methods
                 // from contract methods
                 let emp_vec = vec![];
-                let impl_trait_items = if let Some(ty::TyDecl::TraitDecl { .. }) = ctx
+                let impl_trait_items = if let Ok(ty::TyDecl::TraitDecl { .. }) = ctx
                     .namespace
-                    .resolve_call_path(&Handler::default(), &impl_trait.trait_name)
-                    .ok()
-                    .cloned()
+                    .resolve_call_path(&Handler::default(), engines, &impl_trait.trait_name)
                 {
                     &impl_trait.items
                 } else {
@@ -181,6 +189,7 @@ impl ty::TyDecl {
                         .trait_decl_ref
                         .as_ref()
                         .map(|decl_ref| decl_ref.decl_span().clone()),
+                    false,
                     false,
                 )?;
                 let impl_trait_decl: ty::TyDecl = decl_engine.insert(impl_trait.clone()).into();
@@ -208,6 +217,7 @@ impl ty::TyDecl {
                         .as_ref()
                         .map(|decl_ref| decl_ref.decl_span().clone()),
                     true,
+                    false,
                 )?;
                 let impl_trait_decl: ty::TyDecl = decl_engine.insert(impl_trait.clone()).into();
                 impl_trait.items.iter_mut().for_each(|item| {
@@ -244,8 +254,7 @@ impl ty::TyDecl {
                 for supertrait in abi_decl.supertraits.iter_mut() {
                     let _ = ctx
                         .namespace
-                        .resolve_call_path(handler, &supertrait.name)
-                        .cloned()
+                        .resolve_call_path(handler, engines, &supertrait.name)
                         .map(|supertrait_decl| {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
                                 name: supertrait_name,
