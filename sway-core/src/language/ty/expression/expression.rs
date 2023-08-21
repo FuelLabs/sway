@@ -64,7 +64,7 @@ impl ReplaceDecls for TyExpression {
         &mut self,
         decl_mapping: &DeclMapping,
         handler: &Handler,
-        ctx: &TypeCheckContext,
+        ctx: &mut TypeCheckContext,
     ) -> Result<(), ErrorEmitted> {
         self.expression.replace_decls(decl_mapping, handler, ctx)
     }

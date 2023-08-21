@@ -35,6 +35,16 @@ __size_of_str<T>() -> u64
 ___
 
 ```sway
+__check_str_type<T>() -> u64
+```
+
+**Description:** Throws a compile error if type `T` is not a string.
+
+**Constraints:** None.
+
+___
+
+```sway
 __is_reference_type<T>() -> bool
 ```
 
