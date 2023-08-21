@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()Expected item after doc comment

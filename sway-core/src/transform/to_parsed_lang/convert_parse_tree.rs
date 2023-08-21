@@ -222,6 +222,9 @@ fn item_to_ast_nodes(
                 attributes,
             )?,
         )),
+        ItemKind::Error(spans, error) => {
+            vec![AstNodeContent::Error(spans, error)]
+        }
     };
 
     Ok(contents
