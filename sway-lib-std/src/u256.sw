@@ -1,7 +1,7 @@
 //! A 256-bit unsigned integer type.
 library;
 
-use ::assert::{assert_eq, assert};
+use ::assert::assert;
 use ::convert::From;
 use ::result::Result::{self, *};
 use ::u128::U128;
@@ -134,6 +134,10 @@ impl U256 {
     /// ```
     pub fn is_zero(self) -> bool {
         self.a == 0 && self.b == 0 && self.c == 0 && self.d == 0
+    }
+
+    pub fn low_u64(self) -> u64 {
+        self.a
     }
 
     /// Safely downcast to `u64` without loss of precision.
@@ -682,40 +686,32 @@ impl Power for U256 {
 	/// # Panics
 	///
 	/// Panics if the result overflows the type.
-    fn pow(self, exponent: Self) -> Self {
-        let mut value = self;
-        let mut exp = exponent;
-        let one = Self::one();
-
-        if exp.is_zero() {
-            return one;
+    fn pow(self, expon: Self) -> Self {
+        if expon.is_zero() {
+            return Self::one()
         }
-
-        if exp == one {
-            // Manually clone `self`. Otherwise, we may have a `MemoryOverflow`
-            // issue with code that looks like: `x = x.pow(other)`
-            return Self::from((self.a, self.b, self.c, self.d));
-        }
-
-        while (exp & one).is_zero() {
-            value = value * value;
-            exp >>= 1;
-        }
-
-        if exp == one {
-            return value;
-        }
-
-        let mut acc = value;
-        while exp > one {
-            exp >>= 1;
-            value = value * value;
-            if exp & one == one {
-                acc = acc * value;
+        
+        let u_one = Self::one();
+        let mut y = u_one;
+        let mut n = expon;
+        let mut x = self;
+        while n > u_one {
+            if is_even(n) {
+                x = x * x;
+                n = n >> 1u64;
+            } else {
+                y = x * y;
+                x = x * x;
+                
             }
         }
-        acc
+        x * y
     }
+}
+
+
+fn is_even(ref x: U256) -> bool {
+    x.low_u64() & 1 == 0
 }
 
 #[test]
@@ -724,9 +720,24 @@ fn test_pow_u256() {
     let two = U256::from((0, 0, 0, 2));
     let three = U256::from((0, 0, 0, 3));
     let twenty_eight = U256::from((0, 0, 0, 28));
-    assert_eq(five.pow(two), U256::from((0, 0, 0, 25)));
-    assert_eq(five.pow(three), U256::from((0, 0, 0, 125)));
-    assert_eq(five.pow(twenty_eight), U256::from((0, 0, 2, 359414837200037395)));
+
+    let five_pow_two = five.pow(two);
+    assert(five_pow_two.a == 0);
+    assert(five_pow_two.b == 0);
+    assert(five_pow_two.c == 0);
+    assert(five_pow_two.d == 25);
+
+    let five_pow_three = five.pow(three);
+    assert(five_pow_three.a == 0);
+    assert(five_pow_three.b == 0);
+    assert(five_pow_three.c == 0);
+    assert(five_pow_three.d == 125);
+
+    let five_pow_28 = five.pow(twenty_eight);
+    assert(five_pow_28.a == 0);
+    assert(five_pow_28.b == 359414837200037395);
+    assert(five_pow_28.c == 18446744073709551615);
+    assert(five_pow_28.d == 18446744073709551615);
 }
 
 #[test]
