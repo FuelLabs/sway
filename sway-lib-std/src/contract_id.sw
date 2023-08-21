@@ -2,7 +2,6 @@
 library;
 
 use ::alias::SubId;
-use ::constants::ZERO_B256;
 use ::convert::From;
 use ::hash::*;
 
@@ -198,12 +197,8 @@ impl AssetId {
     /// ```
     pub fn base_asset_id() -> Self {
         Self {
-            value: ZERO_B256,
+            value: 0x0000000000000000000000000000000000000000000000000000000000000000,
         }
     }
 }
 
-/// Represents bridged Ether on the main Fuel Network. Can be configured to represent another asset on another instance of the Fuel network.
-pub const BASE_ASSET_ID: AssetId = AssetId {
-    value: ZERO_B256,
-};
