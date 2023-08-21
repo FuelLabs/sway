@@ -1,9 +1,8 @@
 //! Functionality for accessing context-specific information about the current contract or message.
 library;
 
-use ::asset_id::AssetId;
-use ::contract_id::ContractId;
 use ::call_frames::contract_id;
+use ::contract_id::{AssetId, ContractId};
 use ::registers::balance;
 
 /// Get the balance of coin `asset_id` for the current contract.

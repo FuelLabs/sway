@@ -12,7 +12,6 @@ pub mod assert;
 pub mod alloc;
 pub mod alias;
 pub mod hash;
-pub mod asset_id;
 pub mod contract_id;
 pub mod constants;
 pub mod external;

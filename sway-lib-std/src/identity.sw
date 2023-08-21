@@ -5,10 +5,9 @@ library;
 use ::assert::assert;
 use ::address::Address;
 use ::alias::SubId;
-use ::asset_id::AssetId;
 use ::call_frames::contract_id;
 use ::constants::{ZERO_B256, BASE_ASSET_ID};
-use ::contract_id::ContractId;
+use ::contract_id::{AssetId, ContractId};
 use ::hash::sha256;
 use ::option::Option;
 

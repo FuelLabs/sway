@@ -3,11 +3,10 @@
 library;
 
 use ::address::Address;
-use ::alias::AssetId;
 use ::assert::assert;
 use ::bytes::Bytes;
 use ::constants::BASE_ASSET_ID;
-use ::contract_id::ContractId;
+use ::contract_id::{AssetId, ContractId};
 use ::option::Option::{self, *};
 use ::revert::revert;
 use ::tx::{

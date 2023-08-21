@@ -2,7 +2,7 @@
 library;
 
 use ::alias::SubId;
-use ::asset_id::AssetId;
+use ::constants::ZERO_B256;
 use ::convert::From;
 use ::hash::sha256;
 
@@ -94,3 +94,110 @@ impl ContractId {
         self.transfer(sha256((ContractId::from(asm() { fp: b256 }), sub_id)), amount);
     }
 }
+
+
+/// An AssetId is used for interacting with an asset on the network. 
+///
+/// # Additional Information
+///
+/// It is calculated by taking the sha256 hash of the originating ContractId and a SubId.
+/// ie. sha256((contract_id, sub_id)).
+///
+/// An exception is the Base Asset, which is just the ZERO_B256 AssetId.
+///
+/// The SubId is used to differentiate between different assets that are created by the same contract.
+pub struct AssetId {
+    value: b256,
+}
+
+impl AssetId {
+    /// Creates a new AssetId from a ContractId and SubId.
+    ///
+    /// # Arguments
+    ///
+    /// * `contract_id`: [ContractId] - The ContractId of the contract that created the asset.
+    /// * `sub_id`: [SubId] - The SubId of the asset.
+    ///
+    /// # Returns
+    ///
+    /// * [AssetId] - The AssetId of the asset. Computed by hashing the ContractId and SubId.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::{callframes::contract_id, constants::ZERO_B256};
+    ///
+    /// fn foo() {
+    ///     let contract_id = contract_id();
+    ///     let sub_id = ZERO_B256;
+    ///
+    ///     let asset_id = AssetId::new(contract_id, sub_id);        
+    /// }
+    /// ```
+    pub fn new(contract_id: ContractId, sub_id: SubId) -> Self {
+        let value = sha256((contract_id, sub_id));
+        Self { value }
+    }
+
+    /// Creates a new AssetId from a ContractId and the zero SubId.
+    ///
+    /// # Arguments
+    ///
+    /// * `contract_id`: [ContractId] - The ContractId of the contract that created the asset.
+    ///
+    /// # Returns
+    ///
+    /// * [AssetId] - The AssetId of the asset. Computed by hashing the ContractId and the zero SubId.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::{callframes::contract_id, constants::ZERO_B256};
+    ///
+    /// fn foo() {
+    ///     let contract_id = contract_id();
+    ///     let sub_id = ZERO_B256;
+    ///
+    ///     let asset_id = AssetId::standard(contract_id);
+    ///
+    ///     assert(asset_id == AssetId::new(contract_id, sub_id));
+    /// }
+    /// ```
+    pub fn standard(contract_id: ContractId) -> Self {
+        let value = sha256((contract_id, ZERO_B256));
+        Self { value }
+    }
+
+    /// Represents bridged Ether on the main Fuel Network. Can be configured to represent another asset on another instance of the Fuel network.
+    ///
+    /// # Additional Information
+    ///
+    /// It is hard coded to be ZERO_B256.
+    ///
+    /// # Returns
+    ///
+    /// * [AssetId] - The AssetId of the asset. Computed by hashing the zero ContractId and the zero SubId.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::token::transfer;
+    ///
+    /// fn foo() {
+    ///     let asset_id = AssetId::base_asset_id();
+    ///     let amount = 100;
+    ///     let recipient = Identity::ContractId(ContractId::from(ZERO_B256));
+    ///
+    ///     transfer(recipient, asset_id, amount);
+    /// ```
+    pub fn base_asset_id() -> Self {
+        Self {
+            value: ZERO_B256,
+        }
+    }
+}
+
+/// Represents bridged Ether on the main Fuel Network. Can be configured to represent another asset on another instance of the Fuel network.
+pub const BASE_ASSET_ID: AssetId = AssetId {
+    value: ZERO_B256,
+};

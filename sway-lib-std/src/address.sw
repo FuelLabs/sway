@@ -2,8 +2,8 @@
 library;
 
 use ::alias::SubId;
-use ::asset_id::AssetId;
 use ::call_frames::contract_id;
+use ::contract_id::AssetId;
 use ::convert::From;
 use ::error_signals::FAILED_TRANSFER_TO_ADDRESS_SIGNAL;
 use ::hash::sha256;
