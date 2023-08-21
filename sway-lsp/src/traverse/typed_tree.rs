@@ -67,6 +67,7 @@ impl Parse for ty::TyAstNode {
             ty::TyAstNodeContent::Expression(expression)
             | ty::TyAstNodeContent::ImplicitReturnExpression(expression) => expression.parse(ctx),
             ty::TyAstNodeContent::SideEffect(side_effect) => side_effect.parse(ctx),
+            ty::TyAstNodeContent::Error(_, _) => {}
         };
     }
 }

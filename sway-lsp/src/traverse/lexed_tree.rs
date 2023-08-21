@@ -89,6 +89,7 @@ impl Parse for ItemKind {
             ItemKind::TypeAlias(item_type_alias) => {
                 item_type_alias.parse(ctx);
             }
+            ItemKind::Error(_, _) => {}
         }
     }
 }
@@ -541,6 +542,7 @@ impl Parse for Statement {
             Statement::Item(item) => {
                 item.value.parse(ctx);
             }
+            Statement::Error(_, _) => {}
         }
     }
 }
