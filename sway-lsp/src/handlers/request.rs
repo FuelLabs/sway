@@ -17,7 +17,7 @@ use sway_types::{Ident, Spanned};
 use tower_lsp::jsonrpc::Result;
 use tracing::metadata::LevelFilter;
 
-pub(crate) fn handle_initialize(
+pub fn handle_initialize(
     state: &ServerState,
     params: lsp_types::InitializeParams,
 ) -> Result<InitializeResult> {

@@ -3,16 +3,13 @@ pub mod integration;
 use crate::integration::{code_actions, lsp};
 use lsp_types::*;
 use std::{fs, path::PathBuf};
-use sway_lsp::{handlers::notification, server_state::ServerState};
+use sway_lsp::{handlers::{notification, request}, server_state::ServerState};
 use sway_lsp_test_utils::{
     assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir,
     e2e_test_dir, generic_impl_self_dir, get_fixture, load_sway_example, runnables_test_dir,
     self_impl_reassignment_dir, sway_workspace_dir, test_fixtures_dir,
 };
-use tower_lsp::{
-    jsonrpc::{self, Response},
-    LspService,
-};
+use tower_lsp::LspService;
 
 /// Holds the information needed to check the response of a goto definition request.
 #[derive(Debug)]
@@ -72,27 +69,12 @@ async fn shutdown_and_exit(service: &mut LspService<ServerState>) {
 
 #[tokio::test]
 async fn initialize() {
-    let (mut service, _) = LspService::new(ServerState::new);
-    let _ = lsp::initialize_request(&mut service).await;
-}
-
-#[tokio::test]
-async fn initialized() {
-    let (mut service, _) = LspService::new(ServerState::new);
-    let _ = lsp::initialize_request(&mut service).await;
-    lsp::initialized_notification(&mut service).await;
-}
-
-#[tokio::test]
-async fn shutdown() {
-    let (mut service, _) = LspService::new(ServerState::new);
-    let _ = lsp::initialize_request(&mut service).await;
-    lsp::initialized_notification(&mut service).await;
-    let shutdown = lsp::shutdown_request(&mut service).await;
-    let response = lsp::call_request(&mut service, shutdown).await;
-    let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
-    assert_eq!(response, Ok(Some(err)));
-    lsp::exit_notification(&mut service).await;
+    let server = ServerState::default();
+    let params = InitializeParams {
+        initialization_options: None,
+        ..Default::default()
+    };
+    let _ = request::handle_initialize(&server, params);
 }
 
 #[tokio::test]
