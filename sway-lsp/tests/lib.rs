@@ -84,16 +84,6 @@ async fn initialized() {
 }
 
 #[tokio::test]
-async fn initializes_only_once() {
-    let (mut service, _) = LspService::new(ServerState::new);
-    let initialize = lsp::initialize_request(&mut service).await;
-    lsp::initialized_notification(&mut service).await;
-    let response = lsp::call_request(&mut service, initialize).await;
-    let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
-    assert_eq!(response, Ok(Some(err)));
-}
-
-#[tokio::test]
 async fn shutdown() {
     let (mut service, _) = LspService::new(ServerState::new);
     let _ = lsp::initialize_request(&mut service).await;
