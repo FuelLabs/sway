@@ -1,4 +1,7 @@
 category = "fail"
 
-# check: __test()
+# This appears in the warning for the trait having no implementation.
+# check: fn __test()
+
+# check: fn __test()
 # nextln: $()Identifiers cannot begin with a double underscore, as that naming convention is reserved for compiler intrinsics.
