@@ -92,6 +92,18 @@ pub async fn run_pkg(
         .or_else(|| manifest.network.as_ref().map(|nw| &nw.url[..]))
         .unwrap_or(crate::default::NODE_URL);
     let client = FuelClient::new(node_url)?;
+    let node_info = client.node_info().await?;
+    let chain_info = client.chain_info().await?;
+    // If the user did not specify a gas price, we will use the minimum gas price defined
+    // by the node.
+    let gas_price = command.gas.price.unwrap_or(node_info.min_gas_price);
+    // If the user did not specify a max gas per tx, we will use the minimum gas limit defined
+    // by the chain config.
+    let gas_limit = command
+        .gas
+        .limit
+        .unwrap_or(chain_info.consensus_parameters.max_gas_per_tx);
+
     let contract_ids = command
         .contract
         .as_ref()
@@ -109,8 +121,8 @@ pub async fn run_pkg(
     };
 
     let tx = TransactionBuilder::script(compiled.bytecode.bytes.clone(), script_data)
-        .gas_limit(command.gas.limit)
-        .gas_price(command.gas.price)
+        .gas_limit(gas_limit)
+        .gas_price(gas_price)
         .maturity(command.maturity.maturity.into())
         .add_contracts(contract_ids)
         .finalize_signed(

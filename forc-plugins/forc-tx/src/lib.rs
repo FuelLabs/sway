@@ -101,13 +101,11 @@ pub struct Script {
 #[derive(Debug, Devault, Parser, Deserialize, Serialize)]
 pub struct Gas {
     /// Gas price for the transaction.
-    #[clap(long = "gas-price", default_value_t = 0)]
-    #[devault("0")]
-    pub price: u64,
+    #[clap(long = "gas-price")]
+    pub price: Option<u64>,
     /// Gas limit for the transaction.
-    #[clap(long = "gas-limit", default_value_t = fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)]
-    #[devault("fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx")]
-    pub limit: u64,
+    #[clap(long = "gas-limit")]
+    pub limit: Option<u64>,
 }
 
 /// Block until which tx cannot be included.
@@ -624,8 +622,11 @@ impl TryFrom<Create> for fuel_tx::Create {
             .map(|s| fuel_tx::Witness::from(s.as_bytes()))
             .collect();
         let create = fuel_tx::Transaction::create(
-            create.gas.price,
-            create.gas.limit,
+            create.gas.price.unwrap_or(0),
+            create
+                .gas
+                .limit
+                .unwrap_or(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx),
             create.maturity.maturity.into(),
             create.bytecode_witness_index,
             create.salt.salt.unwrap_or_default(),
@@ -668,8 +669,11 @@ impl TryFrom<Script> for fuel_tx::Script {
             .map(|s| fuel_tx::Witness::from(s.as_bytes()))
             .collect();
         let script = fuel_tx::Transaction::script(
-            script.gas.price,
-            script.gas.limit,
+            script.gas.price.unwrap_or(0),
+            script
+                .gas
+                .limit
+                .unwrap_or(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx),
             script.maturity.maturity.into(),
             script_bytecode,
             script_data,

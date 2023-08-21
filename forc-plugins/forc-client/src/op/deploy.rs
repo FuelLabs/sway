@@ -7,7 +7,6 @@ use crate::{
 };
 use anyhow::{bail, Context, Result};
 use forc_pkg::{self as pkg, PackageManifestFile};
-use forc_tx::Gas;
 use forc_util::default_output_directory;
 use fuel_core_client::client::types::TransactionStatus;
 use fuel_core_client::client::FuelClient;
@@ -116,7 +115,7 @@ fn validate_and_parse_salts<'a>(
 ///
 /// When deploying a single contract, only that contract's ID is returned.
 pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
-    let mut command = apply_target(command).await?;
+    let mut command = apply_target(command)?;
     if command.unsigned {
         warn!(" Warning: --unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
         command.default_signer = true;
@@ -200,7 +199,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
 /// Applies specified target information to the provided arguments.
 ///
 /// Provides preset configurations for known testnets.
-async fn apply_target(command: cmd::Deploy) -> Result<cmd::Deploy> {
+fn apply_target(command: cmd::Deploy) -> Result<cmd::Deploy> {
     let target = match (
         command.testnet,
         command.target.clone(),
@@ -213,37 +212,10 @@ async fn apply_target(command: cmd::Deploy) -> Result<cmd::Deploy> {
         _ => bail!("Only one of `--testnet`, `--target`, or `--node-url` should be specified"),
     };
 
-    // If the user specified a testnet target, we can override the gas price and limit.
     if let Some(target) = target {
         if target.is_testnet() {
-            let node_url = target.target_url();
-            let client = FuelClient::new(node_url)?;
-            // If the user did not specify a gas price, we will use the minimum gas price defined
-            // by the node.
-            let gas_price = if command.gas.price == 0 {
-                let node_info = client.node_info().await?;
-                node_info.min_gas_price
-            } else {
-                command.gas.price
-            };
-
-            // fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx is the default value for
-            // the gas.limit field. If the user left it as default we are getting max gas per tx
-            // from the node.
-            let gas_limit =
-                if command.gas.limit == fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx {
-                    let chain_info = client.chain_info().await?;
-                    chain_info.consensus_parameters.max_gas_per_tx
-                } else {
-                    command.gas.limit
-                };
-
             let target_url = Some(target.target_url().to_string());
             return Ok(cmd::Deploy {
-                gas: Gas {
-                    price: gas_price,
-                    limit: gas_limit,
-                },
                 node_url: target_url,
                 ..command
             });
@@ -266,6 +238,19 @@ pub async fn deploy_pkg(
         .or_else(|| manifest.network.as_ref().map(|nw| &nw.url[..]))
         .unwrap_or(crate::default::NODE_URL);
     let client = FuelClient::new(node_url)?;
+    let node_info = client.node_info().await?;
+    let chain_info = client.chain_info().await?;
+
+    // If the user did not specify a gas price, we will use the minimum gas price defined
+    // by the node.
+    let gas_price = command.gas.price.unwrap_or(node_info.min_gas_price);
+    // If the user did not specify a max gas per tx, we will use the minimum gas limit defined
+    // by the chain config.
+    let gas_limit = command
+        .gas
+        .limit
+        .unwrap_or(chain_info.consensus_parameters.max_gas_per_tx);
+
     let bytecode = &compiled.bytecode.bytes;
 
     let mut storage_slots = compiled.storage_slots.clone();
@@ -283,8 +268,8 @@ pub async fn deploy_pkg(
     };
 
     let tx = TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots.clone())
-        .gas_limit(command.gas.limit)
-        .gas_price(command.gas.price)
+        .gas_limit(gas_limit)
+        .gas_price(gas_price)
         .maturity(command.maturity.maturity.into())
         .add_output(Output::contract_created(contract_id, state_root))
         .finalize_signed(
@@ -518,7 +503,6 @@ mod test {
             target: None,
             node_url: Some("beta-4.fuel.network/graphql".to_string()),
             testnet: true,
-            gas: Gas { price: 1, limit: 1 },
             ..Default::default()
         };
         let actual = apply_target(input).unwrap();
@@ -537,7 +521,6 @@ mod test {
             target: Some(Target::Beta4),
             node_url: Some("beta-4.fuel.network/graphql".to_string()),
             testnet: false,
-            gas: Gas { price: 1, limit: 1 },
             ..Default::default()
         };
         let actual = apply_target(input).unwrap();
@@ -556,33 +539,6 @@ mod test {
             target: None,
             node_url: Some("beta-4.fuel.network/graphql".to_string()),
             testnet: false,
-            gas: Gas { price: 1, limit: 1 },
-            ..Default::default()
-        };
-        let actual = apply_target(input).unwrap();
-        assert_cmd_eq(expected, actual);
-    }
-
-    #[test]
-    fn test_apply_target_beta4_custom_gas() {
-        let input = cmd::Deploy {
-            target: Some(Target::Beta4),
-            node_url: None,
-            testnet: false,
-            gas: Gas {
-                price: 12,
-                limit: 13,
-            },
-            ..Default::default()
-        };
-        let expected = cmd::Deploy {
-            target: Some(Target::Beta4),
-            node_url: Some("beta-4.fuel.network/graphql".to_string()),
-            testnet: false,
-            gas: Gas {
-                price: 12,
-                limit: 13,
-            },
             ..Default::default()
         };
         let actual = apply_target(input).unwrap();
@@ -601,10 +557,6 @@ mod test {
             target: Some(Target::Beta3),
             node_url: Some("beta-3.fuel.network/graphql".to_string()),
             testnet: false,
-            gas: Gas {
-                price: 1,
-                limit: 100000000,
-            },
             ..Default::default()
         };
         let actual = apply_target(input).unwrap();
