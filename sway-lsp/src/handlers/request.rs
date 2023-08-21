@@ -14,6 +14,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use sway_types::{Ident, Spanned};
+use sway_utils::PerformanceData;
 use tower_lsp::jsonrpc::Result;
 use tracing::metadata::LevelFilter;
 
@@ -419,6 +420,36 @@ pub(crate) fn on_enter(
         Ok((uri, session)) => {
             // handle on_enter capabilities if they are enabled
             Ok(capabilities::on_enter(config, &session, &uri, &params))
+        }
+        Err(err) => {
+            tracing::error!("{}", err.to_string());
+            Ok(None)
+        }
+    }
+}
+
+/// This method is triggered by the test suite to request the latest compilation metrics.
+pub(crate) fn metrics(
+    state: &ServerState,
+    params: lsp_ext::MetricsParams,
+) -> Result<Option<Vec<(String, PerformanceData)>>> {
+    match state
+        .sessions
+        .uri_and_session_from_workspace(&params.text_document.uri)
+    {
+        Ok((_, session)) => {
+            let engines = session.engines.read();
+            let mut metrics = vec![];
+            for kv in session.metrics.iter() {
+                let path = engines
+                    .se()
+                    .get_path(kv.key())
+                    .to_str()
+                    .unwrap_or("")
+                    .to_string();
+                metrics.push((path, kv.value().clone()));
+            }
+            Ok(Some(metrics))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());
