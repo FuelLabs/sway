@@ -4,7 +4,7 @@ use sway_core::language::parsed::TreeType;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct RunnableMainFn {
-    // The range in the file where the runnable button should be displayed.
+    /// The location in the file where the runnable button should be displayed
     pub range: Range,
     /// The program kind of the current file
     pub tree_type: TreeType,
@@ -12,7 +12,7 @@ pub struct RunnableMainFn {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct RunnableTestFn {
-    // The range in the file where the runnable button should be displayed.
+    /// The location in the file where the runnable button should be displayed
     pub range: Range,
     /// The program kind of the current file.
     pub tree_type: TreeType,

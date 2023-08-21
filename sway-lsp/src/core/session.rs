@@ -349,16 +349,18 @@ impl Session {
                 .attributes
                 .first()
                 .map_or_else(|| decl.name.span(), |(_, attr)| attr.span.clone());
-            let path = source_engine.get_path(span.source_id().unwrap());
-            let runnable = Box::new(RunnableTestFn {
-                range: get_range_from_span(&span.clone()),
-                tree_type: typed_program.kind.tree_type(),
-                test_name: Some(decl.name.to_string()),
-            });
-            self.runnables
-                .entry(path)
-                .or_insert(Vec::new())
-                .push(runnable);
+            if let Some(source_id) = span.source_id() {
+                let path = source_engine.get_path(source_id);
+                let runnable = Box::new(RunnableTestFn {
+                    range: get_range_from_span(&span.clone()),
+                    tree_type: typed_program.kind.tree_type(),
+                    test_name: Some(decl.name.to_string()),
+                });
+                self.runnables
+                    .entry(path)
+                    .or_insert(Vec::new())
+                    .push(runnable);
+            }
         }
 
         // Insert runnable main function if the program is a script.
@@ -367,15 +369,17 @@ impl Session {
         } = typed_program.kind
         {
             let span = main_function.name.span();
-            let path = source_engine.get_path(span.source_id().unwrap());
-            let runnable = Box::new(RunnableMainFn {
-                range: get_range_from_span(&span.clone()),
-                tree_type: typed_program.kind.tree_type(),
-            });
-            self.runnables
-                .entry(path)
-                .or_insert(Vec::new())
-                .push(runnable);
+            if let Some(source_id) = span.source_id() {
+                let path = source_engine.get_path(source_id);
+                let runnable = Box::new(RunnableMainFn {
+                    range: get_range_from_span(&span.clone()),
+                    tree_type: typed_program.kind.tree_type(),
+                });
+                self.runnables
+                    .entry(path)
+                    .or_insert(Vec::new())
+                    .push(runnable);
+            }
         }
     }
 
