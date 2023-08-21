@@ -64,7 +64,7 @@ impl Handler {
         }
     }
 
-    /// Extract all the errors from this handler.
+    /// Extract all the warnings and errors from this handler.
     pub fn consume(self) -> (Vec<CompileError>, Vec<CompileWarning>) {
         let inner = self.inner.into_inner();
         (inner.errors, inner.warnings)

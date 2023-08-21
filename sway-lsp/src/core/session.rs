@@ -434,6 +434,7 @@ pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
             lexed,
             parsed,
             typed,
+            metrics: _,
         } = value.unwrap();
 
         // Get a reference to the typed program AST.

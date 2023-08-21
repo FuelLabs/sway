@@ -974,8 +974,6 @@ mod tests {
         let mut md_mgr = MetadataManager::default();
         let core_lib = namespace::Module::default();
 
-        let mut performance_data = sway_utils::PerformanceData::default();
-
         let r = crate::compile_to_ast(
             &handler,
             &engines,
@@ -983,7 +981,6 @@ mod tests {
             core_lib,
             None,
             "test",
-            &mut performance_data,
         );
 
         let (errors, _warnings) = handler.consume();

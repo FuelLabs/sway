@@ -1798,7 +1798,6 @@ pub fn compile(
             namespace,
             Some(&sway_build_config),
             &pkg.name,
-            &mut metrics,
         ),
         Some(sway_build_config.clone()),
         metrics
@@ -2650,7 +2649,6 @@ pub fn check(
         )?
         .include_tests(include_tests);
 
-        let mut metrics = PerformanceData::default();
         let input = manifest.entry_string()?;
         let handler = Handler::default();
         let programs_res = sway_core::compile_to_ast(
@@ -2660,7 +2658,6 @@ pub fn check(
             dep_namespace,
             Some(&build_config),
             &pkg.name,
-            &mut metrics,
         );
 
         let programs = match programs_res.as_ref() {

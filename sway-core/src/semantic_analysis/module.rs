@@ -19,6 +19,7 @@ impl ty::TyModule {
             tree,
             attributes,
             span,
+            hash: _,
             ..
         } = parsed;
 
