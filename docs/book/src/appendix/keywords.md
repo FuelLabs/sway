@@ -3,36 +3,35 @@
 The following list contains keywords that are reserved for current or
 future use by the Sway language. As such, they cannot be used as
 identifiers. Identifiers are names of functions, variables,
-parameters, struct fields, modules, constants, attributes, types, or
-traits.
+parameters, modules, constants, attributes, types, or
+traits, ect.
 
 ### [Keywords Currently in Use](#keywords-currently-in-use)
 
 The following is a list of keywords currently in use, with their
 functionality described.
 
-- `as` - perform primitive casting, disambiguate the specific trait
-containing an item, or rename items in `use` statements
+- `as` - perform primitive casting, or rename items in `use` statements
 - [`abi`](https://fuellabs.github.io/sway/master/book/sway-program-types/smart_contracts.html#the-abi-declaration) - defines a smart contract ABI in a syntactcally similar way to traits
 - [`break`](https://fuellabs.github.io/sway/v0.44.0/book/basics/control_flow.html#break-and-continue) - exit a loop immediately
-- [`const`](https://fuellabs.github.io/sway/v0.44.0/book/basics/constants.html) - define constant items or constant raw pointers
+- [`const`](https://fuellabs.github.io/sway/v0.44.0/book/basics/constants.html) - define constant items
 - [`continue`](https://fuellabs.github.io/sway/v0.44.0/book/basics/control_flow.html#break-and-continue) - continue to the next loop iteration
-- `dep` - call dependances outside of .toml
-- `else` - fallback for `if` and `if let` control flow constructs
+- `dep` - call dependencies outside of the current forc.toml scope
+- `else` - used in conjunction with `if` conditions for control flow constructs
 - [`enum`](https://fuellabs.github.io/sway/v0.44.0/book/basics/structs_tuples_and_enums.html#enums) - define an enumeration
 - `false` - Boolean false literal
 - [`fn`](https://fuellabs.github.io/sway/master/book/basics/functions.html)- define a function or the function pointer type
 - [`if`](https://fuellabs.github.io/sway/v0.44.0/book/basics/control_flow.html#if-expressions) - branch based on the result of a conditional expression
 - `impl` - implement inherent or trait functionality
 - `let` - bind a variable
-- [`match`](https://fuellabs.github.io/sway/v0.44.0/book/basics/control_flow.html#match-expressions) - match a value to patterns
+- [`match`](https://fuellabs.github.io/sway/v0.44.0/book/basics/control_flow.html#match-expressions) - exhaustfully match a value to patterns
 - `mod` - define a module
-- `mut` - denote mutability in references, raw pointers, or pattern bindings
-- `pub` - denote public visibility in struct fields, impl blocks, or modules
+- `mut` - denote mutability in references, or pattern bindings
+- `pub` - denote public visibility of Sway data structures, traits, or modules
 - `ref` - bind by reference
-- `return` - return from fuction
+- `return` - return early from a function
 - `Self` - a type alias for the type we are defining or implementing
-- `self` - method subject or current module
+- `self` - method subject
 - [`struct`](https://fuellabs.github.io/sway/v0.44.0/book/basics/structs_tuples_and_enums.html#structs) - define a structure
 - [`trait`](https://fuellabs.github.io/sway/master/book/advanced/traits.html#declaring-a-trait) - define a trait
 - `true` - Boolean true literal
@@ -73,9 +72,9 @@ containing an item, or rename items in `use` statements
 
 Keywords associated with defining the type of Sway program to compile
 
-- [`contract`](https://fuellabs.github.io/sway/master/book/sway-program-types/smart_contracts.html) - calls smart contract
-- [`library`](https://fuellabs.github.io/sway/master/book/sway-program-types/libraries.html) - defines a library 
-- [`predicate`](https://fuellabs.github.io/sway/master/book/sway-program-types/predicates.html) - Boolean based ownership check
+- [`contract`](https://fuellabs.github.io/sway/master/book/sway-program-types/smart_contracts.html) - analogous to a deployed API with some database state
+- [`library`](https://fuellabs.github.io/sway/master/book/sway-program-types/libraries.html) - Sway code that defines new common behavior 
+- [`predicate`](https://fuellabs.github.io/sway/master/book/sway-program-types/predicates.html) - programs that return a Boolean value and which represent ownership of some resource upon execution to true
 - [`script`](https://fuellabs.github.io/sway/master/book/sway-program-types/scripts.html) - a runnable bytecode on the chain, which executes once to preform a task
 
 
@@ -83,11 +82,9 @@ Keywords associated with defining the type of Sway program to compile
 
 Keywords associated with defining the funcitonallity of attributes
 
-- [`allow`](https://fuellabs.github.io/sway/master/book/reference/attributes.html#allow) - overrides check for dead code
+- [`allow`](https://fuellabs.github.io/sway/master/book/reference/attributes.html#allow) - overrides checks that would otherwise result in errors or warnings
 - [`doc`](https://fuellabs.github.io/sway/master/book/reference/attributes.html#doc) - specifies documentation
-- [`inline`](https://fuellabs.github.io/sway/master/book/reference/attributes.html#inline) - suggests that a copy of the attributed function should be placed in the caller
+- [`inline`](https://fuellabs.github.io/sway/master/book/reference/attributes.html#inline) - suggests that a copy of the attributed function should be placed in the caller, rather than generating code to call the function where it is defined
 - [`payable`](https://fuellabs.github.io/sway/master/book/reference/attributes.html#payable) - implies method is payable for complie time
-- [`read`]() - pulls stored variables from `storage`
 - [`storage`](https://fuellabs.github.io/sway/master/book/reference/attributes.html#storage) - declaration that contains a list of stored variables
 - [`test`](https://fuellabs.github.io/sway/master/book/reference/attributes.html#test) - marks a function to be executed as a test
-- [`write`]() - pushes variables to be stored with `storage`
