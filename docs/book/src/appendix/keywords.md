@@ -76,7 +76,7 @@ Keywords associated with defining the type of Sway program to compile
 - [`contract`](https://fuellabs.github.io/sway/master/book/sway-program-types/smart_contracts.html) - calls smart contract
 - [`library`](https://fuellabs.github.io/sway/master/book/sway-program-types/libraries.html) - defines a library 
 - [`predicate`](https://fuellabs.github.io/sway/master/book/sway-program-types/predicates.html) - Boolean based ownership check
-- [`script`](https://fuellabs.github.io/sway/master/book/sway-program-types/scripts.html) -
+- [`script`](https://fuellabs.github.io/sway/master/book/sway-program-types/scripts.html) - a runnable bytecode on the chain, which executes once to preform a task
 
 
 ### [Attribute Keywords](#attribute-keywords)
@@ -89,5 +89,5 @@ Keywords associated with defining the funcitonallity of attributes
 - [`payable`](https://fuellabs.github.io/sway/master/book/reference/attributes.html#payable) - implies method is payable for complie time
 - [`read`]() - pulls stored variables from `storage`
 - [`storage`](https://fuellabs.github.io/sway/master/book/reference/attributes.html#storage) - declaration that contains a list of stored variables
-- [`test`](https://fuellabs.github.io/sway/master/book/reference/attributes.html#test) - marks to be executed as a test
+- [`test`](https://fuellabs.github.io/sway/master/book/reference/attributes.html#test) - marks a function to be executed as a test
 - [`write`]() - pushes variables to be stored with `storage`
