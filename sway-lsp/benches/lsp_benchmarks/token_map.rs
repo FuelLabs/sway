@@ -8,10 +8,7 @@ fn benchmarks(c: &mut Criterion) {
 
     c.bench_function("tokens_for_file", |b| {
         b.iter(|| {
-            let _: Vec<_> = session
-                .token_map()
-                .tokens_for_file(engines.se(), &uri)
-                .collect();
+            let _: Vec<_> = session.token_map().tokens_for_file(&uri).collect();
         })
     });
 
@@ -32,11 +29,7 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("token_at_position", |b| {
-        b.iter(|| {
-            session
-                .token_map()
-                .token_at_position(engines.se(), &uri, position)
-        })
+        b.iter(|| session.token_map().token_at_position(&uri, position))
     });
 
     c.bench_function("parent_decl_at_position", |b| {

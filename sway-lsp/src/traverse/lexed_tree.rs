@@ -1,5 +1,5 @@
 use crate::{
-    core::token::{to_ident_key, AstToken, SymbolKind, Token},
+    core::token::{AstToken, SymbolKind, Token},
     traverse::{Parse, ParseContext},
 };
 use sway_ast::{
@@ -47,7 +47,7 @@ fn insert_module_kind(ctx: &ParseContext, kind: &ModuleKind) {
 fn insert_keyword(ctx: &ParseContext, span: Span) {
     let ident = Ident::new(span);
     let token = Token::from_parsed(AstToken::Keyword(ident.clone()), SymbolKind::Keyword);
-    ctx.tokens.insert(to_ident_key(&ident), token);
+    ctx.tokens.insert(ctx.ident(&ident), token);
 }
 
 impl Parse for ItemKind {
@@ -89,6 +89,7 @@ impl Parse for ItemKind {
             ItemKind::TypeAlias(item_type_alias) => {
                 item_type_alias.parse(ctx);
             }
+            ItemKind::Error(_, _) => {}
         }
     }
 }
@@ -541,6 +542,7 @@ impl Parse for Statement {
             Statement::Item(item) => {
                 item.value.parse(ctx);
             }
+            Statement::Error(_, _) => {}
         }
     }
 }

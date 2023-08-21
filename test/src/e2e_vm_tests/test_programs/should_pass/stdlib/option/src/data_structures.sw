@@ -1,7 +1,7 @@
 library;
 
 use core::ops::*;
-use std::hash::sha256;
+use std::hash::*;
 
 /////////////////////////////////////////////////////////////////////////////
 // Data Structures Used in in the Tests
@@ -22,12 +22,34 @@ impl Eq for MyStruct {
     }
 }
 
+impl Hash for MyStruct {
+    fn hash(self, ref mut state: Hasher) {
+        self.x.hash(state);
+        self.y.hash(state);
+    }
+}
+
 impl Eq for MyEnum {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (MyEnum::X(val1), MyEnum::X(val2)) => val1 == val2,
             (MyEnum::Y(val1), MyEnum::Y(val2)) => val1 == val2,
             _ => false,
+        }
+    }
+}
+
+impl Hash for MyEnum {
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            MyEnum::X(val) => {
+                0_u8.hash(state);
+                val.hash(state);
+            }
+            MyEnum::Y(val) => {
+                1_u8.hash(state);
+                val.hash(state);
+            }
         }
     }
 }
@@ -46,8 +68,20 @@ impl Eq for [u64; 3] {
 
 impl Eq for str[4] {
     fn eq(self, other: Self) -> bool {
-        sha256(self) == sha256(other)
+        sha256_str(self) == sha256_str(other)
     }
+}
+
+impl Hash for str[4] {
+    fn hash(self, ref mut state: Hasher) {
+        state.write_str(self);
+    }
+}
+
+fn sha256_str<T>(s: T) -> b256 {
+    let mut hasher = Hasher::new();
+    hasher.write_str(s);
+    hasher.sha256()
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -77,8 +111,55 @@ impl Eq for Error {
             (Error::StructError(val1), Error::StructError(val2)) => val1 == val2,
             (Error::EnumError(val1), Error::EnumError(val2)) => val1 == val2,
             (Error::TupleError(val1), Error::TupleError(val2)) => val1 == val2,
-            (Error::StringError(val1), Error::StringError(val2)) => sha256(val1) == sha256(val2),
+            (Error::StringError(val1), Error::StringError(val2)) => sha256_str(val1) == sha256_str(val2),
             _ => false,
+        }
+    }
+}
+
+impl Hash for Error {
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            Error::BoolError(val) => {
+                0_u8.hash(state);
+                val.hash(state);
+            },
+            Error::U8Error(val) => {
+                1_u8.hash(state);
+                val.hash(state);
+            },
+            Error::U16Error(val) => {
+                2_u8.hash(state);
+                val.hash(state);
+            },
+            Error::U32Error(val) => {
+                3_u8.hash(state);
+                val.hash(state);
+            },
+            Error::U64Error(val) => {
+                4_u8.hash(state);
+                val.hash(state);
+            },
+            Error::StructError(val) => {
+                5_u8.hash(state);
+                val.hash(state);
+            },
+            Error::EnumError(val) => {
+                6_u8.hash(state);
+                val.hash(state);
+            },
+            Error::TupleError(val) => {
+                7_u8.hash(state);
+                val.hash(state);
+            },
+            Error::ArrayError(val) => {
+                8_u8.hash(state);
+                val.hash(state);
+            },
+            Error::StringError(val) => {
+                9_u8.hash(state);
+                state.write_str(val);
+            },
         }
     }
 }

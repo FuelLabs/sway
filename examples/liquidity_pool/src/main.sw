@@ -7,7 +7,7 @@ use std::{
     },
     constants::ZERO_B256,
     context::msg_amount,
-    hash::sha256,
+    hash::*,
     token::{
         mint_to_address,
         transfer_to_address,

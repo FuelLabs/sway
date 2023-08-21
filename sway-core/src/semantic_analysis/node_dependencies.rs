@@ -633,8 +633,9 @@ impl Dependencies {
             AstNodeContent::Declaration(decl) => self.gather_from_decl(engines, decl),
 
             // No deps from these guys.
-            AstNodeContent::UseStatement(_) => self,
-            AstNodeContent::IncludeStatement(_) => self,
+            AstNodeContent::UseStatement(_)
+            | AstNodeContent::IncludeStatement(_)
+            | AstNodeContent::Error(_, _) => self,
         }
     }
 

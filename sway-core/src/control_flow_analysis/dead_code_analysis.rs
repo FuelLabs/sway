@@ -3,7 +3,7 @@ use crate::{
     decl_engine::*,
     language::{
         parsed::TreeType,
-        ty::{self, TyImplItem},
+        ty::{self, TyAstNodeContent, TyImplItem},
         CallPath, Visibility,
     },
     transform::{self, AttributesMap},
@@ -426,6 +426,7 @@ fn connect_node<'eng: 'cfg, 'cfg>(
                 exit_node,
             )
         }
+        ty::TyAstNodeContent::Error(_, _) => (vec![], None),
     })
 }
 
@@ -2099,6 +2100,10 @@ fn construct_dead_code_warning_from_node(
             span: span.clone(),
             warning_content: Warning::UnreachableCode,
         },
+        ty::TyAstNode {
+            content: TyAstNodeContent::Error(_, _),
+            ..
+        } => return None,
     })
 }
 
@@ -2258,6 +2263,7 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
         ty::TyAstNodeContent::Expression(_) => false,
         ty::TyAstNodeContent::ImplicitReturnExpression(_) => false,
         ty::TyAstNodeContent::SideEffect(_) => false,
+        ty::TyAstNodeContent::Error(_, _) => false,
     }
 }
 

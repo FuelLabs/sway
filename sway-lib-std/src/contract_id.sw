@@ -4,7 +4,7 @@ library;
 use ::alias::SubId;
 use ::constants::ZERO_B256;
 use ::convert::From;
-use ::hash::sha256;
+use ::hash::*;
 
 /// The `ContractId` type, a struct wrapper around the inner `b256` value.
 pub struct ContractId {
@@ -64,6 +64,13 @@ impl ContractId {
     }
 }
 
+impl Hash for ContractId {
+    fn hash(self, ref mut state: Hasher) {
+        let ContractId { value } = self;
+        value.hash(state);
+    }
+}
+
 impl ContractId {
     /// Mint `amount` coins of `sub_id` and send them  UNCONDITIONALLY to the contract at `to`.
     ///
@@ -94,7 +101,6 @@ impl ContractId {
         self.transfer(sha256((ContractId::from(asm() { fp: b256 }), sub_id)), amount);
     }
 }
-
 
 /// An AssetId is used for interacting with an asset on the network. 
 ///

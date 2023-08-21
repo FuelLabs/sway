@@ -12,5 +12,6 @@ pub(crate) fn gather_from_node(
         ty::TyAstNodeContent::Expression(exp) => gather_from_exp(ctx, handler, exp),
         ty::TyAstNodeContent::ImplicitReturnExpression(exp) => gather_from_exp(ctx, handler, exp),
         ty::TyAstNodeContent::SideEffect(_) => Ok(()),
+        ty::TyAstNodeContent::Error(_, _) => Ok(()),
     }
 }
