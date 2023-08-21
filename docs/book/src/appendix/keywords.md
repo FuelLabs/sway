@@ -16,7 +16,7 @@ functionality described.
 - [`break`](https://fuellabs.github.io/sway/v0.44.0/book/basics/control_flow.html#break-and-continue) - exit a loop immediately
 - [`const`](https://fuellabs.github.io/sway/v0.44.0/book/basics/constants.html) - define constant items
 - [`continue`](https://fuellabs.github.io/sway/v0.44.0/book/basics/control_flow.html#break-and-continue) - continue to the next loop iteration
-- `dep` - call dependencies outside of the current forc.toml scope
+- `dep` - call dependencies outside of the current `Forc.toml` scope
 - `else` - used in conjunction with `if` conditions for control flow constructs
 - [`enum`](https://fuellabs.github.io/sway/v0.44.0/book/basics/structs_tuples_and_enums.html#enums) - define an enumeration
 - `false` - Boolean false literal
@@ -85,6 +85,6 @@ Keywords associated with defining the funcitonallity of attributes
 - [`allow`](https://fuellabs.github.io/sway/master/book/reference/attributes.html#allow) - overrides checks that would otherwise result in errors or warnings
 - [`doc`](https://fuellabs.github.io/sway/master/book/reference/attributes.html#doc) - specifies documentation
 - [`inline`](https://fuellabs.github.io/sway/master/book/reference/attributes.html#inline) - suggests that a copy of the attributed function should be placed in the caller, rather than generating code to call the function where it is defined
-- [`payable`](https://fuellabs.github.io/sway/master/book/reference/attributes.html#payable) - implies method is payable for complie time
+- [`payable`](https://fuellabs.github.io/sway/master/book/reference/attributes.html#payable) - implies method is payable for compile time
 - [`storage`](https://fuellabs.github.io/sway/master/book/reference/attributes.html#storage) - declaration that contains a list of stored variables
 - [`test`](https://fuellabs.github.io/sway/master/book/reference/attributes.html#test) - marks a function to be executed as a test
