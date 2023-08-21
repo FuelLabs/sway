@@ -1,3 +1,4 @@
+use crate::core::token::TokenIdent;
 use lsp_types::{
     CompletionItem, CompletionItemKind, CompletionItemLabelDetails, CompletionTextEdit, Position,
     Range, TextEdit,
@@ -7,16 +8,15 @@ use sway_core::{
     namespace::Items,
     Engines, TypeId, TypeInfo,
 };
-use sway_types::Ident;
 
 pub(crate) fn to_completion_items(
     namespace: &Items,
     engines: &Engines,
-    ident_to_complete: &Ident,
+    ident_to_complete: &TokenIdent,
     fn_decl: &TyFunctionDecl,
     position: Position,
 ) -> Vec<CompletionItem> {
-    type_id_of_raw_ident(engines, namespace, ident_to_complete, fn_decl)
+    type_id_of_raw_ident(engines, namespace, &ident_to_complete.name, fn_decl)
         .map(|type_id| completion_items_for_type_id(engines, namespace, type_id, position))
         .unwrap_or_default()
 }
@@ -30,7 +30,6 @@ fn completion_items_for_type_id(
 ) -> Vec<CompletionItem> {
     let mut completion_items = vec![];
     let type_info = engines.te().get(type_id);
-
     if let TypeInfo::Struct(decl_ref) = type_info {
         let struct_decl = engines.de().get_struct(&decl_ref.id().clone());
         for field in struct_decl.fields {
@@ -134,18 +133,16 @@ fn replace_self_with_type_str(
 fn type_id_of_raw_ident(
     engines: &Engines,
     namespace: &Items,
-    ident: &Ident,
+    ident_name: &str,
     fn_decl: &TyFunctionDecl,
 ) -> Option<TypeId> {
-    let full_ident = ident.as_str();
-
     // If this ident has no field accesses or chained methods, look for it in the local function scope.
-    if !full_ident.contains('.') {
-        return type_id_of_local_ident(full_ident, fn_decl);
+    if !ident_name.contains('.') {
+        return type_id_of_local_ident(ident_name, fn_decl);
     }
 
     // Otherwise, start with the first part of the ident and follow the subsequent types.
-    let parts = full_ident.split('.').collect::<Vec<&str>>();
+    let parts = ident_name.split('.').collect::<Vec<&str>>();
     let mut curr_type_id = type_id_of_local_ident(parts[0], fn_decl);
     let mut i = 1;
 

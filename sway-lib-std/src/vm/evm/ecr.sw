@@ -4,7 +4,7 @@ library;
 use ::b512::B512;
 use ::registers::error;
 use ::ecr::{ec_recover, EcRecoverError};
-use ::hash::keccak256;
+use ::hash::*;
 use ::result::Result::{self, *};
 use ::vm::evm::evm_address::EvmAddress;
 

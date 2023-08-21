@@ -4,7 +4,7 @@ library;
 use ::alias::{AssetId, SubId};
 use ::constants::ZERO_B256;
 use ::contract_id::ContractId;
-use ::hash::sha256;
+use ::hash::*;
 
 /// An AssetId is used for interacting with an asset on the network. 
 ///

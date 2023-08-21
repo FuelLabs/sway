@@ -26,7 +26,7 @@ use sway_ir::{
     metadata::combine as md_combine,
     module::Module,
     value::Value,
-    Instruction, Type,
+    Instruction, Type, TypeContent,
 };
 use sway_types::{ident::Ident, span::Spanned, Span};
 use sway_utils::mapped_stack::MappedStack;
@@ -693,6 +693,9 @@ fn const_eval_codeblock(
             ty::TyAstNodeContent::SideEffect(_) => Err(ConstEvalError::CannotBeEvaluatedToConst {
                 span: ast_node.span.clone(),
             }),
+            ty::TyAstNodeContent::Error(_, _) => {
+                unreachable!("error node found when generating IR");
+            }
         };
 
         if result.is_err() {
@@ -847,6 +850,28 @@ fn const_eval_intrinsic(
                 ty: Type::get_uint64(lookup.context),
                 value: ConstantValue::Uint(ir_type_str_size_in_bytes(lookup.context, &ir_type)),
             }))
+        }
+        sway_ast::Intrinsic::CheckStrType => {
+            let targ = &intrinsic.type_arguments[0];
+            let ir_type = convert_resolved_typeid(
+                lookup.engines.te(),
+                lookup.engines.de(),
+                lookup.context,
+                &targ.type_id,
+                &targ.span,
+            )
+            .map_err(ConstEvalError::CompileError)?;
+            match ir_type.get_content(lookup.context) {
+                TypeContent::String(_n) => Ok(Some(Constant {
+                    ty: Type::get_unit(lookup.context),
+                    value: ConstantValue::Unit,
+                })),
+                _ => Err(ConstEvalError::CompileError(
+                    CompileError::NonStrGenericType {
+                        span: targ.span.clone(),
+                    },
+                )),
+            }
         }
         sway_ast::Intrinsic::Eq => {
             assert!(args.len() == 2);
