@@ -41,7 +41,7 @@ impl ServerState {
         }
     }
 
-    pub(crate) fn shutdown_server(&self) -> jsonrpc::Result<()> {
+    pub fn shutdown_server(&self) -> jsonrpc::Result<()> {
         tracing::info!("Shutting Down the Sway Language Server");
         let _ = self.sessions.iter().map(|item| {
             let session = item.value();

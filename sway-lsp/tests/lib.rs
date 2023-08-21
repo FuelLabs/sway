@@ -1,6 +1,7 @@
 pub mod integration;
 
 use crate::integration::{code_actions, lsp};
+use lsp_types::*;
 use std::{fs, path::PathBuf};
 use sway_lsp::{handlers::notification, server_state::ServerState};
 use sway_lsp_test_utils::{
@@ -10,8 +11,7 @@ use sway_lsp_test_utils::{
 };
 use tower_lsp::{
     jsonrpc::{self, Response},
-    lsp_types::*,
-    LanguageServer, LspService,
+    LspService,
 };
 
 /// Holds the information needed to check the response of a goto definition request.
@@ -70,59 +70,6 @@ async fn shutdown_and_exit(service: &mut LspService<ServerState>) {
     lsp::exit_notification(service).await;
 }
 
-// This method iterates over all of the examples in the e2e langauge should_pass dir
-// and saves the lexed, parsed, and typed ASTs to the users home directory.
-// This makes it easy to grep for certain compiler types to inspect their use cases,
-// providing necessary context when working on the traversal modules.
-#[allow(unused)]
-// #[tokio::test]
-async fn write_all_example_asts() {
-    let (mut service, _) = LspService::build(ServerState::new)
-        .custom_method("sway/show_ast", ServerState::show_ast)
-        .finish();
-    let _ = lsp::initialize_request(&mut service).await;
-    lsp::initialized_notification(&mut service).await;
-
-    let ast_folder = dirs::home_dir()
-        .expect("could not get users home directory")
-        .join("sway_asts");
-    let _ = fs::create_dir(&ast_folder);
-    let e2e_dir = sway_workspace_dir().join(e2e_language_dir());
-    let mut entries = fs::read_dir(&e2e_dir)
-        .unwrap()
-        .map(|res| res.map(|e| e.path()))
-        .collect::<Result<Vec<_>, std::io::Error>>()
-        .unwrap();
-
-    // The order in which `read_dir` returns entries is not guaranteed. If reproducible
-    // ordering is required the entries should be explicitly sorted.
-    entries.sort();
-
-    let server = ServerState::default();
-
-    for entry in entries {
-        let manifest_dir = entry;
-        let example_name = manifest_dir.file_name().unwrap();
-        if manifest_dir.is_dir() {
-            let example_dir = ast_folder.join(example_name);
-            if !dir_contains_forc_manifest(manifest_dir.as_path()) {
-                continue;
-            }
-            match fs::create_dir(&example_dir) {
-                Ok(_) => (),
-                Err(_) => continue,
-            }
-
-            let uri = open(&server, manifest_dir.join("src/main.sw")).await;
-            let example_dir = Some(Url::from_file_path(example_dir).unwrap());
-            lsp::show_ast_request(&server, &uri, "lexed", example_dir.clone()).await;
-            lsp::show_ast_request(&server, &uri, "parsed", example_dir.clone()).await;
-            lsp::show_ast_request(&server, &uri, "typed", example_dir).await;
-        }
-    }
-    server.shutdown();
-}
-
 #[tokio::test]
 async fn initialize() {
     let (mut service, _) = LspService::new(ServerState::new);
@@ -172,7 +119,7 @@ async fn refuses_requests_after_shutdown() {
 async fn did_open() {
     let server = ServerState::default();
     let _ = open(&server, e2e_test_dir().join("src/main.sw")).await;
-    server.shutdown();
+    let _ = server.shutdown_server();
 }
 
 #[tokio::test]
@@ -216,7 +163,7 @@ async fn show_ast() {
     let server = ServerState::default();
     let uri = open(&server, e2e_test_dir().join("src/main.sw")).await;
     let _ = lsp::show_ast_request(&server, &uri, "typed", None).await;
-    server.shutdown();
+    let _ = server.shutdown_server();
 }
 
 //------------------- GO TO DEFINITION -------------------//
@@ -235,7 +182,7 @@ async fn go_to_definition() {
         def_path: uri.as_str(),
     };
     lsp::definition_check(&server, &go_to);
-    server.shutdown();
+    let _ = server.shutdown_server();
 }
 
 fn definition_check_with_req_offset<'a>(
@@ -300,7 +247,7 @@ async fn go_to_definition_for_fields() {
     // Foo
     let _ = lsp::definition_check(&server, &opt_go_to);
 
-    server.shutdown();
+    let _ = server.shutdown_server();
 }
 
 #[tokio::test]
@@ -348,7 +295,7 @@ async fn go_to_definition_inside_turbofish() {
     definition_check_with_req_offset(&server, &mut res_go_to, 23, 27);
     definition_check_with_req_offset(&server, &mut res_go_to, 24, 33);
 
-    server.shutdown();
+    let _ = server.shutdown_server();
 }
 
 #[tokio::test]
@@ -459,7 +406,7 @@ async fn go_to_definition_for_matches() {
     // ExampleStruct.variable
     let _ = lsp::definition_check(&server, &go_to);
 
-    server.shutdown();
+    let _ = server.shutdown_server();
 }
 
 #[tokio::test]
@@ -483,7 +430,7 @@ async fn go_to_definition_for_modules() {
     // mod test_mod;
     let _ = lsp::definition_check(&server, &opt_go_to);
 
-    server.shutdown();
+    let _ = server.shutdown_server();
 
     let server = ServerState::default();
     let uri = open(
@@ -504,7 +451,7 @@ async fn go_to_definition_for_modules() {
     // mod deep_mod;
     let _ = lsp::definition_check(&server, &opt_go_to);
 
-    server.shutdown();
+    let _ = server.shutdown_server();
 }
 
 #[tokio::test]
@@ -876,7 +823,7 @@ async fn go_to_definition_for_paths() {
     // dfun
     // let _ = lsp::definition_check(&server, &go_to);
 
-    server.shutdown();
+    let _ = server.shutdown_server();
 }
 
 #[tokio::test]
@@ -905,7 +852,7 @@ async fn go_to_definition_for_traits() {
     trait_go_to.req_char = 20;
     trait_go_to.def_line = 3;
     let _ = lsp::definition_check(&server, &trait_go_to);
-    server.shutdown();
+    let _ = server.shutdown_server();
 }
 
 #[tokio::test]
@@ -996,7 +943,7 @@ async fn go_to_definition_for_variables() {
     definition_check_with_req_offset(&server, &mut go_to, 60, 50);
     definition_check_with_req_offset(&server, &mut go_to, 61, 50);
 
-    server.shutdown();
+    let _ = server.shutdown_server();
 }
 
 #[tokio::test]
@@ -1426,7 +1373,7 @@ async fn go_to_definition_for_storage() {
     // storage.var1.z.x
     let _ = lsp::definition_check(&server, &go_to);
 
-    server.shutdown();
+    let _ = server.shutdown_server();
 }
 
 //------------------- HOVER DOCUMENTATION -------------------//
@@ -1451,7 +1398,7 @@ async fn hover_docs_for_consts() {
     hover.req_char = 49;
     hover.documentation = vec![" CONSTANT_2 has a value of 200"];
     lsp::hover_request(&server, &hover);
-    server.shutdown();
+    let _ = server.shutdown_server();
 }
 
 #[tokio::test]
@@ -1470,7 +1417,7 @@ async fn hover_docs_for_functions() {
         documentation: vec!["```sway\npub fn bar(p: Point) -> Point\n```\n---\n A function declaration with struct as a function parameter\n\n---\nGo to [Point](command:sway.goToLocation?%5B%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A5%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A2%7D%7D%2C%22uri%22%3A%22file","sway%2Fsway-lsp%2Ftests%2Ffixtures%2Ftokens%2Ffunctions%2Fsrc%2Fmain.sw%22%7D%5D \"functions::Point\")"],
     };
     lsp::hover_request(&server, &hover);
-    server.shutdown();
+    let _ = server.shutdown_server();
 }
 
 #[tokio::test]
@@ -1507,7 +1454,7 @@ async fn hover_docs_for_structs() {
         documentation: vec!["```sway\nstruct MyStruct\n```\n---\n My struct type"],
     };
     lsp::hover_request(&server, &hover);
-    server.shutdown();
+    let _ = server.shutdown_server();
 }
 
 #[tokio::test]
@@ -1534,7 +1481,7 @@ async fn hover_docs_for_enums() {
     hover.req_char = 29;
     hover.documentation = vec![" Docs for variants"];
     lsp::hover_request(&server, &hover);
-    server.shutdown();
+    let _ = server.shutdown_server();
 }
 
 #[tokio::test]
@@ -1549,7 +1496,7 @@ async fn hover_docs_for_abis() {
         documentation: vec!["```sway\nabi MyContract\n```\n---\n Docs for MyContract"],
     };
     lsp::hover_request(&server, &hover);
-    server.shutdown();
+    let _ = server.shutdown_server();
 }
 
 #[tokio::test]
@@ -1568,7 +1515,7 @@ async fn hover_docs_for_variables() {
         documentation: vec!["```sway\nlet variable8: ContractCaller<TestAbi>\n```\n---"],
     };
     lsp::hover_request(&server, &hover);
-    server.shutdown();
+    let _ = server.shutdown_server();
 }
 
 #[tokio::test]
@@ -1583,7 +1530,7 @@ async fn hover_docs_with_code_examples() {
             documentation: vec!["```sway\nstruct Data\n```\n---\n Struct holding:\n\n 1. A `value` of type `NumberOrString`\n 2. An `address` of type `u64`"],
         };
     lsp::hover_request(&server, &hover);
-    server.shutdown();
+    let _ = server.shutdown_server();
 }
 
 #[tokio::test]
@@ -1602,7 +1549,7 @@ async fn hover_docs_for_self_keywords() {
     hover.req_char = 24;
     hover.documentation = vec!["```sway\nstruct MyStruct\n```\n---\n\n---\n[2 implementations](command:sway.peekLocations?%5B%7B%22locations%22%3A%5B%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A4%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A2%7D%7D%2C%22uri%22%3A%22file","sway%2Fsway-lsp%2Ftests%2Ffixtures%2Fcompletion%2Fsrc%2Fmain.sw%22%7D%2C%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A14%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A6%7D%7D%2C%22uri%22%3A%22file","sway%2Fsway-lsp%2Ftests%2Ffixtures%2Fcompletion%2Fsrc%2Fmain.sw%22%7D%5D%7D%5D \"Go to implementations\")"];
     lsp::hover_request(&server, &hover);
-    server.shutdown();
+    let _ = server.shutdown_server();
 }
 
 #[tokio::test]
@@ -1626,7 +1573,7 @@ async fn hover_docs_for_boolean_keywords() {
     hover.req_char = 31;
     hover.documentation = vec!["\n```sway\ntrue\n```\n\n---\n\n A value of type [`bool`] representing logical **true**.\n\n Logically `true` is not equal to [`false`].\n\n ## Control structures that check for **true**\n\n Several of Sway's control structures will check for a `bool` condition evaluating to **true**.\n\n   * The condition in an [`if`] expression must be of type `bool`.\n     Whenever that condition evaluates to **true**, the `if` expression takes\n     on the value of the first block. If however, the condition evaluates\n     to `false`, the expression takes on value of the `else` block if there is one.\n\n   * [`while`] is another control flow construct expecting a `bool`-typed condition.\n     As long as the condition evaluates to **true**, the `while` loop will continually\n     evaluate its associated block.\n\n   * [`match`] arms can have guard clauses on them."];
     lsp::hover_request(&server, &hover);
-    server.shutdown();
+    let _ = server.shutdown_server();
 }
 
 #[tokio::test]
@@ -1730,7 +1677,7 @@ async fn rename() {
         new_name: "NEW_TYPE_NAME", // from ZERO_B256
     };
     assert_eq!(lsp::prepare_rename_request(&server, &rename), None);
-    server.shutdown();
+    let _ = server.shutdown_server();
 }
 
 #[tokio::test]
@@ -1762,7 +1709,7 @@ macro_rules! test_lsp_capability {
 
         // Call the specific LSP capability function that was passed in.
         let _ = $capability(&server, &uri);
-        server.shutdown();
+        let _ = server.shutdown_server();
     }};
 }
 
@@ -1835,3 +1782,56 @@ lsp_capability_test!(
     lsp::completion_request,
     test_fixtures_dir().join("completion/src/main.sw")
 );
+
+// This method iterates over all of the examples in the e2e langauge should_pass dir
+// and saves the lexed, parsed, and typed ASTs to the users home directory.
+// This makes it easy to grep for certain compiler types to inspect their use cases,
+// providing necessary context when working on the traversal modules.
+#[allow(unused)]
+// #[tokio::test]
+async fn write_all_example_asts() {
+    let (mut service, _) = LspService::build(ServerState::new)
+        .custom_method("sway/show_ast", ServerState::show_ast)
+        .finish();
+    let _ = lsp::initialize_request(&mut service).await;
+    lsp::initialized_notification(&mut service).await;
+
+    let ast_folder = dirs::home_dir()
+        .expect("could not get users home directory")
+        .join("sway_asts");
+    let _ = fs::create_dir(&ast_folder);
+    let e2e_dir = sway_workspace_dir().join(e2e_language_dir());
+    let mut entries = fs::read_dir(&e2e_dir)
+        .unwrap()
+        .map(|res| res.map(|e| e.path()))
+        .collect::<Result<Vec<_>, std::io::Error>>()
+        .unwrap();
+
+    // The order in which `read_dir` returns entries is not guaranteed. If reproducible
+    // ordering is required the entries should be explicitly sorted.
+    entries.sort();
+
+    let server = ServerState::default();
+
+    for entry in entries {
+        let manifest_dir = entry;
+        let example_name = manifest_dir.file_name().unwrap();
+        if manifest_dir.is_dir() {
+            let example_dir = ast_folder.join(example_name);
+            if !dir_contains_forc_manifest(manifest_dir.as_path()) {
+                continue;
+            }
+            match fs::create_dir(&example_dir) {
+                Ok(_) => (),
+                Err(_) => continue,
+            }
+
+            let uri = open(&server, manifest_dir.join("src/main.sw")).await;
+            let example_dir = Some(Url::from_file_path(example_dir).unwrap());
+            lsp::show_ast_request(&server, &uri, "lexed", example_dir.clone()).await;
+            lsp::show_ast_request(&server, &uri, "parsed", example_dir.clone()).await;
+            lsp::show_ast_request(&server, &uri, "typed", example_dir).await;
+        }
+    }
+    let _ = server.shutdown_server();
+}
