@@ -27,80 +27,6 @@ impl From<b256> for ContractId {
     }
 }
 
-impl ContractId {
-    /// UNCONDITIONAL transfer of `amount` coins of type `asset_id` to
-    /// the ContractId.
-    ///
-    /// > **_WARNING:_**
-    /// >
-    /// > This will transfer coins to a contract even with no way to retrieve them
-    /// > (i.e. no withdrawal functionality on receiving contract), possibly leading
-    /// > to the **_PERMANENT LOSS OF COINS_** if not used with care.
-    ///
-    /// ### Arguments
-    ///
-    /// * `asset_id` - The `AssetId` of the token to transfer.
-    /// * `amount` - The amount of tokens to transfer.
-    ///
-    /// ### Reverts
-    ///
-    /// * If `amount` is greater than the contract balance for `asset_id`.
-    /// * If `amount` is equal to zero.
-    ///
-    /// ### Examples
-    ///
-    /// ```sway
-    /// use std::constants::{BASE_ASSET_ID, ZERO_B256};
-    ///
-    /// // replace the zero ContractId with your desired ContractId
-    /// let contract_id = ContractId::from(ZERO_B256);
-    /// contract_id.transfer(BASE_ASSET_ID, 500);
-    /// ```
-    pub fn transfer(self, asset_id: AssetId, amount: u64) {
-        asm(r1: amount, r2: asset_id.value, r3: self.value) {
-            tr r3 r1 r2;
-        }
-    }
-}
-
-impl Hash for ContractId {
-    fn hash(self, ref mut state: Hasher) {
-        let ContractId { value } = self;
-        value.hash(state);
-    }
-}
-
-impl ContractId {
-    /// Mint `amount` coins of `sub_id` and send them  UNCONDITIONALLY to the contract at `to`.
-    ///
-    /// > **_WARNING:_**
-    /// >
-    /// > This will transfer coins to a contract even with no way to retrieve them
-    /// > (i.e: no withdrawal functionality on the receiving contract), possibly leading to
-    /// > the **_PERMANENT LOSS OF COINS_** if not used with care.
-    ///
-    /// ### Arguments
-    ///
-    /// * `sub_id` - The  sub identfier of the asset which to mint.
-    /// * `amount` - The amount of tokens to mint.
-    ///
-    /// ### Examples
-    ///
-    /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
-    /// // replace the zero ContractId with your desired ContractId
-    /// let contract_id = ContractId::from(ZERO_B256);
-    /// contract_id.mint_to(ZERO_B256, 500);
-    /// ```
-    pub fn mint_to(self, sub_id: SubId, amount: u64) {
-        asm(r1: amount, r2: sub_id) {
-            mint r1 r2;
-        };
-        self.transfer(AssetId::new(ContractId::from(asm() { fp: b256 }), sub_id), amount);
-    }
-}
-
 /// An AssetId is used for interacting with an asset on the network. 
 ///
 /// # Additional Information
@@ -202,3 +128,76 @@ impl AssetId {
     }
 }
 
+impl ContractId {
+    /// UNCONDITIONAL transfer of `amount` coins of type `asset_id` to
+    /// the ContractId.
+    ///
+    /// > **_WARNING:_**
+    /// >
+    /// > This will transfer coins to a contract even with no way to retrieve them
+    /// > (i.e. no withdrawal functionality on receiving contract), possibly leading
+    /// > to the **_PERMANENT LOSS OF COINS_** if not used with care.
+    ///
+    /// ### Arguments
+    ///
+    /// * `asset_id` - The `AssetId` of the token to transfer.
+    /// * `amount` - The amount of tokens to transfer.
+    ///
+    /// ### Reverts
+    ///
+    /// * If `amount` is greater than the contract balance for `asset_id`.
+    /// * If `amount` is equal to zero.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::constants::{BASE_ASSET_ID, ZERO_B256};
+    ///
+    /// // replace the zero ContractId with your desired ContractId
+    /// let contract_id = ContractId::from(ZERO_B256);
+    /// contract_id.transfer(BASE_ASSET_ID, 500);
+    /// ```
+    pub fn transfer(self, asset_id: AssetId, amount: u64) {
+        asm(r1: amount, r2: asset_id.value, r3: self.value) {
+            tr r3 r1 r2;
+        }
+    }
+}
+
+impl Hash for ContractId {
+    fn hash(self, ref mut state: Hasher) {
+        let ContractId { value } = self;
+        value.hash(state);
+    }
+}
+
+impl ContractId {
+    /// Mint `amount` coins of `sub_id` and send them  UNCONDITIONALLY to the contract at `to`.
+    ///
+    /// > **_WARNING:_**
+    /// >
+    /// > This will transfer coins to a contract even with no way to retrieve them
+    /// > (i.e: no withdrawal functionality on the receiving contract), possibly leading to
+    /// > the **_PERMANENT LOSS OF COINS_** if not used with care.
+    ///
+    /// ### Arguments
+    ///
+    /// * `sub_id` - The  sub identfier of the asset which to mint.
+    /// * `amount` - The amount of tokens to mint.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::constants::ZERO_B256;
+    ///
+    /// // replace the zero ContractId with your desired ContractId
+    /// let contract_id = ContractId::from(ZERO_B256);
+    /// contract_id.mint_to(ZERO_B256, 500);
+    /// ```
+    pub fn mint_to(self, sub_id: SubId, amount: u64) {
+        asm(r1: amount, r2: sub_id) {
+            mint r1 r2;
+        };
+        self.transfer(AssetId::new(ContractId::from(asm() { fp: b256 }), sub_id), amount);
+    }
+}
