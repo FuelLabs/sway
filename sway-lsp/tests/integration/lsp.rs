@@ -8,6 +8,7 @@ use serde_json::json;
 use std::{borrow::Cow, path::Path};
 use sway_lsp::server_state::ServerState;
 use sway_lsp_test_utils::extract_result_array;
+use sway_utils::PerformanceData;
 use tower::{Service, ServiceExt};
 use tower_lsp::{
     jsonrpc::{Id, Request, Response},
@@ -178,6 +179,30 @@ pub(crate) async fn document_symbol_request(
     let document_symbol = build_request_with_id("textDocument/documentSymbol", params, 1);
     let _response = call_request(service, document_symbol.clone()).await;
     document_symbol
+}
+
+pub(crate) async fn metrics_request(
+    service: &mut LspService<ServerState>,
+    uri: &Url,
+) -> Vec<(String, PerformanceData)> {
+    let params = json!({
+        "textDocument": {
+            "uri": uri,
+        },
+    });
+    let request = build_request_with_id("sway/metrics", params, 1);
+    let result = call_request(service, request.clone())
+        .await
+        .unwrap()
+        .unwrap();
+    let value = result.result().unwrap().as_array();
+    let mut res = vec![];
+    for v in value.unwrap().iter() {
+        let path = v.get(0).unwrap().as_str().unwrap();
+        let metric = serde_json::from_value(v.get(1).unwrap().clone()).unwrap();
+        res.push((path.to_string(), metric));
+    }
+    res
 }
 
 pub(crate) fn definition_request(uri: &Url, token_line: i32, token_char: i32, id: i64) -> Request {

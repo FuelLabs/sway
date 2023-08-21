@@ -18,3 +18,9 @@ pub struct OnEnterParams {
     /// The actual content changes, including the newline.
     pub content_changes: Vec<TextDocumentContentChangeEvent>,
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MetricsParams {
+    pub text_document: TextDocumentIdentifier,
+}
