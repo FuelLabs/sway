@@ -11,17 +11,19 @@ pub struct StorageBytes {}
 impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     /// Takes a `Bytes` type and stores the underlying collection of tightly packed bytes.
     ///
-    /// ### Arguments
+    /// # Arguments
     ///
-    /// * `bytes` - The bytes which will be stored.
+    /// * `bytes`: [Bytes] - The bytes which will be stored.
     ///
-    /// ### Number of Storage Accesses
+    /// # Number of Storage Accesses
     ///
     /// * Writes: `2`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
+    /// use std::{storage::storage_bytes::StorageBytes, bytes::Bytes};
+    ///
     /// storage {
     ///     stored_bytes: StorageBytes = StorageBytes {}
     /// }
@@ -42,13 +44,19 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
 
     /// Constructs a `Bytes` type from a collection of tightly packed bytes in storage.
     ///
-    /// ### Number of Storage Accesses
+    /// # Returns
+    ///
+    /// * [Option<Bytes>] - The valid `Bytes` stored, otherwise `None`.
+    ///
+    /// # Number of Storage Accesses
     ///
     /// * Reads: `2`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
+    /// use std::{storage::storage_bytes::StorageBytes, bytes::Bytes};
+    ///
     /// storage {
     ///     stored_bytes: StorageBytes = StorageBytes {}
     /// }
@@ -77,14 +85,20 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
 
     /// Clears a collection of tightly packed bytes in storage.
     ///
-    /// ### Number of Storage Accesses
+    /// # Returns
+    ///
+    /// * [bool] - Indicates whether all of the storage slots cleared were previously set.
+    ///
+    /// # Number of Storage Accesses
     ///
     /// * Reads: `1`
     /// * Clears: `2`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
+    /// use std::{storage::storage_bytes::StorageBytes, bytes::Bytes};
+    ///
     /// storage {
     ///     stored_bytes: StorageBytes = StorageBytes {}
     /// }
@@ -110,13 +124,19 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
 
     /// Returns the length of tightly packed bytes in storage.
     ///
-    /// ### Number of Storage Accesses
+    /// # Returns
+    ///
+    /// * [u64] - The length of the bytes in storage.
+    ///
+    /// # Number of Storage Accesses
     ///
     /// * Reads: `1`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
+    /// use std::{storage::storage_bytes::StorageBytes, bytes::Bytes};
+    ///
     /// storage {
     ///     stored_bytes: StorageBytes = StorageBytes {}
     /// }
