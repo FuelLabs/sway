@@ -9,10 +9,16 @@ impl ContextTesting for Contract {
     }
 
     fn get_this_balance(asset_id: b256) -> u64 {
+        let asset_id = AssetId {
+            value: asset_id
+        };
         this_balance(asset_id)
     }
 
     fn get_balance_of_contract(asset_id: b256, cid: ContractId) -> u64 {
+        let asset_id = AssetId {
+            value: asset_id
+        };
         balance_of(cid, asset_id)
     }
 
@@ -21,7 +27,7 @@ impl ContextTesting for Contract {
     }
 
     fn get_asset_id() -> b256 {
-        msg_asset_id()
+        msg_asset_id().value
     }
 
     fn get_gas() -> u64 {

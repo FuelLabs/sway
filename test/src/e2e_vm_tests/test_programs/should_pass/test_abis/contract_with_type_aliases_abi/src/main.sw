@@ -15,7 +15,7 @@ impl core::ops::Eq for Array {
     }
 }
 
-pub type Tuple = (AssetId, AssetId);
+pub type Tuple = (SubId, SubId);
 impl core::ops::Eq for Tuple {
     fn eq(self, other: Self) -> bool {
         self.0 == other.0 && self.1 == other.1
@@ -47,5 +47,5 @@ pub struct Generic<T> {
 }
 
 abi MyContract {
-    fn foo(x: AssetId, y: [IdentityAlias; 2], z: IdentityAliasWrapperAlias, w: Generic<IdentityAliasWrapperAlias>, u: (AssetId, AssetId), s: StringTy) -> (AssetId, [IdentityAlias; 2], IdentityAliasWrapperAlias, Generic<IdentityAliasWrapperAlias>, (AssetId, AssetId), StringTy);
+    fn foo(x: SubId, y: [IdentityAlias; 2], z: IdentityAliasWrapperAlias, w: Generic<IdentityAliasWrapperAlias>, u: (SubId, SubId), s: StringTy) -> (SubId, [IdentityAlias; 2], IdentityAliasWrapperAlias, Generic<IdentityAliasWrapperAlias>, (SubId, SubId), StringTy);
 }

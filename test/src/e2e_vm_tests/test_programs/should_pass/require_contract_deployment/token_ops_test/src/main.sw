@@ -2,7 +2,7 @@ script;
 
 use std::context::balance_of;
 use std::token::*;
-use std::asset_id::*;
+use std::contract_id::*;
 use test_fuel_coin_abi::*;
 
 struct Opts {
@@ -16,7 +16,7 @@ fn main() -> bool {
 
     // the deployed fuel_coin Contract_Id:
     let fuelcoin_id = ContractId::from(0xd97252cce794750e8124447a6071cf26c7a889f0d53d8b2d14c4d8326242d543);
-    let fuelcoin_asset_id = construct_default_asset_id(fuelcoin_id);
+    let fuelcoin_asset_id = AssetId::standard(fuelcoin_id);
 
     // contract ID for sway/test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/balance_test_contract/
     let balance_test_id = ContractId::from(0x4a00baa517980432b9274a0e2f03c88735bdb483730816679c6eb37b4046d060);
