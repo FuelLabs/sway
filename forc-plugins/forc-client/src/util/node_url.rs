@@ -5,7 +5,7 @@ use crate::NodeTarget;
 
 use super::target::Target;
 
-/// Returns the client to use for deployment.
+/// Returns the URL to use for connecting to Fuel Core node.
 pub fn get_node_url(
     node_target: &NodeTarget,
     manifest_network: &Option<Network>,
