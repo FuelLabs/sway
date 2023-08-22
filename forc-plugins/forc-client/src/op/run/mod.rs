@@ -8,6 +8,7 @@ use crate::{
 };
 use anyhow::{anyhow, bail, Context, Result};
 use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
+use forc_tracing::println_warning;
 use forc_util::tx_utils::format_log_receipts;
 use fuel_core_client::client::FuelClient;
 use fuel_tx::{ContractId, Transaction, TransactionBuilder};
@@ -17,7 +18,7 @@ use std::{path::PathBuf, str::FromStr};
 use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
 use tokio::time::timeout;
-use tracing::{info, warn};
+use tracing::info;
 
 use self::encode::ScriptCallHandler;
 
@@ -34,7 +35,7 @@ pub struct RanScript {
 pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
     let mut command = command;
     if command.unsigned {
-        warn!(" Warning: --unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
+        println_warning("--unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
         command.default_signer = true;
     }
     let mut receipts = Vec::new();

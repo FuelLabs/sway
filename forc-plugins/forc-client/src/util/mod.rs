@@ -22,13 +22,14 @@ impl Default for Target {
 }
 
 impl Target {
-    pub fn target_url(&self) -> &str {
-        match self {
+    pub fn target_url(&self) -> String {
+        let url = match self {
             Target::Beta2 => BETA_2_ENDPOINT_URL,
             Target::Beta3 => BETA_3_ENDPOINT_URL,
             Target::Beta4 => BETA_4_ENDPOINT_URL,
             Target::Local => NODE_URL,
-        }
+        };
+        url.to_string()
     }
 
     pub fn from_target_url(target_url: &str) -> Option<Self> {

@@ -7,6 +7,7 @@ use crate::{
 };
 use anyhow::{bail, Context, Result};
 use forc_pkg::{self as pkg, PackageManifestFile};
+use forc_tracing::println_warning;
 use forc_tx::Gas;
 use forc_util::default_output_directory;
 use fuel_core_client::client::types::{ChainInfo, NodeInfo, TransactionStatus};
@@ -24,7 +25,7 @@ use std::{
 };
 use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
-use tracing::{info, warn};
+use tracing::info;
 
 #[derive(Debug)]
 pub struct DeployedContract {
@@ -117,7 +118,7 @@ fn validate_and_parse_salts<'a>(
 /// When deploying a single contract, only that contract's ID is returned.
 pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
     if command.unsigned {
-        warn!(" Warning: --unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
+        println_warning("--unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
     }
 
     let mut contract_ids = Vec::new();
@@ -129,6 +130,11 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
 
     let build_opts = build_opts_from_cmd(&command);
     let built_pkgs = built_pkgs(&curr_dir, build_opts)?;
+
+    if built_pkgs.is_empty() {
+        println_warning("No deployable contracts found in the current directory.");
+        return Ok(contract_ids);
+    }
 
     let contract_salt_map = if let Some(salt_input) = &command.salt {
         // If we're building 1 package, we just parse the salt as a string, ie. 0x00...
@@ -200,14 +206,12 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
 fn get_gas(command: &cmd::Deploy, node_info: NodeInfo, chain_info: ChainInfo) -> Gas {
     // TODO: write unit tests for this function once https://github.com/FuelLabs/fuel-core/issues/1312 is resolved.
     let price = if command.gas.price == 0 {
-        warn!(" Warning: Overriding gas price to the minimum gas price of the node.");
         node_info.min_gas_price
     } else {
         command.gas.price
     };
 
     let limit = if command.gas.limit == 0 {
-        warn!(" Warning: Overriding gas limit to the minimum gas limit of the node.");
         chain_info.consensus_parameters.max_gas_per_tx
     } else {
         command.gas.limit
@@ -217,34 +221,24 @@ fn get_gas(command: &cmd::Deploy, node_info: NodeInfo, chain_info: ChainInfo) ->
 }
 
 /// Returns the client to use for deployment.
-fn get_node_url<'a>(
-    target: &'a Option<Target>,
-    manifest_network: &'a Option<Network>,
-) -> Result<&'a str> {
-    let node_url = match target {
-        Some(target) => target.target_url(),
-        None => manifest_network
-            .as_ref()
-            .map(|nw| &nw.url[..])
-            .unwrap_or(crate::default::NODE_URL),
-    };
-    Ok(node_url)
-}
-
-/// Returns the target to use for deployment parsed from the command arguments, if any.
-fn get_target(command: &cmd::Deploy) -> Result<Option<Target>> {
-    let target = match (
+fn get_node_url(command: &cmd::Deploy, manifest_network: &Option<Network>) -> Result<String> {
+    let node_url = match (
         command.testnet,
         command.target.clone(),
         command.node_url.clone(),
     ) {
-        (true, None, None) => Some(Target::Beta4),
-        (false, Some(target), None) => Some(target),
-        (false, None, Some(node_url)) => Target::from_target_url(node_url.as_str()),
-        (false, None, None) => None,
+        (true, None, None) => Target::Beta4.target_url(),
+        (false, Some(target), None) => target.target_url(),
+        (false, None, Some(node_url)) => node_url,
+        (false, None, None) => manifest_network
+            .as_ref()
+            .map(|nw| &nw.url[..])
+            .unwrap_or(crate::default::NODE_URL)
+            .to_string(),
         _ => bail!("Only one of `--testnet`, `--target`, or `--node-url` should be specified"),
     };
-    Ok(target)
+
+    Ok(node_url)
 }
 
 /// Deploy a single pkg given deploy command and the manifest file
@@ -254,9 +248,8 @@ pub async fn deploy_pkg(
     compiled: &BuiltPackage,
     salt: Salt,
 ) -> Result<DeployedContract> {
-    let target = get_target(command)?;
-    let node_url = get_node_url(&target, &manifest.network)?;
-    let client = FuelClient::new(node_url)?;
+    let node_url = get_node_url(command, &manifest.network)?;
+    let client = FuelClient::new(node_url.clone())?;
 
     let bytecode = &compiled.bytecode.bytes;
 
@@ -497,22 +490,7 @@ mod test {
     }
 
     #[test]
-    fn test_get_node_url_beta4_target() {
-        let actual = get_node_url(&Some(Target::Beta4), &None).unwrap();
-        assert_eq!("beta-4.fuel.network/graphql", actual);
-    }
-
-    #[test]
-    fn test_get_node_url_beta4_manifest() {
-        let network = Some(Network {
-            url: "beta-4.fuel.network/graphql".to_string(),
-        });
-        let actual = get_node_url(&None, &network).unwrap();
-        assert_eq!("beta-4.fuel.network/graphql", actual);
-    }
-
-    #[test]
-    fn test_get_target_testnet() {
+    fn test_get_node_url_testnet() {
         let input = cmd::Deploy {
             target: None,
             node_url: None,
@@ -520,83 +498,99 @@ mod test {
             ..Default::default()
         };
 
-        let actual = get_target(&input).unwrap();
-        assert_eq!(Some(Target::Beta4), actual);
+        let actual = get_node_url(&input, &None).unwrap();
+        assert_eq!("beta-4.fuel.network/graphql", actual);
     }
 
     #[test]
-    fn test_get_target_beta4() {
+    fn test_get_node_url_beta4() {
         let input = cmd::Deploy {
             target: Some(Target::Beta4),
             node_url: None,
             testnet: false,
             ..Default::default()
         };
-        let actual = get_target(&input).unwrap();
-        assert_eq!(Some(Target::Beta4), actual);
+        let actual = get_node_url(&input, &None).unwrap();
+        assert_eq!("beta-4.fuel.network/graphql", actual);
     }
 
     #[test]
-    fn test_get_target_url_beta4() {
+    fn test_get_node_url_beta4_url() {
         let input = cmd::Deploy {
             target: None,
             node_url: Some("beta-4.fuel.network/graphql".to_string()),
             testnet: false,
             ..Default::default()
         };
-        let actual = get_target(&input).unwrap();
-        assert_eq!(Some(Target::Beta4), actual);
+        let actual = get_node_url(&input, &None).unwrap();
+        assert_eq!("beta-4.fuel.network/graphql", actual);
     }
 
     #[test]
-    fn test_get_target_beta3() {
+    fn test_get_node_url_url_beta4_manifest() {
+        let network = Network {
+            url: "beta-4.fuel.network/graphql".to_string(),
+        };
+        let input = cmd::Deploy {
+            target: None,
+            node_url: None,
+            testnet: false,
+            ..Default::default()
+        };
+
+        let actual = get_node_url(&input, &Some(network)).unwrap();
+        assert_eq!("beta-4.fuel.network/graphql", actual);
+    }
+
+    #[test]
+    fn test_get_node_url_beta3() {
         let input = cmd::Deploy {
             target: Some(Target::Beta3),
             node_url: None,
             testnet: false,
             ..Default::default()
         };
-        let actual = get_target(&input).unwrap();
-        assert_eq!(Some(Target::Beta3), actual);
+        let actual = get_node_url(&input, &None).unwrap();
+        assert_eq!("beta-3.fuel.network/graphql", actual);
     }
 
     #[test]
-    fn test_get_target_local() {
+    fn test_get_node_url_local() {
         let input = cmd::Deploy {
             target: Some(Target::Local),
             node_url: None,
             testnet: false,
             ..Default::default()
         };
-        let actual = get_target(&input).unwrap();
-        assert_eq!(Some(Target::Local), actual);
+        let actual = get_node_url(&input, &None).unwrap();
+        assert_eq!("http://127.0.0.1:4000", actual);
     }
 
     #[test]
     #[should_panic(
         expected = "Only one of `--testnet`, `--target`, or `--node-url` should be specified"
     )]
-    fn test_get_target_local_testnet() {
+    fn test_get_node_url_local_testnet() {
         let input = cmd::Deploy {
             target: Some(Target::Local),
             node_url: None,
             testnet: true,
             ..Default::default()
         };
-        get_target(&input).unwrap();
+        get_node_url(&input, &None).unwrap();
     }
 
     #[test]
     #[should_panic(
         expected = "Only one of `--testnet`, `--target`, or `--node-url` should be specified"
     )]
-    fn test_get_target_same_url() {
+    fn test_get_node_url_same_url() {
         let input = cmd::Deploy {
             target: Some(Target::Beta3),
             node_url: Some("beta-3.fuel.network/graphql".to_string()),
             testnet: false,
             ..Default::default()
         };
-        get_target(&input).unwrap();
+        get_node_url(&input, &None).unwrap();
     }
 }

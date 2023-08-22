@@ -2,6 +2,7 @@ use std::{io::Write, str::FromStr};
 
 use anyhow::{Error, Result};
 use async_trait::async_trait;
+use forc_tracing::println_warning;
 use fuel_core_client::client::FuelClient;
 use fuel_crypto::{Message, PublicKey, SecretKey, Signature};
 use fuel_tx::{
@@ -249,9 +250,7 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                 Some(secret_key)
             }
             (WalletSelectionMode::ForcWallet, Some(key), _) => {
-                tracing::warn!(
-                        "Signing key is provided while requesting to sign with forc-wallet or with default signer. Using signing key"
-                    );
+                println_warning("Signing key is provided while requesting to sign with forc-wallet or with default signer. Using signing key");
                 Some(key)
             }
             (WalletSelectionMode::Manual, None, false) => None,
@@ -263,9 +262,7 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                 Some(secret_key)
             }
             (WalletSelectionMode::Manual, Some(key), true) => {
-                tracing::warn!(
-                        "Signing key is provided while requesting to sign with a default signer. Using signing key"
-                    );
+                println_warning("Signing key is provided while requesting to sign with a default signer. Using signing key");
                 Some(key)
             }
         };
