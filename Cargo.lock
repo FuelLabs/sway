@@ -5852,6 +5852,7 @@ version = "0.1.0"
 dependencies = [
  "assert-json-diff",
  "futures",
+ "lsp-types",
  "serde",
  "serde_json",
  "tokio",

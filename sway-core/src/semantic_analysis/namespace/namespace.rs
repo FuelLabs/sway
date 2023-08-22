@@ -16,6 +16,13 @@ use sway_types::{span::Span, Spanned};
 
 use std::collections::{HashMap, VecDeque};
 
+/// Enum used to pass a value asking for insertion of type into trait map when an implementation
+/// of the trait cannot be found.
+pub enum TryInsertingTraitImplOnFailure {
+    Yes,
+    No,
+}
+
 /// The set of items that represent the namespace context passed throughout type checking.
 #[derive(Clone, Debug)]
 pub struct Namespace {
@@ -264,7 +271,7 @@ impl Namespace {
         args_buf: &VecDeque<ty::TyExpression>,
         as_trait: Option<TypeInfo>,
         engines: &Engines,
-        try_inserting_trait_impl_on_failure: bool,
+        try_inserting_trait_impl_on_failure: TryInsertingTraitImplOnFailure,
     ) -> Result<DeclRefFunction, ErrorEmitted> {
         let decl_engine = engines.de();
         let type_engine = engines.te();
@@ -456,7 +463,10 @@ impl Namespace {
         {
             Err(err)
         } else {
-            if try_inserting_trait_impl_on_failure {
+            if matches!(
+                try_inserting_trait_impl_on_failure,
+                TryInsertingTraitImplOnFailure::Yes
+            ) {
                 // Retrieve the implemented traits for the type and insert them in the namespace.
                 // insert_trait_implementation_for_type is already called when we do type check of structs, enums, arrays and tuples.
                 // In cases such as blanket trait implementation and usage of builtin types a method may not be found because
@@ -473,7 +483,7 @@ impl Namespace {
                     args_buf,
                     as_trait,
                     engines,
-                    false,
+                    TryInsertingTraitImplOnFailure::No,
                 );
             }
             let type_name = if let Some(call_path) = qualified_call_path {

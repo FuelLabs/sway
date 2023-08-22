@@ -198,7 +198,7 @@ where
         &self,
         decl_mapping: &DeclMapping,
         handler: &Handler,
-        ctx: &TypeCheckContext,
+        ctx: &mut TypeCheckContext,
     ) -> Result<Self, ErrorEmitted> {
         let decl_engine = ctx.engines().de();
         let mut decl = decl_engine.get(&self.id);
@@ -341,7 +341,7 @@ impl ReplaceDecls for DeclRefFunction {
         &mut self,
         decl_mapping: &DeclMapping,
         _handler: &Handler,
-        ctx: &TypeCheckContext,
+        ctx: &mut TypeCheckContext,
     ) -> Result<(), ErrorEmitted> {
         let engines = ctx.engines();
         let decl_engine = engines.de();

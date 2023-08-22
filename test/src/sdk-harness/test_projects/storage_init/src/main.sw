@@ -1,5 +1,7 @@
 contract;
 
+use std::hash::*;
+
 pub struct S {
     x: u64,
     y: u64,
@@ -42,6 +44,12 @@ impl core::ops::Eq for E {
             _ => false,
         }
     }
+}
+
+fn sha256_str<T>(s: T) -> b256 {
+    let mut hasher = Hasher::new();
+    hasher.write_str(s);
+    hasher.sha256()
 }
 
 storage {
@@ -138,7 +146,7 @@ impl ExperimentalStorageInitTest for Contract {
         assert(storage.s.t.int32.read() == s.t.int32);
         assert(storage.e.read() == e);
         assert(storage.e2.read() == e2);
-        assert(std::hash::sha256(storage.string.read()) == std::hash::sha256(string));
+        assert(sha256_str(storage.string.read()) == sha256_str(string));
         true
     }
 }
