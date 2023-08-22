@@ -1,4 +1,4 @@
-use crate::{engine_threading::*, type_system::priv_prelude::*};
+use crate::{engine_threading::*, type_system::{priv_prelude::*, unify::occurs_check::OccursCheck}};
 use sway_types::Spanned;
 
 enum UnifyCheckMode {
@@ -305,8 +305,11 @@ impl<'a> UnifyCheck<'a> {
                             trait_constraints: rtc,
                         },
                     ) => ln == rn && rtc.eq(&ltc, self.engines),
-                    // any type can be coerced into generic
-                    (_, UnknownGeneric { .. }) => true,
+                    // any type can be coerced into a generic,
+                    // except if the type already contains the generic
+                    (e, g @ UnknownGeneric { .. }) => {
+                        !OccursCheck::new(self.engines).check(g, &e)
+                    }
 
                     // Let empty enums to coerce to any other type. This is useful for Never enum.
                     (Enum(r_decl_ref), _)
@@ -397,8 +400,11 @@ impl<'a> UnifyCheck<'a> {
                             trait_constraints: rtc,
                         },
                     ) => rtc.eq(&ltc, self.engines),
-                    // any type can be coerced into generic
-                    (_, UnknownGeneric { .. }) => true,
+                    // any type can be coerced into a generic,
+                    // except if the type already contains the generic
+                    (e, g @ UnknownGeneric { .. }) => {
+                        !OccursCheck::new(self.engines).check(g, &e)
+                    }
 
                     (Enum(l_decl_ref), Enum(r_decl_ref)) => {
                         let l_decl = self.engines.de().get_enum(&l_decl_ref);
