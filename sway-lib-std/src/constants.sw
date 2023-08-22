@@ -35,18 +35,3 @@ pub const BASE_ASSET_ID: AssetId = AssetId {
 /// }
 /// ```
 pub const ZERO_B256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
-
-/// A SubId of zero value.
-///
-/// # Examples
-///
-/// ```sway
-/// use std::{token::mint, constants::ZERO_SUB_ID};
-///
-/// fn foo() {
-///     mint(ZERO_SUB_ID, 50); // Mint 50 tokens with a zero sub id.
-/// }
-/// ```
-pub const ZERO_SUB_ID: SubId = SubId {
-    value: ZERO_B256,
-};
