@@ -12,15 +12,21 @@ use util::target::Target;
 pub struct NodeTarget {
     /// The URL of the Fuel node to which we're submitting the transaction.
     /// If unspecified, checks the manifest's `network` table, then falls back
-    /// to [`crate::default::NODE_URL`].
+    /// to `http://127.0.0.1:4000`
+    ///
+    /// You can also use `--target` or `--testnet` to specify the Fuel node.
     #[clap(long, env = "FUEL_NODE_URL")]
     pub node_url: Option<String>,
     /// Use preset configurations for deploying to a specific target.
+    ///
+    /// You can also use `--node-url` or `--testnet` to specify the Fuel node.
     ///
     /// Possible values are: [beta-1, beta-2, beta-3, beta-4, local]
     #[clap(long)]
     pub target: Option<Target>,
     /// Use preset configuration for the latest testnet.
+    ///
+    /// You can also use `--node-url` or `--target` to specify the Fuel node.
     #[clap(long)]
     pub testnet: bool,
 }

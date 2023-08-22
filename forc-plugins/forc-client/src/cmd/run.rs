@@ -58,9 +58,4 @@ pub struct Command {
     /// Arguments to pass into main function with forc run.
     #[clap(long)]
     pub args: Option<Vec<String>>,
-    /// The URL of the Fuel node to which we're submitting the transaction.
-    /// If unspecified, checks the manifest's `network` table, then falls back
-    /// to [`crate::default::NODE_URL`].
-    #[clap(long, env = "FUEL_NODE_URL")]
-    pub node_url: Option<String>,
 }
