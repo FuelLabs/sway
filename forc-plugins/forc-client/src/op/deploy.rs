@@ -499,7 +499,7 @@ mod test {
         };
 
         let actual = get_node_url(&input, &None).unwrap();
-        assert_eq!("beta-4.fuel.network/graphql", actual);
+        assert_eq!("beta-4.fuel.network", actual);
     }
 
     #[test]
@@ -511,25 +511,25 @@ mod test {
             ..Default::default()
         };
         let actual = get_node_url(&input, &None).unwrap();
-        assert_eq!("beta-4.fuel.network/graphql", actual);
+        assert_eq!("beta-4.fuel.network", actual);
     }
 
     #[test]
     fn test_get_node_url_beta4_url() {
         let input = cmd::Deploy {
             target: None,
-            node_url: Some("beta-4.fuel.network/graphql".to_string()),
+            node_url: Some("beta-4.fuel.network".to_string()),
             testnet: false,
             ..Default::default()
         };
         let actual = get_node_url(&input, &None).unwrap();
-        assert_eq!("beta-4.fuel.network/graphql", actual);
+        assert_eq!("beta-4.fuel.network", actual);
     }
 
     #[test]
     fn test_get_node_url_url_beta4_manifest() {
         let network = Network {
-            url: "beta-4.fuel.network/graphql".to_string(),
+            url: "beta-4.fuel.network".to_string(),
         };
         let input = cmd::Deploy {
             target: None,
@@ -539,7 +539,7 @@ mod test {
         };
 
         let actual = get_node_url(&input, &Some(network)).unwrap();
-        assert_eq!("beta-4.fuel.network/graphql", actual);
+        assert_eq!("beta-4.fuel.network", actual);
     }
 
     #[test]
@@ -551,7 +551,7 @@ mod test {
             ..Default::default()
         };
         let actual = get_node_url(&input, &None).unwrap();
-        assert_eq!("beta-3.fuel.network/graphql", actual);
+        assert_eq!("beta-3.fuel.network", actual);
     }
 
     #[test]
@@ -587,7 +587,7 @@ mod test {
     fn test_get_node_url_same_url() {
         let input = cmd::Deploy {
             target: Some(Target::Beta3),
-            node_url: Some("beta-3.fuel.network/graphql".to_string()),
+            node_url: Some("beta-3.fuel.network".to_string()),
             testnet: false,
             ..Default::default()
         };
