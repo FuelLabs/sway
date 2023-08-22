@@ -1,6 +1,6 @@
 contract;
 
-use std::{constants::BASE_ASSET_ID, context::*, token::*};
+use std::{constants::ZERO_SUB_ID, context::*, token::*};
 
 abi NativeAssetToken {
     fn mint_coins(mint_amount: u64);
@@ -16,12 +16,12 @@ abi NativeAssetToken {
 impl NativeAssetToken for Contract {
     /// Mint an amount of this contracts native asset to the contracts balance.
     fn mint_coins(mint_amount: u64) {
-        mint(BASE_ASSET_ID, mint_amount);
+        mint(ZERO_SUB_ID, mint_amount);
     }
 
     /// Burn an amount of this contracts native asset.
     fn burn_coins(burn_amount: u64) {
-        burn(BASE_ASSET_ID, burn_amount);
+        burn(ZERO_SUB_ID, burn_amount);
     }
 
     /// Transfer coins to a target contract.
@@ -46,11 +46,11 @@ impl NativeAssetToken for Contract {
 
     /// Mint and send this contracts native token to a destination contract.
     fn mint_and_send_to_contract(amount: u64, destination: ContractId) {
-        mint_to_contract(destination, BASE_ASSET_ID, amount);
+        mint_to_contract(destination, ZERO_SUB_ID, amount);
     }
 
     /// Mind and send this contracts native token to a destination address.
     fn mint_and_send_to_address(amount: u64, recipient: Address) {
-        mint_to_address(recipient, BASE_ASSET_ID, amount);
+        mint_to_address(recipient, ZERO_SUB_ID, amount);
     }
 }
