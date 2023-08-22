@@ -9,7 +9,7 @@ pub fn code_lens(session: &Arc<Session>, url: &Url) -> Vec<CodeLens> {
 
     // Construct code lenses for runnable functions
     let runnables_for_path = session.runnables.get(&url_path);
-    runnables_for_path
+    let mut result: Vec<CodeLens> = runnables_for_path
         .map(|runnables| {
             runnables
                 .iter()
@@ -20,5 +20,8 @@ pub fn code_lens(session: &Arc<Session>, url: &Url) -> Vec<CodeLens> {
                 })
                 .collect()
         })
-        .unwrap_or_default()
+        .unwrap_or_default();
+    // Sort the results
+    result.sort_by(|a, b| a.range.start.line.cmp(&b.range.start.line));
+    result
 }

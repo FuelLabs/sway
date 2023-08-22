@@ -45,6 +45,8 @@ use sway_types::{SourceEngine, Spanned};
 use sway_utils::helpers::get_sway_files;
 use tokio::sync::Semaphore;
 
+use super::token::get_range_from_span;
+
 pub type Documents = DashMap<String, TextDocument>;
 pub type ProjectDirectory = PathBuf;
 

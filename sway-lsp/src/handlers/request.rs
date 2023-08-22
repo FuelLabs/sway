@@ -17,7 +17,7 @@ use sway_types::{Ident, Spanned};
 use tower_lsp::jsonrpc::Result;
 use tracing::metadata::LevelFilter;
 
-pub(crate) fn handle_initialize(
+pub fn handle_initialize(
     state: &ServerState,
     params: lsp_types::InitializeParams,
 ) -> Result<InitializeResult> {
@@ -45,7 +45,7 @@ pub(crate) fn handle_initialize(
     })
 }
 
-pub(crate) fn handle_document_symbol(
+pub fn handle_document_symbol(
     state: &ServerState,
     params: lsp_types::DocumentSymbolParams,
 ) -> Result<Option<lsp_types::DocumentSymbolResponse>> {
@@ -66,7 +66,7 @@ pub(crate) fn handle_document_symbol(
     }
 }
 
-pub(crate) fn handle_goto_definition(
+pub fn handle_goto_definition(
     state: &ServerState,
     params: lsp_types::GotoDefinitionParams,
 ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
@@ -85,7 +85,7 @@ pub(crate) fn handle_goto_definition(
     }
 }
 
-pub(crate) fn handle_completion(
+pub fn handle_completion(
     state: &ServerState,
     params: lsp_types::CompletionParams,
 ) -> Result<Option<lsp_types::CompletionResponse>> {
@@ -109,7 +109,7 @@ pub(crate) fn handle_completion(
     }
 }
 
-pub(crate) fn handle_hover(
+pub fn handle_hover(
     state: &ServerState,
     params: lsp_types::HoverParams,
 ) -> Result<Option<lsp_types::Hover>> {
@@ -133,7 +133,7 @@ pub(crate) fn handle_hover(
     }
 }
 
-pub(crate) fn handle_prepare_rename(
+pub fn handle_prepare_rename(
     state: &ServerState,
     params: lsp_types::TextDocumentPositionParams,
 ) -> Result<Option<PrepareRenameResponse>> {
@@ -157,10 +157,7 @@ pub(crate) fn handle_prepare_rename(
     }
 }
 
-pub(crate) fn handle_rename(
-    state: &ServerState,
-    params: RenameParams,
-) -> Result<Option<WorkspaceEdit>> {
+pub fn handle_rename(state: &ServerState, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
     match state
         .sessions
         .uri_and_session_from_workspace(&params.text_document_position.text_document.uri)
@@ -183,7 +180,7 @@ pub(crate) fn handle_rename(
     }
 }
 
-pub(crate) fn handle_document_highlight(
+pub fn handle_document_highlight(
     state: &ServerState,
     params: lsp_types::DocumentHighlightParams,
 ) -> Result<Option<Vec<lsp_types::DocumentHighlight>>> {
@@ -204,7 +201,7 @@ pub(crate) fn handle_document_highlight(
     }
 }
 
-pub(crate) fn handle_formatting(
+pub fn handle_formatting(
     state: &ServerState,
     params: DocumentFormattingParams,
 ) -> Result<Option<Vec<lsp_types::TextEdit>>> {
@@ -218,7 +215,7 @@ pub(crate) fn handle_formatting(
         })
 }
 
-pub(crate) fn handle_code_action(
+pub fn handle_code_action(
     state: &ServerState,
     params: lsp_types::CodeActionParams,
 ) -> Result<Option<lsp_types::CodeActionResponse>> {
@@ -239,7 +236,7 @@ pub(crate) fn handle_code_action(
     }
 }
 
-pub(crate) fn handle_code_lens(
+pub fn handle_code_lens(
     state: &ServerState,
     params: lsp_types::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
@@ -255,7 +252,7 @@ pub(crate) fn handle_code_lens(
     }
 }
 
-pub(crate) fn handle_semantic_tokens_full(
+pub fn handle_semantic_tokens_full(
     state: &ServerState,
     params: SemanticTokensParams,
 ) -> Result<Option<SemanticTokensResult>> {
@@ -313,7 +310,7 @@ pub(crate) fn handle_inlay_hints(
 /// A formatted AST is written to a temporary file and the URI is
 /// returned to the client so it can be opened and displayed in a
 /// seperate side panel.
-pub(crate) fn handle_show_ast(
+pub fn handle_show_ast(
     state: &ServerState,
     params: lsp_ext::ShowAstParams,
 ) -> Result<Option<TextDocumentIdentifier>> {

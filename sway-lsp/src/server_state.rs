@@ -16,26 +16,32 @@ use tower_lsp::{jsonrpc, Client};
 
 /// `ServerState` is the primary mutable state of the language server
 pub struct ServerState {
-    pub(crate) client: Client,
+    pub(crate) client: Option<Client>,
     pub(crate) config: Arc<RwLock<Config>>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
     pub(crate) sessions: Arc<Sessions>,
 }
 
+impl Default for ServerState {
+    fn default() -> Self {
+        ServerState {
+            client: None,
+            config: Arc::new(RwLock::new(Default::default())),
+            keyword_docs: Arc::new(KeywordDocs::new()),
+            sessions: Arc::new(Sessions(DashMap::new())),
+        }
+    }
+}
+
 impl ServerState {
     pub fn new(client: Client) -> ServerState {
-        let sessions = Arc::new(Sessions(DashMap::new()));
-        let config = Arc::new(RwLock::new(Default::default()));
-        let keyword_docs = Arc::new(KeywordDocs::new());
         ServerState {
-            client,
-            config,
-            keyword_docs,
-            sessions,
+            client: Some(client),
+            ..Default::default()
         }
     }
 
-    pub(crate) fn shutdown_server(&self) -> jsonrpc::Result<()> {
+    pub fn shutdown_server(&self) -> jsonrpc::Result<()> {
         tracing::info!("Shutting Down the Sway Language Server");
         let _ = self.sessions.iter().map(|item| {
             let session = item.value();
@@ -77,13 +83,15 @@ impl ServerState {
             Ok(_) => {
                 // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
                 // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
-                self.client
-                    .publish_diagnostics(
-                        workspace_uri.clone(),
-                        self.diagnostics(&uri, session),
-                        None,
-                    )
-                    .await;
+                if let Some(client) = self.client.as_ref() {
+                    client
+                        .publish_diagnostics(
+                            workspace_uri.clone(),
+                            self.diagnostics(&uri, session),
+                            None,
+                        )
+                        .await;
+                }
             }
             Err(err) => {
                 if matches!(err, LanguageServerError::FailedToParse) {
