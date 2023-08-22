@@ -1,13 +1,13 @@
 library;
 
-use ::hash::sha256;
+use ::hash::*;
 use ::storage::storage_api::*;
 use ::storage::storage_key::*;
 
 /// A persistent key-value pair mapping struct.
-pub struct StorageMap<K, V> {}
+pub struct StorageMap<K, V> where K: Hash {}
 
-impl<K, V> StorageKey<StorageMap<K, V>> {
+impl<K, V> StorageKey<StorageMap<K, V>> where K: Hash {
     /// Inserts a key-value pair into the map.
     ///
     /// ### Arguments

@@ -4,7 +4,7 @@ library;
 use ::address::Address;
 use ::b512::B512;
 use ::registers::error;
-use ::hash::sha256;
+use ::hash::*;
 use ::result::Result::{self, *};
 
 /// The error type used when the `ec_recover` function fails.

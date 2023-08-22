@@ -1,5 +1,5 @@
 use crate::{
-    core::token::{self, AstToken, SymbolKind, Token, TypeDefinition, TypedAstToken},
+    core::token::{AstToken, SymbolKind, Token, TypeDefinition, TypedAstToken},
     traverse::ParseContext,
 };
 use sway_core::language::{
@@ -24,9 +24,8 @@ pub fn collect_parsed_declaration(node: &AstNode, ctx: &ParseContext) {
             _ => return,
         };
 
-        let key = token::to_ident_key(&ident);
         let token = Token::from_parsed(parsed_token, symbol_kind);
-        ctx.tokens.insert(key, token);
+        ctx.tokens.insert(ctx.ident(&ident), token);
     }
 }
 
@@ -44,10 +43,10 @@ pub fn collect_typed_declaration(node: &ty::TyAstNode, ctx: &ParseContext) {
             | ty::TyDecl::ConstantDecl(ty::ConstantDecl { name, .. }) => name.clone(),
             _ => return,
         };
-        let ident = token::to_ident_key(&ident);
-        if let Some(mut token) = ctx.tokens.try_get_mut(&ident).try_unwrap() {
+        let token_ident = ctx.ident(&ident);
+        if let Some(mut token) = ctx.tokens.try_get_mut(&token_ident).try_unwrap() {
             token.typed = Some(typed_token);
-            token.type_def = Some(TypeDefinition::Ident(ident.0));
+            token.type_def = Some(TypeDefinition::Ident(ident));
         }
     }
 }
