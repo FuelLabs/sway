@@ -7,7 +7,7 @@ struct IdentityAliasWrapper {
 }
 
 type Array = [IdentityAlias; 2];
-type Tuple = (AssetId, AssetId);
+type Tuple = (SubId, SubId);
 type StringTy = str[9];
 type IdentityAliasWrapperAlias = IdentityAliasWrapper;
 struct Generic<T> {
@@ -15,18 +15,18 @@ struct Generic<T> {
 }
 
 abi MyContract {
-    fn foo(x: AssetId, y: [IdentityAlias; 2], z: IdentityAliasWrapperAlias, w: Generic<IdentityAliasWrapperAlias>, u: (AssetId, AssetId), s: StringTy) -> (AssetId, [IdentityAlias; 2], IdentityAliasWrapperAlias, Generic<IdentityAliasWrapperAlias>, (AssetId, AssetId), StringTy);
+    fn foo(x: SubId, y: [IdentityAlias; 2], z: IdentityAliasWrapperAlias, w: Generic<IdentityAliasWrapperAlias>, u: (SubId, SubId), s: StringTy) -> (SubId, [IdentityAlias; 2], IdentityAliasWrapperAlias, Generic<IdentityAliasWrapperAlias>, (SubId, SubId), StringTy);
 }
 
 impl MyContract for Contract {
     fn foo(
-        x: AssetId,
+        x: SubId,
         y: [IdentityAlias; 2],
         z: IdentityAliasWrapperAlias,
         w: Generic<IdentityAliasWrapperAlias>,
-        u: (AssetId, AssetId),
+        u: (SubId, SubId),
         s: StringTy,
-    ) -> (AssetId, [IdentityAlias; 2], IdentityAliasWrapperAlias, Generic<IdentityAliasWrapperAlias>, (AssetId, AssetId), StringTy) {
+    ) -> (SubId, [IdentityAlias; 2], IdentityAliasWrapperAlias, Generic<IdentityAliasWrapperAlias>, (SubId, SubId), StringTy) {
         (x, y, z, w, u, s)
     }
 }
