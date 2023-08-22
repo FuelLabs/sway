@@ -33,15 +33,15 @@ fn call_divide() {
     }
 }
 </code></pre>
-<h3>Method overview</h3>
+<h1>Method overview</h1>
 <p>In addition to working with pattern matching, <code>Option</code> provides a wide<br />
 variety of different methods.</p>
-<h3>Querying the variant</h3>
+<h1>Querying the variant</h1>
 <p>The <code>is_some</code> and <code>is_none</code> methods return <code>true</code> if the <code>Option</code><br />
 is <code>Some</code> or <code>None</code>, respectively.</p>
 <p><code>is_none</code>: <code>Option::is_none</code><br />
 <code>is_some</code>: <code>Option::is_some</code></p>
-<h3>Extracting the contained value</h3>
+<h1>Extracting the contained value</h1>
 <p>These methods extract the contained value in an <code>Option&lt;T&gt;</code> when it<br />
 is the <code>Some</code> variant. If the <code>Option</code> is <code>None</code>:</p>
 <ul>
@@ -50,7 +50,7 @@ is the <code>Some</code> variant. If the <code>Option</code> is <code>None</code
 </ul>
 <p><code>unwrap</code>   : <code>Option::unwrap</code><br />
 <code>unwrap_or</code>: <code>Option::unwrap_or</code></p>
-<h3>Transforming contained values</h3>
+<h1>Transforming contained values</h1>
 <p>These methods transform <code>Option</code> to <code>Result</code>:</p>
 <ul>
 <li><code>ok_or</code> transforms <code>Some(v)</code> to <code>Ok(v)</code>, and <code>None</code> to<br />

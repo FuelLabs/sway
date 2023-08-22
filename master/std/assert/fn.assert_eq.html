@@ -2,14 +2,16 @@
 where
     T: Eq
 </code></pre></div><details class="swaydoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Asserts that the given values <code>v1</code> &amp; <code>v2</code> will always be equal during runtime.</p>
-<h3>Arguments</h3>
+<h1>Arguments</h1>
 <ul>
-<li><code>v1</code> - The first value to compare.</li>
-<li><code>v2</code> - The second value to compare.</li>
+<li><code>v1</code>: [T] - The first value to compare.</li>
+<li><code>v2</code>: [T] - The second value to compare.</li>
 </ul>
-<h3>Reverts</h3>
-<p>Reverts when <code>v1</code> != <code>v2</code>.</p>
-<h3>Examples</h3>
+<h1>Reverts</h1>
+<ul>
+<li>Reverts when <code>v1</code> != <code>v2</code>.</li>
+</ul>
+<h1>Examples</h1>
 <pre><code class="language-sway">fn foo(a: u64, b: u64) {
     assert_eq(a, b);
     // if code execution continues, that means `a` is equal to `b`

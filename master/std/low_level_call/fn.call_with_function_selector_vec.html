@@ -5,4 +5,21 @@
     single_value_type_arg: bool,
     call_params: CallParams,
 ) </code></pre></div><details class="swaydoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Call a target contract with a function selector and calldata, provided as <code>Vec&lt;u8&gt;</code>.</p>
+<h1>Additional Information</h1>
+<p>It is recommended to use the <code>call_with_function_selector</code> function as this function will be deprecated in the future.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>target</code> : [ContractId] - The ContractId of the contract to be called.</li>
+<li><code>function_selector</code> : [Vec<!-- raw HTML omitted -->] - The function selector of the function to be called, i.e. the first 8 bytes of <code>sha256(&quot;my_func(u64)&quot;)</code>.</li>
+<li><code>calldata</code> : [Vec<!-- raw HTML omitted -->] - The encoded arguments with which to call the function.</li>
+<li><code>single_value_type_arg</code> : [bool] - Whether the function being called takes a single value-type argument.</li>
+<li><code>call_params</code> : [CallParams] - The amount and color of coins to forward, and the gas to forward.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::low_level_call::{call_with_function_selector_vec, CallParams};
+
+fn call_contract(target: ContractId, function_selector: Vec&lt;u8&gt;, calldata: Vec&lt;u8&gt;, call_params: CallParams, single_value_type_arg: bool) {
+    call_with_function_selector_vec(target, function_selector, calldata, single_value_type_arg, call_params);
+}
+</code></pre>
 </div></details></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
