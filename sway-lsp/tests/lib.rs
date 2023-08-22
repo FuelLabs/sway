@@ -722,7 +722,7 @@ async fn go_to_definition_for_paths() {
         req_uri: &uri,
         req_line: 24,
         req_char: 31,
-        def_line: 9,
+        def_line: 33,
         def_start_char: 10,
         def_end_char: 19,
         def_path: "sway-lib-std/src/constants.sw",
@@ -747,7 +747,7 @@ async fn go_to_definition_for_paths() {
         req_uri: &uri,
         req_line: 13,
         req_char: 17,
-        def_line: 74,
+        def_line: 230,
         def_start_char: 5,
         def_end_char: 9,
         def_path: "sway-lib-core/src/primitives.sw",
@@ -906,7 +906,7 @@ async fn go_to_definition_for_consts() {
         req_uri: &uri,
         req_line: 9,
         req_char: 24,
-        def_line: 19,
+        def_line: 20,
         def_start_char: 5,
         def_end_char: 9,
         def_path: "sway-lib-std/src/contract_id.sw",
@@ -914,7 +914,7 @@ async fn go_to_definition_for_consts() {
     lsp::definition_check(&server, &contract_go_to);
 
     contract_go_to.req_char = 34;
-    contract_go_to.def_line = 20;
+    contract_go_to.def_line = 40;
     contract_go_to.def_start_char = 7;
     contract_go_to.def_end_char = 11;
     lsp::definition_check(&server, &contract_go_to);

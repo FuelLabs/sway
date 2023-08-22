@@ -37,12 +37,12 @@
 //! }
 //! ```
 //!
-//! ### Method overview
+//! # Method overview
 //!
 //! In addition to working with pattern matching, `Option` provides a wide
 //! variety of different methods.
 //!
-//! ### Querying the variant
+//! # Querying the variant
 //!
 //! The `is_some` and `is_none` methods return `true` if the `Option`
 //! is `Some` or `None`, respectively.
@@ -50,7 +50,7 @@
 //! `is_none`: `Option::is_none`
 //! `is_some`: `Option::is_some`
 //!
-//! ### Extracting the contained value
+//! # Extracting the contained value
 //!
 //! These methods extract the contained value in an `Option<T>` when it
 //! is the `Some` variant. If the `Option` is `None`:
@@ -61,7 +61,7 @@
 //! `unwrap`   : `Option::unwrap`
 //! `unwrap_or`: `Option::unwrap_or`
 //!
-//! ### Transforming contained values
+//! # Transforming contained values
 //!
 //! These methods transform `Option` to `Result`:
 //!
@@ -92,16 +92,22 @@ pub enum Option<T> {
 impl<T> Option<T> {
     // Querying the contained values
     //
-    /// Returns `true` if the option is a `Some` value.
+    /// Returns whether the option is the `Some` variant.
     ///
-    /// ### Examples
+    /// # Returns
     ///
-    /// ```
-    /// let x: Option<u32> = Some(2);
-    /// assert(x.is_some());
+    /// * [bool] - Returns `true` if the option is `Some`, otherwise `false`.
+    /// 
+    /// # Examples
     ///
-    /// let x: Option<u32> = None;
-    /// assert(!x.is_some());
+    /// ```sway
+    /// fn foo() {
+    ///     let x: Option<u32> = Some(2);
+    ///     assert(x.is_some());
+    ///
+    ///     let x: Option<u32> = None;
+    ///     assert(!x.is_some());
+    /// }
     /// ```
     pub fn is_some(self) -> bool {
         match self {
@@ -110,16 +116,22 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns `true` if the option is a `None` value.
+    /// Returns whether the option is the `None` variant.
     ///
-    /// ### Examples
+    /// # Returns
     ///
-    /// ```
-    /// let x: Option<u32> = Some(2);
-    /// assert(!x.is_none());
+    /// * [bool] - Returns `true` if the option is `None`, otherwise `false`.
     ///
-    /// let x: Option<u32> = None;
-    /// assert(x.is_none());
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let x: Option<u32> = Some(2);
+    ///     assert(!x.is_none());
+    ///
+    ///     let x: Option<u32> = None;
+    ///     assert(x.is_none());
+    /// }
     /// ```
     pub fn is_none(self) -> bool {
         match self {
@@ -132,26 +144,34 @@ impl<T> Option<T> {
     //
     /// Returns the contained `Some` value, consuming the `self` value.
     ///
+    /// # Additional Information
+    /// 
     /// Because this function may revert, its use is generally discouraged.
     /// Instead, use pattern matching and handle the `None`
     /// case explicitly, or call `unwrap_or`.
     ///
-    /// `unwrap_or`: `Option::unwrap_or`
+    /// # Returns
     ///
-    /// ### Reverts
+    /// * [T] - The value contained by the option.
     ///
-    /// Reverts if the self value equals `None`.
+    /// # Reverts
     ///
-    /// ### Examples
+    /// * Reverts if the `Option` is the `None` variant.
     ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let x = Some(42);
+    ///     assert(x.unwrap() == 42);
+    /// }
     /// ```
-    /// let x = Some(42);
-    /// assert(x.unwrap() == 42);
-    /// ```
     ///
-    /// ```
-    /// let x: Option<u64> = None;
-    /// assert(x.unwrap() == 42); // fails
+    /// ```sway
+    /// fn foo() {
+    ///     let x: Option<u64> = None;
+    ///     let value = x.unwrap(); // reverts
+    /// }
     /// ```
     pub fn unwrap(self) -> T {
         match self {
@@ -162,13 +182,21 @@ impl<T> Option<T> {
 
     /// Returns the contained `Some` value or a provided default.
     ///
-    /// `unwrap_or`: `Option::unwrap_or`
+    /// # Arguments
     ///
-    /// ### Examples
+    /// * `default`: [T] - The default value the function will revert to.
     ///
-    /// ```
-    /// assert(Some(42).unwrap_or(69) == 42);
-    /// assert(None::<u64>().unwrap_or(69) == 69);
+    /// # Returns
+    ///
+    /// * [T] - The contained value or the default value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     assert(Some(42).unwrap_or(69) == 42);
+    ///     assert(None::<u64>().unwrap_or(69) == 69);
+    /// }
     /// ```
     pub fn unwrap_or(self, default: T) -> T {
         match self {
@@ -182,24 +210,36 @@ impl<T> Option<T> {
     /// Transforms the `Option<T>` into a `Result<T, E>`, mapping `Some(v)` to
     /// `Ok(v)` and `None` to `Err(e)`.
     ///
+    /// # Additional Information
+    ///
     /// `Ok(v)`  : `Result::Ok`
     /// `Err(e)` : `Result::Err`
     /// `Some(v)`: `Option::Some`
     /// `ok_or`  : `Option::ok_or`
     ///
-    /// ### Examples
+    /// # Arguments
+    /// 
+    /// * `err`: [E] - The error value if the option is `None`.
     ///
-    /// ```
-    /// let x = Some(42);
-    /// match x.ok_or(0) {
-    ///     Result::Ok(inner) => assert(inner == 42),
-    ///     Result::Err => revert(0),
-    /// }
+    /// # Returns
     ///
-    /// let x:Option<u64> = None;
-    /// match x.ok_or(0) {
-    ///     Result::Ok(_) => revert(0),
-    ///     Result::Err(e) => assert(e == 0),
+    /// * [Result<T, E>] - The result containing the value or the error.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let x = Some(42);
+    ///     match x.ok_or(0) {
+    ///         Result::Ok(inner) => assert(inner == 42),
+    ///         Result::Err => revert(0),
+    ///     }
+    ///
+    ///     let x: Option<u64> = None;
+    ///     match x.ok_or(0) {
+    ///         Result::Ok(_) => revert(0),
+    ///         Result::Err(e) => assert(e == 0),
+    ///     }
     /// }
     /// ```
     pub fn ok_or<E>(self, err: E) -> Result<T, E> {
