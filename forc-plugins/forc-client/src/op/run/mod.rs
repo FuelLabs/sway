@@ -2,6 +2,8 @@ mod encode;
 use crate::{
     cmd,
     util::{
+        gas::{get_gas_limit, get_gas_price},
+        node_url::get_node_url,
         pkg::built_pkgs,
         tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
     },
@@ -66,6 +68,9 @@ pub async fn run_pkg(
     manifest: &PackageManifestFile,
     compiled: &BuiltPackage,
 ) -> Result<RanScript> {
+    let node_url = get_node_url(&command.node, &manifest.network)?;
+    let client = FuelClient::new(node_url.clone())?;
+
     let script_data = match (&command.data, &command.args) {
         (None, Some(args)) => {
             let minify_json_abi = true;
@@ -87,12 +92,6 @@ pub async fn run_pkg(
         }
     };
 
-    let node_url = command
-        .node_url
-        .as_deref()
-        .or_else(|| manifest.network.as_ref().map(|nw| &nw.url[..]))
-        .unwrap_or(crate::default::NODE_URL);
-    let client = FuelClient::new(node_url)?;
     let contract_ids = command
         .contract
         .as_ref()
@@ -110,8 +109,8 @@ pub async fn run_pkg(
     };
 
     let tx = TransactionBuilder::script(compiled.bytecode.bytes.clone(), script_data)
-        .gas_limit(command.gas.limit)
-        .gas_price(command.gas.price)
+        .gas_limit(get_gas_limit(&command.gas, client.chain_info().await?))
+        .gas_price(get_gas_price(&command.gas, client.node_info().await?))
         .maturity(command.maturity.maturity.into())
         .add_contracts(contract_ids)
         .finalize_signed(
@@ -125,8 +124,13 @@ pub async fn run_pkg(
         info!("{:?}", tx);
         Ok(RanScript { receipts: vec![] })
     } else {
-        let receipts =
-            try_send_tx(node_url, &tx.into(), command.pretty_print, command.simulate).await?;
+        let receipts = try_send_tx(
+            node_url.as_str(),
+            &tx.into(),
+            command.pretty_print,
+            command.simulate,
+        )
+        .await?;
         Ok(RanScript { receipts })
     }
 }

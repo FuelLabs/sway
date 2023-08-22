@@ -26,7 +26,7 @@ use forc_wallet::{
     utils::default_wallet_path,
 };
 
-use crate::default::BETA_4_FAUCET_URL;
+use crate::constants::BETA_4_FAUCET_URL;
 
 /// The maximum time to wait for a transaction to be included in a block by the node
 pub const TX_SUBMIT_TIMEOUT_MS: u64 = 30_000u64;
