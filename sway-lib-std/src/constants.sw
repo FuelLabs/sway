@@ -3,7 +3,7 @@ library;
 
 use ::contract_id::{AssetId, ContractId};
 
-/// A B256 type zero address.
+/// The `BASE_ASSET_ID` represents the base asset of a chain.
 ///
 /// # Additional Information
 ///
@@ -34,5 +34,3 @@ pub const BASE_ASSET_ID: AssetId = AssetId {
 /// }
 /// ```
 pub const ZERO_B256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
-
-
