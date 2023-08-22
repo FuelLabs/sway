@@ -1,6 +1,6 @@
 contract;
 
-use std::{asset_id::AssetId, bytes::Bytes, constants::ZERO_B256, context::balance_of, message::send_message, token::*};
+use std::{contract_id::AssetId, bytes::Bytes, constants::ZERO_B256, context::balance_of, message::send_message, token::*};
 
 abi TestFuelCoin {
     fn mint_coins(mint_amount: u64, sub_id: b256);
