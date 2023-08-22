@@ -7,21 +7,27 @@ use ::storage::storage_api::*;
 
 /// Store a raw_slice from the heap into storage.
 ///
-/// ### Arguments
+/// # Arguments
 ///
-/// * `key` - The storage slot at which the variable will be stored.
-/// * `slice` - The raw_slice to be stored.
+/// * `key`: [b256] - The storage slot at which the variable will be stored.
+/// * `slice`: [raw_slice] - The raw_slice to be stored.
+/// 
+/// # Number of Storage Accesses
 ///
-/// ### Examples
+/// * Writes: `2`
+///
+/// # Examples
 ///
 /// ```sway
 /// use std::{alloc::alloc_bytes, storage::{write_slice, read_slice}, constants::ZERO_B256};
 ///
-/// let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
-/// assert(read_slice(ZERO_B256).is_none());
-/// write_slice(ZERO_B256, slice);
-/// let stored_slice = read_slice(ZERO_B256).unwrap();
-/// assert(slice == stored_slice);
+/// fn foo() {
+///     let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
+///     assert(read_slice(ZERO_B256).is_none());
+///     write_slice(ZERO_B256, slice);
+///     let stored_slice = read_slice(ZERO_B256).unwrap();
+///     assert(slice == stored_slice);
+/// }
 /// ```
 #[storage(read, write)]
 pub fn write_slice(key: b256, slice: raw_slice) {
@@ -43,23 +49,31 @@ pub fn write_slice(key: b256, slice: raw_slice) {
 
 /// Load a raw_slice from storage.
 ///
-/// If no value was previously stored at `key`, `None` is returned. Otherwise,
+/// # Arguments
+///
+/// * `key`: [b256] - The storage slot to load the value from.
+/// 
+/// # Returns
+///
+/// - [Option<raw_slice>] - If no value was previously stored at `key`, `None` is returned. Otherwise,
 /// `Some(value)` is returned, where `value` is the value stored at `key`.
 ///
-/// ### Arguments
+/// # Number of Storage Accesses
 ///
-/// * `key` - The storage slot to load the value from.
-///
-/// ### Examples
+/// * Reads: `2`
+/// 
+/// # Examples
 ///
 /// ```sway
 /// use std::{alloc::alloc_bytes, storage::{write_slice, read_slice}, constants::ZERO_B256};
 ///
-/// let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
-/// assert(read_slice(ZERO_B256).is_none());
-/// write_slice(ZERO_B256, slice);
-/// let stored_slice = read_slice(ZERO_B256).unwrap();
-/// assert(slice == stored_slice);
+/// fn foo {
+///     let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
+///     assert(read_slice(ZERO_B256).is_none());
+///     write_slice(ZERO_B256, slice);
+///     let stored_slice = read_slice(ZERO_B256).unwrap();
+///     assert(slice == stored_slice);
+/// }
 /// ```
 #[storage(read)]
 pub fn read_slice(key: b256) -> Option<raw_slice> {
@@ -77,24 +91,34 @@ pub fn read_slice(key: b256) -> Option<raw_slice> {
     }
 }
 
-/// Clear a sequence of storage slots starting at a some key. Returns a Boolean
-/// indicating whether all of the storage slots cleared were previously set.
+/// Clear a sequence of storage slots starting at a some key. 
 ///
-/// ### Arguments
+/// # Arguments
 ///
-/// * `key` - The key of the first storage slot that will be cleared
+/// * `key`: [b256] - The key of the first storage slot that will be cleared
 ///
-/// ### Examples
+/// # Returns
+///
+/// * [bool] - Indicates whether all of the storage slots cleared were previously set.
+/// 
+/// # Number of Storage Accesses
+///
+/// * Reads: `1`
+/// * Clears: `2`
+///
+/// # Examples
 ///
 /// ```sway
 /// use std::{alloc::alloc_bytes, storage::{clear_slice, write_slice, read_slice}, constants::ZERO_B256};
 ///
-/// let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
-/// write_slice(ZERO_B256, slice);
-/// assert(read_slice(ZERO_B256).is_some());
-/// let cleared = clear_slice(ZERO_B256);
-/// assert(cleared);
-/// assert(read_slice(ZERO_B256).is_none());
+/// fn foo() {
+///     let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
+///     write_slice(ZERO_B256, slice);
+///     assert(read_slice(ZERO_B256).is_some());
+///     let cleared = clear_slice(ZERO_B256);
+///     assert(cleared);
+///     assert(read_slice(ZERO_B256).is_none());
+/// }
 /// ```
 #[storage(read, write)]
 pub fn clear_slice(key: b256) -> bool {

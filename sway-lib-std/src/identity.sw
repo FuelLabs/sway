@@ -30,6 +30,23 @@ impl core::ops::Eq for Identity {
 }
 
 impl Identity {
+    /// Returns the `Address` of the `Identity`.
+    ///
+    /// # Returns
+    /// 
+    /// * [Option<Address>] - `Some(Address)` if the underlying type is an `Address`, otherwise `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::constants::ZERO_B256;
+    ///
+    /// fn foo() {
+    ///     let identity = Identity::Address(Address::from(ZERO_B256));
+    ///     let address = identity.as_address();
+    ///     assert(address == Address::from(ZERO_B256));
+    /// }
+    /// ```
     pub fn as_address(self) -> Option<Address> {
         match self {
             Self::Address(addr) => Option::Some(addr),
@@ -37,6 +54,23 @@ impl Identity {
         }
     }
 
+    /// Returns the `ContractId` of the `Identity`.
+    ///
+    /// # Returns
+    /// 
+    /// * [Option<ContractId>] - `Some(Contract)` if the underlying type is an `ContractId`, otherwise `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::constants::ZERO_B256;
+    ///
+    /// fn foo() {
+    ///     let identity = Identity::ContractId(ContractId::from(ZERO_B256));
+    ///     let contract_id = identity.as_contract_id();
+    ///     assert(contract_id == ContractId::from(ZERO_B256));
+    /// }
+    /// ```
     pub fn as_contract_id(self) -> Option<ContractId> {
         match self {
             Self::Address(_) => Option::None,
@@ -44,6 +78,22 @@ impl Identity {
         }
     }
 
+    /// Returns whether the `Identity` represents an `Address`.
+    ///
+    /// # Returns
+    /// 
+    /// * [bool] - Indicates whether the `Identity` holds an `Address`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::constants::ZERO_B256;
+    ///
+    /// fn foo() {
+    ///     let identity = Identity::Address(Address::from(ZERO_B256));
+    ///     assert(identity.is_address());
+    /// }
+    /// ```
     pub fn is_address(self) -> bool {
         match self {
             Self::Address(_) => true,
@@ -51,6 +101,22 @@ impl Identity {
         }
     }
 
+    /// Returns whether the `Identity` represents a `ContractId`.
+    ///
+    /// # Returns
+    /// 
+    /// * [bool] - Indicates whether the `Identity` holds a `ContractId`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::constants::ZERO_B256;
+    ///
+    /// fn foo() {
+    ///     let identity = Identity::ContractId(ContractId::from(ZERO_B256));
+    ///     assert(identity.is_contract_id());
+    /// }
+    /// ```
     pub fn is_contract_id(self) -> bool {
         match self {
             Self::Address(_) => false,
@@ -61,33 +127,35 @@ impl Identity {
     /// Transfer `amount` coins of the type `asset_id` and send them
     /// to the Identity.
     ///
-    /// > **_WARNING:_**
-    /// >
-    /// > If the Identity is a contract this may transfer coins to the contract even with no way to retrieve them
-    /// > (i.e. no withdrawal functionality on receiving contract), possibly leading
-    /// > to the **_PERMANENT LOSS OF COINS_** if not used with care.
+    /// # Additional Information
     ///
-    /// ### Arguments
+    /// **_WARNING:_**
+    /// If the Identity is a contract this may transfer coins to the contract even with no way to retrieve them
+    /// (i.e. no withdrawal functionality on receiving contract), possibly leading
+    /// to the **_PERMANENT LOSS OF COINS_** if not used with care.
     ///
-    /// * `asset_id` - The `AssetId` of the token to transfer.
-    /// * `amount` - The amount of tokens to transfer.
+    /// # Arguments
     ///
-    /// ### Reverts
+    /// * `asset_id`: [AssetId] - The `AssetId` of the token to transfer.
+    /// * `amount`: [u64] - The amount of tokens to transfer.
     ///
-    /// * If `amount` is greater than the contract balance for `asset_id`.
-    /// * If `amount` is equal to zero.
-    /// * If there are no free variable outputs when transferring to an `Address`.
+    /// # Reverts
     ///
-    /// ### Examples
+    /// * When `amount` is greater than the contract balance for `asset_id`.
+    /// * When `amount` is equal to zero.
+    /// * When there are no free variable outputs when transferring to an `Address`.
+    ///
+    /// # Examples
     ///
     /// ```sway
     /// use std::constants::{BASE_ASSET_ID, ZERO_B256};
     ///
-    /// // replace the zero Address/ContractId with your desired Address/ContractId
-    /// let to_address = Identity::Address(Address::from(ZERO_B256));
-    /// let to_contract_id = Identity::ContractId(ContractId::from(ZERO_B256));
-    /// to_address.transfer(BASE_ASSET_ID, 500);
-    /// to_contract_id.transfer(BASE_ASSET_ID, 500);
+    /// fn foo() {
+    ///     let to_address = Identity::Address(Address::from(ZERO_B256));
+    ///     let to_contract_id = Identity::ContractId(ContractId::from(ZERO_B256));
+    ///     to_address.transfer(BASE_ASSET_ID, 500);
+    ///     to_contract_id.transfer(BASE_ASSET_ID, 500);
+    /// }
     /// ```
     pub fn transfer(self, asset_id: AssetId, amount: u64) {
         match self {
@@ -100,27 +168,29 @@ impl Identity {
 impl Identity {
     /// Mint `amount` coins of `sub_id` and transfer them to the Identity.
     ///
-    /// > **_WARNING:_**
-    /// >
-    /// > If the Identity is a contract, this will transfer coins to the contract even with no way to retrieve them
-    /// > (i.e: no withdrawal functionality on the receiving contract), possibly leading to
-    /// > the **_PERMANENT LOSS OF COINS_** if not used with care.
+    /// # Additional Information
     ///
-    /// ### Arguments
+    /// **_WARNING:_**
+    /// If the Identity is a contract, this will transfer coins to the contract even with no way to retrieve them
+    /// (i.e: no withdrawal functionality on the receiving contract), possibly leading to
+    /// the **_PERMANENT LOSS OF COINS_** if not used with care.
     ///
-    /// * `sub_id` - The  sub identfier of the asset which to mint.
-    /// * `amount` - The amount of tokens to mint.
+    /// # Arguments
     ///
-    /// ### Examples
+    /// * `sub_id`: [SubId] - The  sub identfier of the asset which to mint.
+    /// * `amount`: [u64] - The amount of tokens to mint.
+    ///
+    /// # Examples
     ///
     /// ```sway
     /// use std::constants::ZERO_B256;
     ///
-    /// // replace the zero Address/ContractId with your desired Address/ContractId
-    /// let address_identity = Identity::Address(Address::from(ZERO_B256));
-    /// let contract_identity = Identity::ContractId(ContractId::from(ZERO_B256));
-    /// address_identity.mint_to(ZERO_B256, 500);
-    /// contract_identity.mint_to(ZERO_B256, 500);
+    /// fn foo() {
+    ///     let address_identity = Identity::Address(Address::from(ZERO_B256));
+    ///     let contract_identity = Identity::ContractId(ContractId::from(ZERO_B256));
+    ///     address_identity.mint_to(ZERO_B256, 500);
+    ///     contract_identity.mint_to(ZERO_B256, 500);
+    /// }
     /// ```
     pub fn mint_to(self, sub_id: SubId, amount: u64) {
         asm(r1: amount, r2: sub_id) {

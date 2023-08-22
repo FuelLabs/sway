@@ -263,6 +263,26 @@ impl<T> Hash for [T; 10] where T: Hash {
     }
 }
 
+/// Returns the `SHA-2-256` hash of `param`.
+///
+/// # Arguments
+///
+/// * `s`: [T] - The value to be hashed.
+///
+/// # Returns
+///
+/// * [b256] - The sha-256 hash of the value.
+///
+/// # Examples
+/// 
+/// ```sway
+/// use std::hash::*;
+///
+/// fn foo() {
+///     let result = sha256("Fuel");
+///     assert(result = 0xa80f942f4112036dfc2da86daf6d2ef6ede3164dd56d1000eb82fa87c992450f);
+/// }
+/// ```
 #![inline(never)]
 pub fn sha256<T>(s: T) -> b256 where T: Hash {
     let mut hasher = Hasher::new();
@@ -270,6 +290,26 @@ pub fn sha256<T>(s: T) -> b256 where T: Hash {
     hasher.sha256()
 }
 
+/// Returns the `KECCAK-256` hash of `param`.
+///
+/// # Arguments
+///
+/// * `s`: [T] - The value to be hashed.
+///
+/// # Returns
+///
+/// * [b256] - The keccak-256 hash of the value.
+///
+/// # Examples
+/// 
+/// ```sway
+/// use std::hash::keccak256;
+///
+/// fn foo() {
+///     let result = keccak256("Fuel");
+///     assert(result = 0x4375c8bcdc904e5f51752581202ae9ae2bb6eddf8de05d5567d9a6b0ae4789ad);
+/// }
+/// ```
 #![inline(never)]
 pub fn keccak256<T>(s: T) -> b256 where T: Hash {
     let mut hasher = Hasher::new();

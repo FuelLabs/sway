@@ -14,11 +14,11 @@ const F_UNSAFEMATH_ENABLE_MASK: u64 = 0b11111111_11111111_11111111_11111111_1111
 
 /// Sets the flag register to the given value.
 ///
-/// ### Arguments
+/// # Arguments
 ///
-/// * `flags` - Binary encoded 64 bit value representing the flags to set.
+/// * `new_flags`: [u64] - Binary encoded 64 bit value representing the flags to set.
 ///
-/// ### Examples
+/// # Examples
 ///
 /// ```sway
 /// use std::flags::{disable_panic_on_overflow_preserving, set_flags};
@@ -40,15 +40,17 @@ pub fn set_flags(new_flags: u64) {
 
 /// Allows overflowing operations to occur without a FuelVM panic.
 ///
+/// # Additional Information
+///
 /// > **_WARNING:_**
 /// >
 /// > Don't forget to call `enable_panic_on_overflow` or `set_flags` after performing the operations for which you disabled the default `panic-on-overflow` behavior in the first place!
 ///
-/// ### Returns
+/// # Returns
 /// 
 /// * [u64] - The flag prior to disabling panic on overflow.
 ///
-/// ### Examples
+/// # Examples
 ///
 /// ```sway
 /// use std::flags::{disable_panic_on_overflow, enable_panic_on_overflow};
@@ -90,11 +92,13 @@ pub fn disable_panic_on_overflow() -> u64 {
 
 /// Enables the default `panic-on-overflow` behavior in the FuelVM.
 ///
+/// # Additional Information
+///
 /// > **_Note:_**
 /// >
 /// > `panic-on-overflow` is the default, so there is no need to use this function unless you have previously called `disable_panic_on_overflow`.
 ///
-/// ### Examples
+/// # Examples
 ///
 /// ```sway
 /// use std::flags::{disable_panic_on_overflow, enable_panic_on_overflow};
@@ -120,15 +124,17 @@ pub fn enable_panic_on_overflow() {
 /// Allows unsafe math operations to occur without a FuelVM panic.
 /// Sets the `$err` register to `true` whenever unsafe math occurs.
 ///
+/// # Additional Information
+///
 /// > **_WARNING:_**
 /// >
 /// > Don't forget to call `enable_panic_on_unsafe_math` or `set_flags` after performing the operations for which you disabled the default `panic-on-unsafe-math` behavior in the first place!
 ///
-/// ### Returns
+/// # Returns
 /// 
 /// * [u64] - The flag prior to disabling panic on overflow.
 ///
-/// ### Examples
+/// # Examples
 ///
 /// ```sway
 /// use std::{assert::assert, flags::{disable_panic_on_unsafe_math, enable_panic_on_unsafe_math}, registers::error};
@@ -174,11 +180,13 @@ pub fn disable_panic_on_unsafe_math() -> u64 {
 
 /// Enables the default `panic-on-unsafe-math` behavior in the FuelVM.
 ///
+/// # Additional Information
+///
 /// > **_Note:_**
 /// >
 /// > `panic-on-unsafe-math` is the default, so there is no need to use this function unless you have previously called `disable_panic_on_unsafe_math`.
 ///
-/// ### Examples
+/// # Examples
 ///
 /// ```sway
 /// use std::{assert::assert, flags::{disable_panic_on_unsafe_math, enable_panic_on_unsafe_math}, registers::error};
