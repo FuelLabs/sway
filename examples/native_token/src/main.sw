@@ -5,10 +5,10 @@ use std::{constants::BASE_ASSET_ID, context::*, token::*};
 abi NativeAssetToken {
     fn mint_coins(mint_amount: u64);
     fn burn_coins(burn_amount: u64);
-    fn force_transfer_coins(coins: u64, asset_id: b256, target: ContractId);
-    fn transfer_coins_to_output(coins: u64, asset_id: b256, recipient: Address);
+    fn force_transfer_coins(coins: u64, asset_id: AssetId, target: ContractId);
+    fn transfer_coins_to_output(coins: u64, asset_id: AssetId, recipient: Address);
     fn deposit();
-    fn get_balance(target: ContractId, asset_id: b256) -> u64;
+    fn get_balance(target: ContractId, asset_id: AssetId) -> u64;
     fn mint_and_send_to_contract(amount: u64, destination: ContractId);
     fn mint_and_send_to_address(amount: u64, recipient: Address);
 }
