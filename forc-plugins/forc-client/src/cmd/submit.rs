@@ -1,3 +1,4 @@
+use crate::NodeTarget;
 use devault::Devault;
 use std::path::PathBuf;
 
@@ -20,10 +21,8 @@ pub struct Command {
 /// Options related to networking.
 #[derive(Debug, Devault, clap::Args)]
 pub struct Network {
-    /// The URL of the Fuel node to which we're submitting the transaction.
-    #[clap(long, env = "FUEL_NODE_URL", default_value_t = String::from(crate::default::NODE_URL))]
-    #[devault("String::from(crate::default::NODE_URL)")]
-    pub node_url: String,
+    #[clap(flatten)]
+    pub node: NodeTarget,
     /// Whether or not to await confirmation that the transaction has been committed.
     ///
     /// When `true`, await commitment and output the transaction status.

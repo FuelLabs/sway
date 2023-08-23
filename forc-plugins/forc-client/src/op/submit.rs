@@ -1,11 +1,12 @@
-use crate::cmd;
+use crate::{cmd, util::node_url::get_node_url};
 use anyhow::Context;
 use fuel_core_client::client::{types::TransactionStatus, FuelClient};
 
 /// A command for submitting transactions to a Fuel network.
 pub async fn submit(cmd: cmd::Submit) -> anyhow::Result<()> {
     let tx = read_tx(&cmd.tx_path)?;
-    let client = FuelClient::new(&cmd.network.node_url)?;
+    let node_url = get_node_url(&cmd.network.node, &None)?;
+    let client = FuelClient::new(node_url)?;
     if cmd.network.await_ {
         let status = client
             .submit_and_await_commit(&tx)

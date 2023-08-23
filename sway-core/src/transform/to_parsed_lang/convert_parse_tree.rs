@@ -586,20 +586,21 @@ fn item_trait_to_trait_declaration(
         .trait_items
         .into_inner()
         .into_iter()
-        .map(|(annotated, _)| {
+        .map(|annotated| {
             let attributes = item_attrs_to_map(context, handler, &annotated.attribute_list)?;
             if !cfg_eval(context, handler, &attributes)? {
                 return Ok(None);
             }
             Ok(Some(match annotated.value {
-                ItemTraitItem::Fn(fn_sig) => {
+                ItemTraitItem::Fn(fn_sig, _) => {
                     fn_signature_to_trait_fn(context, handler, engines, fn_sig, attributes)
                         .map(TraitItem::TraitFn)
                 }
-                ItemTraitItem::Const(const_decl) => item_const_to_constant_declaration(
+                ItemTraitItem::Const(const_decl, _) => item_const_to_constant_declaration(
                     context, handler, engines, const_decl, attributes, false,
                 )
                 .map(TraitItem::Constant),
+                ItemTraitItem::Error(spans, error) => Ok(TraitItem::Error(spans, error)),
             }?))
         })
         .filter_map_ok(|item| item)
@@ -759,14 +760,14 @@ fn item_abi_to_abi_declaration(
                 .abi_items
                 .into_inner()
                 .into_iter()
-                .map(|(annotated, _)| {
+                .map(|annotated| {
                     let attributes =
                         item_attrs_to_map(context, handler, &annotated.attribute_list)?;
                     if !cfg_eval(context, handler, &attributes)? {
                         return Ok(None);
                     }
                     Ok(Some(match annotated.value {
-                        ItemTraitItem::Fn(fn_signature) => {
+                        ItemTraitItem::Fn(fn_signature, _) => {
                             let trait_fn = fn_signature_to_trait_fn(
                                 context,
                                 handler,
@@ -783,10 +784,11 @@ fn item_abi_to_abi_declaration(
                             )?;
                             Ok(TraitItem::TraitFn(trait_fn))
                         }
-                        ItemTraitItem::Const(const_decl) => item_const_to_constant_declaration(
+                        ItemTraitItem::Const(const_decl, _) => item_const_to_constant_declaration(
                             context, handler, engines, const_decl, attributes, false,
                         )
                         .map(TraitItem::Constant),
+                        ItemTraitItem::Error(spans, error) => Ok(TraitItem::Error(spans, error)),
                     }?))
                 })
                 .filter_map_ok(|item| item)

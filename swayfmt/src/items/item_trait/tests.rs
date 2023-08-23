@@ -74,5 +74,21 @@ fmt_test_item!(trait_contains_const
 intermediate_whitespace
 "trait ConstantId {
     const    ID: u32 = 1;
-}"
+}");
+
+fmt_test_item!(
+trait_normal_comment_two_fns
+"pub trait MyTrait {
+    // Before A
+    fn a(self);
+    // Before b
+    fn b(self);
+}",
+intermediate_whitespace
+"  pub   trait   MyTrait {
+    // Before A
+         fn a(self);
+    // Before b
+         fn b(self);
+    }   "
 );

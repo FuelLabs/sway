@@ -224,6 +224,16 @@ pub(crate) fn highlight_request(server: &ServerState, uri: &Url) {
     assert_eq!(expected, response.unwrap());
 }
 
+pub(crate) fn code_lens_empty_request(server: &ServerState, uri: &Url) {
+    let params = CodeLensParams {
+        text_document: TextDocumentIdentifier { uri: uri.clone() },
+        work_done_progress_params: Default::default(),
+        partial_result_params: Default::default(),
+    };
+    let response = request::handle_code_lens(server, params.clone()).unwrap();
+    assert_eq!(response.unwrap().len(), 0);
+}
+
 pub(crate) fn code_lens_request(server: &ServerState, uri: &Url) {
     let params = CodeLensParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
