@@ -13,16 +13,16 @@ pub struct StorageVec<V> {}
 impl<V> StorageKey<StorageVec<V>> {
     /// Appends the value to the end of the vector.
     ///
-    /// ### Arguments
+    /// # Arguments
     ///
-    /// * `value` - The item being added to the end of the vector.
+    /// * `value`: [V] - The item being added to the end of the vector.
     ///
-    /// ### Number of Storage Accesses
+    /// # Number of Storage Accesses
     ///
-    /// * Reads: `1`
+    /// * Reads: `3`
     /// * Writes: `2`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// use std::storage::storage_vec::*;
@@ -51,12 +51,16 @@ impl<V> StorageKey<StorageVec<V>> {
 
     /// Removes the last element of the vector and returns it, `None` if empty.
     ///
-    /// ### Number of Storage Accesses
+    /// # Returns
     ///
-    /// * Reads: `2`
+    /// * [Option<V>] - The last element `V` or `None`.
+    ///
+    /// # Number of Storage Accesses
+    ///
+    /// * Reads: `3`
     /// * Writes: `1`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// use std::storage::storage_vec::*;
@@ -92,15 +96,20 @@ impl<V> StorageKey<StorageVec<V>> {
 
     /// Gets the value in the given index, `None` if index is out of bounds.
     ///
-    /// ### Arguments
+    /// # Arguments
     ///
-    /// * `index` - The index of the vec to retrieve the item from.
+    /// * `index`: [u64] - The index of the vec to retrieve the item from.
     ///
-    /// ### Number of Storage Accesses
+    /// # Returns
     ///
-    /// * Reads: `2`
+    /// * [Option<StorageKey<V>>] - Describes the raw location in storage of the value stored at
+    /// `key` or `None` if out of bounds.
     ///
-    /// ### Examples
+    /// # Number of Storage Accesses
+    ///
+    /// * Reads: `1`
+    ///
+    /// # Examples
     ///
     /// ```sway
     /// use std::storage::storage_vec::*;
@@ -135,22 +144,28 @@ impl<V> StorageKey<StorageVec<V>> {
     /// Removes the element in the given index and moves all the elements in the following indexes
     /// down one index. Also returns the element.
     ///
-    /// > **_WARNING:_** Expensive for larger vecs.
+    /// # Additional Information
     ///
-    /// ### Arguments
+    ///  **_WARNING:_** Expensive for larger vecs.
     ///
-    /// * `index` - The index of the vec to remove the item from.
+    /// # Arguments
     ///
-    /// ### Reverts
+    /// * `index`: [u64] - The index of the vec to remove the item from.
+    /// 
+    /// # Returns
     ///
-    /// Reverts if index is larger or equal to length of the vec.
+    /// * [V] - The element that has been removed at the index.
     ///
-    /// ### Number of Storage Accesses
+    /// # Reverts
     ///
-    /// * Reads: `2 + self.len() - index`
+    /// * Reverts if index is larger or equal to length of the vec.
+    ///
+    /// # Number of Storage Accesses
+    ///
+    /// * Reads: `3 + (2 * (self.len() - index))`
     /// * Writes: `self.len() - index`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// use std::storage::storage_vec::*;
@@ -199,20 +214,24 @@ impl<V> StorageKey<StorageVec<V>> {
     /// Removes the element at the specified index and fills it with the last element.
     /// This does not preserve ordering and returns the element.
     ///
-    /// ### Arguments
+    /// # Arguments
     ///
-    /// * `index` - The index of the vec to remove the item from.
+    /// * `index`: [u64] - The index of the vec to remove the item from.
     ///
-    /// ### Reverts
+    /// # Returns
     ///
-    /// Reverts if index is larger or equal to length of the vec.
+    /// * [V] - The element that has been removed at the index.
     ///
-    /// ### Number of Storage Accesses
+    /// # Reverts
     ///
-    /// * Reads: `3`
+    /// * Reverts if index is larger or equal to length of the vec.
+    ///
+    /// # Number of Storage Accesses
+    ///
+    /// * Reads: `5`
     /// * Writes: `2`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// use std::storage::storage_vec::*;
@@ -253,21 +272,21 @@ impl<V> StorageKey<StorageVec<V>> {
 
     /// Sets or mutates the value at the given index.
     ///
-    /// ### Arguments
+    /// # Arguments
     ///
-    /// * `index` - The index of the vec to set the value at
-    /// * `value` - The value to be set
+    /// * `index`: [u64] - The index of the vec to set the value at
+    /// * `value`: [V] - The value to be set
     ///
-    /// ### Reverts
+    /// # Reverts
     ///
-    /// Reverts if index is larger than or equal to the length of the vec.
+    /// * Reverts if index is larger than or equal to the length of the vec.
     ///
-    /// ### Number of Storage Accesses
+    /// # Number of Storage Accesses
     ///
-    /// * Reads: `1`
+    /// * Reads: `2`
     /// * Writes: `1`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// use std::storage::storage_vec::*;
@@ -300,23 +319,25 @@ impl<V> StorageKey<StorageVec<V>> {
     /// Inserts the value at the given index, moving the current index's value
     /// as well as the following index's value up by one index.
     ///
+    /// # Additional Information
+    ///
     /// > **_WARNING:_** Expensive for larger vecs.
     ///
-    /// ### Arguments
+    /// # Arguments
     ///
-    /// * `index` - The index of the vec to insert the item into.
-    /// * `value` - The value to insert into the vec.
+    /// * `index`: [u64] - The index of the vec to insert the item into.
+    /// * `value`: [V] - The value to insert into the vec.
     ///
-    /// ### Reverts
+    /// # Reverts
     ///
-    /// Reverts if index is larger than the length of the vec.
+    /// * Reverts if index is larger than the length of the vec.
     ///
-    /// ### Number of Storage Accesses
+    /// # Number of Storage Accesses
     ///
-    /// * Reads: `if self.len() == index { 1 } else { 1 + self.len() - index }`
+    /// * Reads: `if self.len() == index { 3 } else { 5 + (2 * (self.len() - index)) }`
     /// * Writes: `if self.len() == index { 2 } else { 2 + self.len() - index }`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// use std::storage::storage_vec::*;
@@ -377,11 +398,15 @@ impl<V> StorageKey<StorageVec<V>> {
 
     /// Returns the length of the vector.
     ///
-    /// ### Number of Storage Accesses
+    /// # Returns
+    ///
+    /// * [u64] - The stored length of the vector.
+    ///
+    /// # Number of Storage Accesses
     ///
     /// * Reads: `1`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// use std::storage::storage_vec::*;
@@ -405,11 +430,15 @@ impl<V> StorageKey<StorageVec<V>> {
 
     /// Checks whether the len is zero or not.
     ///
-    /// ### Number of Storage Accesses
+    /// # Returns
+    ///
+    /// * [bool] - Indicates whether the vector is or is not empty.
+    ///
+    /// # Number of Storage Accesses
     ///
     /// * Reads: `1`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// use std::storage::storage_vec::*;
@@ -437,11 +466,11 @@ impl<V> StorageKey<StorageVec<V>> {
 
     /// Sets the len to zero.
     ///
-    /// ### Number of Storage Accesses
+    /// # Number of Storage Accesses
     ///
     /// * Clears: `1`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// use std::storage::storage_vec::*;
@@ -465,21 +494,21 @@ impl<V> StorageKey<StorageVec<V>> {
 
     /// Swaps two elements.
     ///
-    /// ### Arguments
+    /// # Arguments
     ///
-    /// * element1_index - The index of the first element.
-    /// * element2_index - The index of the second element.
+    /// * `element1_index`: [u64] - The index of the first element.
+    /// * `element2_index`: [u64] - The index of the second element.
     ///
-    /// ### Reverts
+    /// # Reverts
     ///
     /// * If `element1_index` or `element2_index` is greater than the length of the vector.
     ///
-    /// ### Number of Storage Accesses
+    /// # Number of Storage Accesses
     ///
-    /// * Reads: `3`
+    /// * Reads: `5`
     /// * Writes: `2`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// use std::storage::storage_vec::*;
@@ -518,11 +547,16 @@ impl<V> StorageKey<StorageVec<V>> {
 
     /// Returns the first element of the vector, or `None` if it is empty.
     ///
-    /// ### Number of Storage Accesses
+    /// # Returns
     ///
-    /// * Reads: `2`
+    /// * [Option<StorageKey<V>>] - Describes the raw location in storage of the value stored at
+    /// the start of the vector or zero if the vector is empty.
     ///
-    /// ### Examples
+    /// # Number of Storage Accesses
+    ///
+    /// * Reads: `1`
+    ///
+    /// # Examples
     ///
     /// ```sway
     /// storage {
@@ -551,11 +585,16 @@ impl<V> StorageKey<StorageVec<V>> {
 
     /// Returns the last element of the vector, or `None` if it is empty.
     ///
-    /// ### Number of Storage Accesses
+    /// # Returns
     ///
-    /// * Reads: `2`
+    /// * [Option<StorageKey<V>>] - Describes the raw location in storage of the value stored at
+    /// the end of the vector or zero if the vector is empty.
     ///
-    /// ### Examples
+    /// # Number of Storage Accesses
+    ///
+    /// * Reads: `1`
+    ///
+    /// # Examples
     ///
     /// ```sway
     /// storage {
@@ -585,12 +624,12 @@ impl<V> StorageKey<StorageVec<V>> {
 
     /// Reverses the order of elements in the vector, in place.
     ///
-    /// ### Number of Storage Accesses
+    /// # Number of Storage Accesses
     ///
-    /// * Reads: `1 + (2 * (self.len() / 2))`
+    /// * Reads: `1 + (3 * (self.len() / 2))`
     /// * Writes: `2 * (self.len() / 2)`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// storage {
@@ -632,16 +671,16 @@ impl<V> StorageKey<StorageVec<V>> {
 
     /// Fills `self` with elements by cloning `value`.
     ///
-    /// ### Arguments
+    /// # Arguments
     ///
-    /// * value - Value to copy to each element of the vector.
+    /// * `value`: [V] - Value to copy to each element of the vector.
     ///
-    /// ### Number of Storage Accesses
+    /// # Number of Storage Accesses
     ///
-    /// * Reads: `1`
+    /// * Reads: `1 + self.len()`
     /// * Writes: `self.len()`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// storage {
@@ -672,21 +711,23 @@ impl<V> StorageKey<StorageVec<V>> {
 
     /// Resizes `self` in place so that `len` is equal to `new_len`.
     ///
+    /// # Additional Information
+    ///
     /// If `new_len` is greater than `len`, `self` is extended by the difference, with each
     /// additional slot being filled with `value`. If the `new_len` is less than `len`, `self` is
     /// simply truncated.
     ///
-    /// ### Arguments
+    /// # Arguments
     ///
-    /// * new_len - The new length to expand or truncate to
-    /// * value - The value to fill into new slots if the `new_len` is greater than the current length
+    /// * `new_len`: [u64] - The new length to expand or truncate to
+    /// * `value`: [V] - The value to fill into new slots if the `new_len` is greater than the current length
     ///
-    /// ### Number of Storage Accesses
+    /// # Number of Storage Accesses
     ///
-    /// * Reads - `1`
+    /// * Reads - `if new_len > self.len() { new_len - len + 2 } else { 2 }`
     /// * Writes - `if new_len > self.len() { new_len - len + 1 } else { 1 }`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// storage {

@@ -8,13 +8,28 @@ use ::revert::revert;
 
 /// Sends a message `msg_data` to `recipient` with a `coins` amount of the base asset.
 ///
+/// # Additional Information
+///
 /// Use `send_typed_message` instead of `send_message` if the message needs to be indexed.
 ///
-/// ### Arguments
+/// # Arguments
 ///
-/// * `recipient` - The address of the message recipient.
-/// * `msg_data` - Arbitrary length message data.
-/// * `coins` - Amount of base asset to send.
+/// * `recipient`: [b256] - The address of the message recipient.
+/// * `msg_data`: [Bytes] - Arbitrary length message data.
+/// * `coins`: [u64] - Amount of base asset to send.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::{message::send_message, bytes::Bytes};
+/// 
+/// fn foo() {
+///     let recipient = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
+///     let mut bytes = Bytes::new();
+///     bytes.push(5u8);
+///     send_message(recipient, bytes, 50);
+/// }
+/// ```
 pub fn send_message(recipient: b256, msg_data: Bytes, coins: u64) {
     let recipient_pointer = __addr_of(recipient);
     let mut size = 0;
@@ -33,13 +48,26 @@ pub fn send_message(recipient: b256, msg_data: Bytes, coins: u64) {
 
 /// Sends a message `msg_data` of type `T` to `recipient` with a `coins` amount of the base asset.
 ///
+/// # Additional Information
+///
 /// Use `send_typed_message` instead of `send_message` if the message needs to be indexed.
 ///
-/// ### Arguments
+/// # Arguments
 ///
-/// * `recipient` - The address of the message recipient.
-/// * `msg_data` - Message data of arbitrary type `T`.
-/// * `coins` - Amount of base asset to send.
+/// * `recipient`: [b256] - The address of the message recipient.
+/// * `msg_data`: [T] - Message data of arbitrary type `T`.
+/// * `coins`: [u64] - Amount of base asset to send.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::message::send_typed_message;
+/// 
+/// fn foo() {
+///     let recipient = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
+///     send_message(recipient, "Fuel is blazingly fast", 50);
+/// }
+/// ```
 pub fn send_typed_message<T>(recipient: b256, msg_data: T, coins: u64) {
     __smo(recipient, msg_data, coins);
 }

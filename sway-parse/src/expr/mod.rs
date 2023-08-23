@@ -138,7 +138,7 @@ impl ParseToEnd for CodeBlockContents {
                 break (None, consumed);
             }
 
-            match parser.parse_fn_with_recovery(parse_stmt) {
+            match parser.call_parsing_function_with_recovery(parse_stmt) {
                 Ok(StmtOrTail::Stmt(s)) => statements.push(s),
                 Ok(StmtOrTail::Tail(e, c)) => break (Some(e), c),
                 Err(r) => {

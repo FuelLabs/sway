@@ -1,11 +1,32 @@
 pub mod cmd;
+mod constants;
 pub mod op;
 mod util;
 
-pub mod default {
-    /// Default to localhost to favour the common case of testing.
-    pub const NODE_URL: &str = sway_utils::constants::DEFAULT_NODE_URL;
-    pub const BETA_2_ENDPOINT_URL: &str = "node-beta-2.fuel.network/graphql";
-    pub const BETA_3_ENDPOINT_URL: &str = "beta-3.fuel.network/graphql";
-    pub const BETA_4_FAUCET_URL: &str = "https://faucet-beta-4.fuel.network";
+use clap::Parser;
+use serde::{Deserialize, Serialize};
+use util::target::Target;
+
+/// Flags for specifying the node to target.
+#[derive(Debug, Default, Parser, Deserialize, Serialize)]
+pub struct NodeTarget {
+    /// The URL of the Fuel node to which we're submitting the transaction.
+    /// If unspecified, checks the manifest's `network` table, then falls back
+    /// to `http://127.0.0.1:4000`
+    ///
+    /// You can also use `--target` or `--testnet` to specify the Fuel node.
+    #[clap(long, env = "FUEL_NODE_URL")]
+    pub node_url: Option<String>,
+    /// Use preset configurations for deploying to a specific target.
+    ///
+    /// You can also use `--node-url` or `--testnet` to specify the Fuel node.
+    ///
+    /// Possible values are: [beta-1, beta-2, beta-3, beta-4, local]
+    #[clap(long)]
+    pub target: Option<Target>,
+    /// Use preset configuration for the latest testnet.
+    ///
+    /// You can also use `--node-url` or `--target` to specify the Fuel node.
+    #[clap(long)]
+    pub testnet: bool,
 }

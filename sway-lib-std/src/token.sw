@@ -15,28 +15,29 @@ use ::outputs::{Output, output_amount, output_count, output_type};
 /// to `to` by calling either `force_transfer_to_contract` or
 /// `transfer_to_address`, depending on the type of `Identity`.
 ///
-/// > **_WARNING:_**
-/// >
-/// > If the `to` Identity is a contract, this will transfer coins to the contract even with no way to retrieve them
-/// > (i.e: no withdrawal functionality on the receiving contract), possibly leading to
-/// > the **_PERMANENT LOSS OF COINS_** if not used with care.
+/// # Additional Information
+/// 
+/// If the `to` Identity is a contract, this will transfer coins to the contract even with no way to retrieve them
+/// (i.e: no withdrawal functionality on the receiving contract), possibly leading to
+/// the **_PERMANENT LOSS OF COINS_** if not used with care.
 ///
-/// ### Arguments
+/// # Arguments
 ///
-/// * `to` - The `Identity` to which to send the tokens.
-/// * `sub_id` - The  sub identfier of the asset which to mint.
-/// * `amount` - The amount of tokens to mint.
+/// * `to`: [Identity] - The recipient identity.
+/// * `sub_id`: [SubId] - The sub identfier of the asset which to mint.
+/// * `amount`: [u64] - The amount of tokens to mint.
 ///
-/// ### Examples
+/// # Examples
 ///
 /// ```sway
 /// use std::{constants::ZERO_B256, token::mint_to};
 ///
-/// // replace the zero Address/ContractId with your desired Address/ContractId
-/// let to_address = Identity::Address(Address::from(ZERO_B256));
-/// let to_contract_id = Identity::ContractId(ContractId::from(ZERO_B256));
-/// mint_to(to_address, ZERO_B256, 500);
-/// mint_to(to_contract_id, ZERO_B256, 500);
+/// fn foo() {
+///     let to_address = Identity::Address(Address::from(ZERO_B256));
+///     let to_contract_id = Identity::ContractId(ContractId::from(ZERO_B256));
+///     mint_to(to_address, ZERO_B256, 500);
+///     mint_to(to_contract_id, ZERO_B256, 500);
+/// }
 /// ```
 pub fn mint_to(to: Identity, sub_id: SubId, amount: u64) {
     mint(sub_id, amount);
@@ -46,26 +47,27 @@ pub fn mint_to(to: Identity, sub_id: SubId, amount: u64) {
 /// Mint `amount` coins of the current contract's `asset_id` and send them
 /// UNCONDITIONALLY to the contract at `to`.
 ///
-/// > **_WARNING:_**
-/// >
-/// > This will transfer coins to a contract even with no way to retrieve them
-/// > (i.e: no withdrawal functionality on the receiving contract), possibly leading to
-/// > the **_PERMANENT LOSS OF COINS_** if not used with care.
+/// # Additional Information
+/// 
+/// This will transfer coins to a contract even with no way to retrieve them
+/// (i.e: no withdrawal functionality on the receiving contract), possibly leading to
+/// the **_PERMANENT LOSS OF COINS_** if not used with care.
 ///
-/// ### Arguments
+/// # Arguments
 ///
-/// * `to` - The `ContractId` to which to send the tokens.
-/// * `sub_id` - The  sub identfier of the asset which to mint.
-/// * `amount` - The amount of tokens to mint.
+/// * `to`: [ContractId] - The recipient contract.
+/// * `sub_id`: [SubId] - The sub identfier of the asset which to mint.
+/// * `amount`: [u64] - The amount of tokens to mint.
 ///
-/// ### Examples
+/// # Examples
 ///
 /// ```sway
 /// use std::{constants::ZERO_B256, token::mint_to_contract};
 ///
-/// // replace the zero ContractId with your desired ContractId
-/// let to = ContractId::from(ZERO_B256);
-/// mint_to_contract(to, ZERO_B256, 500);
+/// fn foo() {
+///     let to = ContractId::from(ZERO_B256);
+///     mint_to_contract(to, ZERO_B256, 500);
+/// }
 /// ```
 pub fn mint_to_contract(to: ContractId, sub_id: SubId, amount: u64) {
     mint(sub_id, amount);
@@ -75,20 +77,21 @@ pub fn mint_to_contract(to: ContractId, sub_id: SubId, amount: u64) {
 /// Mint `amount` coins of the current contract's `asset_id` and send them to
 /// the Address `to`.
 ///
-/// ### Arguments
+/// # Arguments
 ///
-/// * `to` - The `Address` to which to send the tokens.
-/// * `sub_id` - The  sub identfier of the asset which to mint.
-/// * `amount` - The amount of tokens to mint.
+/// * `to`: [Address] - The recipient address.
+/// * `sub_id`: [SubId] - The sub identfier of the asset which to mint.
+/// * `amount`: [u64] - The amount of tokens to mint.
 ///
-/// ### Examples
+/// # Examples
 ///
 /// ```sway
 /// use std::{constants::ZERO_B256, token::mint_to_address};
 ///
-/// // replace the zero Address with your desired Address
-/// let to = Address::from(ZERO_B256);
-/// mint_to_address(to, ZERO_B256, 500);
+/// fn foo() {
+///     let to = Address::from(ZERO_B256);
+///     mint_to_address(to, ZERO_B256, 500);
+/// }
 /// ```
 pub fn mint_to_address(to: Address, sub_id: SubId, amount: u64) {
     mint(sub_id, amount);
@@ -97,17 +100,19 @@ pub fn mint_to_address(to: Address, sub_id: SubId, amount: u64) {
 
 /// Mint `amount` coins of the current contract's `sub_id`. The newly minted tokens are owned by the current contract.
 ///
-/// ### Arguments
+/// # Arguments
 ///
-/// * `sub_id` - The  sub identfier of the asset which to mint.
-/// * `amount` - The amount of tokens to mint.
+/// * `sub_id`: [SubId] - The sub identfier of the asset which to mint.
+/// * `amount`: [u64] - The amount of tokens to mint.
 ///
-/// ### Examples
+/// # Examples
 ///
 /// ```sway
 /// use std::{constants::ZERO_B256, token::mint};
 ///
-/// mint(ZERO_B256, 500);
+/// fn foo() {
+///     mint(ZERO_B256, 500);
+/// }
 /// ```
 pub fn mint(sub_id: SubId, amount: u64) {
     asm(r1: amount, r2: sub_id) {
@@ -117,21 +122,23 @@ pub fn mint(sub_id: SubId, amount: u64) {
 
 /// Burn `amount` coins of the current contract's `sub_id`. Burns them from the balance of the current contract.
 ///
-/// ### Arguments
+/// # Arguments
 ///
-/// * `sub_id` - The sub identfier of the asset which to burn.
-/// * `amount` - The amount of tokens to burn.
+/// * `sub_id`: [SubId] - The sub identfier of the asset which to burn.
+/// * `amount`: [u64] - The amount of tokens to burn.
 ///
-/// ### Reverts
+/// # Reverts
 ///
-/// Reverts if the contract balance is less than `amount`.
+/// * When the contract balance is less than `amount`.
 ///
-/// ### Examples
+/// # Examples
 ///
 /// ```sway
 /// use std::{constants::ZERO_B256, token::burn};
 ///
-/// burn(ZERO_B256, 500);
+/// fn foo() {
+///     burn(ZERO_B256, 500);
+/// }
 /// ```
 pub fn burn(sub_id: SubId, amount: u64) {
     asm(r1: amount, r2: sub_id) {
@@ -143,34 +150,35 @@ pub fn burn(sub_id: SubId, amount: u64) {
 /// to `to` by calling either `force_transfer_to_contract` or
 /// `transfer_to_address`, depending on the type of `Identity`.
 ///
-/// > **_WARNING:_**
-/// >
-/// > If the `to` Identity is a contract this may transfer coins to the contract even with no way to retrieve them
-/// > (i.e. no withdrawal functionality on receiving contract), possibly leading
-/// > to the **_PERMANENT LOSS OF COINS_** if not used with care.
+/// # Additional Information
+/// 
+/// If the `to` Identity is a contract this may transfer coins to the contract even with no way to retrieve them
+/// (i.e. no withdrawal functionality on receiving contract), possibly leading
+/// to the **_PERMANENT LOSS OF COINS_** if not used with care.
 ///
-/// ### Arguments
+/// # Arguments
 ///
-/// * `to` - The `Identity` of the recipient.
-/// * `asset_id` - The `AssetId` of the token to transfer.
-/// * `amount` - The amount of tokens to transfer.
+/// * `to`: [Identity] - The recipient identity.
+/// * `asset_id`: [AssetId] - The token to transfer.
+/// * `amount`: [u64] - The amount of tokens to transfer.
 ///
-/// ### Reverts
+/// # Reverts
 ///
-/// * If `amount` is greater than the contract balance for `asset_id`.
-/// * If `amount` is equal to zero.
-/// * If there are no free variable outputs when transferring to an `Address`.
+/// * When `amount` is greater than the contract balance for `asset_id`.
+/// * When `amount` is equal to zero.
+/// * When there are no free variable outputs when transferring to an `Address`.
 ///
-/// ### Examples
+/// # Examples
 ///
 /// ```sway
 /// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, token::transfer};
 ///
-/// // replace the zero Address/ContractId with your desired Address/ContractId
-/// let to_address = Identity::Address(Address::from(ZERO_B256));
-/// let to_contract_id = Identity::ContractId(ContractId::from(ZERO_B256));
-/// transfer(to_address, BASE_ASSET_ID, 500);
-/// transfer(to_contract_id, BASE_ASSET_ID, 500);
+/// fn foo() {
+///     let to_address = Identity::Address(Address::from(ZERO_B256));
+///     let to_contract_id = Identity::ContractId(ContractId::from(ZERO_B256));
+///     transfer(to_address, BASE_ASSET_ID, 500);
+///     transfer(to_contract_id, BASE_ASSET_ID, 500);
+/// }
 /// ```
 pub fn transfer(to: Identity, asset_id: AssetId, amount: u64) {
     match to {
@@ -182,31 +190,32 @@ pub fn transfer(to: Identity, asset_id: AssetId, amount: u64) {
 /// UNCONDITIONAL transfer of `amount` coins of type `asset_id` to
 /// the contract at `to`.
 ///
-/// > **_WARNING:_**
-/// >
-/// > This will transfer coins to a contract even with no way to retrieve them
-/// > (i.e. no withdrawal functionality on receiving contract), possibly leading
-/// > to the **_PERMANENT LOSS OF COINS_** if not used with care.
+/// # Additional Information
+/// 
+/// This will transfer coins to a contract even with no way to retrieve them
+/// (i.e. no withdrawal functionality on receiving contract), possibly leading
+/// to the **_PERMANENT LOSS OF COINS_** if not used with care.
 ///
-/// ### Arguments
+/// # Arguments
 ///
-/// * `to` - The `ContractId` of the recipient contract.
-/// * `asset_id` - The `AssetId` of the token to transfer.
-/// * `amount` - The amount of tokens to transfer.
+/// * `to`: [ContractId] - The recipient contract.
+/// * `asset_id`: [AssetId] - The token to transfer.
+/// * `amount`: [u64] - The amount of tokens to transfer.
 ///
-/// ### Reverts
+/// # Reverts
 ///
-/// * If `amount` is greater than the contract balance for `asset_id`.
-/// * If `amount` is equal to zero.
+/// * When `amount` is greater than the contract balance for `asset_id`.
+/// * When `amount` is equal to zero.
 ///
-/// ### Examples
+/// # Examples
 ///
 /// ```sway
 /// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, token::force_transfer_to_contract};
 ///
-/// // replace the zero ContractId with your desired ContractId
-/// let to_contract_id = ContractId::from(ZERO_B256);
-/// force_transfer_to_contract(to_contract_id, BASE_ASSET_ID, 500);
+/// fn foo() {
+///     let to_contract_id = ContractId::from(ZERO_B256);
+///     force_transfer_to_contract(to_contract_id, BASE_ASSET_ID, 500);
+/// }
 /// ```
 pub fn force_transfer_to_contract(to: ContractId, asset_id: AssetId, amount: u64) {
     asm(r1: amount, r2: asset_id, r3: to.value) {
@@ -217,26 +226,27 @@ pub fn force_transfer_to_contract(to: ContractId, asset_id: AssetId, amount: u64
 /// Transfer `amount` coins of type `asset_id` and send them to
 /// the address `to`.
 ///
-/// ### Arguments
+/// # Arguments
 ///
-/// * `to` - The `Address` of the recipient user.
-/// * `asset_id` - The `AssetId` of the token to transfer.
-/// * `amount` - The amount of tokens to transfer.
+/// * `to`: [Address] - The recipient address.
+/// * `asset_id`: [AssetId] - The token to transfer.
+/// * `amount`: [u64] - The amount of tokens to transfer.
 ///
-/// ### Reverts
+/// # Reverts
 ///
-/// * If `amount` is greater than the contract balance for `asset_id`.
-/// * If `amount` is equal to zero.
-/// * If there are no free variable outputs.
+/// * When `amount` is greater than the contract balance for `asset_id`.
+/// * When `amount` is equal to zero.
+/// * When there are no free variable outputs.
 ///
-/// ### Examples
+/// # Examples
 ///
 /// ```sway
 /// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, token::transfer_to_address};
 ///
-/// // replace the zero Address with your desired Address
-/// let to_address = Address::from(ZERO_B256);
-/// transfer_to_address(to_address, BASE_ASSET_ID, 500);
+/// fn foo() {
+///     let to_address = Address::from(ZERO_B256);
+///     transfer_to_address(to_address, BASE_ASSET_ID, 500);
+/// }
 /// ```
 pub fn transfer_to_address(to: Address, asset_id: AssetId, amount: u64) {
     // maintain a manual index as we only have `while` loops in sway atm:

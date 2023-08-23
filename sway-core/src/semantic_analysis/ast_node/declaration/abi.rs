@@ -133,6 +133,9 @@ impl ty::TyAbiDecl {
 
                     const_name
                 }
+                TraitItem::Error(_, _) => {
+                    continue;
+                }
             };
 
             if !ids.insert(decl_name.clone()) {
