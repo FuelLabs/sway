@@ -703,7 +703,7 @@ impl Power for U256 {
                 y = x * y;        
                 x = x * x;
                 // to reduce odd number by 1 we should just clear the last bit
-                n.c = n.c & ((0u64)>>1);
+                n.d = n.d & ((0u64)>>1);
                 n = n >> 1;
             }
         }
