@@ -16,7 +16,12 @@ use sway_types::{Ident, Span, Spanned};
 
 pub fn parse(lexed_program: &LexedProgram, ctx: &ParseContext) {
     insert_module_kind(ctx, &lexed_program.root.tree.kind);
-    lexed_program.root.tree.items.par_iter().for_each(|item| item.value.parse(ctx));
+    lexed_program
+        .root
+        .tree
+        .items
+        .par_iter()
+        .for_each(|item| item.value.parse(ctx));
 
     lexed_program
         .root
@@ -24,7 +29,11 @@ pub fn parse(lexed_program: &LexedProgram, ctx: &ParseContext) {
         .par_iter()
         .for_each(|(_, dep)| {
             insert_module_kind(ctx, &dep.module.tree.kind);
-            dep.module.tree.items.par_iter().for_each(|item| item.value.parse(ctx));
+            dep.module
+                .tree
+                .items
+                .par_iter()
+                .for_each(|item| item.value.parse(ctx));
         });
 }
 
@@ -103,7 +112,11 @@ impl Parse for Expr {
                 args.get().address.parse(ctx);
             }
             Expr::Struct { fields, .. } => {
-                fields.get().into_iter().par_bridge().for_each(|field| field.parse(ctx));
+                fields
+                    .get()
+                    .into_iter()
+                    .par_bridge()
+                    .for_each(|field| field.parse(ctx));
             }
             Expr::Tuple(tuple) => {
                 tuple.get().parse(ctx);
@@ -152,7 +165,10 @@ impl Parse for Expr {
             }
             Expr::FuncApp { func, args } => {
                 func.parse(ctx);
-                args.get().into_iter().par_bridge().for_each(|expr| expr.parse(ctx));
+                args.get()
+                    .into_iter()
+                    .par_bridge()
+                    .for_each(|expr| expr.parse(ctx));
             }
             Expr::Index { target, arg } => {
                 target.parse(ctx);
@@ -166,9 +182,16 @@ impl Parse for Expr {
             } => {
                 target.parse(ctx);
                 if let Some(contract_args) = contract_args_opt {
-                    contract_args.get().into_iter().par_bridge().for_each(|expr| expr.parse(ctx));
+                    contract_args
+                        .get()
+                        .into_iter()
+                        .par_bridge()
+                        .for_each(|expr| expr.parse(ctx));
                 }
-                args.get().into_iter().par_bridge().for_each(|expr| expr.parse(ctx));
+                args.get()
+                    .into_iter()
+                    .par_bridge()
+                    .for_each(|expr| expr.parse(ctx));
             }
             Expr::FieldProjection { target, .. } => {
                 target.parse(ctx);
@@ -488,7 +511,10 @@ impl Parse for FnArgs {
     fn parse(&self, ctx: &ParseContext) {
         match self {
             FnArgs::Static(punct) => {
-                punct.into_iter().par_bridge().for_each(|fn_arg| fn_arg.parse(ctx));
+                punct
+                    .into_iter()
+                    .par_bridge()
+                    .for_each(|fn_arg| fn_arg.parse(ctx));
             }
             FnArgs::NonStatic {
                 self_token,
@@ -504,7 +530,10 @@ impl Parse for FnArgs {
                     insert_keyword(ctx, mut_token.span());
                 }
                 if let Some((.., punct)) = args_opt {
-                    punct.into_iter().par_bridge().for_each(|fn_arg| fn_arg.parse(ctx));
+                    punct
+                        .into_iter()
+                        .par_bridge()
+                        .for_each(|fn_arg| fn_arg.parse(ctx));
                 }
             }
         }
@@ -520,7 +549,9 @@ impl Parse for FnArg {
 
 impl Parse for CodeBlockContents {
     fn parse(&self, ctx: &ParseContext) {
-        self.statements.par_iter().for_each(|statement| statement.parse(ctx));
+        self.statements
+            .par_iter()
+            .for_each(|statement| statement.parse(ctx));
         if let Some(expr) = self.final_expr_opt.as_ref() {
             expr.parse(ctx);
         }
@@ -559,7 +590,10 @@ impl Parse for ExprArrayDescriptor {
     fn parse(&self, ctx: &ParseContext) {
         match self {
             ExprArrayDescriptor::Sequence(punct) => {
-                punct.into_iter().par_bridge().for_each(|expr| expr.parse(ctx));
+                punct
+                    .into_iter()
+                    .par_bridge()
+                    .for_each(|expr| expr.parse(ctx));
             }
             ExprArrayDescriptor::Repeat { value, length, .. } => {
                 value.parse(ctx);
@@ -622,10 +656,17 @@ impl Parse for Pattern {
                 }
             }
             Pattern::Constructor { args, .. } | Pattern::Tuple(args) => {
-                args.get().into_iter().par_bridge().for_each(|pattern| pattern.parse(ctx));
+                args.get()
+                    .into_iter()
+                    .par_bridge()
+                    .for_each(|pattern| pattern.parse(ctx));
             }
             Pattern::Struct { fields, .. } => {
-                fields.get().into_iter().par_bridge().for_each(|field| field.parse(ctx));
+                fields
+                    .get()
+                    .into_iter()
+                    .par_bridge()
+                    .for_each(|field| field.parse(ctx));
             }
             _ => {}
         }
@@ -669,7 +710,9 @@ impl Parse for ExprTupleDescriptor {
     fn parse(&self, ctx: &ParseContext) {
         if let ExprTupleDescriptor::Cons { head, tail, .. } = self {
             head.parse(ctx);
-            tail.into_iter().par_bridge().for_each(|expr| expr.parse(ctx));
+            tail.into_iter()
+                .par_bridge()
+                .for_each(|expr| expr.parse(ctx));
         }
     }
 }
@@ -678,7 +721,9 @@ impl Parse for TyTupleDescriptor {
     fn parse(&self, ctx: &ParseContext) {
         if let TyTupleDescriptor::Cons { head, tail, .. } = self {
             head.parse(ctx);
-            tail.into_iter().par_bridge().for_each(|expr| expr.parse(ctx));
+            tail.into_iter()
+                .par_bridge()
+                .for_each(|expr| expr.parse(ctx));
         }
     }
 }

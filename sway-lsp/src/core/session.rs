@@ -523,7 +523,10 @@ fn parse_ast_to_tokens(
         .iter()
         .flat_map(|(_, submodule)| &submodule.module.tree.root_nodes);
 
-    root_nodes.chain(sub_nodes).par_bridge().for_each(|n| f(n, ctx));
+    root_nodes
+        .chain(sub_nodes)
+        .par_bridge()
+        .for_each(|n| f(n, ctx));
 }
 
 /// Parse the [ty::TyProgram] AST to populate the [TokenMap] with typed AST nodes.
@@ -539,7 +542,10 @@ fn parse_ast_to_typed_tokens(
         .iter()
         .flat_map(|(_, submodule)| submodule.module.all_nodes.iter());
 
-    root_nodes.chain(sub_nodes).par_bridge().for_each(|n| f(n, ctx));
+    root_nodes
+        .chain(sub_nodes)
+        .par_bridge()
+        .for_each(|n| f(n, ctx));
 }
 
 #[cfg(test)]
