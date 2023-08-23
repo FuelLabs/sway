@@ -1,4 +1,5 @@
 pub mod code_actions;
+pub mod code_lens;
 pub mod completion;
 pub mod diagnostic;
 pub mod document_symbol;
