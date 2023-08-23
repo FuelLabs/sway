@@ -1,6 +1,6 @@
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Context, Result};
-use forc_tracing::println_yellow_err;
+use forc_tracing::println_warning;
 use forc_util::{find_nested_manifest_dir, find_parent_manifest_dir, validate_name};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -508,7 +508,7 @@ impl PackageManifest {
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
         for warning in warnings {
-            println_yellow_err(&warning);
+            println_warning(&warning);
         }
         manifest.implicitly_include_std_if_missing();
         manifest.implicitly_include_default_build_profiles_if_missing();
@@ -930,7 +930,7 @@ impl WorkspaceManifest {
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
         for warning in warnings {
-            println_yellow_err(&warning);
+            println_warning(&warning);
         }
         Ok(manifest)
     }
