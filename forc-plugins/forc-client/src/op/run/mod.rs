@@ -2,12 +2,15 @@ mod encode;
 use crate::{
     cmd,
     util::{
+        gas::{get_gas_limit, get_gas_price},
+        node_url::get_node_url,
         pkg::built_pkgs,
         tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
     },
 };
 use anyhow::{anyhow, bail, Context, Result};
 use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
+use forc_tracing::println_warning;
 use forc_util::tx_utils::format_log_receipts;
 use fuel_core_client::client::FuelClient;
 use fuel_tx::{ContractId, Transaction, TransactionBuilder};
@@ -17,7 +20,7 @@ use std::{path::PathBuf, str::FromStr};
 use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
 use tokio::time::timeout;
-use tracing::{info, warn};
+use tracing::info;
 
 use self::encode::ScriptCallHandler;
 
@@ -34,7 +37,7 @@ pub struct RanScript {
 pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
     let mut command = command;
     if command.unsigned {
-        warn!(" Warning: --unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
+        println_warning("--unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
         command.default_signer = true;
     }
     let mut receipts = Vec::new();
@@ -65,6 +68,9 @@ pub async fn run_pkg(
     manifest: &PackageManifestFile,
     compiled: &BuiltPackage,
 ) -> Result<RanScript> {
+    let node_url = get_node_url(&command.node, &manifest.network)?;
+    let client = FuelClient::new(node_url.clone())?;
+
     let script_data = match (&command.data, &command.args) {
         (None, Some(args)) => {
             let minify_json_abi = true;
@@ -86,12 +92,6 @@ pub async fn run_pkg(
         }
     };
 
-    let node_url = command
-        .node_url
-        .as_deref()
-        .or_else(|| manifest.network.as_ref().map(|nw| &nw.url[..]))
-        .unwrap_or(crate::default::NODE_URL);
-    let client = FuelClient::new(node_url)?;
     let contract_ids = command
         .contract
         .as_ref()
@@ -109,8 +109,8 @@ pub async fn run_pkg(
     };
 
     let tx = TransactionBuilder::script(compiled.bytecode.bytes.clone(), script_data)
-        .gas_limit(command.gas.limit)
-        .gas_price(command.gas.price)
+        .gas_limit(get_gas_limit(&command.gas, client.chain_info().await?))
+        .gas_price(get_gas_price(&command.gas, client.node_info().await?))
         .maturity(command.maturity.maturity.into())
         .add_contracts(contract_ids)
         .finalize_signed(
@@ -124,8 +124,13 @@ pub async fn run_pkg(
         info!("{:?}", tx);
         Ok(RanScript { receipts: vec![] })
     } else {
-        let receipts =
-            try_send_tx(node_url, &tx.into(), command.pretty_print, command.simulate).await?;
+        let receipts = try_send_tx(
+            node_url.as_str(),
+            &tx.into(),
+            command.pretty_print,
+            command.simulate,
+        )
+        .await?;
         Ok(RanScript { receipts })
     }
 }

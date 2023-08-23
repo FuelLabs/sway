@@ -1,9 +1,13 @@
+use sway_error::handler::ErrorEmitted;
+
 use crate::priv_prelude::*;
 
 #[derive(Clone, Debug, Serialize)]
 pub enum ItemTraitItem {
-    Fn(FnSignature),
-    Const(ItemConst),
+    Fn(FnSignature, Option<SemicolonToken>),
+    Const(ItemConst, Option<SemicolonToken>),
+    // to handle parser recovery: Error represents an incomplete trait item
+    Error(Box<[Span]>, #[serde(skip_serializing)] ErrorEmitted),
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -14,7 +18,7 @@ pub struct ItemTrait {
     pub generics: Option<GenericParams>,
     pub where_clause_opt: Option<WhereClause>,
     pub super_traits: Option<(ColonToken, Traits)>,
-    pub trait_items: Braces<Vec<(Annotated<ItemTraitItem>, SemicolonToken)>>,
+    pub trait_items: Braces<Vec<Annotated<ItemTraitItem>>>,
     pub trait_defs_opt: Option<Braces<Vec<Annotated<ItemFn>>>>,
 }
 
@@ -35,8 +39,17 @@ impl Spanned for ItemTrait {
 impl Spanned for ItemTraitItem {
     fn span(&self) -> Span {
         match self {
-            ItemTraitItem::Fn(fn_decl) => fn_decl.span(),
-            ItemTraitItem::Const(const_decl) => const_decl.span(),
+            ItemTraitItem::Fn(fn_decl, semicolon) => match semicolon.as_ref().map(|x| x.span()) {
+                Some(semicolon) => Span::join(fn_decl.span(), semicolon),
+                None => fn_decl.span(),
+            },
+            ItemTraitItem::Const(const_decl, semicolon) => {
+                match semicolon.as_ref().map(|x| x.span()) {
+                    Some(semicolon) => Span::join(const_decl.span(), semicolon),
+                    None => const_decl.span(),
+                }
+            }
+            ItemTraitItem::Error(spans, _) => Span::join_all(spans.iter().cloned()),
         }
     }
 }

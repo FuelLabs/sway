@@ -14,13 +14,15 @@ impl Parse for ItemAbi {
             }
             None => None,
         };
-        let abi_items: Braces<Vec<(Annotated<ItemTraitItem>, _)>> = parser.parse()?;
-        for (annotated, _) in abi_items.get().iter() {
+
+        let abi_items: Braces<Vec<Annotated<ItemTraitItem>>> = parser.parse()?;
+        for annotated in abi_items.get().iter() {
             #[allow(irrefutable_let_patterns)]
-            if let ItemTraitItem::Fn(fn_signature) = &annotated.value {
+            if let ItemTraitItem::Fn(fn_signature, _) = &annotated.value {
                 parser.ban_visibility_qualifier(&fn_signature.visibility)?;
             }
         }
+
         let abi_defs_opt: Option<Braces<Vec<Annotated<ItemFn>>>> = Braces::try_parse(parser)?;
         if let Some(abi_defs) = &abi_defs_opt {
             for item_fn in abi_defs.get().iter() {

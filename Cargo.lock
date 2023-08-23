@@ -5860,6 +5860,7 @@ dependencies = [
  "fuel-tx",
  "lazy_static",
  "num-bigint",
+ "num-traits",
  "serde",
  "thiserror",
 ]
