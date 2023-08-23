@@ -1,21 +1,19 @@
-use crate::core::token::get_range_from_span;
 use lsp_types::{Command, Range};
 use serde_json::{json, Value};
 use sway_core::language::parsed::TreeType;
-use sway_types::Span;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct RunnableMainFn {
     /// The location in the file where the runnable button should be displayed
-    pub span: Span,
+    pub range: Range,
     /// The program kind of the current file
     pub tree_type: TreeType,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct RunnableTestFn {
-    /// The location in the file where the runnable button should be displayed.
-    pub span: Span,
+    /// The location in the file where the runnable button should be displayed
+    pub range: Range,
     /// The program kind of the current file.
     pub tree_type: TreeType,
     /// Additional arguments to use with the runnable command.
@@ -38,12 +36,8 @@ pub trait Runnable: core::fmt::Debug + Send + Sync + 'static {
     fn label_string(&self) -> String;
     /// The arguments to pass to the command.
     fn arguments(&self) -> Option<Vec<Value>>;
-    /// The span where the runnable button should be displayed.
-    fn span(&self) -> &Span;
     /// The range in the file where the runnable button should be displayed.
-    fn range(&self) -> Range {
-        get_range_from_span(self.span())
-    }
+    fn range(&self) -> &Range;
 }
 
 impl Runnable for RunnableMainFn {
@@ -56,8 +50,8 @@ impl Runnable for RunnableMainFn {
     fn arguments(&self) -> Option<Vec<Value>> {
         None
     }
-    fn span(&self) -> &Span {
-        &self.span
+    fn range(&self) -> &Range {
+        &self.range
     }
 }
 
@@ -73,7 +67,7 @@ impl Runnable for RunnableTestFn {
             .as_ref()
             .map(|test_name| vec![json!({ "name": test_name })])
     }
-    fn span(&self) -> &Span {
-        &self.span
+    fn range(&self) -> &Range {
+        &self.range
     }
 }

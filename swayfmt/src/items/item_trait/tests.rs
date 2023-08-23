@@ -66,3 +66,21 @@ intermediate_whitespace
      fn foo(self);
 }   "
 );
+
+fmt_test_item!(
+trait_normal_comment_two_fns
+"pub trait MyTrait {
+    // Before A
+    fn a(self);
+    // Before b
+    fn b(self);
+}",
+
+intermediate_whitespace
+"  pub   trait   MyTrait {
+    // Before A
+         fn a(self);
+    // Before b
+         fn b(self);
+    }   "
+);

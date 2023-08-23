@@ -1,5 +1,7 @@
 contract;
 
+use std::hash::*;
+
 struct Game {
     winner: Option<Identity>,
 }
@@ -11,7 +13,7 @@ abi TicTacToe {
 
 storage {
     game: Game = Game { winner: None },
-    game_boards: StorageMap<u64, Option<Identity>> = StorageMap {},
+    game_boards: StorageMap<u64, Option<Identity>> = StorageMap::<u64, Option<Identity>> {},
 }
 
 impl TicTacToe for Contract {

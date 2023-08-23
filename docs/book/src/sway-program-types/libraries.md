@@ -191,13 +191,13 @@ The repository [`sway-libs`](https://github.com/FuelLabs/sway-libs/) is a collec
 Some Sway Libraries to try out:
 
 - [Binary Merkle Proof](https://github.com/FuelLabs/sway-libs/tree/master/libs/merkle_proof)
-- [Non-Fungible Token](https://github.com/FuelLabs/sway-libs/tree/master/libs/nft)
+- [Non-Fungible Token](https://github.com/FuelLabs/sway-libs/tree/master/libs/archive/nft)
 - [Signed Integers](https://github.com/FuelLabs/sway-libs/tree/master/libs/signed_integers)
 - [Unsigned Fixed Point Number](https://github.com/FuelLabs/sway-libs/tree/master/libs/fixed_point)
 
 ### Example
 
-You can import and use a Sway Library such as the [NFT](https://github.com/FuelLabs/sway-libs/tree/master/libs/nft/src) library just like any other external library.
+You can import and use a Sway Library such as the [NFT](https://github.com/FuelLabs/sway-libs/tree/master/libs/archive/nft/src) library just like any other external library.
 
 ```sway
 use sway_libs::nft::{

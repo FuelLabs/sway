@@ -1,6 +1,6 @@
 script;
 
-use std::hash::sha256;
+use std::hash::*;
 
 struct MyStruct {
     x: u64,
@@ -20,6 +20,12 @@ impl core::ops::Eq for MyEnum {
             _ => false,
         }
     }
+}
+
+fn sha256_str4(value: str[4]) -> b256 {
+    let mut hasher = Hasher::new();
+    hasher.write_str(value);
+    hasher.sha256()
 }
 
 configurable {
@@ -44,7 +50,7 @@ fn test_first_use() {
     assert(C3.y == true);
     assert(C4 == MyEnum::A(42));
     assert(C5 == MyEnum::B(true));
-    assert(sha256(C6) == sha256("fuel"));
+    assert(sha256_str4(C6) == sha256_str4("fuel"));
     assert(C7[0] == 1);
     assert(C7[1] == 2);
     assert(C7[2] == 3);
@@ -61,7 +67,7 @@ fn test_second_use() {
     assert(C3.y == true);
     assert(C4 == MyEnum::A(42));
     assert(C5 == MyEnum::B(true));
-    assert(sha256(C6) == sha256("fuel"));
+    assert(sha256_str4(C6) == sha256_str4("fuel"));
     assert(C7[0] == 1);
     assert(C7[1] == 2);
     assert(C7[2] == 3);
@@ -78,7 +84,7 @@ fn test_inline_use() {
     assert(C3.y == true);
     assert(C4 == MyEnum::A(42));
     assert(C5 == MyEnum::B(true));
-    assert(sha256(C6) == sha256("fuel"));
+    assert(sha256_str4(C6) == sha256_str4("fuel"));
     assert(C7[0] == 1);
     assert(C7[1] == 2);
     assert(C7[2] == 3);

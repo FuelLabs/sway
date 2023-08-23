@@ -95,7 +95,7 @@ impl ReplaceDecls for TyAstNode {
         &mut self,
         decl_mapping: &DeclMapping,
         handler: &Handler,
-        ctx: &TypeCheckContext,
+        ctx: &mut TypeCheckContext,
     ) -> Result<(), ErrorEmitted> {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {

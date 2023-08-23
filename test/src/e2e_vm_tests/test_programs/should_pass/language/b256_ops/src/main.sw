@@ -1,6 +1,6 @@
 script;
 
-use std::hash::{keccak256, sha256};
+use std::hash::*;
 
 fn main() -> u64 {
     let aaaa = 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;

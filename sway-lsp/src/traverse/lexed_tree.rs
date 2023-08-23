@@ -1,5 +1,5 @@
 use crate::{
-    core::token::{to_ident_key, AstToken, SymbolKind, Token},
+    core::token::{AstToken, SymbolKind, Token},
     traverse::{Parse, ParseContext},
 };
 use sway_ast::{
@@ -47,7 +47,7 @@ fn insert_module_kind(ctx: &ParseContext, kind: &ModuleKind) {
 fn insert_keyword(ctx: &ParseContext, span: Span) {
     let ident = Ident::new(span);
     let token = Token::from_parsed(AstToken::Keyword(ident.clone()), SymbolKind::Keyword);
-    ctx.tokens.insert(to_ident_key(&ident), token);
+    ctx.tokens.insert(ctx.ident(&ident), token);
 }
 
 impl Parse for ItemKind {
@@ -300,9 +300,10 @@ impl Parse for ItemTrait {
         self.trait_items
             .get()
             .iter()
-            .for_each(|(annotated, _)| match &annotated.value {
-                sway_ast::ItemTraitItem::Fn(fn_sig) => fn_sig.parse(ctx),
-                sway_ast::ItemTraitItem::Const(item_const) => item_const.parse(ctx),
+            .for_each(|annotated| match &annotated.value {
+                sway_ast::ItemTraitItem::Fn(fn_sig, _) => fn_sig.parse(ctx),
+                sway_ast::ItemTraitItem::Const(item_const, _) => item_const.parse(ctx),
+                sway_ast::ItemTraitItem::Error(_, _) => {}
             });
 
         if let Some(trait_defs_opt) = &self.trait_defs_opt {
@@ -345,9 +346,10 @@ impl Parse for ItemAbi {
         self.abi_items
             .get()
             .iter()
-            .for_each(|(annotated, _)| match &annotated.value {
-                sway_ast::ItemTraitItem::Fn(fn_sig) => fn_sig.parse(ctx),
-                sway_ast::ItemTraitItem::Const(item_const) => item_const.parse(ctx),
+            .for_each(|annotated| match &annotated.value {
+                sway_ast::ItemTraitItem::Fn(fn_sig, _) => fn_sig.parse(ctx),
+                sway_ast::ItemTraitItem::Const(item_const, _) => item_const.parse(ctx),
+                sway_ast::ItemTraitItem::Error(_, _) => {}
             });
 
         if let Some(abi_defs_opt) = self.abi_defs_opt.as_ref() {
