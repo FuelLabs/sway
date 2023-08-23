@@ -9,6 +9,16 @@ use tracing_subscriber::{
     fmt::MakeWriter,
 };
 
+/// Prints a warning message to stdout with the yellow prefix "warning: ".
+pub fn println_warning(txt: &str) {
+    tracing::warn!("{}: {}", Colour::Yellow.paint("warning"), txt);
+}
+
+/// Prints a warning message to stderr with the red prefix "error: ".
+pub fn println_error(txt: &str) {
+    tracing::warn!("{}: {}", Colour::Red.paint("error"), txt);
+}
+
 pub fn println_red(txt: &str) {
     println_std_out(txt, Colour::Red);
 }

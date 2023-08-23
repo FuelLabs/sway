@@ -33,15 +33,10 @@ impl Format for ItemAbi {
         let abi_items = self.abi_items.get();
 
         // abi_items
-        for (annotated, semicolon) in abi_items.iter() {
+        for annotated in abi_items.iter() {
             // add indent + format item
             write!(formatted_code, "{}", formatter.indent_str()?)?;
             annotated.format(formatted_code, formatter)?;
-            writeln!(
-                formatted_code,
-                "{}",
-                semicolon.ident().as_str() // SemicolonToken
-            )?;
         }
 
         if abi_items.is_empty() {
