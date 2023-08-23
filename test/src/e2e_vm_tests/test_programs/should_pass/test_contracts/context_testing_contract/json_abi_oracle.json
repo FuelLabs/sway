@@ -7,7 +7,7 @@
       "name": "get_amount",
       "output": {
         "name": "",
-        "type": 2,
+        "type": 3,
         "typeArguments": null
       }
     },
@@ -15,57 +15,6 @@
       "attributes": null,
       "inputs": [],
       "name": "get_asset_id",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
-    },
-    {
-      "attributes": null,
-      "inputs": [
-        {
-          "name": "asset_id",
-          "type": 0,
-          "typeArguments": null
-        },
-        {
-          "name": "cid",
-          "type": 1,
-          "typeArguments": null
-        }
-      ],
-      "name": "get_balance_of_contract",
-      "output": {
-        "name": "",
-        "type": 2,
-        "typeArguments": null
-      }
-    },
-    {
-      "attributes": null,
-      "inputs": [],
-      "name": "get_gas",
-      "output": {
-        "name": "",
-        "type": 2,
-        "typeArguments": null
-      }
-    },
-    {
-      "attributes": null,
-      "inputs": [],
-      "name": "get_global_gas",
-      "output": {
-        "name": "",
-        "type": 2,
-        "typeArguments": null
-      }
-    },
-    {
-      "attributes": null,
-      "inputs": [],
-      "name": "get_id",
       "output": {
         "name": "",
         "type": 1,
@@ -77,14 +26,65 @@
       "inputs": [
         {
           "name": "asset_id",
-          "type": 0,
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "cid",
+          "type": 2,
+          "typeArguments": null
+        }
+      ],
+      "name": "get_balance_of_contract",
+      "output": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "get_gas",
+      "output": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "get_global_gas",
+      "output": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "get_id",
+      "output": {
+        "name": "",
+        "type": 2,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "name": "asset_id",
+          "type": 1,
           "typeArguments": null
         }
       ],
       "name": "get_this_balance",
       "output": {
         "name": "",
-        "type": 2,
+        "type": 3,
         "typeArguments": null
       }
     }
@@ -106,14 +106,26 @@
           "typeArguments": null
         }
       ],
-      "type": "struct std::contract_id::ContractId",
+      "type": "struct std::contract_id::AssetId",
       "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "value",
+          "type": 0,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct std::contract_id::ContractId",
+      "typeId": 2,
       "typeParameters": null
     },
     {
       "components": null,
       "type": "u64",
-      "typeId": 2,
+      "typeId": 3,
       "typeParameters": null
     }
   ]
