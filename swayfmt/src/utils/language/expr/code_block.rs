@@ -70,12 +70,12 @@ impl CurlyBrace for CodeBlockContents {
         let brace_style = formatter.config.items.item_brace_style;
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
-                // Add openning brace to the next line.
+                // Add opening brace to the next line.
                 write!(line, "\n{}", Delimiter::Brace.as_open_char())?;
             }
             _ => {
                 // Add opening brace to the same line
-                write!(line, " {}", Delimiter::Brace.as_open_char())?;
+                write!(line, "{}", Delimiter::Brace.as_open_char())?;
             }
         }
 
