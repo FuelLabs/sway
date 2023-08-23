@@ -240,25 +240,11 @@ pub fn handle_code_lens(
     state: &ServerState,
     params: lsp_types::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
-    let mut result = vec![];
     match state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
-        Ok((_, session)) => {
-            // Construct code lenses for runnable functions
-            session.runnables.iter().for_each(|item| {
-                let runnable = item.value();
-                result.push(CodeLens {
-                    range: runnable.range(),
-                    command: Some(runnable.command()),
-                    data: None,
-                });
-            });
-            // Sort the results
-            result.sort_by(|a, b| a.range.start.line.cmp(&b.range.start.line));
-            Ok(Some(result))
-        }
+        Ok((url, session)) => Ok(Some(capabilities::code_lens::code_lens(&session, &url))),
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)

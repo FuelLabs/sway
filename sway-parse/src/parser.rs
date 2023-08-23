@@ -76,13 +76,20 @@ impl<'a, 'e> Parser<'a, 'e> {
         Peeker::with(self.token_trees).map(|(v, _)| v)
     }
 
-    pub fn parse_fn_with_recovery<
+    /// This function will fork the current parse, and call the parsing function.
+    /// If it succeeds it will sync the original parser with the forked one;
+    ///
+    /// If it fails it will return a `Recoverer` together with the `ErrorEmited`.
+    ///
+    /// This recoverer can be used to put the forked parsed back in track and then
+    /// sync the original parser to allow the parsing to continue.
+    pub fn call_parsing_function_with_recovery<
         'original,
         T,
         F: FnOnce(&mut Parser<'a, '_>) -> ParseResult<T>,
     >(
         &'original mut self,
-        f: F,
+        parsing_function: F,
     ) -> Result<T, Recoverer<'original, 'a, 'e>> {
         let handler = Handler::default();
         let mut fork = Parser {
@@ -91,7 +98,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             handler: &handler,
         };
 
-        match f(&mut fork) {
+        match parsing_function(&mut fork) {
             Ok(result) => {
                 self.token_trees = fork.token_trees;
                 self.handler.append(handler);
@@ -114,45 +121,25 @@ impl<'a, 'e> Parser<'a, 'e> {
         }
     }
 
+    /// This function will fork the current parse, and try to parse
+    /// T using the fork. If it succeeds it will sync the original parser with the forked one;
+    ///
+    /// If it fails it will return a `Recoverer` together with the `ErrorEmited`.
+    ///
+    /// This recoverer can be used to put the forked parsed back in track and then
+    /// sync the original parser to allow the parsing to continue.
     pub fn parse_with_recovery<'original, T: Parse>(
         &'original mut self,
     ) -> Result<T, Recoverer<'original, 'a, 'e>> {
-        let handler = Handler::default();
-        let mut fork = Parser {
-            token_trees: self.token_trees,
-            full_span: self.full_span.clone(),
-            handler: &handler,
-        };
-
-        match fork.parse() {
-            Ok(result) => {
-                self.token_trees = fork.token_trees;
-                self.handler.append(handler);
-                Ok(result)
-            }
-            Err(error) => {
-                let Parser {
-                    token_trees,
-                    full_span,
-                    ..
-                } = fork;
-                Err(Recoverer {
-                    original: RefCell::new(self),
-                    handler,
-                    fork_token_trees: token_trees,
-                    fork_full_span: full_span,
-                    error,
-                })
-            }
-        }
+        self.call_parsing_function_with_recovery(|p| p.parse())
     }
 
-    /// This function do three things
+    /// This function does three things
     /// 1 - it peeks P;
-    /// 2 - it forks the current parse, and try to parse
-    /// T using the fork. If it success it put the original
-    /// parse at the same state as the forked;
-    /// 3 - if it fails ir returns a `Recoverer` together with the `ErrorEmited`.
+    /// 2 - it forks the current parser and tries to parse
+    /// T using this fork. If it succeeds it syncs the original
+    /// parser with the forked one;
+    /// 3 - if it fails it will return a `Recoverer` together with the `ErrorEmited`.
     ///
     /// This recoverer can be used to put the forked parsed back in track and then
     /// sync the original parser to allow the parsing to continue.

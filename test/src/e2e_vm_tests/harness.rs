@@ -3,6 +3,7 @@ use colored::Colorize;
 use forc_client::{
     cmd::{Deploy as DeployCommand, Run as RunCommand},
     op::{deploy, run},
+    NodeTarget,
 };
 use forc_pkg::{Built, BuiltPackage};
 use fuel_tx::TransactionBuilder;
@@ -107,7 +108,10 @@ pub(crate) async fn runs_on_node(
                 terse: !run_config.verbose,
                 ..Default::default()
             },
-            node_url: Some(NODE_URL.into()),
+            node: NodeTarget {
+                node_url: Some(NODE_URL.into()),
+                ..Default::default()
+            },
             contract: Some(contracts),
             signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
             ..Default::default()

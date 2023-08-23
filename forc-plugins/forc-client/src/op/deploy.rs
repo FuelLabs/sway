@@ -1,13 +1,15 @@
 use crate::{
-    cmd::{self, deploy::Target},
+    cmd,
     util::{
+        gas::{get_gas_limit, get_gas_price},
+        node_url::get_node_url,
         pkg::built_pkgs,
         tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
     },
 };
 use anyhow::{bail, Context, Result};
 use forc_pkg::{self as pkg, PackageManifestFile};
-use forc_tx::Gas;
+use forc_tracing::println_warning;
 use forc_util::default_output_directory;
 use fuel_core_client::client::types::TransactionStatus;
 use fuel_core_client::client::FuelClient;
@@ -24,7 +26,7 @@ use std::{
 };
 use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
-use tracing::{info, warn};
+use tracing::info;
 
 #[derive(Debug)]
 pub struct DeployedContract {
@@ -116,11 +118,10 @@ fn validate_and_parse_salts<'a>(
 ///
 /// When deploying a single contract, only that contract's ID is returned.
 pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
-    let mut command = apply_target(command)?;
     if command.unsigned {
-        warn!(" Warning: --unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
-        command.default_signer = true;
+        println_warning("--unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
     }
+
     let mut contract_ids = Vec::new();
     let curr_dir = if let Some(ref path) = command.pkg.path {
         PathBuf::from(path)
@@ -130,6 +131,11 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
 
     let build_opts = build_opts_from_cmd(&command);
     let built_pkgs = built_pkgs(&curr_dir, build_opts)?;
+
+    if built_pkgs.is_empty() {
+        println_warning("No deployable contracts found in the current directory.");
+        return Ok(contract_ids);
+    }
 
     let contract_salt_map = if let Some(salt_input) = &command.salt {
         // If we're building 1 package, we just parse the salt as a string, ie. 0x00...
@@ -197,48 +203,6 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
     Ok(contract_ids)
 }
 
-/// Applies specified target information to the provided arguments.
-///
-/// Basically provides preset configurations for known test-nets.
-fn apply_target(command: cmd::Deploy) -> Result<cmd::Deploy> {
-    let deploy_to_latest_testnet = command.testnet;
-    let target = if deploy_to_latest_testnet {
-        if command.target.is_some() {
-            bail!("Both `--testnet` and `--target` were specified: must choose one")
-        }
-        Some(Target::Beta3)
-    } else {
-        command.target.clone()
-    };
-
-    if let Some(target) = target {
-        match target {
-            cmd::deploy::Target::Beta2 | cmd::deploy::Target::Beta3 => {
-                // If the user did not specified a gas price, we can use `1` as a gas price for
-                // beta test-nets.
-                let gas_price = if command.gas.price == 0 {
-                    1
-                } else {
-                    command.gas.price
-                };
-
-                let target_url = Some(target.target_url().to_string());
-                Ok(cmd::Deploy {
-                    gas: Gas {
-                        price: gas_price,
-                        ..command.gas
-                    },
-                    node_url: target_url,
-                    ..command
-                })
-            }
-            cmd::deploy::Target::LATEST => Ok(command),
-        }
-    } else {
-        Ok(command)
-    }
-}
-
 /// Deploy a single pkg given deploy command and the manifest file
 pub async fn deploy_pkg(
     command: &cmd::Deploy,
@@ -246,12 +210,8 @@ pub async fn deploy_pkg(
     compiled: &BuiltPackage,
     salt: Salt,
 ) -> Result<DeployedContract> {
-    let node_url = command
-        .node_url
-        .as_deref()
-        .or_else(|| manifest.network.as_ref().map(|nw| &nw.url[..]))
-        .unwrap_or(crate::default::NODE_URL);
-    let client = FuelClient::new(node_url)?;
+    let node_url = get_node_url(&command.node, &manifest.network)?;
+    let client = FuelClient::new(node_url.clone())?;
 
     let bytecode = &compiled.bytecode.bytes;
 
@@ -270,13 +230,13 @@ pub async fn deploy_pkg(
     };
 
     let tx = TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots.clone())
-        .gas_limit(command.gas.limit)
-        .gas_price(command.gas.price)
+        .gas_limit(get_gas_limit(&command.gas, client.chain_info().await?))
+        .gas_price(get_gas_price(&command.gas, client.node_info().await?))
         .maturity(command.maturity.maturity.into())
         .add_output(Output::contract_created(contract_id, state_root))
         .finalize_signed(
             client.clone(),
-            command.default_signer,
+            command.default_signer || command.unsigned,
             command.signing_key,
             wallet_mode,
         )
