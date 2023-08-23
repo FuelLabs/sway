@@ -1,4 +1,4 @@
-## [Appendix A: Keywords](#appendix-a:-keywords)
+# [Appendix A: Keywords](#appendix-a-keywords)
 
 The following list contains keywords that are reserved for current or
 future use by the Sway language. As such, they cannot be used as
@@ -6,7 +6,7 @@ identifiers. Identifiers are names of functions, variables,
 parameters, modules, constants, attributes, types or
 traits, ect.
 
-### [Keywords Currently in Use](#keywords-currently-in-use)
+## [Keywords Currently in Use](#keywords-currently-in-use)
 
 The following is a list of keywords currently in use, with their
 functionality described.
@@ -39,7 +39,7 @@ functionality described.
 - `where` - specifies traits for generic types
 - [`while`](https://fuellabs.github.io/sway/v0.44.0/book/basics/control_flow.html#while) - loop conditionally based on the result of an expression
 
-### [Keywords Reserved for Possible Future Use](#keywords-reserved-for-possible-future-use)
+## [Keywords Reserved for Possible Future Use](#keywords-reserved-for-possible-future-use)
 
 - `abstract`
 - `async`
@@ -73,10 +73,9 @@ functionality described.
 Keywords associated with defining the type of Sway program to compile
 
 - [`contract`](https://fuellabs.github.io/sway/master/book/sway-program-types/smart_contracts.html) - analogous to a deployed API with some database state
-- [`library`](https://fuellabs.github.io/sway/master/book/sway-program-types/libraries.html) - Sway code that defines new common behavior 
+- [`library`](https://fuellabs.github.io/sway/master/book/sway-program-types/libraries.html) - Sway code that defines new common behavior
 - [`predicate`](https://fuellabs.github.io/sway/master/book/sway-program-types/predicates.html) - programs that return a Boolean value and which represent ownership of some resource upon execution to true
 - [`script`](https://fuellabs.github.io/sway/master/book/sway-program-types/scripts.html) - a runnable bytecode on the chain, which executes once to preform a task
-
 
 ### [Attribute Keywords](#attribute-keywords)
 
