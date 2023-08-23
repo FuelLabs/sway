@@ -620,21 +620,23 @@ impl Power for U256 {
 	/// Panics if the result overflows the type.
     fn pow(self, expon: Self) -> Self {
         if expon.is_zero() {
-            return Self::one()
+            return Self::one() //declares = 1 when expon = 0
         }
         
-        let u_one = Self::one();
-        let mut y = u_one;
+        let u_one = Self::one(); //not sure where/how u_one     //will take a seperate fn
+        let mut y = u_one;       //and y are being used         //to get working?
         let mut n = expon;
-        let mut x = self;
+        let mut x = self;       
         while n > u_one {
-            if is_even(n) {
-                x = x * x;
-                n = n >> 1u64;
+            if is_even(n) {   //if expon an even number given, self x self till
+                x = x * x;        //expon is shifted completely to 0
+                n = n >> 1;       //need to rewrite usize protion for sway
             } else {
-                y = x * y;
+                y = x * y;        
                 x = x * x;
-                
+                // to reduce odd number by 1 we should just clear the last bit
+                n.c = n.c & ((0u64)>>1);
+                n = n >> 1;
             }
         }
         x * y
