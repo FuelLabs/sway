@@ -85,7 +85,7 @@ impl CurlyBrace for ItemFn {
         let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
-                // Add openning brace to the next line.
+                // Add opening brace to the next line.
                 writeln!(line, "\n{open_brace}")?;
             }
             ItemBraceStyle::SameLineWhere => match formatter.shape.code_line.has_where_clause {

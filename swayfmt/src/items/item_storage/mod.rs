@@ -35,7 +35,7 @@ impl Format for ItemStorage {
                 write!(formatted_code, "{}", self.storage_token.span().as_str())?;
                 let fields = self.fields.get();
 
-                // Handle openning brace
+                // Handle opening brace
                 Self::open_curly_brace(formatted_code, formatter)?;
 
                 // Determine alignment tactic
