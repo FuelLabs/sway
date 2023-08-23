@@ -104,3 +104,13 @@ fn foo(  ) {
 }
 }"
 );
+
+fmt_test_item!(impl_contains_const
+"impl ConstantId for Struct {
+    const ID: u32 = 5;
+}",
+intermediate_whitespace
+"impl ConstantId for Struct {
+    const ID: u32=5;
+}"
+);

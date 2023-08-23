@@ -66,3 +66,13 @@ intermediate_whitespace
      fn foo(self);
 }   "
 );
+
+fmt_test_item!(trait_contains_const
+"trait ConstantId {
+    const ID: u32 = 1;
+}",
+intermediate_whitespace
+"trait ConstantId {
+    const    ID: u32 = 1;
+}"
+);

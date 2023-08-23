@@ -83,12 +83,15 @@ impl Format for ItemTrait {
                     sway_ast::ItemTraitItem::Const(const_decl) => {
                         write!(formatted_code, "{}", formatter.indent_str()?,)?;
                         const_decl.format(formatted_code, formatter)?;
-                        writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
                     }
                 }
             }
         }
-        formatted_code.pop(); // pop last ending newline
+
+        if formatted_code.ends_with('\n') {
+            formatted_code.pop(); // pop last ending newline
+        }
+
         Self::close_curly_brace(formatted_code, formatter)?;
         if let Some(trait_defs) = &self.trait_defs_opt {
             write!(formatted_code, " ")?;
