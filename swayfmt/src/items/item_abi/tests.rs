@@ -39,4 +39,3 @@ fn hi() -> bool;
     fn hi2(hello: bool);
         fn hi3(hello: bool)-> u64;// here too
 }");
-    
