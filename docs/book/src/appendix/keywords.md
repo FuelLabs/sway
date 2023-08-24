@@ -11,12 +11,11 @@ traits, ect.
 The following is a list of keywords currently in use, with their
 functionality described.
 
-- `as` - perform primitive casting, or rename items in `use` statements
+- `as` - rename items in `use` statements, eg `use type::a as alias_name`
 - [`abi`](https://fuellabs.github.io/sway/master/book/sway-program-types/smart_contracts.html#the-abi-declaration) - defines a smart contract ABI in a syntactcally similar way to traits
 - [`break`](https://fuellabs.github.io/sway/v0.44.0/book/basics/control_flow.html#break-and-continue) - exit a loop immediately
 - [`const`](https://fuellabs.github.io/sway/v0.44.0/book/basics/constants.html) - define constant items
 - [`continue`](https://fuellabs.github.io/sway/v0.44.0/book/basics/control_flow.html#break-and-continue) - continue to the next loop iteration
-- `dep` - call dependencies outside of the current `Forc.toml` scope
 - `else` - used in conjunction with `if` conditions for control flow constructs
 - [`enum`](https://fuellabs.github.io/sway/v0.44.0/book/basics/structs_tuples_and_enums.html#enums) - define an enumeration
 - `false` - Boolean false literal
