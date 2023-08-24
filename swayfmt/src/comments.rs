@@ -151,9 +151,7 @@ pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
     let mut offset = 0;
     let mut to_rewrite = formatted_code[last_formatted..].to_string();
 
-    let formatted_leaf_spans = parse_snippet::<T>(&formatted_code[last_formatted..])
-        .unwrap()
-        .leaf_spans();
+    let formatted_leaf_spans = parse_snippet::<T>(&formatted_code[last_formatted..])?.leaf_spans();
 
     let mut previous_unformatted_leaf_span = unformatted_leaf_spans
         .first()
@@ -352,13 +350,15 @@ fn insert_after_span(
         };
 
         // Insert the actual comment(s).
-        src_rope.insert(from.end + offset, &comment_str);
+        src_rope.try_insert(from.end + offset, &comment_str).unwrap();
 
         formatted_code.clear();
         formatted_code.push_str(&src_rope.to_string());
     }
 
-    Ok(comment_str.len())
+    // In order to handle special characters, we return the number of characters rather than
+    // the size of the string.
+    Ok(comment_str.chars().count())
 }
 
 #[cfg(test)]
