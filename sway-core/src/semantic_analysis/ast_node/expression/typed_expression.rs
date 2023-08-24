@@ -1355,6 +1355,12 @@ impl ty::TyExpression {
                 })
             });
 
+        if let Some(type_info) = type_info_opt {
+            if TypeInfo::is_self_type(&type_info) {
+                call_path_binding.strip_prefixes();
+            }
+        }
+
         let const_opt: Option<(DeclRefConstant, _)> =
             TypeBinding::type_check(&mut call_path_binding, &Handler::default(), ctx.by_ref())
                 .ok()
