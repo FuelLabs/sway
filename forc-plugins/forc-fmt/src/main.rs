@@ -43,7 +43,7 @@ pub struct App {
 fn main() {
     init_tracing_subscriber(Default::default());
     if let Err(err) = run() {
-        println_error(&format!("Formatting skipped due to error."));
+        println_error("Formatting skipped due to error.");
         println_error(&format!("{}", err));
         std::process::exit(1);
     }
