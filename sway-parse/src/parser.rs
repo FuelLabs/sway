@@ -90,7 +90,7 @@ impl<'a, 'e> Parser<'a, 'e> {
     >(
         &'original mut self,
         parsing_function: F,
-    ) -> Result<T, Recoverer<'original, 'a, 'e>> {
+    ) -> Result<T, ParseRecoveryStrategies<'original, 'a, 'e>> {
         let handler = Handler::default();
         let mut fork = Parser {
             token_trees: self.token_trees,
@@ -110,7 +110,7 @@ impl<'a, 'e> Parser<'a, 'e> {
                     full_span,
                     ..
                 } = fork;
-                Err(Recoverer {
+                Err(ParseRecoveryStrategies {
                     original: RefCell::new(self),
                     handler,
                     fork_token_trees: token_trees,
@@ -130,7 +130,7 @@ impl<'a, 'e> Parser<'a, 'e> {
     /// sync the original parser to allow the parsing to continue.
     pub fn parse_with_recovery<'original, T: Parse>(
         &'original mut self,
-    ) -> Result<T, Recoverer<'original, 'a, 'e>> {
+    ) -> Result<T, ParseRecoveryStrategies<'original, 'a, 'e>> {
         self.call_parsing_function_with_recovery(|p| p.parse())
     }
 
@@ -145,7 +145,7 @@ impl<'a, 'e> Parser<'a, 'e> {
     /// sync the original parser to allow the parsing to continue.
     pub fn guarded_parse_with_recovery<'original, P: Peek, T: Parse>(
         &'original mut self,
-    ) -> Result<Option<T>, Recoverer<'original, 'a, 'e>> {
+    ) -> Result<Option<T>, ParseRecoveryStrategies<'original, 'a, 'e>> {
         if self.peek::<P>().is_none() {
             return Ok(None);
         }
@@ -169,7 +169,7 @@ impl<'a, 'e> Parser<'a, 'e> {
                     full_span,
                     ..
                 } = fork;
-                Err(Recoverer {
+                Err(ParseRecoveryStrategies {
                     original: RefCell::new(self),
                     handler,
                     fork_token_trees: token_trees,
@@ -419,7 +419,12 @@ impl<'a> Peeker<'a> {
     }
 }
 
-pub struct Recoverer<'original, 'a, 'e> {
+/// This struct is returned by some parser methods that allow
+/// parser recovery.
+///
+/// It implements some standardized recovery strategies or it allows
+/// custom strategies using the `start` method.
+pub struct ParseRecoveryStrategies<'original, 'a, 'e> {
     original: RefCell<&'original mut Parser<'a, 'e>>,
     handler: Handler,
     fork_token_trees: &'a [TokenTree],
@@ -427,7 +432,7 @@ pub struct Recoverer<'original, 'a, 'e> {
     error: ErrorEmitted,
 }
 
-impl<'original, 'a, 'e> Recoverer<'original, 'a, 'e> {
+impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
     /// This strategy consumes everything at the current line and emits the fallback error
     /// if the forked parser does not contains any error.
     pub fn recover_at_next_line_with_fallback_error(
@@ -443,7 +448,7 @@ impl<'original, 'a, 'e> Recoverer<'original, 'a, 'e> {
                 .map(|x| x.start_pos().line_col().0)
         };
 
-        self.recover(|p| {
+        self.start(|p| {
             if let Some(line) = line {
                 p.consume_while_line_equals(line);
             }
@@ -453,13 +458,10 @@ impl<'original, 'a, 'e> Recoverer<'original, 'a, 'e> {
         })
     }
 
-    /// Starts the recover process. The callback will received the forked parser.
-    /// All the changes to this forked parser will be imposed into the original parser
+    /// Starts the parser recovery proces calling the callback with the forked parser.
+    /// All the changes to this forked parser will be imposed into the original parser,
     /// including diagnostics.
-    ///
-    /// If the forked diagnostics are undesired they can be cleared calling `parser::clear_errors` or
-    /// `parser::clear_warnings`.
-    pub fn recover<'this>(
+    pub fn start<'this>(
         &'this self,
         f: impl FnOnce(&mut Parser<'a, 'this>),
     ) -> (Box<[Span]>, ErrorEmitted) {
