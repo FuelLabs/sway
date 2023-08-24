@@ -36,7 +36,9 @@ impl Format for Expr {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         match self {
-            Self::Error(_, _) => {}
+            Self::Error(_, _) => {
+                return Err(FormatterError::SyntaxError);
+            }
             Self::Path(path) => path.format(formatted_code, formatter)?,
             Self::Literal(lit) => lit.format(formatted_code, formatter)?,
             Self::AbiCast { abi_token, args } => {
