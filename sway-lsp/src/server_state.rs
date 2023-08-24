@@ -121,7 +121,7 @@ async fn run_blocking_parse_project(
         let parse_result = session::parse_project(&uri)?;
         let (errors, warnings) = parse_result.diagnostics.clone();
         session.write_parse_result(parse_result);
-        *diagnostics = get_diagnostics(&warnings, &errors, &session.engines.read().se());
+        *diagnostics = get_diagnostics(&warnings, &errors, session.engines.read().se());
         Ok(())
     })
     .await

@@ -1,7 +1,7 @@
 use crate::{
     capabilities::{
         self,
-        diagnostic::{DiagnosticMap, Diagnostics},
+        diagnostic::DiagnosticMap,
         formatting::get_page_text_edit,
         runnable::{Runnable, RunnableMainFn, RunnableTestFn},
     },
