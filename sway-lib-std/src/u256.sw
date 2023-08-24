@@ -667,19 +667,19 @@ impl Power for U256 {
 	/// Panics if the result overflows the type.
     fn pow(self, expon: Self) -> Self {
         if expon.is_zero() {
-            return Self::one() //declares = 1 when expon = 0
+            return Self::one()
         }
         
-        let u_one = Self::one(); //not sure where/how u_one     //will take a seperate fn
-        let mut y = u_one;       //and y are being used         //to get working?
+        let u_one = Self::one();
+        let mut y = u_one;
         let mut n = expon;
-        let mut x = self;       
+        let mut x = self;
         while n > u_one {
-            if is_even(n) {   //if expon an even number given, self x self till
-                x = x * x;        //expon is shifted completely to 0
-                n = n >> 1;       //need to rewrite usize protion for sway
+            if is_even(n) {
+                x = x * x;
+                n = n >> 1;
             } else {
-                y = x * y;        
+                y = x * y;
                 x = x * x;
                 // to reduce odd number by 1 we should just clear the last bit
                 n.d = n.d & ((!0u64)>>1);
@@ -696,23 +696,33 @@ fn is_even(x: U256) -> bool {
 }
 
 #[test]
-fn test_pow_u256() {
+fn test_five_pow_two_u256() {
     let five = U256::from((0, 0, 0, 5));
     let two = U256::from((0, 0, 0, 2));
-    let three = U256::from((0, 0, 0, 3));
-    let twenty_eight = U256::from((0, 0, 0, 28));
-
+  
     let five_pow_two = five.pow(two);
     assert(five_pow_two.a == 0);
     assert(five_pow_two.b == 0);
     assert(five_pow_two.c == 0);
     assert(five_pow_two.d == 25);
+}
+
+#[test]
+fn test_five_pow_three_u256() {
+    let five = U256::from((0, 0, 0, 5));
+    let three = U256::from((0, 0, 0, 3));
 
     let five_pow_three = five.pow(three);
     assert(five_pow_three.a == 0);
     assert(five_pow_three.b == 0);
     assert(five_pow_three.c == 0);
     assert(five_pow_three.d == 125);
+}
+
+#[test]
+fn test_five_pow_28_u256() {
+    let five = U256::from((0, 0, 0, 5));
+    let twenty_eight = U256::from((0, 0, 0, 28));
 
     let five_pow_28 = five.pow(twenty_eight);
     assert(five_pow_28.a == 0);
