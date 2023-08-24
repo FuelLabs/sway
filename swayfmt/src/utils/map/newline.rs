@@ -278,7 +278,11 @@ fn insert_after_span(
         format_newline_sequence(&newline_sequence, threshold)
     )?;
     let mut src_rope = Rope::from_str(formatted_code);
-    src_rope.try_insert(at, &sequence_string).unwrap();
+
+    if let Err(_) = src_rope.try_insert(at, &sequence_string) {
+        return Err(FormatterError::NewlineSequenceError);
+    }
+
     formatted_code.clear();
     formatted_code.push_str(&src_rope.to_string());
     Ok(sequence_string.len())

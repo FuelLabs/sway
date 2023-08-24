@@ -1,8 +1,3 @@
-use ropey::Rope;
-use std::{fmt::Write, ops::Range};
-use sway_ast::token::{Comment, CommentKind};
-use sway_types::{Span, Spanned};
-
 use crate::{
     formatter::FormattedCode,
     parse::parse_snippet,
@@ -12,6 +7,10 @@ use crate::{
     },
     Format, Formatter, FormatterError,
 };
+use ropey::Rope;
+use std::{fmt::Write, ops::Range};
+use sway_ast::token::{Comment, CommentKind};
+use sway_types::{Span, Spanned};
 
 pub type UnformattedCode = String;
 
@@ -350,9 +349,9 @@ fn insert_after_span(
         };
 
         // Insert the actual comment(s).
-        src_rope
-            .try_insert(from.end + offset, &comment_str)
-            .unwrap();
+        if let Err(_) = src_rope.try_insert(from.end + offset, &comment_str) {
+            return Err(FormatterError::CommentError);
+        }
 
         formatted_code.clear();
         formatted_code.push_str(&src_rope.to_string());
