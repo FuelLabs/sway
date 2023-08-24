@@ -651,7 +651,7 @@ impl ty::TyExpression {
         // if there is an interior catch-all arm
         if let Some(catch_all_arm_position) = interior_catch_all_arm_position(&arms_reachability) {
             // show the warning on the arms below it that it makes them unreachable...
-            for reachable_report in arms_reachability[catch_all_arm_position + 1 ..].iter() {
+            for reachable_report in arms_reachability[catch_all_arm_position + 1..].iter() {
                 handler.emit_warn(CompileWarning {
                     span: reachable_report.scrutinee.span.clone(),
                     warning_content: Warning::MatchExpressionUnreachableArm {
@@ -668,7 +668,7 @@ impl ty::TyExpression {
                         // So we simply put these two values both to false.
                         is_last_arm: false,
                         is_catch_all_arm: false,
-                    }
+                    },
                 });
             }
 
