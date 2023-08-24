@@ -34,6 +34,7 @@ functionality described.
 - [`struct`](https://fuellabs.github.io/sway/v0.44.0/book/basics/structs_tuples_and_enums.html#structs) - define a structure
 - [`trait`](https://fuellabs.github.io/sway/master/book/advanced/traits.html#declaring-a-trait) - define a trait
 - `true` - Boolean true literal
+- [`type`](https://fuellabs.github.io/sway/master/book/advanced/advanced_types.html?search=#creating-type-synonyms-with-type-aliases) - define a type alias or associated type
 - `use` - bring symbols into scope
 - `where` - specifies traits for generic types
 - [`while`](https://fuellabs.github.io/sway/v0.44.0/book/basics/control_flow.html#while) - loop conditionally based on the result of an expression
@@ -58,7 +59,6 @@ functionality described.
 - `static`
 - `super`
 - `try`
-- `type`
 - `typeof`
 - `unsafe`
 - `unsized`
