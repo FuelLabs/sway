@@ -25,7 +25,6 @@ use lsp_types::{
 use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, BuildPlan};
 use std::{
-    collections::HashMap,
     fs::File,
     io::Write,
     ops::Deref,
@@ -106,7 +105,7 @@ impl Session {
             engines: <_>::default(),
             sync: SyncWorkspace::new(),
             parse_permits: Arc::new(Semaphore::new(2)),
-            diagnostics: Arc::new(RwLock::new(HashMap::<PathBuf, Diagnostics>::new())),
+            diagnostics: Arc::new(RwLock::new(DiagnosticMap::new())),
         }
     }
 
