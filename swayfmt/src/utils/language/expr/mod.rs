@@ -13,7 +13,8 @@ use sway_ast::{
     brackets::Parens,
     keywords::{CommaToken, DotToken},
     punctuated::Punctuated,
-    Braces, CodeBlockContents, Expr, ExprStructField, MatchBranch, PathExpr, PathExprSegment,
+    Braces, CodeBlockContents, Expr, ExprStructField, IfExpr, MatchBranch, PathExpr,
+    PathExprSegment,
 };
 use sway_types::{ast::Delimiter, Spanned};
 
@@ -181,9 +182,9 @@ impl Format for Expr {
             } => {
                 write!(formatted_code, "{} ", while_token.span().as_str())?;
                 condition.format(formatted_code, formatter)?;
-                CodeBlockContents::open_curly_brace(formatted_code, formatter)?;
+                IfExpr::open_curly_brace(formatted_code, formatter)?;
                 block.get().format(formatted_code, formatter)?;
-                CodeBlockContents::close_curly_brace(formatted_code, formatter)?;
+                IfExpr::close_curly_brace(formatted_code, formatter)?;
             }
             Self::FuncApp { func, args } => {
                 formatter.with_shape(
