@@ -716,9 +716,9 @@ fn test_pow_u256() {
 
     let five_pow_28 = five.pow(twenty_eight);
     assert(five_pow_28.a == 0);
-    assert(five_pow_28.b == 359414837200037395);
-    assert(five_pow_28.c == 18446744073709551615);
-    assert(five_pow_28.d == 18446744073709551615);
+    assert(five_pow_28.b == 0);
+    assert(five_pow_28.c == 2);
+    assert(five_pow_28.d == 359414837200037395);
 }
 
 #[test]
