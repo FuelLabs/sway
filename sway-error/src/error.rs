@@ -286,7 +286,6 @@ pub enum CompileError {
     },
     #[error("This opcode takes an immediate value but none was provided.")]
     MissingImmediate { span: Span },
-
     #[error("This immediate value is invalid.")]
     InvalidImmediateValue { span: Span },
     #[error("Variant \"{variant_name}\" does not exist on enum \"{enum_name}\"")]

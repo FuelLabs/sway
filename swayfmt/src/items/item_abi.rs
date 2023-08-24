@@ -33,15 +33,10 @@ impl Format for ItemAbi {
         let abi_items = self.abi_items.get();
 
         // abi_items
-        for (annotated, semicolon) in abi_items.iter() {
+        for annotated in abi_items.iter() {
             // add indent + format item
             write!(formatted_code, "{}", formatter.indent_str()?)?;
             annotated.format(formatted_code, formatter)?;
-            writeln!(
-                formatted_code,
-                "{}",
-                semicolon.ident().as_str() // SemicolonToken
-            )?;
         }
 
         if abi_items.is_empty() {
@@ -89,7 +84,7 @@ impl CurlyBrace for ItemAbi {
         let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
-                // Add openning brace to the next line.
+                // Add opening brace to the next line.
                 write!(line, "\n{open_brace}\n")?;
             }
             _ => {
