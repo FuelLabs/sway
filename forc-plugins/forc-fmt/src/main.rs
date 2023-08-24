@@ -155,7 +155,6 @@ fn format_file(
                     "\nThis file: {:?} is not part of the build\n{}\n",
                     file, err
                 );
-                return Ok(false);
             }
         }
     }
