@@ -5,38 +5,112 @@ use ::convert::From;
 use ::option::Option;
 use ::assert::assert;
 
-/// A UTF-8 encoded growable string
-///
+
+/// A UTF-8 encoded growable string.
+/// 
+/// # Additional Information
+/// 
 /// WARNING: As this type is meant to be forward compatible with UTF-8, do *not*
 /// add any mutation functionality or unicode input of any kind until `char` is
 /// implemented, codepoints are *not* guaranteed to fall on byte boundaries
 pub struct String {
+    /// The bytes representing the characters of the string.
     bytes: Bytes,
 }
 
 impl String {
     /// Returns `Bytes` giving a UTF-8 representation of the string.
+    ///
+    /// # Returns
+    ///
+    /// * [Bytes] - A UTF-8 representation of the string.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::string::String;
+    ///
+    /// fn foo() {
+    ///     let mut string = String::new();
+    ///     string.push(0u8);
+    ///     let bytes = string.as_bytes();
+    ///     assert(bytes.len() == 1);
+    ///     assert(bytes.get(0).unwrap() == 0u8);   
+    /// }
+    /// ```
     pub fn as_bytes(self) -> Bytes {
         self.bytes
     }
 
     /// Gets the amount of memory on the heap allocated to the `String`.
+    ///
+    /// # Returns
+    ///
+    /// * `u64` - The number of characters the `String` can hold without reallocating.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::string::String;
+    ///
+    /// fn foo() {
+    ///     let mut string = String::new();
+    ///     assert(string.capacity() == 0);
+    ///     string.push(0u8);
+    ///     assert(string.capacity() == 1);
+    ///     string.push(1u8);
+    ///     assert(string.capacity() == 2);
+    /// }
+    /// ```
     pub fn capacity(self) -> u64 {
         self.bytes.capacity()
     }
 
     /// Truncates this `String` to a length of zero, clearing all content.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::string::String;
+    ///
+    /// fn foo() {
+    ///     let mut string = String::new();
+    ///     string.push(0u8);
+    ///     assert(!string.is_empty());
+    ///     string.clear();
+    ///     assert(string.is_empty());
+    /// }
+    /// ```
     pub fn clear(ref mut self) {
         self.bytes.clear()
     }
 
     /// Converts a vector of ASCII encoded bytes to a `String`.
     ///
+    /// # Additional Information
+    ///
     /// Each byte represents a single character, this supports ASCII but it does **not** support Unicode.
     ///
     /// # Arguments
     ///
     /// * `bytes` - ASCII bytes which will be converted into a `String`.
+    ///
+    /// # Returns
+    ///
+    /// * [String] - A `String` containing the ASCII encoded bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::string::String;
+    ///
+    /// fn foo() {
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(0u8);
+    ///     bytes.push(1u8);
+    ///     let string = String::from_ascii(bytes);
+    /// }
+    /// ```
     pub fn from_ascii(bytes: Bytes) -> Self {
         Self {
             bytes,
@@ -45,7 +119,31 @@ impl String {
 
     /// Converts a string literal containing ASCII encoded bytes to a `String`
     ///
-    /// WARNING: this is a temporary convenience before dynamically sized types are implemented
+    /// # Additional Information
+    ///
+    /// This is a temporary convenience before dynamically sized types are implemented
+    ///
+    /// # Arguments
+    ///
+    /// * `s` - A string literal containing ASCII encoded bytes.
+    ///
+    /// # Returns
+    ///
+    /// * [String] - A `String` containing the ASCII encoded bytes.
+    ///
+    /// # Reverts
+    /// 
+    /// * When `s` is not a string literal.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::string::String;
+    ///
+    /// fn foo() {
+    ///     let string = String::from_ascii_str("ABCDEF");
+    /// }
+    /// ```
     pub fn from_ascii_str<S>(s: S) -> Self {
         assert(__is_str_type::<S>());
         let len =  __size_of_str::<S>();
@@ -58,12 +156,44 @@ impl String {
         }
     }
 
-    /// Returns `true` if the string is empty (contains no bytes).
+    /// Returns a `bool` indicating whether the `String` is empty.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] - `true` if the `String` is empty, `false` otherwise.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::string::String;
+    ///
+    /// fn foo() {
+    ///     let mut string = String::new();
+    ///     assert(string.is_empty());
+    ///     string.push(0u8);
+    ///     assert(!string.is_empty());
+    /// }
+    /// ```
     pub fn is_empty(self) -> bool {
         self.bytes.is_empty()
     }
 
     /// Constructs a new instance of the `String` type.
+    ///
+    /// # Returns
+    ///
+    /// * [String] - A new empty instance of the `String` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::string::String;
+    ///
+    /// fn foo() {
+    ///     let string = String::new();
+    ///     string.push(0u8);
+    /// }
+    /// ```
     pub fn new() -> Self {
         Self {
             bytes: Bytes::new(),
@@ -74,7 +204,23 @@ impl String {
     ///
     /// # Arguments
     ///
-    /// * `capacity` - The specified amount of memory on the heap to be allocated for the `String`.
+    /// * `capacity`: [u64] - The specified amount of bytes on the heap to be allocated for the `String`.
+    ///
+    /// # Returns
+    ///
+    /// * [String] - A new empty instance of the `String` type with the specified capacity.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::string::String;
+    ///
+    /// fn foo() {
+    ///     let string = String::with_capacity(1);
+    ///     string.push(0u8); // This will not reallocate
+    ///     string.push(1u8); // This will reallocate
+    /// }
+    /// ```
     pub fn with_capacity(capacity: u64) -> Self {
         Self {
             bytes: Bytes::with_capacity(capacity),
@@ -114,7 +260,6 @@ impl From<raw_slice> for String {
 }
 
 // Tests
-//
 
 #[test]
 fn string_test_as_bytes() {

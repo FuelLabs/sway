@@ -3,6 +3,7 @@ use colored::Colorize;
 use forc_client::{
     cmd::{Deploy as DeployCommand, Run as RunCommand},
     op::{deploy, run},
+    NodeTarget,
 };
 use forc_pkg::{Built, BuiltPackage};
 use fuel_tx::TransactionBuilder;
@@ -30,13 +31,11 @@ where
     let mut output = String::new();
 
     // Capture both stdout and stderr to buffers, run the code and save to a string.
-    let buf_stdout = Some(gag::BufferRedirect::stdout().unwrap());
-    let buf_stderr = Some(gag::BufferRedirect::stderr().unwrap());
+    let mut buf_stdout = gag::BufferRedirect::stdout().unwrap();
+    let mut buf_stderr = gag::BufferRedirect::stderr().unwrap();
 
     let result = func().await;
 
-    let mut buf_stdout = buf_stdout.unwrap();
-    let mut buf_stderr = buf_stderr.unwrap();
     buf_stdout.read_to_string(&mut output).unwrap();
     buf_stderr.read_to_string(&mut output).unwrap();
     drop(buf_stdout);
@@ -109,7 +108,10 @@ pub(crate) async fn runs_on_node(
                 terse: !run_config.verbose,
                 ..Default::default()
             },
-            node_url: Some(NODE_URL.into()),
+            node: NodeTarget {
+                node_url: Some(NODE_URL.into()),
+                ..Default::default()
+            },
             contract: Some(contracts),
             signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
             ..Default::default()

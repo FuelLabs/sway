@@ -6,9 +6,21 @@ use sway_error::parser_error::ParseErrorKind;
 use sway_types::{ast::Delimiter, Ident, Spanned};
 
 pub trait Parse {
+    const FALLBACK_ERROR: ParseErrorKind = ParseErrorKind::InvalidItem;
+
     fn parse(parser: &mut Parser) -> ParseResult<Self>
     where
         Self: Sized;
+
+    fn error(
+        #[allow(clippy::boxed_local)] _spans: Box<[sway_types::Span]>,
+        _error: sway_error::handler::ErrorEmitted,
+    ) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        None
+    }
 }
 
 pub trait Peek {
@@ -95,8 +107,19 @@ where
             if let Some(consumed) = parser.check_empty() {
                 return Ok((ret, consumed));
             }
-            let value = parser.parse()?;
-            ret.push(value);
+
+            match parser.parse_with_recovery() {
+                Ok(value) => ret.push(value),
+                Err(r) => {
+                    let (spans, error) =
+                        r.recover_at_next_line_with_fallback_error(T::FALLBACK_ERROR);
+                    if let Some(error) = T::error(spans, error) {
+                        ret.push(error);
+                    } else {
+                        Err(error)?
+                    }
+                }
+            }
         }
     }
 }

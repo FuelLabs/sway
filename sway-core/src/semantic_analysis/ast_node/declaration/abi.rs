@@ -3,7 +3,10 @@ use std::collections::HashSet;
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
-use crate::decl_engine::{DeclEngineInsert, DeclId};
+use crate::{
+    decl_engine::{DeclEngineInsert, DeclId},
+    namespace::TryInsertingTraitImplOnFailure,
+};
 use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{
@@ -75,7 +78,7 @@ impl ty::TyAbiDecl {
                     &Default::default(),
                     None,
                     ctx.engines,
-                    false,
+                    TryInsertingTraitImplOnFailure::No,
                 ) {
                     let superabi_impl_method =
                         ctx.engines.de().get_function(&superabi_impl_method_ref);
@@ -129,6 +132,9 @@ impl ty::TyAbiDecl {
                     )?;
 
                     const_name
+                }
+                TraitItem::Error(_, _) => {
+                    continue;
                 }
             };
 
@@ -220,7 +226,7 @@ impl ty::TyAbiDecl {
                                 &Default::default(),
                                 None,
                                 ctx.engines,
-                                false,
+                                TryInsertingTraitImplOnFailure::No,
                             ) {
                                 let superabi_method =
                                     ctx.engines.de().get_function(&superabi_method_ref);
@@ -297,7 +303,7 @@ impl ty::TyAbiDecl {
                             &Default::default(),
                             None,
                             ctx.engines,
-                            false,
+                            TryInsertingTraitImplOnFailure::No,
                         ) {
                             let superabi_impl_method =
                                 ctx.engines.de().get_function(&superabi_impl_method_ref);

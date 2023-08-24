@@ -7,14 +7,16 @@ impl<T> StorageKey<T> {
     /// Reads a value of type `T` starting at the location specified by `self`. If the value
     /// crosses the boundary of a storage slot, reading continues at the following slot.
     ///
-    /// Returns the value previously stored if a the storage slots read were
-    /// valid and contain `value`. Panics otherwise.
+    /// # Returns
     ///
-    /// ### Arguments
+    /// * [T] - Returns the value previously stored if a the storage slots read were
+    /// valid and contain `value`. Reverts otherwise.
     ///
-    /// None
+    /// # Number of Storage Accesses
     ///
-    /// ### Examples
+    /// * Reads: `1`
+    ///
+    /// # Examples
     ///
     /// ```sway
     /// fn foo() {
@@ -36,14 +38,16 @@ impl<T> StorageKey<T> {
     /// Reads a value of type `T` starting at the location specified by `self`. If the value
     /// crosses the boundary of a storage slot, reading continues at the following slot.
     ///
-    /// Returns `Some(value)` if a the storage slots read were valid and contain `value`.
+    /// # Returns
+    ///
+    /// * [Option<T>] - Returns `Some(value)` if a the storage slots read were valid and contain `value`.
     /// Otherwise, return `None`.
     ///
-    /// ### Arguments
+    /// # Number of Storage Accesses
     ///
-    /// None
+    /// * Reads: `1`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// fn foo() {
@@ -65,11 +69,17 @@ impl<T> StorageKey<T> {
     /// Writes a value of type `T` starting at the location specified by `self`. If the value
     /// crosses the boundary of a storage slot, writing continues at the following slot.
     ///
-    /// ### Arguments
+    /// # Arguments
     ///
-    /// * value: the value of type `T` to write
+    /// * `value`: [T] - The value of type `T` to write.
     ///
-    /// ### Examples
+    ///
+    /// # Number of Storage Accesses
+    ///
+    /// * Reads: `1`
+    /// * Writes: `1`
+    ///
+    /// # Examples
     ///
     /// ```sway
     /// fn foo() {
@@ -78,7 +88,9 @@ impl<T> StorageKey<T> {
     ///         offset: 2,
     ///         field_id: 0x0000000000000000000000000000000000000000000000000000000000000000,
     ///     };
-    ///     let x = r.write(42); // Writes 42 at the third word of storage slot with key 0x000...0
+    ///
+    ///     // Writes 42 at the third word of storage slot with key 0x000...0
+    ///     let x = r.write(42); 
     /// }
     /// ```
     #[storage(read, write)]

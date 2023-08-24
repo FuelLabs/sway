@@ -1,11 +1,11 @@
 #![recursion_limit = "256"]
 
-mod capabilities;
+pub mod capabilities;
 pub mod config;
-mod core;
+pub mod core;
 pub mod error;
 pub mod server_state;
-mod handlers {
+pub mod handlers {
     pub mod notification;
     pub mod request;
 }

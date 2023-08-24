@@ -17,7 +17,7 @@ use sway_types::{Ident, Spanned};
 use tower_lsp::jsonrpc::Result;
 use tracing::metadata::LevelFilter;
 
-pub(crate) fn handle_initialize(
+pub fn handle_initialize(
     state: &ServerState,
     params: lsp_types::InitializeParams,
 ) -> Result<InitializeResult> {
@@ -45,7 +45,7 @@ pub(crate) fn handle_initialize(
     })
 }
 
-pub(crate) fn handle_document_symbol(
+pub fn handle_document_symbol(
     state: &ServerState,
     params: lsp_types::DocumentSymbolParams,
 ) -> Result<Option<lsp_types::DocumentSymbolResponse>> {
@@ -53,9 +53,12 @@ pub(crate) fn handle_document_symbol(
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
-        Ok((uri, session)) => Ok(session
-            .symbol_information(&uri)
-            .map(DocumentSymbolResponse::Flat)),
+        Ok((uri, session)) => {
+            let _ = session.wait_for_parsing();
+            Ok(session
+                .symbol_information(&uri)
+                .map(DocumentSymbolResponse::Flat))
+        }
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)
@@ -63,7 +66,7 @@ pub(crate) fn handle_document_symbol(
     }
 }
 
-pub(crate) fn handle_goto_definition(
+pub fn handle_goto_definition(
     state: &ServerState,
     params: lsp_types::GotoDefinitionParams,
 ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
@@ -82,15 +85,15 @@ pub(crate) fn handle_goto_definition(
     }
 }
 
-pub(crate) fn handle_completion(
+pub fn handle_completion(
     state: &ServerState,
     params: lsp_types::CompletionParams,
 ) -> Result<Option<lsp_types::CompletionResponse>> {
     let trigger_char = params
         .context
-        .map(|ctx| ctx.trigger_character)
-        .unwrap_or_default()
-        .unwrap_or("".to_string());
+        .as_ref()
+        .and_then(|ctx| ctx.trigger_character.as_deref())
+        .unwrap_or("");
     let position = params.text_document_position.position;
     match state
         .sessions
@@ -106,7 +109,7 @@ pub(crate) fn handle_completion(
     }
 }
 
-pub(crate) fn handle_hover(
+pub fn handle_hover(
     state: &ServerState,
     params: lsp_types::HoverParams,
 ) -> Result<Option<lsp_types::Hover>> {
@@ -130,7 +133,7 @@ pub(crate) fn handle_hover(
     }
 }
 
-pub(crate) fn handle_prepare_rename(
+pub fn handle_prepare_rename(
     state: &ServerState,
     params: lsp_types::TextDocumentPositionParams,
 ) -> Result<Option<PrepareRenameResponse>> {
@@ -154,10 +157,7 @@ pub(crate) fn handle_prepare_rename(
     }
 }
 
-pub(crate) fn handle_rename(
-    state: &ServerState,
-    params: RenameParams,
-) -> Result<Option<WorkspaceEdit>> {
+pub fn handle_rename(state: &ServerState, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
     match state
         .sessions
         .uri_and_session_from_workspace(&params.text_document_position.text_document.uri)
@@ -180,7 +180,7 @@ pub(crate) fn handle_rename(
     }
 }
 
-pub(crate) fn handle_document_highlight(
+pub fn handle_document_highlight(
     state: &ServerState,
     params: lsp_types::DocumentHighlightParams,
 ) -> Result<Option<Vec<lsp_types::DocumentHighlight>>> {
@@ -201,7 +201,7 @@ pub(crate) fn handle_document_highlight(
     }
 }
 
-pub(crate) fn handle_formatting(
+pub fn handle_formatting(
     state: &ServerState,
     params: DocumentFormattingParams,
 ) -> Result<Option<Vec<lsp_types::TextEdit>>> {
@@ -215,7 +215,7 @@ pub(crate) fn handle_formatting(
         })
 }
 
-pub(crate) fn handle_code_action(
+pub fn handle_code_action(
     state: &ServerState,
     params: lsp_types::CodeActionParams,
 ) -> Result<Option<lsp_types::CodeActionResponse>> {
@@ -226,7 +226,7 @@ pub(crate) fn handle_code_action(
         Ok((temp_uri, session)) => Ok(capabilities::code_actions(
             session,
             &params.range,
-            params.text_document,
+            &params.text_document.uri,
             &temp_uri,
         )),
         Err(err) => {
@@ -236,27 +236,15 @@ pub(crate) fn handle_code_action(
     }
 }
 
-pub(crate) fn handle_code_lens(
+pub fn handle_code_lens(
     state: &ServerState,
     params: lsp_types::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
-    let mut result = vec![];
     match state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
-        Ok((_, session)) => {
-            // Construct code lenses for runnable functions
-            session.runnables.iter().for_each(|item| {
-                let runnable = item.value();
-                result.push(CodeLens {
-                    range: runnable.range(),
-                    command: Some(runnable.command()),
-                    data: None,
-                });
-            });
-            Ok(Some(result))
-        }
+        Ok((url, session)) => Ok(Some(capabilities::code_lens::code_lens(&session, &url))),
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)
@@ -264,7 +252,7 @@ pub(crate) fn handle_code_lens(
     }
 }
 
-pub(crate) fn handle_semantic_tokens_full(
+pub fn handle_semantic_tokens_full(
     state: &ServerState,
     params: SemanticTokensParams,
 ) -> Result<Option<SemanticTokensResult>> {
@@ -322,7 +310,7 @@ pub(crate) fn handle_inlay_hints(
 /// A formatted AST is written to a temporary file and the URI is
 /// returned to the client so it can be opened and displayed in a
 /// seperate side panel.
-pub(crate) fn handle_show_ast(
+pub fn handle_show_ast(
     state: &ServerState,
     params: lsp_ext::ShowAstParams,
 ) -> Result<Option<TextDocumentIdentifier>> {
@@ -419,14 +407,14 @@ pub(crate) fn on_enter(
     state: &ServerState,
     params: lsp_ext::OnEnterParams,
 ) -> Result<Option<WorkspaceEdit>> {
-    let config = state.config.read().on_enter.clone();
+    let config = &state.config.read().on_enter;
     match state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
         Ok((uri, session)) => {
             // handle on_enter capabilities if they are enabled
-            Ok(capabilities::on_enter(&config, &session, &uri, &params))
+            Ok(capabilities::on_enter(config, &session, &uri, &params))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());

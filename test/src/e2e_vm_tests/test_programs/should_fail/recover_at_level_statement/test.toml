@@ -1,0 +1,19 @@
+category = "fail"
+
+# check: $()let = 1;
+# check: $()Identifiers cannot be a reserved keyword.
+
+# check: $()let = 1;
+# check: $()Expected an pattern.
+
+# check: $()let b
+# check: $()Expected `=`
+
+# check: $()let c = 1
+# check: $()Identifiers cannot be a reserved keyword.
+
+# check: $()let d = 1;
+# check: $()Expected `;`
+
+# check: $()let asdoij ojasd 123 apasdok asdpokasd;
+# check: $()Expected `=`

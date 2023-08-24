@@ -648,11 +648,11 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
     /// Pushes a constant to the top of the stack
     pub(crate) fn render_constant(&self, constant: &Constant) -> Vec<DirectOp> {
         use sway_ir::ConstantValue::*;
-        match constant.value {
+        match &constant.value {
             Undef => todo!(),
             Unit => vec![DirectOp::push(MidenStackValue::Unit)],
-            Bool(b) => vec![DirectOp::push(b)],
-            Uint(x) => vec![DirectOp::push(x)],
+            Bool(b) => vec![DirectOp::push(*b)],
+            Uint(x) => vec![DirectOp::push(*x)],
             U256(x) => todo!(),
             B256(_) => todo!(),
             String(_) => todo!(),

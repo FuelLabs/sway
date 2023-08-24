@@ -43,6 +43,9 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::IsStrType => {
                 type_check_is_reference_type(handler, ctx, kind, arguments, type_arguments, span)
             }
+            Intrinsic::CheckStrType => {
+                type_check_check_str_type(handler, ctx, kind, arguments, type_arguments, span)
+            }
             Intrinsic::Eq | Intrinsic::Gt | Intrinsic::Lt => {
                 type_check_cmp(handler, ctx, kind, arguments, span)
             }
@@ -269,6 +272,59 @@ fn type_check_is_reference_type(
     Ok((
         intrinsic_function,
         type_engine.insert(engines, TypeInfo::Boolean),
+    ))
+}
+
+/// Signature: `__check_str_type<T>()`
+/// Description: Throws a compile error if `T` is not of type str.
+/// Constraints: None.
+fn type_check_check_str_type(
+    handler: &Handler,
+    mut ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    _arguments: Vec<Expression>,
+    type_arguments: Vec<TypeArgument>,
+    span: Span,
+) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
+
+    if type_arguments.len() != 1 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 1,
+            span,
+        }));
+    }
+    let targ = type_arguments[0].clone();
+    let initial_type_info = type_engine
+        .to_typeinfo(targ.type_id, &targ.span)
+        .map_err(|e| handler.emit_err(e.into()))
+        .unwrap_or_else(TypeInfo::ErrorRecovery);
+    let initial_type_id = type_engine.insert(engines, initial_type_info);
+    let type_id = ctx
+        .resolve_type_with_self(
+            handler,
+            initial_type_id,
+            &targ.span,
+            EnforceTypeArguments::Yes,
+            None,
+        )
+        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+    let intrinsic_function = ty::TyIntrinsicFunctionKind {
+        kind,
+        arguments: vec![],
+        type_arguments: vec![TypeArgument {
+            type_id,
+            initial_type_id,
+            span: targ.span,
+            call_path_tree: targ.call_path_tree,
+        }],
+        span,
+    };
+    Ok((
+        intrinsic_function,
+        type_engine.insert(engines, TypeInfo::Tuple(vec![])),
     ))
 }
 
@@ -888,6 +944,7 @@ fn type_check_shift_binary_op(
             .with_type_annotation(return_type),
         lhs,
     )?;
+
     let rhs = arguments[1].clone();
     let rhs = ty::TyExpression::type_check(
         handler,

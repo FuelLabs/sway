@@ -24,7 +24,7 @@ pub fn parse<'eng>(
 // -------------------------------------------------------------------------------------------------
 
 mod ir_builder {
-    use sway_types::{ident::Ident, span::Span, SourceEngine};
+    use sway_types::{ident::Ident, span::Span, u256::U256, SourceEngine};
 
     type MdIdxRef = u64;
 
@@ -176,6 +176,9 @@ mod ir_builder {
 
             rule operation() -> IrAstOperation
                 = op_asm()
+                / op_wide_unary()
+                / op_wide_binary()
+                / op_wide_cmp()
                 / op_branch()
                 / op_bitcast()
                 / op_unary()
@@ -227,6 +230,26 @@ mod ir_builder {
             rule op_unary() -> IrAstOperation
                 = op: unary_op_kind() arg1:id() {
                     IrAstOperation::UnaryOp(op, arg1)
+                }
+
+            rule op_wide_modular_operation() -> IrAstOperation
+                = "wide" _ op:binary_op_kind() arg1:id() comma() arg2:id() comma() arg3:id() "to" _ result:id()  {
+                    IrAstOperation::WideModularOp(op, arg1, arg2, arg3, result)
+                }
+
+            rule op_wide_unary() -> IrAstOperation
+                = "wide" _ op:unary_op_kind() arg:id() "to" _ result:id()  {
+                    IrAstOperation::WideUnaryOp(op, arg, result)
+                }
+
+            rule op_wide_binary() -> IrAstOperation
+                = "wide" _ op:binary_op_kind() arg1:id() comma() arg2:id() "to" _ result:id()  {
+                    IrAstOperation::WideBinaryOp(op, arg1, arg2, result)
+                }
+
+            rule op_wide_cmp() -> IrAstOperation
+                = "wide" _ "cmp" _ op:cmp_pred() arg1:id() arg2:id() {
+                    IrAstOperation::WideCmp(op, arg1, arg2)
                 }
 
             rule op_binary() -> IrAstOperation
@@ -703,6 +726,10 @@ mod ir_builder {
         StateStoreQuadWord(String, String, String),
         StateStoreWord(String, String),
         Store(String, String),
+        WideUnaryOp(UnaryOpKind, String, String),
+        WideBinaryOp(BinaryOpKind, String, String, String),
+        WideCmp(Predicate, String, String),
+        WideModularOp(BinaryOpKind, String, String, String, String),
     }
 
     #[derive(Debug)]
@@ -751,17 +778,14 @@ mod ir_builder {
                 IrAstConstValue::Undef(_) => ConstantValue::Undef,
                 IrAstConstValue::Unit => ConstantValue::Unit,
                 IrAstConstValue::Bool(b) => ConstantValue::Bool(*b),
-                IrAstConstValue::Hex256(bs) => {
-                    match val_ty {
-                        IrAstTy::U256 => {
-                            // TODO u256 limited to u64
-                            let n = u64::from_be_bytes(bs[24..].try_into().unwrap());
-                            ConstantValue::U256(n)
-                        }
-                        IrAstTy::B256 => ConstantValue::B256(*bs),
-                        _ => unreachable!("invalid type for hex number"),
+                IrAstConstValue::Hex256(bs) => match val_ty {
+                    IrAstTy::U256 => {
+                        let n = U256::from_be_bytes(bs);
+                        ConstantValue::U256(n)
                     }
-                }
+                    IrAstTy::B256 => ConstantValue::B256(*bs),
+                    _ => unreachable!("invalid type for hex number"),
+                },
                 IrAstConstValue::Number(n) => ConstantValue::Uint(*n),
                 IrAstConstValue::String(bs) => ConstantValue::String(bs.clone()),
                 IrAstConstValue::Array(el_ty, els) => {
@@ -793,17 +817,14 @@ mod ir_builder {
                 IrAstConstValue::Undef(_) => unreachable!("Can't convert 'undef' to a value."),
                 IrAstConstValue::Unit => Constant::get_unit(context),
                 IrAstConstValue::Bool(b) => Constant::get_bool(context, *b),
-                IrAstConstValue::Hex256(bs) => {
-                    match val_ty {
-                        IrAstTy::U256 => {
-                            // TODO u256 limited to u64
-                            let n = u64::from_be_bytes(bs[24..].try_into().unwrap());
-                            Constant::get_uint(context, 256, n)
-                        }
-                        IrAstTy::B256 => Constant::get_b256(context, *bs),
-                        _ => unreachable!("invalid type for hex number"),
+                IrAstConstValue::Hex256(bs) => match val_ty {
+                    IrAstTy::U256 => {
+                        let n = U256::from_be_bytes(bs);
+                        Constant::get_uint256(context, n)
                     }
-                }
+                    IrAstTy::B256 => Constant::get_b256(context, *bs),
+                    _ => unreachable!("invalid type for hex number"),
+                },
                 IrAstConstValue::Number(n) => Constant::get_uint(context, 64, *n),
                 IrAstConstValue::String(s) => Constant::get_string(context, s.clone()),
                 IrAstConstValue::Array(..) => {
@@ -1017,10 +1038,7 @@ mod ir_builder {
         ) {
             let block = named_blocks.get(&ir_block.label).unwrap();
             for ins in ir_block.instructions {
-                let opt_metadata = ins
-                    .metadata
-                    .map(|mdi| self.md_map.get(&mdi).unwrap())
-                    .copied();
+                let opt_metadata = ins.metadata.and_then(|mdi| self.md_map.get(&mdi)).copied();
                 let ins_val = match ins.op {
                     IrAstOperation::Asm(args, return_type, return_name, ops, meta_idx) => {
                         let args = args
@@ -1075,6 +1093,42 @@ mod ir_builder {
                     IrAstOperation::UnaryOp(op, arg) => block
                         .ins(context)
                         .unary_op(op, *val_map.get(&arg).unwrap())
+                        .add_metadatum(context, opt_metadata),
+                    // Wide Operations
+                    IrAstOperation::WideUnaryOp(op, arg, result) => block
+                        .ins(context)
+                        .wide_unary_op(
+                            op,
+                            *val_map.get(&arg).unwrap(),
+                            *val_map.get(&result).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::WideBinaryOp(op, arg1, arg2, result) => block
+                        .ins(context)
+                        .wide_binary_op(
+                            op,
+                            *val_map.get(&arg1).unwrap(),
+                            *val_map.get(&arg2).unwrap(),
+                            *val_map.get(&result).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::WideModularOp(op, arg1, arg2, arg3, result) => block
+                        .ins(context)
+                        .wide_modular_op(
+                            op,
+                            *val_map.get(&result).unwrap(),
+                            *val_map.get(&arg1).unwrap(),
+                            *val_map.get(&arg2).unwrap(),
+                            *val_map.get(&arg3).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::WideCmp(op, arg1, arg2) => block
+                        .ins(context)
+                        .wide_cmp_op(
+                            op,
+                            *val_map.get(&arg1).unwrap(),
+                            *val_map.get(&arg2).unwrap(),
+                        )
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::BinaryOp(op, arg1, arg2) => block
                         .ins(context)

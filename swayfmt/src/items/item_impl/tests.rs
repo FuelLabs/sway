@@ -90,3 +90,17 @@ fmt_test_item!(    impl_empty_fn_args
 }
 "
 );
+
+fmt_test_item!(    impl_empty_fn_comment
+"impl MyAbi for Contract {
+    fn foo() {
+        // ... logic ...
+    }
+}",
+            intermediate_whitespace
+"impl   MyAbi for Contract {
+fn foo(  ) {
+            // ... logic ...
+}
+}"
+);

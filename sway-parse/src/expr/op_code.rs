@@ -80,7 +80,7 @@ define_op_codes!(
     (Bal, BalOpcode, "bal", (ret, asset, contract)),
     (Bhei, BheiOpcode, "bhei", (ret)),
     (Bhsh, BhshOpcode, "bhsh", (addr, height)),
-    (Burn, BurnOpcode, "burn", (coins)),
+    (Burn, BurnOpcode, "burn", (coins, sub_id)),
     (Call, CallOpcode, "call", (args_addr, coins, asset, gas)),
     (Cb, CbOpcode, "cb", (addr)),
     (Ccp, CcpOpcode, "ccp", (dst_addr, contract, src_addr, size)),
@@ -89,7 +89,7 @@ define_op_codes!(
     (Ldc, LdcOpcode, "ldc", (contract, addr, size)),
     (Log, LogOpcode, "log", (reg_a, reg_b, reg_c, reg_d)),
     (Logd, LogdOpcode, "logd", (reg_a, reg_b, addr, size)),
-    (Mint, MintOpcode, "mint", (coins)),
+    (Mint, MintOpcode, "mint", (coins, sub_id)),
     (Retd, RetdOpcode, "retd", (addr, size)),
     (Rvrt, RvrtOpcode, "rvrt", (value)),
     (Smo, SmoOpcode, "smo", (addr, len, output, coins)),
@@ -102,7 +102,7 @@ define_op_codes!(
     (Tr, TrOpcode, "tr", (contract, coins, asset)),
     (Tro, TroOpcode, "tro", (addr, output, coins, asset)),
     /* Cryptographic Instructions */
-    (Ecr, EcrOpcode, "ecr", (addr, sig, hash)),
+    (Eck1, EcrOpcode, "eck1", (addr, sig, hash)),
     (K256, K256Opcode, "k256", (addr, data, size)),
     (S256, S256Opcode, "s256", (addr, data, size)),
     /* Other Instructions */

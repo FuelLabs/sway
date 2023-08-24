@@ -1,12 +1,16 @@
+mod encode;
 use crate::{
     cmd,
     util::{
+        gas::{get_gas_limit, get_gas_price},
+        node_url::get_node_url,
         pkg::built_pkgs,
         tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
     },
 };
 use anyhow::{anyhow, bail, Context, Result};
 use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
+use forc_tracing::println_warning;
 use forc_util::tx_utils::format_log_receipts;
 use fuel_core_client::client::FuelClient;
 use fuel_tx::{ContractId, Transaction, TransactionBuilder};
@@ -17,6 +21,8 @@ use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
 use tokio::time::timeout;
 use tracing::info;
+
+use self::encode::ScriptCallHandler;
 
 pub struct RanScript {
     pub receipts: Vec<fuel_tx::Receipt>,
@@ -29,6 +35,11 @@ pub struct RanScript {
 ///
 /// When running a single script, only that script's receipts are returned.
 pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
+    let mut command = command;
+    if command.unsigned {
+        println_warning("--unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
+        command.default_signer = true;
+    }
     let mut receipts = Vec::new();
     let curr_dir = if let Some(path) = &command.pkg.path {
         PathBuf::from(path)
@@ -57,16 +68,30 @@ pub async fn run_pkg(
     manifest: &PackageManifestFile,
     compiled: &BuiltPackage,
 ) -> Result<RanScript> {
-    let input_data = command.data.as_deref().unwrap_or("");
-    let data = input_data.strip_prefix("0x").unwrap_or(input_data);
-    let script_data = hex::decode(data).expect("Invalid hex");
+    let node_url = get_node_url(&command.node, &manifest.network)?;
+    let client = FuelClient::new(node_url.clone())?;
 
-    let node_url = command
-        .node_url
-        .as_deref()
-        .or_else(|| manifest.network.as_ref().map(|nw| &nw.url[..]))
-        .unwrap_or(crate::default::NODE_URL);
-    let client = FuelClient::new(node_url)?;
+    let script_data = match (&command.data, &command.args) {
+        (None, Some(args)) => {
+            let minify_json_abi = true;
+            let package_json_abi = compiled
+                .json_abi_string(minify_json_abi)?
+                .ok_or_else(|| anyhow::anyhow!("Missing json abi string"))?;
+            let main_arg_handler = ScriptCallHandler::from_json_abi_str(&package_json_abi)?;
+            let args = args.iter().map(|arg| arg.as_str()).collect::<Vec<_>>();
+            let unresolved_bytes = main_arg_handler.encode_arguments(args.as_slice())?;
+            unresolved_bytes.resolve(0)
+        }
+        (Some(_), Some(_)) => {
+            bail!("Both --args and --data provided, must choose one.")
+        }
+        _ => {
+            let input_data = command.data.as_deref().unwrap_or("");
+            let data = input_data.strip_prefix("0x").unwrap_or(input_data);
+            hex::decode(data).expect("Invalid hex")
+        }
+    };
+
     let contract_ids = command
         .contract
         .as_ref()
@@ -82,14 +107,15 @@ pub async fn run_pkg(
     } else {
         WalletSelectionMode::ForcWallet
     };
+
     let tx = TransactionBuilder::script(compiled.bytecode.bytes.clone(), script_data)
-        .gas_limit(command.gas.limit)
-        .gas_price(command.gas.price)
+        .gas_limit(get_gas_limit(&command.gas, client.chain_info().await?))
+        .gas_price(get_gas_price(&command.gas, client.node_info().await?))
         .maturity(command.maturity.maturity.into())
         .add_contracts(contract_ids)
         .finalize_signed(
             client.clone(),
-            command.unsigned,
+            command.default_signer,
             command.signing_key,
             wallet_mode,
         )
@@ -98,8 +124,13 @@ pub async fn run_pkg(
         info!("{:?}", tx);
         Ok(RanScript { receipts: vec![] })
     } else {
-        let receipts =
-            try_send_tx(node_url, &tx.into(), command.pretty_print, command.simulate).await?;
+        let receipts = try_send_tx(
+            node_url.as_str(),
+            &tx.into(),
+            command.pretty_print,
+            command.simulate,
+        )
+        .await?;
         Ok(RanScript { receipts })
     }
 }

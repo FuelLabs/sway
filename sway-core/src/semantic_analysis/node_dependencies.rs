@@ -345,6 +345,7 @@ impl Dependencies {
                     TraitItem::Constant(const_decl) => {
                         deps.gather_from_constant_decl(engines, const_decl)
                     }
+                    TraitItem::Error(_, _) => deps,
                 })
                 .gather_from_iter(methods.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(engines, fn_decl)
@@ -395,6 +396,7 @@ impl Dependencies {
                     TraitItem::Constant(const_decl) => {
                         deps.gather_from_constant_decl(engines, const_decl)
                     }
+                    TraitItem::Error(_, _) => deps,
                 })
                 .gather_from_iter(methods.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(engines, fn_decl)
@@ -633,8 +635,9 @@ impl Dependencies {
             AstNodeContent::Declaration(decl) => self.gather_from_decl(engines, decl),
 
             // No deps from these guys.
-            AstNodeContent::UseStatement(_) => self,
-            AstNodeContent::IncludeStatement(_) => self,
+            AstNodeContent::UseStatement(_)
+            | AstNodeContent::IncludeStatement(_)
+            | AstNodeContent::Error(_, _) => self,
         }
     }
 

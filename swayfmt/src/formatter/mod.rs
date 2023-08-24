@@ -7,7 +7,7 @@ pub use crate::{
     config::manifest::Config,
     error::{ConfigError, FormatterError},
 };
-use std::{fmt::Write, path::Path, sync::Arc};
+use std::{borrow::Cow, fmt::Write, path::Path, sync::Arc};
 use sway_core::BuildConfig;
 use sway_types::{SourceEngine, Spanned};
 
@@ -44,6 +44,29 @@ impl Formatter {
             ..Default::default()
         })
     }
+
+    pub fn indent(&mut self) {
+        self.shape.block_indent(&self.config);
+    }
+
+    pub fn unindent(&mut self) {
+        self.shape.block_unindent(&self.config);
+    }
+
+    pub fn indent_str(&self) -> Result<Cow<'static, str>, FormatterError> {
+        self.shape.indent.to_string(&self.config)
+    }
+
+    /// Collect a mapping of Span -> Comment from unformatted input.
+    pub fn with_comments_context(&mut self, src: &str) -> &mut Self {
+        let comments_context = CommentsContext::new(
+            CommentMap::from_src(Arc::from(src)).unwrap(),
+            src.to_string(),
+        );
+        self.comments_context = comments_context;
+        self
+    }
+
     pub fn format(
         &mut self,
         src: Arc<str>,
@@ -65,9 +88,7 @@ impl Formatter {
         // which will reduce the number of reallocations
         let mut raw_formatted_code = String::with_capacity(src.len());
 
-        // Collect Span -> Comment mapping from unformatted input.
-        self.comments_context =
-            CommentsContext::new(CommentMap::from_src(Arc::from(src))?, src.to_string());
+        self.with_comments_context(src);
 
         let module = parse_file(&self.source_engine, Arc::from(src), path.clone())?.value;
         module.format(&mut raw_formatted_code, self)?;

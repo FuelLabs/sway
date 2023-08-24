@@ -2,7 +2,7 @@
 
 use crate::{
     config::{Config, Warnings},
-    core::session::Session,
+    core::session::{self, Session},
     error::{DirectoryError, DocumentError, LanguageServerError},
     utils::debug,
     utils::keyword_docs::KeywordDocs,
@@ -12,31 +12,36 @@ use forc_pkg::PackageManifestFile;
 use lsp_types::{Diagnostic, Url};
 use parking_lot::RwLock;
 use std::{path::PathBuf, sync::Arc};
-use tokio::task;
 use tower_lsp::{jsonrpc, Client};
 
 /// `ServerState` is the primary mutable state of the language server
 pub struct ServerState {
-    pub(crate) client: Client,
+    pub(crate) client: Option<Client>,
     pub(crate) config: Arc<RwLock<Config>>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
     pub(crate) sessions: Arc<Sessions>,
 }
 
+impl Default for ServerState {
+    fn default() -> Self {
+        ServerState {
+            client: None,
+            config: Arc::new(RwLock::new(Default::default())),
+            keyword_docs: Arc::new(KeywordDocs::new()),
+            sessions: Arc::new(Sessions(DashMap::new())),
+        }
+    }
+}
+
 impl ServerState {
     pub fn new(client: Client) -> ServerState {
-        let sessions = Arc::new(Sessions(DashMap::new()));
-        let config = Arc::new(RwLock::new(Default::default()));
-        let keyword_docs = Arc::new(KeywordDocs::new());
         ServerState {
-            client,
-            config,
-            keyword_docs,
-            sessions,
+            client: Some(client),
+            ..Default::default()
         }
     }
 
-    pub(crate) fn shutdown_server(&self) -> jsonrpc::Result<()> {
+    pub fn shutdown_server(&self) -> jsonrpc::Result<()> {
         tracing::info!("Shutting Down the Sway Language Server");
         let _ = self.sessions.iter().map(|item| {
             let session = item.value();
@@ -48,8 +53,7 @@ impl ServerState {
     pub(crate) fn diagnostics(&self, uri: &Url, session: Arc<Session>) -> Vec<Diagnostic> {
         let mut diagnostics_to_publish = vec![];
         let config = &self.config.read();
-        let engines = session.engines.read();
-        let tokens = session.token_map().tokens_for_file(engines.se(), uri);
+        let tokens = session.token_map().tokens_for_file(uri);
         match config.debug.show_collected_tokens_as_warnings {
             // If collected_tokens_as_warnings is Parsed or Typed,
             // take over the normal error and warning display behavior
@@ -75,28 +79,49 @@ impl ServerState {
     }
 
     pub(crate) async fn parse_project(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
-        let should_publish = run_blocking_parse_project(uri.clone(), session.clone()).await;
-        if should_publish {
-            // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
-            // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
-            self.client
-                .publish_diagnostics(workspace_uri.clone(), self.diagnostics(&uri, session), None)
-                .await;
+        match run_blocking_parse_project(uri.clone(), session.clone()).await {
+            Ok(_) => {
+                // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
+                // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
+                if let Some(client) = self.client.as_ref() {
+                    client
+                        .publish_diagnostics(
+                            workspace_uri.clone(),
+                            self.diagnostics(&uri, session),
+                            None,
+                        )
+                        .await;
+                }
+            }
+            Err(err) => {
+                if matches!(err, LanguageServerError::FailedToParse) {
+                    tracing::error!("Error parsing project: {:?}", err);
+                }
+            }
         }
     }
 }
 
 /// Runs parse_project in a blocking thread, because parsing is not async.
-async fn run_blocking_parse_project(uri: Url, session: Arc<Session>) -> bool {
-    task::spawn_blocking(move || match session.parse_project(&uri) {
-        Ok(should_publish) => should_publish,
-        Err(err) => {
-            tracing::error!("{}", err);
-            matches!(err, LanguageServerError::FailedToParse)
-        }
+async fn run_blocking_parse_project(
+    uri: Url,
+    session: Arc<Session>,
+) -> Result<(), LanguageServerError> {
+    // Acquire a permit to parse the project. If there are none available, return false. This way,
+    // we avoid publishing the same diagnostics multiple times.
+    if session.parse_permits.try_acquire().is_err() {
+        return Err(LanguageServerError::UnableToAcquirePermit);
+    }
+    tokio::task::spawn_blocking(move || {
+        // Lock the diagnostics result to prevent multiple threads from parsing the project at the same time.
+        let mut diagnostics = session.diagnostics.write();
+        let parse_result = session::parse_project(&uri)?;
+        *diagnostics = parse_result.diagnostics.clone();
+        session.write_parse_result(parse_result);
+        Ok(())
     })
     .await
-    .unwrap_or_default()
+    .unwrap_or_else(|_| Err(LanguageServerError::FailedToParse))
 }
 
 /// `Sessions` is a collection of [Session]s, each of which represents a project

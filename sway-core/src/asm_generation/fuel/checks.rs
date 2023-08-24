@@ -16,9 +16,9 @@ use crate::asm_lang::{
 /// If so, throw an error.
 /// One example of disallowed code is as follows:
 /// ```ignore
-/// pub fn burn(amount: u64) {
-///   asm(r1: amount) {
-///     burn r1;
+/// pub fn burn(sub_id: SubId, amount: u64) {
+///   asm(r1: amount, r2: sub_id) {
+///     burn r1 r2;
 ///   }
 /// }
 /// ```
@@ -65,7 +65,7 @@ pub(crate) fn check_script_opcodes(
 /// All contract opcodes are not allowed in predicates. Except for RVRT that can
 /// be used to abort the predicate. One example of disallowed code is as follows:
 /// ```ignore
-/// pub fn burn(amount: u64) {
+/// pub fn burn(sub_id: SubId, amount: u64) {
 ///   asm(r1: amount) {
 ///     burn r1;
 ///   }

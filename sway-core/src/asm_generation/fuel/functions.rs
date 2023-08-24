@@ -239,10 +239,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         for block in po.po_to_block.iter().rev() {
             let label = self.block_to_label(block);
             self.cur_bytecode.push(Op::unowned_jump_label(label));
-
-            for instr_val in block.instruction_iter(self.context) {
-                self.compile_instruction(handler, &instr_val, func_is_entry)?;
-            }
+            self.compile_block(handler, block, func_is_entry)?;
         }
 
         if !func_is_entry {
@@ -643,6 +640,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
                     let ptr_ty = ptr.get_inner_type(self.context);
                     let var_size = match ptr_ty.get_content(self.context) {
+                        TypeContent::Uint(256) => 4,
                         TypeContent::Unit
                         | TypeContent::Bool
                         | TypeContent::Uint(_)

@@ -1,3 +1,4 @@
+use crate::NodeTarget;
 use clap::Parser;
 use fuel_crypto::SecretKey;
 
@@ -24,11 +25,8 @@ pub struct Command {
     pub build_output: BuildOutput,
     #[clap(flatten)]
     pub build_profile: BuildProfile,
-    /// The URL of the Fuel node to which we're submitting the transaction.
-    /// If unspecified, checks the manifest's `network` table, then falls back
-    /// to [`crate::default::NODE_URL`].
-    #[clap(long, env = "FUEL_NODE_URL")]
-    pub node_url: Option<String>,
+    #[clap(flatten)]
+    pub node: NodeTarget,
     /// Hex string of data to input to script.
     #[clap(short, long)]
     pub data: Option<String>,
@@ -46,7 +44,10 @@ pub struct Command {
     /// in the node's view of the blockchain, (i.e. it does not affect the chain state).
     #[clap(long)]
     pub simulate: bool,
-    /// Do not sign the transaction
+    /// Sign the transaction with default signer that is pre-funded by fuel-core. Useful for testing against local node.
+    #[clap(long)]
+    pub default_signer: bool,
+    /// Deprecated in favor of `--default-signer`.
     #[clap(long)]
     pub unsigned: bool,
     /// Set the key to be used for signing.
@@ -54,4 +55,7 @@ pub struct Command {
     /// Sign the deployment transaction manually.
     #[clap(long)]
     pub manual_signing: bool,
+    /// Arguments to pass into main function with forc run.
+    #[clap(long)]
+    pub args: Option<Vec<String>>,
 }

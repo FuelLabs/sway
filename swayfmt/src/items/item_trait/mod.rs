@@ -69,34 +69,23 @@ impl Format for ItemTrait {
         if trait_items.is_empty() {
             write_comments(formatted_code, self.trait_items.span().into(), formatter)?;
         } else {
-            for (annotated, semicolon_token) in trait_items {
-                for attr in &annotated.attribute_list {
-                    write!(
-                        formatted_code,
-                        "{}",
-                        &formatter.shape.indent.to_string(&formatter.config)?,
-                    )?;
+            for item in trait_items {
+                for attr in &item.attribute_list {
+                    write!(formatted_code, "{}", &formatter.indent_str()?,)?;
                     attr.format(formatted_code, formatter)?;
                 }
-                match &annotated.value {
-                    sway_ast::ItemTraitItem::Fn(fn_signature) => {
-                        write!(
-                            formatted_code,
-                            "{}",
-                            formatter.shape.indent.to_string(&formatter.config)?,
-                        )?;
+                match &item.value {
+                    sway_ast::ItemTraitItem::Fn(fn_signature, _) => {
+                        write!(formatted_code, "{}", formatter.indent_str()?,)?;
                         fn_signature.format(formatted_code, formatter)?;
-                        writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
+                        writeln!(formatted_code, ";")?;
                     }
-                    sway_ast::ItemTraitItem::Const(const_decl) => {
-                        write!(
-                            formatted_code,
-                            "{}",
-                            formatter.shape.indent.to_string(&formatter.config)?,
-                        )?;
+                    sway_ast::ItemTraitItem::Const(const_decl, _) => {
+                        write!(formatted_code, "{}", formatter.indent_str()?,)?;
                         const_decl.format(formatted_code, formatter)?;
-                        writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
+                        writeln!(formatted_code, ";")?;
                     }
+                    ItemTraitItem::Error(_, _) => {}
                 }
             }
         }
@@ -106,11 +95,7 @@ impl Format for ItemTrait {
             write!(formatted_code, " ")?;
             Self::open_curly_brace(formatted_code, formatter)?;
             for trait_items in trait_defs.get() {
-                write!(
-                    formatted_code,
-                    "{}",
-                    formatter.shape.indent.to_string(&formatter.config)?
-                )?;
+                write!(formatted_code, "{}", formatter.indent_str()?)?;
                 // format `Annotated<ItemFn>`
                 trait_items.format(formatted_code, formatter)?;
             }
@@ -136,8 +121,17 @@ impl Format for ItemTraitItem {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         match self {
-            ItemTraitItem::Fn(fn_decl) => fn_decl.format(formatted_code, formatter),
-            ItemTraitItem::Const(const_decl) => const_decl.format(formatted_code, formatter),
+            ItemTraitItem::Fn(fn_decl, _) => {
+                fn_decl.format(formatted_code, formatter)?;
+                writeln!(formatted_code, ";")?;
+                Ok(())
+            }
+            ItemTraitItem::Const(const_decl, _) => {
+                const_decl.format(formatted_code, formatter)?;
+                writeln!(formatted_code, ";")?;
+                Ok(())
+            }
+            ItemTraitItem::Error(_, _) => Ok(()),
         }
     }
 }
@@ -148,11 +142,11 @@ impl CurlyBrace for ItemTrait {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
-        formatter.shape.block_indent(&formatter.config);
+        formatter.indent();
         let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
-                // Add openning brace to the next line.
+                // Add opening brace to the next line.
                 writeln!(line, "\n{open_brace}")?;
             }
             _ => {
@@ -166,7 +160,7 @@ impl CurlyBrace for ItemTrait {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        formatter.shape.block_unindent(&formatter.config);
+        formatter.unindent();
         write!(line, "\n{}", Delimiter::Brace.as_close_char())?;
         Ok(())
     }
@@ -215,10 +209,15 @@ impl LeafSpans for ItemTraitItem {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         match &self {
-            ItemTraitItem::Fn(fn_sig) => collected_spans.append(&mut fn_sig.leaf_spans()),
-            ItemTraitItem::Const(const_decl) => {
-                collected_spans.append(&mut const_decl.leaf_spans())
+            ItemTraitItem::Fn(fn_sig, semicolon) => {
+                collected_spans.append(&mut fn_sig.leaf_spans());
+                collected_spans.extend(semicolon.as_ref().into_iter().flat_map(|x| x.leaf_spans()));
             }
+            ItemTraitItem::Const(const_decl, semicolon) => {
+                collected_spans.append(&mut const_decl.leaf_spans());
+                collected_spans.extend(semicolon.as_ref().into_iter().flat_map(|x| x.leaf_spans()));
+            }
+            ItemTraitItem::Error(_, _) => {}
         };
         collected_spans
     }

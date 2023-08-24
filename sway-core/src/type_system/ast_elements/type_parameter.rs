@@ -2,6 +2,7 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::{ty, CallPath},
+    namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::*,
     type_system::priv_prelude::*,
 };
@@ -188,16 +189,6 @@ impl TypeParameter {
             },
         );
 
-        // Insert the trait constraints into the namespace.
-        for trait_constraint in trait_constraints.iter() {
-            TraitConstraint::insert_into_namespace(
-                handler,
-                ctx.by_ref(),
-                type_id,
-                trait_constraint,
-            )?;
-        }
-
         // When type parameter is from parent then it was already inserted.
         // Instead of inserting a type with same name we unify them.
         if is_from_parent {
@@ -225,16 +216,6 @@ impl TypeParameter {
                     }
                 }
             }
-        } else {
-            // Insert the type parameter into the namespace as a dummy type
-            // declaration.
-            let type_parameter_decl =
-                ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
-                    name: name_ident.clone(),
-                    type_id,
-                });
-            ctx.insert_symbol(handler, name_ident.clone(), type_parameter_decl)
-                .ok();
         }
 
         let type_parameter = TypeParameter {
@@ -248,16 +229,54 @@ impl TypeParameter {
         Ok(type_parameter)
     }
 
+    pub fn insert_into_namespace(
+        &self,
+        handler: &Handler,
+        mut ctx: TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
+        let Self {
+            is_from_parent,
+            name_ident,
+            type_id,
+            ..
+        } = self;
+
+        // Insert the trait constraints into the namespace.
+        for trait_constraint in self.trait_constraints.iter() {
+            TraitConstraint::insert_into_namespace(
+                handler,
+                ctx.by_ref(),
+                *type_id,
+                trait_constraint,
+            )?;
+        }
+
+        if !is_from_parent {
+            // Insert the type parameter into the namespace as a dummy type
+            // declaration.
+            let type_parameter_decl =
+                ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
+                    name: name_ident.clone(),
+                    type_id: *type_id,
+                });
+            ctx.insert_symbol(handler, name_ident.clone(), type_parameter_decl)
+                .ok();
+        }
+
+        Ok(())
+    }
+
     /// Creates a [DeclMapping] from a list of [TypeParameter]s.
     pub(crate) fn gather_decl_mapping_from_trait_constraints(
         handler: &Handler,
-        ctx: &TypeCheckContext,
+        ctx: TypeCheckContext,
         type_parameters: &[TypeParameter],
         access_span: &Span,
     ) -> Result<DeclMapping, ErrorEmitted> {
         let mut interface_item_refs: InterfaceItemMap = BTreeMap::new();
         let mut item_refs: ItemMap = BTreeMap::new();
         let mut impld_item_refs: ItemMap = BTreeMap::new();
+        let engines = ctx.engines();
 
         handler.scope(|handler| {
             for type_param in type_parameters.iter() {
@@ -276,7 +295,8 @@ impl TypeParameter {
                         *type_id,
                         trait_constraints,
                         access_span,
-                        ctx.engines(),
+                        engines,
+                        TryInsertingTraitImplOnFailure::Yes,
                     ) {
                     Ok(res) => res,
                     Err(_) => continue,
@@ -289,8 +309,13 @@ impl TypeParameter {
                     } = trait_constraint;
 
                     let (trait_interface_item_refs, trait_item_refs, trait_impld_item_refs) =
-                        match handle_trait(handler, ctx, *type_id, trait_name, trait_type_arguments)
-                        {
+                        match handle_trait(
+                            handler,
+                            &ctx,
+                            *type_id,
+                            trait_name,
+                            trait_type_arguments,
+                        ) {
                             Ok(res) => res,
                             Err(_) => continue,
                         };

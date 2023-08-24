@@ -222,6 +222,9 @@ fn item_to_ast_nodes(
                 attributes,
             )?,
         )),
+        ItemKind::Error(spans, error) => {
+            vec![AstNodeContent::Error(spans, error)]
+        }
     };
 
     Ok(contents
@@ -583,20 +586,21 @@ fn item_trait_to_trait_declaration(
         .trait_items
         .into_inner()
         .into_iter()
-        .map(|(annotated, _)| {
+        .map(|annotated| {
             let attributes = item_attrs_to_map(context, handler, &annotated.attribute_list)?;
             if !cfg_eval(context, handler, &attributes)? {
                 return Ok(None);
             }
             Ok(Some(match annotated.value {
-                ItemTraitItem::Fn(fn_sig) => {
+                ItemTraitItem::Fn(fn_sig, _) => {
                     fn_signature_to_trait_fn(context, handler, engines, fn_sig, attributes)
                         .map(TraitItem::TraitFn)
                 }
-                ItemTraitItem::Const(const_decl) => item_const_to_constant_declaration(
+                ItemTraitItem::Const(const_decl, _) => item_const_to_constant_declaration(
                     context, handler, engines, const_decl, attributes, false,
                 )
                 .map(TraitItem::Constant),
+                ItemTraitItem::Error(spans, error) => Ok(TraitItem::Error(spans, error)),
             }?))
         })
         .filter_map_ok(|item| item)
@@ -756,14 +760,14 @@ fn item_abi_to_abi_declaration(
                 .abi_items
                 .into_inner()
                 .into_iter()
-                .map(|(annotated, _)| {
+                .map(|annotated| {
                     let attributes =
                         item_attrs_to_map(context, handler, &annotated.attribute_list)?;
                     if !cfg_eval(context, handler, &attributes)? {
                         return Ok(None);
                     }
                     Ok(Some(match annotated.value {
-                        ItemTraitItem::Fn(fn_signature) => {
+                        ItemTraitItem::Fn(fn_signature, _) => {
                             let trait_fn = fn_signature_to_trait_fn(
                                 context,
                                 handler,
@@ -780,10 +784,11 @@ fn item_abi_to_abi_declaration(
                             )?;
                             Ok(TraitItem::TraitFn(trait_fn))
                         }
-                        ItemTraitItem::Const(const_decl) => item_const_to_constant_declaration(
+                        ItemTraitItem::Const(const_decl, _) => item_const_to_constant_declaration(
                             context, handler, engines, const_decl, attributes, false,
                         )
                         .map(TraitItem::Constant),
+                        ItemTraitItem::Error(spans, error) => Ok(TraitItem::Error(spans, error)),
                     }?))
                 })
                 .filter_map_ok(|item| item)
@@ -1172,17 +1177,28 @@ fn braced_code_block_contents_to_code_block(
     let whole_block_span = braced_code_block_contents.span();
     let code_block_contents = braced_code_block_contents.into_inner();
     let contents = {
+        let mut error = None;
+
         let mut contents = Vec::new();
         for statement in code_block_contents.statements {
-            let ast_nodes = statement_to_ast_nodes(context, handler, engines, statement)?;
-            contents.extend(ast_nodes);
+            match statement_to_ast_nodes(context, handler, engines, statement) {
+                Ok(mut ast_nodes) => contents.append(&mut ast_nodes),
+                Err(e) => error = Some(e),
+            }
         }
+
         if let Some(expr) = code_block_contents.final_expr_opt {
             let final_ast_node = expr_to_ast_node(context, handler, engines, *expr, false)?;
             contents.push(final_ast_node);
         }
-        contents
+
+        if let Some(error) = error {
+            return Err(error);
+        } else {
+            contents
+        }
     };
+
     Ok(CodeBlock {
         contents,
         whole_block_span,
@@ -2361,19 +2377,26 @@ fn statement_to_ast_nodes(
         }
         Statement::Item(item) => {
             let nodes = item_to_ast_nodes(context, handler, engines, item, false, None)?;
-            nodes.iter().fold(Ok(()), |res, node| {
+            nodes.iter().try_fold((), |res, node| {
                 if ast_node_is_test_fn(node) {
                     let span = node.span.clone();
                     let error = ConvertParseTreeError::TestFnOnlyAllowedAtModuleLevel { span };
                     Err(handler.emit_err(error.into()))
                 } else {
-                    res
+                    Ok(res)
                 }
             })?;
             nodes
         }
         Statement::Expr { expr, .. } => {
             vec![expr_to_ast_node(context, handler, engines, expr, true)?]
+        }
+        Statement::Error(spans, error) => {
+            let span = Span::join_all(spans.iter().cloned());
+            vec![AstNode {
+                content: AstNodeContent::Error(spans, error),
+                span,
+            }]
         }
     };
     Ok(ast_nodes)
@@ -2888,17 +2911,7 @@ fn literal_to_literal(
                         };
                         Literal::U64(value)
                     }
-                    // TODO u256 are limited to u64 literals for the moment
-                    LitIntType::U256 => {
-                        let value = match u64::try_from(parsed) {
-                            Ok(value) => value,
-                            Err(..) => {
-                                let error = ConvertParseTreeError::U64LiteralOutOfRange { span };
-                                return Err(handler.emit_err(error.into()));
-                            }
-                        };
-                        Literal::U256(value)
-                    }
+                    LitIntType::U256 => Literal::U256(parsed.into()),
                     LitIntType::I8 | LitIntType::I16 | LitIntType::I32 | LitIntType::I64 => {
                         let error = ConvertParseTreeError::SignedIntegersNotSupported { span };
                         return Err(handler.emit_err(error.into()));
