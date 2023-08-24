@@ -41,9 +41,11 @@ use sway_core::{
     },
     BuildTarget, Engines, Namespace, Programs,
 };
-use sway_types::{Span, Spanned};
+use sway_types::{SourceEngine, Spanned};
 use sway_utils::helpers::get_sway_files;
 use tokio::sync::Semaphore;
+
+use super::token::get_range_from_span;
 
 pub type Documents = DashMap<String, TextDocument>;
 pub type ProjectDirectory = PathBuf;
@@ -75,7 +77,7 @@ pub struct ParseResult {
 pub struct Session {
     token_map: TokenMap,
     pub documents: Documents,
-    pub runnables: DashMap<Span, Box<dyn Runnable>>,
+    pub runnables: DashMap<PathBuf, Vec<Box<dyn Runnable>>>,
     pub compiled_program: RwLock<CompiledProgram>,
     pub engines: RwLock<Engines>,
     pub sync: SyncWorkspace,
@@ -154,7 +156,11 @@ impl Session {
             self.token_map.insert(s.clone(), t.clone());
         });
 
-        self.create_runnables(&res.typed, self.engines.read().de());
+        self.create_runnables(
+            &res.typed,
+            self.engines.read().de(),
+            self.engines.read().se(),
+        );
         self.compiled_program.write().lexed = Some(res.lexed);
         self.compiled_program.write().parsed = Some(res.parsed);
         self.compiled_program.write().typed = Some(res.typed);
@@ -332,7 +338,12 @@ impl Session {
     }
 
     /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
-    fn create_runnables(&self, typed_program: &ty::TyProgram, decl_engine: &DeclEngine) {
+    fn create_runnables(
+        &self,
+        typed_program: &ty::TyProgram,
+        decl_engine: &DeclEngine,
+        source_engine: &SourceEngine,
+    ) {
         // Insert runnable test functions.
         for (decl, _) in typed_program.test_fns(decl_engine) {
             // Get the span of the first attribute if it exists, otherwise use the span of the function name.
@@ -340,12 +351,18 @@ impl Session {
                 .attributes
                 .first()
                 .map_or_else(|| decl.name.span(), |(_, attr)| attr.span.clone());
-            let runnable = Box::new(RunnableTestFn {
-                span,
-                tree_type: typed_program.kind.tree_type(),
-                test_name: Some(decl.name.to_string()),
-            });
-            self.runnables.insert(runnable.span().clone(), runnable);
+            if let Some(source_id) = span.source_id() {
+                let path = source_engine.get_path(source_id);
+                let runnable = Box::new(RunnableTestFn {
+                    range: get_range_from_span(&span.clone()),
+                    tree_type: typed_program.kind.tree_type(),
+                    test_name: Some(decl.name.to_string()),
+                });
+                self.runnables
+                    .entry(path)
+                    .or_insert(Vec::new())
+                    .push(runnable);
+            }
         }
 
         // Insert runnable main function if the program is a script.
@@ -354,11 +371,17 @@ impl Session {
         } = typed_program.kind
         {
             let span = main_function.name.span();
-            let runnable = Box::new(RunnableMainFn {
-                span,
-                tree_type: typed_program.kind.tree_type(),
-            });
-            self.runnables.insert(runnable.span().clone(), runnable);
+            if let Some(source_id) = span.source_id() {
+                let path = source_engine.get_path(source_id);
+                let runnable = Box::new(RunnableMainFn {
+                    range: get_range_from_span(&span.clone()),
+                    tree_type: typed_program.kind.tree_type(),
+                });
+                self.runnables
+                    .entry(path)
+                    .or_insert(Vec::new())
+                    .push(runnable);
+            }
         }
     }
 
