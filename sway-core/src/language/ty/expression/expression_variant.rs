@@ -1024,7 +1024,11 @@ impl ReplaceDecls for TyExpressionVariant {
                 }
                 AbiCast { address, .. } => address.replace_decls(decl_mapping, handler, ctx)?,
                 StorageAccess { .. } => (),
-                IntrinsicFunction(_) => {}
+                IntrinsicFunction(TyIntrinsicFunctionKind { arguments, .. }) => {
+                    arguments.iter_mut().for_each(|x| {
+                        x.replace_decls(decl_mapping, handler, ctx).ok();
+                    })
+                }
                 EnumTag { exp } => exp.replace_decls(decl_mapping, handler, ctx)?,
                 UnsafeDowncast { exp, .. } => exp.replace_decls(decl_mapping, handler, ctx)?,
                 AbiName(_) => (),
