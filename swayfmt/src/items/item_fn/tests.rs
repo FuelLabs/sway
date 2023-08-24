@@ -124,15 +124,11 @@ intermediate_whitespace
 fmt_test_item!(fn_comments_special_chars
 "fn comments_special_chars() {
     // this ↓↓↓↓↓   
-    Data {
-        val // val is not a data member so this should be a compile error
-    }
+    let val = 1; // this is a normal comment
 }",
 intermediate_whitespace
 "fn comments_special_chars() {
     // this ↓↓↓↓↓   
-    Data {
-        val // normal comment
-    }
+    let val = 1;      // this is a normal comment
 }"
 );
