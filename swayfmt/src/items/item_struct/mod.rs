@@ -44,7 +44,7 @@ impl Format for ItemStruct {
 
                 let fields = self.fields.get();
 
-                // Handle openning brace
+                // Handle opening brace
                 Self::open_curly_brace(formatted_code, formatter)?;
 
                 if fields.final_value_opt.is_none() && fields.value_separator_pairs.is_empty() {
@@ -141,7 +141,7 @@ impl CurlyBrace for ItemStruct {
         let brace_style = formatter.config.items.item_brace_style;
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
-                // Add openning brace to the next line.
+                // Add opening brace to the next line.
                 write!(line, "\n{}", Delimiter::Brace.as_open_char())?;
             }
             _ => {

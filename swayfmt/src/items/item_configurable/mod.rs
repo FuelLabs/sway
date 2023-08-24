@@ -35,7 +35,7 @@ impl Format for ItemConfigurable {
                 )?;
                 let fields = self.fields.get();
 
-                // Handle openning brace
+                // Handle opening brace
                 Self::open_curly_brace(formatted_code, formatter)?;
 
                 // Determine alignment tactic
