@@ -1,6 +1,7 @@
 use crate::{engine_threading::*, type_system::{priv_prelude::*, unify::occurs_check::OccursCheck}};
 use sway_types::Spanned;
 
+#[derive(Debug)]
 enum UnifyCheckMode {
     /// Given two [TypeId]'s `left` and `right`, check to see if `left` can be
     /// coerced into `right`.
@@ -295,6 +296,10 @@ impl<'a> UnifyCheck<'a> {
         match self.mode {
             Coercion => {
                 match (left_info, right_info) {
+                    (r @ UnknownGeneric { .. }, e @ UnknownGeneric { .. })
+                        if TypeInfo::is_self_type(&r)
+                           ||
+                           TypeInfo::is_self_type(&e) => true,
                     (
                         UnknownGeneric {
                             name: ln,

@@ -607,13 +607,12 @@ impl TypeInfo {
     }
 
     pub(crate) fn is_self_type(&self) -> bool {
-        // TODO: make this check something better
         match self {
-            TypeInfo::Custom { call_path, .. } => {
-                call_path.suffix.as_str() == "Self" || call_path.suffix.as_str() == "self"
-            }
             TypeInfo::UnknownGeneric { name, .. } => {
                 name.as_str() == "Self" || name.as_str() == "self"
+            }
+            TypeInfo::Custom { call_path, .. } => {
+                call_path.suffix.as_str() == "Self" || call_path.suffix.as_str() == "self"
             }
             _ => false,
         }
