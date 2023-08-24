@@ -650,26 +650,27 @@ impl ty::TyExpression {
 
         // if there is an interior catch-all arm
         if let Some(catch_all_arm_position) = interior_catch_all_arm_position(&arms_reachability) {
-            // show the warning that the arms below it are unreachable...
-            handler.emit_warn(CompileWarning {
-                span: arms_reachability[catch_all_arm_position]
-                    .scrutinee
-                    .span
-                    .clone(),
-                warning_content: Warning::MatchExpressionCatchAllArmMakesArmsBelowItUnreachable {
-                    match_value: value.span(),
-                    catch_all_arm: arms_reachability[catch_all_arm_position]
-                        .scrutinee
-                        .span
-                        .clone(),
-                    following_arms: Span::join_all(
-                        arms_reachability[catch_all_arm_position + 1..]
-                            .iter()
-                            .map(|report| report.scrutinee.span.clone()),
-                    ),
-                    following_arms_count: arms_reachability[catch_all_arm_position + 1..].len(),
-                },
-            });
+            // show the warning on the arms below it that it makes them unreachable...
+            for reachable_report in arms_reachability[catch_all_arm_position + 1 ..].iter() {
+                handler.emit_warn(CompileWarning {
+                    span: reachable_report.scrutinee.span.clone(),
+                    warning_content: Warning::MatchExpressionUnreachableArm {
+                        match_value: value.span(),
+                        preceding_arms: arms_reachability[catch_all_arm_position]
+                            .scrutinee
+                            .span
+                            .clone(),
+                        preceding_arm_is_catch_all: true,
+                        unreachable_arm: reachable_report.scrutinee.span.clone(),
+                        // In this case id doesn't matter if the concrete unreachable arm is
+                        // the last arm or a catch-all arm itself.
+                        // We want to point out the interior catch-all arm as problematic.
+                        // So we simply put these two values both to false.
+                        is_last_arm: false,
+                        is_catch_all_arm: false,
+                    }
+                });
+            }
 
             //...but still check the arms above it for reachability
             check_interior_non_catch_all_arms_for_reachability(
@@ -678,7 +679,7 @@ impl ty::TyExpression {
                 &arms_reachability[..catch_all_arm_position],
             );
         }
-        // if there is more then one arm
+        // if there are no interior catch-all arms and there is more then one arm
         else if let Some((last_arm_report, other_arms_reachability)) =
             arms_reachability.split_last()
         {
@@ -700,6 +701,7 @@ impl ty::TyExpression {
                                 .iter()
                                 .map(|report| report.scrutinee.span.clone()),
                         ),
+                        preceding_arm_is_catch_all: false,
                         unreachable_arm: last_arm_report.scrutinee.span.clone(),
                         is_last_arm: true,
                         is_catch_all_arm: last_arm_report.scrutinee.is_catch_all(),
@@ -760,6 +762,7 @@ impl ty::TyExpression {
                                     .iter()
                                     .map(|report| report.scrutinee.span.clone()),
                             ),
+                            preceding_arm_is_catch_all: false,
                             unreachable_arm: reachable_report.scrutinee.span.clone(),
                             is_last_arm: false,
                             is_catch_all_arm: false,

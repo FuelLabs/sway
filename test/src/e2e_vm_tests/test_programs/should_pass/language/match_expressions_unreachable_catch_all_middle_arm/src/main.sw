@@ -2,8 +2,8 @@ script;
 
 struct Struct {
     x: bool,
-    y: u32,
-    z: (u32, u32, u32)
+    y: u64,
+    z: (u64, u64, u64)
 }
 
 impl Struct {
@@ -27,7 +27,7 @@ enum Enum {
     B: (),
     C: (),
     D: (),
-    E: u32,
+    E: u64,
 }
 
 fn main() -> () {
@@ -240,7 +240,7 @@ fn main() -> () {
     //     TODO
     // };
     
-    let t1 = (false, Enum::A, Struct::new(), 0u32);
+    let t1 = (false, Enum::A, Struct::new(), 0u64);
 
     let _x = match t1 {
         (true, _, s, n) => n + s.y,
@@ -252,7 +252,7 @@ fn main() -> () {
         _ => 0,
     };
 
-    let t2 = (false, Enum::A, Struct::new(), 0u32);
+    let t2 = (false, Enum::A, Struct::new(), 0u64);
 
     let _x = match t2 {
         (true, _, s, n) => n + s.y,
@@ -264,7 +264,7 @@ fn main() -> () {
         _ => 0,
     };
 
-    let t3 = (false, Enum::A, Struct::new(), 0u32);
+    let t3 = (false, Enum::A, Struct::new(), 0u64);
 
     let _x = match t3 {
         (true, _, s, n) => n + s.y,
@@ -285,7 +285,7 @@ fn main() -> () {
         _ => 0,
     };
 
-    let t4 = (false, Enum::A, Struct::new(), 0u32);
+    let t4 = (false, Enum::A, Struct::new(), 0u64);
 
     let _x = match t4 {
         (_, _, _, _) => 0,
@@ -296,7 +296,7 @@ fn main() -> () {
         _ => 0,
     };
 
-    let t5 = (false, Enum::A, Struct::new(), 0u32);
+    let t5 = (false, Enum::A, Struct::new(), 0u64);
 
     let _x = match t5 {
         (true, _, s, n) => n + s.y,
@@ -308,7 +308,7 @@ fn main() -> () {
         _ => 0,
     };
 
-    let t6 = (false, Enum::A, Struct::new(), 0u32);
+    let t6 = (false, Enum::A, Struct::new(), 0u64);
 
     let _x = match t6 {
         (_, _, Struct { x, y, z: (j , k, l)}, n) => {
@@ -340,7 +340,7 @@ fn main() -> () {
         _ => 0,
     };
 
-    let t7 = (false, Enum::A, Struct::new(), 0u32);
+    let t7 = (false, Enum::A, Struct::new(), 0u64);
 
     let _x = match t7 {
         (true, _, s, n) => n + s.y,
@@ -390,4 +390,4 @@ fn main() -> () {
     poke(Struct::new().use_me());
 }
 
-fn poke<T>(x: T) -> () { let _ = x; () }
+fn poke<T>(_x: T) { }
