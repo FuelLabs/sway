@@ -6,7 +6,7 @@ use ::contract_id::ContractId;
 use ::identity::Identity;
 use ::option::Option::{self, *};
 use ::result::Result::{self, *};
-use ::inputs::{Input, input_count, input_owner, input_type};
+use ::inputs::{Input, input_count, input_message_sender, input_owner, input_type};
 
 /// The error type used when an `Identity` cannot be determined.
 pub enum AuthError {
@@ -148,7 +148,11 @@ fn inputs_owner() -> Result<Identity, AuthError> {
         }
 
         // type == InputCoin or InputMessage.
-        let owner_of_input = input_owner(i.as_u64());
+        let owner_of_input = match type_of_input {
+            Input::Coin => input_owner(i.as_u64()),
+            Input::Message => Some(input_message_sender(i.as_u64())),
+            _ => return Err(AuthError::InputsNotAllOwnedBySameAddress),
+        };
         if candidate.is_none() {
             // This is the first input seen of the correct type.
             candidate = owner_of_input;
