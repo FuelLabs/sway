@@ -59,10 +59,8 @@ impl Formatter {
 
     /// Collect a mapping of Span -> Comment from unformatted input.
     pub fn with_comments_context(&mut self, src: &str) -> Result<&mut Self, FormatterError> {
-        let comments_context = CommentsContext::new(
-            CommentMap::from_src(Arc::from(src))?,
-            src.to_string(),
-        );
+        let comments_context =
+            CommentsContext::new(CommentMap::from_src(Arc::from(src))?, src.to_string());
         self.comments_context = comments_context;
         Ok(self)
     }

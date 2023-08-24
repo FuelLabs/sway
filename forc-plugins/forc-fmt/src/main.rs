@@ -11,9 +11,9 @@ use std::{
     sync::Arc,
 };
 use taplo::formatter as taplo_fmt;
-use tracing::{error, info, debug};
+use tracing::{debug, error, info};
 
-use forc_tracing::{init_tracing_subscriber, println_green, println_red, println_error};
+use forc_tracing::{init_tracing_subscriber, println_error, println_green, println_red};
 use forc_util::{find_parent_manifest_dir, is_sway_file};
 use sway_core::{BuildConfig, BuildTarget};
 use sway_utils::{constants, get_sway_files};
@@ -43,6 +43,7 @@ pub struct App {
 fn main() {
     init_tracing_subscriber(Default::default());
     if let Err(err) = run() {
+        println_error(&format!("Formatting skipped due to error."));
         println_error(&format!("{}", err));
         std::process::exit(1);
     }
@@ -153,10 +154,7 @@ fn format_file(
                 // TODO: Support formatting for incomplete/invalid sway code.
                 // https://github.com/FuelLabs/sway/issues/5012
                 debug!("{}", err);
-                bail!(
-                    "Failed to compile: {}",
-                    file.to_string_lossy()
-                );
+                bail!("Failed to compile: {:?}", file);
             }
         }
     }
