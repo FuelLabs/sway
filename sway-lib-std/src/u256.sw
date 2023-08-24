@@ -698,13 +698,13 @@ impl Power for U256 {
         while n > u_one {
             if is_even(n) {
                 x = x * x;
-                n = n >> 1;
+                n >>= 1u64;
             } else {
                 y = x * y;
                 x = x * x;
                 // to reduce odd number by 1 we should just clear the last bit
                 n.d = n.d & ((!0u64)>>1);
-                n = n >> 1;
+                n >>= 1u64;
             }
         }
         x * y
