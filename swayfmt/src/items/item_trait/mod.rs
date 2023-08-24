@@ -131,7 +131,7 @@ impl Format for ItemTraitItem {
             }
             ItemTraitItem::Const(const_decl, _) => {
                 const_decl.format(formatted_code, formatter)?;
-                writeln!(formatted_code, ";")?;
+                writeln!(formatted_code)?;
                 Ok(())
             }
             ItemTraitItem::Error(_, _) => Ok(()),
