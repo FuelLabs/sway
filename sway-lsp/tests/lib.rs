@@ -1643,6 +1643,23 @@ async fn publish_diagnostics_dead_code_warning() {
     shutdown_and_exit(&mut service).await;
 }
 
+#[tokio::test]
+async fn publish_diagnostics_multi_file() {
+    let (mut service, socket) = LspService::new(ServerState::new);
+    let fixture = get_fixture(test_fixtures_dir().join("diagnostics/multi_file/expected.json"));
+    let expected_requests = vec![fixture];
+    let socket_handle = assert_server_requests(socket, expected_requests).await;
+    let _ = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("diagnostics/multi_file/src/main.sw"),
+    )
+    .await;
+    socket_handle
+        .await
+        .unwrap_or_else(|e| panic!("Test failed: {e:?}"));
+    shutdown_and_exit(&mut service).await;
+}
+
 // This macro allows us to spin up a server / client for testing
 // It initializes and performs the necessary handshake and then loads
 // the sway example that was passed into `example_dir`.
