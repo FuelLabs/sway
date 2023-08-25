@@ -11,6 +11,9 @@ use std::fmt::Write;
 use sway_ast::{keywords::Token, ItemAbi};
 use sway_types::{ast::Delimiter, Spanned};
 
+#[cfg(test)]
+mod tests;
+
 impl Format for ItemAbi {
     fn format(
         &self,
