@@ -18,6 +18,8 @@ pub enum FormatterError {
     NewlineSequenceError,
     #[error("Cannot format raw hashbang attribute,\nIf this is intended to be a doc comment try using the `//!` syntax instead")]
     HashBangAttributeError,
+    #[error("Error while formatting file with syntax errors")]
+    SyntaxError,
 }
 
 #[derive(Debug, Error)]
