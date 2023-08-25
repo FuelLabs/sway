@@ -84,7 +84,14 @@ pub enum Warning {
     DeadStorageDeclarationForFunction {
         unneeded_attrib: String,
     },
-    MatchExpressionUnreachableArm,
+    MatchExpressionUnreachableArm {
+        match_value: Span,
+        preceding_arms: Span,
+        preceding_arm_is_catch_all: bool,
+        unreachable_arm: Span,
+        is_last_arm: bool,
+        is_catch_all_arm: bool,
+    },
     UnrecognizedAttribute {
         attrib_name: Ident,
     },
@@ -217,7 +224,7 @@ impl fmt::Display for Warning {
                 "This function's storage attributes declaration does not match its \
                  actual storage access pattern: '{unneeded_attrib}' attribute(s) can be removed."
             ),
-            MatchExpressionUnreachableArm => write!(f, "This match arm is unreachable."),
+            MatchExpressionUnreachableArm { .. } => write!(f, "This match arm is unreachable."),
             UnrecognizedAttribute {attrib_name} => write!(f, "Unknown attribute: \"{attrib_name}\"."),
             AttributeExpectedNumberOfArguments {attrib_name, received_args, expected_min_len, expected_max_len } => write!(
                 f,
@@ -258,20 +265,82 @@ impl ToDiagnostic for CompileWarning {
                 issue: Issue::warning(
                     source_engine,
                     name.span(),
-                    format!("Constant \"{name}\" should be SCREAMING_SNAKE_CASE")
+                    format!("Constant \"{name}\" should be SCREAMING_SNAKE_CASE"),
                 ),
                 hints: vec![
                     Hint::warning(
                         source_engine,
                         name.span(),
-                        format!("\"{name}\" should be SCREAMING_SNAKE_CASE, like \"{}\".", to_screaming_snake_case(name.as_str()))
+                        format!("\"{name}\" should be SCREAMING_SNAKE_CASE, like \"{}\".", to_screaming_snake_case(name.as_str())),
                     ),
                 ],
                 help: vec![
-                    "In Sway, ABIs, structs, traits, and enums are CapitalCase.".to_string(),
-                    "Modules, variables, and functions are snake_case, while constants are SCREAMING_SNAKE_CASE.".to_string(),
+                    format!("In Sway, ABIs, structs, traits, and enums are CapitalCase."),
+                    format!("Modules, variables, and functions are snake_case, while constants are SCREAMING_SNAKE_CASE."),
                     format!("Consider renaming the constant to, e.g., \"{}\".", to_screaming_snake_case(name.as_str())),
                 ],
+            },
+            MatchExpressionUnreachableArm { match_value, preceding_arms, preceding_arm_is_catch_all, unreachable_arm, is_last_arm, is_catch_all_arm } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Match arm is unreachable".to_string())),
+                issue: Issue::warning(
+                    source_engine,
+                    unreachable_arm.clone(),
+                    match (*is_last_arm, *is_catch_all_arm) {
+                        (true, true) => format!("Catch-all pattern \"{}\" in the last match arm will never be matched", unreachable_arm.as_str()),
+                        _ => format!("Pattern \"{}\" will never be matched", unreachable_arm.as_str())
+                    }
+                ),
+                hints: vec![
+                    Hint::warning(
+                        source_engine,
+                        unreachable_arm.clone(),
+                        format!("{} arm \"{}\" is unreachable.", if *is_last_arm && *is_catch_all_arm { "Last catch-all match" } else { "Match" }, unreachable_arm.as_str())
+                    ),
+                    Hint::info(
+                        source_engine,
+                        match_value.clone(),
+                        "This is the value to match on.".to_string()
+                    ),
+                    if *preceding_arm_is_catch_all {
+                        Hint::warning(
+                            source_engine,
+                            preceding_arms.clone(),
+                            format!("Catch-all arm \"{}\" makes all the arms below it unreachable.", preceding_arms.as_str())
+                        )
+                    }
+                    else {
+                        Hint::info(
+                            source_engine,
+                            preceding_arms.clone(),
+                            if *is_last_arm {
+                                format!("Preceding match arms already match all possible values of \"{}\".", match_value.as_str())
+                            }
+                            else {
+                                format!("Preceding match arms already match all the values that \"{}\" can match.", unreachable_arm.as_str())
+                            }
+                        )
+                    }
+                ],
+                help: if *preceding_arm_is_catch_all {
+                    vec![
+                        format!("Catch-all patterns make sense only in last match arms."),
+                        format!("Carefully check matching logic in all the arms and consider:"),
+                        format!(" - removing the catch-all arm \"{}\" or making it the last arm.", preceding_arms.as_str()),
+                        format!(" - removing the unreachable arms below \"{}\".", preceding_arms.as_str()),
+                    ]
+                }
+                else if *is_last_arm && *is_catch_all_arm {
+                    vec![
+                        format!("Catch-all patterns are often used in last match arms."),
+                        format!("But in this case, the preceding arms already match all possible values of \"{}\".", match_value.as_str()),
+                        format!("Carefully check matching logic in all the arms and consider removing the unreachable last catch-all arm."),
+                    ]
+                }
+                else {
+                    vec![
+                        format!("Carefully check matching logic in all the arms and consider removing the unreachable arm."),
+                    ]
+                }
             },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.

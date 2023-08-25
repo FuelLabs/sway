@@ -10,6 +10,7 @@ mod tuple_index_access;
 mod unsafe_downcast;
 
 use self::constant_expression::instantiate_constant_expression;
+
 pub(crate) use self::{
     enum_instantiation::*, function_application::*, if_expression::*, lazy_operator::*,
     method_application::*, struct_field_access::*, struct_instantiation::*, tuple_index_access::*,
@@ -24,7 +25,7 @@ use crate::{
         ty::{self, TyImplItem},
         *,
     },
-    semantic_analysis::*,
+    semantic_analysis::{expression::ReachableReport, *},
     transform::to_parsed_lang::type_name_to_type_info_opt,
     type_system::*,
     Engines,
@@ -646,14 +647,69 @@ impl ty::TyExpression {
             typed_scrutinees.clone(),
             span.clone(),
         )?;
-        for reachable_report in arms_reachability.into_iter() {
-            if !reachable_report.reachable {
+
+        // if there is an interior catch-all arm
+        if let Some(catch_all_arm_position) = interior_catch_all_arm_position(&arms_reachability) {
+            // show the warning on the arms below it that it makes them unreachable...
+            for reachable_report in arms_reachability[catch_all_arm_position + 1..].iter() {
                 handler.emit_warn(CompileWarning {
-                    span: reachable_report.span,
-                    warning_content: Warning::MatchExpressionUnreachableArm,
+                    span: reachable_report.scrutinee.span.clone(),
+                    warning_content: Warning::MatchExpressionUnreachableArm {
+                        match_value: value.span(),
+                        preceding_arms: arms_reachability[catch_all_arm_position]
+                            .scrutinee
+                            .span
+                            .clone(),
+                        preceding_arm_is_catch_all: true,
+                        unreachable_arm: reachable_report.scrutinee.span.clone(),
+                        // In this case id doesn't matter if the concrete unreachable arm is
+                        // the last arm or a catch-all arm itself.
+                        // We want to point out the interior catch-all arm as problematic.
+                        // So we simply put these two values both to false.
+                        is_last_arm: false,
+                        is_catch_all_arm: false,
+                    },
+                });
+            }
+
+            //...but still check the arms above it for reachability
+            check_interior_non_catch_all_arms_for_reachability(
+                handler,
+                &value.span(),
+                &arms_reachability[..catch_all_arm_position],
+            );
+        }
+        // if there are no interior catch-all arms and there is more then one arm
+        else if let Some((last_arm_report, other_arms_reachability)) =
+            arms_reachability.split_last()
+        {
+            // check reachable report for all the arms except the last one
+            check_interior_non_catch_all_arms_for_reachability(
+                handler,
+                &value.span(),
+                other_arms_reachability,
+            );
+
+            // for the last one, give a different warning if it is an unreachable catch-all arm
+            if !last_arm_report.reachable {
+                handler.emit_warn(CompileWarning {
+                    span: last_arm_report.scrutinee.span.clone(),
+                    warning_content: Warning::MatchExpressionUnreachableArm {
+                        match_value: value.span(),
+                        preceding_arms: Span::join_all(
+                            other_arms_reachability
+                                .iter()
+                                .map(|report| report.scrutinee.span.clone()),
+                        ),
+                        preceding_arm_is_catch_all: false,
+                        unreachable_arm: last_arm_report.scrutinee.span.clone(),
+                        is_last_arm: true,
+                        is_catch_all_arm: last_arm_report.scrutinee.is_catch_all(),
+                    },
                 });
             }
         }
+
         if witness_report.has_witnesses() {
             return Err(
                 handler.emit_err(CompileError::MatchExpressionNonExhaustive {
@@ -675,7 +731,46 @@ impl ty::TyExpression {
             },
         };
 
-        Ok(match_exp)
+        return Ok(match_exp);
+
+        /// Returns the position of the first match arm that is an "interior" arm, meaning:
+        ///  - arm is a catch-all arm
+        ///  - arm is not the last match arm
+        /// or `None` if such arm does not exist.
+        /// Note that the arm can be the first arm.
+        fn interior_catch_all_arm_position(arms_reachability: &[ReachableReport]) -> Option<usize> {
+            arms_reachability
+                .split_last()?
+                .1
+                .iter()
+                .position(|report| report.scrutinee.is_catch_all())
+        }
+
+        fn check_interior_non_catch_all_arms_for_reachability(
+            handler: &Handler,
+            match_value: &Span,
+            arms_reachability: &[ReachableReport],
+        ) {
+            for (index, reachable_report) in arms_reachability.iter().enumerate() {
+                if !reachable_report.reachable {
+                    handler.emit_warn(CompileWarning {
+                        span: reachable_report.scrutinee.span.clone(),
+                        warning_content: Warning::MatchExpressionUnreachableArm {
+                            match_value: match_value.clone(),
+                            preceding_arms: Span::join_all(
+                                arms_reachability[..index]
+                                    .iter()
+                                    .map(|report| report.scrutinee.span.clone()),
+                            ),
+                            preceding_arm_is_catch_all: false,
+                            unreachable_arm: reachable_report.scrutinee.span.clone(),
+                            is_last_arm: false,
+                            is_catch_all_arm: false,
+                        },
+                    });
+                }
+            }
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
