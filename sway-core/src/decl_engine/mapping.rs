@@ -55,6 +55,14 @@ impl fmt::Debug for DeclMapping {
 }
 
 impl DeclMapping {
+    pub(crate) fn new() -> Self {
+        Self { mapping: Vec::new() }
+    }
+
+    pub(crate) fn insert(&mut self, k: SourceDecl, v: DestinationDecl) {
+        self.mapping.push((k, v))
+    }
+
     pub(crate) fn is_empty(&self) -> bool {
         self.mapping.is_empty()
     }
@@ -66,6 +74,8 @@ impl DeclMapping {
     ) -> DeclMapping {
         let mut mapping: Vec<(SourceDecl, DestinationDecl)> = vec![];
         for (interface_decl_name, interface_item) in interface_decl_refs.into_iter() {
+            // dbg!(&interface_decl_name);
+            // dbg!(&interface_item);
             if let Some(new_item) = impld_decl_refs.get(&interface_decl_name) {
                 let interface_decl_ref = match interface_item {
                     TyTraitInterfaceItem::TraitFn(decl_ref) => decl_ref.id().into(),

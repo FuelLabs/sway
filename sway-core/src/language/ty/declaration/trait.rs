@@ -4,7 +4,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     decl_engine::{
-        DeclRefConstant, DeclRefFunction, DeclRefTraitFn, ReplaceFunctionImplementingType,
+        DeclRefConstant, DeclRefFunction, DeclRefTraitFn, ReplaceFunctionImplementingType, replace_decls, mapping::{self, DeclMapping},
     },
     engine_threading::*,
     language::{parsed, Visibility},
@@ -136,6 +136,7 @@ impl HashWithEngines for TyTraitItem {
 
 impl SubstTypes for TyTraitDecl {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+        let mut decl_mapping = DeclMapping::new();
         self.type_parameters
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));
@@ -146,12 +147,14 @@ impl SubstTypes for TyTraitDecl {
                     let new_item_ref = item_ref
                         .clone()
                         .subst_types_and_insert_new_with_parent(type_mapping, engines);
+                    decl_mapping.insert(item_ref.id().into(), new_item_ref.id().into());
                     item_ref.replace_id(*new_item_ref.id());
                 }
                 TyTraitInterfaceItem::Constant(decl_ref) => {
                     let new_decl_ref = decl_ref
                         .clone()
                         .subst_types_and_insert_new(type_mapping, engines);
+                    decl_mapping.insert(decl_ref.id().into(), new_decl_ref.id().into());
                     decl_ref.replace_id(*new_decl_ref.id());
                 }
             });

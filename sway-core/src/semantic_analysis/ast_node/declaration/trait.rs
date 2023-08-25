@@ -87,10 +87,14 @@ impl ty::TyTraitDecl {
                 TraitItem::TraitFn(method) => {
                     let method = ty::TyTraitFn::type_check(handler, ctx.by_ref(), method)?;
                     let decl_ref = decl_engine.insert(method.clone());
+                    // dbg!(&decl_ref);
                     dummy_interface_surface.push(ty::TyImplItem::Fn(
+                        // dbg!(
                         decl_engine
                             .insert(method.to_dummy_func(AbiMode::NonAbi))
-                            .with_parent(decl_engine, (*decl_ref.id()).into()),
+                            .with_parent(decl_engine, (*decl_ref.id()).into())
+                        // )
+                        ,
                     ));
                     new_interface_surface.push(ty::TyTraitInterfaceItem::TraitFn(decl_ref));
                     method.name.clone()
@@ -152,6 +156,10 @@ impl ty::TyTraitDecl {
             let method =
                 ty::TyFunctionDecl::type_check(handler, ctx.by_ref(), method.clone(), true, false)
                     .unwrap_or_else(|_| ty::TyFunctionDecl::error(method));
+            // dbg!(&method);
+            // dbg!(decl_engine.get_function(&DeclId::new(0)));
+            // dbg!(decl_engine.get_function(&DeclId::new(1)));
+            // dbg!(decl_engine.get_function(&DeclId::new(2)));
             new_items.push(ty::TyTraitItem::Fn(decl_engine.insert(method)));
         }
 

@@ -123,6 +123,8 @@ impl ty::TyImplTrait {
                 trait_type_arguments.push(implementing_for.clone());
 
                 // monomorphize the trait declaration
+                // dbg!(&trait_decl);
+                dbg!(decl_engine.find_all_parents(engines, &(DeclId::<ty::TyFunctionDecl>::new(3))));
                 ctx.monomorphize(
                     handler,
                     &mut trait_decl,
@@ -131,6 +133,10 @@ impl ty::TyImplTrait {
                     EnforceTypeArguments::Yes,
                     &trait_name.span(),
                 )?;
+                dbg!(decl_engine.find_all_parents(engines, &(DeclId::<ty::TyFunctionDecl>::new(3))));
+                // dbg!(&trait_decl);
+                // dbg!(decl_engine.get_function(&DeclId::new(4)));
+                // dbg!(decl_engine.get_function(&DeclId::new(6)));
 
                 // restore type parameters and type arguments
                 trait_decl.type_parameters.pop();
@@ -179,6 +185,17 @@ impl ty::TyImplTrait {
                     &block_span,
                     false,
                 )?;
+                // for item in new_items.iter() {
+                //     match item {
+                //         TyTraitItem::Fn(decl_ref) => {
+                //             dbg!(decl_engine.get_function(decl_ref))
+                //         }
+                //         _ => todo!()
+                //     };
+                // }
+                // dbg!(decl_engine.get_function(&DeclId::new(9)));
+                // dbg!(decl_engine.get_function(&DeclId::new(11)));
+                // dbg!(decl_engine.get_function(&DeclId::new(12)));
                 ty::TyImplTrait {
                     impl_type_parameters: new_impl_type_parameters,
                     trait_name: trait_name.clone(),
@@ -525,6 +542,7 @@ fn type_check_trait_implementation(
     for item in trait_interface_surface.iter() {
         match item {
             TyTraitInterfaceItem::TraitFn(decl_ref) => {
+                // dbg!(&decl_ref);
                 let method = decl_engine.get_trait_fn(decl_ref);
                 let name = method.name.clone();
                 method_checklist.insert(name.clone(), method);
@@ -561,6 +579,7 @@ fn type_check_trait_implementation(
 
                 // Add this method to the "impld items".
                 let decl_ref = decl_engine.insert(impl_method);
+                // dbg!(&decl_ref);
                 impld_item_refs.insert((name, implementing_for), TyTraitItem::Fn(decl_ref));
             }
             ImplItem::Constant(const_decl) => {
@@ -586,6 +605,7 @@ fn type_check_trait_implementation(
         }
     }
 
+    // dbg!(&impld_item_refs);
     let mut all_items_refs: Vec<TyImplItem> = impld_item_refs.values().cloned().collect();
 
     // Retrieve the methods defined on the trait declaration and transform
@@ -616,7 +636,10 @@ fn type_check_trait_implementation(
         match item {
             TyImplItem::Fn(decl_ref) => {
                 let mut method = decl_engine.get_function(decl_ref);
+                dbg!(&decl_mapping);
+                // dbg!(&method);
                 method.replace_decls(&decl_mapping, handler, &mut ctx)?;
+                // dbg!(&method);
                 method.subst(&type_mapping, engines);
                 all_items_refs.push(TyImplItem::Fn(
                     decl_engine

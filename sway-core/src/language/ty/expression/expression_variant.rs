@@ -760,21 +760,28 @@ impl ReplaceDecls for TyExpressionVariant {
                     ..
                 } => {
                     let filter_type_opt = arguments.get(0).map(|(_,arg)| arg.return_type);
+                    // dbg!(&filter_type_opt);
 
+                    // dbg!(&fn_ref);
                     if let Some(filter_type) = filter_type_opt {
+                        // dbg!(&ctx.engines.te().get(filter_type));
                         let filtered_decl_mapping =
                             decl_mapping.filter_functions_by_self_type(filter_type, ctx.engines());
+                        // dbg!(&filtered_decl_mapping);
                         fn_ref.replace_decls(&filtered_decl_mapping, handler, ctx)?;
                     } else {
                         fn_ref.replace_decls(decl_mapping, handler, ctx)?;
                     };
+                    // dbg!(&fn_ref);
 
                     let new_decl_ref = fn_ref.clone().replace_decls_and_insert_new_with_parent(
                         decl_mapping,
                         handler,
                         ctx,
                     )?;
+                    // dbg!(&new_decl_ref);
                     fn_ref.replace_id(*new_decl_ref.id());
+                    // dbg!(&fn_ref);
                     for (_, arg) in arguments.iter_mut() {
                         match arg.replace_decls(decl_mapping, handler, ctx) {
                             Ok(res) => res,
