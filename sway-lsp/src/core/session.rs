@@ -1,7 +1,7 @@
 use crate::{
     capabilities::{
         self,
-        diagnostic::{get_diagnostics, Diagnostics},
+        diagnostic::DiagnosticMap,
         formatting::get_page_text_edit,
         runnable::{Runnable, RunnableMainFn, RunnableTestFn},
     },
@@ -41,6 +41,7 @@ use sway_core::{
     },
     BuildTarget, Engines, Namespace, Programs,
 };
+use sway_error::{error::CompileError, warning::CompileWarning};
 use sway_types::{SourceEngine, Spanned};
 use sway_utils::helpers::get_sway_files;
 use tokio::sync::Semaphore;
@@ -61,7 +62,7 @@ pub struct CompiledProgram {
 /// the types in [Session] after successfully parsing.
 #[derive(Debug)]
 pub struct ParseResult {
-    pub(crate) diagnostics: Diagnostics,
+    pub(crate) diagnostics: (Vec<CompileError>, Vec<CompileWarning>),
     pub(crate) token_map: TokenMap,
     pub(crate) engines: Engines,
     pub(crate) lexed: LexedProgram,
@@ -85,7 +86,7 @@ pub struct Session {
     // and one thread can be waiting to start parsing. All others will return the cached diagnostics.
     pub parse_permits: Arc<Semaphore>,
     // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
-    pub diagnostics: Arc<RwLock<Diagnostics>>,
+    pub diagnostics: Arc<RwLock<DiagnosticMap>>,
 }
 
 impl Default for Session {
@@ -104,7 +105,7 @@ impl Session {
             engines: <_>::default(),
             sync: SyncWorkspace::new(),
             parse_permits: Arc::new(Semaphore::new(2)),
-            diagnostics: Arc::new(RwLock::new(Diagnostics::default())),
+            diagnostics: Arc::new(RwLock::new(DiagnosticMap::new())),
         }
     }
 
@@ -139,8 +140,8 @@ impl Session {
         &self.token_map
     }
 
-    /// Wait for the cached [Diagnostics] to be unlocked after parsing and return a copy.
-    pub fn wait_for_parsing(&self) -> Diagnostics {
+    /// Wait for the cached [DiagnosticMap] to be unlocked after parsing and return a copy.
+    pub fn wait_for_parsing(&self) -> DiagnosticMap {
         self.diagnostics.read().clone()
     }
 
@@ -427,7 +428,7 @@ fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
 /// Parses the project and returns true if the compiler diagnostics are new and should be published.
 pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
     let build_plan = build_plan(uri)?;
-    let mut diagnostics = Diagnostics::default();
+    let mut diagnostics = (Vec::<CompileError>::new(), Vec::<CompileWarning>::new());
     let engines = Engines::default();
     let token_map = TokenMap::new();
     let tests_enabled = true;
@@ -445,12 +446,10 @@ pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
     let results_len = results.len();
     for (i, (value, handler)) in results.into_iter().enumerate() {
         // We can convert these destructured elements to a Vec<Diagnostic> later on.
-        let (errors, warnings) = handler.consume();
+        let current_diagnostics = handler.consume();
+        diagnostics = current_diagnostics;
 
         if value.is_none() {
-            // If there was an unrecoverable error in the parser
-            // make sure to still return the diagnostics.
-            diagnostics = get_diagnostics(&warnings, &errors);
             continue;
         }
         let Programs {
@@ -461,10 +460,10 @@ pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
         } = value.unwrap();
 
         // Get a reference to the typed program AST.
-        let typed_program = typed.as_ref().ok().ok_or_else(|| {
-            diagnostics = get_diagnostics(&warnings, &errors);
-            LanguageServerError::FailedToParse
-        })?;
+        let typed_program = typed
+            .as_ref()
+            .ok()
+            .ok_or_else(|| LanguageServerError::FailedToParse)?;
 
         // Create context with write guards to make readers wait until the update to token_map is complete.
         // This operation is fast because we already have the compile results.
@@ -488,7 +487,6 @@ pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
             });
 
             programs = Some((lexed, parsed, typed_program.clone()));
-            diagnostics = get_diagnostics(&warnings, &errors);
         } else {
             // Collect tokens from dependencies and the standard library prelude.
             parse_ast_to_tokens(&parsed, &ctx, |an, ctx| {

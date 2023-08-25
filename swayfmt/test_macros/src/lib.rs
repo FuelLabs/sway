@@ -75,7 +75,7 @@ macro_rules! fmt_test_inner {
         paste! {
             #[test]
             fn [<$scope _ $name>] () {
-                let formatted_code = crate::parse::parse_format::<$ty>($y);
+                let formatted_code = crate::parse::parse_format::<$ty>($y).unwrap();
                 let changeset = diff_lines(&formatted_code, $desired_output);
                 let count_of_updates = changeset.diff().len();
                 if count_of_updates != 0 {

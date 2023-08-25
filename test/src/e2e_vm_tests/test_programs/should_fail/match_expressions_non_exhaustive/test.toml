@@ -1,22 +1,22 @@
 category = "fail"
 
-# check: primitive_tests.sw:10:9
-# check: $()This match arm is unreachable.
+# check: $()Match arm is unreachable. Pattern "10" will never be matched.
+# nextln: primitive_tests.sw:
 
-# check: primitive_tests.sw:32:9
-# check: $()This match arm is unreachable.
+# check: $()Match arm is unreachable. Pattern "(1, 1)" will never be matched.
+# nextln: primitive_tests.sw:
 
-# check: adt_tests.sw:16:9
-# check: $()This match arm is unreachable.
+# check: $()Match arm is unreachable. Pattern "Point { x: 3, y: 4 }" will never be matched.
+# nextln: adt_tests.sw:
 
-# check: adt_tests.sw:21:9
-# check: $()This match arm is unreachable.
+# check: $()Match arm is unreachable. Pattern "Point { x: 3, y: 5 }" will never be matched.
+# nextln: adt_tests.sw:
 
-# check: adt_tests.sw:27:9
-# check: $()This match arm is unreachable.
+# check: $()Match arm is unreachable. Pattern "Point { x: 3, y: 6 }" will never be matched.
+# nextln: adt_tests.sw:
 
-# check: adt_tests.sw:33:9
-# check: $()This match arm is unreachable.
+# check: $()Match arm is unreachable. Pattern "Point { x: 3, y: 7 }" will never be matched.
+# nextln: adt_tests.sw:
 
 # check: primitive_tests.sw:6:13
 # check: $()Non-exhaustive match expression. Missing patterns `[1...4]`, `[6...9]`, `[11...MAX]`

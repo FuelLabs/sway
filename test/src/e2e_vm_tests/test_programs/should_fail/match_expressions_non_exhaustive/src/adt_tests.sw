@@ -18,19 +18,19 @@ pub fn point_test() {
     // should succeed
     let foo = match p {
         Point { x: 3, y } => { y },
-        Point { x: 3, y: 4 } => { 24 },
+        Point { x: 3, y: 5 } => { 24 },
         Point { x, y } => { x },
     };
     // should succeed
     let foo = match p {
         Point { x: 3, y } => { y },
-        Point { x: 3, y: 4 } => { 24 },
+        Point { x: 3, y: 6 } => { 24 },
         a => { 24 },
     };
     // should succeed
     let foo = match p {
         Point { x: 3, y } => { y },
-        Point { x: 3, y: 4 } => { 24 },
+        Point { x: 3, y: 7 } => { 24 },
         _ => { 24 },
     };
 }
