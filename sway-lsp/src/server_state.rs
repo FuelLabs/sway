@@ -1,6 +1,7 @@
 //! The context or environment in which the language server functions.
 
 use crate::{
+    capabilities::diagnostic::get_diagnostics,
     config::{Config, Warnings},
     core::session::{self, Session},
     error::{DirectoryError, DocumentError, LanguageServerError},
@@ -66,12 +67,14 @@ impl ServerState {
                 diagnostics_to_publish = debug::generate_warnings_for_typed_tokens(tokens)
             }
             Warnings::Default => {
-                let diagnostics = session.wait_for_parsing();
-                if config.diagnostic.show_warnings {
-                    diagnostics_to_publish.extend(diagnostics.warnings);
-                }
-                if config.diagnostic.show_errors {
-                    diagnostics_to_publish.extend(diagnostics.errors);
+                let diagnostics_map = session.wait_for_parsing();
+                if let Some(diagnostics) = diagnostics_map.get(&PathBuf::from(uri.path())) {
+                    if config.diagnostic.show_warnings {
+                        diagnostics_to_publish.extend(diagnostics.warnings.clone());
+                    }
+                    if config.diagnostic.show_errors {
+                        diagnostics_to_publish.extend(diagnostics.errors.clone());
+                    }
                 }
             }
         }
@@ -116,8 +119,9 @@ async fn run_blocking_parse_project(
         // Lock the diagnostics result to prevent multiple threads from parsing the project at the same time.
         let mut diagnostics = session.diagnostics.write();
         let parse_result = session::parse_project(&uri)?;
-        *diagnostics = parse_result.diagnostics.clone();
+        let (errors, warnings) = parse_result.diagnostics.clone();
         session.write_parse_result(parse_result);
+        *diagnostics = get_diagnostics(&warnings, &errors, session.engines.read().se());
         Ok(())
     })
     .await
