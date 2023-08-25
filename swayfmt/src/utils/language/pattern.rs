@@ -126,7 +126,9 @@ impl Format for Pattern {
                     },
                 )?;
             }
-            Self::Error(..) => {}
+            Self::Error(..) => {
+                return Err(FormatterError::SyntaxError);
+            }
         }
         Ok(())
     }

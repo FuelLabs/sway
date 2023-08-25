@@ -83,13 +83,18 @@ impl Format for ItemTrait {
                     sway_ast::ItemTraitItem::Const(const_decl, _) => {
                         write!(formatted_code, "{}", formatter.indent_str()?,)?;
                         const_decl.format(formatted_code, formatter)?;
-                        writeln!(formatted_code, ";")?;
                     }
-                    ItemTraitItem::Error(_, _) => {}
+                    ItemTraitItem::Error(_, _) => {
+                        return Err(FormatterError::SyntaxError);
+                    }
                 }
             }
         }
-        formatted_code.pop(); // pop last ending newline
+
+        if formatted_code.ends_with('\n') {
+            formatted_code.pop(); // pop last ending newline
+        }
+
         Self::close_curly_brace(formatted_code, formatter)?;
         if let Some(trait_defs) = &self.trait_defs_opt {
             write!(formatted_code, " ")?;
@@ -128,10 +133,10 @@ impl Format for ItemTraitItem {
             }
             ItemTraitItem::Const(const_decl, _) => {
                 const_decl.format(formatted_code, formatter)?;
-                writeln!(formatted_code, ";")?;
+                writeln!(formatted_code)?;
                 Ok(())
             }
-            ItemTraitItem::Error(_, _) => Ok(()),
+            ItemTraitItem::Error(_, _) => Err(FormatterError::SyntaxError),
         }
     }
 }
@@ -217,7 +222,9 @@ impl LeafSpans for ItemTraitItem {
                 collected_spans.append(&mut const_decl.leaf_spans());
                 collected_spans.extend(semicolon.as_ref().into_iter().flat_map(|x| x.leaf_spans()));
             }
-            ItemTraitItem::Error(_, _) => {}
+            ItemTraitItem::Error(spans, _) => {
+                collected_spans.extend(spans.iter().cloned().map(Into::into));
+            }
         };
         collected_spans
     }
