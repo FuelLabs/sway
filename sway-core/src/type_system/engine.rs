@@ -174,7 +174,6 @@ impl TypeEngine {
                         .map(|type_arg| type_arg.type_id)
                         .collect(),
                 );
-                // TODO treat Self: we should extend the type mapping with Self -> Placeholder
                 value.subst(&type_mapping, engines);
                 Ok(())
             }
