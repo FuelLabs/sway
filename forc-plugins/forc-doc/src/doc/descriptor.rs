@@ -66,7 +66,7 @@ impl Descriptor {
                             item_name,
                             code_str: parse::parse_format::<sway_ast::ItemStruct>(
                                 struct_decl.span.as_str(),
-                            ),
+                            )?,
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
                                 context_opt: context,
@@ -103,7 +103,7 @@ impl Descriptor {
                             item_name,
                             code_str: parse::parse_format::<sway_ast::ItemEnum>(
                                 enum_decl.span.as_str(),
-                            ),
+                            )?,
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
                                 context_opt: context,
@@ -151,7 +151,7 @@ impl Descriptor {
                             item_name,
                             code_str: parse::parse_format::<sway_ast::ItemTrait>(
                                 trait_decl.span.as_str(),
-                            ),
+                            )?,
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
                                 context_opt: context,
@@ -193,7 +193,7 @@ impl Descriptor {
                         module_info,
                         ty_decl: ty_decl.clone(),
                         item_name,
-                        code_str: parse::parse_format::<sway_ast::ItemAbi>(abi_decl.span.as_str()),
+                        code_str: parse::parse_format::<sway_ast::ItemAbi>(abi_decl.span.as_str())?,
                         attrs_opt: attrs_opt.clone(),
                         item_context: ItemContext {
                             context_opt: context,
@@ -228,7 +228,7 @@ impl Descriptor {
                         item_name,
                         code_str: parse::parse_format::<sway_ast::ItemStorage>(
                             storage_decl.span.as_str(),
-                        ),
+                        )?,
                         attrs_opt: attrs_opt.clone(),
                         item_context: ItemContext {
                             context_opt: context,
@@ -288,7 +288,7 @@ impl Descriptor {
                             item_name,
                             code_str: trim_fn_body(parse::parse_format::<sway_ast::ItemFn>(
                                 fn_decl.span.as_str(),
-                            )),
+                            )?),
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
                                 context_opt: None,
@@ -321,7 +321,7 @@ impl Descriptor {
                             item_name,
                             code_str: parse::parse_format::<sway_ast::ItemConst>(
                                 const_decl.span.as_str(),
-                            ),
+                            )?,
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
                                 context_opt: None,
