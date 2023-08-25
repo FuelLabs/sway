@@ -349,7 +349,10 @@ fn insert_after_span(
         };
 
         // Insert the actual comment(s).
-        if let Err(_) = src_rope.try_insert(from.end + offset, &comment_str) {
+        if src_rope
+            .try_insert(from.end + offset, &comment_str)
+            .is_err()
+        {
             return Err(FormatterError::CommentError);
         }
 

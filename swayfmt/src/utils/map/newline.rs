@@ -279,7 +279,7 @@ fn insert_after_span(
     )?;
     let mut src_rope = Rope::from_str(formatted_code);
 
-    if let Err(_) = src_rope.try_insert(at, &sequence_string) {
+    if src_rope.try_insert(at, &sequence_string).is_err() {
         return Err(FormatterError::NewlineSequenceError);
     }
 
