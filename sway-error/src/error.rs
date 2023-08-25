@@ -910,7 +910,7 @@ impl ToDiagnostic for CompileError {
                     ),
                 ],
                 help: vec![
-                    "Unlike variables, constants cannot be shadowed by other constants or variables.".to_string(),
+                    format!("Unlike variables, constants cannot be shadowed by other constants or variables."),
                     match (variable_or_constant.as_str(), constant_decl.clone() != Span::dummy()) {
                         ("Variable", false) => format!("Consider renaming either the variable \"{name}\" or the constant \"{name}\"."),
                         ("Constant", false) => "Consider renaming one of the constants.".to_string(),
@@ -924,7 +924,7 @@ impl ToDiagnostic for CompileError {
                 ],
             },
             ConstantShadowsVariable { name , variable_span } => Diagnostic {
-                reason: Some(Reason::new(code(2), "Constants cannot shadow variables".to_string())),
+                reason: Some(Reason::new(code(1), "Constants cannot shadow variables".to_string())),
                 issue: Issue::error(
                     source_engine,
                     name.span(),
@@ -943,8 +943,8 @@ impl ToDiagnostic for CompileError {
                     ),
                 ],
                 help: vec![
-                    "Variables can shadow other variables, but constants cannot.".to_string(),
-                    "Consider renaming either the variable or the constant.".to_string(),
+                    format!("Variables can shadow other variables, but constants cannot."),
+                    format!("Consider renaming either the variable or the constant."),
                 ],
             },
            _ => Diagnostic {
