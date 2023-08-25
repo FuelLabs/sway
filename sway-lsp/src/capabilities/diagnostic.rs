@@ -84,7 +84,7 @@ fn get_warning_diagnostic_tags(warning: &Warning) -> Option<Vec<DiagnosticTag>> 
         | Warning::DeadStorageDeclarationForFunction { .. }
         | Warning::DeadStructDeclaration
         | Warning::DeadTrait
-        | Warning::MatchExpressionUnreachableArm
+        | Warning::MatchExpressionUnreachableArm { .. }
         | Warning::UnreachableCode
         | Warning::UnusedReturnValue { .. } => Some(vec![DiagnosticTag::UNNECESSARY]),
         _ => None,

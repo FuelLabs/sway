@@ -1,0 +1,8 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-32EFA683E5FC1270'
+
+[[package]]
+name = 'match_expressions_unreachable_middle_arm'
+source = 'member'
+dependencies = ['core']

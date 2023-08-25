@@ -104,6 +104,26 @@ impl ty::TyScrutinee {
             Scrutinee::Error { err, .. } => Err(err),
         }
     }
+
+    /// Returns true if the `TyScrutinee` consists only of catch-all scrutinee variants, recursively.
+    /// Catch-all variants are .., _, and variables.
+    /// E.g.: (_, x, Point { .. })
+    /// A catch-all scrutinee matches all the values of the corresponding type.
+    pub(crate) fn is_catch_all(&self) -> bool {
+        match &self.variant {
+            ty::TyScrutineeVariant::CatchAll => true,
+            ty::TyScrutineeVariant::Variable(_) => true,
+            ty::TyScrutineeVariant::Literal(_) => false,
+            ty::TyScrutineeVariant::Constant { .. } => false,
+            ty::TyScrutineeVariant::StructScrutinee { fields, .. } => fields
+                .iter()
+                .filter_map(|x| x.scrutinee.as_ref())
+                .all(|x| x.is_catch_all()),
+            ty::TyScrutineeVariant::Or(elems) => elems.iter().all(|x| x.is_catch_all()),
+            ty::TyScrutineeVariant::Tuple(elems) => elems.iter().all(|x| x.is_catch_all()),
+            ty::TyScrutineeVariant::EnumScrutinee { .. } => false,
+        }
+    }
 }
 
 fn type_check_variable(

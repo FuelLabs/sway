@@ -28,7 +28,7 @@ pub(crate) type MatcherResult = (MatchReqMap, MatchDeclMap);
 /// This algorithm desugars pattern matching into a [MatcherResult], by creating two lists,
 /// the [MatchReqMap] which is a list of requirements that a desugared if expression
 /// must include in the conditional in conjunctive normal form.
-/// and the [MatchImplMap] which is a list of variable
+/// and the [MatchDeclMap] which is a list of variable
 /// declarations that must be placed inside the body of the if expression.
 ///
 /// Given the following example
@@ -62,7 +62,7 @@ pub(crate) type MatcherResult = (MatchReqMap, MatchDeclMap);
 /// ]
 /// ```
 ///
-/// The first match arm would create a [MatchImplMap] of roughly:
+/// The first match arm would create a [MatchDeclMap] of roughly:
 ///
 /// ```ignore
 /// [
@@ -81,7 +81,7 @@ pub(crate) type MatcherResult = (MatchReqMap, MatchDeclMap);
 /// ]
 /// ```
 ///
-/// The second match arm would create a [MatchImplMap] of roughly:
+/// The second match arm would create a [MatchDeclMap] of roughly:
 ///
 /// ```ignore
 /// [
@@ -103,7 +103,7 @@ pub(crate) type MatcherResult = (MatchReqMap, MatchDeclMap);
 /// ]
 /// ```
 ///
-/// The third match arm would create a [MatchImplMap] of roughly:
+/// The third match arm would create a [MatchDeclMap] of roughly:
 ///
 /// ```ignore
 /// []
