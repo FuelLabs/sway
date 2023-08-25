@@ -1,7 +1,12 @@
+use std::collections::HashMap;
+use std::path::PathBuf;
+
 use lsp_types::{Diagnostic, DiagnosticSeverity, DiagnosticTag, Position, Range};
 use sway_error::warning::CompileWarning;
 use sway_error::{error::CompileError, warning::Warning};
-use sway_types::{LineCol, Spanned};
+use sway_types::{LineCol, SourceEngine, Spanned};
+
+pub type DiagnosticMap = HashMap<PathBuf, Diagnostics>;
 
 #[derive(Debug, Default, Clone)]
 pub struct Diagnostics {
@@ -9,30 +14,55 @@ pub struct Diagnostics {
     pub errors: Vec<Diagnostic>,
 }
 
-fn get_error_diagnostics(errors: &[CompileError]) -> Vec<Diagnostic> {
-    Vec::from_iter(errors.iter().map(|error| Diagnostic {
+fn get_error_diagnostic(error: &CompileError) -> Diagnostic {
+    Diagnostic {
         range: get_range(error.span().line_col()),
         severity: Some(DiagnosticSeverity::ERROR),
         message: format!("{error}"),
         ..Default::default()
-    }))
+    }
 }
 
-fn get_warning_diagnostics(warnings: &[CompileWarning]) -> Vec<Diagnostic> {
-    Vec::from_iter(warnings.iter().map(|warning| Diagnostic {
+fn get_warning_diagnostic(warning: &CompileWarning) -> Diagnostic {
+    Diagnostic {
         range: get_range(warning.span().line_col()),
         severity: Some(DiagnosticSeverity::WARNING),
         message: warning.to_friendly_warning_string(),
         tags: get_warning_diagnostic_tags(&warning.warning_content),
         ..Default::default()
-    }))
+    }
 }
 
-pub fn get_diagnostics(warnings: &[CompileWarning], errors: &[CompileError]) -> Diagnostics {
-    Diagnostics {
-        warnings: get_warning_diagnostics(warnings),
-        errors: get_error_diagnostics(errors),
+pub fn get_diagnostics(
+    warnings: &[CompileWarning],
+    errors: &[CompileError],
+    source_engine: &SourceEngine,
+) -> DiagnosticMap {
+    let mut diagnostics = DiagnosticMap::new();
+    for warning in warnings {
+        let diagnostic = get_warning_diagnostic(warning);
+        if let Some(source_id) = warning.span().source_id() {
+            let path = source_engine.get_path(source_id);
+            diagnostics
+                .entry(path)
+                .or_insert_with(Diagnostics::default)
+                .warnings
+                .push(diagnostic);
+        }
     }
+    for error in errors {
+        let diagnostic = get_error_diagnostic(error);
+        if let Some(source_id) = error.span().source_id() {
+            let path = source_engine.get_path(source_id);
+            diagnostics
+                .entry(path)
+                .or_insert_with(Diagnostics::default)
+                .errors
+                .push(diagnostic);
+        }
+    }
+
+    diagnostics
 }
 
 fn get_range((start, end): (LineCol, LineCol)) -> Range {
