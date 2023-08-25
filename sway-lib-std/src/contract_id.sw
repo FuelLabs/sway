@@ -249,3 +249,4 @@ impl ContractId {
         self.transfer(AssetId::new(ContractId::from(asm() { fp: b256 }), sub_id), amount);
     }
 }
+
