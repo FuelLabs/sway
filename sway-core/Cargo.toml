@@ -12,7 +12,7 @@ repository.workspace = true
 clap = { version = "3.1", features = ["derive"] }
 derivative = "2.2.0"
 dirs = "3.0"
-either = "1.6"
+either = "1.9.0"
 ethabi = { package = "fuel-ethabi", version = "18.0.0" }
 etk-asm = { package = "fuel-etk-asm", version = "0.3.1-dev", features = [
     "backtraces",
