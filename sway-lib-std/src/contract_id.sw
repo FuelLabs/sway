@@ -92,6 +92,52 @@ impl core::ops::Eq for AssetId {
     }
 }
 
+impl From<b256> for AssetId {
+    /// Casts raw `b256` data to an `AssetId`.
+    /// 
+    /// # Arguments
+    ///
+    /// * `bits`: [b256] - The raw `b256` data to be casted.
+    /// 
+    /// # Returns
+    ///
+    /// * [AssetId] - The newly created `AssetId` from the raw `b256`.
+    ///
+    /// # Examples
+    /// 
+    /// ```sway
+    /// use std::constants::ZERO_B256;
+    ///
+    /// fn foo() {
+    ///    let asset_id = AssetId::from(ZERO_B256);
+    /// }
+    /// ```
+    fn from(bits: b256) -> Self {
+        Self { value: bits }
+    }
+
+    /// Casts an `AssetId` to raw `b256` data.
+    /// 
+    /// # Returns
+    ///
+    /// * [b256] - The underlying raw `b256` data of the `AssetId`.
+    ///
+    /// # Examples
+    /// 
+    /// ```sway
+    /// use std::constants::ZERO_B256;
+    ///
+    /// fn foo() {
+    ///     let asset_id = AssetId::from(ZERO_B256);
+    ///     let b256_data = asset_id.into();
+    ///     assert(b256_data == ZERO_B256);
+    /// }
+    /// ```
+    fn into(self) -> b256 {
+        self.value
+    }
+}
+
 impl AssetId {
     /// Creates a new AssetId from a ContractId and SubId.
     ///
@@ -140,30 +186,30 @@ impl AssetId {
     ///     let contract_id = contract_id();
     ///     let sub_id = ZERO_B256;
     ///
-    ///     let asset_id = AssetId::standard(contract_id);
+    ///     let asset_id = AssetId::default(contract_id);
     ///
     ///     assert(asset_id == AssetId::new(contract_id, sub_id));
     /// }
     /// ```
-    pub fn standard(contract_id: ContractId) -> Self {
+    pub fn default(contract_id: ContractId) -> Self {
         let value = sha256((contract_id, 0x0000000000000000000000000000000000000000000000000000000000000000));
         Self { value }
     }
 
-    /// Represents bridged Ether on the main Fuel Network. Can be configured to represent another asset on another instance of the Fuel network.
+    /// The base_asset_id represents the base asset of a chain.
     ///
     /// # Additional Information
     ///
-    /// It is hard coded to be ZERO_B256.
+    /// On the Fuel network, the base asset is Ether. It is hardcoded as the 0x00..00 AssetId.
     ///
     /// # Returns
     ///
-    /// * [AssetId] - The AssetId of the asset. Computed by hashing the zero ContractId and the zero SubId.
+    /// * [AssetId] - The AssetId of the base asset.
     ///
     /// # Examples
     ///
     /// ```sway
-    /// use std::token::transfer;
+    /// use std::{constants::ZERO_B256, token::transfer};
     ///
     /// fn foo() {
     ///     let asset_id = AssetId::base_asset_id();
@@ -249,4 +295,3 @@ impl ContractId {
         self.transfer(AssetId::new(ContractId::from(asm() { fp: b256 }), sub_id), amount);
     }
 }
-
