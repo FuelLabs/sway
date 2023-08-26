@@ -36,7 +36,7 @@ impl LiquidityPool for Contract {
     }
 
     fn withdraw(recipient: Address) {
-        let asset_id = AssetId::standard(contract_id());
+        let asset_id = AssetId::default(contract_id());
         assert(msg_asset_id() == asset_id);
         assert(msg_amount() > 0);
 
