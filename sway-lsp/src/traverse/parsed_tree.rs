@@ -732,11 +732,13 @@ impl Parse for TraitDeclaration {
                 SymbolKind::Trait,
             ),
         );
-        self.interface_surface.par_iter().for_each(|item| match item {
-            TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
-            TraitItem::Constant(const_decl) => const_decl.parse(ctx),
-            TraitItem::Error(_, _) => {}
-        });
+        self.interface_surface
+            .par_iter()
+            .for_each(|item| match item {
+                TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
+                TraitItem::Constant(const_decl) => const_decl.parse(ctx),
+                TraitItem::Error(_, _) => {}
+            });
         self.methods.par_iter().for_each(|func_dec| {
             func_dec.parse(ctx);
         });
@@ -849,20 +851,13 @@ impl Parse for AbiDeclaration {
                 SymbolKind::Trait,
             ),
         );
-<<<<<<< HEAD
-        self.interface_surface.par_iter().for_each(|item| match item {
-            TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
-            TraitItem::Constant(const_decl) => const_decl.parse(ctx),
-            TraitItem::Error(_, _) => {}
-        });
-=======
         self.interface_surface
             .par_iter()
             .for_each(|item| match item {
                 TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
                 TraitItem::Constant(const_decl) => const_decl.parse(ctx),
+                TraitItem::Error(_, _) => {}
             });
->>>>>>> 6ac65958e (fmt)
         self.supertraits.par_iter().for_each(|supertrait| {
             supertrait.parse(ctx);
         });
