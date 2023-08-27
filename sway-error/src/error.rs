@@ -73,7 +73,13 @@ pub enum CompileError {
     #[error("Constant \"{name}\" was already defined in scope.")]
     MultipleDefinitionsOfConstant { name: Ident, span: Span },
     #[error("Variable \"{first_definition}\" is already defined in match arm.")]
-    MultipleDefinitionsOfMatchArmVariable { match_value: Span, first_definition: Ident, duplicate: Span },
+    MultipleDefinitionsOfMatchArmVariable {
+        match_value: Span,
+        first_definition: Ident,
+        first_definition_is_struct_field: bool,
+        duplicate: Span,
+        duplicate_is_struct_field: bool,
+    },
     #[error("Assignment to immutable variable. Variable {name} is not declared as mutable.")]
     AssignmentToNonMutable { name: Ident, span: Span },
     #[error(
@@ -950,7 +956,7 @@ impl ToDiagnostic for CompileError {
                     format!("Consider renaming either the variable or the constant."),
                 ],
             },
-            MultipleDefinitionsOfMatchArmVariable { match_value, first_definition, duplicate } => Diagnostic {
+            MultipleDefinitionsOfMatchArmVariable { match_value, first_definition, first_definition_is_struct_field, duplicate, duplicate_is_struct_field } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Variable is already defined in match arm".to_string())),
                 issue: Issue::error(
                     source_engine,
@@ -963,10 +969,38 @@ impl ToDiagnostic for CompileError {
                         duplicate.clone(),
                         format!("Variable \"{first_definition}\" is already defined in this match arm pattern.")
                     ),
+                    Hint::help(
+                        source_engine,
+                        if *duplicate_is_struct_field {
+                            duplicate.clone()
+                        }
+                        else {
+                            Span::dummy()
+                        },
+                        format!("Struct field \"{first_definition}\" is just a shorthand notation for `{first_definition}: {first_definition}`. It defines a variable \"{first_definition}\".")
+                    ),
                     Hint::info(
                         source_engine,
                         first_definition.span(),
-                        format!("This is the first definition of the variable \"{first_definition}\".")
+                        format!(
+                            "This {}is the first definition of the variable \"{first_definition}\".",
+                            if *first_definition_is_struct_field {
+                                format!("struct field \"{first_definition}\" ")
+                            }
+                            else {
+                                "".to_string()
+                            }
+                        )
+                    ),
+                    Hint::help(
+                        source_engine,
+                        if *first_definition_is_struct_field && !*duplicate_is_struct_field {
+                            first_definition.span()
+                        }
+                        else {
+                            Span::dummy()
+                        },
+                        format!("Struct field \"{first_definition}\" is just a shorthand notation for `{first_definition}: {first_definition}`. It defines a variable \"{first_definition}\".")
                     ),
                     Hint::info(
                         source_engine,
@@ -974,7 +1008,15 @@ impl ToDiagnostic for CompileError {
                         "This is the value to match on.".to_string()
                     ),
                 ],
-                help: vec![],
+                help: vec![
+                    format!("Variables used in match arm patterns must be unique within a pattern."),
+                    match (*first_definition_is_struct_field, *duplicate_is_struct_field) {
+                        (true, true) => format!("Consider declaring a variable with different name for either of the fields. E.g., `{first_definition}: var_{first_definition}`."),
+                        (true, false) | (false, true) => format!("Consider declaring a variable with different name for the field (e.g., `{first_definition}: var_{first_definition}`), or renaming the variable \"{first_definition}\"."),
+                        (false, false) => format!("Consider renaming either of the variables."),
+                    },
+                ],
+
             },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
