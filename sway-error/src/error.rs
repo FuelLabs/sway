@@ -72,6 +72,8 @@ pub enum CompileError {
     MultipleDefinitionsOfName { name: Ident, span: Span },
     #[error("Constant \"{name}\" was already defined in scope.")]
     MultipleDefinitionsOfConstant { name: Ident, span: Span },
+    #[error("Variable \"{first_definition}\" is already defined in match arm.")]
+    MultipleDefinitionsOfMatchArmVariable { match_value: Span, first_definition: Ident, duplicate: Span },
     #[error("Assignment to immutable variable. Variable {name} is not declared as mutable.")]
     AssignmentToNonMutable { name: Ident, span: Span },
     #[error(
@@ -702,6 +704,7 @@ impl Spanned for CompileError {
             MultipleDefinitionsOfFunction { span, .. } => span.clone(),
             MultipleDefinitionsOfName { span, .. } => span.clone(),
             MultipleDefinitionsOfConstant { span, .. } => span.clone(),
+            MultipleDefinitionsOfMatchArmVariable { duplicate, .. } => duplicate.clone(),
             AssignmentToNonMutable { span, .. } => span.clone(),
             MutableParameterNotSupported { span, .. } => span.clone(),
             ImmutableArgumentToMutableParameter { span } => span.clone(),
@@ -946,6 +949,32 @@ impl ToDiagnostic for CompileError {
                     format!("Variables can shadow other variables, but constants cannot."),
                     format!("Consider renaming either the variable or the constant."),
                 ],
+            },
+            MultipleDefinitionsOfMatchArmVariable { match_value, first_definition, duplicate } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Variable is already defined in match arm".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    first_definition.span(),
+                    format!("Variable \"{first_definition}\" is already defined in match arm")
+                ),
+                hints: vec![
+                    Hint::error(
+                        source_engine,
+                        duplicate.clone(),
+                        format!("Variable \"{first_definition}\" is already defined in this match arm pattern.")
+                    ),
+                    Hint::info(
+                        source_engine,
+                        first_definition.span(),
+                        format!("This is the first definition of the variable \"{first_definition}\".")
+                    ),
+                    Hint::info(
+                        source_engine,
+                        match_value.clone(),
+                        "This is the value to match on.".to_string()
+                    ),
+                ],
+                help: vec![],
             },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
