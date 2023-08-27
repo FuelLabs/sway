@@ -1,16 +1,18 @@
-use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
+use crate::{
+    de::DuplicateKeyVisitor,
+    pkg::{manifest_file_missing, parsing_failed, wrong_program_type},
+};
 use anyhow::{anyhow, bail, Context, Result};
 use forc_tracing::println_warning;
 use forc_util::{find_nested_manifest_dir, find_parent_manifest_dir, validate_name};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::{
     collections::{BTreeMap, HashMap},
     path::{Path, PathBuf},
     sync::Arc,
 };
-use sway_error::handler::Handler;
-
 use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type, BuildTarget};
+use sway_error::handler::Handler;
 use sway_utils::constants;
 
 /// The name of a workspace member package.
@@ -124,6 +126,51 @@ impl ManifestFile {
 
 type PatchMap = BTreeMap<String, Dependency>;
 
+fn deserialize_patch<'de, D>(
+    deserializer: D,
+) -> Result<Option<BTreeMap<String, PatchMap>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    deserializer.deserialize_map(DuplicateKeyVisitor(std::marker::PhantomData))
+}
+
+fn deserialize_dependency<'de, D>(
+    deserializer: D,
+) -> Result<Option<BTreeMap<String, Dependency>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    deserializer.deserialize_map(DuplicateKeyVisitor(std::marker::PhantomData))
+}
+
+fn deserialize_build_target<'de, D>(
+    deserializer: D,
+) -> Result<Option<BTreeMap<String, BuildTarget>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    deserializer.deserialize_map(DuplicateKeyVisitor(std::marker::PhantomData))
+}
+
+fn deserialize_build_profile<'de, D>(
+    deserializer: D,
+) -> Result<Option<BTreeMap<String, BuildProfile>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    deserializer.deserialize_map(DuplicateKeyVisitor(std::marker::PhantomData))
+}
+
+fn deserialize_contract_dependencies<'de, D>(
+    deserializer: D,
+) -> Result<Option<BTreeMap<String, ContractDependency>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    deserializer.deserialize_map(DuplicateKeyVisitor(std::marker::PhantomData))
+}
+
 /// A [PackageManifest] that was deserialized from a file at a particular path.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PackageManifestFile {
@@ -139,11 +186,16 @@ pub struct PackageManifestFile {
 pub struct PackageManifest {
     pub project: Project,
     pub network: Option<Network>,
+    #[serde(default, deserialize_with = "deserialize_dependency")]
     pub dependencies: Option<BTreeMap<String, Dependency>>,
+    #[serde(default, deserialize_with = "deserialize_patch")]
     pub patch: Option<BTreeMap<String, PatchMap>>,
     /// A list of [configuration-time constants](https://github.com/FuelLabs/sway/issues/1498).
+    #[serde(default, deserialize_with = "deserialize_build_target")]
     pub build_target: Option<BTreeMap<String, BuildTarget>>,
+    #[serde(default, deserialize_with = "deserialize_build_profile")]
     build_profile: Option<BTreeMap<String, BuildProfile>>,
+    #[serde(default, deserialize_with = "deserialize_contract_dependencies")]
     pub contract_dependencies: Option<BTreeMap<String, ContractDependency>>,
 }
 
@@ -494,10 +546,11 @@ impl PackageManifest {
     /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
-    pub fn from_file(path: &Path) -> Result<Self> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         // While creating a `ManifestFile` we need to check if the given path corresponds to a
         // package or a workspace. While doing so, we should be printing the warnings if the given
         // file parses so that we only see warnings for the correct type of manifest.
+        let path = path.as_ref();
         let mut warnings = vec![];
         let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
@@ -537,11 +590,12 @@ impl PackageManifest {
     ///
     /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
-    pub fn from_dir(dir: &Path) -> Result<Self> {
+    pub fn from_dir<P: AsRef<Path>>(dir: P) -> Result<Self> {
+        let dir = dir.as_ref();
         let manifest_dir =
             find_parent_manifest_dir(dir).ok_or_else(|| manifest_file_missing(dir))?;
         let file_path = manifest_dir.join(constants::MANIFEST_FILE_NAME);
-        Self::from_file(&file_path)
+        Self::from_file(file_path)
     }
 
     /// Produce an iterator yielding all listed dependencies.
@@ -1017,7 +1071,7 @@ pub fn find_dir_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
 
 #[cfg(test)]
 mod tests {
-    use super::DependencyDetails;
+    use super::*;
 
     #[test]
     fn test_invalid_dependency_details_mixed_together() {
@@ -1150,6 +1204,18 @@ mod tests {
                 .err()
                 .map(|e| e.to_string()),
             Some(expected_mismatch_error.to_string())
+        );
+    }
+
+    #[test]
+    fn test_error_duplicate_deps_definition() {
+        assert_eq!(
+            "failed to parse manifest: duplicate 'foo' for key `dependencies` at line 1 column 1."
+                .to_owned(),
+            PackageManifest::from_dir("./tests/invalid")
+                .unwrap_err()
+                .root_cause()
+                .to_string()
         );
     }
 
