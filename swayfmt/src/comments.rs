@@ -349,12 +349,9 @@ fn insert_after_span(
         };
 
         // Insert the actual comment(s).
-        if src_rope
+        src_rope
             .try_insert(from.end + offset, &comment_str)
-            .is_err()
-        {
-            return Err(FormatterError::CommentError);
-        }
+            .map_err(|_| FormatterError::CommentError)?;
 
         formatted_code.clear();
         formatted_code.push_str(&src_rope.to_string());
