@@ -139,12 +139,12 @@ impl Parse for UseStatement {
                 Token::from_parsed(AstToken::UseStatement(self.clone()), SymbolKind::Unknown),
             );
         }
-        for prefix in &self.call_path {
+        self.call_path.par_iter().for_each(|prefix| {
             ctx.tokens.insert(
                 ctx.ident(prefix),
                 Token::from_parsed(AstToken::UseStatement(self.clone()), SymbolKind::Module),
             );
-        }
+        });
         match &self.import_type {
             ImportType::Item(item) => {
                 ctx.tokens.insert(
@@ -365,12 +365,12 @@ impl Parse for IntrinsicFunctionExpression {
 
 impl Parse for AbiCastExpression {
     fn parse(&self, ctx: &ParseContext) {
-        for ident in &self.abi_name.prefixes {
+        self.abi_name.prefixes.par_iter().for_each(|ident| {
             ctx.tokens.insert(
                 ctx.ident(ident),
                 Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Module),
             );
-        }
+        });
         ctx.tokens.insert(
             ctx.ident(&self.abi_name.suffix),
             Token::from_parsed(AstToken::AbiCastExpression(self.clone()), SymbolKind::Trait),
@@ -385,12 +385,16 @@ impl Parse for DelineatedPathExpression {
             call_path_binding,
             args,
         } = self;
-        for ident in &call_path_binding.inner.prefixes {
-            ctx.tokens.insert(
-                ctx.ident(ident),
-                Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Enum),
-            );
-        }
+        call_path_binding
+            .inner
+            .prefixes
+            .par_iter()
+            .for_each(|ident| {
+                ctx.tokens.insert(
+                    ctx.ident(ident),
+                    Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Enum),
+                );
+            });
         ctx.tokens.insert(
             ctx.ident(&call_path_binding.inner.suffix),
             Token::from_parsed(
@@ -523,11 +527,11 @@ impl Parse for Scrutinee {
                 fields,
                 ..
             } => {
-                for ident in &struct_name.prefixes {
+                struct_name.prefixes.par_iter().for_each(|ident| {
                     let token =
                         Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Struct);
                     ctx.tokens.insert(ctx.ident(ident), token);
-                }
+                });
                 ctx.tokens.insert(
                     ctx.ident(&struct_name.suffix),
                     Token::from_parsed(AstToken::Scrutinee(self.clone()), SymbolKind::Struct),
@@ -537,12 +541,12 @@ impl Parse for Scrutinee {
             Scrutinee::EnumScrutinee {
                 call_path, value, ..
             } => {
-                for ident in &call_path.prefixes {
+                call_path.prefixes.par_iter().for_each(|ident| {
                     ctx.tokens.insert(
                         ctx.ident(ident),
                         Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Enum),
                     );
-                }
+                });
                 let token =
                     Token::from_parsed(AstToken::Scrutinee(self.clone()), SymbolKind::Variant);
                 ctx.tokens.insert(ctx.ident(&call_path.suffix), token);
@@ -582,12 +586,16 @@ impl Parse for StructScrutineeField {
 
 impl Parse for StructExpression {
     fn parse(&self, ctx: &ParseContext) {
-        for ident in &self.call_path_binding.inner.prefixes {
-            ctx.tokens.insert(
-                ctx.ident(ident),
-                Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Struct),
-            );
-        }
+        self.call_path_binding
+            .inner
+            .prefixes
+            .par_iter()
+            .for_each(|ident| {
+                ctx.tokens.insert(
+                    ctx.ident(ident),
+                    Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Struct),
+                );
+            });
         let name = &self.call_path_binding.inner.suffix;
         let symbol_kind = if name.as_str() == "Self" {
             SymbolKind::SelfKeyword
@@ -636,12 +644,16 @@ impl Parse for FunctionApplicationExpression {
     fn parse(&self, ctx: &ParseContext) {
         // Don't collect applications of desugared operators due to mismatched ident lengths.
         if !desugared_op(&self.call_path_binding.inner.prefixes) {
-            for ident in &self.call_path_binding.inner.prefixes {
-                ctx.tokens.insert(
-                    ctx.ident(ident),
-                    Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Module),
-                );
-            }
+            self.call_path_binding
+                .inner
+                .prefixes
+                .par_iter()
+                .for_each(|ident| {
+                    ctx.tokens.insert(
+                        ctx.ident(ident),
+                        Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Module),
+                    );
+                });
             ctx.tokens.insert(
                 ctx.ident(&self.call_path_binding.inner.suffix),
                 Token::from_parsed(
@@ -788,12 +800,12 @@ impl Parse for EnumDeclaration {
 
 impl Parse for ImplTrait {
     fn parse(&self, ctx: &ParseContext) {
-        for ident in &self.trait_name.prefixes {
+        self.trait_name.prefixes.par_iter().for_each(|ident| {
             ctx.tokens.insert(
                 ctx.ident(ident),
                 Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Module),
             );
-        }
+        });
         ctx.tokens.insert(
             ctx.ident(&self.trait_name.suffix),
             Token::from_parsed(
@@ -827,9 +839,9 @@ impl Parse for ImplSelf {
                 ),
             );
             if let Some(type_arguments) = type_arguments {
-                for type_arg in type_arguments {
+                type_arguments.par_iter().for_each(|type_arg| {
                     type_arg.parse(ctx);
-                }
+                });
             }
         }
         self.impl_type_parameters.par_iter().for_each(|type_param| {
@@ -928,12 +940,12 @@ impl Parse for TraitFn {
 
 impl Parse for TraitConstraint {
     fn parse(&self, ctx: &ParseContext) {
-        for prefix in &self.trait_name.prefixes {
+        self.trait_name.prefixes.par_iter().for_each(|prefix| {
             ctx.tokens.insert(
                 ctx.ident(prefix),
                 Token::from_parsed(AstToken::Ident(prefix.clone()), SymbolKind::Function),
             );
-        }
+        });
         ctx.tokens.insert(
             ctx.ident(&self.trait_name.suffix),
             Token::from_parsed(
@@ -1007,9 +1019,9 @@ impl Parse for TypeArgument {
                 type_arg.parse(ctx);
             }
             TypeInfo::Tuple(type_arguments) => {
-                for type_arg in type_arguments {
+                type_arguments.par_iter().for_each(|type_arg| {
                     type_arg.parse(ctx);
-                }
+                });
             }
             _ => {
                 let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &type_info, None);
@@ -1092,13 +1104,13 @@ fn collect_call_path_tree(
     token: &Token,
     tokens: &TokenMap,
 ) {
-    for ident in &tree.call_path.prefixes {
+    tree.call_path.prefixes.par_iter().for_each(|ident| {
         tokens.insert(ctx.ident(ident), token.clone());
-    }
+    });
     tokens.insert(ctx.ident(&tree.call_path.suffix), token.clone());
-    for child in &tree.children {
+    tree.children.par_iter().for_each(|child| {
         collect_call_path_tree(ctx, child, token, tokens);
-    }
+    });
 }
 
 fn literal_to_symbol_kind(value: &Literal) -> SymbolKind {
