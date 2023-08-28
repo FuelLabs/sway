@@ -1001,9 +1001,9 @@ mod tests {
 
     #[test]
     fn lex_char_escaped_quote() {
-        let input = r#"
+        let input = r"
         '\''
-        "#;
+        ";
         let handler = Handler::default();
         let stream = lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
         assert!(handler.consume().0.is_empty());
