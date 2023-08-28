@@ -1,5 +1,5 @@
 use crate::{
-    de::DuplicateKeyVisitor,
+    de::deserialize_optional_btree,
     pkg::{manifest_file_missing, parsing_failed, wrong_program_type},
 };
 use anyhow::{anyhow, bail, Context, Result};
@@ -126,49 +126,54 @@ impl ManifestFile {
 
 type PatchMap = BTreeMap<String, Dependency>;
 
+/// Deserializes a map with unique keys and PatchMap values
 fn deserialize_patch<'de, D>(
     deserializer: D,
 ) -> Result<Option<BTreeMap<String, PatchMap>>, D::Error>
 where
     D: Deserializer<'de>,
 {
-    deserializer.deserialize_map(DuplicateKeyVisitor(std::marker::PhantomData))
+    deserialize_optional_btree(deserializer)
 }
 
+/// Deserializes a map with unique keys and Dependency values
 fn deserialize_dependency<'de, D>(
     deserializer: D,
 ) -> Result<Option<BTreeMap<String, Dependency>>, D::Error>
 where
     D: Deserializer<'de>,
 {
-    deserializer.deserialize_map(DuplicateKeyVisitor(std::marker::PhantomData))
+    deserialize_optional_btree(deserializer)
 }
 
+/// Deserializes a map with unique keys and BuildTarget values
 fn deserialize_build_target<'de, D>(
     deserializer: D,
 ) -> Result<Option<BTreeMap<String, BuildTarget>>, D::Error>
 where
     D: Deserializer<'de>,
 {
-    deserializer.deserialize_map(DuplicateKeyVisitor(std::marker::PhantomData))
+    deserialize_optional_btree(deserializer)
 }
 
+/// Deserializes a map with unique keys and BuildProfile values
 fn deserialize_build_profile<'de, D>(
     deserializer: D,
 ) -> Result<Option<BTreeMap<String, BuildProfile>>, D::Error>
 where
     D: Deserializer<'de>,
 {
-    deserializer.deserialize_map(DuplicateKeyVisitor(std::marker::PhantomData))
+    deserialize_optional_btree(deserializer)
 }
 
+/// Deserializes a map with unique keys and ContractDependency values
 fn deserialize_contract_dependencies<'de, D>(
     deserializer: D,
 ) -> Result<Option<BTreeMap<String, ContractDependency>>, D::Error>
 where
     D: Deserializer<'de>,
 {
-    deserializer.deserialize_map(DuplicateKeyVisitor(std::marker::PhantomData))
+    deserialize_optional_btree(deserializer)
 }
 
 /// A [PackageManifest] that was deserialized from a file at a particular path.

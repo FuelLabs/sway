@@ -3,10 +3,17 @@ use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::fmt;
 
+/// Deserialize a map with unique keys.
+///
+/// It is a thin wrapper that will return an error if the map contains duplicate
+/// keys. The value that is deserialized as an optional BTreeMap with the key
+/// type String and the value type T.
+///
+/// This struct should be use through `deserialize_optional_btree` function.
+/// Additionally, when using the derive macro the default option must be used
+/// otherwise when the value is not present it will return an error.
 #[derive(Debug, PartialEq)]
-pub(crate) struct DuplicateKeyVisitor<'de, T: Deserialize<'de>>(
-    pub(crate) std::marker::PhantomData<&'de T>,
-);
+struct DuplicateKeyVisitor<'de, T: Deserialize<'de>>(std::marker::PhantomData<&'de T>);
 
 impl<'de, T: Deserialize<'de>> Visitor<'de> for DuplicateKeyVisitor<'de, T> {
     type Value = Option<BTreeMap<String, T>>;
@@ -30,4 +37,19 @@ impl<'de, T: Deserialize<'de>> Visitor<'de> for DuplicateKeyVisitor<'de, T> {
 
         Ok(Some(result))
     }
+}
+
+/// Deserialize a map with unique keys. If the map has the same key defined
+/// multiple times an error will be return and the parsing will be aborted.
+///
+/// This function is a thin wrapper around the `DuplicateKeyVisitor` struct.
+#[inline]
+pub fn deserialize_optional_btree<'de, D, T>(
+    deserializer: D,
+) -> Result<Option<BTreeMap<String, T>>, D::Error>
+where
+    D: de::Deserializer<'de>,
+    T: Deserialize<'de> + 'de,
+{
+    deserializer.deserialize_map(DuplicateKeyVisitor(std::marker::PhantomData))
 }
