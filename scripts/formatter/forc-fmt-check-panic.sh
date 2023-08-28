@@ -4,7 +4,6 @@
 # This is useful for testing the formatter itself to make sure it's not panicking on any valid
 # sway projects and for checking that it's formatted output is correct.
 
-cargo install --locked --path forc-plugins/forc-fmt
 which forc-fmt
 
 forc_manifests=`find . -name Forc.toml`
