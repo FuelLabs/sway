@@ -10,12 +10,13 @@ for f in $forc_manifests
 do
     dir="${f%/*}"
     stderr="$(forc fmt -p $dir 2>&1 > /dev/null)"
+
+    echo $dir
     if [[ $stderr == *"panicked at"* ]]
     then
-        echo ""
-        echo "Formatter panicked: $dir"
         let panicked=panicked+1
         echo $stderr
+        echo ""
     fi
     let count=count+1
 done
