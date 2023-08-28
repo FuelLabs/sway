@@ -4,9 +4,7 @@
 # This is useful for testing the formatter itself to make sure it's not panicking on any valid
 # sway projects and for checking that it's formatted output is correct.
 
-which forc-fmt
-
-forc_manifests=`find . -name Forc.toml`
+forc_manifests=`find . -name Forc.toml | sort`
 let count=0
 let panicked=0
 for f in $forc_manifests
