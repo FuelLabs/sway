@@ -542,9 +542,7 @@ fn parse_ast_to_typed_tokens(
         .iter()
         .flat_map(|(_, submodule)| submodule.module.all_nodes.iter());
 
-    root_nodes
-        .chain(sub_nodes)
-        .for_each(|n| f(n, ctx));
+    root_nodes.chain(sub_nodes).for_each(|n| f(n, ctx));
 }
 
 #[cfg(test)]
