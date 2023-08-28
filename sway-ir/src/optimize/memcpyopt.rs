@@ -4,9 +4,9 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    get_symbol, get_symbols, AnalysisResults, Block, Context, EscapedSymbols, Function,
-    Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type, Value,
-    ValueDatum, ESCAPED_SYMBOLS_NAME, memory_utils,
+    get_symbol, get_symbols, memory_utils, AnalysisResults, Block, Context, EscapedSymbols,
+    Function, Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type,
+    Value, ValueDatum, ESCAPED_SYMBOLS_NAME,
 };
 
 pub const MEMCPYOPT_NAME: &str = "memcpyopt";
@@ -263,7 +263,10 @@ fn local_copy_prop(
                         Instruction::MemCopyVal {
                             dst_val_ptr,
                             src_val_ptr: _,
-                        } => (*dst_val_ptr, memory_utils::pointee_size(context, *dst_val_ptr)),
+                        } => (
+                            *dst_val_ptr,
+                            memory_utils::pointee_size(context, *dst_val_ptr),
+                        ),
                         _ => panic!("Unexpected copy instruction"),
                     };
                     if memory_utils::may_alias(context, value, len, dest_ptr, copy_size) {

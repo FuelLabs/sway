@@ -20,7 +20,7 @@ pub fn create_escaped_symbols_pass() -> Pass {
     }
 }
 
-#[derive(Eq, PartialEq, Copy, Clone, Hash)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, Hash)]
 pub enum Symbol {
     Local(LocalVar),
     Arg(BlockArgument),
@@ -286,7 +286,7 @@ pub fn get_memory_offsets(context: &Context, val: Value) -> FxHashMap<Symbol, u6
             let offset = sym
                 .get_type(context)
                 .get_pointee_type(context)?
-                .get_indexed_offset(context, &combine_indices(context, val)?)?;
+                .get_value_indexed_offset(context, &combine_indices(context, val)?)?;
             Some((sym, offset))
         })
         .collect()

@@ -8,9 +8,9 @@
 use rustc_hash::FxHashSet;
 
 use crate::{
-    get_symbols, AnalysisResults, Context, EscapedSymbols, Function,
-    Instruction, IrError, LocalVar, Module, Pass, PassMutability, ScopedPass, Symbol, Value,
-    ValueDatum, ESCAPED_SYMBOLS_NAME, memory_utils,
+    get_symbols, memory_utils, AnalysisResults, Context, EscapedSymbols, Function, Instruction,
+    IrError, LocalVar, Module, Pass, PassMutability, ScopedPass, Symbol, Value, ValueDatum,
+    ESCAPED_SYMBOLS_NAME,
 };
 
 use std::collections::{HashMap, HashSet};

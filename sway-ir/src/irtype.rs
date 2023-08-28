@@ -294,18 +294,11 @@ impl Type {
     }
 
     /// What's the offset of the indexed element?
-    /// It may not always be possible to determine statically.
-    pub fn get_indexed_offset(&self, context: &Context, indices: &[Value]) -> Option<u64> {
+    /// Returns None on invalid indices.
+    pub fn get_indexed_offset(&self, context: &Context, indices: &[u64]) -> Option<u64> {
         indices
             .iter()
             .try_fold((*self, 0), |(ty, accum_offset), idx| {
-                let Some(Constant {
-                    value: ConstantValue::Uint(idx),
-                    ty: _,
-                }) = idx.get_constant(context)
-                else {
-                    return None;
-                };
                 if ty.is_struct(context) {
                     // Sum up all sizes of all previous fields.
                     let prev_idxs_offset = (0..(*idx)).try_fold(0, |accum, pre_idx| {
@@ -335,6 +328,28 @@ impl Type {
                 }
             })
             .map(|pair| pair.1)
+    }
+
+    /// What's the offset of the value indexed element?
+    /// It may not always be possible to determine statically.
+    pub fn get_value_indexed_offset(&self, context: &Context, indices: &[Value]) -> Option<u64> {
+        let const_indices: Vec<_> = indices
+            .iter()
+            .map_while(|idx| {
+                if let Some(Constant {
+                    value: ConstantValue::Uint(idx),
+                    ty: _,
+                }) = idx.get_constant(context)
+                {
+                    Some(*idx)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        (const_indices.len() == indices.len())
+            .then(|| self.get_indexed_offset(context, &const_indices))
+            .flatten()
     }
 
     pub fn get_field_type(&self, context: &Context, idx: u64) -> Option<Type> {
