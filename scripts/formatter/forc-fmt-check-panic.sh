@@ -3,13 +3,17 @@
 # This script will format all sway projects in the current directory and all subdirectories.
 # This is useful for testing the formatter itself to make sure it's not panicking on any valid
 # sway projects and for checking that it's formatted output is correct.
+
+cargo install --locked --path forc-plugins/forc-fmt
+which forc-fmt
+
 forc_manifests=`find . -name Forc.toml`
 let count=0
 let panicked=0
 for f in $forc_manifests
 do
     dir="${f%/*}"
-    stderr="$(forc fmt -p $dir 2>&1 > /dev/null)"
+    stderr="$(forc-fmt -p $dir 2>&1 > /dev/null)"
 
     echo $dir
     if [[ $stderr == *"panicked at"* ]]
