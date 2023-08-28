@@ -43,9 +43,7 @@ impl LeafSpans for ItemKind {
             Use(item_use) => item_use.leaf_spans(),
             Configurable(item_configurable) => item_configurable.leaf_spans(),
             TypeAlias(item_type_alias) => item_type_alias.leaf_spans(),
-            Error(spans, _) => {
-                vec![sway_types::Span::join_all(spans.iter().cloned()).into()]
-            }
+            Error(span, _) => vec![span.clone().into()],
         }
     }
 }

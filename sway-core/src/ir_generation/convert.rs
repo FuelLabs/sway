@@ -64,9 +64,9 @@ pub(super) fn convert_resolved_typeid(
         type_engine,
         decl_engine,
         context,
-        &type_engine
-            .to_typeinfo(*ast_type, span)
-            .map_err(|ty_err| CompileError::InternalOwned(format!("{ty_err:?}"), span.clone()))?,
+        &type_engine.to_typeinfo(*ast_type, span).map_err(|ty_err| {
+            CompileError::InternalOwned(format!("{ty_err:?}"), Some(span.clone()))
+        })?,
         span,
     )
 }

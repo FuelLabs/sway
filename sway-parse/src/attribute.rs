@@ -85,14 +85,11 @@ impl<T: Parse> Parse for Annotated<T> {
         }
     }
 
-    fn error(
-        spans: Box<[sway_types::Span]>,
-        error: sway_error::handler::ErrorEmitted,
-    ) -> Option<Self>
+    fn error(span: sway_types::Span, error: sway_error::handler::ErrorEmitted) -> Option<Self>
     where
         Self: Sized,
     {
-        T::error(spans, error).map(|value| Annotated {
+        T::error(span, error).map(|value| Annotated {
             attribute_list: vec![],
             value,
         })

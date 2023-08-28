@@ -39,7 +39,9 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
     warning::{CompileWarning, Warning},
 };
-use sway_types::{integer_bits::IntegerBits, u256::U256, Ident, Named, Span, Spanned};
+use sway_types::{
+    integer_bits::IntegerBits, u256::U256, Ident, MaybeSpanned, Named, Span, Spanned,
+};
 
 use rustc_hash::FxHashSet;
 
@@ -656,10 +658,12 @@ impl ty::TyExpression {
                     span: reachable_report.scrutinee.span.clone(),
                     warning_content: Warning::MatchExpressionUnreachableArm {
                         match_value: value.span(),
-                        preceding_arms: arms_reachability[catch_all_arm_position]
-                            .scrutinee
-                            .span
-                            .clone(),
+                        preceding_arms: Some(
+                            arms_reachability[catch_all_arm_position]
+                                .scrutinee
+                                .span
+                                .clone(),
+                        ),
                         preceding_arm_is_catch_all: true,
                         unreachable_arm: reachable_report.scrutinee.span.clone(),
                         // In this case id doesn't matter if the concrete unreachable arm is
@@ -1288,7 +1292,7 @@ impl ty::TyExpression {
                 if let TypeArgs::Prefix(_) = call_path_binding.type_arguments {
                     handler.emit_err(
                         ConvertParseTreeError::GenericsNotSupportedHere {
-                            span: call_path_binding.type_arguments.span(),
+                            span: call_path_binding.type_arguments.try_span(),
                         }
                         .into(),
                     );
@@ -1306,7 +1310,7 @@ impl ty::TyExpression {
                 handler.append(module_probe_handler);
                 return Err(handler.emit_err(CompileError::Unimplemented(
                     "this case is not yet implemented",
-                    span,
+                    Some(span),
                 )));
             }
             (false, None, None, Some((const_ref, call_path_binding))) => {
@@ -1316,7 +1320,7 @@ impl ty::TyExpression {
                     // In case `foo::bar::<TyArgs>::CONST` throw an error.
                     handler.emit_err(
                         ConvertParseTreeError::GenericsNotSupportedHere {
-                            span: unknown_call_path_binding.type_arguments.span(),
+                            span: unknown_call_path_binding.type_arguments.try_span(),
                         }
                         .into(),
                     );

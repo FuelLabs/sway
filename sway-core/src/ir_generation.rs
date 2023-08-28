@@ -9,7 +9,6 @@ mod types;
 
 use sway_error::error::CompileError;
 use sway_ir::{Context, Kind};
-use sway_types::span::Span;
 
 pub(crate) use purity::{check_function_purity, PurityEnv};
 
@@ -101,9 +100,6 @@ pub fn compile_program<'eng>(
     //println!("{ctx}");
 
     ctx.verify().map_err(|ir_error: sway_ir::IrError| {
-        vec![CompileError::InternalOwned(
-            ir_error.to_string(),
-            Span::dummy(),
-        )]
+        vec![CompileError::InternalOwned(ir_error.to_string(), None)]
     })
 }

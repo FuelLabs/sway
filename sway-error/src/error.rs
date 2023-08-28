@@ -6,7 +6,7 @@ use crate::type_error::TypeError;
 
 use core::fmt;
 use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
-use sway_types::{Ident, SourceEngine, Span, Spanned};
+use sway_types::{Ident, MaybeSpanned, SourceEngine, Span, Spanned};
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
@@ -37,7 +37,7 @@ pub enum CompileError {
         span: Span,
     },
     #[error("Unimplemented feature: {0}")]
-    Unimplemented(&'static str, Span),
+    Unimplemented(&'static str, Option<Span>),
     #[error(
         "Unimplemented feature: {0}\n\
          help: {1}.\n\
@@ -57,7 +57,7 @@ pub enum CompileError {
         "Internal compiler error: {0}\nPlease file an issue on the repository and include the \
          code that triggered this error."
     )]
-    InternalOwned(String, Span),
+    InternalOwned(String, Option<Span>),
     #[error(
         "Predicate declaration contains no main function. Predicates require a main function."
     )]
@@ -154,7 +154,7 @@ pub enum CompileError {
     #[error("\"{name}\" does not take type arguments.")]
     DoesNotTakeTypeArguments { name: Ident, span: Span },
     #[error("\"{name}\" does not take type arguments as prefix.")]
-    DoesNotTakeTypeArgumentsAsPrefix { name: Ident, span: Span },
+    DoesNotTakeTypeArgumentsAsPrefix { name: Ident, span: Option<Span> },
     #[error("Type arguments are not allowed for this type.")]
     TypeArgumentsNotAllowed { span: Span },
     #[error("\"{name}\" needs type arguments.")]
@@ -459,7 +459,7 @@ pub enum CompileError {
         variable_or_constant: String,
         name: Ident,
         constant_span: Span,
-        constant_decl: Span,
+        constant_decl: Option<Span>,
         is_alias: bool,
     },
     #[error("Constants cannot shadow variables. The constant \"{name}\" shadows variable with the same name.")]
@@ -684,176 +684,176 @@ impl std::convert::From<TypeError> for CompileError {
     }
 }
 
-impl Spanned for CompileError {
-    fn span(&self) -> Span {
+impl MaybeSpanned for CompileError {
+    fn try_span(&self) -> Option<Span> {
         use CompileError::*;
         match self {
-            UnknownVariable { span, .. } => span.clone(),
-            NotAVariable { span, .. } => span.clone(),
+            UnknownVariable { span, .. } => Some(span.clone()),
+            NotAVariable { span, .. } => Some(span.clone()),
             Unimplemented(_, span) => span.clone(),
-            UnimplementedWithHelp(_, _, span) => span.clone(),
-            TypeError(err) => err.span(),
-            ParseError { span, .. } => span.clone(),
-            Internal(_, span) => span.clone(),
+            UnimplementedWithHelp(_, _, span) => Some(span.clone()),
+            TypeError(err) => Some(err.span()),
+            ParseError { span, .. } => Some(span.clone()),
+            Internal(_, span) => Some(span.clone()),
             InternalOwned(_, span) => span.clone(),
-            NoPredicateMainFunction(span) => span.clone(),
-            PredicateMainDoesNotReturnBool(span) => span.clone(),
-            NoScriptMainFunction(span) => span.clone(),
-            MultipleDefinitionsOfFunction { span, .. } => span.clone(),
-            MultipleDefinitionsOfName { span, .. } => span.clone(),
-            MultipleDefinitionsOfConstant { span, .. } => span.clone(),
-            AssignmentToNonMutable { span, .. } => span.clone(),
-            MutableParameterNotSupported { span, .. } => span.clone(),
-            ImmutableArgumentToMutableParameter { span } => span.clone(),
-            RefMutableNotAllowedInContractAbi { span, .. } => span.clone(),
-            MethodRequiresMutableSelf { span, .. } => span.clone(),
-            AssociatedFunctionCalledAsMethod { span, .. } => span.clone(),
-            TypeParameterNotInTypeScope { span, .. } => span.clone(),
-            MismatchedTypeInInterfaceSurface { span, .. } => span.clone(),
-            UnknownTrait { span, .. } => span.clone(),
-            FunctionNotAPartOfInterfaceSurface { span, .. } => span.clone(),
-            ConstantNotAPartOfInterfaceSurface { span, .. } => span.clone(),
-            MissingInterfaceSurfaceConstants { span, .. } => span.clone(),
-            MissingInterfaceSurfaceMethods { span, .. } => span.clone(),
-            IncorrectNumberOfTypeArguments { span, .. } => span.clone(),
-            DoesNotTakeTypeArguments { span, .. } => span.clone(),
+            NoPredicateMainFunction(span) => Some(span.clone()),
+            PredicateMainDoesNotReturnBool(span) => Some(span.clone()),
+            NoScriptMainFunction(span) => Some(span.clone()),
+            MultipleDefinitionsOfFunction { span, .. } => Some(span.clone()),
+            MultipleDefinitionsOfName { span, .. } => Some(span.clone()),
+            MultipleDefinitionsOfConstant { span, .. } => Some(span.clone()),
+            AssignmentToNonMutable { span, .. } => Some(span.clone()),
+            MutableParameterNotSupported { span, .. } => Some(span.clone()),
+            ImmutableArgumentToMutableParameter { span } => Some(span.clone()),
+            RefMutableNotAllowedInContractAbi { span, .. } => Some(span.clone()),
+            MethodRequiresMutableSelf { span, .. } => Some(span.clone()),
+            AssociatedFunctionCalledAsMethod { span, .. } => Some(span.clone()),
+            TypeParameterNotInTypeScope { span, .. } => Some(span.clone()),
+            MismatchedTypeInInterfaceSurface { span, .. } => Some(span.clone()),
+            UnknownTrait { span, .. } => Some(span.clone()),
+            FunctionNotAPartOfInterfaceSurface { span, .. } => Some(span.clone()),
+            ConstantNotAPartOfInterfaceSurface { span, .. } => Some(span.clone()),
+            MissingInterfaceSurfaceConstants { span, .. } => Some(span.clone()),
+            MissingInterfaceSurfaceMethods { span, .. } => Some(span.clone()),
+            IncorrectNumberOfTypeArguments { span, .. } => Some(span.clone()),
+            DoesNotTakeTypeArguments { span, .. } => Some(span.clone()),
             DoesNotTakeTypeArgumentsAsPrefix { span, .. } => span.clone(),
-            TypeArgumentsNotAllowed { span } => span.clone(),
-            NeedsTypeArguments { span, .. } => span.clone(),
-            StructMissingField { span, .. } => span.clone(),
-            StructDoesNotHaveField { span, .. } => span.clone(),
-            MethodNotFound { span, .. } => span.clone(),
-            ModuleNotFound { span, .. } => span.clone(),
-            NotATuple { span, .. } => span.clone(),
-            NotAStruct { span, .. } => span.clone(),
-            NotIndexable { span, .. } => span.clone(),
-            FieldAccessOnNonStruct { span, .. } => span.clone(),
-            FieldNotFound { span, .. } => span.clone(),
-            SymbolNotFound { span, .. } => span.clone(),
-            ImportPrivateSymbol { span, .. } => span.clone(),
-            ImportPrivateModule { span, .. } => span.clone(),
-            NoElseBranch { span, .. } => span.clone(),
-            NotAType { span, .. } => span.clone(),
-            MissingEnumInstantiator { span, .. } => span.clone(),
-            PathDoesNotReturn { span, .. } => span.clone(),
-            ExpectedModuleDocComment { span } => span.clone(),
-            UnknownRegister { span, .. } => span.clone(),
-            MissingImmediate { span, .. } => span.clone(),
-            InvalidImmediateValue { span, .. } => span.clone(),
-            UnknownEnumVariant { span, .. } => span.clone(),
-            UnrecognizedOp { span, .. } => span.clone(),
-            UnableToInferGeneric { span, .. } => span.clone(),
-            UnconstrainedGenericParameter { span, .. } => span.clone(),
-            TraitConstraintNotSatisfied { span, .. } => span.clone(),
-            TraitConstraintMissing { span, .. } => span.clone(),
-            Immediate06TooLarge { span, .. } => span.clone(),
-            Immediate12TooLarge { span, .. } => span.clone(),
-            Immediate18TooLarge { span, .. } => span.clone(),
-            Immediate24TooLarge { span, .. } => span.clone(),
-            IncorrectNumberOfAsmRegisters { span, .. } => span.clone(),
-            UnnecessaryImmediate { span, .. } => span.clone(),
-            AmbiguousPath { span, .. } => span.clone(),
-            UnknownType { span, .. } => span.clone(),
-            UnknownTypeName { span, .. } => span.clone(),
-            FileCouldNotBeRead { span, .. } => span.clone(),
-            ImportMustBeLibrary { span, .. } => span.clone(),
-            MoreThanOneEnumInstantiator { span, .. } => span.clone(),
-            UnnecessaryEnumInstantiator { span, .. } => span.clone(),
-            UnitVariantWithParenthesesEnumInstantiator { span, .. } => span.clone(),
-            TraitNotFound { span, .. } => span.clone(),
-            InvalidExpressionOnLhs { span, .. } => span.clone(),
-            TooManyArgumentsForFunction { span, .. } => span.clone(),
-            TooFewArgumentsForFunction { span, .. } => span.clone(),
-            MissingParenthesesForFunction { span, .. } => span.clone(),
-            InvalidAbiType { span, .. } => span.clone(),
-            NotAnAbi { span, .. } => span.clone(),
-            ImplAbiForNonContract { span, .. } => span.clone(),
+            TypeArgumentsNotAllowed { span } => Some(span.clone()),
+            NeedsTypeArguments { span, .. } => Some(span.clone()),
+            StructMissingField { span, .. } => Some(span.clone()),
+            StructDoesNotHaveField { span, .. } => Some(span.clone()),
+            MethodNotFound { span, .. } => Some(span.clone()),
+            ModuleNotFound { span, .. } => Some(span.clone()),
+            NotATuple { span, .. } => Some(span.clone()),
+            NotAStruct { span, .. } => Some(span.clone()),
+            NotIndexable { span, .. } => Some(span.clone()),
+            FieldAccessOnNonStruct { span, .. } => Some(span.clone()),
+            FieldNotFound { span, .. } => Some(span.clone()),
+            SymbolNotFound { span, .. } => Some(span.clone()),
+            ImportPrivateSymbol { span, .. } => Some(span.clone()),
+            ImportPrivateModule { span, .. } => Some(span.clone()),
+            NoElseBranch { span, .. } => Some(span.clone()),
+            NotAType { span, .. } => Some(span.clone()),
+            MissingEnumInstantiator { span, .. } => Some(span.clone()),
+            PathDoesNotReturn { span, .. } => Some(span.clone()),
+            ExpectedModuleDocComment { span } => Some(span.clone()),
+            UnknownRegister { span, .. } => Some(span.clone()),
+            MissingImmediate { span, .. } => Some(span.clone()),
+            InvalidImmediateValue { span, .. } => Some(span.clone()),
+            UnknownEnumVariant { span, .. } => Some(span.clone()),
+            UnrecognizedOp { span, .. } => Some(span.clone()),
+            UnableToInferGeneric { span, .. } => Some(span.clone()),
+            UnconstrainedGenericParameter { span, .. } => Some(span.clone()),
+            TraitConstraintNotSatisfied { span, .. } => Some(span.clone()),
+            TraitConstraintMissing { span, .. } => Some(span.clone()),
+            Immediate06TooLarge { span, .. } => Some(span.clone()),
+            Immediate12TooLarge { span, .. } => Some(span.clone()),
+            Immediate18TooLarge { span, .. } => Some(span.clone()),
+            Immediate24TooLarge { span, .. } => Some(span.clone()),
+            IncorrectNumberOfAsmRegisters { span, .. } => Some(span.clone()),
+            UnnecessaryImmediate { span, .. } => Some(span.clone()),
+            AmbiguousPath { span, .. } => Some(span.clone()),
+            UnknownType { span, .. } => Some(span.clone()),
+            UnknownTypeName { span, .. } => Some(span.clone()),
+            FileCouldNotBeRead { span, .. } => Some(span.clone()),
+            ImportMustBeLibrary { span, .. } => Some(span.clone()),
+            MoreThanOneEnumInstantiator { span, .. } => Some(span.clone()),
+            UnnecessaryEnumInstantiator { span, .. } => Some(span.clone()),
+            UnitVariantWithParenthesesEnumInstantiator { span, .. } => Some(span.clone()),
+            TraitNotFound { span, .. } => Some(span.clone()),
+            InvalidExpressionOnLhs { span, .. } => Some(span.clone()),
+            TooManyArgumentsForFunction { span, .. } => Some(span.clone()),
+            TooFewArgumentsForFunction { span, .. } => Some(span.clone()),
+            MissingParenthesesForFunction { span, .. } => Some(span.clone()),
+            InvalidAbiType { span, .. } => Some(span.clone()),
+            NotAnAbi { span, .. } => Some(span.clone()),
+            ImplAbiForNonContract { span, .. } => Some(span.clone()),
             ConflictingImplsForTraitAndType {
                 second_impl_span, ..
-            } => second_impl_span.clone(),
-            DuplicateDeclDefinedForType { span, .. } => span.clone(),
-            IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => span.clone(),
-            ArgumentParameterTypeMismatch { span, .. } => span.clone(),
-            RecursiveCall { span, .. } => span.clone(),
-            RecursiveCallChain { span, .. } => span.clone(),
-            RecursiveType { span, .. } => span.clone(),
-            RecursiveTypeChain { span, .. } => span.clone(),
-            GMFromExternalContext { span, .. } => span.clone(),
-            MintFromExternalContext { span, .. } => span.clone(),
-            BurnFromExternalContext { span, .. } => span.clone(),
-            ContractStorageFromExternalContext { span, .. } => span.clone(),
-            InvalidOpcodeFromPredicate { span, .. } => span.clone(),
-            ArrayOutOfBounds { span, .. } => span.clone(),
-            ConstantsCannotBeShadowed { name, .. } => name.span(),
-            ConstantShadowsVariable { name, .. } => name.span(),
-            ShadowsOtherSymbol { name } => name.span(),
-            GenericShadowsGeneric { name } => name.span(),
-            MatchExpressionNonExhaustive { span, .. } => span.clone(),
-            MatchStructPatternMissingFields { span, .. } => span.clone(),
-            MatchVariableNotBoundInAllPatterns { span, .. } => span.clone(),
-            NotAnEnum { span, .. } => span.clone(),
-            StorageAccessMismatch { span, .. } => span.clone(),
-            TraitDeclPureImplImpure { span, .. } => span.clone(),
-            TraitImplPurityMismatch { span, .. } => span.clone(),
-            DeclIsNotAnEnum { span, .. } => span.clone(),
-            DeclIsNotAStruct { span, .. } => span.clone(),
-            DeclIsNotAFunction { span, .. } => span.clone(),
-            DeclIsNotAVariable { span, .. } => span.clone(),
-            DeclIsNotAnAbi { span, .. } => span.clone(),
-            DeclIsNotATrait { span, .. } => span.clone(),
-            DeclIsNotAnImplTrait { span, .. } => span.clone(),
-            DeclIsNotATraitFn { span, .. } => span.clone(),
-            DeclIsNotStorage { span, .. } => span.clone(),
-            DeclIsNotAConstant { span, .. } => span.clone(),
-            DeclIsNotATypeAlias { span, .. } => span.clone(),
-            ImpureInNonContract { span, .. } => span.clone(),
-            ImpureInPureContext { span, .. } => span.clone(),
-            ParameterRefMutabilityMismatch { span, .. } => span.clone(),
-            IntegerTooLarge { span, .. } => span.clone(),
-            IntegerTooSmall { span, .. } => span.clone(),
-            IntegerContainsInvalidDigit { span, .. } => span.clone(),
-            AbiAsSupertrait { span, .. } => span.clone(),
-            SupertraitImplRequired { span, .. } => span.clone(),
-            ContractCallParamRepeated { span, .. } => span.clone(),
-            UnrecognizedContractParam { span, .. } => span.clone(),
-            CallParamForNonContractCallMethod { span, .. } => span.clone(),
-            StorageFieldDoesNotExist { span, .. } => span.clone(),
-            InvalidStorageOnlyTypeDecl { span, .. } => span.clone(),
-            NoDeclaredStorage { span, .. } => span.clone(),
-            MultipleStorageDeclarations { span, .. } => span.clone(),
-            UnexpectedDeclaration { span, .. } => span.clone(),
-            ContractAddressMustBeKnown { span, .. } => span.clone(),
-            ConvertParseTree { error } => error.span(),
-            Lex { error } => error.span(),
-            Parse { error } => error.span.clone(),
-            EnumNotFound { span, .. } => span.clone(),
-            TupleIndexOutOfBounds { span, .. } => span.clone(),
-            NonConstantDeclValue { span } => span.clone(),
-            StorageDeclarationInNonContract { span, .. } => span.clone(),
-            IntrinsicUnsupportedArgType { span, .. } => span.clone(),
-            IntrinsicIncorrectNumArgs { span, .. } => span.clone(),
-            IntrinsicIncorrectNumTArgs { span, .. } => span.clone(),
-            BreakOutsideLoop { span } => span.clone(),
-            ContinueOutsideLoop { span } => span.clone(),
-            ContractIdConstantNotAConstDecl { span } => span.clone(),
-            ContractIdValueNotALiteral { span } => span.clone(),
-            TypeNotAllowedInContractStorage { span, .. } => span.clone(),
-            RefMutableNotAllowedInMain { span, .. } => span.clone(),
-            NestedSliceReturnNotAllowedInMain { span } => span.clone(),
-            InitializedRegisterReassignment { span, .. } => span.clone(),
-            DisallowedControlFlowInstruction { span, .. } => span.clone(),
-            CallingPrivateLibraryMethod { span, .. } => span.clone(),
-            DisallowedIntrinsicInPredicate { span, .. } => span.clone(),
-            CoinsPassedToNonPayableMethod { span, .. } => span.clone(),
-            TraitImplPayabilityMismatch { span, .. } => span.clone(),
-            ConfigurableInLibrary { span } => span.clone(),
-            MultipleApplicableItemsInScope { span, .. } => span.clone(),
-            NonStrGenericType { span } => span.clone(),
-            CannotBeEvaluatedToConst { span } => span.clone(),
-            ContractCallsItsOwnMethod { span } => span.clone(),
-            AbiShadowsSuperAbiMethod { span, .. } => span.clone(),
-            ConflictingSuperAbiMethods { span, .. } => span.clone(),
-            AbiSupertraitMethodCallAsContractCall { span, .. } => span.clone(),
+            } => Some(second_impl_span.clone()),
+            DuplicateDeclDefinedForType { span, .. } => Some(span.clone()),
+            IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => Some(span.clone()),
+            ArgumentParameterTypeMismatch { span, .. } => Some(span.clone()),
+            RecursiveCall { span, .. } => Some(span.clone()),
+            RecursiveCallChain { span, .. } => Some(span.clone()),
+            RecursiveType { span, .. } => Some(span.clone()),
+            RecursiveTypeChain { span, .. } => Some(span.clone()),
+            GMFromExternalContext { span, .. } => Some(span.clone()),
+            MintFromExternalContext { span, .. } => Some(span.clone()),
+            BurnFromExternalContext { span, .. } => Some(span.clone()),
+            ContractStorageFromExternalContext { span, .. } => Some(span.clone()),
+            InvalidOpcodeFromPredicate { span, .. } => Some(span.clone()),
+            ArrayOutOfBounds { span, .. } => Some(span.clone()),
+            ConstantsCannotBeShadowed { name, .. } => Some(name.span()),
+            ConstantShadowsVariable { name, .. } => Some(name.span()),
+            ShadowsOtherSymbol { name } => Some(name.span()),
+            GenericShadowsGeneric { name } => Some(name.span()),
+            MatchExpressionNonExhaustive { span, .. } => Some(span.clone()),
+            MatchStructPatternMissingFields { span, .. } => Some(span.clone()),
+            MatchVariableNotBoundInAllPatterns { span, .. } => Some(span.clone()),
+            NotAnEnum { span, .. } => Some(span.clone()),
+            StorageAccessMismatch { span, .. } => Some(span.clone()),
+            TraitDeclPureImplImpure { span, .. } => Some(span.clone()),
+            TraitImplPurityMismatch { span, .. } => Some(span.clone()),
+            DeclIsNotAnEnum { span, .. } => Some(span.clone()),
+            DeclIsNotAStruct { span, .. } => Some(span.clone()),
+            DeclIsNotAFunction { span, .. } => Some(span.clone()),
+            DeclIsNotAVariable { span, .. } => Some(span.clone()),
+            DeclIsNotAnAbi { span, .. } => Some(span.clone()),
+            DeclIsNotATrait { span, .. } => Some(span.clone()),
+            DeclIsNotAnImplTrait { span, .. } => Some(span.clone()),
+            DeclIsNotATraitFn { span, .. } => Some(span.clone()),
+            DeclIsNotStorage { span, .. } => Some(span.clone()),
+            DeclIsNotAConstant { span, .. } => Some(span.clone()),
+            DeclIsNotATypeAlias { span, .. } => Some(span.clone()),
+            ImpureInNonContract { span, .. } => Some(span.clone()),
+            ImpureInPureContext { span, .. } => Some(span.clone()),
+            ParameterRefMutabilityMismatch { span, .. } => Some(span.clone()),
+            IntegerTooLarge { span, .. } => Some(span.clone()),
+            IntegerTooSmall { span, .. } => Some(span.clone()),
+            IntegerContainsInvalidDigit { span, .. } => Some(span.clone()),
+            AbiAsSupertrait { span, .. } => Some(span.clone()),
+            SupertraitImplRequired { span, .. } => Some(span.clone()),
+            ContractCallParamRepeated { span, .. } => Some(span.clone()),
+            UnrecognizedContractParam { span, .. } => Some(span.clone()),
+            CallParamForNonContractCallMethod { span, .. } => Some(span.clone()),
+            StorageFieldDoesNotExist { span, .. } => Some(span.clone()),
+            InvalidStorageOnlyTypeDecl { span, .. } => Some(span.clone()),
+            NoDeclaredStorage { span, .. } => Some(span.clone()),
+            MultipleStorageDeclarations { span, .. } => Some(span.clone()),
+            UnexpectedDeclaration { span, .. } => Some(span.clone()),
+            ContractAddressMustBeKnown { span, .. } => Some(span.clone()),
+            ConvertParseTree { error } => error.try_span(),
+            Lex { error } => Some(error.span()),
+            Parse { error } => Some(error.span.clone()),
+            EnumNotFound { span, .. } => Some(span.clone()),
+            TupleIndexOutOfBounds { span, .. } => Some(span.clone()),
+            NonConstantDeclValue { span } => Some(span.clone()),
+            StorageDeclarationInNonContract { span, .. } => Some(span.clone()),
+            IntrinsicUnsupportedArgType { span, .. } => Some(span.clone()),
+            IntrinsicIncorrectNumArgs { span, .. } => Some(span.clone()),
+            IntrinsicIncorrectNumTArgs { span, .. } => Some(span.clone()),
+            BreakOutsideLoop { span } => Some(span.clone()),
+            ContinueOutsideLoop { span } => Some(span.clone()),
+            ContractIdConstantNotAConstDecl { span } => Some(span.clone()),
+            ContractIdValueNotALiteral { span } => Some(span.clone()),
+            TypeNotAllowedInContractStorage { span, .. } => Some(span.clone()),
+            RefMutableNotAllowedInMain { span, .. } => Some(span.clone()),
+            NestedSliceReturnNotAllowedInMain { span } => Some(span.clone()),
+            InitializedRegisterReassignment { span, .. } => Some(span.clone()),
+            DisallowedControlFlowInstruction { span, .. } => Some(span.clone()),
+            CallingPrivateLibraryMethod { span, .. } => Some(span.clone()),
+            DisallowedIntrinsicInPredicate { span, .. } => Some(span.clone()),
+            CoinsPassedToNonPayableMethod { span, .. } => Some(span.clone()),
+            TraitImplPayabilityMismatch { span, .. } => Some(span.clone()),
+            ConfigurableInLibrary { span } => Some(span.clone()),
+            MultipleApplicableItemsInScope { span, .. } => Some(span.clone()),
+            NonStrGenericType { span } => Some(span.clone()),
+            CannotBeEvaluatedToConst { span } => Some(span.clone()),
+            ContractCallsItsOwnMethod { span } => Some(span.clone()),
+            AbiShadowsSuperAbiMethod { span, .. } => Some(span.clone()),
+            ConflictingSuperAbiMethods { span, .. } => Some(span.clone()),
+            AbiSupertraitMethodCallAsContractCall { span, .. } => Some(span.clone()),
         }
     }
 }
@@ -871,7 +871,7 @@ impl ToDiagnostic for CompileError {
                 //       And our #[error] macro will anyhow encapsulate it and ensure consistency.
                 issue: Issue::error(
                     source_engine,
-                    name.span(),
+                    Some(name.span()),
                     format!(
                         // Variable "x" shadows constant with the same name
                         //  or
@@ -879,39 +879,44 @@ impl ToDiagnostic for CompileError {
                         //  or
                         // ...
                         "{variable_or_constant} \"{name}\" shadows {}constant with the same name",
-                        if constant_decl.clone() != Span::dummy() { "imported " } else { "" }
+                        if constant_decl.is_some() { "imported " } else { "" }
                     )
                 ),
-                hints: vec![
-                    Hint::info(
-                        source_engine,
-                        constant_span.clone(),
-                        format!(
-                            // Constant "x" is declared here.
-                            //  or
-                            // Constant "x" gets imported here.
-                            "Constant \"{name}\" {} here{}.",
-                            if constant_decl.clone() != Span::dummy() { "gets imported" } else { "is declared" },
-                            if *is_alias { " as alias" } else { "" }
-                        )
-                    ),
-                    Hint::info( // Ignored if the constant_decl is Span::dummy().
-                        source_engine,
-                        constant_decl.clone(),
-                        format!("This is the original declaration of the imported constant \"{name}\".")
-                    ),
-                    Hint::error(
+                hints: {
+                    let mut hints = vec![
+                        Hint::info(
+                            source_engine,
+                            constant_span.clone(),
+                            format!(
+                                // Constant "x" is declared here.
+                                //  or
+                                // Constant "x" gets imported here.
+                                "Constant \"{name}\" {} here{}.",
+                                if constant_decl.is_some() { "gets imported" } else { "is declared" },
+                                if *is_alias { " as alias" } else { "" }
+                            )
+                        ),
+                    ];
+                    if let Some(constant_decl) = constant_decl {
+                        hints.push(Hint::info(
+                            source_engine,
+                            constant_decl.clone(),
+                            format!("This is the original declaration of the imported constant \"{name}\".")
+                        ));
+                    }
+                    hints.push(Hint::error(
                         source_engine,
                         name.span(),
                         format!(
                             "Shadowing via {} \"{name}\" happens here.", 
                             if variable_or_constant == "Variable" { "variable" } else { "new constant" }
                         )
-                    ),
-                ],
+                    ));
+                    hints
+                },
                 help: vec![
                     format!("Unlike variables, constants cannot be shadowed by other constants or variables."),
-                    match (variable_or_constant.as_str(), constant_decl.clone() != Span::dummy()) {
+                    match (variable_or_constant.as_str(), constant_decl.is_some()) {
                         ("Variable", false) => format!("Consider renaming either the variable \"{name}\" or the constant \"{name}\"."),
                         ("Constant", false) => "Consider renaming one of the constants.".to_string(),
                         (variable_or_constant, true) => format!(
@@ -927,7 +932,7 @@ impl ToDiagnostic for CompileError {
                 reason: Some(Reason::new(code(1), "Constants cannot shadow variables".to_string())),
                 issue: Issue::error(
                     source_engine,
-                    name.span(),
+                    Some(name.span()),
                     format!("Constant \"{name}\" shadows variable with the same name")
                 ),
                 hints: vec![
@@ -952,8 +957,10 @@ impl ToDiagnostic for CompileError {
                     //       In general, self must not be used and will not be used once we
                     //       switch to our own #[error] macro. All the values for the formating
                     //       of a diagnostic must come from the enum variant parameters.
-                    issue: Issue::error(source_engine, self.span(), format!("{}", self)),
-                    ..Default::default()
+                    issue: Issue::error(source_engine, self.try_span(), format!("{}", self)),
+                    reason: None,
+                    hints: vec![],
+                    help: vec![],
                 }
         }
     }

@@ -16,7 +16,6 @@ use anyhow::Result;
 use horrorshow::{box_html, helper::doctype, html, prelude::*};
 use std::collections::BTreeMap;
 use sway_core::{language::ty::TyProgramKind, transform::AttributesMap};
-use sway_types::BaseIdent;
 
 pub mod constant;
 mod index;
@@ -275,6 +274,6 @@ pub(crate) enum DocStyle {
     ModuleIndex,
     Item {
         title: Option<BlockTitle>,
-        name: Option<BaseIdent>,
+        name: Option<String>,
     },
 }

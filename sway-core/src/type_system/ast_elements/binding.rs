@@ -1,5 +1,5 @@
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Span, Spanned};
+use sway_types::{MaybeSpanned, Span, Spanned};
 
 use crate::{
     decl_engine::*,
@@ -119,8 +119,8 @@ impl TypeArgs {
     }
 }
 
-impl Spanned for TypeArgs {
-    fn span(&self) -> Span {
+impl MaybeSpanned for TypeArgs {
+    fn try_span(&self) -> Option<Span> {
         Span::join_all(self.to_vec().iter().map(|t| t.span()))
     }
 }

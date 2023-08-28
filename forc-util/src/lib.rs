@@ -515,7 +515,7 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
 
         let mut snippet_slices = vec![];
         if issue.is_in_source() {
-            let span = issue.span();
+            let span = issue.try_span().as_ref().expect("span should be in source");
             let input = span.input();
             let mut start_pos = span.start();
             let mut end_pos = span.end();
@@ -586,10 +586,21 @@ fn construct_slice(labels: Vec<&Label>) -> Slice {
     );
 
     let soruce_file = labels[0].source_path().map(|path| path.as_str());
-    let source_code = labels[0].span().input();
+    let source_code = labels[0]
+        .try_span()
+        .as_ref()
+        .expect("span should in source")
+        .input();
 
     // Joint span of the code snippet that covers all the labels.
-    let span = Span::join_all(labels.iter().map(|label| label.span().clone()));
+    let span = Span::join_all(labels.iter().map(|label| {
+        label
+            .try_span()
+            .as_ref()
+            .expect("span should in source")
+            .clone()
+    }))
+    .expect("empty label list");
 
     let (source, line_start, shift_in_bytes) = construct_code_snippet(&span, source_code);
 
@@ -599,7 +610,11 @@ fn construct_slice(labels: Vec<&Label>) -> Slice {
         annotations.push(SourceAnnotation {
             label: message.friendly_text(),
             annotation_type: label_type_to_annotation_type(message.label_type()),
-            range: get_annotation_range(message.span(), source_code, shift_in_bytes),
+            range: get_annotation_range(
+                message.try_span().as_ref().unwrap(),
+                source_code,
+                shift_in_bytes,
+            ),
         });
     }
 

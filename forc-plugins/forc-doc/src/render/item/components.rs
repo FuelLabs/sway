@@ -9,7 +9,6 @@ use crate::{
 use anyhow::Result;
 use horrorshow::{box_html, Raw, RenderBox};
 use sway_core::language::ty::TyDecl;
-use sway_types::BaseIdent;
 
 /// All necessary components to render the header portion of
 /// the item html doc.
@@ -17,7 +16,7 @@ use sway_types::BaseIdent;
 pub(crate) struct ItemHeader {
     pub(crate) module_info: ModuleInfo,
     pub(crate) friendly_name: &'static str,
-    pub(crate) item_name: BaseIdent,
+    pub(crate) item_name: String,
 }
 impl Renderable for ItemHeader {
     /// Basic HTML header component
@@ -73,7 +72,7 @@ pub(crate) struct ItemBody {
     /// The item name varies depending on type.
     /// We store it during info gathering to avoid
     /// multiple match statements.
-    pub(crate) item_name: BaseIdent,
+    pub(crate) item_name: String,
     pub(crate) code_str: String,
     pub(crate) attrs_opt: Option<String>,
     pub(crate) item_context: ItemContext,

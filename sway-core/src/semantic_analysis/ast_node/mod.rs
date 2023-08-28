@@ -156,7 +156,7 @@ impl ty::TyAstNode {
                         .unwrap_or_else(|err| ty::TyExpression::error(err, expr.span(), engines));
                     ty::TyAstNodeContent::ImplicitReturnExpression(typed_expr)
                 }
-                AstNodeContent::Error(spans, err) => ty::TyAstNodeContent::Error(spans, err),
+                AstNodeContent::Error(span, err) => ty::TyAstNodeContent::Error(span, err),
             },
             span: node.span,
         };

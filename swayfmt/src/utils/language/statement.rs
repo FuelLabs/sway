@@ -97,9 +97,7 @@ impl LeafSpans for Statement {
                 }
                 collected_spans
             }
-            Statement::Error(spans, _) => {
-                vec![sway_types::Span::join_all(spans.iter().cloned()).into()]
-            }
+            Statement::Error(span, _) => vec![span.clone().into()],
         }
     }
 }

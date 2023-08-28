@@ -132,11 +132,8 @@ impl Items {
                             variable_or_constant: "Variable".to_string(),
                             name: name.clone(),
                             constant_span: constant_ident.span(),
-                            constant_decl: if is_imported_constant {
-                                constant_decl.decl_span.clone()
-                            } else {
-                                Span::dummy()
-                            },
+                            constant_decl: is_imported_constant
+                                .then_some(constant_decl.decl_span.clone()),
                             is_alias,
                         });
                     }
@@ -153,11 +150,8 @@ impl Items {
                             variable_or_constant: "Constant".to_string(),
                             name: name.clone(),
                             constant_span: constant_ident.span(),
-                            constant_decl: if is_imported_constant {
-                                constant_decl.decl_span.clone()
-                            } else {
-                                Span::dummy()
-                            },
+                            constant_decl: is_imported_constant
+                                .then_some(constant_decl.decl_span.clone()),
                             is_alias,
                         });
                     }

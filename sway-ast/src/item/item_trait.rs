@@ -7,7 +7,7 @@ pub enum ItemTraitItem {
     Fn(FnSignature, Option<SemicolonToken>),
     Const(ItemConst, Option<SemicolonToken>),
     // to handle parser recovery: Error represents an incomplete trait item
-    Error(Box<[Span]>, #[serde(skip_serializing)] ErrorEmitted),
+    Error(Span, #[serde(skip_serializing)] ErrorEmitted),
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -49,7 +49,7 @@ impl Spanned for ItemTraitItem {
                     None => const_decl.span(),
                 }
             }
-            ItemTraitItem::Error(spans, _) => Span::join_all(spans.iter().cloned()),
+            ItemTraitItem::Error(span, _) => span.clone(),
         }
     }
 }

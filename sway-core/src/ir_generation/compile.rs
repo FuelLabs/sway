@@ -552,7 +552,7 @@ fn compile_abi_method(
                         "Cannot generate selector for ABI method: {}",
                         ast_fn_decl.name.as_str()
                     ),
-                    ast_fn_decl.name.span(),
+                    Some(ast_fn_decl.name.span()),
                 )])
             };
         }

@@ -7,7 +7,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Span, Spanned};
+use sway_types::{MaybeSpanned, Span, Spanned};
 
 use crate::{
     engine_threading::*,
@@ -141,8 +141,8 @@ impl TraitConstraint {
                 Span::join_all(
                     self.type_arguments
                         .iter()
-                        .map(|x| x.span())
-                        .collect::<Vec<_>>(),
+                        .filter_map(|x| x.try_span())
+                        .collect::<Vec<Span>>(),
                 ),
             )));
         }

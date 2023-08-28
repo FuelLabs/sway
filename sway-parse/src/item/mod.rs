@@ -77,14 +77,11 @@ impl Parse for ItemKind {
         Ok(kind)
     }
 
-    fn error(
-        spans: Box<[sway_types::Span]>,
-        error: sway_error::handler::ErrorEmitted,
-    ) -> Option<Self>
+    fn error(span: sway_types::Span, error: sway_error::handler::ErrorEmitted) -> Option<Self>
     where
         Self: Sized,
     {
-        Some(ItemKind::Error(spans, error))
+        Some(ItemKind::Error(span, error))
     }
 }
 

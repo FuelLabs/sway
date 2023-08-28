@@ -438,7 +438,7 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
     pub fn recover_at_next_line_with_fallback_error(
         &self,
         kind: ParseErrorKind,
-    ) -> (Box<[Span]>, ErrorEmitted) {
+    ) -> (Span, ErrorEmitted) {
         let line = if self.fork_token_trees.is_empty() {
             None
         } else {
@@ -464,7 +464,7 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
     pub fn start<'this>(
         &'this self,
         f: impl FnOnce(&mut Parser<'a, 'this>),
-    ) -> (Box<[Span]>, ErrorEmitted) {
+    ) -> (Span, ErrorEmitted) {
         let mut p = Parser {
             token_trees: self.fork_token_trees,
             full_span: self.fork_full_span.clone(),
@@ -521,10 +521,10 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
             .map(|x| x.span())
             .collect();
 
-        Span::join_all(garbage)
+        Span::join_all(garbage).expect("empty diff span")
     }
 
-    fn finish(&self, p: Parser<'a, '_>) -> (Box<[Span]>, ErrorEmitted) {
+    fn finish(&self, p: Parser<'a, '_>) -> (Span, ErrorEmitted) {
         let mut original = self.original.borrow_mut();
 
         // collect all tokens trees that were consumed by the fork
@@ -548,7 +548,10 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
         original.token_trees = p.token_trees;
         original.handler.append(self.handler.clone());
 
-        (garbage.into_boxed_slice(), self.error)
+        (
+            Span::join_all(garbage).expect("empty diff span"),
+            self.error,
+        )
     }
 }
 

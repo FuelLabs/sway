@@ -44,7 +44,9 @@ impl Format for ItemConst {
             expr.format(formatted_code, formatter)?;
         }
 
-        write!(formatted_code, "{}", self.semicolon_token.ident().as_str())?;
+        if let Some(semicolon_token) = &self.semicolon_token {
+            write!(formatted_code, "{}", semicolon_token.ident().as_str())?;
+        }
 
         rewrite_with_comments::<ItemConst>(
             formatter,
@@ -74,7 +76,9 @@ impl LeafSpans for ItemConst {
         if let Some(expr) = &self.expr_opt {
             collected_spans.append(&mut expr.leaf_spans());
         }
-        collected_spans.push(ByteSpan::from(self.semicolon_token.span()));
+        if let Some(semicolon_token) = &self.semicolon_token {
+            collected_spans.push(ByteSpan::from(semicolon_token.span()));
+        }
         collected_spans
     }
 }

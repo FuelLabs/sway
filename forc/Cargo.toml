@@ -49,4 +49,4 @@ whoami = "1.1"
 default = []
 test = []
 util = []
-uwu = ["uwuify"]
+uwu = ["uwuify", "sway-error/uwu"]

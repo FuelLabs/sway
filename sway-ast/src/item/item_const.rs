@@ -8,7 +8,7 @@ pub struct ItemConst {
     pub ty_opt: Option<(ColonToken, Ty)>,
     pub eq_token_opt: Option<EqToken>,
     pub expr_opt: Option<Expr>,
-    pub semicolon_token: SemicolonToken,
+    pub semicolon_token: Option<SemicolonToken>,
 }
 
 impl Spanned for ItemConst {

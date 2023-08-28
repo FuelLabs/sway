@@ -600,7 +600,7 @@ fn item_trait_to_trait_declaration(
                     context, handler, engines, const_decl, attributes, false,
                 )
                 .map(TraitItem::Constant),
-                ItemTraitItem::Error(spans, error) => Ok(TraitItem::Error(spans, error)),
+                ItemTraitItem::Error(span, error) => Ok(TraitItem::Error(span, error)),
             }?))
         })
         .filter_map_ok(|item| item)
@@ -2391,10 +2391,9 @@ fn statement_to_ast_nodes(
         Statement::Expr { expr, .. } => {
             vec![expr_to_ast_node(context, handler, engines, expr, true)?]
         }
-        Statement::Error(spans, error) => {
-            let span = Span::join_all(spans.iter().cloned());
+        Statement::Error(span, error) => {
             vec![AstNode {
-                content: AstNodeContent::Error(spans, error),
+                content: AstNodeContent::Error(span.clone(), error),
                 span,
             }]
         }
@@ -2556,7 +2555,7 @@ fn path_type_segment_to_ident(
 ) -> Result<Ident, ErrorEmitted> {
     if let Some((_, generic_args)) = generics_opt {
         let error = ConvertParseTreeError::GenericsNotSupportedHere {
-            span: generic_args.span(),
+            span: Some(generic_args.span()),
         };
         return Err(handler.emit_err(error.into()));
     }
@@ -2585,7 +2584,7 @@ fn path_expr_segment_to_ident(
 ) -> Result<Ident, ErrorEmitted> {
     if let Some((_, generic_args)) = generics_opt {
         let error = ConvertParseTreeError::GenericsNotSupportedHere {
-            span: generic_args.span(),
+            span: Some(generic_args.span()),
         };
         return Err(handler.emit_err(error.into()));
     }
@@ -3936,7 +3935,7 @@ fn path_type_to_type_info(
             }
             if let Some((_, generic_args)) = generics_opt {
                 let error = ConvertParseTreeError::GenericsNotSupportedHere {
-                    span: generic_args.span(),
+                    span: Some(generic_args.span()),
                 };
                 return Err(handler.emit_err(error.into()));
             }

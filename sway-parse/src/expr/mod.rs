@@ -142,9 +142,9 @@ impl ParseToEnd for CodeBlockContents {
                 Ok(StmtOrTail::Stmt(s)) => statements.push(s),
                 Ok(StmtOrTail::Tail(e, c)) => break (Some(e), c),
                 Err(r) => {
-                    let (spans, error) = r
+                    let (span, error) = r
                         .recover_at_next_line_with_fallback_error(ParseErrorKind::InvalidStatement);
-                    statements.push(Statement::Error(spans, error));
+                    statements.push(Statement::Error(span, error));
                 }
             }
         };

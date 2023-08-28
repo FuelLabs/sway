@@ -2,7 +2,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, MaybeSpanned, Span, Spanned};
 
 use crate::{
     decl_engine::DeclRefStruct,
@@ -40,7 +40,7 @@ pub(crate) fn struct_instantiation(
         return Err(
             handler.emit_err(CompileError::DoesNotTakeTypeArgumentsAsPrefix {
                 name: suffix,
-                span: type_arguments.span(),
+                span: type_arguments.try_span(),
             }),
         );
     }

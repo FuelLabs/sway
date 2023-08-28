@@ -222,8 +222,8 @@ impl LeafSpans for ItemTraitItem {
                 collected_spans.append(&mut const_decl.leaf_spans());
                 collected_spans.extend(semicolon.as_ref().into_iter().flat_map(|x| x.leaf_spans()));
             }
-            ItemTraitItem::Error(spans, _) => {
-                collected_spans.extend(spans.iter().cloned().map(Into::into));
+            ItemTraitItem::Error(span, _) => {
+                collected_spans.push(span.clone().into());
             }
         };
         collected_spans

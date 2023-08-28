@@ -17,6 +17,7 @@ use sway_ir::{
     create_inline_in_module_pass, register_known_passes, PassGroup, PassManager, ARGDEMOTION_NAME,
     CONSTDEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME, RETDEMOTION_NAME,
 };
+use sway_types::MaybeSpanned;
 
 enum Checker {
     Ir,
@@ -249,16 +250,21 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                 let include_tests = true;
                 let mut ir = compile_program(typed_program, include_tests, &engines)
                     .unwrap_or_else(|e| {
-                        use sway_types::span::Spanned;
                         let e = e[0].clone();
-                        let span = e.span();
-                        panic!(
-                            "Failed to compile test {}:\nError \"{e}\" at {}:{}\nCode: \"{}\"",
-                            path.display(),
-                            span.start(),
-                            span.end(),
-                            span.as_str()
-                        );
+                        if let Some(span) = e.try_span() {
+                            panic!(
+                                "Failed to compile test {}:\nError \"{e}\" at {}:{}\nCode: \"{}\"",
+                                path.display(),
+                                span.start(),
+                                span.end(),
+                                span.as_str()
+                            );
+                        } else {
+                            panic!(
+                                "Failed to compile test {}:\nError \"{e}\"",
+                                path.display(),
+                            );
+                        }
                     })
                     .verify()
                     .unwrap_or_else(|err| {

@@ -20,14 +20,11 @@ impl Parse for ItemTraitItem {
         }
     }
 
-    fn error(
-        spans: Box<[sway_types::Span]>,
-        error: sway_error::handler::ErrorEmitted,
-    ) -> Option<Self>
+    fn error(span: sway_types::Span, error: sway_error::handler::ErrorEmitted) -> Option<Self>
     where
         Self: Sized,
     {
-        Some(ItemTraitItem::Error(spans, error))
+        Some(ItemTraitItem::Error(span, error))
     }
 }
 

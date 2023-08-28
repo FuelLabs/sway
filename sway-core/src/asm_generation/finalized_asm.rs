@@ -66,7 +66,7 @@ impl FinalizedAsm {
             InstructionSet::Evm { ops } => {
                 let mut assembler = Assembler::new();
                 if let Err(e) = assembler.push_all(ops.clone()) {
-                    Err(handler.emit_err(CompileError::InternalOwned(e.to_string(), Span::dummy())))
+                    Err(handler.emit_err(CompileError::InternalOwned(e.to_string(), None)))
                 } else {
                     Ok(CompiledBytecode {
                         bytecode: assembler.take(),

@@ -734,7 +734,7 @@ pub(crate) fn allocate_registers(
                                      Using #[inline(never)] on some functions may help.",
                             comment
                         ),
-                        Span::dummy(),
+                        None,
                     ));
                 }
                 try_count += 1;

@@ -58,12 +58,12 @@ impl Descriptor {
                         item_header: ItemHeader {
                             module_info: module_info.clone(),
                             friendly_name: ty_decl.friendly_type_name(),
-                            item_name: item_name.clone(),
+                            item_name: item_name.to_string(),
                         },
                         item_body: ItemBody {
                             module_info,
                             ty_decl: ty_decl.clone(),
-                            item_name,
+                            item_name: item_name.to_string(),
                             code_str: parse::parse_format::<sway_ast::ItemStruct>(
                                 struct_decl.span.as_str(),
                             )?,
@@ -95,12 +95,12 @@ impl Descriptor {
                         item_header: ItemHeader {
                             module_info: module_info.clone(),
                             friendly_name: ty_decl.friendly_type_name(),
-                            item_name: item_name.clone(),
+                            item_name: item_name.to_string(),
                         },
                         item_body: ItemBody {
                             module_info,
                             ty_decl: ty_decl.clone(),
-                            item_name,
+                            item_name: item_name.to_string(),
                             code_str: parse::parse_format::<sway_ast::ItemEnum>(
                                 enum_decl.span.as_str(),
                             )?,
@@ -119,7 +119,7 @@ impl Descriptor {
                 if !document_private_items && trait_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
-                    let item_name = trait_decl.name;
+                    let item_name = trait_decl.name.to_string();
                     let attrs_opt = (!trait_decl.attributes.is_empty())
                         .then(|| trait_decl.attributes.to_html_string());
                     let context =
@@ -143,7 +143,7 @@ impl Descriptor {
                         item_header: ItemHeader {
                             module_info: module_info.clone(),
                             friendly_name: ty_decl.friendly_type_name(),
-                            item_name: item_name.clone(),
+                            item_name: item_name.to_string(),
                         },
                         item_body: ItemBody {
                             module_info,
@@ -164,7 +164,7 @@ impl Descriptor {
             }
             ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. }) => {
                 let abi_decl = decl_engine.get_abi(decl_id);
-                let item_name = abi_decl.name;
+                let item_name = abi_decl.name.to_string();
                 let attrs_opt =
                     (!abi_decl.attributes.is_empty()).then(|| abi_decl.attributes.to_html_string());
                 let context = (!abi_decl.interface_surface.is_empty()).then_some(Context::new(
@@ -187,7 +187,7 @@ impl Descriptor {
                     item_header: ItemHeader {
                         module_info: module_info.clone(),
                         friendly_name: ty_decl.friendly_type_name(),
-                        item_name: item_name.clone(),
+                        item_name: item_name.to_string(),
                     },
                     item_body: ItemBody {
                         module_info,
@@ -205,9 +205,7 @@ impl Descriptor {
             }
             ty::TyDecl::StorageDecl(ty::StorageDecl { decl_id, .. }) => {
                 let storage_decl = decl_engine.get_storage(decl_id);
-                let item_name = sway_types::BaseIdent::new_no_trim(
-                    sway_types::span::Span::from_string(CONTRACT_STORAGE.to_string()),
-                );
+                let item_name = CONTRACT_STORAGE.to_string();
                 let attrs_opt = (!storage_decl.attributes.is_empty())
                     .then(|| storage_decl.attributes.to_html_string());
                 let context = (!storage_decl.fields.is_empty()).then_some(Context::new(
@@ -271,7 +269,7 @@ impl Descriptor {
                 if !document_private_items && fn_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
-                    let item_name = fn_decl.name;
+                    let item_name = fn_decl.name.to_string();
                     let attrs_opt = (!fn_decl.attributes.is_empty())
                         .then(|| fn_decl.attributes.to_html_string());
 
@@ -280,7 +278,7 @@ impl Descriptor {
                         item_header: ItemHeader {
                             module_info: module_info.clone(),
                             friendly_name: ty_decl.friendly_type_name(),
-                            item_name: item_name.clone(),
+                            item_name: item_name.to_string(),
                         },
                         item_body: ItemBody {
                             module_info,
@@ -304,7 +302,7 @@ impl Descriptor {
                 if !document_private_items && const_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
-                    let item_name = const_decl.call_path.suffix;
+                    let item_name = const_decl.call_path.suffix.to_string();
                     let attrs_opt = (!const_decl.attributes.is_empty())
                         .then(|| const_decl.attributes.to_html_string());
 
@@ -313,7 +311,7 @@ impl Descriptor {
                         item_header: ItemHeader {
                             module_info: module_info.clone(),
                             friendly_name: ty_decl.friendly_type_name(),
-                            item_name: item_name.clone(),
+                            item_name: item_name.to_string(),
                         },
                         item_body: ItemBody {
                             module_info,

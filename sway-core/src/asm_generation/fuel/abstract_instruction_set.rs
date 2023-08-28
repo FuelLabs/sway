@@ -9,7 +9,6 @@ use crate::{
 };
 
 use sway_error::error::CompileError;
-use sway_types::Span;
 
 use std::{collections::HashSet, fmt};
 
@@ -154,7 +153,7 @@ impl AbstractInstructionSet {
                 .join(", ");
             Err(CompileError::InternalOwned(
                 format!("Program erroneously uses uninitialized virtual registers: {bad_regs}"),
-                Span::dummy(),
+                None,
             ))
         }
     }

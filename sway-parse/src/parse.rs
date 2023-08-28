@@ -13,7 +13,7 @@ pub trait Parse {
         Self: Sized;
 
     fn error(
-        #[allow(clippy::boxed_local)] _spans: Box<[sway_types::Span]>,
+        #[allow(clippy::boxed_local)] _span: sway_types::Span,
         _error: sway_error::handler::ErrorEmitted,
     ) -> Option<Self>
     where

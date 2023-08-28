@@ -59,7 +59,7 @@ impl<T: Spanned> Spanned for CallPath<T> {
                 })
                 .peekable();
             if prefixes_spans.peek().is_some() {
-                Span::join(Span::join_all(prefixes_spans), self.suffix.span())
+                Span::join(Span::join_all(prefixes_spans).unwrap(), self.suffix.span())
             } else {
                 self.suffix.span()
             }

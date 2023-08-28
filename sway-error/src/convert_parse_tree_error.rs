@@ -1,4 +1,4 @@
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, MaybeSpanned, Span};
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
@@ -8,7 +8,7 @@ pub enum ConvertParseTreeError {
     #[error("functions used in applications may not be arbitrary expressions")]
     FunctionArbitraryExpression { span: Span },
     #[error("generics are not supported here")]
-    GenericsNotSupportedHere { span: Span },
+    GenericsNotSupportedHere { span: Option<Span> },
     #[error("multiple generics are not supported")]
     MultipleGenericsNotSupported { span: Span },
     #[error("tuple index out of range")]
@@ -125,70 +125,74 @@ pub enum ConvertParseTreeError {
     UnexpectedCallPathPrefixAfterQualifiedRoot { span: Span },
 }
 
-impl Spanned for ConvertParseTreeError {
-    fn span(&self) -> Span {
+impl MaybeSpanned for ConvertParseTreeError {
+    fn try_span(&self) -> Option<Span> {
         match self {
-            ConvertParseTreeError::PubUseNotSupported { span } => span.clone(),
-            ConvertParseTreeError::FunctionArbitraryExpression { span } => span.clone(),
+            ConvertParseTreeError::PubUseNotSupported { span } => Some(span.clone()),
+            ConvertParseTreeError::FunctionArbitraryExpression { span } => Some(span.clone()),
             ConvertParseTreeError::GenericsNotSupportedHere { span } => span.clone(),
-            ConvertParseTreeError::MultipleGenericsNotSupported { span } => span.clone(),
-            ConvertParseTreeError::TupleIndexOutOfRange { span } => span.clone(),
-            ConvertParseTreeError::ShlNotImplemented { span } => span.clone(),
-            ConvertParseTreeError::ShrNotImplemented { span } => span.clone(),
-            ConvertParseTreeError::BitXorNotImplemented { span } => span.clone(),
-            ConvertParseTreeError::IntTySuffixNotSupported { span } => span.clone(),
-            ConvertParseTreeError::IntLiteralOutOfRange { span } => span.clone(),
-            ConvertParseTreeError::IntLiteralExpected { span } => span.clone(),
-            ConvertParseTreeError::QualifiedPathRootsNotImplemented { span } => span.clone(),
-            ConvertParseTreeError::CharLiteralsNotImplemented { span } => span.clone(),
-            ConvertParseTreeError::HexLiteralLength { span } => span.clone(),
-            ConvertParseTreeError::BinaryLiteralLength { span } => span.clone(),
-            ConvertParseTreeError::U8LiteralOutOfRange { span } => span.clone(),
-            ConvertParseTreeError::U16LiteralOutOfRange { span } => span.clone(),
-            ConvertParseTreeError::U32LiteralOutOfRange { span } => span.clone(),
-            ConvertParseTreeError::U64LiteralOutOfRange { span } => span.clone(),
-            ConvertParseTreeError::SignedIntegersNotSupported { span } => span.clone(),
-            ConvertParseTreeError::RefVariablesNotSupported { span } => span.clone(),
-            ConvertParseTreeError::LiteralPatternsNotSupportedHere { span } => span.clone(),
-            ConvertParseTreeError::ConstantPatternsNotSupportedHere { span } => span.clone(),
-            ConvertParseTreeError::ConstructorPatternsNotSupportedHere { span } => span.clone(),
-            ConvertParseTreeError::StructPatternsNotSupportedHere { span } => span.clone(),
-            ConvertParseTreeError::WildcardPatternsNotSupportedHere { span } => span.clone(),
-            ConvertParseTreeError::OrPatternsNotSupportedHere { span } => span.clone(),
-            ConvertParseTreeError::TuplePatternsNotSupportedHere { span } => span.clone(),
-            ConvertParseTreeError::RefPatternsNotSupportedHere { span } => span.clone(),
-            ConvertParseTreeError::ConstructorPatternOneArg { span } => span.clone(),
-            ConvertParseTreeError::ConstructorPatternSubPatterns { span } => span.clone(),
-            ConvertParseTreeError::PathsNotSupportedHere { span } => span.clone(),
-            ConvertParseTreeError::FullySpecifiedTypesNotSupported { span } => span.clone(),
-            ConvertParseTreeError::ContractCallerOneGenericArg { span } => span.clone(),
-            ConvertParseTreeError::ContractCallerNamedTypeGenericArg { span } => span.clone(),
-            ConvertParseTreeError::InvalidAttributeArgument { span, .. } => span.clone(),
-            ConvertParseTreeError::ConstrainedNonExistentType { span, .. } => span.clone(),
-            ConvertParseTreeError::GetStorageKeyTooManyArgs { span, .. } => span.clone(),
-            ConvertParseTreeError::RecursiveType { span } => span.clone(),
-            ConvertParseTreeError::DuplicateEnumVariant { span, .. } => span.clone(),
-            ConvertParseTreeError::DuplicateStorageField { span, .. } => span.clone(),
-            ConvertParseTreeError::DuplicateConfigurable { span, .. } => span.clone(),
-            ConvertParseTreeError::MultipleConfigurableBlocksInModule { span } => span.clone(),
-            ConvertParseTreeError::DuplicateStructField { span, .. } => span.clone(),
-            ConvertParseTreeError::DuplicateParameterIdentifier { span, .. } => span.clone(),
-            ConvertParseTreeError::SelfParameterNotAllowedForFn { span, .. } => span.clone(),
-            ConvertParseTreeError::TestFnOnlyAllowedAtModuleLevel { span } => span.clone(),
-            ConvertParseTreeError::SelfImplForContract { span, .. } => span.clone(),
-            ConvertParseTreeError::CannotDocCommentDependency { span } => span.clone(),
-            ConvertParseTreeError::CannotAnnotateDependency { span } => span.clone(),
-            ConvertParseTreeError::ExpectedDependencyAtBeginning { span } => span.clone(),
-            ConvertParseTreeError::RefExprNotYetSupported { span } => span.clone(),
-            ConvertParseTreeError::DerefExprNotYetSupported { span } => span.clone(),
-            ConvertParseTreeError::ConstantRequiresExpression { span } => span.clone(),
-            ConvertParseTreeError::ConstantRequiresTypeAscription { span } => span.clone(),
-            ConvertParseTreeError::InvalidCfgTargetArgValue { span, .. } => span.clone(),
-            ConvertParseTreeError::ExpectedCfgTargetArgValue { span } => span.clone(),
-            ConvertParseTreeError::InvalidCfgProgramTypeArgValue { span, .. } => span.clone(),
-            ConvertParseTreeError::ExpectedCfgProgramTypeArgValue { span } => span.clone(),
+            ConvertParseTreeError::MultipleGenericsNotSupported { span } => Some(span.clone()),
+            ConvertParseTreeError::TupleIndexOutOfRange { span } => Some(span.clone()),
+            ConvertParseTreeError::ShlNotImplemented { span } => Some(span.clone()),
+            ConvertParseTreeError::ShrNotImplemented { span } => Some(span.clone()),
+            ConvertParseTreeError::BitXorNotImplemented { span } => Some(span.clone()),
+            ConvertParseTreeError::IntTySuffixNotSupported { span } => Some(span.clone()),
+            ConvertParseTreeError::IntLiteralOutOfRange { span } => Some(span.clone()),
+            ConvertParseTreeError::IntLiteralExpected { span } => Some(span.clone()),
+            ConvertParseTreeError::QualifiedPathRootsNotImplemented { span } => Some(span.clone()),
+            ConvertParseTreeError::CharLiteralsNotImplemented { span } => Some(span.clone()),
+            ConvertParseTreeError::HexLiteralLength { span } => Some(span.clone()),
+            ConvertParseTreeError::BinaryLiteralLength { span } => Some(span.clone()),
+            ConvertParseTreeError::U8LiteralOutOfRange { span } => Some(span.clone()),
+            ConvertParseTreeError::U16LiteralOutOfRange { span } => Some(span.clone()),
+            ConvertParseTreeError::U32LiteralOutOfRange { span } => Some(span.clone()),
+            ConvertParseTreeError::U64LiteralOutOfRange { span } => Some(span.clone()),
+            ConvertParseTreeError::SignedIntegersNotSupported { span } => Some(span.clone()),
+            ConvertParseTreeError::RefVariablesNotSupported { span } => Some(span.clone()),
+            ConvertParseTreeError::LiteralPatternsNotSupportedHere { span } => Some(span.clone()),
+            ConvertParseTreeError::ConstantPatternsNotSupportedHere { span } => Some(span.clone()),
+            ConvertParseTreeError::ConstructorPatternsNotSupportedHere { span } => {
+                Some(span.clone())
+            }
+            ConvertParseTreeError::StructPatternsNotSupportedHere { span } => Some(span.clone()),
+            ConvertParseTreeError::WildcardPatternsNotSupportedHere { span } => Some(span.clone()),
+            ConvertParseTreeError::OrPatternsNotSupportedHere { span } => Some(span.clone()),
+            ConvertParseTreeError::TuplePatternsNotSupportedHere { span } => Some(span.clone()),
+            ConvertParseTreeError::RefPatternsNotSupportedHere { span } => Some(span.clone()),
+            ConvertParseTreeError::ConstructorPatternOneArg { span } => Some(span.clone()),
+            ConvertParseTreeError::ConstructorPatternSubPatterns { span } => Some(span.clone()),
+            ConvertParseTreeError::PathsNotSupportedHere { span } => Some(span.clone()),
+            ConvertParseTreeError::FullySpecifiedTypesNotSupported { span } => Some(span.clone()),
+            ConvertParseTreeError::ContractCallerOneGenericArg { span } => Some(span.clone()),
+            ConvertParseTreeError::ContractCallerNamedTypeGenericArg { span } => Some(span.clone()),
+            ConvertParseTreeError::InvalidAttributeArgument { span, .. } => Some(span.clone()),
+            ConvertParseTreeError::ConstrainedNonExistentType { span, .. } => Some(span.clone()),
+            ConvertParseTreeError::GetStorageKeyTooManyArgs { span, .. } => Some(span.clone()),
+            ConvertParseTreeError::RecursiveType { span } => Some(span.clone()),
+            ConvertParseTreeError::DuplicateEnumVariant { span, .. } => Some(span.clone()),
+            ConvertParseTreeError::DuplicateStorageField { span, .. } => Some(span.clone()),
+            ConvertParseTreeError::DuplicateConfigurable { span, .. } => Some(span.clone()),
+            ConvertParseTreeError::MultipleConfigurableBlocksInModule { span } => {
+                Some(span.clone())
+            }
+            ConvertParseTreeError::DuplicateStructField { span, .. } => Some(span.clone()),
+            ConvertParseTreeError::DuplicateParameterIdentifier { span, .. } => Some(span.clone()),
+            ConvertParseTreeError::SelfParameterNotAllowedForFn { span, .. } => Some(span.clone()),
+            ConvertParseTreeError::TestFnOnlyAllowedAtModuleLevel { span } => Some(span.clone()),
+            ConvertParseTreeError::SelfImplForContract { span, .. } => Some(span.clone()),
+            ConvertParseTreeError::CannotDocCommentDependency { span } => Some(span.clone()),
+            ConvertParseTreeError::CannotAnnotateDependency { span } => Some(span.clone()),
+            ConvertParseTreeError::ExpectedDependencyAtBeginning { span } => Some(span.clone()),
+            ConvertParseTreeError::RefExprNotYetSupported { span } => Some(span.clone()),
+            ConvertParseTreeError::DerefExprNotYetSupported { span } => Some(span.clone()),
+            ConvertParseTreeError::ConstantRequiresExpression { span } => Some(span.clone()),
+            ConvertParseTreeError::ConstantRequiresTypeAscription { span } => Some(span.clone()),
+            ConvertParseTreeError::InvalidCfgTargetArgValue { span, .. } => Some(span.clone()),
+            ConvertParseTreeError::ExpectedCfgTargetArgValue { span } => Some(span.clone()),
+            ConvertParseTreeError::InvalidCfgProgramTypeArgValue { span, .. } => Some(span.clone()),
+            ConvertParseTreeError::ExpectedCfgProgramTypeArgValue { span } => Some(span.clone()),
             ConvertParseTreeError::UnexpectedCallPathPrefixAfterQualifiedRoot { span } => {
-                span.clone()
+                Some(span.clone())
             }
         }
     }

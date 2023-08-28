@@ -86,7 +86,7 @@ pub enum Warning {
     },
     MatchExpressionUnreachableArm {
         match_value: Span,
-        preceding_arms: Span,
+        preceding_arms: Option<Span>,
         preceding_arm_is_catch_all: bool,
         unreachable_arm: Span,
         is_last_arm: bool,
@@ -290,56 +290,61 @@ impl ToDiagnostic for CompileWarning {
                         _ => format!("Pattern \"{}\" will never be matched", unreachable_arm.as_str())
                     }
                 ),
-                hints: vec![
-                    Hint::warning(
-                        source_engine,
-                        unreachable_arm.clone(),
-                        format!("{} arm \"{}\" is unreachable.", if *is_last_arm && *is_catch_all_arm { "Last catch-all match" } else { "Match" }, unreachable_arm.as_str())
-                    ),
-                    Hint::info(
-                        source_engine,
-                        match_value.clone(),
-                        "This is the value to match on.".to_string()
-                    ),
-                    if *preceding_arm_is_catch_all {
+                hints: {
+                    let mut hints = vec![
                         Hint::warning(
                             source_engine,
-                            preceding_arms.clone(),
-                            format!("Catch-all arm \"{}\" makes all the arms below it unreachable.", preceding_arms.as_str())
-                        )
-                    }
-                    else {
+                            unreachable_arm.clone(),
+                            format!("{} arm \"{}\" is unreachable.", if *is_last_arm && *is_catch_all_arm { "Last catch-all match" } else { "Match" }, unreachable_arm.as_str())
+                        ),
                         Hint::info(
                             source_engine,
-                            preceding_arms.clone(),
-                            if *is_last_arm {
-                                format!("Preceding match arms already match all possible values of \"{}\".", match_value.as_str())
-                            }
-                            else {
-                                format!("Preceding match arms already match all the values that \"{}\" can match.", unreachable_arm.as_str())
-                            }
-                        )
+                            match_value.clone(),
+                            "This is the value to match on.".to_string()
+                        ),
+                    ];
+                    if let Some(preceding_arms) = preceding_arms {
+                        if *preceding_arm_is_catch_all {
+                            hints.push(Hint::warning(
+                                source_engine,
+                                preceding_arms.clone(),
+                                format!("Catch-all arm \"{}\" makes all the arms below it unreachable.", preceding_arms.as_str())
+                            ));
+                        } else {
+                            hints.push(Hint::info(
+                                source_engine,
+                                preceding_arms.clone(),
+                                if *is_last_arm {
+                                    format!("Preceding match arms already match all possible values of \"{}\".", match_value.as_str())
+                                }
+                                else {
+                                    format!("Preceding match arms already match all the values that \"{}\" can match.", unreachable_arm.as_str())
+                                }
+                            ));
+                        }
                     }
-                ],
-                help: if *preceding_arm_is_catch_all {
-                    vec![
-                        format!("Catch-all patterns make sense only in last match arms."),
-                        format!("Carefully check matching logic in all the arms and consider:"),
-                        format!(" - removing the catch-all arm \"{}\" or making it the last arm.", preceding_arms.as_str()),
-                        format!(" - removing the unreachable arms below \"{}\".", preceding_arms.as_str()),
-                    ]
-                }
-                else if *is_last_arm && *is_catch_all_arm {
-                    vec![
-                        format!("Catch-all patterns are often used in last match arms."),
-                        format!("But in this case, the preceding arms already match all possible values of \"{}\".", match_value.as_str()),
-                        format!("Carefully check matching logic in all the arms and consider removing the unreachable last catch-all arm."),
-                    ]
-                }
-                else {
-                    vec![
-                        format!("Carefully check matching logic in all the arms and consider removing the unreachable arm."),
-                    ]
+                    hints
+                },
+                help: if let Some(preceding_arms) = preceding_arms {
+                    if *preceding_arm_is_catch_all {
+                        vec![
+                            format!("Catch-all patterns make sense only in last match arms."),
+                            format!("Carefully check matching logic in all the arms and consider:"),
+                            format!(" - removing the catch-all arm \"{}\" or making it the last arm.", preceding_arms.as_str()),
+                            format!(" - removing the unreachable arms below \"{}\".", preceding_arms.as_str()),
+                        ]
+                    }
+                    else if *is_last_arm && *is_catch_all_arm {
+                        vec![
+                            format!("Catch-all patterns are often used in last match arms."),
+                            format!("But in this case, the preceding arms already match all possible values of \"{}\".", match_value.as_str()),
+                            format!("Carefully check matching logic in all the arms and consider removing the unreachable last catch-all arm."),
+                        ]
+                    } else {
+                        vec![format!("Carefully check matching logic in all the arms and consider removing the unreachable arm.")]
+                    }
+                } else {
+                    vec![format!("Carefully check matching logic in all the arms and consider removing the unreachable arm.")]
                 }
             },
            _ => Diagnostic {
@@ -348,7 +353,9 @@ impl ToDiagnostic for CompileWarning {
                     //       switch to our own #[error] macro. All the values for the formating
                     //       of a diagnostic must come from the enum variant parameters.
                     issue: Issue::warning(source_engine, self.span(), format!("{}", self.warning_content)),
-                    ..Default::default()
+                    reason: None,
+                    hints: vec![],
+                    help: vec![],
                 }
         }
     }

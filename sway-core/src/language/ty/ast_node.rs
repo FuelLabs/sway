@@ -334,7 +334,7 @@ pub enum TyAstNodeContent {
     ImplicitReturnExpression(TyExpression),
     // a no-op node used for something that just issues a side effect, like an import statement.
     SideEffect(TySideEffect),
-    Error(Box<[Span]>, ErrorEmitted),
+    Error(Span, ErrorEmitted),
 }
 
 impl EqWithEngines for TyAstNodeContent {}

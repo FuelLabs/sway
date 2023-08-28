@@ -12,7 +12,7 @@ pub enum Statement {
         semicolon_token_opt: Option<SemicolonToken>,
     },
     // to handle parser recovery: Error represents an unknown statement
-    Error(Box<[Span]>, #[serde(skip_serializing)] ErrorEmitted),
+    Error(Span, #[serde(skip_serializing)] ErrorEmitted),
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -37,7 +37,7 @@ impl Spanned for Statement {
                 None => expr.span(),
                 Some(semicolon_token) => Span::join(expr.span(), semicolon_token.span()),
             },
-            Statement::Error(spans, _) => Span::join_all(spans.iter().cloned()),
+            Statement::Error(span, _) => span.clone(),
         }
     }
 }

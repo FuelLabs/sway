@@ -161,7 +161,7 @@ pub(super) fn get_indices_for_struct_access(
                     Err(error) => {
                         return Err(CompileError::InternalOwned(
                             format!("type error resolving type for reassignment: {error}"),
-                            field_kind.span(),
+                            Some(field_kind.span()),
                         ));
                     }
                 };
@@ -187,7 +187,7 @@ pub(super) fn get_indices_for_struct_access(
                                         field_kind.pretty_print(),
                                         decl.call_path,
                                     ),
-                                    field_kind.span(),
+                                    Some(field_kind.span()),
                                 ));
                             }
                         };
@@ -205,7 +205,7 @@ pub(super) fn get_indices_for_struct_access(
                                         index,
                                         fields.len(),
                                     ),
-                                    field_kind.span(),
+                                    Some(field_kind.span()),
                                 ));
                             }
                         };

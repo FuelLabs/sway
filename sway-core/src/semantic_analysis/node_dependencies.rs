@@ -10,8 +10,8 @@ use crate::{
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::integer_bits::IntegerBits;
-use sway_types::Spanned;
 use sway_types::{ident::Ident, span::Span};
+use sway_types::{MaybeSpanned, Spanned};
 
 // -------------------------------------------------------------------------------------------------
 /// Take a list of nodes and reorder them so that they may be semantically analysed without any
@@ -36,7 +36,7 @@ pub(crate) fn order_ast_nodes_by_dependency(
     handler.scope(|handler| {
         // Because we're pulling these errors out of a HashMap they'll probably be in a funny
         // order.  Here we'll sort them by span start.
-        errors.sort_by_key(|err| err.span().start());
+        errors.sort_by_key(|err| err.try_span().map(|s| s.start()).unwrap_or_default());
 
         for err in errors {
             handler.emit_err(err);

@@ -773,10 +773,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
     // Run the passes.
     let res = if let Err(ir_error) = pass_mgr.run(&mut ir, &pass_group) {
-        Err(handler.emit_err(CompileError::InternalOwned(
-            ir_error.to_string(),
-            span::Span::dummy(),
-        )))
+        Err(handler.emit_err(CompileError::InternalOwned(ir_error.to_string(), None)))
     } else {
         Ok(())
     };

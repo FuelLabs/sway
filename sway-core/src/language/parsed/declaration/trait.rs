@@ -13,7 +13,7 @@ pub enum TraitItem {
     TraitFn(TraitFn),
     Constant(ConstantDeclaration),
     // to handle parser recovery: Error represents an incomplete trait item
-    Error(Box<[Span]>, ErrorEmitted),
+    Error(Span, ErrorEmitted),
 }
 
 #[derive(Debug, Clone)]

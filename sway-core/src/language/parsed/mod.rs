@@ -63,9 +63,7 @@ pub enum AstNodeContent {
     /// A malformed statement.
     ///
     /// Used for parser recovery when we cannot form a more specific node.
-    /// The list of `Span`s are for consumption by the LSP and are,
-    /// when joined, the same as that stored in `statement.span`.
-    Error(Box<[Span]>, ErrorEmitted),
+    Error(Span, ErrorEmitted),
 }
 
 impl ParseTree {

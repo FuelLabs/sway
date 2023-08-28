@@ -55,7 +55,7 @@ pub(crate) fn insert_supertraits_into_namespace(
                     if !trait_decl.type_parameters.is_empty() {
                         handler.emit_err(CompileError::Unimplemented(
                             "Using generic traits as supertraits is not supported yet.",
-                            supertrait.name.span(),
+                            Some(supertrait.name.span()),
                         ));
                         continue;
                     }

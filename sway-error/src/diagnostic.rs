@@ -3,7 +3,7 @@ use std::{path::PathBuf, vec};
 use sway_types::{SourceEngine, Span};
 
 /// Provides detailed, rich description of a compile error or warning.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Diagnostic {
     pub(crate) reason: Option<Reason>, // TODO: Make mandatory once we remove all old-style warnings and errors.
     pub(crate) issue: Issue,
@@ -129,7 +129,7 @@ pub enum LabelType {
 ///
 /// If the message in a particular situation cannot be related to a span
 /// in a known source file (e.g., when importing symbols)
-/// the span must be set to [Span::dummy]. Such messages without a valid span
+/// the span must be set to [None]. Such messages without a valid span
 /// will be ignored.
 ///
 /// E.g., a note like 'The function "{name}" is defined here.'
@@ -141,28 +141,35 @@ pub enum LabelType {
 #[derive(Debug)]
 pub struct Label {
     label_type: LabelType,
-    span: Span,
+    span: Option<Span>,
     text: String,
     friendly_text: String,
     source_path: Option<SourcePath>,
 }
 
 impl Label {
-    pub fn info(source_engine: &SourceEngine, span: Span, text: String) -> Label {
+    pub fn info(source_engine: &SourceEngine, span: Option<Span>, text: String) -> Label {
         Self::new(source_engine, LabelType::Info, span, text)
     }
 
     pub fn warning(source_engine: &SourceEngine, span: Span, text: String) -> Label {
-        Self::new(source_engine, LabelType::Warning, span, text)
+        Self::new(source_engine, LabelType::Warning, Some(span), text)
     }
 
-    pub fn error(source_engine: &SourceEngine, span: Span, text: String) -> Label {
+    pub fn error(source_engine: &SourceEngine, span: Option<Span>, text: String) -> Label {
         Self::new(source_engine, LabelType::Error, span, text)
     }
 
-    fn new(source_engine: &SourceEngine, label_type: LabelType, span: Span, text: String) -> Label {
+    fn new(
+        source_engine: &SourceEngine,
+        label_type: LabelType,
+        span: Option<Span>,
+        text: String,
+    ) -> Label {
         let friendly_text = Self::maybe_uwuify(text.as_str());
-        let source_path = Self::get_source_path(source_engine, &span);
+        let source_path = span
+            .as_ref()
+            .and_then(|span| Self::get_source_path(source_engine, span));
         Label {
             label_type,
             span,
@@ -174,14 +181,15 @@ impl Label {
 
     /// True if the `Label` is actually related to a span of source code in a source file.
     pub fn is_in_source(&self) -> bool {
-        self.source_path.is_some() && (self.span.start() < self.span.end())
+        // TODO: remove when Some(Span) is implicitly a valid source path
+        self.source_path.is_some() && self.span.as_ref().is_some_and(|s| s.start() < s.end())
     }
 
     pub fn label_type(&self) -> LabelType {
         self.label_type
     }
 
-    pub fn span(&self) -> &Span {
+    pub fn try_span(&self) -> &Option<Span> {
         &self.span
     }
 
@@ -231,18 +239,6 @@ impl Label {
     }
 }
 
-impl Default for Label {
-    fn default() -> Self {
-        Self {
-            label_type: LabelType::Info,
-            span: Span::dummy(),
-            text: "".to_string(),
-            friendly_text: "".to_string(),
-            source_path: None,
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct Issue {
     label: Label,
@@ -255,20 +251,9 @@ impl Issue {
         }
     }
 
-    pub fn error(source_engine: &SourceEngine, span: Span, text: String) -> Self {
+    pub fn error(source_engine: &SourceEngine, span: Option<Span>, text: String) -> Self {
         Self {
             label: Label::error(source_engine, span, text),
-        }
-    }
-}
-
-impl Default for Issue {
-    fn default() -> Self {
-        Self {
-            label: Label {
-                label_type: LabelType::Error,
-                ..Default::default()
-            },
         }
     }
 }
@@ -280,7 +265,7 @@ impl std::ops::Deref for Issue {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Hint {
     label: Label,
 }
@@ -288,7 +273,7 @@ pub struct Hint {
 impl Hint {
     pub fn info(source_engine: &SourceEngine, span: Span, text: String) -> Self {
         Self {
-            label: Label::info(source_engine, span, text),
+            label: Label::info(source_engine, Some(span), text),
         }
     }
 
@@ -300,7 +285,7 @@ impl Hint {
 
     pub fn error(source_engine: &SourceEngine, span: Span, text: String) -> Self {
         Self {
-            label: Label::error(source_engine, span, text),
+            label: Label::error(source_engine, Some(span), text),
         }
     }
 }

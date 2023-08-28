@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use lsp_types::{Diagnostic, DiagnosticSeverity, DiagnosticTag, Position, Range};
 use sway_error::warning::CompileWarning;
 use sway_error::{error::CompileError, warning::Warning};
-use sway_types::{LineCol, SourceEngine, Spanned};
+use sway_types::{LineCol, MaybeSpanned, SourceEngine, Spanned};
 
 pub type DiagnosticMap = HashMap<PathBuf, Diagnostics>;
 
@@ -16,7 +16,13 @@ pub struct Diagnostics {
 
 fn get_error_diagnostic(error: &CompileError) -> Diagnostic {
     Diagnostic {
-        range: get_range(error.span().line_col()),
+        range: get_range(
+            error
+                .try_span()
+                .map(|s| s.line_col())
+                // FIXME: there has to be a better way to do this
+                .unwrap_or((LineCol { line: 0, col: 0 }, LineCol { line: 0, col: 0 })),
+        ),
         severity: Some(DiagnosticSeverity::ERROR),
         message: format!("{error}"),
         ..Default::default()
@@ -52,8 +58,8 @@ pub fn get_diagnostics(
     }
     for error in errors {
         let diagnostic = get_error_diagnostic(error);
-        if let Some(source_id) = error.span().source_id() {
-            let path = source_engine.get_path(source_id);
+        if let Some(source_id) = error.try_span().and_then(|s| s.source_id().cloned()) {
+            let path = source_engine.get_path(&source_id);
             diagnostics
                 .entry(path)
                 .or_insert_with(Diagnostics::default)

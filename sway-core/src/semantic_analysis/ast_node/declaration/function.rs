@@ -63,7 +63,7 @@ impl ty::TyFunctionDecl {
         if ctx.functions_disallowed() {
             return Err(handler.emit_err(CompileError::Unimplemented(
                 "Nested function definitions are not allowed at this time.",
-                span,
+                Some(span),
             )));
         }
 

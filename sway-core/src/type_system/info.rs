@@ -1018,7 +1018,7 @@ impl TypeInfo {
             | TypeInfo::Placeholder(_)
             | TypeInfo::TypeParam(_) => Err(handler.emit_err(CompileError::Unimplemented(
                 "matching on this type is unsupported right now",
-                span.clone(),
+                Some(span.clone()),
             ))),
             TypeInfo::ErrorRecovery(err) => Err(*err),
         }
@@ -1056,7 +1056,7 @@ impl TypeInfo {
             | TypeInfo::Placeholder(_)
             | TypeInfo::TypeParam(_) => Err(handler.emit_err(CompileError::Unimplemented(
                 "implementing traits on this type is unsupported right now",
-                span.clone(),
+                Some(span.clone()),
             ))),
             TypeInfo::ErrorRecovery(err) => Err(*err),
         }

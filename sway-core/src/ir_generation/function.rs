@@ -258,7 +258,7 @@ impl<'eng> FnCompiler<'eng> {
         let tmp_var = self
             .function
             .new_local_var(context, temp_name, ty, None, false)
-            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), None))?;
         let tmp_val = self.current_block.ins(context).get_local(tmp_var);
         self.current_block.ins(context).store(tmp_val, val);
 
@@ -487,9 +487,7 @@ impl<'eng> FnCompiler<'eng> {
             let key_var = compiler
                 .function
                 .new_local_var(context, key_name, Type::get_b256(context), None, false)
-                .map_err(|ir_error| {
-                    CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
-                })?;
+                .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), None))?;
 
             // Convert the key variable to a value using get_local.
             let key_val = compiler
@@ -918,9 +916,7 @@ impl<'eng> FnCompiler<'eng> {
                         None,
                         false,
                     )
-                    .map_err(|ir_error| {
-                        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
-                    })?;
+                    .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), None))?;
 
                 // Step 4: Convert the local variable into a value via `get_local`.
                 let message = self
@@ -1128,7 +1124,7 @@ impl<'eng> FnCompiler<'eng> {
                         .function
                         .new_local_var(context, temp_arg_name, arg0_type, None, false)
                         .map_err(|ir_error| {
-                            CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                            CompileError::InternalOwned(ir_error.to_string(), None)
                         })?;
 
                     let temp_val = self.current_block.ins(context).get_local(temp_var);
@@ -1159,9 +1155,7 @@ impl<'eng> FnCompiler<'eng> {
                         None,
                         false,
                     )
-                    .map_err(|ir_error| {
-                        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
-                    })?;
+                    .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), None))?;
 
                 // Initialise each of the fields in the user args struct.
                 let user_args_struct_val = self
@@ -1212,7 +1206,7 @@ impl<'eng> FnCompiler<'eng> {
                 None,
                 false,
             )
-            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), None))?;
 
         let ra_struct_ptr_val = self
             .current_block
@@ -1291,9 +1285,7 @@ impl<'eng> FnCompiler<'eng> {
                 let tmp_var = self
                     .function
                     .new_local_var(context, tmp_asset_id_name, b256_ty, None, false)
-                    .map_err(|ir_error| {
-                        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
-                    })?;
+                    .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), None))?;
                 let tmp_val = self.current_block.ins(context).get_local(tmp_var);
                 self.current_block.ins(context).store(tmp_val, asset_id_val);
                 tmp_val
@@ -1731,7 +1723,7 @@ impl<'eng> FnCompiler<'eng> {
         } else {
             Err(CompileError::InternalOwned(
                 format!("Unable to resolve variable '{}'.", name.as_str()),
-                Span::dummy(),
+                None,
             ))
         }
     }
@@ -1779,7 +1771,7 @@ impl<'eng> FnCompiler<'eng> {
         let local_var = self
             .function
             .new_local_var(context, local_name, return_type, None, mutable)
-            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), None))?;
 
         // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
         // otherwise use a store.
@@ -1851,9 +1843,7 @@ impl<'eng> FnCompiler<'eng> {
                 let local_var = self
                     .function
                     .new_local_var(context, local_name, return_type, None, false)
-                    .map_err(|ir_error| {
-                        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
-                    })?;
+                    .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), None))?;
 
                 // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
                 // otherwise use a store.
@@ -1907,7 +1897,7 @@ impl<'eng> FnCompiler<'eng> {
             .ok_or_else(|| {
                 CompileError::InternalOwned(
                     format!("variable not found: {name}"),
-                    ast_reassignment.lhs_base_name.span(),
+                    Some(ast_reassignment.lhs_base_name.span()),
                 )
             })?;
 
@@ -1954,7 +1944,7 @@ impl<'eng> FnCompiler<'eng> {
                                                 in reassignment.",
                                             struct_call_path.suffix.as_str(),
                                         ),
-                                        ast_reassignment.lhs_base_name.span(),
+                                        Some(ast_reassignment.lhs_base_name.span()),
                                     )
                                 })
                                 .map(|(field_idx, field_type_id)| {
@@ -2024,7 +2014,7 @@ impl<'eng> FnCompiler<'eng> {
         let array_var = self
             .function
             .new_local_var(context, temp_name, array_type, None, false)
-            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), None))?;
         let array_value = self
             .current_block
             .ins(context)
@@ -2158,7 +2148,7 @@ impl<'eng> FnCompiler<'eng> {
         let struct_var = self
             .function
             .new_local_var(context, temp_name, struct_type, None, false)
-            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), None))?;
         let struct_val = self
             .current_block
             .ins(context)
@@ -2224,7 +2214,7 @@ impl<'eng> FnCompiler<'eng> {
                         struct_call_path.suffix.as_str(),
                         ast_field.name
                     ),
-                    ast_field.span.clone(),
+                    Some(ast_field.span.clone()),
                 )
             })?;
 
@@ -2272,7 +2262,7 @@ impl<'eng> FnCompiler<'eng> {
         let enum_var = self
             .function
             .new_local_var(context, temp_name, enum_type, None, false)
-            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), None))?;
         let enum_ptr = self
             .current_block
             .ins(context)
@@ -2352,9 +2342,7 @@ impl<'eng> FnCompiler<'eng> {
             let tuple_var = self
                 .function
                 .new_local_var(context, temp_name, tuple_type, None, false)
-                .map_err(|ir_error| {
-                    CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
-                })?;
+                .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), None))?;
             let tuple_val = self
                 .current_block
                 .ins(context)
@@ -2599,7 +2587,7 @@ impl<'eng> FnCompiler<'eng> {
                 None,
                 false,
             )
-            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), None))?;
         let storage_key = self
             .current_block
             .ins(context)

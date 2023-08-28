@@ -191,11 +191,8 @@ impl Span {
         }
     }
 
-    pub fn join_all(spans: impl IntoIterator<Item = Span>) -> Span {
-        spans
-            .into_iter()
-            .reduce(Span::join)
-            .unwrap_or_else(Span::dummy)
+    pub fn join_all(spans: impl IntoIterator<Item = Span>) -> Option<Span> {
+        spans.into_iter().reduce(Span::join)
     }
 
     /// Returns the line and column start and end.
@@ -226,6 +223,19 @@ impl fmt::Debug for Span {
 
 pub trait Spanned {
     fn span(&self) -> Span;
+}
+
+pub trait MaybeSpanned {
+    fn try_span(&self) -> Option<Span>;
+}
+
+impl<T> MaybeSpanned for T
+where
+    T: Spanned,
+{
+    fn try_span(&self) -> Option<Span> {
+        Some(self.span())
+    }
 }
 
 #[derive(Clone, Copy, Debug)]

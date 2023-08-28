@@ -157,7 +157,7 @@ fn type_check_variable(
                 None => {
                     return Err(handler.emit_err(CompileError::Unimplemented(
                         "constant values of this type are not supported yet",
-                        span,
+                        Some(span),
                     )));
                 }
             };

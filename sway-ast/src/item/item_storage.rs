@@ -30,5 +30,6 @@ impl Spanned for StorageField {
             self.eq_token.span(),
             self.initializer.span(),
         ])
+        .unwrap()
     }
 }
