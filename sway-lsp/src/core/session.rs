@@ -544,7 +544,6 @@ fn parse_ast_to_typed_tokens(
 
     root_nodes
         .chain(sub_nodes)
-        .par_bridge()
         .for_each(|n| f(n, ctx));
 }
 
