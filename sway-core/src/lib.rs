@@ -2,7 +2,7 @@
 pub mod error;
 
 #[macro_use]
-mod engine_threading;
+pub mod engine_threading;
 
 pub mod abi_generation;
 pub mod asm_generation;
@@ -22,6 +22,7 @@ pub mod transform;
 pub mod type_system;
 
 use crate::ir_generation::check_function_purity;
+use crate::query_engine::ModuleCacheEntry;
 use crate::source_map::SourceMap;
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
@@ -29,7 +30,10 @@ pub use asm_generation::{CompiledBytecode, FinalizedEntry};
 pub use build_config::{BuildConfig, BuildTarget};
 use control_flow_analysis::ControlFlowGraph;
 use metadata::MetadataManager;
+use query_engine::{ModulePath, ProgramsCacheEntry};
+use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_ast::AttributeDecl;
@@ -93,14 +97,23 @@ pub fn parse(
             None,
             config.build_target,
         )
-        .map(|(kind, lexed, parsed)| {
-            let lexed = lexed::LexedProgram {
-                kind: kind.clone(),
-                root: lexed,
-            };
-            let parsed = parsed::ParseProgram { kind, root: parsed };
-            (lexed, parsed)
-        }),
+        .map(
+            |ParsedModuleTree {
+                 tree_type: kind,
+                 lexed_module,
+                 parse_module,
+             }| {
+                let lexed = lexed::LexedProgram {
+                    kind: kind.clone(),
+                    root: lexed_module,
+                };
+                let parsed = parsed::ParseProgram {
+                    kind,
+                    root: parse_module,
+                };
+                (lexed, parsed)
+            },
+        ),
     }
 }
 
@@ -171,6 +184,9 @@ fn parse_in_memory(
     engines: &Engines,
     src: Arc<str>,
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
+    let mut hasher = DefaultHasher::new();
+    src.hash(&mut hasher);
+    let hash = hasher.finish();
     let module = sway_parse::parse_file(handler, src, None)?;
 
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
@@ -188,6 +204,7 @@ fn parse_in_memory(
         tree,
         submodules,
         attributes,
+        hash,
     };
     let lexed_program = lexed::LexedProgram::new(
         kind.clone(),
@@ -200,11 +217,15 @@ fn parse_in_memory(
     Ok((lexed_program, parsed::ParseProgram { kind, root }))
 }
 
-/// Contains the lexed and parsed submodules 'deps' of a module.
-struct Submodules {
-    lexed: Vec<(Ident, lexed::LexedSubmodule)>,
-    parsed: Vec<(Ident, parsed::ParseSubmodule)>,
+pub struct Submodule {
+    name: Ident,
+    path: ModulePath,
+    lexed: lexed::LexedSubmodule,
+    parsed: parsed::ParseSubmodule,
 }
+
+/// Contains the lexed and parsed submodules 'deps' of a module.
+pub type Submodules = Vec<Submodule>;
 
 /// Parse all dependencies `deps` as submodules.
 fn parse_submodules(
@@ -216,8 +237,7 @@ fn parse_submodules(
     build_target: BuildTarget,
 ) -> Submodules {
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
-    let mut lexed_submods = Vec::with_capacity(module.submodules().count());
-    let mut parsed_submods = Vec::with_capacity(lexed_submods.capacity());
+    let mut submods = Vec::with_capacity(module.submodules().count());
 
     module.submodules().for_each(|submod| {
         // Read the source code from the dependency.
@@ -235,7 +255,11 @@ fn parse_submodules(
             }
         };
 
-        if let Ok((kind, lexed_module, parse_module)) = parse_module_tree(
+        if let Ok(ParsedModuleTree {
+            tree_type: kind,
+            lexed_module,
+            parse_module,
+        }) = parse_module_tree(
             handler,
             engines,
             submod_str.clone(),
@@ -261,15 +285,26 @@ fn parse_submodules(
             let lexed_submodule = lexed::LexedSubmodule {
                 module: lexed_module,
             };
-            lexed_submods.push((submod.name.clone(), lexed_submodule));
-            parsed_submods.push((submod.name.clone(), parse_submodule));
+            let submodule = Submodule {
+                name: submod.name.clone(),
+                path: submod_path,
+                lexed: lexed_submodule,
+                parsed: parse_submodule,
+            };
+            submods.push(submodule);
         }
     });
 
-    Submodules {
-        lexed: lexed_submods,
-        parsed: parsed_submods,
-    }
+    submods
+}
+
+pub type SourceHash = u64;
+
+#[derive(Clone, Debug)]
+pub struct ParsedModuleTree {
+    pub tree_type: parsed::TreeType,
+    pub lexed_module: lexed::LexedModule,
+    pub parse_module: parsed::ParseModule,
 }
 
 /// Given the source of the module along with its path,
@@ -281,7 +316,9 @@ fn parse_module_tree(
     path: Arc<PathBuf>,
     module_name: Option<&str>,
     build_target: BuildTarget,
-) -> Result<(parsed::TreeType, lexed::LexedModule, parsed::ParseModule), ErrorEmitted> {
+) -> Result<ParsedModuleTree, ErrorEmitted> {
+    let query_engine = engines.qe();
+
     // Parse this module first.
     let module_dir = path.parent().expect("module file has no parent directory");
     let source_id = engines.se().get_source_id(&path.clone());
@@ -308,19 +345,88 @@ fn parse_module_tree(
     let module_kind_span = module.value.kind.span();
     let attributes = module_attrs_to_map(handler, &module.attribute_list)?;
 
+    let lexed_submodules = submodules
+        .iter()
+        .map(|s| (s.name.clone(), s.lexed.clone()))
+        .collect::<Vec<_>>();
     let lexed = lexed::LexedModule {
         tree: module.value,
-        submodules: submodules.lexed,
+        submodules: lexed_submodules,
     };
-    let source_id = engines.se().get_source_id(&path.clone());
+
+    let mut hasher = DefaultHasher::new();
+    src.hash(&mut hasher);
+    let hash = hasher.finish();
+
+    let parsed_submodules = submodules
+        .iter()
+        .map(|s| (s.name.clone(), s.parsed.clone()))
+        .collect::<Vec<_>>();
     let parsed = parsed::ParseModule {
         span: span::Span::new(src, 0, 0, Some(source_id)).unwrap(),
         module_kind_span,
         tree,
-        submodules: submodules.parsed,
+        submodules: parsed_submodules,
         attributes,
+        hash,
     };
-    Ok((kind, lexed, parsed))
+
+    // Let's prime the cache with the module dependency and hash data.
+    let modified_time = std::fs::metadata(path.as_path())
+        .ok()
+        .and_then(|m| m.modified().ok());
+    let dependencies = submodules.into_iter().map(|s| s.path).collect::<Vec<_>>();
+    let parsed_module_tree = ParsedModuleTree {
+        tree_type: kind,
+        lexed_module: lexed,
+        parse_module: parsed,
+    };
+    let cache_entry = ModuleCacheEntry {
+        path,
+        modified_time,
+        hash,
+        dependencies,
+    };
+    query_engine.insert_parse_module_cache_entry(cache_entry);
+
+    Ok(parsed_module_tree)
+}
+
+fn is_parse_module_cache_up_to_date(engines: &Engines, path: &Arc<PathBuf>) -> bool {
+    let query_engine = engines.qe();
+    let entry = query_engine.get_parse_module_cache_entry(path);
+    match entry {
+        Some(entry) => {
+            let modified_time = std::fs::metadata(path.as_path())
+                .ok()
+                .and_then(|m| m.modified().ok());
+
+            // Let's check if we can re-use the dependency information
+            // we got from the cache, which is only true if the file hasn't been
+            // modified since or if its hash is the same.
+            let cache_up_to_date = entry.modified_time == modified_time || {
+                let src = std::fs::read_to_string(path.as_path()).unwrap();
+
+                let mut hasher = DefaultHasher::new();
+                src.hash(&mut hasher);
+                let hash = hasher.finish();
+
+                hash == entry.hash
+            };
+
+            // Look at the dependencies recursively to make sure they have not been
+            // modified either.
+            if cache_up_to_date {
+                entry
+                    .dependencies
+                    .iter()
+                    .all(|path| is_parse_module_cache_up_to_date(engines, path))
+            } else {
+                false
+            }
+        }
+        None => false,
+    }
 }
 
 fn module_path(
@@ -469,10 +575,27 @@ pub fn compile_to_ast(
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
     package_name: &str,
-    metrics: &mut PerformanceData,
 ) -> Result<Programs, ErrorEmitted> {
-    // Parse the program to a concrete syntax tree (CST).
+    let query_engine = engines.qe();
+    let mut metrics = PerformanceData::default();
 
+    if let Some(config) = build_config {
+        let path = config.canonical_root_module();
+
+        // Check if we can re-use the data in the cache.
+        if is_parse_module_cache_up_to_date(engines, &path) {
+            let mut entry = query_engine.get_programs_cache_entry(&path).unwrap();
+            entry.programs.metrics.reused_modules += 1;
+
+            let (warnings, errors) = entry.handler_data;
+            let new_handler = Handler::from_parts(warnings, errors);
+            handler.append(new_handler);
+
+            return Ok(entry.programs);
+        };
+    }
+
+    // Parse the program to a concrete syntax tree (CST).
     let parse_program_opt = time_expr!(
         "parse the program to a concrete syntax tree (CST)",
         "parse_cst",
@@ -514,7 +637,21 @@ pub fn compile_to_ast(
     );
 
     handler.dedup();
-    Ok(Programs::new(lexed_program, parsed_program, typed_res))
+
+    let programs = Programs::new(lexed_program, parsed_program, typed_res, metrics);
+
+    if let Some(config) = build_config {
+        let path = config.canonical_root_module();
+
+        let cache_entry = ProgramsCacheEntry {
+            path,
+            programs: programs.clone(),
+            handler_data: handler.clone().consume(),
+        };
+        query_engine.insert_programs_cache_entry(cache_entry);
+    }
+
+    Ok(programs)
 }
 
 /// Given input Sway source code, try compiling to a `CompiledAsm`,
@@ -526,7 +663,6 @@ pub fn compile_to_asm(
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
     package_name: &str,
-    metrics: &mut PerformanceData,
 ) -> Result<CompiledAsm, ErrorEmitted> {
     let ast_res = compile_to_ast(
         handler,
@@ -535,7 +671,6 @@ pub fn compile_to_asm(
         initial_namespace,
         Some(&build_config),
         package_name,
-        metrics,
     )?;
     ast_to_asm(handler, engines, &ast_res, &build_config)
 }
@@ -662,7 +797,6 @@ pub fn compile_to_bytecode(
     build_config: BuildConfig,
     source_map: &mut SourceMap,
     package_name: &str,
-    metrics: &mut PerformanceData,
 ) -> Result<CompiledBytecode, ErrorEmitted> {
     let asm_res = compile_to_asm(
         handler,
@@ -671,7 +805,6 @@ pub fn compile_to_bytecode(
         initial_namespace,
         build_config,
         package_name,
-        metrics,
     )?;
     asm_to_bytecode(handler, asm_res, source_map, engines.se())
 }

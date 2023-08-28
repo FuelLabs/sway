@@ -67,6 +67,15 @@ intermediate_whitespace
 }   "
 );
 
+fmt_test_item!(trait_contains_const
+"trait ConstantId {
+    const ID: u32 = 1;
+}",
+intermediate_whitespace
+"trait ConstantId {
+    const    ID: u32 = 1;
+}");
+
 fmt_test_item!(
 trait_normal_comment_two_fns
 "pub trait MyTrait {
@@ -75,7 +84,6 @@ trait_normal_comment_two_fns
     // Before b
     fn b(self);
 }",
-
 intermediate_whitespace
 "  pub   trait   MyTrait {
     // Before A
