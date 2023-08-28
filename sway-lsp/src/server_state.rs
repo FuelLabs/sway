@@ -81,14 +81,32 @@ impl ServerState {
         diagnostics_to_publish
     }
 
-    pub(crate) async fn parse_project_async(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
-        let should_publish = run_blocking_parse_project(uri.clone(), session.clone()).await;
-        if should_publish {
-            // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
-            // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
-            if let Some(client) = self.client.as_ref() {
-                client.publish_diagnostics(workspace_uri.clone(), self.diagnostics(&uri, session), None).await;
+    pub(crate) async fn parse_project_async(
+        &self,
+        uri: Url,
+        workspace_uri: Url,
+        session: Arc<Session>,
+    ) {
+        match run_blocking_parse_project(uri.clone(), session.clone()).await {
+            Ok(_) => {
+                // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
+                // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
+                if let Some(client) = self.client.as_ref() {
+                    client
+                        .publish_diagnostics(
+                            workspace_uri.clone(),
+                            self.diagnostics(&uri, session),
+                            None,
+                        )
+                        .await;
+                }
+            },
+            Err(err) => {
+                if matches!(err, LanguageServerError::FailedToParse) {
+                    tracing::error!("Error parsing project: {:?}", err);
+                }
             }
+
         }
     }
 
@@ -98,12 +116,16 @@ impl ServerState {
         workspace_uri: Url,
         session: Arc<Session>,
     ) -> Result<(), LanguageServerError> {
-        let should_publish = session.parse_project(&uri)?;
-        if should_publish {
-            // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
-            // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
-            if let Some(client) = self.client.as_ref() {
-                client.publish_diagnostics(workspace_uri.clone(), self.diagnostics(&uri, session), None).await;
+        match session::parse_project(&uri) {
+            Ok(parse_result) => {
+                let (errors, warnings) = parse_result.diagnostics.clone();
+                session.write_parse_result(parse_result);
+                *session.diagnostics.write() = get_diagnostics(&warnings, &errors, session.engines.read().se());
+            }
+            Err(err) => {
+                if matches!(err, LanguageServerError::FailedToParse) {
+                    tracing::error!("Error parsing project: {:?}", err);
+                }
             }
         }
         Ok(())
