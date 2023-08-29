@@ -93,7 +93,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Install forc-fmt
-        run: cargo install --locked --path ./forc-plugins/forc-fmt
+        run: cargo install --locked --debug --path ./forc-plugins/forc-fmt
       - name: Run the formatter against all sway projects and fail if any of them panic
         run: scripts/formatter/forc-fmt-check-panic.sh
 
