@@ -1,11 +1,8 @@
-use crate::{
-    de::deserialize_optional_btree,
-    pkg::{manifest_file_missing, parsing_failed, wrong_program_type},
-};
+use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Context, Result};
 use forc_tracing::println_warning;
 use forc_util::{find_nested_manifest_dir, find_parent_manifest_dir, validate_name};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, HashMap},
     path::{Path, PathBuf},
@@ -126,56 +123,6 @@ impl ManifestFile {
 
 type PatchMap = BTreeMap<String, Dependency>;
 
-/// Deserializes a map with unique keys and PatchMap values
-fn deserialize_patch<'de, D>(
-    deserializer: D,
-) -> Result<Option<BTreeMap<String, PatchMap>>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    deserialize_optional_btree(deserializer)
-}
-
-/// Deserializes a map with unique keys and Dependency values
-fn deserialize_dependency<'de, D>(
-    deserializer: D,
-) -> Result<Option<BTreeMap<String, Dependency>>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    deserialize_optional_btree(deserializer)
-}
-
-/// Deserializes a map with unique keys and BuildTarget values
-fn deserialize_build_target<'de, D>(
-    deserializer: D,
-) -> Result<Option<BTreeMap<String, BuildTarget>>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    deserialize_optional_btree(deserializer)
-}
-
-/// Deserializes a map with unique keys and BuildProfile values
-fn deserialize_build_profile<'de, D>(
-    deserializer: D,
-) -> Result<Option<BTreeMap<String, BuildProfile>>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    deserialize_optional_btree(deserializer)
-}
-
-/// Deserializes a map with unique keys and ContractDependency values
-fn deserialize_contract_dependencies<'de, D>(
-    deserializer: D,
-) -> Result<Option<BTreeMap<String, ContractDependency>>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    deserialize_optional_btree(deserializer)
-}
-
 /// A [PackageManifest] that was deserialized from a file at a particular path.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PackageManifestFile {
@@ -191,16 +138,11 @@ pub struct PackageManifestFile {
 pub struct PackageManifest {
     pub project: Project,
     pub network: Option<Network>,
-    #[serde(default, deserialize_with = "deserialize_dependency")]
     pub dependencies: Option<BTreeMap<String, Dependency>>,
-    #[serde(default, deserialize_with = "deserialize_patch")]
     pub patch: Option<BTreeMap<String, PatchMap>>,
     /// A list of [configuration-time constants](https://github.com/FuelLabs/sway/issues/1498).
-    #[serde(default, deserialize_with = "deserialize_build_target")]
     pub build_target: Option<BTreeMap<String, BuildTarget>>,
-    #[serde(default, deserialize_with = "deserialize_build_profile")]
     build_profile: Option<BTreeMap<String, BuildProfile>>,
-    #[serde(default, deserialize_with = "deserialize_contract_dependencies")]
     pub contract_dependencies: Option<BTreeMap<String, ContractDependency>>,
 }
 
@@ -559,7 +501,7 @@ impl PackageManifest {
         let mut warnings = vec![];
         let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
-        let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
+        let toml_de = toml::de::Deserializer::new(&manifest_str);
         let mut manifest: Self = serde_ignored::deserialize(toml_de, |path| {
             let warning = format!("  WARNING! unused manifest key: {path}");
             warnings.push(warning);
@@ -982,7 +924,7 @@ impl WorkspaceManifest {
         let mut warnings = vec![];
         let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
-        let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
+        let toml_de = toml::de::Deserializer::new(&manifest_str);
         let manifest: Self = serde_ignored::deserialize(toml_de, |path| {
             let warning = format!("  WARNING! unused manifest key: {path}");
             warnings.push(warning);
@@ -1213,15 +1155,9 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "duplicate key `foo` in table `dependencies`")]
     fn test_error_duplicate_deps_definition() {
-        assert_eq!(
-            "failed to parse manifest: duplicate 'foo' for key `dependencies` at line 1 column 1."
-                .to_owned(),
-            PackageManifest::from_dir("./tests/invalid")
-                .unwrap_err()
-                .root_cause()
-                .to_string()
-        );
+        PackageManifest::from_dir("./tests/invalid/duplicate_keys").unwrap();
     }
 
     #[test]
