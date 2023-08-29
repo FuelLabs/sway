@@ -108,10 +108,10 @@ async fn lsp_syncs_with_workspace_edits() {
         def_end_char: 11,
         def_path: uri.as_str(),
     };
-    lsp::definition_check(service.inner(), &go_to);
+    lsp::definition_check(&service.inner(), &go_to);
     let _ = lsp::did_change_request(&mut service, &uri).await;
     go_to.def_line = 20;
-    lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 45, 24);
+    lsp::definition_check_with_req_offset(&service.inner(), &mut go_to, 45, 24);
     shutdown_and_exit(&mut service).await;
 }
 

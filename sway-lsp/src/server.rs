@@ -18,39 +18,39 @@ use lsp_types::{
 };
 use tower_lsp::{jsonrpc::Result, LanguageServer};
 
-#[tower_lsp::async_trait]
+#[tower_lsp::async_trait(?Send)]
 impl LanguageServer for ServerState {
-    async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
+    async fn initialize(&mut self, params: InitializeParams) -> Result<InitializeResult> {
         request::handle_initialize(self, params)
     }
 
-    async fn initialized(&self, _: InitializedParams) {
+    async fn initialized(&mut self, _: InitializedParams) {
         tracing::info!("Sway Language Server Initialized");
     }
 
-    async fn shutdown(&self) -> Result<()> {
+    async fn shutdown(&mut self) -> Result<()> {
         self.shutdown_server()
     }
 
-    async fn did_open(&self, params: DidOpenTextDocumentParams) {
+    async fn did_open(&mut self, params: DidOpenTextDocumentParams) {
         if let Err(err) = notification::handle_did_open_text_document(self, params).await {
             tracing::error!("{}", err.to_string());
         }
     }
 
-    async fn did_change(&self, params: DidChangeTextDocumentParams) {
+    async fn did_change(&mut self, params: DidChangeTextDocumentParams) {
         if let Err(err) = notification::handle_did_change_text_document(self, params).await {
             tracing::error!("{}", err.to_string());
         }
     }
 
-    async fn did_save(&self, params: DidSaveTextDocumentParams) {
+    async fn did_save(&mut self, params: DidSaveTextDocumentParams) {
         if let Err(err) = notification::handle_did_save_text_document(self, params).await {
             tracing::error!("{}", err.to_string());
         }
     }
 
-    async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
+    async fn did_change_watched_files(&mut self, params: DidChangeWatchedFilesParams) {
         notification::handle_did_change_watched_files(self, params);
     }
 
@@ -102,7 +102,7 @@ impl LanguageServer for ServerState {
         request::handle_formatting(self, params)
     }
 
-    async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
+    async fn rename(&mut self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
         request::handle_rename(self, params)
     }
 
