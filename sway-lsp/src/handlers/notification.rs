@@ -27,7 +27,7 @@ pub async fn handle_did_open_text_document_async(
     // as the workspace is already compiled.
     if session.token_map().is_empty() {
         state
-            .parse_project(uri, params.text_document.uri, session.clone())
+            .parse_project_async(uri, params.text_document.uri, session.clone())
             .await;
     }
     tracing::info!("did_open async end");
@@ -45,7 +45,7 @@ pub async fn handle_did_change_text_document_async(
         .uri_and_session_from_workspace(&params.text_document.uri)?;
     session.write_changes_to_file(&uri, params.content_changes)?;
     state
-        .parse_project(uri, params.text_document.uri, session.clone())
+        .parse_project_async(uri, params.text_document.uri, session.clone())
         .await;
 
     tracing::info!("did_change async end");
@@ -61,7 +61,7 @@ pub(crate) async fn handle_did_save_text_document_async(
         .uri_and_session_from_workspace(&params.text_document.uri)?;
     session.sync.resync()?;
     state
-        .parse_project(uri, params.text_document.uri, session.clone())
+        .parse_project_async(uri, params.text_document.uri, session.clone())
         .await;
 
     Ok(())
@@ -97,7 +97,7 @@ pub(crate) fn handle_did_open_text_document(
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)?;
     session.handle_open_file(&uri);
-    if session.parse_project(&uri)? {
+    if ext.state.parse_project(&uri, session.clone()).is_ok() {
         ext.publish_diagnostics(
             params.text_document.uri,
             ext.state.diagnostics(&uri, session),
@@ -119,7 +119,7 @@ pub(crate) fn handle_did_change_text_document(
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)?;
     session.write_changes_to_file(&uri, params.content_changes)?;
-    if session.parse_project(&uri)? {
+    if ext.state.parse_project(&uri, session.clone()).is_ok() {
         ext.publish_diagnostics(
             params.text_document.uri,
             ext.state.diagnostics(&uri, session),
@@ -139,7 +139,7 @@ pub(crate) fn handle_did_save_text_document(
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)?;
     session.sync.resync()?;
-    if session.parse_project(&uri)? {
+    if ext.state.parse_project(&uri, session.clone()).is_ok() {
         ext.publish_diagnostics(
             params.text_document.uri,
             ext.state.diagnostics(&uri, session),

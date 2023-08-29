@@ -112,8 +112,8 @@ impl ServerState {
 
     pub(crate) fn parse_project(
         &self,
-        uri: Url,
-        workspace_uri: Url,
+        uri: &Url,
+        // workspace_uri: Url,
         session: Arc<Session>,
     ) -> Result<(), LanguageServerError> {
         match session::parse_project(&uri) {

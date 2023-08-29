@@ -52,7 +52,7 @@ async fn open(server: &ServerState, entry_point: PathBuf) -> Url {
             text: sway_program,
         },
     };
-    let res = notification::handle_did_open_text_document(server, params).await;
+    let res = notification::handle_did_open_text_document_async(server, params).await;
     assert!(res.is_ok());
     uri
 }

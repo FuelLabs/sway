@@ -393,20 +393,27 @@ impl<'a> NotificationDispatcher<'a> {
 
         tracing::info!("did_change begin before thread");
 
+        let (uri, session) = self.server_state.state.sessions
+                    .uri_and_session_from_workspace(&params.text_document.uri).unwrap();
+        session.write_changes_to_file(&uri, params.content_changes).unwrap();
+
+
         self.server_state
         .event_loop_state
         .task_pool
         .handle
         .spawn(ThreadIntent::Worker, {
-            let state = self.server_state.snapshot();
+            // let state = self.server_state.snapshot();
             move || {
-                let (uri, session) = state.sessions
-                    .uri_and_session_from_workspace(&params.text_document.uri).unwrap();
-                session.write_changes_to_file(&uri, params.content_changes).unwrap();
-                if session.parse_project(&uri).unwrap() {
-                    eprintln!("project parsed!!!!");
-                }
+                // let (uri, session) = state.sessions
+                //     .uri_and_session_from_workspace(&params.text_document.uri).unwrap();
+                // session.write_changes_to_file(&uri, params.content_changes).unwrap();
+                // if session.parse_project(&uri).unwrap() {
+                //     eprintln!("project parsed!!!!");
+                // }
                 //f(world, params)
+                crate::core::session::parse_project(&uri);
+                eprintln!("project parsed!!!!");
 
                 // dummy task for now
                 Task::Response(lsp_server::Response::new_err(
