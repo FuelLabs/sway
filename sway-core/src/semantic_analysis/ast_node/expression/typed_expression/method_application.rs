@@ -42,12 +42,19 @@ pub(crate) fn type_check_method_application(
     }
 
     // resolve the method name to a typed function declaration and type_check
-    let (decl_ref, call_path_typeid) = resolve_method_name(
+    let (mut decl_ref, call_path_typeid) = resolve_method_name(
         handler,
         ctx.by_ref(),
         &mut method_name_binding,
         args_buf.clone(),
     )?;
+    decl_ref = monomorphize_method(
+        handler,
+        ctx.by_ref(),
+        decl_ref.clone(),
+        method_name_binding.type_arguments.to_vec_mut(),
+    )?;
+
     let mut method = decl_engine.get_function(&decl_ref);
 
     // check the method visibility
@@ -336,6 +343,7 @@ pub(crate) fn type_check_method_application(
         &method.type_parameters,
         &call_path.span(),
     )?;
+
     method.replace_decls(&decl_mapping, handler, &mut ctx)?;
     let return_type = method.return_type.type_id;
     let new_decl_ref = decl_engine
@@ -408,7 +416,6 @@ pub(crate) fn resolve_method_name(
     arguments: VecDeque<ty::TyExpression>,
 ) -> Result<(DeclRefFunction, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
-    let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
 
     // retrieve the function declaration using the components of the method name
@@ -534,16 +541,27 @@ pub(crate) fn resolve_method_name(
         }
     };
 
+    Ok((decl_ref, type_id))
+}
+
+pub(crate) fn monomorphize_method(
+    handler: &Handler,
+    mut ctx: TypeCheckContext,
+    decl_ref: DeclRefFunction,
+    type_arguments: &mut [TypeArgument],
+) -> Result<DeclRefFunction, ErrorEmitted> {
+    let engines = ctx.engines();
+    let decl_engine = engines.de();
+
     let mut func_decl = decl_engine.get_function(&decl_ref);
 
     // monomorphize the function declaration
-    let method_name_span = method_name.span();
     ctx.monomorphize(
         handler,
         &mut func_decl,
-        method_name.type_arguments.to_vec_mut(),
+        type_arguments,
         EnforceTypeArguments::No,
-        &method_name_span,
+        &decl_ref.span(),
     )?;
 
     if let Some(implementing_type) = &func_decl.implementing_type {
@@ -557,6 +575,5 @@ pub(crate) fn resolve_method_name(
         .de()
         .insert(func_decl)
         .with_parent(ctx.engines.de(), (*decl_ref.id()).into());
-
-    Ok((decl_ref, type_id))
+    Ok(decl_ref)
 }

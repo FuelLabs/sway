@@ -51,7 +51,7 @@ use std::collections::{HashMap, VecDeque};
 impl ty::TyExpression {
     pub(crate) fn core_ops_eq(
         handler: &Handler,
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         arguments: Vec<ty::TyExpression>,
         span: Span,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
@@ -77,8 +77,18 @@ impl ty::TyExpression {
             span: call_path.span(),
         };
         let arguments = VecDeque::from(arguments);
-        let (decl_ref, _) =
-            resolve_method_name(handler, ctx, &mut method_name_binding, arguments.clone())?;
+        let (mut decl_ref, _) = resolve_method_name(
+            handler,
+            ctx.by_ref(),
+            &mut method_name_binding,
+            arguments.clone(),
+        )?;
+        decl_ref = monomorphize_method(
+            handler,
+            ctx,
+            decl_ref.clone(),
+            method_name_binding.type_arguments.to_vec_mut(),
+        )?;
         let method = decl_engine.get_function(&decl_ref);
         // check that the number of parameters and the number of the arguments is the same
         check_function_arguments_arity(handler, arguments.len(), &method, &call_path, false)?;
