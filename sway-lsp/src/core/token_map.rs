@@ -20,6 +20,13 @@ impl TokenMap {
         TokenMap(DashMap::new())
     }
 
+    pub fn t(&self) {
+        let map = self.0.clone().into_read_only();
+        for (ident, token) in map.iter() {
+            println!("{:?}: {:?}", ident, token);
+        }
+    }
+
     /// Create a custom iterator for the TokenMap.
     ///
     /// The iterator returns ([Ident], [Token]) pairs.
@@ -140,41 +147,6 @@ impl TokenMap {
             })
             .collect()
     }
-
-    /// Uses the [TypeId] to find the associated [ty::TyDecl] in the TokenMap.
-    ///
-    /// This is useful when dealing with tokens that are of the [sway_core::language::ty::TyExpression] type in the AST.
-    /// For example, we can then use the `return_type` field which is a [TypeId] to retrieve the declaration Token.
-    pub fn declaration_of_type_id(
-        &self,
-        engines: &Engines,
-        type_id: &TypeId,
-    ) -> Option<ty::TyDecl> {
-        token::ident_of_type_id(engines, type_id)
-            .and_then(|decl_ident| self.try_get(&decl_ident).try_unwrap())
-            .map(|item| item.value().clone())
-            .and_then(|token| token.typed)
-            .and_then(|typed_token| match typed_token {
-                TypedAstToken::TypedDeclaration(dec) => Some(dec),
-                _ => None,
-            })
-    }
-
-    /// Returns the [ty::TyStructDecl] associated with the TypeId if it exists
-    /// within the TokenMap.
-    pub fn struct_declaration_of_type_id(
-        &self,
-        engines: &Engines,
-        type_id: &TypeId,
-    ) -> Option<ty::TyStructDecl> {
-        self.declaration_of_type_id(engines, type_id)
-            .and_then(|decl| match decl {
-                ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
-                    Some(engines.de().get_struct(&decl_id))
-                }
-                _ => None,
-            })
-    }
 }
 
 impl std::ops::Deref for TokenMap {
@@ -182,6 +154,41 @@ impl std::ops::Deref for TokenMap {
     fn deref(&self) -> &Self::Target {
         &self.0
     }
+}
+
+/// Uses the [TypeId] to find the associated [ty::TyDecl] in the TokenMap.
+///
+/// This is useful when dealing with tokens that are of the [sway_core::language::ty::TyExpression] type in the AST.
+/// For example, we can then use the `return_type` field which is a [TypeId] to retrieve the declaration Token.
+pub fn declaration_of_type_id(
+    tokens: &DashMap<TokenIdent, Token>,
+    engines: &Engines,
+    type_id: &TypeId,
+) -> Option<ty::TyDecl> {
+    token::ident_of_type_id(engines, type_id)
+        .and_then(|decl_ident| tokens.try_get(&decl_ident).try_unwrap())
+        .map(|item| item.value().clone())
+        .and_then(|token| token.typed)
+        .and_then(|typed_token| match typed_token {
+            TypedAstToken::TypedDeclaration(dec) => Some(dec),
+            _ => None,
+        })
+}
+
+/// Returns the [ty::TyStructDecl] associated with the TypeId if it exists
+/// within the TokenMap.
+pub fn struct_declaration_of_type_id(
+    tokens: &DashMap<TokenIdent, Token>,
+    engines: &Engines,
+    type_id: &TypeId,
+) -> Option<ty::TyStructDecl> {
+    declaration_of_type_id(tokens, engines, type_id)
+        .and_then(|decl| match decl {
+            ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
+                Some(engines.de().get_struct(&decl_id))
+            }
+            _ => None,
+        })
 }
 
 /// A custom iterator for [TokenMap] that yields [TokenIdent] and [Token] pairs.

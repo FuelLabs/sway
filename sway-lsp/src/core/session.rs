@@ -8,7 +8,7 @@ use crate::{
     core::{
         document::TextDocument,
         sync::SyncWorkspace,
-        token::TypedAstToken,
+        token::{Token, TokenIdent, TypedAstToken},
         token_map::{TokenMap, TokenMapExt},
     },
     error::{DocumentError, LanguageServerError},
@@ -63,7 +63,7 @@ pub struct CompiledProgram {
 #[derive(Debug)]
 pub struct ParseResult {
     pub(crate) diagnostics: (Vec<CompileError>, Vec<CompileWarning>),
-    pub(crate) token_map: TokenMap,
+    pub(crate) token_map: DashMap<TokenIdent, Token>,
     pub(crate) engines: Engines,
     pub(crate) lexed: LexedProgram,
     pub(crate) parsed: ParseProgram,
@@ -152,7 +152,7 @@ impl Session {
         self.runnables.clear();
 
         *self.engines.write() = res.engines;
-        res.token_map.deref().iter().for_each(|item| {
+        res.token_map.iter().for_each(|item| {
             let (s, t) = item.pair();
             self.token_map.insert(s.clone(), t.clone());
         });
@@ -430,7 +430,7 @@ pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
     let build_plan = build_plan(uri)?;
     let mut diagnostics = (Vec::<CompileError>::new(), Vec::<CompileWarning>::new());
     let engines = Engines::default();
-    let token_map = TokenMap::new();
+    let token_map = DashMap::new();
     let tests_enabled = true;
 
     let results = pkg::check(
