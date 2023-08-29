@@ -18,7 +18,7 @@
       "loggedType": {
         "name": "",
         "type": 1,
-        "typeArguments": null
+        "typeArguments": []
       }
     },
     {
@@ -26,7 +26,7 @@
       "loggedType": {
         "name": "",
         "type": 1,
-        "typeArguments": null
+        "typeArguments": []
       }
     }
   ],
@@ -39,9 +39,36 @@
       "typeParameters": null
     },
     {
+      "components": [
+        {
+          "name": "a",
+          "type": 2,
+          "typeArguments": null
+        },
+        {
+          "name": "b",
+          "type": 2,
+          "typeArguments": null
+        },
+        {
+          "name": "c",
+          "type": 2,
+          "typeArguments": null
+        },
+        {
+          "name": "d",
+          "type": 2,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct std::u256::U256",
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
       "components": null,
       "type": "u64",
-      "typeId": 1,
+      "typeId": 2,
       "typeParameters": null
     }
   ]
