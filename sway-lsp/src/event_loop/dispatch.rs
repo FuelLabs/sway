@@ -5,6 +5,7 @@ use std::{fmt, panic, thread};
 use stdx::thread::ThreadIntent;
 
 use crate::{
+    core::session,
     error::LanguageServerError,
     event_loop::{
         self,
@@ -367,7 +368,7 @@ impl<'a> NotificationDispatcher<'a> {
         }
     }
 
-    //experiemental 
+    //experimental 
     pub(crate) fn on_did_change<N>(
         &mut self,
         f: fn(&mut ServerStateExt, N::Params) -> Result<(), LanguageServerError>,
@@ -412,15 +413,25 @@ impl<'a> NotificationDispatcher<'a> {
                 //     eprintln!("project parsed!!!!");
                 // }
                 //f(world, params)
-                crate::core::session::parse_project(&uri);
-                eprintln!("project parsed!!!!");
-
+                match session::parse_project(&uri) {
+                    Ok(res) => {
+                        eprintln!("project parsed!!!!");
+                    }
+                    Err(err) => {
+                        if matches!(err, LanguageServerError::FailedToParse) {
+                            tracing::error!("Error parsing project: {:?}", err);
+                        }
+                    }
+                }
+                
                 // dummy task for now
-                Task::Response(lsp_server::Response::new_err(
-                    1.into(),
-                    lsp_server::ErrorCode::ContentModified as i32,
-                    "content modified".to_string(),
-                ))
+                Task::ParseResult("WE DID IT".to_string())
+                
+                // Task::Response(lsp_server::Response::new_err(
+                //     1.into(),
+                //     lsp_server::ErrorCode::ContentModified as i32,
+                //     "content modified".to_string(),
+                // ))
             }
         }); 
         tracing::info!("did_change thread spawned");

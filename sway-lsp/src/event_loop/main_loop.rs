@@ -29,6 +29,7 @@ enum Event {
 pub(crate) enum Task {
     Response(lsp_server::Response),
     Retry(lsp_server::Request),
+    ParseResult(String),
 }
 
 impl fmt::Debug for Event {
@@ -135,6 +136,9 @@ impl ServerStateExt {
 
     fn handle_task(&mut self, task: Task) {
         match task {
+            Task::ParseResult(result) => {
+                eprintln!("RECIEVED PARSE RESULT: {}", result);
+            }
             Task::Response(response) => self.respond(response),
             // Only retry requests that haven't been cancelled. Otherwise we do unnecessary work.
             Task::Retry(req) if !self.is_completed(&req) => self.on_request(req),
