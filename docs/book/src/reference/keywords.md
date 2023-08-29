@@ -1,4 +1,4 @@
-# Appendix A: Keywords
+# Keywords
 
 The following list contains keywords that are reserved for current or
 future use by the Sway language. As such, they cannot be used as
