@@ -63,6 +63,7 @@
   - [Differences From Solidity](./reference/solidity_differences.md)
   - [Differences From Rust](./reference/rust_differences.md)
   - [Contributing To Sway](./reference/contributing_to_sway.md)
+  - [Keywords](./reference/keywords.md)
 - [Forc Reference](./forc/index.md)
   - [Manifest Reference](./forc/manifest_reference.md)
   - [Workspaces](./forc/workspaces.md)
@@ -91,5 +92,3 @@
     - [forc explore](./forc/plugins/forc_explore.md)
     - [forc fmt](./forc/plugins/forc_fmt.md)
     - [forc lsp](./forc/plugins/forc_lsp.md)
-- [Appendix](./appendix/index.md)
-  - [Keywords](./appendix/keywords.md)
