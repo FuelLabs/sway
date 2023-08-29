@@ -86,15 +86,15 @@ impl ServerState {
             Ok(_) => {
                 // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
                 // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
-                if let Some(client) = self.client.as_ref() {
-                    client
-                        .publish_diagnostics(
-                            workspace_uri.clone(),
-                            self.diagnostics(&uri, session),
-                            None,
-                        )
-                        .await;
-                }
+                // if let Some(client) = self.client.as_ref() {
+                //     client
+                //         .publish_diagnostics(
+                //             workspace_uri.clone(),
+                //             self.diagnostics(&uri, session),
+                //             None,
+                //         )
+                //         .await;
+                // }
             }
             Err(err) => {
                 if matches!(err, LanguageServerError::FailedToParse) {

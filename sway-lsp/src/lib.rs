@@ -18,7 +18,7 @@ use lsp_types::{
     CodeActionProviderCapability, CodeLensOptions, CompletionOptions, ExecuteCommandOptions,
     HoverProviderCapability, OneOf, RenameOptions, SemanticTokensFullOptions, SemanticTokensLegend,
     SemanticTokensOptions, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind,
-    WorkDoneProgressOptions,
+    WorkDoneProgressOptions, DiagnosticServerCapabilities, DiagnosticOptions,
 };
 use server_state::ServerState;
 use tower_lsp::{LspService, Server};
@@ -45,6 +45,9 @@ pub fn server_capabilities() -> ServerCapabilities {
             trigger_characters: Some(vec![".".to_string()]),
             ..Default::default()
         }),
+        diagnostic_provider: Some(DiagnosticServerCapabilities::Options(DiagnosticOptions {
+            ..Default::default()
+        })),
         definition_provider: Some(OneOf::Left(true)),
         document_formatting_provider: Some(OneOf::Left(true)),
         document_highlight_provider: Some(OneOf::Left(true)),

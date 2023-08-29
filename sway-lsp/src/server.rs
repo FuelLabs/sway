@@ -9,12 +9,13 @@ use crate::{
 use lsp_types::{
     CodeActionParams, CodeActionResponse, CodeLens, CodeLensParams, CompletionParams,
     CompletionResponse, DidChangeTextDocumentParams, DidChangeWatchedFilesParams,
-    DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentFormattingParams,
-    DocumentHighlight, DocumentHighlightParams, DocumentSymbolParams, DocumentSymbolResponse,
-    GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams, InitializeParams,
-    InitializeResult, InitializedParams, InlayHint, InlayHintParams, PrepareRenameResponse,
-    RenameParams, SemanticTokensParams, SemanticTokensResult, TextDocumentIdentifier,
-    TextDocumentPositionParams, TextEdit, WorkspaceEdit,
+    DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentDiagnosticParams,
+    DocumentDiagnosticReportResult, DocumentFormattingParams, DocumentHighlight,
+    DocumentHighlightParams, DocumentSymbolParams, DocumentSymbolResponse, GotoDefinitionParams,
+    GotoDefinitionResponse, Hover, HoverParams, InitializeParams, InitializeResult,
+    InitializedParams, InlayHint, InlayHintParams, PrepareRenameResponse, RenameParams,
+    SemanticTokensParams, SemanticTokensResult, TextDocumentIdentifier, TextDocumentPositionParams,
+    TextEdit, WorkspaceEdit,
 };
 use tower_lsp::{jsonrpc::Result, LanguageServer};
 
@@ -52,6 +53,13 @@ impl LanguageServer for ServerState {
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
         notification::handle_did_change_watched_files(self, params);
+    }
+
+    async fn diagnostic(
+        &self,
+        params: DocumentDiagnosticParams,
+    ) -> Result<DocumentDiagnosticReportResult> {
+        request::handle_diagnostics(self, params)
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {

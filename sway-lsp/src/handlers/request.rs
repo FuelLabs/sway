@@ -4,9 +4,11 @@
 use crate::{capabilities, lsp_ext, server_state::ServerState, utils::debug};
 use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions, TracingWriterMode};
 use lsp_types::{
-    CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse,
-    InitializeResult, InlayHint, InlayHintParams, PrepareRenameResponse, RenameParams,
-    SemanticTokensParams, SemanticTokensResult, TextDocumentIdentifier, Url, WorkspaceEdit,
+    CodeLens, CompletionResponse, DocumentDiagnosticReport, DocumentDiagnosticReportResult,
+    DocumentFormattingParams, DocumentSymbolResponse, FullDocumentDiagnosticReport,
+    InitializeResult, InlayHint, InlayHintParams, PrepareRenameResponse,
+    RelatedFullDocumentDiagnosticReport, RenameParams, SemanticTokensParams, SemanticTokensResult,
+    TextDocumentIdentifier, Url, WorkspaceEdit, RelatedUnchangedDocumentDiagnosticReport, UnchangedDocumentDiagnosticReport,
 };
 use std::{
     fs::File,
@@ -43,6 +45,43 @@ pub fn handle_initialize(
         capabilities: crate::server_capabilities(),
         ..InitializeResult::default()
     })
+}
+
+pub fn handle_diagnostics(
+    state: &ServerState,
+    params: lsp_types::DocumentDiagnosticParams,
+) -> Result<DocumentDiagnosticReportResult> {
+    eprintln!("handle_diagnostics");
+    match state
+        .sessions
+        .uri_and_session_from_workspace(&params.text_document.uri)
+    {
+        Ok((uri, session)) => {
+            eprintln!("requesting diagnostics");
+            let diagnostics = state.diagnostics(&uri, session);
+            eprintln!("diagnostics aquired");
+            Ok(DocumentDiagnosticReportResult::Report(
+                DocumentDiagnosticReport::Full(RelatedFullDocumentDiagnosticReport {
+                    full_document_diagnostic_report: FullDocumentDiagnosticReport {
+                        result_id: None,
+                        items: diagnostics,
+                    },
+                    related_documents: None,
+                }),
+            ))
+        }
+        Err(err) => {
+            tracing::error!("{}", err.to_string());
+            Ok(DocumentDiagnosticReportResult::Report(
+                DocumentDiagnosticReport::Unchanged(RelatedUnchangedDocumentDiagnosticReport {
+                    related_documents: None,
+                    unchanged_document_diagnostic_report: UnchangedDocumentDiagnosticReport {
+                        result_id: "None".to_string(),
+                    },
+                })
+            ))
+        }
+    }
 }
 
 pub fn handle_document_symbol(
