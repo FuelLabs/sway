@@ -20,12 +20,6 @@ do
         echo ""
     fi
 
-    if [[ $dir == *"utf_chars"* ]]
-    then
-        forc-fmt -p $dir
-        echo ""
-    fi
-
     let count=count+1
 done
 echo ""
