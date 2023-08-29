@@ -1,8 +1,11 @@
 #![allow(dead_code)]
 use crate::{
-    core::{token::{
-        type_info_to_symbol_kind, SymbolKind, Token, TokenIdent, TypeDefinition, TypedAstToken,
-    }, token_map},
+    core::{
+        token::{
+            type_info_to_symbol_kind, SymbolKind, Token, TokenIdent, TypeDefinition, TypedAstToken,
+        },
+        token_map,
+    },
     traverse::{Parse, ParseContext},
 };
 use dashmap::mapref::one::RefMut;
@@ -330,8 +333,11 @@ impl Parse for ty::TyExpression {
                     {
                         token.typed = Some(TypedAstToken::TypedExpression(field.value.clone()));
 
-                        if let Some(struct_decl) = token_map::struct_declaration_of_type_id(&ctx.tokens, ctx.engines, &self.return_type)
-                        {
+                        if let Some(struct_decl) = token_map::struct_declaration_of_type_id(
+                            &ctx.tokens,
+                            ctx.engines,
+                            &self.return_type,
+                        ) {
                             struct_decl.fields.iter().for_each(|decl_field| {
                                 if decl_field.name == field.name {
                                     token.type_def =
@@ -1067,8 +1073,11 @@ impl Parse for ty::TyReassignment {
             if let ty::ProjectionKind::StructField { name } = proj_kind {
                 if let Some(mut token) = ctx.tokens.try_get_mut(&ctx.ident(name)).try_unwrap() {
                     token.typed = Some(TypedAstToken::TypedReassignment(self.clone()));
-                    if let Some(struct_decl) = token_map::struct_declaration_of_type_id(&ctx.tokens, ctx.engines, &self.lhs_type)
-                    {
+                    if let Some(struct_decl) = token_map::struct_declaration_of_type_id(
+                        &ctx.tokens,
+                        ctx.engines,
+                        &self.lhs_type,
+                    ) {
                         struct_decl.fields.iter().for_each(|decl_field| {
                             if &decl_field.name == name {
                                 token.type_def =

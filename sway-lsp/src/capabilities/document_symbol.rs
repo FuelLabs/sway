@@ -1,9 +1,9 @@
 use crate::core::token::{SymbolKind, Token, TokenIdent};
 use lsp_types::{self, Location, SymbolInformation, Url};
 
-pub fn to_symbol_information<I>(tokens: I, url: Url) -> Vec<SymbolInformation>
+pub fn to_symbol_information<'s, I>(tokens: I, url: Url) -> Vec<SymbolInformation>
 where
-    I: Iterator<Item = (TokenIdent, Token)>,
+    I: Iterator<Item = (&'s TokenIdent, &'s Token)>,
 {
     let mut symbols: Vec<SymbolInformation> = vec![];
 

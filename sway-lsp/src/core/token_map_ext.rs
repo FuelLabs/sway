@@ -19,9 +19,9 @@ pub trait TokenMapExt: Sized {
 }
 
 /// Implement `TokenMapExt` for any iterator that yields (Ident, Token) pairs.
-impl<I> TokenMapExt for I
+impl<'a, I> TokenMapExt for I
 where
-    I: Iterator<Item = (TokenIdent, Token)>,
+    I: Iterator<Item = (&'a TokenIdent, &'a Token)>,
 {
     fn all_references_of_token<'s>(
         self,
@@ -45,15 +45,15 @@ pub struct AllReferencesOfToken<'s, I> {
 
 impl<'s, I> Iterator for AllReferencesOfToken<'s, I>
 where
-    I: Iterator<Item = (TokenIdent, Token)>,
+    I: Iterator<Item = (&'s TokenIdent, &'s Token)>,
 {
-    type Item = (TokenIdent, Token);
+    type Item = (&'s TokenIdent, &'s Token);
 
     fn next(&mut self) -> Option<Self::Item> {
         for (ident, token) in self.iter.by_ref() {
             let decl_ident_to_match = self.token_to_match.declared_token_ident(self.engines);
             let is_same_type = decl_ident_to_match == token.declared_token_ident(self.engines);
-            let is_decl_of_token = Some(&ident) == decl_ident_to_match.as_ref();
+            let is_decl_of_token = Some(ident) == decl_ident_to_match.as_ref();
 
             if decl_ident_to_match.is_some() && is_same_type || is_decl_of_token {
                 return Some((ident, token));

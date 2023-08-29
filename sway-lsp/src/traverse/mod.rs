@@ -14,7 +14,11 @@ pub struct ParseContext<'a> {
 }
 
 impl<'a> ParseContext<'a> {
-    pub fn new(tokens: &'a DashMap<TokenIdent, Token>, engines: &'a Engines, namespace: &'a Module) -> Self {
+    pub fn new(
+        tokens: &'a DashMap<TokenIdent, Token>,
+        engines: &'a Engines,
+        namespace: &'a Module,
+    ) -> Self {
         Self {
             tokens,
             engines,

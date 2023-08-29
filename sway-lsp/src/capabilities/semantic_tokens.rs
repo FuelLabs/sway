@@ -82,7 +82,7 @@ impl SemanticTokensBuilder {
     }
 }
 
-pub fn semantic_tokens(tokens_sorted: &[(TokenIdent, Token)]) -> SemanticTokens {
+pub fn semantic_tokens<'a>(tokens_sorted: &[(&'a TokenIdent, &'a Token)]) -> SemanticTokens {
     static TOKEN_RESULT_COUNTER: AtomicU32 = AtomicU32::new(1);
     let id = TOKEN_RESULT_COUNTER
         .fetch_add(1, Ordering::SeqCst)

@@ -52,14 +52,13 @@ pub fn hover_data(
         Some(decl_ident) => {
             let decl_token = session
                 .token_map()
-                .try_get(&decl_ident)
-                .try_unwrap()
-                .map(|item| item.value().clone())?;
+                .get(&decl_ident)
+                .map(|token| token.clone())?;
             (decl_ident, decl_token)
         }
         // The `TypeInfo` of the token does not contain an `Ident`. In this case,
         // we use the `Ident` of the token itself.
-        None => (ident.clone(), token),
+        None => (ident.clone(), token.clone()),
     };
 
     let contents = hover_format(session.clone(), &engines, &decl_token, &decl_ident.name);

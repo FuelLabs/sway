@@ -3,7 +3,8 @@
 use crate::{
     core::{
         token::{
-            desugared_op, type_info_to_symbol_kind, AstToken, SymbolKind, Token, TypeDefinition, TokenIdent,
+            desugared_op, type_info_to_symbol_kind, AstToken, SymbolKind, Token, TokenIdent,
+            TypeDefinition,
         },
         token_map::TokenMap,
     },

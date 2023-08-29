@@ -60,7 +60,7 @@ pub fn rename(
             .token_map()
             .iter()
             .all_references_of_token(&token, &engines)
-            .map(|(ident, _)| ident)
+            .map(|(ident, _)| ident.clone())
             .collect::<Vec<TokenIdent>>()
     })
     .into_iter()

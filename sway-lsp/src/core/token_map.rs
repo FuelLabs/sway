@@ -1,6 +1,9 @@
+use std::collections::HashMap;
+
 use crate::core::token::{self, Token, TokenIdent, TypedAstToken};
 use dashmap::DashMap;
 use lsp_types::{Position, Url};
+use parking_lot::RwLock;
 use sway_core::{language::ty, type_system::TypeId, Engines};
 use sway_types::{Ident, SourceEngine, Spanned};
 
@@ -12,39 +15,35 @@ pub use crate::core::token_map_ext::TokenMapExt;
 ///
 /// The TokenMap is a wrapper around a [DashMap], which is a concurrent HashMap.
 #[derive(Debug, Default)]
-pub struct TokenMap(DashMap<TokenIdent, Token>);
+// pub struct TokenMap(DashMap<TokenIdent, Token>);
+
+pub struct TokenMap(RwLock<HashMap<TokenIdent, Token>>);
 
 impl TokenMap {
     /// Create a new token map.
     pub fn new() -> TokenMap {
-        TokenMap(DashMap::new())
+        TokenMap(RwLock::new(HashMap::new()))
     }
 
-    pub fn t(&self) {
-        let map = self.0.clone().into_read_only();
-        for (ident, token) in map.iter() {
-            println!("{:?}: {:?}", ident, token);
-        }
-    }
-
-    /// Create a custom iterator for the TokenMap.
-    ///
-    /// The iterator returns ([Ident], [Token]) pairs.
-    pub fn iter(&self) -> TokenMapIter {
-        TokenMapIter {
-            inner_iter: self.0.iter(),
-        }
-    }
+    // /// Create a custom iterator for the TokenMap.
+    // ///
+    // /// The iterator returns ([Ident], [Token]) pairs.
+    // pub fn iter(&self) -> TokenMapIter {
+    //     TokenMapIter {
+    //         inner_iter: self.0.iter(),
+    //     }
+    // }
 
     /// Return an Iterator of tokens belonging to the provided [Url].
     pub fn tokens_for_file<'s>(
         &'s self,
         uri: &'s Url,
-    ) -> impl 's + Iterator<Item = (TokenIdent, Token)> {
+    ) -> impl 's + Iterator<Item = (&'s TokenIdent, &'s Token)> {
         self.iter().flat_map(|(ident, token)| {
             ident.path.as_ref().and_then(|path| {
                 if path.to_str() == Some(uri.path()) {
-                    Some((ident.clone(), token.clone()))
+                    Some((ident, token))
+                    // Some((ident.clone(), token.clone()))
                 } else {
                     None
                 }
@@ -54,9 +53,13 @@ impl TokenMap {
 
     /// Given a cursor [Position], return the [TokenIdent] of a token in the
     /// Iterator if one exists at that position.
-    pub fn idents_at_position<I>(&self, cursor_position: Position, tokens: I) -> Vec<TokenIdent>
+    pub fn idents_at_position<'s, I>(
+        &'s self,
+        cursor_position: Position,
+        tokens: I,
+    ) -> Vec<&TokenIdent>
     where
-        I: Iterator<Item = (TokenIdent, Token)>,
+        I: Iterator<Item = (&'s TokenIdent, &'s Token)>,
     {
         tokens
             .filter_map(|(ident, _)| {
@@ -89,14 +92,19 @@ impl TokenMap {
     }
 
     /// Returns the first collected tokens that is at the cursor position.
-    pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(TokenIdent, Token)> {
+    pub fn token_at_position<'s>(
+        &'s self,
+        uri: &'s Url,
+        position: Position,
+    ) -> Option<(&TokenIdent, &Token)> {
         let tokens = self.tokens_for_file(uri);
         self.idents_at_position(position, tokens)
             .first()
             .and_then(|ident| {
-                self.try_get(ident).try_unwrap().map(|item| {
-                    let (ident, token) = item.pair();
-                    (ident.clone(), token.clone())
+                self.get(ident).map(|token| {
+                    // let (ident, token) = item.pair();
+                    // (ident.clone(), token.clone())
+                    (ident.clone(), token)
                 })
             })
     }
@@ -129,8 +137,8 @@ impl TokenMap {
                     _ => ident.clone(),
                 };
                 if position >= token_ident.range.start && position <= token_ident.range.end {
-                    return self.try_get(&ident).try_unwrap().map(|item| {
-                        let (ident, token) = item.pair();
+                    return self.get(&ident).map(|token| {
+                        // let (ident, token) = item.pair();
                         (ident.clone(), token.clone())
                     });
                 }
@@ -150,9 +158,9 @@ impl TokenMap {
 }
 
 impl std::ops::Deref for TokenMap {
-    type Target = DashMap<TokenIdent, Token>;
+    type Target = HashMap<TokenIdent, Token>;
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.0.read()
     }
 }
 
@@ -182,30 +190,29 @@ pub fn struct_declaration_of_type_id(
     engines: &Engines,
     type_id: &TypeId,
 ) -> Option<ty::TyStructDecl> {
-    declaration_of_type_id(tokens, engines, type_id)
-        .and_then(|decl| match decl {
-            ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
-                Some(engines.de().get_struct(&decl_id))
-            }
-            _ => None,
-        })
+    declaration_of_type_id(tokens, engines, type_id).and_then(|decl| match decl {
+        ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
+            Some(engines.de().get_struct(&decl_id))
+        }
+        _ => None,
+    })
 }
 
-/// A custom iterator for [TokenMap] that yields [TokenIdent] and [Token] pairs.
-pub struct TokenMapIter<'s> {
-    inner_iter: dashmap::iter::Iter<'s, TokenIdent, Token>,
-}
+// /// A custom iterator for [TokenMap] that yields [TokenIdent] and [Token] pairs.
+// pub struct TokenMapIter<'s> {
+//     inner_iter: dashmap::iter::Iter<'s, TokenIdent, Token>,
+// }
 
-impl<'s> Iterator for TokenMapIter<'s> {
-    type Item = (TokenIdent, Token);
+// impl<'s> Iterator for TokenMapIter<'s> {
+//     type Item = (TokenIdent, Token);
 
-    /// Returns the next TokenIdent in the [TokenMap].
-    ///
-    /// If there are no more items, returns `None`.
-    fn next(&mut self) -> Option<Self::Item> {
-        self.inner_iter.next().map(|item| {
-            let (span, token) = item.pair();
-            (span.clone(), token.clone())
-        })
-    }
-}
+//     /// Returns the next TokenIdent in the [TokenMap].
+//     ///
+//     /// If there are no more items, returns `None`.
+//     fn next(&mut self) -> Option<Self::Item> {
+//         self.inner_iter.next().map(|item| {
+//             let (span, token) = item.pair();
+//             (span.clone(), token.clone())
+//         })
+//     }
+// }
