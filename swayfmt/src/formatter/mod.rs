@@ -58,13 +58,11 @@ impl Formatter {
     }
 
     /// Collect a mapping of Span -> Comment from unformatted input.
-    pub fn with_comments_context(&mut self, src: &str) -> &mut Self {
-        let comments_context = CommentsContext::new(
-            CommentMap::from_src(Arc::from(src)).unwrap(),
-            src.to_string(),
-        );
+    pub fn with_comments_context(&mut self, src: &str) -> Result<&mut Self, FormatterError> {
+        let comments_context =
+            CommentsContext::new(CommentMap::from_src(Arc::from(src))?, src.to_string());
         self.comments_context = comments_context;
-        self
+        Ok(self)
     }
 
     pub fn format(
@@ -88,7 +86,7 @@ impl Formatter {
         // which will reduce the number of reallocations
         let mut raw_formatted_code = String::with_capacity(src.len());
 
-        self.with_comments_context(src);
+        self.with_comments_context(src)?;
 
         let module = parse_file(&self.source_engine, Arc::from(src), path.clone())?.value;
         module.format(&mut raw_formatted_code, self)?;

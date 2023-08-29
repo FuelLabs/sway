@@ -9,6 +9,7 @@ mod trait_map;
 pub use items::Items;
 pub use module::Module;
 pub use namespace::Namespace;
+pub use namespace::TryInsertingTraitImplOnFailure;
 pub use root::Root;
 pub(super) use trait_map::TraitMap;
 

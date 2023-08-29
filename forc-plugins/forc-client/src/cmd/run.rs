@@ -1,3 +1,4 @@
+use crate::NodeTarget;
 use clap::Parser;
 use fuel_crypto::SecretKey;
 
@@ -24,11 +25,8 @@ pub struct Command {
     pub build_output: BuildOutput,
     #[clap(flatten)]
     pub build_profile: BuildProfile,
-    /// The URL of the Fuel node to which we're submitting the transaction.
-    /// If unspecified, checks the manifest's `network` table, then falls back
-    /// to [`crate::default::NODE_URL`].
-    #[clap(long, env = "FUEL_NODE_URL")]
-    pub node_url: Option<String>,
+    #[clap(flatten)]
+    pub node: NodeTarget,
     /// Hex string of data to input to script.
     #[clap(short, long)]
     pub data: Option<String>,

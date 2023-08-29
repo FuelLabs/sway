@@ -43,7 +43,9 @@ fn format_statement(
                 }
             }
         }
-        Statement::Error(_, _) => {}
+        Statement::Error(_, _) => {
+            return Err(FormatterError::SyntaxError);
+        }
     }
 
     Ok(())

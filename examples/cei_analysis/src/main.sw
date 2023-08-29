@@ -3,6 +3,7 @@ contract;
 mod other_contract;
 
 use other_contract::*;
+use std::hash::*;
 
 abi MyContract {
     #[storage(read, write)]
@@ -10,7 +11,7 @@ abi MyContract {
 }
 
 storage {
-    balances: StorageMap<Identity, u64> = StorageMap {},
+    balances: StorageMap<Identity, u64> = StorageMap::<Identity, u64> {},
 }
 
 impl MyContract for Contract {

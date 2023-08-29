@@ -135,7 +135,9 @@ impl Format for UseTree {
                 )?;
                 suffix.format(formatted_code, formatter)?;
             }
-            Self::Error { .. } => {}
+            Self::Error { .. } => {
+                return Err(FormatterError::SyntaxError);
+            }
         }
 
         Ok(())

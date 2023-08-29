@@ -4,10 +4,12 @@ use ::ops::{Eq, Not, Ord};
 
 /// `Never` represents the type of computations which never resolve to any value at all.
 ///
+/// # Additional Information
+///
 /// `break`, `continue` and `return` expressions also have type `Never`. For example we are allowed to
 /// write:
 ///
-/// ```
+/// ```sway
 /// let x: Never = {
 ///     return 123
 /// };
@@ -20,7 +22,7 @@ use ::ops::{Eq, Not, Ord};
 ///
 /// A more realistic usage of `Never` is in this code:
 ///
-/// ```
+/// ```sway
 /// let num: u32 = match get_a_number() {
 ///     Some(num) => num,
 ///     None => break,
@@ -33,13 +35,24 @@ use ::ops::{Eq, Not, Ord};
 ///
 /// Note that `Never` type coerces into any other type, another example of this would be:
 ///
-/// ```
+/// ```sway
 /// let x: u32 = {
 ///     return 123
 /// };
 /// ```
 ///
 /// Regardless of the type of `x`, the return block of type `Never` will always coerce into `x` type.
+/// 
+/// # Examples
+///
+/// ```sway
+/// fn foo() {
+///     let num: u64 = match Option::None::<u64> {
+///         Some(num) => num,
+///         None => return,
+///     };
+/// }
+/// ```
 pub enum Never {}
 
 impl Not for Never {

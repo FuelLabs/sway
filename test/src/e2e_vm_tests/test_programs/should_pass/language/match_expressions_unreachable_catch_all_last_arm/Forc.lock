@@ -1,0 +1,8 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-97D26B286146E632'
+
+[[package]]
+name = 'match_expressions_unreachable_catch_all_last_arm'
+source = 'member'
+dependencies = ['core']

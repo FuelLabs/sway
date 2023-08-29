@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, Criterion};
 use lsp_types::{
-    CodeLens, CompletionResponse, DocumentSymbolResponse, Position, Range,
-    TextDocumentContentChangeEvent, TextDocumentIdentifier,
+    CompletionResponse, DocumentSymbolResponse, Position, Range, TextDocumentContentChangeEvent,
+    TextDocumentIdentifier,
 };
 use sway_lsp::{capabilities, lsp_ext::OnEnterParams, utils::keyword_docs::KeywordDocs};
 
@@ -79,17 +79,7 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("code_lens", |b| {
-        b.iter(|| {
-            let mut result = vec![];
-            session.runnables.iter().for_each(|item| {
-                let runnable = item.value();
-                result.push(CodeLens {
-                    range: runnable.range(),
-                    command: Some(runnable.command()),
-                    data: None,
-                });
-            });
-        })
+        b.iter(|| capabilities::code_lens::code_lens(&session, &uri.clone()))
     });
 
     c.bench_function("on_enter", |b| {

@@ -69,26 +69,32 @@ impl Format for ItemTrait {
         if trait_items.is_empty() {
             write_comments(formatted_code, self.trait_items.span().into(), formatter)?;
         } else {
-            for (annotated, semicolon_token) in trait_items {
-                for attr in &annotated.attribute_list {
+            for item in trait_items {
+                for attr in &item.attribute_list {
                     write!(formatted_code, "{}", &formatter.indent_str()?,)?;
                     attr.format(formatted_code, formatter)?;
                 }
-                match &annotated.value {
-                    sway_ast::ItemTraitItem::Fn(fn_signature) => {
+                match &item.value {
+                    sway_ast::ItemTraitItem::Fn(fn_signature, _) => {
                         write!(formatted_code, "{}", formatter.indent_str()?,)?;
                         fn_signature.format(formatted_code, formatter)?;
-                        writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
+                        writeln!(formatted_code, ";")?;
                     }
-                    sway_ast::ItemTraitItem::Const(const_decl) => {
+                    sway_ast::ItemTraitItem::Const(const_decl, _) => {
                         write!(formatted_code, "{}", formatter.indent_str()?,)?;
                         const_decl.format(formatted_code, formatter)?;
-                        writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
+                    }
+                    ItemTraitItem::Error(_, _) => {
+                        return Err(FormatterError::SyntaxError);
                     }
                 }
             }
         }
-        formatted_code.pop(); // pop last ending newline
+
+        if formatted_code.ends_with('\n') {
+            formatted_code.pop(); // pop last ending newline
+        }
+
         Self::close_curly_brace(formatted_code, formatter)?;
         if let Some(trait_defs) = &self.trait_defs_opt {
             write!(formatted_code, " ")?;
@@ -120,8 +126,17 @@ impl Format for ItemTraitItem {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         match self {
-            ItemTraitItem::Fn(fn_decl) => fn_decl.format(formatted_code, formatter),
-            ItemTraitItem::Const(const_decl) => const_decl.format(formatted_code, formatter),
+            ItemTraitItem::Fn(fn_decl, _) => {
+                fn_decl.format(formatted_code, formatter)?;
+                writeln!(formatted_code, ";")?;
+                Ok(())
+            }
+            ItemTraitItem::Const(const_decl, _) => {
+                const_decl.format(formatted_code, formatter)?;
+                writeln!(formatted_code)?;
+                Ok(())
+            }
+            ItemTraitItem::Error(_, _) => Err(FormatterError::SyntaxError),
         }
     }
 }
@@ -136,7 +151,7 @@ impl CurlyBrace for ItemTrait {
         let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
-                // Add openning brace to the next line.
+                // Add opening brace to the next line.
                 writeln!(line, "\n{open_brace}")?;
             }
             _ => {
@@ -199,9 +214,16 @@ impl LeafSpans for ItemTraitItem {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         match &self {
-            ItemTraitItem::Fn(fn_sig) => collected_spans.append(&mut fn_sig.leaf_spans()),
-            ItemTraitItem::Const(const_decl) => {
-                collected_spans.append(&mut const_decl.leaf_spans())
+            ItemTraitItem::Fn(fn_sig, semicolon) => {
+                collected_spans.append(&mut fn_sig.leaf_spans());
+                collected_spans.extend(semicolon.as_ref().into_iter().flat_map(|x| x.leaf_spans()));
+            }
+            ItemTraitItem::Const(const_decl, semicolon) => {
+                collected_spans.append(&mut const_decl.leaf_spans());
+                collected_spans.extend(semicolon.as_ref().into_iter().flat_map(|x| x.leaf_spans()));
+            }
+            ItemTraitItem::Error(spans, _) => {
+                collected_spans.extend(spans.iter().cloned().map(Into::into));
             }
         };
         collected_spans

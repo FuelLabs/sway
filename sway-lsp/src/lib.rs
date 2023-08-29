@@ -5,7 +5,7 @@ pub mod config;
 pub mod core;
 pub mod error;
 pub mod server_state;
-mod handlers {
+pub mod handlers {
     pub mod notification;
     pub mod request;
 }

@@ -1,14 +1,14 @@
 use crate::{
     capabilities::{
         self,
-        diagnostic::{get_diagnostics, Diagnostics},
+        diagnostic::DiagnosticMap,
         formatting::get_page_text_edit,
         runnable::{Runnable, RunnableMainFn, RunnableTestFn},
     },
     core::{
         document::TextDocument,
         sync::SyncWorkspace,
-        token::{get_range_from_span, TypedAstToken},
+        token::TypedAstToken,
         token_map::{TokenMap, TokenMapExt},
     },
     error::{DocumentError, LanguageServerError},
@@ -41,9 +41,12 @@ use sway_core::{
     },
     BuildTarget, Engines, Namespace, Programs,
 };
-use sway_types::{Span, Spanned};
+use sway_error::{error::CompileError, warning::CompileWarning};
+use sway_types::{SourceEngine, Spanned};
 use sway_utils::helpers::get_sway_files;
 use tokio::sync::Semaphore;
+
+use super::token::get_range_from_span;
 
 pub type Documents = DashMap<String, TextDocument>;
 pub type ProjectDirectory = PathBuf;
@@ -59,7 +62,7 @@ pub struct CompiledProgram {
 /// the types in [Session] after successfully parsing.
 #[derive(Debug)]
 pub struct ParseResult {
-    pub(crate) diagnostics: Diagnostics,
+    pub(crate) diagnostics: (Vec<CompileError>, Vec<CompileWarning>),
     pub(crate) token_map: TokenMap,
     pub(crate) engines: Engines,
     pub(crate) lexed: LexedProgram,
@@ -75,7 +78,7 @@ pub struct ParseResult {
 pub struct Session {
     token_map: TokenMap,
     pub documents: Documents,
-    pub runnables: DashMap<Span, Box<dyn Runnable>>,
+    pub runnables: DashMap<PathBuf, Vec<Box<dyn Runnable>>>,
     pub compiled_program: RwLock<CompiledProgram>,
     pub engines: RwLock<Engines>,
     pub sync: SyncWorkspace,
@@ -83,7 +86,7 @@ pub struct Session {
     // and one thread can be waiting to start parsing. All others will return the cached diagnostics.
     pub parse_permits: Arc<Semaphore>,
     // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
-    pub diagnostics: Arc<RwLock<Diagnostics>>,
+    pub diagnostics: Arc<RwLock<DiagnosticMap>>,
 }
 
 impl Default for Session {
@@ -102,7 +105,7 @@ impl Session {
             engines: <_>::default(),
             sync: SyncWorkspace::new(),
             parse_permits: Arc::new(Semaphore::new(2)),
-            diagnostics: Arc::new(RwLock::new(Diagnostics::default())),
+            diagnostics: Arc::new(RwLock::new(DiagnosticMap::new())),
         }
     }
 
@@ -137,8 +140,8 @@ impl Session {
         &self.token_map
     }
 
-    /// Wait for the cached [Diagnostics] to be unlocked after parsing and return a copy.
-    pub fn wait_for_parsing(&self) -> Diagnostics {
+    /// Wait for the cached [DiagnosticMap] to be unlocked after parsing and return a copy.
+    pub fn wait_for_parsing(&self) -> DiagnosticMap {
         self.diagnostics.read().clone()
     }
 
@@ -150,27 +153,28 @@ impl Session {
 
         *self.engines.write() = res.engines;
         res.token_map.deref().iter().for_each(|item| {
-            let ((i, s), t) = item.pair();
-            self.token_map.insert((i.clone(), s.clone()), t.clone());
+            let (s, t) = item.pair();
+            self.token_map.insert(s.clone(), t.clone());
         });
 
-        self.create_runnables(&res.typed, self.engines.read().de());
+        self.create_runnables(
+            &res.typed,
+            self.engines.read().de(),
+            self.engines.read().se(),
+        );
         self.compiled_program.write().lexed = Some(res.lexed);
         self.compiled_program.write().parsed = Some(res.parsed);
         self.compiled_program.write().typed = Some(res.typed);
     }
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
-        let (_, token) =
-            self.token_map
-                .token_at_position(self.engines.read().se(), url, position)?;
+        let (_, token) = self.token_map.token_at_position(url, position)?;
         let engines = self.engines.read();
-
         let mut token_ranges: Vec<_> = self
             .token_map
-            .tokens_for_file(engines.se(), url)
+            .tokens_for_file(url)
             .all_references_of_token(&token, &engines)
-            .map(|(ident, _)| get_range_from_span(&ident.span()))
+            .map(|(ident, _)| ident.range)
             .collect();
 
         token_ranges.sort_by(|a, b| a.start.line.cmp(&b.start.line));
@@ -184,17 +188,15 @@ impl Session {
     ) -> Option<GotoDefinitionResponse> {
         let engines = self.engines.read();
         self.token_map
-            .token_at_position(engines.se(), &uri, position)
+            .token_at_position(&uri, position)
             .and_then(|(_, token)| token.declared_token_ident(&engines))
             .and_then(|decl_ident| {
-                let range = get_range_from_span(&decl_ident.span());
-                decl_ident.span().source_id().and_then(|source_id| {
-                    let path = engines.se().get_path(source_id);
+                decl_ident.path.and_then(|path| {
                     // We use ok() here because we don't care about propagating the error from from_file_path
                     Url::from_file_path(path).ok().and_then(|url| {
-                        self.sync
-                            .to_workspace_url(url)
-                            .map(|url| GotoDefinitionResponse::Scalar(Location::new(url, range)))
+                        self.sync.to_workspace_url(url).map(|url| {
+                            GotoDefinitionResponse::Scalar(Location::new(url, decl_ident.range))
+                        })
                     })
                 })
             })
@@ -211,15 +213,12 @@ impl Session {
             character: position.character - trigger_char.len() as u32 - 1,
         };
         let engines = self.engines.read();
-        let (ident_to_complete, _) =
-            self.token_map
-                .token_at_position(engines.se(), uri, shifted_position)?;
+        let (ident_to_complete, _) = self.token_map.token_at_position(uri, shifted_position)?;
         let fn_tokens =
             self.token_map
                 .tokens_at_position(engines.se(), uri, shifted_position, Some(true));
         let (_, fn_token) = fn_tokens.first()?;
         let compiled_program = &*self.compiled_program.read();
-
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.typed.clone() {
             let program = compiled_program.typed.clone()?;
             return Some(capabilities::completion::to_completion_items(
@@ -241,8 +240,7 @@ impl Session {
     }
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
-        let engines = self.engines.read();
-        let tokens = self.token_map.tokens_for_file(engines.se(), url);
+        let tokens = self.token_map.tokens_for_file(url);
         self.sync
             .to_workspace_url(url.clone())
             .map(|url| capabilities::document_symbol::to_symbol_information(tokens, url))
@@ -341,7 +339,12 @@ impl Session {
     }
 
     /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
-    fn create_runnables(&self, typed_program: &ty::TyProgram, decl_engine: &DeclEngine) {
+    fn create_runnables(
+        &self,
+        typed_program: &ty::TyProgram,
+        decl_engine: &DeclEngine,
+        source_engine: &SourceEngine,
+    ) {
         // Insert runnable test functions.
         for (decl, _) in typed_program.test_fns(decl_engine) {
             // Get the span of the first attribute if it exists, otherwise use the span of the function name.
@@ -349,12 +352,18 @@ impl Session {
                 .attributes
                 .first()
                 .map_or_else(|| decl.name.span(), |(_, attr)| attr.span.clone());
-            let runnable = Box::new(RunnableTestFn {
-                span,
-                tree_type: typed_program.kind.tree_type(),
-                test_name: Some(decl.name.to_string()),
-            });
-            self.runnables.insert(runnable.span().clone(), runnable);
+            if let Some(source_id) = span.source_id() {
+                let path = source_engine.get_path(source_id);
+                let runnable = Box::new(RunnableTestFn {
+                    range: get_range_from_span(&span.clone()),
+                    tree_type: typed_program.kind.tree_type(),
+                    test_name: Some(decl.name.to_string()),
+                });
+                self.runnables
+                    .entry(path)
+                    .or_insert(Vec::new())
+                    .push(runnable);
+            }
         }
 
         // Insert runnable main function if the program is a script.
@@ -363,11 +372,17 @@ impl Session {
         } = typed_program.kind
         {
             let span = main_function.name.span();
-            let runnable = Box::new(RunnableMainFn {
-                span,
-                tree_type: typed_program.kind.tree_type(),
-            });
-            self.runnables.insert(runnable.span().clone(), runnable);
+            if let Some(source_id) = span.source_id() {
+                let path = source_engine.get_path(source_id);
+                let runnable = Box::new(RunnableMainFn {
+                    range: get_range_from_span(&span.clone()),
+                    tree_type: typed_program.kind.tree_type(),
+                });
+                self.runnables
+                    .entry(path)
+                    .or_insert(Vec::new())
+                    .push(runnable);
+            }
         }
     }
 
@@ -413,7 +428,7 @@ fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
 /// Parses the project and returns true if the compiler diagnostics are new and should be published.
 pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
     let build_plan = build_plan(uri)?;
-    let mut diagnostics = Diagnostics::default();
+    let mut diagnostics = (Vec::<CompileError>::new(), Vec::<CompileWarning>::new());
     let engines = Engines::default();
     let token_map = TokenMap::new();
     let tests_enabled = true;
@@ -431,25 +446,24 @@ pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
     let results_len = results.len();
     for (i, (value, handler)) in results.into_iter().enumerate() {
         // We can convert these destructured elements to a Vec<Diagnostic> later on.
-        let (errors, warnings) = handler.consume();
+        let current_diagnostics = handler.consume();
+        diagnostics = current_diagnostics;
 
         if value.is_none() {
-            // If there was an unrecoverable error in the parser
-            // make sure to still return the diagnostics.
-            diagnostics = get_diagnostics(&warnings, &errors);
             continue;
         }
         let Programs {
             lexed,
             parsed,
             typed,
+            metrics: _,
         } = value.unwrap();
 
         // Get a reference to the typed program AST.
-        let typed_program = typed.as_ref().ok().ok_or_else(|| {
-            diagnostics = get_diagnostics(&warnings, &errors);
-            LanguageServerError::FailedToParse
-        })?;
+        let typed_program = typed
+            .as_ref()
+            .ok()
+            .ok_or_else(|| LanguageServerError::FailedToParse)?;
 
         // Create context with write guards to make readers wait until the update to token_map is complete.
         // This operation is fast because we already have the compile results.
@@ -473,7 +487,6 @@ pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
             });
 
             programs = Some((lexed, parsed, typed_program.clone()));
-            diagnostics = get_diagnostics(&warnings, &errors);
         } else {
             // Collect tokens from dependencies and the standard library prelude.
             parse_ast_to_tokens(&parsed, &ctx, |an, ctx| {

@@ -15,8 +15,8 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
-  RUST_VERSION: 1.71.0
-  NIGHTLY_RUST_VERSION: nightly-2023-04-01
+  RUST_VERSION: 1.72.0
+  NIGHTLY_RUST_VERSION: nightly-2023-08-27
 
 jobs:
   build-sway-lib-core:
@@ -279,7 +279,7 @@ jobs:
 
   # TODO: Remove this upon merging std tests with the rest of the E2E tests.
   cargo-test-lib-std:
-    runs-on: buildjet-4vcpu-ubuntu-2204
+    runs-on: buildjet-8vcpu-ubuntu-2204
     steps:
       - uses: actions/checkout@v3
       - name: Install toolchain

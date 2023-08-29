@@ -603,12 +603,11 @@ fn wide_cmp_demotion(context: &mut Context, function: Function) -> Result<bool, 
 
     // Get ptr to each arg
     for (block, cmp_instr_val) in candidates {
-        let Instruction::Cmp (op, arg1, arg2) = cmp_instr_val
-            .get_instruction(context)
-            .cloned()
-            .unwrap() else {
-                continue;
-            };
+        let Instruction::Cmp(op, arg1, arg2) =
+            cmp_instr_val.get_instruction(context).cloned().unwrap()
+        else {
+            continue;
+        };
 
         let cmp_op_metadata = cmp_instr_val.get_metadata(context);
 
@@ -764,9 +763,10 @@ fn wide_unary_op_demotion(context: &mut Context, function: Function) -> Result<b
         let Instruction::UnaryOp { arg, .. } = binary_op_instr_val
             .get_instruction(context)
             .cloned()
-            .unwrap() else {
-                continue;
-            };
+            .unwrap()
+        else {
+            continue;
+        };
 
         let unary_op_metadata = binary_op_instr_val.get_metadata(context);
 

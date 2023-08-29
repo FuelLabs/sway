@@ -1,3 +1,5 @@
+use sway_error::handler::ErrorEmitted;
+
 use crate::priv_prelude::*;
 
 pub mod item_abi;
@@ -38,6 +40,8 @@ pub enum ItemKind {
     Storage(ItemStorage),
     Configurable(ItemConfigurable),
     TypeAlias(ItemTypeAlias),
+    // to handle parser recovery: Error represents an incomplete item
+    Error(Box<[Span]>, #[serde(skip_serializing)] ErrorEmitted),
 }
 
 impl Spanned for ItemKind {
@@ -55,6 +59,7 @@ impl Spanned for ItemKind {
             ItemKind::Storage(item_storage) => item_storage.span(),
             ItemKind::Configurable(item_configurable) => item_configurable.span(),
             ItemKind::TypeAlias(item_type_alias) => item_type_alias.span(),
+            ItemKind::Error(spans, _) => Span::join_all(spans.iter().cloned()),
         }
     }
 }

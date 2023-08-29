@@ -286,7 +286,6 @@ pub enum CompileError {
     },
     #[error("This opcode takes an immediate value but none was provided.")]
     MissingImmediate { span: Span },
-
     #[error("This immediate value is invalid.")]
     InvalidImmediateValue { span: Span },
     #[error("Variant \"{variant_name}\" does not exist on enum \"{enum_name}\"")]
@@ -662,6 +661,8 @@ pub enum CompileError {
         method_name: String,
         as_traits: Vec<String>,
     },
+    #[error("Provided generic type is not of type str.")]
+    NonStrGenericType { span: Span },
     #[error("A contract method cannot call methods belonging to the same ABI")]
     ContractCallsItsOwnMethod { span: Span },
     #[error("ABI cannot define a method with the same name as its super-ABI \"{superabi}\"")]
@@ -847,6 +848,7 @@ impl Spanned for CompileError {
             TraitImplPayabilityMismatch { span, .. } => span.clone(),
             ConfigurableInLibrary { span } => span.clone(),
             MultipleApplicableItemsInScope { span, .. } => span.clone(),
+            NonStrGenericType { span } => span.clone(),
             CannotBeEvaluatedToConst { span } => span.clone(),
             ContractCallsItsOwnMethod { span } => span.clone(),
             AbiShadowsSuperAbiMethod { span, .. } => span.clone(),
@@ -908,7 +910,7 @@ impl ToDiagnostic for CompileError {
                     ),
                 ],
                 help: vec![
-                    "Unlike variables, constants cannot be shadowed by other constants or variables.".to_string(),
+                    format!("Unlike variables, constants cannot be shadowed by other constants or variables."),
                     match (variable_or_constant.as_str(), constant_decl.clone() != Span::dummy()) {
                         ("Variable", false) => format!("Consider renaming either the variable \"{name}\" or the constant \"{name}\"."),
                         ("Constant", false) => "Consider renaming one of the constants.".to_string(),
@@ -922,7 +924,7 @@ impl ToDiagnostic for CompileError {
                 ],
             },
             ConstantShadowsVariable { name , variable_span } => Diagnostic {
-                reason: Some(Reason::new(code(2), "Constants cannot shadow variables".to_string())),
+                reason: Some(Reason::new(code(1), "Constants cannot shadow variables".to_string())),
                 issue: Issue::error(
                     source_engine,
                     name.span(),
@@ -941,8 +943,8 @@ impl ToDiagnostic for CompileError {
                     ),
                 ],
                 help: vec![
-                    "Variables can shadow other variables, but constants cannot.".to_string(),
-                    "Consider renaming either the variable or the constant.".to_string(),
+                    format!("Variables can shadow other variables, but constants cannot."),
+                    format!("Consider renaming either the variable or the constant."),
                 ],
             },
            _ => Diagnostic {
