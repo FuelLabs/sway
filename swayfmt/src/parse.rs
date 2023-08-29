@@ -35,15 +35,14 @@ pub fn parse_format<P: sway_parse::Parse + crate::Format>(
     let parsed = with_handler(|handler| {
         let token_stream = sway_parse::lex(handler, &input.into(), 0, input.len(), None)?;
         sway_parse::Parser::new(handler, &token_stream).parse::<P>()
-    })
-    .unwrap();
+    })?;
 
     // Allow test cases that include comments.
     let mut formatter = Formatter::default();
     formatter.with_comments_context(input)?;
 
     let mut buf = <_>::default();
-    parsed.format(&mut buf, &mut formatter).unwrap();
+    parsed.format(&mut buf, &mut formatter)?;
     Ok(buf)
 }
 
