@@ -11,14 +11,13 @@ use crate::{
 use dashmap::DashMap;
 use forc_pkg::PackageManifestFile;
 use lsp_types::{Diagnostic, Url};
-use parking_lot::RwLock;
 use std::{path::PathBuf, sync::Arc};
 use tower_lsp::{jsonrpc, Client};
 
 /// `ServerState` is the primary mutable state of the language server
 pub struct ServerState {
     pub(crate) client: Option<Client>,
-    pub(crate) config: Arc<RwLock<Config>>,
+    pub(crate) config: Arc<Config>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
     pub(crate) sessions: Arc<Sessions>,
 }
@@ -27,7 +26,7 @@ impl Default for ServerState {
     fn default() -> Self {
         ServerState {
             client: None,
-            config: Arc::new(RwLock::new(Default::default())),
+            config: Arc::new(Default::default()),
             keyword_docs: Arc::new(KeywordDocs::new()),
             sessions: Arc::new(Sessions(DashMap::new())),
         }
@@ -53,9 +52,8 @@ impl ServerState {
 
     pub(crate) fn diagnostics(&self, uri: &Url, session: Arc<Session>) -> Vec<Diagnostic> {
         let mut diagnostics_to_publish = vec![];
-        let config = &self.config.read();
         let tokens = session.token_map().tokens_for_file(uri);
-        match config.debug.show_collected_tokens_as_warnings {
+        match self.config.debug.show_collected_tokens_as_warnings {
             // If collected_tokens_as_warnings is Parsed or Typed,
             // take over the normal error and warning display behavior
             // and instead show the either the parsed or typed tokens as warnings.
@@ -69,10 +67,10 @@ impl ServerState {
             Warnings::Default => {
                 let diagnostics_map = session.wait_for_parsing();
                 if let Some(diagnostics) = diagnostics_map.get(&PathBuf::from(uri.path())) {
-                    if config.diagnostic.show_warnings {
+                    if self.config.diagnostic.show_warnings {
                         diagnostics_to_publish.extend(diagnostics.warnings.clone());
                     }
-                    if config.diagnostic.show_errors {
+                    if self.config.diagnostic.show_errors {
                         diagnostics_to_publish.extend(diagnostics.errors.clone());
                     }
                 }

@@ -8,7 +8,7 @@ use lsp_types::{
 };
 
 pub async fn handle_did_open_text_document(
-    state: &ServerState,
+    state: &mut ServerState,
     params: DidOpenTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
     let (uri, session) = state
@@ -27,7 +27,7 @@ pub async fn handle_did_open_text_document(
 }
 
 pub async fn handle_did_change_text_document(
-    state: &ServerState,
+    state: &mut ServerState,
     params: DidChangeTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
     let (uri, session) = state
@@ -41,7 +41,7 @@ pub async fn handle_did_change_text_document(
 }
 
 pub(crate) async fn handle_did_save_text_document(
-    state: &ServerState,
+    state: &mut ServerState,
     params: DidSaveTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
     let (uri, session) = state
@@ -55,7 +55,7 @@ pub(crate) async fn handle_did_save_text_document(
 }
 
 pub(crate) fn handle_did_change_watched_files(
-    state: &ServerState,
+    state: &mut ServerState,
     params: DidChangeWatchedFilesParams,
 ) {
     for event in params.changes {

@@ -42,7 +42,7 @@ pub(crate) struct Rename<'a> {
     new_name: &'a str,
 }
 
-async fn open(server: &ServerState, entry_point: PathBuf) -> Url {
+async fn open(server: &mut ServerState, entry_point: PathBuf) -> Url {
     let (uri, sway_program) = load_sway_example(entry_point);
     let params = DidOpenTextDocumentParams {
         text_document: TextDocumentItem {
@@ -72,18 +72,18 @@ async fn shutdown_and_exit(service: &mut LspService<ServerState>) {
 
 #[tokio::test]
 async fn initialize() {
-    let server = ServerState::default();
+    let mut server = ServerState::default();
     let params = InitializeParams {
         initialization_options: None,
         ..Default::default()
     };
-    let _ = request::handle_initialize(&server, params);
+    let _ = request::handle_initialize(&mut server, params);
 }
 
 #[tokio::test]
 async fn did_open() {
-    let server = ServerState::default();
-    let _ = open(&server, e2e_test_dir().join("src/main.sw")).await;
+    let mut server = ServerState::default();
+    let _ = open(&mut server, e2e_test_dir().join("src/main.sw")).await;
     let _ = server.shutdown_server();
 }
 
@@ -117,8 +117,8 @@ async fn lsp_syncs_with_workspace_edits() {
 
 #[tokio::test]
 async fn show_ast() {
-    let server = ServerState::default();
-    let uri = open(&server, e2e_test_dir().join("src/main.sw")).await;
+    let mut server = ServerState::default();
+    let uri = open(&mut server, e2e_test_dir().join("src/main.sw")).await;
     lsp::show_ast_request(&server, &uri, "typed", None).await;
     let _ = server.shutdown_server();
 }
@@ -127,8 +127,8 @@ async fn show_ast() {
 
 #[tokio::test]
 async fn go_to_definition() {
-    let server = ServerState::default();
-    let uri = open(&server, doc_comments_dir().join("src/main.sw")).await;
+    let mut server = ServerState::default();
+    let uri = open(&mut server, doc_comments_dir().join("src/main.sw")).await;
     let go_to = GotoDefinition {
         req_uri: &uri,
         req_line: 44,
@@ -144,9 +144,9 @@ async fn go_to_definition() {
 
 #[tokio::test]
 async fn go_to_definition_for_fields() {
-    let server = ServerState::default();
+    let mut server = ServerState::default();
     let uri = open(
-        &server,
+        &mut server,
         test_fixtures_dir().join("tokens/fields/src/main.sw"),
     )
     .await;
@@ -198,9 +198,9 @@ async fn go_to_definition_for_fields() {
 
 #[tokio::test]
 async fn go_to_definition_inside_turbofish() {
-    let server = ServerState::default();
+    let mut server = ServerState::default();
     let uri = open(
-        &server,
+        &mut server,
         test_fixtures_dir().join("tokens/turbofish/src/main.sw"),
     )
     .await;
@@ -246,9 +246,9 @@ async fn go_to_definition_inside_turbofish() {
 
 #[tokio::test]
 async fn go_to_definition_for_matches() {
-    let server = ServerState::default();
+    let mut server = ServerState::default();
     let uri = open(
-        &server,
+        &mut server,
         test_fixtures_dir().join("tokens/matches/src/main.sw"),
     )
     .await;
@@ -357,9 +357,9 @@ async fn go_to_definition_for_matches() {
 
 #[tokio::test]
 async fn go_to_definition_for_modules() {
-    let server = ServerState::default();
+    let mut server = ServerState::default();
     let uri = open(
-        &server,
+        &mut server,
         test_fixtures_dir().join("tokens/modules/src/lib.sw"),
     )
     .await;
@@ -378,9 +378,9 @@ async fn go_to_definition_for_modules() {
 
     let _ = server.shutdown_server();
 
-    let server = ServerState::default();
+    let mut server = ServerState::default();
     let uri = open(
-        &server,
+        &mut server,
         test_fixtures_dir().join("tokens/modules/src/test_mod.sw"),
     )
     .await;
@@ -402,9 +402,9 @@ async fn go_to_definition_for_modules() {
 
 #[tokio::test]
 async fn go_to_definition_for_paths() {
-    let server = ServerState::default();
+    let mut server = ServerState::default();
     let uri = open(
-        &server,
+        &mut server,
         test_fixtures_dir().join("tokens/paths/src/main.sw"),
     )
     .await;
@@ -774,9 +774,9 @@ async fn go_to_definition_for_paths() {
 
 #[tokio::test]
 async fn go_to_definition_for_traits() {
-    let server = ServerState::default();
+    let mut server = ServerState::default();
     let uri = open(
-        &server,
+        &mut server,
         test_fixtures_dir().join("tokens/traits/src/main.sw"),
     )
     .await;
@@ -803,9 +803,9 @@ async fn go_to_definition_for_traits() {
 
 #[tokio::test]
 async fn go_to_definition_for_variables() {
-    let server = ServerState::default();
+    let mut server = ServerState::default();
     let uri = open(
-        &server,
+        &mut server,
         test_fixtures_dir().join("tokens/variables/src/main.sw"),
     )
     .await;
@@ -894,9 +894,9 @@ async fn go_to_definition_for_variables() {
 
 #[tokio::test]
 async fn go_to_definition_for_consts() {
-    let server = ServerState::default();
+    let mut server = ServerState::default();
     let uri = open(
-        &server,
+        &mut server,
         test_fixtures_dir().join("tokens/consts/src/main.sw"),
     )
     .await;
@@ -969,9 +969,9 @@ async fn go_to_definition_for_consts() {
 
 #[tokio::test]
 async fn go_to_definition_for_functions() {
-    let server = ServerState::default();
+    let mut server = ServerState::default();
     let uri = open(
-        &server,
+        &mut server,
         test_fixtures_dir().join("tokens/functions/src/main.sw"),
     )
     .await;
@@ -1019,9 +1019,9 @@ async fn go_to_definition_for_functions() {
 
 #[tokio::test]
 async fn go_to_definition_for_structs() {
-    let server = ServerState::default();
+    let mut server = ServerState::default();
     let uri = open(
-        &server,
+        &mut server,
         test_fixtures_dir().join("tokens/structs/src/main.sw"),
     )
     .await;
@@ -1072,9 +1072,9 @@ async fn go_to_definition_for_structs() {
 
 #[tokio::test]
 async fn go_to_definition_for_impls() {
-    let server = ServerState::default();
+    let mut server = ServerState::default();
     let uri = open(
-        &server,
+        &mut server,
         test_fixtures_dir().join("tokens/impls/src/main.sw"),
     )
     .await;
@@ -1109,9 +1109,9 @@ async fn go_to_definition_for_impls() {
 
 #[tokio::test]
 async fn go_to_definition_for_where_clause() {
-    let server = ServerState::default();
+    let mut server = ServerState::default();
     let uri = open(
-        &server,
+        &mut server,
         test_fixtures_dir().join("tokens/where_clause/src/main.sw"),
     )
     .await;
@@ -1168,9 +1168,9 @@ async fn go_to_definition_for_where_clause() {
 
 #[tokio::test]
 async fn go_to_definition_for_enums() {
-    let server = ServerState::default();
+    let mut server = ServerState::default();
     let uri = open(
-        &server,
+        &mut server,
         test_fixtures_dir().join("tokens/enums/src/main.sw"),
     )
     .await;
@@ -1211,8 +1211,12 @@ async fn go_to_definition_for_enums() {
 
 #[tokio::test]
 async fn go_to_definition_for_abi() {
-    let server = ServerState::default();
-    let uri = open(&server, test_fixtures_dir().join("tokens/abi/src/main.sw")).await;
+    let mut server = ServerState::default();
+    let uri = open(
+        &mut server,
+        test_fixtures_dir().join("tokens/abi/src/main.sw"),
+    )
+    .await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -1236,9 +1240,9 @@ async fn go_to_definition_for_abi() {
 
 #[tokio::test]
 async fn go_to_definition_for_storage() {
-    let server = ServerState::default();
+    let mut server = ServerState::default();
     let uri = open(
-        &server,
+        &mut server,
         test_fixtures_dir().join("tokens/storage/src/main.sw"),
     )
     .await;
@@ -1326,9 +1330,9 @@ async fn go_to_definition_for_storage() {
 
 #[tokio::test]
 async fn hover_docs_for_consts() {
-    let server = ServerState::default();
+    let mut server = ServerState::default();
     let uri = open(
-        &server,
+        &mut server,
         test_fixtures_dir().join("tokens/consts/src/main.sw"),
     )
     .await;
@@ -1349,9 +1353,9 @@ async fn hover_docs_for_consts() {
 
 #[tokio::test]
 async fn hover_docs_for_functions() {
-    let server = ServerState::default();
+    let mut server = ServerState::default();
     let uri = open(
-        &server,
+        &mut server,
         test_fixtures_dir().join("tokens/functions/src/main.sw"),
     )
     .await;
@@ -1368,9 +1372,9 @@ async fn hover_docs_for_functions() {
 
 #[tokio::test]
 async fn hover_docs_for_structs() {
-    let server = ServerState::default();
+    let mut server = ServerState::default();
     let uri = open(
-        &server,
+        &mut server,
         test_fixtures_dir().join("tokens/structs/src/main.sw"),
     )
     .await;
@@ -1405,9 +1409,9 @@ async fn hover_docs_for_structs() {
 
 #[tokio::test]
 async fn hover_docs_for_enums() {
-    let server = ServerState::default();
+    let mut server = ServerState::default();
     let uri = open(
-        &server,
+        &mut server,
         test_fixtures_dir().join("tokens/enums/src/main.sw"),
     )
     .await;
@@ -1432,8 +1436,12 @@ async fn hover_docs_for_enums() {
 
 #[tokio::test]
 async fn hover_docs_for_abis() {
-    let server = ServerState::default();
-    let uri = open(&server, test_fixtures_dir().join("tokens/abi/src/main.sw")).await;
+    let mut server = ServerState::default();
+    let uri = open(
+        &mut server,
+        test_fixtures_dir().join("tokens/abi/src/main.sw"),
+    )
+    .await;
 
     let hover = HoverDocumentation {
         req_uri: &uri,
@@ -1447,9 +1455,9 @@ async fn hover_docs_for_abis() {
 
 #[tokio::test]
 async fn hover_docs_for_variables() {
-    let server = ServerState::default();
+    let mut server = ServerState::default();
     let uri = open(
-        &server,
+        &mut server,
         test_fixtures_dir().join("tokens/variables/src/main.sw"),
     )
     .await;
@@ -1466,8 +1474,8 @@ async fn hover_docs_for_variables() {
 
 #[tokio::test]
 async fn hover_docs_with_code_examples() {
-    let server = ServerState::default();
-    let uri = open(&server, doc_comments_dir().join("src/main.sw")).await;
+    let mut server = ServerState::default();
+    let uri = open(&mut server, doc_comments_dir().join("src/main.sw")).await;
 
     let hover = HoverDocumentation {
             req_uri: &uri,
@@ -1481,8 +1489,12 @@ async fn hover_docs_with_code_examples() {
 
 #[tokio::test]
 async fn hover_docs_for_self_keywords() {
-    let server = ServerState::default();
-    let uri = open(&server, test_fixtures_dir().join("completion/src/main.sw")).await;
+    let mut server = ServerState::default();
+    let uri = open(
+        &mut server,
+        test_fixtures_dir().join("completion/src/main.sw"),
+    )
+    .await;
 
     let mut hover = HoverDocumentation {
         req_uri: &uri,
@@ -1500,9 +1512,9 @@ async fn hover_docs_for_self_keywords() {
 
 #[tokio::test]
 async fn hover_docs_for_boolean_keywords() {
-    let server = ServerState::default();
+    let mut server = ServerState::default();
     let uri = open(
-        &server,
+        &mut server,
         test_fixtures_dir().join("tokens/storage/src/main.sw"),
     )
     .await;
@@ -1524,8 +1536,12 @@ async fn hover_docs_for_boolean_keywords() {
 
 #[tokio::test]
 async fn rename() {
-    let server = ServerState::default();
-    let uri = open(&server, test_fixtures_dir().join("renaming/src/main.sw")).await;
+    let mut server = ServerState::default();
+    let uri = open(
+        &mut server,
+        test_fixtures_dir().join("renaming/src/main.sw"),
+    )
+    .await;
 
     // Struct expression variable
     let rename = Rename {
@@ -1667,8 +1683,8 @@ async fn publish_diagnostics_multi_file() {
 // The capability argument is an async function.
 macro_rules! test_lsp_capability {
     ($entry_point:expr, $capability:expr) => {{
-        let server = ServerState::default();
-        let uri = open(&server, $entry_point).await;
+        let mut server = ServerState::default();
+        let uri = open(&mut server, $entry_point).await;
 
         // Call the specific LSP capability function that was passed in.
         let _ = $capability(&server, &uri);
@@ -1779,7 +1795,7 @@ async fn write_all_example_asts() {
     // ordering is required the entries should be explicitly sorted.
     entries.sort();
 
-    let server = ServerState::default();
+    let mut server = ServerState::default();
 
     for entry in entries {
         let manifest_dir = entry;
@@ -1794,7 +1810,7 @@ async fn write_all_example_asts() {
                 Err(_) => continue,
             }
 
-            let uri = open(&server, manifest_dir.join("src/main.sw")).await;
+            let uri = open(&mut server, manifest_dir.join("src/main.sw")).await;
             let example_dir = Some(Url::from_file_path(example_dir).unwrap());
             lsp::show_ast_request(&server, &uri, "lexed", example_dir.clone()).await;
             lsp::show_ast_request(&server, &uri, "parsed", example_dir.clone()).await;

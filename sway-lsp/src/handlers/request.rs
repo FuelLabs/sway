@@ -18,20 +18,18 @@ use tower_lsp::jsonrpc::Result;
 use tracing::metadata::LevelFilter;
 
 pub fn handle_initialize(
-    state: &ServerState,
+    state: &mut ServerState,
     params: lsp_types::InitializeParams,
 ) -> Result<InitializeResult> {
     if let Some(initialization_options) = &params.initialization_options {
-        let mut config = state.config.write();
-        *config = serde_json::from_value(initialization_options.clone())
+        state.config = serde_json::from_value(initialization_options.clone())
             .ok()
             .unwrap_or_default();
     }
     // Initalizing tracing library based on the user's config
-    let config = state.config.read();
-    if config.logging.level != LevelFilter::OFF {
+    if state.config.logging.level != LevelFilter::OFF {
         let tracing_options = TracingSubscriberOptions {
-            log_level: Some(config.logging.level),
+            log_level: Some(state.config.logging.level),
             writer_mode: Some(TracingWriterMode::Stderr),
             ..Default::default()
         };
@@ -283,7 +281,7 @@ pub(crate) fn handle_inlay_hints(
     {
         Ok((uri, session)) => {
             let _ = session.wait_for_parsing();
-            let config = &state.config.read().inlay_hints;
+            let config = &state.config.inlay_hints;
             Ok(capabilities::inlay_hints::inlay_hints(
                 session,
                 &uri,
@@ -407,7 +405,7 @@ pub(crate) fn on_enter(
     state: &ServerState,
     params: lsp_ext::OnEnterParams,
 ) -> Result<Option<WorkspaceEdit>> {
-    let config = &state.config.read().on_enter;
+    let config = &state.config.on_enter;
     match state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
