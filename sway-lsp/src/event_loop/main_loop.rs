@@ -8,7 +8,7 @@ use crate::{
         dispatch::{NotificationDispatcher, RequestDispatcher},
         server_state_ext::ServerStateExt,
     },
-    lsp_ext,
+    lsp_ext, core::session::ParseResult,
 };
 use crossbeam_channel::{select, Receiver};
 use lsp_server::{Connection, Notification, Request};
@@ -29,7 +29,7 @@ enum Event {
 pub(crate) enum Task {
     Response(lsp_server::Response),
     Retry(lsp_server::Request),
-    ParseResult(String),
+    ParseResult(Option<ParseResult>),
 }
 
 impl fmt::Debug for Event {
@@ -137,7 +137,7 @@ impl ServerStateExt {
     fn handle_task(&mut self, task: Task) {
         match task {
             Task::ParseResult(result) => {
-                eprintln!("RECIEVED PARSE RESULT: {}", result);
+                eprintln!("RECIEVED PARSE RESULT {}", result.is_some());
             }
             Task::Response(response) => self.respond(response),
             // Only retry requests that haven't been cancelled. Otherwise we do unnecessary work.

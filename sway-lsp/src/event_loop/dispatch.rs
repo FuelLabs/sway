@@ -414,8 +414,11 @@ impl<'a> NotificationDispatcher<'a> {
                 // }
                 //f(world, params)
                 match session::parse_project(&uri) {
-                    Ok(res) => {
+                    Ok(parse_result) => {
                         eprintln!("project parsed!!!!");
+                        let (errors, warnings) = parse_result.diagnostics.clone();
+                        session.write_parse_result(parse_result);
+                        *session.diagnostics.write() = crate::capabilities::diagnostic::get_diagnostics(&warnings, &errors, session.engines.read().se());
                     }
                     Err(err) => {
                         if matches!(err, LanguageServerError::FailedToParse) {
@@ -423,15 +426,7 @@ impl<'a> NotificationDispatcher<'a> {
                         }
                     }
                 }
-                
-                // dummy task for now
-                Task::ParseResult("WE DID IT".to_string())
-                
-                // Task::Response(lsp_server::Response::new_err(
-                //     1.into(),
-                //     lsp_server::ErrorCode::ContentModified as i32,
-                //     "content modified".to_string(),
-                // ))
+                Task::ParseResult(None)
             }
         }); 
         tracing::info!("did_change thread spawned");
