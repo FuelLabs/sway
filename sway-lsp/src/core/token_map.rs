@@ -125,7 +125,7 @@ impl TokenMap {
     ) -> Vec<(TokenIdent, Token)> {
         self.tokens_for_file(uri)
             .filter_map(|(ident, token)| {
-                let token_ident = match token.typed {
+                let token_ident = match &token.typed {
                     Some(TypedAstToken::TypedFunctionDeclaration(decl))
                         if functions_only == Some(true) =>
                     {
@@ -158,9 +158,9 @@ impl TokenMap {
 }
 
 impl std::ops::Deref for TokenMap {
-    type Target = HashMap<TokenIdent, Token>;
+    type Target = RwLock<HashMap<TokenIdent, Token>>;
     fn deref(&self) -> &Self::Target {
-        &self.0.read()
+        &self.0
     }
 }
 

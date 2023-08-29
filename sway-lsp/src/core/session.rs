@@ -148,13 +148,14 @@ impl Session {
     /// Write the result of parsing to the session.
     /// This function should only be called after successfully parsing.
     pub fn write_parse_result(&self, res: ParseResult) {
-        self.token_map.clear();
+        let mut token_map = self.token_map.write();
+        token_map.clear();
         self.runnables.clear();
 
         *self.engines.write() = res.engines;
         res.token_map.iter().for_each(|item| {
             let (s, t) = item.pair();
-            self.token_map.insert(s.clone(), t.clone());
+            token_map.insert(s.clone(), t.clone());
         });
 
         self.create_runnables(
