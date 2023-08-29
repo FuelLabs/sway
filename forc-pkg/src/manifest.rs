@@ -3,6 +3,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use forc_tracing::println_warning;
 use forc_util::{find_nested_manifest_dir, find_parent_manifest_dir, validate_name};
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DisplayFromStr};
 use std::{
     collections::{BTreeMap, HashMap},
     path::{Path, PathBuf},
@@ -166,11 +167,13 @@ pub struct Network {
     pub url: String,
 }
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct ContractDependency {
     #[serde(flatten)]
     pub dependency: Dependency,
+    #[serde_as(as = "DisplayFromStr")]
     #[serde(default = "fuel_tx::Salt::default")]
     pub salt: fuel_tx::Salt,
 }
