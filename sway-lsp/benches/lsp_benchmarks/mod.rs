@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use sway_lsp::core::session::{self, Session};
 
 pub fn compile_test_project() -> (Url, Session) {
-    let session = Session::new();
+    let mut session = Session::new();
     // Load the test project
     let uri = Url::from_file_path(benchmark_dir().join("src/main.sw")).unwrap();
     session.handle_open_file(&uri);
