@@ -147,7 +147,9 @@ pub(crate) fn semantic_tokens_request(server: &ServerState, uri: &Url) {
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let response = request::handle_semantic_tokens_full(server, params.clone()).unwrap();
+    let response = request::handle_semantic_tokens_full(server, params.clone())
+        .await
+        .unwrap();
     eprintln!("{:#?}", response);
     if let Some(SemanticTokensResult::Tokens(tokens)) = response {
         assert!(!tokens.data.is_empty());
@@ -160,7 +162,9 @@ pub(crate) fn document_symbol_request(server: &ServerState, uri: &Url) {
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let response = request::handle_document_symbol(server, params.clone()).unwrap();
+    let response = request::handle_document_symbol(server, params.clone())
+        .await
+        .unwrap();
     if let Some(DocumentSymbolResponse::Flat(res)) = response {
         assert!(!res.is_empty());
     }
