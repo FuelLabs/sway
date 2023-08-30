@@ -18,20 +18,18 @@ use tower_lsp::jsonrpc::Result;
 use tracing::metadata::LevelFilter;
 
 pub fn handle_initialize(
-    state: &ServerState,
+    state: &mut ServerState,
     params: lsp_types::InitializeParams,
 ) -> Result<InitializeResult> {
     if let Some(initialization_options) = &params.initialization_options {
-        let mut config = state.config.write();
-        *config = serde_json::from_value(initialization_options.clone())
+        state.config = serde_json::from_value(initialization_options.clone())
             .ok()
             .unwrap_or_default();
     }
     // Initalizing tracing library based on the user's config
-    let config = state.config.read();
-    if config.logging.level != LevelFilter::OFF {
+    if state.config.logging.level != LevelFilter::OFF {
         let tracing_options = TracingSubscriberOptions {
-            log_level: Some(config.logging.level),
+            log_level: Some(state.config.logging.level),
             writer_mode: Some(TracingWriterMode::Stderr),
             ..Default::default()
         };
@@ -45,7 +43,7 @@ pub fn handle_initialize(
     })
 }
 
-pub fn handle_document_symbol(
+pub async fn handle_document_symbol(
     state: &ServerState,
     params: lsp_types::DocumentSymbolParams,
 ) -> Result<Option<lsp_types::DocumentSymbolResponse>> {
@@ -54,7 +52,7 @@ pub fn handle_document_symbol(
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
         Ok((uri, session)) => {
-            let _ = session.wait_for_parsing();
+            let _ = session.wait_for_parsing().await;
             Ok(session
                 .symbol_information(&uri)
                 .map(DocumentSymbolResponse::Flat))
@@ -244,7 +242,7 @@ pub fn handle_code_lens(
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
-        Ok((url, session)) => Ok(Some(capabilities::code_lens::code_lens(&session, &url))),
+        Ok((url, session)) => Ok(Some(capabilities::code_lens::code_lens(session, &url))),
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)
@@ -252,7 +250,7 @@ pub fn handle_code_lens(
     }
 }
 
-pub fn handle_semantic_tokens_full(
+pub async fn handle_semantic_tokens_full(
     state: &ServerState,
     params: SemanticTokensParams,
 ) -> Result<Option<SemanticTokensResult>> {
@@ -261,7 +259,7 @@ pub fn handle_semantic_tokens_full(
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
         Ok((uri, session)) => {
-            let _ = session.wait_for_parsing();
+            let _ = session.wait_for_parsing().await;
             Ok(capabilities::semantic_tokens::semantic_tokens_full(
                 session, &uri,
             ))
@@ -273,7 +271,7 @@ pub fn handle_semantic_tokens_full(
     }
 }
 
-pub(crate) fn handle_inlay_hints(
+pub(crate) async fn handle_inlay_hints(
     state: &ServerState,
     params: InlayHintParams,
 ) -> Result<Option<Vec<InlayHint>>> {
@@ -282,8 +280,8 @@ pub(crate) fn handle_inlay_hints(
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
         Ok((uri, session)) => {
-            let _ = session.wait_for_parsing();
-            let config = &state.config.read().inlay_hints;
+            let _ = session.wait_for_parsing().await;
+            let config = &state.config.inlay_hints;
             Ok(capabilities::inlay_hints::inlay_hints(
                 session,
                 &uri,
@@ -337,13 +335,16 @@ pub fn handle_show_ast(
 
             // Returns true if the current path matches the path of a submodule
             let path_is_submodule = |ident: &Ident, path: &Option<PathBuf>| -> bool {
-                let engines = session.engines.read();
-                ident.span().source_id().map(|p| engines.se().get_path(p)) == *path
+                ident
+                    .span()
+                    .source_id()
+                    .map(|p| session.engines.se().get_path(p))
+                    == *path
             };
 
             let ast_path = PathBuf::from(params.save_path.path());
             {
-                let program = session.compiled_program.read();
+                let program = &session.compiled_program;
                 match params.ast_kind.as_str() {
                     "lexed" => {
                         Ok(program.lexed.as_ref().and_then(|lexed_program| {
@@ -377,14 +378,14 @@ pub fn handle_show_ast(
                             // Initialize the string with the AST from the root
                             let mut formatted_ast = debug::print_decl_engine_types(
                                 &typed_program.root.all_nodes,
-                                session.engines.read().de(),
+                                session.engines.de(),
                             );
                             for (ident, submodule) in &typed_program.root.submodules {
                                 if path_is_submodule(ident, &path) {
                                     // overwrite the root AST with the submodule AST
                                     formatted_ast = debug::print_decl_engine_types(
                                         &submodule.module.all_nodes,
-                                        session.engines.read().de(),
+                                        session.engines.de(),
                                     );
                                 }
                             }
@@ -407,14 +408,14 @@ pub(crate) fn on_enter(
     state: &ServerState,
     params: lsp_ext::OnEnterParams,
 ) -> Result<Option<WorkspaceEdit>> {
-    let config = &state.config.read().on_enter;
+    let config = &state.config.on_enter;
     match state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
         Ok((uri, session)) => {
             // handle on_enter capabilities if they are enabled
-            Ok(capabilities::on_enter(config, &session, &uri, &params))
+            Ok(capabilities::on_enter(config, session, &uri, &params))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());

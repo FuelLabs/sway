@@ -256,7 +256,7 @@ fn format_pkg_at_dir(app: &App, dir: &Path, formatter: &mut Formatter) -> Result
         Some(path) => {
             let manifest_path = path.clone();
             let manifest_file = manifest_path.join(constants::MANIFEST_FILE_NAME);
-            let files = get_sway_files(path);
+            let files = get_sway_files(&path);
             let mut contains_edits = false;
 
             for file in files {

@@ -3,7 +3,7 @@ use lsp_types::Position;
 
 fn benchmarks(c: &mut Criterion) {
     let (uri, session) = black_box(super::compile_test_project());
-    let engines = session.engines.read();
+    let engines = &session.engines;
     let position = Position::new(1716, 24);
 
     c.bench_function("tokens_for_file", |b| {

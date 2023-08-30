@@ -20,7 +20,7 @@ use lsp_types::{
     CodeActionResponse, Position, Range, TextEdit, Url, WorkspaceEdit,
 };
 use serde_json::Value;
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 use sway_core::{language::ty, Engines};
 use sway_types::Spanned;
 
@@ -37,18 +37,17 @@ pub(crate) struct CodeActionContext<'a> {
 }
 
 pub fn code_actions(
-    session: Arc<Session>,
+    session: &Session,
     range: &Range,
     uri: &Url,
     temp_uri: &Url,
 ) -> Option<CodeActionResponse> {
-    let engines = session.engines.read();
     let (_, token) = session
         .token_map()
         .token_at_position(temp_uri, range.start)?;
 
     let ctx = CodeActionContext {
-        engines: &engines,
+        engines: &session.engines,
         tokens: session.token_map(),
         token: &token,
         uri,

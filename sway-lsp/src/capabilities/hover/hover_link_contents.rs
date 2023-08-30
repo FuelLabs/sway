@@ -2,7 +2,6 @@ use crate::{
     core::{session::Session, token::get_range_from_span},
     utils::document::get_url_from_span,
 };
-use std::sync::Arc;
 use sway_core::{
     language::{
         ty::{TyDecl, TyTraitDecl},
@@ -26,12 +25,12 @@ pub struct RelatedType {
 pub struct HoverLinkContents<'a> {
     pub related_types: Vec<RelatedType>,
     pub implementations: Vec<Span>,
-    session: Arc<Session>,
+    session: &'a Session,
     engines: &'a Engines,
 }
 
 impl<'a> HoverLinkContents<'a> {
-    pub fn new(session: Arc<Session>, engines: &'a Engines) -> Self {
+    pub fn new(session: &'a Session, engines: &'a Engines) -> Self {
         Self {
             related_types: Vec::new(),
             implementations: Vec::new(),
@@ -82,7 +81,7 @@ impl<'a> HoverLinkContents<'a> {
     /// Adds all implementations of the given [TyTraitDecl] to the list of implementations.
     pub fn add_implementations_for_trait(&mut self, trait_decl: &TyTraitDecl) {
         if let Some(namespace) = self.session.namespace() {
-            let call_path = CallPath::from(trait_decl.name.clone()).to_fullpath(&namespace);
+            let call_path = CallPath::from(trait_decl.name.clone()).to_fullpath(namespace);
             let impl_spans = namespace.get_impl_spans_for_trait_name(&call_path);
             self.add_implementations(&trait_decl.span(), impl_spans);
         }

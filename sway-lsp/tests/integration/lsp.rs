@@ -141,32 +141,36 @@ pub(crate) async fn show_ast_request(
     assert_eq!(expected, response.unwrap().unwrap());
 }
 
-pub(crate) fn semantic_tokens_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn semantic_tokens_request(server: &ServerState, uri: &Url) {
     let params = SemanticTokensParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let response = request::handle_semantic_tokens_full(server, params.clone()).unwrap();
+    let response = request::handle_semantic_tokens_full(server, params.clone())
+        .await
+        .unwrap();
     eprintln!("{:#?}", response);
     if let Some(SemanticTokensResult::Tokens(tokens)) = response {
         assert!(!tokens.data.is_empty());
     }
 }
 
-pub(crate) fn document_symbol_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn document_symbol_request(server: &ServerState, uri: &Url) {
     let params = DocumentSymbolParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let response = request::handle_document_symbol(server, params.clone()).unwrap();
+    let response = request::handle_document_symbol(server, params.clone())
+        .await
+        .unwrap();
     if let Some(DocumentSymbolResponse::Flat(res)) = response {
         assert!(!res.is_empty());
     }
 }
 
-pub(crate) fn format_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn format_request(server: &ServerState, uri: &Url) {
     let params = DocumentFormattingParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         options: FormattingOptions {
@@ -180,7 +184,7 @@ pub(crate) fn format_request(server: &ServerState, uri: &Url) {
     assert!(!response.unwrap().is_empty());
 }
 
-pub(crate) fn highlight_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn highlight_request(server: &ServerState, uri: &Url) {
     let params = DocumentHighlightParams {
         text_document_position_params: TextDocumentPositionParams {
             text_document: TextDocumentIdentifier { uri: uri.clone() },
@@ -224,7 +228,7 @@ pub(crate) fn highlight_request(server: &ServerState, uri: &Url) {
     assert_eq!(expected, response.unwrap());
 }
 
-pub(crate) fn code_lens_empty_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_lens_empty_request(server: &ServerState, uri: &Url) {
     let params = CodeLensParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         work_done_progress_params: Default::default(),
@@ -234,7 +238,7 @@ pub(crate) fn code_lens_empty_request(server: &ServerState, uri: &Url) {
     assert_eq!(response.unwrap().len(), 0);
 }
 
-pub(crate) fn code_lens_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_lens_request(server: &ServerState, uri: &Url) {
     let params = CodeLensParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         work_done_progress_params: Default::default(),
@@ -304,7 +308,7 @@ pub(crate) fn code_lens_request(server: &ServerState, uri: &Url) {
     assert_eq!(expected, response.unwrap());
 }
 
-pub(crate) fn completion_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn completion_request(server: &ServerState, uri: &Url) {
     let params = CompletionParams {
         text_document_position: TextDocumentPositionParams {
             text_document: TextDocumentIdentifier { uri: uri.clone() },

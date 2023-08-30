@@ -9,7 +9,6 @@ use crate::{
         attributes::doc_comment_attributes, keyword_docs::KeywordDocs, markdown, markup::Markup,
     },
 };
-use std::sync::Arc;
 use sway_core::{
     language::{ty, Visibility},
     Engines, TypeId,
@@ -22,7 +21,7 @@ use self::hover_link_contents::HoverLinkContents;
 
 /// Extracts the hover information for a token at the current position.
 pub fn hover_data(
-    session: Arc<Session>,
+    session: &Session,
     keyword_docs: &KeywordDocs,
     url: Url,
     position: Position,
@@ -47,8 +46,7 @@ pub fn hover_data(
         });
     }
 
-    let engines = session.engines.read();
-    let (decl_ident, decl_token) = match token.declared_token_ident(&engines) {
+    let (decl_ident, decl_token) = match token.declared_token_ident(&session.engines) {
         Some(decl_ident) => {
             let decl_token = session
                 .token_map()
@@ -62,7 +60,12 @@ pub fn hover_data(
         None => (ident.clone(), token),
     };
 
-    let contents = hover_format(session.clone(), &engines, &decl_token, &decl_ident.name);
+    let contents = hover_format(
+        session.clone(),
+        &session.engines,
+        &decl_token,
+        &decl_ident.name,
+    );
     Some(lsp_types::Hover {
         contents,
         range: Some(range),
@@ -120,7 +123,7 @@ fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
 }
 
 fn hover_format(
-    session: Arc<Session>,
+    session: &Session,
     engines: &Engines,
     token: &Token,
     ident_name: &str,

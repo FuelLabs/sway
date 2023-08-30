@@ -2,12 +2,10 @@ use crate::{
     error::{DirectoryError, DocumentError, LanguageServerError},
     utils::document::{get_path_from_url, get_url_from_path, get_url_from_span},
 };
-use dashmap::DashMap;
 use forc_pkg::{manifest::Dependency, PackageManifestFile};
 use lsp_types::Url;
 use notify::RecursiveMode;
 use notify_debouncer_mini::new_debouncer;
-use parking_lot::RwLock;
 use std::{
     collections::HashMap,
     fs::{self, File},
@@ -28,10 +26,10 @@ pub enum Directory {
 
 #[derive(Debug)]
 pub struct SyncWorkspace {
-    pub directories: DashMap<Directory, PathBuf>,
-    pub notify_join_handle: RwLock<Option<JoinHandle<()>>>,
+    pub directories: HashMap<Directory, PathBuf>,
+    pub notify_join_handle: Option<JoinHandle<()>>,
     // if we should shutdown the thread watching the manifest file
-    pub should_end: Arc<AtomicBool>,
+    pub should_end: AtomicBool,
 }
 
 impl SyncWorkspace {
@@ -39,9 +37,9 @@ impl SyncWorkspace {
 
     pub(crate) fn new() -> Self {
         Self {
-            directories: DashMap::new(),
-            notify_join_handle: RwLock::new(None),
-            should_end: Arc::new(AtomicBool::new(false)),
+            directories: HashMap::new(),
+            notify_join_handle: None,
+            should_end: AtomicBool::new(false),
         }
     }
 
@@ -69,7 +67,7 @@ impl SyncWorkspace {
     }
 
     pub(crate) fn create_temp_dir_from_workspace(
-        &self,
+        &mut self,
         manifest_dir: &Path,
     ) -> Result<(), LanguageServerError> {
         let manifest = PackageManifestFile::from_dir(manifest_dir).map_err(|_| {
@@ -186,7 +184,7 @@ impl SyncWorkspace {
     }
 
     /// Watch the manifest directory and check for any save events on Forc.toml
-    pub(crate) fn watch_and_sync_manifest(&self) {
+    pub(crate) fn watch_and_sync_manifest(&mut self) {
         let _ = self
             .manifest_path()
             .and_then(|manifest_path| PackageManifestFile::from_dir(&manifest_path).ok())
@@ -219,33 +217,26 @@ impl SyncWorkspace {
                     });
 
                     // Store the join handle so we can clean up the thread on shutdown
-                    {
-                        let mut join_handle = self.notify_join_handle.write();
-                        *join_handle = Some(handle);
-                    }
+                    self.notify_join_handle = Some(handle);
                 }
             });
     }
 
     /// Return the path to the projects manifest directory.
-    pub(crate) fn manifest_dir(&self) -> Result<PathBuf, DirectoryError> {
+    pub(crate) fn manifest_dir(&self) -> Result<&PathBuf, DirectoryError> {
         self.directories
-            .try_get(&Directory::Manifest)
-            .try_unwrap()
-            .map(|item| item.value().clone())
+            .get(&Directory::Manifest)
             .ok_or(DirectoryError::ManifestDirNotFound)
     }
 
     /// Return the path to the temporary directory that was created for the current session.
-    pub(crate) fn temp_dir(&self) -> Result<PathBuf, DirectoryError> {
+    pub(crate) fn temp_dir(&self) -> Result<&PathBuf, DirectoryError> {
         self.directories
-            .try_get(&Directory::Temp)
-            .try_unwrap()
-            .map(|item| item.value().clone())
+            .get(&Directory::Temp)
             .ok_or(DirectoryError::TempDirNotFound)
     }
 
-    fn convert_url(&self, uri: &Url, from: PathBuf, to: PathBuf) -> Result<Url, DirectoryError> {
+    fn convert_url(&self, uri: &Url, from: &Path, to: &PathBuf) -> Result<Url, DirectoryError> {
         let path = from.join(
             PathBuf::from(uri.path())
                 .strip_prefix(to)

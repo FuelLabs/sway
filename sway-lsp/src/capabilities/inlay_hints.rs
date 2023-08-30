@@ -6,7 +6,6 @@ use crate::{
     },
 };
 use lsp_types::{self, Range, Url};
-use std::sync::Arc;
 use sway_core::{language::ty::TyDecl, type_system::TypeInfo};
 use sway_types::Spanned;
 
@@ -24,7 +23,7 @@ pub struct InlayHint {
 }
 
 pub fn inlay_hints(
-    session: Arc<Session>,
+    session: &Session,
     uri: &Url,
     range: &Range,
     config: &InlayHintsConfig,
@@ -37,9 +36,6 @@ pub fn inlay_hints(
     if !config.type_hints {
         return None;
     }
-
-    let engines = session.engines.read();
-    let type_engine = engines.te();
 
     let hints: Vec<lsp_types::InlayHint> = session
         .token_map()
@@ -63,7 +59,7 @@ pub fn inlay_hints(
             })
         })
         .filter_map(|var| {
-            let type_info = type_engine.get(var.type_ascription.type_id);
+            let type_info = session.engines.te().get(var.type_ascription.type_id);
             match type_info {
                 TypeInfo::Unknown | TypeInfo::UnknownGeneric { .. } => None,
                 _ => Some(var),
@@ -72,7 +68,7 @@ pub fn inlay_hints(
         .map(|var| {
             let range = get_range_from_span(&var.name.span());
             let kind = InlayKind::TypeHint;
-            let label = format!("{}", engines.help_out(var.type_ascription));
+            let label = format!("{}", session.engines.help_out(var.type_ascription));
             let inlay_hint = InlayHint { range, kind, label };
             self::inlay_hint(config.render_colons, inlay_hint)
         })

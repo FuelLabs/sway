@@ -61,7 +61,6 @@ pub fn get_diagnostics(
                 .push(diagnostic);
         }
     }
-
     diagnostics
 }
 
