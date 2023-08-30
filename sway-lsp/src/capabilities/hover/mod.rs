@@ -60,7 +60,12 @@ pub fn hover_data(
         None => (ident.clone(), token),
     };
 
-    let contents = hover_format(session.clone(), &session.engines, &decl_token, &decl_ident.name);
+    let contents = hover_format(
+        session.clone(),
+        &session.engines,
+        &decl_token,
+        &decl_ident.name,
+    );
     Some(lsp_types::Hover {
         contents,
         range: Some(range),

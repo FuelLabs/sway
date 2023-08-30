@@ -24,12 +24,13 @@ use lsp_types::{
 use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, BuildPlan};
 use std::{
+    collections::HashMap,
     fs::File,
     io::Write,
     ops::Deref,
     path::PathBuf,
     sync::{atomic::Ordering, Arc},
-    vec, collections::HashMap,
+    vec,
 };
 use sway_core::{
     language::{
@@ -107,7 +108,7 @@ impl Session {
         }
     }
 
-    pub fn init(&mut self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
+    pub fn init(&mut self, uri: &Url) -> Result<&ProjectDirectory, LanguageServerError> {
         let manifest_dir = PathBuf::from(uri.path());
         // Create a new temp dir that clones the current workspace
         // and store manifest and temp paths
@@ -229,7 +230,6 @@ impl Session {
             None => None,
         }
     }
-    
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
         let tokens = self.token_map.tokens_for_file(url);
@@ -239,12 +239,12 @@ impl Session {
     }
 
     pub fn format_text(&self, url: &Url) -> Result<Vec<TextEdit>, LanguageServerError> {
-        let document = self
-            .documents
-            .get(url.path())
-            .ok_or_else(|| DocumentError::DocumentNotFound {
-                path: url.path().to_string(),
-            })?;
+        let document =
+            self.documents
+                .get(url.path())
+                .ok_or_else(|| DocumentError::DocumentNotFound {
+                    path: url.path().to_string(),
+                })?;
 
         get_page_text_edit(Arc::from(document.get_text()), &mut <_>::default())
             .map(|page_text_edit| vec![page_text_edit])
@@ -296,14 +296,12 @@ impl Session {
         url: &Url,
         changes: Vec<TextDocumentContentChangeEvent>,
     ) -> Option<String> {
-        self.documents
-            .get_mut(url.path())
-            .map(|document| {
-                changes.iter().for_each(|change| {
-                    document.apply_change(change);
-                });
-                document.get_text()
-            })
+        self.documents.get_mut(url.path()).map(|document| {
+            changes.iter().for_each(|change| {
+                document.apply_change(change);
+            });
+            document.get_text()
+        })
     }
 
     /// Remove the text document from the session.
@@ -326,10 +324,7 @@ impl Session {
     }
 
     /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
-    fn create_runnables(
-        &mut self,
-        typed_program: &ty::TyProgram,
-    ) {
+    fn create_runnables(&mut self, typed_program: &ty::TyProgram) {
         // Insert runnable test functions.
         for (decl, _) in typed_program.test_fns(self.engines.de()) {
             // Get the span of the first attribute if it exists, otherwise use the span of the function name.

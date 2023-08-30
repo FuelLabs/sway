@@ -148,7 +148,7 @@ impl Sessions {
     fn init(&mut self, uri: &Url) -> Result<(), LanguageServerError> {
         let mut session = Session::new();
         let project_name = session.init(uri)?;
-        self.insert(project_name, session);
+        self.insert(project_name.clone(), session);
         Ok(())
     }
 

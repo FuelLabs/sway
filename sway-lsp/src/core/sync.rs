@@ -2,7 +2,6 @@ use crate::{
     error::{DirectoryError, DocumentError, LanguageServerError},
     utils::document::{get_path_from_url, get_url_from_path, get_url_from_span},
 };
-use dashmap::DashMap;
 use forc_pkg::{manifest::Dependency, PackageManifestFile};
 use lsp_types::Url;
 use notify::RecursiveMode;
@@ -28,7 +27,7 @@ pub enum Directory {
 
 #[derive(Debug)]
 pub struct SyncWorkspace {
-    pub directories: DashMap<Directory, PathBuf>,
+    pub directories: HashMap<Directory, PathBuf>,
     pub notify_join_handle: RwLock<Option<JoinHandle<()>>>,
     // if we should shutdown the thread watching the manifest file
     pub should_end: Arc<AtomicBool>,
@@ -39,7 +38,7 @@ impl SyncWorkspace {
 
     pub(crate) fn new() -> Self {
         Self {
-            directories: DashMap::new(),
+            directories: HashMap::new(),
             notify_join_handle: RwLock::new(None),
             should_end: Arc::new(AtomicBool::new(false)),
         }
@@ -69,7 +68,7 @@ impl SyncWorkspace {
     }
 
     pub(crate) fn create_temp_dir_from_workspace(
-        &self,
+        &mut self,
         manifest_dir: &Path,
     ) -> Result<(), LanguageServerError> {
         let manifest = PackageManifestFile::from_dir(manifest_dir).map_err(|_| {
@@ -228,24 +227,20 @@ impl SyncWorkspace {
     }
 
     /// Return the path to the projects manifest directory.
-    pub(crate) fn manifest_dir(&self) -> Result<PathBuf, DirectoryError> {
+    pub(crate) fn manifest_dir(&self) -> Result<&PathBuf, DirectoryError> {
         self.directories
-            .try_get(&Directory::Manifest)
-            .try_unwrap()
-            .map(|item| item.value().clone())
+            .get(&Directory::Manifest)
             .ok_or(DirectoryError::ManifestDirNotFound)
     }
 
     /// Return the path to the temporary directory that was created for the current session.
-    pub(crate) fn temp_dir(&self) -> Result<PathBuf, DirectoryError> {
+    pub(crate) fn temp_dir(&self) -> Result<&PathBuf, DirectoryError> {
         self.directories
-            .try_get(&Directory::Temp)
-            .try_unwrap()
-            .map(|item| item.value().clone())
+            .get(&Directory::Temp)
             .ok_or(DirectoryError::TempDirNotFound)
     }
 
-    fn convert_url(&self, uri: &Url, from: PathBuf, to: PathBuf) -> Result<Url, DirectoryError> {
+    fn convert_url(&self, uri: &Url, from: &PathBuf, to: &PathBuf) -> Result<Url, DirectoryError> {
         let path = from.join(
             PathBuf::from(uri.path())
                 .strip_prefix(to)
