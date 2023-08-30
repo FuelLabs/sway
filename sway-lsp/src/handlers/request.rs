@@ -335,8 +335,7 @@ pub fn handle_show_ast(
 
             // Returns true if the current path matches the path of a submodule
             let path_is_submodule = |ident: &Ident, path: &Option<PathBuf>| -> bool {
-                let engines = session.engines.read();
-                ident.span().source_id().map(|p| engines.se().get_path(p)) == *path
+                ident.span().source_id().map(|p| session.engines.se().get_path(p)) == *path
             };
 
             let ast_path = PathBuf::from(params.save_path.path());
@@ -375,14 +374,14 @@ pub fn handle_show_ast(
                             // Initialize the string with the AST from the root
                             let mut formatted_ast = debug::print_decl_engine_types(
                                 &typed_program.root.all_nodes,
-                                session.engines.read().de(),
+                                session.engines.de(),
                             );
                             for (ident, submodule) in &typed_program.root.submodules {
                                 if path_is_submodule(ident, &path) {
                                     // overwrite the root AST with the submodule AST
                                     formatted_ast = debug::print_decl_engine_types(
                                         &submodule.module.all_nodes,
-                                        session.engines.read().de(),
+                                        session.engines.de(),
                                     );
                                 }
                             }

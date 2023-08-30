@@ -42,13 +42,12 @@ pub fn code_actions(
     uri: &Url,
     temp_uri: &Url,
 ) -> Option<CodeActionResponse> {
-    let engines = session.engines.read();
     let (_, token) = session
         .token_map()
         .token_at_position(temp_uri, range.start)?;
 
     let ctx = CodeActionContext {
-        engines: &engines,
+        engines: &session.engines,
         tokens: session.token_map(),
         token: &token,
         uri,
