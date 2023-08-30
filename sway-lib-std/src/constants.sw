@@ -1,8 +1,7 @@
 //! Base asset and zero address constants.
 library;
 
-use ::alias::SubId;
-use ::contract_id::{AssetId, ContractId};
+use ::contract_id::AssetId;
 
 /// The `BASE_ASSET_ID` represents the base asset of a chain.
 ///
