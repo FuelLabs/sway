@@ -11,6 +11,9 @@ pub enum WideOperations {
     Add = 0,
     Sub = 1,
     Not = 2,
+    Or = 3,
+    Xor = 4,
+    And = 5,
     Lsh = 6,
     Rsh = 7,
 }
@@ -18,6 +21,8 @@ pub enum WideOperations {
 #[repr(u8)]
 pub enum WideCmp {
     Equality = 0,
+    LessThan = 2,
+    GreaterThan = 3,
 }
 
 /// 6-bit immediate value type

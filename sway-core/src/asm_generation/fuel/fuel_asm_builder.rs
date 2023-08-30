@@ -588,6 +588,24 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 val2_reg,
                 VirtualImmediate06::wide_op(WideOperations::Sub, true),
             ),
+            BinaryOpKind::And => VirtualOp::WQOP(
+                result_reg,
+                val1_reg,
+                val2_reg,
+                VirtualImmediate06::wide_op(WideOperations::And, true),
+            ),
+            BinaryOpKind::Or => VirtualOp::WQOP(
+                result_reg,
+                val1_reg,
+                val2_reg,
+                VirtualImmediate06::wide_op(WideOperations::Or, true),
+            ),
+            BinaryOpKind::Xor => VirtualOp::WQOP(
+                result_reg,
+                val1_reg,
+                val2_reg,
+                VirtualImmediate06::wide_op(WideOperations::Xor, true),
+            ),
             BinaryOpKind::Lsh => VirtualOp::WQOP(
                 result_reg,
                 val1_reg,
@@ -670,7 +688,18 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 val2_reg,
                 VirtualImmediate06::wide_cmp(WideCmp::Equality, true),
             ),
-            _ => todo!(),
+            Predicate::LessThan => VirtualOp::WQCM(
+                res_reg.clone(),
+                val1_reg,
+                val2_reg,
+                VirtualImmediate06::wide_cmp(WideCmp::LessThan, true),
+            ),
+            Predicate::GreaterThan => VirtualOp::WQCM(
+                res_reg.clone(),
+                val1_reg,
+                val2_reg,
+                VirtualImmediate06::wide_cmp(WideCmp::GreaterThan, true),
+            ),
         };
 
         self.cur_bytecode.push(Op {
