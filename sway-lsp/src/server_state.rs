@@ -40,9 +40,9 @@ impl ServerState {
         }
     }
 
-    pub fn shutdown_server(&self) -> jsonrpc::Result<()> {
+    pub fn shutdown_server(&mut self) -> jsonrpc::Result<()> {
         tracing::info!("Shutting Down the Sway Language Server");
-        let _ = self.sessions.iter().map(|(_, session)| {
+        let _ = self.sessions.iter_mut().map(|(_, session)| {
             session.shutdown();
         });
         Ok(())
@@ -99,9 +99,7 @@ pub(crate) async fn publish_diagnostics(
 }
 
 pub(crate) async fn parse_project(
-    // &mut self,
     uri: Url,
-    // workspace_uri: Url,
     session: &Session,
 ) -> Result<ParseResult, LanguageServerError> {
     // Acquire a permit to parse the project. If there are none available, return false. This way,
@@ -113,13 +111,6 @@ pub(crate) async fn parse_project(
     let parse_result = run_blocking_parse_project(uri).await?;
     let (errors, warnings) = parse_result.diagnostics.clone();
     *diagnostics = get_diagnostics(&warnings, &errors, parse_result.engines.se());
-    // // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
-    // // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
-    // if let Some(client) = self.client.as_ref() {
-    //     client
-    //         .publish_diagnostics(workspace_uri.clone(), self.diagnostics(&uri, session), None)
-    //         .await;
-    // }
     Ok(parse_result)
 }
 

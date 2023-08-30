@@ -6,7 +6,6 @@ use forc_pkg::{manifest::Dependency, PackageManifestFile};
 use lsp_types::Url;
 use notify::RecursiveMode;
 use notify_debouncer_mini::new_debouncer;
-use parking_lot::RwLock;
 use std::{
     collections::HashMap,
     fs::{self, File},
@@ -28,7 +27,7 @@ pub enum Directory {
 #[derive(Debug)]
 pub struct SyncWorkspace {
     pub directories: HashMap<Directory, PathBuf>,
-    pub notify_join_handle: RwLock<Option<JoinHandle<()>>>,
+    pub notify_join_handle: Option<JoinHandle<()>>,
     // if we should shutdown the thread watching the manifest file
     pub should_end: Arc<AtomicBool>,
 }
@@ -39,7 +38,7 @@ impl SyncWorkspace {
     pub(crate) fn new() -> Self {
         Self {
             directories: HashMap::new(),
-            notify_join_handle: RwLock::new(None),
+            notify_join_handle: None,
             should_end: Arc::new(AtomicBool::new(false)),
         }
     }
@@ -185,7 +184,7 @@ impl SyncWorkspace {
     }
 
     /// Watch the manifest directory and check for any save events on Forc.toml
-    pub(crate) fn watch_and_sync_manifest(&self) {
+    pub(crate) fn watch_and_sync_manifest(&mut self) {
         let _ = self
             .manifest_path()
             .and_then(|manifest_path| PackageManifestFile::from_dir(&manifest_path).ok())
@@ -218,10 +217,7 @@ impl SyncWorkspace {
                     });
 
                     // Store the join handle so we can clean up the thread on shutdown
-                    {
-                        let mut join_handle = self.notify_join_handle.write();
-                        *join_handle = Some(handle);
-                    }
+                    self.notify_join_handle = Some(handle);
                 }
             });
     }

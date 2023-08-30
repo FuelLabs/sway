@@ -120,12 +120,12 @@ impl Session {
         self.sync.manifest_dir().map_err(Into::into)
     }
 
-    pub fn shutdown(&self) {
+    pub fn shutdown(&mut self) {
         // Set the should_end flag to true
         self.sync.should_end.store(true, Ordering::Relaxed);
 
         // Wait for the thread to finish
-        let mut join_handle_option = self.sync.notify_join_handle.write();
+        let join_handle_option = &mut self.sync.notify_join_handle;
         if let Some(join_handle) = std::mem::take(&mut *join_handle_option) {
             let _ = join_handle.join();
         }
