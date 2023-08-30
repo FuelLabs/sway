@@ -22,6 +22,8 @@ pub enum LanguageServerError {
     FormatError(FormatterError),
     #[error("Unable to acquire a semaphore permit for parsing")]
     UnableToAcquirePermit,
+    #[error("Session has not been initialized")]
+    SessionNotFound,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
