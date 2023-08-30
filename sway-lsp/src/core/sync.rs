@@ -29,7 +29,7 @@ pub struct SyncWorkspace {
     pub directories: HashMap<Directory, PathBuf>,
     pub notify_join_handle: Option<JoinHandle<()>>,
     // if we should shutdown the thread watching the manifest file
-    pub should_end: Arc<AtomicBool>,
+    pub should_end: AtomicBool,
 }
 
 impl SyncWorkspace {
@@ -39,7 +39,7 @@ impl SyncWorkspace {
         Self {
             directories: HashMap::new(),
             notify_join_handle: None,
-            should_end: Arc::new(AtomicBool::new(false)),
+            should_end: AtomicBool::new(false),
         }
     }
 
@@ -236,7 +236,7 @@ impl SyncWorkspace {
             .ok_or(DirectoryError::TempDirNotFound)
     }
 
-    fn convert_url(&self, uri: &Url, from: &PathBuf, to: &PathBuf) -> Result<Url, DirectoryError> {
+    fn convert_url(&self, uri: &Url, from: &Path, to: &PathBuf) -> Result<Url, DirectoryError> {
         let path = from.join(
             PathBuf::from(uri.path())
                 .strip_prefix(to)

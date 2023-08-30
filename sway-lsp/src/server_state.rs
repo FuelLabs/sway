@@ -49,7 +49,7 @@ impl ServerState {
     }
 }
 
-pub(crate) fn diagnostics(config: &Config, uri: &Url, session: &Session) -> Vec<Diagnostic> {
+pub(crate) async fn diagnostics(config: &Config, uri: &Url, session: &Session) -> Vec<Diagnostic> {
     let mut diagnostics_to_publish = vec![];
     let tokens = session.token_map().tokens_for_file(uri);
     match config.debug.show_collected_tokens_as_warnings {
@@ -64,7 +64,7 @@ pub(crate) fn diagnostics(config: &Config, uri: &Url, session: &Session) -> Vec<
             diagnostics_to_publish = debug::generate_warnings_for_typed_tokens(tokens)
         }
         Warnings::Default => {
-            let diagnostics_map = session.wait_for_parsing();
+            let diagnostics_map = session.wait_for_parsing().await;
             if let Some(diagnostics) = diagnostics_map.get(&PathBuf::from(uri.path())) {
                 if config.diagnostic.show_warnings {
                     diagnostics_to_publish.extend(diagnostics.warnings.clone());
@@ -91,7 +91,7 @@ pub(crate) async fn publish_diagnostics(
         client
             .publish_diagnostics(
                 workspace_uri.clone(),
-                diagnostics(config, &uri, session),
+                diagnostics(config, &uri, session).await,
                 None,
             )
             .await;
@@ -107,7 +107,7 @@ pub(crate) async fn parse_project(
     try_acquire_parse_permit(session)?;
 
     // Lock the diagnostics result to prevent multiple threads from parsing the project at the same time.
-    let mut diagnostics = session.diagnostics.write();
+    let mut diagnostics = session.diagnostics.write().await;
     let parse_result = run_blocking_parse_project(uri).await?;
     let (errors, warnings) = parse_result.diagnostics.clone();
     *diagnostics = get_diagnostics(&warnings, &errors, parse_result.engines.se());
@@ -164,7 +164,7 @@ impl Sessions {
     }
 
     fn url_to_session(&self, uri: &Url) -> Result<&Session, LanguageServerError> {
-        let manifest_dir = get_manifest_dir_from_uri(&uri)?;
+        let manifest_dir = get_manifest_dir_from_uri(uri)?;
         let session = self
             .get(&manifest_dir)
             .ok_or(LanguageServerError::SessionNotFound)?;
@@ -172,7 +172,7 @@ impl Sessions {
     }
 
     fn url_to_session_mut(&mut self, uri: &Url) -> Result<&mut Session, LanguageServerError> {
-        let manifest_dir = get_manifest_dir_from_uri(&uri)?;
+        let manifest_dir = get_manifest_dir_from_uri(uri)?;
         if self.get(&manifest_dir).is_none() {
             // If no session can be found, then we need to call init and insert a new session into the map
             self.init(uri)?;

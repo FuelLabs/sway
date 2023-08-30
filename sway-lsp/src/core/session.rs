@@ -21,7 +21,6 @@ use lsp_types::{
     CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation,
     TextDocumentContentChangeEvent, TextEdit, Url,
 };
-use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, BuildPlan};
 use std::{
     collections::HashMap,
@@ -43,7 +42,7 @@ use sway_core::{
 use sway_error::{error::CompileError, warning::CompileWarning};
 use sway_types::Spanned;
 use sway_utils::helpers::get_sway_files;
-use tokio::sync::Semaphore;
+use tokio::sync::{RwLock, Semaphore};
 
 use super::token::get_range_from_span;
 
@@ -140,8 +139,8 @@ impl Session {
     }
 
     /// Wait for the cached [DiagnosticMap] to be unlocked after parsing and return a copy.
-    pub fn wait_for_parsing(&self) -> DiagnosticMap {
-        self.diagnostics.read().clone()
+    pub async fn wait_for_parsing(&self) -> DiagnosticMap {
+        self.diagnostics.read().await.clone()
     }
 
     /// Write the result of parsing to the session.
@@ -224,7 +223,7 @@ impl Session {
     }
 
     /// Returns the [Namespace] from the compiled program if it exists.
-    pub fn namespace<'a>(&'a self) -> Option<&'a Namespace> {
+    pub fn namespace(&self) -> Option<&Namespace> {
         match &self.compiled_program.typed {
             Some(typed) => Some(&typed.root.namespace),
             None => None,

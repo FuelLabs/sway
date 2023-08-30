@@ -74,14 +74,14 @@ impl LanguageServer for ServerState {
         &self,
         params: DocumentSymbolParams,
     ) -> Result<Option<DocumentSymbolResponse>> {
-        request::handle_document_symbol(self, params)
+        request::handle_document_symbol(self, params).await
     }
 
     async fn semantic_tokens_full(
         &self,
         params: SemanticTokensParams,
     ) -> Result<Option<SemanticTokensResult>> {
-        request::handle_semantic_tokens_full(self, params)
+        request::handle_semantic_tokens_full(self, params).await
     }
 
     async fn document_highlight(
@@ -114,7 +114,7 @@ impl LanguageServer for ServerState {
     }
 
     async fn inlay_hint(&self, params: InlayHintParams) -> Result<Option<Vec<InlayHint>>> {
-        request::handle_inlay_hints(self, params)
+        request::handle_inlay_hints(self, params).await
     }
 }
 

@@ -22,7 +22,7 @@ pub async fn handle_did_open_text_document(
     // Otherwise, don't recompile the project when a new file in the project is opened
     // as the workspace is already compiled.
     if session.token_map().is_empty() {
-        let parse_result = server_state::parse_project(uri.clone(), &session).await?;
+        let parse_result = server_state::parse_project(uri.clone(), session).await?;
         session.write_parse_result(parse_result);
         server_state::publish_diagnostics(
             &state.config,
@@ -44,7 +44,7 @@ pub async fn handle_did_change_text_document(
         .sessions
         .uri_and_mut_session_from_workspace(&params.text_document.uri)?;
     session.write_changes_to_file(&uri, params.content_changes)?;
-    let parse_result = server_state::parse_project(uri.clone(), &session).await?;
+    let parse_result = server_state::parse_project(uri.clone(), session).await?;
     session.write_parse_result(parse_result);
     server_state::publish_diagnostics(
         &state.config,
@@ -65,7 +65,7 @@ pub(crate) async fn handle_did_save_text_document(
         .sessions
         .uri_and_mut_session_from_workspace(&params.text_document.uri)?;
     session.sync.resync()?;
-    let parse_result = server_state::parse_project(uri.clone(), &session).await?;
+    let parse_result = server_state::parse_project(uri.clone(), session).await?;
     session.write_parse_result(parse_result);
     server_state::publish_diagnostics(
         &state.config,

@@ -43,7 +43,7 @@ pub fn handle_initialize(
     })
 }
 
-pub fn handle_document_symbol(
+pub async fn handle_document_symbol(
     state: &ServerState,
     params: lsp_types::DocumentSymbolParams,
 ) -> Result<Option<lsp_types::DocumentSymbolResponse>> {
@@ -52,7 +52,7 @@ pub fn handle_document_symbol(
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
         Ok((uri, session)) => {
-            let _ = session.wait_for_parsing();
+            let _ = session.wait_for_parsing().await;
             Ok(session
                 .symbol_information(&uri)
                 .map(DocumentSymbolResponse::Flat))
@@ -242,7 +242,7 @@ pub fn handle_code_lens(
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
-        Ok((url, session)) => Ok(Some(capabilities::code_lens::code_lens(&session, &url))),
+        Ok((url, session)) => Ok(Some(capabilities::code_lens::code_lens(session, &url))),
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)
@@ -250,7 +250,7 @@ pub fn handle_code_lens(
     }
 }
 
-pub fn handle_semantic_tokens_full(
+pub async fn handle_semantic_tokens_full(
     state: &ServerState,
     params: SemanticTokensParams,
 ) -> Result<Option<SemanticTokensResult>> {
@@ -259,7 +259,7 @@ pub fn handle_semantic_tokens_full(
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
         Ok((uri, session)) => {
-            let _ = session.wait_for_parsing();
+            let _ = session.wait_for_parsing().await;
             Ok(capabilities::semantic_tokens::semantic_tokens_full(
                 session, &uri,
             ))
@@ -271,7 +271,7 @@ pub fn handle_semantic_tokens_full(
     }
 }
 
-pub(crate) fn handle_inlay_hints(
+pub(crate) async fn handle_inlay_hints(
     state: &ServerState,
     params: InlayHintParams,
 ) -> Result<Option<Vec<InlayHint>>> {
@@ -280,7 +280,7 @@ pub(crate) fn handle_inlay_hints(
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
         Ok((uri, session)) => {
-            let _ = session.wait_for_parsing();
+            let _ = session.wait_for_parsing().await;
             let config = &state.config.inlay_hints;
             Ok(capabilities::inlay_hints::inlay_hints(
                 session,
