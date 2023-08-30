@@ -9,7 +9,6 @@ use crate::{
         attributes::doc_comment_attributes, keyword_docs::KeywordDocs, markdown, markup::Markup,
     },
 };
-use std::sync::Arc;
 use sway_core::{
     language::{ty, Visibility},
     Engines, TypeId,
@@ -62,7 +61,12 @@ pub fn hover_data(
         None => (ident.clone(), token),
     };
 
-    let contents = hover_format(session.clone(), &session.engines, &decl_token, &decl_ident.name);
+    let contents = hover_format(
+        session.clone(),
+        &session.engines,
+        &decl_token,
+        &decl_ident.name,
+    );
     Some(lsp_types::Hover {
         contents,
         range: Some(range),

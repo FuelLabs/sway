@@ -8,7 +8,7 @@ use crate::{
     utils::document::get_url_from_path,
 };
 use lsp_types::{Position, PrepareRenameResponse, TextEdit, Url, WorkspaceEdit};
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 use sway_core::{language::ty, Engines};
 use sway_types::SourceEngine;
 

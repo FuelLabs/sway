@@ -20,7 +20,7 @@ use lsp_types::{
     CodeActionResponse, Position, Range, TextEdit, Url, WorkspaceEdit,
 };
 use serde_json::Value;
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 use sway_core::{language::ty, Engines};
 use sway_types::Spanned;
 

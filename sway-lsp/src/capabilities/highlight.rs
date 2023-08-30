@@ -1,6 +1,5 @@
 use crate::core::session::Session;
 use lsp_types::{DocumentHighlight, Position, Url};
-use std::sync::Arc;
 
 pub fn get_highlights(
     session: &Session,

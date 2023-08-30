@@ -3,7 +3,6 @@ use crate::{
     core::{document::TextDocument, session::Session},
     lsp_ext::OnEnterParams,
 };
-use std::sync::Arc;
 use tower_lsp::lsp_types::{
     DocumentChanges, OneOf, OptionalVersionedTextDocumentIdentifier, Position, Range,
     TextDocumentEdit, TextEdit, Url, WorkspaceEdit,

@@ -3,15 +3,14 @@
 use crate::{
     capabilities::diagnostic::get_diagnostics,
     config::{Config, Warnings},
-    core::session::{self, Session, ParseResult},
+    core::session::{self, ParseResult, Session},
     error::{DirectoryError, DocumentError, LanguageServerError},
     utils::debug,
     utils::keyword_docs::KeywordDocs,
 };
-use dashmap::DashMap;
 use forc_pkg::PackageManifestFile;
 use lsp_types::{Diagnostic, Url};
-use std::{path::PathBuf, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tower_lsp::{jsonrpc, Client};
 
 /// `ServerState` is the primary mutable state of the language server
@@ -19,7 +18,7 @@ pub struct ServerState {
     pub(crate) client: Option<Client>,
     pub(crate) config: Arc<Config>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
-    pub(crate) sessions: Arc<Sessions>,
+    pub(crate) sessions: Sessions,
 }
 
 impl Default for ServerState {
@@ -28,7 +27,7 @@ impl Default for ServerState {
             client: None,
             config: Arc::new(Default::default()),
             keyword_docs: Arc::new(KeywordDocs::new()),
-            sessions: Arc::new(Sessions(DashMap::new())),
+            sessions: Sessions(HashMap::new()),
         }
     }
 }
@@ -43,8 +42,7 @@ impl ServerState {
 
     pub fn shutdown_server(&self) -> jsonrpc::Result<()> {
         tracing::info!("Shutting Down the Sway Language Server");
-        let _ = self.sessions.iter().map(|item| {
-            let session = item.value();
+        let _ = self.sessions.iter().map(|(_, session)| {
             session.shutdown();
         });
         Ok(())
@@ -79,7 +77,12 @@ impl ServerState {
         diagnostics_to_publish
     }
 
-    pub(crate) async fn parse_project(&self, uri: Url, workspace_uri: Url, session: &Session) -> Result<(), LanguageServerError> {
+    pub(crate) async fn parse_project(
+        &self,
+        uri: Url,
+        workspace_uri: Url,
+        session: &Session,
+    ) -> Result<(), LanguageServerError> {
         // Acquire a permit to parse the project. If there are none available, return false. This way,
         // we avoid publishing the same diagnostics multiple times.
         try_acquire_parse_permit(session)?;
@@ -97,11 +100,7 @@ impl ServerState {
         // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
         if let Some(client) = self.client.as_ref() {
             client
-                .publish_diagnostics(
-                    workspace_uri.clone(),
-                    self.diagnostics(&uri, session),
-                    None,
-                )
+                .publish_diagnostics(workspace_uri.clone(), self.diagnostics(&uri, session), None)
                 .await;
         }
         Ok(())
@@ -116,9 +115,7 @@ fn try_acquire_parse_permit(session: &Session) -> Result<(), LanguageServerError
 }
 
 /// Runs parse_project in a blocking thread, because parsing is not async.
-async fn run_blocking_parse_project(
-    uri: Url,
-) -> Result<ParseResult, LanguageServerError> {
+async fn run_blocking_parse_project(uri: Url) -> Result<ParseResult, LanguageServerError> {
     tokio::task::spawn_blocking(move || {
         let parse_result = session::parse_project(&uri)?;
         Ok(parse_result)
@@ -129,13 +126,14 @@ async fn run_blocking_parse_project(
 
 /// `Sessions` is a collection of [Session]s, each of which represents a project
 /// that has been opened in the users workspace.
-pub(crate) struct Sessions(DashMap<PathBuf, Session>);
+pub(crate) struct Sessions(HashMap<PathBuf, Session>);
 
 impl Sessions {
     fn init(&self, uri: &Url) -> Result<(), LanguageServerError> {
         let session = Session::new();
         let project_name = session.init(uri)?;
-        self.insert(project_name, session);
+        // self.insert(project_name, session);
+        todo!("insert session");
         Ok(())
     }
 
@@ -165,14 +163,13 @@ impl Sessions {
             .ok_or(DirectoryError::ManifestDirNotFound)?
             .to_path_buf();
 
-        let session = match self.try_get(&manifest_dir).try_unwrap() {
-            Some(item) => item.value().clone(),
+        let session = match self.get(&manifest_dir) {
+            Some(session) => session,
             None => {
                 // If no session can be found, then we need to call init and inserst a new session into the map
                 self.init(uri)?;
-                self.try_get(&manifest_dir)
-                    .try_unwrap()
-                    .map(|item| item.value().clone())
+                self.get(&manifest_dir)
+                    .map(|session| session)
                     .expect("no session found even though it was just inserted into the map")
             }
         };
@@ -181,7 +178,7 @@ impl Sessions {
 }
 
 impl std::ops::Deref for Sessions {
-    type Target = DashMap<PathBuf, Session>;
+    type Target = HashMap<PathBuf, Session>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }

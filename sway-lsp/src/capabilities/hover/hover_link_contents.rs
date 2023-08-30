@@ -2,7 +2,6 @@ use crate::{
     core::{session::Session, token::get_range_from_span},
     utils::document::get_url_from_span,
 };
-use std::sync::Arc;
 use sway_core::{
     language::{
         ty::{TyDecl, TyTraitDecl},
