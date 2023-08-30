@@ -220,6 +220,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-weighted-semaphore"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0c3c4e4764855498d3ee6554748ff2d9376bc4c937692e266a56dd4ac098cfb"
+
+[[package]]
 name = "atomic-polyfill"
 version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6539,10 +6545,10 @@ checksum = "c20c8dbed6283a09604c3e69b4b7eeb54e298b8a600d4d5ecb5ad39de609f1d0"
 [[package]]
 name = "tower-lsp"
 version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b38fb0e6ce037835174256518aace3ca621c4f96383c56bb846cfc11b341910"
+source = "git+https://github.com/ebkalderon/tower-lsp?branch=support-mutable-methods#8fe0f21e9d386b6bf2561ee2bf9590d89724cf5a"
 dependencies = [
  "async-trait",
+ "async-weighted-semaphore",
  "auto_impl",
  "bytes",
  "dashmap",
@@ -6562,8 +6568,7 @@ dependencies = [
 [[package]]
 name = "tower-lsp-macros"
 version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34723c06344244474fdde365b76aebef8050bf6be61a935b91ee9ff7c4e91157"
+source = "git+https://github.com/ebkalderon/tower-lsp?branch=support-mutable-methods#8fe0f21e9d386b6bf2561ee2bf9590d89724cf5a"
 dependencies = [
  "proc-macro2",
  "quote",
