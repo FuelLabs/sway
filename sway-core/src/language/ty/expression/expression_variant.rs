@@ -28,6 +28,8 @@ pub enum TyExpressionVariant {
         type_binding: Option<TypeBinding<()>>,
         /// In case it is a method should contain a TypeId to either an enum, struct or a type alias.
         call_path_typeid: Option<TypeId>,
+        /// This tracks whether monomorphization has been deferred between compiler stages.
+        deferred_monomorphization: bool,
     },
     LazyOperator {
         op: LazyOp,
@@ -419,6 +421,7 @@ impl HashWithEngines for TyExpressionVariant {
                 selector: _,
                 type_binding: _,
                 call_path_typeid: _,
+                deferred_monomorphization: _,
             } => {
                 call_path.hash(state);
                 fn_ref.hash(state, engines);

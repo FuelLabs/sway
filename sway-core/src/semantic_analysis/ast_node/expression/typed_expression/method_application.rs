@@ -342,6 +342,7 @@ pub(crate) fn type_check_method_application(
             selector,
             type_binding: Some(method_name_binding.strip_inner()),
             call_path_typeid: Some(call_path_typeid),
+            deferred_monomorphization: false,
         },
         return_type: method.return_type.type_id,
         span,

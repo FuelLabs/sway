@@ -76,6 +76,12 @@ pub struct TypeCheckContext<'a> {
     /// disallowing functions from being defined inside of another function
     /// body).
     disallow_functions: bool,
+
+    /// Indicates when semantic analysis should  be deferred for function/method applications.
+    /// This is currently used to perform the final type checking and monomorphization in the
+    /// case of impl trait methods after the initial type checked AST is constructed, and
+    /// after we perform a dependency analysis on the tree.
+    defer_monomorphization: bool,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -105,6 +111,7 @@ impl<'a> TypeCheckContext<'a> {
             purity: Purity::default(),
             kind: TreeType::Contract,
             disallow_functions: false,
+            defer_monomorphization: false,
         }
     }
 
@@ -129,6 +136,7 @@ impl<'a> TypeCheckContext<'a> {
             kind: self.kind.clone(),
             engines: self.engines,
             disallow_functions: self.disallow_functions,
+            defer_monomorphization: self.defer_monomorphization,
         }
     }
 
@@ -146,6 +154,7 @@ impl<'a> TypeCheckContext<'a> {
             kind: self.kind,
             engines: self.engines,
             disallow_functions: self.disallow_functions,
+            defer_monomorphization: self.defer_monomorphization,
         }
     }
 
@@ -239,6 +248,15 @@ impl<'a> TypeCheckContext<'a> {
         }
     }
 
+    /// Map this `TypeCheckContext` instance to a new one with
+    /// `defer_method_application` set to `true`.
+    pub(crate) fn with_defer_monomorphization(self) -> Self {
+        Self {
+            defer_monomorphization: true,
+            ..self
+        }
+    }
+
     // A set of accessor methods. We do this rather than making the fields `pub` in order to ensure
     // that these are only updated via the `with_*` methods that produce a new `TypeCheckContext`.
 
@@ -277,6 +295,10 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn functions_disallowed(&self) -> bool {
         self.disallow_functions
+    }
+
+    pub(crate) fn defer_monomorphization(&self) -> bool {
+        self.defer_monomorphization
     }
 
     // Provide some convenience functions around the inner context.

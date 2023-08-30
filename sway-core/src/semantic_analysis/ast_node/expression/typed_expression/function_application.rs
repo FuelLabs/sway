@@ -90,6 +90,7 @@ pub(crate) fn instantiate_function_application(
             selector: None,
             type_binding: Some(call_path_binding.strip_inner()),
             call_path_typeid: None,
+            deferred_monomorphization: false,
         },
         return_type: return_type.type_id,
         span,
