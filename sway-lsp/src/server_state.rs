@@ -146,7 +146,7 @@ pub(crate) struct Sessions(HashMap<PathBuf, Session>);
 
 impl Sessions {
     fn init(&mut self, uri: &Url) -> Result<(), LanguageServerError> {
-        let session = Session::new();
+        let mut session = Session::new();
         let project_name = session.init(uri)?;
         self.insert(project_name, session);
         Ok(())

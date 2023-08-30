@@ -30,7 +30,7 @@ use std::{
     ops::Deref,
     path::PathBuf,
     sync::{atomic::Ordering, Arc},
-    vec,
+    vec, collections::HashMap,
 };
 use sway_core::{
     decl_engine::DeclEngine,
@@ -48,7 +48,7 @@ use tokio::sync::Semaphore;
 
 use super::token::get_range_from_span;
 
-pub type Documents = DashMap<String, TextDocument>;
+pub type Documents = HashMap<String, TextDocument>;
 pub type ProjectDirectory = PathBuf;
 
 #[derive(Default, Debug)]
@@ -99,7 +99,7 @@ impl Session {
     pub fn new() -> Self {
         Session {
             token_map: TokenMap::new(),
-            documents: DashMap::new(),
+            documents: HashMap::new(),
             runnables: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
             engines: <_>::default(),
@@ -109,7 +109,7 @@ impl Session {
         }
     }
 
-    pub fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
+    pub fn init(&mut self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
         let manifest_dir = PathBuf::from(uri.path());
         // Create a new temp dir that clones the current workspace
         // and store manifest and temp paths
@@ -249,8 +249,7 @@ impl Session {
     pub fn format_text(&self, url: &Url) -> Result<Vec<TextEdit>, LanguageServerError> {
         let document = self
             .documents
-            .try_get(url.path())
-            .try_unwrap()
+            .get(url.path())
             .ok_or_else(|| DocumentError::DocumentNotFound {
                 path: url.path().to_string(),
             })?;
@@ -259,7 +258,7 @@ impl Session {
             .map(|page_text_edit| vec![page_text_edit])
     }
 
-    pub fn handle_open_file(&self, uri: &Url) {
+    pub fn handle_open_file(&mut self, uri: &Url) {
         if !self.documents.contains_key(uri.path()) {
             if let Ok(text_document) = TextDocument::build_from_path(uri.path()) {
                 let _ = self.store_document(text_document);
@@ -269,7 +268,7 @@ impl Session {
 
     /// Writes the changes to the file and updates the document.
     pub fn write_changes_to_file(
-        &self,
+        &mut self,
         uri: &Url,
         changes: Vec<TextDocumentContentChangeEvent>,
     ) -> Result<(), LanguageServerError> {
@@ -291,26 +290,23 @@ impl Session {
     }
 
     /// Get the document at the given [Url].
-    pub fn get_text_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
+    pub fn get_text_document(&self, url: &Url) -> Result<&TextDocument, DocumentError> {
         self.documents
-            .try_get(url.path())
-            .try_unwrap()
+            .get(url.path())
             .ok_or_else(|| DocumentError::DocumentNotFound {
                 path: url.path().to_string(),
             })
-            .map(|document| document.clone())
     }
 
     /// Update the document at the given [Url] with the Vec of changes returned by the client.
     pub fn update_text_document(
-        &self,
+        &mut self,
         url: &Url,
         changes: Vec<TextDocumentContentChangeEvent>,
     ) -> Option<String> {
         self.documents
-            .try_get_mut(url.path())
-            .try_unwrap()
-            .map(|mut document| {
+            .get_mut(url.path())
+            .map(|document| {
                 changes.iter().for_each(|change| {
                     document.apply_change(change);
                 });
@@ -319,17 +315,16 @@ impl Session {
     }
 
     /// Remove the text document from the session.
-    pub fn remove_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
+    pub fn remove_document(&mut self, url: &Url) -> Result<TextDocument, DocumentError> {
         self.documents
             .remove(url.path())
             .ok_or_else(|| DocumentError::DocumentNotFound {
                 path: url.path().to_string(),
             })
-            .map(|(_, text_document)| text_document)
     }
 
     /// Store the text document in the session.
-    fn store_document(&self, text_document: TextDocument) -> Result<(), DocumentError> {
+    fn store_document(&mut self, text_document: TextDocument) -> Result<(), DocumentError> {
         let uri = text_document.get_uri().to_string();
         self.documents
             .insert(uri.clone(), text_document)
@@ -387,7 +382,7 @@ impl Session {
     }
 
     /// Populate [Documents] with sway files found in the workspace.
-    fn store_sway_files(&self) -> Result<(), LanguageServerError> {
+    fn store_sway_files(&mut self) -> Result<(), LanguageServerError> {
         let temp_dir = self.sync.temp_dir()?;
         // Store the documents.
         for path in get_sway_files(temp_dir).iter().filter_map(|fp| fp.to_str()) {
