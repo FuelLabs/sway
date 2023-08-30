@@ -1687,7 +1687,7 @@ macro_rules! test_lsp_capability {
         let uri = open(&mut server, $entry_point).await;
 
         // Call the specific LSP capability function that was passed in.
-        let _ = $capability(&server, &uri);
+        let _ = $capability(&server, &uri).await;
         let _ = server.shutdown_server();
     }};
 }

@@ -42,7 +42,7 @@ fn create_code_action_params(uri: Url, range: Range) -> CodeActionParams {
     }
 }
 
-pub(crate) fn code_action_abi_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_action_abi_request(server: &ServerState, uri: &Url) {
     let params = create_code_action_params(
         uri.clone(),
         Range {
@@ -83,7 +83,7 @@ pub(crate) fn code_action_abi_request(server: &ServerState, uri: &Url) {
     assert_eq!(res.unwrap().unwrap(), expected);
 }
 
-pub(crate) fn code_action_function_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_action_function_request(server: &ServerState, uri: &Url) {
     let params = create_code_action_params(
         uri.clone(),
         Range {
@@ -121,7 +121,7 @@ pub(crate) fn code_action_function_request(server: &ServerState, uri: &Url) {
     assert_eq!(res.unwrap().unwrap(), expected);
 }
 
-pub(crate) fn code_action_trait_fn_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_action_trait_fn_request(server: &ServerState, uri: &Url) {
     let params = create_code_action_params(
         uri.clone(),
         Range {
@@ -160,7 +160,7 @@ pub(crate) fn code_action_trait_fn_request(server: &ServerState, uri: &Url) {
     assert_eq!(res.unwrap().unwrap(), expected);
 }
 
-pub(crate) fn code_action_struct_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_action_struct_request(server: &ServerState, uri: &Url) {
     let params = create_code_action_params(
         uri.clone(),
         Range {
@@ -248,7 +248,7 @@ pub(crate) fn code_action_struct_request(server: &ServerState, uri: &Url) {
     assert_eq!(res.unwrap().unwrap(), expected);
 }
 
-pub(crate) fn code_action_struct_type_params_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_action_struct_type_params_request(server: &ServerState, uri: &Url) {
     let params = create_code_action_params(
         uri.clone(),
         Range {
@@ -340,7 +340,7 @@ pub(crate) fn code_action_struct_type_params_request(server: &ServerState, uri: 
     assert_eq!(res.unwrap().unwrap(), expected);
 }
 
-pub(crate) fn code_action_struct_existing_impl_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_action_struct_existing_impl_request(server: &ServerState, uri: &Url) {
     let params = create_code_action_params(
         uri.clone(),
         Range {
