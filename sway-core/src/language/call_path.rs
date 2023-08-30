@@ -147,7 +147,11 @@ impl CallPath {
             // If the path starts with an external module (i.e. a module that is imported in
             // `Forc.toml`, then do not change it since it's a complete path already.
             if m.is_external {
-                self.clone()
+                CallPath {
+                    prefixes: self.prefixes.clone(),
+                    suffix: self.suffix.clone(),
+                    is_absolute: true,
+                }
             } else {
                 let mut prefixes: Vec<Ident> = vec![];
                 if let Some(pkg_name) = &namespace.root().module.name {
@@ -166,7 +170,11 @@ impl CallPath {
                 }
             }
         } else {
-            self.clone()
+            CallPath {
+                prefixes: self.prefixes.clone(),
+                suffix: self.suffix.clone(),
+                is_absolute: true,
+            }
         }
     }
 }
