@@ -2704,11 +2704,11 @@ pub fn check(
 }
 
 /// Format an error message for an absent `Forc.toml`.
-pub fn manifest_file_missing(dir: &Path) -> anyhow::Error {
+pub fn manifest_file_missing<P: AsRef<Path>>(dir: P) -> anyhow::Error {
     let message = format!(
         "could not find `{}` in `{}` or any parent directory",
         constants::MANIFEST_FILE_NAME,
-        dir.display()
+        dir.as_ref().display()
     );
     Error::msg(message)
 }
