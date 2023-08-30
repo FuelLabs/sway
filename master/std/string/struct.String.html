@@ -8,4 +8,33 @@ add any mutation functionality or unicode input of any kind until <code>char</co
 implemented, codepoints are <em>not</em> guaranteed to fall on byte boundaries</p>
 </div></details><h2 id="fields" class="fields small-section-header">Fields<a class="anchor" href="#fields"></a></h2><span id="structfield.bytes" class="structfield small-section-header"><a class="anchor field" href="#structfield.bytes"></a><code>bytes: <a class="struct" href="../bytes/struct.Bytes.html">Bytes</a></code></span><div class="docblock"><p>The bytes representing the characters of the string.</p>
 </div><h2 id="trait-implementations" class="small-section-header">Trait Implementations<a href="#trait-implementations" class="anchor"></a></h2><div id="trait-implementations-list"><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-From" class="impl has-srclink"><a href="#impl-From" class="anchor"></a><h3 class="code-header in-band">impl From for String</h3></div></summary><div class="impl-items"><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(b: Bytes) -&gt; Self</h4></div><div id="method.into" class="method trait-impl"><a href="#method.into" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.into">into</a>(self) -&gt; Bytes</h4></div></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-AsRawSlice" class="impl has-srclink"><a href="#impl-AsRawSlice" class="anchor"></a><h3 class="code-header in-band">impl AsRawSlice for String</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.as_raw_slice" class="method trait-impl"><a href="#method.as_raw_slice" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.as_raw_slice">as_raw_slice</a>(self) -&gt; raw_slice</h4></div></summary><div class="doc-block"><p>Returns a raw slice to all of the elements in the string.</p>
-</div></details></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-From" class="impl has-srclink"><a href="#impl-From" class="anchor"></a><h3 class="code-header in-band">impl From for String</h3></div></summary><div class="impl-items"><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(slice: raw_slice) -&gt; Self</h4></div><div id="method.into" class="method trait-impl"><a href="#method.into" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.into">into</a>(self) -&gt; raw_slice</h4></div></div></details></div></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-From" class="impl has-srclink"><a href="#impl-From" class="anchor"></a><h3 class="code-header in-band">impl From for String</h3></div></summary><div class="impl-items"><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(slice: raw_slice) -&gt; Self</h4></div><div id="method.into" class="method trait-impl"><a href="#method.into" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.into">into</a>(self) -&gt; raw_slice</h4></div></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-Eq" class="impl has-srclink"><a href="#impl-Eq" class="anchor"></a><h3 class="code-header in-band">impl Eq for String</h3></div></summary><div class="impl-items"><div id="method.eq" class="method trait-impl"><a href="#method.eq" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.eq">eq</a>(self, other: Self) -&gt; bool</h4></div><details class="swaydoc-toggle method-toggle" open><summary><div id="method.neq" class="method trait-impl"><a href="#method.neq" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.neq">neq</a>(self, other: Self) -&gt; bool</h4></div></summary><div class="doc-block"><p>Evaluates if two values of the same type are not equal.</p>
+<h1>Additional Information</h1>
+<p>This function is inherited when <code>eq()</code> is implemented.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>other</code>: [Self] - The value of the same type.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[bool] - <code>true</code> if the two values are not equal, otherwise <code>false</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">struct MyStruct {
+    val: u64,
+}
+
+impl Eq for MyStruct {
+    fn eq(self, other: Self) -&gt; bool {
+         self.val == other.val
+    }
+}
+
+fn foo() {
+    let struct1 = MyStruct { val: 10 };
+    let struct2 = MyStruct { val: 2 };
+    let result = struct1 != struct2;
+    assert(result); 
+}
+</code></pre>
+</div></details></div></details></div></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
