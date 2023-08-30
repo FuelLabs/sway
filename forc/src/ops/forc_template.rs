@@ -55,7 +55,7 @@ pub fn init(command: TemplateCommand) -> Result<()> {
             })?,
         None => {
             let manifest_path = repo_path.join(constants::MANIFEST_FILE_NAME);
-            if PackageManifest::from_file(&manifest_path).is_err() {
+            if PackageManifest::from_file(manifest_path).is_err() {
                 anyhow::bail!("failed to find a template in {}", command.url);
             }
             repo_path

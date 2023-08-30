@@ -103,6 +103,7 @@ impl ty::TyTraitFn {
             type_parameters: vec![],
             is_contract_call: matches!(abi_mode, AbiMode::ImplAbiFn(..)),
             where_clause: vec![],
+            is_trait_method_dummy: true,
         }
     }
 }
