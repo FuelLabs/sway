@@ -149,7 +149,7 @@ impl Parse for Expr {
             } => {
                 insert_keyword(ctx, match_token.span());
                 value.parse(ctx);
-                branches.get().into_iter().par_bridge().for_each(|branch| {
+                branches.get().iter().par_bridge().for_each(|branch| {
                     branch.pattern.parse(ctx);
                     branch.kind.parse(ctx);
                 });
