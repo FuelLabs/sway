@@ -71,7 +71,7 @@ pub fn inlay_hints(
         .map(|var| {
             let range = get_range_from_span(&var.name.span());
             let kind = InlayKind::TypeHint;
-            let label = format!("{}", session.engines.help_out(var.type_ascription));
+            let label = format!("{}", engines.help_out(var.type_ascription));
             let inlay_hint = InlayHint { range, kind, label };
             self::inlay_hint(config.render_colons, inlay_hint)
         })

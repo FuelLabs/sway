@@ -6,14 +6,14 @@ use lsp_types::{
 use sway_lsp::{capabilities, lsp_ext::OnEnterParams, utils::keyword_docs::KeywordDocs};
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, session) = black_box(super::compile_test_project());
+    let (uri, ref session) = black_box(super::compile_test_project());
     let config = sway_lsp::config::Config::default();
     let keyword_docs = KeywordDocs::new();
     let position = Position::new(1717, 24);
     let range = Range::new(Position::new(1628, 0), Position::new(1728, 0));
 
     c.bench_function("semantic_tokens", |b| {
-        b.iter(|| capabilities::semantic_tokens::semantic_tokens_full(session.clone(), &uri))
+        b.iter(|| capabilities::semantic_tokens::semantic_tokens_full(session, &uri))
     });
 
     c.bench_function("document_symbol", |b| {
@@ -34,13 +34,11 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("hover", |b| {
-        b.iter(|| {
-            capabilities::hover::hover_data(session.clone(), &keyword_docs, uri.clone(), position)
-        })
+        b.iter(|| capabilities::hover::hover_data(session, &keyword_docs, uri.clone(), position))
     });
 
     c.bench_function("highlight", |b| {
-        b.iter(|| capabilities::highlight::get_highlights(session.clone(), uri.clone(), position))
+        b.iter(|| capabilities::highlight::get_highlights(session, uri.clone(), position))
     });
 
     c.bench_function("goto_definition", |b| {
@@ -49,23 +47,18 @@ fn benchmarks(c: &mut Criterion) {
 
     c.bench_function("inlay_hints", |b| {
         b.iter(|| {
-            capabilities::inlay_hints::inlay_hints(
-                session.clone(),
-                &uri,
-                &range,
-                &config.inlay_hints,
-            )
+            capabilities::inlay_hints::inlay_hints(session, &uri, &range, &config.inlay_hints)
         })
     });
 
     c.bench_function("prepare_rename", |b| {
-        b.iter(|| capabilities::rename::prepare_rename(session.clone(), uri.clone(), position))
+        b.iter(|| capabilities::rename::prepare_rename(session, uri.clone(), position))
     });
 
     c.bench_function("rename", |b| {
         b.iter(|| {
             capabilities::rename::rename(
-                session.clone(),
+                session,
                 "new_token_name".to_string(),
                 uri.clone(),
                 position,
@@ -75,11 +68,11 @@ fn benchmarks(c: &mut Criterion) {
 
     c.bench_function("code_action", |b| {
         let range = Range::new(Position::new(4, 10), Position::new(4, 10));
-        b.iter(|| capabilities::code_actions::code_actions(session.clone(), &range, &uri, &uri))
+        b.iter(|| capabilities::code_actions::code_actions(session, &range, &uri, &uri))
     });
 
     c.bench_function("code_lens", |b| {
-        b.iter(|| capabilities::code_lens::code_lens(&session, &uri.clone()))
+        b.iter(|| capabilities::code_lens::code_lens(session, &uri.clone()))
     });
 
     c.bench_function("on_enter", |b| {
@@ -91,7 +84,7 @@ fn benchmarks(c: &mut Criterion) {
                 text: "\n".to_string(),
             }],
         };
-        b.iter(|| capabilities::on_enter::on_enter(&config.on_enter, &session, &uri, &params))
+        b.iter(|| capabilities::on_enter::on_enter(&config.on_enter, session, &uri, &params))
     });
 }
 
