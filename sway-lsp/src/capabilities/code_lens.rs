@@ -4,7 +4,7 @@ use lsp_types::{CodeLens, Url};
 
 use crate::core::session::Session;
 
-pub fn code_lens(session: &Arc<Session>, url: &Url) -> Vec<CodeLens> {
+pub fn code_lens(session: &Session, url: &Url) -> Vec<CodeLens> {
     let url_path = PathBuf::from(url.path());
 
     // Construct code lenses for runnable functions

@@ -3,7 +3,7 @@
 use crate::{
     capabilities::diagnostic::get_diagnostics,
     config::{Config, Warnings},
-    core::session::{self, Session},
+    core::session::{self, Session, ParseResult},
     error::{DirectoryError, DocumentError, LanguageServerError},
     utils::debug,
     utils::keyword_docs::KeywordDocs,
@@ -50,7 +50,7 @@ impl ServerState {
         Ok(())
     }
 
-    pub(crate) fn diagnostics(&self, uri: &Url, session: Arc<Session>) -> Vec<Diagnostic> {
+    pub(crate) fn diagnostics(&self, uri: &Url, session: &Session) -> Vec<Diagnostic> {
         let mut diagnostics_to_publish = vec![];
         let tokens = session.token_map().tokens_for_file(uri);
         match self.config.debug.show_collected_tokens_as_warnings {
@@ -79,48 +79,49 @@ impl ServerState {
         diagnostics_to_publish
     }
 
-    pub(crate) async fn parse_project(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
-        match run_blocking_parse_project(uri.clone(), session.clone()).await {
-            Ok(_) => {
-                // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
-                // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
-                if let Some(client) = self.client.as_ref() {
-                    client
-                        .publish_diagnostics(
-                            workspace_uri.clone(),
-                            self.diagnostics(&uri, session),
-                            None,
-                        )
-                        .await;
-                }
-            }
-            Err(err) => {
-                if matches!(err, LanguageServerError::FailedToParse) {
-                    tracing::error!("Error parsing project: {:?}", err);
-                }
-            }
+    pub(crate) async fn parse_project(&self, uri: Url, workspace_uri: Url, session: &Session) -> Result<(), LanguageServerError> {
+        // Acquire a permit to parse the project. If there are none available, return false. This way,
+        // we avoid publishing the same diagnostics multiple times.
+        try_acquire_parse_permit(session)?;
+
+        // Lock the diagnostics result to prevent multiple threads from parsing the project at the same time.
+        let mut diagnostics = session.diagnostics.write();
+
+        let parse_result = run_blocking_parse_project(uri.clone()).await?;
+
+        let (errors, warnings) = parse_result.diagnostics.clone();
+        //session.write_parse_result(parse_result);
+        todo!("write parse result");
+        *diagnostics = get_diagnostics(&warnings, &errors, session.engines.se());
+        // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
+        // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
+        if let Some(client) = self.client.as_ref() {
+            client
+                .publish_diagnostics(
+                    workspace_uri.clone(),
+                    self.diagnostics(&uri, session),
+                    None,
+                )
+                .await;
         }
+        Ok(())
     }
+}
+
+fn try_acquire_parse_permit(session: &Session) -> Result<(), LanguageServerError> {
+    if session.parse_permits.try_acquire().is_err() {
+        return Err(LanguageServerError::UnableToAcquirePermit);
+    }
+    Ok(())
 }
 
 /// Runs parse_project in a blocking thread, because parsing is not async.
 async fn run_blocking_parse_project(
     uri: Url,
-    session: Arc<Session>,
-) -> Result<(), LanguageServerError> {
-    // Acquire a permit to parse the project. If there are none available, return false. This way,
-    // we avoid publishing the same diagnostics multiple times.
-    if session.parse_permits.try_acquire().is_err() {
-        return Err(LanguageServerError::UnableToAcquirePermit);
-    }
+) -> Result<ParseResult, LanguageServerError> {
     tokio::task::spawn_blocking(move || {
-        // Lock the diagnostics result to prevent multiple threads from parsing the project at the same time.
-        let mut diagnostics = session.diagnostics.write();
         let parse_result = session::parse_project(&uri)?;
-        let (errors, warnings) = parse_result.diagnostics.clone();
-        session.write_parse_result(parse_result);
-        *diagnostics = get_diagnostics(&warnings, &errors, session.engines.read().se());
-        Ok(())
+        Ok(parse_result)
     })
     .await
     .unwrap_or_else(|_| Err(LanguageServerError::FailedToParse))
@@ -128,28 +129,28 @@ async fn run_blocking_parse_project(
 
 /// `Sessions` is a collection of [Session]s, each of which represents a project
 /// that has been opened in the users workspace.
-pub(crate) struct Sessions(DashMap<PathBuf, Arc<Session>>);
+pub(crate) struct Sessions(DashMap<PathBuf, Session>);
 
 impl Sessions {
     fn init(&self, uri: &Url) -> Result<(), LanguageServerError> {
-        let session = Arc::new(Session::new());
+        let session = Session::new();
         let project_name = session.init(uri)?;
         self.insert(project_name, session);
         Ok(())
     }
 
-    /// Constructs and returns a tuple of `(Url, Arc<Session>)` from a given workspace URI.
+    /// Constructs and returns a tuple of `(Url, &Session)` from a given workspace URI.
     /// The returned URL represents the temp directory workspace.
     pub(crate) fn uri_and_session_from_workspace(
         &self,
         workspace_uri: &Url,
-    ) -> Result<(Url, Arc<Session>), LanguageServerError> {
+    ) -> Result<(Url, &Session), LanguageServerError> {
         let session = self.url_to_session(workspace_uri)?;
         let uri = session.sync.workspace_to_temp_url(workspace_uri)?;
         Ok((uri, session))
     }
 
-    fn url_to_session(&self, uri: &Url) -> Result<Arc<Session>, LanguageServerError> {
+    fn url_to_session(&self, uri: &Url) -> Result<&Session, LanguageServerError> {
         let path = PathBuf::from(uri.path());
         let manifest = PackageManifestFile::from_dir(&path).map_err(|_| {
             DocumentError::ManifestFileNotFound {
@@ -180,7 +181,7 @@ impl Sessions {
 }
 
 impl std::ops::Deref for Sessions {
-    type Target = DashMap<PathBuf, Arc<Session>>;
+    type Target = DashMap<PathBuf, Session>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }

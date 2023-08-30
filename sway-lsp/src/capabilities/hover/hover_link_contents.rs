@@ -26,12 +26,12 @@ pub struct RelatedType {
 pub struct HoverLinkContents<'a> {
     pub related_types: Vec<RelatedType>,
     pub implementations: Vec<Span>,
-    session: Arc<Session>,
+    session: &'a Session,
     engines: &'a Engines,
 }
 
 impl<'a> HoverLinkContents<'a> {
-    pub fn new(session: Arc<Session>, engines: &'a Engines) -> Self {
+    pub fn new(session: &'a Session, engines: &'a Engines) -> Self {
         Self {
             related_types: Vec::new(),
             implementations: Vec::new(),

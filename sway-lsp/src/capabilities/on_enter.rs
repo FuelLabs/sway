@@ -17,7 +17,7 @@ const DOC_COMMENT_START: &str = "///";
 /// with the appropriate comment start pattern (// or ///).
 pub fn on_enter(
     config: &OnEnterConfig,
-    session: &Arc<Session>,
+    session: &Session,
     temp_uri: &Url,
     params: &OnEnterParams,
 ) -> Option<WorkspaceEdit> {

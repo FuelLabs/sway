@@ -3,7 +3,7 @@ use lsp_types::{DocumentHighlight, Position, Url};
 use std::sync::Arc;
 
 pub fn get_highlights(
-    session: Arc<Session>,
+    session: &Session,
     url: Url,
     position: Position,
 ) -> Option<Vec<DocumentHighlight>> {

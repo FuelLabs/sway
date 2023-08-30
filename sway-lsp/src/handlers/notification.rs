@@ -21,7 +21,7 @@ pub async fn handle_did_open_text_document(
     if session.token_map().is_empty() {
         state
             .parse_project(uri, params.text_document.uri, session.clone())
-            .await;
+            .await?;
     }
     Ok(())
 }
@@ -36,7 +36,7 @@ pub async fn handle_did_change_text_document(
     session.write_changes_to_file(&uri, params.content_changes)?;
     state
         .parse_project(uri, params.text_document.uri, session.clone())
-        .await;
+        .await?;
     Ok(())
 }
 
@@ -50,7 +50,7 @@ pub(crate) async fn handle_did_save_text_document(
     session.sync.resync()?;
     state
         .parse_project(uri, params.text_document.uri, session.clone())
-        .await;
+        .await?;
     Ok(())
 }
 

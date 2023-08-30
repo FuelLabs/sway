@@ -37,7 +37,7 @@ pub(crate) struct CodeActionContext<'a> {
 }
 
 pub fn code_actions(
-    session: Arc<Session>,
+    session: &Session,
     range: &Range,
     uri: &Url,
     temp_uri: &Url,
@@ -48,7 +48,7 @@ pub fn code_actions(
         .token_at_position(temp_uri, range.start)?;
 
     let ctx = CodeActionContext {
-        engines: &engines,
+        engines: &session.engines,
         tokens: session.token_map(),
         token: &token,
         uri,
