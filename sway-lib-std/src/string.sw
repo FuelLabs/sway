@@ -259,6 +259,12 @@ impl From<raw_slice> for String {
     }
 }
 
+impl Eq for String {
+    fn eq(self, other: Self) -> bool {
+        self.bytes == other.bytes
+    }
+}
+
 // Tests
 
 #[test]
@@ -478,4 +484,14 @@ fn string_test_with_capacity() {
     let mut string = String::with_capacity(4);
 
     assert(string.capacity() == 4);
+}
+
+#[test]
+fn string_test_equal() {
+    let string1 = String::from_ascii_str("fuel");
+    let string2 = String::from_ascii_str("fuel");
+    let string3 = String::from_ascii_str("blazingly fast");
+
+    assert(string1 == string2);
+    assert(string1 != string3);
 }
