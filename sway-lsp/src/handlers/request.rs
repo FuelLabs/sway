@@ -341,7 +341,7 @@ pub fn handle_show_ast(
 
             let ast_path = PathBuf::from(params.save_path.path());
             {
-                let program = session.compiled_program.read();
+                let program = &session.compiled_program;
                 match params.ast_kind.as_str() {
                     "lexed" => {
                         Ok(program.lexed.as_ref().and_then(|lexed_program| {

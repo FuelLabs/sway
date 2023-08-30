@@ -79,7 +79,7 @@ pub struct Session {
     token_map: TokenMap,
     pub documents: Documents,
     pub runnables: DashMap<PathBuf, Vec<Box<dyn Runnable>>>,
-    pub compiled_program: RwLock<CompiledProgram>,
+    pub compiled_program: CompiledProgram,
     pub engines: RwLock<Engines>,
     pub sync: SyncWorkspace,
     // Limit the number of threads that can wait to parse at the same time. One thread can be parsing
@@ -101,7 +101,7 @@ impl Session {
             token_map: TokenMap::new(),
             documents: HashMap::new(),
             runnables: DashMap::new(),
-            compiled_program: RwLock::new(Default::default()),
+            compiled_program: Default::default(),
             engines: <_>::default(),
             sync: SyncWorkspace::new(),
             parse_permits: Arc::new(Semaphore::new(2)),
@@ -147,7 +147,7 @@ impl Session {
 
     /// Write the result of parsing to the session.
     /// This function should only be called after successfully parsing.
-    pub fn write_parse_result(&self, res: ParseResult) {
+    pub fn write_parse_result(&mut self, res: ParseResult) {
         self.token_map.clear();
         self.runnables.clear();
 
@@ -162,9 +162,9 @@ impl Session {
             self.engines.read().de(),
             self.engines.read().se(),
         );
-        self.compiled_program.write().lexed = Some(res.lexed);
-        self.compiled_program.write().parsed = Some(res.parsed);
-        self.compiled_program.write().typed = Some(res.typed);
+        self.compiled_program.lexed = Some(res.lexed);
+        self.compiled_program.parsed = Some(res.parsed);
+        self.compiled_program.typed = Some(res.typed);
     }
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
@@ -218,9 +218,8 @@ impl Session {
             self.token_map
                 .tokens_at_position(engines.se(), uri, shifted_position, Some(true));
         let (_, fn_token) = fn_tokens.first()?;
-        let compiled_program = &*self.compiled_program.read();
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.typed.clone() {
-            let program = compiled_program.typed.clone()?;
+            let program = self.compiled_program.typed.clone()?;
             return Some(capabilities::completion::to_completion_items(
                 &program.root.namespace,
                 &self.engines.read(),
@@ -233,11 +232,13 @@ impl Session {
     }
 
     /// Returns the [Namespace] from the compiled program if it exists.
-    pub fn namespace(&self) -> Option<Namespace> {
-        let compiled_program = &*self.compiled_program.read();
-        let program = compiled_program.typed.clone()?;
-        Some(program.root.namespace)
+    pub fn namespace<'a>(&'a self) -> Option<&'a Namespace> {
+        match &self.compiled_program.typed {
+            Some(typed) => Some(&typed.root.namespace),
+            None => None,
+        }
     }
+    
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
         let tokens = self.token_map.tokens_for_file(url);
@@ -543,19 +544,19 @@ mod tests {
 
     #[test]
     fn store_document_returns_empty_tuple() {
-        let session = Session::new();
+        let mut session = Session::new();
         let path = get_absolute_path("sway-lsp/tests/fixtures/cats.txt");
         let document = TextDocument::build_from_path(&path).unwrap();
-        let result = Session::store_document(&session, document);
+        let result = Session::store_document(&mut session, document);
         assert!(result.is_ok());
     }
 
     #[test]
     fn store_document_returns_document_already_stored_error() {
-        let session = Session::new();
+        let mut session = Session::new();
         let path = get_absolute_path("sway-lsp/tests/fixtures/cats.txt");
         let document = TextDocument::build_from_path(&path).unwrap();
-        Session::store_document(&session, document).expect("expected successfully stored");
+        Session::store_document(&mut session, document).expect("expected successfully stored");
         let document = TextDocument::build_from_path(&path).unwrap();
         let result = Session::store_document(&session, document)
             .expect_err("expected DocumentAlreadyStored");
