@@ -493,7 +493,7 @@ fn main() -> bool {
 #[test]
 fn struct_comments() {
     check(
-        r#"contract;
+        r"contract;
 // This is a comment, for this one to be placed correctly we need to have Module visitor implemented
 pub struct Foo { // Here is a comment
 
@@ -515,8 +515,8 @@ pub struct Foo { // Here is a comment
              //     \|__|    \|_______|\|_______|\|_______|        \|_______|\|__|\|__|\|_______|\_________\
              //                                                                                  \|_________|
 }
-"#,
-        r#"contract;
+",
+        r"contract;
 // This is a comment, for this one to be placed correctly we need to have Module visitor implemented
 pub struct Foo { // Here is a comment
 
@@ -532,7 +532,7 @@ pub struct Foo { // Here is a comment
     //     \|__|    \|_______|\|_______|\|_______|        \|_______|\|__|\|__|\|_______|\_________\
     //                                                                                  \|_________|
 }
-"#,
+",
     );
 }
 

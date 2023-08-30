@@ -1,16 +1,17 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PerformanceMetric {
     pub phase: String,
     pub elapsed: f64,
     pub memory_usage: Option<u64>,
 }
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct PerformanceData {
     pub bytecode_size: usize,
     pub metrics: Vec<PerformanceMetric>,
+    pub reused_modules: u64,
 }
 
 #[macro_export]
