@@ -41,7 +41,7 @@ use sway_core::{
     },
     BuildTarget, Engines, Namespace, Programs,
 };
-use sway_error::{error::CompileError, warning::CompileWarning};
+use sway_error::{error::CompileError, warning::CompileWarning, handler::Handler};
 use sway_types::{SourceEngine, Spanned};
 use sway_utils::helpers::get_sway_files;
 use tokio::sync::Semaphore;
@@ -425,23 +425,22 @@ fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
         .map_err(LanguageServerError::BuildPlanFailed)
 }
 
-/// Parses the project and returns true if the compiler diagnostics are new and should be published.
-pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
-    let build_plan = build_plan(uri)?;
-    let mut diagnostics = (Vec::<CompileError>::new(), Vec::<CompileWarning>::new());
-    let engines = Engines::default();
-    let token_map = TokenMap::new();
+fn compile(uri: &Url, engines: &Engines) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
+    let build_plan = build_plan(uri)?;    
     let tests_enabled = true;
-
-    let results = pkg::check(
+    pkg::check(
         &build_plan,
         BuildTarget::default(),
         true,
         tests_enabled,
         &engines,
     )
-    .map_err(LanguageServerError::FailedToCompile)?;
+    .map_err(LanguageServerError::FailedToCompile)
+}
 
+fn traverse(results: Vec<(Option<Programs>, Handler)>, engines: Engines) -> Result<ParseResult, LanguageServerError> {
+    let mut diagnostics = (Vec::<CompileError>::new(), Vec::<CompileWarning>::new());
+    let token_map = TokenMap::new();
     let mut programs = None;
     let results_len = results.len();
     for (i, (value, handler)) in results.into_iter().enumerate() {
@@ -507,6 +506,13 @@ pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
         parsed,
         typed,
     })
+}
+
+/// Parses the project and returns true if the compiler diagnostics are new and should be published.
+pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
+    let engines = Engines::default();
+    let results = compile(uri, &engines)?;
+    traverse(results, engines)
 }
 
 /// Parse the [ParseProgram] AST to populate the [TokenMap] with parsed AST nodes.
