@@ -8,7 +8,7 @@ use crate::{
     core::{
         document::TextDocument,
         sync::SyncWorkspace,
-        token::TypedAstToken,
+        token::{self, TypedAstToken},
         token_map::{TokenMap, TokenMapExt},
     },
     error::{DocumentError, LanguageServerError},
@@ -45,8 +45,6 @@ use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning}
 use sway_types::{SourceEngine, Spanned};
 use sway_utils::helpers::get_sway_files;
 use tokio::sync::Semaphore;
-
-use super::{token::get_range_from_span, token_map};
 
 pub type Documents = DashMap<String, TextDocument>;
 pub type ProjectDirectory = PathBuf;
@@ -355,7 +353,7 @@ impl Session {
             if let Some(source_id) = span.source_id() {
                 let path = source_engine.get_path(source_id);
                 let runnable = Box::new(RunnableTestFn {
-                    range: get_range_from_span(&span.clone()),
+                    range: token::get_range_from_span(&span.clone()),
                     tree_type: typed_program.kind.tree_type(),
                     test_name: Some(decl.name.to_string()),
                 });
@@ -375,7 +373,7 @@ impl Session {
             if let Some(source_id) = span.source_id() {
                 let path = source_engine.get_path(source_id);
                 let runnable = Box::new(RunnableMainFn {
-                    range: get_range_from_span(&span.clone()),
+                    range: token::get_range_from_span(&span.clone()),
                     tree_type: typed_program.kind.tree_type(),
                 });
                 self.runnables
@@ -436,7 +434,7 @@ pub fn compile(
         BuildTarget::default(),
         true,
         tests_enabled,
-        &engines,
+        engines,
     )
     .map_err(LanguageServerError::FailedToCompile)
 }
