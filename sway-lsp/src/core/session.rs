@@ -8,7 +8,7 @@ use crate::{
     core::{
         document::TextDocument,
         sync::SyncWorkspace,
-        token::TypedAstToken,
+        token::{self, TypedAstToken},
         token_map::{TokenMap, TokenMapExt},
     },
     error::{DocumentError, LanguageServerError},
@@ -37,16 +37,14 @@ use sway_core::{
     language::{
         lexed::LexedProgram,
         parsed::{AstNode, ParseProgram},
-        ty,
+        ty::{self, TyProgram},
     },
     BuildTarget, Engines, Namespace, Programs,
 };
-use sway_error::{error::CompileError, warning::CompileWarning};
+use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::{SourceEngine, Spanned};
 use sway_utils::helpers::get_sway_files;
 use tokio::sync::Semaphore;
-
-use super::token::get_range_from_span;
 
 pub type Documents = DashMap<String, TextDocument>;
 pub type ProjectDirectory = PathBuf;
@@ -355,7 +353,7 @@ impl Session {
             if let Some(source_id) = span.source_id() {
                 let path = source_engine.get_path(source_id);
                 let runnable = Box::new(RunnableTestFn {
-                    range: get_range_from_span(&span.clone()),
+                    range: token::get_range_from_span(&span.clone()),
                     tree_type: typed_program.kind.tree_type(),
                     test_name: Some(decl.name.to_string()),
                 });
@@ -375,7 +373,7 @@ impl Session {
             if let Some(source_id) = span.source_id() {
                 let path = source_engine.get_path(source_id);
                 let runnable = Box::new(RunnableMainFn {
-                    range: get_range_from_span(&span.clone()),
+                    range: token::get_range_from_span(&span.clone()),
                     tree_type: typed_program.kind.tree_type(),
                 });
                 self.runnables
@@ -425,23 +423,34 @@ fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
         .map_err(LanguageServerError::BuildPlanFailed)
 }
 
-/// Parses the project and returns true if the compiler diagnostics are new and should be published.
-pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
+pub fn compile(
+    uri: &Url,
+    engines: &Engines,
+) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
     let build_plan = build_plan(uri)?;
-    let mut diagnostics = (Vec::<CompileError>::new(), Vec::<CompileWarning>::new());
-    let engines = Engines::default();
-    let token_map = TokenMap::new();
     let tests_enabled = true;
-
-    let results = pkg::check(
+    pkg::check(
         &build_plan,
         BuildTarget::default(),
         true,
         tests_enabled,
-        &engines,
+        engines,
     )
-    .map_err(LanguageServerError::FailedToCompile)?;
+    .map_err(LanguageServerError::FailedToCompile)
+}
 
+pub struct TraversalResult {
+    pub diagnostics: (Vec<CompileError>, Vec<CompileWarning>),
+    pub programs: Option<(LexedProgram, ParseProgram, TyProgram)>,
+    pub token_map: TokenMap,
+}
+
+pub fn traverse(
+    results: Vec<(Option<Programs>, Handler)>,
+    engines: &Engines,
+) -> Result<TraversalResult, LanguageServerError> {
+    let token_map = TokenMap::new();
+    let mut diagnostics = (Vec::<CompileError>::new(), Vec::<CompileWarning>::new());
     let mut programs = None;
     let results_len = results.len();
     for (i, (value, handler)) in results.into_iter().enumerate() {
@@ -467,7 +476,7 @@ pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
 
         // Create context with write guards to make readers wait until the update to token_map is complete.
         // This operation is fast because we already have the compile results.
-        let ctx = ParseContext::new(&token_map, &engines, &typed_program.root.namespace);
+        let ctx = ParseContext::new(&token_map, engines, &typed_program.root.namespace);
 
         // The final element in the results is the main program.
         if i == results_len - 1 {
@@ -498,6 +507,22 @@ pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
             });
         }
     }
+    Ok(TraversalResult {
+        diagnostics,
+        programs,
+        token_map,
+    })
+}
+
+/// Parses the project and returns true if the compiler diagnostics are new and should be published.
+pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
+    let engines = Engines::default();
+    let results = compile(uri, &engines)?;
+    let TraversalResult {
+        diagnostics,
+        programs,
+        token_map,
+    } = traverse(results, &engines)?;
     let (lexed, parsed, typed) = programs.expect("Programs should be populated at this point.");
     Ok(ParseResult {
         diagnostics,
