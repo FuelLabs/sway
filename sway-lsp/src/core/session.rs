@@ -37,16 +37,16 @@ use sway_core::{
     language::{
         lexed::LexedProgram,
         parsed::{AstNode, ParseProgram},
-        ty,
+        ty::{self, TyProgram},
     },
     BuildTarget, Engines, Namespace, Programs,
 };
-use sway_error::{error::CompileError, warning::CompileWarning, handler::Handler};
+use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::{SourceEngine, Spanned};
 use sway_utils::helpers::get_sway_files;
 use tokio::sync::Semaphore;
 
-use super::token::get_range_from_span;
+use super::{token::get_range_from_span, token_map};
 
 pub type Documents = DashMap<String, TextDocument>;
 pub type ProjectDirectory = PathBuf;
@@ -425,8 +425,11 @@ fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
         .map_err(LanguageServerError::BuildPlanFailed)
 }
 
-fn compile(uri: &Url, engines: &Engines) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
-    let build_plan = build_plan(uri)?;    
+pub fn compile(
+    uri: &Url,
+    engines: &Engines,
+) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
+    let build_plan = build_plan(uri)?;
     let tests_enabled = true;
     pkg::check(
         &build_plan,
@@ -438,9 +441,18 @@ fn compile(uri: &Url, engines: &Engines) -> Result<Vec<(Option<Programs>, Handle
     .map_err(LanguageServerError::FailedToCompile)
 }
 
-fn traverse(results: Vec<(Option<Programs>, Handler)>, engines: Engines) -> Result<ParseResult, LanguageServerError> {
-    let mut diagnostics = (Vec::<CompileError>::new(), Vec::<CompileWarning>::new());
+pub struct TraversalResult {
+    pub diagnostics: (Vec<CompileError>, Vec<CompileWarning>),
+    pub programs: Option<(LexedProgram, ParseProgram, TyProgram)>,
+    pub token_map: TokenMap,
+}
+
+pub fn traverse(
+    results: Vec<(Option<Programs>, Handler)>,
+    engines: &Engines,
+) -> Result<TraversalResult, LanguageServerError> {
     let token_map = TokenMap::new();
+    let mut diagnostics = (Vec::<CompileError>::new(), Vec::<CompileWarning>::new());
     let mut programs = None;
     let results_len = results.len();
     for (i, (value, handler)) in results.into_iter().enumerate() {
@@ -466,7 +478,7 @@ fn traverse(results: Vec<(Option<Programs>, Handler)>, engines: Engines) -> Resu
 
         // Create context with write guards to make readers wait until the update to token_map is complete.
         // This operation is fast because we already have the compile results.
-        let ctx = ParseContext::new(&token_map, &engines, &typed_program.root.namespace);
+        let ctx = ParseContext::new(&token_map, engines, &typed_program.root.namespace);
 
         // The final element in the results is the main program.
         if i == results_len - 1 {
@@ -497,6 +509,22 @@ fn traverse(results: Vec<(Option<Programs>, Handler)>, engines: Engines) -> Resu
             });
         }
     }
+    Ok(TraversalResult {
+        diagnostics,
+        programs,
+        token_map,
+    })
+}
+
+/// Parses the project and returns true if the compiler diagnostics are new and should be published.
+pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
+    let engines = Engines::default();
+    let results = compile(uri, &engines)?;
+    let TraversalResult {
+        diagnostics,
+        programs,
+        token_map,
+    } = traverse(results, &engines)?;
     let (lexed, parsed, typed) = programs.expect("Programs should be populated at this point.");
     Ok(ParseResult {
         diagnostics,
@@ -506,13 +534,6 @@ fn traverse(results: Vec<(Option<Programs>, Handler)>, engines: Engines) -> Resu
         parsed,
         typed,
     })
-}
-
-/// Parses the project and returns true if the compiler diagnostics are new and should be published.
-pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
-    let engines = Engines::default();
-    let results = compile(uri, &engines)?;
-    traverse(results, engines)
 }
 
 /// Parse the [ParseProgram] AST to populate the [TokenMap] with parsed AST nodes.
