@@ -861,7 +861,7 @@ mod ir_builder {
                 IrAstTy::U64 => Type::get_uint64(context),
                 IrAstTy::U256 => Type::get_uint256(context),
                 IrAstTy::B256 => Type::get_b256(context),
-                IrAstTy::String(n) => Type::new_string(context, *n),
+                IrAstTy::String(n) => Type::new_string_array(context, *n),
                 IrAstTy::Array(el_ty, count) => {
                     let el_ty = el_ty.to_ir_type(context);
                     Type::new_array(context, el_ty, *count)

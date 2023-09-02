@@ -904,7 +904,7 @@ fn const_eval_intrinsic(
             )
             .map_err(ConstEvalError::CompileError)?;
             match ir_type.get_content(lookup.context) {
-                TypeContent::String(_n) => Ok(Some(Constant {
+                TypeContent::StringSlice | TypeContent::StringArray(_) => Ok(Some(Constant {
                     ty: Type::get_unit(lookup.context),
                     value: ConstantValue::Unit,
                 })),

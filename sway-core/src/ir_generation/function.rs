@@ -566,7 +566,10 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::IsStrType => {
                 let targ = type_arguments[0].clone();
-                let val = matches!(engines.te().get_unaliased(targ.type_id), TypeInfo::Str(_));
+                let val = matches!(
+                    engines.te().get_unaliased(targ.type_id),
+                    TypeInfo::StringArray(_) | TypeInfo::StringSlice
+                );
                 Ok(Constant::get_bool(context, val))
             }
             Intrinsic::CheckStrType => {
@@ -579,7 +582,9 @@ impl<'eng> FnCompiler<'eng> {
                     &targ.span,
                 )?;
                 match ir_type.get_content(context) {
-                    TypeContent::String(_n) => Ok(Constant::get_unit(context)),
+                    TypeContent::StringSlice | TypeContent::StringArray(_) => {
+                        Ok(Constant::get_unit(context))
+                    }
                     _ => Err(CompileError::NonStrGenericType {
                         span: targ.span.clone(),
                     }),

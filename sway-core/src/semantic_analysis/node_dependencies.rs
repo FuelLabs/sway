@@ -848,7 +848,7 @@ fn decl_name(type_engine: &TypeEngine, decl: &Declaration) -> Option<DependentSy
 /// because it is used for keys and values in the tree.
 fn type_info_name(type_info: &TypeInfo) -> String {
     match type_info {
-        TypeInfo::Str(_) => "str",
+        TypeInfo::StringArray(_) | TypeInfo::StringSlice => "str",
         TypeInfo::UnsignedInteger(n) => match n {
             IntegerBits::Eight => "uint8",
             IntegerBits::Sixteen => "uint16",

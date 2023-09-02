@@ -407,7 +407,7 @@ impl ty::TyExpression {
     fn type_check_literal(engines: &Engines, lit: Literal, span: Span) -> ty::TyExpression {
         let type_engine = engines.te();
         let return_type = match &lit {
-            Literal::String(s) => TypeInfo::Str(Length::new(s.as_str().len(), s.clone())),
+            Literal::String(_) => TypeInfo::StringSlice,
             Literal::Numeric(_) => TypeInfo::Numeric,
             Literal::U8(_) => TypeInfo::UnsignedInteger(IntegerBits::Eight),
             Literal::U16(_) => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),

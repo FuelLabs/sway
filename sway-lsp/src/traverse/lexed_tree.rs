@@ -481,7 +481,7 @@ impl Parse for Ty {
                 inner.ty.parse(ctx);
                 inner.length.parse(ctx);
             }
-            Ty::Str { str_token, length } => {
+            Ty::StringArray { str_token, length } => {
                 insert_keyword(ctx, str_token.span());
                 length.get().parse(ctx);
             }
