@@ -64,7 +64,7 @@ impl Constant {
         }
     }
 
-    pub fn new_string(context: &mut Context, string: Vec<u8>) -> Self {
+    pub fn new_string_array(context: &mut Context, string: Vec<u8>) -> Self {
         Constant {
             ty: Type::new_string_array(context, string.len() as u64),
             value: ConstantValue::String(string),
@@ -117,8 +117,8 @@ impl Constant {
         Value::new_constant(context, new_const)
     }
 
-    pub fn get_string(context: &mut Context, value: Vec<u8>) -> Value {
-        let new_const = Constant::new_string(context, value);
+    pub fn get_string_array(context: &mut Context, value: Vec<u8>) -> Value {
+        let new_const = Constant::new_string_array(context, value);
         Value::new_constant(context, new_const)
     }
 

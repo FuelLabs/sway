@@ -27,7 +27,7 @@ pub(super) fn convert_literal_to_value(context: &mut Context, ast_literal: &Lite
         Literal::U64(n) => Constant::get_uint(context, 64, *n),
         Literal::U256(n) => Constant::get_uint256(context, n.clone()),
         Literal::Numeric(n) => Constant::get_uint(context, 64, *n),
-        Literal::String(s) => Constant::get_string(context, s.as_str().as_bytes().to_vec()),
+        Literal::String(s) => Constant::get_string_array(context, s.as_str().as_bytes().to_vec()),
         Literal::Boolean(b) => Constant::get_bool(context, *b),
         Literal::B256(bs) => Constant::get_b256(context, *bs),
     }
@@ -45,7 +45,7 @@ pub(super) fn convert_literal_to_constant(
         Literal::U64(n) => Constant::new_uint(context, 64, *n),
         Literal::U256(n) => Constant::new_uint256(context, n.clone()),
         Literal::Numeric(n) => Constant::new_uint(context, 64, *n),
-        Literal::String(s) => Constant::new_string(context, s.as_str().as_bytes().to_vec()),
+        Literal::String(s) => Constant::new_string_array(context, s.as_str().as_bytes().to_vec()),
         Literal::Boolean(b) => Constant::new_bool(context, *b),
         Literal::B256(bs) => Constant::new_b256(context, *bs),
     }
