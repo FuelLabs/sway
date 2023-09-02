@@ -221,7 +221,10 @@ pub fn find_nested_dir_with_file(starter_path: &Path, file_name: &str) -> Option
 ///
 /// Starts the search from `starter_path`.
 #[allow(clippy::branches_sharing_code)]
-pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option<PathBuf> {
+pub fn find_parent_dir_with_file<P: AsRef<Path>>(
+    starter_path: P,
+    file_name: &str,
+) -> Option<PathBuf> {
     let mut path = std::fs::canonicalize(starter_path).ok()?;
     let empty_path = PathBuf::from("/");
     while path != empty_path {
@@ -237,7 +240,7 @@ pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option
     None
 }
 /// Continually go up in the file tree until a Forc manifest file is found.
-pub fn find_parent_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
+pub fn find_parent_manifest_dir<P: AsRef<Path>>(starter_path: P) -> Option<PathBuf> {
     find_parent_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
 }
 

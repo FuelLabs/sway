@@ -15,9 +15,14 @@ pub async fn handle_did_open_text_document(
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)?;
     session.handle_open_file(&uri);
-    state
-        .parse_project(uri, params.text_document.uri, session.clone())
-        .await;
+    // If the token map is empty, then we need to parse the project.
+    // Otherwise, don't recompile the project when a new file in the project is opened
+    // as the workspace is already compiled.
+    if session.token_map().is_empty() {
+        state
+            .parse_project(uri, params.text_document.uri, session.clone())
+            .await;
+    }
     Ok(())
 }
 
