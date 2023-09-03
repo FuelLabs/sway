@@ -958,7 +958,6 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
     fn verify_store(&self, dst_val: &Value, stored_val: &Value) -> Result<(), IrError> {
         let dst_ty = self.get_ptr_type(dst_val, IrError::VerifyStoreToNonPointer)?;
         let stored_ty = stored_val.get_type(self.context);
-        dbg!(&dst_ty, &stored_ty);
         if self.opt_ty_not_eq(&Some(dst_ty), &stored_ty) {
             Err(IrError::VerifyStoreMismatchedTypes)
         } else {

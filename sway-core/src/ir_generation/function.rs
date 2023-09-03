@@ -357,8 +357,7 @@ impl<'eng> FnCompiler<'eng> {
         let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
         match &ast_expr.expression {
             ty::TyExpressionVariant::Literal(Literal::String(s)) => {
-                let string_data =
-                    Constant::get_string_array(context, s.as_str().as_bytes().to_vec());
+                let string_data = Constant::get_string(context, s.as_str().as_bytes().to_vec());
                 let string_len = s.as_str().len() as u64;
                 self.compile_string_slice(context, span_md_idx, string_data, string_len)
             }
@@ -1777,18 +1776,24 @@ impl<'eng> FnCompiler<'eng> {
         const_decl: &TyConstantDecl,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
-        let result = self.compile_var_expr(
-            context,
-            &Some(const_decl.call_path.clone()),
-            const_decl.name(),
-            span_md_idx,
-        );
+        let result = self
+            .compile_var_expr(
+                context,
+                &Some(const_decl.call_path.clone()),
+                const_decl.name(),
+                span_md_idx,
+            )
+            .or(self.compile_const_decl(context, md_mgr, const_decl, span_md_idx, true))?;
 
-        if result.is_ok() {
-            result
-        } else {
-            self.compile_const_decl(context, md_mgr, const_decl, span_md_idx, true)
+        // parse constant string data into a string slice
+        if let Some(TypeContent::StringSlice) =
+            dbg!(result.get_type(context).map(|t| t.get_content(context)))
+        {
+            todo!();
+            // return self.compile_string_slice(context, span_md_idx, result, *len);
         }
+
+        Ok(result)
     }
 
     fn compile_var_expr(

@@ -826,7 +826,7 @@ mod ir_builder {
                     _ => unreachable!("invalid type for hex number"),
                 },
                 IrAstConstValue::Number(n) => Constant::get_uint(context, 64, *n),
-                IrAstConstValue::String(s) => Constant::get_string_array(context, s.clone()),
+                IrAstConstValue::String(s) => Constant::get_string(context, s.clone()),
                 IrAstConstValue::Array(..) => {
                     let array_const = self.as_constant(context, val_ty);
                     Constant::get_array(context, array_const)
