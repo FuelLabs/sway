@@ -72,10 +72,10 @@ pub enum CompileError {
     MultipleDefinitionsOfName { name: Ident, span: Span },
     #[error("Constant \"{name}\" was already defined in scope.")]
     MultipleDefinitionsOfConstant { name: Ident, span: Span },
-    #[error("Variable \"{first_definition}\" is already defined in match arm.")]
+    #[error("Variable \"{}\" is already defined in match arm.", first_definition.as_str())]
     MultipleDefinitionsOfMatchArmVariable {
         match_value: Span,
-        first_definition: Ident,
+        first_definition: Span,
         first_definition_is_struct_field: bool,
         duplicate: Span,
         duplicate_is_struct_field: bool,
@@ -960,14 +960,14 @@ impl ToDiagnostic for CompileError {
                 reason: Some(Reason::new(code(1), "Variable is already defined in match arm".to_string())),
                 issue: Issue::error(
                     source_engine,
-                    first_definition.span(),
-                    format!("Variable \"{first_definition}\" is already defined in match arm")
+                    first_definition.clone(),
+                    format!("Variable \"{}\" is already defined in match arm", first_definition.as_str())
                 ),
                 hints: vec![
                     Hint::error(
                         source_engine,
                         duplicate.clone(),
-                        format!("Variable \"{first_definition}\" is already defined in this match arm pattern.")
+                        format!("Variable \"{}\" is already defined in this match arm pattern.", first_definition.as_str())
                     ),
                     Hint::help(
                         source_engine,
@@ -977,30 +977,31 @@ impl ToDiagnostic for CompileError {
                         else {
                             Span::dummy()
                         },
-                        format!("Struct field \"{first_definition}\" is just a shorthand notation for `{first_definition}: {first_definition}`. It defines a variable \"{first_definition}\".")
+                        format!("Struct field \"{0}\" is just a shorthand notation for `{0}: {0}`. It defines a variable \"{0}\".", first_definition.as_str())
                     ),
                     Hint::info(
                         source_engine,
-                        first_definition.span(),
+                        first_definition.clone(),
                         format!(
-                            "This {}is the first definition of the variable \"{first_definition}\".",
+                            "This {}is the first definition of the variable \"{}\".",
                             if *first_definition_is_struct_field {
-                                format!("struct field \"{first_definition}\" ")
+                                format!("struct field \"{}\" ", first_definition.as_str())
                             }
                             else {
                                 "".to_string()
-                            }
+                            },
+                            first_definition.as_str()
                         )
                     ),
                     Hint::help(
                         source_engine,
                         if *first_definition_is_struct_field && !*duplicate_is_struct_field {
-                            first_definition.span()
+                            first_definition.clone()
                         }
                         else {
                             Span::dummy()
                         },
-                        format!("Struct field \"{first_definition}\" is just a shorthand notation for `{first_definition}: {first_definition}`. It defines a variable \"{first_definition}\".")
+                        format!("Struct field \"{0}\" is just a shorthand notation for `{0}: {0}`. It defines a variable \"{0}\".", first_definition.as_str())
                     ),
                     Hint::info(
                         source_engine,
@@ -1011,8 +1012,8 @@ impl ToDiagnostic for CompileError {
                 help: vec![
                     format!("Variables used in match arm patterns must be unique within a pattern."),
                     match (*first_definition_is_struct_field, *duplicate_is_struct_field) {
-                        (true, true) => format!("Consider declaring a variable with different name for either of the fields. E.g., `{first_definition}: var_{first_definition}`."),
-                        (true, false) | (false, true) => format!("Consider declaring a variable with different name for the field (e.g., `{first_definition}: var_{first_definition}`), or renaming the variable \"{first_definition}\"."),
+                        (true, true) => format!("Consider declaring a variable with different name for either of the fields. E.g., `{0}: var_{0}`.", first_definition.as_str()),
+                        (true, false) | (false, true) => format!("Consider declaring a variable with different name for the field (e.g., `{0}: var_{0}`), or renaming the variable \"{0}\".", first_definition.as_str()),
                         (false, false) => format!("Consider renaming either of the variables."),
                     },
                 ],

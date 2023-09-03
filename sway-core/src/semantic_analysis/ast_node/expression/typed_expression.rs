@@ -25,7 +25,6 @@ use crate::{
         ty::{self, TyImplItem},
         *,
     },
-    ty::TyScrutinee,
     semantic_analysis::{expression::ReachableReport, *},
     transform::to_parsed_lang::type_name_to_type_info_opt,
     type_system::*,
@@ -718,16 +717,14 @@ impl ty::TyExpression {
         // These errors can be carried on. The desugared version will treat
         // the duplicates as shadowing, which is fine for the rest of compilation.
         for scrutinee in typed_scrutinees.iter() {
-            for (ident, (ident_is_struct_field, duplicates)) in collect_duplicate_variables(&scrutinee) {
-                for duplicate in duplicates {
-                    handler.emit_err(CompileError::MultipleDefinitionsOfMatchArmVariable {
-                        match_value: value.span(),
-                        first_definition: ident.clone(),
-                        first_definition_is_struct_field: ident_is_struct_field,
-                        duplicate: duplicate.1,
-                        duplicate_is_struct_field: duplicate.0
-                    });
-                }
+            for duplicate in collect_duplicate_match_pattern_variables(&scrutinee) {
+                handler.emit_err(CompileError::MultipleDefinitionsOfMatchArmVariable {
+                    match_value: value.span(),
+                    first_definition: duplicate.first_declaration.1,
+                    first_definition_is_struct_field: duplicate.first_declaration.0,
+                    duplicate: duplicate.duplicate.1,
+                    duplicate_is_struct_field: duplicate.duplicate.0,
+                });
             }
         }
 
@@ -789,60 +786,6 @@ impl ty::TyExpression {
                             is_catch_all_arm: false,
                         },
                     });
-                }
-            }
-        }
-
-        /// Returns [Ident] of the first declaration of the match arm variable,
-        /// and the [Span]s of its duplicates, or empty [HashMap] if there are
-        /// no duplicate variables in the `scrutinee`.
-        /// Booleans denote if the variable declarations are struct fields.
-        /// `true` means struct field name. E.g.:
-        /// ```
-        /// x: true, [(false, x), (true, x)]
-        /// ```
-        /// means struct field `x` is declared two more times, once as a variable
-        /// and once as a struct field.
-        fn collect_duplicate_variables(scrutinee: &TyScrutinee) -> HashMap<Ident, (bool, Vec<(bool, Span)>)> {
-            let mut duplicate_variables = HashMap::new();
-
-            recursively_collect_duplicate_variables(&mut duplicate_variables, scrutinee);
-
-            duplicate_variables.retain(|_, (_, duplicates)| !duplicates.is_empty());
-
-            return duplicate_variables;
-
-            fn recursively_collect_duplicate_variables(duplicate_variables: &mut HashMap<Ident, (bool, Vec<(bool, Span)>)>, scrutinee: &TyScrutinee) {
-                match &scrutinee.variant {
-                    ty::TyScrutineeVariant::CatchAll => (),
-                    ty::TyScrutineeVariant::Variable(ident) => add_variable(duplicate_variables, &ident, false),
-                    ty::TyScrutineeVariant::Literal(_) => (),
-                    ty::TyScrutineeVariant::Constant { .. } => (),
-                    ty::TyScrutineeVariant::StructScrutinee { fields, ..  } => {
-                        // If a filed does not have a scrutinee, the field itself is a variable.
-                        for field in fields {
-                            match &field.scrutinee {
-                                Some(scrutinee) => recursively_collect_duplicate_variables(duplicate_variables, scrutinee),
-                                None => add_variable(duplicate_variables, &field.field, true)
-                            }
-                        }
-                    },
-                    ty::TyScrutineeVariant::Or(scrutinees) => collect_from_scrutinees(duplicate_variables, &scrutinees),
-                    ty::TyScrutineeVariant::Tuple(scrutinees) => collect_from_scrutinees(duplicate_variables, &scrutinees),
-                    ty::TyScrutineeVariant::EnumScrutinee { value, .. } => recursively_collect_duplicate_variables(duplicate_variables, value),
-                }
-                
-                fn add_variable(duplicate_variables: &mut HashMap<Ident, (bool, Vec<(bool, Span)>)>, ident: &Ident, is_span_field: bool) {
-                    duplicate_variables.entry(ident.clone()).and_modify(|(_, vec)| vec.push((is_span_field, ident.span()))).or_insert((is_span_field, vec![]));
-                }
-
-                fn collect_from_scrutinees(duplicate_variables: &mut HashMap<Ident, (bool, Vec<(bool, Span)>)>, scrutinees: &Vec<TyScrutinee>) {
-                    for scrutinee in scrutinees {
-                        match &scrutinee.variant {
-                            ty::TyScrutineeVariant::Variable(ident) => add_variable(duplicate_variables, &ident, false),
-                            _ => recursively_collect_duplicate_variables(duplicate_variables, scrutinee),
-                        };
-                    };
                 }
             }
         }

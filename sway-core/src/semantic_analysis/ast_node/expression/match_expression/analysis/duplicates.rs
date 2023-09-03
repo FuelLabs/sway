@@ -1,0 +1,221 @@
+use std::collections::HashMap;
+
+use sway_types::{Span, Ident, Spanned};
+
+use crate::language::ty::{TyScrutinee, self};
+
+/// True if the variable is a struct field, otherwise false. Span is the [Span] of the variable.
+pub(crate) type MatchVariable = (bool, Span);
+
+pub(crate) struct MatchVariableDuplicate {
+    pub duplicate: MatchVariable,
+    pub first_declaration: MatchVariable,
+}
+
+
+/// Returns [MatchVariableDuplicate]s for all the duplicates found in the `scrutinee`,
+/// or empty [Vec] if there are no duplicate variables in the `scrutinee`.
+/// 
+/// Alternatives are what make the algorithm more complex then just straightforward
+/// scan of the `scrutinee` for variables of the same name.
+/// In case of alternatives, we must have the same variables in all of the alternatives,
+/// and these are, of course, not duplicates.
+/// But we can still have duplicates within the alternatives, and between the alternatives
+/// and the other parts of the match arm.
+/// 
+/// Consider the following examples:
+/// 
+/// ```ignore
+/// Struct { x, y: x, z: x } => x.0,
+/// ```
+/// The second and the third `x` are the duplicates of the first `x`.
+/// 
+/// ```ignore
+/// Struct { x, .. } | Struct { x, .. } => x,
+/// (Struct { x, .. } | Struct { x, .. }, Struct { y, .. } | Struct { y, .. }) => if x { 0 } else { 1 } + y,
+/// ```
+/// Here there are no duplicates.
+/// 
+/// ```ignore
+/// (Struct { x, .. } | Struct { x, .. }, Struct { x, .. } | Struct { x, .. }) => if x { 0 } else { 1 } + y,
+/// ```
+/// The second `x` is not a duplicate, but the third and fourth are duplicates of the first one.
+/// 
+/// ```ignore
+/// Struct { x, y: x, z: x } | Struct { x, y: x, z: x } => x,
+/// ```
+/// The second and the third `x` are duplicates of the first one, and the last two of the fourth one.
+/// 
+/// ```ignore
+/// (x, Struct { x, .. } | Struct { x, .. }, y) => y,
+/// ```
+/// The second and the third `x` are duplicates of the first one.
+/// 
+/// ```ignore
+/// (0, Struct { x, y: x, .. } | Struct { x, .. }, x) => x,
+/// ```
+/// The second and the last `x` are duplicates of the first one. The third one is not a duplicate.
+/// 
+/// ```ignore
+/// (x, Struct { x, y: x, .. } | Struct { x, .. }, x) => x,
+/// ```
+/// All `x`s are duplicates of the first one.
+/// 
+/// Why not extend `matcher` to do this analysis?
+/// It would be a mixing of concerns and would complicate a clean implementation of the `matcher`.
+/// The `matcher`'s purpose is to detect variables and their types and properly bind them.
+/// Duplicates are seen as shadowing of variables which is perfectly fine from the `matcher`
+/// perspective.
+/// 
+/// How the algorithm works?
+/// 
+/// For a match arm represented by the `scrutinee` it creates a tree whose nodes are variable names.
+/// Variables are added by moving through the match arm left to right.
+/// Branching in the tree occurs in the case of alternatives.
+/// The algorithm traverses the branches dept-first and collects all the duplicates for every branch.
+/// At the end it merges the result of all the branches in a single result.
+/// 
+/// The algorithm assumes that the `matcher` already checked the match arm.
+/// This gives us the guarantee that every alternative contains the same variables and that for
+/// the parts of the match arm that follows alternatives, we need to consider only the left-most
+/// alternative as a potential holder of the already defined variables.
+/// 
+/// For the examples given above, the corresponding trees look like this:
+/// 
+/// ```ignore
+/// Struct { x, y: x, z: x } => x.0,
+/// - x - x - x
+/// 
+/// Struct { x, .. } | Struct { x, .. } => x,
+///  / x
+/// -
+///  \ x <= this is the first, left-most x
+/// 
+/// (Struct { x, .. } | Struct { x, .. }, Struct { y, .. } | Struct { y, .. }) => if x { 0 } else { 1 } + y,
+///  / x
+/// -     / y
+///  \ x -
+///       \ y <= this is the left-most y
+/// 
+/// (Struct { x, .. } | Struct { x, .. }, Struct { x, .. } | Struct { x, .. }) => if x { 0 } else { 1 } + y,
+///  / x
+/// -     / x
+///  \ x -
+///       \ x
+/// 
+/// Struct { x, y: x, z: x } | Struct { x, y: x, z: x } => x,
+///  / x - x - x
+/// -
+///  \ x - x - x
+/// 
+/// (x, Struct { x, .. } | Struct { x, .. }, y) => y,
+///    / x
+/// -x-
+///    \ x - y
+/// 
+/// (0, Struct { x, y: x, .. } | Struct { x, .. }, x) => x,
+///  / x
+/// -
+///  \ x - x - x
+/// 
+/// (x, Struct { x, y: x, .. } | Struct { x, .. }, x) => x,
+///    / x
+/// -x-
+///    \ x - x - x
+/// 
+/// ```
+/// 
+/// And here is a some general example with nested alternatives, several variables etc.
+/// 
+/// ```ignore
+/// (x, y, x | x | x, Struct { x, y, z } | Struct { x: y | y | y, x, z }, z, x | x, z | z | z)
+/// 
+///         / x
+///        /         / y
+/// - x - y - x   / -  y
+///        \     /   \ y - x - z
+///         \ x -
+///              \               / x
+///               \ x - y - z - z     / z
+///                              \ x -  z
+///                                   \ z
+/// ```
+pub(crate) fn collect_duplicate_match_pattern_variables(scrutinee: &TyScrutinee) -> Vec<MatchVariableDuplicate> {
+    let mut left_most_branch = HashMap::new();
+    let mut branches = vec![];
+
+    recursively_collect_duplicate_variables(&mut branches, &mut left_most_branch, scrutinee);
+
+    branches.push(left_most_branch);
+
+    for branch in branches.iter_mut() {
+        branch.retain(|_, (_, duplicates)| !duplicates.is_empty());
+    }
+
+    branches.retain(|branch| !branch.is_empty());
+
+    let mut result = vec![];
+    for mut branch in branches {
+        for (ident, (is_struct_field, duplicates)) in branch.iter_mut() {
+            for duplicate in duplicates {
+                result.push(MatchVariableDuplicate {
+                    duplicate: (duplicate.0, duplicate.1.clone()),
+                    first_declaration: (*is_struct_field, ident.span()),
+                });
+            }
+        }
+    }
+
+    return result;
+
+    fn recursively_collect_duplicate_variables(branches: &mut Vec<HashMap<Ident, (bool, Vec<(bool, Span)>)>>, left_most_branch: &mut HashMap<Ident, (bool, Vec<(bool, Span)>)>, scrutinee: &TyScrutinee) {
+        match &scrutinee.variant {
+            ty::TyScrutineeVariant::CatchAll => (),
+            ty::TyScrutineeVariant::Variable(ident) => add_variable(left_most_branch, &ident, false),
+            ty::TyScrutineeVariant::Literal(_) => (),
+            ty::TyScrutineeVariant::Constant { .. } => (),
+            ty::TyScrutineeVariant::StructScrutinee { fields, ..  } => {
+                // If a filed does not have a scrutinee, the field itself is a variable.
+                for field in fields {
+                    match &field.scrutinee {
+                        Some(scrutinee) => recursively_collect_duplicate_variables(branches, left_most_branch, scrutinee),
+                        None => add_variable(left_most_branch, &field.field, true)
+                    }
+                }
+            },
+            ty::TyScrutineeVariant::Or(scrutinees) => {
+                let (first, others) = scrutinees.split_first().expect("There must be at least two alternatives in TyScrutineeVariant::Or.");
+
+                // For all other alternatives then the first (left-most) one, span a new branch and pass it as a left-most.
+                // The new branch contains the identifiers collected so far in the left-most branch,
+                // but without duplicates collected so far. We want to have only unique duplicates in each branch.
+                for scrutinee in others {
+                    let mut branch: HashMap<Ident, (bool, Vec<(bool, Span)>)> = left_most_branch
+                        .iter()
+                        .map(|(ident, (is_struct_field, _))| (ident.clone(), (*is_struct_field, Vec::<(bool, Span)>::new())))
+                        .collect();
+
+                    recursively_collect_duplicate_variables(branches, &mut branch, scrutinee);
+
+                    branches.push(branch);
+                }
+
+                // The variables in the left-most alternative go to the original left-most branch.
+                recursively_collect_duplicate_variables(branches, left_most_branch, first);
+            },
+            ty::TyScrutineeVariant::Tuple(scrutinees) => {
+                for scrutinee in scrutinees {
+                    match &scrutinee.variant {
+                        ty::TyScrutineeVariant::Variable(ident) => add_variable(left_most_branch, &ident, false),
+                        _ => recursively_collect_duplicate_variables(branches, left_most_branch, scrutinee),
+                    };
+                };
+            },
+            ty::TyScrutineeVariant::EnumScrutinee { value, .. } => recursively_collect_duplicate_variables(branches, left_most_branch, value),
+        }
+        
+        fn add_variable(duplicate_variables: &mut HashMap<Ident, (bool, Vec<(bool, Span)>)>, ident: &Ident, is_struct_field: bool) {
+            duplicate_variables.entry(ident.clone()).and_modify(|(_, vec)| vec.push((is_struct_field, ident.span()))).or_insert((is_struct_field, vec![]));
+        }
+    }
+}
