@@ -720,8 +720,8 @@ impl ty::TyExpression {
             for duplicate in collect_duplicate_match_pattern_variables(&scrutinee) {
                 handler.emit_err(CompileError::MultipleDefinitionsOfMatchArmVariable {
                     match_value: value.span(),
-                    first_definition: duplicate.first_declaration.1,
-                    first_definition_is_struct_field: duplicate.first_declaration.0,
+                    first_definition: duplicate.first_definition.1,
+                    first_definition_is_struct_field: duplicate.first_definition.0,
                     duplicate: duplicate.duplicate.1,
                     duplicate_is_struct_field: duplicate.duplicate.0,
                 });

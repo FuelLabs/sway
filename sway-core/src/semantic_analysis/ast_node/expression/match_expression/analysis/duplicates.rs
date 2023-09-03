@@ -4,12 +4,12 @@ use sway_types::{Span, Ident, Spanned};
 
 use crate::language::ty::{TyScrutinee, self};
 
-/// True if the variable is a struct field, otherwise false. Span is the [Span] of the variable.
+/// First tuple filed is `true` if the variable represented with [Span] is a struct field, otherwise `false`.
 pub(crate) type MatchVariable = (bool, Span);
 
 pub(crate) struct MatchVariableDuplicate {
     pub duplicate: MatchVariable,
-    pub first_declaration: MatchVariable,
+    pub first_definition: MatchVariable,
 }
 
 
@@ -72,7 +72,8 @@ pub(crate) struct MatchVariableDuplicate {
 /// For a match arm represented by the `scrutinee` it creates a tree whose nodes are variable names.
 /// Variables are added by moving through the match arm left to right.
 /// Branching in the tree occurs in the case of alternatives.
-/// The algorithm traverses the branches dept-first and collects all the duplicates for every branch.
+/// The algorithm traverses the branches dept-first and collects all the unique duplicates for every branch.
+/// Unique means that a duplicate can occur only in one branch.
 /// At the end it merges the result of all the branches in a single result.
 /// 
 /// The algorithm assumes that the `matcher` already checked the match arm.
@@ -148,23 +149,19 @@ pub(crate) fn collect_duplicate_match_pattern_variables(scrutinee: &TyScrutinee)
 
     branches.push(left_most_branch);
 
-    for branch in branches.iter_mut() {
-        branch.retain(|_, (_, duplicates)| !duplicates.is_empty());
-    }
-
-    branches.retain(|branch| !branch.is_empty());
-
     let mut result = vec![];
     for mut branch in branches {
         for (ident, (is_struct_field, duplicates)) in branch.iter_mut() {
             for duplicate in duplicates {
                 result.push(MatchVariableDuplicate {
                     duplicate: (duplicate.0, duplicate.1.clone()),
-                    first_declaration: (*is_struct_field, ident.span()),
+                    first_definition: (*is_struct_field, ident.span()),
                 });
             }
         }
     }
+
+    result.sort_by(|a, b| a.duplicate.1.cmp(&b.duplicate.1));
 
     return result;
 
