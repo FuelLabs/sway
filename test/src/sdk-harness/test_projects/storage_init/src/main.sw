@@ -46,12 +46,6 @@ impl core::ops::Eq for E {
     }
 }
 
-fn sha256_str<T>(s: T) -> b256 {
-    let mut hasher = Hasher::new();
-    hasher.write_str(s);
-    hasher.sha256()
-}
-
 storage {
     x: u64 = 64,
     y: b256 = 0x0101010101010101010101010101010101010101010101010101010101010101,
@@ -83,7 +77,7 @@ storage {
         int32: 6,
     }),
     e2: E = E::A(777),
-    string: str[40] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    string: str[40] = __to_str_array("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),
 }
 
 abi ExperimentalStorageInitTest {
@@ -124,7 +118,7 @@ impl ExperimentalStorageInitTest for Contract {
             int32: 6,
         });
         let e2: E = E::A(777);
-        let string: str[40] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+        let string: str[40] = __to_str_array("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
 
         assert(storage.x.read() == x);
         assert(storage.y.read() == y);

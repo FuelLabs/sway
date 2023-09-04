@@ -46,7 +46,7 @@ abi MyContract {
 
 impl Hash for str[3] {
     fn hash(self, ref mut state: Hasher) {
-        state.write_str(self);
+        state.write_str_array(self);
     }
 }
 
@@ -64,7 +64,7 @@ impl MyContract for Contract {
     fn struct_delegating_generic(arg1: PassTheGenericOn<str[3]>) -> PassTheGenericOn<str[3]> {
         let expected = PassTheGenericOn {
             one: SimpleGeneric {
-                single_generic_param: "abc",
+                single_generic_param: __to_str_array("abc"),
             },
         };
 

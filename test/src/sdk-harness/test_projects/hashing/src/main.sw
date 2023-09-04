@@ -4,7 +4,7 @@ use std::hash::*;
 
 impl Hash for str[4] {
     fn hash(self, ref mut state: Hasher) {
-        state.write_str(self);
+        state.write_str_array(self);
     }
 }
 
@@ -72,7 +72,7 @@ enum Location {
 }
 
 struct Person {
-    name: str[4],
+    name: str,
     age: u8,
     birth_place: Location,
     stats: Stats,
