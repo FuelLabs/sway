@@ -916,7 +916,13 @@ fn const_eval_intrinsic(
             }
         }
         Intrinsic::ToStrArray => {
-            todo!()
+            assert!(args.len() == 1);
+            match &args[0].value {
+                ConstantValue::String(s) => {
+                    Ok(Some(Constant::new_string(lookup.context, s.to_vec())))
+                }
+                _ => todo!(),
+            }
         }
         Intrinsic::Eq => {
             assert!(args.len() == 2);

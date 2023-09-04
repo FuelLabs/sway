@@ -22,12 +22,6 @@ impl core::ops::Eq for MyEnum {
     }
 }
 
-fn sha256_str4(value: str[4]) -> b256 {
-    let mut hasher = Hasher::new();
-    hasher.write_str(value);
-    hasher.sha256()
-}
-
 configurable {
     C0: bool = true,
     C1: u64 = 42,
@@ -35,7 +29,7 @@ configurable {
     C3: MyStruct = MyStruct { x: 42, y: true },
     C4: MyEnum = MyEnum::A(42),
     C5: MyEnum = MyEnum::B(true),
-    C6: str[4] = "fuel",
+    C6: str[4] = __to_str_array("fuel"),
     C7: [u64; 4] = [1, 2, 3, 4],
     C8: u64 = 0, // Unused - should not show up in the JSON file
     C9: u64 =  10 + 9 - 8 * 7 / 6 << 5 >> 4 ^ 3 | 2 & 1,
@@ -50,7 +44,7 @@ fn test_first_use() {
     assert(C3.y == true);
     assert(C4 == MyEnum::A(42));
     assert(C5 == MyEnum::B(true));
-    assert(sha256_str4(C6) == sha256_str4("fuel"));
+    assert(sha256_str(C6) == sha256("fuel"));
     assert(C7[0] == 1);
     assert(C7[1] == 2);
     assert(C7[2] == 3);
@@ -67,7 +61,7 @@ fn test_second_use() {
     assert(C3.y == true);
     assert(C4 == MyEnum::A(42));
     assert(C5 == MyEnum::B(true));
-    assert(sha256_str4(C6) == sha256_str4("fuel"));
+    assert(sha256_str(C6) == sha256("fuel"));
     assert(C7[0] == 1);
     assert(C7[1] == 2);
     assert(C7[2] == 3);
@@ -84,7 +78,7 @@ fn test_inline_use() {
     assert(C3.y == true);
     assert(C4 == MyEnum::A(42));
     assert(C5 == MyEnum::B(true));
-    assert(sha256_str4(C6) == sha256_str4("fuel"));
+    assert(sha256_str(C6) == sha256("fuel"));
     assert(C7[0] == 1);
     assert(C7[1] == 2);
     assert(C7[2] == 3);

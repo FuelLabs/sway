@@ -36,10 +36,10 @@ impl Hasher {
 
 impl Hasher {
     /// Writes a single `str` into this hasher.
-    pub fn write_str<S>(ref mut self, s: S) {
-        __check_str_type::<S>();
-        let str_size = __size_of_str::<S>();
-        let str_ptr = __addr_of(s);
+    pub fn write_str(ref mut self, s: str) {
+        let str_size = s.len();
+        let str_ptr = s.as_ptr();
+
         let mut bytes = Bytes::with_capacity(str_size);
         bytes.len = str_size;
 
@@ -134,6 +134,12 @@ impl Hash for bool {
 impl Hash for Bytes {
     fn hash(self, ref mut state: Hasher) {
         state.write(self);
+    }
+}
+
+impl Hash for str {
+    fn hash(self, ref mut state: Hasher) {
+        state.write_str(self);
     }
 }
 
@@ -301,6 +307,22 @@ impl<T> Hash for [T; 10] where T: Hash {
 pub fn sha256<T>(s: T) -> b256 where T: Hash {
     let mut hasher = Hasher::new();
     s.hash(hasher);
+    hasher.sha256()
+}
+
+#![inline(never)]
+pub fn sha256_str<S>(s: S) -> b256 {
+     __check_str_type::<S>();
+    let str_size = __size_of_str::<S>();
+    let str_ptr = __addr_of(s);
+    
+    let mut bytes = Bytes::with_capacity(str_size);
+    bytes.len = str_size;
+
+    str_ptr.copy_bytes_to(bytes.buf.ptr(), str_size);
+    
+    let mut hasher = Hasher::new();
+    hasher.write(bytes);
     hasher.sha256()
 }
 

@@ -2,12 +2,6 @@ script;
 
 use std::{alloc::alloc, hash::*, intrinsics::{size_of, size_of_val}};
 
-fn sha256_str<T>(s: T) -> b256 {
-    let mut hasher = Hasher::new();
-    hasher.write_str(s);
-    hasher.sha256()
-}
-
 struct TestStruct {
     boo: bool,
     uwu: u64,
@@ -79,8 +73,8 @@ fn main() -> bool {
     // Make sure that reading a memory location into a variable and then
     // overriding the same memory location does not change the variable read.
     let buf_ptr = alloc::<u64>(1);
-    let small_string_1 = "fuel";
-    let small_string_2 = "labs";
+    let small_string_1 = __to_str_array("fuel");
+    let small_string_2 = __to_str_array("labs");
     buf_ptr.write(small_string_1);
     let read_small_string_1 = buf_ptr.read::<str[4]>();
     buf_ptr.write(small_string_2);
@@ -89,8 +83,8 @@ fn main() -> bool {
     assert(sha256_str(small_string_2) == sha256_str(read_small_string_2));
 
     let buf_ptr = alloc::<u64>(2);
-    let large_string_1 = "fuelfuelfuel";
-    let large_string_2 = "labslabslabs";
+    let large_string_1 = __to_str_array("fuelfuelfuel");
+    let large_string_2 = __to_str_array("labslabslabs");
     buf_ptr.write(large_string_1);
     let read_large_string_1 = buf_ptr.read::<str[12]>();
     buf_ptr.write(large_string_2);

@@ -7,7 +7,11 @@
         "typeArguments": null
       },
       "name": "C0",
+<<<<<<< HEAD
       "offset": 7372
+=======
+      "offset": 8724
+>>>>>>> 4767c0352 (slice to array intrinsics)
     },
     {
       "configurableType": {
@@ -16,7 +20,11 @@
         "typeArguments": null
       },
       "name": "C1",
+<<<<<<< HEAD
       "offset": 7380
+=======
+      "offset": 8732
+>>>>>>> 4767c0352 (slice to array intrinsics)
     },
     {
       "configurableType": {
@@ -25,7 +33,11 @@
         "typeArguments": null
       },
       "name": "C2",
+<<<<<<< HEAD
       "offset": 7396
+=======
+      "offset": 8748
+>>>>>>> 4767c0352 (slice to array intrinsics)
     },
     {
       "configurableType": {
@@ -34,7 +46,11 @@
         "typeArguments": []
       },
       "name": "C3",
+<<<<<<< HEAD
       "offset": 7428
+=======
+      "offset": 8780
+>>>>>>> 4767c0352 (slice to array intrinsics)
     },
     {
       "configurableType": {
@@ -43,7 +59,11 @@
         "typeArguments": []
       },
       "name": "C4",
+<<<<<<< HEAD
       "offset": 7444
+=======
+      "offset": 8796
+>>>>>>> 4767c0352 (slice to array intrinsics)
     },
     {
       "configurableType": {
@@ -52,7 +72,11 @@
         "typeArguments": []
       },
       "name": "C5",
+<<<<<<< HEAD
       "offset": 7460
+=======
+      "offset": 8812
+>>>>>>> 4767c0352 (slice to array intrinsics)
     },
     {
       "configurableType": {
@@ -61,7 +85,11 @@
         "typeArguments": null
       },
       "name": "C6",
+<<<<<<< HEAD
       "offset": 7476
+=======
+      "offset": 8828
+>>>>>>> 4767c0352 (slice to array intrinsics)
     },
     {
       "configurableType": {
@@ -70,7 +98,7 @@
         "typeArguments": null
       },
       "name": "C7",
-      "offset": 7492
+      "offset": 8844
     },
     {
       "configurableType": {
@@ -79,7 +107,11 @@
         "typeArguments": null
       },
       "name": "C9",
+<<<<<<< HEAD
       "offset": 7540
+=======
+      "offset": 8892
+>>>>>>> 4767c0352 (slice to array intrinsics)
     }
   ],
   "functions": [
