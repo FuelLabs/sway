@@ -23,7 +23,7 @@ use sway_types::{span::Span, Spanned};
 impl ty::TyAstNode {
     pub(crate) fn type_check(
         handler: &Handler,
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         node: AstNode,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
@@ -46,12 +46,8 @@ impl ty::TyAstNode {
                         ImportType::Star => {
                             // try a standard starimport first
                             let star_import_handler = Handler::default();
-                            let import = ctx.namespace.star_import(
-                                &star_import_handler,
-                                &path,
-                                engines,
-                                a.is_absolute,
-                            );
+                            let import =
+                                ctx.star_import(&star_import_handler, &path, a.is_absolute);
                             if import.is_ok() {
                                 handler.append(star_import_handler);
                                 import
@@ -59,10 +55,9 @@ impl ty::TyAstNode {
                                 // if it doesn't work it could be an enum star import
                                 if let Some((enum_name, path)) = path.split_last() {
                                     let variant_import_handler = Handler::default();
-                                    let variant_import = ctx.namespace.variant_star_import(
+                                    let variant_import = ctx.variant_star_import(
                                         &variant_import_handler,
                                         path,
-                                        engines,
                                         enum_name,
                                         a.is_absolute,
                                     );
@@ -79,19 +74,14 @@ impl ty::TyAstNode {
                                 }
                             }
                         }
-                        ImportType::SelfImport(_) => ctx.namespace.self_import(
-                            handler,
-                            engines,
-                            &path,
-                            a.alias.clone(),
-                            a.is_absolute,
-                        ),
+                        ImportType::SelfImport(_) => {
+                            ctx.self_import(handler, &path, a.alias.clone(), a.is_absolute)
+                        }
                         ImportType::Item(ref s) => {
                             // try a standard item import first
                             let item_import_handler = Handler::default();
-                            let import = ctx.namespace.item_import(
+                            let import = ctx.item_import(
                                 &item_import_handler,
-                                engines,
                                 &path,
                                 s,
                                 a.alias.clone(),
@@ -105,9 +95,8 @@ impl ty::TyAstNode {
                                 // if it doesn't work it could be an enum variant import
                                 if let Some((enum_name, path)) = path.split_last() {
                                     let variant_import_handler = Handler::default();
-                                    let variant_import = ctx.namespace.variant_import(
+                                    let variant_import = ctx.variant_import(
                                         &variant_import_handler,
-                                        engines,
                                         path,
                                         enum_name,
                                         s,

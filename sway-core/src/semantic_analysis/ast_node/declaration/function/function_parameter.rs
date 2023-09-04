@@ -31,6 +31,7 @@ impl ty::TyFunctionParameter {
             .resolve_type_with_self(
                 handler,
                 type_argument.type_id,
+                ctx.self_type(),
                 &type_argument.span,
                 EnforceTypeArguments::Yes,
                 None,
@@ -85,6 +86,7 @@ impl ty::TyFunctionParameter {
             .resolve_type_with_self(
                 handler,
                 type_argument.type_id,
+                ctx.self_type(),
                 &type_argument.span,
                 EnforceTypeArguments::Yes,
                 None,
