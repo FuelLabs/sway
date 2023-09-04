@@ -119,10 +119,10 @@ impl TokenMap {
                     Some(TypedAstToken::TypedDeclaration(decl)) => {
                         TokenIdent::new(&Ident::new(decl.span()), source_engine)
                     }
-                    _ => ident,
+                    _ => ident.clone(),
                 };
                 if position >= token_ident.range.start && position <= token_ident.range.end {
-                    return self.try_get(&token_ident).try_unwrap().map(|item| {
+                    return self.try_get(&ident).try_unwrap().map(|item| {
                         let (ident, token) = item.pair();
                         (ident.clone(), token.clone())
                     });
