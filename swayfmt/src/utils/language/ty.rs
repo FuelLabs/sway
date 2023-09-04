@@ -26,6 +26,10 @@ impl Format for Ty {
             }
             Self::Infer { underscore_token } => format_infer(formatted_code, underscore_token),
             Self::Path(path_ty) => path_ty.format(formatted_code, formatter),
+            Self::StringSlice(_) => {
+                write!(formatted_code, "str")?;
+                Ok(())
+            }
             Self::StringArray { str_token, length } => {
                 format_str(formatted_code, str_token.clone(), length.clone())
             }
@@ -151,6 +155,7 @@ impl LeafSpans for Ty {
             Ty::Path(path) => path.leaf_spans(),
             Ty::Tuple(tuple) => tuple.leaf_spans(),
             Ty::Array(array) => array.leaf_spans(),
+            Ty::StringSlice(str_token) => vec![ByteSpan::from(str_token.span())],
             Ty::StringArray { str_token, length } => {
                 let mut collected_spans = vec![ByteSpan::from(str_token.span())];
                 collected_spans.append(&mut length.leaf_spans());
