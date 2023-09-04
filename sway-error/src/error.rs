@@ -1010,11 +1010,11 @@ impl ToDiagnostic for CompileError {
                     ),
                 ],
                 help: vec![
-                    format!("Variables used in match arm patterns must be unique within a pattern."),
+                    "Variables used in match arm patterns must be unique within a pattern.".to_string(),
                     match (*first_definition_is_struct_field, *duplicate_is_struct_field) {
                         (true, true) => format!("Consider declaring a variable with different name for either of the fields. E.g., `{0}: var_{0}`.", first_definition.as_str()),
                         (true, false) | (false, true) => format!("Consider declaring a variable with different name for the field (e.g., `{0}: var_{0}`), or renaming the variable \"{0}\".", first_definition.as_str()),
-                        (false, false) => format!("Consider renaming either of the variables."),
+                        (false, false) => "Consider renaming either of the variables.".to_string(),
                     },
                 ],
 

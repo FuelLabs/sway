@@ -717,7 +717,7 @@ impl ty::TyExpression {
         // These errors can be carried on. The desugared version will treat
         // the duplicates as shadowing, which is fine for the rest of compilation.
         for scrutinee in typed_scrutinees.iter() {
-            for duplicate in collect_duplicate_match_pattern_variables(&scrutinee) {
+            for duplicate in collect_duplicate_match_pattern_variables(scrutinee) {
                 handler.emit_err(CompileError::MultipleDefinitionsOfMatchArmVariable {
                     match_value: value.span(),
                     first_definition: duplicate.first_definition.1,
