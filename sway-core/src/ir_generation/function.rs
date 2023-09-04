@@ -1796,7 +1796,7 @@ impl<'eng> FnCompiler<'eng> {
 
         // parse constant string data into a string slice
         if let Some(TypeContent::StringSlice) =
-            dbg!(result.get_type(context).map(|t| t.get_content(context)))
+            result.get_type(context).map(|t| t.get_content(context))
         {
             todo!();
             // return self.compile_string_slice(context, span_md_idx, result, *len);

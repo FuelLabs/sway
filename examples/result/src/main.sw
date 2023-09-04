@@ -12,7 +12,7 @@ fn divide(numerator: u64, denominator: u64) -> Result<u64, MyContractError> {
     }
 }
 
-fn main() -> Result<u64, str[4]> {
+fn main() -> Result<u64, str> {
     let result = divide(20, 2);
     match result {
         Ok(value) => Ok(value),
