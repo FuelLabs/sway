@@ -17,7 +17,7 @@ pub struct TokenMap(DashMap<TokenIdent, Token>);
 impl TokenMap {
     /// Create a new token map.
     pub fn new() -> TokenMap {
-        TokenMap(DashMap::new())
+        TokenMap(DashMap::with_capacity(2048))
     }
 
     /// Create a custom iterator for the TokenMap.
