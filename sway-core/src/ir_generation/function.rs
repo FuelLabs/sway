@@ -678,6 +678,15 @@ impl<'eng> FnCompiler<'eng> {
                     }),
                 }
             }
+            Intrinsic::ToStrArray => match arguments[0].expression.extract_literal_value() {
+                Some(Literal::String(span)) => Ok(Constant::get_string(
+                    context,
+                    span.as_str().as_bytes().to_vec(),
+                )),
+                _ => {
+                    todo!()
+                }
+            },
             Intrinsic::Eq | Intrinsic::Gt | Intrinsic::Lt => {
                 let lhs = &arguments[0];
                 let rhs = &arguments[1];

@@ -46,6 +46,7 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::CheckStrType => {
                 type_check_check_str_type(handler, ctx, kind, arguments, type_arguments, span)
             }
+            Intrinsic::ToStrArray => type_check_to_str_array(handler, ctx, kind, arguments, span),
             Intrinsic::Eq | Intrinsic::Gt | Intrinsic::Lt => {
                 type_check_cmp(handler, ctx, kind, arguments, span)
             }
@@ -328,6 +329,56 @@ fn type_check_check_str_type(
     Ok((
         intrinsic_function,
         type_engine.insert(engines, TypeInfo::Tuple(vec![])),
+    ))
+}
+
+fn type_check_to_str_array(
+    handler: &Handler,
+    mut ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: Vec<Expression>,
+    span: Span,
+) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
+
+    if arguments.len() != 1 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 1,
+            span,
+        }));
+    }
+
+    let mut ctx = ctx
+        .by_ref()
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+
+    let arg = arguments[0].clone();
+    let arg = ty::TyExpression::type_check(handler, ctx.by_ref(), arg)?;
+
+    let new_type = match type_engine.get(arg.return_type) {
+        TypeInfo::StringSlice => {
+            let span = arg.span.clone();
+            TypeInfo::StringArray(Length::new(span.as_str().len() - 2, span))
+        }
+        _ => {
+            return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+                name: kind.to_string(),
+                expected: 1,
+                span,
+            }));
+        }
+    };
+
+    Ok((
+        ty::TyIntrinsicFunctionKind {
+            kind,
+            arguments: vec![arg],
+            type_arguments: vec![],
+            span,
+        },
+        type_engine.insert(engines, new_type),
     ))
 }
 

@@ -103,11 +103,6 @@ impl Type {
     }
 
     /// Get string type
-    pub fn new_string_slice(context: &mut Context) -> Type {
-        Self::get_or_create_unique_type(context, TypeContent::StringSlice)
-    }
-
-    /// Get string type
     pub fn new_string_array(context: &mut Context, len: u64) -> Type {
         Self::get_or_create_unique_type(context, TypeContent::StringArray(len))
     }

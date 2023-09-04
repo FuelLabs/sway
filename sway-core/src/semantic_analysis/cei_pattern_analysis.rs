@@ -604,8 +604,8 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
         StateLoadWord | StateLoadQuad => HashSet::from([Effect::StorageRead]),
         Smo => HashSet::from([Effect::OutputMessage]),
         Revert | IsReferenceType | IsStrType | SizeOfType | SizeOfVal | SizeOfStr
-        | CheckStrType | Eq | Gt | Lt | Gtf | AddrOf | Log | Add | Sub | Mul | Div | And | Or
-        | Xor | Mod | Rsh | Lsh | PtrAdd | PtrSub | Not => HashSet::new(),
+        | CheckStrType | ToStrArray | Eq | Gt | Lt | Gtf | AddrOf | Log | Add | Sub | Mul | Div
+        | And | Or | Xor | Mod | Rsh | Lsh | PtrAdd | PtrSub | Not => HashSet::new(),
     }
 }
 

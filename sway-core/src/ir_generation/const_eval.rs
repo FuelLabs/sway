@@ -915,6 +915,9 @@ fn const_eval_intrinsic(
                 )),
             }
         }
+        Intrinsic::ToStrArray => {
+            todo!()
+        }
         Intrinsic::Eq => {
             assert!(args.len() == 2);
             Ok(Some(Constant {
