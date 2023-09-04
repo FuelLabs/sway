@@ -5903,6 +5903,7 @@ dependencies = [
  "parking_lot 0.12.1",
  "proc-macro2",
  "quote",
+ "rayon",
  "ropey",
  "serde",
  "serde_json",
