@@ -375,6 +375,7 @@ impl ty::TyExpression {
             .resolve_type_with_self(
                 handler,
                 typed_expression.return_type,
+                ctx.self_type(),
                 &expr_span,
                 EnforceTypeArguments::No,
                 None,
@@ -816,6 +817,7 @@ impl ty::TyExpression {
             .resolve_type_with_self(
                 handler,
                 type_engine.insert(engines, asm.return_type.clone()),
+                ctx.self_type(),
                 &asm_span,
                 EnforceTypeArguments::No,
                 None,
@@ -1404,12 +1406,11 @@ impl ty::TyExpression {
             Err(_) => return None,
         };
 
-        let const_decl_ref = match ctx.namespace.find_constant_for_type(
+        let const_decl_ref = match ctx.find_constant_for_type(
             const_probe_handler,
             struct_type_id.unwrap(),
             &suffix,
             ctx.self_type(),
-            ctx.engines(),
         ) {
             Ok(Some(val)) => val,
             Ok(None) | Err(_) => return None,
@@ -1549,7 +1550,7 @@ impl ty::TyExpression {
         )?;
 
         // Insert the abi methods into the namespace.
-        ctx.namespace.insert_trait_implementation(
+        ctx.insert_trait_implementation(
             handler,
             abi_name.clone(),
             vec![],
@@ -1558,7 +1559,6 @@ impl ty::TyExpression {
             &span,
             Some(span.clone()),
             false,
-            engines,
         )?;
 
         let exp = ty::TyExpression {

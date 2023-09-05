@@ -201,6 +201,7 @@ fn type_check_size_of_type(
         .resolve_type_with_self(
             handler,
             initial_type_id,
+            ctx.self_type(),
             &targ.span,
             EnforceTypeArguments::Yes,
             None,
@@ -253,6 +254,7 @@ fn type_check_is_reference_type(
         .resolve_type_with_self(
             handler,
             initial_type_id,
+            ctx.self_type(),
             &targ.span,
             EnforceTypeArguments::Yes,
             None,
@@ -306,6 +308,7 @@ fn type_check_check_str_type(
         .resolve_type_with_self(
             handler,
             initial_type_id,
+            ctx.self_type(),
             &targ.span,
             EnforceTypeArguments::Yes,
             None,
@@ -447,6 +450,7 @@ fn type_check_gtf(
         .resolve_type_with_self(
             handler,
             initial_type_id,
+            ctx.self_type(),
             &targ.span,
             EnforceTypeArguments::Yes,
             None,
@@ -678,6 +682,7 @@ fn type_check_state_store_word(
             .resolve_type_with_self(
                 handler,
                 initial_type_id,
+                ctx.self_type(),
                 &targ.span,
                 EnforceTypeArguments::Yes,
                 None,
@@ -769,6 +774,7 @@ fn type_check_state_quad(
             .resolve_type_with_self(
                 handler,
                 initial_type_id,
+                ctx.self_type(),
                 &targ.span,
                 EnforceTypeArguments::Yes,
                 None,
@@ -1055,6 +1061,7 @@ fn type_check_ptr_ops(
         .resolve_type_with_self(
             handler,
             initial_type_id,
+            ctx.self_type(),
             &targ.span,
             EnforceTypeArguments::No,
             None,
@@ -1152,6 +1159,7 @@ fn type_check_smo(
             .resolve_type_with_self(
                 handler,
                 initial_type_id,
+                ctx.self_type(),
                 &targ.span,
                 EnforceTypeArguments::Yes,
                 None,
