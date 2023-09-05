@@ -119,6 +119,8 @@ impl TokenMap {
                     Some(TypedAstToken::TypedDeclaration(decl)) => {
                         TokenIdent::new(&Ident::new(decl.span()), source_engine)
                     }
+                    // Seems to be a clippy bug
+                    #[allow(clippy::redundant_clone)]
                     _ => ident.clone(),
                 };
                 if position >= token_ident.range.start && position <= token_ident.range.end {
