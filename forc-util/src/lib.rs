@@ -246,7 +246,10 @@ pub fn find_parent_manifest_dir<P: AsRef<Path>>(starter_path: P) -> Option<PathB
 
 /// Continually go up in the file tree until a Forc manifest file is found and given predicate
 /// returns true.
-pub fn find_parent_manifest_dir_with_check<F>(starter_path: &Path, f: F) -> Option<PathBuf>
+pub fn find_parent_manifest_dir_with_check<T: AsRef<Path>, F>(
+    starter_path: T,
+    f: F,
+) -> Option<PathBuf>
 where
     F: Fn(&Path) -> bool,
 {
