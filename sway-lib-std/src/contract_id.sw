@@ -77,7 +77,7 @@ impl Hash for ContractId {
 /// # Additional Information
 ///
 /// It is calculated by taking the sha256 hash of the originating ContractId and a SubId.
-/// ie. sha256((contract_id, sub_id)).
+/// i.e. sha256((contract_id, sub_id)).
 ///
 /// An exception is the Base Asset, which is just the ZERO_B256 AssetId.
 ///
