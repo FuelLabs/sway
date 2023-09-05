@@ -14,6 +14,7 @@ use crate::{
         ty::{self, TyImplItem, TyTraitInterfaceItem, TyTraitItem},
         *,
     },
+    namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::{AbiMode, ConstShadowingMode, TypeCheckContext},
     type_system::*,
 };
@@ -387,6 +388,7 @@ fn type_check_trait_implementation(
                 .collect::<Vec<_>>(),
             block_span,
             engines,
+            TryInsertingTraitImplOnFailure::Yes,
         )?;
 
     for (type_arg, type_param) in trait_type_arguments.iter().zip(trait_type_parameters) {
@@ -430,7 +432,7 @@ fn type_check_trait_implementation(
         let (this_supertrait_stub_method_refs, this_supertrait_impld_method_refs) =
             handle_supertraits(handler, ctx.by_ref(), trait_supertraits)?;
 
-        let _ = ctx.namespace.insert_trait_implementation(
+        let _ = ctx.insert_trait_implementation(
             &Handler::default(),
             trait_name.clone(),
             trait_type_arguments.to_vec(),
@@ -442,7 +444,6 @@ fn type_check_trait_implementation(
             &trait_name.span(),
             Some(trait_decl_span.clone()),
             false,
-            engines,
         );
 
         supertrait_interface_item_refs = this_supertrait_stub_method_refs;
@@ -541,7 +542,7 @@ fn type_check_trait_implementation(
         match item {
             TyImplItem::Fn(decl_ref) => {
                 let mut method = decl_engine.get_function(decl_ref);
-                method.replace_decls(&decl_mapping, handler, &ctx)?;
+                method.replace_decls(&decl_mapping, handler, &mut ctx)?;
                 method.subst(&type_mapping, engines);
                 method.replace_self_type(engines, ctx.self_type());
                 all_items_refs.push(TyImplItem::Fn(
@@ -552,7 +553,7 @@ fn type_check_trait_implementation(
             }
             TyImplItem::Constant(decl_ref) => {
                 let mut const_decl = decl_engine.get_constant(decl_ref);
-                const_decl.replace_decls(&decl_mapping, handler, &ctx)?;
+                const_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
                 const_decl.subst(&type_mapping, engines);
                 const_decl.replace_self_type(engines, ctx.self_type());
                 all_items_refs.push(TyImplItem::Constant(decl_engine.insert(const_decl)));

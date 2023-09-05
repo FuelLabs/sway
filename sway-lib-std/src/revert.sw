@@ -5,22 +5,21 @@ use ::logging::log;
 use ::error_signals::FAILED_REQUIRE_SIGNAL;
 
 /// Will either panic or revert with a given number depending on the context.
+///
+/// # Additional Information
+///
 /// If used in a predicate, it will panic.
 /// If used in a contract, it will revert.
 ///
-/// ### Arguments
+/// # Arguments
 ///
-/// * `code` - The code with which to revert the program.
+/// * `code`: [u64] - The code with which to revert the program.
 ///
-/// ### Reverts
+/// # Reverts
 ///
-/// Reverts when called in a contract.
+/// * Reverts unconditionally.
 ///
-/// ### Panics
-///
-/// Panics when called in a predicate.
-///
-/// ### Examples
+/// # Examples
 ///
 /// ```sway
 /// fn foo(should_revert: bool) {
@@ -36,16 +35,16 @@ pub fn revert(code: u64) {
 
 /// Checks if the given `condition` is `true` and if not, logs `value` and reverts.
 ///
-/// ### Arguments
+/// # Arguments
 ///
-/// * `condition` - The condition upon which to decide whether to revert or not.
-/// * `value` - The value which will be logged in case `condition` is `false`.
+/// * `condition`: [bool] - The condition upon which to decide whether to revert or not.
+/// * `value`: [T] - The value which will be logged in case `condition` is `false`.
 ///
-/// ### Reverts
+/// # Reverts
 ///
-/// Reverts when `condition` is `false`.
+/// * Reverts when `condition` is `false`.
 ///
-/// ### Examples
+/// # Examples
 ///
 /// ```sway
 /// fn foo(a: u64, b: u64) {

@@ -1,6 +1,7 @@
 use crate::{
     decl_engine::{DeclEngineInsert, DeclRefFunction, ReplaceDecls, UpdateConstantExpression},
     language::{parsed::*, ty, *},
+    namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::*,
     type_system::*,
 };
@@ -332,11 +333,11 @@ pub(crate) fn type_check_method_application(
     // constraint with new decl ids based on the new type.
     let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
         handler,
-        &ctx,
+        ctx.by_ref(),
         &method.type_parameters,
         &call_path.span(),
     )?;
-    method.replace_decls(&decl_mapping, handler, &ctx)?;
+    method.replace_decls(&decl_mapping, handler, &mut ctx)?;
     let return_type = method.return_type.type_id;
     let new_decl_ref = decl_engine
         .insert(method)
@@ -431,7 +432,7 @@ pub(crate) fn resolve_method_name(
                 .check_submodule(handler, &type_info_prefix)?;
 
             // find the method
-            let decl_ref = ctx.namespace.find_method_for_type(
+            let decl_ref = ctx.find_method_for_type(
                 handler,
                 type_id,
                 &type_info_prefix,
@@ -440,8 +441,7 @@ pub(crate) fn resolve_method_name(
                 ctx.type_annotation(),
                 &arguments,
                 None,
-                engines,
-                true,
+                TryInsertingTraitImplOnFailure::Yes,
             )?;
 
             (decl_ref, type_id)
@@ -470,7 +470,7 @@ pub(crate) fn resolve_method_name(
                 .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown));
 
             // find the method
-            let decl_ref = ctx.namespace.find_method_for_type(
+            let decl_ref = ctx.find_method_for_type(
                 handler,
                 type_id,
                 &module_path,
@@ -479,8 +479,7 @@ pub(crate) fn resolve_method_name(
                 ctx.type_annotation(),
                 &arguments,
                 None,
-                engines,
-                true,
+                TryInsertingTraitImplOnFailure::Yes,
             )?;
 
             (decl_ref, type_id)
@@ -496,7 +495,7 @@ pub(crate) fn resolve_method_name(
                 .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown));
 
             // find the method
-            let decl_ref = ctx.namespace.find_method_for_type(
+            let decl_ref = ctx.find_method_for_type(
                 handler,
                 type_id,
                 &module_path,
@@ -505,8 +504,7 @@ pub(crate) fn resolve_method_name(
                 ctx.type_annotation(),
                 &arguments,
                 None,
-                engines,
-                true,
+                TryInsertingTraitImplOnFailure::Yes,
             )?;
 
             (decl_ref, type_id)
@@ -521,7 +519,7 @@ pub(crate) fn resolve_method_name(
             let type_info_prefix = vec![];
 
             // find the method
-            let decl_ref = ctx.namespace.find_method_for_type(
+            let decl_ref = ctx.find_method_for_type(
                 handler,
                 type_id,
                 &type_info_prefix,
@@ -530,8 +528,7 @@ pub(crate) fn resolve_method_name(
                 ctx.type_annotation(),
                 &arguments,
                 Some(as_trait.clone()),
-                engines,
-                true,
+                TryInsertingTraitImplOnFailure::Yes,
             )?;
 
             (decl_ref, type_id)

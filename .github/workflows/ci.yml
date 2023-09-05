@@ -15,8 +15,8 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
-  RUST_VERSION: 1.71.0
-  NIGHTLY_RUST_VERSION: nightly-2023-04-01
+  RUST_VERSION: 1.72.0
+  NIGHTLY_RUST_VERSION: nightly-2023-08-27
 
 jobs:
   build-sway-lib-core:
@@ -58,7 +58,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Build Sway examples workspace
         run: cargo run --locked -p forc -- build --locked --path ./examples/Forc.toml
-  
+
   build-reference-examples:
     runs-on: ubuntu-latest
     steps:
@@ -82,6 +82,20 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Check Sway examples formatting
         run: cargo run --locked -p forc-fmt -- --check --path ./examples
+
+  forc-fmt-check-panic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Install forc-fmt
+        run: cargo install --locked --debug --path ./forc-plugins/forc-fmt
+      - name: Run the formatter against all sway projects and fail if any of them panic
+        run: scripts/formatter/forc-fmt-check-panic.sh
 
   build-mdbook:
     runs-on: ubuntu-latest
@@ -108,7 +122,7 @@ jobs:
       - name: Run mdbook build
         uses: peaceiris/actions-mdbook@v1
         with:
-          mdbook-version: "0.4.25"
+          mdbook-version: '0.4.25'
       - name: Emit book logs to tmp.txt, fail if build logs contain 'ERROR'
         run: |
           MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/book &> tmp.txt
@@ -190,10 +204,10 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
-      - name: "Build Workspace"
+      - name: 'Build Workspace'
         run: cargo build --locked --workspace --all-features --all-targets
         env:
-          RUSTFLAGS: "-D warnings"
+          RUSTFLAGS: '-D warnings'
 
   cargo-clippy:
     runs-on: ubuntu-latest
@@ -220,7 +234,7 @@ jobs:
         uses: baptiste0928/cargo-install@v1
         with:
           crate: cargo-toml-lint
-          version: "0.1"
+          version: '0.1'
       - name: Run Cargo.toml linter
         run: git ls-files | grep Cargo.toml$ | grep -v 'templates/sway-test-rs' | xargs --verbose -n 1 cargo-toml-lint
 
@@ -279,7 +293,7 @@ jobs:
 
   # TODO: Remove this upon merging std tests with the rest of the E2E tests.
   cargo-test-lib-std:
-    runs-on: buildjet-4vcpu-ubuntu-2204
+    runs-on: buildjet-8vcpu-ubuntu-2204
     steps:
       - uses: actions/checkout@v3
       - name: Install toolchain
@@ -295,7 +309,7 @@ jobs:
   forc-run-benchmarks:
     runs-on: ubuntu-latest
     permissions:
-        contents: write
+      contents: write
     steps:
       - uses: actions/checkout@v3
       - name: Install toolchain
@@ -378,7 +392,6 @@ jobs:
               ;;
           esac
 
-
   cargo-test-workspace:
     runs-on: ubuntu-latest
     steps:
@@ -430,10 +443,10 @@ jobs:
         with:
           status: ${{ job.status }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          notification_title: "{workflow} has {status_message}"
-          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>"
-          footer: ""
-          notify_when: "failure"
+          notification_title: '{workflow} has {status_message}'
+          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>'
+          footer: ''
+          notify_when: 'failure'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
@@ -481,10 +494,10 @@ jobs:
         with:
           status: ${{ job.status }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          notification_title: "{workflow} has {status_message}"
-          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>"
-          footer: ""
-          notify_when: "failure"
+          notification_title: '{workflow} has {status_message}'
+          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>'
+          footer: ''
+          notify_when: 'failure'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
@@ -530,10 +543,10 @@ jobs:
         with:
           status: ${{ job.status }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          notification_title: "{workflow} has {status_message}"
-          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>"
-          footer: ""
-          notify_when: "failure"
+          notification_title: '{workflow} has {status_message}'
+          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>'
+          footer: ''
+          notify_when: 'failure'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
@@ -606,10 +619,10 @@ jobs:
         with:
           status: ${{ job.status }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          notification_title: "{workflow} has {status_message}"
-          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>"
-          footer: ""
-          notify_when: "failure"
+          notification_title: '{workflow} has {status_message}'
+          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>'
+          footer: ''
+          notify_when: 'failure'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
@@ -661,10 +674,10 @@ jobs:
         with:
           status: ${{ job.status }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          notification_title: "{workflow} has {status_message}"
-          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>"
-          footer: ""
-          notify_when: "failure"
+          notification_title: '{workflow} has {status_message}'
+          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>'
+          footer: ''
+          notify_when: 'failure'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
@@ -709,13 +722,13 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
-          key: "${{ matrix.job.target }}"
+          key: '${{ matrix.job.target }}'
 
       - name: Use Cross
         uses: baptiste0928/cargo-install@v1
         with:
           crate: cross
-          cache-key: "${{ matrix.job.target }}"
+          cache-key: '${{ matrix.job.target }}'
 
       - name: Build forc binaries
         run: |

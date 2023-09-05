@@ -5,7 +5,7 @@ pub struct ItemAbi {
     pub abi_token: AbiToken,
     pub name: Ident,
     pub super_traits: Option<(ColonToken, Traits)>,
-    pub abi_items: Braces<Vec<(Annotated<ItemTraitItem>, SemicolonToken)>>,
+    pub abi_items: Braces<Vec<Annotated<ItemTraitItem>>>,
     pub abi_defs_opt: Option<Braces<Vec<Annotated<ItemFn>>>>,
 }
 

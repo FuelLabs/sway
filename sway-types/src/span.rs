@@ -11,59 +11,27 @@ lazy_static! {
     static ref DUMMY_SPAN: Span = Span::new(Arc::from(""), 0, 0, None).unwrap();
 }
 
-pub struct Position {
-    input: Arc<str>,
+pub struct Position<'a> {
+    input: &'a str,
     pos: usize,
 }
 
-impl Position {
-    pub fn new(input: Arc<str>, pos: usize) -> Option<Position> {
-        input.clone().get(pos..).map(|_| Position { input, pos })
+impl<'a> Position<'a> {
+    pub fn new(input: &'a str, pos: usize) -> Option<Position<'a>> {
+        input.get(pos..).map(|_| Position { input, pos })
     }
+
     #[inline]
     pub fn line_col(&self) -> (usize, usize) {
         if self.pos > self.input.len() {
             panic!("position out of bounds");
         }
 
-        let mut pos = self.pos;
-        // Position's pos is always a UTF-8 border.
-        let slice = &self.input[..pos];
-        let mut chars = slice.chars().peekable();
-
-        let mut line_col = (1, 1);
-
-        while pos != 0 {
-            match chars.next() {
-                Some('\r') => {
-                    if let Some(&'\n') = chars.peek() {
-                        chars.next();
-
-                        if pos == 1 {
-                            pos -= 1;
-                        } else {
-                            pos -= 2;
-                        }
-
-                        line_col = (line_col.0 + 1, 1);
-                    } else {
-                        pos -= 1;
-                        line_col = (line_col.0, line_col.1 + 1);
-                    }
-                }
-                Some('\n') => {
-                    pos -= 1;
-                    line_col = (line_col.0 + 1, 1);
-                }
-                Some(c) => {
-                    pos -= c.len_utf8();
-                    line_col = (line_col.0, line_col.1 + 1);
-                }
-                None => unreachable!(),
-            }
-        }
-
-        line_col
+        let slice = &self.input[..self.pos];
+        let lines = slice.split('\n').collect::<Vec<_>>();
+        let line_count = lines.len();
+        let last_line_len = lines.last().unwrap_or(&"").chars().count() + 1;
+        (line_count, last_line_len)
     }
 }
 
@@ -154,11 +122,11 @@ impl Span {
     }
 
     pub fn start_pos(&self) -> Position {
-        Position::new(self.src.clone(), self.start).unwrap()
+        Position::new(&self.src, self.start).unwrap()
     }
 
     pub fn end_pos(&self) -> Position {
-        Position::new(self.src.clone(), self.end).unwrap()
+        Position::new(&self.src, self.end).unwrap()
     }
 
     pub fn split(&self) -> (Position, Position) {

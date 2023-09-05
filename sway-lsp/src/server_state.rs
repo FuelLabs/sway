@@ -1,6 +1,7 @@
 //! The context or environment in which the language server functions.
 
 use crate::{
+    capabilities::diagnostic::get_diagnostics,
     config::{Config, Warnings},
     core::session::{self, Session},
     error::{DirectoryError, DocumentError, LanguageServerError},
@@ -16,26 +17,32 @@ use tower_lsp::{jsonrpc, Client};
 
 /// `ServerState` is the primary mutable state of the language server
 pub struct ServerState {
-    pub(crate) client: Client,
+    pub(crate) client: Option<Client>,
     pub(crate) config: Arc<RwLock<Config>>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
     pub(crate) sessions: Arc<Sessions>,
 }
 
+impl Default for ServerState {
+    fn default() -> Self {
+        ServerState {
+            client: None,
+            config: Arc::new(RwLock::new(Default::default())),
+            keyword_docs: Arc::new(KeywordDocs::new()),
+            sessions: Arc::new(Sessions(DashMap::new())),
+        }
+    }
+}
+
 impl ServerState {
     pub fn new(client: Client) -> ServerState {
-        let sessions = Arc::new(Sessions(DashMap::new()));
-        let config = Arc::new(RwLock::new(Default::default()));
-        let keyword_docs = Arc::new(KeywordDocs::new());
         ServerState {
-            client,
-            config,
-            keyword_docs,
-            sessions,
+            client: Some(client),
+            ..Default::default()
         }
     }
 
-    pub(crate) fn shutdown_server(&self) -> jsonrpc::Result<()> {
+    pub fn shutdown_server(&self) -> jsonrpc::Result<()> {
         tracing::info!("Shutting Down the Sway Language Server");
         let _ = self.sessions.iter().map(|item| {
             let session = item.value();
@@ -47,8 +54,7 @@ impl ServerState {
     pub(crate) fn diagnostics(&self, uri: &Url, session: Arc<Session>) -> Vec<Diagnostic> {
         let mut diagnostics_to_publish = vec![];
         let config = &self.config.read();
-        let engines = session.engines.read();
-        let tokens = session.token_map().tokens_for_file(engines.se(), uri);
+        let tokens = session.token_map().tokens_for_file(uri);
         match config.debug.show_collected_tokens_as_warnings {
             // If collected_tokens_as_warnings is Parsed or Typed,
             // take over the normal error and warning display behavior
@@ -61,12 +67,14 @@ impl ServerState {
                 diagnostics_to_publish = debug::generate_warnings_for_typed_tokens(tokens)
             }
             Warnings::Default => {
-                let diagnostics = session.wait_for_parsing();
-                if config.diagnostic.show_warnings {
-                    diagnostics_to_publish.extend(diagnostics.warnings);
-                }
-                if config.diagnostic.show_errors {
-                    diagnostics_to_publish.extend(diagnostics.errors);
+                let diagnostics_map = session.wait_for_parsing();
+                if let Some(diagnostics) = diagnostics_map.get(&PathBuf::from(uri.path())) {
+                    if config.diagnostic.show_warnings {
+                        diagnostics_to_publish.extend(diagnostics.warnings.clone());
+                    }
+                    if config.diagnostic.show_errors {
+                        diagnostics_to_publish.extend(diagnostics.errors.clone());
+                    }
                 }
             }
         }
@@ -78,13 +86,15 @@ impl ServerState {
             Ok(_) => {
                 // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
                 // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
-                self.client
-                    .publish_diagnostics(
-                        workspace_uri.clone(),
-                        self.diagnostics(&uri, session),
-                        None,
-                    )
-                    .await;
+                if let Some(client) = self.client.as_ref() {
+                    client
+                        .publish_diagnostics(
+                            workspace_uri.clone(),
+                            self.diagnostics(&uri, session),
+                            None,
+                        )
+                        .await;
+                }
             }
             Err(err) => {
                 if matches!(err, LanguageServerError::FailedToParse) {
@@ -109,8 +119,9 @@ async fn run_blocking_parse_project(
         // Lock the diagnostics result to prevent multiple threads from parsing the project at the same time.
         let mut diagnostics = session.diagnostics.write();
         let parse_result = session::parse_project(&uri)?;
-        *diagnostics = parse_result.diagnostics.clone();
+        let (errors, warnings) = parse_result.diagnostics.clone();
         session.write_parse_result(parse_result);
+        *diagnostics = get_diagnostics(&warnings, &errors, session.engines.read().se());
         Ok(())
     })
     .await

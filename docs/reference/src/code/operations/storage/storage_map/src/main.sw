@@ -1,12 +1,14 @@
 contract;
 
+use std::hash::*;
+
 // ANCHOR: initialization
 
 storage {
     // k = Identity, v = u64
-    balance: StorageMap<Identity, u64> = StorageMap {},
+    balance: StorageMap<Identity, u64> = StorageMap::<Identity, u64> {},
     // k = (Identity, u64), v = bool
-    user: StorageMap<(Identity, u64), bool> = StorageMap {},
+    user: StorageMap<(Identity, u64), bool> = StorageMap::<(Identity, u64), bool> {},
 }
 // ANCHOR_END: initialization
 // ANCHOR: reading_from_storage

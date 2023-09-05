@@ -47,7 +47,7 @@ impl ReplaceDecls for TyCodeBlock {
         &mut self,
         decl_mapping: &DeclMapping,
         handler: &Handler,
-        ctx: &TypeCheckContext,
+        ctx: &mut TypeCheckContext,
     ) -> Result<(), ErrorEmitted> {
         handler.scope(|handler| {
             for x in self.contents.iter_mut() {

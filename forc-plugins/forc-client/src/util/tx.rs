@@ -2,6 +2,7 @@ use std::{io::Write, str::FromStr};
 
 use anyhow::{Error, Result};
 use async_trait::async_trait;
+use forc_tracing::println_warning;
 use fuel_core_client::client::FuelClient;
 use fuel_crypto::{Message, PublicKey, SecretKey, Signature};
 use fuel_tx::{
@@ -16,7 +17,7 @@ use fuels_core::types::{
 };
 
 use forc_wallet::{
-    account::derive_secret_key,
+    account::{derive_secret_key, new_at_index_cli},
     balance::{
         collect_accounts_with_verification, print_account_balances, AccountBalances,
         AccountVerification, AccountsMap,
@@ -24,6 +25,8 @@ use forc_wallet::{
     new::new_wallet_cli,
     utils::default_wallet_path,
 };
+
+use crate::constants::BETA_4_FAUCET_URL;
 
 /// The maximum time to wait for a transaction to be included in a block by the node
 pub const TX_SUBMIT_TIMEOUT_MS: u64 = 30_000u64;
@@ -181,7 +184,10 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                     let accepted = ask_user_yes_no_question(&question)?;
                     if accepted {
                         new_wallet_cli(&wallet_path)?;
-                        println!("Wallet created successfully.")
+                        println!("Wallet created successfully.");
+                        // Derive first account for the fresh wallet we created.
+                        new_at_index_cli(&wallet_path, 0)?;
+                        println!("Account derived successfully.");
                     } else {
                         anyhow::bail!("Refused to create a new wallet. If you don't want to use forc-wallet, you can sign this transaction manually with --manual-signing flag.")
                     }
@@ -200,11 +206,14 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                     .flat_map(|account| account.values())
                     .sum::<u64>();
                 if total_balance == 0 {
-                    // TODO: Point to latest test-net faucet with account info added to the
-                    // link as a parameter.
-                    anyhow::bail!("Your wallet does not have any funds to pay for the deployment transaction.\
-                                      \nIf you are deploying to a testnet consider using the faucet.\
-                                      \nIf you are deploying to a local node, consider providing a chainConfig which funds your account.")
+                    let first_account = accounts
+                        .get(&0)
+                        .ok_or_else(|| anyhow::anyhow!("No account derived for this wallet"))?;
+                    let faucet_link = format!("{}/?address={first_account}", BETA_4_FAUCET_URL);
+                    anyhow::bail!("Your wallet does not have any funds to pay for the transaction.\
+                                      \n\nIf you are interacting with a testnet consider using the faucet.\
+                                      \n-> beta-4 network faucet: {faucet_link}\
+                                      \nIf you are interacting with a local node, consider providing a chainConfig which funds your account.")
                 }
                 print_account_balances(&accounts, &account_balances);
 
@@ -241,9 +250,7 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                 Some(secret_key)
             }
             (WalletSelectionMode::ForcWallet, Some(key), _) => {
-                tracing::warn!(
-                        "Signing key is provided while requesting to sign with forc-wallet or with default signer. Using signing key"
-                    );
+                println_warning("Signing key is provided while requesting to sign with forc-wallet or with default signer. Using signing key");
                 Some(key)
             }
             (WalletSelectionMode::Manual, None, false) => None,
@@ -255,9 +262,7 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                 Some(secret_key)
             }
             (WalletSelectionMode::Manual, Some(key), true) => {
-                tracing::warn!(
-                        "Signing key is provided while requesting to sign with a default signer. Using signing key"
-                    );
+                println_warning("Signing key is provided while requesting to sign with a default signer. Using signing key");
                 Some(key)
             }
         };

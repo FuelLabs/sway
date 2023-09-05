@@ -1,4 +1,7 @@
+use std::ops::{Not, Shl, Shr};
+
 use num_bigint::{BigUint, ParseBigIntError, TryFromBigIntError};
+use num_traits::Zero;
 use thiserror::Error;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
@@ -16,6 +19,33 @@ impl U256 {
         bytes.append(&mut v);
         assert!(bytes.len() == 32);
         bytes.try_into().expect("unexpected vector size")
+    }
+
+    pub fn checked_add(&self, other: &U256) -> Option<U256> {
+        let r = &self.0 + &other.0;
+        (r.bits() <= 256).then_some(Self(r))
+    }
+
+    pub fn checked_sub(&self, other: &U256) -> Option<U256> {
+        (self.0 >= other.0).then(|| Self(&self.0 - &other.0))
+    }
+
+    pub fn checked_mul(&self, other: &U256) -> Option<U256> {
+        let r = &self.0 * &other.0;
+        (r.bits() <= 256).then_some(Self(r))
+    }
+
+    pub fn checked_div(&self, other: &U256) -> Option<U256> {
+        other.0.is_zero().not().then(|| Self(&self.0 / &other.0))
+    }
+
+    pub fn shr(&self, other: &u64) -> U256 {
+        U256((&self.0).shr(other))
+    }
+
+    pub fn checked_shl(&self, other: &u64) -> Option<U256> {
+        let r = (&self.0).shl(other);
+        (r.bits() <= 256).then_some(Self(r))
     }
 }
 
@@ -59,5 +89,49 @@ impl std::str::FromStr for U256 {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let v = BigUint::from_str(s).map_err(Error::ParseBigIntError)?;
         Ok(Self(v))
+    }
+}
+
+impl<'a> std::ops::BitAnd<&'a U256> for &'a U256 {
+    type Output = U256;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        U256((&self.0).bitand(&rhs.0))
+    }
+}
+
+impl<'a> std::ops::BitOr<&'a U256> for &'a U256 {
+    type Output = U256;
+
+    fn bitor(self, rhs: Self) -> Self::Output {
+        U256((&self.0).bitor(&rhs.0))
+    }
+}
+
+impl<'a> std::ops::BitXor<&'a U256> for &'a U256 {
+    type Output = U256;
+
+    fn bitxor(self, rhs: Self) -> Self::Output {
+        U256((&self.0).bitxor(&rhs.0))
+    }
+}
+
+impl<'a> std::ops::Rem<&'a U256> for &'a U256 {
+    type Output = U256;
+
+    fn rem(self, rhs: Self) -> Self::Output {
+        U256((&self.0).rem(&rhs.0))
+    }
+}
+
+impl<'a> std::ops::Not for &'a U256 {
+    type Output = U256;
+
+    fn not(self) -> Self::Output {
+        let mut bytes = self.to_be_bytes();
+        for b in bytes.iter_mut() {
+            *b = !*b;
+        }
+        U256(BigUint::from_bytes_be(&bytes))
     }
 }

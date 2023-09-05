@@ -36,6 +36,7 @@ pub struct TyFunctionDecl {
     pub is_contract_call: bool,
     pub purity: Purity,
     pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
+    pub is_trait_method_dummy: bool,
 }
 
 impl Named for TyFunctionDecl {
@@ -85,6 +86,7 @@ impl HashWithEngines for TyFunctionDecl {
             attributes: _,
             implementing_type: _,
             where_clause: _,
+            is_trait_method_dummy: _,
         } = self;
         name.hash(state);
         body.hash(state, engines);
@@ -128,7 +130,7 @@ impl ReplaceDecls for TyFunctionDecl {
         &mut self,
         decl_mapping: &DeclMapping,
         handler: &Handler,
-        ctx: &TypeCheckContext,
+        ctx: &mut TypeCheckContext,
     ) -> Result<(), ErrorEmitted> {
         self.body.replace_decls(decl_mapping, handler, ctx)
     }
@@ -245,6 +247,7 @@ impl TyFunctionDecl {
             return_type,
             type_parameters: Default::default(),
             where_clause,
+            is_trait_method_dummy: false,
         }
     }
 

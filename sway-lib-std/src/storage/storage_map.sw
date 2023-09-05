@@ -1,21 +1,26 @@
 library;
 
-use ::hash::sha256;
+use ::hash::*;
 use ::storage::storage_api::*;
 use ::storage::storage_key::*;
 
 /// A persistent key-value pair mapping struct.
-pub struct StorageMap<K, V> {}
+pub struct StorageMap<K, V> where K: Hash {}
 
-impl<K, V> StorageKey<StorageMap<K, V>> {
+impl<K, V> StorageKey<StorageMap<K, V>> where K: Hash {
     /// Inserts a key-value pair into the map.
     ///
-    /// ### Arguments
+    /// # Arguments
     ///
-    /// * `key` - The key to which the value is paired.
-    /// * `value` - The value to be stored.
+    /// * `key`: [K] - The key to which the value is paired.
+    /// * `value`: [V] - The value to be stored.
     ///
-    /// ### Examples
+    /// # Number of Storage Accesses
+    ///
+    /// * Reads: `1`
+    /// * Writes: `1`
+    ///
+    /// # Examples
     ///
     /// ```sway
     /// storage {
@@ -31,7 +36,7 @@ impl<K, V> StorageKey<StorageMap<K, V>> {
     /// }
     /// ```
     #[storage(read, write)]
-    pub fn insert(self, key: K, value: V) {
+    pub fn insert(self, key: K, value: V) where K: Hash {
         let key = sha256((key, self.field_id));
         write::<V>(key, 0, value);
     }
@@ -39,11 +44,15 @@ impl<K, V> StorageKey<StorageMap<K, V>> {
     /// Retrieves the `StorageKey` that describes the raw location in storage of the value
     /// stored at `key`, regardless of whether a value is actually stored at that location or not.
     ///
-    /// ### Arguments
+    /// # Arguments
     ///
-    /// * `key` - The key to which the value is paired.
+    /// * `key`: [K] - The key to which the value is paired.
     ///
-    /// ### Examples
+    /// # Returns
+    ///
+    /// * [StorageKey<V>] - Describes the raw location in storage of the value stored at `key`.
+    ///
+    /// # Examples
     ///
     /// ```sway
     /// storage {
@@ -58,7 +67,7 @@ impl<K, V> StorageKey<StorageMap<K, V>> {
     ///     assert(value == retrieved_value);
     /// }
     /// ```
-    pub fn get(self, key: K) -> StorageKey<V> {
+    pub fn get(self, key: K) -> StorageKey<V> where K: Hash {
         StorageKey {
             slot: sha256((key, self.field_id)),
             offset: 0,
@@ -68,13 +77,19 @@ impl<K, V> StorageKey<StorageMap<K, V>> {
 
     /// Clears a value previously stored using a key
     ///
-    /// Return a Boolean indicating whether there was a value previously stored at `key`.
+    /// # Arguments
     ///
-    /// ### Arguments
+    /// * `key`: [K] - The key to which the value is paired.
     ///
-    /// * `key` - The key to which the value is paired
+    /// # Returns
     ///
-    /// ### Examples
+    /// * [bool] - Indicates whether there was a value previously stored at `key`.
+    ///
+    /// # Number of Storage Accesses
+    ///
+    /// * Clears: `1`
+    ///
+    /// # Examples
     ///
     /// ```sway
     /// storage {
@@ -91,7 +106,7 @@ impl<K, V> StorageKey<StorageMap<K, V>> {
     /// }
     /// ```
     #[storage(write)]
-    pub fn remove(self, key: K) -> bool {
+    pub fn remove(self, key: K) -> bool where K: Hash {
         let key = sha256((key, self.slot));
         clear::<V>(key, 0)
     }

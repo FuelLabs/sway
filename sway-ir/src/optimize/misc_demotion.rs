@@ -354,7 +354,9 @@ fn wide_binary_op_demotion(context: &mut Context, function: Function) -> Result<
                     (Some(256), Some(256)) => {
                         use BinaryOpKind::*;
                         match op {
-                            Add | Sub | Mul | Div | Mod => Some((block, instr_val)),
+                            Add | Sub | Mul | Div | Mod | And | Or | Xor => {
+                                Some((block, instr_val))
+                            }
                             _ => todo!(),
                         }
                     }
@@ -585,8 +587,7 @@ fn wide_cmp_demotion(context: &mut Context, function: Function) -> Result<bool, 
                     (Some(256), Some(256)) => {
                         use Predicate::*;
                         match op {
-                            Equal => Some((block, instr_val)),
-                            _ => todo!(),
+                            Equal | LessThan | GreaterThan => Some((block, instr_val)),
                         }
                     }
                     _ => None,
@@ -603,12 +604,11 @@ fn wide_cmp_demotion(context: &mut Context, function: Function) -> Result<bool, 
 
     // Get ptr to each arg
     for (block, cmp_instr_val) in candidates {
-        let Instruction::Cmp (op, arg1, arg2) = cmp_instr_val
-            .get_instruction(context)
-            .cloned()
-            .unwrap() else {
-                continue;
-            };
+        let Instruction::Cmp(op, arg1, arg2) =
+            cmp_instr_val.get_instruction(context).cloned().unwrap()
+        else {
+            continue;
+        };
 
         let cmp_op_metadata = cmp_instr_val.get_metadata(context);
 
@@ -764,9 +764,10 @@ fn wide_unary_op_demotion(context: &mut Context, function: Function) -> Result<b
         let Instruction::UnaryOp { arg, .. } = binary_op_instr_val
             .get_instruction(context)
             .cloned()
-            .unwrap() else {
-                continue;
-            };
+            .unwrap()
+        else {
+            continue;
+        };
 
         let unary_op_metadata = binary_op_instr_val.get_metadata(context);
 

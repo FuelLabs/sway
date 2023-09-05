@@ -1,4 +1,4 @@
-use crate::core::token_map::TokenMap;
+use crate::core::{token::TokenIdent, token_map::TokenMap};
 use sway_core::{namespace::Module, Engines};
 
 pub(crate) mod dependency;
@@ -19,6 +19,10 @@ impl<'a> ParseContext<'a> {
             engines,
             namespace,
         }
+    }
+
+    pub fn ident(&self, ident: &sway_types::Ident) -> TokenIdent {
+        TokenIdent::new(ident, self.engines.se())
     }
 }
 

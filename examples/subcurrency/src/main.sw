@@ -1,7 +1,7 @@
 // ANCHOR: body
 contract;
 
-use std::hash::sha256;
+use std::hash::*;
 
 ////////////////////////////////////////
 // Event declarations
@@ -44,7 +44,7 @@ const MINTER = Address::from(0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d
 ////////////////////////////////////////
 // Contract storage persists across transactions.
 storage {
-    balances: StorageMap<Address, u64> = StorageMap {},
+    balances: StorageMap<Address, u64> = StorageMap::<Address, u64> {},
 }
 
 ////////////////////////////////////////

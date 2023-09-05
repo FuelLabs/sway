@@ -3,7 +3,10 @@ use std::collections::HashSet;
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
-use crate::decl_engine::{DeclEngineInsert, DeclId};
+use crate::{
+    decl_engine::{DeclEngineInsert, DeclId},
+    namespace::TryInsertingTraitImplOnFailure,
+};
 use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{
@@ -65,7 +68,7 @@ impl ty::TyAbiDecl {
 
         let error_on_shadowing_superabi_method =
             |method_name: &Ident, ctx: &mut TypeCheckContext| {
-                if let Ok(superabi_impl_method_ref) = ctx.namespace.find_method_for_type(
+                if let Ok(superabi_impl_method_ref) = ctx.find_method_for_type(
                     &Handler::default(),
                     ctx.self_type(),
                     &[],
@@ -74,8 +77,7 @@ impl ty::TyAbiDecl {
                     ctx.type_annotation(),
                     &Default::default(),
                     None,
-                    ctx.engines,
-                    false,
+                    TryInsertingTraitImplOnFailure::No,
                 ) {
                     let superabi_impl_method =
                         ctx.engines.de().get_function(&superabi_impl_method_ref);
@@ -130,6 +132,9 @@ impl ty::TyAbiDecl {
 
                     const_name
                 }
+                TraitItem::Error(_, _) => {
+                    continue;
+                }
             };
 
             if !ids.insert(decl_name.clone()) {
@@ -182,7 +187,7 @@ impl ty::TyAbiDecl {
         &self,
         handler: &Handler,
         self_decl_id: DeclId<ty::TyAbiDecl>,
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         type_id: TypeId,
         subabi_span: Option<Span>,
     ) -> Result<(), ErrorEmitted> {
@@ -210,7 +215,7 @@ impl ty::TyAbiDecl {
                         let mut method = decl_engine.get_trait_fn(decl_ref);
                         if look_for_conflicting_abi_methods {
                             // looking for conflicting ABI methods for triangle-like ABI hierarchies
-                            if let Ok(superabi_method_ref) = ctx.namespace.find_method_for_type(
+                            if let Ok(superabi_method_ref) = ctx.find_method_for_type(
                                 &Handler::default(),
                                 ctx.self_type(),
                                 &[],
@@ -219,8 +224,7 @@ impl ty::TyAbiDecl {
                                 ctx.type_annotation(),
                                 &Default::default(),
                                 None,
-                                ctx.engines,
-                                false,
+                                TryInsertingTraitImplOnFailure::No,
                             ) {
                                 let superabi_method =
                                     ctx.engines.de().get_function(&superabi_method_ref);
@@ -287,7 +291,7 @@ impl ty::TyAbiDecl {
                         // check if we inherit the same impl method from different branches
                         // XXX this piece of code can be abstracted out into a closure
                         // and reused for interface methods if the issue of mutable ctx is solved
-                        if let Ok(superabi_impl_method_ref) = ctx.namespace.find_method_for_type(
+                        if let Ok(superabi_impl_method_ref) = ctx.find_method_for_type(
                             &Handler::default(),
                             ctx.self_type(),
                             &[],
@@ -296,8 +300,7 @@ impl ty::TyAbiDecl {
                             ctx.type_annotation(),
                             &Default::default(),
                             None,
-                            ctx.engines,
-                            false,
+                            TryInsertingTraitImplOnFailure::No,
                         ) {
                             let superabi_impl_method =
                                 ctx.engines.de().get_function(&superabi_impl_method_ref);
@@ -336,7 +339,7 @@ impl ty::TyAbiDecl {
             // these are not actual impl blocks.
             // We check that a contract method cannot call a contract method
             // from the same ABI later, during method application typechecking.
-            let _ = ctx.namespace.insert_trait_implementation(
+            let _ = ctx.insert_trait_implementation(
                 &Handler::default(),
                 CallPath::from(self.name.clone()),
                 vec![],
@@ -345,7 +348,6 @@ impl ty::TyAbiDecl {
                 &self.span,
                 Some(self.span()),
                 false,
-                ctx.engines,
             );
             Ok(())
         })
