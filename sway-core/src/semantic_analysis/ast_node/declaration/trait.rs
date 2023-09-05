@@ -127,7 +127,7 @@ impl ty::TyTraitDecl {
 
         // insert placeholder functions representing the interface surface
         // to allow methods to use those functions
-        ctx.namespace.insert_trait_implementation(
+        ctx.insert_trait_implementation(
             handler,
             CallPath {
                 prefixes: vec![],
@@ -140,7 +140,6 @@ impl ty::TyTraitDecl {
             &span,
             None,
             false,
-            engines,
         )?;
 
         // Type check the items.
@@ -179,8 +178,6 @@ impl ty::TyTraitDecl {
             interface_surface, ..
         } = self;
 
-        let engines = ctx.engines();
-
         // Retrieve the interface surface for this trait.
         for item in interface_surface.iter() {
             match item {
@@ -197,8 +194,7 @@ impl ty::TyTraitDecl {
 
         // Retrieve the implemented items for this type.
         for item in ctx
-            .namespace
-            .get_items_for_type_and_trait_name(engines, type_id, call_path)
+            .get_items_for_type_and_trait_name(type_id, call_path)
             .into_iter()
         {
             match &item {
@@ -275,8 +271,7 @@ impl ty::TyTraitDecl {
                 .collect(),
         );
         for item in ctx
-            .namespace
-            .get_items_for_type_and_trait_name(engines, type_id, call_path)
+            .get_items_for_type_and_trait_name(type_id, call_path)
             .into_iter()
         {
             match item {
@@ -309,7 +304,7 @@ impl ty::TyTraitDecl {
     pub(crate) fn insert_interface_surface_and_items_into_namespace(
         &self,
         handler: &Handler,
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         trait_name: &CallPath,
         type_arguments: &[TypeArgument],
         type_id: TypeId,
@@ -397,7 +392,7 @@ impl ty::TyTraitDecl {
         // Specifically do not check for conflicting definitions because
         // this is just a temporary namespace for type checking and
         // these are not actual impl blocks.
-        let _ = ctx.namespace.insert_trait_implementation(
+        let _ = ctx.insert_trait_implementation(
             &Handler::default(),
             trait_name.clone(),
             type_arguments.to_vec(),
@@ -406,7 +401,6 @@ impl ty::TyTraitDecl {
             &trait_name.span(),
             Some(self.span()),
             false,
-            engines,
         );
     }
 }
