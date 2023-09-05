@@ -991,8 +991,7 @@ impl ty::TyExpression {
 
         // take any trait items that apply to `StorageKey<T>` and copy them to the
         // monomorphized type
-        ctx.namespace
-            .insert_trait_implementation_for_type(engines, access_type);
+        ctx.insert_trait_implementation_for_type(access_type);
 
         Ok(ty::TyExpression {
             expression: ty::TyExpressionVariant::StorageAccess(storage_access),

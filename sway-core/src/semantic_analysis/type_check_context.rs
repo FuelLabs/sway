@@ -373,8 +373,7 @@ impl<'a> TypeCheckContext<'a> {
                             type_engine.insert(self.engines, TypeInfo::Struct(new_decl_ref));
 
                         // take any trait methods that apply to this type and copy them to the new type
-                        self.namespace
-                            .insert_trait_implementation_for_type(self.engines, type_id);
+                        self.insert_trait_implementation_for_type(type_id);
 
                         // return the id
                         type_id
@@ -404,8 +403,7 @@ impl<'a> TypeCheckContext<'a> {
                             type_engine.insert(self.engines, TypeInfo::Enum(new_decl_ref));
 
                         // take any trait methods that apply to this type and copy them to the new type
-                        self.namespace
-                            .insert_trait_implementation_for_type(self.engines, type_id);
+                        self.insert_trait_implementation_for_type(type_id);
 
                         // return the id
                         type_id
@@ -420,8 +418,7 @@ impl<'a> TypeCheckContext<'a> {
                         // supported
 
                         let type_id = new_copy.create_type_id(self.engines);
-                        self.namespace
-                            .insert_trait_implementation_for_type(self.engines, type_id);
+                        self.insert_trait_implementation_for_type(type_id);
 
                         type_id
                     }
@@ -459,8 +456,7 @@ impl<'a> TypeCheckContext<'a> {
                     .insert(self.engines, TypeInfo::Array(elem_ty, n));
 
                 // take any trait methods that apply to this type and copy them to the new type
-                self.namespace
-                    .insert_trait_implementation_for_type(self.engines, type_id);
+                self.insert_trait_implementation_for_type(type_id);
 
                 type_id
             }
@@ -488,8 +484,7 @@ impl<'a> TypeCheckContext<'a> {
                     .insert(self.engines, TypeInfo::Tuple(type_arguments));
 
                 // take any trait methods that apply to this type and copy them to the new type
-                self.namespace
-                    .insert_trait_implementation_for_type(self.engines, type_id);
+                self.insert_trait_implementation_for_type(type_id);
 
                 type_id
             }
@@ -910,8 +905,7 @@ impl<'a> TypeCheckContext<'a> {
                 // insert_trait_implementation_for_type is already called when we do type check of structs, enums, arrays and tuples.
                 // In cases such as blanket trait implementation and usage of builtin types a method may not be found because
                 // insert_trait_implementation_for_type has yet to be called for that type.
-                self.namespace
-                    .insert_trait_implementation_for_type(self.engines, type_id);
+                self.insert_trait_implementation_for_type(type_id);
 
                 return self.find_method_for_type(
                     handler,
@@ -1221,6 +1215,12 @@ impl<'a> TypeCheckContext<'a> {
                 Ok(())
             }
         }
+    }
+
+    pub(crate) fn insert_trait_implementation_for_type(&mut self, type_id: TypeId) {
+        self.namespace
+            .implemented_traits
+            .insert_for_type(self.engines, type_id);
     }
 }
 
