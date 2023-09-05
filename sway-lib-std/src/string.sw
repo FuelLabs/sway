@@ -145,15 +145,17 @@ impl String {
     ///     let string = String::from_ascii_str("ABCDEF");
     /// }
     /// ```
-    pub fn from_ascii_str<S>(s: S) -> Self {
-        assert(__is_str_type::<S>());
-        let len =  __size_of_str::<S>();
-        let ptr = asm(s: s) {
-            s: raw_ptr
-        };
-        let slice = asm(parts:(ptr, len)) { parts: raw_slice};
+    pub fn from_ascii_str(s: str) -> Self {
+        let str_size = s.len();
+        let str_ptr = s.as_ptr();
+
+        let mut bytes = Bytes::with_capacity(str_size);
+        bytes.len = str_size;
+
+        str_ptr.copy_bytes_to(bytes.buf.ptr(), str_size);
+        
         Self {
-            bytes: Bytes::from(slice)
+            bytes
         }
     }
 

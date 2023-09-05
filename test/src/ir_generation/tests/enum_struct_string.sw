@@ -16,7 +16,7 @@ enum B {
 }
 
 fn main() -> u64 {
-    let b_val = B::B(A { s: S { n: " an odd length", v: 20 }, a: 10, b: false });
+    let b_val = B::B(A { s: S { n: __to_str_array(" an odd length"), v: 20 }, a: 10, b: false });
     if let B::B(b) = b_val {
         b.a
     } else {

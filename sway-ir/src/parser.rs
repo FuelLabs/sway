@@ -519,6 +519,7 @@ mod ir_builder {
                 / "u64" _ { IrAstTy::U64 }
                 / "u256" _ { IrAstTy::U256 }
                 / "b256" _ { IrAstTy::B256 }
+                / "slice" _ { IrAstTy::Slice }
                 / "string" _ "<" _ sz:decimal() ">" _ { IrAstTy::String(sz) }
                 / array_ty()
                 / struct_ty()
@@ -846,6 +847,7 @@ mod ir_builder {
         U64,
         U256,
         B256,
+        Slice,
         String(u64),
         Array(Box<IrAstTy>, u64),
         Union(Vec<IrAstTy>),
@@ -861,6 +863,7 @@ mod ir_builder {
                 IrAstTy::U64 => Type::get_uint64(context),
                 IrAstTy::U256 => Type::get_uint256(context),
                 IrAstTy::B256 => Type::get_b256(context),
+                IrAstTy::Slice => Type::get_slice(context),
                 IrAstTy::String(n) => Type::new_string_array(context, *n),
                 IrAstTy::Array(el_ty, count) => {
                     let el_ty = el_ty.to_ir_type(context);
