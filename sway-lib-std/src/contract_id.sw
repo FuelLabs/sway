@@ -86,6 +86,13 @@ pub struct AssetId {
     value: b256,
 }
 
+impl Hash for AssetId {
+    fn hash(self, ref mut state: Hasher) {
+        let AssetId { value } = self;
+        value.hash(state);
+    }
+}
+
 impl core::ops::Eq for AssetId {
     fn eq(self, other: Self) -> bool {
         self.value == other.value

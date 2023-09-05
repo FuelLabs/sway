@@ -18,9 +18,7 @@ use ::contract_id::AssetId;
 ///     assert(BASE_ASSET_ID == msg_asset_id());
 /// }
 /// ```
-pub const BASE_ASSET_ID: AssetId = AssetId {
-    value: ZERO_B256,
-};
+pub const BASE_ASSET_ID: AssetId = AssetId::from(ZERO_B256);
 
 /// A B256 of zero value.
 ///
