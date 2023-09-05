@@ -415,8 +415,16 @@ fn compile_fn(
         visibility,
         purity,
         span,
+        is_trait_method_dummy,
         ..
     } = ast_fn_decl;
+
+    if *is_trait_method_dummy {
+        return Err(vec![CompileError::InternalOwned(
+            format!("Method {name} is a trait method dummy and was not properly replaced."),
+            span.clone(),
+        )]);
+    }
 
     let args = ast_fn_decl
         .parameters

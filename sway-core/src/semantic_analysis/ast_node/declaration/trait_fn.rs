@@ -55,6 +55,7 @@ impl ty::TyTraitFn {
             .resolve_type_with_self(
                 handler,
                 return_type.type_id,
+                ctx.self_type(),
                 &return_type.span,
                 EnforceTypeArguments::Yes,
                 None,
@@ -103,6 +104,7 @@ impl ty::TyTraitFn {
             type_parameters: vec![],
             is_contract_call: matches!(abi_mode, AbiMode::ImplAbiFn(..)),
             where_clause: vec![],
+            is_trait_method_dummy: true,
         }
     }
 }

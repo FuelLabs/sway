@@ -1,9 +1,10 @@
 library;
 
+use ::assert::assert;
 use ::bytes::Bytes;
 use ::convert::From;
+use ::hash::{Hash, Hasher};
 use ::option::Option;
-use ::assert::assert;
 
 
 /// A UTF-8 encoded growable string.
@@ -259,6 +260,18 @@ impl From<raw_slice> for String {
     }
 }
 
+impl Eq for String {
+    fn eq(self, other: Self) -> bool {
+        self.bytes == other.bytes
+    }
+}
+
+impl Hash for String {
+    fn hash(self, ref mut state: Hasher) {
+        state.write(self.bytes);
+    }
+}
+
 // Tests
 
 #[test]
@@ -478,4 +491,26 @@ fn string_test_with_capacity() {
     let mut string = String::with_capacity(4);
 
     assert(string.capacity() == 4);
+}
+
+#[test]
+fn string_test_equal() {
+    let string1 = String::from_ascii_str("fuel");
+    let string2 = String::from_ascii_str("fuel");
+    let string3 = String::from_ascii_str("blazingly fast");
+
+    assert(string1 == string2);
+    assert(string1 != string3);
+}
+
+#[test]
+fn string_test_hash() {
+    use ::hash::sha256;
+    
+    let mut bytes = Bytes::new();
+    bytes.push(0u8);
+
+    let string = String::from(bytes);
+
+    assert(sha256(string) == sha256(bytes));
 }

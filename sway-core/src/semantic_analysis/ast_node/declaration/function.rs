@@ -117,6 +117,7 @@ impl ty::TyFunctionDecl {
             .resolve_type_with_self(
                 handler,
                 return_type.type_id,
+                ctx.self_type(),
                 &return_type.span,
                 EnforceTypeArguments::Yes,
                 None,
@@ -146,6 +147,7 @@ impl ty::TyFunctionDecl {
             is_contract_call,
             purity,
             where_clause,
+            is_trait_method_dummy: false,
         };
 
         Ok(function_decl)
@@ -281,6 +283,7 @@ fn test_function_selector_behavior() {
         visibility: Visibility::Public,
         is_contract_call: false,
         where_clause: vec![],
+        is_trait_method_dummy: false,
     };
 
     let selector_text = decl
@@ -329,6 +332,7 @@ fn test_function_selector_behavior() {
         visibility: Visibility::Public,
         is_contract_call: false,
         where_clause: vec![],
+        is_trait_method_dummy: false,
     };
 
     let selector_text = decl

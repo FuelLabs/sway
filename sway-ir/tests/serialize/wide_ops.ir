@@ -29,6 +29,24 @@ script {
         wide not v0 to v0
 // check: wide not v0 to v0
 
+        wide and v0, v0 to v0
+// check: wide and v0, v0 to v0
+
+        wide or v0, v0 to v0
+// check: wide or v0, v0 to v0
+
+        wide xor v0, v0 to v0
+// check: wide xor v0, v0 to v0
+
+        v2 = wide cmp eq v0 v0
+// check: v2 = wide cmp eq v0 v0
+
+        v3 = wide cmp lt v0 v0
+// check: v3 = wide cmp lt v0 v0
+
+        v4 = wide cmp gt v0 v0
+// check: v4 = wide cmp gt v0 v0
+
         v5 = const unit ()
         ret () v5
     }
