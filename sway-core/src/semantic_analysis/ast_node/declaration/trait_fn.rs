@@ -55,6 +55,7 @@ impl ty::TyTraitFn {
             .resolve_type_with_self(
                 handler,
                 return_type.type_id,
+                ctx.self_type(),
                 &return_type.span,
                 EnforceTypeArguments::Yes,
                 None,

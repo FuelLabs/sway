@@ -75,6 +75,7 @@ pub(crate) fn struct_instantiation(
         .resolve_type_with_self(
             handler,
             type_engine.insert(engines, type_info),
+            ctx.self_type(),
             &inner_span,
             EnforceTypeArguments::No,
             Some(&type_info_prefix),
