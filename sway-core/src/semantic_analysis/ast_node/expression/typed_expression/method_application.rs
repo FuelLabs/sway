@@ -432,7 +432,7 @@ pub(crate) fn resolve_method_name(
                 .check_submodule(handler, &type_info_prefix)?;
 
             // find the method
-            let decl_ref = ctx.namespace.find_method_for_type(
+            let decl_ref = ctx.find_method_for_type(
                 handler,
                 type_id,
                 &type_info_prefix,
@@ -441,7 +441,6 @@ pub(crate) fn resolve_method_name(
                 ctx.type_annotation(),
                 &arguments,
                 None,
-                engines,
                 TryInsertingTraitImplOnFailure::Yes,
             )?;
 
@@ -471,7 +470,7 @@ pub(crate) fn resolve_method_name(
                 .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown));
 
             // find the method
-            let decl_ref = ctx.namespace.find_method_for_type(
+            let decl_ref = ctx.find_method_for_type(
                 handler,
                 type_id,
                 &module_path,
@@ -480,7 +479,6 @@ pub(crate) fn resolve_method_name(
                 ctx.type_annotation(),
                 &arguments,
                 None,
-                engines,
                 TryInsertingTraitImplOnFailure::Yes,
             )?;
 
@@ -497,7 +495,7 @@ pub(crate) fn resolve_method_name(
                 .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown));
 
             // find the method
-            let decl_ref = ctx.namespace.find_method_for_type(
+            let decl_ref = ctx.find_method_for_type(
                 handler,
                 type_id,
                 &module_path,
@@ -506,7 +504,6 @@ pub(crate) fn resolve_method_name(
                 ctx.type_annotation(),
                 &arguments,
                 None,
-                engines,
                 TryInsertingTraitImplOnFailure::Yes,
             )?;
 
@@ -522,7 +519,7 @@ pub(crate) fn resolve_method_name(
             let type_info_prefix = vec![];
 
             // find the method
-            let decl_ref = ctx.namespace.find_method_for_type(
+            let decl_ref = ctx.find_method_for_type(
                 handler,
                 type_id,
                 &type_info_prefix,
@@ -531,7 +528,6 @@ pub(crate) fn resolve_method_name(
                 ctx.type_annotation(),
                 &arguments,
                 Some(as_trait.clone()),
-                engines,
                 TryInsertingTraitImplOnFailure::Yes,
             )?;
 
