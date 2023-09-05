@@ -67,7 +67,7 @@ impl From<b256> for ContractId {
 
 impl Hash for ContractId {
     fn hash(self, ref mut state: Hasher) {
-        let ContractId { value } = self;
+        let Self { value } = self;
         value.hash(state);
     }
 }
