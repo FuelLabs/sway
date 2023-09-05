@@ -2,7 +2,7 @@ use crate::{
     decl_engine::{DeclEngineInsert, DeclRefFunction, ReplaceDecls, UpdateConstantExpression},
     language::{parsed::*, ty, *},
     namespace::TryInsertingTraitImplOnFailure,
-    semantic_analysis::*,
+    semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
 };
 use ast_node::typed_expression::check_function_arguments_arity;

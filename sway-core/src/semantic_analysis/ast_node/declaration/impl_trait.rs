@@ -15,7 +15,9 @@ use crate::{
         *,
     },
     namespace::TryInsertingTraitImplOnFailure,
-    semantic_analysis::{AbiMode, ConstShadowingMode, TypeCheckContext},
+    semantic_analysis::{
+        type_check_context::EnforceTypeArguments, AbiMode, ConstShadowingMode, TypeCheckContext,
+    },
     type_system::*,
 };
 

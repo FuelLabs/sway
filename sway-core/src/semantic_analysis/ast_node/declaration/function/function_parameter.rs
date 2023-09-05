@@ -1,6 +1,6 @@
 use crate::{
     language::{parsed::FunctionParameter, ty},
-    semantic_analysis::TypeCheckContext,
+    semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
     type_system::*,
 };
 

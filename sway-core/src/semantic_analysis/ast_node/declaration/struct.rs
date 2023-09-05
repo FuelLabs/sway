@@ -2,7 +2,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{
     language::{parsed::*, ty, CallPath},
-    semantic_analysis::*,
+    semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
 };
 

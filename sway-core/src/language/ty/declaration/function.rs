@@ -6,6 +6,8 @@ use std::{
 use sha2::{Digest, Sha256};
 use sway_error::handler::{ErrorEmitted, Handler};
 
+use crate::semantic_analysis::type_check_context::MonomorphizeHelper;
+
 use crate::{
     decl_engine::*,
     engine_threading::*,
