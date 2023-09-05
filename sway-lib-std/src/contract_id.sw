@@ -88,7 +88,7 @@ pub struct AssetId {
 
 impl Hash for AssetId {
     fn hash(self, ref mut state: Hasher) {
-        let AssetId { value } = self;
+        let Self { value } = self;
         value.hash(state);
     }
 }
