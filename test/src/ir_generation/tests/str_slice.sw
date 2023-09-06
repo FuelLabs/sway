@@ -1,8 +1,10 @@
 script;
 
+use ::core::str::*;
+
 fn main() -> u64 {
     let a: str = "abc";
-    0
+    a.len()
 }
 
 // ::check-ir::
@@ -14,3 +16,7 @@ fn main() -> u64 {
 // check: v3 = const u64 0
 // check: v4 = get_elem_ptr v2, ptr u64, v3
 // check: store v1 to v4, !2
+
+// ::check-ir-optimized::
+// pass: o1
+// check: local slice a

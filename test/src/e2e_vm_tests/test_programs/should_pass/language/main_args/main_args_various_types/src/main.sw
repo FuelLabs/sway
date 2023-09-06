@@ -1,7 +1,7 @@
 script;
 
 fn eq_str_3(a: str[3], b: str) -> bool {
-     let ptr_b = b.as_ptr();
+    let ptr_b = b.as_ptr();
     asm(a: a, b: ptr_b, len: 3, r) {
         meq r a b len;
         r: bool

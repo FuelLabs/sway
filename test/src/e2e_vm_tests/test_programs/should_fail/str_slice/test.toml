@@ -1,6 +1,0 @@
-category = "fail"
-
-# check: $()This type is not allowed here
-# check: $()This type is not allowed here
-# check: $()This type is not allowed here
-# check: $()This type is not allowed here

@@ -921,7 +921,9 @@ fn const_eval_intrinsic(
                 ConstantValue::String(s) => {
                     Ok(Some(Constant::new_string(lookup.context, s.to_vec())))
                 }
-                _ => todo!(),
+                _ => {
+                    unreachable!("Type checker allowed non string value for ToStrArray")
+                }
             }
         }
         Intrinsic::Eq => {

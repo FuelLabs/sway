@@ -8,7 +8,7 @@ use crate::{
 };
 
 use sway_error::{
-    error::CompileError,
+    error::{CompileError, TypeNotAllowedReason},
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::*;
@@ -22,6 +22,23 @@ pub struct TyProgram {
     pub storage_slots: Vec<StorageSlot>,
     pub logged_types: Vec<(LogId, TypeId)>,
     pub messages_types: Vec<(MessageId, TypeId)>,
+}
+
+fn get_type_not_allowed_error(
+    engines: &Engines,
+    type_id: TypeId,
+    spanned: &impl Spanned,
+    f: impl Fn(&TypeInfo) -> Option<TypeNotAllowedReason>,
+) -> Option<CompileError> {
+    let types = type_id.extract_any_including_self(engines, &|t| f(t).is_some(), vec![]);
+
+    let (id, _) = types.into_iter().next()?;
+    let t = engines.te().get(id);
+
+    Some(CompileError::TypeNotAllowed {
+        reason: f(&t)?,
+        span: spanned.span(),
+    })
 }
 
 impl TyProgram {
@@ -172,24 +189,25 @@ impl TyProgram {
                         decl_span: _,
                     }) = decl
                     {
-                        let is_invalid_type = |type_info: &TypeInfo| {
-                            matches!(type_info, TypeInfo::RawUntypedPtr | TypeInfo::StringSlice)
-                        };
-
                         let storage_decl = decl_engine.get_storage(decl_id);
                         for field in storage_decl.fields.iter() {
-                            if !field
-                                .type_argument
-                                .type_id
-                                .extract_any_including_self(engines, &is_invalid_type, vec![])
-                                .is_empty()
-                            {
-                                handler.emit_err(CompileError::TypeNotAllowedInContractStorage {
-                                    ty: engines
-                                        .help_out(&ty_engine.get(field.type_argument.type_id))
-                                        .to_string(),
-                                    span: field.span.clone(),
-                                });
+                            if let Some(error) = get_type_not_allowed_error(
+                                engines,
+                                field.type_argument.type_id,
+                                &field.type_argument,
+                                |t| match t {
+                                    TypeInfo::StringSlice => {
+                                        Some(TypeNotAllowedReason::StringSliceInConfigurables)
+                                    }
+                                    TypeInfo::RawUntypedPtr => Some(
+                                        TypeNotAllowedReason::TypeNotAllowedInContractStorage {
+                                            ty: engines.help_out(t).to_string(),
+                                        },
+                                    ),
+                                    _ => None,
+                                },
+                            ) {
+                                handler.emit_err(error);
                             }
                         }
                     }
@@ -251,48 +269,49 @@ impl TyProgram {
                 // A script must not return a `raw_ptr` or any type aggregating a `raw_slice`.
                 // Directly returning a `raw_slice` is allowed, which will be just mapped to a RETD.
                 // TODO: Allow returning nested `raw_slice`s when our spec supports encoding DSTs.
-                let is_invalid_main_argument_or_return = |type_info: &TypeInfo| {
-                    matches!(type_info, TypeInfo::RawUntypedSlice | TypeInfo::StringSlice)
-                };
-
                 let main_func = mains.remove(0);
 
                 for p in main_func.parameters() {
-                    let t = ty_engine.get(p.type_argument.type_id);
-
-                    if is_invalid_main_argument_or_return(&t) {
-                        handler.emit_err(CompileError::ThisTypeNotAllowedHere {
-                            span: p.type_argument.span(),
-                        });
-                    }
-
-                    if !t
-                        .extract_any(engines, &is_invalid_main_argument_or_return)
-                        .is_empty()
-                    {
-                        handler.emit_err(CompileError::ThisTypeNotAllowedHere {
-                            span: p.type_argument.span(),
-                        });
+                    if let Some(error) = get_type_not_allowed_error(
+                        engines,
+                        p.type_argument.type_id,
+                        &p.type_argument,
+                        |t| match t {
+                            TypeInfo::StringSlice => {
+                                Some(TypeNotAllowedReason::StringSliceInMainParameters)
+                            }
+                            TypeInfo::RawUntypedSlice => {
+                                Some(TypeNotAllowedReason::NestedSliceReturnNotAllowedInMain)
+                            }
+                            _ => None,
+                        },
+                    ) {
+                        handler.emit_err(error);
                     }
                 }
 
                 // Check main return type is valid
-                let return_type = ty_engine.get(main_func.return_type.type_id);
-
-                // We allow raw_slice to be returned
-                if matches!(return_type, TypeInfo::StringSlice) {
-                    handler.emit_err(CompileError::ThisTypeNotAllowedHere {
-                        span: main_func.return_type.span(),
-                    });
-                }
-
-                if !return_type
-                    .extract_any(engines, &is_invalid_main_argument_or_return)
-                    .is_empty()
-                {
-                    handler.emit_err(CompileError::ThisTypeNotAllowedHere {
-                        span: main_func.return_type.span(),
-                    });
+                if let Some(error) = get_type_not_allowed_error(
+                    engines,
+                    main_func.return_type.type_id,
+                    &main_func.return_type,
+                    |t| match t {
+                        TypeInfo::StringSlice => {
+                            Some(TypeNotAllowedReason::StringSliceInMainReturn)
+                        }
+                        TypeInfo::RawUntypedSlice => {
+                            Some(TypeNotAllowedReason::NestedSliceReturnNotAllowedInMain)
+                        }
+                        _ => None,
+                    },
+                ) {
+                    // Let main return `raw_slice` directly
+                    if !matches!(
+                        engines.te().get(main_func.return_type.type_id),
+                        TypeInfo::RawUntypedSlice
+                    ) {
+                        handler.emit_err(error);
+                    }
                 }
 
                 TyProgramKind::Script {
@@ -317,20 +336,31 @@ impl TyProgram {
         }
 
         //configurables and constant cannot be str slice
-        let is_invalid_type = |type_info: &TypeInfo| matches!(type_info, TypeInfo::StringSlice);
+        for c in configurables.iter() {
+            if let Some(error) = get_type_not_allowed_error(
+                engines,
+                c.return_type,
+                &c.type_ascription,
+                |t| match t {
+                    TypeInfo::StringSlice => Some(TypeNotAllowedReason::StringSliceInConfigurables),
+                    _ => None,
+                },
+            ) {
+                handler.emit_err(error);
+            }
+        }
 
-        for c in configurables
-            .iter()
-            .chain(non_configurables_constants.iter())
-        {
-            if !c
-                .return_type
-                .extract_any_including_self(engines, &is_invalid_type, vec![])
-                .is_empty()
-            {
-                handler.emit_err(CompileError::ThisTypeNotAllowedHere {
-                    span: c.type_ascription.span(),
-                });
+        for c in non_configurables_constants.iter() {
+            if let Some(error) = get_type_not_allowed_error(
+                engines,
+                c.return_type,
+                &c.type_ascription,
+                |t| match t {
+                    TypeInfo::StringSlice => Some(TypeNotAllowedReason::StringSliceInConst),
+                    _ => None,
+                },
+            ) {
+                handler.emit_err(error);
             }
         }
 

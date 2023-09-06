@@ -683,9 +683,7 @@ impl<'eng> FnCompiler<'eng> {
                     context,
                     span.as_str().as_bytes().to_vec(),
                 )),
-                _ => {
-                    todo!()
-                }
+                _ => unreachable!(),
             },
             Intrinsic::Eq | Intrinsic::Gt | Intrinsic::Lt => {
                 let lhs = &arguments[0];
