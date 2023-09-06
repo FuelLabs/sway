@@ -1,8 +1,8 @@
 script;
 
-fn main() -> str {
+fn main() -> u64 {
     let a: str = "abc";
-    a
+    0
 }
 
 // ::check-ir::

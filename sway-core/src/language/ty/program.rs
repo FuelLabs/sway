@@ -254,9 +254,8 @@ impl TyProgram {
                 let is_invalid_main_argument = |type_info: &TypeInfo| {
                     matches!(type_info, TypeInfo::RawUntypedSlice | TypeInfo::StringSlice)
                 };
-                let is_invalid_main_return = |type_info: &TypeInfo| {
-                    matches!(type_info, TypeInfo::StringSlice)
-                };
+                let is_invalid_main_return =
+                    |type_info: &TypeInfo| matches!(type_info, TypeInfo::StringSlice);
 
                 let main_func = mains.remove(0);
 
