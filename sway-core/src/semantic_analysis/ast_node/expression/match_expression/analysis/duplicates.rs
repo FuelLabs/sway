@@ -15,7 +15,7 @@ pub(crate) struct MatchVariableDuplicate {
 /// Returns [MatchVariableDuplicate]s for all the duplicates found in the `scrutinee`,
 /// or empty [Vec] if there are no duplicate variables in the `scrutinee`.
 ///
-/// Alternatives are what make the algorithm more complex then just straightforward
+/// Alternatives are what make the algorithm more complex than just straightforward
 /// scan of the `scrutinee` for variables of the same name.
 /// In case of alternatives, we must have the same variables in all of the alternatives,
 /// and these are, of course, not duplicates.
