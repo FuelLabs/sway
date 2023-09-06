@@ -289,7 +289,7 @@ impl PackageManifestFile {
     /// manifest file, even if a patch section is not defined in the namespace.
     pub fn resolve_patches(&self) -> Result<impl Iterator<Item = (String, PatchMap)>> {
         if let Some(workspace) = self.workspace().ok().flatten() {
-            // if workspace is defined, passing a local patch is a warning, but the global patch is used
+            // If workspace is defined, passing a local patch is a warning, but the global patch is used
             if self.patch.is_some() {
                 println_warning(
                     "patch for the non root package will be ignored, specify patch at the workspace root:"
@@ -299,15 +299,14 @@ impl PackageManifestFile {
                     workspace.path().to_str().unwrap_or_default()
                 ));
             }
-            if let Some(patch) = workspace.patch.as_ref() {
-                Ok(patch.clone().into_iter())
-            } else {
-                Ok(BTreeMap::default().into_iter())
-            }
-        } else if let Some(patch) = self.patch.as_ref() {
-            Ok(patch.clone().into_iter())
+            Ok(workspace
+                .patch
+                .as_ref()
+                .cloned()
+                .unwrap_or_default()
+                .into_iter())
         } else {
-            Ok(BTreeMap::default().into_iter())
+            Ok(self.patch.as_ref().cloned().unwrap_or_default().into_iter())
         }
     }
 
