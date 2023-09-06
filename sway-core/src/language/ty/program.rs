@@ -39,6 +39,7 @@ impl TyProgram {
         let decl_engine = engines.de();
 
         // Validate all submodules
+        let mut non_configurables_constants = Vec::<TyConstantDecl>::new();
         let mut configurables = Vec::<TyConstantDecl>::new();
         for (_, submodule) in &root.submodules {
             match Self::validate_root(
@@ -92,6 +93,8 @@ impl TyProgram {
                     let config_decl = decl_engine.get_constant(decl_id);
                     if config_decl.is_configurable {
                         configurables.push(config_decl);
+                    } else {
+                        non_configurables_constants.push(config_decl);
                     }
                 }
                 // ABI entries are all functions declared in impl_traits on the contract type
@@ -169,16 +172,16 @@ impl TyProgram {
                         decl_span: _,
                     }) = decl
                     {
+                        let is_invalid_type = |type_info: &TypeInfo| {
+                            matches!(type_info, TypeInfo::RawUntypedPtr | TypeInfo::StringSlice)
+                        };
+
                         let storage_decl = decl_engine.get_storage(decl_id);
                         for field in storage_decl.fields.iter() {
                             if !field
                                 .type_argument
                                 .type_id
-                                .extract_any_including_self(
-                                    engines,
-                                    &|type_info| matches!(type_info, TypeInfo::RawUntypedPtr),
-                                    vec![],
-                                )
+                                .extract_any_including_self(engines, &is_invalid_type, vec![])
                                 .is_empty()
                             {
                                 handler.emit_err(CompileError::TypeNotAllowedInContractStorage {
@@ -231,33 +234,63 @@ impl TyProgram {
                 }
             }
             parsed::TreeType::Script => {
-                // A script must have exactly one main function.
+                // A script must have exactly one main function
                 if mains.is_empty() {
                     return Err(
                         handler.emit_err(CompileError::NoScriptMainFunction(root.span.clone()))
                     );
                 }
+
                 if mains.len() > 1 {
                     handler.emit_err(CompileError::MultipleDefinitionsOfFunction {
                         name: mains.last().unwrap().name.clone(),
                         span: mains.last().unwrap().name.span(),
                     });
                 }
+
                 // A script must not return a `raw_ptr` or any type aggregating a `raw_slice`.
                 // Directly returning a `raw_slice` is allowed, which will be just mapped to a RETD.
                 // TODO: Allow returning nested `raw_slice`s when our spec supports encoding DSTs.
+                let is_invalid_type = |type_info: &TypeInfo| {
+                    matches!(type_info, TypeInfo::RawUntypedSlice | TypeInfo::StringSlice)
+                };
+
                 let main_func = mains.remove(0);
-                if !ty_engine
-                    .get(main_func.return_type.type_id)
-                    .extract_any(engines, &|type_info| {
-                        matches!(type_info, TypeInfo::RawUntypedSlice)
-                    })
-                    .is_empty()
-                {
-                    handler.emit_err(CompileError::NestedSliceReturnNotAllowedInMain {
-                        span: main_func.return_type.span.clone(),
+
+                for p in main_func.parameters() {
+                    let t = ty_engine.get(p.type_argument.type_id);
+
+                    if is_invalid_type(&t) {
+                        handler.emit_err(CompileError::ThisTypeNotAllowedHere {
+                            span: p.type_argument.span(),
+                        });
+                    }
+
+                    if !t.extract_any(engines, &is_invalid_type).is_empty() {
+                        handler.emit_err(CompileError::ThisTypeNotAllowedHere {
+                            span: p.type_argument.span(),
+                        });
+                    }
+                }
+
+                // Check main return type is valid
+                let return_type = ty_engine.get(main_func.return_type.type_id);
+
+                if is_invalid_type(&return_type) {
+                    handler.emit_err(CompileError::ThisTypeNotAllowedHere {
+                        span: main_func.return_type.span(),
                     });
                 }
+
+                if !return_type
+                    .extract_any(engines, &is_invalid_type)
+                    .is_empty()
+                {
+                    handler.emit_err(CompileError::ThisTypeNotAllowedHere {
+                        span: main_func.return_type.span(),
+                    });
+                }
+
                 TyProgramKind::Script {
                     main_function: main_func,
                 }
@@ -278,6 +311,25 @@ impl TyProgram {
             }
             _ => (),
         }
+
+        //configurables and constant cannot be str slice
+        let is_invalid_type = |type_info: &TypeInfo| matches!(type_info, TypeInfo::StringSlice);
+
+        for c in configurables
+            .iter()
+            .chain(non_configurables_constants.iter())
+        {
+            if !c
+                .return_type
+                .extract_any_including_self(engines, &is_invalid_type, vec![])
+                .is_empty()
+            {
+                handler.emit_err(CompileError::ThisTypeNotAllowedHere {
+                    span: c.type_ascription.span(),
+                });
+            }
+        }
+
         Ok((typed_program_kind, declarations, configurables))
     }
 

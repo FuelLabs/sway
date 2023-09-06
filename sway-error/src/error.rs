@@ -619,6 +619,8 @@ pub enum CompileError {
     ContractIdValueNotALiteral { span: Span },
     #[error("The type \"{ty}\" is not allowed in storage.")]
     TypeNotAllowedInContractStorage { ty: String, span: Span },
+    #[error("This type is not allowed here.")]
+    ThisTypeNotAllowedHere { span: Span },
     #[error("ref mut parameter not allowed for main()")]
     RefMutableNotAllowedInMain { param_name: Ident, span: Span },
     #[error(
@@ -863,6 +865,7 @@ impl Spanned for CompileError {
             AbiShadowsSuperAbiMethod { span, .. } => span.clone(),
             ConflictingSuperAbiMethods { span, .. } => span.clone(),
             AbiSupertraitMethodCallAsContractCall { span, .. } => span.clone(),
+            ThisTypeNotAllowedHere { span } => span.clone(),
         }
     }
 }
