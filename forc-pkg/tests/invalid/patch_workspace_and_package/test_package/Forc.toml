@@ -7,4 +7,4 @@ name = "test_package"
 [dependencies]
 
 [patch.'https://github.com/fuellabs/sway']
-std = { git = "https://github.com/fuellabs/sway", branch = "test" }
+std = { git = "https://github.com/fuellabs/sway" }

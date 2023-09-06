@@ -291,9 +291,7 @@ impl PackageManifestFile {
         if let Some(workspace) = self.workspace().ok().flatten() {
             // If workspace is defined, passing a local patch is a warning, but the global patch is used
             if self.patch.is_some() {
-                println_warning(
-                    "patch for the non root package will be ignored, specify patch at the workspace root:"
-                );
+                println_warning("Patch for the non root package will be ignored.");
                 println_warning(&format!(
                     "Specify patch at the workspace root: {}",
                     workspace.path().to_str().unwrap_or_default()
