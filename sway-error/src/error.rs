@@ -72,6 +72,14 @@ pub enum CompileError {
     MultipleDefinitionsOfName { name: Ident, span: Span },
     #[error("Constant \"{name}\" was already defined in scope.")]
     MultipleDefinitionsOfConstant { name: Ident, span: Span },
+    #[error("Variable \"{}\" is already defined in match arm.", first_definition.as_str())]
+    MultipleDefinitionsOfMatchArmVariable {
+        match_value: Span,
+        first_definition: Span,
+        first_definition_is_struct_field: bool,
+        duplicate: Span,
+        duplicate_is_struct_field: bool,
+    },
     #[error("Assignment to immutable variable. Variable {name} is not declared as mutable.")]
     AssignmentToNonMutable { name: Ident, span: Span },
     #[error(
@@ -702,6 +710,7 @@ impl Spanned for CompileError {
             MultipleDefinitionsOfFunction { span, .. } => span.clone(),
             MultipleDefinitionsOfName { span, .. } => span.clone(),
             MultipleDefinitionsOfConstant { span, .. } => span.clone(),
+            MultipleDefinitionsOfMatchArmVariable { duplicate, .. } => duplicate.clone(),
             AssignmentToNonMutable { span, .. } => span.clone(),
             MutableParameterNotSupported { span, .. } => span.clone(),
             ImmutableArgumentToMutableParameter { span } => span.clone(),
@@ -946,6 +955,69 @@ impl ToDiagnostic for CompileError {
                     format!("Variables can shadow other variables, but constants cannot."),
                     format!("Consider renaming either the variable or the constant."),
                 ],
+            },
+            MultipleDefinitionsOfMatchArmVariable { match_value, first_definition, first_definition_is_struct_field, duplicate, duplicate_is_struct_field } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Variable is already defined in match arm".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    first_definition.clone(),
+                    format!("Variable \"{}\" is already defined in match arm", first_definition.as_str())
+                ),
+                hints: vec![
+                    Hint::error(
+                        source_engine,
+                        duplicate.clone(),
+                        format!("Variable \"{}\" is already defined in this match arm pattern.", first_definition.as_str())
+                    ),
+                    Hint::help(
+                        source_engine,
+                        if *duplicate_is_struct_field {
+                            duplicate.clone()
+                        }
+                        else {
+                            Span::dummy()
+                        },
+                        format!("Struct field \"{0}\" is just a shorthand notation for `{0}: {0}`. It defines a variable \"{0}\".", first_definition.as_str())
+                    ),
+                    Hint::info(
+                        source_engine,
+                        first_definition.clone(),
+                        format!(
+                            "This {}is the first definition of the variable \"{}\".",
+                            if *first_definition_is_struct_field {
+                                format!("struct field \"{}\" ", first_definition.as_str())
+                            }
+                            else {
+                                "".to_string()
+                            },
+                            first_definition.as_str()
+                        )
+                    ),
+                    Hint::help(
+                        source_engine,
+                        if *first_definition_is_struct_field && !*duplicate_is_struct_field {
+                            first_definition.clone()
+                        }
+                        else {
+                            Span::dummy()
+                        },
+                        format!("Struct field \"{0}\" is just a shorthand notation for `{0}: {0}`. It defines a variable \"{0}\".", first_definition.as_str())
+                    ),
+                    Hint::info(
+                        source_engine,
+                        match_value.clone(),
+                        "This is the value to match on.".to_string()
+                    ),
+                ],
+                help: vec![
+                    "Variables used in match arm patterns must be unique within a pattern.".to_string(),
+                    match (*first_definition_is_struct_field, *duplicate_is_struct_field) {
+                        (true, true) => format!("Consider declaring a variable with different name for either of the fields. E.g., `{0}: var_{0}`.", first_definition.as_str()),
+                        (true, false) | (false, true) => format!("Consider declaring a variable with different name for the field (e.g., `{0}: var_{0}`), or renaming the variable \"{0}\".", first_definition.as_str()),
+                        (false, false) => "Consider renaming either of the variables.".to_string(),
+                    },
+                ],
+
             },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.

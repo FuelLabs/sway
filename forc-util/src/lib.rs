@@ -640,6 +640,7 @@ fn construct_slice(labels: Vec<&Label>) -> Slice {
 fn label_type_to_annotation_type(label_type: LabelType) -> AnnotationType {
     match label_type {
         LabelType::Info => AnnotationType::Info,
+        LabelType::Help => AnnotationType::Help,
         LabelType::Warning => AnnotationType::Warning,
         LabelType::Error => AnnotationType::Error,
     }
