@@ -59,7 +59,7 @@ pub fn hover_data(
         }
         // The `TypeInfo` of the token does not contain an `Ident`. In this case,
         // we use the `Ident` of the token itself.
-        None => (ident.clone(), token),
+        None => (ident, token),
     };
 
     let contents = hover_format(session.clone(), &engines, &decl_token, &decl_ident.name);
