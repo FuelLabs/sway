@@ -13,8 +13,11 @@ use std::{
 use taplo::formatter as taplo_fmt;
 use tracing::{debug, error, info};
 
-use forc_tracing::{init_tracing_subscriber, println_error, println_green, println_red};
+use forc_tracing::{
+    init_tracing_subscriber, println_error, println_green, println_red, println_warning,
+};
 use forc_util::{find_parent_manifest_dir, is_sway_file};
+use std::io::Write;
 use sway_core::{BuildConfig, BuildTarget};
 use sway_utils::{constants, get_sway_files};
 use swayfmt::Formatter;
@@ -52,6 +55,9 @@ fn main() {
 fn run() -> Result<()> {
     let app = App::parse();
 
+    // Check if the 'forc-lsp' process is running
+    is_lsp_running()?;
+
     let dir = match app.path.as_ref() {
         Some(path) => PathBuf::from(path),
         None => std::env::current_dir()?,
@@ -88,6 +94,40 @@ fn run() -> Result<()> {
         }
     }
 
+    Ok(())
+}
+
+/// Check if a code editor is running the 'forc-lsp' process.
+/// If so, prompt the user to save any unsaved changes before proceeding.
+///
+/// Unsaved edits exist in tempory memory, while formatting will edit the files on disk.
+fn is_lsp_running() -> Result<()> {
+    // Execute the "ps aux" command to retrieve details of all current processes
+    let output = std::process::Command::new("ps")
+        .arg("aux")
+        .output()
+        .expect("Failed to execute command");
+
+    // Convert the command output bytes to a string for easier parsing
+    let output_str = String::from_utf8_lossy(&output.stdout);
+
+    // Check if the output string contains the name of the process we're looking for
+    if output_str.contains("forc-lsp") {
+        // Print warning
+        println_warning("A code editor may have unsaved changes in this project. \nEnsure all changes are saved before proceeding to prevent potential data loss.");
+
+        // Prompt user for input
+        print!("Continue: (Y)es/(N)o: ");
+        std::io::stdout().flush()?; // Flush to ensure the prompt appears before waiting for input
+
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input)?;
+
+        // If user responds with 'N' or 'n', exit the program
+        if !input.trim().eq_ignore_ascii_case("y") {
+            std::process::exit(1);
+        }
+    }
     Ok(())
 }
 
