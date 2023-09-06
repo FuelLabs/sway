@@ -13,7 +13,7 @@ impl TestFuelCoin for Contract {
         burn(ZERO_B256, burn_amount);
     }
 
-    fn force_transfer(coins: u64, asset_id: b256, c_id: ContractId) {
+    fn force_transfer(coins: u64, asset_id: AssetId, c_id: ContractId) {
         force_transfer_to_contract(c_id, asset_id, coins)
     }
 }

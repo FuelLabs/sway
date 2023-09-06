@@ -18,11 +18,19 @@ impl Hasher {
     }
 
     pub fn sha256(self) -> b256 {
-        self.bytes.sha256()
+        let mut result_buffer = b256::min();
+        asm(hash: result_buffer, ptr: self.bytes.buf.ptr, bytes: self.bytes.len) {
+            s256 hash ptr bytes;
+            hash: b256
+        }
     }
 
     pub fn keccak256(self) -> b256 {
-        self.bytes.keccak256()
+        let mut result_buffer = b256::min();
+        asm(hash: result_buffer, ptr: self.bytes.buf.ptr, bytes: self.bytes.len) {
+            k256 hash ptr bytes;
+            hash: b256
+        }
     }
 }
 
@@ -120,6 +128,12 @@ impl Hash for bool {
             bytes.push(0_u8);
         }
         state.write(bytes);
+    }
+}
+
+impl Hash for Bytes {
+    fn hash(self, ref mut state: Hasher) {
+        state.write(self);
     }
 }
 
@@ -416,6 +430,24 @@ fn test_hasher_sha256_bool() {
 
     let mut hasher = Hasher::new();
     true.hash(hasher);
+    let sha256 = hasher.sha256();
+    assert(sha256 == 0x4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a);
+}
+
+#[test]
+fn test_hasher_sha256_bytes() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    let mut bytes = Bytes::new();
+    bytes.push(0u8);
+    bytes.hash(hasher);
+    let sha256 = hasher.sha256();
+    assert(sha256 == 0x6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d);
+
+    let mut hasher = Hasher::new();
+    let mut bytes = Bytes::new();
+    bytes.push(1u8);
+    bytes.hash(hasher);
     let sha256 = hasher.sha256();
     assert(sha256 == 0x4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a);
 }

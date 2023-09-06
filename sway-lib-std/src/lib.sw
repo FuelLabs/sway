@@ -21,7 +21,6 @@ pub mod alias;
 pub mod hash;
 pub mod contract_id;
 pub mod constants;
-pub mod asset_id;
 pub mod call_frames;
 pub mod context;
 pub mod external;

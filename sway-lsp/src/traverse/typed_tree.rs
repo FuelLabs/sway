@@ -1210,7 +1210,7 @@ fn collect_type_id(
             let decl = ctx.engines.de().get_enum(decl_ref);
             if let Some(token) = ctx
                 .tokens
-                .try_get_mut(&ctx.ident(&Ident::new(type_span.clone())))
+                .try_get_mut(&ctx.ident(&Ident::new(type_span)))
                 .try_unwrap()
             {
                 assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
@@ -1231,7 +1231,7 @@ fn collect_type_id(
             let decl = ctx.engines.de().get_struct(decl_ref);
             if let Some(token) = ctx
                 .tokens
-                .try_get_mut(&ctx.ident(&Ident::new(type_span.clone())))
+                .try_get_mut(&ctx.ident(&Ident::new(type_span)))
                 .try_unwrap()
             {
                 assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
@@ -1254,7 +1254,7 @@ fn collect_type_id(
         } => {
             if let Some(token) = ctx
                 .tokens
-                .try_get_mut(&ctx.ident(&Ident::new(name.span().clone())))
+                .try_get_mut(&ctx.ident(&Ident::new(name.span())))
                 .try_unwrap()
             {
                 assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
@@ -1273,7 +1273,7 @@ fn collect_type_id(
         _ => {
             if let Some(token) = ctx
                 .tokens
-                .try_get_mut(&ctx.ident(&Ident::new(type_span.clone())))
+                .try_get_mut(&ctx.ident(&Ident::new(type_span)))
                 .try_unwrap()
             {
                 assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
