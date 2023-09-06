@@ -244,7 +244,10 @@ pub fn handle_code_lens(
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
-        Ok((url, session)) => Ok(Some(capabilities::code_lens::code_lens(&session, &url))),
+        Ok((url, session)) => {
+            let _ = session.wait_for_parsing();
+            Ok(Some(capabilities::code_lens::code_lens(&session, &url)))
+        },
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)
