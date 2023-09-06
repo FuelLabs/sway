@@ -295,7 +295,7 @@ impl PackageManifestFile {
                     "patch for the non root package will be ignored, specify patch at the workspace root:"
                 );
                 println_warning(&format!(
-                    "package: {}",
+                    "Specify patch at the workspace root: {}",
                     workspace.path().to_str().unwrap_or_default()
                 ));
             }
