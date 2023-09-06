@@ -4,7 +4,7 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::language::ty::{self, TyScrutinee};
 
-/// First tuple filed is `true` if the variable represented with [Span] is a struct field, otherwise `false`.
+/// First tuple field is `true` if the variable represented with [Span] is a struct field, otherwise `false`.
 pub(crate) type MatchVariable = (bool, Span);
 
 pub(crate) struct MatchVariableDuplicate {
