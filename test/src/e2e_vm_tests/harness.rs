@@ -272,21 +272,27 @@ pub(crate) async fn compile_and_run_unit_tests(
         ]
         .iter()
         .collect();
-        let built_tests = forc_test::build(forc_test::Opts {
-            pkg: forc_pkg::PkgOpts {
-                path: Some(path.to_string_lossy().into_owned()),
-                locked: run_config.locked,
-                terse: !(capture_output || run_config.verbose),
+        match std::panic::catch_unwind(|| {
+            forc_test::build(forc_test::Opts {
+                pkg: forc_pkg::PkgOpts {
+                    path: Some(path.to_string_lossy().into_owned()),
+                    locked: run_config.locked,
+                    terse: !(capture_output || run_config.verbose),
+                    ..Default::default()
+                },
                 ..Default::default()
-            },
-            ..Default::default()
-        })?;
-        let test_filter = None;
-        let tested = built_tests.run(forc_test::TestRunnerCount::Auto, test_filter)?;
-
-        match tested {
-            forc_test::Tested::Package(tested_pkg) => Ok(vec![*tested_pkg]),
-            forc_test::Tested::Workspace(tested_pkgs) => Ok(tested_pkgs),
+            })
+        }) {
+            Ok(Ok(built_tests)) => {
+                let test_filter = None;
+                let tested = built_tests.run(forc_test::TestRunnerCount::Auto, test_filter)?;
+                match tested {
+                    forc_test::Tested::Package(tested_pkg) => Ok(vec![*tested_pkg]),
+                    forc_test::Tested::Workspace(tested_pkgs) => Ok(tested_pkgs),
+                }
+            }
+            Ok(Err(e)) => Err(e),
+            Err(_) => Err(anyhow!("Compiler panic")),
         }
     })
     .await
