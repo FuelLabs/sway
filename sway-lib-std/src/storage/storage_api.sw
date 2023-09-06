@@ -4,7 +4,13 @@ use ::alloc::alloc;
 use ::option::Option::{self, *};
 use ::u256::U256;
 
-/// Store a stack value in storage. Will not work for heap values.
+/// Tightly stores a stack value in storage. Will not work for heap values. If the
+/// value crosses the boundary of a storage slot, writing continues at the following slot.
+///
+/// # Additional Information
+///
+/// Values of the same reference type `T` should use the same `slot`. 
+/// Different types should use different `slot`s. 
 ///
 /// # Arguments
 ///
@@ -31,34 +37,12 @@ use ::u256::U256;
 /// ```
 #[storage(read, write)]
 pub fn write<T>(slot: b256, offset: u64, value: T) {
-    let size_of_t = __size_of::<T>();
-    if size_of_t == 0 {
+    if __size_of::<T>() == 0 {
         return;
     }
 
-    // Get the last storage slot needed based on the size of `T`
-    let last_slot = match __is_reference_type::<T>() {
-        true => ((offset * size_of_t) + size_of_t + 31) >> 5,
-        false => ((offset * 8) + 8 + 31) >> 5,
-    };
-
-    // Where in the storage slot to align `T` in order to pack word-aligned
-    let place_in_slot = match __is_reference_type::<T>() {
-        true => (offset * (size_of_t / 8)) % 4,
-        false => offset % 4,
-    };
- 
-    // Get the number of slots `T` spans based on it's packed position
-    let number_of_slots = match __is_reference_type::<T>() {
-        true => ((place_in_slot + (size_of_t / 8) - 1) / 4) + 1,
-        false => 1,
-    };
-
-    // Determine which slot `T` will be stored based on the offset
-    let mut u256_slot = U256::from(asm(r1: slot) { r1: (u64, u64, u64, u64) });
-    let u256_increment = U256::from((0, 0, 0, last_slot - number_of_slots + 1));
-    u256_slot += u256_increment;
-    let mut offset_slot = asm(r1: u256_slot.into()) { r1: b256 };
+    // Determine how many slots and where the value is to be stored.
+    let (offset_slot, number_of_slots, place_in_slot) = slot_calculator::<T>(slot, offset);
 
     // Allocate enough memory on the heap for `value` as well as any potential padding required due 
     // to `offset`.
@@ -107,33 +91,12 @@ pub fn write<T>(slot: b256, offset: u64, value: T) {
 /// ```
 #[storage(read)]
 pub fn read<T>(slot: b256, offset: u64) -> Option<T> {
-    let size_of_t = __size_of::<T>();
-    if size_of_t == 0 {
+    if __size_of::<T>() == 0 {
         return None;
     }
 
-    // Get the last storage slot needed based on the size of `T`
-    let last_slot = match __is_reference_type::<T>() {
-        true => ((offset * size_of_t) + size_of_t + 31) >> 5,
-        false => ((offset * 8) + 8 + 31) >> 5,
-    };
-
-    // Where in the storage slot to align `T` in order to pack word-aligned
-    let place_in_slot = match __is_reference_type::<T>() {
-        true => (offset * (size_of_t / 8)) % 4,
-        false => offset % 4,
-    };
- 
-    // Get the number of slots `T` spans based on it's packed position
-    let number_of_slots = match __is_reference_type::<T>() {
-        true => ((place_in_slot + (size_of_t / 8) - 1) / 4) + 1,
-        false => 1,
-    };
-
-    let mut u256_slot = U256::from(asm(r1: slot) { r1: (u64, u64, u64, u64) });
-    let u256_increment = U256::from((0, 0, 0, last_slot - number_of_slots + 1));
-    u256_slot += u256_increment;
-    let mut offset_slot = asm(r1: u256_slot.into()) { r1: b256 };
+    // Determine how many slots and where the value is to be read.
+    let (offset_slot, number_of_slots, place_in_slot) = slot_calculator::<T>(slot, offset);
 
     // Allocate a buffer for the result. Its size needs to be a multiple of 32 bytes so we can 
     // make the 'quad' storage instruction read without overflowing.
@@ -149,11 +112,11 @@ pub fn read<T>(slot: b256, offset: u64) -> Option<T> {
     }
 }
 
-/// Clear a sequence of consecutive storage slots starting at a some slot with an offset. 
+/// Clear a value starting at a some slot with an offset. 
 ///
 /// # Arguments
 ///
-/// * `slot` - The key of the first storage slot that will be cleared
+/// * `slot` - The key of the stored value that will be cleared
 /// * `offset` - An offset, in words, from the start of `slot`, from which the value should be cleared.
 /// 
 /// # Number of Storage Accesses
@@ -175,29 +138,60 @@ pub fn read<T>(slot: b256, offset: u64) -> Option<T> {
 /// ```
 #[storage(write)]
 pub fn clear<T>(slot: b256, offset: u64) -> bool {
-    // Get the last storage slot needed based on the size of `T`
-    let last_slot = match __is_reference_type::<T>() {
-        true => ((offset * __size_of::<T>()) + __size_of::<T>() + 31) >> 5,
-        false => ((offset * 8) + 8 + 31) >> 5,
-    };
+    if __size_of::<T>() == 0 {
+        return true;
+    }
 
-    // Where in the storage slot to align `T` in order to pack word-aligned
-    let place_in_slot = match __is_reference_type::<T>() {
-        true => (offset * (__size_of::<T>() / 8)) % 4,
-        false => offset % 4,
-    };
- 
-    // Get the number of slots `T` spans based on it's packed position
-    let number_of_slots = match __is_reference_type::<T>() {
-        true => ((place_in_slot + (__size_of::<T>() / 8) - 1) / 4) + 1,
-        false => 1,
-    };
-
-    let mut u256_slot = U256::from(asm(r1: slot) { r1: (u64, u64, u64, u64) });
-    let u256_increment = U256::from((0, 0, 0, last_slot - number_of_slots + 1));
-    u256_slot += u256_increment;
-    let mut offset_slot = asm(r1: u256_slot.into()) { r1: b256 };
+    // Determine how many slots and where the value is to be cleared.
+    let (offset_slot, number_of_slots, place_in_slot) = slot_calculator::<T>(slot, offset);
 
     // Clear `number_of_slots * 32` bytes starting at storage slot `slot`.
     __state_clear(offset_slot, number_of_slots)
+}
+
+/// Given a slot, offset, and type this function determines where something should be stored.
+///
+/// # Arguments
+///
+/// * `slot`: [b256] - The starting address at which something should be stored.
+/// * `offset`: [u64] - The offset off of `slot` to store the a value.
+///
+/// # Returns
+///
+/// [b256] - The calculated offset slot to store the value.
+/// [u64] - The number of slots the value will occupy in storage.
+/// [u64] - The word in the slot where the value will start.
+fn slot_calculator<T>(slot: b256, offset: u64) -> (b256, u64, u64) {
+    let size_of_t = __size_of::<T>();
+
+    // Get the last storage slot needed based on the size of `T`.
+    // ((offset * bytes) + bytes + (slot_bytes - 1)) >> slot_aligned_shift_right = last slot
+    let last_slot = match __is_reference_type::<T>() {
+        true => ((offset * size_of_t) + size_of_t + 31) >> 5,
+        false => ((offset * 8) + 8 + 31) >> 5,
+    };
+
+    // Where in the storage slot to align `T` in order to pack word-aligned.
+    // (offset * words_of_t) % number_words_in_slot = word_place_in_slot
+    let place_in_slot = match __is_reference_type::<T>() {
+        true => (offset * (size_of_t / 8)) % 4,
+        false => offset % 4,
+    };
+ 
+    // Get the number of slots `T` spans based on it's packed position.
+    // ((place_in_slot + words_of_t) - 1) / words_in_slot) + 1 = number_of_slots
+    let number_of_slots = match __is_reference_type::<T>() {
+        true => ((place_in_slot + (size_of_t / 8) - 1) / 4) + 1,
+        false => 1,
+    };
+
+    // TODO: Update when u256 <-> b256 conversions exist.
+    // Determine which starting slot `T` will be stored based on the offset.
+    let mut u256_slot = U256::from(asm(r1: slot) { r1: (u64, u64, u64, u64) });
+    // last_slot - number_of_slots + 1 = offset_starting_slot
+    let u256_increment = U256::from((0, 0, 0, last_slot - number_of_slots));
+    u256_slot += u256_increment;
+    let mut offset_slot = asm(r1: u256_slot.into()) { r1: b256 };
+
+    (offset_slot, number_of_slots, place_in_slot)
 }

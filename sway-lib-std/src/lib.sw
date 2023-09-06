@@ -33,6 +33,7 @@ pub mod identity;
 pub mod ecr;
 pub mod vm;
 pub mod string;
+pub mod r#storage;
 pub mod b256;
 pub mod block;
 pub mod inputs;
