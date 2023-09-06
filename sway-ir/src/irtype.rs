@@ -289,7 +289,10 @@ impl Type {
 
         indices.iter().try_fold(*self, |ty, idx| {
             ty.get_field_type(context, *idx)
-                .or_else(|| ty.get_array_elem_type(context))
+                .or_else(|| match ty.get_content(context) {
+                    TypeContent::Array(ty, len) if idx < len => Some(*ty),
+                    _ => None,
+                })
         })
     }
 

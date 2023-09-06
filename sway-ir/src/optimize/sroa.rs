@@ -3,9 +3,9 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    combine_indices, compute_escaped_symbols, get_loaded_ptr_values, get_stored_ptr_values, get_symbols, AnalysisResults, Context,
-    Function, Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type,
-    Value,
+    combine_indices, compute_escaped_symbols, get_loaded_ptr_values, get_stored_ptr_values,
+    get_symbols, AnalysisResults, Constant, Context, Function, Instruction, IrError,
+    LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type, Value,
 };
 
 pub const SROA_NAME: &str = "sroa";
@@ -89,7 +89,9 @@ pub fn sroa(
     let offset_scalar_map: FxHashMap<Symbol, FxHashMap<u32, LocalVar>> = candidates
         .iter()
         .map(|sym| {
-            let Symbol::Local(local_aggr) = sym else { panic!("Expected only local candidates") };
+            let Symbol::Local(local_aggr) = sym else {
+                panic!("Expected only local candidates")
+            };
             (*sym, split_aggregate(context, function, *local_aggr))
         })
         .collect();
@@ -99,20 +101,200 @@ pub fn sroa(
     for block in function.block_iter(context) {
         let mut new_insts = Vec::new();
         for inst in block.instruction_iter(context) {
+            if let Instruction::MemCopyVal {
+                dst_val_ptr,
+                src_val_ptr,
+            } = *inst.get_instruction(context).unwrap()
+            {
+                let src_syms = get_symbols(context, src_val_ptr);
+                let dst_syms = get_symbols(context, dst_val_ptr);
+
+                // If neither source nor dest needs rewriting, we skip.
+                let src_sym = src_syms
+                    .get(0)
+                    .and_then(|src_sym| candidates.contains(src_sym).then_some(*src_sym));
+                let dst_sym = dst_syms
+                    .get(0)
+                    .and_then(|dst_sym| candidates.contains(dst_sym).then_some(*dst_sym));
+                if src_sym.is_none() && dst_sym.is_none() {
+                    new_insts.push(inst);
+                    continue;
+                }
+
+                // compute the offsets at which each (nested) field in our pointee type is at.
+                fn calc_elm_details(
+                    context: &Context,
+                    offsets: &mut Vec<u32>,
+                    types: &mut Vec<Type>,
+                    ty: Type,
+                    base_off: &mut u32,
+                ) {
+                    if !super::target_fuel::is_demotable_type(context, &ty) {
+                        let ty_size: u32 = ty.size_in_bytes(context).try_into().unwrap();
+                        offsets.push(*base_off);
+                        types.push(ty);
+                        *base_off += ty_size;
+                    } else {
+                        assert!(ty.is_aggregate(context));
+                        let mut i = 0;
+                        while let Some(member_ty) = ty.get_indexed_type(context, &[i]) {
+                            calc_elm_details(context, offsets, types, member_ty, base_off);
+                            i += 1;
+                        }
+                    }
+                }
+                let mut local_base_offset = 0;
+                let mut elm_offsets = vec![];
+                let mut elm_types = vec![];
+                calc_elm_details(
+                    context,
+                    &mut elm_offsets,
+                    &mut elm_types,
+                    src_val_ptr
+                        .get_type(context)
+                        .unwrap()
+                        .get_pointee_type(context)
+                        .expect("Unable to determine pointee type of pointer"),
+                    &mut local_base_offset,
+                );
+
+                // Handle the source pointer first.
+                let mut elm_local_map = FxHashMap::default();
+                if let Some(src_sym) = src_sym {
+                    // The source symbol is a candidate. So it has been split into scalars.
+                    // Load each of these into a SSA variable.
+                    let base_offset = combine_indices(context, src_val_ptr)
+                        .and_then(|indices| {
+                            src_sym
+                                .get_type(context)
+                                .get_pointee_type(context)
+                                .and_then(|pointee_ty| {
+                                    pointee_ty.get_value_indexed_offset(context, &indices)
+                                })
+                        })
+                        .expect("Source of memcpy was incorrectly identified as a candidate.")
+                        as u32;
+                    for elm_offset in &elm_offsets {
+                        let actual_offset = elm_offset + base_offset;
+                        let remapped_var = offset_scalar_map
+                            .get(&src_sym)
+                            .unwrap()
+                            .get(&(actual_offset as u32))
+                            .unwrap();
+                        let scalarized_local =
+                            Value::new_instruction(context, Instruction::GetLocal(*remapped_var));
+                        let load =
+                            Value::new_instruction(context, Instruction::Load(scalarized_local));
+                        elm_local_map.insert(*elm_offset, load);
+                        new_insts.push(scalarized_local);
+                        new_insts.push(load);
+                    }
+                } else {
+                    // The source symbol is not a candidate. So it won't be split into scalars.
+                    // We must use GEPs to load each individual element into an SSA variable.
+                    for (&elm_offset, &elm_type) in elm_offsets.iter().zip(elm_types.iter()) {
+                        let elm_offset_const = Constant::new_uint(context, 64, elm_offset.into());
+                        let elm_offset_value = Value::new_constant(context, elm_offset_const);
+                        let elem_ptr_ty = Type::new_ptr(context, elm_type);
+                        let elm_addr = Value::new_instruction(
+                            context,
+                            Instruction::GetElemPtr {
+                                base: src_val_ptr,
+                                elem_ptr_ty,
+                                indices: vec![elm_offset_value],
+                            },
+                        );
+                        let load = Value::new_instruction(context, Instruction::Load(elm_addr));
+                        elm_local_map.insert(elm_offset, load);
+                        new_insts.push(elm_addr);
+                        new_insts.push(load);
+                    }
+                }
+                if let Some(dst_sym) = dst_sym {
+                    // The dst symbol is a candidate. So it has been split into scalars.
+                    // Store to each of these from the SSA varible we crated above.
+                    let base_offset = combine_indices(context, dst_val_ptr)
+                        .and_then(|indices| {
+                            dst_sym
+                                .get_type(context)
+                                .get_pointee_type(context)
+                                .and_then(|pointee_ty| {
+                                    pointee_ty.get_value_indexed_offset(context, &indices)
+                                })
+                        })
+                        .expect("Source of memcpy was incorrectly identified as a candidate.")
+                        as u32;
+                    for elm_offset in elm_offsets {
+                        let actual_offset = elm_offset + base_offset;
+                        let remapped_var = offset_scalar_map
+                            .get(&dst_sym)
+                            .unwrap()
+                            .get(&(actual_offset as u32))
+                            .unwrap();
+                        let scalarized_local =
+                            Value::new_instruction(context, Instruction::GetLocal(*remapped_var));
+                        let loaded_source = elm_local_map
+                            .get(&elm_offset)
+                            .expect("memcpy source not loaded");
+                        let store = Value::new_instruction(
+                            context,
+                            Instruction::Store {
+                                dst_val_ptr: scalarized_local,
+                                stored_val: *loaded_source,
+                            },
+                        );
+                        new_insts.push(scalarized_local);
+                        new_insts.push(store);
+                    }
+                } else {
+                    // The dst symbol is not a candidate. So it won't be split into scalars.
+                    // We must use GEPs to store to each individual element from its SSA variable.
+                    for (&elm_offset, &elm_type) in elm_offsets.iter().zip(elm_types.iter()) {
+                        let elm_offset_const = Constant::new_uint(context, 64, elm_offset.into());
+                        let elm_offset_value = Value::new_constant(context, elm_offset_const);
+                        let elem_ptr_ty = Type::new_ptr(context, elm_type);
+                        let elm_addr = Value::new_instruction(
+                            context,
+                            Instruction::GetElemPtr {
+                                base: src_val_ptr,
+                                elem_ptr_ty,
+                                indices: vec![elm_offset_value],
+                            },
+                        );
+                        let loaded_source = elm_local_map
+                            .get(&elm_offset)
+                            .expect("memcpy source not loaded");
+                        let store = Value::new_instruction(
+                            context,
+                            Instruction::Store {
+                                dst_val_ptr: elm_addr,
+                                stored_val: *loaded_source,
+                            },
+                        );
+                        new_insts.push(elm_addr);
+                        new_insts.push(store);
+                    }
+                }
+
+                // We've handled the memcpy. it's been replaced with other instructions.
+                continue;
+            }
             let loaded_pointers = get_loaded_ptr_values(context, inst);
             let stored_pointers = get_stored_ptr_values(context, inst);
 
             for ptr in loaded_pointers.iter().chain(stored_pointers.iter()) {
                 let syms = get_symbols(context, *ptr);
                 if syms.len() == 1 && candidates.contains(&syms[0]) {
-                    let Some(offset) =
-                        combine_indices(context, *ptr).
-                        and_then(|indices| 
-                            syms[0]
+                    let Some(offset) = combine_indices(context, *ptr).and_then(|indices| {
+                        syms[0]
                             .get_type(context)
                             .get_pointee_type(context)
-                            .and_then(|pointee_ty| pointee_ty.get_value_indexed_offset(context, &indices)))
-                        else { continue; };
+                            .and_then(|pointee_ty| {
+                                pointee_ty.get_value_indexed_offset(context, &indices)
+                            })
+                    }) else {
+                        continue;
+                    };
                     let remapped_var = offset_scalar_map
                         .get(&syms[0])
                         .unwrap()
@@ -154,6 +336,7 @@ fn candidate_symbols(context: &Context, function: Function) -> FxHashSet<Symbol>
 
     // We walk the function to remove from `candidates`, any local that is
     // 1. accessed by a bigger-than-register sized load / store.
+    //    (we make an exception for load / store in `mem_copy_val` as that can be handled).
     // 2. OR accessed via a non-const indexing.
     // 3. OR aliased to a pointer that may point to more than one symbol.
     for (_, inst) in function.instruction_iter(context) {
@@ -166,11 +349,14 @@ fn candidate_symbols(context: &Context, function: Function) -> FxHashSet<Symbol>
                 for sym in &syms {
                     candidates.remove(sym);
                 }
+                continue;
             }
             if combine_indices(context, *ptr).map_or(false, |indices| {
                 indices.iter().any(|idx| !idx.is_constant(context))
             }) || ptr.match_ptr_type(context).is_some_and(|pointee_ty| {
+                let inst = inst.get_instruction(context).unwrap();
                 super::target_fuel::is_demotable_type(context, &pointee_ty)
+                    && !matches!(inst, Instruction::MemCopyVal { .. })
             }) {
                 candidates.remove(&syms[0]);
             }

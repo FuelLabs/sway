@@ -4,8 +4,8 @@ use sway_ir::{
     create_arg_demotion_pass, create_const_combine_pass, create_const_demotion_pass,
     create_dce_pass, create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass,
     create_mem2reg_pass, create_memcpyopt_pass, create_misc_demotion_pass, create_postorder_pass,
-    create_ret_demotion_pass, create_simplify_cfg_pass, optimize as opt, Context, PassGroup,
-    PassManager, register_known_passes, SROA_NAME, MEM2REG_NAME, DCE_NAME,
+    create_ret_demotion_pass, create_simplify_cfg_pass, optimize as opt, register_known_passes,
+    Context, PassGroup, PassManager, DCE_NAME, MEM2REG_NAME, SROA_NAME,
 };
 use sway_types::SourceEngine;
 
