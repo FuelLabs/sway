@@ -5852,6 +5852,7 @@ dependencies = [
 name = "sway-error"
 version = "0.45.0"
 dependencies = [
+ "either",
  "num-traits",
  "smallvec",
  "sway-types",
