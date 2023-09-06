@@ -114,11 +114,12 @@ impl TokenMap {
                     Some(TypedAstToken::TypedFunctionDeclaration(decl))
                         if functions_only == Some(true) =>
                     {
-                        TokenIdent::new(&Ident::new(decl.span.clone()), source_engine)
+                        TokenIdent::new(&Ident::new(decl.span), source_engine)
                     }
                     Some(TypedAstToken::TypedDeclaration(decl)) => {
-                        TokenIdent::new(&Ident::new(decl.span().clone()), source_engine)
+                        TokenIdent::new(&Ident::new(decl.span()), source_engine)
                     }
+                    #[allow(clippy::redundant_clone)]
                     _ => ident.clone(),
                 };
                 if position >= token_ident.range.start && position <= token_ident.range.end {
