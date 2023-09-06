@@ -302,3 +302,31 @@ impl ContractId {
         self.transfer(AssetId::new(ContractId::from(asm() { fp: b256 }), sub_id), amount);
     }
 }
+
+#[test()]
+fn test_hasher_sha256_asset_id() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000000).hash(hasher);
+    let sha256 = hasher.sha256();
+    assert(sha256 == 0x66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925);
+
+    let mut hasher = Hasher::new();
+    AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000001).hash(hasher);
+    let sha256 = hasher.sha256();
+    assert(sha256 == 0xec4916dd28fc4c10d78e287ca5d9cc51ee1ae73cbfde08c6b37324cbfaac8bc5);
+}
+
+#[test()]
+fn test_hasher_sha256_contract_id() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000).hash(hasher);
+    let sha256 = hasher.sha256();
+    assert(sha256 == 0x66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925);
+
+    let mut hasher = Hasher::new();
+    ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001).hash(hasher);
+    let sha256 = hasher.sha256();
+    assert(sha256 == 0xec4916dd28fc4c10d78e287ca5d9cc51ee1ae73cbfde08c6b37324cbfaac8bc5);
+}
