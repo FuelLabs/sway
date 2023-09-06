@@ -266,7 +266,10 @@ impl TyProgram {
                         });
                     }
 
-                    if !t.extract_any(engines, &is_invalid_main_argument_or_return).is_empty() {
+                    if !t
+                        .extract_any(engines, &is_invalid_main_argument_or_return)
+                        .is_empty()
+                    {
                         handler.emit_err(CompileError::ThisTypeNotAllowedHere {
                             span: p.type_argument.span(),
                         });
@@ -276,7 +279,8 @@ impl TyProgram {
                 // Check main return type is valid
                 let return_type = ty_engine.get(main_func.return_type.type_id);
 
-                if is_invalid_main_argument_or_return(&return_type) {
+                // We allow raw_slice to be returned
+                if matches!(return_type, TypeInfo::StringSlice) {
                     handler.emit_err(CompileError::ThisTypeNotAllowedHere {
                         span: main_func.return_type.span(),
                     });
