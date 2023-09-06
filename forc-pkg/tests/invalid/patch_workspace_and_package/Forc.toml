@@ -1,0 +1,4 @@
+[workspace]
+members = [
+	"test_package"
+]
