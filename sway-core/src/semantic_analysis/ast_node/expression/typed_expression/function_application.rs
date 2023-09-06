@@ -17,7 +17,6 @@ pub(crate) fn instantiate_function_application(
     span: Span,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
     let decl_engine = ctx.engines.de();
-    let engines = ctx.engines();
 
     let mut function_decl = decl_engine.get_function(&function_decl_ref);
 
@@ -59,8 +58,7 @@ pub(crate) fn instantiate_function_application(
 
     // Retrieve the implemented traits for the type of the return type and
     // insert them in the broader namespace.
-    ctx.namespace
-        .insert_trait_implementation_for_type(engines, function_decl.return_type.type_id);
+    ctx.insert_trait_implementation_for_type(function_decl.return_type.type_id);
 
     // Handle the trait constraints. This includes checking to see if the trait
     // constraints are satisfied and replacing old decl ids based on the

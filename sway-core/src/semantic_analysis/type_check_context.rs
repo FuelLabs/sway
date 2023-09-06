@@ -1,7 +1,7 @@
 use std::collections::{HashMap, VecDeque};
 
 use crate::{
-    decl_engine::{DeclRefConstant, DeclRefFunction},
+    decl_engine::{DeclEngineInsert, DeclRefConstant, DeclRefFunction},
     engine_threading::*,
     language::{
         parsed::TreeType,
@@ -13,16 +13,15 @@ use crate::{
         ast_node::{AbiMode, ConstShadowingMode},
         Namespace,
     },
-    type_system::{
-        EnforceTypeArguments, MonomorphizeHelper, SubstTypes, TypeArgument, TypeId, TypeInfo,
-    },
-    ReplaceSelfType, UnifyCheck,
+    type_system::{SubstTypes, TypeArgument, TypeId, TypeInfo},
+    CreateTypeId, ReplaceSelfType, TypeParameter, TypeSubstMap, UnifyCheck,
 };
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{span::Span, Ident, Spanned};
+use sway_utils::iter_prefixes;
 
 /// Contextual state tracked and accumulated throughout type-checking.
 pub struct TypeCheckContext<'a> {
@@ -277,14 +276,12 @@ impl<'a> TypeCheckContext<'a> {
         T: MonomorphizeHelper + SubstTypes,
     {
         let mod_path = self.namespace.mod_path.clone();
-        self.engines.te().monomorphize(
+        self.monomorphize_with_modpath(
             handler,
-            self.engines(),
             value,
             type_arguments,
             enforce_type_arguments,
             call_site_span,
-            self.namespace,
             &mod_path,
         )
     }
@@ -321,6 +318,203 @@ impl<'a> TypeCheckContext<'a> {
         self.engines
     }
 
+    /// Resolve the type of the given [TypeId], replacing any instances of
+    /// [TypeInfo::Custom] with either a monomorphized struct, monomorphized
+    /// enum, or a reference to a type parameter.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn resolve(
+        &mut self,
+        handler: &Handler,
+        type_id: TypeId,
+        span: &Span,
+        enforce_type_arguments: EnforceTypeArguments,
+        type_info_prefix: Option<&Path>,
+        mod_path: &Path,
+    ) -> Result<TypeId, ErrorEmitted> {
+        let decl_engine = self.engines.de();
+        let type_engine = self.engines.te();
+        let module_path = type_info_prefix.unwrap_or(mod_path);
+        let type_id = match type_engine.get(type_id) {
+            TypeInfo::Custom {
+                call_path,
+                type_arguments,
+            } => {
+                match self
+                    .resolve_call_path_with_visibility_check_and_modpath(
+                        handler,
+                        module_path,
+                        &call_path,
+                    )
+                    .ok()
+                    .cloned()
+                {
+                    Some(ty::TyDecl::StructDecl(ty::StructDecl {
+                        decl_id: original_id,
+                        ..
+                    })) => {
+                        // get the copy from the declaration engine
+                        let mut new_copy = decl_engine.get_struct(&original_id);
+
+                        // monomorphize the copy, in place
+                        self.monomorphize_with_modpath(
+                            handler,
+                            &mut new_copy,
+                            &mut type_arguments.unwrap_or_default(),
+                            enforce_type_arguments,
+                            span,
+                            mod_path,
+                        )?;
+
+                        // insert the new copy in the decl engine
+                        let new_decl_ref = decl_engine.insert(new_copy);
+
+                        // create the type id from the copy
+                        let type_id =
+                            type_engine.insert(self.engines, TypeInfo::Struct(new_decl_ref));
+
+                        // take any trait methods that apply to this type and copy them to the new type
+                        self.insert_trait_implementation_for_type(type_id);
+
+                        // return the id
+                        type_id
+                    }
+                    Some(ty::TyDecl::EnumDecl(ty::EnumDecl {
+                        decl_id: original_id,
+                        ..
+                    })) => {
+                        // get the copy from the declaration engine
+                        let mut new_copy = decl_engine.get_enum(&original_id);
+
+                        // monomorphize the copy, in place
+                        self.monomorphize_with_modpath(
+                            handler,
+                            &mut new_copy,
+                            &mut type_arguments.unwrap_or_default(),
+                            enforce_type_arguments,
+                            span,
+                            mod_path,
+                        )?;
+
+                        // insert the new copy in the decl engine
+                        let new_decl_ref = decl_engine.insert(new_copy);
+
+                        // create the type id from the copy
+                        let type_id =
+                            type_engine.insert(self.engines, TypeInfo::Enum(new_decl_ref));
+
+                        // take any trait methods that apply to this type and copy them to the new type
+                        self.insert_trait_implementation_for_type(type_id);
+
+                        // return the id
+                        type_id
+                    }
+                    Some(ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl {
+                        decl_id: original_id,
+                        ..
+                    })) => {
+                        let new_copy = decl_engine.get_type_alias(&original_id);
+
+                        // TODO: monomorphize the copy, in place, when generic type aliases are
+                        // supported
+
+                        let type_id = new_copy.create_type_id(self.engines);
+                        self.insert_trait_implementation_for_type(type_id);
+
+                        type_id
+                    }
+                    Some(ty::TyDecl::GenericTypeForFunctionScope(
+                        ty::GenericTypeForFunctionScope { type_id, .. },
+                    )) => type_id,
+                    _ => {
+                        let err = handler.emit_err(CompileError::UnknownTypeName {
+                            name: call_path.to_string(),
+                            span: call_path.span(),
+                        });
+                        type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err))
+                    }
+                }
+            }
+            TypeInfo::Array(mut elem_ty, n) => {
+                elem_ty.type_id = self
+                    .resolve(
+                        handler,
+                        elem_ty.type_id,
+                        span,
+                        enforce_type_arguments,
+                        None,
+                        mod_path,
+                    )
+                    .unwrap_or_else(|err| {
+                        self.engines
+                            .te()
+                            .insert(self.engines, TypeInfo::ErrorRecovery(err))
+                    });
+
+                let type_id = self
+                    .engines
+                    .te()
+                    .insert(self.engines, TypeInfo::Array(elem_ty, n));
+
+                // take any trait methods that apply to this type and copy them to the new type
+                self.insert_trait_implementation_for_type(type_id);
+
+                type_id
+            }
+            TypeInfo::Tuple(mut type_arguments) => {
+                for type_argument in type_arguments.iter_mut() {
+                    type_argument.type_id = self
+                        .resolve(
+                            handler,
+                            type_argument.type_id,
+                            span,
+                            enforce_type_arguments,
+                            None,
+                            mod_path,
+                        )
+                        .unwrap_or_else(|err| {
+                            self.engines
+                                .te()
+                                .insert(self.engines, TypeInfo::ErrorRecovery(err))
+                        });
+                }
+
+                let type_id = self
+                    .engines
+                    .te()
+                    .insert(self.engines, TypeInfo::Tuple(type_arguments));
+
+                // take any trait methods that apply to this type and copy them to the new type
+                self.insert_trait_implementation_for_type(type_id);
+
+                type_id
+            }
+            _ => type_id,
+        };
+        Ok(type_id)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn resolve_with_self(
+        &mut self,
+        handler: &Handler,
+        mut type_id: TypeId,
+        self_type: TypeId,
+        span: &Span,
+        enforce_type_arguments: EnforceTypeArguments,
+        type_info_prefix: Option<&Path>,
+        mod_path: &Path,
+    ) -> Result<TypeId, ErrorEmitted> {
+        type_id.replace_self_type(self.engines, self_type);
+        self.resolve(
+            handler,
+            type_id,
+            span,
+            enforce_type_arguments,
+            type_info_prefix,
+            mod_path,
+        )
+    }
+
     /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
     #[allow(clippy::too_many_arguments)] // TODO: remove lint bypass once private modules are no longer experimental
     pub(crate) fn resolve_type_with_self(
@@ -333,15 +527,13 @@ impl<'a> TypeCheckContext<'a> {
         type_info_prefix: Option<&Path>,
     ) -> Result<TypeId, ErrorEmitted> {
         let mod_path = self.namespace.mod_path.clone();
-        self.engines.te().resolve_with_self(
+        self.resolve_with_self(
             handler,
-            self.engines,
             type_id,
             self_type,
             span,
             enforce_type_arguments,
             type_info_prefix,
-            self.namespace,
             &mod_path,
         )
     }
@@ -355,14 +547,12 @@ impl<'a> TypeCheckContext<'a> {
         type_info_prefix: Option<&Path>,
     ) -> Result<TypeId, ErrorEmitted> {
         let mod_path = self.namespace.mod_path.clone();
-        self.engines.te().resolve(
+        self.resolve(
             handler,
-            self.engines,
             type_id,
             span,
             EnforceTypeArguments::Yes,
             type_info_prefix,
-            self.namespace,
             &mod_path,
         )
     }
@@ -373,12 +563,59 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         call_path: &CallPath,
     ) -> Result<&ty::TyDecl, ErrorEmitted> {
-        self.namespace.root.resolve_call_path_with_visibility_check(
+        self.resolve_call_path_with_visibility_check_and_modpath(
             handler,
-            self.engines,
             &self.namespace.mod_path,
             call_path,
         )
+    }
+
+    /// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
+    ///
+    /// This will concatenate the `mod_path` with the `call_path`'s prefixes and
+    /// then calling `resolve_symbol` with the resulting path and call_path's suffix.
+    ///
+    /// The `mod_path` is significant here as we assume the resolution is done within the
+    /// context of the module pointed to by `mod_path` and will only check the call path prefixes
+    /// and the symbol's own visibility
+    pub(crate) fn resolve_call_path_with_visibility_check_and_modpath(
+        &self,
+        handler: &Handler,
+        mod_path: &Path,
+        call_path: &CallPath,
+    ) -> Result<&ty::TyDecl, ErrorEmitted> {
+        let decl = self
+            .namespace
+            .root
+            .resolve_call_path(handler, mod_path, call_path)?;
+
+        // In case there are no prefixes we don't need to check visibility
+        if call_path.prefixes.is_empty() {
+            return Ok(decl);
+        }
+
+        // check the visibility of the call path elements
+        // we don't check the first prefix because direct children are always accessible
+        for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
+            let module = self.namespace.root.check_submodule(handler, prefix)?;
+            if module.visibility.is_private() {
+                let prefix_last = prefix[prefix.len() - 1].clone();
+                handler.emit_err(CompileError::ImportPrivateModule {
+                    span: prefix_last.span(),
+                    name: prefix_last,
+                });
+            }
+        }
+
+        // check the visibility of the symbol itself
+        if !decl.visibility(self.engines.de()).is_public() {
+            handler.emit_err(CompileError::ImportPrivateSymbol {
+                name: call_path.suffix.clone(),
+                span: call_path.suffix.span(),
+            });
+        }
+
+        Ok(decl)
     }
 
     /// Given a name and a type (plus a `self_type` to potentially
@@ -413,15 +650,13 @@ impl<'a> TypeCheckContext<'a> {
         type_id.replace_self_type(self.engines, self_type);
 
         // resolve the type
-        let type_id = type_engine
+        let type_id = self
             .resolve(
                 handler,
-                self.engines,
                 type_id,
                 &item_name.span(),
                 EnforceTypeArguments::No,
                 None,
-                self.namespace,
                 item_prefix,
             )
             .unwrap_or_else(|err| type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err)));
@@ -670,8 +905,7 @@ impl<'a> TypeCheckContext<'a> {
                 // insert_trait_implementation_for_type is already called when we do type check of structs, enums, arrays and tuples.
                 // In cases such as blanket trait implementation and usage of builtin types a method may not be found because
                 // insert_trait_implementation_for_type has yet to be called for that type.
-                self.namespace
-                    .insert_trait_implementation_for_type(self.engines, type_id);
+                self.insert_trait_implementation_for_type(type_id);
 
                 return self.find_method_for_type(
                     handler,
@@ -863,4 +1097,169 @@ impl<'a> TypeCheckContext<'a> {
             .implemented_traits
             .get_items_for_type_and_trait_name(self.engines, type_id, &trait_name)
     }
+
+    /// Given a `value` of type `T` that is able to be monomorphized and a set
+    /// of `type_arguments`, monomorphize `value` with the `type_arguments`.
+    ///
+    /// When this function is called, it is passed a `T` that is a copy of some
+    /// original declaration for `T` (let's denote the original with `[T]`).
+    /// Because monomorphization happens at application time (e.g. function
+    /// application), we want to be able to modify `value` such that type
+    /// checking the application of `value` affects only `T` and not `[T]`.
+    ///
+    /// So, at a high level, this function does two things. It 1) performs the
+    /// necessary work to refresh the relevant generic types in `T` so that they
+    /// are distinct from the generics of the same name in `[T]`. And it 2)
+    /// applies `type_arguments` (if any are provided) to the type parameters
+    /// of `value`, unifying the types.
+    ///
+    /// There are 4 cases that are handled in this function:
+    ///
+    /// 1. `value` does not have type parameters + `type_arguments` is empty:
+    ///     1a. return ok
+    /// 2. `value` has type parameters + `type_arguments` is empty:
+    ///     2a. if the [EnforceTypeArguments::Yes] variant is provided, then
+    ///         error
+    ///     2b. refresh the generic types with a [TypeSubstMapping]
+    /// 3. `value` does have type parameters + `type_arguments` is nonempty:
+    ///     3a. error
+    /// 4. `value` has type parameters + `type_arguments` is nonempty:
+    ///     4a. check to see that the type parameters and `type_arguments` have
+    ///         the same length
+    ///     4b. for each type argument in `type_arguments`, resolve the type
+    ///     4c. refresh the generic types with a [TypeSubstMapping]
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn monomorphize_with_modpath<T>(
+        &mut self,
+        handler: &Handler,
+        value: &mut T,
+        type_arguments: &mut [TypeArgument],
+        enforce_type_arguments: EnforceTypeArguments,
+        call_site_span: &Span,
+        mod_path: &Path,
+    ) -> Result<(), ErrorEmitted>
+    where
+        T: MonomorphizeHelper + SubstTypes,
+    {
+        match (
+            value.type_parameters().is_empty(),
+            type_arguments.is_empty(),
+        ) {
+            (true, true) => Ok(()),
+            (false, true) => {
+                if let EnforceTypeArguments::Yes = enforce_type_arguments {
+                    return Err(handler.emit_err(CompileError::NeedsTypeArguments {
+                        name: value.name().clone(),
+                        span: call_site_span.clone(),
+                    }));
+                }
+                let type_mapping =
+                    TypeSubstMap::from_type_parameters(self.engines, value.type_parameters());
+                value.subst(&type_mapping, self.engines);
+                Ok(())
+            }
+            (true, false) => {
+                let type_arguments_span = type_arguments
+                    .iter()
+                    .map(|x| x.span.clone())
+                    .reduce(Span::join)
+                    .unwrap_or_else(|| value.name().span());
+                Err(handler.emit_err(CompileError::DoesNotTakeTypeArguments {
+                    name: value.name().clone(),
+                    span: type_arguments_span,
+                }))
+            }
+            (false, false) => {
+                let type_arguments_span = type_arguments
+                    .iter()
+                    .map(|x| x.span.clone())
+                    .reduce(Span::join)
+                    .unwrap_or_else(|| value.name().span());
+                if value.type_parameters().len() != type_arguments.len() {
+                    return Err(
+                        handler.emit_err(CompileError::IncorrectNumberOfTypeArguments {
+                            given: type_arguments.len(),
+                            expected: value.type_parameters().len(),
+                            span: type_arguments_span,
+                        }),
+                    );
+                }
+                for type_argument in type_arguments.iter_mut() {
+                    type_argument.type_id = self
+                        .resolve(
+                            handler,
+                            type_argument.type_id,
+                            &type_argument.span,
+                            enforce_type_arguments,
+                            None,
+                            mod_path,
+                        )
+                        .unwrap_or_else(|err| {
+                            self.engines
+                                .te()
+                                .insert(self.engines, TypeInfo::ErrorRecovery(err))
+                        });
+                }
+                let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
+                    value
+                        .type_parameters()
+                        .iter()
+                        .map(|type_param| type_param.type_id)
+                        .collect(),
+                    type_arguments
+                        .iter()
+                        .map(|type_arg| type_arg.type_id)
+                        .collect(),
+                );
+                value.subst(&type_mapping, self.engines);
+                Ok(())
+            }
+        }
+    }
+
+    pub(crate) fn insert_trait_implementation_for_type(&mut self, type_id: TypeId) {
+        self.namespace
+            .implemented_traits
+            .insert_for_type(self.engines, type_id);
+    }
+}
+
+pub(crate) trait MonomorphizeHelper {
+    fn name(&self) -> &Ident;
+    fn type_parameters(&self) -> &[TypeParameter];
+}
+
+/// This type is used to denote if, during monomorphization, the compiler
+/// should enforce that type arguments be provided. An example of that
+/// might be this:
+///
+/// ```ignore
+/// struct Point<T> {
+///   x: u64,
+///   y: u64
+/// }
+///
+/// fn add<T>(p1: Point<T>, p2: Point<T>) -> Point<T> {
+///   Point {
+///     x: p1.x + p2.x,
+///     y: p1.y + p2.y
+///   }
+/// }
+/// ```
+///
+/// `EnforeTypeArguments` would require that the type annotations
+/// for `p1` and `p2` contain `<...>`. This is to avoid ambiguous definitions:
+///
+/// ```ignore
+/// fn add(p1: Point, p2: Point) -> Point {
+///   Point {
+///     x: p1.x + p2.x,
+///     y: p1.y + p2.y
+///   }
+/// }
+/// ```
+#[derive(Clone, Copy)]
+pub(crate) enum EnforceTypeArguments {
+    Yes,
+    No,
 }

@@ -5,7 +5,7 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::{ty, CallPath},
-    semantic_analysis::TypeCheckContext,
+    semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
     type_system::priv_prelude::*,
     Ident,
 };

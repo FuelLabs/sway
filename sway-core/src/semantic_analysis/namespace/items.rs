@@ -252,14 +252,6 @@ impl Items {
             })
     }
 
-    pub(crate) fn insert_trait_implementation_for_type(
-        &mut self,
-        engines: &Engines,
-        type_id: TypeId,
-    ) {
-        self.implemented_traits.insert_for_type(engines, type_id);
-    }
-
     pub fn get_items_for_type(&self, engines: &Engines, type_id: TypeId) -> Vec<ty::TyTraitItem> {
         self.implemented_traits.get_items_for_type(engines, type_id)
     }
