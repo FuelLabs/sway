@@ -71,7 +71,7 @@ pub(crate) struct MatchVariableDuplicate {
 /// For a match arm represented by the `scrutinee` it creates a tree whose nodes are variable names.
 /// Variables are added by moving through the match arm left to right.
 /// Branching in the tree occurs in the case of alternatives.
-/// The algorithm traverses the branches dept-first and collects all the unique duplicates for every branch.
+/// The algorithm traverses the branches depth-first and collects all the unique duplicates for every branch.
 /// Unique means that a duplicate can occur only in one branch.
 /// At the end it merges the result of all the branches in a single result.
 ///
