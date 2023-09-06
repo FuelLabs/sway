@@ -251,8 +251,11 @@ impl TyProgram {
                 // A script must not return a `raw_ptr` or any type aggregating a `raw_slice`.
                 // Directly returning a `raw_slice` is allowed, which will be just mapped to a RETD.
                 // TODO: Allow returning nested `raw_slice`s when our spec supports encoding DSTs.
-                let is_invalid_type = |type_info: &TypeInfo| {
+                let is_invalid_main_argument = |type_info: &TypeInfo| {
                     matches!(type_info, TypeInfo::RawUntypedSlice | TypeInfo::StringSlice)
+                };
+                let is_invalid_main_return = |type_info: &TypeInfo| {
+                    matches!(type_info, TypeInfo::StringSlice)
                 };
 
                 let main_func = mains.remove(0);
@@ -260,13 +263,13 @@ impl TyProgram {
                 for p in main_func.parameters() {
                     let t = ty_engine.get(p.type_argument.type_id);
 
-                    if is_invalid_type(&t) {
+                    if is_invalid_main_argument(&t) {
                         handler.emit_err(CompileError::ThisTypeNotAllowedHere {
                             span: p.type_argument.span(),
                         });
                     }
 
-                    if !t.extract_any(engines, &is_invalid_type).is_empty() {
+                    if !t.extract_any(engines, &is_invalid_main_argument).is_empty() {
                         handler.emit_err(CompileError::ThisTypeNotAllowedHere {
                             span: p.type_argument.span(),
                         });
@@ -276,14 +279,14 @@ impl TyProgram {
                 // Check main return type is valid
                 let return_type = ty_engine.get(main_func.return_type.type_id);
 
-                if is_invalid_type(&return_type) {
+                if is_invalid_main_return(&return_type) {
                     handler.emit_err(CompileError::ThisTypeNotAllowedHere {
                         span: main_func.return_type.span(),
                     });
                 }
 
                 if !return_type
-                    .extract_any(engines, &is_invalid_type)
+                    .extract_any(engines, &is_invalid_main_return)
                     .is_empty()
                 {
                     handler.emit_err(CompileError::ThisTypeNotAllowedHere {
