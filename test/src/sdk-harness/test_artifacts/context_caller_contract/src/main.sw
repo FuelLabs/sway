@@ -24,7 +24,7 @@ impl ContextCaller for Contract {
             gas: 500_000,
             coins: send_amount,
             asset_id: asset_id.into(),
-        }(asset_id)
+        }(asset_id.into())
     }
 
     fn call_get_balance_of_contract_with_coins(send_amount: u64, target: ContractId) -> u64 {
@@ -36,7 +36,7 @@ impl ContextCaller for Contract {
             gas: 500_000,
             coins: send_amount,
             asset_id: asset_id.into(),
-        }(asset_id, target)
+        }(asset_id.into(), target)
     }
 
     fn call_get_amount_with_coins(send_amount: u64, target: ContractId) -> u64 {
