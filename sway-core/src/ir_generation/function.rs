@@ -1792,12 +1792,14 @@ impl<'eng> FnCompiler<'eng> {
             )
             .or(self.compile_const_decl(context, md_mgr, const_decl, span_md_idx, true))?;
 
-        // parse constant string data into a string slice
+        // String slices are not allowed in constants
         if let Some(TypeContent::StringSlice) =
             result.get_type(context).map(|t| t.get_content(context))
         {
-            todo!();
-            // return self.compile_string_slice(context, span_md_idx, result, *len);
+            return Err(CompileError::TypeNotAllowed {
+                reason: sway_error::error::TypeNotAllowedReason::StringSliceInConst,
+                span: const_decl.span.clone(),
+            });
         }
 
         Ok(result)

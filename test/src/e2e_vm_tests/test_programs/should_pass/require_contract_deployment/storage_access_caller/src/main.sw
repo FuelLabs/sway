@@ -49,7 +49,7 @@ fn main() -> bool {
             revert(0)
         }
     }
-    assert(sha256_str(caller.get_string()) == sha256("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"));
+    assert(sha256_str_array(caller.get_string()) == sha256("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"));
 
     // Test 1
     caller.set_x(1);
@@ -192,7 +192,7 @@ fn main() -> bool {
     caller.set_string(__to_str_array("fuelfuelfuelfuelfuelfuelfuelfuelfuelfuel"));
 
     // Can't compare strings right now so compare hashes instead
-    assert(sha256_str(caller.get_string()) == sha256("fuelfuelfuelfuelfuelfuelfuelfuelfuelfuel"));
+    assert(sha256_str_array(caller.get_string()) == sha256("fuelfuelfuelfuelfuelfuelfuelfuelfuelfuel"));
 
     true
 }

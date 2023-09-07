@@ -46,6 +46,6 @@ impl Eq for [u64; 3] {
 
 impl Eq for str[4] {
     fn eq(self, other: Self) -> bool {
-        sha256_str(self) == sha256_str(other)
+        sha256_str_array(self) == sha256_str_array(other)
     }
 }

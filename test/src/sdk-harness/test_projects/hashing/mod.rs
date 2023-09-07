@@ -306,19 +306,19 @@ mod sha256 {
 
         let call_1 = instance
             .methods()
-            .sha256_str(SizedAsciiString::try_from("John").unwrap())
+            .sha256_str_array(SizedAsciiString::try_from("John").unwrap())
             .call()
             .await
             .unwrap();
         let call_2 = instance
             .methods()
-            .sha256_str(SizedAsciiString::try_from("John").unwrap())
+            .sha256_str_array(SizedAsciiString::try_from("John").unwrap())
             .call()
             .await
             .unwrap();
         let call_3 = instance
             .methods()
-            .sha256_str(SizedAsciiString::try_from("Nick").unwrap())
+            .sha256_str_array(SizedAsciiString::try_from("Nick").unwrap())
             .call()
             .await
             .unwrap();
@@ -468,11 +468,21 @@ mod sha256 {
             Hash::Sha256,
         ));
 
-        let call_1 = instance.methods().sha256_struct(true).call().await.unwrap();
-        let call_2 = instance.methods().sha256_struct(true).call().await.unwrap();
+        let call_1 = instance
+            .methods()
+            .sha256_str_arrayuct(true)
+            .call()
+            .await
+            .unwrap();
+        let call_2 = instance
+            .methods()
+            .sha256_str_arrayuct(true)
+            .call()
+            .await
+            .unwrap();
         let call_3 = instance
             .methods()
-            .sha256_struct(false)
+            .sha256_str_arrayuct(false)
             .call()
             .await
             .unwrap();

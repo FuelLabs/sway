@@ -140,7 +140,7 @@ impl ExperimentalStorageInitTest for Contract {
         assert(storage.s.t.int32.read() == s.t.int32);
         assert(storage.e.read() == e);
         assert(storage.e2.read() == e2);
-        assert(sha256_str(storage.string.read()) == sha256_str(string));
+        assert(sha256_str_array(storage.string.read()) == sha256_str_array(string));
         true
     }
 }

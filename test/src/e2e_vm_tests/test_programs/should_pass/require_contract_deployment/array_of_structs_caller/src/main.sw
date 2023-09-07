@@ -30,7 +30,7 @@ fn main() -> u64 {
         __to_str_array("222"), 
         __to_str_array("333")
     ]);
-    assert(sha256("111") == sha256_str(result));
+    assert(sha256("111") == sha256_str_array(result));
 
     1
 }

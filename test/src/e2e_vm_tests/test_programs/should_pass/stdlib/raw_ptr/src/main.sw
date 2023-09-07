@@ -79,8 +79,8 @@ fn main() -> bool {
     let read_small_string_1 = buf_ptr.read::<str[4]>();
     buf_ptr.write(small_string_2);
     let read_small_string_2 = buf_ptr.read::<str[4]>();
-    assert(sha256_str(small_string_1) == sha256_str(read_small_string_1));
-    assert(sha256_str(small_string_2) == sha256_str(read_small_string_2));
+    assert(sha256_str_array(small_string_1) == sha256_str_array(read_small_string_1));
+    assert(sha256_str_array(small_string_2) == sha256_str_array(read_small_string_2));
 
     let buf_ptr = alloc::<u64>(2);
     let large_string_1 = __to_str_array("fuelfuelfuel");
@@ -89,8 +89,8 @@ fn main() -> bool {
     let read_large_string_1 = buf_ptr.read::<str[12]>();
     buf_ptr.write(large_string_2);
     let read_large_string_2 = buf_ptr.read::<str[12]>();
-    assert(sha256_str(large_string_1) == sha256_str(read_large_string_1));
-    assert(sha256_str(large_string_2) == sha256_str(read_large_string_2));
+    assert(sha256_str_array(large_string_1) == sha256_str_array(read_large_string_1));
+    assert(sha256_str_array(large_string_2) == sha256_str_array(read_large_string_2));
 
     true
 }

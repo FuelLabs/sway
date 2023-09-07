@@ -325,11 +325,24 @@ pub fn sha256<T>(s: T) -> b256 where T: Hash {
     hasher.sha256()
 }
 
+/// Returns the `SHA-2-256` hash of `param`.
+/// This function is specific for string arrays
+///
+/// # Examples
+/// 
+/// ```sway
+/// use std::hash::*;
+///
+/// fn foo() {
+///     let result = sha256_str_array(__to_str_array("Fuel"));
+///     assert(result = 0xa80f942f4112036dfc2da86daf6d2ef6ede3164dd56d1000eb82fa87c992450f);
+/// }
+/// ```
 #![inline(never)]
-pub fn sha256_str<S>(s: S) -> b256 {
+pub fn sha256_str_array<S>(param: S) -> b256 {
      __check_str_type::<S>();
     let str_size = __size_of_str::<S>();
-    let str_ptr = __addr_of(s);
+    let str_ptr = __addr_of(param);
     
     let mut bytes = Bytes::with_capacity(str_size);
     bytes.len = str_size;
@@ -369,10 +382,9 @@ pub fn keccak256<T>(s: T) -> b256 where T: Hash {
 }
 
 // Tests
-//
 
 #[test()]
-fn test_hasher_sha256_str() {
+fn test_hasher_sha256_str_array() {
     use ::assert::assert;
     let mut hasher = Hasher::new();
     hasher.write_str("test");

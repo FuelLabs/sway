@@ -25,7 +25,7 @@ impl core::ops::Eq for Tuple {
 pub type StringTy = str[9];
 impl core::ops::Eq for StringTy {
     fn eq(self, other: Self) -> bool {
-        sha256_str(self) == sha256_str(other)
+        sha256_str_array(self) == sha256_str_array(other)
     }
 }
 

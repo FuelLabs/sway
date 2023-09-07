@@ -209,5 +209,5 @@ fn test_storage() {
 // all the ASM blocks.
 #[inline(never)]
 fn assert_streq<S1, S2>(lhs: S1, rhs: str) {
-    assert(sha256_str(lhs) == sha256(rhs));
+    assert(sha256_str_array(lhs) == sha256(rhs));
 }

@@ -44,7 +44,7 @@ fn test_first_use() {
     assert(C3.y == true);
     assert(C4 == MyEnum::A(42));
     assert(C5 == MyEnum::B(true));
-    assert(sha256_str(C6) == sha256("fuel"));
+    assert(sha256_str_array(C6) == sha256("fuel"));
     assert(C7[0] == 1);
     assert(C7[1] == 2);
     assert(C7[2] == 3);
@@ -61,7 +61,7 @@ fn test_second_use() {
     assert(C3.y == true);
     assert(C4 == MyEnum::A(42));
     assert(C5 == MyEnum::B(true));
-    assert(sha256_str(C6) == sha256("fuel"));
+    assert(sha256_str_array(C6) == sha256("fuel"));
     assert(C7[0] == 1);
     assert(C7[1] == 2);
     assert(C7[2] == 3);
@@ -78,7 +78,7 @@ fn test_inline_use() {
     assert(C3.y == true);
     assert(C4 == MyEnum::A(42));
     assert(C5 == MyEnum::B(true));
-    assert(sha256_str(C6) == sha256("fuel"));
+    assert(sha256_str_array(C6) == sha256("fuel"));
     assert(C7[0] == 1);
     assert(C7[1] == 2);
     assert(C7[2] == 3);
