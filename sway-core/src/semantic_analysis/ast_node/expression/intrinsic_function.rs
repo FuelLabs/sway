@@ -356,11 +356,7 @@ fn type_check_to_str_array(
 
     match &arg.kind {
         ExpressionKind::Literal(Literal::String(s)) => {
-            let literal_length = s
-                .as_str()
-                .len()
-                .checked_sub(2)
-                .expect("unexpected string literal with less than 2 characters");
+            let literal_length = s.as_str().len();
             let l = Length::new(literal_length, s.clone());
             let t = TypeInfo::StringArray(l);
 
