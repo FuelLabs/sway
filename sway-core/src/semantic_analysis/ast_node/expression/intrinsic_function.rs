@@ -8,7 +8,10 @@ use sway_types::Span;
 
 use crate::{
     engine_threading::*,
-    language::{parsed::Expression, ty},
+    language::{
+        parsed::{Expression, ExpressionKind},
+        ty, Literal,
+    },
     semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
     type_system::*,
 };
@@ -349,37 +352,37 @@ fn type_check_to_str_array(
             span,
         }));
     }
-
-    let mut ctx = ctx
-        .by_ref()
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
-
     let arg = arguments[0].clone();
-    let arg = ty::TyExpression::type_check(handler, ctx.by_ref(), arg)?;
 
-    let new_type = match type_engine.get(arg.return_type) {
-        TypeInfo::StringSlice => {
+    match &arg.kind {
+        ExpressionKind::Literal(Literal::String(s)) => {
+            let literal_length = s
+                .as_str()
+                .len()
+                .checked_sub(2)
+                .expect("unexpected string literal with less than 2 characters");
+            let l = Length::new(literal_length, s.clone());
+            let t = TypeInfo::StringArray(l);
+
             let span = arg.span.clone();
-            TypeInfo::StringArray(Length::new(span.as_str().len() - 2, span))
-        }
-        _ => {
-            return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
-                name: kind.to_string(),
-                expected: 1,
-                span,
-            }));
-        }
-    };
 
-    Ok((
-        ty::TyIntrinsicFunctionKind {
-            kind,
-            arguments: vec![arg],
-            type_arguments: vec![],
-            span,
-        },
-        type_engine.insert(engines, new_type),
-    ))
+            let mut ctx = ctx
+                .by_ref()
+                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+            let new_type = ty::TyExpression::type_check(handler, ctx.by_ref(), arg)?;
+
+            Ok((
+                ty::TyIntrinsicFunctionKind {
+                    kind,
+                    arguments: vec![new_type],
+                    type_arguments: vec![],
+                    span,
+                },
+                type_engine.insert(engines, t),
+            ))
+        }
+        _ => Err(handler.emit_err(CompileError::ExpectedStringLiteral { span: arg.span })),
+    }
 }
 
 /// Signature: `__eq<T>(lhs: T, rhs: T) -> bool`

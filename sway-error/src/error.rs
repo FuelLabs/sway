@@ -605,6 +605,8 @@ pub enum CompileError {
         expected: u64,
         span: Span,
     },
+    #[error("Expected string literal")]
+    ExpectedStringLiteral { span: Span },
     #[error("\"break\" used outside of a loop")]
     BreakOutsideLoop { span: Span },
     #[error("\"continue\" used outside of a loop")]
@@ -861,6 +863,7 @@ impl Spanned for CompileError {
             ConflictingSuperAbiMethods { span, .. } => span.clone(),
             AbiSupertraitMethodCallAsContractCall { span, .. } => span.clone(),
             TypeNotAllowed { span, .. } => span.clone(),
+            ExpectedStringLiteral { span } => span.clone(),
         }
     }
 }
