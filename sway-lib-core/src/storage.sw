@@ -15,6 +15,6 @@ pub struct StorageKey<T> {
     slot: b256,
     /// The assigned offset based on the data structure `T`.
     offset: u64,
-    /// A unqiue identifier.
+    /// A unique identifier.
     field_id: b256,
 }

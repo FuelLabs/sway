@@ -68,7 +68,11 @@ impl<K, V> StorageKey<StorageMap<K, V>> where K: Hash {
     /// }
     /// ```
     pub fn get(self, key: K) -> StorageKey<V> where K: Hash {
-        StorageKey::<V>::new(sha256((key, self.field_id)), 0, sha256((key, self.field_id)))
+        StorageKey::<V>::new(
+            sha256((key, self.field_id)), 
+            0, 
+            sha256((key, self.field_id))
+        )
     }
 
     /// Clears a value previously stored using a key

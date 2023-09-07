@@ -104,7 +104,7 @@ impl<T> StorageKey<T> {
     ///
     /// * `slot`: [b256] - The assigned location in storage for the new `StorageKey`.
     /// * `offset`: [u64] - The assigned offset based on the data structure `T` for the new `StorageKey`.
-    /// * `field_id`: [b256] - A unqiue identifier for the new `StorageKey`.
+    /// * `field_id`: [b256] - A unique identifier for the new `StorageKey`.
     ///
     /// # Returns
     ///
