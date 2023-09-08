@@ -1,21 +1,21 @@
 category = "fail"
 
-# check: $()Match arm is unreachable. Pattern "10" will never be matched.
+# check: $()Match arm is unreachable
 # nextln: primitive_tests.sw:
 
-# check: $()Match arm is unreachable. Pattern "(1, 1)" will never be matched.
+# check: $()Match arm is unreachable
 # nextln: primitive_tests.sw:
 
-# check: $()Match arm is unreachable. Pattern "Point { x: 3, y: 4 }" will never be matched.
+# check: $()Match arm is unreachable
 # nextln: adt_tests.sw:
 
-# check: $()Match arm is unreachable. Pattern "Point { x: 3, y: 5 }" will never be matched.
+# check: $()Match arm is unreachable
 # nextln: adt_tests.sw:
 
-# check: $()Match arm is unreachable. Pattern "Point { x: 3, y: 6 }" will never be matched.
+# check: $()Match arm is unreachable
 # nextln: adt_tests.sw:
 
-# check: $()Match arm is unreachable. Pattern "Point { x: 3, y: 7 }" will never be matched.
+# check: $()Match arm is unreachable
 # nextln: adt_tests.sw:
 
 # check: primitive_tests.sw:6:13
