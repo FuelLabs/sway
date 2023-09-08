@@ -28,17 +28,27 @@ ___
 __size_of_str_array<T>() -> u64
 ```
 
-**Description:** Return the size of type `T` in bytes. This intrinsic differs from `__size_of` in the case of `str` type where the actual length in bytes of the string is returned without padding the byte size to the next word alignment. When `T` is not a string `0` is returned.
+**Description:** Return the size of type `T` in bytes. This intrinsic differs from `__size_of` in the case of "string arrays" where the actual length in bytes of the string is returned without padding the byte size to the next word alignment. When `T` is not a string `0` is returned.
 
 **Constraints:** None.
 
 ___
 
 ```sway
-__assert_is_str_array<T>() -> u64
+__assert_is_str_array<T>()
 ```
 
-**Description:** Throws a compile error if type `T` is not a string.
+**Description:** Throws a compile error if type `T` is not a "string array".
+
+**Constraints:** None.
+
+___
+
+```sway
+__to_str_array(s: str) -> str[N]
+```
+
+**Description:** Converts a "string slice" to "string array" at compile time. Parameter "s" must be a string literal.
 
 **Constraints:** None.
 
@@ -55,10 +65,10 @@ __is_reference_type<T>() -> bool
 ___
 
 ```sway
-__is_str_type<T>() -> bool
+__is_str_array<T>() -> bool
 ```
 
-**Description:** Returns `true` if `T` is a str type and `false` otherwise.
+**Description:** Returns `true` if `T` is a string array and `false` otherwise.
 
 **Constraints:** None.
 

@@ -43,10 +43,10 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::IsReferenceType => {
                 type_check_is_reference_type(handler, ctx, kind, arguments, type_arguments, span)
             }
-            Intrinsic::IsStrType => {
+            Intrinsic::IsStrArray => {
                 type_check_is_reference_type(handler, ctx, kind, arguments, type_arguments, span)
             }
-            Intrinsic::CheckStrType => {
+            Intrinsic::AssertIsStrArray => {
                 type_check_assert_is_str_array(handler, ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::ToStrArray => type_check_to_str_array(handler, ctx, kind, arguments, span),

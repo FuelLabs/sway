@@ -652,7 +652,7 @@ impl<'eng> FnCompiler<'eng> {
                 let val = !engines.te().get_unaliased(targ.type_id).is_copy_type();
                 Ok(Constant::get_bool(context, val))
             }
-            Intrinsic::IsStrType => {
+            Intrinsic::IsStrArray => {
                 let targ = type_arguments[0].clone();
                 let val = matches!(
                     engines.te().get_unaliased(targ.type_id),
@@ -660,7 +660,7 @@ impl<'eng> FnCompiler<'eng> {
                 );
                 Ok(Constant::get_bool(context, val))
             }
-            Intrinsic::CheckStrType => {
+            Intrinsic::AssertIsStrArray => {
                 let targ = type_arguments[0].clone();
                 let ir_type = convert_resolved_typeid(
                     engines.te(),

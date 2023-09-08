@@ -893,7 +893,7 @@ fn const_eval_intrinsic(
                 value: ConstantValue::Uint(ir_type_str_size_in_bytes(lookup.context, &ir_type)),
             }))
         }
-        Intrinsic::CheckStrType => {
+        Intrinsic::AssertIsStrArray => {
             let targ = &intrinsic.type_arguments[0];
             let ir_type = convert_resolved_typeid(
                 lookup.engines.te(),
@@ -963,7 +963,7 @@ fn const_eval_intrinsic(
         | Intrinsic::PtrAdd
         | Intrinsic::PtrSub
         | Intrinsic::IsReferenceType
-        | Intrinsic::IsStrType
+        | Intrinsic::IsStrArray
         | Intrinsic::Gtf
         | Intrinsic::StateClear
         | Intrinsic::StateLoadWord
