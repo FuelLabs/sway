@@ -233,6 +233,33 @@ impl AssetId {
 }
 
 impl ContractId {
+    /// Returns the ContractId of the currently executing contract.
+    ///
+    /// # Additional Information
+    ///
+    /// This is equivalent to std::callframes::contract_id().
+    ///
+    /// **_Note:_** If called in an external context, this will **not** return a ContractId.
+    /// If called externally, will actually return a pointer to the Transaction Id (Wrapped in the ContractId struct).
+    /// 
+    /// # Returns
+    ///
+    /// * [ContractId] - The contract id of this contract.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::{constants::ZERO_B256, token::mint};
+    ///
+    /// fn foo() {
+    ///     let this_contract = ContractId::this();
+    ///     mint(ZERO_B256, 50);
+    ///     Address::from(ZERO_B256).transfer(AssetId::default(this_contract), 50);
+    /// }
+    /// ```
+    pub fn this() -> ContractId {
+        ContractId::from(asm() { fp: b256 })
+    }
     /// UNCONDITIONAL transfer of `amount` coins of type `asset_id` to
     /// the ContractId.
     ///
