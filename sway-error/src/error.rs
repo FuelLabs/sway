@@ -997,14 +997,14 @@ impl ToDiagnostic for CompileError {
                     match (*first_definition_is_struct_field, *duplicate_is_struct_field) {
                         (true, true) => format!("Consider declaring a variable with different name for either of the fields. E.g., `{0}: var_{0}`.", first_definition.as_str()),
                         (true, false) | (false, true) => format!("Consider declaring a variable for the field \"{0}\" (e.g., `{0}: var_{0}`), or renaming the variable \"{0}\".", first_definition.as_str()),
-                        (false, false) => format!("Consider renaming either of the variables."),
+                        (false, false) => "Consider renaming either of the variables.".to_string(),
                     },
                 ],
             },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we
-                    //       switch to our own #[error] macro. All the values for the formating
+                    //       switch to our own #[error] macro. All the values for the formatting
                     //       of a diagnostic must come from the enum variant parameters.
                     issue: Issue::error(source_engine, self.span(), format!("{}", self)),
                     ..Default::default()
