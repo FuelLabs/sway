@@ -8,6 +8,10 @@ impl CallFramesTest for Contract {
         contract_id()
     }
 
+    fn get_id_contract_id_this() -> ContractId {
+        ContractId::this()
+    }
+
     fn get_asset_id() -> AssetId {
         msg_asset_id()
     }
