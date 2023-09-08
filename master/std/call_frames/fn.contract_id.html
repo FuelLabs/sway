@@ -7,12 +7,12 @@ If called externally, will actually return a pointer to the transaction ID.</p>
 <li>[ContractId] - The contract id of this contract.</li>
 </ul>
 <h1>Examples</h1>
-<pre><code class="language-sway">use std::{call_frames::contract_id, token::mint};
+<pre><code class="language-sway">use std::{call_frames::contract_id, constants::ZERO_B256, token::mint};
 
 fn foo() {
     let this_contract = contract_id();
-    mint(50);
-    Address::from(ZERO_B256).transfer(50, this_contract);
+    mint(ZERO_B256, 50);
+    Address::from(ZERO_B256).transfer(AssetId::default(this_contract), 50);
 }
 </code></pre>
 </div></details></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
