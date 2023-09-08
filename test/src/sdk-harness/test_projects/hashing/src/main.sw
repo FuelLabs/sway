@@ -51,7 +51,7 @@ abi MyContract {
     fn sha256_tuple(value: (bool, u64)) -> b256;
     fn sha256_array(value1: u64, value2: u64) -> b256;
     fn sha256_enum(location: bool) -> b256;
-    fn sha256_str_arrayuct(location: bool) -> b256;
+    fn sha256_struct(location: bool) -> b256;
 
     fn keccak256_u8(value: u8) -> b256;
     fn keccak256_u16(value: u16) -> b256;
@@ -130,7 +130,7 @@ impl MyContract for Contract {
         })
     }
 
-    fn sha256_str_arrayuct(location: bool) -> b256 {
+    fn sha256_struct(location: bool) -> b256 {
         sha256(Person {
             name: "John",
             age: 18,

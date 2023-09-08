@@ -468,21 +468,11 @@ mod sha256 {
             Hash::Sha256,
         ));
 
-        let call_1 = instance
-            .methods()
-            .sha256_str_arrayuct(true)
-            .call()
-            .await
-            .unwrap();
-        let call_2 = instance
-            .methods()
-            .sha256_str_arrayuct(true)
-            .call()
-            .await
-            .unwrap();
+        let call_1 = instance.methods().sha256_struct(true).call().await.unwrap();
+        let call_2 = instance.methods().sha256_struct(true).call().await.unwrap();
         let call_3 = instance
             .methods()
-            .sha256_str_arrayuct(false)
+            .sha256_struct(false)
             .call()
             .await
             .unwrap();
