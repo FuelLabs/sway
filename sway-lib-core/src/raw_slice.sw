@@ -28,7 +28,7 @@ pub trait AsRawSlice {
     ///
     /// fn foo() {
     ///     let my_type = MyType {
-    ///         ptr: alloc_bytes(0),   
+    ///         ptr: alloc_bytes(0),
     ///         len: 0
     ///     }
     ///     let slice = my_type.as_raw_slice();
@@ -81,7 +81,7 @@ impl raw_slice {
     ///
     /// ```sway
     /// use std::alloc::alloc;
-    /// 
+    ///
     /// fn foo() {
     ///     let ptr = alloc::<u64>(1);
     ///     let slice = raw_slice::from_parts::<u64>(ptr, 1);
@@ -102,7 +102,7 @@ impl raw_slice {
     ///
     /// ```sway
     /// use std::alloc::alloc;
-    /// 
+    ///
     /// fn foo() {
     ///     let ptr = alloc::<u64>(1);
     ///     let slice = raw_slice::from_parts::<u64>(ptr, 1);
@@ -115,7 +115,7 @@ impl raw_slice {
     }
 
     /// Returns the number of elements in the slice.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [u64] - The length of the slice based on `size_of::<T>`.
@@ -124,7 +124,7 @@ impl raw_slice {
     ///
     /// ```sway
     /// use std::alloc::alloc;
-    /// 
+    ///
     /// fn foo() {
     ///     let ptr = alloc::<u64>(1);
     ///     let slice = raw_slice::from_parts::<u64>(ptr, 1);
@@ -134,9 +134,9 @@ impl raw_slice {
     pub fn len<T>(self) -> u64 {
         __div(into_parts(self).1, __size_of::<T>())
     }
-    
+
     /// Returns the number of elements in the slice when the elements are bytes.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [u64] - The number of bytes in the `raw_slice`.
@@ -145,7 +145,7 @@ impl raw_slice {
     ///
     /// ```sway
     /// use std::alloc::alloc;
-    /// 
+    ///
     /// fn foo() {
     ///     let ptr = alloc::<u64>(1);
     ///     let slice = raw_slice::from_parts::<u64>(ptr, 1);

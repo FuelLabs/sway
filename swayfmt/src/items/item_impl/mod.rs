@@ -1,5 +1,5 @@
 use crate::{
-    comments::rewrite_with_comments,
+    comments::{rewrite_with_comments, write_comments},
     config::items::ItemBraceStyle,
     formatter::*,
     utils::{
@@ -38,14 +38,27 @@ impl Format for ItemImpl {
             where_clause.format(formatted_code, formatter)?;
             formatter.shape.code_line.update_where_clause(true);
         }
-        Self::open_curly_brace(formatted_code, formatter)?;
+
         let contents = self.contents.get();
-        for item in contents.iter() {
-            write!(formatted_code, "{}", formatter.indent_str()?,)?;
-            item.format(formatted_code, formatter)?;
-            writeln!(formatted_code)?;
+        if contents.is_empty() {
+            Self::open_curly_brace(formatted_code, formatter)?;
+            let comments = write_comments(formatted_code, self.span().into(), formatter)?;
+            if !comments {
+                formatter.unindent();
+                if formatted_code.ends_with('\n') {
+                    formatted_code.pop();
+                }
+            }
+            Self::close_curly_brace(formatted_code, formatter)?;
+        } else {
+            Self::open_curly_brace(formatted_code, formatter)?;
+            for item in contents.iter() {
+                write!(formatted_code, "{}", formatter.indent_str()?,)?;
+                item.format(formatted_code, formatter)?;
+                writeln!(formatted_code)?;
+            }
+            Self::close_curly_brace(formatted_code, formatter)?;
         }
-        Self::close_curly_brace(formatted_code, formatter)?;
 
         rewrite_with_comments::<ItemImpl>(
             formatter,

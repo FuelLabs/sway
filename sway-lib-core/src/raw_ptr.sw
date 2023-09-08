@@ -4,14 +4,14 @@ impl raw_ptr {
     /// Returns `true` if the pointer is null.
     ///
     /// # Returns
-    /// 
+    ///
     /// * [bool] - `true` if the pointer is null, otherwise `false`.
     ///
     /// # Examples
     ///
     /// ```sway
     /// use std::alloc::alloc;
-    /// 
+    ///
     /// fn foo() {
     ///     let ptr = alloc::<u64>(2);
     ///     assert(!ptr.is_null());
@@ -25,18 +25,18 @@ impl raw_ptr {
     /// Calculates the offset from the pointer.
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `count`: [u64] - The number of `size_of<T>` bytes to increase by.
     ///
     /// # Returns
-    /// 
+    ///
     /// * [raw_ptr] - The pointer to the offset memory location.
     ///
     /// # Examples
-    /// 
+    ///
     /// ```sway
     /// use std::alloc::alloc;
-    /// 
+    ///
     /// fn foo() {
     ///     let ptr = alloc::<u64>(2);
     ///     let offset_ptr = ptr.add::<u64>(1);
@@ -50,18 +50,18 @@ impl raw_ptr {
     /// Calculates the offset from the pointer.
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `count`: [u64] - The number of `size_of<T>` bytes to decrease by.
     ///
     /// # Returns
-    /// 
+    ///
     /// * [raw_ptr] - The pointer to the offset memory location.
     ///
     /// # Examples
-    /// 
+    ///
     /// ```sway
     /// use std::alloc::alloc;
-    /// 
+    ///
     /// fn foo() {
     ///     let ptr = alloc::<u64>(2);
     ///     let offset_ptr = ptr.add::<u64>(1);
@@ -83,7 +83,7 @@ impl raw_ptr {
     ///
     /// ```sway
     /// use std::alloc::alloc;
-    /// 
+    ///
     /// fn foo() {
     ///     let ptr = alloc::<u64>(1);
     ///     ptr.write(5);
@@ -95,24 +95,24 @@ impl raw_ptr {
             asm(ptr: self) { ptr: T }
         } else {
             asm(ptr: self, val) {
-                lw val ptr i0;
+                lw   val ptr i0;
                 val: T
             }
         }
     }
 
     /// Copies `count * size_of<T>` bytes from `self` to `dst`.
-    /// 
+    ///
     /// # Arguments
     ///
     /// * `dst`: [raw_ptr] - Pointer to the location in memory to copy the bytes to.
     /// * `count`: [u64] - The number of `size_of<T>` bytes to copy.
-    /// 
+    ///
     /// # Examples
     ///
     /// ```sway
     /// use std::alloc::alloc;
-    /// 
+    ///
     /// fn foo() {
     ///     let ptr_1 = alloc::<u64>(1);
     ///     let ptr_2 = alloc::<u64>(1);
@@ -124,19 +124,19 @@ impl raw_ptr {
     pub fn copy_to<T>(self, dst: Self, count: u64) {
         let len = __mul(count, __size_of::<T>());
         asm(dst: dst, src: self, len: len) {
-            mcp dst src len;
+            mcp  dst src len;
         };
     }
 
     /// Writes the given value to the address.
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `val`: [T] - The value to write to memory.
     ///
     /// ```sway
     /// use std::alloc::alloc;
-    /// 
+    ///
     /// fn foo() {
     ///     let ptr = alloc::<u64>(1);
     ///     ptr.write(5);
@@ -146,11 +146,11 @@ impl raw_ptr {
     pub fn write<T>(self, val: T) {
         if __is_reference_type::<T>() {
             asm(dst: self, src: val, count: __size_of_val(val)) {
-                mcp dst src count;
+                mcp  dst src count;
             };
         } else {
             asm(ptr: self, val: val) {
-                sw ptr val i0;
+                sw   ptr val i0;
             };
         }
     }
@@ -165,7 +165,7 @@ impl raw_ptr {
     ///
     /// ```sway
     /// use std::alloc::alloc;
-    /// 
+    ///
     /// fn foo() {
     ///     let ptr = alloc::<u8>(1);
     ///     ptr.write_byte(5u8);
@@ -175,7 +175,7 @@ impl raw_ptr {
     pub fn write_byte(self, val: u8) {
         let val_ptr = asm(r1: val) { r1: raw_ptr };
         asm(ptr: self, val: val_ptr) {
-            sb ptr val i0;
+            sb   ptr val i0;
         };
     }
 
@@ -189,7 +189,7 @@ impl raw_ptr {
     ///
     /// ```sway
     /// use std::alloc::alloc;
-    /// 
+    ///
     /// fn foo() {
     ///     let ptr = alloc::<u8>(1);
     ///     ptr.write_byte(5u8);
@@ -198,23 +198,23 @@ impl raw_ptr {
     /// ```
     pub fn read_byte(self) -> u8 {
         asm(r1: self, r2) {
-            lb r2 r1 i0;
+            lb   r2 r1 i0;
             r2: u8
         }
     }
 
     /// Copies `count` bytes from `self` to `dst`.
-    /// 
+    ///
     /// # Arguments
     ///
     /// * `dst`: [raw_ptr] - Pointer to the location in memory to copy the bytes to.
     /// * `count`: [u64] - The number of bytes to copy.
-    /// 
+    ///
     /// # Examples
     ///
     /// ```sway
     /// use std::alloc::alloc;
-    /// 
+    ///
     /// fn foo() {
     ///     let ptr_1 = alloc::<u8>(1);
     ///     let ptr_2 = alloc::<u8>(1);
@@ -225,25 +225,25 @@ impl raw_ptr {
     /// ```
     pub fn copy_bytes_to(self, dst: Self, count: u64) {
         asm(dst: dst, src: self, len: count) {
-            mcp dst src len;
+            mcp  dst src len;
         };
     }
 
     /// Add a `u64` offset to a `raw_ptr`.
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `count`: [u64] - The number of `u64` bytes to increase by.
     ///
     /// # Returns
-    /// 
+    ///
     /// * [raw_ptr] - The pointer to the offset memory location.
     ///
     /// # Examples
-    /// 
+    ///
     /// ```sway
     /// use std::alloc::alloc;
-    /// 
+    ///
     /// fn foo() {
     ///     let ptr = alloc::<u64>(2);
     ///     let offset_ptr_1 = ptr.add::<u64>(1);
@@ -253,7 +253,7 @@ impl raw_ptr {
     /// ```
     pub fn add_uint_offset(self, offset: u64) -> Self {
         asm(ptr: self, offset: offset, new) {
-            add new ptr offset;
+            add  new ptr offset;
             new: raw_ptr
         }
     }
@@ -261,18 +261,18 @@ impl raw_ptr {
     /// Subtract a `u64` offset from a `raw_ptr`.
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `count`: [u64] - The number of `u64` bytes to decrease by.
     ///
     /// # Returns
-    /// 
+    ///
     /// * [raw_ptr] - The pointer to the offset memory location.
     ///
     /// # Examples
-    /// 
+    ///
     /// ```sway
     /// use std::alloc::alloc;
-    /// 
+    ///
     /// fn foo() {
     ///     let ptr = alloc::<u64>(2);
     ///     let offset_ptr = ptr.add::<u64>(1);
@@ -282,7 +282,7 @@ impl raw_ptr {
     /// ```
     pub fn sub_uint_offset(self, offset: u64) -> Self {
         asm(ptr: self, offset: offset, new) {
-            sub new ptr offset;
+            sub  new ptr offset;
             new: raw_ptr
         }
     }

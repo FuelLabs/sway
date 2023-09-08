@@ -1602,3 +1602,61 @@ impl MyContract for Contract {
 "#,
     );
 }
+
+#[test]
+fn empty_impl() {
+    check(
+        r#"
+library;
+
+impl OrdEq for u256 {
+
+}
+        "#,
+        r#"library;
+
+impl OrdEq for u256 {}
+"#,
+    );
+}
+
+#[test]
+fn empty_fn() {
+    check(
+        r#"
+library;
+
+fn test() {
+
+}
+        "#,
+        r#"library;
+
+fn test() {}
+"#,
+    );
+}
+
+#[test]
+fn empty_if() {
+    check(
+        r#"
+library;
+
+fn test() {
+    if ( something ( ) ) {
+
+    }
+
+
+
+}
+        "#,
+        r#"library;
+
+fn test() {
+    if (something()) {}
+}
+"#,
+    );
+}
