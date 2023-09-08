@@ -88,15 +88,15 @@ impl Formatter {
 
         self.with_comments_context(src)?;
 
-        let module = parse_file(&self.source_engine, Arc::from(src), path.clone())?.value;
-        module.format(&mut raw_formatted_code, self)?;
+        let annotated_module = parse_file(&self.source_engine, Arc::from(src), path.clone())?;
+        annotated_module.format(&mut raw_formatted_code, self)?;
 
         let mut formatted_code = String::from(&raw_formatted_code);
 
         // Write post-module comments
         write_comments(
             &mut formatted_code,
-            module.span().end()..src.len() + 1,
+            annotated_module.value.span().end()..src.len() + 1,
             self,
         )?;
 
@@ -104,7 +104,7 @@ impl Formatter {
         handle_newlines(
             &self.source_engine,
             Arc::from(src),
-            &module,
+            &annotated_module.value,
             Arc::from(formatted_code.clone()),
             path,
             &mut formatted_code,
