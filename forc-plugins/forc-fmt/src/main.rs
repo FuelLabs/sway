@@ -154,7 +154,11 @@ fn format_file(
                 // TODO: Support formatting for incomplete/invalid sway code.
                 // https://github.com/FuelLabs/sway/issues/5012
                 debug!("{}", err);
-                bail!("Failed to compile: {:?}", file);
+                if let Some(file) = file.to_str() {
+                    bail!("Failed to compile {}\n{}", file, err);
+                } else {
+                    bail!("Failed to compile.\n{}", err);
+                }
             }
         }
     }
