@@ -340,30 +340,30 @@ fn wide_binary_op_demotion(context: &mut Context, function: Function) -> Result<
     let candidates = function
         .instruction_iter(context)
         .filter_map(|(block, instr_val)| {
-            let instr = instr_val.get_instruction(context)?;
+            use BinaryOpKind as B;
+            let Instruction::BinaryOp {
+                op: B::Add | B::Sub | B::Mul | B::Div | B::Mod | B::And | B::Or | B::Xor,
+                arg1,
+                arg2,
+            } = instr_val.get_instruction(context)? else {
+                return None;
+            };
 
-            if let Instruction::BinaryOp { op, arg1, arg2 } = instr {
-                let arg1_type = arg1
-                    .get_type(context)
-                    .and_then(|x| x.get_uint_width(context));
-                let arg2_type = arg2
-                    .get_type(context)
-                    .and_then(|x| x.get_uint_width(context));
+            let arg1_type = arg1.get_type(context);
+            let arg2_type = arg2.get_type(context);
 
-                match (arg1_type, arg2_type) {
-                    (Some(256), Some(256)) => {
-                        use BinaryOpKind::*;
-                        match op {
-                            Add | Sub | Mul | Div | Mod | And | Or | Xor => {
-                                Some((block, instr_val))
-                            }
-                            _ => todo!(),
-                        }
-                    }
-                    _ => None,
+            match (arg1_type, arg2_type) {
+                (Some(arg1_type), Some(arg2_type))
+                    if arg1_type.is_uint_of(context, 256) && arg2_type.is_uint_of(context, 256) =>
+                {
+                    Some((block, instr_val))
                 }
-            } else {
-                None
+                (Some(arg1_type), Some(arg2_type))
+                    if arg1_type.is_b256(context) && arg2_type.is_b256(context) =>
+                {
+                    Some((block, instr_val))
+                }
+                _ => None,
             }
         })
         .collect::<Vec<_>>();
@@ -573,27 +573,19 @@ fn wide_cmp_demotion(context: &mut Context, function: Function) -> Result<bool, 
     let candidates = function
         .instruction_iter(context)
         .filter_map(|(block, instr_val)| {
-            let instr = instr_val.get_instruction(context)?;
+            let Instruction::Cmp(Predicate::Equal | Predicate::LessThan | Predicate::GreaterThan, arg1, arg2) = instr_val.get_instruction(context)? else {
+                return None;
+            };
 
-            if let Instruction::Cmp(op, arg1, arg2) = instr {
-                let arg1_type = arg1
-                    .get_type(context)
-                    .and_then(|x| x.get_uint_width(context));
-                let arg2_type = arg2
-                    .get_type(context)
-                    .and_then(|x| x.get_uint_width(context));
+            let arg1_type = arg1
+                .get_type(context);
+            let arg2_type = arg2
+                .get_type(context);
 
-                match (arg1_type, arg2_type) {
-                    (Some(256), Some(256)) => {
-                        use Predicate::*;
-                        match op {
-                            Equal | LessThan | GreaterThan => Some((block, instr_val)),
-                        }
-                    }
-                    _ => None,
-                }
-            } else {
-                None
+            match (arg1_type, arg2_type) {
+                (Some(arg1_type), Some(arg2_type)) if arg1_type.is_uint(context) && arg2_type.is_uint(context) => Some((block, instr_val)),
+                (Some(arg1_type), Some(arg2_type)) if arg1_type.is_b256(context) && arg2_type.is_b256(context) => Some((block, instr_val)),
+                _ => None
             }
         })
         .collect::<Vec<_>>();
@@ -731,24 +723,16 @@ fn wide_unary_op_demotion(context: &mut Context, function: Function) -> Result<b
     let candidates = function
         .instruction_iter(context)
         .filter_map(|(block, instr_val)| {
-            let instr = instr_val.get_instruction(context)?;
+            let Instruction::UnaryOp {
+                op: UnaryOpKind::Not,
+                arg,
+            } = instr_val.get_instruction(context)? else {
+                return None;
+            };
 
-            if let Instruction::UnaryOp { op, arg } = instr {
-                let arg_type = arg
-                    .get_type(context)
-                    .and_then(|x| x.get_uint_width(context));
-
-                match arg_type {
-                    Some(256) => {
-                        use UnaryOpKind::*;
-                        match op {
-                            Not => Some((block, instr_val)),
-                        }
-                    }
-                    _ => None,
-                }
-            } else {
-                None
+            match arg.get_type(context) {
+                Some(t) if t.is_uint(context) || t.is_b256(context) => Some((block, instr_val)),
+                _ => None,
             }
         })
         .collect::<Vec<_>>();
@@ -864,27 +848,21 @@ fn wide_shift_op_demotion(context: &mut Context, function: Function) -> Result<b
         .instruction_iter(context)
         .filter_map(|(block, instr_val)| {
             let instr = instr_val.get_instruction(context)?;
+            let Instruction::BinaryOp { op: BinaryOpKind::Lsh | BinaryOpKind::Rsh , arg1, arg2 } = instr else {
+                return None;
+            };
 
-            if let Instruction::BinaryOp { op, arg1, arg2 } = instr {
-                let arg1_type = arg1
-                    .get_type(context)
-                    .and_then(|x| x.get_uint_width(context));
-                let arg2_type = arg2
-                    .get_type(context)
-                    .and_then(|x| x.get_uint_width(context));
+            let arg1_type = arg1
+                .get_type(context);
+            let arg2_type = arg2
+                .get_type(context);
 
-                match (arg1_type, arg2_type) {
-                    (Some(256), Some(64)) => {
-                        use BinaryOpKind::*;
-                        match op {
-                            Lsh | Rsh => Some((block, instr_val)),
-                            _ => todo!(),
-                        }
-                    }
-                    _ => None,
-                }
-            } else {
-                None
+            match (arg1_type, arg2_type) {
+                (Some(arg1_type), Some(arg2_type))
+                    if arg1_type.is_uint(context) && arg2_type.is_uint64(context) => Some((block, instr_val)),
+                (Some(arg1_type), Some(arg2_type))
+                    if arg1_type.is_b256(context) && arg2_type.is_uint64(context) => Some((block, instr_val)),
+                _ => None
             }
         })
         .collect::<Vec<_>>();

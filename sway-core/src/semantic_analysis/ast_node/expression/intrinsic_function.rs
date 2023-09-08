@@ -66,15 +66,11 @@ impl ty::TyIntrinsicFunctionKind {
                 type_check_state_quad(handler, ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::Log => type_check_log(handler, ctx, kind, arguments, span),
-            Intrinsic::Add
-            | Intrinsic::Sub
-            | Intrinsic::Mul
-            | Intrinsic::Div
-            | Intrinsic::And
-            | Intrinsic::Or
-            | Intrinsic::Xor
-            | Intrinsic::Mod => {
-                type_check_binary_op(handler, ctx, kind, arguments, type_arguments, span)
+            Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div | Intrinsic::Mod => {
+                type_check_arith_binary_op(handler, ctx, kind, arguments, type_arguments, span)
+            }
+            Intrinsic::And | Intrinsic::Or | Intrinsic::Xor => {
+                type_check_bitwise_binary_op(handler, ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::Lsh | Intrinsic::Rsh => {
                 type_check_shift_binary_op(handler, ctx, kind, arguments, type_arguments, span)
@@ -113,22 +109,33 @@ fn type_check_not(
         }));
     }
 
-    let return_type = type_engine.insert(engines, TypeInfo::Numeric);
+    let return_type = type_engine.insert(engines, TypeInfo::Unknown);
 
     let mut ctx = ctx.with_help_text("").with_type_annotation(return_type);
 
     let operand = arguments[0].clone();
     let operand_expr = ty::TyExpression::type_check(handler, ctx.by_ref(), operand)?;
 
-    Ok((
-        ty::TyIntrinsicFunctionKind {
-            kind,
-            arguments: vec![operand_expr],
-            type_arguments: vec![],
-            span,
-        },
-        return_type,
-    ))
+    let t = engines.te().get(operand_expr.return_type);
+    match t {
+        TypeInfo::B256 | TypeInfo::UnsignedInteger(_) => Ok((
+            ty::TyIntrinsicFunctionKind {
+                kind,
+                arguments: vec![operand_expr],
+                type_arguments: vec![],
+                span,
+            },
+            return_type,
+        )),
+        _ => Err(handler.emit_err(CompileError::TypeError(
+            sway_error::type_error::TypeError::MismatchedType {
+                expected: "numeric or b256".into(),
+                received: engines.help_out(return_type).to_string(),
+                help_text: "".into(),
+                span,
+            },
+        ))),
+    }
 }
 
 /// Signature: `__size_of_val<T>(val: T) -> u64`
@@ -423,9 +430,14 @@ fn type_check_cmp(
         .to_typeinfo(lhs.return_type, &lhs.span)
         .map_err(|e| handler.emit_err(e.into()))
         .unwrap_or_else(TypeInfo::ErrorRecovery);
-    let is_valid_arg_ty = matches!(arg_ty, TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric)
-        || (matches!(&kind, Intrinsic::Eq)
-            && matches!(arg_ty, TypeInfo::Boolean | TypeInfo::RawUntypedPtr));
+
+    let is_eq_bool_ptr = matches!(&kind, Intrinsic::Eq)
+        && matches!(arg_ty, TypeInfo::Boolean | TypeInfo::RawUntypedPtr);
+    let is_valid_arg_ty = matches!(
+        arg_ty,
+        TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric | TypeInfo::B256
+    ) || is_eq_bool_ptr;
+
     if !is_valid_arg_ty {
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
@@ -909,7 +921,7 @@ fn type_check_log(
 /// Signature: `__xor<T>(lhs: T, rhs: T) -> T`
 /// Description: Bitwise Xor `lhs` and `rhs` and returns the result.
 /// Constraints: `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
-fn type_check_binary_op(
+fn type_check_arith_binary_op(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
@@ -957,14 +969,7 @@ fn type_check_binary_op(
     ))
 }
 
-/// Signature: `__lsh<T, U>(lhs: T, rhs: U) -> T`
-/// Description: Logical left shifts the `lhs` by the `rhs` and returns the result.
-/// Constraints: `T` and `U` are an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
-///
-/// Signature: `__rsh<T, U>(lhs: T, rhs: U) -> T`
-/// Description: Logical right shifts the `lhs` by the `rhs` and returns the result.
-/// Constraints: `T` and `U` are an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
-fn type_check_shift_binary_op(
+fn type_check_bitwise_binary_op(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
@@ -990,8 +995,72 @@ fn type_check_shift_binary_op(
         }));
     }
 
-    let return_type = type_engine.insert(engines, TypeInfo::Numeric);
+    let return_type = type_engine.insert(engines, TypeInfo::Unknown);
+    let mut ctx = ctx
+        .by_ref()
+        .with_type_annotation(return_type)
+        .with_help_text("Incorrect argument type");
 
+    let lhs = arguments[0].clone();
+    let lhs = ty::TyExpression::type_check(handler, ctx.by_ref(), lhs)?;
+    let rhs = arguments[1].clone();
+    let rhs = ty::TyExpression::type_check(handler, ctx, rhs)?;
+
+    let t = engines.te().get(lhs.return_type);
+    match t {
+        TypeInfo::B256 | TypeInfo::UnsignedInteger(_) => Ok((
+            ty::TyIntrinsicFunctionKind {
+                kind,
+                arguments: vec![lhs, rhs],
+                type_arguments: vec![],
+                span,
+            },
+            return_type,
+        )),
+        _ => Err(handler.emit_err(CompileError::TypeError(
+            sway_error::type_error::TypeError::MismatchedType {
+                expected: "numeric or b256".into(),
+                received: engines.help_out(return_type).to_string(),
+                help_text: "".into(),
+                span,
+            },
+        ))),
+    }
+}
+
+/// Signature: `__lsh<T, U>(lhs: T, rhs: U) -> T`
+/// Description: Logical left shifts the `lhs` by the `rhs` and returns the result.
+/// Constraints: `T` and `U` are an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+///
+/// Signature: `__rsh<T, U>(lhs: T, rhs: U) -> T`
+/// Description: Logical right shifts the `lhs` by the `rhs` and returns the result.
+/// Constraints: `T` and `U` are an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+fn type_check_shift_binary_op(
+    handler: &Handler,
+    mut ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: Vec<Expression>,
+    type_arguments: Vec<TypeArgument>,
+    span: Span,
+) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    let engines = ctx.engines();
+
+    if arguments.len() != 2 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 2,
+            span,
+        }));
+    }
+    if !type_arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 0,
+            span,
+        }));
+    }
+
+    let return_type = engines.te().insert(engines, TypeInfo::Unknown);
     let lhs = arguments[0].clone();
     let lhs = ty::TyExpression::type_check(
         handler,
@@ -1010,15 +1079,26 @@ fn type_check_shift_binary_op(
         rhs,
     )?;
 
-    Ok((
-        ty::TyIntrinsicFunctionKind {
-            kind,
-            arguments: vec![lhs, rhs],
-            type_arguments: vec![],
-            span,
-        },
-        return_type,
-    ))
+    let t = engines.te().get(lhs.return_type);
+    match t {
+        TypeInfo::B256 | TypeInfo::UnsignedInteger(_) => Ok((
+            ty::TyIntrinsicFunctionKind {
+                kind,
+                arguments: vec![lhs, rhs],
+                type_arguments: vec![],
+                span,
+            },
+            return_type,
+        )),
+        _ => Err(handler.emit_err(CompileError::TypeError(
+            sway_error::type_error::TypeError::MismatchedType {
+                expected: "numeric or b256".into(),
+                received: engines.help_out(return_type).to_string(),
+                help_text: "Incorrect argument type".into(),
+                span: lhs.span.clone(),
+            },
+        ))),
+    }
 }
 
 /// Signature: `__revert(code: u64)`
