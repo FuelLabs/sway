@@ -559,8 +559,8 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
 
     fn get_title_label(diagnostics: &Diagnostic, label: &mut String) {
         label.clear();
-        if diagnostics.reason().is_some() {
-            label.push_str(diagnostics.reason().unwrap().description());
+        if let Some(reason) = diagnostics.reason() {
+            label.push_str(reason.description());
         }
     }
 
