@@ -13,7 +13,7 @@ use crate::{
         ty::{self, TyCodeBlock},
         Visibility,
     },
-    semantic_analysis::*,
+    semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
 };
 use sway_types::{style::is_snake_case, Spanned};

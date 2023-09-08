@@ -10,8 +10,8 @@ use crate::{
         ty::{self, TyConstantDecl},
         CallPath,
     },
-    semantic_analysis::*,
-    EnforceTypeArguments, Engines, TypeInfo,
+    semantic_analysis::{type_check_context::EnforceTypeArguments, *},
+    Engines, TypeInfo,
 };
 
 impl ty::TyConstantDecl {

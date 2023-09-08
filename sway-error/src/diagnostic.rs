@@ -121,6 +121,7 @@ pub enum Level {
 pub enum LabelType {
     #[default]
     Info,
+    Help,
     Warning,
     Error,
 }
@@ -150,6 +151,10 @@ pub struct Label {
 impl Label {
     pub fn info(source_engine: &SourceEngine, span: Span, text: String) -> Label {
         Self::new(source_engine, LabelType::Info, span, text)
+    }
+
+    pub fn help(source_engine: &SourceEngine, span: Span, text: String) -> Label {
+        Self::new(source_engine, LabelType::Help, span, text)
     }
 
     pub fn warning(source_engine: &SourceEngine, span: Span, text: String) -> Label {
@@ -289,6 +294,12 @@ impl Hint {
     pub fn info(source_engine: &SourceEngine, span: Span, text: String) -> Self {
         Self {
             label: Label::info(source_engine, span, text),
+        }
+    }
+
+    pub fn help(source_engine: &SourceEngine, span: Span, text: String) -> Self {
+        Self {
+            label: Label::help(source_engine, span, text),
         }
     }
 

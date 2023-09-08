@@ -2,10 +2,11 @@ use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Span, Spanned};
 
+use crate::semantic_analysis::type_check_context::EnforceTypeArguments;
 use crate::{
     language::{parsed, ty},
     semantic_analysis::TypeCheckContext,
-    EnforceTypeArguments, TypeId,
+    TypeId,
 };
 
 #[derive(Clone, PartialEq, Eq)]

@@ -1,13 +1,8 @@
-use sway_error::{
-    error::CompileError,
-    handler::{ErrorEmitted, Handler},
-};
-use sway_types::Spanned;
-use sway_utils::iter_prefixes;
+use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{
     language::{ty, CallPath},
-    Engines, Ident,
+    Ident,
 };
 
 use super::{module::Module, namespace::Namespace, Path};
@@ -42,52 +37,6 @@ impl Root {
             .cloned()
             .collect();
         self.resolve_symbol(handler, &symbol_path, &call_path.suffix)
-    }
-
-    /// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
-    ///
-    /// This will concatenate the `mod_path` with the `call_path`'s prefixes and
-    /// then calling `resolve_symbol` with the resulting path and call_path's suffix.
-    ///
-    /// The `mod_path` is significant here as we assume the resolution is done within the
-    /// context of the module pointed to by `mod_path` and will only check the call path prefixes
-    /// and the symbol's own visibility
-    pub(crate) fn resolve_call_path_with_visibility_check(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &Path,
-        call_path: &CallPath,
-    ) -> Result<&ty::TyDecl, ErrorEmitted> {
-        let decl = self.resolve_call_path(handler, mod_path, call_path)?;
-
-        // In case there are no prefixes we don't need to check visibility
-        if call_path.prefixes.is_empty() {
-            return Ok(decl);
-        }
-
-        // check the visibility of the call path elements
-        // we don't check the first prefix because direct children are always accessible
-        for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
-            let module = self.check_submodule(handler, prefix)?;
-            if module.visibility.is_private() {
-                let prefix_last = prefix[prefix.len() - 1].clone();
-                handler.emit_err(CompileError::ImportPrivateModule {
-                    span: prefix_last.span(),
-                    name: prefix_last,
-                });
-            }
-        }
-
-        // check the visibility of the symbol itself
-        if !decl.visibility(engines.de()).is_public() {
-            handler.emit_err(CompileError::ImportPrivateSymbol {
-                name: call_path.suffix.clone(),
-                span: call_path.suffix.span(),
-            });
-        }
-
-        Ok(decl)
     }
 
     /// Given a path to a module and the identifier of a symbol within that module, resolve its

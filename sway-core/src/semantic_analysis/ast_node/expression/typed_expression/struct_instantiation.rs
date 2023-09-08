@@ -7,7 +7,7 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     decl_engine::DeclRefStruct,
     language::{parsed::*, ty, CallPath},
-    semantic_analysis::TypeCheckContext,
+    semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
     type_system::*,
 };
 

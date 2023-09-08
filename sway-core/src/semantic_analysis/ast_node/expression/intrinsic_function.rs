@@ -9,7 +9,7 @@ use sway_types::Span;
 use crate::{
     engine_threading::*,
     language::{parsed::Expression, ty},
-    semantic_analysis::TypeCheckContext,
+    semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
     type_system::*,
 };
 

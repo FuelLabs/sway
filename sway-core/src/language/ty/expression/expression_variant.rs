@@ -940,8 +940,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     for type_param in method.type_parameters.iter() {
                         let TypeParameter { type_id, .. } = type_param;
 
-                        ctx.namespace
-                            .insert_trait_implementation_for_type(engines, *type_id);
+                        ctx.insert_trait_implementation_for_type(*type_id);
                     }
 
                     // Handle the trait constraints. This includes checking to see if the trait

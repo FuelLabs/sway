@@ -189,4 +189,4 @@ fn main() -> () {
     poke(Struct::new().use_me());
 }
 
-fn poke<T>(x: T) -> () { let _ = x; () }
+fn poke<T>(_x: T) { }
