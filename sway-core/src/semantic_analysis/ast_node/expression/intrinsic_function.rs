@@ -47,7 +47,7 @@ impl ty::TyIntrinsicFunctionKind {
                 type_check_is_reference_type(handler, ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::CheckStrType => {
-                type_check_check_str_type(handler, ctx, kind, arguments, type_arguments, span)
+                type_check_assert_is_str_array(handler, ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::ToStrArray => type_check_to_str_array(handler, ctx, kind, arguments, span),
             Intrinsic::Eq | Intrinsic::Gt | Intrinsic::Lt => {
@@ -281,10 +281,10 @@ fn type_check_is_reference_type(
     ))
 }
 
-/// Signature: `__check_str_type<T>()`
+/// Signature: `__assert_is_str_array<T>()`
 /// Description: Throws a compile error if `T` is not of type str.
 /// Constraints: None.
-fn type_check_check_str_type(
+fn type_check_assert_is_str_array(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,

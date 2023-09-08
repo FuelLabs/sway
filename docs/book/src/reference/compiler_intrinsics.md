@@ -25,7 +25,7 @@ __size_of<T>() -> u64
 ___
 
 ```sway
-__size_of_str<T>() -> u64
+__size_of_str_array<T>() -> u64
 ```
 
 **Description:** Return the size of type `T` in bytes. This intrinsic differs from `__size_of` in the case of `str` type where the actual length in bytes of the string is returned without padding the byte size to the next word alignment. When `T` is not a string `0` is returned.
@@ -35,7 +35,7 @@ __size_of_str<T>() -> u64
 ___
 
 ```sway
-__check_str_type<T>() -> u64
+__assert_is_str_array<T>() -> u64
 ```
 
 **Description:** Throws a compile error if type `T` is not a string.

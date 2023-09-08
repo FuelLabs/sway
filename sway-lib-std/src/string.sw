@@ -118,23 +118,15 @@ impl String {
         }
     }
 
-    /// Converts a string literal containing ASCII encoded bytes to a `String`
-    ///
-    /// # Additional Information
-    ///
-    /// This is a temporary convenience before dynamically sized types are implemented
+    /// Converts a string slice containing ASCII encoded bytes to a `String`
     ///
     /// # Arguments
     ///
-    /// * `s` - A string literal containing ASCII encoded bytes.
+    /// * `s` - A string slice containing ASCII encoded bytes.
     ///
     /// # Returns
     ///
     /// * [String] - A `String` containing the ASCII encoded bytes.
-    ///
-    /// # Reverts
-    /// 
-    /// * When `s` is not a string literal.
     ///
     /// # Examples
     ///

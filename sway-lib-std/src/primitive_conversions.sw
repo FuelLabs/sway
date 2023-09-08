@@ -1,6 +1,7 @@
 library;
 
 use ::option::Option::{self, *};
+use ::assert::*;
 use core::primitive_conversions::*;
 
 impl u16 {
@@ -67,4 +68,26 @@ impl u64 {
             None
         }
     }
+}
+
+impl str {
+    pub fn try_as_str_array<S>(self) -> Option<S> {
+         __assert_is_str_array::<S>();
+        let str_size = __size_of_str_array::<S>();
+
+        if self.len() == str_size {
+            let s = [0u8; 4];
+            let addr = __addr_of(s);
+            self.as_ptr().copy_bytes_to(addr, str_size);
+            Some(asm(s: s) { s: S })
+        } else {
+            None
+        }
+    }
+}
+
+#[test]
+fn str_slice_to_str_array() {    
+    let a = "abcd";
+    let b: str[4] = a.try_as_str_array().unwrap();
 }

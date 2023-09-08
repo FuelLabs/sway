@@ -49,8 +49,8 @@ impl Hasher {
 
     #![inline(never)]
     pub fn write_str_array<S>(ref mut self, s: S) {
-        __check_str_type::<S>();
-        let str_size = __size_of_str::<S>();
+        __assert_is_str_array::<S>();
+        let str_size = __size_of_str_array::<S>();
         let str_ptr = __addr_of(s);
         
         let mut bytes = Bytes::with_capacity(str_size);
@@ -340,8 +340,8 @@ pub fn sha256<T>(s: T) -> b256 where T: Hash {
 /// ```
 #![inline(never)]
 pub fn sha256_str_array<S>(param: S) -> b256 {
-     __check_str_type::<S>();
-    let str_size = __size_of_str::<S>();
+     __assert_is_str_array::<S>();
+    let str_size = __size_of_str_array::<S>();
     let str_ptr = __addr_of(param);
     
     let mut bytes = Bytes::with_capacity(str_size);
