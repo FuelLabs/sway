@@ -1,9 +1,9 @@
 library;
 
 use ::alloc::alloc;
-use ::option::Option::{self, *};
+use ::option::Option::{*, self};
 
-/// Stores a stack value in storage. Will not work for heap values. 
+/// Stores a stack value in storage. Will not work for heap values.
 ///
 /// # Additional Information
 ///
@@ -19,7 +19,7 @@ use ::option::Option::{self, *};
 ///
 /// * Reads: `1`
 /// * Writes: `1`
-///  
+///
 /// # Examples
 ///
 /// ```sway
@@ -72,7 +72,7 @@ pub fn write<T>(slot: b256, offset: u64, value: T) {
 /// # Number of Storage Accesses
 ///
 /// * Reads: `1`
-/// 
+///
 /// # Examples
 ///
 /// ```sway
@@ -101,20 +101,21 @@ pub fn read<T>(slot: b256, offset: u64) -> Option<T> {
     // Read `number_of_slots * 32` bytes starting at storage slot `slot` and return an `Option` 
     // wrapping the value stored at `result_ptr + offset` if all the slots are valid. Otherwise, 
     // return `None`.
-    if __state_load_quad(offset_slot, result_ptr, number_of_slots) {
+    if __state_load_quad(offset_slot, result_ptr, number_of_slots)
+    {
         Some(result_ptr.add::<u64>(place_in_slot).read::<T>())
     } else {
         None
     }
 }
 
-/// Clear a value starting at some slot with an offset. 
+/// Clear a value starting at some slot with an offset.
 ///
 /// # Arguments
 ///
 /// * `slot` - The key of the stored value that will be cleared
 /// * `offset` - An offset, in words, from the start of `slot`, from which the value should be cleared.
-/// 
+///
 /// # Number of Storage Accesses
 ///
 /// * Clears: `1`
@@ -167,7 +168,7 @@ fn slot_calculator<T>(slot: b256, offset: u64) -> (b256, u64, u64) {
     // Where in the storage slot to align `T` in order to pack word-aligned.
     // offset % number_words_in_slot = word_place_in_slot
     let place_in_slot = offset % 4;
- 
+
     // Get the number of slots `T` spans based on its packed position.
     // ((place_in_slot * bytes_in_word) + bytes + (bytes_in_slot - 1)) >> align_to_slot = number_of_slots
     let number_of_slots = match __is_reference_type::<T>() {
@@ -177,10 +178,9 @@ fn slot_calculator<T>(slot: b256, offset: u64) -> (b256, u64, u64) {
 
     // TODO: Update when u256 <-> b256 conversions exist.
     // Determine which starting slot `T` will be stored based on the offset.
-    let mut u256_slot = asm(r1: slot) {r1: u256};
+    let mut u256_slot = asm(r1: slot) { r1: u256 };
     let u256_increment = asm(r1: (0, 0, 0, last_slot - number_of_slots)) { r1: u256 };
     u256_slot += u256_increment;
     let offset_slot = asm(r1: u256_slot) { r1: b256 };
-
     (offset_slot, number_of_slots, place_in_slot)
 }

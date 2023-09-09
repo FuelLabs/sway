@@ -2,7 +2,7 @@ library;
 
 use ::alloc::{alloc, alloc_bytes, realloc_bytes};
 use ::hash::*;
-use ::option::Option::{self, *};
+use ::option::Option::{*, self};
 use ::storage::storage_api::*;
 
 /// Store a raw_slice from the heap into storage.
@@ -11,7 +11,7 @@ use ::storage::storage_api::*;
 ///
 /// * `key`: [b256] - The storage slot at which the variable will be stored.
 /// * `slice`: [raw_slice] - The raw_slice to be stored.
-/// 
+///
 /// # Number of Storage Accesses
 ///
 /// * Writes: `2`
@@ -52,7 +52,7 @@ pub fn write_slice(key: b256, slice: raw_slice) {
 /// # Arguments
 ///
 /// * `key`: [b256] - The storage slot to load the value from.
-/// 
+///
 /// # Returns
 ///
 /// - [Option<raw_slice>] - If no value was previously stored at `key`, `None` is returned. Otherwise,
@@ -61,7 +61,7 @@ pub fn write_slice(key: b256, slice: raw_slice) {
 /// # Number of Storage Accesses
 ///
 /// * Reads: `2`
-/// 
+///
 /// # Examples
 ///
 /// ```sway
@@ -91,7 +91,7 @@ pub fn read_slice(key: b256) -> Option<raw_slice> {
     }
 }
 
-/// Clear a sequence of storage slots starting at a some key. 
+/// Clear a sequence of storage slots starting at a some key.
 ///
 /// # Arguments
 ///
@@ -100,7 +100,7 @@ pub fn read_slice(key: b256) -> Option<raw_slice> {
 /// # Returns
 ///
 /// * [bool] - Indicates whether all of the storage slots cleared were previously set.
-/// 
+///
 /// # Number of Storage Accesses
 ///
 /// * Reads: `1`

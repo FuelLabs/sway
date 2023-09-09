@@ -25,7 +25,7 @@ const SECOND_PARAMETER_OFFSET: u64 = 74;
 ///
 /// **_Note:_** If called in an external context, this will **not** return a contract ID.
 /// If called externally, will actually return a pointer to the transaction ID.
-/// 
+///
 /// # Returns
 ///
 /// * [ContractId] - The contract id of this contract.
@@ -48,27 +48,27 @@ pub fn contract_id() -> ContractId {
 /// Get the `asset_id` of coins being sent from the current call frame.
 ///
 /// # Returns
-/// 
+///
 /// * [AssetId] - The asset included in the current call frame.
 ///
 /// # Examples
 ///
 /// ```sway
 /// use std::{call_frames::msg_asset_id, constants::BASE_ASSET_ID};
-/// 
+///
 /// fn foo() {
 ///     let asset = msg_asset_id();
 ///     assert(asset == BASE_ASSET_ID);
 /// }
 /// ```
 pub fn msg_asset_id() -> AssetId {
-    AssetId { 
-        value: { 
+    AssetId {
+        value: {
             asm(asset_id) {
                 addi asset_id fp i32;
                 asset_id: b256
             }
-        }
+        },
     }
 }
 
@@ -95,7 +95,7 @@ pub fn msg_asset_id() -> AssetId {
 /// ```
 pub fn code_size() -> u64 {
     asm(size, ptr, offset: 576) {
-        add size fp offset;
+        add  size fp offset;
         size: u64
     }
 }
@@ -157,7 +157,7 @@ pub fn second_param<T>() -> T {
 //  Accessing arbitrary call frames by pointer
 //
 /// Get a pointer to the previous (relative to the `frame_pointer` parameter) call frame using offsets from a pointer.
-/// 
+///
 /// # Additional Information
 ///
 /// More information on data from call frames can be found in the Fuel Specs.
@@ -166,7 +166,7 @@ pub fn second_param<T>() -> T {
 /// # Arguments
 ///
 /// * `frame_pointer`: [raw_ptr] - The call frame reference directly before the returned call frame pointer.
-/// 
+///
 /// # Returns
 ///
 /// * [raw_ptr] - The memory location of the previous call frame data.
@@ -185,7 +185,7 @@ pub fn second_param<T>() -> T {
 pub fn get_previous_frame_pointer(frame_pointer: raw_ptr) -> raw_ptr {
     let offset = frame_pointer.add::<u64>(SAVED_REGISTERS_OFFSET + PREV_FRAME_POINTER_OFFSET);
     asm(res, ptr: offset) {
-        lw res ptr i0;
+        lw   res ptr i0;
         res: raw_ptr
     }
 }

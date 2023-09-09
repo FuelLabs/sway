@@ -7,7 +7,7 @@ use ::assert::assert;
 use ::bytes::Bytes;
 use ::constants::BASE_ASSET_ID;
 use ::contract_id::{AssetId, ContractId};
-use ::option::Option::{self, *};
+use ::option::Option::{*, self};
 use ::revert::revert;
 use ::tx::{
     GTF_CREATE_INPUT_AT_INDEX,
@@ -116,7 +116,7 @@ pub fn input_type(index: u64) -> Input {
 }
 
 /// Gets the transaction inputs count.
-/// 
+///
 /// # Returns
 ///
 /// * [u8] - The number of inputs in the transaction.
@@ -171,7 +171,7 @@ pub fn input_pointer(index: u64) -> u64 {
 /// * `index`: [u64] - The index of the input to check.
 ///
 /// # Returns
-/// 
+///
 /// * [Option<u64>] - The amount of the input at `index`, if the input's type is `Input::Coin` or `Input::Message`, else `None`.
 ///
 /// # Examples

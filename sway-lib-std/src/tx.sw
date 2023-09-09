@@ -169,7 +169,7 @@ pub fn tx_maturity() -> u32 {
 /// use std::tx::tx_script_length;
 ///
 /// fn foo() {
-///     let script_length = tx_script_length(); 
+///     let script_length = tx_script_length();
 ///     assert(script_length > 0);
 /// }
 /// ```
@@ -389,10 +389,10 @@ pub fn tx_script_data_start_pointer() -> raw_ptr {
     }
 }
 
-/// Get the script data, typed. 
+/// Get the script data, typed.
 ///
 /// # Additional Information
-/// 
+///
 /// **Unsafe.**
 /// **Assumes the type is correct.**
 ///
@@ -421,7 +421,7 @@ pub fn tx_script_data<T>() -> T {
 }
 
 /// Get the script bytecode.
-/// 
+///
 /// # Additional Information
 ///
 /// Must be cast to a `u64` array, with sufficient length to contain the bytecode.

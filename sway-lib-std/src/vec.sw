@@ -3,7 +3,7 @@ library;
 
 use ::alloc::{alloc, realloc};
 use ::assert::assert;
-use ::option::Option::{self, *};
+use ::option::Option::{*, self};
 use ::convert::From;
 
 struct RawVec<T> {
@@ -13,16 +13,16 @@ struct RawVec<T> {
 
 impl<T> RawVec<T> {
     /// Create a new `RawVec` with zero capacity.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [RawVec] - A new `RawVec` with zero capacity.
-    /// 
+    ///
     /// # Examples
-    ///    
+    ///
     /// ```sway
     /// use std::vec::RawVec;
-    /// 
+    ///
     /// fn foo() {
     ///     let vec = RawVec::new();
     /// }
@@ -37,7 +37,7 @@ impl<T> RawVec<T> {
     /// Creates a `RawVec` (on the heap) with exactly the capacity for a
     /// `[T; capacity]`. This is equivalent to calling `RawVec::new` when
     /// `capacity` is zero.
-    /// 
+    ///
     /// # Arguments
     ///
     /// * `capacity`: [u64] - The capacity of the `RawVec`.
@@ -45,12 +45,12 @@ impl<T> RawVec<T> {
     /// # Returns
     ///
     /// * [RawVec] - A new `RawVec` with zero capacity.
-    /// 
+    ///
     /// # Examples
-    ///    
+    ///
     /// ```sway
     /// use std::vec::RawVec;
-    /// 
+    ///
     /// fn foo() {
     ///     let vec = RawVec::with_capacity(5);
     /// }
@@ -219,7 +219,7 @@ impl<T> Vec<T> {
     ///     vec.push(5);
     ///     let last_element = vec.pop().unwrap();
     ///     assert(last_element == 5);
-    /// } 
+    /// }
     ///```
     pub fn push(ref mut self, value: T) {
         // If there is insufficient capacity, grow the buffer.
@@ -492,10 +492,10 @@ impl<T> Vec<T> {
     ///
     /// fn foo() {
     ///     let vec = Vec::new();
-    /// 
+    ///
     ///     let res = vec.pop();
     ///     assert(res.is_none());
-    /// 
+    ///
     ///     vec.push(5);
     ///     let res = vec.pop();
     ///     assert(res.unwrap() == 5);

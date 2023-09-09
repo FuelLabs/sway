@@ -22,7 +22,7 @@ use ::revert::revert;
 ///
 /// ```sway
 /// use std::{message::send_message, bytes::Bytes};
-/// 
+///
 /// fn foo() {
 ///     let recipient = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
 ///     let mut bytes = Bytes::new();
@@ -42,7 +42,7 @@ pub fn send_message(recipient: b256, msg_data: Bytes, coins: u64) {
     }
 
     asm(r1: recipient_pointer, r2: msg_data_pointer, r3: size, r4: coins) {
-        smo r1 r2 r3 r4;
+        smo  r1 r2 r3 r4;
     };
 }
 
@@ -62,7 +62,7 @@ pub fn send_message(recipient: b256, msg_data: Bytes, coins: u64) {
 ///
 /// ```sway
 /// use std::message::send_typed_message;
-/// 
+///
 /// fn foo() {
 ///     let recipient = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
 ///     send_message(recipient, "Fuel is blazingly fast", 50);

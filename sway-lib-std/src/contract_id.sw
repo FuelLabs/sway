@@ -18,19 +18,19 @@ impl core::ops::Eq for ContractId {
 }
 
 /// Functions for casting between the `b256` and `ContractId` types.
-impl From<b256> for ContractId { 
+impl From<b256> for ContractId {
     /// Casts raw `b256` data to a `ContractId`.
-    /// 
+    ///
     /// # Arguments
     ///
     /// * `bits`: [b256] - The raw `b256` data to be casted.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [ContractId] - The newly created `ContractId` from the raw `b256`.
     ///
     /// # Examples
-    /// 
+    ///
     /// ```sway
     /// use std::constants::ZERO_B256;
     ///
@@ -42,15 +42,14 @@ impl From<b256> for ContractId {
         Self { value: bits }
     }
 
-
     /// Casts a `ContractId` to raw `b256` data.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [b256] - The underlying raw `b256` data of the `ContractId`.
     ///
     /// # Examples
-    /// 
+    ///
     /// ```sway
     /// use std::constants::ZERO_B256;
     ///
@@ -72,7 +71,7 @@ impl Hash for ContractId {
     }
 }
 
-/// An AssetId is used for interacting with an asset on the network. 
+/// An AssetId is used for interacting with an asset on the network.
 ///
 /// # Additional Information
 ///
@@ -101,17 +100,17 @@ impl core::ops::Eq for AssetId {
 
 impl From<b256> for AssetId {
     /// Casts raw `b256` data to an `AssetId`.
-    /// 
+    ///
     /// # Arguments
     ///
     /// * `bits`: [b256] - The raw `b256` data to be casted.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [AssetId] - The newly created `AssetId` from the raw `b256`.
     ///
     /// # Examples
-    /// 
+    ///
     /// ```sway
     /// use std::constants::ZERO_B256;
     ///
@@ -124,13 +123,13 @@ impl From<b256> for AssetId {
     }
 
     /// Casts an `AssetId` to raw `b256` data.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [b256] - The underlying raw `b256` data of the `AssetId`.
     ///
     /// # Examples
-    /// 
+    ///
     /// ```sway
     /// use std::constants::ZERO_B256;
     ///
@@ -166,7 +165,7 @@ impl AssetId {
     ///     let contract_id = contract_id();
     ///     let sub_id = ZERO_B256;
     ///
-    ///     let asset_id = AssetId::new(contract_id, sub_id);        
+    ///     let asset_id = AssetId::new(contract_id, sub_id);
     /// }
     /// ```
     pub fn new(contract_id: ContractId, sub_id: SubId) -> Self {
@@ -199,7 +198,10 @@ impl AssetId {
     /// }
     /// ```
     pub fn default(contract_id: ContractId) -> Self {
-        let value = sha256((contract_id, 0x0000000000000000000000000000000000000000000000000000000000000000));
+        let value = sha256((
+            contract_id,
+            0x0000000000000000000000000000000000000000000000000000000000000000,
+        ));
         Self { value }
     }
 
@@ -241,7 +243,7 @@ impl ContractId {
     ///
     /// **_Note:_** If called in an external context, this will **not** return a ContractId.
     /// If called externally, will actually return a pointer to the Transaction Id (Wrapped in the ContractId struct).
-    /// 
+    ///
     /// # Returns
     ///
     /// * [ContractId] - The contract id of this contract.
@@ -292,7 +294,7 @@ impl ContractId {
     /// ```
     pub fn transfer(self, asset_id: AssetId, amount: u64) {
         asm(r1: amount, r2: asset_id.value, r3: self.value) {
-            tr r3 r1 r2;
+            tr   r3 r1 r2;
         }
     }
 }

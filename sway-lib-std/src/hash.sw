@@ -4,12 +4,14 @@ library;
 use ::bytes::*;
 
 pub struct Hasher {
-    bytes: Bytes
+    bytes: Bytes,
 }
 
 impl Hasher {
     pub fn new() -> Self {
-        Self { bytes: Bytes::new() }
+        Self {
+            bytes: Bytes::new(),
+        }
     }
 
     /// Writes some data into this `Hasher`.
@@ -47,20 +49,19 @@ impl Hasher {
         self.write(bytes);
     }
 
-    #![inline(never)]
+    #[inline(never)]
     pub fn write_str_array<S>(ref mut self, s: S) {
         __assert_is_str_array::<S>();
         let str_size = __size_of_str_array::<S>();
         let str_ptr = __addr_of(s);
-        
+
         let mut bytes = Bytes::with_capacity(str_size);
         bytes.len = str_size;
 
         str_ptr.copy_bytes_to(bytes.buf.ptr(), str_size);
-        
+
         self.write(bytes);
     }
-
 }
 
 pub trait Hash {
@@ -81,8 +82,8 @@ impl Hash for u16 {
         bytes.len = 2;
 
         asm(ptr: bytes.buf.ptr(), val: self, r1) {
-            slli  r1 val i48;
-            sw ptr r1 i0;
+            slli r1 val i48;
+            sw   ptr r1 i0;
         };
 
         state.write(bytes);
@@ -95,8 +96,8 @@ impl Hash for u32 {
         bytes.len = 4;
 
         asm(ptr: bytes.buf.ptr(), val: self, r1) {
-            slli  r1 val i32;
-            sw ptr r1 i0;
+            slli r1 val i32;
+            sw   ptr r1 i0;
         };
 
         state.write(bytes);
@@ -109,7 +110,7 @@ impl Hash for u64 {
         bytes.len = 8;
 
         asm(ptr: bytes.buf.ptr(), val: self) {
-            sw ptr val i0;
+            sw   ptr val i0;
         };
 
         state.write(bytes);
@@ -124,10 +125,10 @@ impl Hash for b256 {
         let (word_1, word_2, word_3, word_4) = asm(r1: self) { r1: (u64, u64, u64, u64) };
 
         asm(ptr: bytes.buf.ptr(), val_1: word_1, val_2: word_2, val_3: word_3, val_4: word_4) {
-            sw ptr val_1 i0;
-            sw ptr val_2 i1;
-            sw ptr val_3 i2;
-            sw ptr val_4 i3;
+            sw   ptr val_1 i0;
+            sw   ptr val_2 i1;
+            sw   ptr val_3 i2;
+            sw   ptr val_4 i3;
         };
 
         state.write(bytes);
@@ -158,7 +159,10 @@ impl Hash for str {
     }
 }
 
-impl<A, B> Hash for (A, B) where A: Hash, B: Hash  {
+impl<A, B> Hash for (A, B) where
+    A: Hash,
+    B: Hash
+{
     #[inline(never)]
     fn hash(self, ref mut state: Hasher) {
         self.0.hash(state);
@@ -166,7 +170,11 @@ impl<A, B> Hash for (A, B) where A: Hash, B: Hash  {
     }
 }
 
-impl<A, B, C> Hash for (A, B, C) where A: Hash, B: Hash, C: Hash {
+impl<A, B, C> Hash for (A, B, C) where
+    A: Hash,
+    B: Hash,
+    C: Hash
+{
     fn hash(self, ref mut state: Hasher) {
         self.0.hash(state);
         self.1.hash(state);
@@ -174,7 +182,12 @@ impl<A, B, C> Hash for (A, B, C) where A: Hash, B: Hash, C: Hash {
     }
 }
 
-impl<A, B, C, D> Hash for (A, B, C, D) where A: Hash, B: Hash, C: Hash, D: Hash {
+impl<A, B, C, D> Hash for (A, B, C, D) where
+    A: Hash,
+    B: Hash,
+    C: Hash,
+    D: Hash
+{
     fn hash(self, ref mut state: Hasher) {
         self.0.hash(state);
         self.1.hash(state);
@@ -183,7 +196,13 @@ impl<A, B, C, D> Hash for (A, B, C, D) where A: Hash, B: Hash, C: Hash, D: Hash 
     }
 }
 
-impl<A, B, C, D, E> Hash for (A, B, C, D, E) where A: Hash, B: Hash, C: Hash, D: Hash, E: Hash {
+impl<A, B, C, D, E> Hash for (A, B, C, D, E) where
+    A: Hash,
+    B: Hash,
+    C: Hash,
+    D: Hash,
+    E: Hash
+{
     fn hash(self, ref mut state: Hasher) {
         self.0.hash(state);
         self.1.hash(state);
@@ -193,20 +212,26 @@ impl<A, B, C, D, E> Hash for (A, B, C, D, E) where A: Hash, B: Hash, C: Hash, D:
     }
 }
 
-impl<T> Hash for [T; 1] where T: Hash {
+impl<T> Hash for [T; 1] where
+    T: Hash
+{
     fn hash(self, ref mut state: Hasher) {
         self[0].hash(state);
     }
 }
 
-impl<T> Hash for [T; 2] where T: Hash {
+impl<T> Hash for [T; 2] where
+    T: Hash
+{
     fn hash(self, ref mut state: Hasher) {
         self[0].hash(state);
         self[1].hash(state);
     }
 }
 
-impl<T> Hash for [T; 3] where T: Hash {
+impl<T> Hash for [T; 3] where
+    T: Hash
+{
     fn hash(self, ref mut state: Hasher) {
         self[0].hash(state);
         self[1].hash(state);
@@ -214,7 +239,9 @@ impl<T> Hash for [T; 3] where T: Hash {
     }
 }
 
-impl<T> Hash for [T; 4] where T: Hash {
+impl<T> Hash for [T; 4] where
+    T: Hash
+{
     fn hash(self, ref mut state: Hasher) {
         self[0].hash(state);
         self[1].hash(state);
@@ -223,7 +250,9 @@ impl<T> Hash for [T; 4] where T: Hash {
     }
 }
 
-impl<T> Hash for [T; 5] where T: Hash {
+impl<T> Hash for [T; 5] where
+    T: Hash
+{
     fn hash(self, ref mut state: Hasher) {
         self[0].hash(state);
         self[1].hash(state);
@@ -233,7 +262,9 @@ impl<T> Hash for [T; 5] where T: Hash {
     }
 }
 
-impl<T> Hash for [T; 6] where T: Hash {
+impl<T> Hash for [T; 6] where
+    T: Hash
+{
     fn hash(self, ref mut state: Hasher) {
         self[0].hash(state);
         self[1].hash(state);
@@ -244,7 +275,9 @@ impl<T> Hash for [T; 6] where T: Hash {
     }
 }
 
-impl<T> Hash for [T; 7] where T: Hash {
+impl<T> Hash for [T; 7] where
+    T: Hash
+{
     fn hash(self, ref mut state: Hasher) {
         self[0].hash(state);
         self[1].hash(state);
@@ -256,7 +289,9 @@ impl<T> Hash for [T; 7] where T: Hash {
     }
 }
 
-impl<T> Hash for [T; 8] where T: Hash {
+impl<T> Hash for [T; 8] where
+    T: Hash
+{
     fn hash(self, ref mut state: Hasher) {
         self[0].hash(state);
         self[1].hash(state);
@@ -269,7 +304,9 @@ impl<T> Hash for [T; 8] where T: Hash {
     }
 }
 
-impl<T> Hash for [T; 9] where T: Hash {
+impl<T> Hash for [T; 9] where
+    T: Hash
+{
     fn hash(self, ref mut state: Hasher) {
         self[0].hash(state);
         self[1].hash(state);
@@ -283,7 +320,9 @@ impl<T> Hash for [T; 9] where T: Hash {
     }
 }
 
-impl<T> Hash for [T; 10] where T: Hash {
+impl<T> Hash for [T; 10] where
+    T: Hash
+{
     fn hash(self, ref mut state: Hasher) {
         self[0].hash(state);
         self[1].hash(state);
@@ -309,7 +348,7 @@ impl<T> Hash for [T; 10] where T: Hash {
 /// * [b256] - The sha-256 hash of the value.
 ///
 /// # Examples
-/// 
+///
 /// ```sway
 /// use std::hash::*;
 ///
@@ -319,7 +358,10 @@ impl<T> Hash for [T; 10] where T: Hash {
 /// }
 /// ```
 #[inline(never)]
-pub fn sha256<T>(s: T) -> b256 where T: Hash {
+pub fn sha256<T>(s: T) -> b256
+where
+    T: Hash
+{
     let mut hasher = Hasher::new();
     s.hash(hasher);
     hasher.sha256()
@@ -329,7 +371,7 @@ pub fn sha256<T>(s: T) -> b256 where T: Hash {
 /// This function is specific for string arrays
 ///
 /// # Examples
-/// 
+///
 /// ```sway
 /// use std::hash::*;
 ///
@@ -338,17 +380,17 @@ pub fn sha256<T>(s: T) -> b256 where T: Hash {
 ///     assert(result = 0xa80f942f4112036dfc2da86daf6d2ef6ede3164dd56d1000eb82fa87c992450f);
 /// }
 /// ```
-#![inline(never)]
+#[inline(never)]
 pub fn sha256_str_array<S>(param: S) -> b256 {
-     __assert_is_str_array::<S>();
+    __assert_is_str_array::<S>();
     let str_size = __size_of_str_array::<S>();
     let str_ptr = __addr_of(param);
-    
+
     let mut bytes = Bytes::with_capacity(str_size);
     bytes.len = str_size;
 
     str_ptr.copy_bytes_to(bytes.buf.ptr(), str_size);
-    
+
     let mut hasher = Hasher::new();
     hasher.write(bytes);
     hasher.sha256()
@@ -365,7 +407,7 @@ pub fn sha256_str_array<S>(param: S) -> b256 {
 /// * [b256] - The keccak-256 hash of the value.
 ///
 /// # Examples
-/// 
+///
 /// ```sway
 /// use std::hash::keccak256;
 ///
@@ -375,7 +417,10 @@ pub fn sha256_str_array<S>(param: S) -> b256 {
 /// }
 /// ```
 #[inline(never)]
-pub fn keccak256<T>(s: T) -> b256 where T: Hash {
+pub fn keccak256<T>(s: T) -> b256
+where
+    T: Hash
+{
     let mut hasher = Hasher::new();
     s.hash(hasher);
     hasher.keccak256()

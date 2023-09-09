@@ -5,7 +5,7 @@ use ::address::Address;
 use ::b512::B512;
 use ::registers::error;
 use ::hash::*;
-use ::result::Result::{self, *};
+use ::result::Result::{*, self};
 
 /// The error type used when the `ec_recover` function fails.
 pub enum EcRecoverError {
@@ -39,7 +39,7 @@ pub enum EcRecoverError {
 ///     let signature: B512 = B512::from((hi, lo));
 ///     // A recovered public key pair.
 ///     let public_key = ec_recover(signature, msg_hash).unwrap();
-/// 
+///
 ///     assert(public_key.bytes[0] == pub_hi);
 ///     assert(public_key.bytes[1] == pub_lo);
 /// }

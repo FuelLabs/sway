@@ -4,7 +4,7 @@ library;
 use ::{alloc::{alloc_bytes, realloc_bytes}, vec::Vec};
 use ::assert::assert;
 use ::intrinsics::size_of_val;
-use ::option::Option::{self, *};
+use ::option::Option::{*, self};
 use ::convert::From;
 
 struct RawBytes {
@@ -176,10 +176,10 @@ impl Bytes {
     ///
     /// fn foo() {
     ///     let bytes = Bytes::new();
-    /// 
+    ///
     ///     let res = bytes.pop();
     ///     assert(res.is_none());
-    /// 
+    ///
     ///     bytes.push(5);
     ///     let res = bytes.pop();
     ///     assert(res.unwrap() == 5);
@@ -259,11 +259,11 @@ impl Bytes {
     ///     bytes.push(a);
     ///     bytes.push(b);
     ///     bytes.push(c);
-    /// 
+    ///
     ///     let d = 11u8;
-    /// 
+    ///
     ///     bytes.set(1, d);
-    /// 
+    ///
     ///     assert(bytes.len() == 3);
     ///     assert(bytes.get(0).unwrap() == a);
     ///     assert(bytes.get(1).unwrap() == d);
@@ -305,7 +305,7 @@ impl Bytes {
     ///     bytes.push(b);
     ///     bytes.push(c);
     ///     bytes.insert(1, d);
-    /// 
+    ///
     ///     assert(bytes.get(0).unwrap() == a);
     ///     assert(bytes.get(1).unwrap() == d);
     ///     assert(bytes.get(2).unwrap() == b);
@@ -420,9 +420,9 @@ impl Bytes {
     ///     bytes.push(a);
     ///     bytes.push(b);
     ///     bytes.push(c);
-    /// 
+    ///
     ///     bytes.swap(0, 1);
-    /// 
+    ///
     ///     assert(bytes.get(0).unwrap() == b);
     ///     assert(bytes.get(1).unwrap() == a);
     ///     assert(bytes.get(2).unwrap() == c);
@@ -582,8 +582,14 @@ impl Bytes {
         let left_len = mid;
         let right_len = self.len - mid;
 
-        let mut left_bytes = Self { buf: RawBytes::with_capacity(left_len), len: left_len };
-        let mut right_bytes = Self { buf: RawBytes::with_capacity(right_len), len: right_len };
+        let mut left_bytes = Self {
+            buf: RawBytes::with_capacity(left_len),
+            len: left_len,
+        };
+        let mut right_bytes = Self {
+            buf: RawBytes::with_capacity(right_len),
+            len: right_len,
+        };
 
         if mid > 0 {
             self.buf.ptr().copy_bytes_to(left_bytes.buf.ptr(), left_len);
@@ -594,7 +600,6 @@ impl Bytes {
 
         left_bytes.len = left_len;
         right_bytes.len = right_len;
-
         (left_bytes, right_bytes)
     }
 
@@ -616,13 +621,13 @@ impl Bytes {
     ///     bytes.push(7u8);
     ///     bytes.push(9u8);
     ///     assert(bytes.len() == 3);
-    /// 
+    ///
     ///     let mut bytes2 = Bytes::new();
     ///     bytes2.push(5u8);
     ///     bytes2.push(7u8);
     ///     bytes2.push(9u8);
     ///     assert(bytes2.len() == 3);
-    /// 
+    ///
     ///     let first_length = bytes.len();
     ///     let second_length = bytes2.len();
     ///     let first_cap = bytes.capacity();
@@ -673,7 +678,7 @@ impl core::ops::Eq for Bytes {
         }
 
         asm(result, r2: self.buf.ptr, r3: other.buf.ptr, r4: self.len) {
-            meq result r2 r3 r4;
+            meq  result r2 r3 r4;
             result: bool
         }
     }
@@ -727,7 +732,7 @@ impl From<raw_slice> for Bytes {
     /// vec.push(a);
     /// vec.push(b);
     /// vec.push(c);
-    /// 
+    ///
     /// let vec_as_raw_slice = vec.as_raw_slice();
     /// let bytes = Bytes::from(vec_as_raw_slice);
     ///
@@ -1194,7 +1199,6 @@ fn test_append_to_empty_bytes() {
 
     assert(bytes2.len() == 0);
     assert(bytes2.capacity() == 0);
-
 }
 
 #[test()]

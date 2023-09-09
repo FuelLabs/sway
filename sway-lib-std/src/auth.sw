@@ -4,8 +4,8 @@ library;
 use ::address::Address;
 use ::contract_id::ContractId;
 use ::identity::Identity;
-use ::option::Option::{self, *};
-use ::result::Result::{self, *};
+use ::option::Option::{*, self};
+use ::result::Result::{*, self};
 use ::inputs::{Input, input_count, input_owner, input_type};
 
 /// The error type used when an `Identity` cannot be determined.
@@ -16,20 +16,20 @@ pub enum AuthError {
 
 /// Returns `true` if the caller is external (i.e. a `script`).
 /// Otherwise, if the caller is a contract, returns `false`.
-/// 
+///
 /// # Additional Information
-/// 
+///
 /// For more information refer to the [VM Instruction Set](https://fuellabs.github.io/fuel-specs/master/vm/instruction_set#gm-get-metadata).
 ///
 /// # Returns
-///     
+///
 /// * [bool] - `true` if the caller is external, `false` otherwise.
-/// 
+///
 /// # Examples
 ///
 /// ```sway
 /// use std::auth::caller_is_external;
-/// 
+///
 /// fn foo() {
 ///     if caller_is_external() {
 ///         log("Caller is external.")
@@ -40,7 +40,7 @@ pub enum AuthError {
 /// ```
 pub fn caller_is_external() -> bool {
     asm(r1) {
-        gm r1 i1;
+        gm   r1 i1;
         r1: bool
     }
 }
@@ -69,7 +69,7 @@ pub fn caller_is_external() -> bool {
 /// ```
 pub fn caller_contract_id() -> ContractId {
     ContractId::from(asm(r1) {
-        gm r1 i2;
+        gm   r1 i2;
         r1: b256
     })
 }

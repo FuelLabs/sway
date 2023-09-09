@@ -4,23 +4,23 @@
 //! errors. It is an enum with the variants, `Ok(T)`, representing
 //! success and containing a value, and `Err(E)`, representing error
 //! and containing an error value.
-//! 
+//!
 //! Functions return `Result` whenever errors are expected and recoverable. In
 //! the `std` crate, `Result` is most prominently used for `Identity`
 //! interactions and cryptographic operations.
-//! 
+//!
 //! A simple function returning `Result` might be defined and used like so:
-//! 
+//!
 //! ```
 //! enum Version {
 //!     Version1,
 //!     Version2,
 //! }
-//! 
+//!
 //! enum VersionError {
 //!     InvalidNumber,
 //! }
-//! 
+//!
 //! fn parse_version(version_number: u8) -> Result<Version, VersionError> {
 //!     match version_number {
 //!         1 => Ok(Version::Version1),
@@ -29,28 +29,28 @@
 //!     }
 //! }
 //! ```
-//! 
+//!
 //! ### Method overview
-//! 
+//!
 //! In addition to working with pattern matching, `Result` provides a variety
 //! of methods.
-//! 
+//!
 //! ### Querying the variant
-//! 
+//!
 //! The `is_ok` and `is_err` methods return `true` if the `Result` is
 //! `Ok` or `Err`, respectively.
-//! 
+//!
 //! `is_ok` : `Result::is_ok`
 //! `is_err`: `Result::is_err`
-//! 
+//!
 //! ### Extracting the contained value
-//! 
+//!
 //! These methods exctract the contained value in a `Result<T,E>` when it is
 //! the `Ok` variant. If the `Result` is `Err`:
-//! 
+//!
 //! * `unwrap` reverts.
 //! * `unwrap_or` returns the default provided value.
-//! 
+//!
 //! `unwrap`   : `Result::unwrap`
 //! `unwrap_or`: `Result::unwrap_or`
 library;

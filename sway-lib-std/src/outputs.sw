@@ -26,6 +26,8 @@ pub const GTF_OUTPUT_COIN_ASSET_ID = 0x204;
 // pub const GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID = 0x208;
 // pub const GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT = 0x209;
 
+
+
 /// The output type for a transaction.
 pub enum Output {
     /// A coin output.
@@ -51,7 +53,7 @@ pub enum Output {
 /// # Reverts
 ///
 /// * When the output type is unrecognized. This should never happen.
-/// 
+///
 /// # Examples
 ///
 /// ```sway
@@ -187,7 +189,7 @@ pub fn output_amount(index: u64) -> u64 {
             let ptr = output_pointer(index);
             asm(r1, r2, r3: ptr) {
                 addi r2 r3 i40;
-                lw r1 r2 i0;
+                lw   r1 r2 i0;
                 r1: u64
             }
         },

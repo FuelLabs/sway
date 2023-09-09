@@ -3,7 +3,7 @@ library;
 use ::assert::assert;
 use ::bytes::Bytes;
 use ::convert::TryFrom;
-use ::option::Option::{self, *};
+use ::option::Option::{*, self};
 use ::logging::log;
 
 impl TryFrom<Bytes> for b256 {

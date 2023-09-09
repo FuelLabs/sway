@@ -1,7 +1,7 @@
 //! Functionality for setting and unsetting FuelVM flags to modify behavior related to the `$err` and `$of` registers.
 library;
 
-use ::{assert::assert, logging::log, registers::{flags, error}};
+use ::{assert::assert, logging::log, registers::{error, flags}};
 
 // Mask second bit, which is `F_WRAPPING`.
 const F_WRAPPING_DISABLE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000010;
@@ -25,7 +25,7 @@ const F_UNSAFEMATH_ENABLE_MASK: u64 = 0b11111111_11111111_11111111_11111111_1111
 ///
 /// fn foo() {
 ///     let prior_flags = disable_panic_on_overflow_preserving();
-///      
+///
 ///     // Adding 1 to the max value of a u64 is considered an overflow.
 ///     let bar = u64::max() + 1;
 ///
@@ -47,7 +47,7 @@ pub fn set_flags(new_flags: u64) {
 /// > Don't forget to call `enable_panic_on_overflow` or `set_flags` after performing the operations for which you disabled the default `panic-on-overflow` behavior in the first place!
 ///
 /// # Returns
-/// 
+///
 /// * [u64] - The flag prior to disabling panic on overflow.
 ///
 /// # Examples
@@ -57,7 +57,7 @@ pub fn set_flags(new_flags: u64) {
 ///
 /// fn main() {
 ///     disable_panic_on_overflow();
-///      
+///
 ///     // Adding 1 to the max value of a u64 is considered an overflow.
 ///     let bar = u64::max() + 1;
 ///
@@ -70,7 +70,7 @@ pub fn set_flags(new_flags: u64) {
 ///
 /// fn foo() {
 ///     let prior_flags = disable_panic_on_overflow();
-///      
+///
 ///     // Adding 1 to the max value of a u64 is considered an overflow.
 ///     let bar = u64::max() + 1;
 ///
@@ -105,7 +105,7 @@ pub fn disable_panic_on_overflow() -> u64 {
 ///
 /// fn main() {
 ///     disable_panic_on_overflow();
-///      
+///
 ///     // Adding 1 to the max value of a u64 is considered an overflow.
 ///     let bar = u64::max() + 1;
 ///
@@ -131,7 +131,7 @@ pub fn enable_panic_on_overflow() {
 /// > Don't forget to call `enable_panic_on_unsafe_math` or `set_flags` after performing the operations for which you disabled the default `panic-on-unsafe-math` behavior in the first place!
 ///
 /// # Returns
-/// 
+///
 /// * [u64] - The flag prior to disabling panic on overflow.
 ///
 /// # Examples
@@ -141,11 +141,11 @@ pub fn enable_panic_on_overflow() {
 ///
 /// fn main() {
 ///     disable_panic_on_unsafe_math();
-///      
+///
 ///     // Division by zero is considered unsafe math.
-///     let bar = 1 / 0; 
+///     let bar = 1 / 0;
 ///     // Error flag is set to true whenever unsafe math occurs. Here represented as 1.
-///     assert(error() == 1); 
+///     assert(error() == 1);
 ///
 ///     enable_panic_on_unsafe_math();
 /// }
@@ -156,11 +156,11 @@ pub fn enable_panic_on_overflow() {
 ///
 /// fn foo() {
 ///     let prior_flags = disable_panic_on_unsafe_math();
-///      
+///
 ///     // Division by zero is considered unsafe math.
-///     let bar = 1 / 0; 
+///     let bar = 1 / 0;
 ///     // Error flag is set to true whenever unsafe math occurs. Here represented as 1.
-///     assert(error() == 1); 
+///     assert(error() == 1);
 ///
 ///     set_flags(prior_flags);
 /// }
@@ -193,11 +193,11 @@ pub fn disable_panic_on_unsafe_math() -> u64 {
 ///
 /// fn main() {
 ///     disable_panic_on_unsafe_math();
-///      
+///
 ///     // Division by zero is considered unsafe math.
-///     let bar = 1 / 0; 
+///     let bar = 1 / 0;
 ///     // Error flag is set to true whenever unsafe math occurs. Here represented as 1.
-///     assert(error() == 1); 
+///     assert(error() == 1);
 ///
 ///     enable_panic_on_unsafe_math();
 /// }
@@ -236,10 +236,10 @@ fn test_disable_panic_on_unsafe_math() {
     let _ = disable_panic_on_unsafe_math();
 
     let _bar = asm(r2: 1, r3: 0, r1) {
-        div r1 r2 r3;
+        div  r1 r2 r3;
         r1: u64
     };
-    
+
     assert(error() == 1);
 
     enable_panic_on_unsafe_math();
@@ -251,14 +251,14 @@ fn test_disable_panic_on_unsafe_math_preserving() {
 
     let prior_flags = disable_panic_on_unsafe_math();
     let _bar = asm(r2: 1, r3: 0, r1) {
-        div r1 r2 r3;
+        div  r1 r2 r3;
         r1: u64
     };
     assert(error() == 1);
     set_flags(prior_flags);
 
     let _bar = asm(r2: 1, r3: 0, r1) {
-        div r1 r2 r3;
+        div  r1 r2 r3;
         r1: u64
     };
     assert(error() == 1);

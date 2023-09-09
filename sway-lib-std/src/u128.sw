@@ -5,7 +5,7 @@ use ::assert::assert;
 use ::convert::From;
 use ::flags::{disable_panic_on_overflow, set_flags};
 use ::math::*;
-use ::result::Result::{self, *};
+use ::result::Result::{*, self};
 
 /// The 128-bit unsigned integer type.
 ///
@@ -61,15 +61,15 @@ impl u64 {
     /// Performs addition between two `u64` values, returning a `U128`.
     ///
     /// # Additional Information
-    /// 
+    ///
     /// Allows for addition between two `u64` values that would otherwise overflow.
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `right`: [u64] - The right-hand side of the addition.
     ///
     /// # Returns
-    /// 
+    ///
     /// * [U128] - The result of the addition.
     ///
     /// # Examples
@@ -95,16 +95,16 @@ impl u64 {
 
         asm(sum, overflow, left: self, right: right, result_ptr: result) {
             // Add left and right.
-            add sum left right;
+            add  sum left right;
             // Immediately copy the overflow of the addition from `$of` into
             // `overflow` so that it's not lost.
             move overflow of;
             // Store the overflow into the first word of result.
-            sw result_ptr overflow i0;
+            sw   result_ptr overflow i0;
             // Store the sum into the second word of result.
-            sw result_ptr sum i1;
+            sw   result_ptr sum i1;
         };
-        
+
         set_flags(prior_flags);
 
         result
@@ -144,19 +144,19 @@ impl u64 {
             upper: 0,
             lower: 0,
         };
-        
+
         asm(product, overflow, left: self, right: right, result_ptr: result) {
             // Multiply left and right.
-            mul product left right;
+            mul  product left right;
             // Immediately copy the overflow of the multiplication from `$of` into
             // `overflow` so that it's not lost.
             move overflow of;
             // Store the overflow into the first word of result.
-            sw result_ptr overflow i0;
+            sw   result_ptr overflow i0;
             // Store the product into the second word of result.
-            sw result_ptr product i1;
+            sw   result_ptr product i1;
         };
-        
+
         set_flags(prior_flags);
 
         result
@@ -169,7 +169,7 @@ impl U128 {
     /// # Returns
     ///
     /// * [U128] - A new, zero value `U128`.
-    /// 
+    ///
     /// # Examples
     ///
     /// ```sway
@@ -178,7 +178,7 @@ impl U128 {
     /// fn foo() {
     ///     let new_u128 = U128::new();
     ///     let zero_u128 = U128 { upper: 0, lower: 0 };
-    /// 
+    ///
     ///     assert(new_u128 == zero_u128);
     /// }
     /// ```
@@ -207,12 +207,12 @@ impl U128 {
     /// fn foo() {
     ///     let zero_u128 = U128 { upper: 0, lower: 0 };
     ///     let zero_u64 = zero_u128.as_u64().unwrap();
-    /// 
+    ///
     ///     assert(zero_u64 == 0);
-    /// 
+    ///
     ///     let max_u128 = U128::max();
     ///     let result = max_u128.as_u64();
-    /// 
+    ///
     ///     assert(result.is_err()));
     /// }
     /// ```
@@ -237,7 +237,7 @@ impl U128 {
     /// fn foo() {
     ///     let min_u128 = U128::min();
     ///     let zero_u128 = U128 { upper: 0, lower: 0 };
-    /// 
+    ///
     ///     assert(min_u128 == zero_u128);
     /// }
     /// ```
@@ -262,7 +262,7 @@ impl U128 {
     /// fn foo() {
     ///     let max_u128 = U128::max();
     ///     let maxed_u128 = U128 { upper: u64::max(), lower: u64::max() };
-    /// 
+    ///
     ///     assert(max_u128 == maxed_u128);
     /// }
     /// ```

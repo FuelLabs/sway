@@ -136,7 +136,7 @@ pub fn heap_ptr() -> raw_ptr {
 ///
 /// # Additional Information
 ///
-/// Normally, if the result of an ALU operation is mathematically undefined (e.g. dividing by zero), the VM Reverts. 
+/// Normally, if the result of an ALU operation is mathematically undefined (e.g. dividing by zero), the VM Reverts.
 /// However, if the `F_UNSAFEMATH` flag is set, $err is set to `true` and execution continues.
 ///
 /// # Returns
@@ -150,8 +150,8 @@ pub fn heap_ptr() -> raw_ptr {
 ///
 /// fn foo() {
 ///     disable_panic_on_unsafe_math();
-///     let bar = 1 / 0; 
-///     assert(error() == 1); 
+///     let bar = 1 / 0;
+///     assert(error() == 1);
 ///     enable_panic_on_unsafe_math();
 /// }
 /// ```
@@ -254,7 +254,7 @@ pub fn instrs_start() -> raw_ptr {
 /// Return value or pointer.
 ///
 /// # Returns
-/// 
+///
 /// * [u64] - The value or pointer stored in the return register of the VM for the current context.
 ///
 /// # Examples
@@ -274,7 +274,7 @@ pub fn return_value() -> u64 {
 /// Return value length in bytes.
 ///
 /// # Returns
-/// 
+///
 /// * [u64] - The length in bytes of the value stored in the return register of the VM for the current context.
 ///
 /// # Examples

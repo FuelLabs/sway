@@ -6,11 +6,10 @@ use ::convert::From;
 use ::hash::{Hash, Hasher};
 use ::option::Option;
 
-
 /// A UTF-8 encoded growable string.
-/// 
+///
 /// # Additional Information
-/// 
+///
 /// WARNING: As this type is meant to be forward compatible with UTF-8, do *not*
 /// add any mutation functionality or unicode input of any kind until `char` is
 /// implemented, codepoints are *not* guaranteed to fall on byte boundaries
@@ -36,7 +35,7 @@ impl String {
     ///     string.push(0u8);
     ///     let bytes = string.as_bytes();
     ///     assert(bytes.len() == 1);
-    ///     assert(bytes.get(0).unwrap() == 0u8);   
+    ///     assert(bytes.get(0).unwrap() == 0u8);
     /// }
     /// ```
     pub fn as_bytes(self) -> Bytes {
@@ -113,9 +112,7 @@ impl String {
     /// }
     /// ```
     pub fn from_ascii(bytes: Bytes) -> Self {
-        Self {
-            bytes,
-        }
+        Self { bytes }
     }
 
     /// Converts a string slice containing ASCII encoded bytes to a `String`
@@ -145,10 +142,8 @@ impl String {
         bytes.len = str_size;
 
         str_ptr.copy_bytes_to(bytes.buf.ptr(), str_size);
-        
-        Self {
-            bytes
-        }
+
+        Self { bytes }
     }
 
     /// Returns a `bool` indicating whether the `String` is empty.
@@ -500,7 +495,7 @@ fn string_test_equal() {
 #[test]
 fn string_test_hash() {
     use ::hash::sha256;
-    
+
     let mut bytes = Bytes::new();
     bytes.push(0u8);
 

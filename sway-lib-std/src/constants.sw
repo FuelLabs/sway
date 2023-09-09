@@ -10,7 +10,7 @@ use ::contract_id::AssetId;
 /// On the Fuel network, the base asset is Ether. It is hardcoded as the 0x00..00 ContractId.
 ///
 /// # Examples
-/// 
+///
 /// ```sway
 /// use std::{call_frames::msg_asset_id, constants::BASE_ASSET_ID};
 ///
@@ -23,7 +23,7 @@ pub const BASE_ASSET_ID: AssetId = AssetId::from(ZERO_B256);
 /// A B256 of zero value.
 ///
 /// # Examples
-/// 
+///
 /// ```sway
 /// use std::{call_frames::msg_asset_id, constants::ZERO_B256};
 ///

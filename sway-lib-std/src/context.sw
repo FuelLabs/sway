@@ -19,7 +19,7 @@ use ::registers::balance;
 ///
 /// ```sway
 /// use std::{context::this_balance, constants::ZERO_B256, hash::sha256, token::mint, call_frames::contract_id};
-/// 
+///
 /// fn foo() {
 ///     mint(ZERO_B256, 50);
 ///     assert(this_balance(sha256((ZERO_B256, contract_id()))) == 50);
@@ -44,7 +44,7 @@ pub fn this_balance(asset_id: AssetId) -> u64 {
 ///
 /// ```sway
 /// use std::{context::balance_of, constants::ZERO_B256, hash::sha256, token::mint, call_frames::contract_id};
-/// 
+///
 /// fn foo() {
 ///     mint(ZERO_B256, 50);
 ///     assert(balance_of(contract_id(), sha256((ZERO_B256, contract_id()))) == 50);
@@ -52,7 +52,7 @@ pub fn this_balance(asset_id: AssetId) -> u64 {
 /// ```
 pub fn balance_of(target: ContractId, asset_id: AssetId) -> u64 {
     asm(balance, token: asset_id.value, id: target.value) {
-        bal balance token id;
+        bal  balance token id;
         balance: u64
     }
 }
@@ -63,11 +63,11 @@ pub fn balance_of(target: ContractId, asset_id: AssetId) -> u64 {
 ///
 /// * [u64] - The amount of tokens being sent.
 ///
-/// # Examples 
-/// 
+/// # Examples
+///
 /// ```sway
 /// use std::context::msg_amount;
-/// 
+///
 /// fn foo() {
 ///     assert(msg_amount() == 0);
 /// }

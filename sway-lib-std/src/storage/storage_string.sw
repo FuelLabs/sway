@@ -34,7 +34,7 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     ///     bytes.push(7_u8);
     ///     bytes.push(9_u8);
     ///     let string = String::from(bytes);
-    /// 
+    ///
     ///     storage.stored_string.write_slice(string);
     /// }
     /// ```
@@ -46,7 +46,7 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     /// Constructs a `String` type from storage.
     ///
     /// # Returns
-    /// 
+    ///
     /// * [Option<String>] - The valid `String` stored, otherwise `None`.
     ///
     /// # Number of Storage Accesses
@@ -111,7 +111,7 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     ///     bytes.push(7_u8);
     ///     bytes.push(9_u8);
     ///     let string = String::from(bytes);
-    /// 
+    ///
     ///     storage.stored_string.write_slice(string);
     ///
     ///     assert(storage.stored_string.read_slice(key).is_some());
@@ -151,7 +151,7 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     ///     bytes.push(7_u8);
     ///     bytes.push(9_u8);
     ///     let string = String::from(bytes);
-    /// 
+    ///
     ///     assert(storage.stored_string.len() == 0)
     ///     storage.stored_string.write_slice(string);
     ///     assert(storage.stored_string.len() == 3);

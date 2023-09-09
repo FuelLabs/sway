@@ -121,7 +121,7 @@ fn ptr_as_bytes(ptr: raw_ptr) -> Bytes {
 /// 32	    byte[32]    to      Contract ID to call.
 /// 8	    byte[8]	    param1  First parameter (function selector).
 /// 8	    byte[8]	    param2  Second parameter (abi-encoded calldata: value if value type, otherwise pointer to reference type).
-/// 
+///
 /// # Arguments
 ///
 /// * `payload` : [Bytes] - The encoded payload to be called.

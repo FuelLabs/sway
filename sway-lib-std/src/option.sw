@@ -97,7 +97,7 @@ impl<T> Option<T> {
     /// # Returns
     ///
     /// * [bool] - Returns `true` if the option is `Some`, otherwise `false`.
-    /// 
+    ///
     /// # Examples
     ///
     /// ```sway
@@ -145,7 +145,7 @@ impl<T> Option<T> {
     /// Returns the contained `Some` value, consuming the `self` value.
     ///
     /// # Additional Information
-    /// 
+    ///
     /// Because this function may revert, its use is generally discouraged.
     /// Instead, use pattern matching and handle the `None`
     /// case explicitly, or call `unwrap_or`.
@@ -218,7 +218,7 @@ impl<T> Option<T> {
     /// `ok_or`  : `Option::ok_or`
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `err`: [E] - The error value if the option is `None`.
     ///
     /// # Returns

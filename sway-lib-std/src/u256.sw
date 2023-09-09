@@ -3,7 +3,7 @@ library;
 
 use ::assert::assert;
 use ::convert::From;
-use ::result::Result::{self, *};
+use ::result::Result::{*, self};
 use ::u128::U128;
 
 /// Left shift a `u64` and preserve the overflow amount if any.
@@ -113,12 +113,12 @@ impl U256 {
     /// fn foo() {
     ///     let zero_u256 = U256 { a: 0, b: 0, c: 0, d: 0 };
     ///     let zero_u64 = zero_u256.as_u64().unwrap();
-    /// 
+    ///
     ///     assert(zero_u64 == 0);
-    /// 
+    ///
     ///     let max_u256 = U256::max();
     ///     let result = U256.as_u64();
-    /// 
+    ///
     ///     assert(result.is_err()))
     /// }
     /// ```
@@ -148,12 +148,12 @@ impl U256 {
     /// fn foo() {
     ///     let zero_u256 = U256 { a: 0, b: 0, c: 0, d: 0 };
     ///     let zero_u128 = zero_u256.as_u128().unwrap();
-    /// 
+    ///
     ///     assert(zero_u128 == U128 { upper: 0, lower: 0 });
-    /// 
+    ///
     ///     let max_u256 = U256::max();
     ///     let result = U256.as_u64();
-    /// 
+    ///
     ///     assert(result.is_err()))
     /// }
     /// ```
@@ -179,7 +179,7 @@ impl U256 {
     /// fn foo() {
     ///     let min_u256 = U256::min();
     ///     let zero_u256 = U256 { a: 0, b: 0, c: 0, d: 0 };
-    /// 
+    ///
     ///     assert(min_u256 == zero_u256);
     /// }
     /// ```
@@ -206,7 +206,7 @@ impl U256 {
     /// fn foo() {
     ///     let max_u256 = U256::max();
     ///     let maxed_u256 = U256 { a: u64::max(), b: u64::max(), c: u64::max(), d: u64::max() };
-    /// 
+    ///
     ///     assert(max_u256 == maxed_u256);
     /// }
     /// ```
@@ -241,17 +241,11 @@ impl U256 {
 
 impl core::ops::Ord for U256 {
     fn gt(self, other: Self) -> bool {
-        self.a > other.a ||
-                (self.a == other.a && (self.b > other.b ||
-                                      (self.b == other.b && (self.c > other.c ||
-                                                            (self.c == other.c && self.d > other.d)))) )
-        }
+        self.a > other.a || (self.a == other.a && (self.b > other.b || (self.b == other.b && (self.c > other.c || (self.c == other.c && self.d > other.d)))))
+    }
 
     fn lt(self, other: Self) -> bool {
-        self.a < other.a ||
-                (self.a == other.a && (self.b < other.b ||
-                                      (self.b == other.b && (self.c < other.c ||
-                                                            (self.c == other.c && self.d < other.d)))) )
+        self.a < other.a || (self.a == other.a && (self.b < other.b || (self.b == other.b && (self.c < other.c || (self.c == other.c && self.d < other.d)))))
     }
 }
 

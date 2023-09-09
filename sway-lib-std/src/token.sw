@@ -15,7 +15,7 @@ use ::outputs::{Output, output_amount, output_count, output_type};
 /// `transfer_to_address`, depending on the type of `Identity`.
 ///
 /// # Additional Information
-/// 
+///
 /// If the `to` Identity is a contract, this will transfer coins to the contract even with no way to retrieve them
 /// (i.e: no withdrawal functionality on the receiving contract), possibly leading to
 /// the **_PERMANENT LOSS OF COINS_** if not used with care.
@@ -47,7 +47,7 @@ pub fn mint_to(to: Identity, sub_id: SubId, amount: u64) {
 /// UNCONDITIONALLY to the contract at `to`.
 ///
 /// # Additional Information
-/// 
+///
 /// This will transfer coins to a contract even with no way to retrieve them
 /// (i.e: no withdrawal functionality on the receiving contract), possibly leading to
 /// the **_PERMANENT LOSS OF COINS_** if not used with care.
@@ -150,7 +150,7 @@ pub fn burn(sub_id: SubId, amount: u64) {
 /// `transfer_to_address`, depending on the type of `Identity`.
 ///
 /// # Additional Information
-/// 
+///
 /// If the `to` Identity is a contract this may transfer coins to the contract even with no way to retrieve them
 /// (i.e. no withdrawal functionality on receiving contract), possibly leading
 /// to the **_PERMANENT LOSS OF COINS_** if not used with care.
@@ -190,7 +190,7 @@ pub fn transfer(to: Identity, asset_id: AssetId, amount: u64) {
 /// the contract at `to`.
 ///
 /// # Additional Information
-/// 
+///
 /// This will transfer coins to a contract even with no way to retrieve them
 /// (i.e. no withdrawal functionality on receiving contract), possibly leading
 /// to the **_PERMANENT LOSS OF COINS_** if not used with care.
@@ -218,7 +218,7 @@ pub fn transfer(to: Identity, asset_id: AssetId, amount: u64) {
 /// ```
 pub fn force_transfer_to_contract(to: ContractId, asset_id: AssetId, amount: u64) {
     asm(r1: amount, r2: asset_id, r3: to.value) {
-        tr r3 r1 r2;
+        tr   r3 r1 r2;
     }
 }
 
@@ -259,7 +259,7 @@ pub fn transfer_to_address(to: Address, asset_id: AssetId, amount: u64) {
         if let Output::Variable = output_type(index) {
             if output_amount(index) == 0 {
                 asm(r1: to.value, r2: index, r3: amount, r4: asset_id) {
-                    tro r1 r2 r3 r4;
+                    tro  r1 r2 r3 r4;
                 };
                 return;
             }

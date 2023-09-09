@@ -5,7 +5,7 @@ use ::b512::B512;
 use ::registers::error;
 use ::ecr::{ec_recover, EcRecoverError};
 use ::hash::*;
-use ::result::Result::{self, *};
+use ::result::Result::{*, self};
 use ::vm::evm::evm_address::EvmAddress;
 
 /// Recover the EVM address derived from the private key used to sign a message.

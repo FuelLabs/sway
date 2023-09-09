@@ -3,7 +3,7 @@ library;
 use ::alloc::alloc;
 use ::assert::assert;
 use ::hash::*;
-use ::option::Option::{self, *};
+use ::option::Option::{*, self};
 use ::storage::storage_api::*;
 use ::storage::storage_key::*;
 
@@ -134,11 +134,7 @@ impl<V> StorageKey<StorageVec<V>> {
             return None;
         }
 
-        Some(StorageKey::<V>::new(
-            sha256((index, self.field_id)), 
-            0, 
-            sha256((index, self.field_id))
-        ))
+        Some(StorageKey::<V>::new(sha256((index, self.field_id)), 0, sha256((index, self.field_id))))
     }
 
     /// Removes the element in the given index and moves all the elements in the following indexes
@@ -151,7 +147,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// # Arguments
     ///
     /// * `index`: [u64] - The index of the vec to remove the item from.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [V] - The element that has been removed at the index.
@@ -384,7 +380,9 @@ impl<V> StorageKey<StorageVec<V>> {
             // shifts all the values up one index
             write::<V>(key, 0, read::<V>(sha256((count, self.field_id)), 0).unwrap());
 
-            if count == 0 { break; }
+            if count == 0 {
+                break;
+            }
             count -= 1;
         }
 
@@ -575,11 +573,7 @@ impl<V> StorageKey<StorageVec<V>> {
     pub fn first(self) -> Option<StorageKey<V>> {
         match read::<u64>(self.field_id, 0).unwrap_or(0) {
             0 => None,
-            _ => Some(StorageKey::<V>::new(
-                sha256((0, self.field_id)), 
-                0, 
-                sha256((0, self.field_id))
-            )),
+            _ => Some(StorageKey::<V>::new(sha256((0, self.field_id)), 0, sha256((0, self.field_id)))),
         }
     }
 
@@ -614,11 +608,7 @@ impl<V> StorageKey<StorageVec<V>> {
     pub fn last(self) -> Option<StorageKey<V>> {
         match read::<u64>(self.field_id, 0).unwrap_or(0) {
             0 => None,
-            len => Some(StorageKey::<V>::new(
-                sha256((len - 1, self.field_id)), 
-                0, 
-                sha256((0, self.field_id))
-            )),
+            len => Some(StorageKey::<V>::new(sha256((len - 1, self.field_id)), 0, sha256((0, self.field_id)))),
         }
     }
 
