@@ -109,6 +109,18 @@ fn main() {
         _ => 0,
     };
 
+    let or6 = Struct::new();
+            
+    let _x = match or6 {
+        Struct { x, y: x, .. } | Struct { x, .. } => x,
+    };
+
+    let or7 = Struct::new();
+            
+    let _x = match or7 {
+        Struct { y, .. } | Struct { y, x: y, .. } => x,
+    };
+
     poke(Enum::A);
     poke(Enum::B);
     poke(Enum::C);

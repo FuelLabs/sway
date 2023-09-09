@@ -32,7 +32,7 @@ impl ty::TyMatchBranch {
 
         // calculate the requirements map and the declarations map
         let (match_req_map, match_decl_map) =
-            matcher(handler, ctx.by_ref(), typed_value, typed_scrutinee.clone())?;
+            matcher(handler, ctx.by_ref(), typed_value, typed_value, typed_scrutinee.clone())?;
 
         // create a new namespace for this branch
         let mut namespace = ctx.namespace.clone();

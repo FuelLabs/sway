@@ -275,3 +275,9 @@ category = "fail"
 # nextln: $()This is the first definition of the variable "x".
 
 # check: $()Consider declaring a variable for the field "x" (e.g., `x: var_x`), or renaming the variable "x".
+
+# check: $()let _x = match or6 {
+# not: $()Variable "x" is not bound in all patterns
+
+# check: $()let _x = match or7 {
+# not: $()Variable "y" is not bound in all patterns

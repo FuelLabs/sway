@@ -491,6 +491,15 @@ pub enum CompileError {
     },
     #[error("Variable \"{var}\" is not bound in all patterns")]
     MatchVariableNotBoundInAllPatterns { var: Ident, span: Span },
+    #[error("Variable \"{variable}\" is expected to be of type \"{expected}\", but is \"{received}\".")]
+    MatchArmVariableMismatchedType {
+        match_value: Span,
+        match_type: String,
+        variable: Ident,
+        previous_definition: Span,
+        expected: String,
+        received: String,
+    },
     #[error(
         "Storage attribute access mismatch. Try giving the surrounding function more access by \
         adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\" to the function declaration."
@@ -801,6 +810,7 @@ impl Spanned for CompileError {
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
             MatchStructPatternMissingFields { span, .. } => span.clone(),
             MatchVariableNotBoundInAllPatterns { span, .. } => span.clone(),
+            MatchArmVariableMismatchedType { variable, .. } => variable.span(),
             NotAnEnum { span, .. } => span.clone(),
             StorageAccessMismatch { span, .. } => span.clone(),
             TraitDeclPureImplImpure { span, .. } => span.clone(),
@@ -999,6 +1009,29 @@ impl ToDiagnostic for CompileError {
                         (true, false) | (false, true) => format!("Consider declaring a variable for the field \"{0}\" (e.g., `{0}: var_{0}`), or renaming the variable \"{0}\".", first_definition.as_str()),
                         (false, false) => "Consider renaming either of the variables.".to_string(),
                     },
+                ],
+            },
+            MatchArmVariableMismatchedType { match_value, match_type, variable, previous_definition, expected, received } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Match pattern variable has mismatched type".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    variable.span(),
+                    format!("Variable \"{variable}\" is expected to be of type \"{expected}\", but is \"{received}\".")
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        previous_definition.clone(),
+                        format!("\"{variable}\" is defined here, in the preceding alternative, with type \"{expected}\".")
+                    ),
+                    Hint::info(
+                        source_engine,
+                        match_value.clone(),
+                        format!("`{}`, of type \"{match_type}\", is the value to match on.", match_value.as_str())
+                    ),
+                ],
+                help: vec![
+                    format!("In the same match arm, a variable must have the same type in all alternatives."),
                 ],
             },
            _ => Diagnostic {
