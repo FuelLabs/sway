@@ -65,14 +65,10 @@ impl Format for UseTree {
             Self::Group { imports } => {
                 // check for only one import
                 if imports.inner.value_separator_pairs.len() == 0 {
-                    println!("if Number of imports: {}", imports.inner.value_separator_pairs.len());
-                    println!("if Imports: {:?}", imports.inner);
                     if let Some(single_import) = &imports.inner.final_value_opt {
                         single_import.format(formatted_code, formatter)?;
                     }
                 } else {
-                    println!("else Number of imports: {}", imports.inner.value_separator_pairs.len());
-                    println!("else Imports: {:?}", imports.inner);
                     Self::open_curly_brace(formatted_code, formatter)?;
                     // sort group imports
                     let imports = imports.get();
