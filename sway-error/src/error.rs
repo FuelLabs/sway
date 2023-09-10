@@ -1024,7 +1024,7 @@ impl ToDiagnostic for CompileError {
                     Hint::info(
                         source_engine,
                         previous_definition.clone(),
-                        format!("\"{variable}\" is defined here, in the preceding alternative, with type \"{expected}\".")
+                        format!("In the preceding alternative, \"{variable}\" has the type \"{expected}\".")
                     ),
                     Hint::info(
                         source_engine,
