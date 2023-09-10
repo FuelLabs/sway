@@ -31,8 +31,13 @@ impl ty::TyMatchBranch {
         let typed_scrutinee = ty::TyScrutinee::type_check(handler, ctx.by_ref(), scrutinee)?;
 
         // calculate the requirements map and the declarations map
-        let (match_req_map, match_decl_map) =
-            matcher(handler, ctx.by_ref(), typed_value, typed_value, typed_scrutinee.clone())?;
+        let (match_req_map, match_decl_map) = matcher(
+            handler,
+            ctx.by_ref(),
+            typed_value,
+            typed_value,
+            typed_scrutinee.clone(),
+        )?;
 
         // create a new namespace for this branch
         let mut namespace = ctx.namespace.clone();

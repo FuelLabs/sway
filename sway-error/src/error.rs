@@ -491,7 +491,9 @@ pub enum CompileError {
     },
     #[error("Variable \"{var}\" is not bound in all patterns")]
     MatchVariableNotBoundInAllPatterns { var: Ident, span: Span },
-    #[error("Variable \"{variable}\" is expected to be of type \"{expected}\", but is \"{received}\".")]
+    #[error(
+        "Variable \"{variable}\" is expected to be of type \"{expected}\", but is \"{received}\"."
+    )]
     MatchArmVariableMismatchedType {
         match_value: Span,
         match_type: String,

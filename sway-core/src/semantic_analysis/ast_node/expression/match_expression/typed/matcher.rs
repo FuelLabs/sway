@@ -156,21 +156,28 @@ pub(crate) fn matcher(
                     let equality = UnifyCheck::non_dynamic_equality(engines);
 
                     for (ident, expr) in new_decl_map.iter() {
-                        if let Some((previous_ident, previous_expr)) = previous_match_decl_map.iter().rev().find(|(previous_ident, _)| previous_ident == ident) {
+                        if let Some((previous_ident, previous_expr)) = previous_match_decl_map
+                            .iter()
+                            .rev()
+                            .find(|(previous_ident, _)| previous_ident == ident)
+                        {
                             if !equality.check(expr.return_type, previous_expr.return_type) {
                                 return Err(handler.emit_err(
                                     CompileError::MatchArmVariableMismatchedType {
                                         match_value: match_value.span.clone(),
-                                        match_type: engines.help_out(match_value.return_type).to_string(),
+                                        match_type: engines
+                                            .help_out(match_value.return_type)
+                                            .to_string(),
                                         variable: ident.clone(),
                                         previous_definition: previous_ident.span(),
-                                        expected: engines.help_out(previous_expr.return_type).to_string(),
+                                        expected: engines
+                                            .help_out(previous_expr.return_type)
+                                            .to_string(),
                                         received: engines.help_out(expr.return_type).to_string(),
-                                    }
+                                    },
                                 ));
                             }
-                        }
-                        else {
+                        } else {
                             return Err(handler.emit_err(
                                 CompileError::MatchVariableNotBoundInAllPatterns {
                                     var: ident.clone(),
@@ -207,8 +214,19 @@ pub(crate) fn matcher(
             call_path_decl,
             value,
             ..
-        } => match_enum(handler, ctx, match_value, exp, *variant, call_path_decl, *value, span),
-        ty::TyScrutineeVariant::Tuple(elems) => match_tuple(handler, ctx, match_value, exp, elems, span),
+        } => match_enum(
+            handler,
+            ctx,
+            match_value,
+            exp,
+            *variant,
+            call_path_decl,
+            *value,
+            span,
+        ),
+        ty::TyScrutineeVariant::Tuple(elems) => {
+            match_tuple(handler, ctx, match_value, exp, elems, span)
+        }
     }
 }
 
@@ -315,6 +333,7 @@ fn match_struct(
     Ok((match_req_map, match_decl_map))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn match_enum(
     handler: &Handler,
     ctx: TypeCheckContext,
@@ -352,8 +371,13 @@ fn match_tuple(
             span.clone(),
             span.clone(),
         )?;
-        let (mut new_match_req_map, mut new_match_decl_map) =
-            matcher(handler, ctx.by_ref(), match_value, &tuple_index_access, elem)?;
+        let (mut new_match_req_map, mut new_match_decl_map) = matcher(
+            handler,
+            ctx.by_ref(),
+            match_value,
+            &tuple_index_access,
+            elem,
+        )?;
         match_req_map.append(&mut new_match_req_map);
         match_decl_map.append(&mut new_match_decl_map);
     }
