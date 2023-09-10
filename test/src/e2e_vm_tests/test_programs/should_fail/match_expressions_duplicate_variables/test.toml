@@ -4,7 +4,7 @@ category = "fail"
 
 # check: $()let _x = match s1 {
 # nextln: $()`s1`, of type "Struct", is the value to match on.
-# nextln: $()Struct { x: true, y: a_s1, z: a_s1 } => a_s1.0,
+# nextln: $()Struct { x: 0, y: a_s1, z: a_s1 } => a_s1,
 # nextln: $()Variable "a_s1" is already defined in this match arm.
 # nextln: $()This is the first definition of the variable "a_s1".
 
@@ -14,7 +14,7 @@ category = "fail"
 
 # check: $()let _x = match s2 {
 # nextln: $()`s2`, of type "Struct", is the value to match on.
-# nextln: $()Struct { x, y: x, z: x } => x.0,
+# nextln: $()Struct { x, y: x, z: x } => x,
 # nextln: $()Variable "x" is already defined in this match arm.
 # nextln: $()This struct field "x" is the first definition of the variable "x".
 # nextln: $()Struct field "x" is just a shorthand notation for `x: x`. It defines a variable "x".
@@ -25,7 +25,7 @@ category = "fail"
 
 # check: $()let _x = match s2 {
 # nextln: $()`s2`, of type "Struct", is the value to match on.
-# nextln: $()Struct { x, y: x, z: x } => x.0,
+# nextln: $()Struct { x, y: x, z: x } => x,
 # nextln: $()Variable "x" is already defined in this match arm.
 # nextln: $()This struct field "x" is the first definition of the variable "x".
 # nextln: $()Struct field "x" is just a shorthand notation for `x: x`. It defines a variable "x".
@@ -183,7 +183,7 @@ category = "fail"
 
 # check: $()let _x = match or2 {
 # nextln: $()`or2`, of type "(Struct, Struct)", is the value to match on.
-# nextln: $()(Struct { x, .. } | Struct { x, .. }, Struct { x, .. } | Struct { x, .. }) => if x { 0 } else { 1 },
+# nextln: $()(Struct { x, .. } | Struct { x, .. }, Struct { x, .. } | Struct { x, .. }) => if x == 0 { 0 } else { 1 },
 # nextln: $()Variable "x" is already defined in this match arm.
 # nextln: $()Struct field "x" is just a shorthand notation for `x: x`. It defines a variable "x".
 # nextln: $()This struct field "x" is the first definition of the variable "x".
@@ -192,7 +192,7 @@ category = "fail"
 
 # check: $()let _x = match or2 {
 # nextln: $()`or2`, of type "(Struct, Struct)", is the value to match on.
-# nextln: $()(Struct { x, .. } | Struct { x, .. }, Struct { x, .. } | Struct { x, .. }) => if x { 0 } else { 1 },
+# nextln: $()(Struct { x, .. } | Struct { x, .. }, Struct { x, .. } | Struct { x, .. }) => if x == 0 { 0 } else { 1 },
 # nextln: $()Variable "x" is already defined in this match arm.
 # nextln: $()Struct field "x" is just a shorthand notation for `x: x`. It defines a variable "x".
 # nextln: $()This struct field "x" is the first definition of the variable "x".
@@ -225,7 +225,7 @@ category = "fail"
 
 # check: $()let _x = match or4 {
 # nextln: $()`or4`, of type "Enum", is the value to match on.
-# nextln: $()Enum::E((1u64 | 2u64 | 3u64, Struct { x: true | false, ..})) => 0,
+# nextln: $()Enum::E((1u64 | 2u64 | 3u64, Struct { x: 1 | 2, ..})) => 0,
 # nextln: $()Enum::E((y, Struct { x: y | y | y, .. })) => 0,
 # nextln: $()Variable "y" is already defined in this match arm.
 # nextln: $()This is the first definition of the variable "y".
@@ -236,7 +236,7 @@ category = "fail"
 
 # check: $()let _x = match or4 {
 # nextln: $()`or4`, of type "Enum", is the value to match on.
-# nextln: $()Enum::E((1u64 | 2u64 | 3u64, Struct { x: true | false, ..})) => 0,
+# nextln: $()Enum::E((1u64 | 2u64 | 3u64, Struct { x: 1 | 2, ..})) => 0,
 # nextln: $()Enum::E((y, Struct { x: y | y | y, .. })) => 0,
 # nextln: $()Variable "y" is already defined in this match arm.
 # nextln: $()This is the first definition of the variable "y".
@@ -247,7 +247,7 @@ category = "fail"
 
 # check: $()let _x = match or4 {
 # nextln: $()`or4`, of type "Enum", is the value to match on.
-# nextln: $()Enum::E((1u64 | 2u64 | 3u64, Struct { x: true | false, ..})) => 0,
+# nextln: $()Enum::E((1u64 | 2u64 | 3u64, Struct { x: 1 | 2, ..})) => 0,
 # nextln: $()Enum::E((y, Struct { x: y | y | y, .. })) => 0,
 # nextln: $()Variable "y" is already defined in this match arm.
 # nextln: $()This is the first definition of the variable "y".

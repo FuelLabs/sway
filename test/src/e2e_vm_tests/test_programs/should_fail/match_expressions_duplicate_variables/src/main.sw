@@ -1,17 +1,17 @@
 script;
 
 struct Struct {
-    x: bool,
+    x: u64,
     y: u64,
-    z: (u64, u64, u64)
+    z: u64,
 }
 
 impl Struct {
     fn new() -> Self {
         Struct {
-            x: false,
+            x: 0,
             y: 0,
-            z: (0, 0, 0),
+            z: 0,
         }
     }
 
@@ -34,14 +34,14 @@ fn main() {
     let s1 = Struct::new();
 
     let _x = match s1 {
-        Struct { x: true, y: a_s1, z: a_s1 } => a_s1.0,
+        Struct { x: 0, y: a_s1, z: a_s1 } => a_s1,
         _ => 0,
     };
 
     let s2 = Struct::new();
             
     let _x = match s2 {
-        Struct { x, y: x, z: x } => x.0,
+        Struct { x, y: x, z: x } => x,
     };
 
     let s3 = Struct::new();
@@ -85,7 +85,7 @@ fn main() {
     let or2 = (Struct::new(), Struct::new());
             
     let _x = match or2 {
-        (Struct { x, .. } | Struct { x, .. }, Struct { x, .. } | Struct { x, .. }) => if x { 0 } else { 1 },
+        (Struct { x, .. } | Struct { x, .. }, Struct { x, .. } | Struct { x, .. }) => if x == 0 { 0 } else { 1 },
     };
             
     let or3 = Struct::new();
@@ -97,7 +97,7 @@ fn main() {
     let or4 = Enum::A;
             
     let _x = match or4 {
-        Enum::E((1u64 | 2u64 | 3u64, Struct { x: true | false, ..})) => 0,
+        Enum::E((1u64 | 2u64 | 3u64, Struct { x: 1 | 2, ..})) => 0,
         Enum::E((y, Struct { x: y | y | y, .. })) => 0,
         _ => 0,
     };
