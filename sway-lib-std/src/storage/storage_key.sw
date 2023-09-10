@@ -97,4 +97,43 @@ impl<T> StorageKey<T> {
     pub fn write(self, value: T) {
         write(self.slot, self.offset, value);
     }
+
+    /// Create a new `StorageKey`.
+    ///
+    /// # Arguments
+    ///
+    /// * `slot`: [b256] - The assigned location in storage for the new `StorageKey`.
+    /// * `offset`: [u64] - The assigned offset based on the data structure `T` for the new `StorageKey`.
+    /// * `field_id`: [b256] - A unique identifier for the new `StorageKey`.
+    ///
+    /// # Returns
+    ///
+    /// * [StorageKey] - The newly create `StorageKey`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::{constants::ZERO_B256, hash::sha256};
+    ///
+    /// fn foo() {
+    ///     let my_key = StorageKey::<u64>::new(ZERO_B256, 0, sha256(ZERO_B256));
+    ///     assert(my_key.slot == ZERO_B256);
+    /// }
+    /// ```
+    pub fn new(slot: b256, offset: u64, field_id: b256) -> Self {
+        Self {
+            slot, offset, field_id
+        }
+    }
+}
+
+#[test]
+fn test_storage_key_new() {
+    use ::constants::ZERO_B256;
+    use ::assert::assert;
+    
+    let key = StorageKey::<u64>::new(ZERO_B256, 0, ZERO_B256);
+    assert(key.slot == ZERO_B256);
+    assert(key.offset == 0);
+    assert(key.field_id == ZERO_B256);
 }
