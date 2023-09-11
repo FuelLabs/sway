@@ -4,13 +4,8 @@ use ::alloc::alloc;
 use ::option::Option::{self, *};
 use ::u256::U256;
 
-/// Tightly stores a stack value in storage. Will not work for heap values. If the
+/// Stores a stack value in storage. Will not work for heap values. If the
 /// value crosses the boundary of a storage slot, writing continues at the following slot.
-///
-/// # Additional Information
-///
-/// Values of the same reference type `T` should use the same `slot`. 
-/// Different types should use different `slot`s. 
 ///
 /// # Arguments
 ///
