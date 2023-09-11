@@ -39,14 +39,12 @@ impl Diagnostic {
     pub fn labels(&self) -> Vec<&Label> {
         let mut labels = Vec::<&Label>::new();
 
-        for hint in self.hints.iter().filter(|hint| hint.is_in_source()) {
-            labels.push(hint);
+        if self.issue.is_in_source() {
+            labels.push(&self.issue);
         }
 
-        // If the issue is in source and there are no hints that override the issue,
-        // add the issue to the labels.
-        if self.issue.is_in_source() && self.hints.iter().all(|hint| hint.span != self.issue.span) {
-            labels.push(&self.issue);
+        for hint in self.hints.iter().filter(|hint| hint.is_in_source()) {
+            labels.push(hint);
         }
 
         labels
