@@ -559,12 +559,9 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
 
     fn get_title_label(diagnostics: &Diagnostic, label: &mut String) {
         label.clear();
-        if diagnostics.reason().is_some() {
-            label.push_str(diagnostics.reason().unwrap().description());
-            label.push_str(". ");
+        if let Some(reason) = diagnostics.reason() {
+            label.push_str(reason.description());
         }
-        label.push_str(diagnostics.issue().friendly_text());
-        label.push('.');
     }
 
     fn diagnostic_level_to_annotation_type(level: Level) -> AnnotationType {
