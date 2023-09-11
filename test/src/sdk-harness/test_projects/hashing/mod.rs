@@ -306,19 +306,19 @@ mod sha256 {
 
         let call_1 = instance
             .methods()
-            .sha256_str(SizedAsciiString::try_from("John").unwrap())
+            .sha256_str_array(SizedAsciiString::try_from("John").unwrap())
             .call()
             .await
             .unwrap();
         let call_2 = instance
             .methods()
-            .sha256_str(SizedAsciiString::try_from("John").unwrap())
+            .sha256_str_array(SizedAsciiString::try_from("John").unwrap())
             .call()
             .await
             .unwrap();
         let call_3 = instance
             .methods()
-            .sha256_str(SizedAsciiString::try_from("Nick").unwrap())
+            .sha256_str_array(SizedAsciiString::try_from("Nick").unwrap())
             .call()
             .await
             .unwrap();

@@ -29,5 +29,5 @@ struct Line {
 }
 
 struct TupleInStruct {
-    nested_tuple: (u64, (u32, (bool, str[2]) ) ),
+    nested_tuple: (u64, (u32, (bool, str) ) ),
 }

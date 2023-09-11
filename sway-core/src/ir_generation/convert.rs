@@ -106,7 +106,8 @@ fn convert_resolved_type(
         TypeInfo::Numeric => Type::get_uint64(context),
         TypeInfo::Boolean => Type::get_bool(context),
         TypeInfo::B256 => Type::get_b256(context),
-        TypeInfo::Str(n) => Type::new_string(context, n.val() as u64),
+        TypeInfo::StringSlice => Type::get_slice(context),
+        TypeInfo::StringArray(n) => Type::new_string_array(context, n.val() as u64),
         TypeInfo::Struct(decl_ref) => super::types::get_struct_for_types(
             type_engine,
             decl_engine,

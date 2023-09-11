@@ -6,7 +6,8 @@ pub enum Ty {
     Path(PathType),
     Tuple(Parens<TyTupleDescriptor>),
     Array(SquareBrackets<TyArrayDescriptor>),
-    Str {
+    StringSlice(StrToken),
+    StringArray {
         str_token: StrToken,
         length: SquareBrackets<Box<Expr>>,
     },
@@ -29,7 +30,8 @@ impl Spanned for Ty {
             Ty::Path(path_type) => path_type.span(),
             Ty::Tuple(tuple_type) => tuple_type.span(),
             Ty::Array(array_type) => array_type.span(),
-            Ty::Str { str_token, length } => Span::join(str_token.span(), length.span()),
+            Ty::StringSlice(str_token) => str_token.span(),
+            Ty::StringArray { str_token, length } => Span::join(str_token.span(), length.span()),
             Ty::Infer { underscore_token } => underscore_token.span(),
             Ty::Ptr { ptr_token, ty } => Span::join(ptr_token.span(), ty.span()),
             Ty::Slice { slice_token, ty } => Span::join(slice_token.span(), ty.span()),

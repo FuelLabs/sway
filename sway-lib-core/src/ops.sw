@@ -1317,3 +1317,21 @@ fn test_decompose() {
         __revert(0)
     }
 }
+
+use ::str::*;
+
+impl Eq for str {
+    fn eq(self, other: Self) -> bool {
+        if self.len() != other.len() {
+            false
+        } else {
+            let self_ptr = self.as_ptr();
+            let other_ptr = other.as_ptr();
+            let l = self.len();
+            asm(r1: self_ptr, r2: other_ptr, r3: l, r4) {
+                meq r4 r1 r2 r3;
+                r4: bool
+            }
+        }
+    }
+}

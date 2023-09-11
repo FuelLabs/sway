@@ -18,6 +18,7 @@ Sway has the following primitive types:
 1. `u32` (32-bit unsigned integer)
 1. `u64` (64-bit unsigned integer)
 1. `str[]` (fixed-length string)
+1. `str` (string slices)
 1. `bool` (Boolean `true` or `false`)
 1. `b256` (256 bits (32 bytes), i.e. a hash)
 
@@ -67,20 +68,45 @@ fn returns_false() -> bool {
 }
 ```
 
-## String Type
+## String Slices
 
 <!-- This section should explain the string type in Sway -->
 <!-- str:example:start -->
-In Sway, static-length strings are a primitive type. This means that when you declare a string, its size is a part of its type. This is necessary for the compiler to know how much memory to give for the storage of that data. The size of the string is denoted with square brackets.
+In Sway, string literals are stored as variable length string slices. Which means that they are stored as a pointer to the actual string data and its length.
+<!-- str:example:end -->
+
+```sway
+let my_string: str = "fuel";
+```
+
+String slices, because they contain pointers have limited usage. They cannot be used is constants, storages, configurables, nor as main function argument or returns.
+
+For these cases one must use string arrays, as described below.
+
+## String Arrays
+
+<!-- This section should explain the string type in Sway -->
+<!-- str:example:start -->
+In Sway, static-length strings are a primitive type. This means that when you declare a string array, its size is a part of its type. This is necessary for the compiler to know how much memory to give for the storage of that data. The size of the string is denoted with square brackets.
 <!-- str:example:end -->
 
 Let's take a look:
 
 ```sway
-let my_string: str[4] = "fuel";
+let my_string: str[4] = __to_str_array("fuel");
 ```
 
 Because the string literal `"fuel"` is four letters, the type is `str[4]`, denoting a static length of 4 characters. Strings default to UTF-8 in Sway.
+
+As above, string literals are typed as string slices. So that is why the need for `__to_str_array` that convert them to string arrays at compile time.
+
+Conversion during runtime can be done with `from_str_array` and `try_as_str_array`. The latter can fail, given that the specified string array must be big enough for the string slice content.
+
+```sway
+let a: str = "abcd";
+let b: str[4] = a.try_as_str_array().unwrap();
+let c: str = from_str_array(b);
+```
 
 ## Compound Types
 

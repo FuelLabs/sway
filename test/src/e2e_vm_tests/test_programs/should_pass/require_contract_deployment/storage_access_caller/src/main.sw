@@ -3,12 +3,6 @@ script;
 use storage_access_abi::*;
 use std::hash::*;
 
-fn sha256_str40<T>(s: str[40]) -> b256 {
-    let mut hasher = Hasher::new();
-    hasher.write_str(s);
-    hasher.sha256()
-}
-
 fn main() -> bool {
     let contract_id = 0x6681080103d21a6c8e24663bf2c9e6ca20f0465064b080c405d77970e7a4b91d;
     let caller = abi(StorageAccess, contract_id);
@@ -55,7 +49,7 @@ fn main() -> bool {
             revert(0)
         }
     }
-    assert(sha256_str40(caller.get_string()) == sha256_str40("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"));
+    assert(sha256_str_array(caller.get_string()) == sha256("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"));
 
     // Test 1
     caller.set_x(1);
@@ -195,10 +189,10 @@ fn main() -> bool {
         }
     };
 
-    caller.set_string("fuelfuelfuelfuelfuelfuelfuelfuelfuelfuel");
+    caller.set_string(__to_str_array("fuelfuelfuelfuelfuelfuelfuelfuelfuelfuel"));
 
     // Can't compare strings right now so compare hashes instead
-    assert(sha256_str40(caller.get_string()) == sha256_str40("fuelfuelfuelfuelfuelfuelfuelfuelfuelfuel"));
+    assert(sha256_str_array(caller.get_string()) == sha256("fuelfuelfuelfuelfuelfuelfuelfuelfuelfuel"));
 
     true
 }

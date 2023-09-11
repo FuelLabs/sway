@@ -17,7 +17,7 @@ fn main() -> bool {
     let c: u16 = 1;
     let d: u8 = 1;
     let e: b256 = zero;
-    let f: str[11] = "Fuel rocks!";
+    let f: str[11] = __to_str_array("Fuel rocks!");
 
     let test_array = [42u16; 3];
 

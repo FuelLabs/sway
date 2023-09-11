@@ -1052,7 +1052,7 @@ impl Parse for TypeAliasDeclaration {
 fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: Option<&Span>) {
     let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), type_info, type_span);
     match type_info {
-        TypeInfo::Str(length) => {
+        TypeInfo::StringArray(length) => {
             let ident = Ident::new(length.span());
             ctx.tokens.insert(
                 ctx.ident(&ident),

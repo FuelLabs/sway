@@ -1,7 +1,7 @@
 script;
 
 fn main() -> u64 {
-    let s = "foo \t bar";
+    let s = __to_str_array("foo \t bar");
     f(s, s)
 }
 
