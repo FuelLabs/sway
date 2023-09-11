@@ -10,7 +10,7 @@ fn sha256_str40<T>(s: str[40]) -> b256 {
 }
 
 fn main() -> bool {
-    let contract_id = 0x3a0c77d4c1705263d595a90f47c3546ee3fe18d935268335e7aa5dcc62956fc7;
+    let contract_id = 0x6681080103d21a6c8e24663bf2c9e6ca20f0465064b080c405d77970e7a4b91d;
     let caller = abi(StorageAccess, contract_id);
 
     // Test initializers
