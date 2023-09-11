@@ -4,8 +4,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     combine_indices, compute_escaped_symbols, get_loaded_ptr_values, get_stored_ptr_values,
-    get_symbols, AnalysisResults, Constant, Context, Function, Instruction, IrError,
-    LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type, Value,
+    get_symbols, AnalysisResults, Constant, Context, Function, Instruction, IrError, LocalVar,
+    Pass, PassMutability, ScopedPass, Symbol, Type, Value,
 };
 
 pub const SROA_NAME: &str = "sroa";
@@ -52,7 +52,6 @@ fn split_aggregate(
             map.insert(*base_off, scalarised_local);
             *base_off += ty_size;
         } else {
-            assert!(ty.is_aggregate(context));
             let mut i = 0;
             while let Some(member_ty) = ty.get_indexed_type(context, &[i]) {
                 split_type(context, function, aggr_base_name, map, member_ty, base_off);
@@ -192,16 +191,19 @@ pub fn sroa(
                 } else {
                     // The source symbol is not a candidate. So it won't be split into scalars.
                     // We must use GEPs to load each individual element into an SSA variable.
-                    for (&elm_offset, &elm_type) in elm_offsets.iter().zip(elm_types.iter()) {
-                        let elm_offset_const = Constant::new_uint(context, 64, elm_offset.into());
-                        let elm_offset_value = Value::new_constant(context, elm_offset_const);
+                    for (elm_index, (&elm_offset, &elm_type)) in
+                        elm_offsets.iter().zip(elm_types.iter()).enumerate()
+                    {
+                        let elm_index_const =
+                            Constant::new_uint(context, 64, elm_index.try_into().unwrap());
+                        let elm_index_value = Value::new_constant(context, elm_index_const);
                         let elem_ptr_ty = Type::new_ptr(context, elm_type);
                         let elm_addr = Value::new_instruction(
                             context,
                             Instruction::GetElemPtr {
                                 base: src_val_ptr,
                                 elem_ptr_ty,
-                                indices: vec![elm_offset_value],
+                                indices: vec![elm_index_value],
                             },
                         );
                         let load = Value::new_instruction(context, Instruction::Load(elm_addr));
@@ -249,16 +251,19 @@ pub fn sroa(
                 } else {
                     // The dst symbol is not a candidate. So it won't be split into scalars.
                     // We must use GEPs to store to each individual element from its SSA variable.
-                    for (&elm_offset, &elm_type) in elm_offsets.iter().zip(elm_types.iter()) {
-                        let elm_offset_const = Constant::new_uint(context, 64, elm_offset.into());
-                        let elm_offset_value = Value::new_constant(context, elm_offset_const);
+                    for (elm_index, (&elm_offset, &elm_type)) in
+                        elm_offsets.iter().zip(elm_types.iter()).enumerate()
+                    {
+                        let elm_index_const =
+                            Constant::new_uint(context, 64, elm_index.try_into().unwrap());
+                        let elm_index_value = Value::new_constant(context, elm_index_const);
                         let elem_ptr_ty = Type::new_ptr(context, elm_type);
                         let elm_addr = Value::new_instruction(
                             context,
                             Instruction::GetElemPtr {
-                                base: src_val_ptr,
+                                base: dst_val_ptr,
                                 elem_ptr_ty,
-                                indices: vec![elm_offset_value],
+                                indices: vec![elm_index_value],
                             },
                         );
                         let loaded_source = elm_local_map
@@ -316,10 +321,34 @@ pub fn sroa(
     Ok(true)
 }
 
+// Is the aggregate type something that we can handle?
+fn is_processable_aggregate(context: &Context, ty: Type) -> bool {
+    fn check_sub_types(context: &Context, ty: Type) -> bool {
+        match ty.get_content(context) {
+            crate::TypeContent::Unit => true,
+            crate::TypeContent::Bool => true,
+            crate::TypeContent::Uint(_) => true,
+            crate::TypeContent::B256 => false,
+            crate::TypeContent::String(_) => false,
+            crate::TypeContent::Array(elm_ty, _) => check_sub_types(context, *elm_ty),
+            crate::TypeContent::Union(_) => false,
+            crate::TypeContent::Struct(fields) => {
+                fields.iter().all(|ty| check_sub_types(context, *ty))
+            }
+            crate::TypeContent::Slice => false,
+            crate::TypeContent::Pointer(_) => true,
+        }
+    }
+    ty.is_aggregate(context) && check_sub_types(context, ty)
+}
+
 /// Only the following aggregates can be scalarised:
 /// 1. Does not escape.
 /// 2. Is always accessed via a scalar (register sized) field.
 ///    i.e., The entire aggregate or a sub-aggregate isn't loaded / stored.
+///    (with an exception of `mem_copy_val` which we can handle).
+/// 3. Never accessed via non-const indexing.
+/// 4. Not aliased via a pointer that may point to more than one symbol.
 fn candidate_symbols(context: &Context, function: Function) -> FxHashSet<Symbol> {
     let escaped_symbols = compute_escaped_symbols(context, &function);
     let mut candidates: FxHashSet<Symbol> = function
@@ -329,7 +358,7 @@ fn candidate_symbols(context: &Context, function: Function) -> FxHashSet<Symbol>
             (!escaped_symbols.contains(&sym)
                 && l.get_type(context)
                     .get_pointee_type(context)
-                    .is_some_and(|pointee_ty| pointee_ty.is_aggregate(context)))
+                    .is_some_and(|pointee_ty| is_processable_aggregate(context, pointee_ty)))
             .then_some(sym)
         })
         .collect();
