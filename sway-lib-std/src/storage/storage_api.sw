@@ -143,7 +143,7 @@ pub fn clear<T>(slot: b256, offset: u64) -> bool {
     }
 
     // Determine how many slots and where the value is to be cleared.
-    let (offset_slot, number_of_slots, place_in_slot) = slot_calculator::<T>(slot, offset);
+    let (offset_slot, number_of_slots, _place_in_slot) = slot_calculator::<T>(slot, offset);
 
     // Clear `number_of_slots * 32` bytes starting at storage slot `slot`.
     __state_clear(offset_slot, number_of_slots)
@@ -165,23 +165,17 @@ fn slot_calculator<T>(slot: b256, offset: u64) -> (b256, u64, u64) {
     let size_of_t = __size_of::<T>();
 
     // Get the last storage slot needed based on the size of `T`.
-    // ((offset * bytes) + bytes + (slot_bytes - 1)) >> slot_aligned_shift_right = last slot
-    let last_slot = match __is_reference_type::<T>() {
-        true => ((offset * size_of_t) + size_of_t + 31) >> 5,
-        false => ((offset * 8) + 8 + 31) >> 5,
-    };
+    // ((offset * bytes_in_word) + bytes + (bytes_in_slot - 1)) >> align_to_slot = last slot
+    let last_slot = ((offset * 8) + size_of_t + 31) >> 5;
 
     // Where in the storage slot to align `T` in order to pack word-aligned.
-    // (offset * words_of_t) % number_words_in_slot = word_place_in_slot
-    let place_in_slot = match __is_reference_type::<T>() {
-        true => (offset * (size_of_t / 8)) % 4,
-        false => offset % 4,
-    };
+    // offset % number_words_in_slot = word_place_in_slot
+    let place_in_slot = offset % 4;
  
     // Get the number of slots `T` spans based on it's packed position.
-    // ((place_in_slot + words_of_t) - 1) / words_in_slot) + 1 = number_of_slots
+    // ((place_in_slot * bytes_in_word) + bytes + (bytes_in_slot - 1)) >> align_to_slot = number_of_slots
     let number_of_slots = match __is_reference_type::<T>() {
-        true => ((place_in_slot + (size_of_t / 8) - 1) / 4) + 1,
+        true => ((place_in_slot * 8) + size_of_t + 31) >> 5,
         false => 1,
     };
 
