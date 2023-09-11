@@ -7,7 +7,11 @@
         "typeArguments": null
       },
       "name": "C0",
+<<<<<<< HEAD
       "offset": 6332
+=======
+      "offset": 7308
+>>>>>>> c39d6f49e (fix type check issues)
     },
     {
       "configurableType": {
@@ -16,7 +20,11 @@
         "typeArguments": null
       },
       "name": "C1",
+<<<<<<< HEAD
       "offset": 6340
+=======
+      "offset": 7316
+>>>>>>> c39d6f49e (fix type check issues)
     },
     {
       "configurableType": {
@@ -25,7 +33,11 @@
         "typeArguments": null
       },
       "name": "C2",
+<<<<<<< HEAD
       "offset": 6356
+=======
+      "offset": 7332
+>>>>>>> c39d6f49e (fix type check issues)
     },
     {
       "configurableType": {
@@ -34,7 +46,11 @@
         "typeArguments": []
       },
       "name": "C3",
+<<<<<<< HEAD
       "offset": 6388
+=======
+      "offset": 7364
+>>>>>>> c39d6f49e (fix type check issues)
     },
     {
       "configurableType": {
@@ -43,7 +59,11 @@
         "typeArguments": []
       },
       "name": "C4",
+<<<<<<< HEAD
       "offset": 6404
+=======
+      "offset": 7380
+>>>>>>> c39d6f49e (fix type check issues)
     },
     {
       "configurableType": {
@@ -52,7 +72,11 @@
         "typeArguments": []
       },
       "name": "C5",
+<<<<<<< HEAD
       "offset": 6420
+=======
+      "offset": 7396
+>>>>>>> c39d6f49e (fix type check issues)
     },
     {
       "configurableType": {
@@ -61,7 +85,11 @@
         "typeArguments": null
       },
       "name": "C6",
+<<<<<<< HEAD
       "offset": 6436
+=======
+      "offset": 7412
+>>>>>>> c39d6f49e (fix type check issues)
     },
     {
       "configurableType": {
@@ -70,7 +98,11 @@
         "typeArguments": null
       },
       "name": "C7",
+<<<<<<< HEAD
       "offset": 6452
+=======
+      "offset": 7428
+>>>>>>> c39d6f49e (fix type check issues)
     },
     {
       "configurableType": {
@@ -79,7 +111,11 @@
         "typeArguments": null
       },
       "name": "C9",
+<<<<<<< HEAD
       "offset": 6500
+=======
+      "offset": 7476
+>>>>>>> c39d6f49e (fix type check issues)
     }
   ],
   "functions": [

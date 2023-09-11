@@ -118,7 +118,7 @@ fn type_check_not(
 
     let t = engines.te().get(operand_expr.return_type);
     match t {
-        TypeInfo::B256 | TypeInfo::UnsignedInteger(_) => Ok((
+        TypeInfo::B256 | TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => Ok((
             ty::TyIntrinsicFunctionKind {
                 kind,
                 arguments: vec![operand_expr],
@@ -1008,7 +1008,7 @@ fn type_check_bitwise_binary_op(
 
     let t = engines.te().get(lhs.return_type);
     match t {
-        TypeInfo::B256 | TypeInfo::UnsignedInteger(_) => Ok((
+        TypeInfo::B256 | TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => Ok((
             ty::TyIntrinsicFunctionKind {
                 kind,
                 arguments: vec![lhs, rhs],
@@ -1081,7 +1081,7 @@ fn type_check_shift_binary_op(
 
     let t = engines.te().get(lhs.return_type);
     match t {
-        TypeInfo::B256 | TypeInfo::UnsignedInteger(_) => Ok((
+        TypeInfo::B256 | TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => Ok((
             ty::TyIntrinsicFunctionKind {
                 kind,
                 arguments: vec![lhs, rhs],

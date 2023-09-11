@@ -8,7 +8,6 @@ use std::{io, iter, slice};
 
 pub mod constants;
 
-pub mod b256;
 pub mod ident;
 pub mod u256;
 pub use ident::*;

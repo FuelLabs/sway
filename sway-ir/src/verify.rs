@@ -407,7 +407,6 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
             | BinaryOpKind::Or
             | BinaryOpKind::Xor
             | BinaryOpKind::Mod => {
-                dbg!(1);
                 if !arg1_ty.is_ptr(self.context)
                     || !arg2_ty.is_ptr(self.context)
                     || !result_ty.is_ptr(self.context)
@@ -472,7 +471,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
             }
             BinaryOpKind::And | BinaryOpKind::Or | BinaryOpKind::Xor => {
                 if !arg1_ty.eq(self.context, &arg2_ty)
-                    || (!arg1_ty.is_uint(self.context) && !arg1_ty.is_b256(self.context))
+                    || !(arg1_ty.is_uint(self.context) || arg1_ty.is_b256(self.context))
                 {
                     return Err(IrError::VerifyBinaryOpIncorrectArgType);
                 }
