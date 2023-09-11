@@ -1,8 +1,9 @@
 //! A wrapper around the `b256` type to help enhance type-safety.
 library;
 
-use ::alias::{AssetId, SubId};
+use ::alias::SubId;
 use ::call_frames::contract_id;
+use ::contract_id::AssetId;
 use ::convert::From;
 use ::hash::*;
 use ::error_signals::FAILED_TRANSFER_TO_ADDRESS_SIGNAL;
@@ -105,7 +106,7 @@ impl Address {
         while index < number_of_outputs {
             if let Output::Variable = output_type(index) {
                 if output_amount(index) == 0 {
-                    asm(r1: self.value, r2: index, r3: amount, r4: asset_id) {
+                    asm(r1: self.value, r2: index, r3: amount, r4: asset_id.value) {
                         tro r1 r2 r3 r4;
                     };
                     return;
@@ -141,7 +142,7 @@ impl Address {
         asm(r1: amount, r2: sub_id) {
             mint r1 r2;
         };
-        self.transfer(sha256((contract_id(), sub_id)), amount);
+        self.transfer(AssetId::new(contract_id(), sub_id), amount);
     }
 }
 

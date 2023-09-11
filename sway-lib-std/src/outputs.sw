@@ -2,8 +2,7 @@
 //! This includes `Output::Coins`, `Input::Messages` and `Input::Contracts`.
 library;
 
-use ::alias::AssetId;
-use ::contract_id::ContractId;
+use ::contract_id::{AssetId, ContractId};
 use ::revert::revert;
 use ::tx::{
     GTF_CREATE_OUTPUT_AT_INDEX,
@@ -221,7 +220,7 @@ pub fn output_amount(index: u64) -> u64 {
 /// ```
 pub fn output_asset_id(index: u64) -> Option<AssetId> {
     match output_type(index) {
-        Output::Coin => Option::Some(__gtf::<b256>(index, GTF_OUTPUT_COIN_ASSET_ID)),
+        Output::Coin => Option::Some(AssetId::from(__gtf::<b256>(index, GTF_OUTPUT_COIN_ASSET_ID))),
         _ => Option::None,
     }
 }

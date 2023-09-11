@@ -2,7 +2,7 @@ use crate::{
     decl_engine::{DeclEngineInsert, DeclRefFunction, ReplaceDecls, UpdateConstantExpression},
     language::{parsed::*, ty, *},
     namespace::TryInsertingTraitImplOnFailure,
-    semantic_analysis::*,
+    semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
 };
 use ast_node::typed_expression::check_function_arguments_arity;
@@ -325,8 +325,7 @@ pub(crate) fn type_check_method_application(
 
     // Retrieve the implemented traits for the type of the return type and
     // insert them in the broader namespace.
-    ctx.namespace
-        .insert_trait_implementation_for_type(engines, method.return_type.type_id);
+    ctx.insert_trait_implementation_for_type(method.return_type.type_id);
 
     // Handle the trait constraints. This includes checking to see if the trait
     // constraints are satisfied and replacing old decl ids based on the

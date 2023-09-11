@@ -273,8 +273,8 @@ impl PackageManifestFile {
     /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
-    pub fn from_file(path: PathBuf) -> Result<Self> {
-        let path = path.canonicalize()?;
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let path = path.as_ref().canonicalize()?;
         let manifest = PackageManifest::from_file(&path)?;
         let manifest_file = Self { manifest, path };
         manifest_file.validate()?;
@@ -285,19 +285,26 @@ impl PackageManifestFile {
     /// standalone package.
     ///
     /// If this package is a member of a workspace, patches are fetched from
-    /// the workspace manifest file.
+    /// the workspace manifest file, ignoring any patch defined in the package
+    /// manifest file, even if a patch section is not defined in the namespace.
     pub fn resolve_patches(&self) -> Result<impl Iterator<Item = (String, PatchMap)>> {
-        let workspace_patches = self
-            .workspace()
-            .ok()
-            .flatten()
-            .and_then(|workspace| workspace.patch.clone());
-        let package_patches = self.patch.clone();
-        match (workspace_patches, package_patches) {
-            (Some(_), Some(_)) => bail!("Found [patch] table both in workspace and member package's manifest file. Consider removing [patch] table from package's manifest file."),
-            (Some(workspace_patches), None) => Ok(workspace_patches.into_iter()),
-            (None, Some(pkg_patches)) => Ok(pkg_patches.into_iter()),
-            (None, None) => Ok(BTreeMap::default().into_iter()),
+        if let Some(workspace) = self.workspace().ok().flatten() {
+            // If workspace is defined, passing a local patch is a warning, but the global patch is used
+            if self.patch.is_some() {
+                println_warning("Patch for the non root package will be ignored.");
+                println_warning(&format!(
+                    "Specify patch at the workspace root: {}",
+                    workspace.path().to_str().unwrap_or_default()
+                ));
+            }
+            Ok(workspace
+                .patch
+                .as_ref()
+                .cloned()
+                .unwrap_or_default()
+                .into_iter())
+        } else {
+            Ok(self.patch.as_ref().cloned().unwrap_or_default().into_iter())
         }
     }
 
@@ -318,7 +325,8 @@ impl PackageManifestFile {
     ///
     /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
-    pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
+    pub fn from_dir<P: AsRef<Path>>(manifest_dir: P) -> Result<Self> {
+        let manifest_dir = manifest_dir.as_ref();
         let dir = forc_util::find_parent_manifest_dir(manifest_dir)
             .ok_or_else(|| manifest_file_missing(manifest_dir))?;
         let path = dir.join(constants::MANIFEST_FILE_NAME);
@@ -831,7 +839,8 @@ impl WorkspaceManifestFile {
     ///
     /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
-    pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
+    pub fn from_dir<T: AsRef<Path>>(manifest_dir: T) -> Result<Self> {
+        let manifest_dir = manifest_dir.as_ref();
         let dir =
             forc_util::find_parent_manifest_dir_with_check(manifest_dir, |possible_manifest_dir| {
                 // Check if the found manifest file is a workspace manifest file or a standalone
@@ -876,8 +885,7 @@ impl WorkspaceManifestFile {
         &self,
     ) -> Result<impl Iterator<Item = Result<PackageManifestFile>> + '_> {
         let member_paths = self.member_paths()?;
-        let member_pkg_manifests =
-            member_paths.map(|member_path| PackageManifestFile::from_dir(&member_path));
+        let member_pkg_manifests = member_paths.map(PackageManifestFile::from_dir);
         Ok(member_pkg_manifests)
     }
 
@@ -1161,6 +1169,34 @@ mod tests {
     #[should_panic(expected = "duplicate key `foo` in table `dependencies`")]
     fn test_error_duplicate_deps_definition() {
         PackageManifest::from_dir("./tests/invalid/duplicate_keys").unwrap();
+    }
+
+    #[test]
+    fn test_error_duplicate_deps_definition_in_workspace() {
+        // Load each project inside a workspace and load their patches
+        // definition. There should be zero, because the file workspace file has
+        // no patches
+        //
+        // The code also prints a warning to the stdout
+        let workspace =
+            WorkspaceManifestFile::from_dir("./tests/invalid/patch_workspace_and_package").unwrap();
+        let projects: Vec<_> = workspace
+            .member_pkg_manifests()
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        assert_eq!(projects.len(), 1);
+        let patches: Vec<_> = projects[0].resolve_patches().unwrap().collect();
+        assert_eq!(patches.len(), 0);
+
+        // Load the same Forc.toml file but outside of a workspace. There should
+        // be a single entry in the patch
+        let patches: Vec<_> = PackageManifestFile::from_dir("./tests/test_package")
+            .unwrap()
+            .resolve_patches()
+            .unwrap()
+            .collect();
+        assert_eq!(patches.len(), 1);
     }
 
     #[test]

@@ -4,7 +4,7 @@ use sway_types::{Named, Spanned};
 use crate::{
     decl_engine::{DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType},
     language::{parsed, ty},
-    semantic_analysis::TypeCheckContext,
+    semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
     type_system::*,
 };
 

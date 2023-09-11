@@ -4,10 +4,10 @@ library;
 
 use ::assert::assert;
 use ::address::Address;
-use ::alias::{AssetId, SubId};
+use ::alias::SubId;
 use ::call_frames::contract_id;
 use ::constants::{ZERO_B256, BASE_ASSET_ID};
-use ::contract_id::ContractId;
+use ::contract_id::{AssetId, ContractId};
 use ::hash::*;
 use ::option::Option;
 
@@ -196,7 +196,7 @@ impl Identity {
         asm(r1: amount, r2: sub_id) {
             mint r1 r2;
         };
-        self.transfer(sha256((contract_id(), sub_id)), amount);
+        self.transfer(AssetId::new(contract_id(), sub_id), amount);
     }
 }
 
@@ -212,8 +212,8 @@ fn test_address() {
 
 #[test]
 fn test_contract_id() {
-    let id = BASE_ASSET_ID;
-    let identity = Identity::ContractId(ContractId::from(id));
+    let id = ZERO_B256;
+    let identity = Identity::ContractId(ContractId::from(ZERO_B256));
     assert(!identity.is_address());
     assert(identity.is_contract_id());
     assert(identity.as_contract_id().unwrap().value == id);
