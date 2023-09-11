@@ -56,7 +56,7 @@ pub(crate) fn code_action_abi_request(server: &ServerState, uri: &Url) {
             },
         },
     );
-    let res = request::handle_code_action(server, params.clone());
+    let res = request::handle_code_action(server, params);
     let mut changes = HashMap::new();
     changes.insert(
         uri.clone(),
@@ -97,7 +97,7 @@ pub(crate) fn code_action_function_request(server: &ServerState, uri: &Url) {
             },
         },
     );
-    let res = request::handle_code_action(server, params.clone());
+    let res = request::handle_code_action(server, params);
     let mut changes = HashMap::new();
     changes.insert(uri.clone(), vec![TextEdit {
     range: Range {
@@ -135,7 +135,7 @@ pub(crate) fn code_action_trait_fn_request(server: &ServerState, uri: &Url) {
             },
         },
     );
-    let res = request::handle_code_action(server, params.clone());
+    let res = request::handle_code_action(server, params);
     let mut changes = HashMap::new();
 
     changes.insert(uri.clone(), vec![TextEdit {
@@ -174,7 +174,7 @@ pub(crate) fn code_action_struct_request(server: &ServerState, uri: &Url) {
             },
         },
     );
-    let res = request::handle_code_action(server, params.clone());
+    let res = request::handle_code_action(server, params);
     let mut expected: Vec<_> = Vec::new();
     let mut changes = HashMap::new();
     changes.insert(
@@ -262,7 +262,7 @@ pub(crate) fn code_action_struct_type_params_request(server: &ServerState, uri: 
             },
         },
     );
-    let res = request::handle_code_action(server, params.clone());
+    let res = request::handle_code_action(server, params);
     let mut expected: Vec<_> = Vec::new();
     let mut changes = HashMap::new();
     changes.insert(
@@ -354,7 +354,7 @@ pub(crate) fn code_action_struct_existing_impl_request(server: &ServerState, uri
             },
         },
     );
-    let res = request::handle_code_action(server, params.clone());
+    let res = request::handle_code_action(server, params);
     let mut expected: Vec<_> = Vec::new();
     let mut changes = HashMap::new();
     changes.insert(

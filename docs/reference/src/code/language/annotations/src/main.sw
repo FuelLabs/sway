@@ -28,7 +28,7 @@ fn read_write() {
 
 fn example() {
     // ANCHOR: example
-    let bar: str[4] = "sway";
+    let bar: str = "sway";
     let baz: bool = true;
     // ANCHOR_END: example
 }

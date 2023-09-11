@@ -617,6 +617,8 @@ pub enum CompileError {
         expected: u64,
         span: Span,
     },
+    #[error("Expected string literal")]
+    ExpectedStringLiteral { span: Span },
     #[error("\"break\" used outside of a loop")]
     BreakOutsideLoop { span: Span },
     #[error("\"continue\" used outside of a loop")]
@@ -629,15 +631,14 @@ pub enum CompileError {
     /// https://github.com/FuelLabs/sway/issues/3077
     #[error("Contract ID value is not a literal.")]
     ContractIdValueNotALiteral { span: Span },
-    #[error("The type \"{ty}\" is not allowed in storage.")]
-    TypeNotAllowedInContractStorage { ty: String, span: Span },
+
+    #[error("{reason}")]
+    TypeNotAllowed {
+        reason: TypeNotAllowedReason,
+        span: Span,
+    },
     #[error("ref mut parameter not allowed for main()")]
     RefMutableNotAllowedInMain { param_name: Ident, span: Span },
-    #[error(
-        "Returning a type containing `raw_slice` from `main()` is not allowed. \
-            Consider converting it into a flat `raw_slice` first."
-    )]
-    NestedSliceReturnNotAllowedInMain { span: Span },
     #[error(
         "Register \"{name}\" is initialized and later reassigned which is not allowed. \
             Consider assigning to a different register inside the ASM block."
@@ -859,9 +860,7 @@ impl Spanned for CompileError {
             ContinueOutsideLoop { span } => span.clone(),
             ContractIdConstantNotAConstDecl { span } => span.clone(),
             ContractIdValueNotALiteral { span } => span.clone(),
-            TypeNotAllowedInContractStorage { span, .. } => span.clone(),
             RefMutableNotAllowedInMain { span, .. } => span.clone(),
-            NestedSliceReturnNotAllowedInMain { span } => span.clone(),
             InitializedRegisterReassignment { span, .. } => span.clone(),
             DisallowedControlFlowInstruction { span, .. } => span.clone(),
             CallingPrivateLibraryMethod { span, .. } => span.clone(),
@@ -876,6 +875,8 @@ impl Spanned for CompileError {
             AbiShadowsSuperAbiMethod { span, .. } => span.clone(),
             ConflictingSuperAbiMethods { span, .. } => span.clone(),
             AbiSupertraitMethodCallAsContractCall { span, .. } => span.clone(),
+            TypeNotAllowed { span, .. } => span.clone(),
+            ExpectedStringLiteral { span } => span.clone(),
         }
     }
 }
@@ -1046,4 +1047,28 @@ impl ToDiagnostic for CompileError {
                 }
         }
     }
+}
+
+#[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TypeNotAllowedReason {
+    #[error(
+        "Returning a type containing `raw_slice` from `main()` is not allowed. \
+            Consider converting it into a flat `raw_slice` first."
+    )]
+    NestedSliceReturnNotAllowedInMain,
+
+    #[error("The type \"{ty}\" is not allowed in storage.")]
+    TypeNotAllowedInContractStorage { ty: String },
+
+    #[error("`str` or a type containing `str` on `main()` arguments is not allowed.")]
+    StringSliceInMainParameters,
+
+    #[error("Returning `str` or a type containing `str` from `main()` is not allowed.")]
+    StringSliceInMainReturn,
+
+    #[error("`str` or a type containing `str` on `configurables` is not allowed.")]
+    StringSliceInConfigurables,
+
+    #[error("`str` or a type containing `str` on `const` is not allowed.")]
+    StringSliceInConst,
 }

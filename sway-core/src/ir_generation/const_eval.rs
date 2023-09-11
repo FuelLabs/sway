@@ -893,7 +893,7 @@ fn const_eval_intrinsic(
                 value: ConstantValue::Uint(ir_type_str_size_in_bytes(lookup.context, &ir_type)),
             }))
         }
-        Intrinsic::CheckStrType => {
+        Intrinsic::AssertIsStrArray => {
             let targ = &intrinsic.type_arguments[0];
             let ir_type = convert_resolved_typeid(
                 lookup.engines.te(),
@@ -904,7 +904,7 @@ fn const_eval_intrinsic(
             )
             .map_err(ConstEvalError::CompileError)?;
             match ir_type.get_content(lookup.context) {
-                TypeContent::String(_n) => Ok(Some(Constant {
+                TypeContent::StringSlice | TypeContent::StringArray(_) => Ok(Some(Constant {
                     ty: Type::get_unit(lookup.context),
                     value: ConstantValue::Unit,
                 })),
@@ -913,6 +913,17 @@ fn const_eval_intrinsic(
                         span: targ.span.clone(),
                     },
                 )),
+            }
+        }
+        Intrinsic::ToStrArray => {
+            assert!(args.len() == 1);
+            match &args[0].value {
+                ConstantValue::String(s) => {
+                    Ok(Some(Constant::new_string(lookup.context, s.to_vec())))
+                }
+                _ => {
+                    unreachable!("Type checker allowed non string value for ToStrArray")
+                }
             }
         }
         Intrinsic::Eq => {
@@ -952,7 +963,7 @@ fn const_eval_intrinsic(
         | Intrinsic::PtrAdd
         | Intrinsic::PtrSub
         | Intrinsic::IsReferenceType
-        | Intrinsic::IsStrType
+        | Intrinsic::IsStrArray
         | Intrinsic::Gtf
         | Intrinsic::StateClear
         | Intrinsic::StateLoadWord

@@ -431,6 +431,14 @@ impl Op {
                 let imm = single_imm_24(handler, args, immediate, whole_op_span)?;
                 VirtualOp::CFSI(imm)
             }
+            "cfe" => {
+                let r1 = single_reg(handler, args, immediate, whole_op_span)?;
+                VirtualOp::CFE(r1)
+            }
+            "cfs" => {
+                let r1 = single_reg(handler, args, immediate, whole_op_span)?;
+                VirtualOp::CFS(r1)
+            }
             "lb" => {
                 let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
                 VirtualOp::LB(r1, r2, imm)
@@ -1056,6 +1064,8 @@ impl fmt::Display for VirtualOp {
             ALOC(a) => write!(fmtr, "aloc {a}"),
             CFEI(a) => write!(fmtr, "cfei {a}"),
             CFSI(a) => write!(fmtr, "cfsi {a}"),
+            CFE(a) => write!(fmtr, "cfe {a}"),
+            CFS(a) => write!(fmtr, "cfs {a}"),
             LB(a, b, c) => write!(fmtr, "lb {a} {b} {c}"),
             LW(a, b, c) => write!(fmtr, "lw {a} {b} {c}"),
             MCL(a, b) => write!(fmtr, "mcl {a} {b}"),
