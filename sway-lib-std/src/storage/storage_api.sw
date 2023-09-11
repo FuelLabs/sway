@@ -4,8 +4,11 @@ use ::alloc::alloc;
 use ::option::Option::{self, *};
 use ::u256::U256;
 
-/// Stores a stack value in storage. Will not work for heap values. If the
-/// value crosses the boundary of a storage slot, writing continues at the following slot.
+/// Stores a stack value in storage. Will not work for heap values. 
+///
+/// # Additional Information
+///
+/// If the value crosses the boundary of a storage slot, writing continues at the following slot.
 ///
 /// # Arguments
 ///
@@ -47,7 +50,6 @@ pub fn write<T>(slot: b256, offset: u64, value: T) {
     let _ = __state_load_quad(offset_slot, padded_value, number_of_slots);
 
     // Copy the value to be stored to `padded_value + offset`.
-    // padded_value.add::<u64>(offset).write::<T>(value);
     padded_value.add::<u64>(place_in_slot).write::<T>(value);
 
     // Now store back the data at `padded_value` which now contains the old data but partially 
@@ -107,7 +109,7 @@ pub fn read<T>(slot: b256, offset: u64) -> Option<T> {
     }
 }
 
-/// Clear a value starting at a some slot with an offset. 
+/// Clear a value starting at some slot with an offset. 
 ///
 /// # Arguments
 ///
