@@ -178,11 +178,10 @@ fn slot_calculator<T>(slot: b256, offset: u64) -> (b256, u64, u64) {
 
     // TODO: Update when u256 <-> b256 conversions exist.
     // Determine which starting slot `T` will be stored based on the offset.
-    let mut u256_slot = U256::from(asm(r1: slot) { r1: (u64, u64, u64, u64) });
-    // last_slot - number_of_slots + 1 = offset_starting_slot
-    let u256_increment = U256::from((0, 0, 0, last_slot - number_of_slots));
+    let mut u256_slot = asm(r1: slot) {r1: u256};
+    let u256_increment = asm(r1: (0, 0, 0, last_slot - number_of_slots)) { r1: u256 };
     u256_slot += u256_increment;
-    let mut offset_slot = asm(r1: u256_slot.into()) { r1: b256 };
+    let offset_slot = asm(r1: u256_slot) { r1: b256 };
 
     (offset_slot, number_of_slots, place_in_slot)
 }
