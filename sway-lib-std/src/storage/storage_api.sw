@@ -2,7 +2,6 @@ library;
 
 use ::alloc::alloc;
 use ::option::Option::{self, *};
-use ::u256::U256;
 
 /// Stores a stack value in storage. Will not work for heap values. 
 ///
