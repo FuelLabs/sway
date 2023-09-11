@@ -213,6 +213,8 @@ define_op_codes!(
     (Aloc, AlocOpcode, "aloc", (size: reg)),
     (Cfei, CfeiOpcode, "cfei", (size: imm)),
     (Cfsi, CfsiOpcode, "cfsi", (size: imm)),
+    (Cfe, CfeOpcode, "cfe", (size: reg)),
+    (Cfs, CfsOpcode, "cfs", (size: reg)),
     (Lb, LbOpcode, "lb", (ret: reg, addr: reg, offset: imm)),
     (Lw, LwOpcode, "lw", (ret: reg, addr: reg, offset: imm)),
     (Mcl, MclOpcode, "mcl", (addr: reg, size: reg)),

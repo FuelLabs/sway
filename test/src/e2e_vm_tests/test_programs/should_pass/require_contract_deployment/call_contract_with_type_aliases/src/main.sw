@@ -18,7 +18,7 @@ fn main() {
 
     let u = (x, x);
 
-    let s = "fuelfuel0";
+    let s = __to_str_array("fuelfuel0");
 
     let (x_result, y_result, z_result, w_result, u_result, s_result) = caller.foo(x, y, z, w, u, s);
 

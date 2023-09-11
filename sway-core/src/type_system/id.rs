@@ -225,7 +225,8 @@ impl ReplaceSelfType for TypeId {
                 }),
                 TypeInfo::Unknown
                 | TypeInfo::UnknownGeneric { .. }
-                | TypeInfo::Str(_)
+                | TypeInfo::StringSlice
+                | TypeInfo::StringArray(_)
                 | TypeInfo::UnsignedInteger(_)
                 | TypeInfo::Boolean
                 | TypeInfo::ContractCaller { .. }

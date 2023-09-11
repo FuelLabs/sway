@@ -67,6 +67,8 @@ define_op_codes!(
     (Aloc, AlocOpcode, "aloc", (size)),
     (Cfei, CfeiOpcode, "cfei", (size)),
     (Cfsi, CfsiOpcode, "cfsi", (size)),
+    (Cfe, CfeOpcode, "cfe", (size)),
+    (Cfs, CfsOpcode, "cfs", (size)),
     (Lb, LbOpcode, "lb", (ret, addr, offset)),
     (Lw, LwOpcode, "lw", (ret, addr, offset)),
     (Mcl, MclOpcode, "mcl", (addr, size)),

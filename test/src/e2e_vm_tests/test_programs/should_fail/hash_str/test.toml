@@ -1,4 +1,4 @@
 category = "fail"
 
-# check: $()__check_str_type::<S>();
+# check: $()__assert_is_str_array::<S>();
 # nextln: $()Provided generic type is not of type str.

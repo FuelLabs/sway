@@ -6,6 +6,6 @@ struct Wrapper {
 
 fn main() -> Wrapper {
     Wrapper {
-        name: "fuel-labs",
+        name: __to_str_array("fuel-labs"),
     }
 }

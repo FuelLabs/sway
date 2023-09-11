@@ -15,7 +15,7 @@ struct ItemDetails {
 }
 
 enum SaleError {
-    NotEnoughInventory: str[3], 
+    NotEnoughInventory: str, 
 }
 
 fn main() -> u64 {

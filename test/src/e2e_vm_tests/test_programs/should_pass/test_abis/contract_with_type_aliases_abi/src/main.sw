@@ -22,16 +22,10 @@ impl core::ops::Eq for Tuple {
     }
 }
 
-fn sha256_str9(value: str[9]) -> b256 {
-    let mut hasher = Hasher::new();
-    hasher.write_str(value);
-    hasher.sha256()
-}
-
 pub type StringTy = str[9];
 impl core::ops::Eq for StringTy {
     fn eq(self, other: Self) -> bool {
-        sha256_str9(self) == sha256_str9(other)
+        sha256_str_array(self) == sha256_str_array(other)
     }
 }
 
