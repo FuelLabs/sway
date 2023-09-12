@@ -9,7 +9,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Spanned};
 
 /// Given an enum declaration and the instantiation expression/type arguments, construct a valid
 /// [ty::TyExpression].
@@ -22,7 +22,6 @@ pub(crate) fn instantiate_enum(
     args_opt: Option<Vec<Expression>>,
     call_path_binding: TypeBinding<CallPath>,
     call_path_decl: ty::TyDecl,
-    span: &Span,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
     let type_engine = ctx.engines.te();
     let decl_engine = ctx.engines.de();
@@ -73,7 +72,7 @@ pub(crate) fn instantiate_enum(
             let enum_ctx = ctx
                 .by_ref()
                 .with_help_text("Enum instantiator must match its declared variant type.")
-                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+                .with_type_annotation(enum_variant.type_argument.type_id);
             let typed_expr = ty::TyExpression::type_check(handler, enum_ctx, single_expr.clone())?;
 
             // unify the value of the argument with the variant
@@ -83,7 +82,7 @@ pub(crate) fn instantiate_enum(
                     engines,
                     typed_expr.return_type,
                     enum_variant.type_argument.type_id,
-                    span,
+                    &typed_expr.span,
                     "Enum instantiator must match its declared variant type.",
                     None,
                 );
