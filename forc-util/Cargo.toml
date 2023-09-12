@@ -14,6 +14,7 @@ ansi_term = "0.12"
 anyhow = "1"
 clap = { version = "3.1", features = ["cargo", "derive", "env"] }
 dirs = "3.0.2"
+fd-lock = "3.0"
 forc-tracing = { version = "0.46.0", path = "../forc-tracing" }
 fuel-tx = { workspace = true, features = ["serde"], optional = true }
 hex = "0.4.3"

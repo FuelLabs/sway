@@ -185,7 +185,7 @@ impl source::Pin for Source {
 impl source::Fetch for Pinned {
     fn fetch(&self, ctx: source::PinCtx, repo_path: &Path) -> Result<PackageManifestFile> {
         // Co-ordinate access to the git checkout directory using an advisory file lock.
-        let mut lock = crate::pkg::path_lock(repo_path)?;
+        let mut lock = forc_util::path_lock(repo_path)?;
         // TODO: Here we assume that if the local path already exists, that it contains the
         // full and correct source for that commit and hasn't been tampered with. This is
         // probably fine for most cases as users should never be touching these
@@ -217,7 +217,7 @@ impl source::DepPath for Pinned {
     fn dep_path(&self, name: &str) -> anyhow::Result<source::DependencyPath> {
         let repo_path = commit_path(name, &self.source.repo, &self.commit_hash);
         // Co-ordinate access to the git checkout directory using an advisory file lock.
-        let lock = crate::pkg::path_lock(&repo_path)?;
+        let lock = forc_util::path_lock(&repo_path)?;
         let _guard = lock.read()?;
         let path = manifest::find_within(&repo_path, name)
             .ok_or_else(|| anyhow!("failed to find package `{}` in {}", name, self))?;
