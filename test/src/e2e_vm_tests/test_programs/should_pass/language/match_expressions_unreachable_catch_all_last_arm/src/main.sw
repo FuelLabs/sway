@@ -198,6 +198,15 @@ fn main() -> () {
         },
     };
 
+    // TODO: Add this test as well once reachability issues are fixed: https://github.com/FuelLabs/sway/issues/5116
+    // let or1 = true;
+
+    // let _x = match or1 {
+    //     true => 0,
+    //     false => 0,
+    //     true | false | _ => 0,
+    // };
+
     poke(Enum::B);
     poke(Enum::C);
     poke(Enum::D);
