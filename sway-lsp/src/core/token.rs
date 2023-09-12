@@ -196,7 +196,7 @@ impl TokenIdent {
             .source_id()
             .map(|source_id| se.get_path(source_id));
         Self {
-            name: ident.span().clone().str(),
+            name: ident.span().str(),
             range: get_range_from_span(&ident.span()),
             path,
             is_raw_ident: ident.is_raw_ident(),
@@ -263,7 +263,7 @@ pub fn type_info_to_symbol_kind(
         TypeInfo::UnsignedInteger(..) | TypeInfo::Boolean | TypeInfo::B256 => {
             SymbolKind::BuiltinType
         }
-        TypeInfo::Numeric | TypeInfo::Str(..) => SymbolKind::NumericLiteral,
+        TypeInfo::Numeric | TypeInfo::StringArray(..) => SymbolKind::NumericLiteral,
         TypeInfo::Custom { .. } | TypeInfo::Struct { .. } | TypeInfo::Contract => {
             SymbolKind::Struct
         }

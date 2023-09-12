@@ -17,7 +17,7 @@ pub struct TokenMap(DashMap<TokenIdent, Token>);
 impl TokenMap {
     /// Create a new token map.
     pub fn new() -> TokenMap {
-        TokenMap(DashMap::new())
+        TokenMap(DashMap::with_capacity(2048))
     }
 
     /// Create a custom iterator for the TokenMap.
@@ -114,11 +114,13 @@ impl TokenMap {
                     Some(TypedAstToken::TypedFunctionDeclaration(decl))
                         if functions_only == Some(true) =>
                     {
-                        TokenIdent::new(&Ident::new(decl.span.clone()), source_engine)
+                        TokenIdent::new(&Ident::new(decl.span), source_engine)
                     }
                     Some(TypedAstToken::TypedDeclaration(decl)) => {
-                        TokenIdent::new(&Ident::new(decl.span().clone()), source_engine)
+                        TokenIdent::new(&Ident::new(decl.span()), source_engine)
                     }
+                    // Seems to be a clippy bug
+                    #[allow(clippy::redundant_clone)]
                     _ => ident.clone(),
                 };
                 if position >= token_ident.range.start && position <= token_ident.range.end {

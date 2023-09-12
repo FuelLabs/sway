@@ -8,7 +8,7 @@ use crate::{
 };
 
 use sway_error::{
-    error::CompileError,
+    error::{CompileError, TypeNotAllowedReason},
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::*;
@@ -22,6 +22,23 @@ pub struct TyProgram {
     pub storage_slots: Vec<StorageSlot>,
     pub logged_types: Vec<(LogId, TypeId)>,
     pub messages_types: Vec<(MessageId, TypeId)>,
+}
+
+fn get_type_not_allowed_error(
+    engines: &Engines,
+    type_id: TypeId,
+    spanned: &impl Spanned,
+    f: impl Fn(&TypeInfo) -> Option<TypeNotAllowedReason>,
+) -> Option<CompileError> {
+    let types = type_id.extract_any_including_self(engines, &|t| f(t).is_some(), vec![]);
+
+    let (id, _) = types.into_iter().next()?;
+    let t = engines.te().get(id);
+
+    Some(CompileError::TypeNotAllowed {
+        reason: f(&t)?,
+        span: spanned.span(),
+    })
 }
 
 impl TyProgram {
@@ -39,6 +56,7 @@ impl TyProgram {
         let decl_engine = engines.de();
 
         // Validate all submodules
+        let mut non_configurables_constants = Vec::<TyConstantDecl>::new();
         let mut configurables = Vec::<TyConstantDecl>::new();
         for (_, submodule) in &root.submodules {
             match Self::validate_root(
@@ -92,6 +110,8 @@ impl TyProgram {
                     let config_decl = decl_engine.get_constant(decl_id);
                     if config_decl.is_configurable {
                         configurables.push(config_decl);
+                    } else {
+                        non_configurables_constants.push(config_decl);
                     }
                 }
                 // ABI entries are all functions declared in impl_traits on the contract type
@@ -171,22 +191,23 @@ impl TyProgram {
                     {
                         let storage_decl = decl_engine.get_storage(decl_id);
                         for field in storage_decl.fields.iter() {
-                            if !field
-                                .type_argument
-                                .type_id
-                                .extract_any_including_self(
-                                    engines,
-                                    &|type_info| matches!(type_info, TypeInfo::RawUntypedPtr),
-                                    vec![],
-                                )
-                                .is_empty()
-                            {
-                                handler.emit_err(CompileError::TypeNotAllowedInContractStorage {
-                                    ty: engines
-                                        .help_out(&ty_engine.get(field.type_argument.type_id))
-                                        .to_string(),
-                                    span: field.span.clone(),
-                                });
+                            if let Some(error) = get_type_not_allowed_error(
+                                engines,
+                                field.type_argument.type_id,
+                                &field.type_argument,
+                                |t| match t {
+                                    TypeInfo::StringSlice => {
+                                        Some(TypeNotAllowedReason::StringSliceInConfigurables)
+                                    }
+                                    TypeInfo::RawUntypedPtr => Some(
+                                        TypeNotAllowedReason::TypeNotAllowedInContractStorage {
+                                            ty: engines.help_out(t).to_string(),
+                                        },
+                                    ),
+                                    _ => None,
+                                },
+                            ) {
+                                handler.emit_err(error);
                             }
                         }
                     }
@@ -231,33 +252,68 @@ impl TyProgram {
                 }
             }
             parsed::TreeType::Script => {
-                // A script must have exactly one main function.
+                // A script must have exactly one main function
                 if mains.is_empty() {
                     return Err(
                         handler.emit_err(CompileError::NoScriptMainFunction(root.span.clone()))
                     );
                 }
+
                 if mains.len() > 1 {
                     handler.emit_err(CompileError::MultipleDefinitionsOfFunction {
                         name: mains.last().unwrap().name.clone(),
                         span: mains.last().unwrap().name.span(),
                     });
                 }
+
                 // A script must not return a `raw_ptr` or any type aggregating a `raw_slice`.
                 // Directly returning a `raw_slice` is allowed, which will be just mapped to a RETD.
                 // TODO: Allow returning nested `raw_slice`s when our spec supports encoding DSTs.
                 let main_func = mains.remove(0);
-                if !ty_engine
-                    .get(main_func.return_type.type_id)
-                    .extract_any(engines, &|type_info| {
-                        matches!(type_info, TypeInfo::RawUntypedSlice)
-                    })
-                    .is_empty()
-                {
-                    handler.emit_err(CompileError::NestedSliceReturnNotAllowedInMain {
-                        span: main_func.return_type.span.clone(),
-                    });
+
+                for p in main_func.parameters() {
+                    if let Some(error) = get_type_not_allowed_error(
+                        engines,
+                        p.type_argument.type_id,
+                        &p.type_argument,
+                        |t| match t {
+                            TypeInfo::StringSlice => {
+                                Some(TypeNotAllowedReason::StringSliceInMainParameters)
+                            }
+                            TypeInfo::RawUntypedSlice => {
+                                Some(TypeNotAllowedReason::NestedSliceReturnNotAllowedInMain)
+                            }
+                            _ => None,
+                        },
+                    ) {
+                        handler.emit_err(error);
+                    }
                 }
+
+                // Check main return type is valid
+                if let Some(error) = get_type_not_allowed_error(
+                    engines,
+                    main_func.return_type.type_id,
+                    &main_func.return_type,
+                    |t| match t {
+                        TypeInfo::StringSlice => {
+                            Some(TypeNotAllowedReason::StringSliceInMainReturn)
+                        }
+                        TypeInfo::RawUntypedSlice => {
+                            Some(TypeNotAllowedReason::NestedSliceReturnNotAllowedInMain)
+                        }
+                        _ => None,
+                    },
+                ) {
+                    // Let main return `raw_slice` directly
+                    if !matches!(
+                        engines.te().get(main_func.return_type.type_id),
+                        TypeInfo::RawUntypedSlice
+                    ) {
+                        handler.emit_err(error);
+                    }
+                }
+
                 TyProgramKind::Script {
                     main_function: main_func,
                 }
@@ -278,6 +334,36 @@ impl TyProgram {
             }
             _ => (),
         }
+
+        //configurables and constant cannot be str slice
+        for c in configurables.iter() {
+            if let Some(error) = get_type_not_allowed_error(
+                engines,
+                c.return_type,
+                &c.type_ascription,
+                |t| match t {
+                    TypeInfo::StringSlice => Some(TypeNotAllowedReason::StringSliceInConfigurables),
+                    _ => None,
+                },
+            ) {
+                handler.emit_err(error);
+            }
+        }
+
+        for c in non_configurables_constants.iter() {
+            if let Some(error) = get_type_not_allowed_error(
+                engines,
+                c.return_type,
+                &c.type_ascription,
+                |t| match t {
+                    TypeInfo::StringSlice => Some(TypeNotAllowedReason::StringSliceInConst),
+                    _ => None,
+                },
+            ) {
+                handler.emit_err(error);
+            }
+        }
+
         Ok((typed_program_kind, declarations, configurables))
     }
 

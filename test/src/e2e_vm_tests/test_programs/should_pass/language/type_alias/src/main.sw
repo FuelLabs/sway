@@ -3,7 +3,7 @@ script;
 mod lib;
 
 struct MyType {
-    x: std::alias::AssetId,
+    x: std::alias::SubId,
 }
 type MyTypeAlias1 = MyType;
 type MyTypeAlias2 = MyTypeAlias1;
@@ -45,14 +45,14 @@ struct GenericStruct<T> {
     x: T,
 }
 
-fn foo(x: AssetId) -> AssetId {
+fn foo(x: SubId) -> SubId {
     x
 }
 
 fn struct_tests() { /* Structs */
     let x = 0x0000000000000000000000000000000000000000000000000000000000000001;
-    let y: AssetId = x;
-    let z: AssetId = 0x0000000000000000000000000000000000000000000000000000000000000001;
+    let y: SubId = x;
+    let z: SubId = 0x0000000000000000000000000000000000000000000000000000000000000001;
     let _ = foo(x);
     let t = MyTypeAlias2 {
         x: 0x0000000000000000000000000000000000000000000000000000000000000001,
@@ -92,7 +92,7 @@ fn noop2(x: lib::MyIdentity2) -> Identity {
 }
 
 enum MyEnumType {
-    X: std::alias::AssetId,
+    X: std::alias::SubId,
 }
 type MyEnumTypeAlias1 = MyEnumType;
 type MyEnumTypeAlias2 = MyEnumTypeAlias1;
@@ -134,7 +134,7 @@ fn enum_tests() {
     let x = ContractId {
         value: 0x0000000000000000000000000000000000000000000000000000000000000001,
     };
-    let z: AssetId = 0x0000000000000000000000000000000000000000000000000000000000000001;
+    let z: SubId = 0x0000000000000000000000000000000000000000000000000000000000000001;
     let o = Some(x);
     if let Some(ContractId { value }) = o {
         assert(value == z);

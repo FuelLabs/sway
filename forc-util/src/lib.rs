@@ -221,7 +221,10 @@ pub fn find_nested_dir_with_file(starter_path: &Path, file_name: &str) -> Option
 ///
 /// Starts the search from `starter_path`.
 #[allow(clippy::branches_sharing_code)]
-pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option<PathBuf> {
+pub fn find_parent_dir_with_file<P: AsRef<Path>>(
+    starter_path: P,
+    file_name: &str,
+) -> Option<PathBuf> {
     let mut path = std::fs::canonicalize(starter_path).ok()?;
     let empty_path = PathBuf::from("/");
     while path != empty_path {
@@ -237,13 +240,16 @@ pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option
     None
 }
 /// Continually go up in the file tree until a Forc manifest file is found.
-pub fn find_parent_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
+pub fn find_parent_manifest_dir<P: AsRef<Path>>(starter_path: P) -> Option<PathBuf> {
     find_parent_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
 }
 
 /// Continually go up in the file tree until a Forc manifest file is found and given predicate
 /// returns true.
-pub fn find_parent_manifest_dir_with_check<F>(starter_path: &Path, f: F) -> Option<PathBuf>
+pub fn find_parent_manifest_dir_with_check<T: AsRef<Path>, F>(
+    starter_path: T,
+    f: F,
+) -> Option<PathBuf>
 where
     F: Fn(&Path) -> bool,
 {
@@ -553,12 +559,9 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
 
     fn get_title_label(diagnostics: &Diagnostic, label: &mut String) {
         label.clear();
-        if diagnostics.reason().is_some() {
-            label.push_str(diagnostics.reason().unwrap().description());
-            label.push_str(". ");
+        if let Some(reason) = diagnostics.reason() {
+            label.push_str(reason.description());
         }
-        label.push_str(diagnostics.issue().friendly_text());
-        label.push('.');
     }
 
     fn diagnostic_level_to_annotation_type(level: Level) -> AnnotationType {
@@ -637,6 +640,7 @@ fn construct_slice(labels: Vec<&Label>) -> Slice {
 fn label_type_to_annotation_type(label_type: LabelType) -> AnnotationType {
     match label_type {
         LabelType::Info => AnnotationType::Info,
+        LabelType::Help => AnnotationType::Help,
         LabelType::Warning => AnnotationType::Warning,
         LabelType::Error => AnnotationType::Error,
     }

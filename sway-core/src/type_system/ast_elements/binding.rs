@@ -5,7 +5,7 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::{ty, CallPath},
-    semantic_analysis::TypeCheckContext,
+    semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
     type_system::priv_prelude::*,
     Ident,
 };
@@ -187,6 +187,7 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
             .resolve_type_with_self(
                 handler,
                 type_engine.insert(engines, type_info),
+                ctx.self_type(),
                 &type_info_span,
                 EnforceTypeArguments::No,
                 Some(&type_info_prefix),
@@ -232,8 +233,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
         let engines = ctx.engines();
         // Grab the declaration.
         let unknown_decl = ctx
-            .namespace
-            .resolve_call_path_with_visibility_check(handler, engines, &self.inner)
+            .resolve_call_path_with_visibility_check(handler, &self.inner)
             .cloned()?;
         // Check to see if this is a fn declaration.
         let fn_ref = unknown_decl.to_fn_ref(handler)?;
@@ -256,6 +256,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
                     ctx.resolve_type_with_self(
                         handler,
                         type_argument.type_id,
+                        ctx.self_type(),
                         &type_argument.span,
                         EnforceTypeArguments::Yes,
                         None,
@@ -294,8 +295,7 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
         let engines = ctx.engines();
         // Grab the declaration.
         let unknown_decl = ctx
-            .namespace
-            .resolve_call_path_with_visibility_check(handler, engines, &self.inner)
+            .resolve_call_path_with_visibility_check(handler, &self.inner)
             .cloned()?;
         // Check to see if this is a struct declaration.
         let struct_ref = unknown_decl.to_struct_ref(handler, engines)?;
@@ -334,8 +334,7 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         let engines = ctx.engines();
         // Grab the declaration.
         let unknown_decl = ctx
-            .namespace
-            .resolve_call_path_with_visibility_check(handler, engines, &self.inner)
+            .resolve_call_path_with_visibility_check(handler, &self.inner)
             .cloned()?;
 
         // Get a new copy from the declaration engine.
@@ -379,12 +378,9 @@ impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<CallPath> {
         ),
         ErrorEmitted,
     > {
-        let engines = ctx.engines();
-
         // Grab the declaration.
         let unknown_decl = ctx
-            .namespace
-            .resolve_call_path_with_visibility_check(handler, engines, &self.inner)
+            .resolve_call_path_with_visibility_check(handler, &self.inner)
             .cloned()?;
 
         // Check to see if this is a const declaration.

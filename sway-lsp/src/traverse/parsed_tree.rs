@@ -9,7 +9,7 @@ use crate::{
     },
     traverse::{Parse, ParseContext},
 };
-
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use sway_core::{
     language::{
         parsed::{
@@ -82,10 +82,10 @@ impl<'a> ParsedTree<'a> {
 
 impl Parse for AttributesMap {
     fn parse(&self, ctx: &ParseContext) {
-        self.iter()
+        self.par_iter()
             .filter(|(kind, ..)| **kind != AttributeKind::DocComment)
             .flat_map(|(.., attrs)| attrs)
-            .for_each(|attribute| {
+            .for_each_with(ctx, |ctx, attribute| {
                 ctx.tokens.insert(
                     ctx.ident(&attribute.name),
                     Token::from_parsed(
@@ -139,12 +139,12 @@ impl Parse for UseStatement {
                 Token::from_parsed(AstToken::UseStatement(self.clone()), SymbolKind::Unknown),
             );
         }
-        for prefix in &self.call_path {
+        self.call_path.par_iter().for_each(|prefix| {
             ctx.tokens.insert(
                 ctx.ident(prefix),
                 Token::from_parsed(AstToken::UseStatement(self.clone()), SymbolKind::Module),
             );
-        }
+        });
         match &self.import_type {
             ImportType::Item(item) => {
                 ctx.tokens.insert(
@@ -167,7 +167,7 @@ impl Parse for Expression {
     fn parse(&self, ctx: &ParseContext) {
         match &self.kind {
             ExpressionKind::Error(part_spans, _) => {
-                for span in part_spans.iter() {
+                part_spans.par_iter().for_each(|span| {
                     ctx.tokens.insert(
                         ctx.ident(&Ident::new(span.clone())),
                         Token::from_parsed(
@@ -175,7 +175,7 @@ impl Parse for Expression {
                             SymbolKind::Unknown,
                         ),
                     );
-                }
+                });
             }
             ExpressionKind::Literal(value) => {
                 let symbol_kind = literal_to_symbol_kind(value);
@@ -209,7 +209,7 @@ impl Parse for Expression {
                 }
             }
             ExpressionKind::Tuple(fields) => {
-                fields.iter().for_each(|field| field.parse(ctx));
+                fields.par_iter().for_each(|field| field.parse(ctx));
             }
             ExpressionKind::TupleIndex(TupleIndexExpression {
                 prefix, index_span, ..
@@ -230,7 +230,10 @@ impl Parse for Expression {
                 struct_expression.parse(ctx);
             }
             ExpressionKind::CodeBlock(code_block) => {
-                code_block.contents.iter().for_each(|node| node.parse(ctx));
+                code_block
+                    .contents
+                    .par_iter()
+                    .for_each(|node| node.parse(ctx));
             }
             ExpressionKind::If(IfExpression {
                 condition,
@@ -248,13 +251,13 @@ impl Parse for Expression {
                 value, branches, ..
             }) => {
                 value.parse(ctx);
-                branches.iter().for_each(|branch| {
+                branches.par_iter().for_each(|branch| {
                     branch.scrutinee.parse(ctx);
                     branch.result.parse(ctx);
                 });
             }
             ExpressionKind::Asm(asm) => {
-                asm.registers.iter().for_each(|register| {
+                asm.registers.par_iter().for_each(|register| {
                     if let Some(initializer) = &register.initializer {
                         initializer.parse(ctx);
                     }
@@ -303,7 +306,7 @@ impl Parse for Expression {
                     Token::from_parsed(AstToken::Ident(storage_ident), SymbolKind::Unknown),
                 );
 
-                field_names.iter().for_each(|field_name| {
+                field_names.par_iter().for_each(|field_name| {
                     ctx.tokens.insert(
                         ctx.ident(field_name),
                         Token::from_parsed(AstToken::Ident(field_name.clone()), SymbolKind::Field),
@@ -316,7 +319,7 @@ impl Parse for Expression {
             ExpressionKind::WhileLoop(WhileLoopExpression {
                 body, condition, ..
             }) => {
-                body.contents.iter().for_each(|node| node.parse(ctx));
+                body.contents.par_iter().for_each(|node| node.parse(ctx));
                 condition.parse(ctx);
             }
             ExpressionKind::Reassignment(reassignment) => {
@@ -351,23 +354,23 @@ impl Parse for IntrinsicFunctionExpression {
                 SymbolKind::Intrinsic,
             ),
         );
-        self.arguments.iter().for_each(|arg| arg.parse(ctx));
+        self.arguments.par_iter().for_each(|arg| arg.parse(ctx));
         self.kind_binding
             .type_arguments
             .to_vec()
-            .iter()
+            .par_iter()
             .for_each(|type_arg| type_arg.parse(ctx));
     }
 }
 
 impl Parse for AbiCastExpression {
     fn parse(&self, ctx: &ParseContext) {
-        for ident in &self.abi_name.prefixes {
+        self.abi_name.prefixes.par_iter().for_each(|ident| {
             ctx.tokens.insert(
                 ctx.ident(ident),
                 Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Module),
             );
-        }
+        });
         ctx.tokens.insert(
             ctx.ident(&self.abi_name.suffix),
             Token::from_parsed(AstToken::AbiCastExpression(self.clone()), SymbolKind::Trait),
@@ -382,12 +385,16 @@ impl Parse for DelineatedPathExpression {
             call_path_binding,
             args,
         } = self;
-        for ident in &call_path_binding.inner.prefixes {
-            ctx.tokens.insert(
-                ctx.ident(ident),
-                Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Enum),
-            );
-        }
+        call_path_binding
+            .inner
+            .prefixes
+            .par_iter()
+            .for_each(|ident| {
+                ctx.tokens.insert(
+                    ctx.ident(ident),
+                    Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Enum),
+                );
+            });
         ctx.tokens.insert(
             ctx.ident(&call_path_binding.inner.suffix),
             Token::from_parsed(
@@ -398,12 +405,12 @@ impl Parse for DelineatedPathExpression {
         call_path_binding
             .type_arguments
             .to_vec()
-            .iter()
+            .par_iter()
             .for_each(|type_arg| {
                 type_arg.parse(ctx);
             });
         if let Some(args_vec) = args.as_ref() {
-            args_vec.iter().for_each(|exp| {
+            args_vec.par_iter().for_each(|exp| {
                 exp.parse(ctx);
             });
         }
@@ -440,11 +447,11 @@ impl Parse for AmbiguousPathExpression {
         call_path_binding
             .type_arguments
             .to_vec()
-            .iter()
+            .par_iter()
             .for_each(|type_arg| {
                 type_arg.parse(ctx);
             });
-        args.iter().for_each(|arg| arg.parse(ctx));
+        args.par_iter().for_each(|arg| arg.parse(ctx));
         if let Some(qualified_path_root) = qualified_path_root {
             qualified_path_root.ty.parse(ctx);
             collect_type_info_token(
@@ -475,7 +482,7 @@ impl Parse for MethodApplicationExpression {
         self.method_name_binding
             .type_arguments
             .to_vec()
-            .iter()
+            .par_iter()
             .for_each(|type_arg| {
                 type_arg.parse(ctx);
             });
@@ -489,9 +496,9 @@ impl Parse for MethodApplicationExpression {
                 ),
             );
         }
-        self.arguments.iter().for_each(|arg| arg.parse(ctx));
+        self.arguments.par_iter().for_each(|arg| arg.parse(ctx));
         self.contract_call_params
-            .iter()
+            .par_iter()
             .for_each(|param| param.parse(ctx));
     }
 }
@@ -520,26 +527,26 @@ impl Parse for Scrutinee {
                 fields,
                 ..
             } => {
-                for ident in &struct_name.prefixes {
+                struct_name.prefixes.par_iter().for_each(|ident| {
                     let token =
                         Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Struct);
                     ctx.tokens.insert(ctx.ident(ident), token);
-                }
+                });
                 ctx.tokens.insert(
                     ctx.ident(&struct_name.suffix),
                     Token::from_parsed(AstToken::Scrutinee(self.clone()), SymbolKind::Struct),
                 );
-                fields.iter().for_each(|field| field.parse(ctx));
+                fields.par_iter().for_each(|field| field.parse(ctx));
             }
             Scrutinee::EnumScrutinee {
                 call_path, value, ..
             } => {
-                for ident in &call_path.prefixes {
+                call_path.prefixes.par_iter().for_each(|ident| {
                     ctx.tokens.insert(
                         ctx.ident(ident),
                         Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Enum),
                     );
-                }
+                });
                 let token =
                     Token::from_parsed(AstToken::Scrutinee(self.clone()), SymbolKind::Variant);
                 ctx.tokens.insert(ctx.ident(&call_path.suffix), token);
@@ -550,7 +557,7 @@ impl Parse for Scrutinee {
                 ctx.tokens.insert(ctx.ident(ident), token);
             }
             Scrutinee::Tuple { elems, .. } | Scrutinee::Or { elems, .. } => {
-                elems.iter().for_each(|elem| elem.parse(ctx));
+                elems.par_iter().for_each(|elem| elem.parse(ctx));
             }
             Scrutinee::Error { .. } => {
                 // FIXME: Left for @JoshuaBatty to use.
@@ -579,12 +586,16 @@ impl Parse for StructScrutineeField {
 
 impl Parse for StructExpression {
     fn parse(&self, ctx: &ParseContext) {
-        for ident in &self.call_path_binding.inner.prefixes {
-            ctx.tokens.insert(
-                ctx.ident(ident),
-                Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Struct),
-            );
-        }
+        self.call_path_binding
+            .inner
+            .prefixes
+            .par_iter()
+            .for_each(|ident| {
+                ctx.tokens.insert(
+                    ctx.ident(ident),
+                    Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Struct),
+                );
+            });
         let name = &self.call_path_binding.inner.suffix;
         let symbol_kind = if name.as_str() == "Self" {
             SymbolKind::SelfKeyword
@@ -596,10 +607,10 @@ impl Parse for StructExpression {
             Token::from_parsed(AstToken::StructExpression(self.clone()), symbol_kind),
         );
         let type_arguments = &self.call_path_binding.type_arguments.to_vec();
-        type_arguments.iter().for_each(|type_arg| {
+        type_arguments.par_iter().for_each(|type_arg| {
             type_arg.parse(ctx);
         });
-        self.fields.iter().for_each(|field| field.parse(ctx));
+        self.fields.par_iter().for_each(|field| field.parse(ctx));
     }
 }
 
@@ -618,7 +629,7 @@ impl Parse for StructExpressionField {
 
 impl Parse for ArrayExpression {
     fn parse(&self, ctx: &ParseContext) {
-        self.contents.iter().for_each(|exp| exp.parse(ctx));
+        self.contents.par_iter().for_each(|exp| exp.parse(ctx));
         if let Some(length_span) = &self.length_span {
             let ident = Ident::new(length_span.clone());
             ctx.tokens.insert(
@@ -633,12 +644,16 @@ impl Parse for FunctionApplicationExpression {
     fn parse(&self, ctx: &ParseContext) {
         // Don't collect applications of desugared operators due to mismatched ident lengths.
         if !desugared_op(&self.call_path_binding.inner.prefixes) {
-            for ident in &self.call_path_binding.inner.prefixes {
-                ctx.tokens.insert(
-                    ctx.ident(ident),
-                    Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Module),
-                );
-            }
+            self.call_path_binding
+                .inner
+                .prefixes
+                .par_iter()
+                .for_each(|ident| {
+                    ctx.tokens.insert(
+                        ctx.ident(ident),
+                        Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Module),
+                    );
+                });
             ctx.tokens.insert(
                 ctx.ident(&self.call_path_binding.inner.suffix),
                 Token::from_parsed(
@@ -649,12 +664,12 @@ impl Parse for FunctionApplicationExpression {
             self.call_path_binding
                 .type_arguments
                 .to_vec()
-                .iter()
+                .par_iter()
                 .for_each(|type_arg| {
                     type_arg.parse(ctx);
                 });
         }
-        self.arguments.iter().for_each(|exp| {
+        self.arguments.par_iter().for_each(|exp| {
             exp.parse(ctx);
         });
     }
@@ -700,18 +715,18 @@ impl Parse for FunctionDeclaration {
             SymbolKind::Function,
         );
         ctx.tokens.insert(ctx.ident(&self.name), token.clone());
-        self.body.contents.iter().for_each(|node| {
+        self.body.contents.par_iter().for_each(|node| {
             node.parse(ctx);
         });
-        self.parameters.iter().for_each(|param| {
+        self.parameters.par_iter().for_each(|param| {
             param.parse(ctx);
         });
-        self.type_parameters.iter().for_each(|type_param| {
+        self.type_parameters.par_iter().for_each(|type_param| {
             type_param.parse(ctx);
         });
         for (ident, constraints) in &self.where_clause {
             ctx.tokens.insert(ctx.ident(ident), token.clone());
-            constraints.iter().for_each(|constraint| {
+            constraints.par_iter().for_each(|constraint| {
                 constraint.parse(ctx);
             });
         }
@@ -729,15 +744,17 @@ impl Parse for TraitDeclaration {
                 SymbolKind::Trait,
             ),
         );
-        self.interface_surface.iter().for_each(|item| match item {
-            TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
-            TraitItem::Constant(const_decl) => const_decl.parse(ctx),
-            TraitItem::Error(_, _) => {}
-        });
-        self.methods.iter().for_each(|func_dec| {
+        self.interface_surface
+            .par_iter()
+            .for_each(|item| match item {
+                TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
+                TraitItem::Constant(const_decl) => const_decl.parse(ctx),
+                TraitItem::Error(_, _) => {}
+            });
+        self.methods.par_iter().for_each(|func_dec| {
             func_dec.parse(ctx);
         });
-        self.supertraits.iter().for_each(|supertrait| {
+        self.supertraits.par_iter().for_each(|supertrait| {
             supertrait.parse(ctx);
         });
     }
@@ -752,10 +769,10 @@ impl Parse for StructDeclaration {
                 SymbolKind::Struct,
             ),
         );
-        self.fields.iter().for_each(|field| {
+        self.fields.par_iter().for_each(|field| {
             field.parse(ctx);
         });
-        self.type_parameters.iter().for_each(|type_param| {
+        self.type_parameters.par_iter().for_each(|type_param| {
             type_param.parse(ctx);
         });
         self.attributes.parse(ctx);
@@ -771,10 +788,10 @@ impl Parse for EnumDeclaration {
                 SymbolKind::Enum,
             ),
         );
-        self.type_parameters.iter().for_each(|type_param| {
+        self.type_parameters.par_iter().for_each(|type_param| {
             type_param.parse(ctx);
         });
-        self.variants.iter().for_each(|variant| {
+        self.variants.par_iter().for_each(|variant| {
             variant.parse(ctx);
         });
         self.attributes.parse(ctx);
@@ -783,12 +800,12 @@ impl Parse for EnumDeclaration {
 
 impl Parse for ImplTrait {
     fn parse(&self, ctx: &ParseContext) {
-        for ident in &self.trait_name.prefixes {
+        self.trait_name.prefixes.par_iter().for_each(|ident| {
             ctx.tokens.insert(
                 ctx.ident(ident),
                 Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Module),
             );
-        }
+        });
         ctx.tokens.insert(
             ctx.ident(&self.trait_name.suffix),
             Token::from_parsed(
@@ -797,10 +814,10 @@ impl Parse for ImplTrait {
             ),
         );
         self.implementing_for.parse(ctx);
-        self.impl_type_parameters.iter().for_each(|type_param| {
+        self.impl_type_parameters.par_iter().for_each(|type_param| {
             type_param.parse(ctx);
         });
-        self.items.iter().for_each(|item| match item {
+        self.items.par_iter().for_each(|item| match item {
             ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
             ImplItem::Constant(const_decl) => const_decl.parse(ctx),
         });
@@ -822,15 +839,15 @@ impl Parse for ImplSelf {
                 ),
             );
             if let Some(type_arguments) = type_arguments {
-                for type_arg in type_arguments {
+                type_arguments.par_iter().for_each(|type_arg| {
                     type_arg.parse(ctx);
-                }
+                });
             }
         }
-        self.impl_type_parameters.iter().for_each(|type_param| {
+        self.impl_type_parameters.par_iter().for_each(|type_param| {
             type_param.parse(ctx);
         });
-        self.items.iter().for_each(|item| match item {
+        self.items.par_iter().for_each(|item| match item {
             ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
             ImplItem::Constant(const_decl) => const_decl.parse(ctx),
         });
@@ -846,12 +863,14 @@ impl Parse for AbiDeclaration {
                 SymbolKind::Trait,
             ),
         );
-        self.interface_surface.iter().for_each(|item| match item {
-            TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
-            TraitItem::Constant(const_decl) => const_decl.parse(ctx),
-            TraitItem::Error(_, _) => {}
-        });
-        self.supertraits.iter().for_each(|supertrait| {
+        self.interface_surface
+            .par_iter()
+            .for_each(|item| match item {
+                TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
+                TraitItem::Constant(const_decl) => const_decl.parse(ctx),
+                TraitItem::Error(_, _) => {}
+            });
+        self.supertraits.par_iter().for_each(|supertrait| {
             supertrait.parse(ctx);
         });
         self.attributes.parse(ctx);
@@ -877,7 +896,7 @@ impl Parse for ConstantDeclaration {
 
 impl Parse for StorageDeclaration {
     fn parse(&self, ctx: &ParseContext) {
-        self.fields.iter().for_each(|field| {
+        self.fields.par_iter().for_each(|field| {
             field.parse(ctx);
         });
         self.attributes.parse(ctx);
@@ -911,7 +930,7 @@ impl Parse for TraitFn {
             ctx.ident(&self.name),
             Token::from_parsed(AstToken::TraitFn(self.clone()), SymbolKind::Function),
         );
-        self.parameters.iter().for_each(|param| {
+        self.parameters.par_iter().for_each(|param| {
             param.parse(ctx);
         });
         self.return_type.parse(ctx);
@@ -921,12 +940,12 @@ impl Parse for TraitFn {
 
 impl Parse for TraitConstraint {
     fn parse(&self, ctx: &ParseContext) {
-        for prefix in &self.trait_name.prefixes {
+        self.trait_name.prefixes.par_iter().for_each(|prefix| {
             ctx.tokens.insert(
                 ctx.ident(prefix),
                 Token::from_parsed(AstToken::Ident(prefix.clone()), SymbolKind::Function),
             );
-        }
+        });
         ctx.tokens.insert(
             ctx.ident(&self.trait_name.suffix),
             Token::from_parsed(
@@ -934,7 +953,7 @@ impl Parse for TraitConstraint {
                 SymbolKind::Function,
             ),
         );
-        self.type_arguments.iter().for_each(|type_arg| {
+        self.type_arguments.par_iter().for_each(|type_arg| {
             type_arg.parse(ctx);
         });
     }
@@ -1000,9 +1019,9 @@ impl Parse for TypeArgument {
                 type_arg.parse(ctx);
             }
             TypeInfo::Tuple(type_arguments) => {
-                for type_arg in type_arguments {
+                type_arguments.par_iter().for_each(|type_arg| {
                     type_arg.parse(ctx);
-                }
+                });
             }
             _ => {
                 let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &type_info, None);
@@ -1033,7 +1052,7 @@ impl Parse for TypeAliasDeclaration {
 fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: Option<&Span>) {
     let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), type_info, type_span);
     match type_info {
-        TypeInfo::Str(length) => {
+        TypeInfo::StringArray(length) => {
             let ident = Ident::new(length.span());
             ctx.tokens.insert(
                 ctx.ident(&ident),
@@ -1049,7 +1068,7 @@ fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: 
             type_arg.parse(ctx);
         }
         TypeInfo::Tuple(type_arguments) => {
-            type_arguments.iter().for_each(|type_arg| {
+            type_arguments.par_iter().for_each(|type_arg| {
                 type_arg.parse(ctx);
             });
         }
@@ -1062,7 +1081,7 @@ fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: 
             token.type_def = Some(TypeDefinition::Ident(ident.clone()));
             ctx.tokens.insert(ctx.ident(&ident), token);
             if let Some(type_arguments) = type_arguments {
-                type_arguments.iter().for_each(|type_arg| {
+                type_arguments.par_iter().for_each(|type_arg| {
                     type_arg.parse(ctx);
                 });
             }
@@ -1085,13 +1104,13 @@ fn collect_call_path_tree(
     token: &Token,
     tokens: &TokenMap,
 ) {
-    for ident in &tree.call_path.prefixes {
+    tree.call_path.prefixes.par_iter().for_each(|ident| {
         tokens.insert(ctx.ident(ident), token.clone());
-    }
+    });
     tokens.insert(ctx.ident(&tree.call_path.suffix), token.clone());
-    for child in &tree.children {
+    tree.children.par_iter().for_each(|child| {
         collect_call_path_tree(ctx, child, token, tokens);
-    }
+    });
 }
 
 fn literal_to_symbol_kind(value: &Literal) -> SymbolKind {

@@ -15,7 +15,9 @@ use crate::{
         *,
     },
     namespace::TryInsertingTraitImplOnFailure,
-    semantic_analysis::{AbiMode, ConstShadowingMode, TypeCheckContext},
+    semantic_analysis::{
+        type_check_context::EnforceTypeArguments, AbiMode, ConstShadowingMode, TypeCheckContext,
+    },
     type_system::*,
 };
 
@@ -432,7 +434,7 @@ fn type_check_trait_implementation(
         let (this_supertrait_stub_method_refs, this_supertrait_impld_method_refs) =
             handle_supertraits(handler, ctx.by_ref(), trait_supertraits)?;
 
-        let _ = ctx.namespace.insert_trait_implementation(
+        let _ = ctx.insert_trait_implementation(
             &Handler::default(),
             trait_name.clone(),
             trait_type_arguments.to_vec(),
@@ -444,7 +446,6 @@ fn type_check_trait_implementation(
             &trait_name.span(),
             Some(trait_decl_span.clone()),
             false,
-            engines,
         );
 
         supertrait_interface_item_refs = this_supertrait_stub_method_refs;

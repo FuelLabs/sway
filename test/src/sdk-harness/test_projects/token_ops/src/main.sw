@@ -1,6 +1,6 @@
 contract;
 
-use std::{bytes::Bytes, constants::ZERO_B256, context::balance_of, message::send_message, token::*};
+use std::{contract_id::AssetId, bytes::Bytes, constants::ZERO_B256, context::balance_of, message::send_message, token::*};
 
 abi TestFuelCoin {
     fn mint_coins(mint_amount: u64, sub_id: b256);
@@ -32,14 +32,17 @@ impl TestFuelCoin for Contract {
     }
 
     fn force_transfer_coins(coins: u64, asset_id: b256, target: ContractId) {
+        let asset_id = AssetId { value: asset_id };
         force_transfer_to_contract(target, asset_id, coins);
     }
 
     fn transfer_coins_to_address(coins: u64, asset_id: b256, to: Address) {
+        let asset_id = AssetId { value: asset_id };
         transfer_to_address(to, asset_id, coins);
     }
 
     fn get_balance(asset_id: b256, target: ContractId) -> u64 {
+        let asset_id = AssetId { value: asset_id };
         balance_of(target, asset_id)
     }
 
@@ -56,6 +59,7 @@ impl TestFuelCoin for Contract {
     }
 
     fn generic_transfer(amount: u64, asset_id: b256, to: Identity) {
+        let asset_id = AssetId { value: asset_id };
         transfer(to, asset_id, amount)
     }
 
@@ -75,6 +79,7 @@ impl TestFuelCoin for Contract {
     }
 
     fn address_transfer(recipient: Address, asset_id: b256, amount: u64) {
+        let asset_id = AssetId { value: asset_id };
         recipient.transfer(asset_id, amount);
     }
 
@@ -83,6 +88,7 @@ impl TestFuelCoin for Contract {
     }
 
     fn contract_transfer(recipient: ContractId, asset_id: b256, amount: u64) {
+        let asset_id = AssetId { value: asset_id };
         recipient.transfer(asset_id, amount);
     }
 
@@ -91,6 +97,7 @@ impl TestFuelCoin for Contract {
     }
 
     fn identity_transfer(recipient: Identity, asset_id: b256, amount: u64) {
+        let asset_id = AssetId { value: asset_id };
         recipient.transfer(asset_id, amount);
     }
 }

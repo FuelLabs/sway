@@ -7,7 +7,7 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     decl_engine::DeclRefStruct,
     language::{parsed::*, ty, CallPath},
-    semantic_analysis::TypeCheckContext,
+    semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
     type_system::*,
 };
 
@@ -75,6 +75,7 @@ pub(crate) fn struct_instantiation(
         .resolve_type_with_self(
             handler,
             type_engine.insert(engines, type_info),
+            ctx.self_type(),
             &inner_span,
             EnforceTypeArguments::No,
             Some(&type_info_prefix),

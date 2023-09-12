@@ -4,7 +4,7 @@ use sway_types::{Named, Spanned};
 use crate::{
     decl_engine::{DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType},
     language::{parsed, ty},
-    semantic_analysis::TypeCheckContext,
+    semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
     type_system::*,
 };
 
@@ -29,6 +29,7 @@ impl ty::TyDecl {
                     .resolve_type_with_self(
                         handler,
                         type_ascription.type_id,
+                        ctx.self_type(),
                         &type_ascription.span,
                         EnforceTypeArguments::Yes,
                         None,
@@ -169,7 +170,7 @@ impl ty::TyDecl {
                 } else {
                     &emp_vec
                 };
-                ctx.namespace.insert_trait_implementation(
+                ctx.insert_trait_implementation(
                     handler,
                     impl_trait.trait_name.clone(),
                     impl_trait.trait_type_arguments.clone(),
@@ -181,7 +182,6 @@ impl ty::TyDecl {
                         .as_ref()
                         .map(|decl_ref| decl_ref.decl_span().clone()),
                     false,
-                    engines,
                 )?;
                 let impl_trait_decl: ty::TyDecl = decl_engine.insert(impl_trait.clone()).into();
                 impl_trait.items.iter_mut().for_each(|item| {
@@ -196,7 +196,7 @@ impl ty::TyDecl {
                         Ok(val) => val,
                         Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                     };
-                ctx.namespace.insert_trait_implementation(
+                ctx.insert_trait_implementation(
                     handler,
                     impl_trait.trait_name.clone(),
                     impl_trait.trait_type_arguments.clone(),
@@ -208,7 +208,6 @@ impl ty::TyDecl {
                         .as_ref()
                         .map(|decl_ref| decl_ref.decl_span().clone()),
                     true,
-                    engines,
                 )?;
                 let impl_trait_decl: ty::TyDecl = decl_engine.insert(impl_trait.clone()).into();
                 impl_trait.items.iter_mut().for_each(|item| {
@@ -332,6 +331,7 @@ impl ty::TyDecl {
                     .resolve_type_with_self(
                         handler,
                         ty.type_id,
+                        ctx.self_type(),
                         &span,
                         EnforceTypeArguments::Yes,
                         None,

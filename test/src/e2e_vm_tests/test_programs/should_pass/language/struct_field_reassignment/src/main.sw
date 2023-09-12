@@ -12,7 +12,7 @@ fn main() -> u64 {
 
 enum NumberOrString {
     Number: u64,
-    String: str[4],
+    String: str,
 }
 
 struct Data {

@@ -6,6 +6,8 @@ use std::{
 use sha2::{Digest, Sha256};
 use sway_error::handler::{ErrorEmitted, Handler};
 
+use crate::semantic_analysis::type_check_context::MonomorphizeHelper;
+
 use crate::{
     decl_engine::*,
     engine_threading::*,
@@ -36,6 +38,7 @@ pub struct TyFunctionDecl {
     pub is_contract_call: bool,
     pub purity: Purity,
     pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
+    pub is_trait_method_dummy: bool,
 }
 
 impl Named for TyFunctionDecl {
@@ -85,6 +88,7 @@ impl HashWithEngines for TyFunctionDecl {
             attributes: _,
             implementing_type: _,
             where_clause: _,
+            is_trait_method_dummy: _,
         } = self;
         name.hash(state);
         body.hash(state, engines);
@@ -245,6 +249,7 @@ impl TyFunctionDecl {
             return_type,
             type_parameters: Default::default(),
             where_clause,
+            is_trait_method_dummy: false,
         }
     }
 

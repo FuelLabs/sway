@@ -39,14 +39,12 @@ impl Diagnostic {
     pub fn labels(&self) -> Vec<&Label> {
         let mut labels = Vec::<&Label>::new();
 
-        for hint in self.hints.iter().filter(|hint| hint.is_in_source()) {
-            labels.push(hint);
+        if self.issue.is_in_source() {
+            labels.push(&self.issue);
         }
 
-        // If the issue is in source and there are no hints that override the issue,
-        // add the issue to the labels.
-        if self.issue.is_in_source() && self.hints.iter().all(|hint| hint.span != self.issue.span) {
-            labels.push(&self.issue);
+        for hint in self.hints.iter().filter(|hint| hint.is_in_source()) {
+            labels.push(hint);
         }
 
         labels
@@ -121,6 +119,7 @@ pub enum Level {
 pub enum LabelType {
     #[default]
     Info,
+    Help,
     Warning,
     Error,
 }
@@ -150,6 +149,10 @@ pub struct Label {
 impl Label {
     pub fn info(source_engine: &SourceEngine, span: Span, text: String) -> Label {
         Self::new(source_engine, LabelType::Info, span, text)
+    }
+
+    pub fn help(source_engine: &SourceEngine, span: Span, text: String) -> Label {
+        Self::new(source_engine, LabelType::Help, span, text)
     }
 
     pub fn warning(source_engine: &SourceEngine, span: Span, text: String) -> Label {
@@ -289,6 +292,12 @@ impl Hint {
     pub fn info(source_engine: &SourceEngine, span: Span, text: String) -> Self {
         Self {
             label: Label::info(source_engine, span, text),
+        }
+    }
+
+    pub fn help(source_engine: &SourceEngine, span: Span, text: String) -> Self {
+        Self {
+            label: Label::help(source_engine, span, text),
         }
     }
 

@@ -21,6 +21,20 @@ fn check(unformatted: &str, expected: &str) {
 }
 
 #[test]
+fn module_doc_comments_persist() {
+    check(
+        r#"
+
+//! this is a module level doc comment
+library;
+        "#,
+        r#"//! this is a module level doc comment
+library;
+"#,
+    )
+}
+
+#[test]
 fn conserve_pub_mod() {
     check(
         r#"contract;

@@ -14,6 +14,7 @@ use crate::{
     language::{parsed::Supertrait, ty, CallPath},
     semantic_analysis::{
         declaration::{insert_supertraits_into_namespace, SupertraitOf},
+        type_check_context::EnforceTypeArguments,
         TypeCheckContext,
     },
     type_system::priv_prelude::*,

@@ -1,7 +1,7 @@
 //! Base asset and zero address constants.
 library;
 
-use ::contract_id::ContractId;
+use ::contract_id::AssetId;
 
 /// The `BASE_ASSET_ID` represents the base asset of a chain.
 ///
@@ -18,7 +18,7 @@ use ::contract_id::ContractId;
 ///     assert(BASE_ASSET_ID == msg_asset_id());
 /// }
 /// ```
-pub const BASE_ASSET_ID = ZERO_B256;
+pub const BASE_ASSET_ID: AssetId = AssetId::from(ZERO_B256);
 
 /// A B256 of zero value.
 ///

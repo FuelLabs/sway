@@ -432,6 +432,34 @@ impl Not for u256 {
     }
 }
 
+
+impl Not for u64 {
+    fn not(self) -> Self {
+        __not(self)
+    }
+}
+
+impl Not for u32 {
+    fn not(self) -> Self {
+        let v = __not(self);
+        __and(v, u32::max())
+    }
+}
+
+impl Not for u16 {
+    fn not(self) -> Self {
+        let v = __not(self);
+        __and(v, u16::max())
+    }
+}
+
+impl Not for u8 {
+    fn not(self) -> Self {
+        let v = __not(self);
+        __and(v, u8::max())
+    }
+}
+
 /// Trait to evaluate if two types are equal.
 pub trait Eq {
     /// Evaluates if two values of the same type are equal.
@@ -625,6 +653,15 @@ pub trait Ord {
     fn lt(self, other: Self) -> bool;
 }
 
+impl Ord for u256 {
+    fn gt(self, other: Self) -> bool {
+        __gt(self, other)
+    }
+    fn lt(self, other: Self) -> bool {
+        __lt(self, other)
+    }
+}
+
 impl Ord for u64 {
     fn gt(self, other: Self) -> bool {
         __gt(self, other)
@@ -735,6 +772,12 @@ pub trait BitwiseAnd {
     fn binary_and(self, other: Self) -> Self;
 }
 
+impl BitwiseAnd for u256 {
+    fn binary_and(self, other: Self) -> Self {
+        __and(self, other)
+    }
+}
+
 impl BitwiseAnd for u64 {
     fn binary_and(self, other: Self) -> Self {
         __and(self, other)
@@ -795,6 +838,12 @@ pub trait BitwiseOr {
     /// }
     /// ```
     fn binary_or(self, other: Self) -> Self;
+}
+
+impl BitwiseOr for u256 {
+    fn binary_or(self, other: Self) -> Self {
+        __or(self, other)
+    }
 }
 
 impl BitwiseOr for u64 {
@@ -859,6 +908,12 @@ pub trait BitwiseXor {
     fn binary_xor(self, other: Self) -> Self;
 }
 
+impl BitwiseXor for u256 {
+    fn binary_xor(self, other: Self) -> Self {
+        __xor(self, other)
+    }
+}
+
 impl BitwiseXor for u64 {
     fn binary_xor(self, other: Self) -> Self {
         __xor(self, other)
@@ -880,33 +935,6 @@ impl BitwiseXor for u16 {
 impl BitwiseXor for u8 {
     fn binary_xor(self, other: Self) -> Self {
         __xor(self, other)
-    }
-}
-
-impl Not for u64 {
-    fn not(self) -> Self {
-        __not(self)
-    }
-}
-
-impl Not for u32 {
-    fn not(self) -> Self {
-        let v = __not(self);
-        __and(v, u32::max())
-    }
-}
-
-impl Not for u16 {
-    fn not(self) -> Self {
-        let v = __not(self);
-        __and(v, u16::max())
-    }
-}
-
-impl Not for u8 {
-    fn not(self) -> Self {
-        let v = __not(self);
-        __and(v, u8::max())
     }
 }
 
@@ -1045,6 +1073,7 @@ trait OrdEq: Ord + Eq {
     }
 }
 
+impl OrdEq for u256 {}
 impl OrdEq for u64 {}
 impl OrdEq for u32 {}
 impl OrdEq for u16 {}
@@ -1286,5 +1315,23 @@ fn test_decompose() {
         && decomposed.3.neq(expected.3)
     {
         __revert(0)
+    }
+}
+
+use ::str::*;
+
+impl Eq for str {
+    fn eq(self, other: Self) -> bool {
+        if self.len() != other.len() {
+            false
+        } else {
+            let self_ptr = self.as_ptr();
+            let other_ptr = other.as_ptr();
+            let l = self.len();
+            asm(r1: self_ptr, r2: other_ptr, r3: l, r4) {
+                meq r4 r1 r2 r3;
+                r4: bool
+            }
+        }
     }
 }

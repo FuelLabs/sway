@@ -25,7 +25,7 @@ use crate::{
         ty::{self, TyImplItem},
         *,
     },
-    semantic_analysis::{expression::ReachableReport, *},
+    semantic_analysis::{expression::ReachableReport, type_check_context::EnforceTypeArguments, *},
     transform::to_parsed_lang::type_name_to_type_info_opt,
     type_system::*,
     Engines,
@@ -42,6 +42,8 @@ use sway_error::{
 use sway_types::{integer_bits::IntegerBits, u256::U256, Ident, Named, Span, Spanned};
 
 use rustc_hash::FxHashSet;
+
+use either::Either;
 
 use std::collections::{HashMap, VecDeque};
 
@@ -373,6 +375,7 @@ impl ty::TyExpression {
             .resolve_type_with_self(
                 handler,
                 typed_expression.return_type,
+                ctx.self_type(),
                 &expr_span,
                 EnforceTypeArguments::No,
                 None,
@@ -404,7 +407,7 @@ impl ty::TyExpression {
     fn type_check_literal(engines: &Engines, lit: Literal, span: Span) -> ty::TyExpression {
         let type_engine = engines.te();
         let return_type = match &lit {
-            Literal::String(s) => TypeInfo::Str(Length::new(s.as_str().len(), s.clone())),
+            Literal::String(_) => TypeInfo::StringSlice,
             Literal::Numeric(_) => TypeInfo::Numeric,
             Literal::U8(_) => TypeInfo::UnsignedInteger(IntegerBits::Eight),
             Literal::U16(_) => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
@@ -656,11 +659,13 @@ impl ty::TyExpression {
                     span: reachable_report.scrutinee.span.clone(),
                     warning_content: Warning::MatchExpressionUnreachableArm {
                         match_value: value.span(),
-                        preceding_arms: arms_reachability[catch_all_arm_position]
-                            .scrutinee
-                            .span
-                            .clone(),
-                        preceding_arm_is_catch_all: true,
+                        match_type: engines.help_out(type_id).to_string(),
+                        preceding_arms: Either::Right(
+                            arms_reachability[catch_all_arm_position]
+                                .scrutinee
+                                .span
+                                .clone(),
+                        ),
                         unreachable_arm: reachable_report.scrutinee.span.clone(),
                         // In this case id doesn't matter if the concrete unreachable arm is
                         // the last arm or a catch-all arm itself.
@@ -675,7 +680,9 @@ impl ty::TyExpression {
             //...but still check the arms above it for reachability
             check_interior_non_catch_all_arms_for_reachability(
                 handler,
-                &value.span(),
+                engines,
+                type_id,
+                &value,
                 &arms_reachability[..catch_all_arm_position],
             );
         }
@@ -686,7 +693,9 @@ impl ty::TyExpression {
             // check reachable report for all the arms except the last one
             check_interior_non_catch_all_arms_for_reachability(
                 handler,
-                &value.span(),
+                engines,
+                type_id,
+                &value,
                 other_arms_reachability,
             );
 
@@ -696,16 +705,33 @@ impl ty::TyExpression {
                     span: last_arm_report.scrutinee.span.clone(),
                     warning_content: Warning::MatchExpressionUnreachableArm {
                         match_value: value.span(),
-                        preceding_arms: Span::join_all(
+                        match_type: engines.help_out(type_id).to_string(),
+                        preceding_arms: Either::Left(
                             other_arms_reachability
                                 .iter()
-                                .map(|report| report.scrutinee.span.clone()),
+                                .map(|report| report.scrutinee.span.clone())
+                                .collect(),
                         ),
-                        preceding_arm_is_catch_all: false,
                         unreachable_arm: last_arm_report.scrutinee.span.clone(),
                         is_last_arm: true,
                         is_catch_all_arm: last_arm_report.scrutinee.is_catch_all(),
                     },
+                });
+            }
+        }
+
+        // Emit errors for eventual multiple definitions of variables.
+        // These errors can be carried on. The desugared version will treat
+        // the duplicates as shadowing, which is fine for the rest of compilation.
+        for scrutinee in typed_scrutinees.iter() {
+            for duplicate in collect_duplicate_match_pattern_variables(scrutinee) {
+                handler.emit_err(CompileError::MultipleDefinitionsOfMatchArmVariable {
+                    match_value: value.span(),
+                    match_type: engines.help_out(type_id).to_string(),
+                    first_definition: duplicate.first_definition.1,
+                    first_definition_is_struct_field: duplicate.first_definition.0,
+                    duplicate: duplicate.duplicate.1,
+                    duplicate_is_struct_field: duplicate.duplicate.0,
                 });
             }
         }
@@ -748,7 +774,9 @@ impl ty::TyExpression {
 
         fn check_interior_non_catch_all_arms_for_reachability(
             handler: &Handler,
-            match_value: &Span,
+            engines: &Engines,
+            type_id: TypeId,
+            match_value: &Expression,
             arms_reachability: &[ReachableReport],
         ) {
             for (index, reachable_report) in arms_reachability.iter().enumerate() {
@@ -756,13 +784,14 @@ impl ty::TyExpression {
                     handler.emit_warn(CompileWarning {
                         span: reachable_report.scrutinee.span.clone(),
                         warning_content: Warning::MatchExpressionUnreachableArm {
-                            match_value: match_value.clone(),
-                            preceding_arms: Span::join_all(
+                            match_value: match_value.span(),
+                            match_type: engines.help_out(type_id).to_string(),
+                            preceding_arms: Either::Left(
                                 arms_reachability[..index]
                                     .iter()
-                                    .map(|report| report.scrutinee.span.clone()),
+                                    .map(|report| report.scrutinee.span.clone())
+                                    .collect(),
                             ),
-                            preceding_arm_is_catch_all: false,
                             unreachable_arm: reachable_report.scrutinee.span.clone(),
                             is_last_arm: false,
                             is_catch_all_arm: false,
@@ -798,6 +827,7 @@ impl ty::TyExpression {
             .resolve_type_with_self(
                 handler,
                 type_engine.insert(engines, asm.return_type.clone()),
+                ctx.self_type(),
                 &asm_span,
                 EnforceTypeArguments::No,
                 None,
@@ -989,8 +1019,7 @@ impl ty::TyExpression {
 
         // take any trait items that apply to `StorageKey<T>` and copy them to the
         // monomorphized type
-        ctx.namespace
-            .insert_trait_implementation_for_type(engines, access_type);
+        ctx.insert_trait_implementation_for_type(access_type);
 
         Ok(ty::TyExpression {
             expression: ty::TyExpressionVariant::StorageAccess(storage_access),
@@ -1386,12 +1415,11 @@ impl ty::TyExpression {
             Err(_) => return None,
         };
 
-        let const_decl_ref = match ctx.namespace.find_constant_for_type(
+        let const_decl_ref = match ctx.find_constant_for_type(
             const_probe_handler,
             struct_type_id.unwrap(),
             &suffix,
             ctx.self_type(),
-            ctx.engines(),
         ) {
             Ok(Some(val)) => val,
             Ok(None) | Err(_) => return None,
@@ -1531,7 +1559,7 @@ impl ty::TyExpression {
         )?;
 
         // Insert the abi methods into the namespace.
-        ctx.namespace.insert_trait_implementation(
+        ctx.insert_trait_implementation(
             handler,
             abi_name.clone(),
             vec![],
@@ -1540,7 +1568,6 @@ impl ty::TyExpression {
             &span,
             Some(span.clone()),
             false,
-            engines,
         )?;
 
         let exp = ty::TyExpression {

@@ -13,7 +13,7 @@ use crate::{
         ty::{self, TyCodeBlock},
         Visibility,
     },
-    semantic_analysis::*,
+    semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
 };
 use sway_types::{style::is_snake_case, Spanned};
@@ -117,6 +117,7 @@ impl ty::TyFunctionDecl {
             .resolve_type_with_self(
                 handler,
                 return_type.type_id,
+                ctx.self_type(),
                 &return_type.span,
                 EnforceTypeArguments::Yes,
                 None,
@@ -146,6 +147,7 @@ impl ty::TyFunctionDecl {
             is_contract_call,
             purity,
             where_clause,
+            is_trait_method_dummy: false,
         };
 
         Ok(function_decl)
@@ -281,6 +283,7 @@ fn test_function_selector_behavior() {
         visibility: Visibility::Public,
         is_contract_call: false,
         where_clause: vec![],
+        is_trait_method_dummy: false,
     };
 
     let selector_text = decl
@@ -302,7 +305,10 @@ fn test_function_selector_behavior() {
                 mutability_span: Span::dummy(),
                 type_argument: engines
                     .te()
-                    .insert(&engines, TypeInfo::Str(Length::new(5, Span::dummy())))
+                    .insert(
+                        &engines,
+                        TypeInfo::StringArray(Length::new(5, Span::dummy())),
+                    )
                     .into(),
             },
             ty::TyFunctionParameter {
@@ -314,9 +320,10 @@ fn test_function_selector_behavior() {
                     type_id: engines
                         .te()
                         .insert(&engines, TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
-                    initial_type_id: engines
-                        .te()
-                        .insert(&engines, TypeInfo::Str(Length::new(5, Span::dummy()))),
+                    initial_type_id: engines.te().insert(
+                        &engines,
+                        TypeInfo::StringArray(Length::new(5, Span::dummy())),
+                    ),
                     span: Span::dummy(),
                     call_path_tree: None,
                 },
@@ -329,6 +336,7 @@ fn test_function_selector_behavior() {
         visibility: Visibility::Public,
         is_contract_call: false,
         where_clause: vec![],
+        is_trait_method_dummy: false,
     };
 
     let selector_text = decl

@@ -14,14 +14,14 @@ forc-tracing = { version = "0.45.0", path = "../forc-tracing" }
 forc-util = { version = "0.45.0", path = "../forc-util" }
 ropey = "1.5"
 serde = { version = "1.0", features = ["derive"] }
-serde_ignored = "0.1"
+serde_ignored = "0.1.9"
 sway-ast = { version = "0.45.0", path = "../sway-ast" }
 sway-core = { version = "0.45.0", path = "../sway-core" }
 sway-error = { version = "0.45.0", path = "../sway-error" }
 sway-parse = { version = "0.45.0", path = "../sway-parse" }
 sway-types = { version = "0.45.0", path = "../sway-types" }
 thiserror = "1.0.30"
-toml = "0.5"
+toml = { version = "0.7", features = ["parse"] }
 
 [dev-dependencies]
 forc-util = { path = "../forc-util" }

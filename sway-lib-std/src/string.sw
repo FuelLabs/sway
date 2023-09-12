@@ -1,9 +1,10 @@
 library;
 
+use ::assert::assert;
 use ::bytes::Bytes;
 use ::convert::From;
+use ::hash::{Hash, Hasher};
 use ::option::Option;
-use ::assert::assert;
 
 
 /// A UTF-8 encoded growable string.
@@ -117,23 +118,15 @@ impl String {
         }
     }
 
-    /// Converts a string literal containing ASCII encoded bytes to a `String`
-    ///
-    /// # Additional Information
-    ///
-    /// This is a temporary convenience before dynamically sized types are implemented
+    /// Converts a string slice containing ASCII encoded bytes to a `String`
     ///
     /// # Arguments
     ///
-    /// * `s` - A string literal containing ASCII encoded bytes.
+    /// * `s` - A string slice containing ASCII encoded bytes.
     ///
     /// # Returns
     ///
     /// * [String] - A `String` containing the ASCII encoded bytes.
-    ///
-    /// # Reverts
-    /// 
-    /// * When `s` is not a string literal.
     ///
     /// # Examples
     ///
@@ -144,15 +137,17 @@ impl String {
     ///     let string = String::from_ascii_str("ABCDEF");
     /// }
     /// ```
-    pub fn from_ascii_str<S>(s: S) -> Self {
-        assert(__is_str_type::<S>());
-        let len =  __size_of_str::<S>();
-        let ptr = asm(s: s) {
-            s: raw_ptr
-        };
-        let slice = asm(parts:(ptr, len)) { parts: raw_slice};
+    pub fn from_ascii_str(s: str) -> Self {
+        let str_size = s.len();
+        let str_ptr = s.as_ptr();
+
+        let mut bytes = Bytes::with_capacity(str_size);
+        bytes.len = str_size;
+
+        str_ptr.copy_bytes_to(bytes.buf.ptr(), str_size);
+        
         Self {
-            bytes: Bytes::from(slice)
+            bytes
         }
     }
 
@@ -256,6 +251,18 @@ impl From<raw_slice> for String {
 
     fn into(self) -> raw_slice {
         asm(ptr: (self.bytes.buf.ptr(), self.bytes.len)) { ptr: raw_slice }
+    }
+}
+
+impl Eq for String {
+    fn eq(self, other: Self) -> bool {
+        self.bytes == other.bytes
+    }
+}
+
+impl Hash for String {
+    fn hash(self, ref mut state: Hasher) {
+        state.write(self.bytes);
     }
 }
 
@@ -478,4 +485,26 @@ fn string_test_with_capacity() {
     let mut string = String::with_capacity(4);
 
     assert(string.capacity() == 4);
+}
+
+#[test]
+fn string_test_equal() {
+    let string1 = String::from_ascii_str("fuel");
+    let string2 = String::from_ascii_str("fuel");
+    let string3 = String::from_ascii_str("blazingly fast");
+
+    assert(string1 == string2);
+    assert(string1 != string3);
+}
+
+#[test]
+fn string_test_hash() {
+    use ::hash::sha256;
+    
+    let mut bytes = Bytes::new();
+    bytes.push(0u8);
+
+    let string = String::from(bytes);
+
+    assert(sha256(string) == sha256(bytes));
 }
