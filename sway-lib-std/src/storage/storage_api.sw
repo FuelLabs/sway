@@ -150,7 +150,7 @@ pub fn clear<T>(slot: b256, offset: u64) -> bool {
 /// # Arguments
 ///
 /// * `slot`: [b256] - The starting address at which something should be stored.
-/// * `offset`: [u64] - The offset off of `slot` to store the a value.
+/// * `offset`: [u64] - The offset from `slot` to store the value.
 ///
 /// # Returns
 ///
