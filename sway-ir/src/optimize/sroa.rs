@@ -4,8 +4,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     combine_indices, compute_escaped_symbols, get_loaded_ptr_values, get_stored_ptr_values,
-    get_symbols, AnalysisResults, Constant, Context, Function, Instruction, IrError, LocalVar,
-    Pass, PassMutability, ScopedPass, Symbol, Type, Value,
+    get_symbols, AnalysisResults, Constant, ConstantValue, Context, Function, Instruction, IrError,
+    LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type, Value,
 };
 
 pub const SROA_NAME: &str = "sroa";
@@ -43,18 +43,37 @@ fn split_aggregate(
         aggr_base_name: &String,
         map: &mut FxHashMap<u32, LocalVar>,
         ty: Type,
+        initializer: Option<Constant>,
         base_off: &mut u32,
     ) {
+        fn constant_index(c: &Constant, idx: usize) -> Constant {
+            match &c.value {
+                ConstantValue::Array(cs) | ConstantValue::Struct(cs) => cs
+                    .get(idx)
+                    .expect("Malformed initializer. Cannot index into sub-initializer")
+                    .clone(),
+                _ => panic!("Expected only array or struct const initializers"),
+            }
+        }
         if !super::target_fuel::is_demotable_type(context, &ty) {
             let ty_size: u32 = ty.size_in_bytes(context).try_into().unwrap();
             let name = aggr_base_name.clone() + &base_off.to_string();
-            let scalarised_local = function.new_unique_local_var(context, name, ty, None, true);
+            let scalarised_local =
+                function.new_unique_local_var(context, name, ty, initializer, false);
             map.insert(*base_off, scalarised_local);
             *base_off += ty_size;
         } else {
             let mut i = 0;
             while let Some(member_ty) = ty.get_indexed_type(context, &[i]) {
-                split_type(context, function, aggr_base_name, map, member_ty, base_off);
+                split_type(
+                    context,
+                    function,
+                    aggr_base_name,
+                    map,
+                    member_ty,
+                    initializer.as_ref().map(|c| constant_index(c, i as usize)),
+                    base_off,
+                );
                 i += 1;
             }
         }
@@ -67,6 +86,7 @@ fn split_aggregate(
         &aggr_base_name,
         &mut res,
         ty,
+        local_aggr.get_initializer(context).cloned(),
         &mut base_off,
     );
     res
@@ -398,6 +418,7 @@ fn candidate_symbols(context: &Context, function: Function) -> FxHashSet<Symbol>
         let loaded_pointers = get_loaded_ptr_values(context, inst);
         let stored_pointers = get_stored_ptr_values(context, inst);
 
+        let inst = inst.get_instruction(context).unwrap();
         for ptr in loaded_pointers.iter().chain(stored_pointers.iter()) {
             let syms = get_symbols(context, *ptr);
             if syms.len() != 1 {
@@ -409,7 +430,6 @@ fn candidate_symbols(context: &Context, function: Function) -> FxHashSet<Symbol>
             if combine_indices(context, *ptr).map_or(false, |indices| {
                 indices.iter().any(|idx| !idx.is_constant(context))
             }) || ptr.match_ptr_type(context).is_some_and(|pointee_ty| {
-                let inst = inst.get_instruction(context).unwrap();
                 super::target_fuel::is_demotable_type(context, &pointee_ty)
                     && !matches!(inst, Instruction::MemCopyVal { .. })
             }) {
