@@ -147,7 +147,7 @@ pub(crate) fn semantic_tokens_request(server: &ServerState, uri: &Url) {
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let response = request::handle_semantic_tokens_full(server, params.clone()).unwrap();
+    let response = request::handle_semantic_tokens_full(server, params).unwrap();
     eprintln!("{:#?}", response);
     if let Some(SemanticTokensResult::Tokens(tokens)) = response {
         assert!(!tokens.data.is_empty());
@@ -160,7 +160,7 @@ pub(crate) fn document_symbol_request(server: &ServerState, uri: &Url) {
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let response = request::handle_document_symbol(server, params.clone()).unwrap();
+    let response = request::handle_document_symbol(server, params).unwrap();
     if let Some(DocumentSymbolResponse::Flat(res)) = response {
         assert!(!res.is_empty());
     }
@@ -176,7 +176,7 @@ pub(crate) fn format_request(server: &ServerState, uri: &Url) {
         },
         work_done_progress_params: Default::default(),
     };
-    let response = request::handle_formatting(server, params.clone()).unwrap();
+    let response = request::handle_formatting(server, params).unwrap();
     assert!(!response.unwrap().is_empty());
 }
 
@@ -192,7 +192,7 @@ pub(crate) fn highlight_request(server: &ServerState, uri: &Url) {
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let response = request::handle_document_highlight(server, params.clone()).unwrap();
+    let response = request::handle_document_highlight(server, params).unwrap();
     let expected = vec![
         DocumentHighlight {
             range: Range {
@@ -230,7 +230,7 @@ pub(crate) fn code_lens_empty_request(server: &ServerState, uri: &Url) {
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let response = request::handle_code_lens(server, params.clone()).unwrap();
+    let response = request::handle_code_lens(server, params).unwrap();
     assert_eq!(response.unwrap().len(), 0);
 }
 
@@ -240,7 +240,7 @@ pub(crate) fn code_lens_request(server: &ServerState, uri: &Url) {
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let response = request::handle_code_lens(server, params.clone()).unwrap();
+    let response = request::handle_code_lens(server, params).unwrap();
     let expected = vec![
         CodeLens {
             range: Range {
@@ -320,7 +320,7 @@ pub(crate) fn completion_request(server: &ServerState, uri: &Url) {
             trigger_character: Some(".".to_string()),
         }),
     };
-    let res = request::handle_completion(server, params.clone()).unwrap();
+    let res = request::handle_completion(server, params).unwrap();
     let expected = CompletionResponse::Array(vec![
         CompletionItem {
             label: "a".to_string(),
@@ -466,7 +466,7 @@ pub(crate) fn prepare_rename_request<'a>(
             character: rename.req_char,
         },
     };
-    request::handle_prepare_rename(server, params.clone()).unwrap()
+    request::handle_prepare_rename(server, params).unwrap()
 }
 
 pub(crate) fn rename_request<'a>(server: &ServerState, rename: &'a Rename<'a>) -> WorkspaceEdit {
@@ -483,6 +483,6 @@ pub(crate) fn rename_request<'a>(server: &ServerState, rename: &'a Rename<'a>) -
         new_name: rename.new_name.to_string(),
         work_done_progress_params: Default::default(),
     };
-    let worspace_edit = request::handle_rename(server, params.clone()).unwrap();
+    let worspace_edit = request::handle_rename(server, params).unwrap();
     worspace_edit.unwrap()
 }

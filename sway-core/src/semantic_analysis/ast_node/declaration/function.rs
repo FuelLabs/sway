@@ -305,7 +305,10 @@ fn test_function_selector_behavior() {
                 mutability_span: Span::dummy(),
                 type_argument: engines
                     .te()
-                    .insert(&engines, TypeInfo::Str(Length::new(5, Span::dummy())))
+                    .insert(
+                        &engines,
+                        TypeInfo::StringArray(Length::new(5, Span::dummy())),
+                    )
                     .into(),
             },
             ty::TyFunctionParameter {
@@ -317,9 +320,10 @@ fn test_function_selector_behavior() {
                     type_id: engines
                         .te()
                         .insert(&engines, TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
-                    initial_type_id: engines
-                        .te()
-                        .insert(&engines, TypeInfo::Str(Length::new(5, Span::dummy()))),
+                    initial_type_id: engines.te().insert(
+                        &engines,
+                        TypeInfo::StringArray(Length::new(5, Span::dummy())),
+                    ),
                     span: Span::dummy(),
                     call_path_tree: None,
                 },

@@ -263,7 +263,7 @@ pub fn type_info_to_symbol_kind(
         TypeInfo::UnsignedInteger(..) | TypeInfo::Boolean | TypeInfo::B256 => {
             SymbolKind::BuiltinType
         }
-        TypeInfo::Numeric | TypeInfo::Str(..) => SymbolKind::NumericLiteral,
+        TypeInfo::Numeric | TypeInfo::StringArray(..) => SymbolKind::NumericLiteral,
         TypeInfo::Custom { .. } | TypeInfo::Struct { .. } | TypeInfo::Contract => {
             SymbolKind::Struct
         }

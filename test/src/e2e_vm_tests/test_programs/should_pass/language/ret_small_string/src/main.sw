@@ -1,5 +1,5 @@
 script;
 
 fn main() -> str[3] {
-    "foo"
+    __to_str_array("foo")
 }

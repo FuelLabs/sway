@@ -4,7 +4,7 @@ use std::hash::*;
 
 impl Hash for str[4] {
     fn hash(self, ref mut state: Hasher) {
-        state.write_str(self);
+        state.write_str_array(self);
     }
 }
 
@@ -46,7 +46,7 @@ abi MyContract {
     fn sha256_u32(value: u32) -> b256;
     fn sha256_u64(value: u64) -> b256;
     fn sha256_bool(value: bool) -> b256;
-    fn sha256_str(value: str[4]) -> b256;
+    fn sha256_str_array(value: str[4]) -> b256;
     fn sha256_b256(value: b256) -> b256;
     fn sha256_tuple(value: (bool, u64)) -> b256;
     fn sha256_array(value1: u64, value2: u64) -> b256;
@@ -72,7 +72,7 @@ enum Location {
 }
 
 struct Person {
-    name: str[4],
+    name: str,
     age: u8,
     birth_place: Location,
     stats: Stats,
@@ -106,7 +106,7 @@ impl MyContract for Contract {
         sha256(value)
     }
 
-    fn sha256_str(value: str[4]) -> b256 {
+    fn sha256_str_array(value: str[4]) -> b256 {
         sha256(value)
     }
 

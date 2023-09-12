@@ -247,7 +247,8 @@ impl TypeSubstMap {
             | (TypeInfo::Numeric, TypeInfo::Numeric)
             | (TypeInfo::Contract, TypeInfo::Contract)
             | (TypeInfo::ErrorRecovery(_), TypeInfo::ErrorRecovery(_))
-            | (TypeInfo::Str(_), TypeInfo::Str(_))
+            | (TypeInfo::StringSlice, TypeInfo::StringSlice)
+            | (TypeInfo::StringArray(_), TypeInfo::StringArray(_))
             | (TypeInfo::UnsignedInteger(_), TypeInfo::UnsignedInteger(_))
             | (TypeInfo::ContractCaller { .. }, TypeInfo::ContractCaller { .. }) => TypeSubstMap {
                 mapping: BTreeMap::new(),
@@ -423,7 +424,8 @@ impl TypeSubstMap {
                 type_engine.insert(engines, TypeInfo::Slice(ty))
             }),
             TypeInfo::Unknown
-            | TypeInfo::Str(..)
+            | TypeInfo::StringArray(..)
+            | TypeInfo::StringSlice
             | TypeInfo::UnsignedInteger(..)
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }

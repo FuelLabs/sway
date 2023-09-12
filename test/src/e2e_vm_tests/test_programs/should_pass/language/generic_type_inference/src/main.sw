@@ -5,7 +5,7 @@ mod utils;
 use utils::*;
 
 struct CustomType {
-    name: str[3],
+    name: str,
 }
 
 enum MyResult<T, E> {

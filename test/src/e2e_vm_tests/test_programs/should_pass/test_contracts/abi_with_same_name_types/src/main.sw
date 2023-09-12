@@ -20,6 +20,6 @@ impl MyContract for Contract {
         _arg2: MyStruct2,
         _arg3: Option<u64>,
     ) -> str[6] {
-        "fuel42"
+        __to_str_array("fuel42")
     }
 }

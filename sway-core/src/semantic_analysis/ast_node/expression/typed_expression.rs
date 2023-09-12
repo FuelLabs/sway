@@ -407,7 +407,7 @@ impl ty::TyExpression {
     fn type_check_literal(engines: &Engines, lit: Literal, span: Span) -> ty::TyExpression {
         let type_engine = engines.te();
         let return_type = match &lit {
-            Literal::String(s) => TypeInfo::Str(Length::new(s.as_str().len(), s.clone())),
+            Literal::String(_) => TypeInfo::StringSlice,
             Literal::Numeric(_) => TypeInfo::Numeric,
             Literal::U8(_) => TypeInfo::UnsignedInteger(IntegerBits::Eight),
             Literal::U16(_) => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
@@ -659,6 +659,7 @@ impl ty::TyExpression {
                     span: reachable_report.scrutinee.span.clone(),
                     warning_content: Warning::MatchExpressionUnreachableArm {
                         match_value: value.span(),
+                        match_type: engines.help_out(type_id).to_string(),
                         preceding_arms: Either::Right(
                             arms_reachability[catch_all_arm_position]
                                 .scrutinee
@@ -679,7 +680,9 @@ impl ty::TyExpression {
             //...but still check the arms above it for reachability
             check_interior_non_catch_all_arms_for_reachability(
                 handler,
-                &value.span(),
+                engines,
+                type_id,
+                &value,
                 &arms_reachability[..catch_all_arm_position],
             );
         }
@@ -690,7 +693,9 @@ impl ty::TyExpression {
             // check reachable report for all the arms except the last one
             check_interior_non_catch_all_arms_for_reachability(
                 handler,
-                &value.span(),
+                engines,
+                type_id,
+                &value,
                 other_arms_reachability,
             );
 
@@ -700,6 +705,7 @@ impl ty::TyExpression {
                     span: last_arm_report.scrutinee.span.clone(),
                     warning_content: Warning::MatchExpressionUnreachableArm {
                         match_value: value.span(),
+                        match_type: engines.help_out(type_id).to_string(),
                         preceding_arms: Either::Left(
                             other_arms_reachability
                                 .iter()
@@ -721,6 +727,7 @@ impl ty::TyExpression {
             for duplicate in collect_duplicate_match_pattern_variables(scrutinee) {
                 handler.emit_err(CompileError::MultipleDefinitionsOfMatchArmVariable {
                     match_value: value.span(),
+                    match_type: engines.help_out(type_id).to_string(),
                     first_definition: duplicate.first_definition.1,
                     first_definition_is_struct_field: duplicate.first_definition.0,
                     duplicate: duplicate.duplicate.1,
@@ -767,7 +774,9 @@ impl ty::TyExpression {
 
         fn check_interior_non_catch_all_arms_for_reachability(
             handler: &Handler,
-            match_value: &Span,
+            engines: &Engines,
+            type_id: TypeId,
+            match_value: &Expression,
             arms_reachability: &[ReachableReport],
         ) {
             for (index, reachable_report) in arms_reachability.iter().enumerate() {
@@ -775,7 +784,8 @@ impl ty::TyExpression {
                     handler.emit_warn(CompileWarning {
                         span: reachable_report.scrutinee.span.clone(),
                         warning_content: Warning::MatchExpressionUnreachableArm {
-                            match_value: match_value.clone(),
+                            match_value: match_value.span(),
+                            match_type: engines.help_out(type_id).to_string(),
                             preceding_arms: Either::Left(
                                 arms_reachability[..index]
                                     .iter()
