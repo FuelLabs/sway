@@ -77,13 +77,11 @@ struct TestContext {
 }
 
 fn print_receipt(receipt: &Receipt) {
-    match receipt {
-        Receipt::ReturnData { data, .. } => {
-            if let Some(data) = data {
-                println!("Data: {:?}", data);
-            }
-        },
-        _ => {}
+    if let Receipt::ReturnData {
+        data: Some(data), ..
+    } = receipt
+    {
+        println!("Data: {:?}", data);
     }
 }
 
