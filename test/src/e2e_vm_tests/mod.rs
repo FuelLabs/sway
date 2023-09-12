@@ -76,6 +76,17 @@ struct TestContext {
     deployed_contracts: Arc<Mutex<HashMap<String, ContractId>>>,
 }
 
+fn print_receipt(receipt: &Receipt) {
+    match receipt {
+        Receipt::ReturnData { data, .. } => {
+            if let Some(data) = data {
+                println!("Data: {:?}", data);
+            }
+        },
+        _ => {}
+    }
+}
+
 impl TestContext {
     async fn deploy_contract(&self, contract_path: String) -> Result<ContractId> {
         let mut deployed_contracts = self.deployed_contracts.lock().await;
@@ -90,7 +101,7 @@ impl TestContext {
             },
         )
     }
-    async fn run(&self, test: TestDescription, output: &mut String) -> Result<()> {
+    async fn run(&self, test: TestDescription, output: &mut String, verbose: bool) -> Result<()> {
         let context = self;
         let TestDescription {
             name,
@@ -143,6 +154,12 @@ impl TestContext {
                 let result = harness::runs_in_vm(compiled.clone(), script_data)?;
                 let result = match result {
                     harness::VMExecutionResult::Fuel(state, receipts) => {
+                        if verbose {
+                            for receipt in receipts.iter() {
+                                print_receipt(receipt);
+                            }
+                        }
+
                         match state {
                             ProgramState::Return(v) => TestResult::Return(v),
                             ProgramState::ReturnData(digest) => {
@@ -320,24 +337,27 @@ impl TestContext {
                 *output = out;
 
                 result.map(|tested_pkgs| {
-                    let failed: Vec<String> = tested_pkgs
-                        .into_iter()
-                        .flat_map(|tested_pkg| {
-                            tested_pkg
-                                .tests
-                                .into_iter()
-                                .filter(|test| !test.passed())
-                                .map(move |test| {
-                                    format!(
-                                        "{}: Test '{}' failed with state {:?}, expected: {:?}",
-                                        tested_pkg.built.descriptor.name,
-                                        test.name,
-                                        test.state,
-                                        test.condition,
-                                    )
-                                })
-                        })
-                        .collect();
+                    let mut failed = vec![];
+                    for pkg in tested_pkgs {
+                        for test in pkg.tests.into_iter() {
+                            if verbose {
+                                println!("Test: {} {}", test.name, test.passed());
+                                for log in test.logs.iter() {
+                                    println!("{:?}", log);
+                                }
+                            }
+
+                            if !test.passed() {
+                                failed.push(format!(
+                                    "{}: Test '{}' failed with state {:?}, expected: {:?}",
+                                    pkg.built.descriptor.name,
+                                    test.name,
+                                    test.state,
+                                    test.condition,
+                                ));
+                            }
+                        }
+                    }
 
                     if !failed.is_empty() {
                         println!("FAILED!! output:\n{}", output);
@@ -423,11 +443,11 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
 
         let result = if !filter_config.first_only {
             context
-                .run(test, &mut output)
+                .run(test, &mut output, run_config.verbose)
                 .instrument(tracing::trace_span!("E2E", i))
                 .await
         } else {
-            context.run(test, &mut output).await
+            context.run(test, &mut output, run_config.verbose).await
         };
 
         if let Err(err) = result {

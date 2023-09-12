@@ -8,11 +8,11 @@ The underlying virtual machine targeted by Sway is the FuelVM, specified [here](
 
 ## Word Size
 
-Words in the FuelVM are 64 bits (8 bytes), rather than the 256 bits (32 bytes) of the EVM. Therefore, primitive integers only go up to `u64`, and hashes (the `b256` type) are not in registers but rather in memory. A `b256` is therefore a pointer to a 32-byte memory region containing the hash value.
+Words in the FuelVM are 64 bits (8 bytes), rather than the 256 bits (32 bytes) of the EVM. Therefore, all primitive integers smaller and including `u64` are stored in registers; and hashes (the `b256` type) are not stored in registers but rather in memory. A `b256` is therefore a pointer to a 32-byte memory region containing the hash value.
 
 ## Unsigned Integers Only
 
-Only unsigned integers are provided as primitives: `u8`, `u16`, `u32`, and `u64`. Signed integer arithmetic is not available in the FuelVM. Signed integers and signed integer arithmetic can be implemented in high-level libraries if needed.
+Only unsigned integers are provided as primitives: `u8`, `u16`, `u32`, `u64`, and `u256`. Signed integer arithmetic is not available in the FuelVM. Signed integers and signed integer arithmetic can be implemented in high-level libraries if needed.
 
 ## Global Revert
 

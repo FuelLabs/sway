@@ -13,6 +13,7 @@ Sway has the following primitive types:
    2. `u16` (16-bit unsigned integer)
    3. `u32` (32-bit unsigned integer)
    4. `u64` (64-bit unsigned integer)
+   4. `u256` (256-bit unsigned integer)
    5. `hexadecimal`, `binary` & `base-10` syntax
 2. [Boolean](boolean.md)
    1. `bool` (true or false)
