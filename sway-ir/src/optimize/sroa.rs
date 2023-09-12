@@ -120,41 +120,53 @@ pub fn sroa(
                     continue;
                 }
 
+                struct ElmDetail {
+                    offset: u32,
+                    r#type: Type,
+                    indices: Vec<u32>,
+                }
+
                 // compute the offsets at which each (nested) field in our pointee type is at.
                 fn calc_elm_details(
                     context: &Context,
-                    offsets: &mut Vec<u32>,
-                    types: &mut Vec<Type>,
+                    details: &mut Vec<ElmDetail>,
                     ty: Type,
                     base_off: &mut u32,
+                    base_index: &mut Vec<u32>,
                 ) {
                     if !super::target_fuel::is_demotable_type(context, &ty) {
                         let ty_size: u32 = ty.size_in_bytes(context).try_into().unwrap();
-                        offsets.push(*base_off);
-                        types.push(ty);
+                        details.push(ElmDetail {
+                            offset: *base_off,
+                            r#type: ty,
+                            indices: base_index.clone(),
+                        });
                         *base_off += ty_size;
                     } else {
                         assert!(ty.is_aggregate(context));
+                        base_index.push(0);
                         let mut i = 0;
                         while let Some(member_ty) = ty.get_indexed_type(context, &[i]) {
-                            calc_elm_details(context, offsets, types, member_ty, base_off);
+                            calc_elm_details(context, details, member_ty, base_off, base_index);
                             i += 1;
+                            *base_index.last_mut().unwrap() += 1;
                         }
+                        base_index.pop();
                     }
                 }
                 let mut local_base_offset = 0;
-                let mut elm_offsets = vec![];
-                let mut elm_types = vec![];
+                let mut local_base_index = vec![];
+                let mut elm_details = vec![];
                 calc_elm_details(
                     context,
-                    &mut elm_offsets,
-                    &mut elm_types,
+                    &mut elm_details,
                     src_val_ptr
                         .get_type(context)
                         .unwrap()
                         .get_pointee_type(context)
                         .expect("Unable to determine pointee type of pointer"),
                     &mut local_base_offset,
+                    &mut local_base_index,
                 );
 
                 // Handle the source pointer first.
@@ -173,7 +185,7 @@ pub fn sroa(
                         })
                         .expect("Source of memcpy was incorrectly identified as a candidate.")
                         as u32;
-                    for elm_offset in &elm_offsets {
+                    for elm_offset in elm_details.iter().map(|detail| detail.offset) {
                         let actual_offset = elm_offset + base_offset;
                         let remapped_var = offset_scalar_map
                             .get(&src_sym)
@@ -184,30 +196,37 @@ pub fn sroa(
                             Value::new_instruction(context, Instruction::GetLocal(*remapped_var));
                         let load =
                             Value::new_instruction(context, Instruction::Load(scalarized_local));
-                        elm_local_map.insert(*elm_offset, load);
+                        elm_local_map.insert(elm_offset, load);
                         new_insts.push(scalarized_local);
                         new_insts.push(load);
                     }
                 } else {
                     // The source symbol is not a candidate. So it won't be split into scalars.
                     // We must use GEPs to load each individual element into an SSA variable.
-                    for (elm_index, (&elm_offset, &elm_type)) in
-                        elm_offsets.iter().zip(elm_types.iter()).enumerate()
+                    for ElmDetail {
+                        offset,
+                        r#type,
+                        indices,
+                    } in &elm_details
                     {
-                        let elm_index_const =
-                            Constant::new_uint(context, 64, elm_index.try_into().unwrap());
-                        let elm_index_value = Value::new_constant(context, elm_index_const);
-                        let elem_ptr_ty = Type::new_ptr(context, elm_type);
+                        let elm_index_values = indices
+                            .iter()
+                            .map(|&index| {
+                                let c = Constant::new_uint(context, 64, index.try_into().unwrap());
+                                Value::new_constant(context, c)
+                            })
+                            .collect();
+                        let elem_ptr_ty = Type::new_ptr(context, *r#type);
                         let elm_addr = Value::new_instruction(
                             context,
                             Instruction::GetElemPtr {
                                 base: src_val_ptr,
                                 elem_ptr_ty,
-                                indices: vec![elm_index_value],
+                                indices: elm_index_values,
                             },
                         );
                         let load = Value::new_instruction(context, Instruction::Load(elm_addr));
-                        elm_local_map.insert(elm_offset, load);
+                        elm_local_map.insert(*offset, load);
                         new_insts.push(elm_addr);
                         new_insts.push(load);
                     }
@@ -226,7 +245,7 @@ pub fn sroa(
                         })
                         .expect("Source of memcpy was incorrectly identified as a candidate.")
                         as u32;
-                    for elm_offset in elm_offsets {
+                    for elm_offset in elm_details.iter().map(|detail| detail.offset) {
                         let actual_offset = elm_offset + base_offset;
                         let remapped_var = offset_scalar_map
                             .get(&dst_sym)
@@ -251,23 +270,30 @@ pub fn sroa(
                 } else {
                     // The dst symbol is not a candidate. So it won't be split into scalars.
                     // We must use GEPs to store to each individual element from its SSA variable.
-                    for (elm_index, (&elm_offset, &elm_type)) in
-                        elm_offsets.iter().zip(elm_types.iter()).enumerate()
+                    for ElmDetail {
+                        offset,
+                        r#type,
+                        indices,
+                    } in elm_details
                     {
-                        let elm_index_const =
-                            Constant::new_uint(context, 64, elm_index.try_into().unwrap());
-                        let elm_index_value = Value::new_constant(context, elm_index_const);
-                        let elem_ptr_ty = Type::new_ptr(context, elm_type);
+                        let elm_index_values = indices
+                            .iter()
+                            .map(|&index| {
+                                let c = Constant::new_uint(context, 64, index.try_into().unwrap());
+                                Value::new_constant(context, c)
+                            })
+                            .collect();
+                        let elem_ptr_ty = Type::new_ptr(context, r#type);
                         let elm_addr = Value::new_instruction(
                             context,
                             Instruction::GetElemPtr {
                                 base: dst_val_ptr,
                                 elem_ptr_ty,
-                                indices: vec![elm_index_value],
+                                indices: elm_index_values,
                             },
                         );
                         let loaded_source = elm_local_map
-                            .get(&elm_offset)
+                            .get(&offset)
                             .expect("memcpy source not loaded");
                         let store = Value::new_instruction(
                             context,
