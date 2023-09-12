@@ -1,12 +1,13 @@
 use std::{
     collections::{HashMap, HashSet, VecDeque},
+    fmt::Write,
     sync::RwLock,
 };
 
 use sway_types::{Named, Spanned};
 
 use crate::{
-    concurrent_slab::ConcurrentSlab,
+    concurrent_slab::{ConcurrentSlab, ListDisplay},
     decl_engine::*,
     engine_threading::*,
     language::ty::{
@@ -320,5 +321,20 @@ impl DeclEngine {
         DeclEngine: DeclEngineGet<I, ty::TyTypeAliasDecl>,
     {
         self.get(index)
+    }
+
+    /// Pretty print method for printing the [DeclEngine]. This method is
+    /// manually implemented to avoid implementation overhead regarding using
+    /// [DisplayWithEngines].
+    pub fn pretty_print(&self, engines: &Engines) -> String {
+        let mut builder = String::new();
+        self.function_slab.with_slice(|elems| {
+            let list = elems
+                .iter()
+                .map(|type_info| format!("{:?}", engines.help_out(type_info)));
+            let list = ListDisplay { list };
+            write!(builder, "DeclEngine {{\n{list}\n}}").unwrap();
+        });
+        builder
     }
 }
