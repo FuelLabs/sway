@@ -1,5 +1,8 @@
 use crate::{
-    decl_engine::{DeclEngineInsert, DeclRefFunction, ReplaceDecls, UpdateConstantExpression},
+    decl_engine::{
+        engine::DeclEngineReplace, DeclEngineInsert, DeclRefFunction, ReplaceDecls,
+        UpdateConstantExpression,
+    },
     language::{parsed::*, ty, *},
     namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
@@ -346,16 +349,14 @@ pub(crate) fn type_check_method_application(
 
     method.replace_decls(&decl_mapping, handler, &mut ctx)?;
     let return_type = method.return_type.type_id;
-    let new_decl_ref = decl_engine
-        .insert(method)
-        .with_parent(decl_engine, (*decl_ref.id()).into());
+    decl_engine.replace(*decl_ref.id(), method);
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path,
             contract_call_params: contract_call_params_map,
             arguments: typed_arguments_with_names,
-            fn_ref: new_decl_ref,
+            fn_ref: decl_ref,
             selector,
             type_binding: Some(method_name_binding.strip_inner()),
             call_path_typeid: Some(call_path_typeid),
