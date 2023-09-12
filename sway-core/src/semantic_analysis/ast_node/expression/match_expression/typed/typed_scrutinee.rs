@@ -107,25 +107,25 @@ impl ty::TyScrutinee {
 
     /// Returns true if the [ty::TyScrutinee] consists only of catch-all scrutinee variants, recursively.
     /// Catch-all variants are .., _, and variables. E.g.:
-    /// 
+    ///
     /// ```ignore
     /// (_, x, Point { .. })
     /// ```
-    /// 
+    ///
     /// An [ty::TyScrutineeVariant::Or] is considered to be catch-all if any of its alternatives
     /// is a catch-all [ty::TyScrutinee] according to the above definition. E.g.:
-    /// 
+    ///
     /// ```ignore
     /// (1, x, Point { x: 3, y: 4 }) | (_, x, Point { .. })
     /// ```
-    /// 
+    ///
     /// A catch-all [ty::TyScrutinee] matches all the values of its corresponding type.
-    /// 
+    ///
     /// A scrutinee that matches all the values of its corresponding type but does not
     /// consists only of catch-all variants will not be considered a catch-all scrutinee.
     /// E.g., although it matches all values of `bool`, this scrutinee is not considered to
     /// be a catch-all scrutinee:
-    /// 
+    ///
     /// ```ignore
     /// true | false
     /// ```
