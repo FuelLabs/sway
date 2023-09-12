@@ -64,7 +64,7 @@ impl Format for UseTree {
         match self {
             Self::Group { imports } => {
                 // check for only one import
-                if imports.inner.value_separator_pairs.len() == 0 {
+                if imports.inner.value_separator_pairs.is_empty() {
                     if let Some(single_import) = &imports.inner.final_value_opt {
                         single_import.format(formatted_code, formatter)?;
                     }
