@@ -1,8 +1,8 @@
 #![allow(dead_code)]
+use crate::error::DocumentError;
 use lsp_types::{Position, Range, TextDocumentContentChangeEvent};
 use ropey::Rope;
-
-use crate::error::DocumentError;
+use std::{fs::File, sync::Arc};
 
 #[derive(Debug, Clone)]
 pub struct TextDocument {
@@ -12,6 +12,7 @@ pub struct TextDocument {
     version: i32,
     uri: String,
     content: Rope,
+    is_dirty: Option<Arc<fd_lock::RwLock<File>>>,
 }
 
 impl TextDocument {
@@ -22,6 +23,7 @@ impl TextDocument {
                 version: 1,
                 uri: path.into(),
                 content: Rope::from_str(&content),
+                is_dirty: None,
             })
             .map_err(|_| DocumentError::DocumentNotFound { path: path.into() })
     }
@@ -43,6 +45,19 @@ impl TextDocument {
 
     pub fn get_text(&self) -> String {
         self.content.to_string()
+    }
+
+    pub fn mark_file_as_dirty(&mut self) {
+        match forc_util::path_lock(self.uri.as_ref()) {
+            Ok(lock) => self.is_dirty = Some(lock.into()),
+            Err(err) => {
+                tracing::error!("{}", err.to_string());
+            }
+        }
+    }
+
+    pub fn mark_file_as_clean(&mut self) {
+        self.is_dirty = None;
     }
 }
 

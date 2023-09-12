@@ -310,6 +310,7 @@ impl Session {
             .try_get_mut(url.path())
             .try_unwrap()
             .map(|mut document| {
+                document.mark_file_as_dirty();
                 changes.iter().for_each(|change| {
                     document.apply_change(change);
                 });
@@ -325,6 +326,19 @@ impl Session {
                 path: url.path().to_string(),
             })
             .map(|(_, text_document)| text_document)
+    }
+
+    /// Mark the file as saved so we can remove the is_dirty lock.
+    pub fn document_saved(&self, uri: &Url) -> Result<(), DocumentError> {
+        self.documents
+            .try_get_mut(uri.path())
+            .try_unwrap()
+            .map(|mut document| {
+                document.mark_file_as_clean();
+            })
+            .ok_or_else(|| DocumentError::DocumentNotFound {
+                path: uri.path().to_string(),
+            })
     }
 
     /// Store the text document in the session.

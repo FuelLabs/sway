@@ -48,6 +48,7 @@ pub(crate) async fn handle_did_save_text_document(
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)?;
     session.sync.resync()?;
+    session.document_saved(&uri)?;
     state
         .parse_project(uri, params.text_document.uri, session.clone())
         .await;

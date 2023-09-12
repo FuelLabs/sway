@@ -61,6 +61,15 @@ fn run() -> Result<()> {
     if let Some(f) = app.file.as_ref() {
         let file_path = &PathBuf::from(f);
 
+        if is_file_open_or_dirty(file_path) {
+            bail!(
+                "File '{}' is open or dirty, please save and close it before formatting.",
+                file_path.display()
+            );
+        } else {
+            eprintln!("we good to go!");
+        }
+
         // If we're formatting a single file, find the nearest manifest if within a project.
         // Otherwise, we simply provide 'None' to format_file().
         let manifest_file = find_parent_manifest_dir(file_path)
@@ -89,6 +98,20 @@ fn run() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn is_file_open_or_dirty(filepath: &Path) -> bool {
+    match forc_util::path_lock(filepath) {
+        Ok(lock) => {
+            // If we acquired the lock, release it immediately and return false
+            drop(lock);
+            false
+        },
+        Err(_) => {
+            // If we couldn't acquire the lock, it means the file is open or dirty
+            true
+        }
+    }
 }
 
 /// Recursively get a Vec<PathBuf> of subdirectories that contains a Forc.toml.
