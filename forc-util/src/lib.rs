@@ -377,7 +377,6 @@ fn fd_lock_path(path: &Path) -> PathBuf {
 ///
 /// This function uses a hashed representation of the original path for uniqueness.
 pub fn is_dirty_path(path: &Path) -> PathBuf {
-    eprintln!("is_dirty_path: {:?}", path);
     const LOCKS_DIR_NAME: &str = ".lsp-locks";
     const LOCK_EXT: &str = "dirty";
     let file_name = hash_path(path);
