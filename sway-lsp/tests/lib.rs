@@ -1597,6 +1597,17 @@ async fn rename() {
     let _ = lsp::prepare_rename_request(&server, &rename);
     let _ = lsp::rename_request(&server, &rename);
 
+    // Type alias used in function call
+    let rename = Rename {
+        req_uri: &uri,
+        req_line: 55,
+        req_char: 8,
+        new_name: "Alias11", // from Alias1
+    };
+    let _ = lsp::prepare_rename_request(&server, &rename);
+    let result = lsp::rename_request(&server, &rename);
+    assert_eq!(result.changes.unwrap().values().next().unwrap().len(), 3);
+
     // Fail to rename keyword
     let rename = Rename {
         req_uri: &uri,
