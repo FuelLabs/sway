@@ -1,7 +1,7 @@
 category = "fail"
 
 # check: $()error
-# nextln: recursive_type_unification/src/main.sw:8:5
+# nextln: recursive_type_unification/src/main.sw:8:15
 # check: $()Some::<V>(foo::<V>(value))
 # nextln: $()Mismatched types.
 # nextln: $()expected: V

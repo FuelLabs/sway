@@ -9,6 +9,17 @@ category = "fail"
 # nextln: $()Mismatched types.
 # nextln: $()expected: Item<I>
 # nextln: $()found:    Item<A>
+# nextln: $()help: Struct type must match the type specified in its declaration.
+
+# check: $()error
+# check: type_mismatch_error_message/src/main.sw:18:5
+# check: $()fn test<A, I>(arg: A) -> Item<I> {
+# check: $()Item {
+# check: $()item: arg
+# check: $()}
+# nextln: $()Mismatched types.
+# nextln: $()expected: Item<I>
+# nextln: $()found:    Item<A>
 # nextln: $()help: Implicit return must match up with block's type.
 
 # check: $()error

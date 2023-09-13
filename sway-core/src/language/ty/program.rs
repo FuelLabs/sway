@@ -86,7 +86,7 @@ impl TyProgram {
                     let func = decl_engine.get_function(decl_id);
 
                     if func.name.as_str() == "main" {
-                        mains.push(func.clone());
+                        mains.push(*decl_id);
                     }
 
                     if !fn_declarations.insert(func.name.clone()) {
@@ -132,8 +132,7 @@ impl TyProgram {
                                 for item in items {
                                     match item {
                                         TyImplItem::Fn(method_ref) => {
-                                            let method = decl_engine.get_function(&method_ref);
-                                            abi_entries.push(method);
+                                            abi_entries.push(*method_ref.id());
                                         }
                                         TyImplItem::Constant(const_ref) => {
                                             let const_decl = decl_engine.get_constant(&const_ref);
@@ -233,12 +232,14 @@ impl TyProgram {
                     );
                 }
                 if mains.len() > 1 {
+                    let mains_last = decl_engine.get_function(mains.last().unwrap());
                     handler.emit_err(CompileError::MultipleDefinitionsOfFunction {
-                        name: mains.last().unwrap().name.clone(),
-                        span: mains.last().unwrap().name.span(),
+                        name: mains_last.name.clone(),
+                        span: mains_last.name.span(),
                     });
                 }
-                let main_func = mains.remove(0);
+                let main_func_id = mains.remove(0);
+                let main_func = decl_engine.get_function(&main_func_id);
                 match ty_engine.get(main_func.return_type.type_id) {
                     TypeInfo::Boolean => (),
                     _ => {
@@ -248,7 +249,7 @@ impl TyProgram {
                     }
                 }
                 TyProgramKind::Predicate {
-                    main_function: main_func,
+                    main_function: main_func_id,
                 }
             }
             parsed::TreeType::Script => {
@@ -260,16 +261,18 @@ impl TyProgram {
                 }
 
                 if mains.len() > 1 {
+                    let mains_last = decl_engine.get_function(mains.last().unwrap());
                     handler.emit_err(CompileError::MultipleDefinitionsOfFunction {
-                        name: mains.last().unwrap().name.clone(),
-                        span: mains.last().unwrap().name.span(),
+                        name: mains_last.name.clone(),
+                        span: mains_last.name.span(),
                     });
                 }
 
                 // A script must not return a `raw_ptr` or any type aggregating a `raw_slice`.
                 // Directly returning a `raw_slice` is allowed, which will be just mapped to a RETD.
                 // TODO: Allow returning nested `raw_slice`s when our spec supports encoding DSTs.
-                let main_func = mains.remove(0);
+                let main_func_decl_id = mains.remove(0);
+                let main_func = decl_engine.get_function(&main_func_decl_id);
 
                 for p in main_func.parameters() {
                     if let Some(error) = get_type_not_allowed_error(
@@ -315,7 +318,7 @@ impl TyProgram {
                 }
 
                 TyProgramKind::Script {
-                    main_function: main_func,
+                    main_function: main_func_decl_id,
                 }
             }
         };
@@ -323,6 +326,7 @@ impl TyProgram {
         match &typed_program_kind {
             TyProgramKind::Script { main_function, .. }
             | TyProgramKind::Predicate { main_function, .. } => {
+                let main_function = decl_engine.get_function(main_function);
                 for param in &main_function.parameters {
                     if param.is_reference && param.is_mutable {
                         handler.emit_err(CompileError::RefMutableNotAllowedInMain {
@@ -395,12 +399,14 @@ impl CollectTypesMetadata for TyProgram {
             // `main()` as the only entry point
             TyProgramKind::Script { main_function, .. }
             | TyProgramKind::Predicate { main_function, .. } => {
+                let main_function = decl_engine.get_function(main_function);
                 metadata.append(&mut main_function.collect_types_metadata(handler, ctx)?);
             }
             // For contracts, collect metadata for all the types starting with each ABI method as
             // an entry point.
             TyProgramKind::Contract { abi_entries, .. } => {
                 for entry in abi_entries.iter() {
+                    let entry = decl_engine.get_function(entry);
                     metadata.append(&mut entry.collect_types_metadata(handler, ctx)?);
                 }
             }
@@ -455,10 +461,18 @@ impl CollectTypesMetadata for TyProgram {
 
 #[derive(Clone, Debug)]
 pub enum TyProgramKind {
-    Contract { abi_entries: Vec<TyFunctionDecl> },
-    Library { name: String },
-    Predicate { main_function: TyFunctionDecl },
-    Script { main_function: TyFunctionDecl },
+    Contract {
+        abi_entries: Vec<DeclId<TyFunctionDecl>>,
+    },
+    Library {
+        name: String,
+    },
+    Predicate {
+        main_function: DeclId<TyFunctionDecl>,
+    },
+    Script {
+        main_function: DeclId<TyFunctionDecl>,
+    },
 }
 
 impl TyProgramKind {
@@ -485,20 +499,19 @@ impl TyProgramKind {
 fn disallow_impure_functions(
     decl_engine: &DeclEngine,
     declarations: &[TyDecl],
-    mains: &[TyFunctionDecl],
+    mains: &[DeclId<TyFunctionDecl>],
 ) -> Vec<CompileError> {
     let mut errs: Vec<CompileError> = vec![];
     let fn_decls = declarations
         .iter()
         .filter_map(|decl| match decl {
-            TyDecl::FunctionDecl(FunctionDecl { decl_id, .. }) => {
-                Some(decl_engine.get_function(decl_id))
-            }
+            TyDecl::FunctionDecl(FunctionDecl { decl_id, .. }) => Some(*decl_id),
             _ => None,
         })
         .chain(mains.to_owned());
     let mut err_purity = fn_decls
-        .filter_map(|TyFunctionDecl { purity, name, .. }| {
+        .filter_map(|decl_id| {
+            let TyFunctionDecl { purity, name, .. } = decl_engine.get_function(&decl_id);
             if purity != Purity::Pure {
                 Some(CompileError::ImpureInNonContract { span: name.span() })
             } else {

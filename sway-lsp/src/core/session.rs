@@ -370,6 +370,7 @@ impl Session {
             ref main_function, ..
         } = typed_program.kind
         {
+            let main_function = decl_engine.get_function(main_function);
             let span = main_function.name.span();
             if let Some(source_id) = span.source_id() {
                 let path = source_engine.get_path(source_id);
