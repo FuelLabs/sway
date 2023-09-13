@@ -160,7 +160,7 @@ fn main() -> () {
         },
     };
 
-    // TODO: Once bug with Struct { .. } patterns and exhaustive match expressions is fixed, add this case as well.
+    // TODO: Once bug with Struct { .. } patterns and exhaustive match expressions is fixed (https://github.com/FuelLabs/sway/issues/4950), add this case as well:
     // let _x = match t {
     //     (true, _, s, n) => n + s.y,
     //     (false, _, s, n) => n + s.y,
@@ -170,7 +170,7 @@ fn main() -> () {
     //     },
     // };
 
-    // TODO: Once bug with Struct { .. } patterns and exhaustive match expressions is fixed, add this case as well.
+    // TODO: Once bug with Struct { .. } patterns and exhaustive match expressions is fixed (https://github.com/FuelLabs/sway/issues/4950), add this case as well:
     // let _x = match t5 {
     //     (true, _, s, n) => n + s.y,
     //     (false, _, s, n) => n + s.y,
