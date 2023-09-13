@@ -682,9 +682,9 @@ async fn go_to_definition_for_paths() {
         req_uri: &uri,
         req_line: 21,
         req_char: 4,
-        def_line: 6,
-        def_start_char: 5,
-        def_end_char: 6,
+        def_line: 4,
+        def_start_char: 11,
+        def_end_char: 12,
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/test_mod.sw",
     };
     // A impl
@@ -734,27 +734,27 @@ async fn go_to_definition_for_paths() {
     let go_to = GotoDefinition {
         req_uri: &uri,
         req_line: 19,
-        req_char: 31,
-        def_line: 2,
-        def_start_char: 5,
-        def_end_char: 8,
+        req_char: 37,
+        def_line: 17,
+        def_start_char: 11,
+        def_end_char: 14,
         def_path: "sway-lib-core/src/primitives.sw",
     };
-    // u64
+    // u64::min()
     lsp::definition_check(&server, &go_to);
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
         req_line: 13,
-        req_char: 17,
-        def_line: 230,
-        def_start_char: 5,
-        def_end_char: 9,
+        req_char: 22,
+        def_line: 247,
+        def_start_char: 11,
+        def_end_char: 14,
         def_path: "sway-lib-core/src/primitives.sw",
     };
-    // b256
+    // b256::min()
     lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 31);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 38);
 
     // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/4211 is fixed.
     // let go_to = GotoDefinition {
@@ -906,9 +906,9 @@ async fn go_to_definition_for_consts() {
         req_uri: &uri,
         req_line: 9,
         req_char: 24,
-        def_line: 20,
-        def_start_char: 5,
-        def_end_char: 9,
+        def_line: 8,
+        def_start_char: 11,
+        def_end_char: 21,
         def_path: "sway-lib-std/src/contract_id.sw",
     };
     lsp::definition_check(&server, &contract_go_to);
