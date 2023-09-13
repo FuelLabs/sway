@@ -304,13 +304,13 @@ impl ty::TyImplTrait {
         let mut new_items = vec![];
 
         handler.scope(|handler| {
-            for item in items.into_iter() {
+            for item in items.iter() {
                 match item {
                     ImplItem::Fn(fn_decl) => {
-                        let fn_decl = match ty::TyFunctionDecl::type_check(
+                        let fn_decl = match ty::TyFunctionDecl::type_check_signature(
                             handler,
                             ctx.by_ref(),
-                            fn_decl,
+                            fn_decl.clone(),
                             true,
                             true,
                         ) {
@@ -320,12 +320,14 @@ impl ty::TyImplTrait {
                         new_items.push(TyImplItem::Fn(decl_engine.insert(fn_decl)));
                     }
                     ImplItem::Constant(const_decl) => {
-                        let const_decl =
-                            match ty::TyConstantDecl::type_check(handler, ctx.by_ref(), const_decl)
-                            {
-                                Ok(res) => res,
-                                Err(_) => continue,
-                            };
+                        let const_decl = match ty::TyConstantDecl::type_check(
+                            handler,
+                            ctx.by_ref(),
+                            const_decl.clone(),
+                        ) {
+                            Ok(res) => res,
+                            Err(_) => continue,
+                        };
                         let decl_ref = decl_engine.insert(const_decl);
                         new_items.push(TyImplItem::Constant(decl_ref.clone()));
 
@@ -341,19 +343,42 @@ impl ty::TyImplTrait {
                     }
                 }
             }
-            Ok(())
-        })?;
 
-        let impl_trait = ty::TyImplTrait {
-            impl_type_parameters: new_impl_type_parameters,
-            trait_name,
-            trait_type_arguments: vec![], // this is empty because impl selfs don't support generics on the "Self" trait,
-            trait_decl_ref: None,
-            span: block_span,
-            items: new_items,
-            implementing_for,
-        };
-        Ok(impl_trait)
+            let impl_trait = ty::TyImplTrait {
+                impl_type_parameters: new_impl_type_parameters,
+                trait_name,
+                trait_type_arguments: vec![], // this is empty because impl selfs don't support generics on the "Self" trait,
+                trait_decl_ref: None,
+                span: block_span,
+                items: new_items,
+                implementing_for,
+            };
+
+            // Now lets type check the body of the functions.
+            let new_items = &impl_trait.items;
+            for (item, new_item) in items.into_iter().zip(new_items) {
+                match (item, new_item) {
+                    (ImplItem::Fn(fn_decl), TyTraitItem::Fn(decl_ref)) => {
+                        let mut ty_fn_decl = decl_engine.get_function(decl_ref.id());
+                        let new_ty_fn_decl = match ty::TyFunctionDecl::type_check_body(
+                            handler,
+                            ctx.by_ref(),
+                            fn_decl,
+                            &mut ty_fn_decl,
+                        ) {
+                            Ok(res) => res,
+                            Err(_) => continue,
+                        };
+                        decl_engine.replace(*decl_ref.id(), new_ty_fn_decl);
+                    }
+                    (ImplItem::Constant(_const_decl), TyTraitItem::Constant(_decl_ref)) => {
+                        // Already processed.
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            Ok(impl_trait)
+        })
     }
 }
 
