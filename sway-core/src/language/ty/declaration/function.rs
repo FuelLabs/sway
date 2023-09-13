@@ -44,7 +44,7 @@ pub struct TyFunctionDecl {
 
 impl DebugWithEngines for TyFunctionDecl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, _engines: &Engines) -> fmt::Result {
-        write!(f, "{:?}", self.name,)
+        write!(f, "{:?}", self.name)
     }
 }
 
