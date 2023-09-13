@@ -1095,7 +1095,7 @@ fn type_check_shift_binary_op(
                 expected: "numeric or b256".into(),
                 received: engines.help_out(return_type).to_string(),
                 help_text: "Incorrect argument type".into(),
-                span: lhs.span.clone(),
+                span: lhs.span,
             },
         ))),
     }

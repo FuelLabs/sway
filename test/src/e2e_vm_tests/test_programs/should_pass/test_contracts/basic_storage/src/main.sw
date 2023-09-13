@@ -5,6 +5,9 @@ use basic_storage_abi::*;
 const C1 = 1;
 const S5 = __to_str_array("aaaaa");
 
+const CONST_U256 = 0x0000000000000000000000000000000000000000000000000000000000000001u256;
+const CONST_B256 = 0x0000000000000000000000000000000000000000000000000000000000000001;
+
 storage {
     c1: u64 = C1,
     str0: str[0] = __to_str_array(""),
@@ -18,6 +21,9 @@ storage {
     str8: str[8] = __to_str_array("aaaaaaaa"),
     str9: str[9] = __to_str_array("aaaaaaaaa"),
     str10: str[10] = __to_str_array("aaaaaaaaaa"),
+    
+    storage_u256: u256 = CONST_U256,
+    storage_b256: b256 = CONST_B256,
 }
 
 impl BasicStorage for Contract {
