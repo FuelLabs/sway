@@ -1318,7 +1318,6 @@ impl ty::TyExpression {
                     args,
                     call_path_binding,
                     call_path_decl,
-                    &span,
                 )?
             }
             (false, Some((fn_ref, call_path_binding)), None, None) => {
