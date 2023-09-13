@@ -1815,7 +1815,7 @@ dependencies = [
  "sway-utils",
  "term-table",
  "tokio",
- "toml 0.7.6",
+ "toml 0.7.8",
  "toml_edit",
  "tracing",
  "url",
@@ -1935,7 +1935,7 @@ dependencies = [
  "sway-utils",
  "sysinfo",
  "tar",
- "toml 0.7.6",
+ "toml 0.7.8",
  "tracing",
  "url",
  "vec1",
@@ -5998,7 +5998,7 @@ dependencies = [
  "sway-types",
  "test-macros",
  "thiserror",
- "toml 0.7.6",
+ "toml 0.7.8",
 ]
 
 [[package]]
@@ -6224,7 +6224,7 @@ dependencies = [
  "sway-utils",
  "textwrap 0.16.0",
  "tokio",
- "toml 0.7.6",
+ "toml 0.7.8",
  "tracing",
 ]
 
@@ -6480,9 +6480,9 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.7.6"
+version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c17e963a819c331dcacd7ab957d80bc2b9a9c1e71c804826d2f283dd65306542"
+checksum = "dd79e69d3b627db300ff956027cc6c3798cef26d22526befdfcd12feeb6d2257"
 dependencies = [
  "serde",
  "serde_spanned",
@@ -6501,9 +6501,9 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
-version = "0.19.14"
+version = "0.19.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8123f27e969974a3dfba720fdb560be359f57b44302d280ba72e76a74480e8a"
+checksum = "1b5bb770da30e5cbfde35a2d7b9b8a2c4b8ef89548a7a6aeab5c9a576e3e7421"
 dependencies = [
  "indexmap 2.0.0",
  "serde",

@@ -43,42 +43,48 @@ impl Symbol {
 }
 
 // A value may (indirectly) refer to one or more symbols.
-pub fn get_symbols(context: &Context, val: Value) -> Vec<Symbol> {
+pub fn get_symbols(context: &Context, val: Value) -> FxHashSet<Symbol> {
     let mut visited = FxHashSet::default();
+    let mut symbols = FxHashSet::<Symbol>::default();
     fn get_symbols_rec(
         context: &Context,
+        symbols: &mut FxHashSet<Symbol>,
         visited: &mut FxHashSet<Value>,
         val: Value,
-    ) -> Vec<Symbol> {
+    ) {
         if visited.contains(&val) {
-            return vec![];
+            return;
         }
         visited.insert(val);
         match context.values[val.0].value {
-            ValueDatum::Instruction(Instruction::GetLocal(local)) => vec![Symbol::Local(local)],
+            ValueDatum::Instruction(Instruction::GetLocal(local)) => {
+                symbols.insert(Symbol::Local(local));
+            }
             ValueDatum::Instruction(Instruction::GetElemPtr { base, .. }) => {
-                get_symbols_rec(context, visited, base)
+                get_symbols_rec(context, symbols, visited, base)
             }
             ValueDatum::Argument(b) => {
                 if b.block.get_label(context) == "entry" {
-                    vec![Symbol::Arg(b)]
+                    symbols.insert(Symbol::Arg(b));
                 } else {
                     b.block
                         .pred_iter(context)
                         .map(|pred| b.get_val_coming_from(context, pred).unwrap())
-                        .flat_map(|v| get_symbols_rec(context, visited, v))
-                        .collect()
+                        .for_each(|v| get_symbols_rec(context, symbols, visited, v))
                 }
             }
-            _ => vec![],
+            _ => (),
         }
     }
-    get_symbols_rec(context, &mut visited, val)
+    get_symbols_rec(context, &mut symbols, &mut visited, val);
+    symbols
 }
 
 pub fn get_symbol(context: &Context, val: Value) -> Option<Symbol> {
     let syms = get_symbols(context, val);
-    (syms.len() == 1).then(|| syms[0])
+    (syms.len() == 1)
+        .then(|| syms.iter().next().cloned())
+        .flatten()
 }
 
 pub type EscapedSymbols = FxHashSet<Symbol>;
@@ -201,11 +207,14 @@ pub fn get_loaded_ptr_values(context: &Context, val: Value) -> Vec<Value> {
 }
 
 /// Symbols that may possibly be loaded from.
-pub fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
-    get_loaded_ptr_values(context, val)
-        .iter()
-        .flat_map(|val| get_symbols(context, *val).to_vec())
-        .collect()
+pub fn get_loaded_symbols(context: &Context, val: Value) -> FxHashSet<Symbol> {
+    let mut res = FxHashSet::default();
+    for val in get_loaded_ptr_values(context, val) {
+        for sym in get_symbols(context, val) {
+            res.insert(sym);
+        }
+    }
+    res
 }
 
 /// Pointers that may possibly be stored to.
@@ -252,11 +261,14 @@ pub fn get_stored_ptr_values(context: &Context, val: Value) -> Vec<Value> {
 }
 
 /// Symbols that may possibly be stored to.
-pub fn get_stored_symbols(context: &Context, val: Value) -> Vec<Symbol> {
-    get_stored_ptr_values(context, val)
-        .iter()
-        .flat_map(|val| get_symbols(context, *val).to_vec())
-        .collect()
+pub fn get_stored_symbols(context: &Context, val: Value) -> FxHashSet<Symbol> {
+    let mut res = FxHashSet::default();
+    for val in get_stored_ptr_values(context, val) {
+        for sym in get_symbols(context, val) {
+            res.insert(sym);
+        }
+    }
+    res
 }
 
 /// Combine a series of GEPs into one.

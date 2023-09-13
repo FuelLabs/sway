@@ -130,11 +130,13 @@ pub fn sroa(
 
                 // If neither source nor dest needs rewriting, we skip.
                 let src_sym = src_syms
-                    .get(0)
-                    .and_then(|src_sym| candidates.contains(src_sym).then_some(*src_sym));
+                    .iter()
+                    .next()
+                    .filter(|src_sym| candidates.contains(src_sym));
                 let dst_sym = dst_syms
-                    .get(0)
-                    .and_then(|dst_sym| candidates.contains(dst_sym).then_some(*dst_sym));
+                    .iter()
+                    .next()
+                    .filter(|dst_sym| candidates.contains(dst_sym));
                 if src_sym.is_none() && dst_sym.is_none() {
                     new_insts.push(inst);
                     continue;
@@ -335,10 +337,13 @@ pub fn sroa(
 
             for ptr in loaded_pointers.iter().chain(stored_pointers.iter()) {
                 let syms = get_symbols(context, *ptr);
-                if syms.len() == 1 && candidates.contains(&syms[0]) {
+                if let Some(sym) = syms
+                    .iter()
+                    .next()
+                    .filter(|sym| syms.len() == 1 && candidates.contains(sym))
+                {
                     let Some(offset) = combine_indices(context, *ptr).and_then(|indices| {
-                        syms[0]
-                            .get_type(context)
+                        sym.get_type(context)
                             .get_pointee_type(context)
                             .and_then(|pointee_ty| {
                                 pointee_ty.get_value_indexed_offset(context, &indices)
@@ -347,7 +352,7 @@ pub fn sroa(
                         continue;
                     };
                     let remapped_var = offset_scalar_map
-                        .get(&syms[0])
+                        .get(&sym)
                         .unwrap()
                         .get(&(offset as u32))
                         .unwrap();
@@ -434,7 +439,7 @@ fn candidate_symbols(context: &Context, function: Function) -> FxHashSet<Symbol>
                 super::target_fuel::is_demotable_type(context, &pointee_ty)
                     && !matches!(inst, Instruction::MemCopyVal { .. })
             }) {
-                candidates.remove(&syms[0]);
+                candidates.remove(&syms.iter().next().unwrap());
             }
         }
     }
