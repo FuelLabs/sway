@@ -51,7 +51,9 @@ impl LanguageServer for ServerState {
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
-        notification::handle_did_change_watched_files(self, params);
+        if let Err(err) = notification::handle_did_change_watched_files(self, params) {
+            tracing::error!("{}", err.to_string());
+        }
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {

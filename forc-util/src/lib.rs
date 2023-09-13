@@ -366,9 +366,30 @@ pub fn git_checkouts_directory() -> PathBuf {
 fn fd_lock_path(path: &Path) -> PathBuf {
     const LOCKS_DIR_NAME: &str = ".locks";
     const LOCK_EXT: &str = "forc-lock";
+    let file_name = hash_path(path);
+    user_forc_directory()
+        .join(LOCKS_DIR_NAME)
+        .join(file_name)
+        .with_extension(LOCK_EXT)
+}
 
-    // Hash the path to produce a file-system friendly lock file name.
-    // Append the file stem for improved readability.
+/// Constructs the path for the "dirty" flag file corresponding to the specified file.
+///
+/// This function uses a hashed representation of the original path for uniqueness.
+pub fn is_dirty_path(path: &Path) -> PathBuf {
+    eprintln!("is_dirty_path: {:?}", path);
+    const LOCKS_DIR_NAME: &str = ".lsp-locks";
+    const LOCK_EXT: &str = "dirty";
+    let file_name = hash_path(path);
+    user_forc_directory()
+        .join(LOCKS_DIR_NAME)
+        .join(file_name)
+        .with_extension(LOCK_EXT)
+}
+
+/// Hash the path to produce a file-system friendly file name.
+/// Append the file stem for improved readability.
+fn hash_path(path: &Path) -> String {
     let mut hasher = hash_map::DefaultHasher::default();
     path.hash(&mut hasher);
     let hash = hasher.finish();
@@ -376,11 +397,7 @@ fn fd_lock_path(path: &Path) -> PathBuf {
         None => format!("{hash:X}"),
         Some(stem) => format!("{hash:X}-{stem}"),
     };
-
-    user_forc_directory()
-        .join(LOCKS_DIR_NAME)
-        .join(file_name)
-        .with_extension(LOCK_EXT)
+    file_name
 }
 
 /// Create an advisory lock over the given path.
