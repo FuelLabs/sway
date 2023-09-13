@@ -130,6 +130,8 @@ impl Session {
             let _ = join_handle.join();
         }
 
+        // TODO: clean up any remaining .dirty files
+
         // Delete the temporary directory.
         self.sync.remove_temp_dir();
     }
