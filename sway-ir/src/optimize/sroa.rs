@@ -210,7 +210,7 @@ pub fn sroa(
                     for elm_offset in elm_details.iter().map(|detail| detail.offset) {
                         let actual_offset = elm_offset + base_offset;
                         let remapped_var = offset_scalar_map
-                            .get(&src_sym)
+                            .get(src_sym)
                             .unwrap()
                             .get(&(actual_offset as u32))
                             .unwrap();
@@ -270,7 +270,7 @@ pub fn sroa(
                     for elm_offset in elm_details.iter().map(|detail| detail.offset) {
                         let actual_offset = elm_offset + base_offset;
                         let remapped_var = offset_scalar_map
-                            .get(&dst_sym)
+                            .get(dst_sym)
                             .unwrap()
                             .get(&(actual_offset as u32))
                             .unwrap();
@@ -352,7 +352,7 @@ pub fn sroa(
                         continue;
                     };
                     let remapped_var = offset_scalar_map
-                        .get(&sym)
+                        .get(sym)
                         .unwrap()
                         .get(&(offset as u32))
                         .unwrap();
@@ -439,7 +439,7 @@ fn candidate_symbols(context: &Context, function: Function) -> FxHashSet<Symbol>
                 super::target_fuel::is_demotable_type(context, &pointee_ty)
                     && !matches!(inst, Instruction::MemCopyVal { .. })
             }) {
-                candidates.remove(&syms.iter().next().unwrap());
+                candidates.remove(syms.iter().next().unwrap());
             }
         }
     }
