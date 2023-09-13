@@ -186,31 +186,27 @@ Wildcard imports using `*` are supported, but it is generally recommended to use
 
 ## Reference Sway Libraries
 
-The repository [`sway-libs`](https://github.com/FuelLabs/sway-libs/) is a collection of external libraries that you can import and make use of in your Fuel applications. These libraries are meant to be learning references of common use-cases valuable for dapp development.
+The repository [`sway-libs`](https://github.com/FuelLabs/sway-libs/) is a collection of external libraries that you can import and make use of in your Fuel applications. These libraries are meant to be implementations of common use-cases valuable for dapp development.
 
 Some Sway Libraries to try out:
 
 - [Binary Merkle Proof](https://github.com/FuelLabs/sway-libs/tree/master/libs/merkle_proof)
-- [Non-Fungible Token](https://github.com/FuelLabs/sway-libs/tree/master/libs/archive/nft)
 - [Signed Integers](https://github.com/FuelLabs/sway-libs/tree/master/libs/signed_integers)
 - [Unsigned Fixed Point Number](https://github.com/FuelLabs/sway-libs/tree/master/libs/fixed_point)
+- [Ownership](https://github.com/FuelLabs/sway-libs/tree/master/libs/ownership)
+- [Token](https://github.com/FuelLabs/sway-libs/tree/master/libs/token)
 
 ### Example
 
-You can import and use a Sway Library such as the [NFT](https://github.com/FuelLabs/sway-libs/tree/master/libs/archive/nft/src) library just like any other external library.
+You can import and use a Sway Library such as the [Ownership](https://github.com/FuelLabs/sway-libs/tree/master/libs/ownership) library just like any other external library.
 
 ```sway
-use sway_libs::nft::{
-    mint,
-    transfer,
-    owner_of,
-    approve,
-};
+use ownership::Ownership;
 ```
 
 Once imported, you can use the following basic functionality of the library in your smart contract:
 
-- Minting tokens
-- Transfering tokens
-- Retrieving owner of a token
-- Approving users to transfer a token
+- Declaring an owner
+- Changing ownership
+- Renouncing ownership
+- Ensuring a function may only be called by the owner
