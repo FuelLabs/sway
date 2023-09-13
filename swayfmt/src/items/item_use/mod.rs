@@ -9,11 +9,11 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{
-    token::{Delimiter, PunctKind},
-    ItemUse, UseTree,
+use sway_ast::{ItemUse, UseTree};
+use sway_types::{
+    ast::{Delimiter, PunctKind},
+    Spanned,
 };
-use sway_types::Spanned;
 
 #[cfg(test)]
 mod tests;
@@ -63,50 +63,54 @@ impl Format for UseTree {
     ) -> Result<(), FormatterError> {
         match self {
             Self::Group { imports } => {
-                Self::open_curly_brace(formatted_code, formatter)?;
-                // sort group imports
-                let imports = imports.get();
-                let value_pairs = &imports.value_separator_pairs;
-                let mut ord_vec: Vec<String> = value_pairs
-                    .iter()
-                    .map(
-                        |(use_tree, comma_token)| -> Result<FormattedCode, FormatterError> {
-                            let mut buf = FormattedCode::new();
-                            use_tree.format(&mut buf, formatter)?;
-                            write!(buf, "{}", comma_token.span().as_str())?;
-
-                            Ok(buf)
-                        },
-                    )
-                    .collect::<Result<_, _>>()?;
-                if let Some(final_value) = &imports.final_value_opt {
-                    let mut buf = FormattedCode::new();
-                    final_value.format(&mut buf, formatter)?;
-                    write!(buf, "{}", PunctKind::Comma.as_char())?;
-
-                    ord_vec.push(buf);
-                }
-                ord_vec.sort_by_key(|x| x.to_lowercase());
-
-                match formatter.shape.code_line.line_style {
-                    LineStyle::Multiline => writeln!(
-                        formatted_code,
-                        "{}{}",
-                        formatter.shape.indent.to_string(&formatter.config)?,
-                        ord_vec.join(&format!(
-                            "\n{}",
-                            formatter.shape.indent.to_string(&formatter.config)?
-                        ))
-                    )?,
-                    _ => {
-                        let mut import_str = ord_vec.join(" ");
-                        if import_str.ends_with(PunctKind::Comma.as_char()) {
-                            import_str.pop();
-                        }
-                        write!(formatted_code, "{import_str}")?;
+                // check for only one import
+                if imports.inner.value_separator_pairs.is_empty() {
+                    if let Some(single_import) = &imports.inner.final_value_opt {
+                        single_import.format(formatted_code, formatter)?;
                     }
+                } else {
+                    Self::open_curly_brace(formatted_code, formatter)?;
+                    // sort group imports
+                    let imports = imports.get();
+                    let value_pairs = &imports.value_separator_pairs;
+                    let mut ord_vec: Vec<String> = value_pairs
+                        .iter()
+                        .map(
+                            |(use_tree, comma_token)| -> Result<FormattedCode, FormatterError> {
+                                let mut buf = FormattedCode::new();
+                                use_tree.format(&mut buf, formatter)?;
+                                write!(buf, "{}", comma_token.span().as_str())?;
+
+                                Ok(buf)
+                            },
+                        )
+                        .collect::<Result<_, _>>()?;
+                    if let Some(final_value) = &imports.final_value_opt {
+                        let mut buf = FormattedCode::new();
+                        final_value.format(&mut buf, formatter)?;
+                        write!(buf, "{}", PunctKind::Comma.as_char())?;
+
+                        ord_vec.push(buf);
+                    }
+                    ord_vec.sort_by_key(|x| x.to_lowercase());
+
+                    match formatter.shape.code_line.line_style {
+                        LineStyle::Multiline => writeln!(
+                            formatted_code,
+                            "{}{}",
+                            formatter.indent_str()?,
+                            ord_vec.join(&format!("\n{}", formatter.indent_str()?))
+                        )?,
+                        _ => {
+                            let mut import_str = ord_vec.join(" ");
+                            if import_str.ends_with(PunctKind::Comma.as_char()) {
+                                import_str.pop();
+                            }
+                            write!(formatted_code, "{import_str}")?;
+                        }
+                    }
+                    Self::close_curly_brace(formatted_code, formatter)?;
                 }
-                Self::close_curly_brace(formatted_code, formatter)?;
             }
             Self::Name { name } => write!(formatted_code, "{}", name.span().as_str())?,
             Self::Rename {
@@ -138,7 +142,9 @@ impl Format for UseTree {
                 )?;
                 suffix.format(formatted_code, formatter)?;
             }
-            Self::Error { .. } => {}
+            Self::Error { .. } => {
+                return Err(FormatterError::SyntaxError);
+            }
         }
 
         Ok(())
@@ -152,7 +158,7 @@ impl CurlyBrace for UseTree {
     ) -> Result<(), FormatterError> {
         match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
-                formatter.shape.block_indent(&formatter.config);
+                formatter.indent();
                 writeln!(line, "{}", Delimiter::Brace.as_open_char())?;
             }
             _ => write!(line, "{}", Delimiter::Brace.as_open_char())?,
@@ -166,11 +172,11 @@ impl CurlyBrace for UseTree {
     ) -> Result<(), FormatterError> {
         match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
-                formatter.shape.block_unindent(&formatter.config);
+                formatter.unindent();
                 write!(
                     line,
                     "{}{}",
-                    formatter.shape.indent.to_string(&formatter.config)?,
+                    formatter.indent_str()?,
                     Delimiter::Brace.as_close_char()
                 )?;
             }

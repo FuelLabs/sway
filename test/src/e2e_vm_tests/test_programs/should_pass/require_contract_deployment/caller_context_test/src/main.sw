@@ -7,7 +7,7 @@ fn main() -> bool {
     let zero = b256::min();
     let gas: u64 = u64::max();
     let amount: u64 = 11;
-    let other_contract_id = ContractId::from(0xc70b829ede0f8f6240da16224cbdeb3a1e115546a9e718720af4c951a87a07a5);
+    let other_contract_id = ContractId::from(0xa38576787f8900d66e6620548b6da8142b8bb4d129b2338609acd121ca126c10);
     let base_asset_id = BASE_ASSET_ID;
 
     let test_contract = abi(ContextTesting, other_contract_id.into());
@@ -16,7 +16,7 @@ fn main() -> bool {
     let returned_contract_id = test_contract.get_id {
         gas: gas,
         coins: 0,
-        asset_id: BASE_ASSET_ID.into(),
+        asset_id: BASE_ASSET_ID.value,
     }();
     assert(returned_contract_id.into() == other_contract_id.into());
 
@@ -25,7 +25,7 @@ fn main() -> bool {
     let returned_this_balance = test_contract.get_this_balance {
         gas: gas,
         coins: 0,
-        asset_id: BASE_ASSET_ID.into(),
+        asset_id: BASE_ASSET_ID.value,
     }(base_asset_id);
     assert(returned_this_balance == 0);
 
@@ -33,12 +33,9 @@ fn main() -> bool {
     let returned_contract_balance = test_contract.get_balance_of_contract {
         gas: gas,
         coins: 0,
-        asset_id: BASE_ASSET_ID.into(),
+        asset_id: BASE_ASSET_ID.value,
     }(base_asset_id, other_contract_id);
     assert(returned_contract_balance == 0);
-
-
-
 
     // The checks below don't work (AssertIdNotFound). The test should be
     // updated to forward coins that are actually available.

@@ -19,7 +19,7 @@ abi StorageExample {
     fn store_something();
 }
 
-impl StorageExample  for Contract {
+impl StorageExample for Contract {
     #[storage(write)]
     fn store_something() {
         storage.var1.x.write(42);

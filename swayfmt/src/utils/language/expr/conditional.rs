@@ -10,10 +10,8 @@ use crate::{
     },
 };
 use std::{fmt::Write, ops::Range};
-use sway_ast::{
-    expr::LoopControlFlow, token::Delimiter, IfCondition, IfExpr, MatchBranch, MatchBranchKind,
-};
-use sway_types::Spanned;
+use sway_ast::{expr::LoopControlFlow, IfCondition, IfExpr, MatchBranch, MatchBranchKind};
+use sway_types::{ast::Delimiter, Spanned};
 
 impl Format for IfExpr {
     fn format(
@@ -129,9 +127,9 @@ fn format_if_condition(
 ) -> Result<(), FormatterError> {
     write!(formatted_code, "{} ", if_expr.if_token.span().as_str())?;
     if formatter.shape.code_line.line_style == LineStyle::Multiline {
-        formatter.shape.block_indent(&formatter.config);
+        formatter.indent();
         if_expr.condition.format(formatted_code, formatter)?;
-        formatter.shape.block_unindent(&formatter.config);
+        formatter.unindent();
     } else {
         if_expr.condition.format(formatted_code, formatter)?;
     }
@@ -144,16 +142,24 @@ fn format_then_block(
     formatted_code: &mut FormattedCode,
     formatter: &mut Formatter,
 ) -> Result<(), FormatterError> {
+    IfExpr::open_curly_brace(formatted_code, formatter)?;
+
     if !if_expr.then_block.get().statements.is_empty()
         || if_expr.then_block.get().final_expr_opt.is_some()
     {
-        IfExpr::open_curly_brace(formatted_code, formatter)?;
         if_expr.then_block.get().format(formatted_code, formatter)?;
-        if if_expr.else_opt.is_none() {
-            IfExpr::close_curly_brace(formatted_code, formatter)?;
-        }
     } else {
-        write!(formatted_code, " {{}}")?;
+        let comments = write_comments(
+            formatted_code,
+            if_expr.then_block.span().start()..if_expr.then_block.span().end(),
+            formatter,
+        )?;
+        if !comments {
+            formatter.shape.block_unindent(&formatter.config);
+        }
+    }
+    if if_expr.else_opt.is_none() {
+        IfExpr::close_curly_brace(formatted_code, formatter)?;
     }
 
     Ok(())
@@ -175,11 +181,7 @@ fn format_else_opt(
         )?;
 
         if comments_written {
-            write!(
-                else_if_str,
-                "{}",
-                formatter.shape.indent.to_string(&formatter.config)?,
-            )?;
+            write!(else_if_str, "{}", formatter.indent_str()?,)?;
         } else {
             write!(else_if_str, " ")?;
         }
@@ -213,11 +215,7 @@ impl CurlyBrace for IfExpr {
         match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
                 formatter.shape.code_line.reset_width();
-                write!(
-                    line,
-                    "\n{}{open_brace}",
-                    formatter.shape.indent.to_string(&formatter.config)?
-                )?;
+                write!(line, "\n{}{open_brace}", formatter.indent_str()?)?;
                 formatter
                     .shape
                     .code_line
@@ -227,7 +225,7 @@ impl CurlyBrace for IfExpr {
                 write!(line, " {open_brace}")?;
             }
         }
-        formatter.shape.block_indent(&formatter.config);
+        formatter.indent();
 
         Ok(())
     }
@@ -235,7 +233,7 @@ impl CurlyBrace for IfExpr {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        formatter.shape.block_unindent(&formatter.config);
+        formatter.unindent();
         match formatter.shape.code_line.line_style {
             LineStyle::Inline => {
                 write!(line, "{}", Delimiter::Brace.as_close_char())?;
@@ -244,7 +242,7 @@ impl CurlyBrace for IfExpr {
                 write!(
                     line,
                     "{}{}",
-                    formatter.shape.indent.to_string(&formatter.config)?,
+                    formatter.indent_str()?,
                     Delimiter::Brace.as_close_char()
                 )?;
             }
@@ -304,7 +302,7 @@ impl CurlyBrace for MatchBranch {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        formatter.shape.block_indent(&formatter.config);
+        formatter.indent();
         writeln!(line, "{}", Delimiter::Brace.as_open_char())?;
 
         Ok(())
@@ -313,11 +311,11 @@ impl CurlyBrace for MatchBranch {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        formatter.shape.block_unindent(&formatter.config);
+        formatter.unindent();
         write!(
             line,
             "{}{}",
-            formatter.shape.indent.to_string(&formatter.config)?,
+            formatter.indent_str()?,
             Delimiter::Brace.as_close_char()
         )?;
 
@@ -342,16 +340,12 @@ impl Format for MatchBranchKind {
                 if block.statements.is_empty() && block.final_expr_opt.is_none() {
                     // even if there is no code block we still want to unindent
                     // before the closing brace
-                    formatter.shape.block_unindent(&formatter.config);
+                    formatter.unindent();
                 } else {
                     block.format(formatted_code, formatter)?;
                     // we handle this here to avoid needless indents
-                    formatter.shape.block_unindent(&formatter.config);
-                    write!(
-                        formatted_code,
-                        "{}",
-                        formatter.shape.indent.to_string(&formatter.config)?
-                    )?;
+                    formatter.unindent();
+                    write!(formatted_code, "{}", formatter.indent_str()?)?;
                 }
                 Self::close_curly_brace(formatted_code, formatter)?;
                 if let Some(comma_token) = comma_token_opt {
@@ -373,7 +367,7 @@ impl CurlyBrace for MatchBranchKind {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        formatter.shape.block_indent(&formatter.config);
+        formatter.indent();
         write!(line, "{}", Delimiter::Brace.as_open_char())?;
         Ok(())
     }

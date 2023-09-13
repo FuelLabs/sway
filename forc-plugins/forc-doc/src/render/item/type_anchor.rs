@@ -86,7 +86,7 @@ pub(crate) fn render_type_anchor(
         TypeInfo::UnknownGeneric { name, .. } => Ok(box_html! {
             : name.as_str();
         }),
-        TypeInfo::Str(len) => Ok(box_html! {
+        TypeInfo::StringArray(len) => Ok(box_html! {
             : len.span().as_str();
         }),
         TypeInfo::UnsignedInteger(int_bits) => {
@@ -96,6 +96,7 @@ pub(crate) fn render_type_anchor(
                 IntegerBits::Sixteen => "u16",
                 IntegerBits::ThirtyTwo => "u32",
                 IntegerBits::SixtyFour => "u64",
+                IntegerBits::V256 => "u256",
             };
             Ok(box_html! {
                 : uint;

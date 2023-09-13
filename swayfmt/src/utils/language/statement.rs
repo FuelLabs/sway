@@ -43,6 +43,9 @@ fn format_statement(
                 }
             }
         }
+        Statement::Error(_, _) => {
+            return Err(FormatterError::SyntaxError);
+        }
     }
 
     Ok(())
@@ -93,6 +96,9 @@ impl LeafSpans for Statement {
                     collected_spans.push(ByteSpan::from(semicolon_token.span()));
                 }
                 collected_spans
+            }
+            Statement::Error(spans, _) => {
+                vec![sway_types::Span::join_all(spans.iter().cloned()).into()]
             }
         }
     }

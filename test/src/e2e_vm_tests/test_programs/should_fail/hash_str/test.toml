@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()__assert_is_str_array::<S>();
+# nextln: $()Provided generic type is not of type str.

@@ -6,11 +6,11 @@ use super::{
 };
 use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedOpcode};
 use crate::decl_engine::DeclRefFunction;
-use crate::error::*;
 use crate::source_map::SourceMap;
 
 use etk_asm::asm::Assembler;
 use sway_error::error::CompileError;
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::span::Span;
 use sway_types::SourceEngine;
 
@@ -51,39 +51,33 @@ pub struct CompiledBytecode {
 impl FinalizedAsm {
     pub(crate) fn to_bytecode_mut(
         &mut self,
+        handler: &Handler,
         source_map: &mut SourceMap,
         source_engine: &SourceEngine,
-    ) -> CompileResult<CompiledBytecode> {
+    ) -> Result<CompiledBytecode, ErrorEmitted> {
         match &self.program_section {
-            InstructionSet::Fuel { ops } => {
-                to_bytecode_mut(ops, &mut self.data_section, source_map, source_engine)
-            }
+            InstructionSet::Fuel { ops } => to_bytecode_mut(
+                handler,
+                ops,
+                &mut self.data_section,
+                source_map,
+                source_engine,
+            ),
             InstructionSet::Evm { ops } => {
                 let mut assembler = Assembler::new();
                 if let Err(e) = assembler.push_all(ops.clone()) {
-                    err(
-                        vec![],
-                        vec![CompileError::InternalOwned(e.to_string(), Span::dummy())],
-                    )
+                    Err(handler.emit_err(CompileError::InternalOwned(e.to_string(), Span::dummy())))
                 } else {
-                    ok(
-                        CompiledBytecode {
-                            bytecode: assembler.take(),
-                            config_const_offsets: BTreeMap::new(),
-                        },
-                        vec![],
-                        vec![],
-                    )
+                    Ok(CompiledBytecode {
+                        bytecode: assembler.take(),
+                        config_const_offsets: BTreeMap::new(),
+                    })
                 }
             }
-            InstructionSet::MidenVM { ops } => ok(
-                CompiledBytecode {
-                    bytecode: ops.to_bytecode().into(),
-                    config_const_offsets: Default::default(),
-                },
-                vec![],
-                vec![],
-            ),
+            InstructionSet::MidenVM { ops } => Ok(CompiledBytecode {
+                bytecode: ops.to_bytecode().into(),
+                config_const_offsets: Default::default(),
+            }),
         }
     }
 }
@@ -104,20 +98,18 @@ impl fmt::Display for FinalizedAsm {
 }
 
 fn to_bytecode_mut(
+    handler: &Handler,
     ops: &Vec<AllocatedOp>,
     data_section: &mut DataSection,
     source_map: &mut SourceMap,
     source_engine: &SourceEngine,
-) -> CompileResult<CompiledBytecode> {
-    let mut errors = vec![];
-
+) -> Result<CompiledBytecode, ErrorEmitted> {
     if ops.len() & 1 != 0 {
         tracing::info!("ops len: {}", ops.len());
-        errors.push(CompileError::Internal(
+        return Err(handler.emit_err(CompileError::Internal(
             "Non-word-aligned (odd-number) ops generated. This is an invariant violation.",
             Span::new(" ".into(), 0, 0, None).unwrap(),
-        ));
-        return err(vec![], errors);
+        )));
     }
     // The below invariant is introduced to word-align the data section.
     // A noop is inserted in ASM generation if there is an odd number of ops.
@@ -183,27 +175,23 @@ fn to_bytecode_mut(
 
     buf.append(&mut data_section);
 
-    ok(
-        CompiledBytecode {
-            bytecode: buf,
-            config_const_offsets: config_offsets,
-        },
-        vec![],
-        errors,
-    )
+    Ok(CompiledBytecode {
+        bytecode: buf,
+        config_const_offsets: config_offsets,
+    })
 }
 
 /// Checks for disallowed opcodes in non-contract code.
 /// i.e., if this is a script or predicate, we can't use certain contract opcodes.
 /// See https://github.com/FuelLabs/sway/issues/350 for details.
-pub fn check_invalid_opcodes(asm: &FinalizedAsm) -> CompileResult<()> {
+pub fn check_invalid_opcodes(handler: &Handler, asm: &FinalizedAsm) -> Result<(), ErrorEmitted> {
     match &asm.program_section {
         InstructionSet::Fuel { ops } => match asm.program_kind {
-            ProgramKind::Contract | ProgramKind::Library => ok((), vec![], vec![]),
-            ProgramKind::Script => checks::check_script_opcodes(&ops[..]),
-            ProgramKind::Predicate => checks::check_predicate_opcodes(&ops[..]),
+            ProgramKind::Contract | ProgramKind::Library => Ok(()),
+            ProgramKind::Script => checks::check_script_opcodes(handler, &ops[..]),
+            ProgramKind::Predicate => checks::check_predicate_opcodes(handler, &ops[..]),
         },
-        InstructionSet::Evm { ops: _ } => ok((), vec![], vec![]),
-        InstructionSet::MidenVM { ops: _ } => ok((), vec![], vec![]),
+        InstructionSet::Evm { ops: _ } => Ok(()),
+        InstructionSet::MidenVM { ops: _ } => Ok(()),
     }
 }

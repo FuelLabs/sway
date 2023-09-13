@@ -134,11 +134,12 @@ impl<'a> Solver<'a> {
             TypeInfo::Custom { .. } => todo!(),
             TypeInfo::SelfType => todo!(),
             TypeInfo::Numeric => todo!(),
-            TypeInfo::ErrorRecovery => todo!(),
+            TypeInfo::ErrorRecovery(_) => todo!(),
             TypeInfo::Array(_, _) => todo!(),
             TypeInfo::Storage { .. } => todo!(),
             TypeInfo::Alias { .. } => todo!(),
-            TypeInfo::Str(_)
+            TypeInfo::StringArray(_)
+            | TypeInfo::StringSlice
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
             | TypeInfo::B256

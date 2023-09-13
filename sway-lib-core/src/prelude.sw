@@ -9,3 +9,4 @@ use ::raw_slice::*;
 use ::never::*;
 use ::ops::*;
 use ::storage::*;
+use ::str::*;

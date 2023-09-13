@@ -1,15 +1,16 @@
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Context, Result};
-use forc_tracing::println_yellow_err;
+use forc_tracing::println_warning;
 use forc_util::{find_nested_manifest_dir, find_parent_manifest_dir, validate_name};
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DisplayFromStr};
 use std::{
     collections::{BTreeMap, HashMap},
     path::{Path, PathBuf},
     sync::Arc,
 };
-
 use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type, BuildTarget};
+use sway_error::handler::Handler;
 use sway_utils::constants;
 
 /// The name of a workspace member package.
@@ -166,11 +167,13 @@ pub struct Network {
     pub url: String,
 }
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct ContractDependency {
     #[serde(flatten)]
     pub dependency: Dependency,
+    #[serde_as(as = "DisplayFromStr")]
     #[serde(default = "fuel_tx::Salt::default")]
     pub salt: fuel_tx::Salt,
 }
@@ -270,8 +273,8 @@ impl PackageManifestFile {
     /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
-    pub fn from_file(path: PathBuf) -> Result<Self> {
-        let path = path.canonicalize()?;
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let path = path.as_ref().canonicalize()?;
         let manifest = PackageManifest::from_file(&path)?;
         let manifest_file = Self { manifest, path };
         manifest_file.validate()?;
@@ -282,19 +285,26 @@ impl PackageManifestFile {
     /// standalone package.
     ///
     /// If this package is a member of a workspace, patches are fetched from
-    /// the workspace manifest file.
+    /// the workspace manifest file, ignoring any patch defined in the package
+    /// manifest file, even if a patch section is not defined in the namespace.
     pub fn resolve_patches(&self) -> Result<impl Iterator<Item = (String, PatchMap)>> {
-        let workspace_patches = self
-            .workspace()
-            .ok()
-            .flatten()
-            .and_then(|workspace| workspace.patch.clone());
-        let package_patches = self.patch.clone();
-        match (workspace_patches, package_patches) {
-            (Some(_), Some(_)) => bail!("Found [patch] table both in workspace and member package's manifest file. Consider removing [patch] table from package's manifest file."),
-            (Some(workspace_patches), None) => Ok(workspace_patches.into_iter()),
-            (None, Some(pkg_patches)) => Ok(pkg_patches.into_iter()),
-            (None, None) => Ok(BTreeMap::default().into_iter()),
+        if let Some(workspace) = self.workspace().ok().flatten() {
+            // If workspace is defined, passing a local patch is a warning, but the global patch is used
+            if self.patch.is_some() {
+                println_warning("Patch for the non root package will be ignored.");
+                println_warning(&format!(
+                    "Specify patch at the workspace root: {}",
+                    workspace.path().to_str().unwrap_or_default()
+                ));
+            }
+            Ok(workspace
+                .patch
+                .as_ref()
+                .cloned()
+                .unwrap_or_default()
+                .into_iter())
+        } else {
+            Ok(self.patch.as_ref().cloned().unwrap_or_default().into_iter())
         }
     }
 
@@ -315,7 +325,8 @@ impl PackageManifestFile {
     ///
     /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
-    pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
+    pub fn from_dir<P: AsRef<Path>>(manifest_dir: P) -> Result<Self> {
+        let manifest_dir = manifest_dir.as_ref();
         let dir = forc_util::find_parent_manifest_dir(manifest_dir)
             .ok_or_else(|| manifest_file_missing(manifest_dir))?;
         let path = dir.join(constants::MANIFEST_FILE_NAME);
@@ -391,10 +402,13 @@ impl PackageManifestFile {
     /// Parse and return the associated project's program type.
     pub fn program_type(&self) -> Result<TreeType> {
         let entry_string = self.entry_string()?;
-        let parse_res = parse_tree_type(entry_string);
-        parse_res
-            .value
-            .ok_or_else(|| parsing_failed(&self.project.name, parse_res.errors))
+        let handler = Handler::default();
+        let parse_res = parse_tree_type(&handler, entry_string);
+
+        parse_res.map_err(|_| {
+            let (errors, _warnings) = handler.consume();
+            parsing_failed(&self.project.name, errors)
+        })
     }
 
     /// Given the current directory and expected program type,
@@ -490,21 +504,22 @@ impl PackageManifest {
     /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
-    pub fn from_file(path: &Path) -> Result<Self> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         // While creating a `ManifestFile` we need to check if the given path corresponds to a
         // package or a workspace. While doing so, we should be printing the warnings if the given
         // file parses so that we only see warnings for the correct type of manifest.
+        let path = path.as_ref();
         let mut warnings = vec![];
         let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
-        let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
+        let toml_de = toml::de::Deserializer::new(&manifest_str);
         let mut manifest: Self = serde_ignored::deserialize(toml_de, |path| {
             let warning = format!("  WARNING! unused manifest key: {path}");
             warnings.push(warning);
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
         for warning in warnings {
-            println_yellow_err(&warning);
+            println_warning(&warning);
         }
         manifest.implicitly_include_std_if_missing();
         manifest.implicitly_include_default_build_profiles_if_missing();
@@ -533,11 +548,12 @@ impl PackageManifest {
     ///
     /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
-    pub fn from_dir(dir: &Path) -> Result<Self> {
+    pub fn from_dir<P: AsRef<Path>>(dir: P) -> Result<Self> {
+        let dir = dir.as_ref();
         let manifest_dir =
             find_parent_manifest_dir(dir).ok_or_else(|| manifest_file_missing(dir))?;
         let file_path = manifest_dir.join(constants::MANIFEST_FILE_NAME);
-        Self::from_file(&file_path)
+        Self::from_file(file_path)
     }
 
     /// Produce an iterator yielding all listed dependencies.
@@ -823,7 +839,8 @@ impl WorkspaceManifestFile {
     ///
     /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
-    pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
+    pub fn from_dir<T: AsRef<Path>>(manifest_dir: T) -> Result<Self> {
+        let manifest_dir = manifest_dir.as_ref();
         let dir =
             forc_util::find_parent_manifest_dir_with_check(manifest_dir, |possible_manifest_dir| {
                 // Check if the found manifest file is a workspace manifest file or a standalone
@@ -868,8 +885,7 @@ impl WorkspaceManifestFile {
         &self,
     ) -> Result<impl Iterator<Item = Result<PackageManifestFile>> + '_> {
         let member_paths = self.member_paths()?;
-        let member_pkg_manifests =
-            member_paths.map(|member_path| PackageManifestFile::from_dir(&member_path));
+        let member_pkg_manifests = member_paths.map(PackageManifestFile::from_dir);
         Ok(member_pkg_manifests)
     }
 
@@ -919,14 +935,14 @@ impl WorkspaceManifest {
         let mut warnings = vec![];
         let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
-        let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
+        let toml_de = toml::de::Deserializer::new(&manifest_str);
         let manifest: Self = serde_ignored::deserialize(toml_de, |path| {
             let warning = format!("  WARNING! unused manifest key: {path}");
             warnings.push(warning);
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
         for warning in warnings {
-            println_yellow_err(&warning);
+            println_warning(&warning);
         }
         Ok(manifest)
     }
@@ -1013,7 +1029,7 @@ pub fn find_dir_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
 
 #[cfg(test)]
 mod tests {
-    use super::DependencyDetails;
+    use super::*;
 
     #[test]
     fn test_invalid_dependency_details_mixed_together() {
@@ -1147,6 +1163,40 @@ mod tests {
                 .map(|e| e.to_string()),
             Some(expected_mismatch_error.to_string())
         );
+    }
+
+    #[test]
+    #[should_panic(expected = "duplicate key `foo` in table `dependencies`")]
+    fn test_error_duplicate_deps_definition() {
+        PackageManifest::from_dir("./tests/invalid/duplicate_keys").unwrap();
+    }
+
+    #[test]
+    fn test_error_duplicate_deps_definition_in_workspace() {
+        // Load each project inside a workspace and load their patches
+        // definition. There should be zero, because the file workspace file has
+        // no patches
+        //
+        // The code also prints a warning to the stdout
+        let workspace =
+            WorkspaceManifestFile::from_dir("./tests/invalid/patch_workspace_and_package").unwrap();
+        let projects: Vec<_> = workspace
+            .member_pkg_manifests()
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        assert_eq!(projects.len(), 1);
+        let patches: Vec<_> = projects[0].resolve_patches().unwrap().collect();
+        assert_eq!(patches.len(), 0);
+
+        // Load the same Forc.toml file but outside of a workspace. There should
+        // be a single entry in the patch
+        let patches: Vec<_> = PackageManifestFile::from_dir("./tests/test_package")
+            .unwrap()
+            .resolve_patches()
+            .unwrap()
+            .collect();
+        assert_eq!(patches.len(), 1);
     }
 
     #[test]

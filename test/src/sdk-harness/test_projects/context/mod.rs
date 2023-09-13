@@ -1,5 +1,11 @@
+use fuel_core::types::fuel_tx::ContractIdExt;
 use fuel_vm::consts::VM_MAX_RAM;
-use fuels::{accounts::wallet::WalletUnlocked, prelude::*, types::ContractId};
+use fuels::tx::Bytes32;
+use fuels::{
+    accounts::wallet::WalletUnlocked,
+    prelude::*,
+    types::{Bits256, ContractId},
+};
 
 abigen!(
     Contract(
@@ -69,7 +75,7 @@ async fn can_get_this_balance() {
 
     let result = context_instance
         .methods()
-        .get_this_balance(caller_id)
+        .get_this_balance(Bits256(*caller_id.asset_id(&Bytes32::zeroed())))
         .call()
         .await
         .unwrap();
@@ -91,7 +97,10 @@ async fn can_get_balance_of_contract() {
 
     let result = context_instance
         .methods()
-        .get_balance_of_contract(caller_id.clone(), caller_id.clone())
+        .get_balance_of_contract(
+            Bits256(*caller_id.asset_id(&Bytes32::zeroed())),
+            caller_id.clone(),
+        )
         .set_contracts(&[&caller_instance])
         .call()
         .await
@@ -144,7 +153,10 @@ async fn can_get_msg_id() {
         .await
         .unwrap();
 
-    assert_eq!(result.value, caller_id);
+    assert_eq!(
+        result.value,
+        Bits256(*caller_id.asset_id(&Bytes32::zeroed()))
+    );
 }
 
 #[tokio::test]

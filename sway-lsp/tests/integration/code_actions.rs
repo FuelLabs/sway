@@ -2,508 +2,432 @@
 //! The methods are used to build and send requests and notifications to the LSP service
 //! and assert the expected responses.
 
-use crate::integration::lsp::{build_request_with_id, call_request};
-use assert_json_diff::assert_json_eq;
-use serde_json::json;
-use sway_lsp::server_state::ServerState;
-use tower_lsp::{
-    jsonrpc::{Request, Response},
-    lsp_types::*,
-    LspService,
-};
+use lsp_types::*;
+use std::collections::HashMap;
+use sway_lsp::{handlers::request, server_state::ServerState};
 
-pub(crate) async fn code_action_abi_request(
-    service: &mut LspService<ServerState>,
-    uri: &Url,
-) -> Request {
-    let params = json!({
-        "textDocument": {
-            "uri": uri,
-        },
-        "range" : {
-            "start":{
-                "line": 27,
-                "character": 4
-            },
-            "end":{
-                "line": 27,
-                "character": 9
-            },
-        },
-        "context": {
-            "diagnostics": [],
-            "triggerKind": 2
-        }
-    });
-    let code_action = build_request_with_id("textDocument/codeAction", params, 1);
-    let response = call_request(service, code_action.clone()).await;
-    let uri_string = uri.to_string();
-    let expected = Response::from_ok(
-        1.into(),
-        json!([{
-            "data": uri,
-            "edit": {
-              "changes": {
-                uri_string: [
-                  {
-                    "newText": "\nimpl FooABI for Contract {\n    fn main() -> u64 {}\n}\n",
-                    "range": {
-                      "end": {
-                        "character": 0,
-                        "line": 31
-                      },
-                      "start": {
-                        "character": 0,
-                        "line": 31
-                      }
-                    }
-                  }
-                ]
-              }
-            },
-            "kind": "refactor",
-            "title": "Generate impl for `FooABI`"
-        }]),
-    );
-    assert_json_eq!(expected, response.ok().unwrap());
-    code_action
+fn create_code_action(
+    uri: Url,
+    title: String,
+    changes: HashMap<Url, Vec<TextEdit>>,
+    disabled: Option<CodeActionDisabled>,
+) -> CodeAction {
+    CodeAction {
+        title,
+        kind: Some(CodeActionKind::REFACTOR),
+        diagnostics: None,
+        edit: Some(WorkspaceEdit {
+            changes: Some(changes),
+            document_changes: None,
+            change_annotations: None,
+        }),
+        command: None,
+        is_preferred: None,
+        disabled,
+        data: Some(serde_json::to_value(uri).unwrap()),
+    }
 }
 
-pub(crate) async fn code_action_function_request(
-    service: &mut LspService<ServerState>,
-    uri: &Url,
-) -> Request {
-    let params = json!({
-        "textDocument": {
-            "uri": uri,
+fn create_code_action_params(uri: Url, range: Range) -> CodeActionParams {
+    CodeActionParams {
+        text_document: TextDocumentIdentifier { uri },
+        range,
+        context: CodeActionContext {
+            diagnostics: vec![],
+            only: None,
+            trigger_kind: Some(CodeActionTriggerKind::AUTOMATIC),
         },
-        "range" : {
-            "start": {
-                "line": 18,
-                "character": 4
-            },
-            "end": {
-                "line": 18,
-                "character": 4
-            }
-        },
-        "context": {
-            "diagnostics": [],
-            "triggerKind": 2
-        }
-    });
-    let code_action = build_request_with_id("textDocument/codeAction", params, 1);
-    let response = call_request(service, code_action.clone()).await;
-    let uri_string = uri.to_string();
-    let expected = Response::from_ok(
-        1.into(),
-        json!([
-          {
-            "data": uri,
-            "edit": {
-              "changes": {
-                uri_string: [
-                  {
-                    "newText": "/// Add a brief description.\n/// \n/// ### Additional Information\n/// \n/// Provide information beyond the core purpose or functionality.\n/// \n/// ### Reverts\n/// \n/// * List any cases where the function will revert\n/// \n/// ### Number of Storage Accesses\n/// \n/// * Reads: `0`\n/// * Writes: `0`\n/// * Clears: `0`\n/// \n/// ### Examples\n/// \n/// ```sway\n/// let x = test();\n/// ```\n",
-                    "range": {
-                      "end": {
-                        "character": 0,
-                        "line": 18
-                      },
-                      "start": {
-                        "character": 0,
-                        "line": 18
-                      }
-                    }
-                  }
-                ]
-              }
-            },
-            "kind": "refactor",
-            "title": "Generate a documentation template"
-          }
-        ]),
-    );
-    assert_json_eq!(expected, response.ok().unwrap());
-    code_action
+        work_done_progress_params: Default::default(),
+        partial_result_params: Default::default(),
+    }
 }
 
-pub(crate) async fn code_action_trait_fn_request(
-    service: &mut LspService<ServerState>,
-    uri: &Url,
-) -> Request {
-    let params = json!({
-        "textDocument": {
-            "uri": uri,
-        },
-        "range" : {
-            "start": {
-                "line": 10,
-                "character": 10
+pub(crate) fn code_action_abi_request(server: &ServerState, uri: &Url) {
+    let params = create_code_action_params(
+        uri.clone(),
+        Range {
+            start: Position {
+                line: 27,
+                character: 4,
             },
-            "end": {
-                "line": 10,
-                "character": 10
-            }
-        },
-        "context": {
-            "diagnostics": [],
-            "triggerKind": 2
-        }
-    });
-    let code_action = build_request_with_id("textDocument/codeAction", params, 1);
-    let response = call_request(service, code_action.clone()).await;
-    let uri_string = uri.to_string();
-    let expected = Response::from_ok(
-        1.into(),
-        json!([
-          {
-            "data": uri,
-            "edit": {
-              "changes": {
-                uri_string: [
-                  {
-                    "newText": "    /// Add a brief description.\n    /// \n    /// ### Additional Information\n    /// \n    /// Provide information beyond the core purpose or functionality.\n    /// \n    /// ### Returns\n    /// \n    /// * [Empty] - Add description here\n    /// \n    /// ### Reverts\n    /// \n    /// * List any cases where the function will revert\n    /// \n    /// ### Number of Storage Accesses\n    /// \n    /// * Reads: `0`\n    /// * Writes: `0`\n    /// * Clears: `0`\n    /// \n    /// ### Examples\n    /// \n    /// ```sway\n    /// let x = test_function();\n    /// ```\n",
-                    "range": {
-                      "end": {
-                        "character": 0,
-                        "line": 10
-                      },
-                      "start": {
-                        "character": 0,
-                        "line": 10
-                      }
-                    }
-                  }
-                ]
-              }
+            end: Position {
+                line: 27,
+                character: 9,
             },
-            "kind": "refactor",
-            "title": "Generate a documentation template"
-          }
-        ]),
+        },
     );
-    assert_json_eq!(expected, response.ok().unwrap());
-    code_action
+    let res = request::handle_code_action(server, params);
+    let mut changes = HashMap::new();
+    changes.insert(
+        uri.clone(),
+        vec![TextEdit {
+            range: Range {
+                start: Position {
+                    line: 31,
+                    character: 0,
+                },
+                end: Position {
+                    line: 31,
+                    character: 0,
+                },
+            },
+            new_text: "\nimpl FooABI for Contract {\n    fn main() -> u64 {}\n}\n".to_string(),
+        }],
+    );
+    let expected = vec![CodeActionOrCommand::CodeAction(create_code_action(
+        uri.clone(),
+        "Generate impl for `FooABI`".to_string(),
+        changes,
+        None,
+    ))];
+    assert_eq!(res.unwrap().unwrap(), expected);
 }
 
-pub(crate) async fn code_action_struct_request(
-    service: &mut LspService<ServerState>,
-    uri: &Url,
-) -> Request {
-    let params = json!({
-        "textDocument": {
-            "uri": uri,
+pub(crate) fn code_action_function_request(server: &ServerState, uri: &Url) {
+    let params = create_code_action_params(
+        uri.clone(),
+        Range {
+            start: Position {
+                line: 18,
+                character: 4,
+            },
+            end: Position {
+                line: 18,
+                character: 4,
+            },
         },
-        "range" : {
-            "start": {
-                "line": 19,
-                "character": 11
-            },
-            "end": {
-                "line": 19,
-                "character": 11
-            }
-        },
-        "context": {
-            "diagnostics": [],
-            "triggerKind": 2
-        }
-    });
-    let code_action = build_request_with_id("textDocument/codeAction", params, 1);
-    let response = call_request(service, code_action.clone()).await;
-    let uri_string = uri.to_string();
-    let expected = Response::from_ok(
-        1.into(),
-        json!([
-          {
-            "data": uri,
-            "edit": {
-              "changes": {
-                uri_string.clone(): [
-                  {
-                    "newText": "\nimpl Data {\n    \n}\n",
-                    "range": {
-                      "end": {
-                        "character": 0,
-                        "line": 25
-                      },
-                      "start": {
-                        "character": 0,
-                        "line": 25
-                      }
-                    }
-                  }
-                ]
-              }
-            },
-            "kind": "refactor",
-            "title": "Generate impl for `Data`"
-          },
-          {
-            "data": uri,
-            "edit": {
-              "changes": {
-                  uri_string.clone(): [
-                  {
-                    "newText": "\nimpl Data {\n    fn new(value: NumberOrString, address: u64) -> Self { Self { value, address } }\n}\n",
-                    "range": {
-                      "end": {
-                        "character": 0,
-                        "line": 25
-                      },
-                      "start": {
-                        "character": 0,
-                        "line": 25
-                      }
-                    }
-                  }
-                ]
-              }
-            },
-            "kind": "refactor",
-            "title": "Generate `new`"
-          },
-          {
-            "data": uri,
-            "edit": {
-              "changes": {
-                uri_string: [
-                  {
-                    "newText": "/// Add a brief description.\n/// \n/// ### Additional Information\n/// \n/// Provide information beyond the core purpose or functionality.\n",                    "range": {
-                      "end": {
-                        "character": 0,
-                        "line": 19
-                      },
-                      "start": {
-                        "character": 0,
-                        "line": 19
-                      }
-                    }
-                  }
-                ]
-              }
-            },
-            "kind": "refactor",
-            "title": "Generate a documentation template"
-          }
-        ]),
     );
-    assert_json_eq!(expected, response.ok().unwrap());
-    code_action
-}
-
-pub(crate) async fn code_action_struct_type_params_request(
-    service: &mut LspService<ServerState>,
-    uri: &Url,
-) -> Request {
-    let params = json!({
-      "textDocument": {
-        "uri": uri
+    let res = request::handle_code_action(server, params);
+    let mut changes = HashMap::new();
+    changes.insert(uri.clone(), vec![TextEdit {
+    range: Range {
+        start: Position {
+            line: 18,
+            character: 0,
+        },
+        end: Position {
+            line: 18,
+            character: 0,
+        },
       },
-      "range": {
-        "start": {
-          "line": 4,
-          "character": 9
-        },
-        "end": {
-          "line": 4,
-          "character": 9
-        }
-      },
-      "context": {
-        "diagnostics": [],
-        "triggerKind": 2
-      }
-    });
-    let code_action = build_request_with_id("textDocument/codeAction", params, 1);
-    let response = call_request(service, code_action.clone()).await;
-    let uri_string = uri.to_string();
-    let expected = Response::from_ok(
-        1.into(),
-        json!([
-          {
-            "data": uri,
-            "edit": {
-              "changes": {
-                uri_string.clone(): [
-                  {
-                    "newText": "\nimpl<T> Data<T> {\n    \n}\n",
-                    "range": {
-                      "end": {
-                        "character": 0,
-                        "line": 7
-                      },
-                      "start": {
-                        "character": 0,
-                        "line": 7
-                      }
-                    }
-                  }
-                ]
-              }
-            },
-            "kind": "refactor",
-            "title": "Generate impl for `Data`"
-          },
-          {
-            "data": uri,
-            "disabled": {
-              "reason": "Struct Data already has a `new` function"
-            },
-            "edit": {
-              "changes": {
-                uri_string.clone(): [
-                  {
-                    "newText": "    fn new(value: T) -> Self { Self { value } }\n",
-                    "range": {
-                      "end": {
-                        "character": 0,
-                        "line": 9
-                      },
-                      "start": {
-                        "character": 0,
-                        "line": 9
-                      }
-                    }
-                  }
-                ]
-              }
-            },
-            "kind": "refactor",
-            "title": "Generate `new`"
-          },
-          {
-            "data": uri,
-            "edit": {
-              "changes": {
-                uri_string: [
-                  {
-                    "newText": "/// Add a brief description.\n/// \n/// ### Additional Information\n/// \n/// Provide information beyond the core purpose or functionality.\n",                    "range": {
-                      "end": {
-                        "character": 0,
-                        "line": 4
-                      },
-                      "start": {
-                        "character": 0,
-                        "line": 4
-                      }
-                    }
-                  }
-                ]
-              }
-            },
-            "kind": "refactor",
-            "title": "Generate a documentation template"
-          }
-        ]),
-    );
-    assert_json_eq!(expected, response.ok().unwrap());
-    code_action
+      new_text: "/// Add a brief description.\n/// \n/// ### Additional Information\n/// \n/// Provide information beyond the core purpose or functionality.\n/// \n/// ### Reverts\n/// \n/// * List any cases where the function will revert\n/// \n/// ### Number of Storage Accesses\n/// \n/// * Reads: `0`\n/// * Writes: `0`\n/// * Clears: `0`\n/// \n/// ### Examples\n/// \n/// ```sway\n/// let x = test();\n/// ```\n".to_string(),
+    }]);
+    let expected = vec![CodeActionOrCommand::CodeAction(create_code_action(
+        uri.clone(),
+        "Generate a documentation template".to_string(),
+        changes,
+        None,
+    ))];
+    assert_eq!(res.unwrap().unwrap(), expected);
 }
 
-pub(crate) async fn code_action_struct_existing_impl_request(
-    service: &mut LspService<ServerState>,
-    uri: &Url,
-) -> Request {
-    let params = json!({
-      "textDocument": {
-        "uri": uri
-      },
-      "range": {
-        "start": {
-          "line": 2,
-          "character": 7
+pub(crate) fn code_action_trait_fn_request(server: &ServerState, uri: &Url) {
+    let params = create_code_action_params(
+        uri.clone(),
+        Range {
+            start: Position {
+                line: 10,
+                character: 10,
+            },
+            end: Position {
+                line: 10,
+                character: 10,
+            },
         },
-        "end": {
-          "line": 2,
-          "character": 7
-        }
-      },
-      "context": {
-        "diagnostics": [],
-        "triggerKind": 2
-      }
-    });
-    let code_action = build_request_with_id("textDocument/codeAction", params, 1);
-    let response = call_request(service, code_action.clone()).await;
-    let uri_string = uri.to_string();
-    let expected = Response::from_ok(
-        1.into(),
-        json!([
-          {
-            "data": uri,
-            "edit": {
-              "changes": {
-                uri_string.clone(): [
-                  {
-                    "newText": "\nimpl A {\n    \n}\n",
-                    "range": {
-                      "end": {
-                        "character": 0,
-                        "line": 6
-                      },
-                      "start": {
-                        "character": 0,
-                        "line": 6
-                      }
-                    }
-                  }
-                ]
-              }
-            },
-            "kind": "refactor",
-            "title": "Generate impl for `A`"
-          },
-          {
-            "data": uri,
-            "edit": {
-              "changes": {
-                uri_string.clone(): [
-                  {
-                    "newText": "    fn new(a: u64, b: u64) -> Self { Self { a, b } }\n",
-                    "range": {
-                      "end": {
-                        "character": 0,
-                        "line": 8
-                      },
-                      "start": {
-                        "character": 0,
-                        "line": 8
-                      }
-                    }
-                  }
-                ]
-              }
-            },
-            "kind": "refactor",
-            "title": "Generate `new`"
-          },
-          {
-            "data": uri,
-            "edit": {
-              "changes": {
-                uri_string: [
-                  {
-                    "newText": "/// Add a brief description.\n/// \n/// ### Additional Information\n/// \n/// Provide information beyond the core purpose or functionality.\n",                    "range": {
-                      "end": {
-                        "character": 0,
-                        "line": 2
-                      },
-                      "start": {
-                        "character": 0,
-                        "line": 2
-                      }
-                    }
-                  }
-                ]
-              }
-            },
-            "kind": "refactor",
-            "title": "Generate a documentation template"
-          }
-        ]),
     );
-    assert_json_eq!(expected, response.ok().unwrap());
-    code_action
+    let res = request::handle_code_action(server, params);
+    let mut changes = HashMap::new();
+
+    changes.insert(uri.clone(), vec![TextEdit {
+      range: Range {
+          start: Position {
+              line: 10,
+              character: 0,
+          },
+          end: Position {
+              line: 10,
+              character: 0,
+          },
+        },
+        new_text: "    /// Add a brief description.\n    /// \n    /// ### Additional Information\n    /// \n    /// Provide information beyond the core purpose or functionality.\n    /// \n    /// ### Returns\n    /// \n    /// * [Empty] - Add description here\n    /// \n    /// ### Reverts\n    /// \n    /// * List any cases where the function will revert\n    /// \n    /// ### Number of Storage Accesses\n    /// \n    /// * Reads: `0`\n    /// * Writes: `0`\n    /// * Clears: `0`\n    /// \n    /// ### Examples\n    /// \n    /// ```sway\n    /// let x = test_function();\n    /// ```\n".to_string(),
+      }]);
+    let expected = vec![CodeActionOrCommand::CodeAction(create_code_action(
+        uri.clone(),
+        "Generate a documentation template".to_string(),
+        changes,
+        None,
+    ))];
+    assert_eq!(res.unwrap().unwrap(), expected);
+}
+
+pub(crate) fn code_action_struct_request(server: &ServerState, uri: &Url) {
+    let params = create_code_action_params(
+        uri.clone(),
+        Range {
+            start: Position {
+                line: 19,
+                character: 11,
+            },
+            end: Position {
+                line: 19,
+                character: 11,
+            },
+        },
+    );
+    let res = request::handle_code_action(server, params);
+    let mut expected: Vec<_> = Vec::new();
+    let mut changes = HashMap::new();
+    changes.insert(
+        uri.clone(),
+        vec![TextEdit {
+            range: Range {
+                start: Position {
+                    line: 25,
+                    character: 0,
+                },
+                end: Position {
+                    line: 25,
+                    character: 0,
+                },
+            },
+            new_text: "\nimpl Data {\n    \n}\n".to_string(),
+        }],
+    );
+    expected.push(CodeActionOrCommand::CodeAction(create_code_action(
+        uri.clone(),
+        "Generate impl for `Data`".to_string(),
+        changes,
+        None,
+    )));
+    let mut changes = HashMap::new();
+    changes.insert(
+      uri.clone(),
+      vec![TextEdit {
+          range: Range {
+              start: Position {
+                  line: 25,
+                  character: 0,
+              },
+              end: Position {
+                  line: 25,
+                  character: 0,
+              },
+          },
+          new_text: "\nimpl Data {\n    fn new(value: NumberOrString, address: u64) -> Self { Self { value, address } }\n}\n".to_string(),
+      }],
+  );
+    expected.push(CodeActionOrCommand::CodeAction(create_code_action(
+        uri.clone(),
+        "Generate `new`".to_string(),
+        changes,
+        None,
+    )));
+    let mut changes = HashMap::new();
+    changes.insert(
+      uri.clone(),
+      vec![TextEdit {
+          range: Range {
+              start: Position {
+                  line: 19,
+                  character: 0,
+              },
+              end: Position {
+                  line: 19,
+                  character: 0,
+              },
+          },
+          new_text: "/// Add a brief description.\n/// \n/// ### Additional Information\n/// \n/// Provide information beyond the core purpose or functionality.\n".to_string(),
+      }],
+  );
+    expected.push(CodeActionOrCommand::CodeAction(create_code_action(
+        uri.clone(),
+        "Generate a documentation template".to_string(),
+        changes,
+        None,
+    )));
+    assert_eq!(res.unwrap().unwrap(), expected);
+}
+
+pub(crate) fn code_action_struct_type_params_request(server: &ServerState, uri: &Url) {
+    let params = create_code_action_params(
+        uri.clone(),
+        Range {
+            start: Position {
+                line: 4,
+                character: 9,
+            },
+            end: Position {
+                line: 4,
+                character: 9,
+            },
+        },
+    );
+    let res = request::handle_code_action(server, params);
+    let mut expected: Vec<_> = Vec::new();
+    let mut changes = HashMap::new();
+    changes.insert(
+        uri.clone(),
+        vec![TextEdit {
+            range: Range {
+                start: Position {
+                    line: 7,
+                    character: 0,
+                },
+                end: Position {
+                    line: 7,
+                    character: 0,
+                },
+            },
+            new_text: "\nimpl<T> Data<T> {\n    \n}\n".to_string(),
+        }],
+    );
+    expected.push(CodeActionOrCommand::CodeAction(create_code_action(
+        uri.clone(),
+        "Generate impl for `Data`".to_string(),
+        changes,
+        None,
+    )));
+
+    let mut changes = HashMap::new();
+    changes.insert(
+        uri.clone(),
+        vec![TextEdit {
+            range: Range {
+                start: Position {
+                    line: 9,
+                    character: 0,
+                },
+                end: Position {
+                    line: 9,
+                    character: 0,
+                },
+            },
+            new_text: "    fn new(value: T) -> Self { Self { value } }\n".to_string(),
+        }],
+    );
+    expected.push(CodeActionOrCommand::CodeAction(create_code_action(
+        uri.clone(),
+        "Generate `new`".to_string(),
+        changes,
+        Some(CodeActionDisabled {
+            reason: "Struct Data already has a `new` function".to_string(),
+        }),
+    )));
+
+    let mut changes = HashMap::new();
+    changes.insert(
+    uri.clone(),
+    vec![TextEdit {
+        range: Range {
+            start: Position {
+                line: 4,
+                character: 0,
+            },
+            end: Position {
+                line: 4,
+                character: 0,
+            },
+        },
+        new_text: "/// Add a brief description.\n/// \n/// ### Additional Information\n/// \n/// Provide information beyond the core purpose or functionality.\n".to_string(),
+    }],
+);
+    expected.push(CodeActionOrCommand::CodeAction(create_code_action(
+        uri.clone(),
+        "Generate a documentation template".to_string(),
+        changes,
+        None,
+    )));
+    assert_eq!(res.unwrap().unwrap(), expected);
+}
+
+pub(crate) fn code_action_struct_existing_impl_request(server: &ServerState, uri: &Url) {
+    let params = create_code_action_params(
+        uri.clone(),
+        Range {
+            start: Position {
+                line: 2,
+                character: 7,
+            },
+            end: Position {
+                line: 2,
+                character: 7,
+            },
+        },
+    );
+    let res = request::handle_code_action(server, params);
+    let mut expected: Vec<_> = Vec::new();
+    let mut changes = HashMap::new();
+    changes.insert(
+        uri.clone(),
+        vec![TextEdit {
+            range: Range {
+                start: Position {
+                    line: 6,
+                    character: 0,
+                },
+                end: Position {
+                    line: 6,
+                    character: 0,
+                },
+            },
+            new_text: "\nimpl A {\n    \n}\n".to_string(),
+        }],
+    );
+    expected.push(CodeActionOrCommand::CodeAction(create_code_action(
+        uri.clone(),
+        "Generate impl for `A`".to_string(),
+        changes,
+        None,
+    )));
+
+    let mut changes = HashMap::new();
+    changes.insert(
+        uri.clone(),
+        vec![TextEdit {
+            range: Range {
+                start: Position {
+                    line: 8,
+                    character: 0,
+                },
+                end: Position {
+                    line: 8,
+                    character: 0,
+                },
+            },
+            new_text: "    fn new(a: u64, b: u64) -> Self { Self { a, b } }\n".to_string(),
+        }],
+    );
+    expected.push(CodeActionOrCommand::CodeAction(create_code_action(
+        uri.clone(),
+        "Generate `new`".to_string(),
+        changes,
+        None,
+    )));
+
+    let mut changes = HashMap::new();
+    changes.insert(
+      uri.clone(),
+      vec![TextEdit {
+          range: Range {
+              start: Position {
+                  line: 2,
+                  character: 0,
+              },
+              end: Position {
+                  line: 2,
+                  character: 0,
+              },
+          },
+          new_text: "/// Add a brief description.\n/// \n/// ### Additional Information\n/// \n/// Provide information beyond the core purpose or functionality.\n".to_string(),
+      }],
+  );
+    expected.push(CodeActionOrCommand::CodeAction(create_code_action(
+        uri.clone(),
+        "Generate a documentation template".to_string(),
+        changes,
+        None,
+    )));
+
+    let result = res.unwrap().unwrap();
+    assert_eq!(result, expected);
 }

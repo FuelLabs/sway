@@ -6,6 +6,8 @@ use crate::{
 use super::ParseTree;
 use sway_types::Span;
 
+pub type ModuleHash = u64;
+
 /// A module and its submodules in the form of a tree.
 #[derive(Debug, Clone)]
 pub struct ParseModule {
@@ -14,8 +16,12 @@ pub struct ParseModule {
     /// Submodules introduced within this module using the `dep` syntax in order of declaration.
     pub submodules: Vec<(ModName, ParseSubmodule)>,
     pub attributes: transform::AttributesMap,
+    /// The span of the module kind.
+    pub module_kind_span: Span,
     /// an empty span at the beginning of the file containing the module
     pub span: Span,
+    /// an hash used for caching the module
+    pub hash: ModuleHash,
 }
 
 /// A library module that was declared as a `mod` of another module.

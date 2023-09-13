@@ -2,13 +2,13 @@ use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
 use crate::{
-    error::*,
     language::{parsed::*, CallPath},
     type_system::*,
     Engines,
 };
 
 use sway_error::error::CompileError;
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::integer_bits::IntegerBits;
 use sway_types::Spanned;
 use sway_types::{ident::Ident, span::Span};
@@ -18,9 +18,10 @@ use sway_types::{ident::Ident, span::Span};
 /// dependencies breaking.
 
 pub(crate) fn order_ast_nodes_by_dependency(
+    handler: &Handler,
     engines: &Engines,
     nodes: Vec<AstNode>,
-) -> CompileResult<Vec<AstNode>> {
+) -> Result<Vec<AstNode>, ErrorEmitted> {
     let type_engine = engines.te();
 
     let decl_dependencies = DependencyMap::from_iter(
@@ -31,25 +32,26 @@ pub(crate) fn order_ast_nodes_by_dependency(
 
     // Check here for recursive calls now that we have a nice map of the dependencies to help us.
     let mut errors = find_recursive_decls(&decl_dependencies);
-    if !errors.is_empty() {
+
+    handler.scope(|handler| {
         // Because we're pulling these errors out of a HashMap they'll probably be in a funny
         // order.  Here we'll sort them by span start.
         errors.sort_by_key(|err| err.span().start());
-        err(Vec::new(), errors)
-    } else {
-        // Reorder the parsed AstNodes based on dependency.  Includes first, then uses, then
-        // reordered declarations, then anything else.  To keep the list stable and simple we can
-        // use a basic insertion sort.
-        ok(
-            nodes
-                .into_iter()
-                .fold(Vec::<AstNode>::new(), |ordered, node| {
-                    insert_into_ordered_nodes(type_engine, &decl_dependencies, ordered, node)
-                }),
-            Vec::new(),
-            Vec::new(),
-        )
-    }
+
+        for err in errors {
+            handler.emit_err(err);
+        }
+        Ok(())
+    })?;
+
+    // Reorder the parsed AstNodes based on dependency.  Includes first, then uses, then
+    // reordered declarations, then anything else.  To keep the list stable and simple we can
+    // use a basic insertion sort.
+    Ok(nodes
+        .into_iter()
+        .fold(Vec::<AstNode>::new(), |ordered, node| {
+            insert_into_ordered_nodes(type_engine, &decl_dependencies, ordered, node)
+        }))
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -343,6 +345,7 @@ impl Dependencies {
                     TraitItem::Constant(const_decl) => {
                         deps.gather_from_constant_decl(engines, const_decl)
                     }
+                    TraitItem::Error(_, _) => deps,
                 })
                 .gather_from_iter(methods.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(engines, fn_decl)
@@ -393,6 +396,7 @@ impl Dependencies {
                     TraitItem::Constant(const_decl) => {
                         deps.gather_from_constant_decl(engines, const_decl)
                     }
+                    TraitItem::Error(_, _) => deps,
                 })
                 .gather_from_iter(methods.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(engines, fn_decl)
@@ -575,7 +579,7 @@ impl Dependencies {
             | ExpressionKind::Break
             | ExpressionKind::Continue
             | ExpressionKind::StorageAccess(_)
-            | ExpressionKind::Error(_) => self,
+            | ExpressionKind::Error(_, _) => self,
 
             ExpressionKind::Tuple(fields) => self.gather_from_iter(fields.iter(), |deps, field| {
                 deps.gather_from_expr(engines, field)
@@ -631,8 +635,9 @@ impl Dependencies {
             AstNodeContent::Declaration(decl) => self.gather_from_decl(engines, decl),
 
             // No deps from these guys.
-            AstNodeContent::UseStatement(_) => self,
-            AstNodeContent::IncludeStatement(_) => self,
+            AstNodeContent::UseStatement(_)
+            | AstNodeContent::IncludeStatement(_)
+            | AstNodeContent::Error(_, _) => self,
         }
     }
 
@@ -843,12 +848,13 @@ fn decl_name(type_engine: &TypeEngine, decl: &Declaration) -> Option<DependentSy
 /// because it is used for keys and values in the tree.
 fn type_info_name(type_info: &TypeInfo) -> String {
     match type_info {
-        TypeInfo::Str(_) => "str",
+        TypeInfo::StringArray(_) | TypeInfo::StringSlice => "str",
         TypeInfo::UnsignedInteger(n) => match n {
             IntegerBits::Eight => "uint8",
             IntegerBits::Sixteen => "uint16",
             IntegerBits::ThirtyTwo => "uint32",
             IntegerBits::SixtyFour => "uint64",
+            IntegerBits::V256 => "uint256",
         },
         TypeInfo::Boolean => "bool",
         TypeInfo::Custom {
@@ -860,7 +866,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::B256 => "b256",
         TypeInfo::Numeric => "numeric",
         TypeInfo::Contract => "contract",
-        TypeInfo::ErrorRecovery => "err_recov",
+        TypeInfo::ErrorRecovery(_) => "err_recov",
         TypeInfo::Unknown => "unknown",
         TypeInfo::UnknownGeneric { name, .. } => return format!("generic {name}"),
         TypeInfo::TypeParam(_) => "type param",

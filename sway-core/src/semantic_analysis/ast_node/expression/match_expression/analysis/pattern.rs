@@ -2,10 +2,11 @@ use std::{cmp::Ordering, fmt};
 
 use std::fmt::Write;
 use sway_error::error::CompileError;
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
 
 use crate::decl_engine::DeclEngine;
-use crate::{error::*, language::ty, language::Literal, TypeInfo};
+use crate::{language::ty, language::Literal, TypeInfo};
 
 use super::{patstack::PatStack, range::Range};
 
@@ -113,9 +114,7 @@ pub(crate) enum Pattern {
 
 impl Pattern {
     /// Converts a `Scrutinee` to a `Pattern`.
-    pub(crate) fn from_scrutinee(scrutinee: ty::TyScrutinee) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn from_scrutinee(scrutinee: ty::TyScrutinee) -> Self {
         let pat = match scrutinee.variant {
             ty::TyScrutineeVariant::CatchAll => Pattern::Wildcard,
             ty::TyScrutineeVariant::Variable(_) => Pattern::Wildcard,
@@ -129,12 +128,7 @@ impl Pattern {
                 let mut new_fields = vec![];
                 for field in fields.into_iter() {
                     let f = match field.scrutinee {
-                        Some(scrutinee) => check!(
-                            Pattern::from_scrutinee(scrutinee),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        ),
+                        Some(scrutinee) => Pattern::from_scrutinee(scrutinee),
                         None => Pattern::Wildcard,
                     };
                     new_fields.push((field.field.as_str().to_string(), f));
@@ -147,24 +141,14 @@ impl Pattern {
             ty::TyScrutineeVariant::Or(elems) => {
                 let mut new_elems = PatStack::empty();
                 for elem in elems.into_iter() {
-                    new_elems.push(check!(
-                        Pattern::from_scrutinee(elem),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
+                    new_elems.push(Pattern::from_scrutinee(elem));
                 }
                 Pattern::Or(new_elems)
             }
             ty::TyScrutineeVariant::Tuple(elems) => {
                 let mut new_elems = PatStack::empty();
                 for elem in elems.into_iter() {
-                    new_elems.push(check!(
-                        Pattern::from_scrutinee(elem),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
+                    new_elems.push(Pattern::from_scrutinee(elem));
                 }
                 Pattern::Tuple(new_elems)
             }
@@ -176,15 +160,10 @@ impl Pattern {
             } => Pattern::Enum(EnumPattern {
                 enum_name: enum_ref.name().to_string(),
                 variant_name: variant.name.to_string(),
-                value: Box::new(check!(
-                    Pattern::from_scrutinee(*value),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )),
+                value: Box::new(Pattern::from_scrutinee(*value)),
             }),
         };
-        ok(pat, warnings, errors)
+        pat
     }
 
     /// Convert the given literal `value` into a pattern.
@@ -194,6 +173,9 @@ impl Pattern {
             Literal::U16(x) => Pattern::U16(Range::from_single(x)),
             Literal::U32(x) => Pattern::U32(Range::from_single(x)),
             Literal::U64(x) => Pattern::U64(Range::from_single(x)),
+            Literal::U256(x) => Pattern::U64(Range::from_single(
+                x.try_into().expect("pattern only works with 64 bits"),
+            )),
             Literal::B256(x) => Pattern::B256(x),
             Literal::Boolean(b) => Pattern::Boolean(b),
             Literal::Numeric(x) => Pattern::Numeric(Range::from_single(x)),
@@ -204,11 +186,15 @@ impl Pattern {
     /// Converts a `PatStack` to a `Pattern`. If the `PatStack` is of length 1,
     /// this function returns the single element, if it is of length > 1, this
     /// function wraps the provided `PatStack` in a `Pattern::Or(..)`.
-    pub(crate) fn from_pat_stack(pat_stack: PatStack, span: &Span) -> CompileResult<Pattern> {
+    pub(crate) fn from_pat_stack(
+        handler: &Handler,
+        pat_stack: PatStack,
+        span: &Span,
+    ) -> Result<Pattern, ErrorEmitted> {
         if pat_stack.len() == 1 {
-            pat_stack.first(span)
+            pat_stack.first(handler, span)
         } else {
-            ok(Pattern::Or(pat_stack), vec![], vec![])
+            Ok(Pattern::Or(pat_stack))
         }
     }
 
@@ -315,225 +301,170 @@ impl Pattern {
     /// ])
     /// ```
     pub(crate) fn from_constructor_and_arguments(
+        handler: &Handler,
         c: &Pattern,
         args: PatStack,
         span: &Span,
-    ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    ) -> Result<Self, ErrorEmitted> {
         let pat = match c {
             Pattern::Wildcard => {
                 if !args.is_empty() {
-                    errors.push(CompileError::Internal(
+                    return Err(handler.emit_err(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
-                    ));
-                    return err(warnings, errors);
+                    )));
                 }
                 Pattern::Wildcard
             }
             Pattern::U8(range) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::Internal(
+                    return Err(handler.emit_err(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
-                    ));
-                    return err(warnings, errors);
+                    )));
                 }
                 Pattern::U8(range.clone())
             }
             Pattern::U16(range) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::Internal(
+                    return Err(handler.emit_err(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
-                    ));
-                    return err(warnings, errors);
+                    )));
                 }
                 Pattern::U16(range.clone())
             }
             Pattern::U32(range) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::Internal(
+                    return Err(handler.emit_err(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
-                    ));
-                    return err(warnings, errors);
+                    )));
                 }
                 Pattern::U32(range.clone())
             }
             Pattern::U64(range) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::Internal(
+                    return Err(handler.emit_err(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
-                    ));
-                    return err(warnings, errors);
+                    )));
                 }
                 Pattern::U64(range.clone())
             }
             Pattern::B256(b) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::Internal(
+                    return Err(handler.emit_err(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
-                    ));
-                    return err(warnings, errors);
+                    )));
                 }
                 Pattern::B256(*b)
             }
             Pattern::Boolean(b) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::Internal(
+                    return Err(handler.emit_err(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
-                    ));
-                    return err(warnings, errors);
+                    )));
                 }
                 Pattern::Boolean(*b)
             }
             Pattern::Numeric(range) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::Internal(
+                    return Err(handler.emit_err(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
-                    ));
-                    return err(warnings, errors);
+                    )));
                 }
                 Pattern::Numeric(range.clone())
             }
             Pattern::String(s) => {
                 if !args.is_empty() {
-                    errors.push(CompileError::Internal(
+                    return Err(handler.emit_err(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
-                    ));
-                    return err(warnings, errors);
+                    )));
                 }
                 Pattern::String(s.clone())
             }
             Pattern::Struct(struct_pattern) => {
                 if args.len() != struct_pattern.fields.len() {
-                    errors.push(CompileError::Internal(
+                    return Err(handler.emit_err(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
-                    ));
-                    return err(warnings, errors);
+                    )));
                 }
-                let pats: PatStack = check!(
-                    args.serialize_multi_patterns(span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
-                .into_iter()
-                .map(|args| {
-                    Pattern::Struct(StructPattern {
-                        struct_name: struct_pattern.struct_name.clone(),
-                        fields: struct_pattern
-                            .fields
-                            .iter()
-                            .zip(args.into_iter())
-                            .map(|((name, _), arg)| (name.clone(), arg))
-                            .collect::<Vec<_>>(),
+                let pats: PatStack = args
+                    .serialize_multi_patterns(handler, span)?
+                    .into_iter()
+                    .map(|args| {
+                        Pattern::Struct(StructPattern {
+                            struct_name: struct_pattern.struct_name.clone(),
+                            fields: struct_pattern
+                                .fields
+                                .iter()
+                                .zip(args)
+                                .map(|((name, _), arg)| (name.clone(), arg))
+                                .collect::<Vec<_>>(),
+                        })
                     })
-                })
-                .collect::<Vec<_>>()
-                .into();
-                check!(
-                    Pattern::from_pat_stack(pats, span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
+                    .collect::<Vec<_>>()
+                    .into();
+                Pattern::from_pat_stack(handler, pats, span)?
             }
             Pattern::Enum(enum_pattern) => {
                 if args.len() != 1 {
-                    errors.push(CompileError::Internal(
+                    return Err(handler.emit_err(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
-                    ));
-                    return err(warnings, errors);
+                    )));
                 }
-                let serialized_args = check!(
-                    args.serialize_multi_patterns(span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let serialized_args = args.serialize_multi_patterns(handler, span)?;
                 let mut pats: PatStack = PatStack::empty();
                 for args in serialized_args.into_iter() {
-                    let arg = check!(
-                        args.first(span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
+                    let arg = args.first(handler, span)?;
                     pats.push(Pattern::Enum(EnumPattern {
                         enum_name: enum_pattern.enum_name.clone(),
                         variant_name: enum_pattern.variant_name.clone(),
                         value: Box::new(arg),
                     }));
                 }
-                check!(
-                    Pattern::from_pat_stack(pats, span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
+
+                Pattern::from_pat_stack(handler, pats, span)?
             }
             Pattern::Tuple(elems) => {
                 if elems.len() != args.len() {
-                    errors.push(CompileError::Internal(
+                    return Err(handler.emit_err(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
-                    ));
-                    return err(warnings, errors);
+                    )));
                 }
-                let pats: PatStack = check!(
-                    args.serialize_multi_patterns(span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
-                .into_iter()
-                .map(Pattern::Tuple)
-                .collect::<Vec<_>>()
-                .into();
-                check!(
-                    Pattern::from_pat_stack(pats, span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
+                let pats: PatStack = args
+                    .serialize_multi_patterns(handler, span)?
+                    .into_iter()
+                    .map(Pattern::Tuple)
+                    .collect::<Vec<_>>()
+                    .into();
+                Pattern::from_pat_stack(handler, pats, span)?
             }
             Pattern::Or(elems) => {
                 if elems.len() != args.len() {
-                    errors.push(CompileError::Internal(
+                    return Err(handler.emit_err(CompileError::Internal(
                         "malformed constructor request",
                         span.clone(),
-                    ));
-                    return err(warnings, errors);
+                    )));
                 }
-                let pats: PatStack = check!(
-                    args.serialize_multi_patterns(span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
-                .into_iter()
-                .map(Pattern::Or)
-                .collect::<Vec<_>>()
-                .into();
-                check!(
-                    Pattern::from_pat_stack(pats, span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
+                let pats: PatStack = args
+                    .serialize_multi_patterns(handler, span)?
+                    .into_iter()
+                    .map(Pattern::Or)
+                    .collect::<Vec<_>>()
+                    .into();
+                Pattern::from_pat_stack(handler, pats, span)?
             }
         };
-        ok(pat, warnings, errors)
+        Ok(pat)
     }
 
     /// Create a `Pattern::Wildcard`
@@ -654,9 +585,11 @@ impl Pattern {
     ///     Pattern::U64(Range { first: 1, last: 1 })
     /// ]
     /// ```
-    pub(crate) fn sub_patterns(&self, span: &Span) -> CompileResult<PatStack> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn sub_patterns(
+        &self,
+        handler: &Handler,
+        span: &Span,
+    ) -> Result<PatStack, ErrorEmitted> {
         let pats = match self {
             Pattern::Struct(StructPattern { fields, .. }) => fields
                 .iter()
@@ -668,13 +601,12 @@ impl Pattern {
             _ => PatStack::empty(),
         };
         if self.a() != pats.len() {
-            errors.push(CompileError::Internal(
+            return Err(handler.emit_err(CompileError::Internal(
                 "invariant self.a() == pats.len() broken",
                 span.clone(),
-            ));
-            return err(warnings, errors);
+            )));
         }
-        ok(pats, warnings, errors)
+        Ok(pats)
     }
 
     /// Performs a one-layer-deep flattening of a `Pattern` into a `PatStack`.

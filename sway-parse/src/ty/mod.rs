@@ -2,10 +2,9 @@ use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed
 
 use sway_ast::brackets::{Parens, SquareBrackets};
 use sway_ast::keywords::{DoubleColonToken, OpenAngleBracketToken};
-use sway_ast::token::Delimiter;
 use sway_ast::ty::{Ty, TyArrayDescriptor, TyTupleDescriptor};
 use sway_error::parser_error::ParseErrorKind;
-use sway_types::Ident;
+use sway_types::{ast::Delimiter, Ident};
 
 impl Parse for Ty {
     fn parse(parser: &mut Parser) -> ParseResult<Ty> {
@@ -34,12 +33,18 @@ impl Parse for Ty {
         if let Some(descriptor) = SquareBrackets::try_parse(parser)? {
             return Ok(Ty::Array(descriptor));
         };
+
         if let Some(str_token) = parser.take() {
-            let length = SquareBrackets::parse_all_inner(parser, |mut parser| {
+            let length = SquareBrackets::try_parse_all_inner(parser, |mut parser| {
                 parser.emit_error(ParseErrorKind::UnexpectedTokenAfterStrLength)
             })?;
-            return Ok(Ty::Str { str_token, length });
+            let t = match length {
+                Some(length) => Ty::StringArray { str_token, length },
+                None => Ty::StringSlice(str_token),
+            };
+            return Ok(t);
         }
+
         if let Some(underscore_token) = parser.take() {
             return Ok(Ty::Infer { underscore_token });
         }

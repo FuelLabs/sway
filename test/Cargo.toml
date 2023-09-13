@@ -28,10 +28,11 @@ regex = "1.7"
 revm = "2.3.1"
 serde_json = "1.0.73"
 sway-core = { path = "../sway-core" }
+sway-error = { path = "../sway-error" }
 sway-ir = { path = "../sway-ir" }
 sway-types = { path = "../sway-types" }
 sway-utils = { path = "../sway-utils" }
 textwrap = "0.16.0"
 tokio = "1.12"
-toml = "0.5"
+toml = { version = "0.7", features = ["parse"] }
 tracing = "0.1"

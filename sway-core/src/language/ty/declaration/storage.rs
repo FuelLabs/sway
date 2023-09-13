@@ -1,11 +1,13 @@
 use std::hash::{Hash, Hasher};
 
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{state::StateIndex, Ident, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::DeclEngine, engine_threading::*, error::*, language::ty::*, transform,
-    type_system::*,
+    decl_engine::DeclEngine, engine_threading::*, language::ty::*, transform, type_system::*,
 };
 
 #[derive(Clone, Debug)]
@@ -54,14 +56,13 @@ impl TyStorageDecl {
     /// been declared as a part of storage, return an error.
     pub fn apply_storage_load(
         &self,
+        handler: &Handler,
         type_engine: &TypeEngine,
         decl_engine: &DeclEngine,
         fields: Vec<Ident>,
         storage_fields: &[TyStorageField],
-    ) -> CompileResult<(TyStorageAccess, TypeId)> {
-        let mut errors = vec![];
-        let warnings = vec![];
-
+        storage_keyword_span: Span,
+    ) -> Result<(TyStorageAccess, TypeId), ErrorEmitted> {
         let mut type_checked_buf = vec![];
         let mut fields: Vec<_> = fields.into_iter().rev().collect();
 
@@ -75,11 +76,10 @@ impl TyStorageDecl {
                 (StateIndex::new(ix), type_argument.type_id)
             }
             None => {
-                errors.push(CompileError::StorageFieldDoesNotExist {
+                return Err(handler.emit_err(CompileError::StorageFieldDoesNotExist {
                     name: first_field.clone(),
                     span: first_field.span(),
-                });
-                return err(warnings, errors);
+                }));
             }
         };
 
@@ -119,30 +119,26 @@ impl TyStorageDecl {
                         .iter()
                         .map(|x| x.name.as_str())
                         .collect::<Vec<_>>();
-                    errors.push(CompileError::FieldNotFound {
+                    return Err(handler.emit_err(CompileError::FieldNotFound {
                         field_name: field.clone(),
                         available_fields: available_fields.join(", "),
                         struct_name: type_checked_buf.last().unwrap().name.clone(),
                         span: field.span(),
-                    });
-                    return err(warnings, errors);
+                    }));
                 }
             }
         }
 
         let return_type = type_checked_buf[type_checked_buf.len() - 1].type_id;
 
-        ok(
-            (
-                TyStorageAccess {
-                    fields: type_checked_buf,
-                    ix,
-                },
-                return_type,
-            ),
-            warnings,
-            errors,
-        )
+        Ok((
+            TyStorageAccess {
+                fields: type_checked_buf,
+                ix,
+                storage_keyword_span,
+            },
+            return_type,
+        ))
     }
 
     pub(crate) fn fields_as_typed_struct_fields(&self) -> Vec<TyStructField> {

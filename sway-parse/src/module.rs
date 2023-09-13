@@ -132,6 +132,7 @@ mod tests {
                         inner: Nil,
                         span: (70, 72),
                       ))),
+                      span: (53, 85),
                     ),
                     span: (52, 86),
                   ),

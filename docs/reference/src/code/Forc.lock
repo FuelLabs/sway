@@ -109,6 +109,11 @@ source = 'member'
 dependencies = ['std']
 
 [[package]]
+name = 'getters'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
 name = 'hashing'
 source = 'member'
 dependencies = ['std']
@@ -117,6 +122,14 @@ dependencies = ['std']
 name = 'interface'
 source = 'member'
 dependencies = ['std']
+
+[[package]]
+name = 'intermediate_variables'
+source = 'member'
+dependencies = [
+    'core',
+    'std',
+]
 
 [[package]]
 name = 'letter_casing'
@@ -228,6 +241,11 @@ dependencies = ['std']
 
 [[package]]
 name = 'tuples'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'unused_variables'
 source = 'member'
 dependencies = ['std']
 

@@ -1,15 +1,14 @@
-#![allow(unused)]
 use assert_json_diff::assert_json_include;
 use futures::StreamExt;
+use lsp_types::Url;
 use serde_json::Value;
 use std::{
     env, fs,
     io::Read,
     path::{Path, PathBuf},
-    time::Duration,
 };
 use tokio::task::JoinHandle;
-use tower_lsp::{jsonrpc::Response, lsp_types::Url, ClientSocket, ExitedError};
+use tower_lsp::ClientSocket;
 
 pub fn load_sway_example(src_path: PathBuf) -> (Url, String) {
     let mut file = fs::File::open(&src_path).unwrap();
@@ -17,7 +16,6 @@ pub fn load_sway_example(src_path: PathBuf) -> (Url, String) {
     file.read_to_string(&mut sway_program).unwrap();
 
     let uri = Url::from_file_path(src_path).unwrap();
-
     (uri, sway_program)
 }
 
@@ -40,9 +38,7 @@ pub fn e2e_test_dir() -> PathBuf {
 }
 
 pub fn runnables_test_dir() -> PathBuf {
-    sway_workspace_dir()
-        .join(e2e_unit_dir())
-        .join("script_multi_test")
+    test_fixtures_dir().join("runnables")
 }
 
 pub fn test_fixtures_dir() -> PathBuf {
@@ -99,15 +95,10 @@ pub fn dir_contains_forc_manifest(path: &Path) -> bool {
 pub async fn assert_server_requests(
     socket: ClientSocket,
     expected_requests: Vec<Value>,
-    timeout: Option<Duration>,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
         let request_stream = socket.take(expected_requests.len()).collect::<Vec<_>>();
-        let requests =
-            tokio::time::timeout(timeout.unwrap_or(Duration::from_secs(10)), request_stream)
-                .await
-                .expect("Timed out waiting for requests from server");
-
+        let requests = request_stream.await;
         assert_eq!(requests.len(), expected_requests.len());
         for (actual, expected) in requests.iter().zip(expected_requests.iter()) {
             assert_eq!(expected["method"], actual.method());
@@ -121,17 +112,4 @@ pub async fn assert_server_requests(
             );
         }
     })
-}
-
-pub fn extract_result_array(response: Result<Option<Response>, ExitedError>) -> Vec<Value> {
-    response
-        .unwrap()
-        .unwrap()
-        .into_parts()
-        .1
-        .ok()
-        .unwrap()
-        .as_array()
-        .unwrap()
-        .clone()
 }

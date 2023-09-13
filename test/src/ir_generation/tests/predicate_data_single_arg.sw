@@ -14,14 +14,14 @@ fn main(x: u64) -> bool {
 
 // check: gm   $(r2=$REG) i3
 // check: gtf  $(r1=$REG) $r2 i257
-// nextln: jnzi $r1 $IMM
+// nextln: jnzf $r1 $$zero $IMM
 // nextln: gtf  $(r3=$REG) $r2 i269
-// nextln: ji   $IMM
+// nextln: jmpf $$zero $IMM
 // nextln: movi $(r0=$REG) i2
 // nextln: eq   $r1 $r1 $r0
 // nextln: xori $r1 $r1 i1
-// nextln: jnzi $r1 $IMM
+// nextln: jnzf $r1 $$zero $IMM
 // nextln: gtf  $r3 $r2 i287
-// nextln: ji   $IMM
+// nextln: jmpf $$zero $IMM
 // nextln: ret  $$zero
 // nextln: lw   $r3 $r3 i0

@@ -222,6 +222,9 @@ fn item_to_ast_nodes(
                 attributes,
             )?,
         )),
+        ItemKind::Error(spans, error) => {
+            vec![AstNodeContent::Error(spans, error)]
+        }
     };
 
     Ok(contents
@@ -583,20 +586,21 @@ fn item_trait_to_trait_declaration(
         .trait_items
         .into_inner()
         .into_iter()
-        .map(|(annotated, _)| {
+        .map(|annotated| {
             let attributes = item_attrs_to_map(context, handler, &annotated.attribute_list)?;
             if !cfg_eval(context, handler, &attributes)? {
                 return Ok(None);
             }
             Ok(Some(match annotated.value {
-                ItemTraitItem::Fn(fn_sig) => {
+                ItemTraitItem::Fn(fn_sig, _) => {
                     fn_signature_to_trait_fn(context, handler, engines, fn_sig, attributes)
                         .map(TraitItem::TraitFn)
                 }
-                ItemTraitItem::Const(const_decl) => item_const_to_constant_declaration(
+                ItemTraitItem::Const(const_decl, _) => item_const_to_constant_declaration(
                     context, handler, engines, const_decl, attributes, false,
                 )
                 .map(TraitItem::Constant),
+                ItemTraitItem::Error(spans, error) => Ok(TraitItem::Error(spans, error)),
             }?))
         })
         .filter_map_ok(|item| item)
@@ -756,14 +760,14 @@ fn item_abi_to_abi_declaration(
                 .abi_items
                 .into_inner()
                 .into_iter()
-                .map(|(annotated, _)| {
+                .map(|annotated| {
                     let attributes =
                         item_attrs_to_map(context, handler, &annotated.attribute_list)?;
                     if !cfg_eval(context, handler, &attributes)? {
                         return Ok(None);
                     }
                     Ok(Some(match annotated.value {
-                        ItemTraitItem::Fn(fn_signature) => {
+                        ItemTraitItem::Fn(fn_signature, _) => {
                             let trait_fn = fn_signature_to_trait_fn(
                                 context,
                                 handler,
@@ -780,10 +784,11 @@ fn item_abi_to_abi_declaration(
                             )?;
                             Ok(TraitItem::TraitFn(trait_fn))
                         }
-                        ItemTraitItem::Const(const_decl) => item_const_to_constant_declaration(
+                        ItemTraitItem::Const(const_decl, _) => item_const_to_constant_declaration(
                             context, handler, engines, const_decl, attributes, false,
                         )
                         .map(TraitItem::Constant),
+                        ItemTraitItem::Error(spans, error) => Ok(TraitItem::Error(spans, error)),
                     }?))
                 })
                 .filter_map_ok(|item| item)
@@ -1172,17 +1177,28 @@ fn braced_code_block_contents_to_code_block(
     let whole_block_span = braced_code_block_contents.span();
     let code_block_contents = braced_code_block_contents.into_inner();
     let contents = {
+        let mut error = None;
+
         let mut contents = Vec::new();
         for statement in code_block_contents.statements {
-            let ast_nodes = statement_to_ast_nodes(context, handler, engines, statement)?;
-            contents.extend(ast_nodes);
+            match statement_to_ast_nodes(context, handler, engines, statement) {
+                Ok(mut ast_nodes) => contents.append(&mut ast_nodes),
+                Err(e) => error = Some(e),
+            }
         }
+
         if let Some(expr) = code_block_contents.final_expr_opt {
             let final_ast_node = expr_to_ast_node(context, handler, engines, *expr, false)?;
             contents.push(final_ast_node);
         }
-        contents
+
+        if let Some(error) = error {
+            return Err(error);
+        } else {
+            contents
+        }
     };
+
     Ok(CodeBlock {
         contents,
         whole_block_span,
@@ -1257,9 +1273,11 @@ pub(crate) fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
         "u16" => Some(TypeInfo::UnsignedInteger(IntegerBits::Sixteen)),
         "u32" => Some(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
         "u64" => Some(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+        "u256" => Some(TypeInfo::UnsignedInteger(IntegerBits::V256)),
         "bool" => Some(TypeInfo::Boolean),
         "unit" => Some(TypeInfo::Tuple(Vec::new())),
         "b256" => Some(TypeInfo::B256),
+        "str" => Some(TypeInfo::StringSlice),
         "raw_ptr" => Some(TypeInfo::RawUntypedPtr),
         "raw_slice" => Some(TypeInfo::RawUntypedSlice),
         "Self" | "self" => Some(TypeInfo::SelfType),
@@ -1291,8 +1309,9 @@ fn ty_to_type_info(
                 expr_to_length(context, handler, *ty_array_descriptor.length)?,
             )
         }
-        Ty::Str { length, .. } => {
-            TypeInfo::Str(expr_to_length(context, handler, *length.into_inner())?)
+        Ty::StringSlice(..) => TypeInfo::StringSlice,
+        Ty::StringArray { length, .. } => {
+            TypeInfo::StringArray(expr_to_length(context, handler, *length.into_inner())?)
         }
         Ty::Infer { .. } => TypeInfo::Unknown,
         Ty::Ptr { ty, .. } => {
@@ -1598,7 +1617,7 @@ fn method_call_fields_to_method_application_expression(
             .collect::<Result<_, _>>()?,
     };
     let arguments = iter::once(*target)
-        .chain(args.into_inner().into_iter())
+        .chain(args.into_inner())
         .map(|expr| expr_to_expression(context, handler, engines, expr))
         .collect::<Result<_, _>>()?;
     Ok(Box::new(MethodApplicationExpression {
@@ -1625,10 +1644,10 @@ fn expr_func_app_to_expression_kind(
         ..
     } = match *func {
         Expr::Path(path_expr) => path_expr,
-        Expr::Error(_) => {
+        Expr::Error(_, err) => {
             // FIXME we can do better here and return function application expression here
             // if there are no parsing errors in the arguments
-            return Ok(ExpressionKind::Error(Box::new([span])));
+            return Ok(ExpressionKind::Error(Box::new([span]), err));
         }
         _ => {
             let error = ConvertParseTreeError::FunctionArbitraryExpression { span: func.span() };
@@ -1767,8 +1786,8 @@ fn expr_to_expression(
 ) -> Result<Expression, ErrorEmitted> {
     let span = expr.span();
     let expression = match expr {
-        Expr::Error(part_spans) => Expression {
-            kind: ExpressionKind::Error(part_spans),
+        Expr::Error(part_spans, err) => Expression {
+            kind: ExpressionKind::Error(part_spans, err),
             span,
         },
         Expr::Path(path_expr) => path_expr_to_expression(context, handler, engines, path_expr)?,
@@ -1988,7 +2007,7 @@ fn expr_to_expression(
             // For example, `storage.foo.bar` would result in `Some([foo, bar])`.
             let mut idents = vec![&name];
             let mut base = &*target;
-            let storage_access_field_names = loop {
+            let kind = loop {
                 match base {
                     // Parent is a projection itself, so check its parent.
                     Expr::FieldProjection { target, name, .. } => {
@@ -2002,21 +2021,21 @@ fn expr_to_expression(
                             && path_expr.prefix.generics_opt.is_none()
                             && path_expr.prefix.name.as_str() == "storage" =>
                     {
-                        break Some(idents)
+                        break ExpressionKind::StorageAccess(StorageAccessExpression {
+                            field_names: idents.into_iter().rev().cloned().collect(),
+                            storage_keyword_span: path_expr.prefix.name.span(),
+                        })
                     }
                     // We'll never find `storage`, so stop here.
-                    _ => break None,
+                    _ => {
+                        break ExpressionKind::Subfield(SubfieldExpression {
+                            prefix: Box::new(expr_to_expression(
+                                context, handler, engines, *target,
+                            )?),
+                            field_to_access: name,
+                        })
+                    }
                 }
-            };
-
-            let kind = match storage_access_field_names {
-                Some(field_names) => ExpressionKind::StorageAccess(StorageAccessExpression {
-                    field_names: field_names.into_iter().rev().cloned().collect(),
-                }),
-                None => ExpressionKind::Subfield(SubfieldExpression {
-                    prefix: Box::new(expr_to_expression(context, handler, engines, *target)?),
-                    field_to_access: name,
-                }),
             };
             Expression { kind, span }
         }
@@ -2360,19 +2379,26 @@ fn statement_to_ast_nodes(
         }
         Statement::Item(item) => {
             let nodes = item_to_ast_nodes(context, handler, engines, item, false, None)?;
-            nodes.iter().fold(Ok(()), |res, node| {
+            nodes.iter().try_fold((), |res, node| {
                 if ast_node_is_test_fn(node) {
                     let span = node.span.clone();
                     let error = ConvertParseTreeError::TestFnOnlyAllowedAtModuleLevel { span };
                     Err(handler.emit_err(error.into()))
                 } else {
-                    res
+                    Ok(res)
                 }
             })?;
             nodes
         }
         Statement::Expr { expr, .. } => {
             vec![expr_to_ast_node(context, handler, engines, expr, true)?]
+        }
+        Statement::Error(spans, error) => {
+            let span = Span::join_all(spans.iter().cloned());
+            vec![AstNode {
+                content: AstNodeContent::Error(spans, error),
+                span,
+            }]
         }
     };
     Ok(ast_nodes)
@@ -2809,7 +2835,7 @@ fn literal_to_literal(
                     if let Some(hex_digits) = orig_str.strip_prefix("0x") {
                         let num_digits = hex_digits.chars().filter(|c| *c != '_').count();
                         match num_digits {
-                            1..=16 => Literal::U64(u64::try_from(parsed).unwrap()),
+                            1..=16 => Literal::Numeric(u64::try_from(parsed).unwrap()),
                             64 => {
                                 let bytes = parsed.to_bytes_be();
                                 let mut full_bytes = [0u8; 32];
@@ -2824,7 +2850,7 @@ fn literal_to_literal(
                     } else if let Some(bin_digits) = orig_str.strip_prefix("0b") {
                         let num_digits = bin_digits.chars().filter(|c| *c != '_').count();
                         match num_digits {
-                            1..=64 => Literal::U64(u64::try_from(parsed).unwrap()),
+                            1..=64 => Literal::Numeric(u64::try_from(parsed).unwrap()),
                             256 => {
                                 let bytes = parsed.to_bytes_be();
                                 let mut full_bytes = [0u8; 32];
@@ -2887,6 +2913,7 @@ fn literal_to_literal(
                         };
                         Literal::U64(value)
                     }
+                    LitIntType::U256 => Literal::U256(parsed.into()),
                     LitIntType::I8 | LitIntType::I16 | LitIntType::I32 | LitIntType::I64 => {
                         let error = ConvertParseTreeError::SignedIntegersNotSupported { span };
                         return Err(handler.emit_err(error.into()));
@@ -3627,7 +3654,7 @@ fn pattern_to_scrutinee(
             },
             span,
         },
-        Pattern::Error(spans) => Scrutinee::Error { spans },
+        Pattern::Error(spans, err) => Scrutinee::Error { spans, err },
     };
     Ok(scrutinee)
 }
@@ -3656,7 +3683,8 @@ fn ty_to_type_parameter(
         }
         Ty::Tuple(..) => panic!("tuple types are not allowed in this position"),
         Ty::Array(..) => panic!("array types are not allowed in this position"),
-        Ty::Str { .. } => panic!("str types are not allowed in this position"),
+        Ty::StringSlice(..) => panic!("str types are not allowed in this position"),
+        Ty::StringArray { .. } => panic!("str types are not allowed in this position"),
         Ty::Ptr { .. } => panic!("__ptr types are not allowed in this position"),
         Ty::Slice { .. } => panic!("__slice types are not allowed in this position"),
     };
@@ -3768,7 +3796,7 @@ fn assignable_to_expression(
         Assignable::FieldProjection { target, name, .. } => {
             let mut idents = vec![&name];
             let mut base = &*target;
-            let storage_access_field_names_opt = loop {
+            let (storage_access_field_names_opt, storage_name_opt) = loop {
                 match base {
                     Assignable::FieldProjection { target, name, .. } => {
                         idents.push(name);
@@ -3776,24 +3804,25 @@ fn assignable_to_expression(
                     }
                     Assignable::Var(name) => {
                         if name.as_str() == "storage" {
-                            break Some(idents);
+                            break (Some(idents), Some(name.clone()));
                         }
-                        break None;
+                        break (None, None);
                     }
-                    _ => break None,
+                    _ => break (None, None),
                 }
             };
-            match storage_access_field_names_opt {
-                Some(field_names) => {
+            match (storage_access_field_names_opt, storage_name_opt) {
+                (Some(field_names), Some(storage_name)) => {
                     let field_names = field_names.into_iter().rev().cloned().collect();
                     Expression {
                         kind: ExpressionKind::StorageAccess(StorageAccessExpression {
                             field_names,
+                            storage_keyword_span: storage_name.span(),
                         }),
                         span,
                     }
                 }
-                None => Expression {
+                _ => Expression {
                     kind: ExpressionKind::Subfield(SubfieldExpression {
                         prefix: Box::new(assignable_to_expression(
                             context, handler, engines, *target,
@@ -3840,6 +3869,7 @@ fn assignable_to_reassignment_target(
 ) -> Result<ReassignmentTarget, ErrorEmitted> {
     let mut idents = Vec::new();
     let mut base = &assignable;
+
     loop {
         match base {
             Assignable::FieldProjection { target, name, .. } => {
@@ -4126,7 +4156,7 @@ fn error_if_self_param_is_not_allowed(
 /// Walks all the cfg attributes in a map, evaluating them
 /// and returning false if any evaluated to false.
 pub fn cfg_eval(
-    context: &mut Context,
+    context: &Context,
     handler: &Handler,
     attrs_map: &AttributesMap,
 ) -> Result<bool, ErrorEmitted> {

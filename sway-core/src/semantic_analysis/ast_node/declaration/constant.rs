@@ -1,22 +1,25 @@
-use sway_error::warning::{CompileWarning, Warning};
+use sway_error::{
+    handler::{ErrorEmitted, Handler},
+    warning::{CompileWarning, Warning},
+};
 use sway_types::{style::is_screaming_snake_case, Spanned};
 
 use crate::{
-    error::*,
     language::{
         parsed::{self, *},
         ty::{self, TyConstantDecl},
         CallPath,
     },
-    semantic_analysis::*,
-    EnforceTypeArguments, Engines, TypeInfo,
+    semantic_analysis::{type_check_context::EnforceTypeArguments, *},
+    Engines, TypeInfo,
 };
 
 impl ty::TyConstantDecl {
-    pub fn type_check(mut ctx: TypeCheckContext, decl: ConstantDeclaration) -> CompileResult<Self> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
-
+    pub fn type_check(
+        handler: &Handler,
+        mut ctx: TypeCheckContext,
+        decl: ConstantDeclaration,
+    ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
@@ -30,17 +33,16 @@ impl ty::TyConstantDecl {
             visibility,
         } = decl;
 
-        type_ascription.type_id = check!(
-            ctx.resolve_type_with_self(
+        type_ascription.type_id = ctx
+            .resolve_type_with_self(
+                handler,
                 type_ascription.type_id,
+                ctx.self_type(),
                 &type_ascription.span,
                 EnforceTypeArguments::No,
-                None
-            ),
-            type_engine.insert(engines, TypeInfo::ErrorRecovery),
-            warnings,
-            errors,
-        );
+                None,
+            )
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
 
         let mut ctx = ctx
             .by_ref()
@@ -52,10 +54,10 @@ impl ty::TyConstantDecl {
 
         let value = match value {
             Some(value) => {
-                let result = ty::TyExpression::type_check(ctx.by_ref(), value);
+                let result = ty::TyExpression::type_check(handler, ctx.by_ref(), value);
 
                 if !is_screaming_snake_case(name.as_str()) {
-                    warnings.push(CompileWarning {
+                    handler.emit_warn(CompileWarning {
                         span: name.span(),
                         warning_content: Warning::NonScreamingSnakeCaseConstName {
                             name: name.clone(),
@@ -63,12 +65,8 @@ impl ty::TyConstantDecl {
                     })
                 }
 
-                let value = check!(
-                    result,
-                    ty::TyExpression::error(name.span(), engines),
-                    warnings,
-                    errors
-                );
+                let value =
+                    result.unwrap_or_else(|err| ty::TyExpression::error(err, name.span(), engines));
 
                 Some(value)
             }
@@ -102,7 +100,7 @@ impl ty::TyConstantDecl {
             visibility,
             implementing_type: None,
         };
-        ok(decl, warnings, errors)
+        Ok(decl)
     }
 
     /// Used to create a stubbed out constant when the constant fails to

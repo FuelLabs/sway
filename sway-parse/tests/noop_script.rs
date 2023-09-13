@@ -55,6 +55,7 @@ fn noop_script_file() {
                     inner: Nil,
                     span: (48, 50),
                   ))),
+                  span: (39, 57),
                 ),
                 span: (38, 58),
               ),

@@ -3,6 +3,7 @@ use colored::Colorize;
 use forc_client::{
     cmd::{Deploy as DeployCommand, Run as RunCommand},
     op::{deploy, run},
+    NodeTarget,
 };
 use forc_pkg::{Built, BuiltPackage};
 use fuel_tx::TransactionBuilder;
@@ -30,13 +31,11 @@ where
     let mut output = String::new();
 
     // Capture both stdout and stderr to buffers, run the code and save to a string.
-    let buf_stdout = Some(gag::BufferRedirect::stdout().unwrap());
-    let buf_stderr = Some(gag::BufferRedirect::stderr().unwrap());
+    let mut buf_stdout = gag::BufferRedirect::stdout().unwrap();
+    let mut buf_stderr = gag::BufferRedirect::stderr().unwrap();
 
     let result = func().await;
 
-    let mut buf_stdout = buf_stdout.unwrap();
-    let mut buf_stderr = buf_stderr.unwrap();
     buf_stdout.read_to_string(&mut output).unwrap();
     buf_stderr.read_to_string(&mut output).unwrap();
     drop(buf_stdout);
@@ -109,7 +108,10 @@ pub(crate) async fn runs_on_node(
                 terse: !run_config.verbose,
                 ..Default::default()
             },
-            node_url: Some(NODE_URL.into()),
+            node: NodeTarget {
+                node_url: Some(NODE_URL.into()),
+                ..Default::default()
+            },
             contract: Some(contracts),
             signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
             ..Default::default()
@@ -270,21 +272,27 @@ pub(crate) async fn compile_and_run_unit_tests(
         ]
         .iter()
         .collect();
-        let built_tests = forc_test::build(forc_test::Opts {
-            pkg: forc_pkg::PkgOpts {
-                path: Some(path.to_string_lossy().into_owned()),
-                locked: run_config.locked,
-                terse: !(capture_output || run_config.verbose),
+        match std::panic::catch_unwind(|| {
+            forc_test::build(forc_test::Opts {
+                pkg: forc_pkg::PkgOpts {
+                    path: Some(path.to_string_lossy().into_owned()),
+                    locked: run_config.locked,
+                    terse: !(capture_output || run_config.verbose),
+                    ..Default::default()
+                },
                 ..Default::default()
-            },
-            ..Default::default()
-        })?;
-        let test_filter = None;
-        let tested = built_tests.run(forc_test::TestRunnerCount::Auto, test_filter)?;
-
-        match tested {
-            forc_test::Tested::Package(tested_pkg) => Ok(vec![*tested_pkg]),
-            forc_test::Tested::Workspace(tested_pkgs) => Ok(tested_pkgs),
+            })
+        }) {
+            Ok(Ok(built_tests)) => {
+                let test_filter = None;
+                let tested = built_tests.run(forc_test::TestRunnerCount::Auto, test_filter)?;
+                match tested {
+                    forc_test::Tested::Package(tested_pkg) => Ok(vec![*tested_pkg]),
+                    forc_test::Tested::Workspace(tested_pkgs) => Ok(tested_pkgs),
+                }
+            }
+            Ok(Err(e)) => Err(e),
+            Err(_) => Err(anyhow!("Compiler panic")),
         }
     })
     .await
@@ -312,6 +320,11 @@ pub(crate) fn test_json_abi(file_name: &str, built_package: &BuiltPackage) -> Re
     let output_contents =
         fs::read_to_string(output_path).expect("Something went wrong reading the file.");
     if oracle_contents != output_contents {
+        println!("Mismatched ABI JSON output.");
+        println!(
+            "{}",
+            prettydiff::diff_lines(&oracle_contents, &output_contents)
+        );
         bail!("Mismatched ABI JSON output.");
     }
     Ok(())

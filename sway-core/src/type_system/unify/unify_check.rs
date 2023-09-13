@@ -358,7 +358,9 @@ impl<'a> UnifyCheck<'a> {
                     (UnsignedInteger(_), UnsignedInteger(_)) => true,
                     (Numeric, UnsignedInteger(_)) => true,
                     (UnsignedInteger(_), Numeric) => true,
-                    (Str(l), Str(r)) => l.val() == r.val(),
+
+                    (StringSlice, StringSlice) => true,
+                    (StringArray(l), StringArray(r)) => l.val() == r.val(),
 
                     // For contract callers, they can be coerced if they have the same
                     // name and at least one has an address of `None`
@@ -379,8 +381,8 @@ impl<'a> UnifyCheck<'a> {
                             || matches!(ean, AbiName::Deferred)
                     }
 
-                    (ErrorRecovery, _) => true,
-                    (_, ErrorRecovery) => true,
+                    (ErrorRecovery(_), _) => true,
+                    (_, ErrorRecovery(_)) => true,
 
                     (a, b) => a.eq(&b, self.engines),
                 }
@@ -454,8 +456,9 @@ impl<'a> UnifyCheck<'a> {
                 (TypeInfo::Contract, TypeInfo::Contract) => true,
                 (TypeInfo::Boolean, TypeInfo::Boolean) => true,
                 (TypeInfo::B256, TypeInfo::B256) => true,
-                (TypeInfo::ErrorRecovery, TypeInfo::ErrorRecovery) => true,
-                (TypeInfo::Str(l), TypeInfo::Str(r)) => l.val() == r.val(),
+                (TypeInfo::ErrorRecovery(_), TypeInfo::ErrorRecovery(_)) => true,
+                (TypeInfo::StringSlice, TypeInfo::StringSlice) => true,
+                (TypeInfo::StringArray(l), TypeInfo::StringArray(r)) => l.val() == r.val(),
                 (TypeInfo::UnsignedInteger(l), TypeInfo::UnsignedInteger(r)) => l == r,
                 (TypeInfo::RawUntypedPtr, TypeInfo::RawUntypedPtr) => true,
                 (TypeInfo::RawUntypedSlice, TypeInfo::RawUntypedSlice) => true,
@@ -627,7 +630,13 @@ impl<'a> UnifyCheck<'a> {
                         let a = right_types.get(i).unwrap();
                         let b = right_types.get(j).unwrap();
                         if matches!(&self.mode, Coercion)
-                            && (matches!(a, Placeholder(_)) || matches!(b, Placeholder(_)))
+                            && (matches!(
+                                (a, b),
+                                (_, Placeholder(_))
+                                    | (Placeholder(_), _)
+                                    | (UnsignedInteger(_), Numeric)
+                                    | (Numeric, UnsignedInteger(_))
+                            ))
                         {
                             continue;
                         }
@@ -641,7 +650,13 @@ impl<'a> UnifyCheck<'a> {
                     let a = left_types.get(i).unwrap();
                     let b = left_types.get(j).unwrap();
                     if matches!(&self.mode, Coercion)
-                        && (matches!(a, Placeholder(_)) || matches!(b, Placeholder(_)))
+                        && (matches!(
+                            (a, b),
+                            (_, Placeholder(_))
+                                | (Placeholder(_), _)
+                                | (UnsignedInteger(_), Numeric)
+                                | (Numeric, UnsignedInteger(_))
+                        ))
                     {
                         continue;
                     }

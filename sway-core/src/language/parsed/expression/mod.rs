@@ -3,6 +3,7 @@ use crate::{
     type_system::TypeBinding,
     TypeArgument, TypeInfo,
 };
+use sway_error::handler::ErrorEmitted;
 use sway_types::{ident::Ident, Span, Spanned};
 
 mod asm;
@@ -142,6 +143,7 @@ pub struct ArrayIndexExpression {
 #[derive(Debug, Clone)]
 pub struct StorageAccessExpression {
     pub field_names: Vec<Ident>,
+    pub storage_keyword_span: Span,
 }
 
 #[derive(Debug, Clone)]
@@ -170,7 +172,7 @@ pub enum ExpressionKind {
     /// Used for parser recovery when we cannot form a more specific node.
     /// The list of `Span`s are for consumption by the LSP and are,
     /// when joined, the same as that stored in `expr.span`.
-    Error(Box<[Span]>),
+    Error(Box<[Span]>, ErrorEmitted),
     Literal(Literal),
     /// An ambiguous path where we don't know until type checking whether this
     /// is a free function call, an enum variant or a UFCS (Rust term) style associated function call.

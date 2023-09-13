@@ -73,103 +73,133 @@ pub enum Result<T, E> {
 impl<T, E> Result<T, E> {
     // Querying the contained values
     //
-    /// Returns `true` if the result is `Ok`.
+    /// Returns whether a result contains a success value.
     ///
-    /// ### Examples
+    /// # Returns
     ///
-    /// ```
+    /// * [bool] - Returns `true` if the result is `Ok`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
     /// enum Error {
     ///     NotFound,
     ///     Invalid,
     /// }
     ///
-    /// let x: Result<u64, Error> = Result::Ok(42);
-    /// assert(x.is_ok());
+    /// fn foo() {
+    ///     let x: Result<u64, Error> = Result::Ok(42);
+    ///     assert(x.is_ok());
     ///
-    /// let y: Result<u64, Error> = Result::Err(Error::NotFound));
-    /// assert(!x.is_ok());
+    ///     let y: Result<u64, Error> = Result::Err(Error::NotFound));
+    ///     assert(!y.is_ok());
+    /// }
     /// ```
     pub fn is_ok(self) -> bool {
         match self {
-            Result::Ok(_) => true,
+            Self::Ok(_) => true,
             _ => false,
         }
     }
 
-    /// Returns `true` if the result is `Err`.
+    /// Returns whether a result contains an error value.
     ///
-    /// ### Examples
+    /// # Returns
     ///
-    /// ```
+    /// * [bool] - Returns `true` if the result is `Err`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
     /// enum Error {
     ///     NotFound,
     ///     Invalid,
     /// }
     ///
-    /// let x: Result<u64, Error> = Result::Ok(42);
-    /// assert(!x.is_err());
+    /// fn foo() {
+    ///     let x: Result<u64, Error> = Result::Ok(42);
+    ///     assert(!x.is_err());
     ///
-    /// let y: Result<u64, Error> = Result::Err(Error::NotFound));
-    /// assert(x.is_err());
+    ///     let y: Result<u64, Error> = Result::Err(Error::NotFound));
+    ///     assert(y.is_err());
+    /// }
     /// ```
     pub fn is_err(self) -> bool {
         match self {
-            Result::Ok(_) => false,
+            Self::Ok(_) => false,
             _ => true,
         }
     }
 
     /// Returns the contained `Ok` value, consuming the `self` value.
     ///
+    /// # Additional Information
+    ///
     /// Because this function may revert, its use is generally discouraged.
     /// Instead, prefer to use pattern matching and handle the `Err`
     /// case explicitly.
     ///
-    /// ### Reverts
+    /// # Returns
     ///
-    /// Reverts if the self value is `Err`.
+    /// * [T] - The value contained by the result.
     ///
-    /// ### Examples
+    /// # Reverts
     ///
-    /// ```
+    /// * Reverts if the `Result` is the `Err` variant.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
     /// enum Error {
     ///     NotFound,
     ///     Invalid,
     /// }
     ///
-    /// let x: Result<u64, Error> = Result::Ok(42);
-    /// assert(x.unwrap() == 42);
+    /// fn foo() {
+    ///     let x: Result<u64, Error> = Result::Ok(42);
+    ///     assert(x.unwrap() == 42);
     ///
-    /// let y: Result<u64, Error> = Result::Err(Error::NotFound));
-    /// assert(x.unwrap() == 42); // reverts
+    ///     let y: Result<u64, Error> = Result::Err(Error::NotFound));
+    ///     let val = y.unwrap(); // reverts
+    /// }
     /// ```
     pub fn unwrap(self) -> T {
         match self {
-            Result::Ok(inner_value) => inner_value,
+            Self::Ok(inner_value) => inner_value,
             _ => revert(0),
         }
     }
 
     /// Returns the contained `Ok` value or a provided default.
     ///
-    /// ### Examples
+    /// # Arguments
     ///
-    /// ```
+    /// * `default`: [T] - The value that is the default.
+    ///
+    /// # Returns
+    ///
+    /// * [T] - The value of the result or the default.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
     /// enum Error {
     ///     NotFound,
     ///     Invalid,
     /// }
     ///
-    /// let x: Result<u64, Error> = Result::Ok(42);
-    /// assert(x.unwrap_or(69) == 42);
+    /// fn foo() {
+    ///     let x: Result<u64, Error> = Result::Ok(42);
+    ///     assert(x.unwrap_or(69) == 42);
     ///
-    /// let y: Result<u64, Error> = Result::Err(Error::NotFound));
-    /// assert(x.unwrap_or(69) == 69);
+    ///     let y: Result<u64, Error> = Result::Err(Error::NotFound));
+    ///     assert(y.unwrap_or(69) == 69);
+    /// }
     /// ```
     pub fn unwrap_or(self, default: T) -> T {
         match self {
-            Result::Ok(inner_value) => inner_value,
-            Result::Err(_) => default,
+            Self::Ok(inner_value) => inner_value,
+            Self::Err(_) => default,
         }
     }
 

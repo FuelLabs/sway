@@ -2,7 +2,7 @@
 pub mod error;
 
 #[macro_use]
-mod engine_threading;
+pub mod engine_threading;
 
 pub mod abi_generation;
 pub mod asm_generation;
@@ -22,14 +22,18 @@ pub mod transform;
 pub mod type_system;
 
 use crate::ir_generation::check_function_purity;
-use crate::{error::*, source_map::SourceMap};
+use crate::query_engine::ModuleCacheEntry;
+use crate::source_map::SourceMap;
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
 pub use asm_generation::{CompiledBytecode, FinalizedEntry};
 pub use build_config::{BuildConfig, BuildTarget};
 use control_flow_analysis::ControlFlowGraph;
 use metadata::MetadataManager;
+use query_engine::{ModulePath, ProgramsCacheEntry};
+use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_ast::AttributeDecl;
@@ -37,7 +41,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassManager,
     ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME,
-    MODULEPRINTER_NAME, RETDEMOTION_NAME,
+    MODULEPRINTER_NAME, RETDEMOTION_NAME, SIMPLIFYCFG_NAME,
 };
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
 use sway_types::SourceEngine;
@@ -48,9 +52,7 @@ use types::*;
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
 
-pub use error::CompileResult;
 use sway_error::error::CompileError;
-use sway_error::warning::CompileWarning;
 use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;
 
@@ -79,39 +81,50 @@ pub use engine_threading::Engines;
 /// Panics if the parser panics.
 pub fn parse(
     input: Arc<str>,
+    handler: &Handler,
     engines: &Engines,
     config: Option<&BuildConfig>,
-) -> CompileResult<(lexed::LexedProgram, parsed::ParseProgram)> {
-    CompileResult::with_handler(|h| match config {
-        None => parse_in_memory(h, engines, input),
+) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
+    match config {
+        None => parse_in_memory(handler, engines, input),
         // When a `BuildConfig` is given,
         // the module source may declare `dep`s that must be parsed from other files.
         Some(config) => parse_module_tree(
-            h,
+            handler,
             engines,
             input,
             config.canonical_root_module(),
             None,
             config.build_target,
         )
-        .map(|(kind, lexed, parsed)| {
-            let lexed = lexed::LexedProgram {
-                kind: kind.clone(),
-                root: lexed,
-            };
-            let parsed = parsed::ParseProgram { kind, root: parsed };
-            (lexed, parsed)
-        }),
-    })
+        .map(
+            |ParsedModuleTree {
+                 tree_type: kind,
+                 lexed_module,
+                 parse_module,
+             }| {
+                let lexed = lexed::LexedProgram {
+                    kind: kind.clone(),
+                    root: lexed_module,
+                };
+                let parsed = parsed::ParseProgram {
+                    kind,
+                    root: parse_module,
+                };
+                (lexed, parsed)
+            },
+        ),
+    }
 }
 
 /// Parses the tree kind in the input provided.
 ///
 /// This will lex the entire input, but parses only the module kind.
-pub fn parse_tree_type(input: Arc<str>) -> CompileResult<parsed::TreeType> {
-    CompileResult::with_handler(|h| {
-        sway_parse::parse_module_kind(h, input, None).map(|kind| convert_module_kind(&kind))
-    })
+pub fn parse_tree_type(
+    handler: &Handler,
+    input: Arc<str>,
+) -> Result<parsed::TreeType, ErrorEmitted> {
+    sway_parse::parse_module_kind(handler, input, None).map(|kind| convert_module_kind(&kind))
 }
 
 /// Convert attributes from `Annotated<Module>` to an [AttributesMap].
@@ -171,20 +184,27 @@ fn parse_in_memory(
     engines: &Engines,
     src: Arc<str>,
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
+    let mut hasher = DefaultHasher::new();
+    src.hash(&mut hasher);
+    let hash = hasher.finish();
     let module = sway_parse::parse_file(handler, src, None)?;
+
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
         &mut to_parsed_lang::Context::default(),
         handler,
         engines,
         module.value.clone(),
     )?;
+    let module_kind_span = module.value.kind.span();
     let submodules = Default::default();
     let attributes = module_attrs_to_map(handler, &module.attribute_list)?;
     let root = parsed::ParseModule {
         span: span::Span::dummy(),
+        module_kind_span,
         tree,
         submodules,
         attributes,
+        hash,
     };
     let lexed_program = lexed::LexedProgram::new(
         kind.clone(),
@@ -193,14 +213,19 @@ fn parse_in_memory(
             submodules: Default::default(),
         },
     );
+
     Ok((lexed_program, parsed::ParseProgram { kind, root }))
 }
 
-/// Contains the lexed and parsed submodules 'deps' of a module.
-struct Submodules {
-    lexed: Vec<(Ident, lexed::LexedSubmodule)>,
-    parsed: Vec<(Ident, parsed::ParseSubmodule)>,
+pub struct Submodule {
+    name: Ident,
+    path: ModulePath,
+    lexed: lexed::LexedSubmodule,
+    parsed: parsed::ParseSubmodule,
 }
+
+/// Contains the lexed and parsed submodules 'deps' of a module.
+pub type Submodules = Vec<Submodule>;
 
 /// Parse all dependencies `deps` as submodules.
 fn parse_submodules(
@@ -212,8 +237,7 @@ fn parse_submodules(
     build_target: BuildTarget,
 ) -> Submodules {
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
-    let mut lexed_submods = Vec::with_capacity(module.submodules().count());
-    let mut parsed_submods = Vec::with_capacity(lexed_submods.capacity());
+    let mut submods = Vec::with_capacity(module.submodules().count());
 
     module.submodules().for_each(|submod| {
         // Read the source code from the dependency.
@@ -231,7 +255,11 @@ fn parse_submodules(
             }
         };
 
-        if let Ok((kind, lexed_module, parse_module)) = parse_module_tree(
+        if let Ok(ParsedModuleTree {
+            tree_type: kind,
+            lexed_module,
+            parse_module,
+        }) = parse_module_tree(
             handler,
             engines,
             submod_str.clone(),
@@ -257,15 +285,26 @@ fn parse_submodules(
             let lexed_submodule = lexed::LexedSubmodule {
                 module: lexed_module,
             };
-            lexed_submods.push((submod.name.clone(), lexed_submodule));
-            parsed_submods.push((submod.name.clone(), parse_submodule));
+            let submodule = Submodule {
+                name: submod.name.clone(),
+                path: submod_path,
+                lexed: lexed_submodule,
+                parsed: parse_submodule,
+            };
+            submods.push(submodule);
         }
     });
 
-    Submodules {
-        lexed: lexed_submods,
-        parsed: parsed_submods,
-    }
+    submods
+}
+
+pub type SourceHash = u64;
+
+#[derive(Clone, Debug)]
+pub struct ParsedModuleTree {
+    pub tree_type: parsed::TreeType,
+    pub lexed_module: lexed::LexedModule,
+    pub parse_module: parsed::ParseModule,
 }
 
 /// Given the source of the module along with its path,
@@ -277,7 +316,9 @@ fn parse_module_tree(
     path: Arc<PathBuf>,
     module_name: Option<&str>,
     build_target: BuildTarget,
-) -> Result<(parsed::TreeType, lexed::LexedModule, parsed::ParseModule), ErrorEmitted> {
+) -> Result<ParsedModuleTree, ErrorEmitted> {
+    let query_engine = engines.qe();
+
     // Parse this module first.
     let module_dir = path.parent().expect("module file has no parent directory");
     let source_id = engines.se().get_source_id(&path.clone());
@@ -301,20 +342,91 @@ fn parse_module_tree(
         engines,
         module.value.clone(),
     )?;
+    let module_kind_span = module.value.kind.span();
     let attributes = module_attrs_to_map(handler, &module.attribute_list)?;
 
+    let lexed_submodules = submodules
+        .iter()
+        .map(|s| (s.name.clone(), s.lexed.clone()))
+        .collect::<Vec<_>>();
     let lexed = lexed::LexedModule {
         tree: module.value,
-        submodules: submodules.lexed,
+        submodules: lexed_submodules,
     };
-    let source_id = engines.se().get_source_id(&path.clone());
+
+    let mut hasher = DefaultHasher::new();
+    src.hash(&mut hasher);
+    let hash = hasher.finish();
+
+    let parsed_submodules = submodules
+        .iter()
+        .map(|s| (s.name.clone(), s.parsed.clone()))
+        .collect::<Vec<_>>();
     let parsed = parsed::ParseModule {
         span: span::Span::new(src, 0, 0, Some(source_id)).unwrap(),
+        module_kind_span,
         tree,
-        submodules: submodules.parsed,
+        submodules: parsed_submodules,
         attributes,
+        hash,
     };
-    Ok((kind, lexed, parsed))
+
+    // Let's prime the cache with the module dependency and hash data.
+    let modified_time = std::fs::metadata(path.as_path())
+        .ok()
+        .and_then(|m| m.modified().ok());
+    let dependencies = submodules.into_iter().map(|s| s.path).collect::<Vec<_>>();
+    let parsed_module_tree = ParsedModuleTree {
+        tree_type: kind,
+        lexed_module: lexed,
+        parse_module: parsed,
+    };
+    let cache_entry = ModuleCacheEntry {
+        path,
+        modified_time,
+        hash,
+        dependencies,
+    };
+    query_engine.insert_parse_module_cache_entry(cache_entry);
+
+    Ok(parsed_module_tree)
+}
+
+fn is_parse_module_cache_up_to_date(engines: &Engines, path: &Arc<PathBuf>) -> bool {
+    let query_engine = engines.qe();
+    let entry = query_engine.get_parse_module_cache_entry(path);
+    match entry {
+        Some(entry) => {
+            let modified_time = std::fs::metadata(path.as_path())
+                .ok()
+                .and_then(|m| m.modified().ok());
+
+            // Let's check if we can re-use the dependency information
+            // we got from the cache, which is only true if the file hasn't been
+            // modified since or if its hash is the same.
+            let cache_up_to_date = entry.modified_time == modified_time || {
+                let src = std::fs::read_to_string(path.as_path()).unwrap();
+
+                let mut hasher = DefaultHasher::new();
+                src.hash(&mut hasher);
+                let hash = hasher.finish();
+
+                hash == entry.hash
+            };
+
+            // Look at the dependencies recursively to make sure they have not been
+            // modified either.
+            if cache_up_to_date {
+                entry
+                    .dependencies
+                    .iter()
+                    .all(|path| is_parse_module_cache_up_to_date(engines, path))
+            } else {
+                false
+            }
+        }
+        None => false,
+    }
 }
 
 fn module_path(
@@ -338,35 +450,36 @@ fn module_path(
 pub struct CompiledAsm(pub FinalizedAsm);
 
 pub fn parsed_to_ast(
+    handler: &Handler,
     engines: &Engines,
     parse_program: &parsed::ParseProgram,
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
     package_name: &str,
-) -> CompileResult<ty::TyProgram> {
+) -> Result<ty::TyProgram, ErrorEmitted> {
     // Type check the program.
-    let CompileResult {
-        value: typed_program_opt,
-        mut warnings,
-        mut errors,
-    } = ty::TyProgram::type_check(engines, parse_program, initial_namespace, package_name);
+    let typed_program_opt = ty::TyProgram::type_check(
+        handler,
+        engines,
+        parse_program,
+        initial_namespace,
+        package_name,
+    );
 
     let mut typed_program = match typed_program_opt {
-        Some(typed_program) => typed_program,
-        None => return err(warnings, errors),
+        Ok(typed_program) => typed_program,
+        Err(e) => return Err(e),
     };
 
     // Collect information about the types used in this program
-    let CompileResult {
-        value: types_metadata_result,
-        warnings: new_warnings,
-        errors: new_errors,
-    } = typed_program.collect_types_metadata(&mut CollectTypesMetadataContext::new(engines));
-    warnings.extend(new_warnings);
-    errors.extend(new_errors);
+    let types_metadata_result = typed_program
+        .collect_types_metadata(handler, &mut CollectTypesMetadataContext::new(engines));
     let types_metadata = match types_metadata_result {
-        Some(types_metadata) => types_metadata,
-        None => return deduped_err(warnings, errors),
+        Ok(types_metadata) => types_metadata,
+        Err(e) => {
+            handler.dedup();
+            return Err(e);
+        }
     };
 
     typed_program
@@ -391,10 +504,13 @@ pub fn parsed_to_ast(
         None => (None, None),
     };
     // Perform control flow analysis and extend with any errors.
-    let cfa_res =
-        perform_control_flow_analysis(engines, &typed_program, print_graph, print_graph_url_format);
-    errors.extend(cfa_res.errors);
-    warnings.extend(cfa_res.warnings);
+    let _ = perform_control_flow_analysis(
+        handler,
+        engines,
+        &typed_program,
+        print_graph,
+        print_graph_url_format,
+    );
 
     // Evaluate const declarations, to allow storage slots initializion with consts.
     let mut ctx = Context::new(engines.se());
@@ -407,30 +523,34 @@ pub fn parsed_to_ast(
         module,
         &typed_program.root.namespace,
     ) {
-        errors.push(e);
+        handler.emit_err(e);
     }
 
     // CEI pattern analysis
     let cei_analysis_warnings =
         semantic_analysis::cei_pattern_analysis::analyze_program(engines, &typed_program);
-    warnings.extend(cei_analysis_warnings);
+    for warn in cei_analysis_warnings {
+        handler.emit_warn(warn);
+    }
 
     // Check that all storage initializers can be evaluated at compile time.
     let typed_wiss_res = typed_program.get_typed_program_with_initialized_storage_slots(
+        handler,
         engines,
         &mut ctx,
         &mut md_mgr,
         module,
     );
-    warnings.extend(typed_wiss_res.warnings);
-    errors.extend(typed_wiss_res.errors);
-    let typed_program_with_storage_slots = match typed_wiss_res.value {
-        Some(typed_program_with_storage_slots) => typed_program_with_storage_slots,
-        None => return deduped_err(warnings, errors),
+    let typed_program_with_storage_slots = match typed_wiss_res {
+        Ok(typed_program_with_storage_slots) => typed_program_with_storage_slots,
+        Err(e) => {
+            handler.dedup();
+            return Err(e);
+        }
     };
 
     // All unresolved types lead to compile errors.
-    errors.extend(types_metadata.iter().filter_map(|m| match m {
+    for err in types_metadata.iter().filter_map(|m| match m {
         TypeMetadata::UnresolvedType(name, call_site_span_opt) => {
             Some(CompileError::UnableToInferGeneric {
                 ty: name.as_str().to_string(),
@@ -438,41 +558,58 @@ pub fn parsed_to_ast(
             })
         }
         _ => None,
-    }));
+    }) {
+        handler.emit_err(err);
+    }
 
     // Check if a non-test function calls `#[test]` function.
 
-    ok(
-        typed_program_with_storage_slots,
-        dedup_unsorted(warnings),
-        dedup_unsorted(errors),
-    )
+    handler.dedup();
+    Ok(typed_program_with_storage_slots)
 }
 
 pub fn compile_to_ast(
+    handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
     package_name: &str,
-    metrics: &mut PerformanceData,
-) -> CompileResult<Programs> {
+) -> Result<Programs, ErrorEmitted> {
+    let query_engine = engines.qe();
+    let mut metrics = PerformanceData::default();
+
+    if let Some(config) = build_config {
+        let path = config.canonical_root_module();
+
+        // Check if we can re-use the data in the cache.
+        if is_parse_module_cache_up_to_date(engines, &path) {
+            let mut entry = query_engine.get_programs_cache_entry(&path).unwrap();
+            entry.programs.metrics.reused_modules += 1;
+
+            let (warnings, errors) = entry.handler_data;
+            let new_handler = Handler::from_parts(warnings, errors);
+            handler.append(new_handler);
+
+            return Ok(entry.programs);
+        };
+    }
+
     // Parse the program to a concrete syntax tree (CST).
-    let CompileResult {
-        value: parse_program_opt,
-        mut warnings,
-        mut errors,
-    } = time_expr!(
+    let parse_program_opt = time_expr!(
         "parse the program to a concrete syntax tree (CST)",
         "parse_cst",
-        parse(input, engines, build_config),
+        parse(input, handler, engines, build_config),
         build_config,
         metrics
     );
 
     let (lexed_program, mut parsed_program) = match parse_program_opt {
-        Some(modules) => modules,
-        None => return deduped_err(warnings, errors),
+        Ok(modules) => modules,
+        Err(e) => {
+            handler.dedup();
+            return Err(e);
+        }
     };
 
     // If tests are not enabled, exclude them from `parsed_program`.
@@ -488,6 +625,7 @@ pub fn compile_to_ast(
         "parse the concrete syntax tree (CST) to a typed AST",
         "parse_ast",
         parsed_to_ast(
+            handler,
             engines,
             &parsed_program,
             initial_namespace,
@@ -498,73 +636,74 @@ pub fn compile_to_ast(
         metrics
     );
 
-    errors.extend(typed_res.errors);
-    warnings.extend(typed_res.warnings);
+    handler.dedup();
 
-    ok(
-        Programs::new(lexed_program, parsed_program, typed_res.value),
-        dedup_unsorted(warnings),
-        dedup_unsorted(errors),
-    )
+    let programs = Programs::new(lexed_program, parsed_program, typed_res, metrics);
+
+    if let Some(config) = build_config {
+        let path = config.canonical_root_module();
+
+        let cache_entry = ProgramsCacheEntry {
+            path,
+            programs: programs.clone(),
+            handler_data: handler.clone().consume(),
+        };
+        query_engine.insert_programs_cache_entry(cache_entry);
+    }
+
+    Ok(programs)
 }
 
 /// Given input Sway source code, try compiling to a `CompiledAsm`,
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn compile_to_asm(
+    handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
     package_name: &str,
-    metrics: &mut PerformanceData,
-) -> CompileResult<CompiledAsm> {
+) -> Result<CompiledAsm, ErrorEmitted> {
     let ast_res = compile_to_ast(
+        handler,
         engines,
         input,
         initial_namespace,
         Some(&build_config),
         package_name,
-        metrics,
-    );
-    ast_to_asm(engines, &ast_res, &build_config)
+    )?;
+    ast_to_asm(handler, engines, &ast_res, &build_config)
 }
 
 /// Given an AST compilation result, try compiling to a `CompiledAsm`,
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn ast_to_asm(
+    handler: &Handler,
     engines: &Engines,
-    ast_res: &CompileResult<Programs>,
+    programs: &Programs,
     build_config: &BuildConfig,
-) -> CompileResult<CompiledAsm> {
-    let programs = match ast_res.value.as_ref() {
-        Some(programs) => programs,
-        None => return err(ast_res.warnings.clone(), ast_res.errors.clone()),
-    };
-
+) -> Result<CompiledAsm, ErrorEmitted> {
     let typed_program = match &programs.typed {
-        Some(typed_program) => typed_program,
-        None => return err(ast_res.warnings.clone(), ast_res.errors.clone()),
+        Ok(typed_program) => typed_program,
+        Err(err) => return Err(*err),
     };
 
-    let mut errors = ast_res.errors.clone();
-    let mut warnings = ast_res.warnings.clone();
-    let asm = check!(
-        compile_ast_to_ir_to_asm(engines, typed_program, build_config),
-        return deduped_err(warnings, errors),
-        warnings,
-        errors
-    );
-    ok(CompiledAsm(asm), warnings, errors)
+    let asm = match compile_ast_to_ir_to_asm(handler, engines, typed_program, build_config) {
+        Ok(res) => res,
+        Err(err) => {
+            handler.dedup();
+            return Err(err);
+        }
+    };
+    Ok(CompiledAsm(asm))
 }
 
 pub(crate) fn compile_ast_to_ir_to_asm(
+    handler: &Handler,
     engines: &Engines,
     program: &ty::TyProgram,
     build_config: &BuildConfig,
-) -> CompileResult<FinalizedAsm> {
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
-
+) -> Result<FinalizedAsm, ErrorEmitted> {
     // the IR pipeline relies on type information being fully resolved.
     // If type information is found to still be generic or unresolved inside of
     // IR, this is considered an internal compiler error. To resolve this situation,
@@ -579,7 +718,13 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     let mut ir = match ir_generation::compile_program(program, build_config.include_tests, engines)
     {
         Ok(ir) => ir,
-        Err(e) => return err(warnings, vec![e]),
+        Err(errors) => {
+            let mut last = None;
+            for e in errors {
+                last = Some(handler.emit_err(e))
+            }
+            return Err(last.unwrap());
+        }
     };
 
     // Find all the entry points for purity checking and DCE.
@@ -591,15 +736,11 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
     // Do a purity check on the _unoptimised_ IR.
     {
-        let handler = Handler::default();
         let mut env = ir_generation::PurityEnv::default();
         let mut md_mgr = metadata::MetadataManager::default();
         for entry_point in &entry_point_functions {
-            check_function_purity(&handler, &mut env, &ir, &mut md_mgr, entry_point);
+            check_function_purity(handler, &mut env, &ir, &mut md_mgr, entry_point);
         }
-        let (e, w) = handler.consume();
-        warnings.extend(w);
-        errors.extend(e);
     }
 
     // Initialize the pass manager and register known passes.
@@ -623,10 +764,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
         // Run a DCE and simplify-cfg to clean up any obsolete instructions.
         pass_group.append_pass(DCE_NAME);
-        // XXX Oh no, if we add simplifycfg here it unearths a bug in the register allocator which
-        // manifests in the `should_pass/language/while_loops` test.  Fixing the register allocator
-        // is a very high priority but isn't a part of this change.
-        //pass_group.append_pass(SIMPLIFYCFG_NAME);
+        pass_group.append_pass(SIMPLIFYCFG_NAME);
     }
 
     if build_config.print_ir {
@@ -634,92 +772,77 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     }
 
     // Run the passes.
-    let res = CompileResult::with_handler(|handler| {
-        if let Err(ir_error) = pass_mgr.run(&mut ir, &pass_group) {
-            Err(handler.emit_err(CompileError::InternalOwned(
-                ir_error.to_string(),
-                span::Span::dummy(),
-            )))
-        } else {
-            Ok(())
-        }
-    });
-    check!(res, return err(warnings, errors), warnings, errors);
+    let res = if let Err(ir_error) = pass_mgr.run(&mut ir, &pass_group) {
+        Err(handler.emit_err(CompileError::InternalOwned(
+            ir_error.to_string(),
+            span::Span::dummy(),
+        )))
+    } else {
+        Ok(())
+    };
+    res?;
 
-    let final_asm = check!(
-        compile_ir_to_asm(&ir, Some(build_config)),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let final_asm = compile_ir_to_asm(handler, &ir, Some(build_config))?;
 
-    ok(final_asm, warnings, errors)
+    Ok(final_asm)
 }
 
 /// Given input Sway source code, compile to [CompiledBytecode], containing the asm in bytecode form.
+#[allow(clippy::too_many_arguments)]
 pub fn compile_to_bytecode(
+    handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
     source_map: &mut SourceMap,
     package_name: &str,
-    metrics: &mut PerformanceData,
-) -> CompileResult<CompiledBytecode> {
+) -> Result<CompiledBytecode, ErrorEmitted> {
     let asm_res = compile_to_asm(
+        handler,
         engines,
         input,
         initial_namespace,
         build_config,
         package_name,
-        metrics,
-    );
-    asm_to_bytecode(asm_res, source_map, engines.se())
+    )?;
+    asm_to_bytecode(handler, asm_res, source_map, engines.se())
 }
 
 /// Given the assembly (opcodes), compile to [CompiledBytecode], containing the asm in bytecode form.
 pub fn asm_to_bytecode(
-    CompileResult {
-        value,
-        mut warnings,
-        mut errors,
-    }: CompileResult<CompiledAsm>,
+    handler: &Handler,
+    mut asm: CompiledAsm,
     source_map: &mut SourceMap,
     source_engine: &SourceEngine,
-) -> CompileResult<CompiledBytecode> {
-    match value {
-        Some(CompiledAsm(mut asm)) => {
-            let compiled_bytecode = check!(
-                asm.to_bytecode_mut(source_map, source_engine),
-                return err(warnings, errors),
-                warnings,
-                errors,
-            );
-            ok(compiled_bytecode, warnings, errors)
-        }
-        None => err(warnings, errors),
-    }
+) -> Result<CompiledBytecode, ErrorEmitted> {
+    let compiled_bytecode = asm.0.to_bytecode_mut(handler, source_map, source_engine)?;
+    Ok(compiled_bytecode)
 }
 
 /// Given a [ty::TyProgram], which is type-checked Sway source, construct a graph to analyze
 /// control flow and determine if it is valid.
 fn perform_control_flow_analysis(
+    handler: &Handler,
     engines: &Engines,
     program: &ty::TyProgram,
     print_graph: Option<String>,
     print_graph_url_format: Option<String>,
-) -> CompileResult<()> {
-    let dca_res = dead_code_analysis(engines, program);
+) -> Result<(), ErrorEmitted> {
+    let dca_res = dead_code_analysis(handler, engines, program);
     let rpa_errors = return_path_analysis(engines, program);
-    let rpa_res = if rpa_errors.is_empty() {
-        ok((), vec![], vec![])
-    } else {
-        err(vec![], rpa_errors)
-    };
-    if let Some(graph) = dca_res.clone().value {
+    let rpa_res = handler.scope(|handler| {
+        for err in rpa_errors {
+            handler.emit_err(err);
+        }
+        Ok(())
+    });
+
+    if let Ok(graph) = dca_res.clone() {
         graph.visualize(engines, print_graph, print_graph_url_format);
     }
-    dca_res.flat_map(|_| rpa_res)
+    dca_res?;
+    rpa_res
 }
 
 /// Constructs a dead code graph from all modules within the graph and then attempts to find dead
@@ -727,47 +850,48 @@ fn perform_control_flow_analysis(
 ///
 /// Returns the graph that was used for analysis.
 fn dead_code_analysis<'a>(
+    handler: &Handler,
     engines: &'a Engines,
     program: &ty::TyProgram,
-) -> CompileResult<ControlFlowGraph<'a>> {
+) -> Result<ControlFlowGraph<'a>, ErrorEmitted> {
     let decl_engine = engines.de();
     let mut dead_code_graph = Default::default();
     let tree_type = program.kind.tree_type();
-    module_dead_code_analysis(engines, &program.root, &tree_type, &mut dead_code_graph).flat_map(
-        |_| {
-            let warnings = dead_code_graph.find_dead_code(decl_engine);
-            ok(dead_code_graph, warnings, vec![])
-        },
-    )
+    module_dead_code_analysis(
+        handler,
+        engines,
+        &program.root,
+        &tree_type,
+        &mut dead_code_graph,
+    )?;
+    let warnings = dead_code_graph.find_dead_code(decl_engine);
+    for warn in warnings {
+        handler.emit_warn(warn)
+    }
+    Ok(dead_code_graph)
 }
 
 /// Recursively collect modules into the given `ControlFlowGraph` ready for dead code analysis.
 fn module_dead_code_analysis<'eng: 'cfg, 'cfg>(
+    handler: &Handler,
     engines: &'eng Engines,
     module: &ty::TyModule,
     tree_type: &parsed::TreeType,
     graph: &mut ControlFlowGraph<'cfg>,
-) -> CompileResult<()> {
-    let init_res = ok((), vec![], vec![]);
-    let submodules_res = module
-        .submodules
-        .iter()
-        .fold(init_res, |res, (_, submodule)| {
-            let tree_type = parsed::TreeType::Library;
-            res.flat_map(|_| {
-                module_dead_code_analysis(engines, &submodule.module, &tree_type, graph)
-            })
-        });
-    let res = submodules_res.flat_map(|()| {
+) -> Result<(), ErrorEmitted> {
+    module.submodules.iter().try_fold((), |_, (_, submodule)| {
+        let tree_type = parsed::TreeType::Library;
+        module_dead_code_analysis(handler, engines, &submodule.module, &tree_type, graph)
+    })?;
+    let res = {
         ControlFlowGraph::append_module_to_dead_code_graph(
             engines,
             &module.all_nodes,
             tree_type,
             graph,
         )
-        .map(|_| ok((), vec![], vec![]))
-        .unwrap_or_else(|error| err(vec![], vec![error]))
-    });
+        .map_err(|err| handler.emit_err(err))
+    };
     graph.connect_pending_entry_edges();
     res
 }
@@ -789,12 +913,13 @@ fn module_return_path_analysis(
     let graph = ControlFlowGraph::construct_return_path_graph(engines, &module.all_nodes);
     match graph {
         Ok(graph) => errors.extend(graph.analyze_return_paths(engines)),
-        Err(error) => errors.push(error),
+        Err(mut error) => errors.append(&mut error),
     }
 }
 
 #[test]
 fn test_basic_prog() {
+    let handler = Handler::default();
     let engines = Engines::default();
     let prog = parse(
         r#"
@@ -877,15 +1002,15 @@ fn test_basic_prog() {
     }
     "#
         .into(),
+        &handler,
         &engines,
         None,
     );
-    let mut warnings: Vec<CompileWarning> = Vec::new();
-    let mut errors: Vec<CompileError> = Vec::new();
-    prog.unwrap(&mut warnings, &mut errors);
+    prog.unwrap();
 }
 #[test]
 fn test_parenthesized() {
+    let handler = Handler::default();
     let engines = Engines::default();
     let prog = parse(
         r#"
@@ -896,17 +1021,17 @@ fn test_parenthesized() {
         }
     "#
         .into(),
+        &handler,
         &engines,
         None,
     );
-    let mut warnings: Vec<CompileWarning> = Vec::new();
-    let mut errors: Vec<CompileError> = Vec::new();
-    prog.unwrap(&mut warnings, &mut errors);
+    prog.unwrap();
 }
 
 #[test]
 fn test_unary_ordering() {
     use crate::language::{self, parsed};
+    let handler = Handler::default();
     let engines = Engines::default();
     let prog = parse(
         r#"
@@ -917,12 +1042,11 @@ fn test_unary_ordering() {
         !a && b;
     }"#
         .into(),
+        &handler,
         &engines,
         None,
     );
-    let mut warnings: Vec<CompileWarning> = Vec::new();
-    let mut errors: Vec<CompileError> = Vec::new();
-    let (.., prog) = prog.unwrap(&mut warnings, &mut errors);
+    let (.., prog) = prog.unwrap();
     // this should parse as `(!a) && b`, not `!(a && b)`. So, the top level
     // expression should be `&&`
     if let parsed::AstNode {
@@ -954,47 +1078,24 @@ fn test_unary_ordering() {
     };
 }
 
-/// Return an irrecoverable compile result deduping any errors and warnings.
-fn deduped_err<T>(warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -> CompileResult<T> {
-    err(dedup_unsorted(warnings), dedup_unsorted(errors))
-}
-
-/// We want compile errors and warnings to retain their ordering, since typically
-/// they are grouped by relevance. However, we want to deduplicate them.
-/// Stdlib dedup in Rust assumes sorted data for efficiency, but we don't want that.
-/// A hash set would also mess up the order, so this is just a brute force way of doing it
-/// with a vector.
-fn dedup_unsorted<T: PartialEq + std::hash::Hash>(mut data: Vec<T>) -> Vec<T> {
-    // TODO(Centril): Consider using `IndexSet` instead for readability.
-    use smallvec::SmallVec;
-    use std::collections::hash_map::{DefaultHasher, Entry};
-    use std::hash::Hasher;
-
-    let mut write_index = 0;
-    let mut indexes: HashMap<u64, SmallVec<[usize; 1]>> = HashMap::with_capacity(data.len());
-    for read_index in 0..data.len() {
-        let hash = {
-            let mut hasher = DefaultHasher::new();
-            data[read_index].hash(&mut hasher);
-            hasher.finish()
-        };
-        let index_vec = match indexes.entry(hash) {
-            Entry::Occupied(oe) => {
-                if oe
-                    .get()
-                    .iter()
-                    .any(|index| data[*index] == data[read_index])
-                {
-                    continue;
-                }
-                oe.into_mut()
-            }
-            Entry::Vacant(ve) => ve.insert(SmallVec::new()),
-        };
-        data.swap(write_index, read_index);
-        index_vec.push(write_index);
-        write_index += 1;
-    }
-    data.truncate(write_index);
-    data
+#[test]
+fn test_parser_recovery() {
+    let handler = Handler::default();
+    let engines = Engines::default();
+    let prog = parse(
+        r#"
+    script;
+    fn main() -> bool {
+        let
+        let a = true;
+        true
+    }"#
+        .into(),
+        &handler,
+        &engines,
+        None,
+    );
+    let (_, _) = prog.unwrap();
+    assert!(handler.has_errors());
+    dbg!(handler);
 }

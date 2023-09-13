@@ -1,23 +1,23 @@
 contract;
-use std::{hash::sha256, storage::storage_api::{read, write}};
+use std::{hash::*, storage::storage_api::{read, write}};
 use basic_storage_abi::*;
 
 const C1 = 1;
-const S5 = "aaaaa";
+const S5 = __to_str_array("aaaaa");
 
 storage {
     c1: u64 = C1,
-    str0: str[0] = "",
-    str1: str[1] = "a",
-    str2: str[2] = "aa",
-    str3: str[3] = "aaa",
-    str4: str[4] = "aaaa",
+    str0: str[0] = __to_str_array(""),
+    str1: str[1] = __to_str_array("a"),
+    str2: str[2] = __to_str_array("aa"),
+    str3: str[3] = __to_str_array("aaa"),
+    str4: str[4] = __to_str_array("aaaa"),
     str5: str[5] = S5,
-    str6: str[6] = "aaaaaa",
-    str7: str[7] = "aaaaaaa",
-    str8: str[8] = "aaaaaaaa",
-    str9: str[9] = "aaaaaaaaa",
-    str10: str[10] = "aaaaaaaaaa",
+    str6: str[6] = __to_str_array("aaaaaa"),
+    str7: str[7] = __to_str_array("aaaaaaa"),
+    str8: str[8] = __to_str_array("aaaaaaaa"),
+    str9: str[9] = __to_str_array("aaaaaaaaa"),
+    str10: str[10] = __to_str_array("aaaaaaaaaa"),
 }
 
 impl BasicStorage for Contract {
@@ -208,6 +208,6 @@ fn test_storage() {
 // If these comparisons are done inline just above then it blows out the register allocator due to
 // all the ASM blocks.
 #[inline(never)]
-fn assert_streq<S1, S2>(lhs: S1, rhs: S2) {
-    assert(sha256(lhs) == sha256(rhs));
+fn assert_streq<S1, S2>(lhs: S1, rhs: str) {
+    assert(sha256_str_array(lhs) == sha256(rhs));
 }

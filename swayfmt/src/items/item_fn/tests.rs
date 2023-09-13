@@ -88,3 +88,47 @@ fmt_test_item!(  fn_nested_if_lets
     };
 }"
 );
+
+fmt_test_item!(  fn_conditional_with_comment
+"fn conditional_with_comment() {
+    if true {
+        // comment here
+    }
+}",
+intermediate_whitespace
+"fn conditional_with_comment() {
+    if true {
+        // comment here
+    }
+}"
+);
+
+fmt_test_item!(  fn_conditional_with_comment_and_else
+"fn conditional_with_comment() {
+    if true {
+        // if
+    } else {
+        // else
+    }
+}",
+intermediate_whitespace
+"fn conditional_with_comment() {
+    if true {
+        // if
+    } else {
+        // else
+    }
+}"
+);
+
+fmt_test_item!(fn_comments_special_chars
+"fn comments_special_chars() {
+    // this ↓↓↓↓↓   
+    let val = 1; // this is a normal comment
+}",
+intermediate_whitespace
+"fn comments_special_chars() {
+    // this ↓↓↓↓↓   
+    let val = 1;      // this is a normal comment
+}"
+);

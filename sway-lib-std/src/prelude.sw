@@ -5,7 +5,8 @@ library;
 
 // Blockchain types
 use ::address::Address;
-use ::contract_id::{ContractId, AssetId};
+use ::alias::SubId;
+use ::contract_id::{AssetId, ContractId};
 use ::identity::Identity;
 
 // `StorageKey` API
@@ -23,6 +24,9 @@ use ::revert::{require, revert};
 
 // Convert
 use ::convert::From;
+
+// Primitive conversions
+use ::primitive_conversions::*;
 
 // Logging
 use ::logging::log;

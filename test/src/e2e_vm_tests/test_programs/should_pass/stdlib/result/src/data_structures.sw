@@ -1,7 +1,7 @@
 library;
 
 use core::ops::*;
-use std::hash::sha256;
+use std::hash::*;
 
 /////////////////////////////////////////////////////////////////////////////
 // Data Structures Used in in the Tests
@@ -46,6 +46,6 @@ impl Eq for [u64; 3] {
 
 impl Eq for str[4] {
     fn eq(self, other: Self) -> bool {
-        sha256(self) == sha256(other)
+        sha256_str_array(self) == sha256_str_array(other)
     }
 }

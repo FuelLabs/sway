@@ -1,6 +1,7 @@
 contract;
 
 use std::constants::ZERO_B256;
+use std::hash::*;
 
 struct M {
     u: b256,
@@ -10,6 +11,13 @@ struct M {
 impl core::ops::Eq for M {
     fn eq(self, other: Self) -> bool {
         self.u == other.u && self.v == other.v
+    }
+}
+
+impl Hash for M {
+    fn hash(self, ref mut state: Hasher) {
+        self.u.hash(state);
+        self.v.hash(state);
     }
 }
 
@@ -28,10 +36,16 @@ impl core::ops::Eq for E {
     }
 }
 
+impl Hash for str[4] {
+    fn hash(self, ref mut state: Hasher) {
+        state.write_str_array(self);
+    }
+}
+
 storage {
-    nested_map_1: StorageMap<u64, StorageMap<u64, StorageMap<u64, u64>>> = StorageMap {},
-    nested_map_2: StorageMap<(u64, u64), StorageMap<str[4], StorageMap<u64, M>>> = StorageMap {},
-    nested_map_3: StorageMap<u64, StorageMap<M, StorageMap<u64, E>>> = StorageMap {},
+    nested_map_1: StorageMap<u64, StorageMap<u64, StorageMap<u64, u64>>> = StorageMap::<u64, StorageMap<u64, StorageMap<u64, u64>>> {},
+    nested_map_2: StorageMap<(u64, u64), StorageMap<str[4], StorageMap<u64, M>>> = StorageMap::<(u64, u64), StorageMap<str[4], StorageMap<u64, M>>> {},
+    nested_map_3: StorageMap<u64, StorageMap<M, StorageMap<u64, E>>> = StorageMap::<u64, StorageMap<M, StorageMap<u64, E>>> {},
 }
 
 abi ExperimentalStorageTest {
@@ -85,22 +99,26 @@ impl ExperimentalStorageTest for Contract {
             v: 2,
         };
 
+        let _0000 = __to_str_array("0000");
+        let _0001 = __to_str_array("0001");
+        let _0002 = __to_str_array("0002");
+
         // Map insert via `insert`
-        storage.nested_map_2.get((0, 0)).get("0000").insert(0, m1);
-        storage.nested_map_2.get((0, 0)).get("0001").insert(1, m2);
-        storage.nested_map_2.get((0, 1)).get("0000").insert(0, m1);
-        storage.nested_map_2.get((0, 1)).get("0001").insert(1, m2);
+        storage.nested_map_2.get((0, 0)).get(_0000).insert(0, m1);
+        storage.nested_map_2.get((0, 0)).get(_0001).insert(1, m2);
+        storage.nested_map_2.get((0, 1)).get(_0000).insert(0, m1);
+        storage.nested_map_2.get((0, 1)).get(_0001).insert(1, m2);
 
         // Map insert via `get`
-        assert(storage.nested_map_2.get((0, 0)).get("0000").get(0).read() == m1);
-        assert(storage.nested_map_2.get((0, 0)).get("0001").get(1).read() == m2);
-        assert(storage.nested_map_2.get((0, 1)).get("0000").get(0).read() == m1);
-        assert(storage.nested_map_2.get((0, 1)).get("0001").get(1).read() == m2);
+        assert(storage.nested_map_2.get((0, 0)).get(_0000).get(0).read() == m1);
+        assert(storage.nested_map_2.get((0, 0)).get(_0001).get(1).read() == m2);
+        assert(storage.nested_map_2.get((0, 1)).get(_0000).get(0).read() == m1);
+        assert(storage.nested_map_2.get((0, 1)).get(_0001).get(1).read() == m2);
 
         // Thes combinations of keys are not set
-        assert(storage.nested_map_2.get((2, 0)).get("0001").get(1).try_read().is_none());
-        assert(storage.nested_map_2.get((1, 1)).get("0002").get(0).try_read().is_none());
-        assert(storage.nested_map_2.get((1, 1)).get("0001").get(2).try_read().is_none());
+        assert(storage.nested_map_2.get((2, 0)).get(_0001).get(1).try_read().is_none());
+        assert(storage.nested_map_2.get((1, 1)).get(_0002 ).get(0).try_read().is_none());
+        assert(storage.nested_map_2.get((1, 1)).get(_0001).get(2).try_read().is_none());
     }
 
     #[storage(read, write)]

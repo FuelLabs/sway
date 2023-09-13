@@ -1,11 +1,12 @@
 use crate::convert_parse_tree_error::ConvertParseTreeError;
+use crate::diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic};
 use crate::lex_error::LexError;
 use crate::parser_error::ParseError;
 use crate::type_error::TypeError;
 
 use core::fmt;
 use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
-use sway_types::{Ident, SourceId, Span, Spanned};
+use sway_types::{Ident, SourceEngine, Span, Spanned};
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
@@ -71,6 +72,15 @@ pub enum CompileError {
     MultipleDefinitionsOfName { name: Ident, span: Span },
     #[error("Constant \"{name}\" was already defined in scope.")]
     MultipleDefinitionsOfConstant { name: Ident, span: Span },
+    #[error("Variable \"{}\" is already defined in match arm.", first_definition.as_str())]
+    MultipleDefinitionsOfMatchArmVariable {
+        match_value: Span,
+        match_type: String,
+        first_definition: Span,
+        first_definition_is_struct_field: bool,
+        duplicate: Span,
+        duplicate_is_struct_field: bool,
+    },
     #[error("Assignment to immutable variable. Variable {name} is not declared as mutable.")]
     AssignmentToNonMutable { name: Ident, span: Span },
     #[error(
@@ -453,7 +463,17 @@ pub enum CompileError {
         count: usize,
         span: Span,
     },
-    #[error("The name \"{name}\" shadows another symbol with the same name.")]
+    #[error("Constants cannot be shadowed. {variable_or_constant} \"{name}\" shadows constant with the same name.")]
+    ConstantsCannotBeShadowed {
+        variable_or_constant: String,
+        name: Ident,
+        constant_span: Span,
+        constant_decl: Span,
+        is_alias: bool,
+    },
+    #[error("Constants cannot shadow variables. The constant \"{name}\" shadows variable with the same name.")]
+    ConstantShadowsVariable { name: Ident, variable_span: Span },
+    #[error("The imported symbol \"{name}\" shadows another symbol with the same name.")]
     ShadowsOtherSymbol { name: Ident },
     #[error("The name \"{name}\" is already used for a generic parameter in this scope.")]
     GenericShadowsGeneric { name: Ident },
@@ -568,11 +588,11 @@ pub enum CompileError {
     NonConstantDeclValue { span: Span },
     #[error("Declaring storage in a {program_kind} is not allowed.")]
     StorageDeclarationInNonContract { program_kind: String, span: Span },
-    #[error("Unsupported argument type to intrinsic \"{name}\". {hint}")]
+    #[error("Unsupported argument type to intrinsic \"{name}\".{}", if hint.is_empty() { "".to_string() } else { format!(" Hint: {hint}") })]
     IntrinsicUnsupportedArgType {
         name: String,
         span: Span,
-        hint: Hint,
+        hint: String,
     },
     #[error("Call to \"{name}\" expects {expected} arguments")]
     IntrinsicIncorrectNumArgs {
@@ -586,6 +606,8 @@ pub enum CompileError {
         expected: u64,
         span: Span,
     },
+    #[error("Expected string literal")]
+    ExpectedStringLiteral { span: Span },
     #[error("\"break\" used outside of a loop")]
     BreakOutsideLoop { span: Span },
     #[error("\"continue\" used outside of a loop")]
@@ -598,15 +620,14 @@ pub enum CompileError {
     /// https://github.com/FuelLabs/sway/issues/3077
     #[error("Contract ID value is not a literal.")]
     ContractIdValueNotALiteral { span: Span },
-    #[error("The type \"{ty}\" is not allowed in storage.")]
-    TypeNotAllowedInContractStorage { ty: String, span: Span },
+
+    #[error("{reason}")]
+    TypeNotAllowed {
+        reason: TypeNotAllowedReason,
+        span: Span,
+    },
     #[error("ref mut parameter not allowed for main()")]
     RefMutableNotAllowedInMain { param_name: Ident, span: Span },
-    #[error(
-        "Returning a type containing `raw_slice` from `main()` is not allowed. \
-            Consider converting it into a flat `raw_slice` first."
-    )]
-    NestedSliceReturnNotAllowedInMain { span: Span },
     #[error(
         "Register \"{name}\" is initialized and later reassigned which is not allowed. \
             Consider assigning to a different register inside the ASM block."
@@ -637,8 +658,6 @@ pub enum CompileError {
     },
     #[error("Configurable constants are not allowed in libraries.")]
     ConfigurableInLibrary { span: Span },
-    #[error("The name `{name}` is defined multiple times")]
-    NameDefinedMultipleTimes { name: String, span: Span },
     #[error("Multiple applicable items in scope. {}", {
         let mut candidates = "".to_string();
         for (index, as_trait) in as_traits.iter().enumerate() {
@@ -652,6 +671,21 @@ pub enum CompileError {
         method_name: String,
         as_traits: Vec<String>,
     },
+    #[error("Provided generic type is not of type str.")]
+    NonStrGenericType { span: Span },
+    #[error("A contract method cannot call methods belonging to the same ABI")]
+    ContractCallsItsOwnMethod { span: Span },
+    #[error("ABI cannot define a method with the same name as its super-ABI \"{superabi}\"")]
+    AbiShadowsSuperAbiMethod { span: Span, superabi: Ident },
+    #[error("ABI cannot inherit samely named method (\"{method_name}\") from several super-ABIs: \"{superabi1}\" and \"{superabi2}\"")]
+    ConflictingSuperAbiMethods {
+        span: Span,
+        method_name: String,
+        superabi1: String,
+        superabi2: String,
+    },
+    #[error("Cannot call ABI supertrait's method as a contract method: \"{fn_name}\"")]
+    AbiSupertraitMethodCallAsContractCall { fn_name: Ident, span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -678,6 +712,7 @@ impl Spanned for CompileError {
             MultipleDefinitionsOfFunction { span, .. } => span.clone(),
             MultipleDefinitionsOfName { span, .. } => span.clone(),
             MultipleDefinitionsOfConstant { span, .. } => span.clone(),
+            MultipleDefinitionsOfMatchArmVariable { duplicate, .. } => duplicate.clone(),
             AssignmentToNonMutable { span, .. } => span.clone(),
             MutableParameterNotSupported { span, .. } => span.clone(),
             ImmutableArgumentToMutableParameter { span } => span.clone(),
@@ -760,6 +795,8 @@ impl Spanned for CompileError {
             ContractStorageFromExternalContext { span, .. } => span.clone(),
             InvalidOpcodeFromPredicate { span, .. } => span.clone(),
             ArrayOutOfBounds { span, .. } => span.clone(),
+            ConstantsCannotBeShadowed { name, .. } => name.span(),
+            ConstantShadowsVariable { name, .. } => name.span(),
             ShadowsOtherSymbol { name } => name.span(),
             GenericShadowsGeneric { name } => name.span(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
@@ -811,9 +848,7 @@ impl Spanned for CompileError {
             ContinueOutsideLoop { span } => span.clone(),
             ContractIdConstantNotAConstDecl { span } => span.clone(),
             ContractIdValueNotALiteral { span } => span.clone(),
-            TypeNotAllowedInContractStorage { span, .. } => span.clone(),
             RefMutableNotAllowedInMain { span, .. } => span.clone(),
-            NestedSliceReturnNotAllowedInMain { span } => span.clone(),
             InitializedRegisterReassignment { span, .. } => span.clone(),
             DisallowedControlFlowInstruction { span, .. } => span.clone(),
             CallingPrivateLibraryMethod { span, .. } => span.clone(),
@@ -821,36 +856,184 @@ impl Spanned for CompileError {
             CoinsPassedToNonPayableMethod { span, .. } => span.clone(),
             TraitImplPayabilityMismatch { span, .. } => span.clone(),
             ConfigurableInLibrary { span } => span.clone(),
-            NameDefinedMultipleTimes { span, .. } => span.clone(),
             MultipleApplicableItemsInScope { span, .. } => span.clone(),
+            NonStrGenericType { span } => span.clone(),
             CannotBeEvaluatedToConst { span } => span.clone(),
+            ContractCallsItsOwnMethod { span } => span.clone(),
+            AbiShadowsSuperAbiMethod { span, .. } => span.clone(),
+            ConflictingSuperAbiMethods { span, .. } => span.clone(),
+            AbiSupertraitMethodCallAsContractCall { span, .. } => span.clone(),
+            TypeNotAllowed { span, .. } => span.clone(),
+            ExpectedStringLiteral { span } => span.clone(),
         }
     }
 }
 
-impl CompileError {
-    pub fn source_id(&self) -> Option<SourceId> {
-        self.span().source_id().cloned()
+impl ToDiagnostic for CompileError {
+    fn to_diagnostic(&self, source_engine: &SourceEngine) -> Diagnostic {
+        let code = Code::semantic_analysis;
+        use CompileError::*;
+        match self {
+            ConstantsCannotBeShadowed { variable_or_constant, name, constant_span, constant_decl, is_alias } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Constants cannot be shadowed".to_string())),
+                // NOTE: Issue level should actually be the part of the reason. But it would complicate handling of labels in the transitional
+                //       period when we still have "old-style" diagnostics.
+                //       Let's leave it like this, refactoring at the moment does not pay of.
+                //       And our #[error] macro will anyhow encapsulate it and ensure consistency.
+                issue: Issue::error(
+                    source_engine,
+                    name.span(),
+                    format!(
+                        // Variable "x" shadows constant with the same name
+                        //  or
+                        // Constant "x" shadows imported constant with the same name
+                        //  or
+                        // ...
+                        "{variable_or_constant} \"{name}\" shadows {}constant of the same name.",
+                        if constant_decl.clone() != Span::dummy() { "imported " } else { "" }
+                    )
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        constant_span.clone(),
+                        format!(
+                            // Constant "x" is declared here.
+                            //  or
+                            // Constant "x" gets imported here.
+                            "Shadowed constant \"{name}\" {} here{}.",
+                            if constant_decl.clone() != Span::dummy() { "gets imported" } else { "is declared" },
+                            if *is_alias { " as alias" } else { "" }
+                        )
+                    ),
+                    Hint::info( // Ignored if the constant_decl is Span::dummy().
+                        source_engine,
+                        constant_decl.clone(),
+                        format!("This is the original declaration of the imported constant \"{name}\".")
+                    ),
+                ],
+                help: vec![
+                    format!("Unlike variables, constants cannot be shadowed by other constants or variables."),
+                    match (variable_or_constant.as_str(), constant_decl.clone() != Span::dummy()) {
+                        ("Variable", false) => format!("Consider renaming either the variable \"{name}\" or the constant \"{name}\"."),
+                        ("Constant", false) => "Consider renaming one of the constants.".to_string(),
+                        (variable_or_constant, true) => format!(
+                            "Consider renaming the {} \"{name}\" or using {} for the imported constant.",
+                            variable_or_constant.to_lowercase(),
+                            if *is_alias { "a different alias" } else { "an alias" }
+                        ),
+                        _ => unreachable!("We can have only the listed combinations: variable/constant shadows a non imported/imported constant.")
+                    }
+                ],
+            },
+            ConstantShadowsVariable { name , variable_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Constants cannot shadow variables".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    name.span(),
+                    format!("Constant \"{name}\" shadows variable of the same name.")
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        variable_span.clone(),
+                        format!("This is the shadowed variable \"{name}\".")
+                    ),
+                ],
+                help: vec![
+                    format!("Variables can shadow other variables, but constants cannot."),
+                    format!("Consider renaming either the variable or the constant."),
+                ],
+            },
+            MultipleDefinitionsOfMatchArmVariable { match_value, match_type, first_definition, first_definition_is_struct_field, duplicate, duplicate_is_struct_field } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Match pattern variable is already defined".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    duplicate.clone(),
+                    format!("Variable \"{}\" is already defined in this match arm.", first_definition.as_str())
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        if *duplicate_is_struct_field {
+                            duplicate.clone()
+                        }
+                        else {
+                            Span::dummy()
+                        },
+                        format!("Struct field \"{0}\" is just a shorthand notation for `{0}: {0}`. It defines a variable \"{0}\".", first_definition.as_str())
+                    ),
+                    Hint::info(
+                        source_engine,
+                        first_definition.clone(),
+                        format!(
+                            "This {}is the first definition of the variable \"{}\".",
+                            if *first_definition_is_struct_field {
+                                format!("struct field \"{}\" ", first_definition.as_str())
+                            }
+                            else {
+                                "".to_string()
+                            },
+                            first_definition.as_str(),
+                        )
+                    ),
+                    Hint::help(
+                        source_engine,
+                        if *first_definition_is_struct_field && !*duplicate_is_struct_field {
+                            first_definition.clone()
+                        }
+                        else {
+                            Span::dummy()
+                        },
+                        format!("Struct field \"{0}\" is just a shorthand notation for `{0}: {0}`. It defines a variable \"{0}\".", first_definition.as_str()),
+                    ),
+                    Hint::info(
+                        source_engine,
+                        match_value.clone(),
+                        format!("`{}`, of type \"{match_type}\", is the value to match on.", match_value.as_str())
+                    ),
+                ],
+                help: vec![
+                    format!("Variables used in match arm patterns must be unique within a pattern, except in alternatives."),
+                    match (*first_definition_is_struct_field, *duplicate_is_struct_field) {
+                        (true, true) => format!("Consider declaring a variable with different name for either of the fields. E.g., `{0}: var_{0}`.", first_definition.as_str()),
+                        (true, false) | (false, true) => format!("Consider declaring a variable for the field \"{0}\" (e.g., `{0}: var_{0}`), or renaming the variable \"{0}\".", first_definition.as_str()),
+                        (false, false) => "Consider renaming either of the variables.".to_string(),
+                    },
+                ],
+            },
+           _ => Diagnostic {
+                    // TODO: Temporary we use self here to achieve backward compatibility.
+                    //       In general, self must not be used and will not be used once we
+                    //       switch to our own #[error] macro. All the values for the formatting
+                    //       of a diagnostic must come from the enum variant parameters.
+                    issue: Issue::error(source_engine, self.span(), format!("{}", self)),
+                    ..Default::default()
+                }
+        }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Hint {
-    msg: Option<String>,
-}
+#[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TypeNotAllowedReason {
+    #[error(
+        "Returning a type containing `raw_slice` from `main()` is not allowed. \
+            Consider converting it into a flat `raw_slice` first."
+    )]
+    NestedSliceReturnNotAllowedInMain,
 
-impl Hint {
-    pub fn empty() -> Hint {
-        Hint { msg: None }
-    }
+    #[error("The type \"{ty}\" is not allowed in storage.")]
+    TypeNotAllowedInContractStorage { ty: String },
 
-    pub fn new(msg: String) -> Hint {
-        Hint { msg: Some(msg) }
-    }
-}
+    #[error("`str` or a type containing `str` on `main()` arguments is not allowed.")]
+    StringSliceInMainParameters,
 
-impl fmt::Display for Hint {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Hint: {}", &self.msg.as_ref().unwrap_or(&"".to_string()))
-    }
+    #[error("Returning `str` or a type containing `str` from `main()` is not allowed.")]
+    StringSliceInMainReturn,
+
+    #[error("`str` or a type containing `str` on `configurables` is not allowed.")]
+    StringSliceInConfigurables,
+
+    #[error("`str` or a type containing `str` on `const` is not allowed.")]
+    StringSliceInConst,
 }

@@ -1,17 +1,32 @@
+use sway_error::handler::{ErrorEmitted, Handler};
+
 use crate::{
     engine_threading::Engines,
     language::ty::{self, TyDecl},
+    semantic_analysis::TypeCheckContext,
 };
 
 use super::DeclMapping;
 
 pub trait ReplaceDecls {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines);
+    fn replace_decls_inner(
+        &mut self,
+        decl_mapping: &DeclMapping,
+        handler: &Handler,
+        ctx: &mut TypeCheckContext,
+    ) -> Result<(), ErrorEmitted>;
 
-    fn replace_decls(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
+    fn replace_decls(
+        &mut self,
+        decl_mapping: &DeclMapping,
+        handler: &Handler,
+        ctx: &mut TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
         if !decl_mapping.is_empty() {
-            self.replace_decls_inner(decl_mapping, engines);
+            self.replace_decls_inner(decl_mapping, handler, ctx)?;
         }
+
+        Ok(())
     }
 }
 

@@ -1,0 +1,15 @@
+name: Docs
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  release:
+    types: [published]
+
+jobs:
+  test:
+    uses: FuelLabs/github-actions/.github/workflows/mdbook-docs.yml@master
+    with:
+      docs-src-path: 'docs/book/src'

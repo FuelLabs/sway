@@ -4,13 +4,16 @@ use num_bigint::BigUint;
 use std::sync::Arc;
 use sway_ast::literal::{LitChar, LitInt, LitIntType, LitString, Literal};
 use sway_ast::token::{
-    Comment, CommentKind, CommentedGroup, CommentedTokenStream, CommentedTokenTree, Delimiter,
-    DocComment, DocStyle, GenericTokenTree, Punct, PunctKind, Spacing, TokenStream,
+    Comment, CommentKind, CommentedGroup, CommentedTokenStream, CommentedTokenTree, DocComment,
+    DocStyle, GenericTokenTree, Punct, Spacing, TokenStream,
 };
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::lex_error::{LexError, LexErrorKind};
-use sway_types::{Ident, SourceId, Span, Spanned};
+use sway_types::{
+    ast::{Delimiter, PunctKind},
+    Ident, SourceId, Span, Spanned,
+};
 use unicode_xid::UnicodeXID;
 
 #[extension_trait]
@@ -645,7 +648,7 @@ fn lex_int_lit(
         let end_opt = parse_digits(&mut big_uint, l, 10);
         (big_uint, end_opt)
     };
-    let (big_uint, end_opt) = if digit == 0 {
+    let (radix, (big_uint, end_opt)) = if digit == 0 {
         let prefixed_int_lit = |l: &mut Lexer<'_>, radix| {
             let _ = l.stream.next();
             let d = l.stream.next();
@@ -669,21 +672,38 @@ fn lex_int_lit(
         };
 
         match l.stream.peek() {
-            Some((_, 'x')) => prefixed_int_lit(l, 16)?,
-            Some((_, 'o')) => prefixed_int_lit(l, 8)?,
-            Some((_, 'b')) => prefixed_int_lit(l, 2)?,
-            Some((_, '_' | '0'..='9')) => decimal_int_lit(l, 0),
-            Some(&(next_index, _)) => (BigUint::from(0u32), Some(next_index)),
-            None => (BigUint::from(0u32), None),
+            Some((_, 'x')) => (16, prefixed_int_lit(l, 16)?),
+            Some((_, 'o')) => (8, prefixed_int_lit(l, 8)?),
+            Some((_, 'b')) => (2, prefixed_int_lit(l, 2)?),
+            Some((_, '_' | '0'..='9')) => (10, decimal_int_lit(l, 0)),
+            Some(&(next_index, _)) => (10, (BigUint::from(0u32), Some(next_index))),
+            None => (10, (BigUint::from(0u32), None)),
         }
     } else {
-        decimal_int_lit(l, digit)
+        (10, decimal_int_lit(l, digit))
     };
+
+    let ty_opt = lex_int_ty_opt(l)?;
+
+    // Only accepts u256 literals in hex form
+    if let Some((LitIntType::U256, span)) = &ty_opt {
+        if radix != 16 {
+            return Err(error(
+                l.handler,
+                LexError {
+                    kind: LexErrorKind::U256NotInHex,
+                    span: span.clone(),
+                },
+            ));
+        }
+    }
+
     let literal = Literal::Int(LitInt {
         span: span(l, index, end_opt.unwrap_or(l.src.len())),
         parsed: big_uint,
-        ty_opt: lex_int_ty_opt(l)?,
+        ty_opt,
     });
+
     Ok(Some(CommentedTokenTree::Tree(literal.into())))
 }
 
@@ -726,6 +746,7 @@ pub fn parse_int_suffix(suffix: &str) -> Option<LitIntType> {
         "u16" => LitIntType::U16,
         "u32" => LitIntType::U32,
         "u64" => LitIntType::U64,
+        "u256" => LitIntType::U256,
         "i8" => LitIntType::I8,
         "i16" => LitIntType::I16,
         "i32" => LitIntType::I32,
@@ -980,9 +1001,9 @@ mod tests {
 
     #[test]
     fn lex_char_escaped_quote() {
-        let input = r#"
+        let input = r"
         '\''
-        "#;
+        ";
         let handler = Handler::default();
         let stream = lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
         assert!(handler.consume().0.is_empty());

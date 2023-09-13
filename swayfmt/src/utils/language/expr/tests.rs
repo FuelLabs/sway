@@ -246,3 +246,21 @@ fmt_test_expr!(  nested_array
      ] ,
   ]"
 );
+
+fmt_test_expr!(basic_while_loop
+"while i == true {
+    let i = 42;
+}",
+intermediate_whitespace
+"while i==true{
+let i = 42;
+}");
+
+fmt_test_expr!(scoped_block
+"{
+    let i = 42;
+}",
+intermediate_whitespace
+"{
+let i = 42;
+}");

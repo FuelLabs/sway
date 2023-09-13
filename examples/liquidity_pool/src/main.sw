@@ -5,7 +5,9 @@ use std::{
         contract_id,
         msg_asset_id,
     },
+    constants::ZERO_B256,
     context::msg_amount,
+    hash::*,
     token::{
         mint_to_address,
         transfer_to_address,
@@ -17,7 +19,9 @@ abi LiquidityPool {
     fn withdraw(recipient: Address);
 }
 
-const BASE_TOKEN = ContractId::from(0x9ae5b658754e096e4d681c548daf46354495a437cc61492599e33fc64dcdc30c);
+const BASE_TOKEN: AssetId = AssetId {
+    value: 0x9ae5b658754e096e4d681c548daf46354495a437cc61492599e33fc64dcdc30c,
+};
 
 impl LiquidityPool for Contract {
     fn deposit(recipient: Address) {
@@ -28,17 +32,18 @@ impl LiquidityPool for Contract {
         let amount_to_mint = msg_amount() * 2;
 
         // Mint some LP token based upon the amount of the base token.
-        mint_to_address(amount_to_mint, recipient);
+        mint_to_address(recipient, ZERO_B256, amount_to_mint);
     }
 
     fn withdraw(recipient: Address) {
-        assert(msg_asset_id() == contract_id());
+        let asset_id = AssetId::default(contract_id());
+        assert(msg_asset_id() == asset_id);
         assert(msg_amount() > 0);
 
         // Amount to withdraw.
         let amount_to_transfer = msg_amount() / 2;
 
         // Transfer base token to recipient.
-        transfer_to_address(amount_to_transfer, BASE_TOKEN, recipient);
+        transfer_to_address(recipient, BASE_TOKEN, amount_to_transfer);
     }
 }

@@ -35,3 +35,98 @@ pub mod simplify_cfg;
 pub use simplify_cfg::*;
 
 mod target_fuel;
+
+#[cfg(test)]
+pub mod tests {
+    use crate::{PassGroup, PassManager};
+    use sway_types::SourceEngine;
+
+    /// This function parses the IR text representation and run the specified optimizers passes.
+    /// Then, depending on the `expected` parameter it checks if the IR was optimized or not.
+    ///
+    /// This comparison is done by capturing all instructions with metadata "!0".
+    ///
+    /// For example:
+    ///
+    /// ```rust, ignore
+    /// assert_optimization(
+    ///     &["constcombine"],
+    ///     "entry fn main() -> u64 {
+    ///        entry():
+    ///             l = const u64 1
+    ///             r = const u64 2
+    ///             result = add l, r, !0
+    ///             ret u64 result
+    ///     }",
+    ///     ["const u64 3"],
+    /// );
+    /// ```
+    pub(crate) fn assert_optimization<'a>(
+        passes: &[&'static str],
+        body: &str,
+        expected: Option<impl IntoIterator<Item = &'a str>>,
+    ) {
+        let source_engine = SourceEngine::default();
+        let mut context = crate::parse(
+            &format!(
+                "script {{
+                {body}
+            }}
+
+            !0 = \"a.sw\"
+            "
+            ),
+            &source_engine,
+        )
+        .unwrap();
+
+        let mut pass_manager = PassManager::default();
+        crate::register_known_passes(&mut pass_manager);
+
+        let mut group = PassGroup::default();
+        for pass in passes {
+            group.append_pass(pass);
+        }
+
+        let before = context.to_string();
+        let modified = pass_manager.run(&mut context, &group).unwrap();
+        let after = context.to_string();
+
+        // print diff to help debug
+        if std::env::args().any(|x| x == "--nocapture") {
+            println!("{}", prettydiff::diff_lines(&before, &after));
+        }
+
+        assert_eq!(expected.is_some(), modified);
+
+        let Some(expected) = expected else {
+            return;
+        };
+
+        let actual = context
+            .to_string()
+            .lines()
+            .filter_map(|x| {
+                if x.contains(", !") {
+                    Some(format!("{}\n", x.trim()))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<String>>();
+
+        assert!(!actual.is_empty());
+
+        let mut expected_matches = actual.len();
+
+        for (actual, expected) in actual.iter().zip(expected) {
+            if !actual.contains(expected) {
+                panic!("error: {actual:?} {expected:?}");
+            } else {
+                expected_matches -= 1;
+            }
+        }
+
+        assert_eq!(expected_matches, 0);
+    }
+}

@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()assert((1,2).method() == 3);
+# nextln: $()Trait "Trait" is not implemented for type "u64".

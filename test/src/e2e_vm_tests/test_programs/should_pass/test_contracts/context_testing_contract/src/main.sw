@@ -8,19 +8,19 @@ impl ContextTesting for Contract {
         contract_id()
     }
 
-    fn get_this_balance(asset_id: ContractId) -> u64 {
+    fn get_this_balance(asset_id: AssetId) -> u64 {
         this_balance(asset_id)
     }
 
-    fn get_balance_of_contract(asset_id: ContractId, cid: ContractId) -> u64 {
-        balance_of(asset_id, cid)
+    fn get_balance_of_contract(asset_id: AssetId, cid: ContractId) -> u64 {
+        balance_of(cid, asset_id)
     }
 
     fn get_amount() -> u64 {
         msg_amount()
     }
 
-    fn get_asset_id() -> ContractId {
+    fn get_asset_id() -> AssetId {
         msg_asset_id()
     }
 

@@ -11,31 +11,25 @@ use super::{
     MidenVMAsmBuilder,
 };
 
-use crate::{err, ok, BuildConfig, BuildTarget, CompileResult, CompileWarning};
+use crate::{BuildConfig, BuildTarget};
 
-use sway_error::error::CompileError;
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::*;
 
 pub fn compile_ir_to_asm(
+    handler: &Handler,
     ir: &Context,
     build_config: Option<&BuildConfig>,
-) -> CompileResult<FinalizedAsm> {
+) -> Result<FinalizedAsm, ErrorEmitted> {
     // Eventually when we get this 'correct' with no hacks we'll want to compile all the modules
     // separately and then use a linker to connect them.  This way we could also keep binary caches
     // of libraries and link against them, rather than recompile everything each time.  For now we
     // assume there is one module.
     assert!(ir.module_iter().count() == 1);
 
-    let mut warnings: Vec<CompileWarning> = Vec::new();
-    let mut errors: Vec<CompileError> = Vec::new();
-
     let module = ir.module_iter().next().unwrap();
-    let final_program = check!(
-        compile_module_to_asm(RegisterSequencer::new(), ir, module, build_config),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let final_program =
+        compile_module_to_asm(handler, RegisterSequencer::new(), ir, module, build_config)?;
 
     if build_config
         .map(|cfg| cfg.print_finalized_asm)
@@ -47,22 +41,18 @@ pub fn compile_ir_to_asm(
 
     let final_asm = final_program.finalize();
 
-    check!(
-        check_invalid_opcodes(&final_asm),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    check_invalid_opcodes(handler, &final_asm)?;
 
-    ok(final_asm, warnings, errors)
+    Ok(final_asm)
 }
 
 fn compile_module_to_asm(
+    handler: &Handler,
     reg_seqr: RegisterSequencer,
     context: &Context,
     module: Module,
     build_config: Option<&BuildConfig>,
-) -> CompileResult<FinalProgram> {
+) -> Result<FinalProgram, ErrorEmitted> {
     let kind = match module.get_kind(context) {
         Kind::Contract => ProgramKind::Contract,
         Kind::Library => ProgramKind::Library,
@@ -92,16 +82,8 @@ fn compile_module_to_asm(
         builder.func_to_labels(&func);
     }
 
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
-
     for function in module.function_iter(context) {
-        check!(
-            builder.compile_function(function),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        builder.compile_function(handler, function)?;
     }
 
     // Get the compiled result and massage a bit for the AbstractProgram.
@@ -135,12 +117,9 @@ fn compile_module_to_asm(
                 println!("{abstract_program}\n");
             }
 
-            let allocated_program = check!(
-                CompileResult::from(abstract_program.into_allocated_program()),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
+            let allocated_program = abstract_program
+                .into_allocated_program()
+                .map_err(|e| handler.emit_err(e))?;
 
             if build_config
                 .map(|cfg| cfg.print_intermediate_asm)
@@ -150,12 +129,9 @@ fn compile_module_to_asm(
                 println!("{allocated_program}");
             }
 
-            check!(
-                CompileResult::from(allocated_program.into_final_program()),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )
+            allocated_program
+                .into_final_program()
+                .map_err(|e| handler.emit_err(e))?
         }
         AsmBuilderResult::Evm(result) => FinalProgram::Evm {
             ops: result.ops,
@@ -164,7 +140,7 @@ fn compile_module_to_asm(
         AsmBuilderResult::MidenVM(result) => FinalProgram::MidenVM { ops: result.ops },
     };
 
-    ok(final_program, warnings, errors)
+    Ok(final_program)
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -200,33 +176,12 @@ pub enum StateAccessType {
 }
 
 pub(crate) fn ir_type_size_in_bytes(context: &Context, ty: &Type) -> u64 {
-    match ty.get_content(context) {
-        TypeContent::Unit | TypeContent::Bool | TypeContent::Uint(_) | TypeContent::Pointer(_) => 8,
-        TypeContent::Slice => 16,
-        TypeContent::B256 => 32,
-        TypeContent::String(n) => size_bytes_round_up_to_word_alignment!(*n),
-        TypeContent::Array(el_ty, cnt) => cnt * ir_type_size_in_bytes(context, el_ty),
-        TypeContent::Struct(field_tys) => {
-            // Sum up all the field sizes.
-            field_tys
-                .iter()
-                .map(|field_ty| ir_type_size_in_bytes(context, field_ty))
-                .sum()
-        }
-        TypeContent::Union(field_tys) => {
-            // Find the max size for field sizes.
-            field_tys
-                .iter()
-                .map(|field_ty| ir_type_size_in_bytes(context, field_ty))
-                .max()
-                .unwrap_or(0)
-        }
-    }
+    ty.size_in_bytes(context)
 }
 
 pub(crate) fn ir_type_str_size_in_bytes(context: &Context, ty: &Type) -> u64 {
     match ty.get_content(context) {
-        TypeContent::String(n) => *n,
+        TypeContent::StringArray(n) => *n,
         _ => 0,
     }
 }

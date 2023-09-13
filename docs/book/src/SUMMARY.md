@@ -1,6 +1,6 @@
 # Summary
 
-[The Sway Programming Language](./README.md)
+[The Sway Programming Language](./index.md)
 
 - [Introduction](./introduction/index.md)
   - [Installation](./introduction/installation.md)
@@ -52,6 +52,9 @@
   - [Testing with Rust](./testing/testing-with-rust.md)
 - [Application Frontend](./frontend/index.md)
   - [TypeScript SDK](./frontend/typescript_sdk.md)
+- [Sway LSP](./lsp/index.md)
+  - [Installation](./lsp/installation.md)
+  - [Features](./lsp/features.md)
 - [Sway Reference](./reference/index.md)
   - [Compiler Intrinsics](./reference/compiler_intrinsics.md)
   - [Attributes](./reference/attributes.md)
@@ -60,6 +63,7 @@
   - [Differences From Solidity](./reference/solidity_differences.md)
   - [Differences From Rust](./reference/rust_differences.md)
   - [Contributing To Sway](./reference/contributing_to_sway.md)
+  - [Keywords](./reference/keywords.md)
 - [Forc Reference](./forc/index.md)
   - [Manifest Reference](./forc/manifest_reference.md)
   - [Workspaces](./forc/workspaces.md)

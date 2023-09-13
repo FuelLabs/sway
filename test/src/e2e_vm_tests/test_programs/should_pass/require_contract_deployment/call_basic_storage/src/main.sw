@@ -2,7 +2,7 @@ script;
 use basic_storage_abi::{BasicStorage, Quad};
 
 fn main() -> u64 {
-    let addr = abi(BasicStorage, 0x6a550eadf838642881db8c66f40c1fc8442ee625212f3f2943850b2c12d12275);
+    let addr = abi(BasicStorage, 0xb870f1a5893135ee3d0d688f57577837050bb720452b7afe67caca22e6984127);
     let key = 0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     let value = 4242;
 

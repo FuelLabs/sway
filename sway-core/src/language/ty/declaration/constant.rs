@@ -1,11 +1,13 @@
 use std::hash::{Hash, Hasher};
 
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     decl_engine::{DeclMapping, ReplaceDecls},
     engine_threading::*,
     language::{ty::*, CallPath, Visibility},
+    semantic_analysis::TypeCheckContext,
     transform,
     type_system::*,
 };
@@ -103,9 +105,16 @@ impl ReplaceSelfType for TyConstantDecl {
 }
 
 impl ReplaceDecls for TyConstantDecl {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
+    fn replace_decls_inner(
+        &mut self,
+        decl_mapping: &DeclMapping,
+        handler: &Handler,
+        ctx: &mut TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
         if let Some(expr) = &mut self.value {
-            expr.replace_decls(decl_mapping, engines);
+            expr.replace_decls(decl_mapping, handler, ctx)
+        } else {
+            Ok(())
         }
     }
 }

@@ -6,6 +6,7 @@ use ::convert::From;
 
 /// The `EvmAddress` type, a struct wrapper around the inner `b256` value.
 pub struct EvmAddress {
+    /// The underlying evm address data.
     value: b256,
 }
 
@@ -17,7 +18,7 @@ impl core::ops::Eq for EvmAddress {
 
 /// Functions for casting between the `b256` and `EvmAddress` types.
 impl From<b256> for EvmAddress {
-    fn from(bits: b256) -> EvmAddress {
+    fn from(bits: b256) -> Self {
         // An EVM address is only 20 bytes, so the first 12 are set to zero
         // Create a mutable local copy of `bits`
         let mut local_bits = bits;
@@ -25,7 +26,7 @@ impl From<b256> for EvmAddress {
             mcli r1 i12;
         };
 
-        EvmAddress {
+        Self {
             value: local_bits,
         }
     }

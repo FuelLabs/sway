@@ -1,5 +1,6 @@
 use std::{
     fs,
+    ops::Not,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -10,13 +11,158 @@ use sway_core::{
     compile_ir_to_asm, compile_to_ast, ir_generation::compile_program, namespace, BuildTarget,
     Engines,
 };
+use sway_error::handler::Handler;
+
 use sway_ir::{
     create_inline_in_module_pass, register_known_passes, PassGroup, PassManager, ARGDEMOTION_NAME,
     CONSTDEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME, RETDEMOTION_NAME,
 };
-use sway_utils::PerformanceData;
 
-pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
+enum Checker {
+    Ir,
+    Asm,
+    OptimizedIr { passes: Vec<String> },
+}
+
+impl Checker {
+    /// Builds and configures checkers based on file comments. Every check between checkers directive
+    /// are collected into the last started checker, "::check-ir::" being the default at the start
+    /// of the file.
+    /// Example:
+    ///
+    /// ```
+    /// // ::check-ir::
+    /// // ::check-ir-optimized::
+    /// // ::check-ir-asm::
+    /// ```
+    ///
+    /// # ::check-ir-optimized::
+    ///
+    /// Optimized IR chekcer can be configured with `pass: <PASSNAME or o1>`. When
+    /// `o1` is chosen, all the configured passes are chosen automatically.
+    ///
+    /// ```
+    /// // ::check-ir-optimized::
+    /// // pass: o1
+    /// ```
+    pub fn new(input: impl AsRef<str>) -> Vec<(Checker, Option<filecheck::Checker>)> {
+        let input = input.as_ref();
+
+        let mut checkers: Vec<(Checker, String)> = vec![(Checker::Ir, "".to_string())];
+
+        for line in input.lines() {
+            if line.contains("::check-ir::") && !matches!(checkers.last(), Some((Checker::Ir, _))) {
+                checkers.push((Checker::Ir, "".to_string()));
+            }
+
+            if line.contains("::check-asm::") {
+                checkers.push((Checker::Asm, "".to_string()));
+            }
+
+            if line.contains("::check-ir-optimized::") {
+                checkers.push((Checker::OptimizedIr { passes: vec![] }, "".to_string()));
+            }
+
+            if let Some(pass) = line.strip_prefix("// pass: ") {
+                if let Some((Checker::OptimizedIr { passes }, _)) = checkers.last_mut() {
+                    passes.push(pass.trim().to_string());
+                }
+            }
+
+            if line.starts_with("//") {
+                let s = checkers.last_mut().unwrap();
+                s.1.push_str(line);
+                s.1.push('\n');
+            }
+        }
+
+        let mut new_checkers = vec![];
+
+        for (k, v) in checkers {
+            let ir_checker = filecheck::CheckerBuilder::new()
+                .text(&v)
+                .unwrap()
+                .finish()
+                .is_empty()
+                .not()
+                .then(|| {
+                    filecheck::CheckerBuilder::new()
+                        .text(
+                            "regex: VAL=\\bv\\d+\\b\n\
+                         regex: ID=[_[:alpha:]][_0-9[:alpha:]]*\n\
+                         regex: MD=!\\d+\n",
+                        )
+                        .unwrap()
+                        .text(&v)
+                        .unwrap()
+                        .finish()
+                });
+            new_checkers.push((k, ir_checker));
+        }
+
+        new_checkers
+    }
+}
+
+/// Will print `filecheck` report using colors: normal lines will be dimmed,
+/// matches will be green and misses will be red.
+fn pretty_print_error_report(error: &str) {
+    let mut stash = vec![];
+
+    let mut lines = error.lines().peekable();
+    while let Some(current) = lines.next() {
+        if current.starts_with("> ") {
+            match lines.peek() {
+                Some(next) if next.contains("^~") => {
+                    stash.push(current);
+                }
+                _ => println!("{}", current.bright_black()),
+            }
+        } else if current.starts_with("Matched") && current.contains("not: ") {
+            for line in stash.drain(..) {
+                if line.contains("^~") {
+                    println!("{}", line.red())
+                } else {
+                    println!("{}", line.bold())
+                }
+            }
+            println!("{}", current.red())
+        } else if current.starts_with("Matched") {
+            for line in stash.drain(..) {
+                if line.contains("^~") {
+                    println!("{}", line.green())
+                } else {
+                    println!("{}", line.bold())
+                }
+            }
+            println!("{}", current)
+        } else if current.starts_with("Define") {
+            println!("{}", current)
+        } else if current.starts_with("Missed") && current.contains("check: ") {
+            for line in stash.drain(..) {
+                if line.contains("^~") {
+                    println!("{}", line.red())
+                } else {
+                    println!("{}", line.bold())
+                }
+            }
+            println!("{}", current.red())
+        } else if current.starts_with("Missed") && current.contains("not: ") {
+            for line in stash.drain(..) {
+                if line.contains("^~") {
+                    println!("{}", line.green())
+                } else {
+                    println!("{}", line.bold())
+                }
+            }
+            println!("{}", current)
+        } else {
+            stash.push(current);
+        }
+    }
+}
+
+pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> Result<()> {
     // Compile core library and reuse it when compiling tests.
     let engines = Engines::default();
     let build_target = BuildTarget::default();
@@ -39,14 +185,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
             let input_bytes = fs::read(&path).expect("Read entire Sway source.");
             let input = String::from_utf8_lossy(&input_bytes);
 
-            // Split into Sway, FileCheck of IR, FileCheck of ASM.
-            //
-            // - Search for the optional boundaries.  If they exist, delimited by special tags,
-            // then they mark the boundaries for their checks.  If the IR delimiter is missing then
-            // it's assumed to be from the start of the file.  The ASM checks themselves are
-            // entirely optional.
-            let ir_checks_begin_offs = input.find("::check-ir::").unwrap_or(0);
-            let asm_checks_begin_offs = input.find("::check-asm::");
+            let checkers = Checker::new(&input);
 
             let mut optimisation_inline = false;
             let mut target_fuelvm = false;
@@ -56,64 +195,16 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 target_fuelvm = first_line.contains("target-fuelvm");
             }
 
-            let ir_checks_end_offs = match asm_checks_begin_offs {
-                Some(asm_offs) if asm_offs > ir_checks_begin_offs => asm_offs,
-                _otherwise => input.len(),
-            };
-
-            // This is slightly convoluted.  We want to build the checker from the text, but also
-            // provide some builtin regexes for VAL, ID and MD.  If the checker is empty after
-            // parsing the test source then it has no checks which is invalid (and below we
-            // helpfully print out the IR so some checks can be authored).  But if we add the
-            // regexes first then it can't be empty and there's no other simple way to tell.
-            // Ideally we'd be able get it from the result of `CheckerBuilder::text()` or to get a
-            // count of the found directives (and check they're greater than 3).
-            //
-            // So instead it builds a temporary checker, tests if it's empty and sets it to None if
-            // so.  Otherwise it's discarded and we build another one with the regexes provided.
-            use std::ops::Not;
-            let ir_checker = filecheck::CheckerBuilder::new()
-                .text(&input[ir_checks_begin_offs..ir_checks_end_offs])
-                .unwrap()
-                .finish()
-                .is_empty()
-                .not()
-                .then(|| {
-                    filecheck::CheckerBuilder::new()
-                        .text(
-                            "regex: VAL=\\bv\\d+\\b\n\
-                             regex: ID=[_[:alpha:]][_0-9[:alpha:]]*\n\
-                             regex: MD=!\\d+\n",
-                        )
-                        .unwrap()
-                        .text(&input[ir_checks_begin_offs..ir_checks_end_offs])
-                        .unwrap()
-                        .finish()
-                });
-
-            let asm_checker = asm_checks_begin_offs.map(|begin_offs| {
-                let end_offs = if ir_checks_begin_offs > begin_offs {
-                    ir_checks_begin_offs
-                } else {
-                    input.len()
-                };
-                filecheck::CheckerBuilder::new()
-                    .text(&input[begin_offs..end_offs])
-                    .unwrap()
-                    .finish()
-            });
-
             (
                 path,
                 input_bytes,
-                ir_checker,
-                asm_checker,
+                checkers,
                 optimisation_inline,
                 target_fuelvm,
             )
         })
         .for_each(
-            |(path, sway_str, ir_checker, opt_asm_checker, optimisation_inline, target_fuelvm)| {
+            |(path, sway_str, checkers, optimisation_inline, target_fuelvm)| {
                 let test_file_name = path.file_name().unwrap().to_string_lossy().to_string();
                 tracing::info!("Testing {} ...", test_file_name.bold());
 
@@ -127,22 +218,21 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 // Include unit tests in the build.
                 let bld_cfg = bld_cfg.include_tests(true);
 
-                let mut metrics = PerformanceData::default();
                 let sway_str = String::from_utf8_lossy(&sway_str);
-                let compile_res = compile_to_ast(
+                let handler = Handler::default(); let compile_res = compile_to_ast(
+                    &handler,
                     &engines,
                     Arc::from(sway_str),
                     core_lib.clone(),
                     Some(&bld_cfg),
                     "test_lib",
-                    &mut metrics,
                 );
-                if !compile_res.errors.is_empty() {
+                let (errors, _warnings) = handler.consume();
+                if !errors.is_empty() {
                     panic!(
                         "Failed to compile test {}:\n{}",
                         path.display(),
-                        compile_res
-                            .errors
+                        errors
                             .iter()
                             .map(|err| err.to_string())
                             .collect::<Vec<_>>()
@@ -151,7 +241,6 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                     );
                 }
                 let programs = compile_res
-                    .value
                     .expect("there were no errors, so there should be a program");
 
                 let typed_program = programs.typed.as_ref().unwrap();
@@ -161,6 +250,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 let mut ir = compile_program(typed_program, include_tests, &engines)
                     .unwrap_or_else(|e| {
                         use sway_types::span::Spanned;
+                        let e = e[0].clone();
                         let span = e.span();
                         panic!(
                             "Failed to compile test {}:\nError \"{e}\" at {}:{}\nCode: \"{}\"",
@@ -192,8 +282,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                         panic!(
                             "Failed to compile test {}:\n{}",
                             path.display(),
-                            compile_res
-                                .errors
+                                errors
                                 .iter()
                                 .map(|err| err.to_string())
                                 .collect::<Vec<_>>()
@@ -205,84 +294,146 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
                 let ir_output = sway_ir::printer::to_string(&ir);
 
-                if ir_checker.is_none() {
-                    panic!(
-                    "IR test for {test_file_name} is missing mandatory FileCheck directives.\n\n\
-                    Here's the IR output:\n{ir_output}",
-                );
-                }
-
-                // Do IR checks.
-                match ir_checker
-                    .unwrap()
-                    .explain(&ir_output, filecheck::NO_VARIABLES)
-                {
-                    Ok((success, report)) if !success => {
-                        panic!("IR filecheck failed:\n{report}");
-                    }
-                    Err(e) => {
-                        panic!("IR filecheck directive error: {e}");
-                    }
-                    _ => (),
-                };
-
-                if optimisation_inline {
-                    let mut pass_mgr = PassManager::default();
-                    let mut pmgr_config = PassGroup::default();
-                    let inline = pass_mgr.register(create_inline_in_module_pass());
-                    pmgr_config.append_pass(inline);
-                    let inline_res = pass_mgr.run(&mut ir, &pmgr_config);
-                    if inline_res.is_err() {
-                        panic!(
-                            "Failed to compile test {}:\n{}",
-                            path.display(),
-                            compile_res
-                                .errors
-                                .iter()
-                                .map(|err| err.to_string())
-                                .collect::<Vec<_>>()
-                                .as_slice()
-                                .join("\n")
-                        );
-                    }
-                }
-
-                if let Some(asm_checker) = opt_asm_checker {
-                    // Compile to ASM.
-                    let asm_result = compile_ir_to_asm(&ir, None);
-                    if !asm_result.is_ok() {
-                        println!("Errors when compiling {test_file_name} IR to ASM:\n");
-                        for e in asm_result.errors {
-                            println!("{e}\n");
+                for (k, checker) in checkers {
+                    match (k, checker) {
+                        (Checker::Ir, Some(checker)) => {
+                            match checker.explain(&ir_output, filecheck::NO_VARIABLES)
+                            {
+                                Ok((success, error)) if !success || verbose => {
+                                    if !success || verbose {
+                                        println!("{}", "::check-ir::".bold());
+                                        pretty_print_error_report(&error);
+                                    }
+                                    if !success {
+                                        panic!("check-ir filecheck failed. See above.");
+                                    }
+                                }
+                                Err(e) => {
+                                    panic!("check-ir filecheck directive error: {e}");
+                                }
+                                _ => (),
+                            };
                         }
-                        panic!();
-                    };
+                        (Checker::Ir, None) => {
+                            panic!(
+                                "IR test for {test_file_name} is missing mandatory FileCheck directives.\n\n\
+                                Here's the IR output:\n{ir_output}",
+                            );
+                        }
+                        (Checker::OptimizedIr { passes }, Some(checker)) => {
+                            if passes.is_empty() {
+                                panic!("No optimization passes were specified for ::check-ir-optimized::. Use `// pass: <PASSNAME>` in the very next line.");
+                            }
 
-                    let asm_output = asm_result
-                        .value
-                        .map(|asm| format!("{asm}"))
-                        .expect("Failed to stringify ASM for {test_file_name}.");
+                            let mut group = PassGroup::default();
+                            for pass in passes {
+                                if pass == "o1" {
+                                    group = sway_ir::create_o1_pass_group();
+                                } else {
+                                    // pass needs a 'static str
+                                    let pass = Box::leak(Box::new(pass));
+                                    group.append_pass(pass.as_str());
+                                }
+                            }
 
-                    if asm_checker.is_empty() {
-                        panic!(
-                            "ASM test for {} has the '::check-asm::' marker \
-                        but is missing directives.\n\
-                        Please either remove the marker or add some.\n\n\
-                        Here's the ASM output:\n{asm_output}",
-                            path.file_name().unwrap().to_string_lossy()
-                        );
+                            let mut pass_mgr = PassManager::default();
+                            register_known_passes(&mut pass_mgr);
+
+                            // Parse the IR again avoiding mutating the original ir
+                            let mut ir = sway_ir::parser::parse(
+                                &ir_output,
+                                 engines.se()
+                                )
+                                .unwrap_or_else(|e| panic!("{}: {e}\n{ir_output}", path.display()));
+
+                            let _ = pass_mgr.run(&mut ir, &group);
+                            let ir_output = sway_ir::printer::to_string(&ir);
+
+                            match checker.explain(&ir_output, filecheck::NO_VARIABLES)
+                            {
+                                Ok((success, error)) if !success || verbose  => {
+                                    if !success || verbose {
+                                        println!("{}", "::check-ir-optimized::".bold());
+                                        pretty_print_error_report(&error);
+                                    }
+                                    if !success {
+                                        panic!("check-ir-optimized filecheck failed. See above.");
+                                    }
+                                }
+                                Err(e) => {
+                                    panic!("check-ir-optimized filecheck directive error: {e}");
+                                }
+                                _ => (),
+                            };
+                        }
+                        (Checker::Asm, Some(checker)) => {
+                            if optimisation_inline {
+                                let mut pass_mgr = PassManager::default();
+                                let mut pmgr_config = PassGroup::default();
+                                let inline = pass_mgr.register(create_inline_in_module_pass());
+                                pmgr_config.append_pass(inline);
+                                let inline_res = pass_mgr.run(&mut ir, &pmgr_config);
+                                if inline_res.is_err() {
+                                    panic!(
+                                        "Failed to compile test {}:\n{}",
+                                        path.display(),
+                                            errors
+                                            .iter()
+                                            .map(|err| err.to_string())
+                                            .collect::<Vec<_>>()
+                                            .as_slice()
+                                            .join("\n")
+                                    );
+                                }
+                            }
+
+                            // Compile to ASM.
+                            let handler = Handler::default();
+                            let asm_result = compile_ir_to_asm(&handler, &ir, None);
+                            let (errors, _warnings) = handler.consume();
+
+                            if asm_result.is_err() || !errors.is_empty() {
+                                println!("Errors when compiling {test_file_name} IR to ASM:\n");
+                                for e in errors {
+                                    println!("{e}\n");
+                                }
+                                panic!();
+                            };
+
+                            let asm_output = asm_result
+                                .map(|asm| format!("{asm}"))
+                                .expect("Failed to stringify ASM for {test_file_name}.");
+
+                            if checker.is_empty() {
+                                panic!(
+                                    "ASM test for {} has the '::check-asm::' marker \
+                                but is missing directives.\n\
+                                Please either remove the marker or add some.\n\n\
+                                Here's the ASM output:\n{asm_output}",
+                                    path.file_name().unwrap().to_string_lossy()
+                                );
+                            }
+
+                            // Do ASM checks.
+                            match checker.explain(&asm_output, filecheck::NO_VARIABLES) {
+                                Ok((success, error)) => {
+                                    if !success || verbose {
+                                        println!("{}", "::check-asm::".bold());
+                                        pretty_print_error_report(&error);
+                                    }
+                                    if !success {
+                                        panic!("check-asm filecheck for {test_file_name} failed. See above.");
+                                    }
+                                }
+                                Err(e) => {
+                                    panic!("check-asm filecheck directive errors for {test_file_name}: {e}");
+                                }
+                            };
+                        }
+                        (_, _) => {
+                            todo!("Unknown checker");
+                        }
                     }
-
-                    // Do ASM checks.
-                    match asm_checker.explain(&asm_output, filecheck::NO_VARIABLES) {
-                        Ok((success, report)) if !success => {
-                            panic!("ASM filecheck for {test_file_name}failed:\n{report}");
-                        }
-                        Err(e) => {
-                            panic!("ASM filecheck directive errors for {test_file_name}: {e}");
-                        }
-                        _ => (),
-                    };
                 }
 
                 // Parse the IR again, and print it yet again to make sure that IR de/serialisation works.
@@ -290,6 +441,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                     .unwrap_or_else(|e| panic!("{}: {e}\n{ir_output}", path.display()));
                 let parsed_ir_output = sway_ir::printer::to_string(&parsed_ir);
                 if ir_output != parsed_ir_output {
+                    println!("Deserialized IR:");
                     tracing::error!("{}", prettydiff::diff_lines(&ir_output, &parsed_ir_output));
                     panic!("{} failed IR (de)serialization.", path.display());
                 }
@@ -361,8 +513,8 @@ fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Modu
         }
     };
 
-    match res.value {
-        Some(typed_program) if res.is_ok() => {
+    match res.0 {
+        Some(typed_program) => {
             // Create a module for core and copy the compiled modules into it.  Unfortunately we
             // can't get mutable access to move them out so they're cloned.
             let core_module = typed_program.root.namespace.submodules().into_iter().fold(
@@ -379,7 +531,8 @@ fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Modu
             std_module
         }
         _ => {
-            for err in res.errors {
+            let (errors, _warnings) = res.1.consume();
+            for err in errors {
                 println!("{err:?}");
             }
             panic!("Failed to compile sway-lib-core for IR tests.");

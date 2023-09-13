@@ -715,6 +715,93 @@ fn instruction_to_doc<'a>(
                         .append(md_namer.md_idx_to_doc(context, metadata)),
                     ))
                 }
+                FuelVmInstruction::WideUnaryOp { op, arg, result } => {
+                    let op_str = match op {
+                        UnaryOpKind::Not => "not",
+                    };
+                    maybe_constant_to_doc(context, md_namer, namer, arg).append(Doc::line(
+                        Doc::text(format!(
+                            "wide {op_str} {} to {}",
+                            namer.name(context, arg),
+                            namer.name(context, result),
+                        ))
+                        .append(md_namer.md_idx_to_doc(context, metadata)),
+                    ))
+                }
+                FuelVmInstruction::WideBinaryOp {
+                    op,
+                    arg1,
+                    arg2,
+                    result,
+                } => {
+                    let op_str = match op {
+                        BinaryOpKind::Add => "add",
+                        BinaryOpKind::Sub => "sub",
+                        BinaryOpKind::Mul => "mul",
+                        BinaryOpKind::Div => "div",
+                        BinaryOpKind::And => "and",
+                        BinaryOpKind::Or => "or",
+                        BinaryOpKind::Xor => "xor",
+                        BinaryOpKind::Mod => "mod",
+                        BinaryOpKind::Rsh => "rsh",
+                        BinaryOpKind::Lsh => "lsh",
+                    };
+                    maybe_constant_to_doc(context, md_namer, namer, arg1)
+                        .append(maybe_constant_to_doc(context, md_namer, namer, arg2))
+                        .append(Doc::line(
+                            Doc::text(format!(
+                                "wide {op_str} {}, {} to {}",
+                                namer.name(context, arg1),
+                                namer.name(context, arg2),
+                                namer.name(context, result),
+                            ))
+                            .append(md_namer.md_idx_to_doc(context, metadata)),
+                        ))
+                }
+                FuelVmInstruction::WideModularOp {
+                    op,
+                    result,
+                    arg1,
+                    arg2,
+                    arg3,
+                } => {
+                    let op_str = match op {
+                        BinaryOpKind::Mod => "mod",
+                        _ => unreachable!(),
+                    };
+                    maybe_constant_to_doc(context, md_namer, namer, arg1)
+                        .append(maybe_constant_to_doc(context, md_namer, namer, arg2))
+                        .append(maybe_constant_to_doc(context, md_namer, namer, arg3))
+                        .append(Doc::line(
+                            Doc::text(format!(
+                                "wide {op_str} {}, {}, {} to {}",
+                                namer.name(context, arg1),
+                                namer.name(context, arg2),
+                                namer.name(context, arg3),
+                                namer.name(context, result),
+                            ))
+                            .append(md_namer.md_idx_to_doc(context, metadata)),
+                        ))
+                }
+
+                FuelVmInstruction::WideCmpOp { op, arg1, arg2 } => {
+                    let pred_str = match op {
+                        Predicate::Equal => "eq",
+                        Predicate::LessThan => "lt",
+                        Predicate::GreaterThan => "gt",
+                    };
+                    maybe_constant_to_doc(context, md_namer, namer, arg1)
+                        .append(maybe_constant_to_doc(context, md_namer, namer, arg2))
+                        .append(Doc::line(
+                            Doc::text(format!(
+                                "{} = wide cmp {pred_str} {} {}",
+                                namer.name(context, ins_value),
+                                namer.name(context, arg1),
+                                namer.name(context, arg2),
+                            ))
+                            .append(md_namer.md_idx_to_doc(context, metadata)),
+                        ))
+                }
             },
             Instruction::GetElemPtr {
                 base,
@@ -929,6 +1016,17 @@ impl Constant {
             ConstantValue::Unit => "unit ()".into(),
             ConstantValue::Bool(b) => format!("bool {}", if *b { "true" } else { "false" }),
             ConstantValue::Uint(v) => format!("{} {}", self.ty.as_string(context), v),
+            ConstantValue::U256(v) => {
+                let bytes = v.to_be_bytes();
+                format!(
+                    "u256 0x{}",
+                    bytes
+                        .iter()
+                        .map(|b| format!("{b:02x}"))
+                        .collect::<Vec<String>>()
+                        .concat()
+                )
+            }
             ConstantValue::B256(bs) => format!(
                 "b256 0x{}",
                 bs.iter()

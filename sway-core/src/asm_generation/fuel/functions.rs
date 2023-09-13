@@ -5,11 +5,11 @@ use crate::{
         ProgramKind,
     },
     asm_lang::{
-        virtual_register::*, Op, OrganizationalOp, VirtualImmediate12, VirtualImmediate18,
-        VirtualImmediate24, VirtualOp,
+        virtual_register::{self, *},
+        Op, OrganizationalOp, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24,
+        VirtualOp,
     },
     decl_engine::DeclRef,
-    error::*,
     fuel_prelude::fuel_asm::GTFArgs,
     size_bytes_in_words, size_bytes_round_up_to_word_alignment,
 };
@@ -17,8 +17,13 @@ use crate::{
 use sway_ir::*;
 
 use either::Either;
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::Ident;
+
+use super::data_section::DataId;
 
 /// A summary of the adopted calling convention:
 ///
@@ -80,7 +85,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
         // Set a new return address.
         let ret_label = self.reg_seqr.get_label();
-        self.cur_bytecode.push(Op::move_address(
+        self.cur_bytecode.push(Op::save_ret_addr(
             VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
             ret_label,
             "set new return addr",
@@ -137,7 +142,11 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         Ok(())
     }
 
-    pub fn compile_function(&mut self, function: Function) -> CompileResult<()> {
+    pub fn compile_function(
+        &mut self,
+        handler: &Handler,
+        function: Function,
+    ) -> Result<(), ErrorEmitted> {
         assert!(
             self.cur_bytecode.is_empty(),
             "can't do nested functions yet"
@@ -191,12 +200,11 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             });
         }
 
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let locals_alloc_result = self.alloc_locals(function);
 
         if func_is_entry {
-            let result = Into::<CompileResult<()>>::into(self.compile_external_args(function));
-            check!(result, return err(warnings, errors), warnings, errors);
+            self.compile_external_args(function)
+                .map_err(|e| handler.emit_err(e))?
         } else {
             // Make copies of the arg registers.
             self.compile_fn_call_args(function)
@@ -223,7 +231,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             self.return_ctxs.push((end_label, retv));
         }
 
-        self.init_locals(function);
+        self.init_locals(locals_alloc_result);
 
         // Compile instructions. Traverse the IR blocks in reverse post order. This guarantees that
         // each block is processed after all its CFG predecessors have been processed.
@@ -231,15 +239,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         for block in po.po_to_block.iter().rev() {
             let label = self.block_to_label(block);
             self.cur_bytecode.push(Op::unowned_jump_label(label));
-
-            for instr_val in block.instruction_iter(self.context) {
-                check!(
-                    self.compile_instruction(&instr_val, func_is_entry),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-            }
+            self.compile_block(handler, block, func_is_entry)?;
         }
 
         if !func_is_entry {
@@ -286,7 +286,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             self.non_entries.push(ops);
         }
 
-        ok((), warnings, errors)
+        Ok(())
     }
 
     fn compile_fn_call_args(&mut self, function: Function) {
@@ -608,7 +608,14 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             .push(Op::unowned_jump_label(success_label));
     }
 
-    fn init_locals(&mut self, function: Function) {
+    fn alloc_locals(
+        &mut self,
+        function: Function,
+    ) -> (
+        u64,
+        virtual_register::VirtualRegister,
+        Vec<(u64, u64, DataId)>,
+    ) {
         // If they're immutable and have a constant initialiser then they go in the data section.
         //
         // Otherwise they go in runtime allocated space, either a register or on the stack.
@@ -633,13 +640,15 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
                     let ptr_ty = ptr.get_inner_type(self.context);
                     let var_size = match ptr_ty.get_content(self.context) {
+                        TypeContent::Uint(256) => 4,
                         TypeContent::Unit
                         | TypeContent::Bool
                         | TypeContent::Uint(_)
                         | TypeContent::Pointer(_) => 1,
                         TypeContent::Slice => 2,
                         TypeContent::B256 => 4,
-                        TypeContent::String(n) => size_bytes_round_up_to_word_alignment!(n),
+                        TypeContent::StringSlice => 2,
+                        TypeContent::StringArray(n) => size_bytes_round_up_to_word_alignment!(n),
                         TypeContent::Array(..) | TypeContent::Struct(_) | TypeContent::Union(_) => {
                             size_bytes_in_words!(ir_type_size_in_bytes(self.context, &ptr_ty))
                         }
@@ -681,7 +690,17 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             comment: format!("allocate {locals_size} bytes for locals"),
             owning_span: None,
         });
+        (locals_size, locals_base_reg, init_mut_vars)
+    }
 
+    fn init_locals(
+        &mut self,
+        (locals_size, locals_base_reg, init_mut_vars): (
+            u64,
+            virtual_register::VirtualRegister,
+            Vec<(u64, u64, DataId)>,
+        ),
+    ) {
         // Initialise that stack variables which require it.
         for (var_stack_offs, var_word_size, var_data_id) in init_mut_vars {
             // Load our initialiser from the data section.

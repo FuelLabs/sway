@@ -13,10 +13,9 @@ use crate::{
 use std::fmt::Write;
 use sway_ast::{
     keywords::{MutToken, RefToken, SelfToken, Token},
-    token::Delimiter,
     FnArg, FnArgs, FnSignature, ItemFn,
 };
-use sway_types::Spanned;
+use sway_types::{ast::Delimiter, Spanned};
 
 #[cfg(test)]
 mod tests;
@@ -39,7 +38,7 @@ impl Format for ItemFn {
                 let body = self.body.get();
                 if !body.statements.is_empty() || body.final_expr_opt.is_some() {
                     Self::open_curly_brace(formatted_code, formatter)?;
-                    formatter.shape.block_indent(&formatter.config);
+                    formatter.indent();
                     body.format(formatted_code, formatter)?;
 
                     if let Some(final_expr_opt) = body.final_expr_opt.as_ref() {
@@ -53,9 +52,11 @@ impl Format for ItemFn {
                     Self::close_curly_brace(formatted_code, formatter)?;
                 } else {
                     Self::open_curly_brace(formatted_code, formatter)?;
-                    formatter.shape.block_indent(&formatter.config);
-                    write_comments(formatted_code, self.span().into(), formatter)?;
-                    formatter.shape.block_unindent(&formatter.config);
+                    formatter.indent();
+                    let comments = write_comments(formatted_code, self.span().into(), formatter)?;
+                    if !comments {
+                        formatter.unindent();
+                    }
                     Self::close_curly_brace(formatted_code, formatter)?;
                 }
 
@@ -84,7 +85,7 @@ impl CurlyBrace for ItemFn {
         let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
-                // Add openning brace to the next line.
+                // Add opening brace to the next line.
                 writeln!(line, "\n{open_brace}")?;
             }
             ItemBraceStyle::SameLineWhere => match formatter.shape.code_line.has_where_clause {
@@ -109,11 +110,11 @@ impl CurlyBrace for ItemFn {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         // If shape is becoming left-most alligned or - indent just have the defualt shape
-        formatter.shape.block_unindent(&formatter.config);
+        formatter.unindent();
         write!(
             line,
             "{}{}",
-            formatter.shape.indent.to_string(&formatter.config)?,
+            formatter.indent_str()?,
             Delimiter::Brace.as_close_char()
         )?;
 
@@ -204,14 +205,10 @@ fn format_fn_args(
         FnArgs::Static(args) => match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
                 if !args.value_separator_pairs.is_empty() || args.final_value_opt.is_some() {
-                    formatter.shape.block_indent(&formatter.config);
+                    formatter.indent();
                     args.format(formatted_code, formatter)?;
-                    formatter.shape.block_unindent(&formatter.config);
-                    write!(
-                        formatted_code,
-                        "{}",
-                        formatter.shape.indent.to_string(&formatter.config)?
-                    )?;
+                    formatter.unindent();
+                    write!(formatted_code, "{}", formatter.indent_str()?)?;
                 }
             }
             _ => args.format(formatted_code, formatter)?,
@@ -224,12 +221,8 @@ fn format_fn_args(
         } => {
             match formatter.shape.code_line.line_style {
                 LineStyle::Multiline => {
-                    formatter.shape.block_indent(&formatter.config);
-                    write!(
-                        formatted_code,
-                        "\n{}",
-                        formatter.shape.indent.to_string(&formatter.config)?
-                    )?;
+                    formatter.indent();
+                    write!(formatted_code, "\n{}", formatter.indent_str()?)?;
                     format_self(self_token, ref_self, mutable_self, formatted_code)?;
                     // `args_opt`
                     if let Some((comma, args)) = args_opt {

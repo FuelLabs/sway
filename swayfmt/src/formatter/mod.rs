@@ -7,7 +7,7 @@ pub use crate::{
     config::manifest::Config,
     error::{ConfigError, FormatterError},
 };
-use std::{fmt::Write, path::Path, sync::Arc};
+use std::{borrow::Cow, fmt::Write, path::Path, sync::Arc};
 use sway_core::BuildConfig;
 use sway_types::{SourceEngine, Spanned};
 
@@ -44,6 +44,27 @@ impl Formatter {
             ..Default::default()
         })
     }
+
+    pub fn indent(&mut self) {
+        self.shape.block_indent(&self.config);
+    }
+
+    pub fn unindent(&mut self) {
+        self.shape.block_unindent(&self.config);
+    }
+
+    pub fn indent_str(&self) -> Result<Cow<'static, str>, FormatterError> {
+        self.shape.indent.to_string(&self.config)
+    }
+
+    /// Collect a mapping of Span -> Comment from unformatted input.
+    pub fn with_comments_context(&mut self, src: &str) -> Result<&mut Self, FormatterError> {
+        let comments_context =
+            CommentsContext::new(CommentMap::from_src(Arc::from(src))?, src.to_string());
+        self.comments_context = comments_context;
+        Ok(self)
+    }
+
     pub fn format(
         &mut self,
         src: Arc<str>,
@@ -65,19 +86,17 @@ impl Formatter {
         // which will reduce the number of reallocations
         let mut raw_formatted_code = String::with_capacity(src.len());
 
-        // Collect Span -> Comment mapping from unformatted input.
-        self.comments_context =
-            CommentsContext::new(CommentMap::from_src(Arc::from(src))?, src.to_string());
+        self.with_comments_context(src)?;
 
-        let module = parse_file(&self.source_engine, Arc::from(src), path.clone())?.value;
-        module.format(&mut raw_formatted_code, self)?;
+        let annotated_module = parse_file(&self.source_engine, Arc::from(src), path.clone())?;
+        annotated_module.format(&mut raw_formatted_code, self)?;
 
         let mut formatted_code = String::from(&raw_formatted_code);
 
         // Write post-module comments
         write_comments(
             &mut formatted_code,
-            module.span().end()..src.len() + 1,
+            annotated_module.value.span().end()..src.len() + 1,
             self,
         )?;
 
@@ -85,7 +104,7 @@ impl Formatter {
         handle_newlines(
             &self.source_engine,
             Arc::from(src),
-            &module,
+            &annotated_module.value,
             Arc::from(formatted_code.clone()),
             path,
             &mut formatted_code,

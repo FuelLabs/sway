@@ -246,8 +246,9 @@ impl TypeSubstMap {
             | (TypeInfo::B256, TypeInfo::B256)
             | (TypeInfo::Numeric, TypeInfo::Numeric)
             | (TypeInfo::Contract, TypeInfo::Contract)
-            | (TypeInfo::ErrorRecovery, TypeInfo::ErrorRecovery)
-            | (TypeInfo::Str(_), TypeInfo::Str(_))
+            | (TypeInfo::ErrorRecovery(_), TypeInfo::ErrorRecovery(_))
+            | (TypeInfo::StringSlice, TypeInfo::StringSlice)
+            | (TypeInfo::StringArray(_), TypeInfo::StringArray(_))
             | (TypeInfo::UnsignedInteger(_), TypeInfo::UnsignedInteger(_))
             | (TypeInfo::ContractCaller { .. }, TypeInfo::ContractCaller { .. }) => TypeSubstMap {
                 mapping: BTreeMap::new(),
@@ -289,10 +290,7 @@ impl TypeSubstMap {
         type_parameters: Vec<SourceType>,
         type_arguments: Vec<DestinationType>,
     ) -> TypeSubstMap {
-        let mapping = type_parameters
-            .into_iter()
-            .zip(type_arguments.into_iter())
-            .collect();
+        let mapping = type_parameters.into_iter().zip(type_arguments).collect();
         TypeSubstMap { mapping }
     }
 
@@ -426,7 +424,8 @@ impl TypeSubstMap {
                 type_engine.insert(engines, TypeInfo::Slice(ty))
             }),
             TypeInfo::Unknown
-            | TypeInfo::Str(..)
+            | TypeInfo::StringArray(..)
+            | TypeInfo::StringSlice
             | TypeInfo::UnsignedInteger(..)
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }
@@ -436,7 +435,7 @@ impl TypeSubstMap {
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Contract
-            | TypeInfo::ErrorRecovery => None,
+            | TypeInfo::ErrorRecovery(..) => None,
         }
     }
 }

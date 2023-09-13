@@ -1,6 +1,6 @@
-#[derive(Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Clone, PartialEq, Eq, Default)]
 pub enum Mode {
-    ImplAbiFn,
+    ImplAbiFn(sway_types::Ident),
     #[default]
     NonAbi,
 }

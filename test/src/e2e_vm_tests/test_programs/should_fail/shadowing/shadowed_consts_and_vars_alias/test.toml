@@ -3,7 +3,55 @@ category = "fail"
 #check: $()error
 
 #check: $()const Y = 7;
-#nextln: $()The name `Y` is defined multiple times
+#nextln: $()Constant "Y" was already defined in scope.
+
+#check: $()error
+#sameln: $()Constants cannot be shadowed
+
+#check: $()const Y = 7;
+#nextln: $()Shadowed constant "Y" is declared here.
 
 #check: $()let Y = 4;
-#nextln: $()The name `Y` is defined multiple times
+#nextln: $()Variable "Y" shadows constant of the same name.
+
+#check: $()error
+#sameln: $()Constants cannot be shadowed
+
+#check: $()use lib::X as Y;
+#nextln: $()Shadowed constant "Y" gets imported here as alias.
+
+#check: $()let Y = 4;
+#nextln: $()Variable "Y" shadows imported constant of the same name.
+
+#check: $()pub const X = 5;
+#nextln: $()This is the original declaration of the imported constant "Y".
+
+#check: $()Consider renaming the variable "Y" or using a different alias for the imported constant.
+
+#check: $()error
+#sameln: $()Constants cannot be shadowed
+
+#check: $()use lib::L as M;
+#nextln: $()Shadowed constant "M" gets imported here as alias.
+
+#check: $()let M = 4;
+#nextln: $()Variable "M" shadows imported constant of the same name.
+
+#check: $()pub const L = 5;
+#nextln: $()This is the original declaration of the imported constant "M".
+
+#check: $()Consider renaming the variable "M" or using a different alias for the imported constant.
+
+#check: $()error
+#sameln: $()Constants cannot be shadowed
+
+#check: $()use lib::P as R;
+#nextln: $()Shadowed constant "R" gets imported here as alias.
+
+#check: $()let R = 5;
+#nextln: $()Variable "R" shadows imported constant of the same name.
+
+#check: $()pub const P = 5;
+#nextln: $()This is the original declaration of the imported constant "R".
+
+#check: $()Consider renaming the variable "R" or using a different alias for the imported constant.

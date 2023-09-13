@@ -181,7 +181,7 @@ fn analyze_code_block_entry(
         | ty::TyAstNodeContent::ImplicitReturnExpression(expr) => {
             analyze_expression(engines, expr, block_name, warnings)
         }
-        ty::TyAstNodeContent::SideEffect(_) => HashSet::new(),
+        ty::TyAstNodeContent::SideEffect(_) | ty::TyAstNodeContent::Error(_, _) => HashSet::new(),
     }
 }
 
@@ -474,7 +474,7 @@ fn effects_of_codeblock_entry(engines: &Engines, ast_node: &ty::TyAstNode) -> Ha
         | ty::TyAstNodeContent::ImplicitReturnExpression(expr) => {
             effects_of_expression(engines, expr)
         }
-        ty::TyAstNodeContent::SideEffect(_) => HashSet::new(),
+        ty::TyAstNodeContent::SideEffect(_) | ty::TyAstNodeContent::Error(_, _) => HashSet::new(),
     }
 }
 
@@ -603,9 +603,9 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
         StateClear | StateStoreWord | StateStoreQuad => HashSet::from([Effect::StorageWrite]),
         StateLoadWord | StateLoadQuad => HashSet::from([Effect::StorageRead]),
         Smo => HashSet::from([Effect::OutputMessage]),
-        Revert | IsReferenceType | IsStrType | SizeOfType | SizeOfVal | SizeOfStr | Eq | Gt
-        | Lt | Gtf | AddrOf | Log | Add | Sub | Mul | Div | And | Or | Xor | Mod | Rsh | Lsh
-        | PtrAdd | PtrSub | Not => HashSet::new(),
+        Revert | IsReferenceType | IsStrArray | SizeOfType | SizeOfVal | SizeOfStr
+        | AssertIsStrArray | ToStrArray | Eq | Gt | Lt | Gtf | AddrOf | Log | Add | Sub | Mul
+        | Div | And | Or | Xor | Mod | Rsh | Lsh | PtrAdd | PtrSub | Not => HashSet::new(),
     }
 }
 
