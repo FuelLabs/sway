@@ -168,7 +168,7 @@ fn slot_calculator<T>(slot: b256, offset: u64) -> (b256, u64, u64) {
     // offset % number_words_in_slot = word_place_in_slot
     let place_in_slot = offset % 4;
  
-    // Get the number of slots `T` spans based on it's packed position.
+    // Get the number of slots `T` spans based on its packed position.
     // ((place_in_slot * bytes_in_word) + bytes + (bytes_in_slot - 1)) >> align_to_slot = number_of_slots
     let number_of_slots = match __is_reference_type::<T>() {
         true => ((place_in_slot * 8) + size_of_t + 31) >> 5,
