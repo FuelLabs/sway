@@ -43,7 +43,7 @@ impl Hash for Enum {
 
 impl Hash for str[33] {
     fn hash(self, ref mut state: Hasher) {
-        state.write_str(self);
+        state.write_str_array(self);
     }
 }
 

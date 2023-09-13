@@ -36,16 +36,31 @@ impl Hasher {
 
 impl Hasher {
     /// Writes a single `str` into this hasher.
-    pub fn write_str<S>(ref mut self, s: S) {
-        __check_str_type::<S>();
-        let str_size = __size_of_str::<S>();
-        let str_ptr = __addr_of(s);
+    pub fn write_str(ref mut self, s: str) {
+        let str_size = s.len();
+        let str_ptr = s.as_ptr();
+
         let mut bytes = Bytes::with_capacity(str_size);
         bytes.len = str_size;
 
         str_ptr.copy_bytes_to(bytes.buf.ptr(), str_size);
         self.write(bytes);
     }
+
+    #![inline(never)]
+    pub fn write_str_array<S>(ref mut self, s: S) {
+        __assert_is_str_array::<S>();
+        let str_size = __size_of_str_array::<S>();
+        let str_ptr = __addr_of(s);
+        
+        let mut bytes = Bytes::with_capacity(str_size);
+        bytes.len = str_size;
+
+        str_ptr.copy_bytes_to(bytes.buf.ptr(), str_size);
+        
+        self.write(bytes);
+    }
+
 }
 
 pub trait Hash {
@@ -134,6 +149,12 @@ impl Hash for bool {
 impl Hash for Bytes {
     fn hash(self, ref mut state: Hasher) {
         state.write(self);
+    }
+}
+
+impl Hash for str {
+    fn hash(self, ref mut state: Hasher) {
+        state.write_str(self);
     }
 }
 
@@ -304,6 +325,35 @@ pub fn sha256<T>(s: T) -> b256 where T: Hash {
     hasher.sha256()
 }
 
+/// Returns the `SHA-2-256` hash of `param`.
+/// This function is specific for string arrays
+///
+/// # Examples
+/// 
+/// ```sway
+/// use std::hash::*;
+///
+/// fn foo() {
+///     let result = sha256_str_array(__to_str_array("Fuel"));
+///     assert(result = 0xa80f942f4112036dfc2da86daf6d2ef6ede3164dd56d1000eb82fa87c992450f);
+/// }
+/// ```
+#![inline(never)]
+pub fn sha256_str_array<S>(param: S) -> b256 {
+     __assert_is_str_array::<S>();
+    let str_size = __size_of_str_array::<S>();
+    let str_ptr = __addr_of(param);
+    
+    let mut bytes = Bytes::with_capacity(str_size);
+    bytes.len = str_size;
+
+    str_ptr.copy_bytes_to(bytes.buf.ptr(), str_size);
+    
+    let mut hasher = Hasher::new();
+    hasher.write(bytes);
+    hasher.sha256()
+}
+
 /// Returns the `KECCAK-256` hash of `param`.
 ///
 /// # Arguments
@@ -332,10 +382,9 @@ pub fn keccak256<T>(s: T) -> b256 where T: Hash {
 }
 
 // Tests
-//
 
 #[test()]
-fn test_hasher_sha256_str() {
+fn test_hasher_sha256_str_array() {
     use ::assert::assert;
     let mut hasher = Hasher::new();
     hasher.write_str("test");

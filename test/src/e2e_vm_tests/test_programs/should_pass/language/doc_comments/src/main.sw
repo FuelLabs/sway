@@ -35,7 +35,7 @@ storage {
     /// A `u64` field
     field_a: u64 = 0,
     /// An `str` field
-    field_b: str[4] = "aaaa",
+    field_b: str[4] = __to_str_array("aaaa"),
 }
 
 /// The implementation of the `FooABI` abi

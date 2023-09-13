@@ -1277,6 +1277,7 @@ pub(crate) fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
         "bool" => Some(TypeInfo::Boolean),
         "unit" => Some(TypeInfo::Tuple(Vec::new())),
         "b256" => Some(TypeInfo::B256),
+        "str" => Some(TypeInfo::StringSlice),
         "raw_ptr" => Some(TypeInfo::RawUntypedPtr),
         "raw_slice" => Some(TypeInfo::RawUntypedSlice),
         "Self" | "self" => Some(TypeInfo::SelfType),
@@ -1308,8 +1309,9 @@ fn ty_to_type_info(
                 expr_to_length(context, handler, *ty_array_descriptor.length)?,
             )
         }
-        Ty::Str { length, .. } => {
-            TypeInfo::Str(expr_to_length(context, handler, *length.into_inner())?)
+        Ty::StringSlice(..) => TypeInfo::StringSlice,
+        Ty::StringArray { length, .. } => {
+            TypeInfo::StringArray(expr_to_length(context, handler, *length.into_inner())?)
         }
         Ty::Infer { .. } => TypeInfo::Unknown,
         Ty::Ptr { ty, .. } => {
@@ -3681,7 +3683,8 @@ fn ty_to_type_parameter(
         }
         Ty::Tuple(..) => panic!("tuple types are not allowed in this position"),
         Ty::Array(..) => panic!("array types are not allowed in this position"),
-        Ty::Str { .. } => panic!("str types are not allowed in this position"),
+        Ty::StringSlice(..) => panic!("str types are not allowed in this position"),
+        Ty::StringArray { .. } => panic!("str types are not allowed in this position"),
         Ty::Ptr { .. } => panic!("__ptr types are not allowed in this position"),
         Ty::Slice { .. } => panic!("__slice types are not allowed in this position"),
     };

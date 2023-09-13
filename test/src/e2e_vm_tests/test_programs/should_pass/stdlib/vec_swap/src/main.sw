@@ -12,12 +12,6 @@ struct SimpleStruct {
     y: b256,
 }
 
-fn sha256_str<T>(s: T) -> b256 {
-    let mut hasher = Hasher::new();
-    hasher.write_str(s);
-    hasher.sha256()
-}
-
 fn main() -> bool {
     test_vector_swap_u8();
     test_vector_swap_b256();
@@ -492,7 +486,7 @@ fn test_vector_swap_string() {
 
     match vector.get(0) {
         Some(val) => {
-            assert(sha256_str(val) == sha256_str(s0));
+            assert(sha256(val) == sha256(s0));
         },
         None => {
             revert(0)
@@ -501,7 +495,7 @@ fn test_vector_swap_string() {
 
     match vector.get(1) {
         Some(val) => {
-            assert(sha256_str(val) == sha256_str(s1));
+            assert(sha256(val) == sha256(s1));
         },
         None => {
             revert(0)
@@ -510,7 +504,7 @@ fn test_vector_swap_string() {
 
     match vector.get(2) {
         Some(val) => {
-            assert(sha256_str(val) == sha256_str(s2));
+            assert(sha256(val) == sha256(s2));
         },
         None => {
             revert(0)
@@ -525,7 +519,7 @@ fn test_vector_swap_string() {
 
     match vector.get(0) {
         Some(val) => {
-            assert(sha256_str(val) == sha256_str(s2));
+            assert(sha256(val) == sha256(s2));
         },
         None => {
             revert(0)
@@ -534,7 +528,7 @@ fn test_vector_swap_string() {
 
     match vector.get(1) {
         Some(val) => {
-            assert(sha256_str(val) == sha256_str(s1));
+            assert(sha256(val) == sha256(s1));
         },
         None => {
             revert(0)
@@ -543,7 +537,7 @@ fn test_vector_swap_string() {
 
     match vector.get(2) {
         Some(val) => {
-            assert(sha256_str(val) == sha256_str(s0));
+            assert(sha256(val) == sha256(s0));
         },
         None => {
             revert(0)

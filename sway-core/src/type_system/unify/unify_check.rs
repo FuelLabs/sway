@@ -358,7 +358,9 @@ impl<'a> UnifyCheck<'a> {
                     (UnsignedInteger(_), UnsignedInteger(_)) => true,
                     (Numeric, UnsignedInteger(_)) => true,
                     (UnsignedInteger(_), Numeric) => true,
-                    (Str(l), Str(r)) => l.val() == r.val(),
+
+                    (StringSlice, StringSlice) => true,
+                    (StringArray(l), StringArray(r)) => l.val() == r.val(),
 
                     // For contract callers, they can be coerced if they have the same
                     // name and at least one has an address of `None`
@@ -455,7 +457,8 @@ impl<'a> UnifyCheck<'a> {
                 (TypeInfo::Boolean, TypeInfo::Boolean) => true,
                 (TypeInfo::B256, TypeInfo::B256) => true,
                 (TypeInfo::ErrorRecovery(_), TypeInfo::ErrorRecovery(_)) => true,
-                (TypeInfo::Str(l), TypeInfo::Str(r)) => l.val() == r.val(),
+                (TypeInfo::StringSlice, TypeInfo::StringSlice) => true,
+                (TypeInfo::StringArray(l), TypeInfo::StringArray(r)) => l.val() == r.val(),
                 (TypeInfo::UnsignedInteger(l), TypeInfo::UnsignedInteger(r)) => l == r,
                 (TypeInfo::RawUntypedPtr, TypeInfo::RawUntypedPtr) => true,
                 (TypeInfo::RawUntypedSlice, TypeInfo::RawUntypedSlice) => true,

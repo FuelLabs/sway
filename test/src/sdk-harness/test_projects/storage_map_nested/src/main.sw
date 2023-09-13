@@ -38,7 +38,7 @@ impl core::ops::Eq for E {
 
 impl Hash for str[4] {
     fn hash(self, ref mut state: Hasher) {
-        state.write_str(self);
+        state.write_str_array(self);
     }
 }
 
@@ -99,22 +99,26 @@ impl ExperimentalStorageTest for Contract {
             v: 2,
         };
 
+        let _0000 = __to_str_array("0000");
+        let _0001 = __to_str_array("0001");
+        let _0002 = __to_str_array("0002");
+
         // Map insert via `insert`
-        storage.nested_map_2.get((0, 0)).get("0000").insert(0, m1);
-        storage.nested_map_2.get((0, 0)).get("0001").insert(1, m2);
-        storage.nested_map_2.get((0, 1)).get("0000").insert(0, m1);
-        storage.nested_map_2.get((0, 1)).get("0001").insert(1, m2);
+        storage.nested_map_2.get((0, 0)).get(_0000).insert(0, m1);
+        storage.nested_map_2.get((0, 0)).get(_0001).insert(1, m2);
+        storage.nested_map_2.get((0, 1)).get(_0000).insert(0, m1);
+        storage.nested_map_2.get((0, 1)).get(_0001).insert(1, m2);
 
         // Map insert via `get`
-        assert(storage.nested_map_2.get((0, 0)).get("0000").get(0).read() == m1);
-        assert(storage.nested_map_2.get((0, 0)).get("0001").get(1).read() == m2);
-        assert(storage.nested_map_2.get((0, 1)).get("0000").get(0).read() == m1);
-        assert(storage.nested_map_2.get((0, 1)).get("0001").get(1).read() == m2);
+        assert(storage.nested_map_2.get((0, 0)).get(_0000).get(0).read() == m1);
+        assert(storage.nested_map_2.get((0, 0)).get(_0001).get(1).read() == m2);
+        assert(storage.nested_map_2.get((0, 1)).get(_0000).get(0).read() == m1);
+        assert(storage.nested_map_2.get((0, 1)).get(_0001).get(1).read() == m2);
 
         // Thes combinations of keys are not set
-        assert(storage.nested_map_2.get((2, 0)).get("0001").get(1).try_read().is_none());
-        assert(storage.nested_map_2.get((1, 1)).get("0002").get(0).try_read().is_none());
-        assert(storage.nested_map_2.get((1, 1)).get("0001").get(2).try_read().is_none());
+        assert(storage.nested_map_2.get((2, 0)).get(_0001).get(1).try_read().is_none());
+        assert(storage.nested_map_2.get((1, 1)).get(_0002 ).get(0).try_read().is_none());
+        assert(storage.nested_map_2.get((1, 1)).get(_0001).get(2).try_read().is_none());
     }
 
     #[storage(read, write)]

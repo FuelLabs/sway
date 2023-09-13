@@ -175,7 +175,8 @@ impl TypeEngine {
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Placeholder(..)
             | TypeInfo::TypeParam(..)
-            | TypeInfo::Str(..)
+            | TypeInfo::StringArray(..)
+            | TypeInfo::StringSlice
             | TypeInfo::UnsignedInteger(..)
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }
@@ -228,7 +229,8 @@ impl TypeEngine {
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Placeholder(..)
             | TypeInfo::TypeParam(..)
-            | TypeInfo::Str(..)
+            | TypeInfo::StringSlice
+            | TypeInfo::StringArray(..)
             | TypeInfo::UnsignedInteger(..)
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }

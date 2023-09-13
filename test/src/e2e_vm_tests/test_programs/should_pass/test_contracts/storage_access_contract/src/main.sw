@@ -33,7 +33,7 @@ storage {
         int32: 6,
     },
     ), e2: E = E::A(777),
-    string: str[40] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    string: str[40] = __to_str_array("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),
 }
 
 impl StorageAccess for Contract {

@@ -31,7 +31,6 @@ pub(super) fn compile_script(
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
 ) -> Result<Module, Vec<CompileError>> {
-    println!("1");
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
 

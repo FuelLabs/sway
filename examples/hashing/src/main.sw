@@ -2,18 +2,6 @@ script;
 
 use std::hash::*;
 
-impl Hash for str[4] {
-    fn hash(self, ref mut state: Hasher) {
-        state.write_str(self);
-    }
-}
-
-impl Hash for str[32] {
-    fn hash(self, ref mut state: Hasher) {
-        state.write_str(self);
-    }
-}
-
 impl Hash for Location {
     fn hash(self, ref mut state: Hasher) {
         match self {
@@ -55,7 +43,7 @@ enum Location {
 }
 
 struct Person {
-    name: str[4],
+    name: str,
     age: u64,
     alive: bool,
     location: Location,
