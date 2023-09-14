@@ -84,8 +84,7 @@ impl ty::TyFunctionDecl {
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions();
 
-        // Type check the type parameters. This will also insert them into the
-        // current namespace.
+        // Type check the type parameters.
         let new_type_parameters =
             TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters)?;
 
@@ -186,7 +185,7 @@ impl ty::TyFunctionDecl {
             p.insert_into_namespace(handler, ctx.by_ref())?;
         }
 
-        // Insert the previously type checked function parameters into the namespace.
+        // Insert the previously type checked function parameters into the current namespace.
         for p in parameters {
             p.insert_into_namespace(handler, ctx.by_ref());
         }
