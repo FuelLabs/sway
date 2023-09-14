@@ -49,6 +49,9 @@ pub struct TypeCheckContext<'a> {
     ///
     /// Assists type inference.
     type_annotation: TypeId,
+    /// While type-checking an expression, this indicates the types to be substituted when a
+    /// type is resolved. This is required is to replace associated types, namely TypeInfo::TraitType.
+    type_subst: TypeSubstMap,
     /// Whether or not we're within an `abi` implementation.
     ///
     /// This is `ImplAbiFn` while checking `abi` implementations whether at their original impl
@@ -93,6 +96,7 @@ impl<'a> TypeCheckContext<'a> {
             namespace,
             engines,
             type_annotation: engines.te().insert(engines, TypeInfo::Unknown),
+            type_subst: TypeSubstMap::new(),
             help_text: "",
             // TODO: Contract? Should this be passed in based on program kind (aka TreeType)?
             self_type: engines.te().insert(engines, TypeInfo::Contract),
@@ -116,6 +120,7 @@ impl<'a> TypeCheckContext<'a> {
         TypeCheckContext {
             namespace: self.namespace,
             type_annotation: self.type_annotation,
+            type_subst: self.type_subst.clone(),
             self_type: self.self_type,
             abi_mode: self.abi_mode.clone(),
             const_shadowing_mode: self.const_shadowing_mode,
@@ -132,6 +137,7 @@ impl<'a> TypeCheckContext<'a> {
         TypeCheckContext {
             namespace,
             type_annotation: self.type_annotation,
+            type_subst: self.type_subst,
             self_type: self.self_type,
             abi_mode: self.abi_mode,
             const_shadowing_mode: self.const_shadowing_mode,
@@ -172,6 +178,14 @@ impl<'a> TypeCheckContext<'a> {
     pub(crate) fn with_type_annotation(self, type_annotation: TypeId) -> Self {
         Self {
             type_annotation,
+            ..self
+        }
+    }
+
+    /// Map this `TypeCheckContext` instance to a new one with the given type subst.
+    pub(crate) fn with_type_subst(self, type_subst: &TypeSubstMap) -> Self {
+        Self {
+            type_subst: type_subst.clone(),
             ..self
         }
     }
@@ -234,6 +248,10 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn type_annotation(&self) -> TypeId {
         self.type_annotation
+    }
+
+    pub(crate) fn type_subst(&self) -> TypeSubstMap {
+        self.type_subst.clone()
     }
 
     pub(crate) fn abi_mode(&self) -> AbiMode {
@@ -545,6 +563,10 @@ impl<'a> TypeCheckContext<'a> {
             }
             _ => type_id,
         };
+
+        let mut type_id = type_id;
+        type_id.subst(&self.type_subst(), self.engines());
+
         Ok(type_id)
     }
 

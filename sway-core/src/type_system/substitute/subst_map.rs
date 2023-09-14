@@ -56,6 +56,13 @@ impl TypeSubstMap {
         self.mapping.is_empty()
     }
 
+    /// Constructs a new empty [TypeSubstMap].
+    pub(crate) fn new() -> TypeSubstMap {
+        TypeSubstMap {
+            mapping: BTreeMap::<SourceType, DestinationType>::new(),
+        }
+    }
+
     /// Constructs a new [TypeSubstMap] from a list of [TypeParameter]s
     /// `type_parameters`. The [SourceType]s of the resulting [TypeSubstMap] are
     /// the [TypeId]s from `type_parameters` and the [DestinationType]s are the

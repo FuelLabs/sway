@@ -90,18 +90,7 @@ impl ty::TyTraitDecl {
                     dummy_interface_surface.push(ty::TyImplItem::Type(decl_ref.clone()));
                     new_interface_surface.push(ty::TyTraitInterfaceItem::Type(decl_ref.clone()));
 
-                    let type_name = type_decl.name;
-                    ctx.insert_symbol(
-                        handler,
-                        type_name.clone(),
-                        ty::TyDecl::TypeDecl(ty::TypeDecl {
-                            name: type_name.clone(),
-                            decl_id: *decl_ref.id(),
-                            decl_span: type_decl.span.clone(),
-                        }),
-                    )?;
-
-                    Some(type_name)
+                    Some(type_decl.name)
                 }
                 TraitItem::Error(_, _) => None,
             };
@@ -451,20 +440,7 @@ impl ty::TyTraitDecl {
                     );
                 }
                 ty::TyTraitInterfaceItem::Type(decl_ref) => {
-                    let type_decl = decl_engine.get_type(decl_ref);
-                    let type_name = type_decl.name;
                     all_items.push(TyImplItem::Type(decl_ref.clone()));
-                    let const_shadowing_mode = ctx.const_shadowing_mode();
-                    let _ = ctx.namespace.insert_symbol(
-                        handler,
-                        type_name.clone(),
-                        ty::TyDecl::TypeDecl(ty::TypeDecl {
-                            name: type_name,
-                            decl_id: *decl_ref.id(),
-                            decl_span: type_decl.span.clone(),
-                        }),
-                        const_shadowing_mode,
-                    );
                 }
             }
         }

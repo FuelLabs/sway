@@ -352,16 +352,6 @@ impl ty::TyImplTrait {
                         };
                         let decl_ref = decl_engine.insert(type_decl);
                         new_items.push(TyImplItem::Type(decl_ref.clone()));
-
-                        ctx.insert_symbol(
-                            handler,
-                            decl_ref.name().clone(),
-                            ty::TyDecl::TypeDecl(ty::TypeDecl {
-                                name: decl_ref.name().clone(),
-                                decl_id: *decl_ref.id(),
-                                decl_span: decl_ref.span().clone(),
-                            }),
-                        )?;
                     }
                 }
             }
@@ -739,7 +729,8 @@ fn type_check_impl_method(
     let mut ctx = ctx
         .by_ref()
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown))
+        .with_type_subst(type_subst_mapping);
 
     let interface_name = || -> InterfaceName {
         if is_contract {
