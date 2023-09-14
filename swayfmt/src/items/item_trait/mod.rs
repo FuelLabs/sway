@@ -103,6 +103,10 @@ impl Format for ItemTrait {
                 write!(formatted_code, "{}", formatter.indent_str()?)?;
                 // format `Annotated<ItemFn>`
                 trait_items.format(formatted_code, formatter)?;
+                writeln!(formatted_code)?;
+            }
+            if formatted_code.ends_with('\n') {
+                formatted_code.pop();
             }
             Self::close_curly_brace(formatted_code, formatter)?;
         };

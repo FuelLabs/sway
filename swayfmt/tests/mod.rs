@@ -1669,18 +1669,12 @@ fn bug_whitespace_comment() {
 library;
 
     trait OrdEq: Ord + Eq {} {
-        /// ```
     /// Evaluates if one value of the same type is less or equal to than another.
-    ///
-    fn le(self, other: Self) -> bool {
-        self.lt(other) || self.eq(other)
-    }
-        /// Evaluates if one value of the same type is greater or equal to than another.
+    fn le(self, other: Self) -> bool {self.lt(other) || self.eq(other) }
+    /// Evaluates if one value of the same type is greater or equal to than another.
     fn ge(self, other: Self) -> bool {
         self.gt(other) || self.eq(other)
-    }
-
-    /// Evaluates if one value of the same type is less or equal to than another.
+    } /// Evaluates if one value of the same type is less or equal to than another.
     fn le(self, other: Self) -> bool {
         self.lt(other) || self.eq(other)
     }
@@ -1690,24 +1684,19 @@ library;
 
 trait OrdEq: Ord + Eq {
 } {
-    /// ```
     /// Evaluates if one value of the same type is less or equal to than another.
-    ///
     fn le(self, other: Self) -> bool {
         self.lt(other) || self.eq(other)
     }
-    
     /// Evaluates if one value of the same type is greater or equal to than another.
     fn ge(self, other: Self) -> bool {
         self.gt(other) || self.eq(other)
     }
-
     /// Evaluates if one value of the same type is less or equal to than another.
     fn le(self, other: Self) -> bool {
         self.lt(other) || self.eq(other)
     }
 }
-
 "#,
     );
 }

@@ -1023,7 +1023,8 @@ trait OrdEq: Ord + Eq {
     /// ```
     fn ge(self, other: Self) -> bool {
         self.gt(other) || self.eq(other)
-    }    /// Evaluates if one value of the same type is less or equal to than another.
+    }
+    /// Evaluates if one value of the same type is less or equal to than another.
     ///
     /// # Additional Information
     ///
@@ -1326,7 +1327,7 @@ impl Eq for str {
             let other_ptr = other.as_ptr();
             let l = self.len();
             asm(r1: self_ptr, r2: other_ptr, r3: l, r4) {
-                meq r4 r1 r2 r3;
+                meq  r4 r1 r2 r3;
                 r4: bool
             }
         }
