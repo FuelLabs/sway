@@ -44,7 +44,7 @@ impl BasicStorage for Contract {
 
     #[storage(write)]
     fn intrinsic_store_word(key: b256, value: u64) {
-        __state_store_word(key, value);
+        let _ = __state_store_word(key, value);
     }
 
     #[storage(read)]
@@ -62,13 +62,13 @@ impl BasicStorage for Contract {
             i += 1;
         }
 
-        __state_load_quad(key, values.buf.ptr(), slots);
+        let _ = __state_load_quad(key, values.buf.ptr(), slots);
         values
     }
 
     #[storage(write)]
     fn intrinsic_store_quad(key: b256, values: Vec<Quad>) {
-        __state_store_quad(key, values.buf.ptr(), values.len());
+        let _ = __state_store_quad(key, values.buf.ptr(), values.len());
     }
 
     #[storage(read, write)]
@@ -209,6 +209,18 @@ fn test_storage() {
     assert_streq(storage.str8.read(), "aaaaaaaa");
     assert_streq(storage.str9.read(), "aaaaaaaaa");
     assert_streq(storage.str10.read(), "aaaaaaaaaa");
+
+    assert_streq(S5, "aaaaa");
+
+    assert_eq(storage.c1.read(), C1);
+
+    // assert_eq(storage.storage_u256.read(), CONST_U256);
+    storage.storage_u256.write(CONST_U256);
+    assert_eq(storage.storage_u256.read(), CONST_U256);
+
+    assert_eq(storage.storage_b256.read(), CONST_B256);
+    storage.storage_b256.write(CONST_B256);
+    assert_eq(storage.storage_b256.read(), CONST_B256);
 }
 
 // If these comparisons are done inline just above then it blows out the register allocator due to
