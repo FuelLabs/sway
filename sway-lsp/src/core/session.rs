@@ -130,8 +130,6 @@ impl Session {
             let _ = join_handle.join();
         }
 
-        // TODO: clean up any remaining .dirty files
-
         // Delete the temporary directory.
         self.sync.remove_temp_dir();
     }
@@ -392,7 +390,10 @@ impl Session {
     fn store_sway_files(&self) -> Result<(), LanguageServerError> {
         let temp_dir = self.sync.temp_dir()?;
         // Store the documents.
-        for path in get_sway_files(temp_dir).iter().filter_map(|fp| fp.to_str()) {
+        for path in get_sway_files(&temp_dir)
+            .iter()
+            .filter_map(|fp| fp.to_str())
+        {
             self.store_document(TextDocument::build_from_path(path)?)?;
         }
         Ok(())

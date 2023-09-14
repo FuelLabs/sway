@@ -129,8 +129,11 @@ pub fn mark_file_as_dirty(uri: &Url) -> Result<(), LanguageServerError> {
 /// If the flag file does not exist, this function will do nothing.
 pub fn remove_dirty_flag(uri: &Url) -> Result<(), LanguageServerError> {
     let path = document::get_path_from_url(uri)?;
+    eprintln!("path to remove dirty flag: {:?}", path);
     let dirty_file_path = forc_util::is_dirty_path(&path);
+    eprintln!("dirty_file_path: {:?}", dirty_file_path);
     if dirty_file_path.exists() {
+        eprintln!("Removing dirty flag file: {:?}", dirty_file_path);
         // Remove the "dirty" file
         std::fs::remove_file(dirty_file_path).map_err(|err| DocumentError::UnableToRemoveFile {
             path: uri.path().to_string(),

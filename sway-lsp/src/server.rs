@@ -2,6 +2,7 @@
 //! It provides an interface between the LSP protocol and the sway-lsp internals.
 
 use crate::{
+    core::document,
     handlers::{notification, request},
     lsp_ext::{OnEnterParams, ShowAstParams},
     server_state::ServerState,
@@ -9,12 +10,12 @@ use crate::{
 use lsp_types::{
     CodeActionParams, CodeActionResponse, CodeLens, CodeLensParams, CompletionParams,
     CompletionResponse, DidChangeTextDocumentParams, DidChangeWatchedFilesParams,
-    DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentFormattingParams,
-    DocumentHighlight, DocumentHighlightParams, DocumentSymbolParams, DocumentSymbolResponse,
-    GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams, InitializeParams,
-    InitializeResult, InitializedParams, InlayHint, InlayHintParams, PrepareRenameResponse,
-    RenameParams, SemanticTokensParams, SemanticTokensResult, TextDocumentIdentifier,
-    TextDocumentPositionParams, TextEdit, WorkspaceEdit,
+    DidCloseTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams,
+    DocumentFormattingParams, DocumentHighlight, DocumentHighlightParams, DocumentSymbolParams,
+    DocumentSymbolResponse, GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams,
+    InitializeParams, InitializeResult, InitializedParams, InlayHint, InlayHintParams,
+    PrepareRenameResponse, RenameParams, SemanticTokensParams, SemanticTokensResult,
+    TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, WorkspaceEdit,
 };
 use tower_lsp::{jsonrpc::Result, LanguageServer};
 
@@ -34,6 +35,12 @@ impl LanguageServer for ServerState {
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         if let Err(err) = notification::handle_did_open_text_document(self, params).await {
+            tracing::error!("{}", err.to_string());
+        }
+    }
+
+    async fn did_close(&self, params: DidCloseTextDocumentParams) {
+        if let Err(err) = document::remove_dirty_flag(&params.text_document.uri) {
             tracing::error!("{}", err.to_string());
         }
     }
