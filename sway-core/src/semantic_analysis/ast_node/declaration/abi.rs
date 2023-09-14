@@ -5,7 +5,7 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     decl_engine::{DeclEngineInsert, DeclId},
-    namespace::TryInsertingTraitImplOnFailure,
+    namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 
@@ -394,8 +394,8 @@ impl ty::TyAbiDecl {
                 &all_items,
                 &self.span,
                 Some(self.span()),
-                false,
-                false,
+                IsImplSelf::No,
+                IsExtendingExistingImpl::No,
             );
             Ok(())
         })

@@ -6,7 +6,7 @@ use crate::type_error::TypeError;
 
 use core::fmt;
 use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
-use sway_types::{Ident, SourceEngine, Span, Spanned};
+use sway_types::{BaseIdent, Ident, SourceEngine, Span, Spanned};
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
@@ -152,16 +152,28 @@ pub enum CompileError {
         interface_name: InterfaceName,
         span: Span,
     },
-    #[error("Constants are missing from this trait implementation: {missing_constants}")]
+    #[error("Constants are missing from this trait implementation: {}",
+        missing_constants.iter().map(|ident| ident.as_str().to_string())
+        .collect::<Vec<_>>()
+        .join("\n"))]
     MissingInterfaceSurfaceConstants {
-        missing_constants: String,
+        missing_constants: Vec<BaseIdent>,
         span: Span,
     },
-    #[error("Associated types are missing from this trait implementation: {missing_types}")]
-    MissingInterfaceSurfaceTypes { missing_types: String, span: Span },
-    #[error("Functions are missing from this trait implementation: {missing_functions}")]
+    #[error("Associated types are missing from this trait implementation: {}",
+        missing_types.iter().map(|ident| ident.as_str().to_string())
+        .collect::<Vec<_>>()
+        .join("\n"))]
+    MissingInterfaceSurfaceTypes {
+        missing_types: Vec<BaseIdent>,
+        span: Span,
+    },
+    #[error("Functions are missing from this trait implementation: {}",
+        missing_functions.iter().map(|ident| ident.as_str().to_string())
+        .collect::<Vec<_>>()
+        .join("\n"))]
     MissingInterfaceSurfaceMethods {
-        missing_functions: String,
+        missing_functions: Vec<BaseIdent>,
         span: Span,
     },
     #[error("Expected {} type {}, but instead found {}.", expected, if *expected == 1usize { "argument" } else { "arguments" }, given)]

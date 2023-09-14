@@ -8,7 +8,7 @@ use crate::{
         ty::{self, TyDecl},
         CallPath, Purity, Visibility,
     },
-    namespace::{Path, TryInsertingTraitImplOnFailure},
+    namespace::{IsExtendingExistingImpl, IsImplSelf, Path, TryInsertingTraitImplOnFailure},
     semantic_analysis::{
         ast_node::{AbiMode, ConstShadowingMode},
         Namespace,
@@ -1157,8 +1157,8 @@ impl<'a> TypeCheckContext<'a> {
         items: &[ty::TyImplItem],
         impl_span: &Span,
         trait_decl_span: Option<Span>,
-        is_impl_self: bool,
-        is_extending: bool,
+        is_impl_self: IsImplSelf,
+        is_extending_existing_impl: IsExtendingExistingImpl,
     ) -> Result<(), ErrorEmitted> {
         // Use trait name with full path, improves consistency between
         // this inserting and getting in `get_methods_for_type_and_trait_name`.
@@ -1173,7 +1173,7 @@ impl<'a> TypeCheckContext<'a> {
             impl_span,
             trait_decl_span,
             is_impl_self,
-            is_extending,
+            is_extending_existing_impl,
             self.engines,
         )
     }

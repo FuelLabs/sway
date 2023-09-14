@@ -101,6 +101,16 @@ pub(crate) struct TraitMap {
     trait_impls: TraitImpls,
 }
 
+pub(crate) enum IsImplSelf {
+    Yes,
+    No,
+}
+
+pub(crate) enum IsExtendingExistingImpl {
+    Yes,
+    No,
+}
+
 impl TraitMap {
     /// Given a [TraitName] `trait_name`, [TypeId] `type_id`, and list of
     /// [TyImplItem](ty::TyImplItem) `items`, inserts
@@ -119,8 +129,8 @@ impl TraitMap {
         items: &[TyImplItem],
         impl_span: &Span,
         trait_decl_span: Option<Span>,
-        is_impl_self: bool,
-        is_extending: bool,
+        is_impl_self: IsImplSelf,
+        is_extending_existing_impl: IsExtendingExistingImpl,
         engines: &Engines,
     ) -> Result<(), ErrorEmitted> {
         let type_engine = engines.te();
@@ -203,7 +213,11 @@ impl TraitMap {
                 let types_are_subset = unify_checker.check(type_id, *map_type_id);
                 let traits_are_subset = unify_checker.check(trait_type_id, map_trait_type_id);
 
-                if !is_extending && types_are_subset && traits_are_subset && !is_impl_self {
+                if matches!(is_extending_existing_impl, IsExtendingExistingImpl::No)
+                    && types_are_subset
+                    && traits_are_subset
+                    && matches!(is_impl_self, IsImplSelf::No)
+                {
                     let trait_name_str = format!(
                         "{}{}",
                         trait_name.suffix,
@@ -225,7 +239,9 @@ impl TraitMap {
                         type_implementing_for: engines.help_out(type_id).to_string(),
                         second_impl_span: impl_span.clone(),
                     });
-                } else if types_are_subset && (traits_are_subset || is_impl_self) {
+                } else if types_are_subset
+                    && (traits_are_subset || matches!(is_impl_self, IsImplSelf::Yes))
+                {
                     for (name, item) in trait_items.iter() {
                         match item {
                             ty::TyTraitItem::Fn(decl_ref) => {

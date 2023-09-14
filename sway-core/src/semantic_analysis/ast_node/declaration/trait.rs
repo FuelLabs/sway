@@ -14,6 +14,7 @@ use crate::{
         ty::{self, TyImplItem, TyTraitItem},
         CallPath,
     },
+    namespace::{IsExtendingExistingImpl, IsImplSelf},
     semantic_analysis::{
         declaration::{insert_supertraits_into_namespace, SupertraitOf},
         AbiMode, TypeCheckContext,
@@ -119,8 +120,8 @@ impl ty::TyTraitDecl {
             &dummy_interface_surface,
             &span,
             None,
-            false,
-            false,
+            IsImplSelf::No,
+            IsExtendingExistingImpl::No,
         )?;
         let mut dummy_interface_surface = vec![];
 
@@ -191,8 +192,8 @@ impl ty::TyTraitDecl {
             &dummy_interface_surface,
             &span,
             None,
-            false,
-            true,
+            IsImplSelf::No,
+            IsExtendingExistingImpl::Yes,
         )?;
 
         // Type check the items.
@@ -484,8 +485,8 @@ impl ty::TyTraitDecl {
             &all_items,
             &trait_name.span(),
             Some(self.span()),
-            false,
-            false,
+            IsImplSelf::No,
+            IsExtendingExistingImpl::No,
         );
     }
 }

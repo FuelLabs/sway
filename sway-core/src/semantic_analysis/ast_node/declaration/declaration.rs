@@ -4,6 +4,7 @@ use sway_types::{Named, Spanned};
 use crate::{
     decl_engine::{DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType},
     language::{parsed, ty},
+    namespace::{IsExtendingExistingImpl, IsImplSelf},
     semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
     type_system::*,
 };
@@ -189,8 +190,8 @@ impl ty::TyDecl {
                         .trait_decl_ref
                         .as_ref()
                         .map(|decl_ref| decl_ref.decl_span().clone()),
-                    false,
-                    false,
+                    IsImplSelf::No,
+                    IsExtendingExistingImpl::No,
                 )?;
                 let impl_trait_decl: ty::TyDecl = decl_engine.insert(impl_trait.clone()).into();
                 impl_trait.items.iter_mut().for_each(|item| {
@@ -216,8 +217,8 @@ impl ty::TyDecl {
                         .trait_decl_ref
                         .as_ref()
                         .map(|decl_ref| decl_ref.decl_span().clone()),
-                    true,
-                    false,
+                    IsImplSelf::Yes,
+                    IsExtendingExistingImpl::No,
                 )?;
                 let impl_trait_decl: ty::TyDecl = decl_engine.insert(impl_trait.clone()).into();
                 impl_trait.items.iter_mut().for_each(|item| {

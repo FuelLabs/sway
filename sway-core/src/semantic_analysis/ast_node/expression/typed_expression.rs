@@ -25,6 +25,7 @@ use crate::{
         ty::{self, TyImplItem},
         *,
     },
+    namespace::{IsExtendingExistingImpl, IsImplSelf},
     semantic_analysis::{expression::ReachableReport, type_check_context::EnforceTypeArguments, *},
     transform::to_parsed_lang::type_name_to_type_info_opt,
     type_system::*,
@@ -1585,8 +1586,8 @@ impl ty::TyExpression {
             &abi_items,
             &span,
             Some(span.clone()),
-            false,
-            false,
+            IsImplSelf::No,
+            IsExtendingExistingImpl::No,
         )?;
 
         let exp = ty::TyExpression {

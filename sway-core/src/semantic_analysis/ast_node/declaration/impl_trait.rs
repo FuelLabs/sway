@@ -14,7 +14,7 @@ use crate::{
         ty::{self, TyImplItem, TyTraitInterfaceItem, TyTraitItem},
         *,
     },
-    namespace::TryInsertingTraitImplOnFailure,
+    namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
     semantic_analysis::{
         type_check_context::EnforceTypeArguments, AbiMode, ConstShadowingMode, TypeCheckContext,
     },
@@ -490,8 +490,8 @@ fn type_check_trait_implementation(
                 .collect::<Vec<_>>(),
             &trait_name.span(),
             Some(trait_decl_span.clone()),
-            false,
-            false,
+            IsImplSelf::No,
+            IsExtendingExistingImpl::No,
         );
 
         supertrait_interface_item_refs = this_supertrait_stub_method_refs;
@@ -676,33 +676,21 @@ fn type_check_trait_implementation(
         if !method_checklist.is_empty() {
             handler.emit_err(CompileError::MissingInterfaceSurfaceMethods {
                 span: block_span.clone(),
-                missing_functions: method_checklist
-                    .into_keys()
-                    .map(|ident| ident.as_str().to_string())
-                    .collect::<Vec<_>>()
-                    .join("\n"),
+                missing_functions: method_checklist.into_keys().collect::<Vec<_>>(),
             });
         }
 
         if !constant_checklist.is_empty() {
             handler.emit_err(CompileError::MissingInterfaceSurfaceConstants {
                 span: block_span.clone(),
-                missing_constants: constant_checklist
-                    .into_keys()
-                    .map(|ident| ident.as_str().to_string())
-                    .collect::<Vec<_>>()
-                    .join("\n"),
+                missing_constants: constant_checklist.into_keys().collect::<Vec<_>>(),
             });
         }
 
         if !type_checklist.is_empty() {
             handler.emit_err(CompileError::MissingInterfaceSurfaceTypes {
                 span: block_span.clone(),
-                missing_types: type_checklist
-                    .into_keys()
-                    .map(|ident| ident.as_str().to_string())
-                    .collect::<Vec<_>>()
-                    .join("\n"),
+                missing_types: type_checklist.into_keys().collect::<Vec<_>>(),
             });
         }
 
@@ -1089,25 +1077,6 @@ fn type_check_type_decl(
     // `TypeInfo::SelfType` to avoid replacing types in the stub constant
     // declaration
     type_decl_signature.replace_self_type(engines, self_type);
-
-    // unify the types from the constant with the constant signature
-    /*if !type_engine.get(const_decl.type_ascription.type_id).eq(
-        &type_engine.get(const_decl_signature.type_ascription.type_id),
-        engines,
-    ) {
-        errors.push(CompileError::MismatchedTypeInInterfaceSurface {
-            interface_name: interface_name(),
-            span: const_decl.span.clone(),
-            decl_type: "constant".to_string(),
-            given: engines
-                .help_out(const_decl.type_ascription.type_id)
-                .to_string(),
-            expected: engines
-                .help_out(const_decl_signature.type_ascription.type_id)
-                .to_string(),
-        });
-        return err(warnings, errors);
-    }*/
 
     Ok(type_decl)
 }
