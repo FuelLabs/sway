@@ -1700,3 +1700,75 @@ trait OrdEq: Ord + Eq {
 "#,
     );
 }
+
+#[test]
+fn bug_whitespace_added_after_comment() {
+    check(
+        r#"
+library;
+// GTF Opcode const selectors
+//
+pub const GTF_OUTPUT_TYPE = 0x201;
+pub const GTF_OUTPUT_COIN_TO = 0x202;
+pub const GTF_OUTPUT_COIN_AMOUNT = 0x203;
+pub const GTF_OUTPUT_COIN_ASSET_ID = 0x204;
+// pub const GTF_OUTPUT_CONTRACT_INPUT_INDEX = 0x205;
+// pub const GTF_OUTPUT_CONTRACT_BALANCE_ROOT = 0x206;
+// pub const GTF_OUTPUT_CONTRACT_STATE_ROOT = 0x207;
+// pub const GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID = 0x208;
+// pub const GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT = 0x209;
+
+
+
+
+/// The output type for a transaction.
+pub enum Output {
+    /// A coin output.
+    Coin: (), /// A contract output.
+    Contract: (),
+    /// Remaining "change" from spending of a coin.
+    Change: (),
+
+        /// A variable output.
+    Variable: (),
+}
+
+    /// The output type for a transaction.
+pub enum Input {
+        /// A variable output.
+            Variable: (),
+}
+        "#,
+        r#"library;
+// GTF Opcode const selectors
+//
+pub const GTF_OUTPUT_TYPE = 0x201;
+pub const GTF_OUTPUT_COIN_TO = 0x202;
+pub const GTF_OUTPUT_COIN_AMOUNT = 0x203;
+pub const GTF_OUTPUT_COIN_ASSET_ID = 0x204;
+// pub const GTF_OUTPUT_CONTRACT_INPUT_INDEX = 0x205;
+// pub const GTF_OUTPUT_CONTRACT_BALANCE_ROOT = 0x206;
+// pub const GTF_OUTPUT_CONTRACT_STATE_ROOT = 0x207;
+// pub const GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID = 0x208;
+// pub const GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT = 0x209;
+
+/// The output type for a transaction.
+pub enum Output {
+    /// A coin output.
+    Coin: (),
+    /// A contract output.
+    Contract: (),
+    /// Remaining "change" from spending of a coin.
+    Change: (),
+    /// A variable output.
+    Variable: (),
+}
+
+/// The output type for a transaction.
+pub enum Input {
+    /// A variable output.
+    Variable: (),
+}
+"#,
+    );
+}

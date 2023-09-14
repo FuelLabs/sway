@@ -26,8 +26,6 @@ pub const GTF_OUTPUT_COIN_ASSET_ID = 0x204;
 // pub const GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID = 0x208;
 // pub const GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT = 0x209;
 
-
-
 /// The output type for a transaction.
 pub enum Output {
     /// A coin output.

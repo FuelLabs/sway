@@ -1,6 +1,6 @@
 use anyhow::Result;
 use ropey::Rope;
-use std::{collections::BTreeMap, fmt::Write, path::PathBuf, sync::Arc};
+use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
 use sway_ast::Module;
 use sway_types::SourceEngine;
 
@@ -132,7 +132,7 @@ fn add_newlines(
     });
     // Since we are adding newline sequences into the formatted code, in the next iteration the spans we find for the formatted code needs to be offsetted
     // as the total length of newline sequences we added in previous iterations.
-    let mut offset = 0;
+    let mut offset: i64 = 0;
     // We will definetly have a span in the collected span since for a source code to be parsed there should be some tokens present.
     let mut previous_unformatted_newline_span = unformatted_newline_spans
         .first()
@@ -172,7 +172,7 @@ fn add_newlines(
                             },
                             &newline_map,
                         ) {
-                            let at = previous_formatted_newline_span.end + offset;
+                            let at = (previous_formatted_newline_span.end as i64 + offset) as usize;
                             offset += insert_after_span(
                                 at,
                                 newline_sequence,
@@ -195,7 +195,7 @@ fn add_newlines(
                         },
                         &newline_map,
                     ) {
-                        let at = previous_formatted_newline_span.end + offset;
+                        let at = (previous_formatted_newline_span.end as i64 + offset) as usize;
                         offset += insert_after_span(
                             at,
                             newline_sequence,
@@ -237,7 +237,7 @@ fn add_newlines(
                                 offset += insert_after_span(
                                     previous_formatted_newline_span.end
                                         + end_of_last_comment
-                                        + offset,
+                                        + (offset as usize),
                                     newline_sequence,
                                     formatted_code,
                                     newline_threshold,
@@ -270,14 +270,23 @@ fn insert_after_span(
     newline_sequence: NewlineSequence,
     formatted_code: &mut FormattedCode,
     threshold: usize,
-) -> Result<usize, FormatterError> {
-    let mut sequence_string = String::new();
-    write!(
-        sequence_string,
-        "{}",
-        format_newline_sequence(&newline_sequence, threshold)
-    )?;
+) -> Result<i64, FormatterError> {
+    let sequence_string = format_newline_sequence(&newline_sequence, threshold);
+    let mut len = sequence_string.len() as i64;
     let mut src_rope = Rope::from_str(formatted_code);
+
+    // Remove the previous sequence_length, that will be replaced in the next statement
+    let mut remove_until = at;
+    for i in at..at + newline_sequence.sequence_length {
+        if src_rope.get_char(i) != Some('\n') {
+            break;
+        }
+        remove_until = i;
+    }
+    if remove_until > at {
+        let _ = src_rope.try_remove(at..remove_until);
+        len = len - (remove_until - at) as i64;
+    }
 
     src_rope
         .try_insert(at, &sequence_string)
@@ -285,7 +294,7 @@ fn insert_after_span(
 
     formatted_code.clear();
     formatted_code.push_str(&src_rope.to_string());
-    Ok(sequence_string.len())
+    Ok(len)
 }
 
 /// Returns the first newline sequence contained in a span.
