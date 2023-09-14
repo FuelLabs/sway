@@ -43,11 +43,12 @@ use sway_core::{
     BuildTarget, Engines, Namespace, Programs,
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
-use sway_types::{SourceEngine, SourceId, Span, Spanned};
+use sway_types::{SourceEngine, Span, Spanned};
 use sway_utils::{helpers::get_sway_files, PerformanceData};
 use tokio::sync::Semaphore;
 
 pub type Documents = DashMap<String, TextDocument>;
+pub type MetricsMap = DashMap<PathBuf, PerformanceData>;
 pub type ProjectDirectory = PathBuf;
 
 #[derive(Default, Debug)]
@@ -64,6 +65,7 @@ pub struct CompiledProgram {
 pub struct ParseResult {
     pub(crate) diagnostics: (Vec<CompileError>, Vec<CompileWarning>),
     pub(crate) token_map: TokenMap,
+    pub(crate) metrics_map: MetricsMap,
     pub(crate) engines: Engines,
     pub(crate) lexed: LexedProgram,
     pub(crate) parsed: ParseProgram,
@@ -87,7 +89,7 @@ pub struct Session {
     pub parse_permits: Arc<Semaphore>,
     // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
     pub diagnostics: Arc<RwLock<DiagnosticMap>>,
-    pub metrics: DashMap<SourceId, PerformanceData>,
+    pub metrics: MetricsMap,
 }
 
 impl Default for Session {
@@ -158,6 +160,11 @@ impl Session {
         res.token_map.deref().iter().for_each(|item| {
             let (s, t) = item.pair();
             self.token_map.insert(s.clone(), t.clone());
+        });
+
+        res.metrics_map.iter().for_each(|item| {
+            let (s, t) = item.pair();
+            self.metrics.insert(s.clone(), t.clone());
         });
 
         self.create_runnables(
@@ -432,7 +439,7 @@ fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
 pub fn compile(
     uri: &Url,
     engines: &Engines,
-) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
+) -> Result<Vec<(PathBuf, Option<Programs>, Handler)>, LanguageServerError> {
     let build_plan = build_plan(uri)?;
     let tests_enabled = true;
     pkg::check(
@@ -449,17 +456,19 @@ pub struct TraversalResult {
     pub diagnostics: (Vec<CompileError>, Vec<CompileWarning>),
     pub programs: Option<(LexedProgram, ParseProgram, TyProgram)>,
     pub token_map: TokenMap,
+    pub metrics_map: MetricsMap,
 }
 
 pub fn traverse(
-    results: Vec<(Option<Programs>, Handler)>,
+    results: Vec<(PathBuf, Option<Programs>, Handler)>,
     engines: &Engines,
 ) -> Result<TraversalResult, LanguageServerError> {
     let token_map = TokenMap::new();
     let mut diagnostics = (Vec::<CompileError>::new(), Vec::<CompileWarning>::new());
     let mut programs = None;
+    let metrics_map = DashMap::new();
     let results_len = results.len();
-    for (i, (value, handler)) in results.into_iter().enumerate() {
+    for (i, (path, value, handler)) in results.into_iter().enumerate() {
         // We can convert these destructured elements to a Vec<Diagnostic> later on.
         let current_diagnostics = handler.consume();
         diagnostics = current_diagnostics;
@@ -471,8 +480,10 @@ pub fn traverse(
             lexed,
             parsed,
             typed,
-            metrics: _,
+            metrics
         } = value.unwrap();
+
+        metrics_map.insert(path, metrics);
 
         // Get a reference to the typed program AST.
         let typed_program = typed
@@ -517,6 +528,7 @@ pub fn traverse(
         diagnostics,
         programs,
         token_map,
+        metrics_map,
     })
 }
 
@@ -528,11 +540,13 @@ pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
         diagnostics,
         programs,
         token_map,
+        metrics_map,
     } = traverse(results, &engines)?;
     let (lexed, parsed, typed) = programs.expect("Programs should be populated at this point.");
     Ok(ParseResult {
         diagnostics,
         token_map,
+        metrics_map,
         engines,
         lexed,
         parsed,

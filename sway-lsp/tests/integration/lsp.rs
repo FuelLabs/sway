@@ -181,7 +181,6 @@ pub(crate) fn format_request(server: &ServerState, uri: &Url) {
     assert!(!response.unwrap().is_empty());
 }
 
-
 pub(crate) async fn metrics_request(
     service: &mut LspService<ServerState>,
     uri: &Url,

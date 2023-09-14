@@ -2603,8 +2603,9 @@ pub fn check(
     terse_mode: bool,
     include_tests: bool,
     engines: &Engines,
-) -> anyhow::Result<Vec<(Option<Programs>, Handler)>> {
+) -> anyhow::Result<Vec<(PathBuf, Option<Programs>, Handler)>> {
     let mut lib_namespace_map = Default::default();
+    // what does this do?
     let mut source_map = SourceMap::new();
     // During `check`, we don't compile so this stays empty.
     let compiled_contract_deps = HashMap::new();
@@ -2613,6 +2614,8 @@ pub fn check(
     for (idx, &node) in plan.compilation_order.iter().enumerate() {
         let pkg = &plan.graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
+
+        eprintln!("path = {:#?}", manifest.path());
 
         // This is necessary because `CONTRACT_ID` is a special constant that's injected into the
         // compiler's namespace. Although we only know the contract id during building, we are
@@ -2663,7 +2666,7 @@ pub fn check(
         let programs = match programs_res.as_ref() {
             Ok(programs) => programs,
             _ => {
-                results.push((programs_res.ok(), handler));
+                results.push((manifest.dir().to_path_buf(), programs_res.ok(), handler));
                 return Ok(results);
             }
         };
@@ -2688,12 +2691,12 @@ pub fn check(
                 source_map.insert_dependency(manifest.dir());
             }
             Err(_) => {
-                results.push((programs_res.ok(), handler));
+                results.push((manifest.dir().to_path_buf(), programs_res.ok(), handler));
                 return Ok(results);
             }
         }
 
-        results.push((programs_res.ok(), handler))
+        results.push((manifest.dir().to_path_buf(), programs_res.ok(), handler))
     }
 
     if results.is_empty() {

@@ -437,12 +437,13 @@ pub(crate) fn metrics(
             let engines = session.engines.read();
             let mut metrics = vec![];
             for kv in session.metrics.iter() {
-                let path = engines
-                    .se()
-                    .get_path(kv.key())
-                    .to_str()
-                    .unwrap_or("")
-                    .to_string();
+                let path = kv.key().to_str().unwrap_or("").to_string();
+                // let path = engines
+                //     .se()
+                //     .get_path(kv.key())
+                //     .to_str()
+                //     .unwrap_or("")
+                //     .to_string();
                 metrics.push((path, kv.value().clone()));
             }
             Ok(Some(metrics))
