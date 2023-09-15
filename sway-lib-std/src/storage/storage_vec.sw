@@ -43,8 +43,8 @@ impl<V> StorageKey<StorageVec<V>> {
 
         // Storing the value at the current length index (if this is the first item, starts off at 0)
         let key = sha256(self.field_id);
-        let (slot, offset) = slot_calculator::<V>(key, len);
-        write::<V>(slot, offset, value);
+        let offset = offset_calculator::<V>(len);
+        write::<V>(key, offset, value);
 
         // Incrementing the length
         write(self.field_id, 0, len + 1);
@@ -92,8 +92,8 @@ impl<V> StorageKey<StorageVec<V>> {
         write(self.field_id, 0, len - 1);
 
         let key = sha256(self.field_id);
-        let (slot, offset) = slot_calculator::<V>(key, len - 1);
-        read::<V>(slot, offset)
+        let offset = offset_calculator::<V>(len - 1);
+        read::<V>(key, offset)
     }
 
     /// Gets the value in the given index, `None` if index is out of bounds.
@@ -137,12 +137,12 @@ impl<V> StorageKey<StorageVec<V>> {
         }
 
         let key = sha256(self.field_id);
-        let (slot, offset) = slot_calculator::<V>(key, index);
+        let offset = offset_calculator::<V>(index);
         // This StorageKey can be read by the standard storage api
         Some(StorageKey::<V>::new(
-            slot, 
+            key, 
             offset, 
-            sha256(slot)
+            sha256((index, key))
         ))
     }
 
@@ -197,8 +197,8 @@ impl<V> StorageKey<StorageVec<V>> {
 
         // gets the element before removing it, so it can be returned
         let key = sha256(self.field_id);
-        let (removed_slot, removed_offset) = slot_calculator::<V>(key, index);
-        let removed_element = read::<V>(removed_slot, removed_offset).unwrap();
+        let removed_offset = offset_calculator::<V>(index);
+        let removed_element = read::<V>(key, removed_offset).unwrap();
 
         // for every element in the vec with an index greater than the input index,
         // shifts the index for that element down one
@@ -206,9 +206,9 @@ impl<V> StorageKey<StorageVec<V>> {
         while count < len {
             // gets the storage location for the previous index
             // moves the element of the current index into the previous index
-            let (write_slot, write_offset) = slot_calculator::<V>(key, count - 1);
-            let (read_slot, read_offset) = slot_calculator::<V>(key, count);
-            write::<V>(write_slot, write_offset, read::<V>(read_slot, read_offset).unwrap());
+            let write_offset = offset_calculator::<V>(count - 1);
+            let read_offset = offset_calculator::<V>(count);
+            write::<V>(key, write_offset, read::<V>(key, read_offset).unwrap());
 
             count += 1;
         }
@@ -267,13 +267,13 @@ impl<V> StorageKey<StorageVec<V>> {
 
         let key = sha256(self.field_id);
         // gets the element before removing it, so it can be returned
-        let (element_slot, element_offset) = slot_calculator::<V>(key, index);
-        let element_to_be_removed = read::<V>(element_slot, element_offset).unwrap();
+        let element_offset = offset_calculator::<V>(index);
+        let element_to_be_removed = read::<V>(key, element_offset).unwrap();
 
-        let (las_slot, last_offset) = slot_calculator::<V>(key, len - 1);
-        let last_element = read::<V>(las_slot, last_offset).unwrap();
+        let last_offset = offset_calculator::<V>(len - 1);
+        let last_element = read::<V>(key, last_offset).unwrap();
 
-        write::<V>(element_slot, element_offset, last_element);
+        write::<V>(key, element_offset, last_element);
 
         // decrements len by 1
         write(self.field_id, 0, len - 1);
@@ -324,8 +324,8 @@ impl<V> StorageKey<StorageVec<V>> {
         assert(index < len);
 
         let key = sha256(self.field_id);
-        let (slot, offset) = slot_calculator::<V>(key, index);
-        write::<V>(slot, offset, value);
+        let offset = offset_calculator::<V>(index);
+        write::<V>(key, offset, value);
     }
 
     /// Inserts the value at the given index, moving the current index's value
@@ -379,8 +379,8 @@ impl<V> StorageKey<StorageVec<V>> {
         // if len is 0, index must also be 0 due to above check
         let key = sha256(self.field_id);
         if len == index {
-            let (slot, offset) = slot_calculator::<V>(key, index);
-            write::<V>(slot, offset, value);
+            let offset = offset_calculator::<V>(index);
+            write::<V>(key, offset, value);
 
             // increments len by 1
             write(self.field_id, 0, len + 1);
@@ -394,17 +394,17 @@ impl<V> StorageKey<StorageVec<V>> {
         let mut count = len - 1;
         while count >= index {
             // shifts all the values up one index
-            let (write_slot, write_offset) = slot_calculator::<V>(key, count + 1);
-            let (read_slot, read_offset) = slot_calculator::<V>(key, count);
-            write::<V>(write_slot, write_offset, read::<V>(read_slot, read_offset).unwrap());
+            let write_offset = offset_calculator::<V>(count + 1);
+            let read_offset = offset_calculator::<V>(count);
+            write::<V>(key, write_offset, read::<V>(key, read_offset).unwrap());
 
             if count == 0 { break; }
             count -= 1;
         }
 
         // inserts the value into the now unused index
-        let (slot, offset) = slot_calculator::<V>(key, index);
-        write::<V>(slot, offset, value);
+        let offset = offset_calculator::<V>(index);
+        write::<V>(key, offset, value);
 
         // increments len by 1
         write(self.field_id, 0, len + 1);
@@ -552,13 +552,13 @@ impl<V> StorageKey<StorageVec<V>> {
         }
 
         let key = sha256(self.field_id);
-        let (element1_slot, element1_offset) = slot_calculator::<V>(key, element1_index);
-        let (element2_slot, element2_offset) = slot_calculator::<V>(key, element2_index);
+        let element1_offset = offset_calculator::<V>(element1_index);
+        let element2_offset = offset_calculator::<V>(element2_index);
 
-        let element1_value = read::<V>(element1_slot, element1_offset).unwrap();
+        let element1_value = read::<V>(key, element1_offset).unwrap();
 
-        write::<V>(element1_slot, element1_offset, read::<V>(element2_slot, element2_offset).unwrap());
-        write::<V>(element2_slot, element2_offset, element1_value);
+        write::<V>(key, element1_offset, read::<V>(key, element2_offset).unwrap());
+        write::<V>(key, element2_offset, element1_value);
     }
 
     /// Returns the first element of the vector, or `None` if it is empty.
@@ -595,7 +595,7 @@ impl<V> StorageKey<StorageVec<V>> {
             _ => Some(StorageKey::<V>::new(
                 key, 
                 0, 
-                sha256(key)
+                sha256((0, key))
             )),
         }
     }
@@ -633,11 +633,11 @@ impl<V> StorageKey<StorageVec<V>> {
         match read::<u64>(self.field_id, 0).unwrap_or(0) {
             0 => None,
             len => {
-                let (slot, offset) = slot_calculator::<V>(key, len - 1);
+                let offset = offset_calculator::<V>(len - 1);
                 Some(StorageKey::<V>::new(
-                    slot, 
+                    key, 
                     offset, 
-                    sha256(slot)
+                    sha256((len - 1, key))
                 ))
             },
         }
@@ -680,13 +680,13 @@ impl<V> StorageKey<StorageVec<V>> {
         let mid = len / 2;
         let mut i = 0;
         while i < mid {
-            let (i_slot, i_offset) = slot_calculator::<V>(key, i);
-            let (other_slot, other_offset) = slot_calculator::<V>(key, len - i - 1);
+            let i_offset = offset_calculator::<V>(i);
+            let other_offset = offset_calculator::<V>(len - i - 1);
 
-            let element1_value = read::<V>(i_slot, i_offset).unwrap();
+            let element1_value = read::<V>(key, i_offset).unwrap();
 
-            write::<V>(i_slot, i_offset, read::<V>(other_slot, other_offset).unwrap());
-            write::<V>(other_slot, other_offset, element1_value);
+            write::<V>(key, i_offset, read::<V>(key, other_offset).unwrap());
+            write::<V>(key, other_offset, element1_value);
 
             i += 1;
         }
@@ -728,8 +728,8 @@ impl<V> StorageKey<StorageVec<V>> {
         let key = sha256(self.field_id);
         let mut i = 0;
         while i < len {
-            let (slot, offset) = slot_calculator::<V>(key, i);
-            write::<V>(slot, offset, value);
+            let offset = offset_calculator::<V>(i);
+            write::<V>(key, offset, value);
             i += 1;
         }
     }
@@ -782,44 +782,14 @@ impl<V> StorageKey<StorageVec<V>> {
         let mut len = read::<u64>(self.field_id, 0).unwrap_or(0);
         let key = sha256(self.field_id);
         while len < new_len {
-            let (slot, offset) = slot_calculator::<V>(key, len);
-            write::<V>(slot, offset, value);
+            let offset = offset_calculator::<V>(len);
+            write::<V>(key, offset, value);
             len += 1;
         }
         write::<u64>(self.field_id, 0, new_len);
     }
 }
 
-fn slot_calculator<T>(slot: b256, offset: u64) -> (b256, u64) {
-    let size_of_t = __size_of::<T>();
-
-    // Get the last storage slot needed based on the size of `T`.
-    // ((offset * bytes) + bytes + (slot_bytes - 1)) >> slot_aligned_shift_right = last slot
-    let last_slot = match __is_reference_type::<T>() {
-        true => ((offset * size_of_t) + size_of_t + 31) >> 5,
-        false => ((offset * 8) + 8 + 31) >> 5,
-    };
-
-    // Where in the storage slot to align `T` in order to pack word-aligned.
-    // (offset * words_of_t) % number_words_in_slot = word_place_in_slot
-    let place_in_slot = match __is_reference_type::<T>() {
-        true => (offset * (size_of_t / 8)) % 4,
-        false => offset % 4,
-    };
-
-    // Get the number of slots `T` spans based on it's packed position.
-    // ((place_in_slot + words_of_t) - 1) / words_in_slot) + 1 = number_of_slots
-    let number_of_slots = match __is_reference_type::<T>() {
-        true => ((place_in_slot + (size_of_t / 8) - 1) / 4) + 1,
-        false => 1,
-    };
-
-    // TODO: Update when u256 <-> b256 conversions exist.
-    // Determine which starting slot `T` will be stored based on the offset.
-    let mut u256_slot = asm(r1: slot) {r1: u256};
-    let u256_increment = asm(r1: (0, 0, 0, last_slot - number_of_slots)) { r1: u256 };
-    u256_slot += u256_increment;
-    let offset_slot = asm(r1: u256_slot) { r1: b256 };
-
-    (offset_slot, place_in_slot)
+fn offset_calculator<T>(offset: u64) -> u64 {
+    (offset * __size_of::<T>()) / 8
 }
