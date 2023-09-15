@@ -285,7 +285,7 @@ fn insert_after_span(
     }
     if remove_until > at {
         let _ = src_rope.try_remove(at..remove_until);
-        len = len - (remove_until - at) as i64;
+        len -= (remove_until - at) as i64;
     }
 
     src_rope

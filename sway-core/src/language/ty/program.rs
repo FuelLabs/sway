@@ -243,9 +243,8 @@ impl TyProgram {
                 match ty_engine.get(main_func.return_type.type_id) {
                     TypeInfo::Boolean => (),
                     _ => {
-                        handler.emit_err(CompileError::PredicateMainDoesNotReturnBool(
-                            main_func.span.clone(),
-                        ));
+                        handler
+                            .emit_err(CompileError::PredicateMainDoesNotReturnBool(main_func.span));
                     }
                 }
                 TyProgramKind::Predicate {
