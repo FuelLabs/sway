@@ -932,16 +932,8 @@ impl ReplaceDecls for TyExpressionVariant {
                         };
                     }
 
-                    let engines = ctx.engines();
-                    let decl_engine = engines.de();
-                    let mut method = ctx.engines().de().get(fn_ref);
-
-                    // Retrieve the implemented traits for the type parameters and insert them in the namespace.
-                    for type_param in method.type_parameters.iter() {
-                        let TypeParameter { type_id, .. } = type_param;
-
-                        ctx.insert_trait_implementation_for_type(*type_id);
-                    }
+                    let decl_engine = ctx.engines().de();
+                    let mut method = decl_engine.get(fn_ref);
 
                     // Handle the trait constraints. This includes checking to see if the trait
                     // constraints are satisfied and replacing old decl ids based on the
@@ -953,10 +945,8 @@ impl ReplaceDecls for TyExpressionVariant {
                             &method.name.span(),
                         )?;
                     method.replace_decls(&inner_decl_mapping, handler, ctx)?;
-                    let new_decl_ref = decl_engine
-                        .insert(method)
-                        .with_parent(decl_engine, (*fn_ref.id()).into());
-                    fn_ref.replace_id(*new_decl_ref.id());
+                    decl_engine
+                        .replace(*new_decl_ref.id(), method);
                 }
                 LazyOperator { lhs, rhs, .. } => {
                     (*lhs).replace_decls(decl_mapping, handler, ctx)?;
