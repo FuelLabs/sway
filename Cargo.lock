@@ -1689,9 +1689,9 @@ checksum = "6999dc1837253364c2ebb0704ba97994bd874e8f195d665c50b7548f6ea92764"
 
 [[package]]
 name = "fd-lock"
-version = "3.0.13"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef033ed5e9bad94e55838ca0ca906db0e043f517adda0c8b79c7a8c66c93c1b5"
+checksum = "0b0377f1edc77dbd1118507bc7a66e4ab64d2b90c66f90726dc801e73a8c68f9"
 dependencies = [
  "cfg-if",
  "rustix 0.38.13",
@@ -1903,7 +1903,6 @@ dependencies = [
  "ansi_term",
  "anyhow",
  "cid",
- "fd-lock",
  "forc-tracing",
  "forc-util",
  "fuel-abi-types 0.1.0",
@@ -1980,6 +1979,7 @@ dependencies = [
  "anyhow",
  "clap 3.2.25",
  "dirs 3.0.2",
+ "fd-lock",
  "forc-tracing",
  "fuel-tx",
  "hex",
@@ -5872,8 +5872,10 @@ dependencies = [
  "criterion",
  "dashmap",
  "dirs 4.0.0",
+ "fd-lock",
  "forc-pkg",
  "forc-tracing",
+ "forc-util",
  "futures",
  "lsp-types",
  "notify",

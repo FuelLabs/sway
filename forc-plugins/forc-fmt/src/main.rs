@@ -78,7 +78,6 @@ fn run() -> Result<()> {
     };
 
     let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&dir)?;
-
     match manifest_file {
         ManifestFile::Workspace(ws) => {
             format_workspace_at_dir(&app, &ws, &dir)?;
@@ -87,8 +86,17 @@ fn run() -> Result<()> {
             format_pkg_at_dir(&app, &dir, &mut formatter)?;
         }
     }
-
     Ok(())
+}
+
+/// Checks if the specified file is marked as "dirty".
+/// This is used to prevent formatting files that are currently open in an editor
+/// with unsaved changes.
+///
+/// Returns `true` if a corresponding "dirty" flag file exists, `false` otherwise.
+fn is_file_dirty(path: &Path) -> bool {
+    let dirty_file_path = forc_util::is_dirty_path(path);
+    dirty_file_path.exists()
 }
 
 /// Recursively get a Vec<PathBuf> of subdirectories that contains a Forc.toml.
@@ -126,6 +134,14 @@ fn format_file(
     formatter: &mut Formatter,
 ) -> Result<bool> {
     let file = file.canonicalize()?;
+    if is_file_dirty(&file) {
+        bail!(
+            "The below file is open in an editor and contains unsaved changes.\n       \
+             Please save it before formatting.\n       \
+             {}",
+            file.display()
+        );
+    }
     if let Ok(file_content) = fs::read_to_string(&file) {
         let mut edited = false;
         let file_content: Arc<str> = Arc::from(file_content);
