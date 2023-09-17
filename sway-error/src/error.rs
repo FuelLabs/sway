@@ -498,7 +498,7 @@ pub enum CompileError {
         match_value: Span,
         match_type: String,
         variable: Ident,
-        previous_definition: Span,
+        first_definition: Span,
         expected: String,
         received: String,
     },
@@ -1002,7 +1002,7 @@ impl ToDiagnostic for CompileError {
                     Hint::info(
                         source_engine,
                         match_value.clone(),
-                        format!("`{}`, of type \"{match_type}\", is the value to match on.", match_value.as_str())
+                        format!("The expression to match on is of type \"{match_type}\".")
                     ),
                 ],
                 help: vec![
@@ -1014,7 +1014,7 @@ impl ToDiagnostic for CompileError {
                     },
                 ],
             },
-            MatchArmVariableMismatchedType { match_value, match_type, variable, previous_definition, expected, received } => Diagnostic {
+            MatchArmVariableMismatchedType { match_value, match_type, variable, first_definition, expected, received } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Match pattern variable has mismatched type".to_string())),
                 issue: Issue::error(
                     source_engine,
@@ -1024,13 +1024,13 @@ impl ToDiagnostic for CompileError {
                 hints: vec![
                     Hint::info(
                         source_engine,
-                        previous_definition.clone(),
-                        format!("In the preceding alternative, \"{variable}\" has the type \"{expected}\".")
+                        first_definition.clone(),
+                        format!("\"{variable}\" is first defined here with type \"{expected}\".")
                     ),
                     Hint::info(
                         source_engine,
                         match_value.clone(),
-                        format!("`{}`, of type \"{match_type}\", is the value to match on.", match_value.as_str())
+                        format!("The expression to match on is of type \"{match_type}\".")
                     ),
                 ],
                 help: vec![

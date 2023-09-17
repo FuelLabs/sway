@@ -203,7 +203,7 @@ pub(crate) fn matcher(
                                 .help_out(match_value.return_type)
                                 .to_string(),
                             variable: type_mismatched_var.0,
-                            previous_definition: variable.span(),
+                            first_definition: variable.span(),
                             expected: engines
                                 .help_out(type_id)
                                 .to_string(),
