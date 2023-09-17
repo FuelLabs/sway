@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     language::{ty, CallPath, Literal},
     semantic_analysis::{
@@ -67,6 +69,7 @@ pub(crate) type MatcherResult = (MatchReqMap, MatchDeclMap);
 /// [
 ///     (x, 42) // add `let x = 42` in the body of the desugared if expression
 /// ]
+/// ```
 ///
 /// The second match arm would create a [MatchReqMap] of roughly:
 ///
@@ -74,7 +77,7 @@ pub(crate) type MatcherResult = (MatchReqMap, MatchDeclMap);
 /// // y must equal 5 or 10 to trigger this case
 /// [
 ///   [
-///     (y, 5)
+///     (y, 5),
 ///     (y, 10)
 ///   ],
 /// ]
@@ -130,69 +133,88 @@ pub(crate) fn matcher(
     })?;
 
     match variant {
-        ty::TyScrutineeVariant::Or(elems) => {
+        ty::TyScrutineeVariant::Or(alternatives) => handler.scope(|handler| {
             let mut match_req_map: MatchReqMap = vec![];
-            let mut match_decl_map: Option<MatchDeclMap> = None;
-            for scrutinee in elems {
-                let scrutinee_span = scrutinee.span.clone();
+            let mut variables_in_alternatives: Vec<(Span, MatchDeclMap)> = vec![]; // Span is the span of the alternative.
 
-                let (new_req_map, mut new_decl_map) =
-                    matcher(handler, ctx.by_ref(), match_value, exp, scrutinee)?;
+            for alternative in alternatives {
+                let alternative_span = alternative.span.clone();
 
-                // check that the bindings are the same between clauses
+                // We want to collect as many errors as possible.
+                // If an alternative has any internal issues we will emit them, ignore that alternative,
+                // but still process the remaining alternatives.
+                let (req_map, decl_map) =
+                    match matcher(handler, ctx.by_ref(), match_value, exp, alternative) {
+                        Ok(matcher_result) => matcher_result,
+                        Err(_) => continue,
+                    };
 
-                new_decl_map.sort_by(|(a, _), (b, _)| a.cmp(b));
-                if let Some(previous_match_decl_map) = match_decl_map {
-                    // At this stage, in the matcher, we are not concerned about the duplicates
-                    // in individual alternatives. If duplicates exist, the last declaration of a
-                    // variable wins and that's the one we are searching for.
-                    // The last decl of a variable in a previous alternative must exist and
-                    // be of the same type as in the current/new alternative.
-                    // Likewise, we are not concerned about the duplicates in the new alternative,
-                    // as long as they exist in the previous and their types match.
+                variables_in_alternatives.push((alternative_span, decl_map));
 
-                    // To the equality, we accept type aliases and the types they encapsulate
-                    // to be equal, otherwise, we are strict, e.g., no coercion between u8 and u16 etc.
-                    let equality = UnifyCheck::non_dynamic_equality(engines);
-
-                    for (ident, expr) in new_decl_map.iter() {
-                        if let Some((previous_ident, previous_expr)) = previous_match_decl_map
-                            .iter()
-                            .rev()
-                            .find(|(previous_ident, _)| previous_ident == ident)
-                        {
-                            if !equality.check(expr.return_type, previous_expr.return_type) {
-                                return Err(handler.emit_err(
-                                    CompileError::MatchArmVariableMismatchedType {
-                                        match_value: match_value.span.clone(),
-                                        match_type: engines
-                                            .help_out(match_value.return_type)
-                                            .to_string(),
-                                        variable: ident.clone(),
-                                        previous_definition: previous_ident.span(),
-                                        expected: engines
-                                            .help_out(previous_expr.return_type)
-                                            .to_string(),
-                                        received: engines.help_out(expr.return_type).to_string(),
-                                    },
-                                ));
-                            }
-                        } else {
-                            return Err(handler.emit_err(
-                                CompileError::MatchVariableNotBoundInAllPatterns {
-                                    var: ident.clone(),
-                                    span: scrutinee_span,
-                                },
-                            ));
-                        }
-                    }
-                }
-
-                match_decl_map = Some(new_decl_map);
-                match_req_map = factor_or_on_cnf(match_req_map, new_req_map);
+                match_req_map = factor_or_on_cnf(match_req_map, req_map);
             }
-            Ok((match_req_map, match_decl_map.unwrap_or(vec![])))
-        }
+
+            let mut variables: HashMap<&Ident, TypeId> = HashMap::new(); // All the first occurrences of variables.
+            for (ident, expr) in variables_in_alternatives.iter().flat_map(|(_, decl_map)| decl_map) {
+                variables.entry(ident).or_insert(expr.return_type);
+            }
+
+            // At this stage, in the matcher, we are not concerned about the duplicates
+            // in individual alternatives.
+
+            // Check that we have all variables in all alternatives.
+            for (variable, _) in variables.iter() {
+                for span in variables_in_alternatives
+                    .iter()
+                    .filter(|(_, decl_map)| !decl_map.iter().any(|(ident, _)| ident == *variable))
+                    .map(|(span, _)| span) {
+                        handler.emit_err(
+                            CompileError::MatchVariableNotBoundInAllPatterns {
+                                var: (*variable).clone(),
+                                span: span.clone(),
+                            }
+                        );
+                }
+            }
+
+            // Check that the variable types are the same in all alternatives
+            // (assuming that the variable exist in the alternative).
+
+            // To the equality, we accept type aliases and the types they encapsulate
+            // to be equal, otherwise, we are strict, e.g., no coercion between u8 and u16, etc.
+            let equality = UnifyCheck::non_dynamic_equality(engines);
+
+            for (variable, type_id) in variables {
+                let type_mismatched_vars = variables_in_alternatives
+                    .iter()
+                    .flat_map(|(_, decl_map)|
+                        decl_map
+                            .iter()
+                            .filter(|(ident, decl_expr)| 
+                                ident == variable && !equality.check(type_id, decl_expr.return_type))
+                            .map(|(ident, decl_expr)| (ident.clone(), decl_expr.return_type))
+                    );
+
+                for type_mismatched_var in type_mismatched_vars {
+                    handler.emit_err(
+                        CompileError::MatchArmVariableMismatchedType {
+                            match_value: match_value.span.clone(),
+                            match_type: engines
+                                .help_out(match_value.return_type)
+                                .to_string(),
+                            variable: type_mismatched_var.0,
+                            previous_definition: variable.span(),
+                            expected: engines
+                                .help_out(type_id)
+                                .to_string(),
+                            received: engines.help_out(type_mismatched_var.1).to_string(),
+                        },
+                    );
+                }
+            }
+
+            Ok((match_req_map, variables_in_alternatives.last().map_or(vec![], |(_, decl_map)| decl_map.clone())))
+        }),
         ty::TyScrutineeVariant::CatchAll => Ok((vec![], vec![])),
         ty::TyScrutineeVariant::Literal(value) => Ok(match_literal(exp, value, span)),
         ty::TyScrutineeVariant::Variable(name) => Ok(match_variable(exp, name)),

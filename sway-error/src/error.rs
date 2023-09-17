@@ -489,7 +489,7 @@ pub enum CompileError {
         missing_fields: Vec<String>,
         span: Span,
     },
-    #[error("Variable \"{var}\" is not bound in all patterns")]
+    #[error("Variable \"{var}\" is not bound in all patterns.")]
     MatchVariableNotBoundInAllPatterns { var: Ident, span: Span },
     #[error(
         "Variable \"{variable}\" is expected to be of type \"{expected}\", but is \"{received}\"."
