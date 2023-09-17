@@ -155,7 +155,10 @@ pub(crate) fn matcher(
             }
 
             let mut variables: HashMap<&Ident, TypeId> = HashMap::new(); // All the first occurrences of variables.
-            for (ident, expr) in variables_in_alternatives.iter().flat_map(|(_, decl_map)| decl_map) {
+            for (ident, expr) in variables_in_alternatives
+                .iter()
+                .flat_map(|(_, decl_map)| decl_map)
+            {
                 variables.entry(ident).or_insert(expr.return_type);
             }
 
@@ -170,20 +173,16 @@ pub(crate) fn matcher(
                     .map(|(span, _)| span.clone())
                     .collect();
 
-                if missing_in_alternatives.is_empty() { 
+                if missing_in_alternatives.is_empty() {
                     continue;
                 }
 
-                handler.emit_err(
-                    CompileError::MatchArmVariableNotDefinedInAllAlternatives {
-                        match_value: match_value.span.clone(),
-                        match_type: engines
-                            .help_out(match_value.return_type)
-                            .to_string(),
-                        variable: (*variable).clone(),
-                        missing_in_alternatives,
-                    }
-                );
+                handler.emit_err(CompileError::MatchArmVariableNotDefinedInAllAlternatives {
+                    match_value: match_value.span.clone(),
+                    match_type: engines.help_out(match_value.return_type).to_string(),
+                    variable: (*variable).clone(),
+                    missing_in_alternatives,
+                });
             }
 
             // Check that the variable types are the same in all alternatives
@@ -194,35 +193,34 @@ pub(crate) fn matcher(
             let equality = UnifyCheck::non_dynamic_equality(engines);
 
             for (variable, type_id) in variables {
-                let type_mismatched_vars = variables_in_alternatives
-                    .iter()
-                    .flat_map(|(_, decl_map)|
+                let type_mismatched_vars =
+                    variables_in_alternatives.iter().flat_map(|(_, decl_map)| {
                         decl_map
                             .iter()
-                            .filter(|(ident, decl_expr)| 
-                                ident == variable && !equality.check(type_id, decl_expr.return_type))
+                            .filter(|(ident, decl_expr)| {
+                                ident == variable && !equality.check(type_id, decl_expr.return_type)
+                            })
                             .map(|(ident, decl_expr)| (ident.clone(), decl_expr.return_type))
-                    );
+                    });
 
                 for type_mismatched_var in type_mismatched_vars {
-                    handler.emit_err(
-                        CompileError::MatchArmVariableMismatchedType {
-                            match_value: match_value.span.clone(),
-                            match_type: engines
-                                .help_out(match_value.return_type)
-                                .to_string(),
-                            variable: type_mismatched_var.0,
-                            first_definition: variable.span(),
-                            expected: engines
-                                .help_out(type_id)
-                                .to_string(),
-                            received: engines.help_out(type_mismatched_var.1).to_string(),
-                        },
-                    );
+                    handler.emit_err(CompileError::MatchArmVariableMismatchedType {
+                        match_value: match_value.span.clone(),
+                        match_type: engines.help_out(match_value.return_type).to_string(),
+                        variable: type_mismatched_var.0,
+                        first_definition: variable.span(),
+                        expected: engines.help_out(type_id).to_string(),
+                        received: engines.help_out(type_mismatched_var.1).to_string(),
+                    });
                 }
             }
 
-            Ok((match_req_map, variables_in_alternatives.last().map_or(vec![], |(_, decl_map)| decl_map.clone())))
+            Ok((
+                match_req_map,
+                variables_in_alternatives
+                    .last()
+                    .map_or(vec![], |(_, decl_map)| decl_map.clone()),
+            ))
         }),
         ty::TyScrutineeVariant::CatchAll => Ok((vec![], vec![])),
         ty::TyScrutineeVariant::Literal(value) => Ok(match_literal(exp, value, span)),

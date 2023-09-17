@@ -490,8 +490,7 @@ pub enum CompileError {
         span: Span,
     },
     #[error("Variable \"{variable}\" is not defined in all alternatives.")]
-    MatchArmVariableNotDefinedInAllAlternatives
-    {
+    MatchArmVariableNotDefinedInAllAlternatives {
         match_value: Span,
         match_type: String,
         variable: Ident,
