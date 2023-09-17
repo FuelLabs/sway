@@ -236,6 +236,7 @@ pub fn ident_of_type_id(engines: &Engines, type_id: &TypeId) -> Option<TokenIden
         TypeInfo::UnknownGeneric { name, .. } => name,
         TypeInfo::Enum(decl_ref) => engines.de().get_enum(&decl_ref).call_path.suffix,
         TypeInfo::Struct(decl_ref) => engines.de().get_struct(&decl_ref).call_path.suffix,
+        TypeInfo::Alias { name, .. } => name,
         TypeInfo::Custom { call_path, .. } => call_path.suffix,
         _ => return None,
     };

@@ -98,7 +98,7 @@ jobs:
         run: scripts/formatter/forc-fmt-check-panic.sh
 
   build-mdbook:
-    runs-on: ubuntu-latest
+    runs-on: buildjet-8vcpu-ubuntu-2204
     steps:
       - uses: actions/checkout@v3
       - name: Install toolchain

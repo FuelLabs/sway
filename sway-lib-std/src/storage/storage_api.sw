@@ -3,7 +3,11 @@ library;
 use ::alloc::alloc;
 use ::option::Option::{self, *};
 
-/// Store a stack value in storage. Will not work for heap values.
+/// Stores a stack value in storage. Will not work for heap values. 
+///
+/// # Additional Information
+///
+/// If the value crosses the boundary of a storage slot, writing continues at the following slot.
 ///
 /// # Arguments
 ///
@@ -34,26 +38,22 @@ pub fn write<T>(slot: b256, offset: u64, value: T) {
         return;
     }
 
-    // Get the number of storage slots needed based on the size of `T`
-    let number_of_slots = (offset * 8 + __size_of::<T>() + 31) >> 5;
+    // Determine how many slots and where the value is to be stored.
+    let (offset_slot, number_of_slots, place_in_slot) = slot_calculator::<T>(slot, offset);
 
     // Allocate enough memory on the heap for `value` as well as any potential padding required due 
     // to `offset`.
     let padded_value = alloc::<u64>(number_of_slots * 32);
 
     // Read the values that currently exist in the affected storage slots.
-    // NOTE: we can do better here by only reading from the slots that we know could be affected. 
-    // These are the two slots where the start and end of `T` fall in considering `offset`. 
-    // However, doing so requires that we perform addition on `b256` to compute the corresponding 
-    // keys, and that is not possible today.
-    let _ = __state_load_quad(slot, padded_value, number_of_slots);
+    let _ = __state_load_quad(offset_slot, padded_value, number_of_slots);
 
     // Copy the value to be stored to `padded_value + offset`.
-    padded_value.add::<u64>(offset).write::<T>(value);
+    padded_value.add::<u64>(place_in_slot).write::<T>(value);
 
     // Now store back the data at `padded_value` which now contains the old data but partially 
     // overwritten by the new data in the desired locations.
-    let _ = __state_store_quad(slot, padded_value, number_of_slots);
+    let _ = __state_store_quad(offset_slot, padded_value, number_of_slots);
 }
 
 /// Reads a value of type `T` starting at the location specified by `slot` and `offset`. If the
@@ -91,9 +91,8 @@ pub fn read<T>(slot: b256, offset: u64) -> Option<T> {
         return None;
     }
 
-    // NOTE: we are leaking this value on the heap.
-    // Get the number of storage slots needed based on the size of `T`
-    let number_of_slots = (offset * 8 + __size_of::<T>() + 31) >> 5;
+    // Determine how many slots and where the value is to be read.
+    let (offset_slot, number_of_slots, place_in_slot) = slot_calculator::<T>(slot, offset);
 
     // Allocate a buffer for the result. Its size needs to be a multiple of 32 bytes so we can 
     // make the 'quad' storage instruction read without overflowing.
@@ -102,22 +101,19 @@ pub fn read<T>(slot: b256, offset: u64) -> Option<T> {
     // Read `number_of_slots * 32` bytes starting at storage slot `slot` and return an `Option` 
     // wrapping the value stored at `result_ptr + offset` if all the slots are valid. Otherwise, 
     // return `None`.
-    if __state_load_quad(slot, result_ptr, number_of_slots) {
-        Some(result_ptr.add::<u64>(offset).read::<T>())
+    if __state_load_quad(offset_slot, result_ptr, number_of_slots) {
+        Some(result_ptr.add::<u64>(place_in_slot).read::<T>())
     } else {
         None
     }
 }
 
-/// Clear a sequence of consecutive storage slots starting at a some slot. 
+/// Clear a value starting at some slot with an offset. 
 ///
 /// # Arguments
 ///
-/// * `slot`: [b256] - The key of the first storage slot that will be cleared
-///
-/// # Returns
-///
-/// * [bool] - Indicates whether all of the storage slots cleared were previously set.
+/// * `slot` - The key of the stored value that will be cleared
+/// * `offset` - An offset, in words, from the start of `slot`, from which the value should be cleared.
 /// 
 /// # Number of Storage Accesses
 ///
@@ -137,11 +133,54 @@ pub fn read<T>(slot: b256, offset: u64) -> Option<T> {
 /// }
 /// ```
 #[storage(write)]
-pub fn clear<T>(slot: b256) -> bool {
-    // Get the number of storage slots needed based on the size of `T` as the ceiling of 
-    // `__size_of::<T>() / 32`
-    let number_of_slots = (__size_of::<T>() + 31) >> 5;
+pub fn clear<T>(slot: b256, offset: u64) -> bool {
+    if __size_of::<T>() == 0 {
+        return true;
+    }
+
+    // Determine how many slots and where the value is to be cleared.
+    let (offset_slot, number_of_slots, _place_in_slot) = slot_calculator::<T>(slot, offset);
 
     // Clear `number_of_slots * 32` bytes starting at storage slot `slot`.
-    __state_clear(slot, number_of_slots)
+    __state_clear(offset_slot, number_of_slots)
+}
+
+/// Given a slot, offset, and type this function determines where something should be stored.
+///
+/// # Arguments
+///
+/// * `slot`: [b256] - The starting address at which something should be stored.
+/// * `offset`: [u64] - The offset from `slot` to store the value.
+///
+/// # Returns
+///
+/// [b256] - The calculated offset slot to store the value.
+/// [u64] - The number of slots the value will occupy in storage.
+/// [u64] - The word in the slot where the value will start.
+fn slot_calculator<T>(slot: b256, offset: u64) -> (b256, u64, u64) {
+    let size_of_t = __size_of::<T>();
+
+    // Get the last storage slot needed based on the size of `T`.
+    // ((offset * bytes_in_word) + bytes + (bytes_in_slot - 1)) >> align_to_slot = last slot
+    let last_slot = ((offset * 8) + size_of_t + 31) >> 5;
+
+    // Where in the storage slot to align `T` in order to pack word-aligned.
+    // offset % number_words_in_slot = word_place_in_slot
+    let place_in_slot = offset % 4;
+ 
+    // Get the number of slots `T` spans based on its packed position.
+    // ((place_in_slot * bytes_in_word) + bytes + (bytes_in_slot - 1)) >> align_to_slot = number_of_slots
+    let number_of_slots = match __is_reference_type::<T>() {
+        true => ((place_in_slot * 8) + size_of_t + 31) >> 5,
+        false => 1,
+    };
+
+    // TODO: Update when u256 <-> b256 conversions exist.
+    // Determine which starting slot `T` will be stored based on the offset.
+    let mut u256_slot = asm(r1: slot) {r1: u256};
+    let u256_increment = asm(r1: (0, 0, 0, last_slot - number_of_slots)) { r1: u256 };
+    u256_slot += u256_increment;
+    let offset_slot = asm(r1: u256_slot) { r1: b256 };
+
+    (offset_slot, number_of_slots, place_in_slot)
 }

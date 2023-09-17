@@ -44,6 +44,19 @@ abi MyContract {
 
 impl MyContract for Contract {
     fn test_function() -> Empty {
-        Empty{}
+        Empty {}
     }
+}
+
+// Type aliases
+struct MyStruct1 {}
+type Alias11 = MyStruct1;
+type Alias2 = MyStruct1;
+
+impl Alias11 {
+    fn foo() {}
+}
+
+fn test1() {
+    Alias11::foo();
 }

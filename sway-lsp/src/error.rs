@@ -40,6 +40,8 @@ pub enum DocumentError {
     UnableToCreateFile { path: String, err: String },
     #[error("Unable to write string to file at {:?} : {:?}", path, err)]
     UnableToWriteFile { path: String, err: String },
+    #[error("File wasn't able to be removed at path {:?} : {:?}", path, err)]
+    UnableToRemoveFile { path: String, err: String },
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -50,6 +52,8 @@ pub enum DirectoryError {
     ManifestDirNotFound,
     #[error("Can't extract project name from {:?}", dir)]
     CantExtractProjectName { dir: String },
+    #[error("Failed to create hidden .lsp_locks directory")]
+    LspLocksDirFailed,
     #[error("Failed to create temp directory")]
     TempDirFailed,
     #[error("Failed to canonicalize path")]

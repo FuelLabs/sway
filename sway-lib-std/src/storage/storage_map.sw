@@ -108,6 +108,6 @@ impl<K, V> StorageKey<StorageMap<K, V>> where K: Hash {
     #[storage(write)]
     pub fn remove(self, key: K) -> bool where K: Hash {
         let key = sha256((key, self.slot));
-        clear::<V>(key)
+        clear::<V>(key, 0)
     }
 }
