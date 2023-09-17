@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use indexmap::IndexMap;
 
 use crate::{
     language::{ty, CallPath, Literal},
@@ -154,7 +154,8 @@ pub(crate) fn matcher(
                 match_req_map = factor_or_on_cnf(match_req_map, req_map);
             }
 
-            let mut variables: HashMap<&Ident, TypeId> = HashMap::new(); // All the first occurrences of variables.
+            // All the first occurrences of variables in order of appearance.
+            let mut variables: IndexMap<&Ident, TypeId> = IndexMap::new();
             for (ident, expr) in variables_in_alternatives
                 .iter()
                 .flat_map(|(_, decl_map)| decl_map)
