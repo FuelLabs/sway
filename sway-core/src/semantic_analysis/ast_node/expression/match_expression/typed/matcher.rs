@@ -164,17 +164,26 @@ pub(crate) fn matcher(
 
             // Check that we have all variables in all alternatives.
             for (variable, _) in variables.iter() {
-                for span in variables_in_alternatives
+                let missing_in_alternatives: Vec<Span> = variables_in_alternatives
                     .iter()
                     .filter(|(_, decl_map)| !decl_map.iter().any(|(ident, _)| ident == *variable))
-                    .map(|(span, _)| span) {
-                        handler.emit_err(
-                            CompileError::MatchVariableNotBoundInAllPatterns {
-                                var: (*variable).clone(),
-                                span: span.clone(),
-                            }
-                        );
+                    .map(|(span, _)| span.clone())
+                    .collect();
+
+                if missing_in_alternatives.is_empty() { 
+                    continue;
                 }
+
+                handler.emit_err(
+                    CompileError::MatchArmVariableNotDefinedInAllAlternatives {
+                        match_value: match_value.span.clone(),
+                        match_type: engines
+                            .help_out(match_value.return_type)
+                            .to_string(),
+                        variable: (*variable).clone(),
+                        missing_in_alternatives,
+                    }
+                );
             }
 
             // Check that the variable types are the same in all alternatives

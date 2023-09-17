@@ -489,8 +489,14 @@ pub enum CompileError {
         missing_fields: Vec<String>,
         span: Span,
     },
-    #[error("Variable \"{var}\" is not bound in all patterns.")]
-    MatchVariableNotBoundInAllPatterns { var: Ident, span: Span },
+    #[error("Variable \"{variable}\" is not defined in all alternatives.")]
+    MatchArmVariableNotDefinedInAllAlternatives
+    {
+        match_value: Span,
+        match_type: String,
+        variable: Ident,
+        missing_in_alternatives: Vec<Span>,
+    },
     #[error(
         "Variable \"{variable}\" is expected to be of type \"{expected}\", but is \"{received}\"."
     )]
@@ -812,7 +818,7 @@ impl Spanned for CompileError {
             GenericShadowsGeneric { name } => name.span(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
             MatchStructPatternMissingFields { span, .. } => span.clone(),
-            MatchVariableNotBoundInAllPatterns { span, .. } => span.clone(),
+            MatchArmVariableNotDefinedInAllAlternatives { variable, .. } => variable.span(),
             MatchArmVariableMismatchedType { variable, .. } => variable.span(),
             NotAnEnum { span, .. } => span.clone(),
             StorageAccessMismatch { span, .. } => span.clone(),
@@ -1035,6 +1041,38 @@ impl ToDiagnostic for CompileError {
                 ],
                 help: vec![
                     format!("In the same match arm, a variable must have the same type in all alternatives."),
+                ],
+            },
+            MatchArmVariableNotDefinedInAllAlternatives { match_value, match_type, variable, missing_in_alternatives} => Diagnostic {
+                reason: Some(Reason::new(code(1), "Match pattern variable is not defined in all alternatives".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    variable.span(),
+                    format!("Variable \"{variable}\" is not defined in all alternatives.")
+                ),
+                hints: {
+                    let mut hints = vec![
+                        Hint::info(
+                            source_engine,
+                            match_value.clone(),
+                            format!("The expression to match on is of type \"{match_type}\".")
+                        ),
+                    ];
+
+                    for (i, alternative) in missing_in_alternatives.iter().enumerate() {
+                        hints.push(
+                            Hint::info(
+                                source_engine,
+                                alternative.clone(),
+                                format!("\"{variable}\" is {}missing in this alternative.", if i != 0 { "also " } else { "" }),
+                            )
+                        )
+                    }
+
+                    hints
+                },
+                help: vec![
+                    format!("Consider removing the variable \"{variable}\" altogether, or adding it to all alternatives."),
                 ],
             },
            _ => Diagnostic {
