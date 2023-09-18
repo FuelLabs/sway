@@ -855,7 +855,7 @@ impl<V> StorageKey<StorageVec<V>> {
         // Store `number_of_slots * 32` bytes starting at storage slot `key`.
         let _ = __state_store_quad(sha256(self.field_id), ptr, number_of_slots);
 
-        // Store the length length, NOT the bytes. 
+        // Store the length, NOT the bytes. 
         // This differs from the existing `write_slice()` function to be compatible with `StorageVec`.
         write::<u64>(self.field_id, 0, number_of_bytes / __size_of::<V>());
     }
