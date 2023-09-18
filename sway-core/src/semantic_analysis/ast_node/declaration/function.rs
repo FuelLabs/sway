@@ -208,8 +208,23 @@ impl ty::TyFunctionDecl {
             })
         };
 
+        ty_fn_decl.body = body;
+
+        Self::type_check_body_monomorphized(handler, ctx, ty_fn_decl)?;
+
+        Ok(ty_fn_decl.clone())
+    }
+
+    pub fn type_check_body_monomorphized(
+        handler: &Handler,
+        mut ctx: TypeCheckContext,
+        fn_decl: &Self,
+    ) -> Result<(), ErrorEmitted> {
+        let return_type = &fn_decl.return_type;
+
         // gather the return statements
-        let return_statements: Vec<&ty::TyExpression> = body
+        let return_statements: Vec<&ty::TyExpression> = fn_decl
+            .body
             .contents
             .iter()
             .flat_map(|node| node.gather_return_statements())
@@ -229,8 +244,7 @@ impl ty::TyFunctionDecl {
             vec![],
         )?;
 
-        ty_fn_decl.body = body;
-        Ok(ty_fn_decl.clone())
+        Ok(())
     }
 }
 
