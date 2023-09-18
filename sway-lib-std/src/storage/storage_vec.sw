@@ -1,11 +1,12 @@
 library;
 
-use ::alloc::alloc;
+use ::alloc::{alloc_bytes, realloc_bytes};
 use ::assert::assert;
 use ::hash::*;
 use ::option::Option::{self, *};
 use ::storage::storage_api::*;
 use ::storage::storage_key::*;
+use ::vec::Vec;
 
 /// A persistant vector struct.
 pub struct StorageVec<V> {}
@@ -138,7 +139,9 @@ impl<V> StorageKey<StorageVec<V>> {
 
         let key = sha256(self.field_id);
         let offset = offset_calculator::<V>(index);
-        // This StorageKey can be read by the standard storage api
+        // This StorageKey can be read by the standard storage api.
+        // Field Id must be unique such that nested storage vecs work as they have a 
+        // __size_of() zero and will there forefore always have an offset of zero.
         Some(StorageKey::<V>::new(
             key, 
             offset, 
@@ -787,6 +790,121 @@ impl<V> StorageKey<StorageVec<V>> {
             len += 1;
         }
         write::<u64>(self.field_id, 0, new_len);
+    }
+
+    // TODO: This should be moved into the vec.sw file and `From<StorageKey<StorageVec>> for Vec`
+    // implemented instead of this when https://github.com/FuelLabs/sway/issues/409 is resolved.
+    // Implementation will change from this:
+    // ```sway
+    // let my_vec = Vec::new();
+    // storage.storage_vec.store_vec(my_vec);
+    // let other_vec = storage.storage_vec.load_vec();
+    // ```
+    // To this:
+    // ```sway
+    // let my_vec = Vec::new();
+    // storage.storage_vec = my_vec.into();
+    // let other_vec = Vec::from(storage.storage_vec);
+    // ```
+    /// Stores a `Vec` as a `StorageVec`.
+    ///
+    /// # Additional Information
+    ///
+    /// This will overwrite any existing values in the `StorageVec`.
+    ///
+    /// # Arguments
+    /// 
+    /// * `vec`: [Vec<V>] - The vector to store in storage.
+    ///
+    /// # Number of Storage Accesses
+    ///
+    /// * Writes - `2`
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     vec: StorageVec<u64> = StorageVec {},
+    /// }
+    ///
+    /// fn foo() {
+    ///     let mut vec = Vec::<u64>::new();
+    ///     vec.push(5);
+    ///     vec.push(10);
+    ///     vec.push(15);
+    ///
+    ///     storage.vec.store_vec(vec);
+    ///
+    ///     assert(5 == storage.vec.get(0).unwrap());
+    ///     assert(10 == storage.vec.get(1).unwrap());
+    ///     assert(15 == storage.vec.get(2).unwrap());
+    /// }
+    /// ```
+    #[storage(write)]
+    pub fn store_vec(self, vec: Vec<V>) {
+        let slice = vec.as_raw_slice();
+        // Get the number of storage slots needed based on the size of bytes.
+        let number_of_bytes = slice.number_of_bytes();
+        let number_of_slots = (number_of_bytes + 31) >> 5;
+        let mut ptr = slice.ptr();
+
+        // The capacity needs to be a multiple of 32 bytes so we can 
+        // make the 'quad' storage instruction store without accessing unallocated heap memory.
+        ptr = realloc_bytes(ptr, number_of_bytes, number_of_slots * 32);
+
+        // Store `number_of_slots * 32` bytes starting at storage slot `key`.
+        let _ = __state_store_quad(sha256(self.field_id), ptr, number_of_slots);
+
+        // Store the length length, NOT the bytes. 
+        // This differs from the existing `write_slice()` function to be compatible with `StorageVec`.
+        write::<u64>(self.field_id, 0, number_of_bytes / __size_of::<V>());
+    }
+
+    /// Load a `Vec` from the `StorageVec`.
+    ///
+    /// # Returns
+    /// 
+    /// * [Option<Vec<V>>] - The vector constructed from storage or `None`.
+    ///
+    /// # Number of Storage Accesses
+    ///
+    /// * Reads - `2`
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     vec: StorageVec<u64> = StorageVec {},
+    /// }
+    ///
+    /// fn foo() {
+    ///     let mut vec = Vec::<u64>::new();
+    ///     vec.push(5);
+    ///     vec.push(10);
+    ///     vec.push(15);
+    ///
+    ///     storage.vec.store_vec(vec);
+    ///     let returned_vec = storage.vec.load_vec().unwrap();
+    ///
+    ///     assert(5 == returned_vec.get(0).unwrap());
+    ///     assert(10 == returned_vec.get(1).unwrap());
+    ///     assert(15 == returned_vec.get(2).unwrap());
+    /// }
+    /// ```
+    #[storage(read)]
+    pub fn load_vec(self) -> Option<Vec<V>> {
+        // Get the length of the slice that is stored.
+        match read::<u64>(self.field_id, 0).unwrap_or(0) {
+            0 => None,
+            len => {
+                // Get the number of storage slots needed based on the size.
+                let number_of_slots = ((len *  __size_of::<V>()) + 31) >> 5;
+                let ptr = alloc_bytes(number_of_slots * 32);
+                // Load the stored slice into the pointer.
+                let _ = __state_load_quad(sha256(self.field_id), ptr, number_of_slots);
+                Some(Vec::from(asm(ptr: (ptr, len *  __size_of::<V>())) { ptr: raw_slice }))
+            }
+        }
     }
 }
 
