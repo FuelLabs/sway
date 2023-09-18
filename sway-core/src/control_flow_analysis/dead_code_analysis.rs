@@ -565,7 +565,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_type_alias_declaration(engines, &type_alias, graph, entry_node)?;
             Ok(leaves.to_vec())
         }
-        ty::TyDecl::TypeDecl(ty::TypeDecl { .. }) => Ok(leaves.to_vec()),
+        ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl { .. }) => Ok(leaves.to_vec()),
         ty::TyDecl::ErrorRecovery(..) | ty::TyDecl::GenericTypeForFunctionScope(_) => {
             Ok(leaves.to_vec())
         }
@@ -2231,7 +2231,7 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
             ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_constant(decl_id).attributes)
             }
-            ty::TyDecl::TypeDecl(ty::TypeDecl { decl_id, .. }) => {
+            ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_type(decl_id).attributes)
             }
             ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {

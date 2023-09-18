@@ -323,7 +323,6 @@ impl ty::TyImplTrait {
                             handler,
                             ctx.by_ref(),
                             const_decl.clone(),
-                            None,
                         ) {
                             Ok(res) => res,
                             Err(_) => continue,
@@ -567,14 +566,13 @@ fn type_check_trait_implementation(
             ImplItem::Fn(impl_method) => {
                 let mut impl_method = type_check_impl_method(
                     handler,
-                    ctx.by_ref(),
+                    ctx.by_ref().with_type_subst(&trait_type_mapping),
                     impl_type_parameters,
                     impl_method,
                     trait_name,
                     is_contract,
                     &impld_item_refs,
                     &method_checklist,
-                    &trait_type_mapping,
                 )
                 .unwrap_or_else(|_| ty::TyFunctionDecl::error(impl_method.clone()));
 
@@ -591,13 +589,12 @@ fn type_check_trait_implementation(
             ImplItem::Constant(const_decl) => {
                 let mut const_decl = type_check_const_decl(
                     handler,
-                    ctx.by_ref(),
+                    ctx.by_ref().with_type_subst(&trait_type_mapping),
                     const_decl,
                     trait_name,
                     is_contract,
                     &impld_item_refs,
                     &constant_checklist,
-                    &trait_type_mapping,
                 )
                 .unwrap_or_else(|_| ty::TyConstantDecl::error(ctx.engines(), const_decl.clone()));
 
@@ -708,7 +705,6 @@ fn type_check_impl_method(
     is_contract: bool,
     impld_item_refs: &ItemMap,
     method_checklist: &BTreeMap<Ident, ty::TyTraitFn>,
-    type_subst_mapping: &TypeSubstMap,
 ) -> Result<ty::TyFunctionDecl, ErrorEmitted> {
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
@@ -717,8 +713,7 @@ fn type_check_impl_method(
     let mut ctx = ctx
         .by_ref()
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown))
-        .with_type_subst(type_subst_mapping);
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
 
     let interface_name = || -> InterfaceName {
         if is_contract {
@@ -804,11 +799,11 @@ fn type_check_impl_method(
 
             // this subst is required to replace associated types, namely TypeInfo::TraitType.
             let mut impl_method_param_type_id = impl_method_param.type_argument.type_id;
-            impl_method_param_type_id.subst(type_subst_mapping, engines);
+            impl_method_param_type_id.subst(&ctx.type_subst(), engines);
 
             let mut impl_method_signature_param_type_id =
                 impl_method_signature_param.type_argument.type_id;
-            impl_method_signature_param_type_id.subst(type_subst_mapping, engines);
+            impl_method_signature_param_type_id.subst(&ctx.type_subst(), engines);
 
             if !type_engine.get(impl_method_param_type_id).eq(
                 &type_engine.get(impl_method_signature_param_type_id),
@@ -878,11 +873,11 @@ fn type_check_impl_method(
 
         // this subst is required to replace associated types, namely TypeInfo::TraitType.
         let mut impl_method_return_type_id = impl_method.return_type.type_id;
-        impl_method_return_type_id.subst(type_subst_mapping, engines);
+        impl_method_return_type_id.subst(&ctx.type_subst(), engines);
 
         let mut impl_method_signature_return_type_type_id =
             impl_method_signature.return_type.type_id;
-        impl_method_signature_return_type_type_id.subst(type_subst_mapping, engines);
+        impl_method_signature_return_type_type_id.subst(&ctx.type_subst(), engines);
 
         if !type_engine.get(impl_method_return_type_id).eq(
             &type_engine.get(impl_method_signature_return_type_type_id),
@@ -936,7 +931,6 @@ fn type_check_const_decl(
     is_contract: bool,
     impld_constant_ids: &ItemMap,
     constant_checklist: &BTreeMap<Ident, ty::TyConstantDecl>,
-    type_subst_mapping: &TypeSubstMap,
 ) -> Result<ty::TyConstantDecl, ErrorEmitted> {
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
@@ -956,12 +950,7 @@ fn type_check_const_decl(
     };
 
     // type check the constant declaration
-    let const_decl = ty::TyConstantDecl::type_check(
-        handler,
-        ctx.by_ref(),
-        const_decl.clone(),
-        Some(type_subst_mapping),
-    )?;
+    let const_decl = ty::TyConstantDecl::type_check(handler, ctx.by_ref(), const_decl.clone())?;
 
     let const_name = const_decl.call_path.suffix.clone();
 
@@ -996,10 +985,10 @@ fn type_check_const_decl(
 
     // this subst is required to replace associated types, namely TypeInfo::TraitType.
     let mut const_decl_type_id = const_decl.type_ascription.type_id;
-    const_decl_type_id.subst(type_subst_mapping, engines);
+    const_decl_type_id.subst(&ctx.type_subst(), engines);
 
     let mut const_decl_signature_type_id = const_decl_signature.type_ascription.type_id;
-    const_decl_signature_type_id.subst(type_subst_mapping, engines);
+    const_decl_signature_type_id.subst(&ctx.type_subst(), engines);
 
     // unify the types from the constant with the constant signature
     if !type_engine

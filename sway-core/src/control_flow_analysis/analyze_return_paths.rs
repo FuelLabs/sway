@@ -201,7 +201,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         | ty::TyDecl::EnumVariantDecl(_)
         | ty::TyDecl::StorageDecl(_)
         | ty::TyDecl::TypeAliasDecl(_)
-        | ty::TyDecl::TypeDecl(_)
+        | ty::TyDecl::TraitTypeDecl(_)
         | ty::TyDecl::GenericTypeForFunctionScope(_) => Ok(leaves.to_vec()),
         ty::TyDecl::VariableDecl(_) | ty::TyDecl::ConstantDecl(_) => {
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));

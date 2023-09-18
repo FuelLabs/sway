@@ -113,12 +113,8 @@ impl ty::TyAbiDecl {
                     method.name.clone()
                 }
                 TraitItem::Constant(const_decl) => {
-                    let const_decl = ty::TyConstantDecl::type_check(
-                        handler,
-                        ctx.by_ref(),
-                        const_decl.clone(),
-                        None,
-                    )?;
+                    let const_decl =
+                        ty::TyConstantDecl::type_check(handler, ctx.by_ref(), const_decl.clone())?;
                     let decl_ref = ctx.engines.de().insert(const_decl.clone());
                     new_interface_surface
                         .push(ty::TyTraitInterfaceItem::Constant(decl_ref.clone()));
@@ -145,18 +141,7 @@ impl ty::TyAbiDecl {
                     let decl_ref = ctx.engines().de().insert(type_decl.clone());
                     new_interface_surface.push(ty::TyTraitInterfaceItem::Type(decl_ref.clone()));
 
-                    let type_name = type_decl.name.clone();
-                    ctx.insert_symbol(
-                        handler,
-                        type_name.clone(),
-                        ty::TyDecl::TypeDecl(ty::TypeDecl {
-                            name: type_name.clone(),
-                            decl_id: *decl_ref.id(),
-                            decl_span: type_decl.span.clone(),
-                        }),
-                    )?;
-
-                    type_name
+                    type_decl.name
                 }
                 TraitItem::Error(_, _) => {
                     continue;
@@ -316,7 +301,7 @@ impl ty::TyAbiDecl {
                         let _ = ctx.namespace.insert_symbol(
                             handler,
                             type_name.clone(),
-                            ty::TyDecl::TypeDecl(ty::TypeDecl {
+                            ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl {
                                 name: type_name,
                                 decl_id: *decl_ref.id(),
                                 decl_span: type_decl.span.clone(),

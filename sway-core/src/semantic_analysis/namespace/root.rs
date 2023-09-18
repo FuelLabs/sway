@@ -7,7 +7,7 @@ use sway_types::Spanned;
 use crate::{
     decl_engine::DeclRef,
     language::{
-        ty::{self, TypeDecl},
+        ty::{self, TraitTypeDecl},
         CallPath,
     },
     Engines, Ident, TypeId, TypeInfo,
@@ -174,7 +174,7 @@ impl Root {
                 enum_decl.decl_id,
                 enum_decl.name.span(),
             )),
-            ty::TyDecl::TypeDecl(type_decl) => {
+            ty::TyDecl::TraitTypeDecl(type_decl) => {
                 let type_decl = engines.de().get_type(&type_decl.decl_id);
                 engines.te().get(type_decl.ty.unwrap().type_id)
             }
@@ -208,7 +208,7 @@ impl Root {
                 ty::TyTraitItem::Type(type_ref) => {
                     let type_decl = engines.de().get_type(type_ref.id());
                     if type_decl.name.as_str() == symbol.as_str() {
-                        return Ok(ty::TyDecl::TypeDecl(TypeDecl {
+                        return Ok(ty::TyDecl::TraitTypeDecl(TraitTypeDecl {
                             name: type_decl.name.clone(),
                             decl_id: *type_ref.id(),
                             decl_span: type_decl.name.span(),

@@ -88,7 +88,7 @@ impl Parse for ty::TyDecl {
             ty::TyDecl::ErrorRecovery(_, _) => {}
             ty::TyDecl::StorageDecl(decl) => decl.parse(ctx),
             ty::TyDecl::TypeAliasDecl(decl) => decl.parse(ctx),
-            ty::TyDecl::TypeDecl(decl) => decl.parse(ctx),
+            ty::TyDecl::TraitTypeDecl(decl) => decl.parse(ctx),
         }
     }
 }
@@ -598,7 +598,7 @@ impl Parse for ty::ConstantDecl {
     }
 }
 
-impl Parse for ty::TypeDecl {
+impl Parse for ty::TraitTypeDecl {
     fn parse(&self, ctx: &ParseContext) {
         let type_decl = ctx.engines.de().get_type(&self.decl_id);
         collect_trait_type_decl(ctx, &type_decl, &self.decl_span);

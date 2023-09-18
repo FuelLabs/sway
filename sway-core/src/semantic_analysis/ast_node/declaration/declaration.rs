@@ -68,11 +68,10 @@ impl ty::TyDecl {
             }
             parsed::Declaration::ConstantDeclaration(decl) => {
                 let span = decl.span.clone();
-                let const_decl =
-                    match ty::TyConstantDecl::type_check(handler, ctx.by_ref(), decl, None) {
-                        Ok(res) => res,
-                        Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
-                    };
+                let const_decl = match ty::TyConstantDecl::type_check(handler, ctx.by_ref(), decl) {
+                    Ok(res) => res,
+                    Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
+                };
                 let typed_const_decl: ty::TyDecl = decl_engine.insert(const_decl.clone()).into();
                 ctx.insert_symbol(handler, const_decl.name().clone(), typed_const_decl.clone())?;
                 typed_const_decl

@@ -139,12 +139,8 @@ impl ty::TyTraitDecl {
                     Some(method.name.clone())
                 }
                 TraitItem::Constant(const_decl) => {
-                    let const_decl = ty::TyConstantDecl::type_check(
-                        handler,
-                        ctx.by_ref(),
-                        const_decl.clone(),
-                        None,
-                    )?;
+                    let const_decl =
+                        ty::TyConstantDecl::type_check(handler, ctx.by_ref(), const_decl.clone())?;
                     let decl_ref = ctx.engines.de().insert(const_decl.clone());
                     new_interface_surface
                         .push(ty::TyTraitInterfaceItem::Constant(decl_ref.clone()));

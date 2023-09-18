@@ -21,7 +21,7 @@ use crate::{
 pub enum TyDecl {
     VariableDecl(Box<TyVariableDecl>),
     ConstantDecl(ConstantDecl),
-    TypeDecl(TypeDecl),
+    TraitTypeDecl(TraitTypeDecl),
     FunctionDecl(FunctionDecl),
     TraitDecl(TraitDecl),
     StructDecl(StructDecl),
@@ -45,7 +45,7 @@ pub struct ConstantDecl {
 }
 
 #[derive(Clone, Debug)]
-pub struct TypeDecl {
+pub struct TraitTypeDecl {
     pub name: Ident,
     pub decl_id: DeclId<TyTraitType>,
     pub decl_span: Span,
@@ -251,7 +251,7 @@ impl HashWithEngines for TyDecl {
             TyDecl::ConstantDecl(ConstantDecl { decl_id, .. }) => {
                 decl_engine.get(decl_id).hash(state, engines);
             }
-            TyDecl::TypeDecl(TypeDecl { decl_id, .. }) => {
+            TyDecl::TraitTypeDecl(TraitTypeDecl { decl_id, .. }) => {
                 decl_engine.get(decl_id).hash(state, engines);
             }
             TyDecl::FunctionDecl(FunctionDecl { decl_id, .. }) => {
@@ -334,7 +334,7 @@ impl SubstTypes for TyDecl {
             }) => {
                 decl_id.subst(type_mapping, engines);
             }
-            TyDecl::TypeDecl(TypeDecl {
+            TyDecl::TraitTypeDecl(TraitTypeDecl {
                 ref mut decl_id, ..
             }) => {
                 decl_id.subst(type_mapping, engines);
@@ -376,7 +376,7 @@ impl ReplaceSelfType for TyDecl {
             TyDecl::TypeAliasDecl(TypeAliasDecl {
                 ref mut decl_id, ..
             }) => decl_id.replace_self_type(engines, self_type),
-            TyDecl::TypeDecl(TypeDecl {
+            TyDecl::TraitTypeDecl(TraitTypeDecl {
                 ref mut decl_id, ..
             }) => decl_id.replace_self_type(engines, self_type),
             // generics in an ABI is unsupported by design
@@ -413,7 +413,7 @@ impl Spanned for TyDecl {
             | TyDecl::TraitDecl(TraitDecl { decl_span, .. })
             | TyDecl::ImplTrait(ImplTrait { decl_span, .. })
             | TyDecl::ConstantDecl(ConstantDecl { decl_span, .. })
-            | TyDecl::TypeDecl(TypeDecl { decl_span, .. })
+            | TyDecl::TraitTypeDecl(TraitTypeDecl { decl_span, .. })
             | TyDecl::StorageDecl(StorageDecl { decl_span, .. })
             | TyDecl::TypeAliasDecl(TypeAliasDecl { decl_span, .. })
             | TyDecl::AbiDecl(AbiDecl { decl_span, .. })
@@ -560,7 +560,7 @@ impl CollectTypesMetadata for TyDecl {
             | TyDecl::ImplTrait(_)
             | TyDecl::AbiDecl(_)
             | TyDecl::TypeAliasDecl(_)
-            | TyDecl::TypeDecl(_)
+            | TyDecl::TraitTypeDecl(_)
             | TyDecl::GenericTypeForFunctionScope(_) => vec![],
         };
         Ok(metadata)
@@ -577,7 +577,7 @@ impl GetDeclIdent for TyDecl {
             | TyDecl::ImplTrait(ImplTrait { name, .. })
             | TyDecl::AbiDecl(AbiDecl { name, .. })
             | TyDecl::TypeAliasDecl(TypeAliasDecl { name, .. })
-            | TyDecl::TypeDecl(TypeDecl { name, .. })
+            | TyDecl::TraitTypeDecl(TraitTypeDecl { name, .. })
             | TyDecl::GenericTypeForFunctionScope(GenericTypeForFunctionScope { name, .. })
             | TyDecl::StructDecl(StructDecl { name, .. })
             | TyDecl::EnumDecl(EnumDecl { name, .. }) => Some(name.clone()),
@@ -761,7 +761,7 @@ impl TyDecl {
         match self {
             VariableDecl(_) => "variable",
             ConstantDecl(_) => "constant",
-            TypeDecl(_) => "type",
+            TraitTypeDecl(_) => "type",
             FunctionDecl(_) => "function",
             TraitDecl(_) => "trait",
             StructDecl(_) => "struct",
@@ -885,7 +885,7 @@ impl TyDecl {
             | TyDecl::ImplTrait(_)
             | TyDecl::StorageDecl(_)
             | TyDecl::AbiDecl(_)
-            | TyDecl::TypeDecl(_)
+            | TyDecl::TraitTypeDecl(_)
             | TyDecl::ErrorRecovery(_, _) => Visibility::Public,
             TyDecl::VariableDecl(decl) => decl.mutability.visibility(),
         }
@@ -894,7 +894,7 @@ impl TyDecl {
 
 impl From<DeclRef<DeclId<TyTraitType>>> for TyDecl {
     fn from(decl_ref: DeclRef<DeclId<TyTraitType>>) -> Self {
-        TyDecl::TypeDecl(TypeDecl {
+        TyDecl::TraitTypeDecl(TraitTypeDecl {
             name: decl_ref.name().clone(),
             decl_id: *decl_ref.id(),
             decl_span: decl_ref.decl_span().clone(),

@@ -454,7 +454,7 @@ impl<'a> TypeCheckContext<'a> {
                     Some(ty::TyDecl::GenericTypeForFunctionScope(
                         ty::GenericTypeForFunctionScope { type_id, .. },
                     )) => type_id,
-                    Some(ty::TyDecl::TypeDecl(ty::TypeDecl {
+                    Some(ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl {
                         decl_id,
                         name,
                         decl_span: _,
