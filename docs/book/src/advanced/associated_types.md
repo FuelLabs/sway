@@ -1,11 +1,11 @@
 # Associated Types
 
-Associated types in Sway allow you to define placeholder types within a trait, which can be customized by concrete 
-implementations of that trait. These associated types are used to specify the return types of trait methods or to 
+Associated types in Sway allow you to define placeholder types within a trait, which can be customized by concrete
+implementations of that trait. These associated types are used to specify the return types of trait methods or to
 define type relationships within the trait.
 
-Associated types are a powerful feature of Sway's trait system, enabling generic programming and abstraction over 
-types. They help improve code clarity and maintainability by allowing you to define generic traits without committing 
+Associated types are a powerful feature of Sway's trait system, enabling generic programming and abstraction over
+types. They help improve code clarity and maintainability by allowing you to define generic traits without committing
 to specific types.
 
 ## Declaring Associated Types
@@ -20,7 +20,7 @@ trait MyTrait {
 
 ## Implementing Associated Types
 
-Concrete implementations of a trait with associated types must provide a specific type for each associated type 
+Concrete implementations of a trait with associated types must provide a specific type for each associated type
 defined in the trait. Here's an example of implementing a trait with an associated type:
 
 ```sway
@@ -60,7 +60,7 @@ In this example, `get_value` is a trait method that returns an associated type `
 
 ## Use Cases
 
-Associated types are particularly useful in scenarios where you want to define traits that work with different 
+Associated types are particularly useful in scenarios where you want to define traits that work with different
 types of data structures or abstractions, allowing the implementor to specify the concrete types. Some common use cases include:
 
 - Collections: Traits for generic collections that allow users to specify the type of elements.

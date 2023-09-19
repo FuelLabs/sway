@@ -19,7 +19,6 @@ Associated items come in two varieties:
 - [Constants](#associated-constants)
 - [Types](#associated-types)
 
-
 All traits define an implicit type parameter `Self` that refers to "the type that is implementing this interface".
 Traits may also contain additional type parameters. These type parameters, including `Self`, may be constrained by
 other traits and so forth as usual.
@@ -41,7 +40,7 @@ The identifier is the name of the constant used in the path. The type is the typ
 
 An *associated constant definition* defines a constant associated with a type.
 
-### Examples
+### Associated constants examples
 
 ```sway
 {{#include ../../../code/language/traits/associated-consts/src/lib.sw}}
@@ -55,7 +54,7 @@ Associated types in Sway allow you to define placeholder types within a trait, w
 implementations of that trait. These associated types are used to specify the return types of trait methods or to
 define type relationships within the trait.
 
-### Examples
+### Associated types examples
 
 ```sway
 {{#include ../../../code/language/traits/associated-types/src/lib.sw}}
