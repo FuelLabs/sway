@@ -88,6 +88,7 @@ Traits can declare different kinds of associated items in their interface surfac
 
 - [Functions](#associated-functions)
 - [Constants](#associated-constants)
+- [Types](#associated-types)
 
 ### Associated functions
 
@@ -118,6 +119,20 @@ trait Trait {
 ```
 
 Check the `associated consts` section on [constants](../basics/constants.md) page.
+
+### Associated types
+
+Associated types in Sway allow you to define placeholder types within a trait, which can be customized by concrete 
+implementations of that trait. These associated types are used to specify the return types of trait methods or to 
+define type relationships within the trait.
+
+```sway
+trait MyTrait {
+    type AssociatedType;
+}
+```
+
+Check the `associated types` section on [associated types](./associated_types.md) page.
 
 ## Use Cases
 
