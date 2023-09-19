@@ -448,6 +448,7 @@ impl Renderable for TyTraitItem {
         let item = match self {
             TyTraitItem::Fn(item_fn) => item_fn,
             TyTraitItem::Constant(_) => unimplemented!("Constant Trait items not yet implemented"),
+            TyTraitItem::Type(_) => unimplemented!("Type Trait items not yet implemented"),
         };
         let method = render_plan.engines.de().get_function(item.id());
         let attributes = method.attributes.to_html_string();

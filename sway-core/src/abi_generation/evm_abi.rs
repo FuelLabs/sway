@@ -135,6 +135,10 @@ pub fn abi_str(type_info: &TypeInfo, type_engine: &TypeEngine, decl_engine: &Dec
             format!("__slice {}", abi_str_type_arg(ty, type_engine, decl_engine))
         }
         Alias { ty, .. } => abi_str_type_arg(ty, type_engine, decl_engine),
+        TraitType {
+            name,
+            trait_type_id: _,
+        } => format!("trait type {}", name),
     }
 }
 

@@ -298,6 +298,7 @@ fn compile_declarations(
             | ty::TyDecl::GenericTypeForFunctionScope { .. }
             | ty::TyDecl::StorageDecl { .. }
             | ty::TyDecl::TypeAliasDecl { .. }
+            | ty::TyDecl::TraitTypeDecl { .. }
             | ty::TyDecl::ErrorRecovery(..) => (),
         }
     }

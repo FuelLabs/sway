@@ -1,0 +1,13 @@
+[[package]]
+name = 'associated_type_container'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-264B0ABCEA24EB36'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-264B0ABCEA24EB36'
+dependencies = ['core']

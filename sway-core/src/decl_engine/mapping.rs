@@ -31,6 +31,7 @@ impl fmt::Display for DeclMapping {
                             AssociatedItemDeclId::TraitFn(decl_id) => decl_id.inner(),
                             AssociatedItemDeclId::Function(decl_id) => decl_id.inner(),
                             AssociatedItemDeclId::Constant(decl_id) => decl_id.inner(),
+                            AssociatedItemDeclId::Type(decl_id) => decl_id.inner(),
                         }
                     )
                 })
@@ -70,10 +71,12 @@ impl DeclMapping {
                 let interface_decl_ref = match interface_item {
                     TyTraitInterfaceItem::TraitFn(decl_ref) => decl_ref.id().into(),
                     TyTraitInterfaceItem::Constant(decl_ref) => decl_ref.id().into(),
+                    TyTraitInterfaceItem::Type(decl_ref) => decl_ref.id().into(),
                 };
                 let new_decl_ref = match new_item {
                     TyTraitItem::Fn(decl_ref) => decl_ref.id().into(),
                     TyTraitItem::Constant(decl_ref) => decl_ref.id().into(),
+                    TyTraitItem::Type(decl_ref) => decl_ref.id().into(),
                 };
                 mapping.push((interface_decl_ref, new_decl_ref));
             }
@@ -83,10 +86,12 @@ impl DeclMapping {
                 let interface_decl_ref = match item {
                     TyTraitItem::Fn(decl_ref) => decl_ref.id().into(),
                     TyTraitItem::Constant(decl_ref) => decl_ref.id().into(),
+                    TyTraitItem::Type(decl_ref) => decl_ref.id().into(),
                 };
                 let new_decl_ref = match new_item {
                     TyTraitItem::Fn(decl_ref) => decl_ref.id().into(),
                     TyTraitItem::Constant(decl_ref) => decl_ref.id().into(),
+                    TyTraitItem::Type(decl_ref) => decl_ref.id().into(),
                 };
                 mapping.push((interface_decl_ref, new_decl_ref));
             }
@@ -124,6 +129,7 @@ impl DeclMapping {
                     }
                 }
                 AssociatedItemDeclId::Constant(_) => mapping.push((source_decl_ref, dest_decl_ref)),
+                AssociatedItemDeclId::Type(_) => mapping.push((source_decl_ref, dest_decl_ref)),
             }
         }
         DeclMapping { mapping }
