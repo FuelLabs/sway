@@ -148,7 +148,6 @@ pub(crate) fn semantic_tokens_request(server: &ServerState, uri: &Url) {
         partial_result_params: Default::default(),
     };
     let response = request::handle_semantic_tokens_full(server, params).unwrap();
-    eprintln!("{:#?}", response);
     if let Some(SemanticTokensResult::Tokens(tokens)) = response {
         assert!(!tokens.data.is_empty());
     }

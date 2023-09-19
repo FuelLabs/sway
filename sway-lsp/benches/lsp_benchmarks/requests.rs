@@ -93,6 +93,8 @@ fn benchmarks(c: &mut Criterion) {
         };
         b.iter(|| capabilities::on_enter::on_enter(&config.on_enter, &session, &uri, &params))
     });
+
+    c.bench_function("format", |b| b.iter(|| session.format_text(&uri)));
 }
 
 criterion_group! {
