@@ -718,7 +718,7 @@ impl b256 {
     ///
     /// # Returns
     ///
-    /// * [u256] - The converted `u256` value.
+    /// * [u256] - The converted `b256` value.
     ///
     /// # Examples
     ///
@@ -885,7 +885,7 @@ impl u256 {
     ///
     /// # Returns
     ///
-    /// * [b256] - The converted `b256` value.
+    /// * [b256] - The converted `u256` value.
     ///
     /// # Examples
     ///
