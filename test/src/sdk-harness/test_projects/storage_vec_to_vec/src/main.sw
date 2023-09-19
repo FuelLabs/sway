@@ -46,7 +46,7 @@ impl VecToVecStorageTest for Contract {
 
     #[storage(read)]
     fn read_vec_u64() -> Vec<u64> {
-        storage.storage_vec_u64.load_vec().unwrap_or(Vec::<u64>::new())
+        storage.storage_vec_u64.load_vec()
     }
 
     #[storage(read, write)]
@@ -66,7 +66,7 @@ impl VecToVecStorageTest for Contract {
 
     #[storage(read)]
     fn read_vec_struct() -> Vec<TestStruct> {
-        storage.storage_vec_struct.load_vec().unwrap_or(Vec::<TestStruct>::new())
+        storage.storage_vec_struct.load_vec()
     }
 
     #[storage(read, write)]

@@ -207,7 +207,7 @@ impl<V> StorageKey<StorageVec<V>> {
         // shifts the index for that element down one
         let mut count = index + 1;
         while count < len {
-            // gets the storage location for the previous index
+            // gets the storage location for the previous index and
             // moves the element of the current index into the previous index
             let write_offset = offset_calculator::<V>(count - 1);
             let read_offset = offset_calculator::<V>(count);
@@ -884,7 +884,7 @@ impl<V> StorageKey<StorageVec<V>> {
     ///     vec.push(15);
     ///
     ///     storage.vec.store_vec(vec);
-    ///     let returned_vec = storage.vec.load_vec().unwrap();
+    ///     let returned_vec = storage.vec.load_vec();
     ///
     ///     assert(5 == returned_vec.get(0).unwrap());
     ///     assert(10 == returned_vec.get(1).unwrap());
@@ -892,17 +892,17 @@ impl<V> StorageKey<StorageVec<V>> {
     /// }
     /// ```
     #[storage(read)]
-    pub fn load_vec(self) -> Option<Vec<V>> {
+    pub fn load_vec(self) -> Vec<V> {
         // Get the length of the slice that is stored.
         match read::<u64>(self.field_id, 0).unwrap_or(0) {
-            0 => None,
+            0 => Vec::new(),
             len => {
                 // Get the number of storage slots needed based on the size.
                 let number_of_slots = ((len *  __size_of::<V>()) + 31) >> 5;
                 let ptr = alloc_bytes(number_of_slots * 32);
                 // Load the stored slice into the pointer.
                 let _ = __state_load_quad(sha256(self.field_id), ptr, number_of_slots);
-                Some(Vec::from(asm(ptr: (ptr, len *  __size_of::<V>())) { ptr: raw_slice }))
+                Vec::from(asm(ptr: (ptr, len *  __size_of::<V>())) { ptr: raw_slice })
             }
         }
     }
