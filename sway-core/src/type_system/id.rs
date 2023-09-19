@@ -157,8 +157,18 @@ impl ReplaceSelfType for TypeId {
                 TypeInfo::Custom {
                     call_path,
                     type_arguments,
+                    root_type_id,
                 } => {
                     let mut need_to_create_new = false;
+
+                    let mut call_path = call_path;
+                    let mut root_type_id = root_type_id;
+                    if !call_path.prefixes.is_empty() && call_path.prefixes[0].as_str() == "Self" {
+                        need_to_create_new = true;
+                        call_path.prefixes.remove(0);
+                        root_type_id = Some(self_type);
+                    }
+
                     let type_arguments = type_arguments.map(|type_arguments| {
                         type_arguments
                             .into_iter()
@@ -178,6 +188,7 @@ impl ReplaceSelfType for TypeId {
                             TypeInfo::Custom {
                                 call_path,
                                 type_arguments,
+                                root_type_id,
                             },
                         ))
                     } else {
@@ -222,6 +233,19 @@ impl ReplaceSelfType for TypeId {
                 TypeInfo::Slice(mut ty) => helper(ty.type_id, engines, self_type).map(|type_id| {
                     ty.type_id = type_id;
                     type_engine.insert(engines, TypeInfo::Slice(ty))
+                }),
+                TypeInfo::TraitType {
+                    name,
+                    mut trait_type_id,
+                } => helper(trait_type_id, engines, self_type).map(|type_id| {
+                    trait_type_id = type_id;
+                    type_engine.insert(
+                        engines,
+                        TypeInfo::TraitType {
+                            name,
+                            trait_type_id,
+                        },
+                    )
                 }),
                 TypeInfo::Unknown
                 | TypeInfo::UnknownGeneric { .. }

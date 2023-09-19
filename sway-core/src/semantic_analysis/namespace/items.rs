@@ -283,6 +283,7 @@ impl Items {
             .filter_map(|item| match item {
                 ty::TyTraitItem::Fn(decl_ref) => Some(decl_ref),
                 ty::TyTraitItem::Constant(_decl_ref) => None,
+                ty::TyTraitItem::Type(_decl_ref) => None,
             })
             .collect::<Vec<_>>()
     }

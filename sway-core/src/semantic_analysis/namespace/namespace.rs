@@ -1,6 +1,6 @@
 use crate::{
     language::{ty, CallPath, Visibility},
-    Ident,
+    Engines, Ident,
 };
 
 use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};
@@ -94,19 +94,22 @@ impl Namespace {
     pub(crate) fn resolve_symbol(
         &self,
         handler: &Handler,
+        engines: &Engines,
         symbol: &Ident,
-    ) -> Result<&ty::TyDecl, ErrorEmitted> {
-        self.root.resolve_symbol(handler, &self.mod_path, symbol)
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        self.root
+            .resolve_symbol(handler, engines, &self.mod_path, symbol)
     }
 
     /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
     pub(crate) fn resolve_call_path(
         &self,
         handler: &Handler,
+        engines: &Engines,
         call_path: &CallPath,
-    ) -> Result<&ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
         self.root
-            .resolve_call_path(handler, &self.mod_path, call_path)
+            .resolve_call_path(handler, engines, &self.mod_path, call_path)
     }
 
     /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].

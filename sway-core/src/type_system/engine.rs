@@ -188,7 +188,8 @@ impl TypeEngine {
             | TypeInfo::Storage { .. }
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
-            | TypeInfo::Alias { .. } => false,
+            | TypeInfo::Alias { .. }
+            | TypeInfo::TraitType { .. } => false,
             TypeInfo::Numeric => true,
         }
     }
@@ -242,7 +243,8 @@ impl TypeEngine {
             | TypeInfo::Storage { .. }
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
-            | TypeInfo::Alias { .. } => {}
+            | TypeInfo::Alias { .. }
+            | TypeInfo::TraitType { .. } => {}
             TypeInfo::Numeric => {
                 self.unify(
                     handler,
