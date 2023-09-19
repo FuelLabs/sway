@@ -4,8 +4,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     combine_indices, compute_escaped_symbols, get_loaded_ptr_values, get_stored_ptr_values,
-    get_symbols, AnalysisResults, Constant, ConstantValue, Context, Function, Instruction, IrError,
-    LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type, Value,
+    get_symbols, pointee_size, AnalysisResults, Constant, ConstantValue, Context, Function,
+    Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type, Value,
 };
 
 pub const SROA_NAME: &str = "sroa";
@@ -394,6 +394,28 @@ fn is_processable_aggregate(context: &Context, ty: Type) -> bool {
     ty.is_aggregate(context) && check_sub_types(context, ty)
 }
 
+// Filter out candidates that may not be profitable to scalarise.
+// This can be tuned in detail in the future when we have real benchmarks.
+fn profitability(context: &Context, function: Function, candidates: &mut FxHashSet<Symbol>) {
+    // If a candidate is sufficiently big and there's at least one memcpy
+    // accessing a big part of it, it may not be wise to scalarise it.
+    for (_, inst) in function.instruction_iter(context) {
+        if let Instruction::MemCopyVal {
+            dst_val_ptr,
+            src_val_ptr,
+        } = inst.get_instruction(context).unwrap()
+        {
+            if pointee_size(context, *dst_val_ptr) > 200 {
+                for sym in
+                    get_symbols(context, *dst_val_ptr).union(&get_symbols(context, *src_val_ptr))
+                {
+                    candidates.remove(sym);
+                }
+            }
+        }
+    }
+}
+
 /// Only the following aggregates can be scalarised:
 /// 1. Does not escape.
 /// 2. Is always accessed via a scalar (register sized) field.
@@ -443,6 +465,8 @@ fn candidate_symbols(context: &Context, function: Function) -> FxHashSet<Symbol>
             }
         }
     }
+
+    profitability(context, function, &mut candidates);
 
     candidates
 }
