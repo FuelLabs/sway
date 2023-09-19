@@ -241,4 +241,26 @@ category = "compile"
 #check: $()(false, _, s, n) => n + s.y,
 #nextln: $()Match arm `(false, _, s, n)` is unreachable.
 
-expected_warnings = 90
+#not: $()or_no_warning
+
+#check: $()Match arm is unreachable
+
+#check: $()let _x = match or1 {
+#nextln: $()`or1`, of type "numeric", is the value to match on.
+
+#check: $()1 | 2 | _ => 0,
+#nextln: $()Catch-all arm `1 | 2 | _` makes all match arms below it unreachable.
+#check: $()4 => 0,
+#nextln: $()Match arm `4` is unreachable.
+
+#check: $()Match arm is unreachable
+
+#check: $()let _x = match or2 {
+#nextln: $()`or2`, of type "numeric", is the value to match on.
+
+#check: $()1 | _ | 2 => 0,
+#nextln: $()Catch-all arm `1 | _ | 2` makes all match arms below it unreachable.
+#check: $()5 => 0,
+#nextln: $()Match arm `5` is unreachable.
+
+expected_warnings = 95

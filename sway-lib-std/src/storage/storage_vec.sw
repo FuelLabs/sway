@@ -489,7 +489,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ```
     #[storage(write)]
     pub fn clear(self) {
-        let _ = clear::<u64>(self.field_id);
+        let _ = clear::<u64>(self.field_id, 0);
     }
 
     /// Swaps two elements.

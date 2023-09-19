@@ -1,8 +1,10 @@
 #![allow(dead_code)]
-use lsp_types::{Position, Range, TextDocumentContentChangeEvent};
+use crate::{
+    error::{DirectoryError, DocumentError, LanguageServerError},
+    utils::document,
+};
+use lsp_types::{Position, Range, TextDocumentContentChangeEvent, Url};
 use ropey::Rope;
-
-use crate::error::DocumentError;
 
 #[derive(Debug, Clone)]
 pub struct TextDocument {
@@ -102,6 +104,40 @@ impl TextDocument {
 
         row_char_index + column_char_index
     }
+}
+
+/// Marks the specified file as "dirty" by creating a corresponding flag file.
+///
+/// This function ensures the necessary directory structure exists before creating the flag file.
+pub fn mark_file_as_dirty(uri: &Url) -> Result<(), LanguageServerError> {
+    let path = document::get_path_from_url(uri)?;
+    let dirty_file_path = forc_util::is_dirty_path(&path);
+    if let Some(dir) = dirty_file_path.parent() {
+        // Ensure the directory exists
+        std::fs::create_dir_all(dir).map_err(|_| DirectoryError::LspLocksDirFailed)?;
+    }
+    // Create an empty "dirty" file
+    std::fs::File::create(&dirty_file_path).map_err(|err| DocumentError::UnableToCreateFile {
+        path: uri.path().to_string(),
+        err: err.to_string(),
+    })?;
+    Ok(())
+}
+
+/// Removes the corresponding flag file for the specifed Url.
+///
+/// If the flag file does not exist, this function will do nothing.
+pub fn remove_dirty_flag(uri: &Url) -> Result<(), LanguageServerError> {
+    let path = document::get_path_from_url(uri)?;
+    let dirty_file_path = forc_util::is_dirty_path(&path);
+    if dirty_file_path.exists() {
+        // Remove the "dirty" file
+        std::fs::remove_file(dirty_file_path).map_err(|err| DocumentError::UnableToRemoveFile {
+            path: uri.path().to_string(),
+            err: err.to_string(),
+        })?;
+    }
+    Ok(())
 }
 
 #[derive(Debug)]

@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-151EC6D60D03100D"
+
+[[package]]
+name = "impl_with_constraint"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-151EC6D60D03100D"
+dependencies = ["core"]
