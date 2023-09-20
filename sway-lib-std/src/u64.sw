@@ -8,9 +8,9 @@ impl TryFrom<u256> for u64 {
         let parts = asm(r1: u) { r1: (u64, u64, u64, u64) };
 
         if parts.0 != 0 || parts.1 != 0 || parts.2 != 0 {
-            return Option::None
+            Option::None
         } else {
-            return Option::Some(parts.3)
+            Option::Some(parts.3)
         }
     }
 }

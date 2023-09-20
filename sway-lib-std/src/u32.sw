@@ -5,10 +5,10 @@ use ::option::Option;
 
 impl TryFrom<u64> for u32 {
     fn try_from(u: u64) -> Option<Self> {
-        if u > asm(r1: u32::max()) { r1: u64 } {
-            return Option::None
+        if u > u32::max().as_u64() {
+            Option::None
         } else {
-            return Option::Some(asm(r1: u) {r1: u32})
+            Option::Some(asm(r1: u) {r1: u32})
         }
     }
 }
@@ -17,10 +17,10 @@ impl TryFrom<u256> for u32 {
     fn try_from(u: u256) -> Option<Self> {
         let parts = asm(r1: u) { r1: (u64, u64, u64, u64) };
 
-        if parts.0 != 0 || parts.1 != 0 || parts.2 != 0 || parts.3 > asm(r1: u32::max()) { r1: u64 } {
-            return Option::None
+        if parts.0 != 0 || parts.1 != 0 || parts.2 != 0 || parts.3 > u32::max().as_u64() {
+            Option::None
         } else {
-            return Option::Some(asm(r1: parts.3) {r1: u32})
+            Option::Some(asm(r1: parts.3) {r1: u32})
         }
     }
 }
@@ -30,7 +30,7 @@ fn test_u32_try_from_u64() {
     use ::assert::assert;
     
     let u64_1: u64 = 2;
-    let u64_2: u64 = asm(r1: u32::max()) { r1: u64 } + 1;
+    let u64_2: u64 = u32::max().as_u64() + 1;
 
     let u32_1 = <u32 as TryFrom<u64>>::try_from(u64_1);
     let u32_2 = <u32 as TryFrom<u64>>::try_from(u64_2);
