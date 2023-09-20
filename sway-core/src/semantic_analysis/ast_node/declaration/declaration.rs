@@ -3,13 +3,19 @@ use sway_types::{Named, Spanned};
 
 use crate::{
     decl_engine::{DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType},
-    language::{parsed, ty},
+    language::{
+        parsed,
+        ty::{self, TyDecl},
+    },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
-    semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
+    semantic_analysis::{
+        type_check_context::EnforceTypeArguments, TypeCheckContext, TypeCheckFinalization,
+        TypeCheckFinalizationContext,
+    },
     type_system::*,
 };
 
-impl ty::TyDecl {
+impl TyDecl {
     pub(crate) fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
@@ -372,5 +378,62 @@ impl ty::TyDecl {
         };
 
         Ok(decl)
+    }
+}
+
+impl TypeCheckFinalization for TyDecl {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        let decl_engine = ctx.engines.de();
+        match self {
+            TyDecl::VariableDecl(node) => {
+                node.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::ConstantDecl(node) => {
+                let mut const_decl = ctx.engines.de().get_constant(&node.decl_id);
+                const_decl.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::FunctionDecl(node) => {
+                let mut fn_decl = ctx.engines.de().get_function(&node.decl_id);
+                fn_decl.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::TraitDecl(node) => {
+                let mut trait_decl = ctx.engines.de().get_trait(&node.decl_id);
+                trait_decl.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::StructDecl(node) => {
+                let mut struct_decl = ctx.engines.de().get_struct(&node.decl_id);
+                struct_decl.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::EnumDecl(node) => {
+                let mut enum_decl = ctx.engines.de().get_enum(&node.decl_id);
+                enum_decl.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::EnumVariantDecl(_) => {}
+            TyDecl::ImplTrait(node) => {
+                let mut impl_trait = decl_engine.get_impl_trait(&node.decl_id);
+                impl_trait.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::AbiDecl(node) => {
+                let mut abi_decl = decl_engine.get_abi(&node.decl_id);
+                abi_decl.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::GenericTypeForFunctionScope(_) => {}
+            TyDecl::ErrorRecovery(_, _) => {}
+            TyDecl::StorageDecl(node) => {
+                let mut storage_decl = decl_engine.get_storage(&node.decl_id);
+                storage_decl.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::TypeAliasDecl(node) => {
+                let mut type_alias_decl = decl_engine.get_type_alias(&node.decl_id);
+                type_alias_decl.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::TraitTypeDecl(_node) => {}
+        }
+
+        Ok(())
     }
 }
