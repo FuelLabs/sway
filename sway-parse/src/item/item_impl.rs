@@ -1,7 +1,9 @@
 use crate::{Parse, ParseResult, Parser};
 
 use sway_ast::attribute::Annotated;
-use sway_ast::keywords::{ConstToken, FnToken, OpenAngleBracketToken, SemicolonToken, WhereToken};
+use sway_ast::keywords::{
+    ConstToken, FnToken, OpenAngleBracketToken, SemicolonToken, TypeToken, WhereToken,
+};
 use sway_ast::{Braces, ItemImpl, ItemImplItem, PubToken, Ty};
 use sway_error::parser_error::ParseErrorKind;
 
@@ -14,6 +16,10 @@ impl Parse for ItemImplItem {
             let const_decl = parser.parse()?;
             parser.parse::<SemicolonToken>()?;
             Ok(ItemImplItem::Const(const_decl))
+        } else if let Some(_type_keyword) = parser.peek::<TypeToken>() {
+            let type_decl = parser.parse()?;
+            parser.parse::<SemicolonToken>()?;
+            Ok(ItemImplItem::Type(type_decl))
         } else {
             Err(parser.emit_error(ParseErrorKind::ExpectedAnItem))
         }

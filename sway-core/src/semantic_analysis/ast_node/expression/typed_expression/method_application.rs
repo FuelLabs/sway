@@ -147,7 +147,7 @@ pub(crate) fn type_check_method_application(
         if let Some(coins_expr) = contract_call_params_map.get(CONTRACT_CALL_COINS_PARAMETER_NAME) {
             if coins_analysis::possibly_nonzero_u64_expression(
                 ctx.namespace,
-                decl_engine,
+                ctx.engines,
                 coins_expr,
             ) && !method
                 .attributes
@@ -208,10 +208,9 @@ pub(crate) fn type_check_method_application(
     ) -> Result<(), ErrorEmitted> {
         match exp {
             ty::TyExpressionVariant::VariableExpression { name, .. } => {
-                let unknown_decl = ctx
-                    .namespace
-                    .resolve_symbol(&Handler::default(), name)
-                    .cloned()?;
+                let unknown_decl =
+                    ctx.namespace
+                        .resolve_symbol(&Handler::default(), ctx.engines, name)?;
 
                 let is_decl_mutable = match unknown_decl {
                     ty::TyDecl::ConstantDecl { .. } => false,

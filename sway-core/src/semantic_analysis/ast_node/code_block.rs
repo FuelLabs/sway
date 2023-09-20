@@ -67,7 +67,7 @@ impl ty::TyCodeBlock {
                     let never_decl_opt = ctx
                         .namespace
                         .root()
-                        .resolve_symbol(&Handler::default(), &never_mod_path, &never_ident)
+                        .resolve_symbol(&Handler::default(), engines, &never_mod_path, &never_ident)
                         .ok();
 
                     if let Some(ty::TyDecl::EnumDecl(ty::EnumDecl {
@@ -79,7 +79,7 @@ impl ty::TyCodeBlock {
                     {
                         return ctx.engines().te().insert(
                             engines,
-                            TypeInfo::Enum(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
+                            TypeInfo::Enum(DeclRef::new(name.clone(), decl_id, decl_span.clone())),
                         );
                     }
 
