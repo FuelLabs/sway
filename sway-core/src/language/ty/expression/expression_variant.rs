@@ -11,7 +11,7 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::{ty::*, *},
-    semantic_analysis::TypeCheckContext,
+    semantic_analysis::{TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext},
     type_system::*,
 };
 
@@ -945,8 +945,7 @@ impl ReplaceDecls for TyExpressionVariant {
                             &method.name.span(),
                         )?;
                     method.replace_decls(&inner_decl_mapping, handler, ctx)?;
-                    decl_engine
-                        .replace(*new_decl_ref.id(), method);
+                    decl_engine.replace(*new_decl_ref.id(), method);
                 }
                 LazyOperator { lhs, rhs, .. } => {
                     (*lhs).replace_decls(decl_mapping, handler, ctx)?;
@@ -1036,6 +1035,137 @@ impl ReplaceDecls for TyExpressionVariant {
                 Return(stmt) => stmt.replace_decls(decl_mapping, handler, ctx)?,
             }
 
+            Ok(())
+        })
+    }
+}
+
+impl TypeCheckFinalization for TyExpressionVariant {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            match self {
+                TyExpressionVariant::Literal(_) => {}
+                TyExpressionVariant::FunctionApplication {
+                    arguments,
+                    ..
+                } => {
+                    for (_, arg) in arguments.iter_mut() {
+                        let _ = arg.type_check_finalize(handler, ctx);
+                    }
+                }
+                TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
+                    lhs.type_check_finalize(handler, ctx)?;
+                    rhs.type_check_finalize(handler, ctx)?
+                }
+                TyExpressionVariant::ConstantExpression { const_decl, .. } => {
+                    const_decl.type_check_finalize(handler, ctx)?
+                }
+                TyExpressionVariant::VariableExpression { .. } => {}
+                TyExpressionVariant::Tuple { fields } => {
+                    for field in fields.iter_mut() {
+                        field.type_check_finalize(handler, ctx)?
+                    }
+                }
+                TyExpressionVariant::Array { contents, .. } => {
+                    for elem in contents.iter_mut() {
+                        elem.type_check_finalize(handler, ctx)?
+                    }
+                }
+                TyExpressionVariant::ArrayIndex { prefix, index } => {
+                    prefix.type_check_finalize(handler, ctx)?;
+                    index.type_check_finalize(handler, ctx)?;
+                }
+                TyExpressionVariant::StructExpression { fields, .. } => {
+                    for field in fields.iter_mut() {
+                        field.type_check_finalize(handler, ctx)?;
+                    }
+                }
+                TyExpressionVariant::CodeBlock(block) => {
+                    block.type_check_finalize(handler, ctx)?;
+                }
+                TyExpressionVariant::FunctionParameter => {}
+                TyExpressionVariant::MatchExp {
+                    desugared,
+                    scrutinees,
+                } => {
+                    desugared.type_check_finalize(handler, ctx)?;
+                    for scrutinee in scrutinees.iter_mut() {
+                        scrutinee.type_check_finalize(handler, ctx)?
+                    }
+                }
+                TyExpressionVariant::IfExp {
+                    condition,
+                    then,
+                    r#else,
+                } => {
+                    condition.type_check_finalize(handler, ctx)?;
+                    then.type_check_finalize(handler, ctx)?;
+                    if let Some(ref mut r#else) = r#else {
+                        r#else.type_check_finalize(handler, ctx)?;
+                    }
+                }
+                TyExpressionVariant::AsmExpression { .. } => {}
+                TyExpressionVariant::StructFieldAccess { prefix, .. } => {
+                    prefix.type_check_finalize(handler, ctx)?;
+                }
+                TyExpressionVariant::TupleElemAccess { prefix, .. } => {
+                    prefix.type_check_finalize(handler, ctx)?;
+                }
+                TyExpressionVariant::EnumInstantiation { contents, .. } => {
+                    for expr in contents.iter_mut() {
+                        expr.type_check_finalize(handler, ctx)?
+                    }
+                }
+                TyExpressionVariant::AbiCast { address, .. } => {
+                    address.type_check_finalize(handler, ctx)?;
+                }
+                TyExpressionVariant::StorageAccess(_) => {
+                    todo!();
+                }
+                TyExpressionVariant::IntrinsicFunction(kind) => {
+                    for expr in kind.arguments.iter_mut() {
+                        expr.type_check_finalize(handler, ctx)?;
+                    }
+                }
+                TyExpressionVariant::AbiName(_) => {
+                    todo!();
+                }
+                TyExpressionVariant::EnumTag { exp } => {
+                    exp.type_check_finalize(handler, ctx)?;
+                }
+                TyExpressionVariant::UnsafeDowncast { exp, .. } => {
+                    exp.type_check_finalize(handler, ctx)?;
+                }
+                TyExpressionVariant::WhileLoop { condition, body } => {
+                    condition.type_check_finalize(handler, ctx)?;
+                    body.type_check_finalize(handler, ctx)?;
+                }
+                TyExpressionVariant::Break => {}
+                TyExpressionVariant::Continue => {}
+                TyExpressionVariant::Reassignment(node) => {
+                    for lhs_index in node.lhs_indices.iter_mut() {
+                        match lhs_index {
+                            ProjectionKind::StructField { name: _ } => {}
+                            ProjectionKind::TupleField {
+                                index: _,
+                                index_span: _,
+                            } => {}
+                            ProjectionKind::ArrayIndex {
+                                index,
+                                index_span: _,
+                            } => index.expression.type_check_finalize(handler, ctx)?,
+                        }
+                    }
+                    node.type_check_finalize(handler, ctx)?;
+                }
+                TyExpressionVariant::Return(node) => {
+                    node.type_check_finalize(handler, ctx)?;
+                }
+            }
             Ok(())
         })
     }

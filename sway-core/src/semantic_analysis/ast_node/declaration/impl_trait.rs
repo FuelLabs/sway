@@ -11,17 +11,18 @@ use crate::{
     engine_threading::*,
     language::{
         parsed::*,
-        ty::{self, TyImplItem, TyTraitInterfaceItem, TyTraitItem},
+        ty::{self, TyImplItem, TyImplTrait, TyTraitInterfaceItem, TyTraitItem},
         *,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
     semantic_analysis::{
         type_check_context::EnforceTypeArguments, AbiMode, ConstShadowingMode, TypeCheckContext,
+        TypeCheckFinalization, TypeCheckFinalizationContext,
     },
     type_system::*,
 };
 
-impl ty::TyImplTrait {
+impl TyImplTrait {
     pub(crate) fn type_check_impl_trait(
         handler: &Handler,
         mut ctx: TypeCheckContext,
@@ -389,6 +390,23 @@ impl ty::TyImplTrait {
                         // Already processed.
                     }
                     _ => unreachable!(),
+                }
+            }
+
+            let mut finalizing_ctx = TypeCheckFinalizationContext::new(ctx.engines, ctx.by_ref());
+            for item in new_items {
+                match item {
+                    TyTraitItem::Fn(decl_ref) => {
+                        let mut fn_decl = decl_engine.get_function(decl_ref.id());
+                        let _ = fn_decl.type_check_finalize(handler, &mut finalizing_ctx);
+                        decl_engine.replace(*decl_ref.id(), fn_decl);
+                    }
+                    TyTraitItem::Constant(decl_ref) => {
+                        let mut const_decl = decl_engine.get_constant(decl_ref.id());
+                        let _ = const_decl.type_check_finalize(handler, &mut finalizing_ctx);
+                        decl_engine.replace(*decl_ref.id(), const_decl);
+                    }
+                    _ => {}
                 }
             }
             Ok(impl_trait)
@@ -1231,4 +1249,19 @@ fn handle_supertraits(
 
         Ok((interface_surface_item_ids, impld_item_refs))
     })
+}
+
+impl TypeCheckFinalization for TyImplTrait {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            for item in self.items.iter_mut() {
+                let _ = item.type_check_finalize(handler, ctx);
+            }
+            Ok(())
+        })
+    }
 }

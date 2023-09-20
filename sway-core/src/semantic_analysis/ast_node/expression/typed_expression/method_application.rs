@@ -52,7 +52,7 @@ pub(crate) fn type_check_method_application(
     let (original_decl_ref, call_path_typeid) = resolve_method_name(
         handler,
         ctx.by_ref(),
-        &mut method_name_binding,
+        &method_name_binding,
         args_buf.clone(),
     )?;
 
@@ -330,7 +330,7 @@ pub(crate) fn type_check_method_application(
         .parameters
         .iter()
         .map(|m| m.name.clone())
-        .zip(args_buf.iter().map(|a| a.clone()))
+        .zip(args_buf.iter().cloned())
         .collect::<Vec<_>>();
 
     let mut exp = ty::TyExpression {
@@ -368,7 +368,7 @@ pub(crate) fn type_check_method_application(
 fn unify_arguments_and_parameters(
     handler: &Handler,
     ctx: TypeCheckContext,
-    arguments: &Vec<(BaseIdent, ty::TyExpression)>,
+    arguments: &[(BaseIdent, ty::TyExpression)],
     parameters: &[ty::TyFunctionParameter],
 ) -> Result<Vec<(Ident, ty::TyExpression)>, ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -376,7 +376,7 @@ fn unify_arguments_and_parameters(
     let mut typed_arguments_and_names = vec![];
 
     handler.scope(|handler| {
-        for ((_, arg), param) in arguments.into_iter().zip(parameters.iter()) {
+        for ((_, arg), param) in arguments.iter().zip(parameters.iter()) {
             // unify the type of the argument with the type of the param
             let unify_res = handler.scope(|handler| {
                 type_engine.unify_with_self(
@@ -408,7 +408,7 @@ fn unify_arguments_and_parameters(
 pub(crate) fn resolve_method_name(
     handler: &Handler,
     mut ctx: TypeCheckContext,
-    method_name: &mut TypeBinding<MethodName>,
+    method_name: &TypeBinding<MethodName>,
     arguments: VecDeque<ty::TyExpression>,
 ) -> Result<(DeclRefFunction, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -569,7 +569,7 @@ pub(crate) fn monomorphize_method_application(
 
         // unify the types of the arguments with the types of the parameters from the function declaration
         *arguments =
-            unify_arguments_and_parameters(handler, ctx.by_ref(), &arguments, &method.parameters)?;
+            unify_arguments_and_parameters(handler, ctx.by_ref(), arguments, &method.parameters)?;
 
         // Handle the trait constraints. This includes checking to see if the trait
         // constraints are satisfied and replacing old decl ids based on the

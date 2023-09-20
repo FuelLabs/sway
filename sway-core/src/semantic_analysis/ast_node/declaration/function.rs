@@ -275,6 +275,19 @@ fn unify_return_statements(
     })
 }
 
+impl TypeCheckFinalization for ty::TyFunctionDecl {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            let _ = self.body.type_check_finalize(handler, ctx);
+            Ok(())
+        })
+    }
+}
+
 #[test]
 fn test_function_selector_behavior() {
     use crate::language::Visibility;

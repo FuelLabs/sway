@@ -81,7 +81,7 @@ impl ty::TyExpression {
         let (mut decl_ref, _) = resolve_method_name(
             handler,
             ctx.by_ref(),
-            &mut method_name_binding,
+            &method_name_binding,
             arguments.clone(),
         )?;
         decl_ref = monomorphize_method(
