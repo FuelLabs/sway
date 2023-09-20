@@ -17,7 +17,7 @@ impl u64 {
     /// }
     /// ```
     pub fn as_u256(self) -> u256 {
-        let input = (0, 0, 0, self);
+        let input = (0u64, 0u64, 0u64, self);
         asm(input: input) {
             input: u256
         }
@@ -270,28 +270,6 @@ impl u32 {
         }
     }
 
-    /// Extends a `u32` to a `u256`.
-    ///
-    /// # Returns
-    ///
-    /// * [u256] - The converted `u32` value.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// fn foo() {
-    ///     let val = 2u32;
-    ///     let result = val.as_u256();
-    ///     assert(result == 0x0000000000000000000000000000000000000000000000000000000000000002u256);
-    /// }
-    /// ```
-    pub fn as_u256(self) -> u256 {
-        let input = (0, 0, 0, self);
-        asm(input: input) {
-            input: u256
-        }
-    }
-
     /// Converts the `u32` to a sequence of little-endian bytes.
     /// 
     /// # Returns
@@ -441,6 +419,31 @@ impl u32 {
     }
 }
 
+// TODO: This must be in a seperate impl block until https://github.com/FuelLabs/sway/issues/1548 is resolved
+impl u32 {
+    /// Extends a `u32` to a `u256`.
+    ///
+    /// # Returns
+    ///
+    /// * [u256] - The converted `u32` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val = 2u32;
+    ///     let result = val.as_u256();
+    ///     assert(result == 0x0000000000000000000000000000000000000000000000000000000000000002u256);
+    /// }
+    /// ```
+    pub fn as_u256(self) -> u256 {
+        let input = (0u64, 0u64, 0u64, self.as_u64());
+        asm(input: input) {
+            input: u256
+        }
+    }
+}
+
 impl u16 {
     /// Extends a `u16` to a `u32`.
     ///
@@ -481,28 +484,6 @@ impl u16 {
     pub fn as_u64(self) -> u64 {
         asm(input: self) {
             input: u64
-        }
-    }
-
-    /// Extends a `u16` to a `u256`.
-    ///
-    /// # Returns
-    ///
-    /// * [u256] - The converted `u16` value.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// fn foo() {
-    ///     let val = 2u16;
-    ///     let result = val.as_u256();
-    ///     assert(result == 0x0000000000000000000000000000000000000000000000000000000000000002u256);
-    /// }
-    /// ```
-    pub fn as_u256(self) -> u256 {
-        let input = (0, 0, 0, self);
-        asm(input: input) {
-            input: u256
         }
     }
 
@@ -626,6 +607,31 @@ impl u16 {
     }
 }
 
+// TODO: This must be in a seperate impl block until https://github.com/FuelLabs/sway/issues/1548 is resolved
+impl u16 {
+    /// Extends a `u16` to a `u256`.
+    ///
+    /// # Returns
+    ///
+    /// * [u256] - The converted `u16` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val = 2u16;
+    ///     let result = val.as_u256();
+    ///     assert(result == 0x0000000000000000000000000000000000000000000000000000000000000002u256);
+    /// }
+    /// ```
+    pub fn as_u256(self) -> u256 {
+        let input = (0u64, 0u64, 0u64, self.as_u64());
+        asm(input: input) {
+            input: u256
+        }
+    }
+}
+
 impl u8 {
     /// Extends a `u8` to a `u16`.
     ///
@@ -689,7 +695,10 @@ impl u8 {
             input: u64
         }
     }
+}
 
+// TODO: This must be in a seperate impl block until https://github.com/FuelLabs/sway/issues/1548 is resolved
+impl u8 {
     /// Extends a `u8` to a `u256`.
     ///
     /// # Returns
@@ -706,7 +715,7 @@ impl u8 {
     /// }
     /// ```
     pub fn as_u256(self) -> u256 {
-        let input = (0, 0, 0, self);
+        let input = (0u64, 0u64, 0u64, self.as_u64());
         asm(input: input) {
             input: u256
         }
