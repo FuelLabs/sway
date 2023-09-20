@@ -1235,11 +1235,39 @@ impl<'a> TypeCheckContext<'a> {
     where
         T: MonomorphizeHelper + SubstTypes,
     {
+        let type_mapping = self.prepare_type_subst_map_for_monomorphize(
+            handler,
+            value,
+            type_arguments,
+            enforce_type_arguments,
+            call_site_span,
+            mod_path,
+        )?;
+        value.subst(&type_mapping, self.engines);
+        Ok(())
+    }
+
+    /// Given a `value` of type `T` that is able to be monomorphized and a set
+    /// of `type_arguments`, prepare a `TypeSubstMap` that can be used as an
+    /// input for monomorphization.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn prepare_type_subst_map_for_monomorphize<T>(
+        &mut self,
+        handler: &Handler,
+        value: &T,
+        type_arguments: &mut [TypeArgument],
+        enforce_type_arguments: EnforceTypeArguments,
+        call_site_span: &Span,
+        mod_path: &Path,
+    ) -> Result<TypeSubstMap, ErrorEmitted>
+    where
+        T: MonomorphizeHelper + SubstTypes,
+    {
         match (
             value.type_parameters().is_empty(),
             type_arguments.is_empty(),
         ) {
-            (true, true) => Ok(()),
+            (true, true) => Ok(TypeSubstMap::default()),
             (false, true) => {
                 if let EnforceTypeArguments::Yes = enforce_type_arguments {
                     return Err(handler.emit_err(CompileError::NeedsTypeArguments {
@@ -1249,8 +1277,7 @@ impl<'a> TypeCheckContext<'a> {
                 }
                 let type_mapping =
                     TypeSubstMap::from_type_parameters(self.engines, value.type_parameters());
-                value.subst(&type_mapping, self.engines);
-                Ok(())
+                Ok(type_mapping)
             }
             (true, false) => {
                 let type_arguments_span = type_arguments
@@ -1305,8 +1332,7 @@ impl<'a> TypeCheckContext<'a> {
                         .map(|type_arg| type_arg.type_id)
                         .collect(),
                 );
-                value.subst(&type_mapping, self.engines);
-                Ok(())
+                Ok(type_mapping)
             }
         }
     }
