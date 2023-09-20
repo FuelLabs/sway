@@ -7,7 +7,7 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::{ty::*, Literal},
-    semantic_analysis::TypeCheckContext,
+    semantic_analysis::{TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext},
     type_system::*,
     types::*,
 };
@@ -96,6 +96,21 @@ impl DebugWithEngines for TyExpression {
             engines.help_out(&self.expression),
             engines.help_out(self.return_type)
         )
+    }
+}
+
+impl TypeCheckFinalization for TyExpression {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        let res = self.expression.type_check_finalize(handler, ctx);
+        if let TyExpressionVariant::FunctionApplication { fn_ref, .. } = &self.expression {
+            let method = ctx.engines.de().get_function(fn_ref);
+            self.return_type = method.return_type.type_id;
+        }
+        res
     }
 }
 

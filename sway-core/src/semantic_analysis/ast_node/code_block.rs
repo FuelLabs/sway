@@ -99,3 +99,18 @@ impl ty::TyCodeBlock {
         Ok((typed_code_block, block_type))
     }
 }
+
+impl TypeCheckFinalization for ty::TyCodeBlock {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            for node in self.contents.iter_mut() {
+                let _ = node.type_check_finalize(handler, ctx);
+            }
+            Ok(())
+        })
+    }
+}

@@ -76,6 +76,12 @@ pub struct TypeCheckContext<'a> {
     /// disallowing functions from being defined inside of another function
     /// body).
     disallow_functions: bool,
+
+    /// Indicates when semantic analysis should  be deferred for function/method applications.
+    /// This is currently used to perform the final type checking and monomorphization in the
+    /// case of impl trait methods after the initial type checked AST is constructed, and
+    /// after we perform a dependency analysis on the tree.
+    defer_monomorphization: bool,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -105,6 +111,7 @@ impl<'a> TypeCheckContext<'a> {
             purity: Purity::default(),
             kind: TreeType::Contract,
             disallow_functions: false,
+            defer_monomorphization: false,
         }
     }
 
@@ -129,6 +136,7 @@ impl<'a> TypeCheckContext<'a> {
             kind: self.kind.clone(),
             engines: self.engines,
             disallow_functions: self.disallow_functions,
+            defer_monomorphization: self.defer_monomorphization,
         }
     }
 
@@ -146,6 +154,7 @@ impl<'a> TypeCheckContext<'a> {
             kind: self.kind,
             engines: self.engines,
             disallow_functions: self.disallow_functions,
+            defer_monomorphization: self.defer_monomorphization,
         }
     }
 
@@ -239,6 +248,15 @@ impl<'a> TypeCheckContext<'a> {
         }
     }
 
+    /// Map this `TypeCheckContext` instance to a new one with
+    /// `defer_method_application` set to `true`.
+    pub(crate) fn with_defer_monomorphization(self) -> Self {
+        Self {
+            defer_monomorphization: true,
+            ..self
+        }
+    }
+
     // A set of accessor methods. We do this rather than making the fields `pub` in order to ensure
     // that these are only updated via the `with_*` methods that produce a new `TypeCheckContext`.
 
@@ -277,6 +295,10 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn functions_disallowed(&self) -> bool {
         self.disallow_functions
+    }
+
+    pub(crate) fn defer_monomorphization(&self) -> bool {
+        self.defer_monomorphization
     }
 
     // Provide some convenience functions around the inner context.
@@ -1235,11 +1257,39 @@ impl<'a> TypeCheckContext<'a> {
     where
         T: MonomorphizeHelper + SubstTypes,
     {
+        let type_mapping = self.prepare_type_subst_map_for_monomorphize(
+            handler,
+            value,
+            type_arguments,
+            enforce_type_arguments,
+            call_site_span,
+            mod_path,
+        )?;
+        value.subst(&type_mapping, self.engines);
+        Ok(())
+    }
+
+    /// Given a `value` of type `T` that is able to be monomorphized and a set
+    /// of `type_arguments`, prepare a `TypeSubstMap` that can be used as an
+    /// input for monomorphization.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn prepare_type_subst_map_for_monomorphize<T>(
+        &mut self,
+        handler: &Handler,
+        value: &T,
+        type_arguments: &mut [TypeArgument],
+        enforce_type_arguments: EnforceTypeArguments,
+        call_site_span: &Span,
+        mod_path: &Path,
+    ) -> Result<TypeSubstMap, ErrorEmitted>
+    where
+        T: MonomorphizeHelper + SubstTypes,
+    {
         match (
             value.type_parameters().is_empty(),
             type_arguments.is_empty(),
         ) {
-            (true, true) => Ok(()),
+            (true, true) => Ok(TypeSubstMap::default()),
             (false, true) => {
                 if let EnforceTypeArguments::Yes = enforce_type_arguments {
                     return Err(handler.emit_err(CompileError::NeedsTypeArguments {
@@ -1249,8 +1299,7 @@ impl<'a> TypeCheckContext<'a> {
                 }
                 let type_mapping =
                     TypeSubstMap::from_type_parameters(self.engines, value.type_parameters());
-                value.subst(&type_mapping, self.engines);
-                Ok(())
+                Ok(type_mapping)
             }
             (true, false) => {
                 let type_arguments_span = type_arguments
@@ -1305,8 +1354,7 @@ impl<'a> TypeCheckContext<'a> {
                         .map(|type_arg| type_arg.type_id)
                         .collect(),
                 );
-                value.subst(&type_mapping, self.engines);
-                Ok(())
+                Ok(type_mapping)
             }
         }
     }

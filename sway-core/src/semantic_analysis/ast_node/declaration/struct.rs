@@ -86,3 +86,13 @@ impl ty::TyStructField {
         Ok(field)
     }
 }
+
+impl TypeCheckFinalization for ty::TyStructDecl {
+    fn type_check_finalize(
+        &mut self,
+        _handler: &Handler,
+        _ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
+    }
+}

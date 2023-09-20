@@ -1,15 +1,17 @@
 use std::hash::{Hash, Hasher};
 
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     decl_engine::{
-        DeclRefConstant, DeclRefFunction, DeclRefTraitFn, DeclRefTraitType,
+        DeclEngineReplace, DeclRefConstant, DeclRefFunction, DeclRefTraitFn, DeclRefTraitType,
         ReplaceFunctionImplementingType,
     },
     engine_threading::*,
     language::{parsed, Visibility},
     semantic_analysis::type_check_context::MonomorphizeHelper,
+    semantic_analysis::{TypeCheckFinalization, TypeCheckFinalizationContext},
     transform,
     type_system::*,
 };
@@ -134,6 +136,32 @@ impl HashWithEngines for TyTraitItem {
             TyTraitItem::Constant(const_decl) => const_decl.hash(state, engines),
             TyTraitItem::Type(type_decl) => type_decl.hash(state, engines),
         }
+    }
+}
+
+impl TypeCheckFinalization for TyTraitItem {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        let decl_engine = ctx.engines.de();
+        match self {
+            TyTraitItem::Fn(node) => {
+                let mut item_fn = decl_engine.get_function(node);
+                item_fn.type_check_finalize(handler, ctx)?;
+                decl_engine.replace(*node.id(), item_fn);
+            }
+            TyTraitItem::Constant(node) => {
+                let mut item_const = decl_engine.get_constant(node);
+                item_const.type_check_finalize(handler, ctx)?;
+                decl_engine.replace(*node.id(), item_const);
+            }
+            TyTraitItem::Type(_node) => {
+                // Nothing to finalize
+            }
+        }
+        Ok(())
     }
 }
 

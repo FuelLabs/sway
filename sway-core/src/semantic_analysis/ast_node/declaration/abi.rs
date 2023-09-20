@@ -5,7 +5,9 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     decl_engine::{DeclEngineInsert, DeclId},
+    language::ty::TyAbiDecl,
     namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
+    semantic_analysis::{TypeCheckFinalization, TypeCheckFinalizationContext},
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 
@@ -382,6 +384,21 @@ impl ty::TyAbiDecl {
                 IsImplSelf::No,
                 IsExtendingExistingImpl::No,
             );
+            Ok(())
+        })
+    }
+}
+
+impl TypeCheckFinalization for TyAbiDecl {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            for item in self.items.iter_mut() {
+                let _ = item.type_check_finalize(handler, ctx);
+            }
             Ok(())
         })
     }
