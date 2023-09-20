@@ -3,7 +3,10 @@ use sway_types::{Named, Spanned};
 
 use crate::{
     decl_engine::{DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType},
-    language::{parsed, ty::{self, TyDecl}},
+    language::{
+        parsed,
+        ty::{self, TyDecl},
+    },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
     semantic_analysis::{
         type_check_context::EnforceTypeArguments, TypeCheckContext, TypeCheckFinalization,
@@ -409,7 +412,7 @@ impl TypeCheckFinalization for TyDecl {
                 let mut enum_decl = ctx.engines.de().get_enum(&node.decl_id);
                 enum_decl.type_check_finalize(handler, ctx)?;
             }
-            TyDecl::EnumVariantDecl(_) => {},
+            TyDecl::EnumVariantDecl(_) => {}
             TyDecl::ImplTrait(node) => {
                 let mut impl_trait = decl_engine.get_impl_trait(&node.decl_id);
                 impl_trait.type_check_finalize(handler, ctx)?;
@@ -428,8 +431,7 @@ impl TypeCheckFinalization for TyDecl {
                 let mut type_alias_decl = decl_engine.get_type_alias(&node.decl_id);
                 type_alias_decl.type_check_finalize(handler, ctx)?;
             }
-            TyDecl::TraitTypeDecl(_node) => {
-            }
+            TyDecl::TraitTypeDecl(_node) => {}
         }
 
         Ok(())

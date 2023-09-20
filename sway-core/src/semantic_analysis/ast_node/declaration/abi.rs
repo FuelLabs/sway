@@ -5,8 +5,9 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     decl_engine::{DeclEngineInsert, DeclId},
+    language::ty::TyAbiDecl,
     namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
-    semantic_analysis::{TypeCheckFinalization, TypeCheckFinalizationContext}, language::ty::TyAbiDecl,
+    semantic_analysis::{TypeCheckFinalization, TypeCheckFinalizationContext},
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 

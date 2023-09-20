@@ -235,7 +235,8 @@ impl TyImplTrait {
         let mut ctx = ctx
             .scoped(&mut impl_namespace)
             .with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
-            .allow_functions();
+            .allow_functions()
+            .with_defer_monomorphization();
 
         // create the trait name
         let trait_name = CallPath {
@@ -366,7 +367,7 @@ impl TyImplTrait {
                 implementing_for,
             };
 
-            // Now lets type check the body of the functions.
+            // Now lets type check the body of the functions (while deferring full monomorphization of function applications).
             let new_items = &impl_trait.items;
             for (item, new_item) in items.into_iter().zip(new_items) {
                 match (item, new_item) {
