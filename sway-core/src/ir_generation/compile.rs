@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::DeclRefFunction,
+    decl_engine::{DeclId, DeclRefFunction},
     language::{ty, Visibility},
     metadata::MetadataManager,
     semantic_analysis::namespace,
@@ -24,7 +24,7 @@ use std::collections::HashMap;
 pub(super) fn compile_script(
     engines: &Engines,
     context: &mut Context,
-    main_function: &ty::TyFunctionDecl,
+    main_function: &DeclId<ty::TyFunctionDecl>,
     namespace: &namespace::Module,
     declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
@@ -71,7 +71,7 @@ pub(super) fn compile_script(
 pub(super) fn compile_predicate(
     engines: &Engines,
     context: &mut Context,
-    main_function: &ty::TyFunctionDecl,
+    main_function: &DeclId<ty::TyFunctionDecl>,
     namespace: &namespace::Module,
     declarations: &[ty::TyDecl],
     logged_types: &HashMap<TypeId, LogId>,
@@ -117,7 +117,7 @@ pub(super) fn compile_predicate(
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_contract(
     context: &mut Context,
-    abi_entries: &[ty::TyFunctionDecl],
+    abi_entries: &[DeclId<ty::TyFunctionDecl>],
     namespace: &namespace::Module,
     declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
@@ -298,6 +298,7 @@ fn compile_declarations(
             | ty::TyDecl::GenericTypeForFunctionScope { .. }
             | ty::TyDecl::StorageDecl { .. }
             | ty::TyDecl::TypeAliasDecl { .. }
+            | ty::TyDecl::TraitTypeDecl { .. }
             | ty::TyDecl::ErrorRecovery(..) => (),
         }
     }
@@ -343,18 +344,19 @@ pub(super) fn compile_entry_function(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    ast_fn_decl: &ty::TyFunctionDecl,
+    ast_fn_decl: &DeclId<ty::TyFunctionDecl>,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_decl_ref: Option<DeclRefFunction>,
 ) -> Result<Function, Vec<CompileError>> {
     let is_entry = true;
+    let ast_fn_decl = engines.de().get_function(ast_fn_decl);
     compile_function(
         engines,
         context,
         md_mgr,
         module,
-        ast_fn_decl,
+        &ast_fn_decl,
         logged_types_map,
         messages_types_map,
         is_entry,
@@ -375,13 +377,13 @@ pub(super) fn compile_tests(
 ) -> Result<Vec<Function>, Vec<CompileError>> {
     test_fns
         .iter()
-        .map(|(ast_fn_decl, decl_ref)| {
+        .map(|(_ast_fn_decl, decl_ref)| {
             compile_entry_function(
                 engines,
                 context,
                 md_mgr,
                 module,
-                ast_fn_decl,
+                decl_ref.id(),
                 logged_types_map,
                 messages_types_map,
                 Some(decl_ref.clone()),
@@ -539,13 +541,14 @@ fn compile_abi_method(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    ast_fn_decl: &ty::TyFunctionDecl,
+    ast_fn_decl: &DeclId<ty::TyFunctionDecl>,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     engines: &Engines,
 ) -> Result<Function, Vec<CompileError>> {
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
     let handler = Handler::default();
+    let ast_fn_decl = engines.de().get_function(ast_fn_decl);
     let get_selector_result = ast_fn_decl.to_fn_selector_value(&handler, engines);
     let (errors, _warnings) = handler.consume();
     let selector = match get_selector_result.ok() {
@@ -573,7 +576,7 @@ fn compile_abi_method(
         context,
         md_mgr,
         module,
-        ast_fn_decl,
+        &ast_fn_decl,
         is_entry,
         Some(selector),
         logged_types_map,

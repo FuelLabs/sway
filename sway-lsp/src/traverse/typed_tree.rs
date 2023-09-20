@@ -88,6 +88,7 @@ impl Parse for ty::TyDecl {
             ty::TyDecl::ErrorRecovery(_, _) => {}
             ty::TyDecl::StorageDecl(decl) => decl.parse(ctx),
             ty::TyDecl::TypeAliasDecl(decl) => decl.parse(ctx),
+            ty::TyDecl::TraitTypeDecl(decl) => decl.parse(ctx),
         }
     }
 }
@@ -200,6 +201,7 @@ impl Parse for ty::TyExpression {
                 arguments,
                 fn_ref,
                 type_binding,
+                call_path_typeid,
                 ..
             } => {
                 if let Some(type_binding) = type_binding {
@@ -223,8 +225,10 @@ impl Parse for ty::TyExpression {
                         if let Some(mut token) =
                             ctx.tokens.try_get_mut(&ctx.ident(last)).try_unwrap()
                         {
-                            token.typed = Some(TypedAstToken::Ident(impl_type_name.clone()));
-                            token.type_def = Some(TypeDefinition::Ident(impl_type_name));
+                            if let Some(call_path_typeid) = call_path_typeid {
+                                token.typed = Some(TypedAstToken::Ident(impl_type_name.clone()));
+                                token.type_def = Some(TypeDefinition::TypeId(*call_path_typeid));
+                            }
                         }
                         prefixes
                     } else {
@@ -594,6 +598,13 @@ impl Parse for ty::ConstantDecl {
     }
 }
 
+impl Parse for ty::TraitTypeDecl {
+    fn parse(&self, ctx: &ParseContext) {
+        let type_decl = ctx.engines.de().get_type(&self.decl_id);
+        collect_trait_type_decl(ctx, &type_decl, &self.decl_span);
+    }
+}
+
 impl Parse for ty::FunctionDecl {
     fn parse(&self, ctx: &ParseContext) {
         let func_decl = ctx.engines.de().get_function(&self.decl_id);
@@ -667,6 +678,10 @@ impl Parse for ty::TraitDecl {
                 ty::TyTraitInterfaceItem::Constant(decl_ref) => {
                     let constant = ctx.engines.de().get_constant(decl_ref);
                     collect_const_decl(ctx, &constant, &decl_ref.span());
+                }
+                ty::TyTraitInterfaceItem::Type(decl_ref) => {
+                    let trait_type = ctx.engines.de().get_type(decl_ref);
+                    collect_trait_type_decl(ctx, &trait_type, &decl_ref.span());
                 }
             });
         trait_decl.supertraits.iter().for_each(|supertrait| {
@@ -772,6 +787,10 @@ impl Parse for ty::ImplTrait {
                 let constant = ctx.engines.de().get_constant(const_ref);
                 collect_const_decl(ctx, &constant, &const_ref.span());
             }
+            ty::TyTraitItem::Type(type_ref) => {
+                let trait_type = ctx.engines.de().get_type(type_ref);
+                collect_trait_type_decl(ctx, &trait_type, &type_ref.span());
+            }
         });
         collect_type_argument(ctx, &implementing_for);
 
@@ -816,6 +835,10 @@ impl Parse for ty::AbiDecl {
                 ty::TyTraitInterfaceItem::Constant(const_ref) => {
                     let constant = ctx.engines.de().get_constant(const_ref);
                     collect_const_decl(ctx, &constant, &const_ref.span());
+                }
+                ty::TyTraitInterfaceItem::Type(type_ref) => {
+                    let trait_type = ctx.engines.de().get_type(type_ref);
+                    collect_trait_type_decl(ctx, &trait_type, &type_ref.span());
                 }
             });
         abi_decl.supertraits.iter().for_each(|supertrait| {
@@ -1189,6 +1212,20 @@ fn collect_const_decl(ctx: &ParseContext, const_decl: &ty::TyConstantDecl, span:
     }
 }
 
+fn collect_trait_type_decl(ctx: &ParseContext, type_decl: &ty::TyTraitType, span: &Span) {
+    if let Some(mut token) = ctx
+        .tokens
+        .try_get_mut(&ctx.ident(&Ident::new(span.clone())))
+        .try_unwrap()
+    {
+        token.typed = Some(TypedAstToken::TypedTraitTypeDeclaration(type_decl.clone()));
+        token.type_def = Some(TypeDefinition::Ident(type_decl.name.clone()));
+    }
+    if let Some(ty) = &type_decl.ty {
+        ty.parse(ctx);
+    }
+}
+
 fn collect_type_id(
     ctx: &ParseContext,
     type_id: TypeId,
@@ -1251,6 +1288,7 @@ fn collect_type_id(
         TypeInfo::Custom {
             type_arguments,
             call_path: name,
+            root_type_id: _,
         } => {
             if let Some(token) = ctx
                 .tokens

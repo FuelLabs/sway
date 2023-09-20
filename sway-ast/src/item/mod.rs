@@ -128,3 +128,23 @@ impl Spanned for FnSignature {
         Span::join(start, end)
     }
 }
+
+#[derive(Clone, Debug, Serialize)]
+pub struct TraitType {
+    pub name: Ident,
+    pub type_token: TypeToken,
+    pub eq_token_opt: Option<EqToken>,
+    pub ty_opt: Option<Ty>,
+    pub semicolon_token: SemicolonToken,
+}
+
+impl Spanned for TraitType {
+    fn span(&self) -> Span {
+        let start = self.type_token.span();
+        let end = match &self.ty_opt {
+            Some(ty_opt) => ty_opt.span(),
+            None => self.name.span(),
+        };
+        Span::join(start, end)
+    }
+}

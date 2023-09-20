@@ -1,5 +1,6 @@
 use std::{
     collections::HashSet,
+    fmt,
     hash::{Hash, Hasher},
 };
 
@@ -39,6 +40,12 @@ pub struct TyFunctionDecl {
     pub purity: Purity,
     pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
     pub is_trait_method_dummy: bool,
+}
+
+impl DebugWithEngines for TyFunctionDecl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, _engines: &Engines) -> fmt::Result {
+        write!(f, "{:?}", self.name)
+    }
 }
 
 impl Named for TyFunctionDecl {

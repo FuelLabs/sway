@@ -7,6 +7,11 @@ use std::collections::HashMap;
 use sway_error::error::CompileError;
 use sway_types::Spanned;
 
+const UNIFY_ARGS_HELP_TEXT: &str =
+    "The argument that has been provided to this function's type does \
+not match the declared type of the parameter in the function \
+declaration.";
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
     handler: &Handler,
@@ -47,7 +52,8 @@ pub(crate) fn instantiate_function_application(
         false,
     )?;
 
-    let typed_arguments = type_check_arguments(handler, ctx.by_ref(), arguments)?;
+    let typed_arguments =
+        type_check_arguments(handler, ctx.by_ref(), arguments, &function_decl.parameters)?;
 
     let typed_arguments_with_names = unify_arguments_and_parameters(
         handler,
@@ -84,6 +90,7 @@ pub(crate) fn instantiate_function_application(
             selector: None,
             type_binding: Some(call_path_binding.strip_inner()),
             call_path_typeid: None,
+            deferred_monomorphization: false,
         },
         return_type: return_type.type_id,
         span,
@@ -97,18 +104,27 @@ fn type_check_arguments(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     arguments: Vec<parsed::Expression>,
+    parameters: &[ty::TyFunctionParameter],
 ) -> Result<Vec<ty::TyExpression>, ErrorEmitted> {
-    let type_engine = ctx.engines.te();
     let engines = ctx.engines();
+
+    // Sanity check before zipping arguments and parameters
+    if arguments.len() != parameters.len() {
+        return Err(handler.emit_err(CompileError::Internal(
+            "Arguments and parameters length are not equal.",
+            Span::dummy(),
+        )));
+    }
 
     handler.scope(|handler| {
         let typed_arguments = arguments
             .into_iter()
-            .map(|arg| {
+            .zip(parameters)
+            .map(|(arg, param)| {
                 let ctx = ctx
                     .by_ref()
-                    .with_help_text("")
-                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+                    .with_help_text(UNIFY_ARGS_HELP_TEXT)
+                    .with_type_annotation(param.type_argument.type_id);
                 ty::TyExpression::type_check(handler, ctx, arg.clone())
                     .unwrap_or_else(|err| ty::TyExpression::error(err, arg.span(), engines))
             })
@@ -141,9 +157,7 @@ fn unify_arguments_and_parameters(
                     arg.return_type,
                     param.type_argument.type_id,
                     &arg.span,
-                    "The argument that has been provided to this function's type does \
-            not match the declared type of the parameter in the function \
-            declaration.",
+                    UNIFY_ARGS_HELP_TEXT,
                     None,
                 );
                 Ok(())

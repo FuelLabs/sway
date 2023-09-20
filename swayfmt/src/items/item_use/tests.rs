@@ -25,3 +25,7 @@ fmt_test_item!(multiline_nested      "use foo::{
 fmt_test_item!(single_line_sort  "use foo::{bar, baz, Quux::{a, b, C}};",
           out_of_order      "use foo::{baz, Quux::{b, a, C}, bar};"
 );
+
+fmt_test_item!(single_import_without_braces      "use std::tx::tx_id;",
+          braced_single_import      "use std::tx::{tx_id};"
+);

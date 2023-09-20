@@ -2,7 +2,7 @@ use sway_types::integer_bits::IntegerBits;
 
 use crate::{
     asm_generation::EvmAbiResult,
-    decl_engine::DeclEngine,
+    decl_engine::{DeclEngine, DeclId},
     language::ty::{TyFunctionDecl, TyProgram, TyProgramKind},
     Engines, TypeArgument, TypeEngine, TypeId, TypeInfo,
 };
@@ -135,6 +135,10 @@ pub fn abi_str(type_info: &TypeInfo, type_engine: &TypeEngine, decl_engine: &Dec
             format!("__slice {}", abi_str_type_arg(ty, type_engine, decl_engine))
         }
         Alias { ty, .. } => abi_str_type_arg(ty, type_engine, decl_engine),
+        TraitType {
+            name,
+            trait_type_id: _,
+        } => format!("trait type {}", name),
     }
 }
 
@@ -190,10 +194,11 @@ pub fn abi_param_type(
 }
 
 fn generate_abi_function(
-    fn_decl: &TyFunctionDecl,
+    fn_decl_id: &DeclId<TyFunctionDecl>,
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
 ) -> ethabi::operation::Operation {
+    let fn_decl = decl_engine.get_function(fn_decl_id);
     // A list of all `ethabi::Param`s needed for inputs
     let input_types = fn_decl
         .parameters

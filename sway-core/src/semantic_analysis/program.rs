@@ -1,5 +1,8 @@
 use crate::{
-    language::{parsed::ParseProgram, ty},
+    language::{
+        parsed::ParseProgram,
+        ty::{self, TyProgram},
+    },
     metadata::MetadataManager,
     semantic_analysis::{
         namespace::{self, Namespace},
@@ -10,7 +13,9 @@ use crate::{
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{Context, Module};
 
-impl ty::TyProgram {
+use super::{TypeCheckFinalization, TypeCheckFinalizationContext};
+
+impl TyProgram {
     /// Type-check the given parsed program to produce a typed program.
     ///
     /// The given `initial_namespace` acts as an initial state for each module within this program.
@@ -86,5 +91,20 @@ impl ty::TyProgram {
                 ..self
             }),
         }
+    }
+}
+
+impl TypeCheckFinalization for TyProgram {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            for node in self.root.all_nodes.iter_mut() {
+                let _ = node.type_check_finalize(handler, ctx);
+            }
+            Ok(())
+        })
     }
 }

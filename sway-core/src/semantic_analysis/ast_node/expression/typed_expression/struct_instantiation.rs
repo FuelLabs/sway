@@ -11,6 +11,9 @@ use crate::{
     type_system::*,
 };
 
+const UNIFY_STRUCT_FIELD_HELP_TEXT: &str =
+    "Struct field's type must match the type specified in its declaration.";
+
 pub(crate) fn struct_instantiation(
     handler: &Handler,
     mut ctx: TypeCheckContext,
@@ -57,10 +60,12 @@ pub(crate) fn struct_instantiation(
         (_, true) => TypeInfo::Custom {
             call_path: suffix.into(),
             type_arguments: None,
+            root_type_id: None,
         },
         (_, false) => TypeInfo::Custom {
             call_path: suffix.into(),
             type_arguments: Some(type_arguments),
+            root_type_id: None,
         },
     };
 
@@ -100,6 +105,18 @@ pub(crate) fn struct_instantiation(
     )?;
 
     unify_field_arguments_and_struct_fields(handler, ctx.by_ref(), &typed_fields, &struct_fields)?;
+
+    // Unify type id with type annotation so eventual generic type parameters are properly resolved.
+    // When a generic type parameter is not used in field arguments it should be unified with type annotation.
+    type_engine.unify(
+        handler,
+        engines,
+        type_id,
+        ctx.type_annotation(),
+        &span,
+        "Struct type must match the type specified in its declaration.",
+        None,
+    );
 
     // check that there are no extra fields
     for field in fields {
@@ -147,8 +164,8 @@ fn type_check_field_arguments(
             Some(field) => {
                 let ctx = ctx
                     .by_ref()
-                    .with_help_text("")
-                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+                    .with_help_text(UNIFY_STRUCT_FIELD_HELP_TEXT)
+                    .with_type_annotation(struct_field.type_argument.type_id);
                 let value = match ty::TyExpression::type_check(handler, ctx, field.value.clone()) {
                     Ok(res) => res,
                     Err(_) => continue,
@@ -200,7 +217,7 @@ fn unify_field_arguments_and_struct_fields(
                     typed_field.value.return_type,
                     struct_field.type_argument.type_id,
                     &typed_field.value.span,
-                    "Struct field's type must match the type specified in its declaration.",
+                    UNIFY_STRUCT_FIELD_HELP_TEXT,
                     None,
                 );
             }

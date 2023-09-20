@@ -84,8 +84,7 @@ impl ty::TyFunctionDecl {
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions();
 
-        // Type check the type parameters. This will also insert them into the
-        // current namespace.
+        // Type check the type parameters.
         let new_type_parameters =
             TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters)?;
 
@@ -186,7 +185,7 @@ impl ty::TyFunctionDecl {
             p.insert_into_namespace(handler, ctx.by_ref())?;
         }
 
-        // Insert the previously type checked function parameters into the namespace.
+        // Insert the previously type checked function parameters into the current namespace.
         for p in parameters {
             p.insert_into_namespace(handler, ctx.by_ref());
         }
@@ -209,8 +208,23 @@ impl ty::TyFunctionDecl {
             })
         };
 
+        ty_fn_decl.body = body;
+
+        Self::type_check_body_monomorphized(handler, ctx, ty_fn_decl)?;
+
+        Ok(ty_fn_decl.clone())
+    }
+
+    pub fn type_check_body_monomorphized(
+        handler: &Handler,
+        mut ctx: TypeCheckContext,
+        fn_decl: &Self,
+    ) -> Result<(), ErrorEmitted> {
+        let return_type = &fn_decl.return_type;
+
         // gather the return statements
-        let return_statements: Vec<&ty::TyExpression> = body
+        let return_statements: Vec<&ty::TyExpression> = fn_decl
+            .body
             .contents
             .iter()
             .flat_map(|node| node.gather_return_statements())
@@ -230,8 +244,7 @@ impl ty::TyFunctionDecl {
             vec![],
         )?;
 
-        ty_fn_decl.body = body;
-        Ok(ty_fn_decl.clone())
+        Ok(())
     }
 }
 
@@ -260,6 +273,19 @@ fn unify_return_statements(
         }
         Ok(())
     })
+}
+
+impl TypeCheckFinalization for ty::TyFunctionDecl {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            let _ = self.body.type_check_finalize(handler, ctx);
+            Ok(())
+        })
+    }
 }
 
 #[test]

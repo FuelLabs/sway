@@ -7,6 +7,8 @@ pub mod namespace;
 mod node_dependencies;
 mod program;
 pub(crate) mod type_check_context;
+mod type_check_finalization;
 pub use ast_node::*;
 pub use namespace::Namespace;
 pub(crate) use type_check_context::TypeCheckContext;
+pub(crate) use type_check_finalization::*;

@@ -8,7 +8,7 @@ use crate::{
         ty::{self, TyDecl},
         CallPath, Purity, Visibility,
     },
-    namespace::{Path, TryInsertingTraitImplOnFailure},
+    namespace::{IsExtendingExistingImpl, IsImplSelf, Path, TryInsertingTraitImplOnFailure},
     semantic_analysis::{
         ast_node::{AbiMode, ConstShadowingMode},
         Namespace,
@@ -49,6 +49,9 @@ pub struct TypeCheckContext<'a> {
     ///
     /// Assists type inference.
     type_annotation: TypeId,
+    /// While type-checking an expression, this indicates the types to be substituted when a
+    /// type is resolved. This is required is to replace associated types, namely TypeInfo::TraitType.
+    type_subst: TypeSubstMap,
     /// Whether or not we're within an `abi` implementation.
     ///
     /// This is `ImplAbiFn` while checking `abi` implementations whether at their original impl
@@ -73,6 +76,12 @@ pub struct TypeCheckContext<'a> {
     /// disallowing functions from being defined inside of another function
     /// body).
     disallow_functions: bool,
+
+    /// Indicates when semantic analysis should  be deferred for function/method applications.
+    /// This is currently used to perform the final type checking and monomorphization in the
+    /// case of impl trait methods after the initial type checked AST is constructed, and
+    /// after we perform a dependency analysis on the tree.
+    defer_monomorphization: bool,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -93,6 +102,7 @@ impl<'a> TypeCheckContext<'a> {
             namespace,
             engines,
             type_annotation: engines.te().insert(engines, TypeInfo::Unknown),
+            type_subst: TypeSubstMap::new(),
             help_text: "",
             // TODO: Contract? Should this be passed in based on program kind (aka TreeType)?
             self_type: engines.te().insert(engines, TypeInfo::Contract),
@@ -101,6 +111,7 @@ impl<'a> TypeCheckContext<'a> {
             purity: Purity::default(),
             kind: TreeType::Contract,
             disallow_functions: false,
+            defer_monomorphization: false,
         }
     }
 
@@ -116,6 +127,7 @@ impl<'a> TypeCheckContext<'a> {
         TypeCheckContext {
             namespace: self.namespace,
             type_annotation: self.type_annotation,
+            type_subst: self.type_subst.clone(),
             self_type: self.self_type,
             abi_mode: self.abi_mode.clone(),
             const_shadowing_mode: self.const_shadowing_mode,
@@ -124,6 +136,7 @@ impl<'a> TypeCheckContext<'a> {
             kind: self.kind.clone(),
             engines: self.engines,
             disallow_functions: self.disallow_functions,
+            defer_monomorphization: self.defer_monomorphization,
         }
     }
 
@@ -132,6 +145,7 @@ impl<'a> TypeCheckContext<'a> {
         TypeCheckContext {
             namespace,
             type_annotation: self.type_annotation,
+            type_subst: self.type_subst,
             self_type: self.self_type,
             abi_mode: self.abi_mode,
             const_shadowing_mode: self.const_shadowing_mode,
@@ -140,6 +154,7 @@ impl<'a> TypeCheckContext<'a> {
             kind: self.kind,
             engines: self.engines,
             disallow_functions: self.disallow_functions,
+            defer_monomorphization: self.defer_monomorphization,
         }
     }
 
@@ -172,6 +187,14 @@ impl<'a> TypeCheckContext<'a> {
     pub(crate) fn with_type_annotation(self, type_annotation: TypeId) -> Self {
         Self {
             type_annotation,
+            ..self
+        }
+    }
+
+    /// Map this `TypeCheckContext` instance to a new one with the given type subst.
+    pub(crate) fn with_type_subst(self, type_subst: &TypeSubstMap) -> Self {
+        Self {
+            type_subst: type_subst.clone(),
             ..self
         }
     }
@@ -225,6 +248,15 @@ impl<'a> TypeCheckContext<'a> {
         }
     }
 
+    /// Map this `TypeCheckContext` instance to a new one with
+    /// `defer_method_application` set to `true`.
+    pub(crate) fn with_defer_monomorphization(self) -> Self {
+        Self {
+            defer_monomorphization: true,
+            ..self
+        }
+    }
+
     // A set of accessor methods. We do this rather than making the fields `pub` in order to ensure
     // that these are only updated via the `with_*` methods that produce a new `TypeCheckContext`.
 
@@ -234,6 +266,10 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn type_annotation(&self) -> TypeId {
         self.type_annotation
+    }
+
+    pub(crate) fn type_subst(&self) -> TypeSubstMap {
+        self.type_subst.clone()
     }
 
     pub(crate) fn abi_mode(&self) -> AbiMode {
@@ -259,6 +295,10 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn functions_disallowed(&self) -> bool {
         self.disallow_functions
+    }
+
+    pub(crate) fn defer_monomorphization(&self) -> bool {
+        self.defer_monomorphization
     }
 
     // Provide some convenience functions around the inner context.
@@ -338,16 +378,27 @@ impl<'a> TypeCheckContext<'a> {
             TypeInfo::Custom {
                 call_path,
                 type_arguments,
+                root_type_id,
             } => {
-                match self
-                    .resolve_call_path_with_visibility_check_and_modpath(
+                let type_decl_opt = if let Some(root_type_id) = root_type_id {
+                    self.namespace
+                        .root
+                        .resolve_call_path_and_root_type_id(
+                            handler,
+                            self.engines,
+                            root_type_id,
+                            &call_path,
+                        )
+                        .ok()
+                } else {
+                    self.resolve_call_path_with_visibility_check_and_modpath(
                         handler,
                         module_path,
                         &call_path,
                     )
                     .ok()
-                    .cloned()
-                {
+                };
+                match type_decl_opt {
                     Some(ty::TyDecl::StructDecl(ty::StructDecl {
                         decl_id: original_id,
                         ..
@@ -425,6 +476,25 @@ impl<'a> TypeCheckContext<'a> {
                     Some(ty::TyDecl::GenericTypeForFunctionScope(
                         ty::GenericTypeForFunctionScope { type_id, .. },
                     )) => type_id,
+                    Some(ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl {
+                        decl_id,
+                        name,
+                        decl_span: _,
+                    })) => {
+                        let decl_type = decl_engine.get_type(&decl_id);
+
+                        if let Some(ty) = decl_type.ty {
+                            ty.type_id
+                        } else {
+                            type_engine.insert(
+                                self.engines,
+                                TypeInfo::TraitType {
+                                    name,
+                                    trait_type_id: self.self_type(),
+                                },
+                            )
+                        }
+                    }
                     _ => {
                         let err = handler.emit_err(CompileError::UnknownTypeName {
                             name: call_path.to_string(),
@@ -488,8 +558,37 @@ impl<'a> TypeCheckContext<'a> {
 
                 type_id
             }
+            TypeInfo::TraitType {
+                name,
+                trait_type_id,
+            } => {
+                for trait_item in self
+                    .namespace
+                    .implemented_traits
+                    .get_items_for_type(self.engines, trait_type_id)
+                {
+                    match trait_item {
+                        ty::TyTraitItem::Fn(_) => {}
+                        ty::TyTraitItem::Constant(_) => {}
+                        ty::TyTraitItem::Type(type_ref) => {
+                            let type_decl = self.engines.de().get_type(type_ref.id());
+                            if type_decl.name.as_str() == name.as_str() {
+                                if let Some(ty) = type_decl.ty {
+                                    return Ok(ty.type_id);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                type_id
+            }
             _ => type_id,
         };
+
+        let mut type_id = type_id;
+        type_id.subst(&self.type_subst(), self.engines());
+
         Ok(type_id)
     }
 
@@ -562,7 +661,7 @@ impl<'a> TypeCheckContext<'a> {
         &self,
         handler: &Handler,
         call_path: &CallPath,
-    ) -> Result<&ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
         self.resolve_call_path_with_visibility_check_and_modpath(
             handler,
             &self.namespace.mod_path,
@@ -583,11 +682,18 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         mod_path: &Path,
         call_path: &CallPath,
-    ) -> Result<&ty::TyDecl, ErrorEmitted> {
-        let decl = self
-            .namespace
-            .root
-            .resolve_call_path(handler, mod_path, call_path)?;
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        let (decl, mod_path) = self.namespace.root.resolve_call_path_and_mod_path(
+            handler,
+            self.engines,
+            mod_path,
+            call_path,
+        )?;
+
+        // In case there is no mod path we don't need to check visibility
+        if mod_path.is_empty() {
+            return Ok(decl);
+        }
 
         // In case there are no prefixes we don't need to check visibility
         if call_path.prefixes.is_empty() {
@@ -687,6 +793,11 @@ impl<'a> TypeCheckContext<'a> {
                         matching_item_decl_refs.push(item.clone());
                     }
                 }
+                ty::TyTraitItem::Type(decl_ref) => {
+                    if decl_ref.name() == item_name {
+                        matching_item_decl_refs.push(item.clone());
+                    }
+                }
             }
         }
 
@@ -732,6 +843,7 @@ impl<'a> TypeCheckContext<'a> {
             .flat_map(|item| match item {
                 ty::TyTraitItem::Fn(decl_ref) => Some(decl_ref),
                 ty::TyTraitItem::Constant(_) => None,
+                ty::TyTraitItem::Type(_) => None,
             })
             .collect::<Vec<_>>();
 
@@ -769,6 +881,7 @@ impl<'a> TypeCheckContext<'a> {
                         if let Some(TypeInfo::Custom {
                             call_path,
                             type_arguments,
+                            root_type_id: _,
                         }) = as_trait.clone()
                         {
                             qualified_call_path = Some(call_path.clone());
@@ -954,6 +1067,7 @@ impl<'a> TypeCheckContext<'a> {
             .flat_map(|item| match item {
                 ty::TyTraitItem::Fn(_decl_ref) => None,
                 ty::TyTraitItem::Constant(decl_ref) => Some(decl_ref),
+                ty::TyTraitItem::Type(_) => None,
             })
             .collect::<Vec<_>>();
 
@@ -1065,7 +1179,8 @@ impl<'a> TypeCheckContext<'a> {
         items: &[ty::TyImplItem],
         impl_span: &Span,
         trait_decl_span: Option<Span>,
-        is_impl_self: bool,
+        is_impl_self: IsImplSelf,
+        is_extending_existing_impl: IsExtendingExistingImpl,
     ) -> Result<(), ErrorEmitted> {
         // Use trait name with full path, improves consistency between
         // this inserting and getting in `get_methods_for_type_and_trait_name`.
@@ -1080,6 +1195,7 @@ impl<'a> TypeCheckContext<'a> {
             impl_span,
             trait_decl_span,
             is_impl_self,
+            is_extending_existing_impl,
             self.engines,
         )
     }
@@ -1141,11 +1257,39 @@ impl<'a> TypeCheckContext<'a> {
     where
         T: MonomorphizeHelper + SubstTypes,
     {
+        let type_mapping = self.prepare_type_subst_map_for_monomorphize(
+            handler,
+            value,
+            type_arguments,
+            enforce_type_arguments,
+            call_site_span,
+            mod_path,
+        )?;
+        value.subst(&type_mapping, self.engines);
+        Ok(())
+    }
+
+    /// Given a `value` of type `T` that is able to be monomorphized and a set
+    /// of `type_arguments`, prepare a `TypeSubstMap` that can be used as an
+    /// input for monomorphization.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn prepare_type_subst_map_for_monomorphize<T>(
+        &mut self,
+        handler: &Handler,
+        value: &T,
+        type_arguments: &mut [TypeArgument],
+        enforce_type_arguments: EnforceTypeArguments,
+        call_site_span: &Span,
+        mod_path: &Path,
+    ) -> Result<TypeSubstMap, ErrorEmitted>
+    where
+        T: MonomorphizeHelper + SubstTypes,
+    {
         match (
             value.type_parameters().is_empty(),
             type_arguments.is_empty(),
         ) {
-            (true, true) => Ok(()),
+            (true, true) => Ok(TypeSubstMap::default()),
             (false, true) => {
                 if let EnforceTypeArguments::Yes = enforce_type_arguments {
                     return Err(handler.emit_err(CompileError::NeedsTypeArguments {
@@ -1155,8 +1299,7 @@ impl<'a> TypeCheckContext<'a> {
                 }
                 let type_mapping =
                     TypeSubstMap::from_type_parameters(self.engines, value.type_parameters());
-                value.subst(&type_mapping, self.engines);
-                Ok(())
+                Ok(type_mapping)
             }
             (true, false) => {
                 let type_arguments_span = type_arguments
@@ -1211,8 +1354,7 @@ impl<'a> TypeCheckContext<'a> {
                         .map(|type_arg| type_arg.type_id)
                         .collect(),
                 );
-                value.subst(&type_mapping, self.engines);
-                Ok(())
+                Ok(type_mapping)
             }
         }
     }

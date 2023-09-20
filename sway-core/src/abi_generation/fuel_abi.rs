@@ -26,7 +26,10 @@ pub fn generate_program_abi(
         TyProgramKind::Contract { abi_entries, .. } => {
             let functions = abi_entries
                 .iter()
-                .map(|x| x.generate_abi_function(ctx, type_engine, decl_engine, types))
+                .map(|x| {
+                    let fn_decl = decl_engine.get_function(x);
+                    fn_decl.generate_abi_function(ctx, type_engine, decl_engine, types)
+                })
                 .collect();
             let logged_types = generate_logged_types(ctx, type_engine, decl_engine, types);
             let messages_types = generate_messages_types(ctx, type_engine, decl_engine, types);
@@ -41,6 +44,7 @@ pub fn generate_program_abi(
         }
         TyProgramKind::Script { main_function, .. }
         | TyProgramKind::Predicate { main_function, .. } => {
+            let main_function = decl_engine.get_function(main_function);
             let functions =
                 vec![main_function.generate_abi_function(ctx, type_engine, decl_engine, types)];
             let logged_types = generate_logged_types(ctx, type_engine, decl_engine, types);
@@ -836,6 +840,10 @@ impl TypeInfo {
                 format!("__slice {}", ty.abi_str(ctx, type_engine, decl_engine))
             }
             Alias { ty, .. } => ty.abi_str(ctx, type_engine, decl_engine),
+            TraitType {
+                name,
+                trait_type_id: _,
+            } => format!("trait type {}", name),
         }
     }
 }
