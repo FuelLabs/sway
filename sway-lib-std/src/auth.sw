@@ -99,12 +99,10 @@ pub fn caller_contract_id() -> ContractId {
 pub fn msg_sender() -> Result<Identity, AuthError> {
     if caller_is_external() {
         let inputs_res = caller_address();
-        if inputs_res.is_err() {
-            Err(AuthError::InputsNotAllOwnedBySameAddress)
-        } else {
-            Ok(Identity::Address(inputs_res.unwrap()))
+        match inputs_res {
+            Err => Err(AuthError::InputsNotAllOwnedBySameAddress),
+            Ok(owner) => Ok(Identity::Address(owner)),
         }
-
     } else {
         // Get caller's `ContractId`.
         Ok(Identity::ContractId(caller_contract_id()))
@@ -171,5 +169,5 @@ pub fn caller_address() -> Result<Address, AuthError> {
     }
 
     // `candidate` must be `Some` at this point, so can unwrap safely.
-    Ok(Address(candidate.unwrap()))
+    Ok(candidate.unwrap())
 }
