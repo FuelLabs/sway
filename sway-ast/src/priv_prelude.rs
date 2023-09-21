@@ -22,7 +22,7 @@ pub use {
             item_trait::{ItemTrait, Traits},
             item_type_alias::ItemTypeAlias,
             item_use::ItemUse,
-            FnSignature, Item, ItemKind, TypeField,
+            FnSignature, Item, ItemKind, TraitType, TypeField,
         },
         keywords::*,
         literal::{LitBool, LitBoolType, LitChar, LitInt, LitIntType, LitString, Literal},

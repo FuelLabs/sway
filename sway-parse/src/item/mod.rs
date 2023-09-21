@@ -7,7 +7,7 @@ use sway_ast::keywords::{
 };
 use sway_ast::{
     FnArg, FnArgs, FnSignature, ItemConst, ItemEnum, ItemFn, ItemKind, ItemStruct, ItemTrait,
-    ItemTypeAlias, ItemUse, Submodule, TypeField,
+    ItemTypeAlias, ItemUse, Submodule, TraitType, TypeField,
 };
 use sway_error::parser_error::ParseErrorKind;
 
@@ -173,6 +173,26 @@ impl Parse for FnSignature {
                 None => None,
             },
             where_clause_opt: parser.guarded_parse::<WhereToken, _>()?,
+        })
+    }
+}
+
+impl Parse for TraitType {
+    fn parse(parser: &mut Parser) -> ParseResult<TraitType> {
+        let type_token = parser.parse()?;
+        let name = parser.parse()?;
+        let eq_token_opt = parser.take();
+        let ty_opt = match &eq_token_opt {
+            Some(_eq) => Some(parser.parse()?),
+            None => None,
+        };
+        let semicolon_token = parser.peek().unwrap_or_default();
+        Ok(TraitType {
+            type_token,
+            name,
+            eq_token_opt,
+            ty_opt,
+            semicolon_token,
         })
     }
 }

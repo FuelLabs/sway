@@ -147,7 +147,8 @@ impl<'a> Solver<'a> {
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Ptr(..)
-            | TypeInfo::Slice(..) => {}
+            | TypeInfo::Slice(..)
+            | TypeInfo::TraitType { .. } => {}
         }
 
         Ok(InstructionResult::from_instructions(instructions))

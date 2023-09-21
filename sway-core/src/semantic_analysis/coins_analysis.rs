@@ -1,6 +1,6 @@
 use sway_error::handler::Handler;
 
-use crate::{decl_engine::DeclEngine, language::ty, Namespace};
+use crate::{language::ty, Engines, Namespace};
 
 // This analysis checks if an expression is known statically to evaluate
 // to a non-zero value at runtime.
@@ -8,7 +8,7 @@ use crate::{decl_engine::DeclEngine, language::ty, Namespace};
 // method gets called with a non-zero amount of `coins`
 pub fn possibly_nonzero_u64_expression(
     namespace: &Namespace,
-    decl_engine: &DeclEngine,
+    engines: &Engines,
     expr: &ty::TyExpression,
 ) -> bool {
     use ty::TyExpressionVariant::*;
@@ -18,21 +18,24 @@ pub fn possibly_nonzero_u64_expression(
         // not a u64 literal, hence we return true to be on the safe side
         Literal(_) => true,
         ConstantExpression { const_decl, .. } => match &const_decl.value {
-            Some(expr) => possibly_nonzero_u64_expression(namespace, decl_engine, expr),
+            Some(expr) => possibly_nonzero_u64_expression(namespace, engines, expr),
             None => false,
         },
         VariableExpression { name, .. } => {
-            match namespace.resolve_symbol(&Handler::default(), name).ok() {
+            match namespace
+                .resolve_symbol(&Handler::default(), engines, name)
+                .ok()
+            {
                 Some(ty_decl) => {
                     match ty_decl {
                         ty::TyDecl::VariableDecl(var_decl) => {
-                            possibly_nonzero_u64_expression(namespace, decl_engine, &var_decl.body)
+                            possibly_nonzero_u64_expression(namespace, engines, &var_decl.body)
                         }
                         ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
-                            let const_decl = decl_engine.get_constant(decl_id);
+                            let const_decl = engines.de().get_constant(&decl_id);
                             match const_decl.value {
                                 Some(value) => {
-                                    possibly_nonzero_u64_expression(namespace, decl_engine, &value)
+                                    possibly_nonzero_u64_expression(namespace, engines, &value)
                                 }
                                 None => true,
                             }

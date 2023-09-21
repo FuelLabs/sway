@@ -68,6 +68,7 @@ impl Format for ItemImplItem {
         match self {
             ItemImplItem::Fn(fn_decl) => fn_decl.format(formatted_code, formatter),
             ItemImplItem::Const(const_decl) => const_decl.format(formatted_code, formatter),
+            ItemImplItem::Type(type_decl) => type_decl.format(formatted_code, formatter),
         }
     }
 }
@@ -124,6 +125,7 @@ impl LeafSpans for ItemImplItem {
         match self {
             ItemImplItem::Fn(fn_decl) => collected_spans.append(&mut fn_decl.leaf_spans()),
             ItemImplItem::Const(const_decl) => collected_spans.append(&mut const_decl.leaf_spans()),
+            ItemImplItem::Type(type_decl) => collected_spans.append(&mut type_decl.leaf_spans()),
         }
         collected_spans
     }
