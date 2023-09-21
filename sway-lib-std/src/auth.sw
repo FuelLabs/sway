@@ -98,7 +98,7 @@ pub fn caller_contract_id() -> ContractId {
 /// ```
 pub fn msg_sender() -> Result<Identity, AuthError> {
     if caller_is_external() {
-        let inputs_res = inputs_owner();
+        let inputs_res = caller_address();
         if inputs_res.is_err() {
             Err(AuthError::InputsNotAllOwnedBySameAddress)
         } else {
@@ -130,7 +130,7 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
 ///     }
 /// }
 /// ```
-pub fn inputs_owner() -> Result<Address, AuthError> {
+pub fn caller_address() -> Result<Address, AuthError> {
     let inputs = input_count();
     let mut candidate = None;
     let mut i = 0u8;
