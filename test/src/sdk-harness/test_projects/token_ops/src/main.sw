@@ -1,6 +1,6 @@
 contract;
 
-use std::{contract_id::AssetId, bytes::Bytes, constants::ZERO_B256, context::balance_of, message::send_message, primitive_conversions::u8::*, token::*};
+use std::{contract_id::AssetId, bytes::Bytes, constants::ZERO_B256, context::balance_of, message::send_message, primitive_conversions::u64::*, token::*};
 
 abi TestFuelCoin {
     fn mint_coins(mint_amount: u64, sub_id: b256);
@@ -66,9 +66,9 @@ impl TestFuelCoin for Contract {
     fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64) {
         let mut data = Bytes::new();
         if msg_data.len() > 0 {
-            data.push(<u8 as TryFrom<u64>>::try_from(msg_data.get(0).unwrap()).unwrap());
-            data.push(<u8 as TryFrom<u64>>::try_from(msg_data.get(1).unwrap()).unwrap());
-            data.push(<u8 as TryFrom<u64>>::try_from(msg_data.get(2).unwrap()).unwrap());
+            data.push(msg_data.get(0).unwrap().try_as_u8().unwrap());
+            data.push(msg_data.get(1).unwrap().try_as_u8().unwrap());
+            data.push(msg_data.get(2).unwrap().try_as_u8().unwrap());
         }
 
         send_message(recipient, data, coins);
