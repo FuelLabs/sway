@@ -1,3 +1,4 @@
+//! Handles conversion of compiled typed Sway programs into [Document]s that can be rendered into HTML.
 use crate::{
     doc::{descriptor::Descriptor, module::ModuleInfo},
     render::{item::components::*, link::DocLink, util::format::docstring::*},
