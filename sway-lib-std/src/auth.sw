@@ -98,7 +98,13 @@ pub fn caller_contract_id() -> ContractId {
 /// ```
 pub fn msg_sender() -> Result<Identity, AuthError> {
     if caller_is_external() {
-        inputs_owner()
+        let inputs_res = inputs_owner();
+        if inputs_res.is_err() {
+            Err(AuthError::InputsNotAllOwnedBySameAddress)
+        } else {
+            Ok(Identity::Address(inputs_res.unwrap()))
+        }
+
     } else {
         // Get caller's `ContractId`.
         Ok(Identity::ContractId(caller_contract_id()))
@@ -108,13 +114,9 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
 /// Get the owner of the inputs (of type `Input::Coin` or `Input::Message`) to a
 /// `TransactionScript` if they all share the same owner.
 ///
-/// # Additional Information
-///
-/// Will never return a Ok(Identity::ContractId).
-///
 /// # Returns
 ///
-/// * [Result<Identity, AuthError>] - `Ok(Identity)` if the owner can be determined, `Err(AuthError)` otherwise.
+/// * [Result<Address, AuthError>] - `Ok(Address)` if the owner can be determined, `Err(AuthError)` otherwise.
 ///
 /// # Examples
 ///
@@ -123,13 +125,12 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
 ///
 /// fn foo() {
 ///     match inputs_owner() {
-///         Ok(Identity::Address(address)) => log(address),
-///         Ok(Identity::ContractId(_)) => log("Hell froze over."),
+///         Ok(address) => log(address),
 ///         Err(AuthError::InputsNotAllOwnedBySameAddress) => log("Inputs not all owned by same address."),
 ///     }
 /// }
 /// ```
-fn inputs_owner() -> Result<Identity, AuthError> {
+pub fn inputs_owner() -> Result<Address, AuthError> {
     let inputs = input_count();
     let mut candidate = None;
     let mut i = 0u8;
@@ -170,5 +171,5 @@ fn inputs_owner() -> Result<Identity, AuthError> {
     }
 
     // `candidate` must be `Some` at this point, so can unwrap safely.
-    Ok(Identity::Address(candidate.unwrap()))
+    Ok(Address(candidate.unwrap()))
 }
