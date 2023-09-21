@@ -1,3 +1,4 @@
+//! Manages how the context of Sway types are rendered on corresponding item pages.
 use crate::{
     doc::module::ModuleInfo,
     render::{

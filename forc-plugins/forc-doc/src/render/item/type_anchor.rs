@@ -1,3 +1,4 @@
+//! Creation of HTML anchors for types that can be linked.
 use crate::{doc::module::ModuleInfo, RenderPlan};
 use anyhow::{anyhow, Result};
 use horrorshow::{box_html, RenderBox};

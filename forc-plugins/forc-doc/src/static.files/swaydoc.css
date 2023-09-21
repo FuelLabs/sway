@@ -203,7 +203,7 @@ div.impl-items > div:not(.docblock):not(.item-info),
 .content ul.crate a.crate,
 a.srclink,
 #main-content > .since,
-#help-button > button,
+#help-button > a,
 details.swaydoc-toggle.top-doc > summary,
 details.swaydoc-toggle.top-doc > summary::before,
 details.swaydoc-toggle.non-exhaustive > summary,
@@ -1329,7 +1329,7 @@ pre.sway {
   height: 34px;
 }
 #settings-menu > a,
-#help-button > button,
+#help-button > a,
 #copy-path {
   padding: 5px;
   width: 33px;
@@ -1341,7 +1341,7 @@ pre.sway {
   padding: 0;
 }
 #settings-menu > a,
-#help-button > button {
+#help-button > a {
   padding: 5px;
   height: 100%;
   display: block;
@@ -1374,7 +1374,7 @@ pre.sway {
 input:checked + .slider {
   background-color: var(--settings-input-color);
 }
-#help-button > button {
+#help-button > a {
   text-align: center;
   font-size: 20px;
   padding-top: 2px;

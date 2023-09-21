@@ -1,3 +1,4 @@
+//! Handles the gathering of module information used in navigation and documentation of modules.
 use crate::render::{constant::INDEX_FILENAME, util::format::docstring::create_preview};
 use anyhow::Result;
 use horrorshow::{box_html, Template};
@@ -6,9 +7,18 @@ use sway_core::language::CallPath;
 
 pub(crate) type ModulePrefixes = Vec<String>;
 
+/// Information about a Sway module.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct ModuleInfo {
+    /// The preceeding module names, used in navigating between modules.
     pub(crate) module_prefixes: ModulePrefixes,
+    /// Doc attributes of a module.
+    /// Renders into the module level docstrings.
+    ///
+    /// ```sway
+    /// //! Module level docstring
+    /// library;
+    /// ```
     pub(crate) attributes: Option<String>,
 }
 impl ModuleInfo {
