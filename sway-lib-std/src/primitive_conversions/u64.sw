@@ -1,16 +1,16 @@
 library;
 
 use ::convert::TryFrom;
-use ::option::Option;
+use ::option::Option::{self, *};
 
 impl TryFrom<u256> for u64 {
     fn try_from(u: u256) -> Option<Self> {
         let parts = asm(r1: u) { r1: (u64, u64, u64, u64) };
 
         if parts.0 != 0 || parts.1 != 0 || parts.2 != 0 {
-            Option::None
+            None
         } else {
-            Option::Some(parts.3)
+            Some(parts.3)
         }
     }
 }

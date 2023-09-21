@@ -1,14 +1,14 @@
 library;
 
 use ::convert::TryFrom;
-use ::option::Option;
+use ::option::Option::{self, *};
 
 impl TryFrom<u16> for u8 {
     fn try_from(u: u16) -> Option<Self> {
         if u > u8::max().as_u16() {
-            Option::None
+            None
         } else {
-            Option::Some(asm(r1: u) {r1: u8})
+            Some(asm(r1: u) {r1: u8})
         }
     }
 }
@@ -16,9 +16,9 @@ impl TryFrom<u16> for u8 {
 impl TryFrom<u32> for u8 {
     fn try_from(u: u32) -> Option<Self> {
         if u > u8::max().as_u32() {
-            Option::None
+            None
         } else {
-            Option::Some(asm(r1: u) {r1: u8})
+            Some(asm(r1: u) {r1: u8})
         }
     }
 }
@@ -26,9 +26,9 @@ impl TryFrom<u32> for u8 {
 impl TryFrom<u64> for u8 {
     fn try_from(u: u64) -> Option<Self> {
         if u > u8::max().as_u64() {
-            Option::None
+            None
         } else {
-            Option::Some(asm(r1: u) {r1: u8})
+            Some(asm(r1: u) {r1: u8})
         }
     }
 }
@@ -38,9 +38,9 @@ impl TryFrom<u256> for u8 {
         let parts = asm(r1: u) { r1: (u64, u64, u64, u64) };
 
         if parts.0 != 0 || parts.1 != 0 || parts.2 != 0 || parts.3 > u8::max().as_u64() {
-            Option::None
+            None
         } else {
-            Option::Some(asm(r1: parts.3) {r1: u8})
+            Some(asm(r1: parts.3) {r1: u8})
         }
     }
 }
