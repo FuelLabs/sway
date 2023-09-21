@@ -100,7 +100,7 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
     if caller_is_external() {
         let inputs_res = caller_address();
         match inputs_res {
-            Err => Err(AuthError::InputsNotAllOwnedBySameAddress),
+            Err(err) => Err(err),
             Ok(owner) => Ok(Identity::Address(owner)),
         }
     } else {
