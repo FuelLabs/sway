@@ -90,3 +90,13 @@ impl ty::TyEnumVariant {
         })
     }
 }
+
+impl TypeCheckFinalization for ty::TyEnumDecl {
+    fn type_check_finalize(
+        &mut self,
+        _handler: &Handler,
+        _ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
+    }
+}

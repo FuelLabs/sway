@@ -199,6 +199,7 @@ impl<'eng> FnCompiler<'eng> {
                 ty::TyDecl::ErrorRecovery { .. } => unexpected_decl("error recovery"),
                 ty::TyDecl::StorageDecl { .. } => unexpected_decl("storage"),
                 ty::TyDecl::EnumVariantDecl { .. } => unexpected_decl("enum variant"),
+                ty::TyDecl::TraitTypeDecl { .. } => unexpected_decl("trait type"),
             },
             ty::TyAstNodeContent::Expression(te) => {
                 // An expression with an ignored return value... I assume.
@@ -372,7 +373,11 @@ impl<'eng> FnCompiler<'eng> {
                 selector,
                 type_binding: _,
                 call_path_typeid: _,
+                deferred_monomorphization,
             } => {
+                if *deferred_monomorphization {
+                    return Err(CompileError::Internal("Trying to compile a deferred function application with deferred monomorphization", name.span()));
+                }
                 if let Some(metadata) = selector {
                     self.compile_contract_call(
                         context,

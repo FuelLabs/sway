@@ -63,6 +63,7 @@ pub enum TypedAstToken {
     TypedScrutinee(ty::TyScrutinee),
     TyStructScrutineeField(ty::TyStructScrutineeField),
     TypedConstantDeclaration(ty::TyConstantDecl),
+    TypedTraitTypeDeclaration(ty::TyTraitType),
     TypedFunctionDeclaration(ty::TyFunctionDecl),
     TypedFunctionParameter(ty::TyFunctionParameter),
     TypedStructField(ty::TyStructField),
@@ -118,6 +119,8 @@ pub enum SymbolKind {
     Struct,
     /// Emitted for traits.
     Trait,
+    /// Emitted for associated types.
+    TraiType,
     /// Emitted for type aliases.
     TypeAlias,
     /// Emitted for type parameters.

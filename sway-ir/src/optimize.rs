@@ -33,6 +33,8 @@ pub mod ret_demotion;
 pub use ret_demotion::*;
 pub mod simplify_cfg;
 pub use simplify_cfg::*;
+pub mod sroa;
+pub use sroa::*;
 
 mod target_fuel;
 

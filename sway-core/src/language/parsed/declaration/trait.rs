@@ -12,6 +12,7 @@ use sway_types::{ident::Ident, span::Span, Spanned};
 pub enum TraitItem {
     TraitFn(TraitFn),
     Constant(ConstantDeclaration),
+    Type(TraitTypeDeclaration),
     // to handle parser recovery: Error represents an incomplete trait item
     Error(Box<[Span]>, ErrorEmitted),
 }
@@ -71,4 +72,12 @@ pub struct TraitFn {
     pub purity: Purity,
     pub parameters: Vec<FunctionParameter>,
     pub return_type: TypeArgument,
+}
+
+#[derive(Debug, Clone)]
+pub struct TraitTypeDeclaration {
+    pub name: Ident,
+    pub attributes: transform::AttributesMap,
+    pub ty_opt: Option<TypeArgument>,
+    pub span: Span,
 }
