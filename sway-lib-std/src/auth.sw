@@ -102,7 +102,10 @@ pub fn caller_contract_id() -> ContractId {
 /// ```
 pub fn msg_sender() -> Result<Identity, AuthError> {
     if caller_is_external() {
-        let inputs_res = caller_address();
+        match caller_address() {
+            Err(err) => Err(err),
+            Ok(owner) => Ok(Identity::Address(owner)),
+        }
         match inputs_res {
             Err(err) => Err(err),
             Ok(owner) => Ok(Identity::Address(owner)),
