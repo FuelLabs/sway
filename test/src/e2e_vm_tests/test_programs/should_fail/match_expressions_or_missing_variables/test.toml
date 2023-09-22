@@ -1,0 +1,144 @@
+category = "fail"
+
+# check: $()Match pattern variable is not defined in all alternatives
+
+# check: $()let _x = match s1 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()Struct { x, y, z } | Struct { x: y, y: x, z: a } => if y { 0 } else { x },
+# nextln: $()Variable "z" is not defined in all alternatives.
+# nextln: $()"z" is missing in this alternative.
+
+# check: $()Match pattern variable is not defined in all alternatives
+
+# check: $()let _x = match s2 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()Struct { x, y, z } | Struct { x: y, y: x, z: a } | Struct { x: y, y: x, z: b } => if y { 0 } else { x },
+# nextln: $()Variable "z" is not defined in all alternatives.
+# nextln: $()"z" is missing in this alternative.
+# nextln: $()"z" is also missing in this alternative.
+
+# check: $()Match pattern variable is not defined in all alternatives
+
+# check: $()let _x = match s2 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()Struct { x, y, z } | Struct { x: y, y: x, z: a } | Struct { x: y, y: x, z: b } => if y { 0 } else { x },
+# nextln: $()Variable "a" is not defined in all alternatives.
+# nextln: $()"a" is missing in this alternative.
+# nextln: $()"a" is also missing in this alternative.
+
+# check: $()Match pattern variable is not defined in all alternatives
+
+# check: $()let _x = match s2 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()Struct { x, y, z } | Struct { x: y, y: x, z: a } | Struct { x: y, y: x, z: b } => if y { 0 } else { x },
+# nextln: $()Variable "b" is not defined in all alternatives.
+# nextln: $()"b" is missing in this alternative.
+# nextln: $()"b" is also missing in this alternative.
+
+# check: $()error
+
+# check: $()let _x = match s3 {
+# nextln: $()Struct { x, y, z } | true | Struct { x: y, y: x, z: b } => if y { 0 } else { x },
+# nextln: $()Mismatched types.
+# nextln: $()expected: Struct
+# nextln: $()found:    bool.
+
+# check: $()Match pattern variable is not defined in all alternatives
+
+# check: $()let _x = match s3 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()Struct { x, y, z } | true | Struct { x: y, y: x, z: b } => if y { 0 } else { x },
+# nextln: $()Variable "z" is not defined in all alternatives.
+# nextln: $()"z" is missing in this alternative.
+
+# check: $()Match pattern variable is not defined in all alternatives
+
+# check: $()let _x = match s3 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()Struct { x, y, z } | true | Struct { x: y, y: x, z: b } => if y { 0 } else { x },
+# nextln: $()Variable "b" is not defined in all alternatives.
+# nextln: $()"b" is missing in this alternative.
+
+# check: $()error
+
+# check: $()let _x = match s4 {
+# nextln: $()true | Struct { x, y, z } | Struct { x: y, y: x, z: b } => if y { 0 } else { x },
+# nextln: $()Mismatched types.
+# nextln: $()expected: Struct
+# nextln: $()found:    bool.
+
+# check: $()Match pattern variable is not defined in all alternatives
+
+# check: $()let _x = match s4 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()true | Struct { x, y, z } | Struct { x: y, y: x, z: b } => if y { 0 } else { x },
+# nextln: $()Variable "z" is not defined in all alternatives.
+# nextln: $()"z" is missing in this alternative.
+
+# check: $()Match pattern variable is not defined in all alternatives
+
+# check: $()let _x = match s4 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()true | Struct { x, y, z } | Struct { x: y, y: x, z: b } => if y { 0 } else { x },
+# nextln: $()Variable "b" is not defined in all alternatives.
+# nextln: $()"b" is missing in this alternative.
+
+# check: $()error
+
+# check: $()let _x = match s5 {
+# nextln: $()Struct { x, y, z } | Struct { x: y, y: x, z: b } | true => if y { 0 } else { x },
+# nextln: $()Mismatched types.
+# nextln: $()expected: Struct
+# nextln: $()found:    bool.
+
+# check: $()Match pattern variable is not defined in all alternatives
+
+# check: $()let _x = match s5 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()Struct { x, y, z } | Struct { x: y, y: x, z: b } | true => if y { 0 } else { x },
+# nextln: $()Variable "z" is not defined in all alternatives.
+# nextln: $()"z" is missing in this alternative.
+
+# check: $()Match pattern variable is not defined in all alternatives
+
+# check: $()let _x = match s5 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()Struct { x, y, z } | Struct { x: y, y: x, z: b } | true => if y { 0 } else { x },
+# nextln: $()Variable "b" is not defined in all alternatives.
+# nextln: $()"b" is missing in this alternative.
+
+# check: $()Match pattern variable is not defined in all alternatives
+
+# check: $()let _x = match s6 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()Struct { x, y, z } | Struct { x, y: b, z: a } | Struct { x, y: b, z: a } | Struct { x, y: b, z: a } => if x { 0 } else { y },
+# nextln: $()Variable "y" is not defined in all alternatives.
+# nextln: $()"y" is missing in this alternative.
+# nextln: $()"y" is also missing in this alternative.
+# nextln: $()"y" is also missing in this alternative.
+
+# check: $()Match pattern variable is not defined in all alternatives
+
+# check: $()let _x = match s6 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()Struct { x, y, z } | Struct { x, y: b, z: a } | Struct { x, y: b, z: a } | Struct { x, y: b, z: a } => if x { 0 } else { y },
+# nextln: $()Variable "z" is not defined in all alternatives.
+# nextln: $()"z" is missing in this alternative.
+# nextln: $()"z" is also missing in this alternative.
+# nextln: $()"z" is also missing in this alternative.
+
+# check: $()Match pattern variable is not defined in all alternatives
+
+# check: $()let _x = match s6 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()Struct { x, y, z } | Struct { x, y: b, z: a } | Struct { x, y: b, z: a } | Struct { x, y: b, z: a } => if x { 0 } else { y },
+# nextln: $()Variable "b" is not defined in all alternatives.
+# nextln: $()"b" is missing in this alternative.
+
+# check: $()Match pattern variable is not defined in all alternatives
+
+# check: $()let _x = match s6 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()Struct { x, y, z } | Struct { x, y: b, z: a } | Struct { x, y: b, z: a } | Struct { x, y: b, z: a } => if x { 0 } else { y },
+# nextln: $()Variable "a" is not defined in all alternatives.
+# nextln: $()"a" is missing in this alternative.
