@@ -82,7 +82,7 @@ pub fn caller_contract_id() -> ContractId {
 /// # Additional Information
 ///
 /// Returns an `AuthError::InputsNotAllOwnedBySameAddress` if the caller is external and the inputs to the transaction are not all owned by the same address.
-/// Should not return a AuthError::CallerIsInternal under any circumstances.
+/// Should not return an `AuthError::CallerIsInternal` under any circumstances.
 ///
 /// # Returns
 ///
