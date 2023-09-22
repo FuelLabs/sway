@@ -175,7 +175,7 @@ pub fn caller_address() -> Result<Address, AuthError> {
         return Err(AuthError::InputsNotAllOwnedBySameAddress);
     }
 
-    // `candidate` must be `Some` if the caller is an Address, Contract otherwise.
+    // `candidate` must be `Some` if the caller is an address, otherwise it's a contract.
     match candidate {
         Some(address) => Ok(address),
         None => Err(AuthError::CallerIsInternal),
