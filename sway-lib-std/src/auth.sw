@@ -12,6 +12,8 @@ use ::inputs::{Input, input_count, input_owner, input_type};
 pub enum AuthError {
     /// The caller is external, but the inputs to the transaction are not all owned by the same address.
     InputsNotAllOwnedBySameAddress: (),
+    /// The caller is internal, but the `caller_address` function was called.
+    CallerIsInternal: (),
 }
 
 /// Returns `true` if the caller is external (i.e. a `script`).
@@ -79,7 +81,8 @@ pub fn caller_contract_id() -> ContractId {
 ///
 /// # Additional Information
 ///
-/// Returns a Err if the caller is external and the inputs to the transaction are not all owned by the same address.
+/// Returns a AuthError::InputsNotAllOwnedBySameAddress if the caller is external and the inputs to the transaction are not all owned by the same address.
+/// Should not return a AuthError::CallerIsInternal under any circumstances.
 ///
 /// # Returns
 ///
@@ -93,6 +96,7 @@ pub fn caller_contract_id() -> ContractId {
 ///         Ok(Identity::Address(address)) => log(address),
 ///         Ok(Identity::ContractId(contract_id)) => log(contract_id),
 ///         Err(AuthError::InputsNotAllOwnedBySameAddress) => log("Inputs not all owned by same address."),
+///         Err(AuthError::CallerIsInternal) => log("Hell froze over."),
 ///     }
 /// }
 /// ```
@@ -168,6 +172,9 @@ pub fn caller_address() -> Result<Address, AuthError> {
         return Err(AuthError::InputsNotAllOwnedBySameAddress);
     }
 
-    // `candidate` must be `Some` at this point, so can unwrap safely.
-    Ok(candidate.unwrap())
+    // `candidate` must be `Some` if the caller is an Address, Contract otherwise.
+    match candidate {
+        Some(address) => Ok(address),
+        None => Err(AuthError::CallerIsInternal),
+    }
 }
