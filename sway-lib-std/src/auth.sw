@@ -106,10 +106,6 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
             Err(err) => Err(err),
             Ok(owner) => Ok(Identity::Address(owner)),
         }
-        match inputs_res {
-            Err(err) => Err(err),
-            Ok(owner) => Ok(Identity::Address(owner)),
-        }
     } else {
         // Get caller's `ContractId`.
         Ok(Identity::ContractId(caller_contract_id()))
