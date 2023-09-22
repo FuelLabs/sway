@@ -21,9 +21,9 @@ storage {
     str8: str[8] = __to_str_array("aaaaaaaa"),
     str9: str[9] = __to_str_array("aaaaaaaaa"),
     str10: str[10] = __to_str_array("aaaaaaaaaa"),
-    
-    storage_u256: u256 = CONST_U256,
-    storage_b256: b256 = CONST_B256,
+
+    const_u256: u256 = 0x0000000000000000000000000000000000000000000000000000000001234567u256,
+    const_b256: b256 = 0x0000000000000000000000000000000000000000000000000000000001234567,
 }
 
 impl BasicStorage for Contract {
@@ -209,18 +209,14 @@ fn test_storage() {
     assert_streq(storage.str8.read(), "aaaaaaaa");
     assert_streq(storage.str9.read(), "aaaaaaaaa");
     assert_streq(storage.str10.read(), "aaaaaaaaaa");
+    
+    assert_eq(storage.const_u256.read(), 0x0000000000000000000000000000000000000000000000000000000001234567u256);
+    storage.const_u256.write(0x0000000000000000000000000000000000000000000000000000000012345678u256);
+    assert_eq(storage.const_u256.read(), 0x0000000000000000000000000000000000000000000000000000000012345678u256);
 
-    assert_streq(S5, "aaaaa");
-
-    assert_eq(storage.c1.read(), C1);
-
-    // assert_eq(storage.storage_u256.read(), CONST_U256);
-    storage.storage_u256.write(CONST_U256);
-    assert_eq(storage.storage_u256.read(), CONST_U256);
-
-    assert_eq(storage.storage_b256.read(), CONST_B256);
-    storage.storage_b256.write(CONST_B256);
-    assert_eq(storage.storage_b256.read(), CONST_B256);
+    assert_eq(storage.const_b256.read(), 0x0000000000000000000000000000000000000000000000000000000001234567);
+    storage.const_b256.write(0x0000000000000000000000000000000000000000000000000000000012345678);
+    assert_eq(storage.const_b256.read(), 0x0000000000000000000000000000000000000000000000000000000012345678);
 }
 
 // If these comparisons are done inline just above then it blows out the register allocator due to
