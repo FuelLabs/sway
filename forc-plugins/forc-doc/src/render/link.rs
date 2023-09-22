@@ -1,3 +1,4 @@
+//! Handles creation of links for modules.
 use crate::{
     doc::module::ModuleInfo,
     render::{BlockTitle, DocStyle, Renderable},

@@ -1,0 +1,34 @@
+{
+  "configurables": [],
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "main",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [
+    {
+      "logId": 0,
+      "loggedType": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    }
+  ],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": null,
+      "type": "u256",
+      "typeId": 0,
+      "typeParameters": null
+    }
+  ]
+}
