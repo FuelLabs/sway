@@ -1,0 +1,34 @@
+// regex: VAR=v\d+
+// regex: ID=[[:alpha:]0-9_]+
+
+script {
+    // check: entry fn main()
+    entry fn main() -> u64, !1 {
+        // not: local { u64, u64 }
+        local { u64, u64 } __anon_0
+
+        entry():
+        v0 = get_local ptr { u64, u64 }, __anon_0, !2
+        v1 = const u64 0
+        v2 = get_elem_ptr v0, ptr u64, v1
+        v3 = const u64 2, !3
+        store v3 to v2, !2
+        v4 = const u64 1
+        v5 = get_elem_ptr v0, ptr u64, v4
+        v6 = const u64 3, !4
+        store v6 to v5, !2
+        v7 = get_local ptr { u64, u64 }, __anon_0, !5
+        v8 = const u64 0
+        v9 = get_elem_ptr v7, ptr u64, v8, !6
+        v10 = load v9
+        ret u64 v10
+    }
+}
+
+!0 = "test/src/main.sw"
+!1 = span !0 43 122
+!2 = span !0 73 111
+!3 = span !0 89 90
+!4 = span !0 103 104
+!5 = span !0 117 118
+!6 = span !0 22 28

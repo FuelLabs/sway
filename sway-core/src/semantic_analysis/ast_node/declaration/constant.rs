@@ -131,3 +131,16 @@ impl ty::TyConstantDecl {
         }
     }
 }
+
+impl TypeCheckFinalization for TyConstantDecl {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        if let Some(value) = self.value.as_mut() {
+            value.type_check_finalize(handler, ctx)?;
+        }
+        Ok(())
+    }
+}

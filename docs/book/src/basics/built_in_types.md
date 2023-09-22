@@ -17,6 +17,7 @@ Sway has the following primitive types:
 1. `u16` (16-bit unsigned integer)
 1. `u32` (32-bit unsigned integer)
 1. `u64` (64-bit unsigned integer)
+1. `u256` (256-bit unsigned integer)
 1. `str[]` (fixed-length string)
 1. `str` (string slices)
 1. `bool` (Boolean `true` or `false`)
@@ -44,12 +45,14 @@ Numbers can be declared with binary syntax, hexadecimal syntax, base-10 syntax, 
 <!-- default_num:example:start -->
 The default numeric type is `u64`. The FuelVM's word size is 64 bits, and the cases where using a smaller numeric type saves space are minimal.
 
-If a 64-bit arithmetic operation produces an overflow or an underflow,
+If a 64-bit or 256-bit arithmetic operation produces an overflow or an underflow,
 computation gets reverted automatically by FuelVM.
 
 8/16/32-bit arithmetic operations are emulated using their 64-bit analogues with
 additional overflow/underflow checks inserted, which generally results in
 somewhat higher gas consumption.
+
+The same does not happen with 256-bit operations, including `b256`, which uses specialized operations and are as performant as possible.
 <!-- default_num:example:end -->
 
 ## Boolean Type

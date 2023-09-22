@@ -11,7 +11,10 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::{ty::*, *},
-    semantic_analysis::TypeCheckContext,
+    semantic_analysis::{
+        typed_expression::replace_decls_method_application, TypeCheckContext,
+        TypeCheckFinalization, TypeCheckFinalizationContext,
+    },
     type_system::*,
 };
 
@@ -28,6 +31,8 @@ pub enum TyExpressionVariant {
         type_binding: Option<TypeBinding<()>>,
         /// In case it is a method should contain a TypeId to either an enum, struct or a type alias.
         call_path_typeid: Option<TypeId>,
+        /// This tracks whether monomorphization has been deferred between compiler stages.
+        deferred_monomorphization: bool,
     },
     LazyOperator {
         op: LazyOp,
@@ -419,6 +424,7 @@ impl HashWithEngines for TyExpressionVariant {
                 selector: _,
                 type_binding: _,
                 call_path_typeid: _,
+                deferred_monomorphization: _,
             } => {
                 call_path.hash(state);
                 fn_ref.hash(state, engines);
@@ -932,16 +938,8 @@ impl ReplaceDecls for TyExpressionVariant {
                         };
                     }
 
-                    let engines = ctx.engines();
-                    let decl_engine = engines.de();
-                    let mut method = ctx.engines().de().get(fn_ref);
-
-                    // Retrieve the implemented traits for the type parameters and insert them in the namespace.
-                    for type_param in method.type_parameters.iter() {
-                        let TypeParameter { type_id, .. } = type_param;
-
-                        ctx.insert_trait_implementation_for_type(*type_id);
-                    }
+                    let decl_engine = ctx.engines().de();
+                    let mut method = decl_engine.get(fn_ref);
 
                     // Handle the trait constraints. This includes checking to see if the trait
                     // constraints are satisfied and replacing old decl ids based on the
@@ -953,10 +951,7 @@ impl ReplaceDecls for TyExpressionVariant {
                             &method.name.span(),
                         )?;
                     method.replace_decls(&inner_decl_mapping, handler, ctx)?;
-                    let new_decl_ref = decl_engine
-                        .insert(method)
-                        .with_parent(decl_engine, (*fn_ref.id()).into());
-                    fn_ref.replace_id(*new_decl_ref.id());
+                    decl_engine.replace(*new_decl_ref.id(), method);
                 }
                 LazyOperator { lhs, rhs, .. } => {
                     (*lhs).replace_decls(decl_mapping, handler, ctx)?;
@@ -1046,6 +1041,150 @@ impl ReplaceDecls for TyExpressionVariant {
                 Return(stmt) => stmt.replace_decls(decl_mapping, handler, ctx)?,
             }
 
+            Ok(())
+        })
+    }
+}
+
+impl TypeCheckFinalization for TyExpressionVariant {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            match self {
+                TyExpressionVariant::Literal(_) => {}
+                TyExpressionVariant::FunctionApplication {
+                    arguments,
+                    deferred_monomorphization,
+                    ..
+                } => {
+                    for (_, arg) in arguments.iter_mut() {
+                        let _ = arg.type_check_finalize(handler, ctx);
+                    }
+                    // If the function application was deferred we need to monomorphize it.
+                    // This is because sometimes we don't know the correct order to evaluate
+                    // the items. So we create an initial "stub" typed function application node,
+                    // run an analysis pass to compute a dependency graph, and then finalize type
+                    // checking in the correct ordering.
+                    if *deferred_monomorphization {
+                        replace_decls_method_application(
+                            self,
+                            handler,
+                            ctx.type_check_ctx.by_ref(),
+                        )?;
+                    }
+                }
+                TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
+                    lhs.type_check_finalize(handler, ctx)?;
+                    rhs.type_check_finalize(handler, ctx)?
+                }
+                TyExpressionVariant::ConstantExpression { const_decl, .. } => {
+                    const_decl.type_check_finalize(handler, ctx)?
+                }
+                TyExpressionVariant::VariableExpression { .. } => {}
+                TyExpressionVariant::Tuple { fields } => {
+                    for field in fields.iter_mut() {
+                        field.type_check_finalize(handler, ctx)?
+                    }
+                }
+                TyExpressionVariant::Array { contents, .. } => {
+                    for elem in contents.iter_mut() {
+                        elem.type_check_finalize(handler, ctx)?
+                    }
+                }
+                TyExpressionVariant::ArrayIndex { prefix, index } => {
+                    prefix.type_check_finalize(handler, ctx)?;
+                    index.type_check_finalize(handler, ctx)?;
+                }
+                TyExpressionVariant::StructExpression { fields, .. } => {
+                    for field in fields.iter_mut() {
+                        field.type_check_finalize(handler, ctx)?;
+                    }
+                }
+                TyExpressionVariant::CodeBlock(block) => {
+                    block.type_check_finalize(handler, ctx)?;
+                }
+                TyExpressionVariant::FunctionParameter => {}
+                TyExpressionVariant::MatchExp {
+                    desugared,
+                    scrutinees,
+                } => {
+                    desugared.type_check_finalize(handler, ctx)?;
+                    for scrutinee in scrutinees.iter_mut() {
+                        scrutinee.type_check_finalize(handler, ctx)?
+                    }
+                }
+                TyExpressionVariant::IfExp {
+                    condition,
+                    then,
+                    r#else,
+                } => {
+                    condition.type_check_finalize(handler, ctx)?;
+                    then.type_check_finalize(handler, ctx)?;
+                    if let Some(ref mut r#else) = r#else {
+                        r#else.type_check_finalize(handler, ctx)?;
+                    }
+                }
+                TyExpressionVariant::AsmExpression { .. } => {}
+                TyExpressionVariant::StructFieldAccess { prefix, .. } => {
+                    prefix.type_check_finalize(handler, ctx)?;
+                }
+                TyExpressionVariant::TupleElemAccess { prefix, .. } => {
+                    prefix.type_check_finalize(handler, ctx)?;
+                }
+                TyExpressionVariant::EnumInstantiation { contents, .. } => {
+                    for expr in contents.iter_mut() {
+                        expr.type_check_finalize(handler, ctx)?
+                    }
+                }
+                TyExpressionVariant::AbiCast { address, .. } => {
+                    address.type_check_finalize(handler, ctx)?;
+                }
+                TyExpressionVariant::StorageAccess(_) => {
+                    todo!();
+                }
+                TyExpressionVariant::IntrinsicFunction(kind) => {
+                    for expr in kind.arguments.iter_mut() {
+                        expr.type_check_finalize(handler, ctx)?;
+                    }
+                }
+                TyExpressionVariant::AbiName(_) => {
+                    todo!();
+                }
+                TyExpressionVariant::EnumTag { exp } => {
+                    exp.type_check_finalize(handler, ctx)?;
+                }
+                TyExpressionVariant::UnsafeDowncast { exp, .. } => {
+                    exp.type_check_finalize(handler, ctx)?;
+                }
+                TyExpressionVariant::WhileLoop { condition, body } => {
+                    condition.type_check_finalize(handler, ctx)?;
+                    body.type_check_finalize(handler, ctx)?;
+                }
+                TyExpressionVariant::Break => {}
+                TyExpressionVariant::Continue => {}
+                TyExpressionVariant::Reassignment(node) => {
+                    for lhs_index in node.lhs_indices.iter_mut() {
+                        match lhs_index {
+                            ProjectionKind::StructField { name: _ } => {}
+                            ProjectionKind::TupleField {
+                                index: _,
+                                index_span: _,
+                            } => {}
+                            ProjectionKind::ArrayIndex {
+                                index,
+                                index_span: _,
+                            } => index.expression.type_check_finalize(handler, ctx)?,
+                        }
+                    }
+                    node.type_check_finalize(handler, ctx)?;
+                }
+                TyExpressionVariant::Return(node) => {
+                    node.type_check_finalize(handler, ctx)?;
+                }
+            }
             Ok(())
         })
     }

@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-4681455DED99A093"
+
+[[package]]
+name = "match_expressions_or_missing_variables"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-4681455DED99A093"
+dependencies = ["core"]

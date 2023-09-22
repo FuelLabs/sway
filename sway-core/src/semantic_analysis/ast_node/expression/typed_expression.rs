@@ -81,7 +81,7 @@ impl ty::TyExpression {
         let (mut decl_ref, _) = resolve_method_name(
             handler,
             ctx.by_ref(),
-            &mut method_name_binding,
+            &method_name_binding,
             arguments.clone(),
         )?;
         decl_ref = monomorphize_method(
@@ -109,6 +109,7 @@ impl ty::TyExpression {
                 selector: None,
                 type_binding: None,
                 call_path_typeid: None,
+                deferred_monomorphization: false,
             },
             return_type: return_type.type_id,
             span,
