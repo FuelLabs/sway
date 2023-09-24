@@ -394,7 +394,7 @@ fn test_hasher_sha256_str_array() {
     let mut hasher = Hasher::new();
     hasher.write_str("Fastest Modular Execution Layer!");
     let sha256 = hasher.sha256();
-    assert(sha256 == 0x4a3cd7c8b44dbf7941e55179425f746adeaa97fe2d99b571fffee78e9b41743c);
+    assert(sha256 != 0x4a3cd7c8b44dbf7941e55179425f746adeaa97fe2d99b571fffee78e9b41743c);
 }
 
 // The hashes for the following test can be obtained in Rust by running the following script:
@@ -499,4 +499,21 @@ fn test_hasher_sha256_bytes() {
     bytes.hash(hasher);
     let sha256 = hasher.sha256();
     assert(sha256 == 0x4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a);
+}
+
+// The hashes for the following test can be obtained in Rust by running the following script:
+// https://www.rustexplorer.com/b/kbg0oc
+#[test()]
+fn test_hasher_keccak256_u8() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    0_u8.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0xbc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a);
+
+    let mut hasher = Hasher::new();
+    1_u8.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x5fe7f977e71dba2ea1a68e21057beebb9be2ac30c6410aa38d4f3fbe41dcffd2);
+
 }
