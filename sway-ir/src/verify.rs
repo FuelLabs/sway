@@ -316,7 +316,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
             .ok_or(IrError::VerifyUnaryOpIncorrectArgType)?;
         match op {
             UnaryOpKind::Not => {
-                if !arg_ty.is_uint(self.context) {
+                if !arg_ty.is_uint(self.context) && !arg_ty.is_b256(self.context) {
                     return Err(IrError::VerifyUnaryOpIncorrectArgType);
                 }
             }
@@ -455,7 +455,8 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         match op {
             // Shifts can have the rhs with different type
             BinaryOpKind::Lsh | BinaryOpKind::Rsh => {
-                if !arg1_ty.is_uint(self.context) || !arg2_ty.is_uint(self.context) {
+                let is_lhs_ok = arg1_ty.is_uint(self.context) || arg1_ty.is_b256(self.context);
+                if !is_lhs_ok || !arg2_ty.is_uint(self.context) {
                     return Err(IrError::VerifyBinaryOpIncorrectArgType);
                 }
             }
@@ -463,11 +464,15 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
             | BinaryOpKind::Sub
             | BinaryOpKind::Mul
             | BinaryOpKind::Div
-            | BinaryOpKind::And
-            | BinaryOpKind::Or
-            | BinaryOpKind::Xor
             | BinaryOpKind::Mod => {
                 if !arg1_ty.eq(self.context, &arg2_ty) || !arg1_ty.is_uint(self.context) {
+                    return Err(IrError::VerifyBinaryOpIncorrectArgType);
+                }
+            }
+            BinaryOpKind::And | BinaryOpKind::Or | BinaryOpKind::Xor => {
+                if !arg1_ty.eq(self.context, &arg2_ty)
+                    || !(arg1_ty.is_uint(self.context) || arg1_ty.is_b256(self.context))
+                {
                     return Err(IrError::VerifyBinaryOpIncorrectArgType);
                 }
             }
@@ -606,7 +611,10 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                         lhs_ty.as_string(self.context),
                         rhs_ty.as_string(self.context),
                     ))
-                } else if lhs_ty.is_bool(self.context) || lhs_ty.is_uint(self.context) {
+                } else if lhs_ty.is_bool(self.context)
+                    || lhs_ty.is_uint(self.context)
+                    || lhs_ty.is_b256(self.context)
+                {
                     Ok(())
                 } else {
                     Err(IrError::VerifyCmpBadTypes(

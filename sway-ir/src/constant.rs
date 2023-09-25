@@ -10,6 +10,8 @@ pub struct Constant {
     pub value: ConstantValue,
 }
 
+pub type B256 = U256;
+
 /// A constant representation of each of the supported [`Type`]s.
 #[derive(Debug, Clone, DebugWithContext)]
 pub enum ConstantValue {
@@ -18,7 +20,7 @@ pub enum ConstantValue {
     Bool(bool),
     Uint(u64),
     U256(U256),
-    B256([u8; 32]),
+    B256(B256),
     String(Vec<u8>),
     Array(Vec<Constant>),
     Struct(Vec<Constant>),
@@ -60,7 +62,7 @@ impl Constant {
     pub fn new_b256(context: &Context, bytes: [u8; 32]) -> Self {
         Constant {
             ty: Type::get_b256(context),
-            value: ConstantValue::B256(bytes),
+            value: ConstantValue::B256(B256::from_be_bytes(&bytes)),
         }
     }
 

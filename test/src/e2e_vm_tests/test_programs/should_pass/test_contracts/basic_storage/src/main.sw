@@ -5,6 +5,9 @@ use basic_storage_abi::*;
 const C1 = 1;
 const S5 = __to_str_array("aaaaa");
 
+const CONST_U256 = 0x0000000000000000000000000000000000000000000000000000000000000001u256;
+const CONST_B256 = 0x0000000000000000000000000000000000000000000000000000000000000001;
+
 storage {
     c1: u64 = C1,
     str0: str[0] = __to_str_array(""),
@@ -18,6 +21,9 @@ storage {
     str8: str[8] = __to_str_array("aaaaaaaa"),
     str9: str[9] = __to_str_array("aaaaaaaaa"),
     str10: str[10] = __to_str_array("aaaaaaaaaa"),
+    
+    storage_u256: u256 = CONST_U256,
+    storage_b256: b256 = CONST_B256,
 }
 
 impl BasicStorage for Contract {
@@ -38,7 +44,7 @@ impl BasicStorage for Contract {
 
     #[storage(write)]
     fn intrinsic_store_word(key: b256, value: u64) {
-        __state_store_word(key, value);
+        let _ = __state_store_word(key, value);
     }
 
     #[storage(read)]
@@ -56,13 +62,13 @@ impl BasicStorage for Contract {
             i += 1;
         }
 
-        __state_load_quad(key, values.buf.ptr(), slots);
+        let _ = __state_load_quad(key, values.buf.ptr(), slots);
         values
     }
 
     #[storage(write)]
     fn intrinsic_store_quad(key: b256, values: Vec<Quad>) {
-        __state_store_quad(key, values.buf.ptr(), values.len());
+        let _ = __state_store_quad(key, values.buf.ptr(), values.len());
     }
 
     #[storage(read, write)]
@@ -203,6 +209,18 @@ fn test_storage() {
     assert_streq(storage.str8.read(), "aaaaaaaa");
     assert_streq(storage.str9.read(), "aaaaaaaaa");
     assert_streq(storage.str10.read(), "aaaaaaaaaa");
+
+    assert_streq(S5, "aaaaa");
+
+    assert_eq(storage.c1.read(), C1);
+
+    // assert_eq(storage.storage_u256.read(), CONST_U256);
+    storage.storage_u256.write(CONST_U256);
+    assert_eq(storage.storage_u256.read(), CONST_U256);
+
+    assert_eq(storage.storage_b256.read(), CONST_B256);
+    storage.storage_b256.write(CONST_B256);
+    assert_eq(storage.storage_b256.read(), CONST_B256);
 }
 
 // If these comparisons are done inline just above then it blows out the register allocator due to

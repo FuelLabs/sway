@@ -730,14 +730,7 @@ fn const_eval_intrinsic(
     assert!(args.len() == intrinsic.arguments.len());
 
     match intrinsic.kind {
-        Intrinsic::Add
-        | Intrinsic::Sub
-        | Intrinsic::Mul
-        | Intrinsic::Div
-        | Intrinsic::And
-        | Intrinsic::Or
-        | Intrinsic::Xor
-        | Intrinsic::Mod => {
+        Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div | Intrinsic::Mod => {
             let ty = args[0].ty;
             assert!(args.len() == 2 && ty.eq(lookup.context, &args[1].ty));
 
@@ -750,10 +743,57 @@ fn const_eval_intrinsic(
                         Intrinsic::Sub => arg1.checked_sub(*arg2),
                         Intrinsic::Mul => arg1.checked_mul(*arg2),
                         Intrinsic::Div => arg1.checked_div(*arg2),
+                        Intrinsic::Mod => arg1.checked_rem(*arg2),
+                        _ => unreachable!(),
+                    };
+
+                    match result {
+                        Some(result) => Ok(Some(Constant {
+                            ty,
+                            value: ConstantValue::Uint(result),
+                        })),
+                        None => Err(ConstEvalError::CannotBeEvaluatedToConst {
+                            span: intrinsic.span.clone(),
+                        }),
+                    }
+                }
+                (U256(arg1), U256(arg2)) => {
+                    let result = match intrinsic.kind {
+                        Intrinsic::Add => arg1.checked_add(arg2),
+                        Intrinsic::Sub => arg1.checked_sub(arg2),
+                        Intrinsic::Mul => arg1.checked_mul(arg2),
+                        Intrinsic::Div => arg1.checked_div(arg2),
+                        Intrinsic::Mod => Some(arg1.rem(arg2)),
+                        _ => unreachable!(),
+                    };
+
+                    match result {
+                        Some(result) => Ok(Some(Constant {
+                            ty,
+                            value: ConstantValue::U256(result),
+                        })),
+                        None => Err(ConstEvalError::CannotBeEvaluatedToConst {
+                            span: intrinsic.span.clone(),
+                        }),
+                    }
+                }
+                _ => {
+                    panic!("Type checker allowed incorrect args to binary op");
+                }
+            }
+        }
+        Intrinsic::And | Intrinsic::Or | Intrinsic::Xor => {
+            let ty = args[0].ty;
+            assert!(args.len() == 2 && ty.eq(lookup.context, &args[1].ty));
+
+            use ConstantValue::*;
+            match (&args[0].value, &args[1].value) {
+                (Uint(arg1), Uint(ref arg2)) => {
+                    // All arithmetic is done as if it were u64
+                    let result = match intrinsic.kind {
                         Intrinsic::And => Some(arg1.bitand(arg2)),
                         Intrinsic::Or => Some(arg1.bitor(*arg2)),
                         Intrinsic::Xor => Some(arg1.bitxor(*arg2)),
-                        Intrinsic::Mod => arg1.checked_rem(*arg2),
                         _ => unreachable!(),
                     };
 
@@ -769,14 +809,9 @@ fn const_eval_intrinsic(
                 }
                 (U256(arg1), U256(arg2)) => {
                     let result = match intrinsic.kind {
-                        Intrinsic::Add => arg1.checked_add(arg2),
-                        Intrinsic::Sub => arg1.checked_sub(arg2),
-                        Intrinsic::Mul => arg1.checked_mul(arg2),
-                        Intrinsic::Div => arg1.checked_div(arg2),
                         Intrinsic::And => Some(arg1.bitand(arg2)),
                         Intrinsic::Or => Some(arg1.bitor(arg2)),
                         Intrinsic::Xor => Some(arg1.bitxor(arg2)),
-                        Intrinsic::Mod => Some(arg1.rem(arg2)),
                         _ => unreachable!(),
                     };
 
@@ -790,6 +825,24 @@ fn const_eval_intrinsic(
                         }),
                     }
                 }
+                (B256(arg1), B256(arg2)) => {
+                    let result = match intrinsic.kind {
+                        Intrinsic::And => Some(arg1.bitand(arg2)),
+                        Intrinsic::Or => Some(arg1.bitor(arg2)),
+                        Intrinsic::Xor => Some(arg1.bitxor(arg2)),
+                        _ => unreachable!(),
+                    };
+
+                    match result {
+                        Some(result) => Ok(Some(Constant {
+                            ty,
+                            value: ConstantValue::B256(result),
+                        })),
+                        None => Err(ConstEvalError::CannotBeEvaluatedToConst {
+                            span: intrinsic.span.clone(),
+                        }),
+                    }
+                }
                 _ => {
                     panic!("Type checker allowed incorrect args to binary op");
                 }
@@ -797,7 +850,7 @@ fn const_eval_intrinsic(
         }
         Intrinsic::Lsh | Intrinsic::Rsh => {
             assert!(args.len() == 2);
-            assert!(args[0].ty.is_uint(lookup.context));
+            assert!(args[0].ty.is_uint(lookup.context) || args[0].ty.is_b256(lookup.context));
             assert!(args[1].ty.is_uint64(lookup.context));
 
             let ty = args[0].ty;
@@ -836,6 +889,23 @@ fn const_eval_intrinsic(
                         Some(value) => Ok(Some(Constant {
                             ty,
                             value: ConstantValue::U256(value),
+                        })),
+                        None => Err(ConstEvalError::CannotBeEvaluatedToConst {
+                            span: intrinsic.span.clone(),
+                        }),
+                    }
+                }
+                (B256(arg1), Uint(ref arg2)) => {
+                    let result = match intrinsic.kind {
+                        Intrinsic::Lsh => arg1.checked_shl(arg2),
+                        Intrinsic::Rsh => Some(arg1.shr(arg2)),
+                        _ => unreachable!(),
+                    };
+
+                    match result {
+                        Some(result) => Ok(Some(Constant {
+                            ty,
+                            value: ConstantValue::B256(result),
                         })),
                         None => Err(ConstEvalError::CannotBeEvaluatedToConst {
                             span: intrinsic.span.clone(),
@@ -976,33 +1046,37 @@ fn const_eval_intrinsic(
             span: intrinsic.span.clone(),
         }),
         Intrinsic::Not => {
-            // `not` works only with uint/u256 at the moment
+            // `not` works only with uint/u256/b256 at the moment
             // `bool` ops::Not implementation uses `__eq`.
 
             assert!(args.len() == 1);
-            assert!(args[0].ty.is_uint(lookup.context));
+            assert!(args[0].ty.is_uint(lookup.context) || args[0].ty.is_b256(lookup.context));
 
             let Some(arg) = args.into_iter().next() else {
                 unreachable!("Unexpected 'not' without any arguments");
             };
 
             match arg.value {
-                ConstantValue::Uint(v) => {
-                    let v = match arg.ty.get_uint_width(lookup.context) {
-                        Some(8) => !(v as u8) as u64,
-                        Some(16) => !(v as u16) as u64,
-                        Some(32) => !(v as u32) as u64,
-                        Some(64) => !v,
+                ConstantValue::Uint(n) => {
+                    let n = match arg.ty.get_uint_width(lookup.context) {
+                        Some(8) => !(n as u8) as u64,
+                        Some(16) => !(n as u16) as u64,
+                        Some(32) => !(n as u32) as u64,
+                        Some(64) => !n,
                         _ => unreachable!("Invalid unsigned integer width"),
                     };
                     Ok(Some(Constant {
                         ty: arg.ty,
-                        value: ConstantValue::Uint(v),
+                        value: ConstantValue::Uint(n),
                     }))
                 }
-                ConstantValue::U256(v) => Ok(Some(Constant {
+                ConstantValue::U256(n) => Ok(Some(Constant {
                     ty: arg.ty,
-                    value: ConstantValue::U256(v.not()),
+                    value: ConstantValue::U256(n.not()),
+                })),
+                ConstantValue::B256(v) => Ok(Some(Constant {
+                    ty: arg.ty,
+                    value: ConstantValue::B256(v.not()),
                 })),
                 _ => {
                     unreachable!("Type checker allowed non integer value for Not");
