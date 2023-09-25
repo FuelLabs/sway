@@ -777,7 +777,6 @@ fn assign_registers(
             .neighbors_undirected(node)
             .map(|neighbor| interference_graph[neighbor].clone())
             .collect();
-        // println!("assign_registers: {:?}", neighbors);
         if reg.is_virtual() {
             let available =
                 pool.registers
