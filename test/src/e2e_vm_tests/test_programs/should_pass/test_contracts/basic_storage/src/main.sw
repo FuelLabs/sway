@@ -5,9 +5,6 @@ use basic_storage_abi::*;
 const C1 = 1;
 const S5 = __to_str_array("aaaaa");
 
-const CONST_U256 = 0x0000000000000000000000000000000000000000000000000000000000000001u256;
-const CONST_B256 = 0x0000000000000000000000000000000000000000000000000000000000000001;
-
 storage {
     c1: u64 = C1,
     str0: str[0] = __to_str_array(""),
@@ -209,6 +206,10 @@ fn test_storage() {
     assert_streq(storage.str8.read(), "aaaaaaaa");
     assert_streq(storage.str9.read(), "aaaaaaaaa");
     assert_streq(storage.str10.read(), "aaaaaaaaaa");
+
+    assert_eq(storage.c1.read(), C1);
+    storage.c1.write(2);
+    assert_eq(storage.c1.read(), 2);
     
     assert_eq(storage.const_u256.read(), 0x0000000000000000000000000000000000000000000000000000000001234567u256);
     storage.const_u256.write(0x0000000000000000000000000000000000000000000000000000000012345678u256);
