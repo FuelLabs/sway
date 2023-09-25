@@ -413,6 +413,8 @@ impl ty::TyExpression {
             }
         }
 
+        typed_expression.check_deprecated(engines, handler);
+
         Ok(typed_expression)
     }
 

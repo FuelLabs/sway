@@ -28,7 +28,7 @@ use sway_types::{
         DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME, INLINE_ATTRIBUTE_NAME,
         MATCH_RETURN_VAR_NAME_PREFIX, PAYABLE_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME,
         STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME,
-        TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
+        TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES, DEPRECATED_ATTRIBUTE_NAME,
     },
     integer_bits::IntegerBits,
 };
@@ -4085,6 +4085,7 @@ fn item_attrs_to_map(
     attribute_list: &[AttributeDecl],
 ) -> Result<AttributesMap, ErrorEmitted> {
     let mut attrs_map: HashMap<_, Vec<Attribute>> = HashMap::new();
+
     for attr_decl in attribute_list {
         let attrs = attr_decl.attribute.get().into_iter();
         for attr in attrs {
@@ -4130,6 +4131,7 @@ fn item_attrs_to_map(
                 PAYABLE_ATTRIBUTE_NAME => Some(AttributeKind::Payable),
                 ALLOW_ATTRIBUTE_NAME => Some(AttributeKind::Allow),
                 CFG_ATTRIBUTE_NAME => Some(AttributeKind::Cfg),
+                DEPRECATED_ATTRIBUTE_NAME => Some(AttributeKind::Deprecated),
                 _ => None,
             } {
                 match attrs_map.get_mut(&attr_kind) {
@@ -4182,6 +4184,7 @@ fn item_attrs_to_map(
             }
         }
     }
+
     Ok(AttributesMap::new(Arc::new(attrs_map)))
 }
 

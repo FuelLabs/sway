@@ -115,6 +115,9 @@ pub enum Warning {
         block_name: Ident,
     },
     ModulePrivacyDisabled,
+    UsingDeprecated {
+        message: String
+    },
 }
 
 impl fmt::Display for Warning {
@@ -253,6 +256,8 @@ impl fmt::Display for Warning {
             ModulePrivacyDisabled => write!(f, "Module privacy rules will soon change to make modules private by default.
                                             You can enable the new behavior with the --experimental-private-modules flag, which will become the default behavior in a later release.
                                             More details are available in the related RFC: https://github.com/FuelLabs/sway-rfcs/blob/master/rfcs/0008-private-modules.md"),
+            UsingDeprecated { message } => write!(f, "{}", message),
+            
         }
     }
 }

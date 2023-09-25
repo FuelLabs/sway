@@ -1,6 +1,6 @@
 use std::{fmt, hash::Hasher};
 
-use sway_error::handler::{ErrorEmitted, Handler};
+use sway_error::{handler::{ErrorEmitted, Handler}, warning::{CompileWarning, Warning}};
 use sway_types::{Span, Spanned};
 
 use crate::{
@@ -9,7 +9,7 @@ use crate::{
     language::{ty::*, Literal},
     semantic_analysis::{TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext},
     type_system::*,
-    types::*,
+    types::*, transform::{AttributeKind, AttributesMap},
 };
 
 #[derive(Clone, Debug)]
@@ -428,5 +428,31 @@ impl TyExpression {
     /// Returns `self` as a literal, if possible.
     pub(crate) fn extract_literal_value(&self) -> Option<Literal> {
         self.expression.extract_literal_value()
+    }
+
+    // Checks if this expression references a deprecated item
+    pub(crate) fn check_deprecated(&self, engines: &Engines, handler: &Handler) {
+        fn check_is_deprecated(attributes: &AttributesMap, span: &Span, handler: &Handler, message: &str) {
+            if let Some(_) = attributes.get(&AttributeKind::Deprecated) {
+                handler.emit_warn(CompileWarning {
+                    span: span.clone(),
+                    warning_content: Warning::UsingDeprecated {
+                        message: message.into()
+                    },
+                })
+            }
+        }
+
+        match &self.expression {
+            TyExpressionVariant::StructExpression { 
+                struct_ref, 
+                instantiation_span, 
+                ..
+            } => {
+                let s = engines.de().get(struct_ref.id());
+                check_is_deprecated(&s.attributes, &instantiation_span, handler, "instantiation of deprecated struct");
+            },
+            _ => {}
+        }
     }
 }
