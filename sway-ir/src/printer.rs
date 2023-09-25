@@ -1027,13 +1027,17 @@ impl Constant {
                         .concat()
                 )
             }
-            ConstantValue::B256(bs) => format!(
-                "b256 0x{}",
-                bs.iter()
-                    .map(|b| format!("{b:02x}"))
-                    .collect::<Vec<String>>()
-                    .concat()
-            ),
+            ConstantValue::B256(v) => {
+                let bytes = v.to_be_bytes();
+                format!(
+                    "b256 0x{}",
+                    bytes
+                        .iter()
+                        .map(|b| format!("{b:02x}"))
+                        .collect::<Vec<String>>()
+                        .concat()
+                )
+            }
             ConstantValue::String(bs) => format!(
                 "{} \"{}\"",
                 self.ty.as_string(context),
