@@ -168,6 +168,7 @@ pub fn serialize_to_words(constant: &Constant, context: &Context, ty: &Type) -> 
             Vec::from_iter((0..4).map(|i| Bytes8::new(b[8 * i..8 * i + 8].try_into().unwrap())))
         }
         ConstantValue::B256(b) if ty.is_b256(context) => {
+            let b = b.to_be_bytes();
             Vec::from_iter((0..4).map(|i| Bytes8::new(b[8 * i..8 * i + 8].try_into().unwrap())))
         }
         ConstantValue::String(s) if ty.is_string_array(context) => {
