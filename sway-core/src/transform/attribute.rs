@@ -62,7 +62,7 @@ pub enum AttributeKind {
     Payable,
     Allow,
     Cfg,
-    Deprecated
+    Deprecated,
 }
 
 impl AttributeKind {
@@ -78,7 +78,7 @@ impl AttributeKind {
             AttributeKind::Payable => (0, None),
             AttributeKind::Allow => (1, Some(1)),
             AttributeKind::Cfg => (1, Some(1)),
-            AttributeKind::Deprecated => (0, Some(0))
+            AttributeKind::Deprecated => (0, Some(0)),
         }
     }
 
@@ -96,7 +96,7 @@ impl AttributeKind {
                 CFG_TARGET_ARG_NAME.to_string(),
                 CFG_PROGRAM_TYPE_ARG_NAME.to_string(),
             ]),
-            AttributeKind::Deprecated => None
+            AttributeKind::Deprecated => None,
         }
     }
 }

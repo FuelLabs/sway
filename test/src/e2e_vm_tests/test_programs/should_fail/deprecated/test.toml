@@ -1,4 +1,0 @@
-category = "fail"
-
-# check: $()}[0];
-# nextln: $()No method named "index" found for type "Never".

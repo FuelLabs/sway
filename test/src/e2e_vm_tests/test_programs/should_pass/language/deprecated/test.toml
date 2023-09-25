@@ -1,0 +1,5 @@
+category = "compile"
+expected_warnings = 2
+
+# check: $()instantiation of deprecated struct
+# check: $()instantiation of deprecated enum

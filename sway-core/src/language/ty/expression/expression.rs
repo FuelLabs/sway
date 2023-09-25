@@ -1,6 +1,9 @@
 use std::{fmt, hash::Hasher};
 
-use sway_error::{handler::{ErrorEmitted, Handler}, warning::{CompileWarning, Warning}};
+use sway_error::{
+    handler::{ErrorEmitted, Handler},
+    warning::{CompileWarning, Warning},
+};
 use sway_types::{Span, Spanned};
 
 use crate::{
@@ -8,8 +11,9 @@ use crate::{
     engine_threading::*,
     language::{ty::*, Literal},
     semantic_analysis::{TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext},
+    transform::{AttributeKind, AttributesMap},
     type_system::*,
-    types::*, transform::{AttributeKind, AttributesMap},
+    types::*,
 };
 
 #[derive(Clone, Debug)]
@@ -432,26 +436,49 @@ impl TyExpression {
 
     // Checks if this expression references a deprecated item
     pub(crate) fn check_deprecated(&self, engines: &Engines, handler: &Handler) {
-        fn check_is_deprecated(attributes: &AttributesMap, span: &Span, handler: &Handler, message: &str) {
-            if let Some(_) = attributes.get(&AttributeKind::Deprecated) {
+        fn check_is_deprecated(
+            attributes: &AttributesMap,
+            span: &Span,
+            handler: &Handler,
+            message: &str,
+        ) {
+            if attributes.get(&AttributeKind::Deprecated).is_some() {
                 handler.emit_warn(CompileWarning {
                     span: span.clone(),
                     warning_content: Warning::UsingDeprecated {
-                        message: message.into()
+                        message: message.into(),
                     },
                 })
             }
         }
 
         match &self.expression {
-            TyExpressionVariant::StructExpression { 
-                struct_ref, 
-                instantiation_span, 
+            TyExpressionVariant::StructExpression {
+                struct_ref,
+                instantiation_span,
                 ..
             } => {
                 let s = engines.de().get(struct_ref.id());
-                check_is_deprecated(&s.attributes, &instantiation_span, handler, "instantiation of deprecated struct");
-            },
+                check_is_deprecated(
+                    &s.attributes,
+                    instantiation_span,
+                    handler,
+                    "instantiation of deprecated struct",
+                );
+            }
+            TyExpressionVariant::EnumInstantiation {
+                enum_ref,
+                variant_instantiation_span,
+                ..
+            } => {
+                let s = engines.de().get(enum_ref.id());
+                check_is_deprecated(
+                    &s.attributes,
+                    variant_instantiation_span,
+                    handler,
+                    "instantiation of deprecated enum",
+                );
+            }
             _ => {}
         }
     }
