@@ -84,6 +84,10 @@ impl Format for ItemTrait {
                         write!(formatted_code, "{}", formatter.indent_str()?,)?;
                         const_decl.format(formatted_code, formatter)?;
                     }
+                    sway_ast::ItemTraitItem::Type(type_decl, _) => {
+                        write!(formatted_code, "{}", formatter.indent_str()?,)?;
+                        type_decl.format(formatted_code, formatter)?;
+                    }
                     ItemTraitItem::Error(_, _) => {
                         return Err(FormatterError::SyntaxError);
                     }
@@ -133,6 +137,11 @@ impl Format for ItemTraitItem {
             }
             ItemTraitItem::Const(const_decl, _) => {
                 const_decl.format(formatted_code, formatter)?;
+                writeln!(formatted_code)?;
+                Ok(())
+            }
+            ItemTraitItem::Type(type_decl, _) => {
+                type_decl.format(formatted_code, formatter)?;
                 writeln!(formatted_code)?;
                 Ok(())
             }
@@ -224,6 +233,9 @@ impl LeafSpans for ItemTraitItem {
             }
             ItemTraitItem::Error(spans, _) => {
                 collected_spans.extend(spans.iter().cloned().map(Into::into));
+            }
+            ItemTraitItem::Type(type_decl, _) => {
+                collected_spans.append(&mut type_decl.leaf_spans())
             }
         };
         collected_spans

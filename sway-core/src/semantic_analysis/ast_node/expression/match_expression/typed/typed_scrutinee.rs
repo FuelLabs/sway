@@ -8,14 +8,17 @@ use crate::{
     decl_engine::DeclEngineInsert,
     language::{
         parsed::*,
-        ty::{self, TyDecl},
+        ty::{self, TyDecl, TyScrutinee},
         CallPath,
     },
-    semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
+    semantic_analysis::{
+        type_check_context::EnforceTypeArguments, TypeCheckContext, TypeCheckFinalization,
+        TypeCheckFinalizationContext,
+    },
     type_system::*,
 };
 
-impl ty::TyScrutinee {
+impl TyScrutinee {
     pub(crate) fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
@@ -152,17 +155,18 @@ fn type_check_variable(
     name: Ident,
     span: Span,
 ) -> Result<ty::TyScrutinee, ErrorEmitted> {
-    let type_engine = ctx.engines.te();
-    let decl_engine = ctx.engines.de();
+    let engines = ctx.engines;
+    let type_engine = engines.te();
+    let decl_engine = engines.de();
 
     let typed_scrutinee = match ctx
         .namespace
-        .resolve_symbol(&Handler::default(), &name)
+        .resolve_symbol(&Handler::default(), engines, &name)
         .ok()
     {
         // If this variable is a constant, then we turn it into a [TyScrutinee::Constant](ty::TyScrutinee::Constant).
         Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) => {
-            let constant_decl = decl_engine.get_constant(decl_id);
+            let constant_decl = decl_engine.get_constant(&decl_id);
             let value = match constant_decl.value {
                 Some(ref value) => value,
                 None => {
@@ -205,14 +209,14 @@ fn type_check_struct(
     fields: Vec<StructScrutineeField>,
     span: Span,
 ) -> Result<ty::TyScrutinee, ErrorEmitted> {
-    let type_engine = ctx.engines.te();
-    let decl_engine = ctx.engines.de();
+    let engines = ctx.engines;
+    let type_engine = engines.te();
+    let decl_engine = engines.de();
 
     // find the struct definition from the name
     let unknown_decl = ctx
         .namespace
-        .resolve_symbol(handler, &struct_name)
-        .cloned()?;
+        .resolve_symbol(handler, engines, &struct_name)?;
     let struct_ref = unknown_decl.to_struct_ref(handler, ctx.engines())?;
     let mut struct_decl = decl_engine.get_struct(&struct_ref);
 
@@ -292,6 +296,16 @@ fn type_check_struct(
     Ok(typed_scrutinee)
 }
 
+impl TypeCheckFinalization for TyScrutinee {
+    fn type_check_finalize(
+        &mut self,
+        _handler: &Handler,
+        _ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
+    }
+}
+
 fn type_check_enum(
     handler: &Handler,
     mut ctx: TypeCheckContext,
@@ -314,8 +328,7 @@ fn type_check_enum(
             // find the enum definition from the name
             let unknown_decl = ctx
                 .namespace
-                .resolve_call_path(handler, &enum_callpath)
-                .cloned()?;
+                .resolve_call_path(handler, engines, &enum_callpath)?;
             let enum_ref = unknown_decl.to_enum_ref(handler, ctx.engines())?;
             (
                 enum_callpath.span(),
@@ -327,8 +340,7 @@ fn type_check_enum(
             // we may have an imported variant
             let decl = ctx
                 .namespace
-                .resolve_call_path(handler, &call_path)
-                .cloned()?;
+                .resolve_call_path(handler, engines, &call_path)?;
             if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl { enum_ref, .. }) = decl.clone() {
                 (
                     call_path.suffix.span(),

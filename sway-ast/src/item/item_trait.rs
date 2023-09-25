@@ -6,6 +6,7 @@ use crate::priv_prelude::*;
 pub enum ItemTraitItem {
     Fn(FnSignature, Option<SemicolonToken>),
     Const(ItemConst, Option<SemicolonToken>),
+    Type(TraitType, Option<SemicolonToken>),
     // to handle parser recovery: Error represents an incomplete trait item
     Error(Box<[Span]>, #[serde(skip_serializing)] ErrorEmitted),
 }
@@ -47,6 +48,12 @@ impl Spanned for ItemTraitItem {
                 match semicolon.as_ref().map(|x| x.span()) {
                     Some(semicolon) => Span::join(const_decl.span(), semicolon),
                     None => const_decl.span(),
+                }
+            }
+            ItemTraitItem::Type(type_decl, semicolon) => {
+                match semicolon.as_ref().map(|x| x.span()) {
+                    Some(semicolon) => Span::join(type_decl.span(), semicolon),
+                    None => type_decl.span(),
                 }
             }
             ItemTraitItem::Error(spans, _) => Span::join_all(spans.iter().cloned()),

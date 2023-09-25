@@ -4,7 +4,10 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Ident;
 
 use crate::{
-    decl_engine::*, engine_threading::*, language::ty::*, semantic_analysis::TypeCheckContext,
+    decl_engine::*,
+    engine_threading::*,
+    language::ty::*,
+    semantic_analysis::{TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext},
     type_system::*,
 };
 
@@ -49,5 +52,15 @@ impl ReplaceDecls for TyStructExpressionField {
         ctx: &mut TypeCheckContext,
     ) -> Result<(), ErrorEmitted> {
         self.value.replace_decls(decl_mapping, handler, ctx)
+    }
+}
+
+impl TypeCheckFinalization for TyStructExpressionField {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.value.type_check_finalize(handler, ctx)
     }
 }

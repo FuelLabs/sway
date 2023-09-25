@@ -23,8 +23,8 @@ use sway_core::{
             Scrutinee, StorageAccessExpression, StorageDeclaration, StorageField,
             StructDeclaration, StructExpression, StructExpressionField, StructField,
             StructScrutineeField, SubfieldExpression, Supertrait, TraitDeclaration, TraitFn,
-            TraitItem, TupleIndexExpression, TypeAliasDeclaration, UseStatement,
-            VariableDeclaration, WhileLoopExpression,
+            TraitItem, TraitTypeDeclaration, TupleIndexExpression, TypeAliasDeclaration,
+            UseStatement, VariableDeclaration, WhileLoopExpression,
         },
         CallPathTree, Literal,
     },
@@ -127,6 +127,7 @@ impl Parse for Declaration {
             Declaration::ConstantDeclaration(decl) => decl.parse(ctx),
             Declaration::StorageDeclaration(decl) => decl.parse(ctx),
             Declaration::TypeAliasDeclaration(decl) => decl.parse(ctx),
+            Declaration::TraitTypeDeclaration(decl) => decl.parse(ctx),
         }
     }
 }
@@ -749,6 +750,7 @@ impl Parse for TraitDeclaration {
             .for_each(|item| match item {
                 TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
                 TraitItem::Constant(const_decl) => const_decl.parse(ctx),
+                TraitItem::Type(trait_type) => trait_type.parse(ctx),
                 TraitItem::Error(_, _) => {}
             });
         self.methods.par_iter().for_each(|func_dec| {
@@ -820,6 +822,7 @@ impl Parse for ImplTrait {
         self.items.par_iter().for_each(|item| match item {
             ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
             ImplItem::Constant(const_decl) => const_decl.parse(ctx),
+            ImplItem::Type(type_decl) => type_decl.parse(ctx),
         });
     }
 }
@@ -829,6 +832,7 @@ impl Parse for ImplSelf {
         if let TypeInfo::Custom {
             call_path,
             type_arguments,
+            root_type_id: _,
         } = &ctx.engines.te().get(self.implementing_for.type_id)
         {
             ctx.tokens.insert(
@@ -850,6 +854,7 @@ impl Parse for ImplSelf {
         self.items.par_iter().for_each(|item| match item {
             ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
             ImplItem::Constant(const_decl) => const_decl.parse(ctx),
+            ImplItem::Type(type_decl) => type_decl.parse(ctx),
         });
     }
 }
@@ -868,6 +873,7 @@ impl Parse for AbiDeclaration {
             .for_each(|item| match item {
                 TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
                 TraitItem::Constant(const_decl) => const_decl.parse(ctx),
+                TraitItem::Type(type_decl) => type_decl.parse(ctx),
                 TraitItem::Error(_, _) => {}
             });
         self.supertraits.par_iter().for_each(|supertrait| {
@@ -889,6 +895,22 @@ impl Parse for ConstantDeclaration {
         self.type_ascription.parse(ctx);
         if let Some(value) = &self.value {
             value.parse(ctx);
+        }
+        self.attributes.parse(ctx);
+    }
+}
+
+impl Parse for TraitTypeDeclaration {
+    fn parse(&self, ctx: &ParseContext) {
+        ctx.tokens.insert(
+            ctx.ident(&self.name),
+            Token::from_parsed(
+                AstToken::Declaration(Declaration::TraitTypeDeclaration(self.clone())),
+                SymbolKind::TraiType,
+            ),
+        );
+        if let Some(ty) = &self.ty_opt {
+            ty.parse(ctx);
         }
         self.attributes.parse(ctx);
     }
@@ -1075,6 +1097,7 @@ fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: 
         TypeInfo::Custom {
             call_path,
             type_arguments,
+            root_type_id: _,
         } => {
             let ident = call_path.suffix.clone();
             let mut token = Token::from_parsed(AstToken::Ident(ident.clone()), symbol_kind);

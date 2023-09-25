@@ -37,6 +37,7 @@ pub(crate) fn symbol_kind(symbol_kind: &SymbolKind) -> lsp_types::SymbolKind {
         | SymbolKind::ByteLiteral
         | SymbolKind::Variable
         | SymbolKind::TypeAlias
+        | SymbolKind::TraiType
         | SymbolKind::Keyword
         | SymbolKind::SelfKeyword
         | SymbolKind::SelfTypeKeyword
