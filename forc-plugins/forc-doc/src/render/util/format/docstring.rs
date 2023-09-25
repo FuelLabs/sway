@@ -1,3 +1,4 @@
+//! Rendering and formatting for Sway doc attributes.
 use crate::render::util::format::constant::*;
 use comrak::{markdown_to_html, ComrakOptions};
 use std::fmt::Write;

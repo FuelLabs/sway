@@ -44,7 +44,6 @@ struct ProgramInfo<'a> {
     pkg_manifest: &'a PackageManifestFile,
 }
 
-/// Main method for `forc doc`.
 pub fn main() -> Result<()> {
     let build_instructions = Command::parse();
 

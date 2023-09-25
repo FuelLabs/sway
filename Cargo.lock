@@ -5801,6 +5801,7 @@ dependencies = [
  "hashbrown 0.13.2",
  "hex",
  "im",
+ "indexmap 2.0.0",
  "itertools",
  "lazy_static",
  "miden-core",

@@ -10,15 +10,31 @@ use crate::Programs;
 
 pub type ModulePath = Arc<PathBuf>;
 
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct ModuleCacheKey {
+    pub path: Arc<PathBuf>,
+    pub include_tests: bool,
+}
+
+impl ModuleCacheKey {
+    pub fn new(path: Arc<PathBuf>, include_tests: bool) -> Self {
+        Self {
+            path,
+            include_tests,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct ModuleCacheEntry {
     pub path: ModulePath,
     pub modified_time: Option<SystemTime>,
     pub hash: u64,
     pub dependencies: Vec<ModulePath>,
+    pub include_tests: bool,
 }
 
-pub type ModuleCacheMap = HashMap<ModulePath, ModuleCacheEntry>;
+pub type ModuleCacheMap = HashMap<ModuleCacheKey, ModuleCacheEntry>;
 
 #[derive(Clone, Debug)]
 pub struct ProgramsCacheEntry {
@@ -36,14 +52,18 @@ pub struct QueryEngine {
 }
 
 impl QueryEngine {
-    pub fn get_parse_module_cache_entry(&self, path: &Arc<PathBuf>) -> Option<ModuleCacheEntry> {
+    pub fn get_parse_module_cache_entry(&self, path: &ModuleCacheKey) -> Option<ModuleCacheEntry> {
         let cache = self.parse_module_cache.read().unwrap();
         cache.get(path).cloned()
     }
 
     pub fn insert_parse_module_cache_entry(&self, entry: ModuleCacheEntry) {
         let mut cache = self.parse_module_cache.write().unwrap();
-        cache.insert(entry.path.clone(), entry);
+        let path = entry.path.clone();
+        let include_tests = entry.include_tests;
+
+        let key = ModuleCacheKey::new(path, include_tests);
+        cache.insert(key, entry);
     }
 
     pub fn get_programs_cache_entry(&self, path: &Arc<PathBuf>) -> Option<ProgramsCacheEntry> {

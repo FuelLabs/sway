@@ -1,3 +1,4 @@
+//! Handles creation of the head and body of an HTML doc.
 use crate::{
     doc::module::ModuleInfo,
     render::{
@@ -121,27 +122,7 @@ impl Renderable for ItemBody {
                 // this is the main code block
                 main {
                     div(class="width-limiter") {
-                        // div(class="sub-container") {
-                        //     nav(class="sub") {
-                        //         form(class="search-form") {
-                        //             div(class="search-container") {
-                        //                 span;
-                        //                 input(
-                        //                     class="search-input",
-                        //                     name="search",
-                        //                     autocomplete="off",
-                        //                     spellcheck="false",
-                        //                     // TODO: https://github.com/FuelLabs/sway/issues/3480
-                        //                     placeholder="Searchbar unimplemented, see issue #3480...",
-                        //                     type="search"
-                        //                 );
-                        //                 div(id="help-button", title="help", tabindex="-1") {
-                        //                     button(type="button") { : "?" }
-                        //                 }
-                        //             }
-                        //         }
-                        //     }
-                        // }
+                        // : generate_searchbar();
                         section(id="main-content", class="content") {
                             div(class="main-heading") {
                                 h1(class="fqn") {
