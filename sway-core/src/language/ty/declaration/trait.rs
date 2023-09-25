@@ -1,13 +1,18 @@
 use std::hash::{Hash, Hasher};
 
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     decl_engine::{
-        DeclRefConstant, DeclRefFunction, DeclRefTraitFn, ReplaceFunctionImplementingType, replace_decls, mapping::{self, DeclMapping},
+        DeclRefConstant, DeclRefFunction, DeclRefTraitFn, DeclRefTraitType,
+        ReplaceFunctionImplementingType,
+        mapping::DeclMapping, DeclEngineReplace,
     },
     engine_threading::*,
     language::{parsed, Visibility},
+    semantic_analysis::type_check_context::MonomorphizeHelper,
+    semantic_analysis::{TypeCheckFinalization, TypeCheckFinalizationContext},
     transform,
     type_system::*,
 };
@@ -31,12 +36,14 @@ pub struct TyTraitDecl {
 pub enum TyTraitInterfaceItem {
     TraitFn(DeclRefTraitFn),
     Constant(DeclRefConstant),
+    Type(DeclRefTraitType),
 }
 
 #[derive(Clone, Debug)]
 pub enum TyTraitItem {
     Fn(DeclRefFunction),
     Constant(DeclRefConstant),
+    Type(DeclRefTraitType),
 }
 
 impl Named for TyTraitDecl {
@@ -121,6 +128,7 @@ impl HashWithEngines for TyTraitInterfaceItem {
         match self {
             TyTraitInterfaceItem::TraitFn(fn_decl) => fn_decl.hash(state, engines),
             TyTraitInterfaceItem::Constant(const_decl) => const_decl.hash(state, engines),
+            TyTraitInterfaceItem::Type(type_decl) => type_decl.hash(state, engines),
         }
     }
 }
@@ -130,7 +138,34 @@ impl HashWithEngines for TyTraitItem {
         match self {
             TyTraitItem::Fn(fn_decl) => fn_decl.hash(state, engines),
             TyTraitItem::Constant(const_decl) => const_decl.hash(state, engines),
+            TyTraitItem::Type(type_decl) => type_decl.hash(state, engines),
         }
+    }
+}
+
+impl TypeCheckFinalization for TyTraitItem {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        let decl_engine = ctx.engines.de();
+        match self {
+            TyTraitItem::Fn(node) => {
+                let mut item_fn = decl_engine.get_function(node);
+                item_fn.type_check_finalize(handler, ctx)?;
+                decl_engine.replace(*node.id(), item_fn);
+            }
+            TyTraitItem::Constant(node) => {
+                let mut item_const = decl_engine.get_constant(node);
+                item_const.type_check_finalize(handler, ctx)?;
+                decl_engine.replace(*node.id(), item_const);
+            }
+            TyTraitItem::Type(_node) => {
+                // Nothing to finalize
+            }
+        }
+        Ok(())
     }
 }
 
@@ -157,6 +192,12 @@ impl SubstTypes for TyTraitDecl {
                     decl_mapping.insert(decl_ref.id().into(), new_decl_ref.id().into());
                     decl_ref.replace_id(*new_decl_ref.id());
                 }
+                TyTraitInterfaceItem::Type(decl_ref) => {
+                    let new_decl_ref = decl_ref
+                        .clone()
+                        .subst_types_and_insert_new(type_mapping, engines);
+                    decl_ref.replace_id(*new_decl_ref.id());
+                }
             });
         self.items.iter_mut().for_each(|item| match item {
             TyTraitItem::Fn(item_ref) => {
@@ -171,6 +212,12 @@ impl SubstTypes for TyTraitDecl {
                     .subst_types_and_insert_new_with_parent(type_mapping, engines);
                 item_ref.replace_id(*new_decl_ref.id());
             }
+            TyTraitItem::Type(item_ref) => {
+                let new_decl_ref = item_ref
+                    .clone()
+                    .subst_types_and_insert_new_with_parent(type_mapping, engines);
+                item_ref.replace_id(*new_decl_ref.id());
+            }
         });
     }
 }
@@ -180,6 +227,7 @@ impl SubstTypes for TyTraitItem {
         match self {
             TyTraitItem::Fn(fn_decl) => fn_decl.subst(type_mapping, engines),
             TyTraitItem::Constant(const_decl) => const_decl.subst(type_mapping, engines),
+            TyTraitItem::Type(type_decl) => type_decl.subst(type_mapping, engines),
         }
     }
 }
@@ -191,6 +239,9 @@ impl ReplaceFunctionImplementingType for TyTraitItem {
                 decl_ref.replace_implementing_type(engines, implementing_type)
             }
             TyTraitItem::Constant(_decl_ref) => {
+                // ignore, only needed for functions
+            }
+            TyTraitItem::Type(_decl_ref) => {
                 // ignore, only needed for functions
             }
         }

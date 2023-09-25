@@ -4,8 +4,11 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineInsert, DeclId}, TypeParameter,
-    namespace::TryInsertingTraitImplOnFailure,
+    decl_engine::{DeclEngineInsert, DeclId},
+    TypeParameter,
+    language::ty::TyAbiDecl,
+    namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
+    semantic_analysis::{TypeCheckFinalization, TypeCheckFinalizationContext},
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 
@@ -43,7 +46,6 @@ impl ty::TyAbiDecl {
         // from itself. This is by design.
 
         // A temporary namespace for checking within this scope.
-        let type_engine = ctx.engines.te();
         let mut abi_namespace = ctx.namespace.clone();
         let mut ctx = ctx
             .scoped(&mut abi_namespace)
@@ -71,7 +73,7 @@ impl ty::TyAbiDecl {
 
         let error_on_shadowing_superabi_method =
             |method_name: &Ident, ctx: &mut TypeCheckContext| {
-                if let Ok(superabi_impl_method_ref) = ctx.namespace.find_method_for_type(
+                if let Ok(superabi_impl_method_ref) = ctx.find_method_for_type(
                     &Handler::default(),
                     self_type_id,
                     &[],
@@ -79,7 +81,6 @@ impl ty::TyAbiDecl {
                     ctx.type_annotation(),
                     &Default::default(),
                     None,
-                    ctx.engines,
                     TryInsertingTraitImplOnFailure::No,
                 ) {
                     let superabi_impl_method =
@@ -134,6 +135,17 @@ impl ty::TyAbiDecl {
                     )?;
 
                     const_name
+                }
+                TraitItem::Type(type_decl) => {
+                    handler.emit_err(CompileError::AssociatedTypeNotSupportedInAbi {
+                        span: type_decl.span.clone(),
+                    });
+
+                    let type_decl = ty::TyTraitType::type_check(handler, ctx.by_ref(), type_decl)?;
+                    let decl_ref = ctx.engines().de().insert(type_decl.clone());
+                    new_interface_surface.push(ty::TyTraitInterfaceItem::Type(decl_ref.clone()));
+
+                    type_decl.name
                 }
                 TraitItem::Error(_, _) => {
                     continue;
@@ -190,12 +202,11 @@ impl ty::TyAbiDecl {
         &self,
         handler: &Handler,
         self_decl_id: DeclId<ty::TyAbiDecl>,
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         type_id: TypeId,
         subabi_span: Option<Span>,
     ) -> Result<(), ErrorEmitted> {
         let decl_engine = ctx.engines.de();
-        let engines = ctx.engines();
 
         let ty::TyAbiDecl {
             interface_surface,
@@ -215,10 +226,10 @@ impl ty::TyAbiDecl {
             for item in interface_surface.iter() {
                 match item {
                     ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
-                        let mut method = decl_engine.get_trait_fn(decl_ref);
+                        let method = decl_engine.get_trait_fn(decl_ref);
                         if look_for_conflicting_abi_methods {
                             // looking for conflicting ABI methods for triangle-like ABI hierarchies
-                            if let Ok(superabi_method_ref) = ctx.namespace.find_method_for_type(
+                            if let Ok(superabi_method_ref) = ctx.find_method_for_type(
                                 &Handler::default(),
                                 type_id,
                                 &[],
@@ -226,7 +237,6 @@ impl ty::TyAbiDecl {
                                 ctx.type_annotation(),
                                 &Default::default(),
                                 None,
-                                ctx.engines,
                                 TryInsertingTraitImplOnFailure::No,
                             ) {
                                 let superabi_method =
@@ -284,16 +294,32 @@ impl ty::TyAbiDecl {
                             const_shadowing_mode,
                         );
                     }
+                    ty::TyTraitInterfaceItem::Type(decl_ref) => {
+                        let type_decl = decl_engine.get_type(decl_ref);
+                        let type_name = type_decl.name;
+                        all_items.push(TyImplItem::Type(decl_ref.clone()));
+                        let const_shadowing_mode = ctx.const_shadowing_mode();
+                        let _ = ctx.namespace.insert_symbol(
+                            handler,
+                            type_name.clone(),
+                            ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl {
+                                name: type_name,
+                                decl_id: *decl_ref.id(),
+                                decl_span: type_decl.span.clone(),
+                            }),
+                            const_shadowing_mode,
+                        );
+                    }
                 }
             }
             for item in items.iter() {
                 match item {
                     ty::TyTraitItem::Fn(decl_ref) => {
-                        let mut method = decl_engine.get_function(decl_ref);
+                        let method = decl_engine.get_function(decl_ref);
                         // check if we inherit the same impl method from different branches
                         // XXX this piece of code can be abstracted out into a closure
                         // and reused for interface methods if the issue of mutable ctx is solved
-                        if let Ok(superabi_impl_method_ref) = ctx.namespace.find_method_for_type(
+                        if let Ok(superabi_impl_method_ref) = ctx.find_method_for_type(
                             &Handler::default(),
                             type_id,
                             &[],
@@ -301,7 +327,6 @@ impl ty::TyAbiDecl {
                             ctx.type_annotation(),
                             &Default::default(),
                             None,
-                            ctx.engines,
                             TryInsertingTraitImplOnFailure::No,
                         ) {
                             let superabi_impl_method =
@@ -328,8 +353,12 @@ impl ty::TyAbiDecl {
                         ));
                     }
                     ty::TyTraitItem::Constant(decl_ref) => {
-                        let mut const_decl = decl_engine.get_constant(decl_ref);
+                        let const_decl = decl_engine.get_constant(decl_ref);
                         all_items.push(TyImplItem::Constant(ctx.engines.de().insert(const_decl)));
+                    }
+                    ty::TyTraitItem::Type(decl_ref) => {
+                        let type_decl = decl_engine.get_type(decl_ref);
+                        all_items.push(TyImplItem::Type(ctx.engines.de().insert(type_decl)));
                     }
                 }
             }
@@ -339,7 +368,7 @@ impl ty::TyAbiDecl {
             // these are not actual impl blocks.
             // We check that a contract method cannot call a contract method
             // from the same ABI later, during method application typechecking.
-            let _ = ctx.namespace.insert_trait_implementation(
+            let _ = ctx.insert_trait_implementation(
                 &Handler::default(),
                 CallPath::from(self.name.clone()),
                 vec![],
@@ -347,9 +376,24 @@ impl ty::TyAbiDecl {
                 &all_items,
                 &self.span,
                 Some(self.span()),
-                false,
-                ctx.engines,
+                IsImplSelf::No,
+                IsExtendingExistingImpl::No,
             );
+            Ok(())
+        })
+    }
+}
+
+impl TypeCheckFinalization for TyAbiDecl {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            for item in self.items.iter_mut() {
+                let _ = item.type_check_finalize(handler, ctx);
+            }
             Ok(())
         })
     }

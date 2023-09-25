@@ -17,7 +17,9 @@ Sway has the following primitive types:
 1. `u16` (16-bit unsigned integer)
 1. `u32` (32-bit unsigned integer)
 1. `u64` (64-bit unsigned integer)
+1. `u256` (256-bit unsigned integer)
 1. `str[]` (fixed-length string)
+1. `str` (string slices)
 1. `bool` (Boolean `true` or `false`)
 1. `b256` (256 bits (32 bytes), i.e. a hash)
 
@@ -43,12 +45,14 @@ Numbers can be declared with binary syntax, hexadecimal syntax, base-10 syntax, 
 <!-- default_num:example:start -->
 The default numeric type is `u64`. The FuelVM's word size is 64 bits, and the cases where using a smaller numeric type saves space are minimal.
 
-If a 64-bit arithmetic operation produces an overflow or an underflow,
+If a 64-bit or 256-bit arithmetic operation produces an overflow or an underflow,
 computation gets reverted automatically by FuelVM.
 
 8/16/32-bit arithmetic operations are emulated using their 64-bit analogues with
 additional overflow/underflow checks inserted, which generally results in
 somewhat higher gas consumption.
+
+The same does not happen with 256-bit operations, including `b256`, which uses specialized operations and are as performant as possible.
 <!-- default_num:example:end -->
 
 ## Boolean Type
@@ -67,20 +71,45 @@ fn returns_false() -> bool {
 }
 ```
 
-## String Type
+## String Slices
 
 <!-- This section should explain the string type in Sway -->
 <!-- str:example:start -->
-In Sway, static-length strings are a primitive type. This means that when you declare a string, its size is a part of its type. This is necessary for the compiler to know how much memory to give for the storage of that data. The size of the string is denoted with square brackets.
+In Sway, string literals are stored as variable length string slices. Which means that they are stored as a pointer to the actual string data and its length.
+<!-- str:example:end -->
+
+```sway
+let my_string: str = "fuel";
+```
+
+String slices, because they contain pointers have limited usage. They cannot be used is constants, storages, configurables, nor as main function argument or returns.
+
+For these cases one must use string arrays, as described below.
+
+## String Arrays
+
+<!-- This section should explain the string type in Sway -->
+<!-- str:example:start -->
+In Sway, static-length strings are a primitive type. This means that when you declare a string array, its size is a part of its type. This is necessary for the compiler to know how much memory to give for the storage of that data. The size of the string is denoted with square brackets.
 <!-- str:example:end -->
 
 Let's take a look:
 
 ```sway
-let my_string: str[4] = "fuel";
+let my_string: str[4] = __to_str_array("fuel");
 ```
 
 Because the string literal `"fuel"` is four letters, the type is `str[4]`, denoting a static length of 4 characters. Strings default to UTF-8 in Sway.
+
+As above, string literals are typed as string slices. So that is why the need for `__to_str_array` that convert them to string arrays at compile time.
+
+Conversion during runtime can be done with `from_str_array` and `try_as_str_array`. The latter can fail, given that the specified string array must be big enough for the string slice content.
+
+```sway
+let a: str = "abcd";
+let b: str[4] = a.try_as_str_array().unwrap();
+let c: str = from_str_array(b);
+```
 
 ## Compound Types
 

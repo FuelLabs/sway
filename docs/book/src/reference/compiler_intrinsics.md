@@ -25,20 +25,30 @@ __size_of<T>() -> u64
 ___
 
 ```sway
-__size_of_str<T>() -> u64
+__size_of_str_array<T>() -> u64
 ```
 
-**Description:** Return the size of type `T` in bytes. This intrinsic differs from `__size_of` in the case of `str` type where the actual length in bytes of the string is returned without padding the byte size to the next word alignment. When `T` is not a string `0` is returned.
+**Description:** Return the size of type `T` in bytes. This intrinsic differs from `__size_of` in the case of "string arrays" where the actual length in bytes of the string is returned without padding the byte size to the next word alignment. When `T` is not a string `0` is returned.
 
 **Constraints:** None.
 
 ___
 
 ```sway
-__check_str_type<T>() -> u64
+__assert_is_str_array<T>()
 ```
 
-**Description:** Throws a compile error if type `T` is not a string.
+**Description:** Throws a compile error if type `T` is not a "string array".
+
+**Constraints:** None.
+
+___
+
+```sway
+__to_str_array(s: str) -> str[N]
+```
+
+**Description:** Converts a "string slice" to "string array" at compile time. Parameter "s" must be a string literal.
 
 **Constraints:** None.
 
@@ -55,10 +65,10 @@ __is_reference_type<T>() -> bool
 ___
 
 ```sway
-__is_str_type<T>() -> bool
+__is_str_array<T>() -> bool
 ```
 
-**Description:** Returns `true` if `T` is a str type and `false` otherwise.
+**Description:** Returns `true` if `T` is a string array and `false` otherwise.
 
 **Constraints:** None.
 
@@ -70,7 +80,7 @@ __eq<T>(lhs: T, rhs: T) -> bool
 
 **Description:** Returns whether `lhs` and `rhs` are equal.
 
-**Constraints:** `T` is `bool`, `u8`, `u16`, `u32`, `u64`, or `raw_ptr`.
+**Constraints:** `T` is `bool`, `u8`, `u16`, `u32`, `u64`, `u256`, `b256` or `raw_ptr`.
 
 ___
 
@@ -80,7 +90,7 @@ __gt<T>(lhs: T, rhs: T) -> bool
 
 **Description:** Returns whether `lhs` is greater than `rhs`.
 
-**Constraints:** `T` is `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is `u8`, `u16`, `u32`, `u64`, `u256`, `b256`.
 ___
 
 ```sway
@@ -89,7 +99,7 @@ __lt<T>(lhs: T, rhs: T) -> bool
 
 **Description:** Returns whether `lhs` is less than `rhs`.
 
-**Constraints:** `T` is `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is `u8`, `u16`, `u32`, `u64`, `u256`, `b256`.
 ___
 
 ```sway
@@ -168,7 +178,7 @@ __add<T>(lhs: T, rhs: T) -> T
 
 **Description:** Adds `lhs` and `rhs` and returns the result.
 
-**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`.
 
 ___
 
@@ -178,7 +188,7 @@ __sub<T>(lhs: T, rhs: T) -> T
 
 **Description:** Subtracts `rhs` from `lhs`.
 
-**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`.
 
 ___
 
@@ -188,7 +198,7 @@ __mul<T>(lhs: T, rhs: T) -> T
 
 **Description:** Multiplies `lhs` by `rhs`.
 
-**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`.
 
 ___
 
@@ -198,7 +208,7 @@ __div<T>(lhs: T, rhs: T) -> T
 
 **Description:** Divides `lhs` by `rhs`.
 
-**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`.
 
 ___
 
@@ -208,7 +218,7 @@ __and<T>(lhs: T, rhs: T) -> T
 
 **Description:** Bitwise AND `lhs` and `rhs`.
 
-**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`, `b256`.
 
 ___
 
@@ -218,7 +228,7 @@ __or<T>(lhs: T, rhs: T) -> T
 
 **Description:** Bitwise OR `lhs` and `rhs`.
 
-**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`, `b256`.
 
 ___
 
@@ -228,7 +238,7 @@ __xor<T>(lhs: T, rhs: T) -> T
 
 **Description:** Bitwise XOR `lhs` and `rhs`.
 
-**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`, `b256`.
 ___
 
 ```sway
@@ -237,7 +247,7 @@ __mod<T>(lhs: T, rhs: T) -> T
 
 **Description:** Modulo of `lhs` by `rhs`.
 
-**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`.
 ___
 
 ```sway
@@ -246,7 +256,7 @@ __rsh<T>(lhs: T, rhs: u64) -> T
 
 **Description:** Logical right shift of `lhs` by `rhs`.
 
-**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`, `b256`.
 ___
 
 ```sway
@@ -255,7 +265,7 @@ __lsh<T>(lhs: T, rhs: u64) -> T
 
 **Description:** Logical left shift of `lhs` by `rhs`.
 
-**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`, `b256`.
 ___
 
 ```sway
@@ -304,5 +314,5 @@ __not(op: T) -> T
 
 **Description:** Bitwise NOT of `op`
 
-**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`, `b256`.
 ___

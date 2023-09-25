@@ -44,7 +44,7 @@ impl MyContract for Contract {
         _arg3: (str[5], bool),
         _arg4: MyOtherStruct,
     ) -> str[6] {
-        "fuel42"
+        __to_str_array("fuel42")
     }
     fn take_generic_array(_arg: MyArrayStruct<u8, u16>) -> u64 {
         0

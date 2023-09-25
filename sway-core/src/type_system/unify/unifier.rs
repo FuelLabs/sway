@@ -92,7 +92,8 @@ impl<'a> Unifier<'a> {
             (Contract, Contract) => (),
             (RawUntypedPtr, RawUntypedPtr) => (),
             (RawUntypedSlice, RawUntypedSlice) => (),
-            (Str(l), Str(r)) => {
+            (StringSlice, StringSlice) => (),
+            (StringArray(l), StringArray(r)) => {
                 self.unify_strs(handler, received, expected, span, l.val(), r.val())
             }
             (Tuple(rfs), Tuple(efs)) if rfs.len() == efs.len() => {

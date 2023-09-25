@@ -66,7 +66,7 @@ impl Constant {
 
     pub fn new_string(context: &mut Context, string: Vec<u8>) -> Self {
         Constant {
-            ty: Type::new_string(context, string.len() as u64),
+            ty: Type::new_string_array(context, string.len() as u64),
             value: ConstantValue::String(string),
         }
     }

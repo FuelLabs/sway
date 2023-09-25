@@ -1,0 +1,283 @@
+category = "fail"
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match s1 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()Struct { x: 0, y: a_s1, z: a_s1 } => a_s1,
+# nextln: $()Variable "a_s1" is already defined in this match arm.
+# nextln: $()This is the first definition of the variable "a_s1".
+
+# check: $()Consider renaming either of the variables.
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match s2 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()Struct { x, y: x, z: x } => x,
+# nextln: $()Variable "x" is already defined in this match arm.
+# nextln: $()This struct field "x" is the first definition of the variable "x".
+# nextln: $()Struct field "x" is just a shorthand notation for `x: x`. It defines a variable "x".
+
+# check: $()Consider declaring a variable for the field "x" (e.g., `x: var_x`), or renaming the variable "x".
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match s2 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()Struct { x, y: x, z: x } => x,
+# nextln: $()Variable "x" is already defined in this match arm.
+# nextln: $()This struct field "x" is the first definition of the variable "x".
+# nextln: $()Struct field "x" is just a shorthand notation for `x: x`. It defines a variable "x".
+
+# check: $()Consider declaring a variable for the field "x" (e.g., `x: var_x`), or renaming the variable "x".
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match s3 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()Struct { x, y: x, .. } => x,
+# nextln: $()Variable "x" is already defined in this match arm.
+# nextln: $()This struct field "x" is the first definition of the variable "x".
+# nextln: $()Struct field "x" is just a shorthand notation for `x: x`. It defines a variable "x".
+
+# check: $()Consider declaring a variable for the field "x" (e.g., `x: var_x`), or renaming the variable "x".
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match s4 {
+# nextln: $()The expression to match on is of type "(Struct, Struct)".
+# nextln: $()(Struct { y, .. }, Struct { y, .. }) => y,
+# nextln: $()Variable "y" is already defined in this match arm.
+# nextln: $()Struct field "y" is just a shorthand notation for `y: y`. It defines a variable "y".
+# nextln: $()This struct field "y" is the first definition of the variable "y".
+
+# check: $()Consider declaring a variable with different name for either of the fields. E.g., `y: var_y`.
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match t1 {
+# nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64)".
+# nextln: $()(true, a_t1, a_t1, a_t1) => a_t1,
+# nextln: $()Variable "a_t1" is already defined in this match arm.
+# nextln: $()This is the first definition of the variable "a_t1".
+
+# check: $()Consider renaming either of the variables.
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match t1 {
+# nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64)".
+# nextln: $()(true, a_t1, a_t1, a_t1) => a_t1,
+# nextln: $()Variable "a_t1" is already defined in this match arm.
+# nextln: $()This is the first definition of the variable "a_t1".
+
+# check: $()Consider renaming either of the variables.
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match t1 {
+# nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64)".
+# check: $()(a_t1, a_t1, a_t1, a_t1) => a_t1,
+# nextln: $()Variable "a_t1" is already defined in this match arm.
+# nextln: $()This is the first definition of the variable "a_t1".
+
+# check: $()Consider renaming either of the variables.
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match t1 {
+# nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64)".
+# check: $()(a_t1, a_t1, a_t1, a_t1) => a_t1,
+# nextln: $()Variable "a_t1" is already defined in this match arm.
+# nextln: $()This is the first definition of the variable "a_t1".
+
+# check: $()Consider renaming either of the variables.
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match t1 {
+# nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64)".
+# check: $()(a_t1, a_t1, a_t1, a_t1) => a_t1,
+# nextln: $()Variable "a_t1" is already defined in this match arm.
+# nextln: $()This is the first definition of the variable "a_t1".
+
+# check: $()Consider renaming either of the variables.
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match t2 {
+# nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64, u64)".
+# nextln: $()(true, a_t2, Struct { x, .. }, a_t2, x) => a_t2,
+# nextln: $()Variable "a_t2" is already defined in this match arm.
+# nextln: $()This is the first definition of the variable "a_t2".
+
+# check: $()Consider renaming either of the variables.
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match t2 {
+# nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64, u64)".
+# nextln: $()(true, a_t2, Struct { x, .. }, a_t2, x) => a_t2,
+# nextln: $()Variable "x" is already defined in this match arm.
+# nextln: $()This struct field "x" is the first definition of the variable "x".
+# nextln: $()Struct field "x" is just a shorthand notation for `x: x`. It defines a variable "x".
+
+# check: $()Consider declaring a variable for the field "x" (e.g., `x: var_x`), or renaming the variable "x".
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match t3 {
+# nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64, u64)".
+# nextln: $()(x, a_t3, Struct { .. }, a_t2, x) => a_t2,
+# nextln: $()Variable "x" is already defined in this match arm.
+# nextln: $()This is the first definition of the variable "x".
+
+# check: $()Consider renaming either of the variables.
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match or1 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()Struct { x, y: x, z: x } | Struct { x, y: x, z: x } => x,
+# nextln: $()Variable "x" is already defined in this match arm.
+# nextln: $()This struct field "x" is the first definition of the variable "x".
+# nextln: $()Struct field "x" is just a shorthand notation for `x: x`. It defines a variable "x".
+
+# check: $()Consider declaring a variable for the field "x" (e.g., `x: var_x`), or renaming the variable "x".
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match or1 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()Struct { x, y: x, z: x } | Struct { x, y: x, z: x } => x,
+# nextln: $()Variable "x" is already defined in this match arm.
+# nextln: $()This struct field "x" is the first definition of the variable "x".
+# nextln: $()Struct field "x" is just a shorthand notation for `x: x`. It defines a variable "x".
+
+# check: $()Consider declaring a variable for the field "x" (e.g., `x: var_x`), or renaming the variable "x".
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match or1 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()Struct { x, y: x, z: x } | Struct { x, y: x, z: x } => x,
+# nextln: $()Variable "x" is already defined in this match arm.
+# nextln: $()This struct field "x" is the first definition of the variable "x".
+# nextln: $()Struct field "x" is just a shorthand notation for `x: x`. It defines a variable "x".
+
+# check: $()Consider declaring a variable for the field "x" (e.g., `x: var_x`), or renaming the variable "x".
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match or1 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()Struct { x, y: x, z: x } | Struct { x, y: x, z: x } => x,
+# nextln: $()Variable "x" is already defined in this match arm.
+# nextln: $()This struct field "x" is the first definition of the variable "x".
+# nextln: $()Struct field "x" is just a shorthand notation for `x: x`. It defines a variable "x".
+
+# check: $()Consider declaring a variable for the field "x" (e.g., `x: var_x`), or renaming the variable "x".
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match or2 {
+# nextln: $()The expression to match on is of type "(Struct, Struct)".
+# nextln: $()(Struct { x, .. } | Struct { x, .. }, Struct { x, .. } | Struct { x, .. }) => if x == 0 { 0 } else { 1 },
+# nextln: $()Variable "x" is already defined in this match arm.
+# nextln: $()Struct field "x" is just a shorthand notation for `x: x`. It defines a variable "x".
+# nextln: $()This struct field "x" is the first definition of the variable "x".
+
+# check: $()Consider declaring a variable with different name for either of the fields. E.g., `x: var_x`.
+
+# check: $()let _x = match or2 {
+# nextln: $()The expression to match on is of type "(Struct, Struct)".
+# nextln: $()(Struct { x, .. } | Struct { x, .. }, Struct { x, .. } | Struct { x, .. }) => if x == 0 { 0 } else { 1 },
+# nextln: $()Variable "x" is already defined in this match arm.
+# nextln: $()Struct field "x" is just a shorthand notation for `x: x`. It defines a variable "x".
+# nextln: $()This struct field "x" is the first definition of the variable "x".
+
+# check: $()Consider declaring a variable with different name for either of the fields. E.g., `x: var_x`.
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match or3 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()Struct { x: y | y | y, y, .. } | Struct { x: y | y | y, y, .. } => y,
+# nextln: $()Variable "y" is already defined in this match arm.
+# nextln: $()Struct field "y" is just a shorthand notation for `y: y`. It defines a variable "y".
+# nextln: $()This is the first definition of the variable "y".
+
+# check: $()Consider declaring a variable for the field "y" (e.g., `y: var_y`), or renaming the variable "y".
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match or3 {
+# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()Struct { x: y | y | y, y, .. } | Struct { x: y | y | y, y, .. } => y,
+# nextln: $()Variable "y" is already defined in this match arm.
+# nextln: $()Struct field "y" is just a shorthand notation for `y: y`. It defines a variable "y".
+# nextln: $()This is the first definition of the variable "y".
+
+# check: $()Consider declaring a variable for the field "y" (e.g., `y: var_y`), or renaming the variable "y".
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match or4 {
+# nextln: $()The expression to match on is of type "Enum".
+# nextln: $()Enum::E((1u64 | 2u64 | 3u64, Struct { x: 1 | 2, ..})) => 0,
+# nextln: $()Enum::E((y, Struct { x: y | y | y, .. })) => 0,
+# nextln: $()Variable "y" is already defined in this match arm.
+# nextln: $()This is the first definition of the variable "y".
+
+# check: $()Consider renaming either of the variables.
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match or4 {
+# nextln: $()The expression to match on is of type "Enum".
+# nextln: $()Enum::E((1u64 | 2u64 | 3u64, Struct { x: 1 | 2, ..})) => 0,
+# nextln: $()Enum::E((y, Struct { x: y | y | y, .. })) => 0,
+# nextln: $()Variable "y" is already defined in this match arm.
+# nextln: $()This is the first definition of the variable "y".
+
+# check: $()Consider renaming either of the variables.
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match or4 {
+# nextln: $()The expression to match on is of type "Enum".
+# nextln: $()Enum::E((1u64 | 2u64 | 3u64, Struct { x: 1 | 2, ..})) => 0,
+# nextln: $()Enum::E((y, Struct { x: y | y | y, .. })) => 0,
+# nextln: $()Variable "y" is already defined in this match arm.
+# nextln: $()This is the first definition of the variable "y".
+
+# check: $()Consider renaming either of the variables.
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match or5 {
+# nextln: $()The expression to match on is of type "(numeric, Struct, numeric)".
+# nextln: $()(x, Struct { x, .. } | Struct { x, .. }, y) => y,
+# nextln: $()Variable "x" is already defined in this match arm.
+# nextln: $()Struct field "x" is just a shorthand notation for `x: x`. It defines a variable "x".
+# nextln: $()This is the first definition of the variable "x".
+
+# check: $()Consider declaring a variable for the field "x" (e.g., `x: var_x`), or renaming the variable "x".
+
+# check: $()Match pattern variable is already defined
+
+# check: $()let _x = match or5 {
+# nextln: $()The expression to match on is of type "(numeric, Struct, numeric)".
+# nextln: $()(x, Struct { x, .. } | Struct { x, .. }, y) => y,
+# nextln: $()Variable "x" is already defined in this match arm.
+# nextln: $()Struct field "x" is just a shorthand notation for `x: x`. It defines a variable "x".
+# nextln: $()This is the first definition of the variable "x".
+
+# check: $()Consider declaring a variable for the field "x" (e.g., `x: var_x`), or renaming the variable "x".
+
+# check: $()let _x = match or6 {
+# not: $()Variable "x" is not bound in all patterns
+
+# check: $()let _x = match or7 {
+# not: $()Variable "y" is not bound in all patterns

@@ -30,7 +30,7 @@ use crate::{
     engine_threading::*,
     language::ty::{
         self, TyAbiDecl, TyConstantDecl, TyEnumDecl, TyFunctionDecl, TyImplTrait, TyStorageDecl,
-        TyStructDecl, TyTraitDecl, TyTraitFn,
+        TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType,
     },
     semantic_analysis::TypeCheckContext,
     type_system::*,
@@ -39,6 +39,7 @@ use crate::{
 pub type DeclRefFunction = DeclRef<DeclId<TyFunctionDecl>>;
 pub type DeclRefTrait = DeclRef<DeclId<TyTraitDecl>>;
 pub type DeclRefTraitFn = DeclRef<DeclId<TyTraitFn>>;
+pub type DeclRefTraitType = DeclRef<DeclId<TyTraitType>>;
 pub type DeclRefImplTrait = DeclRef<DeclId<TyImplTrait>>;
 pub type DeclRefStruct = DeclRef<DeclId<TyStructDecl>>;
 pub type DeclRefStorage = DeclRef<DeclId<TyStorageDecl>>;
@@ -168,9 +169,7 @@ where
     ) -> Result<Self, ErrorEmitted> {
         let decl_engine = ctx.engines().de();
         let mut decl = decl_engine.get(&self.id);
-        // dbg!(&decl);
         decl.replace_decls(decl_mapping, handler, ctx)?;
-        // dbg!(&decl);
         Ok(decl_engine
             .insert(decl)
             .with_parent(decl_engine, self.id.into()))
@@ -300,16 +299,15 @@ impl ReplaceDecls for DeclRefFunction {
     ) -> Result<(), ErrorEmitted> {
         let engines = ctx.engines();
         let decl_engine = engines.de();
-        if let Some(new_decl_ref) = dbg!(decl_mapping.find_match(self.id.into())) {
-            if let AssociatedItemDeclId::Function(new_decl_ref) = dbg!(new_decl_ref) {
+        if let Some(new_decl_ref) = decl_mapping.find_match(self.id.into()) {
+            if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
                 self.id = new_decl_ref;
             }
             return Ok(());
         }
-        let all_parents = dbg!(decl_engine.find_all_parents(engines, dbg!(&self.id)));
+        let all_parents = decl_engine.find_all_parents(engines, &self.id);
         for parent in all_parents.iter() {
-            dbg!(decl_engine.find_all_parents(engines, &(DeclId::<TyFunctionDecl>::new(1))));
-            if let Some(new_decl_ref) = dbg!(decl_mapping.find_match(parent.clone())) {
+            if let Some(new_decl_ref) = decl_mapping.find_match(parent.clone()) {
                 if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
                     self.id = new_decl_ref;
                 }

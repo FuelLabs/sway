@@ -6,22 +6,22 @@ category = "fail"
 #nextln: $()Constant "Y" was already defined in scope.
 
 #check: $()error
-#sameln: $()Constants cannot be shadowed. Variable "Y" shadows constant with the same name.
+#sameln: $()Constants cannot be shadowed
 
 #check: $()const Y = 7;
-#nextln: $()Constant "Y" is declared here.
+#nextln: $()Shadowed constant "Y" is declared here.
 
 #check: $()let Y = 4;
-#nextln: $()Shadowing via variable "Y" happens here.
+#nextln: $()Variable "Y" shadows constant of the same name.
 
 #check: $()error
-#sameln: $()Constants cannot be shadowed. Variable "Y" shadows imported constant with the same name.
+#sameln: $()Constants cannot be shadowed
 
 #check: $()use lib::X as Y;
-#nextln: $()Constant "Y" gets imported here as alias.
+#nextln: $()Shadowed constant "Y" gets imported here as alias.
 
 #check: $()let Y = 4;
-#nextln: $()Shadowing via variable "Y" happens here.
+#nextln: $()Variable "Y" shadows imported constant of the same name.
 
 #check: $()pub const X = 5;
 #nextln: $()This is the original declaration of the imported constant "Y".
@@ -29,13 +29,13 @@ category = "fail"
 #check: $()Consider renaming the variable "Y" or using a different alias for the imported constant.
 
 #check: $()error
-#sameln: $()Constants cannot be shadowed. Variable "M" shadows imported constant with the same name.
+#sameln: $()Constants cannot be shadowed
 
 #check: $()use lib::L as M;
-#nextln: $()Constant "M" gets imported here as alias.
+#nextln: $()Shadowed constant "M" gets imported here as alias.
 
 #check: $()let M = 4;
-#nextln: $()Shadowing via variable "M" happens here.
+#nextln: $()Variable "M" shadows imported constant of the same name.
 
 #check: $()pub const L = 5;
 #nextln: $()This is the original declaration of the imported constant "M".
@@ -43,13 +43,13 @@ category = "fail"
 #check: $()Consider renaming the variable "M" or using a different alias for the imported constant.
 
 #check: $()error
-#sameln: $()Constants cannot be shadowed. Variable "R" shadows imported constant with the same name.
+#sameln: $()Constants cannot be shadowed
 
 #check: $()use lib::P as R;
-#nextln: $()Constant "R" gets imported here as alias.
+#nextln: $()Shadowed constant "R" gets imported here as alias.
 
 #check: $()let R = 5;
-#nextln: $()Shadowing via variable "R" happens here.
+#nextln: $()Variable "R" shadows imported constant of the same name.
 
 #check: $()pub const P = 5;
 #nextln: $()This is the original declaration of the imported constant "R".

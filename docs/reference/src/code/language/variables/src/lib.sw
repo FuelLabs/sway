@@ -18,7 +18,7 @@ fn reassignment() {
     // Set `foo` to take the value of `5` and the default `u64` type
     let foo = 5;
 
-    // Reassign `foo` to be a `str[4]` with the value of `Fuel`
+    // Reassign `foo` to be a `str` with the value of `Fuel`
     let foo = "Fuel";
     // ANCHOR_END: reassignment
 }

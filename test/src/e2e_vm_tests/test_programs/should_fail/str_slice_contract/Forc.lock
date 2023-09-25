@@ -1,0 +1,3 @@
+[[package]]
+name = "str_slice_contract"
+source = "member"

@@ -11,6 +11,7 @@ type DestinationType = TypeId;
 
 /// The [TypeSubstMap] is used to create a mapping between a [SourceType] (LHS)
 /// and a [DestinationType] (RHS).
+#[derive(Clone, Default)]
 pub struct TypeSubstMap {
     mapping: BTreeMap<SourceType, DestinationType>,
 }
@@ -53,6 +54,13 @@ impl TypeSubstMap {
     /// Returns `true` if the [TypeSubstMap] is empty.
     pub(crate) fn is_empty(&self) -> bool {
         self.mapping.is_empty()
+    }
+
+    /// Constructs a new empty [TypeSubstMap].
+    pub(crate) fn new() -> TypeSubstMap {
+        TypeSubstMap {
+            mapping: BTreeMap::<SourceType, DestinationType>::new(),
+        }
     }
 
     /// Constructs a new [TypeSubstMap] from a list of [TypeParameter]s
@@ -246,7 +254,8 @@ impl TypeSubstMap {
             | (TypeInfo::Numeric, TypeInfo::Numeric)
             | (TypeInfo::Contract, TypeInfo::Contract)
             | (TypeInfo::ErrorRecovery(_), TypeInfo::ErrorRecovery(_))
-            | (TypeInfo::Str(_), TypeInfo::Str(_))
+            | (TypeInfo::StringSlice, TypeInfo::StringSlice)
+            | (TypeInfo::StringArray(_), TypeInfo::StringArray(_))
             | (TypeInfo::UnsignedInteger(_), TypeInfo::UnsignedInteger(_))
             | (TypeInfo::ContractCaller { .. }, TypeInfo::ContractCaller { .. }) => TypeSubstMap {
                 mapping: BTreeMap::new(),
@@ -290,6 +299,10 @@ impl TypeSubstMap {
     ) -> TypeSubstMap {
         let mapping = type_parameters.into_iter().zip(type_arguments).collect();
         TypeSubstMap { mapping }
+    }
+
+    pub(crate) fn extend(&mut self, subst_map: TypeSubstMap) {
+        self.mapping.extend(subst_map.mapping.iter());
     }
 
     /// Given a [TypeId] `type_id`, find (or create) a match for `type_id` in
@@ -421,8 +434,10 @@ impl TypeSubstMap {
                 ty.type_id = type_id;
                 type_engine.insert(engines, TypeInfo::Slice(ty))
             }),
+            TypeInfo::TraitType { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::Unknown
-            | TypeInfo::Str(..)
+            | TypeInfo::StringArray(..)
+            | TypeInfo::StringSlice
             | TypeInfo::UnsignedInteger(..)
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }

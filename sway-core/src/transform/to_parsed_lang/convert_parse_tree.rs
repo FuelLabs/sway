@@ -17,7 +17,7 @@ use sway_ast::{
     ItemStorage, ItemStruct, ItemTrait, ItemTraitItem, ItemTypeAlias, ItemUse, LitInt, LitIntType,
     MatchBranchKind, Module, ModuleKind, Parens, PathExpr, PathExprSegment, PathType,
     PathTypeSegment, Pattern, PatternStructField, PubToken, Punctuated, QualifiedPathRoot,
-    Statement, StatementLet, Submodule, Traits, Ty, TypeField, UseTree, WhereClause,
+    Statement, StatementLet, Submodule, TraitType, Traits, Ty, TypeField, UseTree, WhereClause,
 };
 use sway_error::convert_parse_tree_error::ConvertParseTreeError;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -600,6 +600,10 @@ fn item_trait_to_trait_declaration(
                     context, handler, engines, const_decl, attributes, false,
                 )
                 .map(TraitItem::Constant),
+                ItemTraitItem::Type(trait_type, _) => trait_type_to_trait_type_declaration(
+                    context, handler, engines, trait_type, attributes,
+                )
+                .map(TraitItem::Type),
                 ItemTraitItem::Error(spans, error) => Ok(TraitItem::Error(spans, error)),
             }?))
         })
@@ -677,6 +681,10 @@ fn item_impl_to_declaration(
                     context, handler, engines, const_item, attributes, true,
                 )
                 .map(ImplItem::Constant),
+                sway_ast::ItemImplItem::Type(type_item) => trait_type_to_trait_type_declaration(
+                    context, handler, engines, type_item, attributes,
+                )
+                .map(ImplItem::Type),
             }?))
         })
         .filter_map_ok(|item| item)
@@ -788,6 +796,10 @@ fn item_abi_to_abi_declaration(
                             context, handler, engines, const_decl, attributes, false,
                         )
                         .map(TraitItem::Constant),
+                        ItemTraitItem::Type(type_decl, _) => trait_type_to_trait_type_declaration(
+                            context, handler, engines, type_decl, attributes,
+                        )
+                        .map(TraitItem::Type),
                         ItemTraitItem::Error(spans, error) => Ok(TraitItem::Error(spans, error)),
                     }?))
                 })
@@ -878,6 +890,27 @@ pub(crate) fn item_const_to_constant_declaration(
         visibility: pub_token_opt_to_visibility(item_const.visibility),
         is_configurable: false,
         attributes,
+        span,
+    })
+}
+
+pub(crate) fn trait_type_to_trait_type_declaration(
+    context: &mut Context,
+    handler: &Handler,
+    engines: &Engines,
+    trait_type: TraitType,
+    attributes: AttributesMap,
+) -> Result<TraitTypeDeclaration, ErrorEmitted> {
+    let span = trait_type.span();
+
+    Ok(TraitTypeDeclaration {
+        name: trait_type.name.clone(),
+        attributes,
+        ty_opt: if let Some(ty) = trait_type.ty_opt {
+            Some(ty_to_type_argument(context, handler, engines, ty)?)
+        } else {
+            None
+        },
         span,
     })
 }
@@ -1084,6 +1117,7 @@ fn generic_params_opt_to_type_parameters_with_parent(
                     TypeInfo::Custom {
                         call_path: ident.clone().into(),
                         type_arguments: None,
+                        root_type_id: None,
                     },
                 );
                 TypeParameter {
@@ -1277,6 +1311,7 @@ pub(crate) fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
         "bool" => Some(TypeInfo::Boolean),
         "unit" => Some(TypeInfo::Tuple(Vec::new())),
         "b256" => Some(TypeInfo::B256),
+        "str" => Some(TypeInfo::StringSlice),
         "raw_ptr" => Some(TypeInfo::RawUntypedPtr),
         "raw_slice" => Some(TypeInfo::RawUntypedSlice),
         "Self" | "self" => Some(TypeInfo::new_self_type(name.span())),
@@ -1308,8 +1343,9 @@ fn ty_to_type_info(
                 expr_to_length(context, handler, *ty_array_descriptor.length)?,
             )
         }
-        Ty::Str { length, .. } => {
-            TypeInfo::Str(expr_to_length(context, handler, *length.into_inner())?)
+        Ty::StringSlice(..) => TypeInfo::StringSlice,
+        Ty::StringArray { length, .. } => {
+            TypeInfo::StringArray(expr_to_length(context, handler, *length.into_inner())?)
         }
         Ty::Infer { .. } => TypeInfo::Unknown,
         Ty::Ptr { ty, .. } => {
@@ -3681,7 +3717,8 @@ fn ty_to_type_parameter(
         }
         Ty::Tuple(..) => panic!("tuple types are not allowed in this position"),
         Ty::Array(..) => panic!("array types are not allowed in this position"),
-        Ty::Str { .. } => panic!("str types are not allowed in this position"),
+        Ty::StringSlice(..) => panic!("str types are not allowed in this position"),
+        Ty::StringArray { .. } => panic!("str types are not allowed in this position"),
         Ty::Ptr { .. } => panic!("__ptr types are not allowed in this position"),
         Ty::Slice { .. } => panic!("__slice types are not allowed in this position"),
     };
@@ -3690,6 +3727,7 @@ fn ty_to_type_parameter(
         TypeInfo::Custom {
             call_path: name_ident.clone().into(),
             type_arguments: None,
+            root_type_id: None,
         },
     );
     Ok(TypeParameter {
@@ -3982,6 +4020,7 @@ fn path_type_to_type_info(
                 TypeInfo::Custom {
                     call_path,
                     type_arguments: Some(type_arguments),
+                    root_type_id: None,
                 }
             }
         }

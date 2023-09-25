@@ -1,17 +1,18 @@
 use std::{
     collections::{HashMap, HashSet, VecDeque},
+    fmt::Write,
     sync::RwLock,
 };
 
 use sway_types::{Named, Spanned};
 
 use crate::{
-    concurrent_slab::ConcurrentSlab,
+    concurrent_slab::{ConcurrentSlab, ListDisplay},
     decl_engine::*,
     engine_threading::*,
     language::ty::{
         self, TyAbiDecl, TyConstantDecl, TyEnumDecl, TyFunctionDecl, TyImplTrait, TyStorageDecl,
-        TyStructDecl, TyTraitDecl, TyTraitFn, TyTypeAliasDecl,
+        TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType, TyTypeAliasDecl,
     },
 };
 
@@ -21,6 +22,7 @@ pub struct DeclEngine {
     function_slab: ConcurrentSlab<TyFunctionDecl>,
     trait_slab: ConcurrentSlab<TyTraitDecl>,
     trait_fn_slab: ConcurrentSlab<TyTraitFn>,
+    trait_type_slab: ConcurrentSlab<TyTraitType>,
     impl_trait_slab: ConcurrentSlab<TyImplTrait>,
     struct_slab: ConcurrentSlab<TyStructDecl>,
     storage_slab: ConcurrentSlab<TyStorageDecl>,
@@ -72,6 +74,7 @@ macro_rules! decl_engine_get {
 decl_engine_get!(function_slab, ty::TyFunctionDecl);
 decl_engine_get!(trait_slab, ty::TyTraitDecl);
 decl_engine_get!(trait_fn_slab, ty::TyTraitFn);
+decl_engine_get!(trait_type_slab, ty::TyTraitType);
 decl_engine_get!(impl_trait_slab, ty::TyImplTrait);
 decl_engine_get!(struct_slab, ty::TyStructDecl);
 decl_engine_get!(storage_slab, ty::TyStorageDecl);
@@ -97,6 +100,7 @@ macro_rules! decl_engine_insert {
 decl_engine_insert!(function_slab, ty::TyFunctionDecl);
 decl_engine_insert!(trait_slab, ty::TyTraitDecl);
 decl_engine_insert!(trait_fn_slab, ty::TyTraitFn);
+decl_engine_insert!(trait_type_slab, ty::TyTraitType);
 decl_engine_insert!(impl_trait_slab, ty::TyImplTrait);
 decl_engine_insert!(struct_slab, ty::TyStructDecl);
 decl_engine_insert!(storage_slab, ty::TyStorageDecl);
@@ -117,6 +121,7 @@ macro_rules! decl_engine_replace {
 decl_engine_replace!(function_slab, ty::TyFunctionDecl);
 decl_engine_replace!(trait_slab, ty::TyTraitDecl);
 decl_engine_replace!(trait_fn_slab, ty::TyTraitFn);
+decl_engine_replace!(trait_type_slab, ty::TyTraitType);
 decl_engine_replace!(impl_trait_slab, ty::TyImplTrait);
 decl_engine_replace!(struct_slab, ty::TyStructDecl);
 decl_engine_replace!(storage_slab, ty::TyStorageDecl);
@@ -133,6 +138,7 @@ macro_rules! decl_engine_index {
 decl_engine_index!(function_slab, ty::TyFunctionDecl);
 decl_engine_index!(trait_slab, ty::TyTraitDecl);
 decl_engine_index!(trait_fn_slab, ty::TyTraitFn);
+decl_engine_index!(trait_type_slab, ty::TyTraitType);
 decl_engine_index!(impl_trait_slab, ty::TyImplTrait);
 decl_engine_index!(struct_slab, ty::TyStructDecl);
 decl_engine_index!(storage_slab, ty::TyStorageDecl);
@@ -303,6 +309,18 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
+    pub fn get_type<I>(&self, index: &I) -> ty::TyTraitType
+    where
+        DeclEngine: DeclEngineGet<I, ty::TyTraitType>,
+    {
+        self.get(index)
+    }
+
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine]
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
     pub fn get_enum<I>(&self, index: &I) -> ty::TyEnumDecl
     where
         DeclEngine: DeclEngineGet<I, ty::TyEnumDecl>,
@@ -320,5 +338,20 @@ impl DeclEngine {
         DeclEngine: DeclEngineGet<I, ty::TyTypeAliasDecl>,
     {
         self.get(index)
+    }
+
+    /// Pretty print method for printing the [DeclEngine]. This method is
+    /// manually implemented to avoid implementation overhead regarding using
+    /// [DisplayWithEngines].
+    pub fn pretty_print(&self, engines: &Engines) -> String {
+        let mut builder = String::new();
+        self.function_slab.with_slice(|elems| {
+            let list = elems
+                .iter()
+                .map(|type_info| format!("{:?}", engines.help_out(type_info)));
+            let list = ListDisplay { list };
+            write!(builder, "DeclEngine {{\n{list}\n}}").unwrap();
+        });
+        builder
     }
 }

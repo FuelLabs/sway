@@ -10,8 +10,8 @@ use crate::{
         ty::{self, TyConstantDecl},
         CallPath,
     },
-    semantic_analysis::*,
-    EnforceTypeArguments, Engines, TypeInfo,
+    semantic_analysis::{type_check_context::EnforceTypeArguments, *},
+    Engines, SubstTypes, TypeInfo,
 };
 
 impl ty::TyConstantDecl {
@@ -42,6 +42,9 @@ impl ty::TyConstantDecl {
                 None,
             )
             .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+
+        // this subst is required to replace associated types, namely TypeInfo::TraitType.
+        type_ascription.type_id.subst(&ctx.type_subst(), engines);
 
         let mut ctx = ctx
             .by_ref()
@@ -125,5 +128,18 @@ impl ty::TyConstantDecl {
             visibility,
             implementing_type: None,
         }
+    }
+}
+
+impl TypeCheckFinalization for TyConstantDecl {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        if let Some(value) = self.value.as_mut() {
+            value.type_check_finalize(handler, ctx)?;
+        }
+        Ok(())
     }
 }

@@ -252,14 +252,6 @@ impl Items {
             })
     }
 
-    pub(crate) fn insert_trait_implementation_for_type(
-        &mut self,
-        engines: &Engines,
-        type_id: TypeId,
-    ) {
-        self.implemented_traits.insert_for_type(engines, type_id);
-    }
-
     pub fn get_items_for_type(&self, engines: &Engines, type_id: TypeId) -> Vec<ty::TyTraitItem> {
         self.implemented_traits.get_items_for_type(engines, type_id)
     }
@@ -291,6 +283,7 @@ impl Items {
             .filter_map(|item| match item {
                 ty::TyTraitItem::Fn(decl_ref) => Some(decl_ref),
                 ty::TyTraitItem::Constant(_decl_ref) => None,
+                ty::TyTraitItem::Type(_decl_ref) => None,
             })
             .collect::<Vec<_>>()
     }

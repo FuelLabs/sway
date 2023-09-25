@@ -19,7 +19,9 @@ abi LiquidityPool {
     fn withdraw(recipient: Address);
 }
 
-const BASE_TOKEN = 0x9ae5b658754e096e4d681c548daf46354495a437cc61492599e33fc64dcdc30c;
+const BASE_TOKEN: AssetId = AssetId {
+    value: 0x9ae5b658754e096e4d681c548daf46354495a437cc61492599e33fc64dcdc30c,
+};
 
 impl LiquidityPool for Contract {
     fn deposit(recipient: Address) {
@@ -34,7 +36,7 @@ impl LiquidityPool for Contract {
     }
 
     fn withdraw(recipient: Address) {
-        let asset_id = sha256((contract_id(), ZERO_B256));
+        let asset_id = AssetId::default(contract_id());
         assert(msg_asset_id() == asset_id);
         assert(msg_amount() > 0);
 

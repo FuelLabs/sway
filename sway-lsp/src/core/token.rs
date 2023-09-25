@@ -63,6 +63,7 @@ pub enum TypedAstToken {
     TypedScrutinee(ty::TyScrutinee),
     TyStructScrutineeField(ty::TyStructScrutineeField),
     TypedConstantDeclaration(ty::TyConstantDecl),
+    TypedTraitTypeDeclaration(ty::TyTraitType),
     TypedFunctionDeclaration(ty::TyFunctionDecl),
     TypedFunctionParameter(ty::TyFunctionParameter),
     TypedStructField(ty::TyStructField),
@@ -118,6 +119,8 @@ pub enum SymbolKind {
     Struct,
     /// Emitted for traits.
     Trait,
+    /// Emitted for associated types.
+    TraiType,
     /// Emitted for type aliases.
     TypeAlias,
     /// Emitted for type parameters.
@@ -196,7 +199,7 @@ impl TokenIdent {
             .source_id()
             .map(|source_id| se.get_path(source_id));
         Self {
-            name: ident.span().clone().str(),
+            name: ident.span().str(),
             range: get_range_from_span(&ident.span()),
             path,
             is_raw_ident: ident.is_raw_ident(),
@@ -236,6 +239,7 @@ pub fn ident_of_type_id(engines: &Engines, type_id: &TypeId) -> Option<TokenIden
         TypeInfo::UnknownGeneric { name, .. } => name,
         TypeInfo::Enum(decl_ref) => engines.de().get_enum(&decl_ref).call_path.suffix,
         TypeInfo::Struct(decl_ref) => engines.de().get_struct(&decl_ref).call_path.suffix,
+        TypeInfo::Alias { name, .. } => name,
         TypeInfo::Custom { call_path, .. } => call_path.suffix,
         _ => return None,
     };
@@ -263,7 +267,7 @@ pub fn type_info_to_symbol_kind(
         TypeInfo::UnsignedInteger(..) | TypeInfo::Boolean | TypeInfo::B256 => {
             SymbolKind::BuiltinType
         }
-        TypeInfo::Numeric | TypeInfo::Str(..) => SymbolKind::NumericLiteral,
+        TypeInfo::Numeric | TypeInfo::StringArray(..) => SymbolKind::NumericLiteral,
         TypeInfo::Custom { .. } | TypeInfo::Struct { .. } | TypeInfo::Contract => {
             SymbolKind::Struct
         }

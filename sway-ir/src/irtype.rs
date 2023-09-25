@@ -20,7 +20,8 @@ pub enum TypeContent {
     Bool,
     Uint(u16),
     B256,
-    String(u64),
+    StringSlice,
+    StringArray(u64),
     Array(Type, u64),
     Union(Vec<Type>),
     Struct(Vec<Type>),
@@ -102,8 +103,8 @@ impl Type {
     }
 
     /// Get string type
-    pub fn new_string(context: &mut Context, len: u64) -> Type {
-        Self::get_or_create_unique_type(context, TypeContent::String(len))
+    pub fn new_string_array(context: &mut Context, len: u64) -> Type {
+        Self::get_or_create_unique_type(context, TypeContent::StringArray(len))
     }
 
     /// Get array type
@@ -146,7 +147,8 @@ impl Type {
             TypeContent::Bool => "bool".into(),
             TypeContent::Uint(nbits) => format!("u{nbits}"),
             TypeContent::B256 => "b256".into(),
-            TypeContent::String(n) => format!("string<{n}>"),
+            TypeContent::StringSlice => "str".into(),
+            TypeContent::StringArray(n) => format!("string<{n}>"),
             TypeContent::Array(ty, cnt) => {
                 format!("[{}; {}]", ty.as_string(context), cnt)
             }
@@ -169,7 +171,9 @@ impl Type {
             (TypeContent::Bool, TypeContent::Bool) => true,
             (TypeContent::Uint(l), TypeContent::Uint(r)) => l == r,
             (TypeContent::B256, TypeContent::B256) => true,
-            (TypeContent::String(l), TypeContent::String(r)) => l == r,
+
+            (TypeContent::StringSlice, TypeContent::StringSlice) => true,
+            (TypeContent::StringArray(l), TypeContent::StringArray(r)) => l == r,
 
             (TypeContent::Array(l, llen), TypeContent::Array(r, rlen)) => {
                 llen == rlen && l.eq(context, r)
@@ -229,8 +233,13 @@ impl Type {
     }
 
     /// Is string type
-    pub fn is_string(&self, context: &Context) -> bool {
-        matches!(*self.get_content(context), TypeContent::String(_))
+    pub fn is_string_slice(&self, context: &Context) -> bool {
+        matches!(*self.get_content(context), TypeContent::StringSlice)
+    }
+
+    /// Is string type
+    pub fn is_string_array(&self, context: &Context) -> bool {
+        matches!(*self.get_content(context), TypeContent::StringArray(_))
     }
 
     /// Is array type
@@ -289,23 +298,19 @@ impl Type {
 
         indices.iter().try_fold(*self, |ty, idx| {
             ty.get_field_type(context, *idx)
-                .or_else(|| ty.get_array_elem_type(context))
+                .or_else(|| match ty.get_content(context) {
+                    TypeContent::Array(ty, len) if idx < len => Some(*ty),
+                    _ => None,
+                })
         })
     }
 
     /// What's the offset of the indexed element?
-    /// It may not always be possible to determine statically.
-    pub fn get_indexed_offset(&self, context: &Context, indices: &[Value]) -> Option<u64> {
+    /// Returns None on invalid indices.
+    pub fn get_indexed_offset(&self, context: &Context, indices: &[u64]) -> Option<u64> {
         indices
             .iter()
             .try_fold((*self, 0), |(ty, accum_offset), idx| {
-                let Some(Constant {
-                    value: ConstantValue::Uint(idx),
-                    ty: _,
-                }) = idx.get_constant(context)
-                else {
-                    return None;
-                };
                 if ty.is_struct(context) {
                     // Sum up all sizes of all previous fields.
                     let prev_idxs_offset = (0..(*idx)).try_fold(0, |accum, pre_idx| {
@@ -335,6 +340,28 @@ impl Type {
                 }
             })
             .map(|pair| pair.1)
+    }
+
+    /// What's the offset of the value indexed element?
+    /// It may not always be possible to determine statically.
+    pub fn get_value_indexed_offset(&self, context: &Context, indices: &[Value]) -> Option<u64> {
+        let const_indices: Vec<_> = indices
+            .iter()
+            .map_while(|idx| {
+                if let Some(Constant {
+                    value: ConstantValue::Uint(idx),
+                    ty: _,
+                }) = idx.get_constant(context)
+                {
+                    Some(*idx)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        (const_indices.len() == indices.len())
+            .then(|| self.get_indexed_offset(context, &const_indices))
+            .flatten()
     }
 
     pub fn get_field_type(&self, context: &Context, idx: u64) -> Option<Type> {
@@ -367,7 +394,7 @@ impl Type {
 
     /// Get the length of a string
     pub fn get_string_len(&self, context: &Context) -> Option<u64> {
-        if let TypeContent::String(n) = *self.get_content(context) {
+        if let TypeContent::StringArray(n) = *self.get_content(context) {
             Some(n)
         } else {
             None
@@ -388,7 +415,8 @@ impl Type {
             TypeContent::Uint(bits) => (*bits as u64) / 8,
             TypeContent::Slice => 16,
             TypeContent::B256 => 32,
-            TypeContent::String(n) => super::size_bytes_round_up_to_word_alignment!(*n),
+            TypeContent::StringSlice => 16,
+            TypeContent::StringArray(n) => super::size_bytes_round_up_to_word_alignment!(*n),
             TypeContent::Array(el_ty, cnt) => cnt * el_ty.size_in_bytes(context),
             TypeContent::Struct(field_tys) => {
                 // Sum up all the field sizes.

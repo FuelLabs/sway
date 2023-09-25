@@ -361,7 +361,34 @@ fn main() -> () {
         _ => 0,
     };
 
-    // TODO: Once bug with Struct { .. } patterns and exhaustive match expressions is fixed, add this case as well.
+    let or_no_warning = 0;
+
+    let _x = match or_no_warning {
+        1 | 2 | 3 => 0,
+        4 => 0,
+        5 => 0,
+        _ => 0,
+    };
+
+    let or1 = 0;
+
+    let _x = match or1 {
+        1 | 2 | _ => 0,
+        4 => 0,
+        5 => 0,
+        _ => 0,
+    };
+
+    let or2 = 0;
+
+    let _x = match or2 {
+        4 => 0,
+        1 | _ | 2 => 0,
+        5 => 0,
+        _ => 0,
+    };
+
+    // TODO: Once bug with Struct { .. } patterns and exhaustive match expressions is fixed (https://github.com/FuelLabs/sway/issues/4950), add this case as well:
     // let _x = match t {
     //     (true, _, s, n) => n + s.y,
     //     (false, _, s, n) => n + s.y,
@@ -371,7 +398,7 @@ fn main() -> () {
     //     },
     // };
 
-    // TODO: Once bug with Struct { .. } patterns and exhaustive match expressions is fixed, add this case as well.
+    // TODO: Once bug with Struct { .. } patterns and exhaustive match expressions is fixed (https://github.com/FuelLabs/sway/issues/4950), add this case as well: 
     // let _x = match t5 {
     //     (true, _, s, n) => n + s.y,
     //     (false, _, s, n) => n + s.y,
@@ -381,6 +408,15 @@ fn main() -> () {
     //         poke(l);
     //         n
     //     },
+    // };
+    
+    // TODO: Once internal compiler error is solved (https://github.com/FuelLabs/sway/issues/5106) add examples similar to this case: 
+    // let e = EnumB::A;
+ 
+    // let _x = match e {
+    //     EnumB::A | EnumB::B | _ => 0,
+    //     EnumB::A => 0,
+    //     EnumB::B => 0,
     // };
 
     poke(Enum::B);

@@ -9,7 +9,7 @@ Each call to `log` appends 1 of 2 types of a [`receipt`](https://fuellabs.github
 - [`Log`](https://fuellabs.github.io/fuel-specs/master/protocol/abi/receipts.html#log-receipt)
   - Generated for _non-reference_ types: `bool`, `u8`, `u16`, `u32`, and `u64`
 - [`LogData`](https://fuellabs.github.io/fuel-specs/master/protocol/abi/receipts.html#logdata-receipt)
-  - Generated for _reference_ types
+  - Generated for _reference_ types and `u256`
 
 The [Rust](https://fuellabs.github.io/fuels-rs/latest/) & [Typescript](https://fuellabs.github.io/fuels-ts/) SDKs may be used to decode the data.
 

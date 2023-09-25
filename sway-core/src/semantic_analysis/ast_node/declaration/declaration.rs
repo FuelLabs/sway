@@ -3,12 +3,19 @@ use sway_types::{Named, Spanned};
 
 use crate::{
     decl_engine::{DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType},
-    language::{parsed, ty},
-    semantic_analysis::TypeCheckContext,
+    language::{
+        parsed,
+        ty::{self, TyDecl},
+    },
+    namespace::{IsExtendingExistingImpl, IsImplSelf},
+    semantic_analysis::{
+        type_check_context::EnforceTypeArguments, TypeCheckContext, TypeCheckFinalization,
+        TypeCheckFinalizationContext,
+    },
     type_system::*,
 };
 
-impl ty::TyDecl {
+impl TyDecl {
     pub(crate) fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
@@ -74,6 +81,16 @@ impl ty::TyDecl {
                 ctx.insert_symbol(handler, const_decl.name().clone(), typed_const_decl.clone())?;
                 typed_const_decl
             }
+            parsed::Declaration::TraitTypeDeclaration(decl) => {
+                let span = decl.span.clone();
+                let type_decl = match ty::TyTraitType::type_check(handler, ctx.by_ref(), decl) {
+                    Ok(res) => res,
+                    Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
+                };
+                let typed_type_decl: ty::TyDecl = decl_engine.insert(type_decl.clone()).into();
+                ctx.insert_symbol(handler, type_decl.name().clone(), typed_type_decl.clone())?;
+                typed_type_decl
+            }
             parsed::Declaration::EnumDeclaration(decl) => {
                 let span = decl.span.clone();
                 let enum_decl = match ty::TyEnumDecl::type_check(handler, ctx.by_ref(), decl) {
@@ -117,8 +134,7 @@ impl ty::TyDecl {
                 for supertrait in trait_decl.supertraits.iter_mut() {
                     let _ = ctx
                         .namespace
-                        .resolve_call_path(handler, &supertrait.name)
-                        .cloned()
+                        .resolve_call_path(handler, engines, &supertrait.name)
                         .map(|supertrait_decl| {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
                                 name: supertrait_name,
@@ -159,17 +175,15 @@ impl ty::TyDecl {
                 // insert those since we do not allow calling contract methods
                 // from contract methods
                 let emp_vec = vec![];
-                let impl_trait_items = if let Some(ty::TyDecl::TraitDecl { .. }) = ctx
+                let impl_trait_items = if let Ok(ty::TyDecl::TraitDecl { .. }) = ctx
                     .namespace
-                    .resolve_call_path(&Handler::default(), &impl_trait.trait_name)
-                    .ok()
-                    .cloned()
+                    .resolve_call_path(&Handler::default(), engines, &impl_trait.trait_name)
                 {
                     &impl_trait.items
                 } else {
                     &emp_vec
                 };
-                ctx.namespace.insert_trait_implementation(
+                ctx.insert_trait_implementation(
                     handler,
                     impl_trait.trait_name.clone(),
                     impl_trait.trait_type_arguments.clone(),
@@ -180,8 +194,8 @@ impl ty::TyDecl {
                         .trait_decl_ref
                         .as_ref()
                         .map(|decl_ref| decl_ref.decl_span().clone()),
-                    false,
-                    engines,
+                    IsImplSelf::No,
+                    IsExtendingExistingImpl::No,
                 )?;
                 let impl_trait_decl: ty::TyDecl = decl_engine.insert(impl_trait.clone()).into();
                 impl_trait.items.iter_mut().for_each(|item| {
@@ -196,7 +210,7 @@ impl ty::TyDecl {
                         Ok(val) => val,
                         Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                     };
-                ctx.namespace.insert_trait_implementation(
+                ctx.insert_trait_implementation(
                     handler,
                     impl_trait.trait_name.clone(),
                     impl_trait.trait_type_arguments.clone(),
@@ -207,8 +221,8 @@ impl ty::TyDecl {
                         .trait_decl_ref
                         .as_ref()
                         .map(|decl_ref| decl_ref.decl_span().clone()),
-                    true,
-                    engines,
+                    IsImplSelf::Yes,
+                    IsExtendingExistingImpl::No,
                 )?;
                 let impl_trait_decl: ty::TyDecl = decl_engine.insert(impl_trait.clone()).into();
                 impl_trait.items.iter_mut().for_each(|item| {
@@ -245,8 +259,7 @@ impl ty::TyDecl {
                 for supertrait in abi_decl.supertraits.iter_mut() {
                     let _ = ctx
                         .namespace
-                        .resolve_call_path(handler, &supertrait.name)
-                        .cloned()
+                        .resolve_call_path(handler, engines, &supertrait.name)
                         .map(|supertrait_decl| {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
                                 name: supertrait_name,
@@ -364,5 +377,62 @@ impl ty::TyDecl {
         };
 
         Ok(decl)
+    }
+}
+
+impl TypeCheckFinalization for TyDecl {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        let decl_engine = ctx.engines.de();
+        match self {
+            TyDecl::VariableDecl(node) => {
+                node.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::ConstantDecl(node) => {
+                let mut const_decl = ctx.engines.de().get_constant(&node.decl_id);
+                const_decl.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::FunctionDecl(node) => {
+                let mut fn_decl = ctx.engines.de().get_function(&node.decl_id);
+                fn_decl.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::TraitDecl(node) => {
+                let mut trait_decl = ctx.engines.de().get_trait(&node.decl_id);
+                trait_decl.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::StructDecl(node) => {
+                let mut struct_decl = ctx.engines.de().get_struct(&node.decl_id);
+                struct_decl.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::EnumDecl(node) => {
+                let mut enum_decl = ctx.engines.de().get_enum(&node.decl_id);
+                enum_decl.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::EnumVariantDecl(_) => {}
+            TyDecl::ImplTrait(node) => {
+                let mut impl_trait = decl_engine.get_impl_trait(&node.decl_id);
+                impl_trait.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::AbiDecl(node) => {
+                let mut abi_decl = decl_engine.get_abi(&node.decl_id);
+                abi_decl.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::GenericTypeForFunctionScope(_) => {}
+            TyDecl::ErrorRecovery(_, _) => {}
+            TyDecl::StorageDecl(node) => {
+                let mut storage_decl = decl_engine.get_storage(&node.decl_id);
+                storage_decl.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::TypeAliasDecl(node) => {
+                let mut type_alias_decl = decl_engine.get_type_alias(&node.decl_id);
+                type_alias_decl.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::TraitTypeDecl(_node) => {}
+        }
+
+        Ok(())
     }
 }

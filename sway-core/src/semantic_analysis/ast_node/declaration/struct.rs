@@ -2,7 +2,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{
     language::{parsed::*, ty, CallPath},
-    semantic_analysis::*,
+    semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
 };
 
@@ -83,5 +83,15 @@ impl ty::TyStructField {
             attributes: field.attributes,
         };
         Ok(field)
+    }
+}
+
+impl TypeCheckFinalization for ty::TyStructDecl {
+    fn type_check_finalize(
+        &mut self,
+        _handler: &Handler,
+        _ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
     }
 }

@@ -36,7 +36,7 @@ impl<K, V> StorageKey<StorageMap<K, V>> where K: Hash {
     /// }
     /// ```
     #[storage(read, write)]
-    pub fn insert(self, key: K, value: V) {
+    pub fn insert(self, key: K, value: V) where K: Hash {
         let key = sha256((key, self.field_id));
         write::<V>(key, 0, value);
     }
@@ -67,12 +67,12 @@ impl<K, V> StorageKey<StorageMap<K, V>> where K: Hash {
     ///     assert(value == retrieved_value);
     /// }
     /// ```
-    pub fn get(self, key: K) -> StorageKey<V> {
-        StorageKey {
-            slot: sha256((key, self.field_id)),
-            offset: 0,
-            field_id: sha256((key, self.field_id)),
-        }
+    pub fn get(self, key: K) -> StorageKey<V> where K: Hash {
+        StorageKey::<V>::new(
+            sha256((key, self.field_id)), 
+            0, 
+            sha256((key, self.field_id))
+        )
     }
 
     /// Clears a value previously stored using a key
@@ -106,8 +106,8 @@ impl<K, V> StorageKey<StorageMap<K, V>> where K: Hash {
     /// }
     /// ```
     #[storage(write)]
-    pub fn remove(self, key: K) -> bool {
+    pub fn remove(self, key: K) -> bool where K: Hash {
         let key = sha256((key, self.slot));
-        clear::<V>(key)
+        clear::<V>(key, 0)
     }
 }

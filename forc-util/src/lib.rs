@@ -5,12 +5,17 @@ use annotate_snippets::{
     snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
 };
 use ansi_term::Colour;
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use forc_tracing::{println_red_err, println_yellow_err};
-use std::{collections::HashSet, str};
+use std::{
+    collections::{hash_map, HashSet},
+    str,
+};
 use std::{ffi::OsStr, process::Termination};
 use std::{
     fmt::Display,
+    fs::File,
+    hash::{Hash, Hasher},
     path::{Path, PathBuf},
 };
 use sway_core::language::parsed::TreeType;
@@ -221,7 +226,10 @@ pub fn find_nested_dir_with_file(starter_path: &Path, file_name: &str) -> Option
 ///
 /// Starts the search from `starter_path`.
 #[allow(clippy::branches_sharing_code)]
-pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option<PathBuf> {
+pub fn find_parent_dir_with_file<P: AsRef<Path>>(
+    starter_path: P,
+    file_name: &str,
+) -> Option<PathBuf> {
     let mut path = std::fs::canonicalize(starter_path).ok()?;
     let empty_path = PathBuf::from("/");
     while path != empty_path {
@@ -237,13 +245,16 @@ pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option
     None
 }
 /// Continually go up in the file tree until a Forc manifest file is found.
-pub fn find_parent_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
+pub fn find_parent_manifest_dir<P: AsRef<Path>>(starter_path: P) -> Option<PathBuf> {
     find_parent_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
 }
 
 /// Continually go up in the file tree until a Forc manifest file is found and given predicate
 /// returns true.
-pub fn find_parent_manifest_dir_with_check<F>(starter_path: &Path, f: F) -> Option<PathBuf>
+pub fn find_parent_manifest_dir_with_check<T: AsRef<Path>, F>(
+    starter_path: T,
+    f: F,
+) -> Option<PathBuf>
 where
     F: Fn(&Path) -> bool,
 {
@@ -341,6 +352,64 @@ pub fn user_forc_directory() -> PathBuf {
 /// The location at which `forc` will checkout git repositories.
 pub fn git_checkouts_directory() -> PathBuf {
     user_forc_directory().join("git").join("checkouts")
+}
+
+/// Given a path to a directory we wish to lock, produce a path for an associated lock file.
+///
+/// Note that the lock file itself is simply a placeholder for co-ordinating access. As a result,
+/// we want to create the lock file if it doesn't exist, but we can never reliably remove it
+/// without risking invalidation of an existing lock. As a result, we use a dedicated, hidden
+/// directory with a lock file named after the checkout path.
+///
+/// Note: This has nothing to do with `Forc.lock` files, rather this is about fd locks for
+/// coordinating access to particular paths (e.g. git checkout directories).
+fn fd_lock_path(path: &Path) -> PathBuf {
+    const LOCKS_DIR_NAME: &str = ".locks";
+    const LOCK_EXT: &str = "forc-lock";
+    let file_name = hash_path(path);
+    user_forc_directory()
+        .join(LOCKS_DIR_NAME)
+        .join(file_name)
+        .with_extension(LOCK_EXT)
+}
+
+/// Constructs the path for the "dirty" flag file corresponding to the specified file.
+///
+/// This function uses a hashed representation of the original path for uniqueness.
+pub fn is_dirty_path(path: &Path) -> PathBuf {
+    const LOCKS_DIR_NAME: &str = ".lsp-locks";
+    const LOCK_EXT: &str = "dirty";
+    let file_name = hash_path(path);
+    user_forc_directory()
+        .join(LOCKS_DIR_NAME)
+        .join(file_name)
+        .with_extension(LOCK_EXT)
+}
+
+/// Hash the path to produce a file-system friendly file name.
+/// Append the file stem for improved readability.
+fn hash_path(path: &Path) -> String {
+    let mut hasher = hash_map::DefaultHasher::default();
+    path.hash(&mut hasher);
+    let hash = hasher.finish();
+    let file_name = match path.file_stem().and_then(|s| s.to_str()) {
+        None => format!("{hash:X}"),
+        Some(stem) => format!("{hash:X}-{stem}"),
+    };
+    file_name
+}
+
+/// Create an advisory lock over the given path.
+///
+/// See [fd_lock_path] for details.
+pub fn path_lock(path: &Path) -> Result<fd_lock::RwLock<File>> {
+    let lock_path = fd_lock_path(path);
+    let lock_dir = lock_path
+        .parent()
+        .expect("lock path has no parent directory");
+    std::fs::create_dir_all(lock_dir).context("failed to create forc advisory lock directory")?;
+    let lock_file = File::create(&lock_path).context("failed to create advisory lock file")?;
+    Ok(fd_lock::RwLock::new(lock_file))
 }
 
 pub fn program_type_str(ty: &TreeType) -> &'static str {
@@ -553,12 +622,9 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
 
     fn get_title_label(diagnostics: &Diagnostic, label: &mut String) {
         label.clear();
-        if diagnostics.reason().is_some() {
-            label.push_str(diagnostics.reason().unwrap().description());
-            label.push_str(". ");
+        if let Some(reason) = diagnostics.reason() {
+            label.push_str(reason.description());
         }
-        label.push_str(diagnostics.issue().friendly_text());
-        label.push('.');
     }
 
     fn diagnostic_level_to_annotation_type(level: Level) -> AnnotationType {
@@ -637,6 +703,7 @@ fn construct_slice(labels: Vec<&Label>) -> Slice {
 fn label_type_to_annotation_type(label_type: LabelType) -> AnnotationType {
     match label_type {
         LabelType::Info => AnnotationType::Info,
+        LabelType::Help => AnnotationType::Help,
         LabelType::Warning => AnnotationType::Warning,
         LabelType::Error => AnnotationType::Error,
     }

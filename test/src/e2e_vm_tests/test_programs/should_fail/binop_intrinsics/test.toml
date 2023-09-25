@@ -5,27 +5,34 @@ category = "fail"
 # nextln: $()Mismatched types
 # nextln: $()expected: numeric
 # nextln: $()found:    A.
+# nextln: $()help: Struct type must match the type specified in its declaration.
+
+# check: $()error
+# check: $()__add(A { a: 32 }, 32);
+# nextln: $()Mismatched types
+# nextln: $()expected: numeric
+# nextln: $()found:    A.
 # nextln: $()help: Incorrect argument type
 
 # check: $()error
 # check: $()__add("Hello", 22);
 # nextln: $()Mismatched types
 # nextln: $()expected: numeric
-# nextln: $()found:    str[5].
+# nextln: $()found:    str.
 # nextln: $()help: Incorrect argument type
 
 # check: $()error
 # check: $()__add("Hello", "Hello")
 # nextln: $()Mismatched types
 # nextln: $()expected: numeric
-# nextln: $()found:    str[5].
+# nextln: $()found:    str.
 # nextln: $()help: Incorrect argument type
 
 # check: $()error
 # check: $()__add("Hello", "Hello")
 # nextln: $()Mismatched types
 # nextln: $()expected: numeric
-# nextln: $()found:    str[5].
+# nextln: $()found:    str.
 # nextln: $()help: Incorrect argument type
 
 # check: $()error
@@ -57,12 +64,12 @@ category = "fail"
 # check: $()__rsh("Hello", 1)
 # nextln: $()Mismatched types
 # nextln: $()expected: numeric
-# nextln: $()found:    str[5].
+# nextln: $()found:    str.
 # nextln: $()help: Incorrect argument type
 
 # check: $()error
 # check: $()__rsh(1, "Hello")
 # nextln: $()Mismatched types
 # nextln: $()expected: numeric
-# nextln: $()found:    str[5].
+# nextln: $()found:    str.
 # nextln: $()help: Incorrect argument type

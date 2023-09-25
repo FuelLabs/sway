@@ -1,10 +1,9 @@
 //! Utilities to help with low level calls.
 library;
 
-use ::alias::AssetId;
 use ::assert::assert;
 use ::bytes::Bytes;
-use ::contract_id::ContractId;
+use ::contract_id::{AssetId, ContractId};
 use ::option::Option;
 use ::revert::require;
 use ::vec::Vec;

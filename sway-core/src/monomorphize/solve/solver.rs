@@ -137,7 +137,8 @@ impl<'a> Solver<'a> {
             TypeInfo::Array(_, _) => todo!(),
             TypeInfo::Storage { .. } => todo!(),
             TypeInfo::Alias { .. } => todo!(),
-            TypeInfo::Str(_)
+            TypeInfo::StringArray(_)
+            | TypeInfo::StringSlice
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
             | TypeInfo::B256
@@ -145,7 +146,8 @@ impl<'a> Solver<'a> {
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Ptr(..)
-            | TypeInfo::Slice(..) => {}
+            | TypeInfo::Slice(..)
+            | TypeInfo::TraitType { .. } => {}
         }
 
         Ok(InstructionResult::from_instructions(instructions))

@@ -1,7 +1,7 @@
 //! This module is responsible for implementing handlers for Language Server
 //! Protocol. This module specifically handles notification messages sent by the Client.
 
-use crate::{error::LanguageServerError, server_state::ServerState};
+use crate::{core::document, error::LanguageServerError, server_state::ServerState};
 use lsp_types::{
     DidChangeTextDocumentParams, DidChangeWatchedFilesParams, DidOpenTextDocumentParams,
     DidSaveTextDocumentParams, FileChangeType,
@@ -30,6 +30,7 @@ pub async fn handle_did_change_text_document(
     state: &ServerState,
     params: DidChangeTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
+    document::mark_file_as_dirty(&params.text_document.uri)?;
     let (uri, session) = state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)?;
@@ -44,6 +45,7 @@ pub(crate) async fn handle_did_save_text_document(
     state: &ServerState,
     params: DidSaveTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
+    document::remove_dirty_flag(&params.text_document.uri)?;
     let (uri, session) = state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)?;
@@ -57,15 +59,13 @@ pub(crate) async fn handle_did_save_text_document(
 pub(crate) fn handle_did_change_watched_files(
     state: &ServerState,
     params: DidChangeWatchedFilesParams,
-) {
+) -> Result<(), LanguageServerError> {
     for event in params.changes {
-        if event.typ == FileChangeType::DELETED {
-            match state.sessions.uri_and_session_from_workspace(&event.uri) {
-                Ok((uri, session)) => {
-                    let _ = session.remove_document(&uri);
-                }
-                Err(err) => tracing::error!("{}", err.to_string()),
-            }
+        let (uri, session) = state.sessions.uri_and_session_from_workspace(&event.uri)?;
+        if let FileChangeType::DELETED = event.typ {
+            document::remove_dirty_flag(&event.uri)?;
+            let _ = session.remove_document(&uri);
         }
     }
+    Ok(())
 }

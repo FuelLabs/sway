@@ -7,7 +7,7 @@ use crate::{
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
     default_output_directory, find_file_name, kebab_to_snake_case, print_compiling,
-    print_on_failure, print_warnings, user_forc_directory,
+    print_on_failure, print_warnings,
 };
 use fuel_abi_types::program_abi;
 use petgraph::{
@@ -26,7 +26,6 @@ use std::{
     str::FromStr,
     sync::Arc,
 };
-use sway_core::fuel_prelude::fuel_types::ChainId;
 pub use sway_core::Programs;
 use sway_core::{
     abi_generation::{
@@ -38,6 +37,7 @@ use sway_core::{
     fuel_prelude::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
+        fuel_types::ChainId,
     },
     language::{parsed::TreeType, Visibility},
     semantic_analysis::namespace,
@@ -1516,48 +1516,6 @@ fn fetch_deps(
     Ok(added)
 }
 
-/// Given a path to a directory we wish to lock, produce a path for an associated lock file.
-///
-/// Note that the lock file itself is simply a placeholder for co-ordinating access. As a result,
-/// we want to create the lock file if it doesn't exist, but we can never reliably remove it
-/// without risking invalidation of an existing lock. As a result, we use a dedicated, hidden
-/// directory with a lock file named after the checkout path.
-///
-/// Note: This has nothing to do with `Forc.lock` files, rather this is about fd locks for
-/// coordinating access to particular paths (e.g. git checkout directories).
-fn fd_lock_path(path: &Path) -> PathBuf {
-    const LOCKS_DIR_NAME: &str = ".locks";
-    const LOCK_EXT: &str = "forc-lock";
-
-    // Hash the path to produce a file-system friendly lock file name.
-    // Append the file stem for improved readability.
-    let mut hasher = hash_map::DefaultHasher::default();
-    path.hash(&mut hasher);
-    let hash = hasher.finish();
-    let file_name = match path.file_stem().and_then(|s| s.to_str()) {
-        None => format!("{hash:X}"),
-        Some(stem) => format!("{hash:X}-{stem}"),
-    };
-
-    user_forc_directory()
-        .join(LOCKS_DIR_NAME)
-        .join(file_name)
-        .with_extension(LOCK_EXT)
-}
-
-/// Create an advisory lock over the given path.
-///
-/// See [fd_lock_path] for details.
-pub(crate) fn path_lock(path: &Path) -> Result<fd_lock::RwLock<File>> {
-    let lock_path = fd_lock_path(path);
-    let lock_dir = lock_path
-        .parent()
-        .expect("lock path has no parent directory");
-    std::fs::create_dir_all(lock_dir).context("failed to create forc advisory lock directory")?;
-    let lock_file = File::create(&lock_path).context("failed to create advisory lock file")?;
-    Ok(fd_lock::RwLock::new(lock_file))
-}
-
 /// Given a `forc_pkg::BuildProfile`, produce the necessary `sway_core::BuildConfig` required for
 /// compilation.
 pub fn sway_build_config(
@@ -2704,11 +2662,11 @@ pub fn check(
 }
 
 /// Format an error message for an absent `Forc.toml`.
-pub fn manifest_file_missing(dir: &Path) -> anyhow::Error {
+pub fn manifest_file_missing<P: AsRef<Path>>(dir: P) -> anyhow::Error {
     let message = format!(
         "could not find `{}` in `{}` or any parent directory",
         constants::MANIFEST_FILE_NAME,
-        dir.display()
+        dir.as_ref().display()
     );
     Error::msg(message)
 }

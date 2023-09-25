@@ -5,7 +5,7 @@ use sway_error::{
 use sway_types::{BaseIdent, Span};
 
 use crate::{
-    decl_engine::{DeclEngine, DeclEngineInsert},
+    decl_engine::DeclEngine,
     engine_threading::*,
     language::CallPath,
     semantic_analysis::TypeCheckContext,

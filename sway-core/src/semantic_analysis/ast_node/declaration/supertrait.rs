@@ -2,10 +2,11 @@ use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Span, Spanned};
 
+use crate::semantic_analysis::type_check_context::EnforceTypeArguments;
 use crate::{
     language::{parsed, ty},
     semantic_analysis::TypeCheckContext,
-    EnforceTypeArguments, TypeId,
+    TypeId,
 };
 
 #[derive(Clone, PartialEq, Eq)]
@@ -23,7 +24,8 @@ pub(crate) fn insert_supertraits_into_namespace(
     supertraits: &[parsed::Supertrait],
     supertraits_of: &SupertraitOf,
 ) -> Result<(), ErrorEmitted> {
-    let decl_engine = ctx.engines.de();
+    let engines = ctx.engines;
+    let decl_engine = engines.de();
 
     handler.scope(|handler| {
         for supertrait in supertraits.iter() {
@@ -41,9 +43,8 @@ pub(crate) fn insert_supertraits_into_namespace(
 
             let decl = ctx
                 .namespace
-                .resolve_call_path(handler, &supertrait.name)
-                .ok()
-                .cloned();
+                .resolve_call_path(handler, engines, &supertrait.name)
+                .ok();
 
             match (decl.clone(), supertraits_of) {
                 // a trait can be a supertrait of either a trait or a an ABI

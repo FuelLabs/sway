@@ -36,6 +36,7 @@ pub struct TestDetails {
 }
 
 /// The filter to be used to only run matching tests.
+#[derive(Debug, Clone)]
 pub struct TestFilter<'a> {
     /// The phrase used for filtering, a `&str` searched/matched with test name.
     pub filter_phrase: &'a str,
@@ -838,14 +839,20 @@ mod tests {
     const TEST_DATA_FOLDER_NAME: &str = "test_data";
     /// Name of the library package in the "CARGO_MANIFEST_DIR/TEST_DATA_FOLDER_NAME".
     const TEST_LIBRARY_PACKAGE_NAME: &str = "test_library";
+    /// Name of the contract package in the "CARGO_MANIFEST_DIR/TEST_DATA_FOLDER_NAME".
+    const TEST_CONTRACT_PACKAGE_NAME: &str = "test_contract";
+    /// Name of the predicate package in the "CARGO_MANIFEST_DIR/TEST_DATA_FOLDER_NAME".
+    const TEST_PREDICATE_PACKAGE_NAME: &str = "test_predicate";
+    /// Name of the script package in the "CARGO_MANIFEST_DIR/TEST_DATA_FOLDER_NAME".
+    const TEST_SCRIPT_PACKAGE_NAME: &str = "test_script";
 
-    /// Build the tests in the test library located at
+    /// Build the tests in the test package with the given name located at
     /// "CARGO_MANIFEST_DIR/TEST_DATA_FOLDER_NAME/TEST_LIBRARY_PACKAGE_NAME".
-    fn test_library_built_tests() -> anyhow::Result<BuiltTests> {
+    fn test_package_built_tests(package_name: &str) -> anyhow::Result<BuiltTests> {
         let cargo_manifest_dir = env!("CARGO_MANIFEST_DIR");
         let library_package_dir = PathBuf::from(cargo_manifest_dir)
             .join(TEST_DATA_FOLDER_NAME)
-            .join(TEST_LIBRARY_PACKAGE_NAME);
+            .join(package_name);
         let library_package_dir_string = library_package_dir.to_string_lossy().to_string();
         let build_options = Opts {
             pkg: forc_pkg::PkgOpts {
@@ -857,10 +864,11 @@ mod tests {
         build(build_options)
     }
 
-    fn test_library_test_results(
+    fn test_package_test_results(
+        package_name: &str,
         test_filter: Option<TestFilter>,
     ) -> anyhow::Result<Vec<TestResult>> {
-        let built_tests = test_library_built_tests()?;
+        let built_tests = test_package_built_tests(package_name)?;
         let test_runner_count = crate::TestRunnerCount::Auto;
         let tested = built_tests.run(test_runner_count, test_filter)?;
         match tested {
@@ -879,10 +887,29 @@ mod tests {
             exact_match: true,
         };
 
-        let test_results = test_library_test_results(Some(test_filter)).unwrap();
-        let tested_package_test_count = test_results.len();
+        let test_library_results =
+            test_package_test_results(TEST_LIBRARY_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_library_test_count = test_library_results.len();
 
-        assert_eq!(tested_package_test_count, 1)
+        let test_contract_results =
+            test_package_test_results(TEST_CONTRACT_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_contract_test_count = test_contract_results.len();
+
+        let test_predicate_results =
+            test_package_test_results(TEST_PREDICATE_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_predicate_test_count = test_predicate_results.len();
+
+        let test_script_results =
+            test_package_test_results(TEST_SCRIPT_PACKAGE_NAME, Some(test_filter)).unwrap();
+        let tested_script_test_count = test_script_results.len();
+
+        assert_eq!(tested_library_test_count, 1);
+        assert_eq!(tested_contract_test_count, 1);
+        assert_eq!(tested_predicate_test_count, 1);
+        assert_eq!(tested_script_test_count, 1);
     }
 
     #[test]
@@ -893,10 +920,29 @@ mod tests {
             exact_match: true,
         };
 
-        let test_results = test_library_test_results(Some(test_filter)).unwrap();
-        let tested_package_test_count = test_results.len();
+        let test_library_results =
+            test_package_test_results(TEST_LIBRARY_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_library_test_count = test_library_results.len();
 
-        assert_eq!(tested_package_test_count, 0)
+        let test_contract_results =
+            test_package_test_results(TEST_CONTRACT_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_contract_test_count = test_contract_results.len();
+
+        let test_predicate_results =
+            test_package_test_results(TEST_PREDICATE_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_predicate_test_count = test_predicate_results.len();
+
+        let test_script_results =
+            test_package_test_results(TEST_SCRIPT_PACKAGE_NAME, Some(test_filter)).unwrap();
+        let tested_script_test_count = test_script_results.len();
+
+        assert_eq!(tested_library_test_count, 0);
+        assert_eq!(tested_contract_test_count, 0);
+        assert_eq!(tested_predicate_test_count, 0);
+        assert_eq!(tested_script_test_count, 0);
     }
 
     #[test]
@@ -907,10 +953,29 @@ mod tests {
             exact_match: false,
         };
 
-        let test_results = test_library_test_results(Some(test_filter)).unwrap();
-        let tested_package_test_count = test_results.len();
+        let test_library_results =
+            test_package_test_results(TEST_LIBRARY_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_library_test_count = test_library_results.len();
 
-        assert_eq!(tested_package_test_count, 0)
+        let test_contract_results =
+            test_package_test_results(TEST_CONTRACT_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_contract_test_count = test_contract_results.len();
+
+        let test_predicate_results =
+            test_package_test_results(TEST_PREDICATE_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_predicate_test_count = test_predicate_results.len();
+
+        let test_script_results =
+            test_package_test_results(TEST_SCRIPT_PACKAGE_NAME, Some(test_filter)).unwrap();
+        let tested_script_test_count = test_script_results.len();
+
+        assert_eq!(tested_library_test_count, 0);
+        assert_eq!(tested_contract_test_count, 0);
+        assert_eq!(tested_predicate_test_count, 0);
+        assert_eq!(tested_script_test_count, 0);
     }
 
     #[test]
@@ -921,10 +986,29 @@ mod tests {
             exact_match: false,
         };
 
-        let test_results = test_library_test_results(Some(test_filter)).unwrap();
-        let tested_package_test_count = test_results.len();
+        let test_library_results =
+            test_package_test_results(TEST_LIBRARY_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_library_test_count = test_library_results.len();
 
-        assert_eq!(tested_package_test_count, 1)
+        let test_contract_results =
+            test_package_test_results(TEST_CONTRACT_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_contract_test_count = test_contract_results.len();
+
+        let test_predicate_results =
+            test_package_test_results(TEST_PREDICATE_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_predicate_test_count = test_predicate_results.len();
+
+        let test_script_results =
+            test_package_test_results(TEST_SCRIPT_PACKAGE_NAME, Some(test_filter)).unwrap();
+        let tested_script_test_count = test_script_results.len();
+
+        assert_eq!(tested_library_test_count, 1);
+        assert_eq!(tested_contract_test_count, 1);
+        assert_eq!(tested_predicate_test_count, 1);
+        assert_eq!(tested_script_test_count, 1);
     }
 
     #[test]
@@ -935,18 +1019,54 @@ mod tests {
             exact_match: false,
         };
 
-        let test_results = test_library_test_results(Some(test_filter)).unwrap();
-        let tested_package_test_count = test_results.len();
+        let test_library_results =
+            test_package_test_results(TEST_LIBRARY_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_library_test_count = test_library_results.len();
 
-        assert_eq!(tested_package_test_count, 2)
+        let test_contract_results =
+            test_package_test_results(TEST_CONTRACT_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_contract_test_count = test_contract_results.len();
+
+        let test_predicate_results =
+            test_package_test_results(TEST_PREDICATE_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_predicate_test_count = test_predicate_results.len();
+
+        let test_script_results =
+            test_package_test_results(TEST_SCRIPT_PACKAGE_NAME, Some(test_filter)).unwrap();
+        let tested_script_test_count = test_script_results.len();
+
+        assert_eq!(tested_library_test_count, 2);
+        assert_eq!(tested_contract_test_count, 2);
+        assert_eq!(tested_predicate_test_count, 2);
+        assert_eq!(tested_script_test_count, 2);
     }
 
     #[test]
     fn test_no_filter() {
         let test_filter = None;
-        let test_results = test_library_test_results(test_filter).unwrap();
-        let tested_package_test_count = test_results.len();
 
-        assert_eq!(tested_package_test_count, 2)
+        let test_library_results =
+            test_package_test_results(TEST_LIBRARY_PACKAGE_NAME, test_filter.clone()).unwrap();
+        let tested_library_test_count = test_library_results.len();
+
+        let test_contract_results =
+            test_package_test_results(TEST_CONTRACT_PACKAGE_NAME, test_filter.clone()).unwrap();
+        let tested_contract_test_count = test_contract_results.len();
+
+        let test_predicate_results =
+            test_package_test_results(TEST_PREDICATE_PACKAGE_NAME, test_filter.clone()).unwrap();
+        let tested_predicate_test_count = test_predicate_results.len();
+
+        let test_script_results =
+            test_package_test_results(TEST_SCRIPT_PACKAGE_NAME, test_filter).unwrap();
+        let tested_script_test_count = test_script_results.len();
+
+        assert_eq!(tested_library_test_count, 2);
+        assert_eq!(tested_contract_test_count, 2);
+        assert_eq!(tested_predicate_test_count, 2);
+        assert_eq!(tested_script_test_count, 2);
     }
 }

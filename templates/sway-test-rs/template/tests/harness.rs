@@ -20,10 +20,12 @@ async fn get_contract_instance() -> (MyContract<WalletUnlocked>, ContractId) {
     .await;
     let wallet = wallets.pop().unwrap();
 
-    let id = Contract::load_from(
-        "./out/debug/{{project-name}}.bin",
-        LoadConfiguration::default(),
-    )
+    let storage_config =
+        StorageConfiguration::load_from("out/debug/{{project-name}}-storage_slots.json").unwrap();
+
+    let load_config = LoadConfiguration::default().with_storage_configuration(storage_config);
+
+    let id = Contract::load_from("./out/debug/{{project-name}}.bin", load_config)
     .unwrap()
     .deploy(&wallet, TxParameters::default())
     .await

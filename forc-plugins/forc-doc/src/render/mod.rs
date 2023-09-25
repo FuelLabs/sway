@@ -1,3 +1,4 @@
+//! Renders [Documentation] to HTML.
 use crate::{
     doc::{
         module::{ModuleInfo, ModulePrefixes},
@@ -22,10 +23,12 @@ pub mod constant;
 mod index;
 pub mod item;
 pub mod link;
+mod search;
 mod sidebar;
 mod title;
 pub mod util;
 
+/// Something that can be rendered to HTML.
 pub(crate) trait Renderable {
     fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>>;
 }

@@ -1,3 +1,4 @@
+//! Creation of HTML anchors for types that can be linked.
 use crate::{doc::module::ModuleInfo, RenderPlan};
 use anyhow::{anyhow, Result};
 use horrorshow::{box_html, RenderBox};
@@ -86,7 +87,7 @@ pub(crate) fn render_type_anchor(
         TypeInfo::UnknownGeneric { name, .. } => Ok(box_html! {
             : name.as_str();
         }),
-        TypeInfo::Str(len) => Ok(box_html! {
+        TypeInfo::StringArray(len) => Ok(box_html! {
             : len.span().as_str();
         }),
         TypeInfo::UnsignedInteger(int_bits) => {

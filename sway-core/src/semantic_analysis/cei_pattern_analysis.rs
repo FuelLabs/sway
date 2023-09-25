@@ -127,6 +127,7 @@ fn impl_trait_methods(
         .flat_map(|item| match item {
             ty::TyImplItem::Fn(fn_decl) => Some(fn_decl),
             ty::TyImplItem::Constant(_) => None,
+            ty::TyImplItem::Type(_) => None,
         })
         .flat_map(|fn_decl| decl_id_to_fn_decls(decl_engine, &fn_decl.id().clone()))
         .collect()
@@ -603,9 +604,9 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
         StateClear | StateStoreWord | StateStoreQuad => HashSet::from([Effect::StorageWrite]),
         StateLoadWord | StateLoadQuad => HashSet::from([Effect::StorageRead]),
         Smo => HashSet::from([Effect::OutputMessage]),
-        Revert | IsReferenceType | IsStrType | SizeOfType | SizeOfVal | SizeOfStr
-        | CheckStrType | Eq | Gt | Lt | Gtf | AddrOf | Log | Add | Sub | Mul | Div | And | Or
-        | Xor | Mod | Rsh | Lsh | PtrAdd | PtrSub | Not => HashSet::new(),
+        Revert | IsReferenceType | IsStrArray | SizeOfType | SizeOfVal | SizeOfStr
+        | AssertIsStrArray | ToStrArray | Eq | Gt | Lt | Gtf | AddrOf | Log | Add | Sub | Mul
+        | Div | And | Or | Xor | Mod | Rsh | Lsh | PtrAdd | PtrSub | Not => HashSet::new(),
     }
 }
 

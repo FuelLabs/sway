@@ -2,7 +2,7 @@ use sway_types::integer_bits::IntegerBits;
 
 use crate::{
     asm_generation::EvmAbiResult,
-    decl_engine::DeclEngine,
+    decl_engine::{DeclEngine, DeclId},
     language::ty::{TyFunctionDecl, TyProgram, TyProgramKind},
     Engines, TypeArgument, TypeEngine, TypeId, TypeInfo,
 };
@@ -83,7 +83,8 @@ pub fn abi_str(type_info: &TypeInfo, type_engine: &TypeEngine, decl_engine: &Dec
         UnknownGeneric { name, .. } => name.to_string(),
         Placeholder(_) => "_".to_string(),
         TypeParam(n) => format!("typeparam({n})"),
-        Str(x) => format!("str[{}]", x.val()),
+        StringSlice => "str".into(),
+        StringArray(x) => format!("str[{}]", x.val()),
         UnsignedInteger(x) => match x {
             IntegerBits::Eight => "uint8",
             IntegerBits::Sixteen => "uint16",
@@ -133,6 +134,10 @@ pub fn abi_str(type_info: &TypeInfo, type_engine: &TypeEngine, decl_engine: &Dec
             format!("__slice {}", abi_str_type_arg(ty, type_engine, decl_engine))
         }
         Alias { ty, .. } => abi_str_type_arg(ty, type_engine, decl_engine),
+        TraitType {
+            name,
+            trait_type_id: _,
+        } => format!("trait type {}", name),
     }
 }
 
@@ -143,7 +148,9 @@ pub fn abi_param_type(
 ) -> ethabi::ParamType {
     use TypeInfo::*;
     match type_info {
-        Str(x) => ethabi::ParamType::FixedArray(Box::new(ethabi::ParamType::String), x.val()),
+        StringArray(x) => {
+            ethabi::ParamType::FixedArray(Box::new(ethabi::ParamType::String), x.val())
+        }
         UnsignedInteger(x) => match x {
             IntegerBits::Eight => ethabi::ParamType::Uint(8),
             IntegerBits::Sixteen => ethabi::ParamType::Uint(16),
@@ -186,10 +193,11 @@ pub fn abi_param_type(
 }
 
 fn generate_abi_function(
-    fn_decl: &TyFunctionDecl,
+    fn_decl_id: &DeclId<TyFunctionDecl>,
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
 ) -> ethabi::operation::Operation {
+    let fn_decl = decl_engine.get_function(fn_decl_id);
     // A list of all `ethabi::Param`s needed for inputs
     let input_types = fn_decl
         .parameters

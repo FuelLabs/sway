@@ -2,6 +2,8 @@ use crate::diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic};
 
 use core::fmt;
 
+use either::Either;
+
 use sway_types::{Ident, SourceId, Span, Spanned};
 
 // TODO: since moving to using Idents instead of strings,
@@ -86,8 +88,9 @@ pub enum Warning {
     },
     MatchExpressionUnreachableArm {
         match_value: Span,
-        preceding_arms: Span,
-        preceding_arm_is_catch_all: bool,
+        match_type: String,
+        // Either preceding non catch-all arms or a single interior catch-all arm.
+        preceding_arms: Either<Vec<Span>, Span>,
         unreachable_arm: Span,
         is_last_arm: bool,
         is_catch_all_arm: bool,
@@ -265,80 +268,74 @@ impl ToDiagnostic for CompileWarning {
                 issue: Issue::warning(
                     source_engine,
                     name.span(),
-                    format!("Constant \"{name}\" should be SCREAMING_SNAKE_CASE"),
+                    format!("Constant \"{name}\" should be SCREAMING_SNAKE_CASE."),
                 ),
                 hints: vec![
-                    Hint::warning(
+                    Hint::help(
                         source_engine,
                         name.span(),
-                        format!("\"{name}\" should be SCREAMING_SNAKE_CASE, like \"{}\".", to_screaming_snake_case(name.as_str())),
+                        format!("Consider renaming it to, e.g., \"{}\".", to_screaming_snake_case(name.as_str())),
                     ),
                 ],
                 help: vec![
                     format!("In Sway, ABIs, structs, traits, and enums are CapitalCase."),
                     format!("Modules, variables, and functions are snake_case, while constants are SCREAMING_SNAKE_CASE."),
-                    format!("Consider renaming the constant to, e.g., \"{}\".", to_screaming_snake_case(name.as_str())),
                 ],
             },
-            MatchExpressionUnreachableArm { match_value, preceding_arms, preceding_arm_is_catch_all, unreachable_arm, is_last_arm, is_catch_all_arm } => Diagnostic {
+            MatchExpressionUnreachableArm { match_value, match_type, preceding_arms, unreachable_arm, is_last_arm, is_catch_all_arm } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Match arm is unreachable".to_string())),
                 issue: Issue::warning(
                     source_engine,
                     unreachable_arm.clone(),
                     match (*is_last_arm, *is_catch_all_arm) {
-                        (true, true) => format!("Catch-all pattern \"{}\" in the last match arm will never be matched", unreachable_arm.as_str()),
-                        _ => format!("Pattern \"{}\" will never be matched", unreachable_arm.as_str())
+                        (true, true) => format!("Last catch-all match arm `{}` is unreachable.", unreachable_arm.as_str()),
+                        _ => format!("Match arm `{}` is unreachable.", unreachable_arm.as_str())
                     }
                 ),
                 hints: vec![
-                    Hint::warning(
-                        source_engine,
-                        unreachable_arm.clone(),
-                        format!("{} arm \"{}\" is unreachable.", if *is_last_arm && *is_catch_all_arm { "Last catch-all match" } else { "Match" }, unreachable_arm.as_str())
-                    ),
                     Hint::info(
                         source_engine,
                         match_value.clone(),
-                        "This is the value to match on.".to_string()
+                        format!("The expression to match on is of type \"{match_type}\".")
                     ),
-                    if *preceding_arm_is_catch_all {
-                        Hint::warning(
+                    if preceding_arms.is_right() {
+                        Hint::help(
                             source_engine,
-                            preceding_arms.clone(),
-                            format!("Catch-all arm \"{}\" makes all the arms below it unreachable.", preceding_arms.as_str())
+                            preceding_arms.as_ref().unwrap_right().clone(),
+                            format!("Catch-all arm `{}` makes all match arms below it unreachable.", preceding_arms.as_ref().unwrap_right().as_str())
                         )
                     }
                     else {
                         Hint::info(
                             source_engine,
-                            preceding_arms.clone(),
+                            Span::join_all(preceding_arms.as_ref().unwrap_left().clone()),
                             if *is_last_arm {
-                                format!("Preceding match arms already match all possible values of \"{}\".", match_value.as_str())
+                                format!("Preceding match arms already match all possible values of `{}`.", match_value.as_str())
                             }
                             else {
-                                format!("Preceding match arms already match all the values that \"{}\" can match.", unreachable_arm.as_str())
+                                format!("Preceding match arms already match all the values that `{}` can match.", unreachable_arm.as_str())
                             }
                         )
                     }
                 ],
-                help: if *preceding_arm_is_catch_all {
+                help: if preceding_arms.is_right() {
+                    let catch_all_arm = preceding_arms.as_ref().unwrap_right().as_str();
                     vec![
                         format!("Catch-all patterns make sense only in last match arms."),
-                        format!("Carefully check matching logic in all the arms and consider:"),
-                        format!(" - removing the catch-all arm \"{}\" or making it the last arm.", preceding_arms.as_str()),
-                        format!(" - removing the unreachable arms below \"{}\".", preceding_arms.as_str()),
+                        format!("Consider removing the catch-all arm `{catch_all_arm}` or making it the last arm."),
+                        format!("Consider removing the unreachable arms below the `{catch_all_arm}` arm."),
                     ]
                 }
                 else if *is_last_arm && *is_catch_all_arm {
                     vec![
                         format!("Catch-all patterns are often used in last match arms."),
-                        format!("But in this case, the preceding arms already match all possible values of \"{}\".", match_value.as_str()),
-                        format!("Carefully check matching logic in all the arms and consider removing the unreachable last catch-all arm."),
+                        format!("But in this case, the preceding arms already match all possible values of `{}`.", match_value.as_str()),
+                        format!("Consider removing the unreachable last catch-all arm."),
                     ]
                 }
                 else {
                     vec![
-                        format!("Carefully check matching logic in all the arms and consider removing the unreachable arm."),
+                        format!("Consider removing the unreachable arm."),
                     ]
                 }
             },

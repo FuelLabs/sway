@@ -8,8 +8,11 @@ use sway_types::Span;
 
 use crate::{
     engine_threading::*,
-    language::{parsed::Expression, ty},
-    semantic_analysis::TypeCheckContext,
+    language::{
+        parsed::{Expression, ExpressionKind},
+        ty, Literal,
+    },
+    semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
     type_system::*,
 };
 
@@ -40,12 +43,13 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::IsReferenceType => {
                 type_check_is_reference_type(handler, ctx, kind, arguments, type_arguments, span)
             }
-            Intrinsic::IsStrType => {
+            Intrinsic::IsStrArray => {
                 type_check_is_reference_type(handler, ctx, kind, arguments, type_arguments, span)
             }
-            Intrinsic::CheckStrType => {
-                type_check_check_str_type(handler, ctx, kind, arguments, type_arguments, span)
+            Intrinsic::AssertIsStrArray => {
+                type_check_assert_is_str_array(handler, ctx, kind, arguments, type_arguments, span)
             }
+            Intrinsic::ToStrArray => type_check_to_str_array(handler, ctx, kind, arguments, span),
             Intrinsic::Eq | Intrinsic::Gt | Intrinsic::Lt => {
                 type_check_cmp(handler, ctx, kind, arguments, span)
             }
@@ -275,10 +279,10 @@ fn type_check_is_reference_type(
     ))
 }
 
-/// Signature: `__check_str_type<T>()`
+/// Signature: `__assert_is_str_array<T>()`
 /// Description: Throws a compile error if `T` is not of type str.
 /// Constraints: None.
-fn type_check_check_str_type(
+fn type_check_assert_is_str_array(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
@@ -326,6 +330,52 @@ fn type_check_check_str_type(
         intrinsic_function,
         type_engine.insert(engines, TypeInfo::Tuple(vec![])),
     ))
+}
+
+fn type_check_to_str_array(
+    handler: &Handler,
+    mut ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: Vec<Expression>,
+    span: Span,
+) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
+
+    if arguments.len() != 1 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 1,
+            span,
+        }));
+    }
+    let arg = arguments[0].clone();
+
+    match &arg.kind {
+        ExpressionKind::Literal(Literal::String(s)) => {
+            let literal_length = s.as_str().len();
+            let l = Length::new(literal_length, s.clone());
+            let t = TypeInfo::StringArray(l);
+
+            let span = arg.span.clone();
+
+            let mut ctx = ctx
+                .by_ref()
+                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+            let new_type = ty::TyExpression::type_check(handler, ctx.by_ref(), arg)?;
+
+            Ok((
+                ty::TyIntrinsicFunctionKind {
+                    kind,
+                    arguments: vec![new_type],
+                    type_arguments: vec![],
+                    span,
+                },
+                type_engine.insert(engines, t),
+            ))
+        }
+        _ => Err(handler.emit_err(CompileError::ExpectedStringLiteral { span: arg.span })),
+    }
 }
 
 /// Signature: `__eq<T>(lhs: T, rhs: T) -> bool`

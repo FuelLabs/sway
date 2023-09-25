@@ -3,6 +3,7 @@ use sway_types::{Span, Spanned};
 use crate::{
     decl_engine::DeclId,
     language::{parsed, ty, Visibility},
+    semantic_analysis::type_check_context::EnforceTypeArguments,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 
@@ -103,6 +104,7 @@ impl ty::TyTraitFn {
             type_parameters: vec![],
             is_contract_call: matches!(abi_mode, AbiMode::ImplAbiFn(..)),
             where_clause: vec![],
+            is_trait_method_dummy: true,
         }
     }
 }
