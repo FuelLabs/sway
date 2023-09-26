@@ -217,7 +217,7 @@
       "logId": 2,
       "loggedType": {
         "name": "",
-        "type": 8,
+        "type": 9,
         "typeArguments": null
       }
     },
@@ -225,7 +225,7 @@
       "logId": 3,
       "loggedType": {
         "name": "",
-        "type": 8,
+        "type": 9,
         "typeArguments": null
       }
     },
@@ -233,7 +233,7 @@
       "logId": 4,
       "loggedType": {
         "name": "",
-        "type": 1,
+        "type": 8,
         "typeArguments": null
       }
     },
@@ -241,7 +241,7 @@
       "logId": 5,
       "loggedType": {
         "name": "",
-        "type": 1,
+        "type": 8,
         "typeArguments": null
       }
     },
@@ -249,12 +249,44 @@
       "logId": 6,
       "loggedType": {
         "name": "",
-        "type": 1,
+        "type": 8,
         "typeArguments": null
       }
     },
     {
       "logId": 7,
+      "loggedType": {
+        "name": "",
+        "type": 8,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 8,
+      "loggedType": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 9,
+      "loggedType": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 10,
+      "loggedType": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 11,
       "loggedType": {
         "name": "",
         "type": 1,
