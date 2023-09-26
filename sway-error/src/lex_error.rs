@@ -55,6 +55,8 @@ pub enum LexErrorKind {
     UnicodeEscapeOutOfRange { position: usize },
     #[error("unicode escape represents an invalid char value")]
     UnicodeEscapeInvalidCharValue { span: Span },
+    #[error("unicode text direction codepoint in literal")]
+    UnicodeTextDirInLiteral { position: usize, character: char },
     #[error("invalid escape code")]
     InvalidEscapeCode { position: usize },
     #[error("invalid u256. Only hex literals are supported")]
