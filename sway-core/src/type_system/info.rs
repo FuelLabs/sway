@@ -959,7 +959,10 @@ impl TypeInfo {
         matches!(
             self,
             TypeInfo::Boolean
-                | TypeInfo::UnsignedInteger(_)
+                | TypeInfo::UnsignedInteger(IntegerBits::Eight)
+                | TypeInfo::UnsignedInteger(IntegerBits::Sixteen)
+                | TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)
+                | TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
                 | TypeInfo::RawUntypedPtr
                 | TypeInfo::Numeric
         ) || self.is_unit()
