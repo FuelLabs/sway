@@ -101,7 +101,7 @@ impl Entry {
             ConstantValue::Bool(b) => Entry::new_word(u64::from(*b), size, name),
             ConstantValue::Uint(u) => Entry::new_word(*u, size, name),
             ConstantValue::U256(u) => Entry::new_byte_array(u.to_be_bytes().to_vec(), size, name),
-            ConstantValue::B256(bs) => Entry::new_byte_array(bs.to_vec(), size, name),
+            ConstantValue::B256(bs) => Entry::new_byte_array(bs.to_be_bytes().to_vec(), size, name),
             ConstantValue::String(bs) => Entry::new_byte_array(bs.clone(), size, name),
 
             ConstantValue::Array(els) | ConstantValue::Struct(els) => Entry::new_collection(

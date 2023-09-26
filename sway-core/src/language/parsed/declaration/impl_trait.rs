@@ -1,4 +1,4 @@
-use super::{ConstantDeclaration, FunctionDeclaration};
+use super::{ConstantDeclaration, FunctionDeclaration, TraitTypeDeclaration};
 use crate::{language::CallPath, type_system::TypeArgument, TypeParameter};
 
 use sway_types::span::Span;
@@ -7,6 +7,7 @@ use sway_types::span::Span;
 pub enum ImplItem {
     Fn(FunctionDeclaration),
     Constant(ConstantDeclaration),
+    Type(TraitTypeDeclaration),
 }
 
 #[derive(Debug, Clone)]

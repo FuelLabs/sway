@@ -6,7 +6,7 @@ use crate::type_error::TypeError;
 
 use core::fmt;
 use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
-use sway_types::{Ident, SourceEngine, Span, Spanned};
+use sway_types::{BaseIdent, Ident, SourceEngine, Span, Spanned};
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
@@ -72,6 +72,8 @@ pub enum CompileError {
     MultipleDefinitionsOfName { name: Ident, span: Span },
     #[error("Constant \"{name}\" was already defined in scope.")]
     MultipleDefinitionsOfConstant { name: Ident, span: Span },
+    #[error("Type \"{name}\" was already defined in scope.")]
+    MultipleDefinitionsOfType { name: Ident, span: Span },
     #[error("Variable \"{}\" is already defined in match arm.", first_definition.as_str())]
     MultipleDefinitionsOfMatchArmVariable {
         match_value: Span,
@@ -144,14 +146,34 @@ pub enum CompileError {
         interface_name: InterfaceName,
         span: Span,
     },
-    #[error("Constants are missing from this trait implementation: {missing_constants}")]
-    MissingInterfaceSurfaceConstants {
-        missing_constants: String,
+    #[error("Type \"{name}\" is not a part of {interface_name}'s interface surface.")]
+    TypeNotAPartOfInterfaceSurface {
+        name: Ident,
+        interface_name: InterfaceName,
         span: Span,
     },
-    #[error("Functions are missing from this trait implementation: {missing_functions}")]
+    #[error("Constants are missing from this trait implementation: {}",
+        missing_constants.iter().map(|ident| ident.as_str().to_string())
+        .collect::<Vec<_>>()
+        .join("\n"))]
+    MissingInterfaceSurfaceConstants {
+        missing_constants: Vec<BaseIdent>,
+        span: Span,
+    },
+    #[error("Associated types are missing from this trait implementation: {}",
+        missing_types.iter().map(|ident| ident.as_str().to_string())
+        .collect::<Vec<_>>()
+        .join("\n"))]
+    MissingInterfaceSurfaceTypes {
+        missing_types: Vec<BaseIdent>,
+        span: Span,
+    },
+    #[error("Functions are missing from this trait implementation: {}",
+        missing_functions.iter().map(|ident| ident.as_str().to_string())
+        .collect::<Vec<_>>()
+        .join("\n"))]
     MissingInterfaceSurfaceMethods {
-        missing_functions: String,
+        missing_functions: Vec<BaseIdent>,
         span: Span,
     },
     #[error("Expected {} type {}, but instead found {}.", expected, if *expected == 1usize { "argument" } else { "arguments" }, given)]
@@ -489,8 +511,24 @@ pub enum CompileError {
         missing_fields: Vec<String>,
         span: Span,
     },
-    #[error("Variable \"{var}\" is not bound in all patterns")]
-    MatchVariableNotBoundInAllPatterns { var: Ident, span: Span },
+    #[error("Variable \"{variable}\" is not defined in all alternatives.")]
+    MatchArmVariableNotDefinedInAllAlternatives {
+        match_value: Span,
+        match_type: String,
+        variable: Ident,
+        missing_in_alternatives: Vec<Span>,
+    },
+    #[error(
+        "Variable \"{variable}\" is expected to be of type \"{expected}\", but is \"{received}\"."
+    )]
+    MatchArmVariableMismatchedType {
+        match_value: Span,
+        match_type: String,
+        variable: Ident,
+        first_definition: Span,
+        expected: String,
+        received: String,
+    },
     #[error(
         "Storage attribute access mismatch. Try giving the surrounding function more access by \
         adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\" to the function declaration."
@@ -684,6 +722,8 @@ pub enum CompileError {
         superabi1: String,
         superabi2: String,
     },
+    #[error("Associated types not supported in ABI.")]
+    AssociatedTypeNotSupportedInAbi { span: Span },
     #[error("Cannot call ABI supertrait's method as a contract method: \"{fn_name}\"")]
     AbiSupertraitMethodCallAsContractCall { fn_name: Ident, span: Span },
 }
@@ -712,6 +752,7 @@ impl Spanned for CompileError {
             MultipleDefinitionsOfFunction { span, .. } => span.clone(),
             MultipleDefinitionsOfName { span, .. } => span.clone(),
             MultipleDefinitionsOfConstant { span, .. } => span.clone(),
+            MultipleDefinitionsOfType { span, .. } => span.clone(),
             MultipleDefinitionsOfMatchArmVariable { duplicate, .. } => duplicate.clone(),
             AssignmentToNonMutable { span, .. } => span.clone(),
             MutableParameterNotSupported { span, .. } => span.clone(),
@@ -724,7 +765,9 @@ impl Spanned for CompileError {
             UnknownTrait { span, .. } => span.clone(),
             FunctionNotAPartOfInterfaceSurface { span, .. } => span.clone(),
             ConstantNotAPartOfInterfaceSurface { span, .. } => span.clone(),
+            TypeNotAPartOfInterfaceSurface { span, .. } => span.clone(),
             MissingInterfaceSurfaceConstants { span, .. } => span.clone(),
+            MissingInterfaceSurfaceTypes { span, .. } => span.clone(),
             MissingInterfaceSurfaceMethods { span, .. } => span.clone(),
             IncorrectNumberOfTypeArguments { span, .. } => span.clone(),
             DoesNotTakeTypeArguments { span, .. } => span.clone(),
@@ -801,7 +844,8 @@ impl Spanned for CompileError {
             GenericShadowsGeneric { name } => name.span(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
             MatchStructPatternMissingFields { span, .. } => span.clone(),
-            MatchVariableNotBoundInAllPatterns { span, .. } => span.clone(),
+            MatchArmVariableNotDefinedInAllAlternatives { variable, .. } => variable.span(),
+            MatchArmVariableMismatchedType { variable, .. } => variable.span(),
             NotAnEnum { span, .. } => span.clone(),
             StorageAccessMismatch { span, .. } => span.clone(),
             TraitDeclPureImplImpure { span, .. } => span.clone(),
@@ -862,6 +906,7 @@ impl Spanned for CompileError {
             ContractCallsItsOwnMethod { span } => span.clone(),
             AbiShadowsSuperAbiMethod { span, .. } => span.clone(),
             ConflictingSuperAbiMethods { span, .. } => span.clone(),
+            AssociatedTypeNotSupportedInAbi { span, .. } => span.clone(),
             AbiSupertraitMethodCallAsContractCall { span, .. } => span.clone(),
             TypeNotAllowed { span, .. } => span.clone(),
             ExpectedStringLiteral { span } => span.clone(),
@@ -990,7 +1035,7 @@ impl ToDiagnostic for CompileError {
                     Hint::info(
                         source_engine,
                         match_value.clone(),
-                        format!("`{}`, of type \"{match_type}\", is the value to match on.", match_value.as_str())
+                        format!("The expression to match on is of type \"{match_type}\".")
                     ),
                 ],
                 help: vec![
@@ -1000,6 +1045,61 @@ impl ToDiagnostic for CompileError {
                         (true, false) | (false, true) => format!("Consider declaring a variable for the field \"{0}\" (e.g., `{0}: var_{0}`), or renaming the variable \"{0}\".", first_definition.as_str()),
                         (false, false) => "Consider renaming either of the variables.".to_string(),
                     },
+                ],
+            },
+            MatchArmVariableMismatchedType { match_value, match_type, variable, first_definition, expected, received } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Match pattern variable has mismatched type".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    variable.span(),
+                    format!("Variable \"{variable}\" is expected to be of type \"{expected}\", but is \"{received}\".")
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        first_definition.clone(),
+                        format!("\"{variable}\" is first defined here with type \"{expected}\".")
+                    ),
+                    Hint::info(
+                        source_engine,
+                        match_value.clone(),
+                        format!("The expression to match on is of type \"{match_type}\".")
+                    ),
+                ],
+                help: vec![
+                    format!("In the same match arm, a variable must have the same type in all alternatives."),
+                ],
+            },
+            MatchArmVariableNotDefinedInAllAlternatives { match_value, match_type, variable, missing_in_alternatives} => Diagnostic {
+                reason: Some(Reason::new(code(1), "Match pattern variable is not defined in all alternatives".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    variable.span(),
+                    format!("Variable \"{variable}\" is not defined in all alternatives.")
+                ),
+                hints: {
+                    let mut hints = vec![
+                        Hint::info(
+                            source_engine,
+                            match_value.clone(),
+                            format!("The expression to match on is of type \"{match_type}\".")
+                        ),
+                    ];
+
+                    for (i, alternative) in missing_in_alternatives.iter().enumerate() {
+                        hints.push(
+                            Hint::info(
+                                source_engine,
+                                alternative.clone(),
+                                format!("\"{variable}\" is {}missing in this alternative.", if i != 0 { "also " } else { "" }),
+                            )
+                        )
+                    }
+
+                    hints
+                },
+                help: vec![
+                    format!("Consider removing the variable \"{variable}\" altogether, or adding it to all alternatives."),
                 ],
             },
            _ => Diagnostic {

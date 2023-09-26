@@ -173,7 +173,8 @@ impl TraitConstraint {
         type_id: TypeId,
         trait_constraint: &TraitConstraint,
     ) -> Result<(), ErrorEmitted> {
-        let decl_engine = ctx.engines.de();
+        let engines = ctx.engines;
+        let decl_engine = engines.de();
 
         let TraitConstraint {
             trait_name,
@@ -184,9 +185,8 @@ impl TraitConstraint {
 
         match ctx
             .namespace
-            .resolve_call_path(handler, trait_name)
+            .resolve_call_path(handler, engines, trait_name)
             .ok()
-            .cloned()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
                 let mut trait_decl = decl_engine.get_trait(&decl_id);

@@ -3,7 +3,11 @@ use crate::{
         engine::DeclEngineReplace, DeclEngineInsert, DeclRefFunction, ReplaceDecls,
         UpdateConstantExpression,
     },
-    language::{parsed::*, ty, *},
+    language::{
+        parsed::*,
+        ty::{self},
+        *,
+    },
     namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
@@ -14,7 +18,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{constants, integer_bits::IntegerBits};
+use sway_types::{constants, integer_bits::IntegerBits, BaseIdent};
 use sway_types::{constants::CONTRACT_CALL_COINS_PARAMETER_NAME, Spanned};
 use sway_types::{Ident, Span};
 
@@ -22,7 +26,7 @@ use sway_types::{Ident, Span};
 pub(crate) fn type_check_method_application(
     handler: &Handler,
     mut ctx: TypeCheckContext,
-    mut method_name_binding: TypeBinding<MethodName>,
+    method_name_binding: TypeBinding<MethodName>,
     contract_call_params: Vec<StructExpressionField>,
     arguments: Vec<Expression>,
     span: Span,
@@ -45,20 +49,14 @@ pub(crate) fn type_check_method_application(
     }
 
     // resolve the method name to a typed function declaration and type_check
-    let (mut decl_ref, call_path_typeid) = resolve_method_name(
+    let (original_decl_ref, call_path_typeid) = resolve_method_name(
         handler,
         ctx.by_ref(),
-        &mut method_name_binding,
+        &method_name_binding,
         args_buf.clone(),
     )?;
-    decl_ref = monomorphize_method(
-        handler,
-        ctx.by_ref(),
-        decl_ref.clone(),
-        method_name_binding.type_arguments.to_vec_mut(),
-    )?;
 
-    let mut method = decl_engine.get_function(&decl_ref);
+    let method = decl_engine.get_function(&original_decl_ref);
 
     // check the method visibility
     if span.source_id() != method.span.source_id() && method.visibility.is_private() {
@@ -147,7 +145,7 @@ pub(crate) fn type_check_method_application(
         if let Some(coins_expr) = contract_call_params_map.get(CONTRACT_CALL_COINS_PARAMETER_NAME) {
             if coins_analysis::possibly_nonzero_u64_expression(
                 ctx.namespace,
-                decl_engine,
+                ctx.engines,
                 coins_expr,
             ) && !method
                 .attributes
@@ -208,10 +206,9 @@ pub(crate) fn type_check_method_application(
     ) -> Result<(), ErrorEmitted> {
         match exp {
             ty::TyExpressionVariant::VariableExpression { name, .. } => {
-                let unknown_decl = ctx
-                    .namespace
-                    .resolve_symbol(&Handler::default(), name)
-                    .cloned()?;
+                let unknown_decl =
+                    ctx.namespace
+                        .resolve_symbol(&Handler::default(), ctx.engines, name)?;
 
                 let is_decl_mutable = match unknown_decl {
                     ty::TyDecl::ConstantDecl { .. } => false,
@@ -329,41 +326,37 @@ pub(crate) fn type_check_method_application(
         is_method_call_syntax_used,
     )?;
 
-    // unify the types of the arguments with the types of the parameters from the function declaration
-    let typed_arguments_with_names =
-        unify_arguments_and_parameters(handler, ctx.by_ref(), args_buf, &method.parameters)?;
+    let arguments = method
+        .parameters
+        .iter()
+        .map(|m| m.name.clone())
+        .zip(args_buf.iter().cloned())
+        .collect::<Vec<_>>();
 
-    // Retrieve the implemented traits for the type of the return type and
-    // insert them in the broader namespace.
-    ctx.insert_trait_implementation_for_type(method.return_type.type_id);
+    let mut fn_app = ty::TyExpressionVariant::FunctionApplication {
+        call_path: call_path.clone(),
+        contract_call_params: contract_call_params_map,
+        arguments,
+        fn_ref: original_decl_ref,
+        selector,
+        type_binding: Some(method_name_binding.strip_inner()),
+        call_path_typeid: Some(call_path_typeid),
+        deferred_monomorphization: ctx.defer_monomorphization(),
+    };
 
-    // Handle the trait constraints. This includes checking to see if the trait
-    // constraints are satisfied and replacing old decl ids based on the
-    // constraint with new decl ids based on the new type.
-    let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
-        handler,
-        ctx.by_ref(),
-        &method.type_parameters,
-        &call_path.span(),
-    )?;
-
-    method.replace_decls(&decl_mapping, handler, &mut ctx)?;
-    let return_type = method.return_type.type_id;
-    decl_engine.replace(*decl_ref.id(), method);
-
-    let exp = ty::TyExpression {
-        expression: ty::TyExpressionVariant::FunctionApplication {
-            call_path,
-            contract_call_params: contract_call_params_map,
-            arguments: typed_arguments_with_names,
-            fn_ref: decl_ref,
-            selector,
-            type_binding: Some(method_name_binding.strip_inner()),
-            call_path_typeid: Some(call_path_typeid),
-        },
-        return_type,
+    let mut exp = ty::TyExpression {
+        expression: fn_app.clone(),
+        return_type: method.return_type.type_id,
         span,
     };
+
+    monomorphize_method_application(&mut fn_app, handler, ctx)?;
+
+    if let ty::TyExpressionVariant::FunctionApplication { ref fn_ref, .. } = &fn_app {
+        let method = decl_engine.get_function(fn_ref);
+        exp.return_type = method.return_type.type_id;
+        exp.expression = fn_app;
+    }
 
     Ok(exp)
 }
@@ -373,7 +366,7 @@ pub(crate) fn type_check_method_application(
 fn unify_arguments_and_parameters(
     handler: &Handler,
     ctx: TypeCheckContext,
-    arguments: VecDeque<ty::TyExpression>,
+    arguments: &[(BaseIdent, ty::TyExpression)],
     parameters: &[ty::TyFunctionParameter],
 ) -> Result<Vec<(Ident, ty::TyExpression)>, ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -381,7 +374,7 @@ fn unify_arguments_and_parameters(
     let mut typed_arguments_and_names = vec![];
 
     handler.scope(|handler| {
-        for (arg, param) in arguments.into_iter().zip(parameters.iter()) {
+        for ((_, arg), param) in arguments.iter().zip(parameters.iter()) {
             // unify the type of the argument with the type of the param
             let unify_res = handler.scope(|handler| {
                 type_engine.unify_with_self(
@@ -404,7 +397,7 @@ fn unify_arguments_and_parameters(
                 continue;
             }
 
-            typed_arguments_and_names.push((param.name.clone(), arg));
+            typed_arguments_and_names.push((param.name.clone(), arg.clone()));
         }
         Ok(typed_arguments_and_names)
     })
@@ -413,7 +406,7 @@ fn unify_arguments_and_parameters(
 pub(crate) fn resolve_method_name(
     handler: &Handler,
     mut ctx: TypeCheckContext,
-    method_name: &mut TypeBinding<MethodName>,
+    method_name: &TypeBinding<MethodName>,
     arguments: VecDeque<ty::TyExpression>,
 ) -> Result<(DeclRefFunction, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -545,6 +538,100 @@ pub(crate) fn resolve_method_name(
     Ok((decl_ref, type_id))
 }
 
+pub(crate) fn monomorphize_method_application(
+    expr: &mut ty::TyExpressionVariant,
+    handler: &Handler,
+    mut ctx: TypeCheckContext,
+) -> Result<(), ErrorEmitted> {
+    if let ty::TyExpressionVariant::FunctionApplication {
+        ref mut fn_ref,
+        ref call_path,
+        ref mut arguments,
+        ref mut type_binding,
+        ..
+    } = expr
+    {
+        let decl_engine = ctx.engines.de();
+        *fn_ref = monomorphize_method(
+            handler,
+            ctx.by_ref(),
+            fn_ref.clone(),
+            type_binding.as_mut().unwrap().type_arguments.to_vec_mut(),
+        )?;
+        let mut method = decl_engine.get_function(fn_ref);
+
+        // unify the types of the arguments with the types of the parameters from the function declaration
+        *arguments =
+            unify_arguments_and_parameters(handler, ctx.by_ref(), arguments, &method.parameters)?;
+
+        // Handle the trait constraints. This includes checking to see if the trait
+        // constraints are satisfied and replacing old decl ids based on the
+        // constraint with new decl ids based on the new type.
+        let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
+            handler,
+            ctx.by_ref(),
+            &method.type_parameters,
+            &call_path.span(),
+        )?;
+
+        // Retrieve the implemented traits for the type of the return type and
+        // insert them in the broader namespace.
+        ctx.insert_trait_implementation_for_type(method.return_type.type_id);
+
+        if !ctx.defer_monomorphization() {
+            method.replace_decls(&decl_mapping, handler, &mut ctx)?;
+        }
+
+        decl_engine.replace(*fn_ref.id(), method);
+
+        Ok(())
+    } else {
+        Err(handler.emit_err(CompileError::Internal(
+            "Unexpected expression variant, expecting a function application",
+            Span::dummy(),
+        )))
+    }
+}
+
+pub(crate) fn replace_decls_method_application(
+    expr: &mut ty::TyExpressionVariant,
+    handler: &Handler,
+    mut ctx: TypeCheckContext,
+) -> Result<(), ErrorEmitted> {
+    if let ty::TyExpressionVariant::FunctionApplication {
+        ref mut fn_ref,
+        ref call_path,
+        ref mut deferred_monomorphization,
+        ..
+    } = expr
+    {
+        let decl_engine = ctx.engines.de();
+        *deferred_monomorphization = false;
+        let mut method = decl_engine.get_function(fn_ref);
+
+        // Handle the trait constraints. This includes checking to see if the trait
+        // constraints are satisfied and replacing old decl ids based on the
+        // constraint with new decl ids based on the new type.
+        let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
+            handler,
+            ctx.by_ref(),
+            &method.type_parameters,
+            &call_path.span(),
+        )?;
+
+        method.replace_decls(&decl_mapping, handler, &mut ctx)?;
+
+        decl_engine.replace(*fn_ref.id(), method);
+
+        Ok(())
+    } else {
+        Err(handler.emit_err(CompileError::Internal(
+            "Unexpected expression variant, expecting a function application",
+            Span::dummy(),
+        )))
+    }
+}
+
 pub(crate) fn monomorphize_method(
     handler: &Handler,
     mut ctx: TypeCheckContext,
@@ -553,7 +640,6 @@ pub(crate) fn monomorphize_method(
 ) -> Result<DeclRefFunction, ErrorEmitted> {
     let engines = ctx.engines();
     let decl_engine = engines.de();
-
     let mut func_decl = decl_engine.get_function(&decl_ref);
 
     // monomorphize the function declaration
@@ -571,10 +657,9 @@ pub(crate) fn monomorphize_method(
             .update_constant_expression(engines, implementing_type);
     }
 
-    let decl_ref = ctx
-        .engines
-        .de()
+    let decl_ref = decl_engine
         .insert(func_decl)
-        .with_parent(ctx.engines.de(), (*decl_ref.id()).into());
+        .with_parent(decl_engine, (*decl_ref.id()).into());
+
     Ok(decl_ref)
 }

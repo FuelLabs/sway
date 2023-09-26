@@ -156,6 +156,7 @@ fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
         SymbolKind::ByteLiteral | SymbolKind::NumericLiteral => SemanticTokenType::NUMBER,
         SymbolKind::BoolLiteral => SemanticTokenType::new("boolean"),
         SymbolKind::TypeAlias => SemanticTokenType::new("typeAlias"),
+        SymbolKind::TraiType => SemanticTokenType::new("traitType"),
         SymbolKind::Keyword => SemanticTokenType::new("keyword"),
         SymbolKind::Unknown => SemanticTokenType::new("generic"),
         SymbolKind::BuiltinType => SemanticTokenType::new("builtinType"),

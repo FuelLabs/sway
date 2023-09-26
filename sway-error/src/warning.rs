@@ -296,7 +296,7 @@ impl ToDiagnostic for CompileWarning {
                     Hint::info(
                         source_engine,
                         match_value.clone(),
-                        format!("`{}`, of type \"{match_type}\", is the value to match on.", match_value.as_str())
+                        format!("The expression to match on is of type \"{match_type}\".")
                     ),
                     if preceding_arms.is_right() {
                         Hint::help(

@@ -24,6 +24,7 @@ fuel-vm = { workspace = true, features = ["serde"] }
 hashbrown = "0.13.1"
 hex = { version = "0.4", optional = true }
 im = "15.0"
+indexmap = "2.0.0"
 itertools = "0.10"
 lazy_static = "1.4"
 miden-core = "0.3.0"

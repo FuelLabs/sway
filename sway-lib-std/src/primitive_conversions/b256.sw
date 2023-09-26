@@ -1,10 +1,8 @@
 library;
 
-use ::assert::assert;
 use ::bytes::Bytes;
 use ::convert::TryFrom;
 use ::option::Option::{self, *};
-use ::logging::log;
 
 impl TryFrom<Bytes> for b256 {
     fn try_from(b: Bytes) -> Option<Self> {
@@ -21,6 +19,8 @@ impl TryFrom<Bytes> for b256 {
 
 #[test]
 fn test_b256_try_from() {
+    use ::assert::assert;
+
     let mut initial_bytes = Bytes::with_capacity(32);
     let mut i = 0;
     while i < 32 {

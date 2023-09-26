@@ -269,10 +269,12 @@ impl<'a> UnifyCheck<'a> {
                 Custom {
                     call_path: l_name,
                     type_arguments: l_type_args,
+                    root_type_id: l_root_type_id,
                 },
                 Custom {
                     call_path: r_name,
                     type_arguments: r_type_args,
+                    root_type_id: r_root_type_id,
                 },
             ) => {
                 let l_types = l_type_args
@@ -287,7 +289,19 @@ impl<'a> UnifyCheck<'a> {
                     .iter()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
-                return l_name.suffix == r_name.suffix && self.check_multiple(&l_types, &r_types);
+                let l_root_type_ids = if let Some(l_root_type_id) = l_root_type_id {
+                    vec![*l_root_type_id]
+                } else {
+                    vec![]
+                };
+                let r_root_type_ids = if let Some(r_root_type_id) = r_root_type_id {
+                    vec![*r_root_type_id]
+                } else {
+                    vec![]
+                };
+                return l_name.suffix == r_name.suffix
+                    && self.check_multiple(&l_types, &r_types)
+                    && self.check_multiple(&l_root_type_ids, &r_root_type_ids);
             }
             _ => {}
         }

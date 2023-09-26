@@ -42,7 +42,7 @@ pub use crate::{
         item_trait::{ItemTrait, ItemTraitItem, Traits},
         item_type_alias::ItemTypeAlias,
         item_use::{ItemUse, UseTree},
-        FnArg, FnArgs, FnSignature, Item, ItemKind, TypeField,
+        FnArg, FnArgs, FnSignature, Item, ItemKind, TraitType, TypeField,
     },
     keywords::{CommaToken, DoubleColonToken, PubToken},
     literal::{LitInt, LitIntType, Literal},

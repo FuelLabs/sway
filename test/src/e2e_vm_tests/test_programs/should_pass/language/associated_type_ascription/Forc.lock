@@ -1,0 +1,3 @@
+[[package]]
+name = 'associated_type_ascription'
+source = 'member'

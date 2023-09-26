@@ -1,7 +1,7 @@
-script; 
+library; 
 
 // returns 3
-fn constants() -> u256 {
+fn literals() -> u256 {
     0x0000000000000000000000000000000000000000000000000000000000000001u256 + 0x0000000000000000000000000000000000000000000000000000000000000002u256
 }
 
@@ -82,7 +82,6 @@ fn shift_operators() -> u256 {
     (a << 4) >> 2
 }
 
-
 // returns 0
 fn comparison_operators() -> u256 {
     let a = 0x0000000000000000000000000000000000000000000000000000000000000001u256;
@@ -116,6 +115,50 @@ fn comparison_operators() -> u256 {
     return 0x0000000000000000000000000000000000000000000000000000000000000000u256;
 }
 
-fn main() -> u256 {
-    constants() + locals() + bitwise_operators() + shift_operators() + comparison_operators()
+#[test]
+fn should_be_able_to_use_literals() {
+    let result = 0x0000000000000000000000000000000000000000000000000000000000000003u256;
+    assert_eq(literals(), result);
+}
+
+#[test]
+fn should_be_able_to_use_locals() {
+    let result = 0x0000000000000000000000000000000000000000000000000000000000000001u256;
+    assert_eq(locals(), result);
+}
+
+#[test]
+fn should_be_able_to_use_bitwise_operators() {
+    let result = 0x000000000000000000000000000000000000000000000000000000000000000Bu256;
+    assert_eq(bitwise_operators(), result);
+}
+
+#[test]
+fn should_be_able_to_use_shift_operators() {
+    let result = 0x0000000000000000000000000000000000000000000000000000000000000008u256;
+    assert_eq(shift_operators(), result);
+}
+
+#[test]
+fn should_be_able_to_use_comparison_operators() {
+    let result = 0x0000000000000000000000000000000000000000000000000000000000000000u256;
+    assert_eq(comparison_operators(), result);
+}
+
+#[test(should_revert)]
+fn should_revert_on_overflow() -> u256 {
+    let a = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFu256;
+    a + 0x0000000000000000000000000000000000000000000000000000000000000001u256
+}
+
+#[test(should_revert)]
+fn should_revert_on_underflow() -> u256 {
+    let a = 0x0000000000000000000000000000000000000000000000000000000000000000u256;
+    a - 0x0000000000000000000000000000000000000000000000000000000000000001u256
+}
+
+#[test(should_revert)]
+fn should_revert_on_div_zero() -> u256 {
+    let a = 0x0000000000000000000000000000000000000000000000000000000000000000u256;
+    a / 0x0000000000000000000000000000000000000000000000000000000000000000u256
 }
