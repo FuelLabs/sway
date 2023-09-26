@@ -1,0 +1,111 @@
+// regex: VAR=v\d+
+// regex: ID=[[:alpha:]0-9_]+
+
+script {
+    entry fn main() -> u64, !1 {
+        // not: local [u64; 4]
+        local [u64; 4] __anon_0
+        // not: local { u64, u64 }
+        local { u64, u64 } __anon_1
+        // not: local { u64, u64, [u64; 4], { u64, u64 } }
+        local { u64, u64, [u64; 4], { u64, u64 } } __anon_2
+
+        entry():
+        v0 = get_local ptr [u64; 4], __anon_0, !2
+        v1 = const u64 0
+        v2 = get_elem_ptr v0, ptr u64, v1
+        v3 = const u64 0, !3
+        store v3 to v2, !2
+        v4 = const u64 1
+        v5 = get_elem_ptr v0, ptr u64, v4
+        v6 = const u64 1, !4
+        store v6 to v5, !2
+        v7 = const u64 2
+        v8 = get_elem_ptr v0, ptr u64, v7
+        v9 = const u64 2, !5
+        store v9 to v8, !2
+        v10 = const u64 3
+        v11 = get_elem_ptr v0, ptr u64, v10
+        v12 = const u64 3, !6
+        store v12 to v11, !2
+        v13 = get_local ptr { u64, u64 }, __anon_1, !7
+        v14 = const u64 0
+        v15 = get_elem_ptr v13, ptr u64, v14
+        v16 = const u64 199, !8
+        store v16 to v15, !7
+        v17 = const u64 1
+        v18 = get_elem_ptr v13, ptr u64, v17
+        v19 = const u64 200, !9
+        store v19 to v18, !7
+        v20 = get_local ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !10
+        v21 = const u64 0
+        v22 = get_elem_ptr v20, ptr u64, v21
+        v23 = const u64 2, !11
+        store v23 to v22, !10
+        v24 = const u64 1
+        v25 = get_elem_ptr v20, ptr u64, v24
+        v26 = const u64 3, !12
+        store v26 to v25, !10
+        v27 = const u64 2
+        v28 = get_elem_ptr v20, ptr [u64; 4], v27
+        // not: mem_copy_val
+        mem_copy_val v28, v0
+        v29 = const u64 3
+        v30 = get_elem_ptr v20, ptr { u64, u64 }, v29
+        mem_copy_val v30, v13
+        v31 = get_local ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !13
+        v32 = const u64 0
+        v33 = get_elem_ptr v31, ptr u64, v32, !14
+        v34 = load v33
+        v35 = get_local ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !15
+        v36 = const u64 3
+        v37 = get_elem_ptr v35, ptr { u64, u64 }, v36, !16
+        v38 = const u64 0
+        v39 = get_elem_ptr v37, ptr u64, v38, !17
+        v40 = load v39
+        v41 = add v34, v40, !18
+        v42 = get_local ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !19
+        v43 = const u64 3
+        v44 = get_elem_ptr v42, ptr { u64, u64 }, v43, !16
+        v45 = const u64 1
+        v46 = get_elem_ptr v44, ptr u64, v45, !20
+        v47 = load v46
+        v48 = add v41, v47, !21
+        v49 = get_local ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !22
+        v50 = const u64 2
+        v51 = get_elem_ptr v49, ptr [u64; 4], v50, !23
+        v52 = const u64 1, !24
+        v53 = get_elem_ptr v51, ptr u64, v52, !25
+        v54 = load v53
+        v55 = add v48, v54, !26
+        ret u64 v55
+    }
+}
+
+!0 = "src/main.sw"
+!1 = span !0 100 262
+!2 = span !0 174 186
+!3 = span !0 175 176
+!4 = span !0 178 179
+!5 = span !0 181 182
+!6 = span !0 184 185
+!7 = span !0 199 220
+!8 = span !0 206 209
+!9 = span !0 215 218
+!10 = span !0 130 226
+!11 = span !0 146 147
+!12 = span !0 160 161
+!13 = span !0 232 233
+!14 = span !0 56 62
+!15 = span !0 238 239
+!16 = span !0 91 95
+!17 = span !0 22 28
+!18 = span !0 232 243
+!19 = span !0 246 247
+!20 = span !0 32 38
+!21 = span !0 232 251
+!22 = span !0 254 255
+!23 = span !0 76 87
+!24 = span !0 258 259
+!25 = span !0 254 260
+!26 = span !0 232 260

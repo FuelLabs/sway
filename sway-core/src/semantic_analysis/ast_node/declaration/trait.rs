@@ -11,18 +11,18 @@ use crate::{
     decl_engine::*,
     language::{
         parsed::*,
-        ty::{self, TyImplItem, TyTraitItem},
+        ty::{self, TyImplItem, TyTraitDecl, TyTraitItem},
         CallPath,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
     semantic_analysis::{
         declaration::{insert_supertraits_into_namespace, SupertraitOf},
-        AbiMode, TypeCheckContext,
+        AbiMode, TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext,
     },
     type_system::*,
 };
 
-impl ty::TyTraitDecl {
+impl TyTraitDecl {
     pub(crate) fn type_check(
         handler: &Handler,
         ctx: TypeCheckContext,
@@ -484,5 +484,20 @@ impl ty::TyTraitDecl {
             IsImplSelf::No,
             IsExtendingExistingImpl::No,
         );
+    }
+}
+
+impl TypeCheckFinalization for TyTraitDecl {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            for item in self.items.iter_mut() {
+                let _ = item.type_check_finalize(handler, ctx);
+            }
+            Ok(())
+        })
     }
 }

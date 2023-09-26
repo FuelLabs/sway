@@ -1,3 +1,4 @@
+//! The command line interface for `forc doc`.
 use clap::Parser;
 use forc_pkg::source::IPFSNode;
 
