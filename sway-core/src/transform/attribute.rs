@@ -22,7 +22,9 @@
 
 use sway_ast::Literal;
 use sway_types::{
-    constants::{ALLOW_DEAD_CODE_NAME, CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME},
+    constants::{
+        ALLOW_DEAD_CODE_NAME, ALLOW_DEPRECATED_NAME, CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME,
+    },
     Ident, Span, Spanned,
 };
 
@@ -78,7 +80,7 @@ impl AttributeKind {
             AttributeKind::Payable => (0, None),
             AttributeKind::Allow => (1, Some(1)),
             AttributeKind::Cfg => (1, Some(1)),
-            AttributeKind::Deprecated => (0, Some(0)),
+            AttributeKind::Deprecated => (0, None),
         }
     }
 
@@ -91,7 +93,10 @@ impl AttributeKind {
             AttributeKind::Inline => None,
             AttributeKind::Test => None,
             AttributeKind::Payable => None,
-            AttributeKind::Allow => Some(vec![ALLOW_DEAD_CODE_NAME.to_string()]),
+            AttributeKind::Allow => Some(vec![
+                ALLOW_DEAD_CODE_NAME.to_string(),
+                ALLOW_DEPRECATED_NAME.to_string(),
+            ]),
             AttributeKind::Cfg => Some(vec![
                 CFG_TARGET_ARG_NAME.to_string(),
                 CFG_PROGRAM_TYPE_ARG_NAME.to_string(),
@@ -137,5 +142,38 @@ impl std::ops::Deref for AttributesMap {
     type Target = Arc<HashMap<AttributeKind, Vec<Attribute>>>;
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+pub struct AllowDeprecatedEnterToken {
+    diff: i32,
+}
+
+#[derive(Default)]
+pub struct AllowDeprecatedState {
+    allowed: u32,
+}
+impl AllowDeprecatedState {
+    pub(crate) fn enter(&mut self, attributes: AttributesMap) -> AllowDeprecatedEnterToken {
+        if let Some(all_allows) = attributes.get(&AttributeKind::Allow) {
+            for allow in all_allows {
+                for arg in allow.args.iter() {
+                    if arg.name.as_str() == "deprecated" {
+                        self.allowed += 1;
+                        return AllowDeprecatedEnterToken { diff: -1 };
+                    }
+                }
+            }
+        }
+
+        AllowDeprecatedEnterToken { diff: 0 }
+    }
+
+    pub(crate) fn exit(&mut self, token: AllowDeprecatedEnterToken) {
+        self.allowed = self.allowed.saturating_add_signed(token.diff);
+    }
+
+    pub(crate) fn is_allowed(&self) -> bool {
+        self.allowed > 0
     }
 }

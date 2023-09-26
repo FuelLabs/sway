@@ -1,5 +1,5 @@
 category = "compile"
 expected_warnings = 2
 
-# check: $()instantiation of deprecated struct
-# check: $()instantiation of deprecated enum
+# check: $()deprecated struct
+# check: $()deprecated struct: use the built-in type `u256` instead
