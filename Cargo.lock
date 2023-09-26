@@ -5935,6 +5935,7 @@ dependencies = [
  "sway-error",
  "sway-types",
  "thiserror",
+ "unicode-bidi",
  "unicode-xid",
 ]
 
