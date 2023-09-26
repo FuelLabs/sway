@@ -522,7 +522,33 @@ fn type_check_trait_implementation(
                 let method = decl_engine.get_trait_fn(decl_ref);
                 let name = method.name.clone();
                 method_checklist.insert(name.clone(), method);
-                interface_item_refs.insert((name, self_type), item.clone());
+
+                // After monomorphization (and typechecking trait implementation
+                // works on a monomorphized version of a trait declaration), the
+                // newly produced [decl_id]s for interface methods can only be
+                // traced back to the original (non-monomorphized) trait
+                // declaration, which means that during [decl_id] substitutions
+                // of trait interface dummy functions for the corresponding
+                // interface method _implementations_, we need to refer to the
+                // original [decl_id]s of the non-monomorphized trait
+                // declaration.
+                let interface_item_parents = decl_engine.find_all_parents(engines, decl_ref.id());
+                match interface_item_parents.len() {
+                    0 => { interface_item_refs.insert((name, self_type), item.clone()); },
+                    1 => match interface_item_parents[0] {
+                            AssociatedItemDeclId::TraitFn(parent_decl_id) => {
+                                let parent_interface_item =
+                                    TyTraitInterfaceItem::TraitFn(DeclRef::new(name.clone(), parent_decl_id, decl_ref.span()));
+                                interface_item_refs.insert((name, self_type), parent_interface_item);
+                            }
+                            _ => return Err(handler.emit_err(CompileError::Internal(
+                                    "A trait interface method's parent is expected to be another trait interface method",
+                                    name.span())))
+                         }
+                    _ => return Err(handler.emit_err(CompileError::Internal(
+                            "A trait interface method is expected to have zero parents or one parent in the Declaration Engine",
+                            name.span())))
+                }
             }
             TyTraitInterfaceItem::Constant(decl_ref) => {
                 let constant = decl_engine.get_constant(decl_ref);
