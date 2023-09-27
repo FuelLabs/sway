@@ -29,18 +29,15 @@ impl Format for ItemTrait {
         // `trait name`
         write!(
             formatted_code,
-            "{} {} ",
+            "{} {}",
             self.trait_token.span().as_str(),
             self.name.span().as_str()
         )?;
         // `<T>`
         if let Some(generics) = &self.generics {
-            // For optional generics remove the space before `<T>` part as it is added after
-            // trait name. Remove it from the beginning and add it afterwards so that there is a
-            // space before `{` even in the case of no other optional fields present after this
-            // check.
-            formatted_code.pop();
             generics.format(formatted_code, formatter)?;
+            write!(formatted_code, " ")?;
+        } else {
             write!(formatted_code, " ")?;
         }
         // `where`
