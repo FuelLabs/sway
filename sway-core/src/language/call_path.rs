@@ -4,6 +4,8 @@ use crate::{Ident, Namespace};
 
 use sway_types::{span::Span, Spanned};
 
+use super::ty::TyDecl;
+
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct CallPathTree {
     pub call_path: CallPath,
@@ -82,6 +84,19 @@ impl CallPath {
         }
     }
 
+    /// Removes the first prefix. Does nothing if prefixes are empty.
+    pub fn lshift(&self) -> CallPath {
+        if self.prefixes.is_empty() {
+            self.clone()
+        } else {
+            CallPath {
+                prefixes: self.prefixes[1..self.prefixes.len()].to_vec(),
+                suffix: self.suffix.clone(),
+                is_absolute: self.is_absolute,
+            }
+        }
+    }
+
     pub fn as_vec_string(&self) -> Vec<String> {
         self.prefixes
             .iter()
@@ -90,7 +105,7 @@ impl CallPath {
             .collect::<Vec<_>>()
     }
 
-    /// Convert a given `CallPath` to an symbol to a full `CallPath` from the root of the project
+    /// Convert a given [CallPath] to an symbol to a full [CallPath] from the root of the project
     /// in which the symbol is declared. For example, given a path `pkga::SOME_CONST` where `pkga`
     /// is an _internal_ library of a package named `my_project`, the corresponding call path is
     /// `my_project::pkga::SOME_CONST`.
@@ -176,5 +191,22 @@ impl CallPath {
                 is_absolute: true,
             }
         }
+    }
+
+    /// Convert a given [CallPath] into a call path suitable for a `use` statement.
+    ///
+    /// For example, given a path `pkga::SOME_CONST` where `pkga` is an _internal_ library of a package named
+    /// `my_project`, the corresponding call path is `pkga::SOME_CONST`.
+    ///
+    /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are left unchanged.
+    pub fn to_import_path(&self, namespace: &Namespace) -> CallPath {
+        let converted = self.to_fullpath(namespace);
+
+        if let Some(first) = converted.prefixes.first() {
+            if namespace.root().name == Some(first.clone()) {
+                return converted.lshift();
+            }
+        }
+        converted
     }
 }

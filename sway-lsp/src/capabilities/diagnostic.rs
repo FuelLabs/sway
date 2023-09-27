@@ -2,11 +2,13 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use lsp_types::{Diagnostic, DiagnosticSeverity, DiagnosticTag, Position, Range};
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 use sway_error::warning::CompileWarning;
 use sway_error::{error::CompileError, warning::Warning};
 use sway_types::{LineCol, SourceEngine, Spanned};
 
-pub type DiagnosticMap = HashMap<PathBuf, Diagnostics>;
+pub(crate) type DiagnosticMap = HashMap<PathBuf, Diagnostics>;
 
 #[derive(Debug, Default, Clone)]
 pub struct Diagnostics {
@@ -15,10 +17,13 @@ pub struct Diagnostics {
 }
 
 fn get_error_diagnostic(error: &CompileError) -> Diagnostic {
+    let data = serde_json::to_value(DiagnosticData::try_from(error.clone()).ok()).ok();
+
     Diagnostic {
         range: get_range(error.span().line_col()),
         severity: Some(DiagnosticSeverity::ERROR),
         message: format!("{error}"),
+        data,
         ..Default::default()
     }
 }
@@ -88,5 +93,32 @@ fn get_warning_diagnostic_tags(warning: &Warning) -> Option<Vec<DiagnosticTag>> 
         | Warning::UnreachableCode
         | Warning::UnusedReturnValue { .. } => Some(vec![DiagnosticTag::UNNECESSARY]),
         _ => None,
+    }
+}
+
+/// Extra data to be sent with a diagnostic and provided in CodeAction context.
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct DiagnosticData {
+    pub name_to_import: String,
+}
+
+impl TryFrom<CompileWarning> for DiagnosticData {
+    type Error = anyhow::Error;
+
+    fn try_from(_value: CompileWarning) -> Result<Self, Self::Error> {
+        anyhow::bail!("Not implemented");
+    }
+}
+
+impl TryFrom<CompileError> for DiagnosticData {
+    type Error = anyhow::Error;
+
+    fn try_from(value: CompileError) -> Result<Self, Self::Error> {
+        match value {
+            CompileError::SymbolNotFound { name, .. } => Ok(DiagnosticData {
+                name_to_import: name.to_string(),
+            }),
+            _ => anyhow::bail!("Not implemented"),
+        }
     }
 }
