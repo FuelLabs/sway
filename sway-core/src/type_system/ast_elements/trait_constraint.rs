@@ -184,6 +184,8 @@ impl TraitConstraint {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
                 let mut trait_decl = decl_engine.get_trait(&decl_id);
 
+                // the following essentially is needed to map `Self` to the right type
+                // during trait decl monomorphization
                 trait_decl.type_parameters.push(trait_decl.self_type.clone());
                 type_arguments.push(TypeArgument::from(type_id));
 

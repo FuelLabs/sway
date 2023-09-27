@@ -120,7 +120,7 @@ impl TyImplTrait {
                 let mut trait_decl = decl_engine.get_trait(&decl_id);
 
                 // the following essentially is needed to map `Self` to `implementing_for`
-                // durting trait decl monomorphization
+                // during trait decl monomorphization
                 trait_decl.type_parameters.push(trait_decl.self_type.clone());
                 trait_type_arguments.push(implementing_for.clone());
 
@@ -137,23 +137,6 @@ impl TyImplTrait {
                 // restore type parameters and type arguments
                 trait_decl.type_parameters.pop();
                 trait_type_arguments.pop();
-
-                // Unify the "self" type param from the trait declaration with
-                // the type that we are implementing for.
-                // Create a new type parameter for the "self type".
-                // let self_type_param = TypeParameter::new_self_type(engines, trait_decl.span.clone());
-                // handler.scope(|h| {
-                //     type_engine.unify(
-                //         h,
-                //         engines,
-                //         implementing_for.type_id,
-                //         self_type_param.type_id,
-                //         &implementing_for.span,
-                //         "",
-                //         None
-                //     );
-                //     Ok(())
-                // })?;
 
                 // Insert the interface surface and methods from this trait into
                 // the namespace.
@@ -593,7 +576,33 @@ fn type_check_trait_implementation(
                 let method = decl_engine.get_trait_fn(decl_ref);
                 let name = method.name.clone();
                 method_checklist.insert(name.clone(), method);
-                interface_item_refs.insert((name, implementing_for), item.clone());
+
+                // After monomorphization (and typechecking trait implementation
+                // works on a monomorphized version of a trait declaration), the
+                // newly produced [decl_id]s for interface methods can only be
+                // traced back to the original (non-monomorphized) trait
+                // declaration, which means that during [decl_id] substitutions
+                // of trait interface dummy functions for the corresponding
+                // interface method _implementations_, we need to refer to the
+                // original [decl_id]s of the non-monomorphized trait
+                // declaration.
+                let interface_item_parents = decl_engine.find_all_parents(engines, decl_ref.id());
+                match interface_item_parents.len() {
+                    0 => { interface_item_refs.insert((name, implementing_for), item.clone()); },
+                    1 => match interface_item_parents[0] {
+                            AssociatedItemDeclId::TraitFn(parent_decl_id) => {
+                                let parent_interface_item =
+                                    TyTraitInterfaceItem::TraitFn(DeclRef::new(name.clone(), parent_decl_id, decl_ref.span()));
+                                interface_item_refs.insert((name, implementing_for), parent_interface_item);
+                            }
+                            _ => return Err(handler.emit_err(CompileError::Internal(
+                                    "A trait interface method's parent is expected to be another trait interface method",
+                                    name.span())))
+                         }
+                    _ => return Err(handler.emit_err(CompileError::Internal(
+                            "A trait interface method is expected to have zero parents or one parent in the Declaration Engine",
+                            name.span())))
+                }
             }
             TyTraitInterfaceItem::Constant(decl_ref) => {
                 let constant = decl_engine.get_constant(decl_ref);

@@ -17,6 +17,7 @@ sway-ast = { version = "0.46.0", path = "../sway-ast" }
 sway-error = { version = "0.46.0", path = "../sway-error" }
 sway-types = { version = "0.46.0", path = "../sway-types" }
 thiserror = "1.0"
+unicode-bidi = "0.3.13"
 unicode-xid = "0.2.2"
 
 [dev-dependencies]

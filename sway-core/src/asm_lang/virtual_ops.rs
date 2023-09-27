@@ -1007,7 +1007,6 @@ impl VirtualOp {
     pub(crate) fn allocate_registers(&self, pool: &RegisterPool) -> AllocatedOpcode {
         let virtual_registers = self.registers();
         let register_allocation_result = virtual_registers
-            .clone()
             .into_iter()
             .map(|x| match x {
                 VirtualRegister::Constant(c) => (x, Some(AllocatedRegister::Constant(*c))),
