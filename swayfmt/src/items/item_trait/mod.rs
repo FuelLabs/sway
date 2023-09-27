@@ -1,6 +1,7 @@
 use crate::{
     comments::{rewrite_with_comments, write_comments},
     config::items::ItemBraceStyle,
+    constants::UNIX_NEWLINE,
     formatter::*,
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
@@ -9,7 +10,10 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_ast::{keywords::Token, ItemTrait, ItemTraitItem, Traits};
-use sway_types::{ast::Delimiter, Spanned};
+use sway_types::{
+    ast::{Delimiter, PunctKind},
+    Spanned,
+};
 
 #[cfg(test)]
 mod tests;
@@ -37,21 +41,16 @@ impl Format for ItemTrait {
         if let Some(generics) = &self.generics {
             generics.format(formatted_code, formatter)?;
         }
+        // `: super_trait + super_trait`
+        if let Some((colon_token, traits)) = &self.super_traits {
+            write!(formatted_code, "{} ", colon_token.ident().as_str())?;
+            traits.format(formatted_code, formatter)?;
+        }
         // `where`
         if let Some(where_clause) = &self.where_clause_opt {
             writeln!(formatted_code)?;
             where_clause.format(formatted_code, formatter)?;
         } else {
-            write!(formatted_code, " ")?;
-        }
-        // `: super_trait + super_trait`
-        if let Some((colon_token, traits)) = &self.super_traits {
-            // For optional super trait, remove the space before `:` as it can either be added after
-            // trait name or in other optional fields such as generics or where clause. Remove it
-            // from the beginning and add it afterwards so that there is a space before `{`.
-            formatted_code.pop();
-            write!(formatted_code, "{} ", colon_token.ident().as_str())?;
-            traits.format(formatted_code, formatter)?;
             write!(formatted_code, " ")?;
         }
         Self::open_curly_brace(formatted_code, formatter)?;
@@ -60,23 +59,27 @@ impl Format for ItemTrait {
         if trait_items.is_empty() {
             write_comments(formatted_code, self.trait_items.span().into(), formatter)?;
         } else {
-            for item in trait_items {
+            for (index, item) in trait_items.iter().enumerate() {
                 for attr in &item.attribute_list {
-                    write!(formatted_code, "{}", &formatter.indent_str()?,)?;
+                    write!(formatted_code, "{}", &formatter.indent_str()?)?;
                     attr.format(formatted_code, formatter)?;
                 }
                 match &item.value {
                     sway_ast::ItemTraitItem::Fn(fn_signature, _) => {
-                        write!(formatted_code, "{}", formatter.indent_str()?,)?;
+                        write!(formatted_code, "{}", formatter.indent_str()?)?;
                         fn_signature.format(formatted_code, formatter)?;
-                        writeln!(formatted_code, ";")?;
+                        write!(formatted_code, "{}", PunctKind::Semicolon.as_char())?;
+                        // the last method does not need a trailing new line
+                        if index != trait_items.len() - 1 {
+                            writeln!(formatted_code)?;
+                        }
                     }
                     sway_ast::ItemTraitItem::Const(const_decl, _) => {
-                        write!(formatted_code, "{}", formatter.indent_str()?,)?;
+                        write!(formatted_code, "{}", formatter.indent_str()?)?;
                         const_decl.format(formatted_code, formatter)?;
                     }
                     sway_ast::ItemTraitItem::Type(type_decl, _) => {
-                        write!(formatted_code, "{}", formatter.indent_str()?,)?;
+                        write!(formatted_code, "{}", formatter.indent_str()?)?;
                         type_decl.format(formatted_code, formatter)?;
                     }
                     ItemTraitItem::Error(_, _) => {
@@ -84,10 +87,6 @@ impl Format for ItemTrait {
                     }
                 }
             }
-        }
-
-        if formatted_code.ends_with('\n') {
-            formatted_code.pop(); // pop last ending newline
         }
 
         Self::close_curly_brace(formatted_code, formatter)?;
