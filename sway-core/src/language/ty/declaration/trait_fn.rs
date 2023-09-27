@@ -93,4 +93,8 @@ impl MonomorphizeHelper for TyTraitFn {
     fn type_parameters(&self) -> &[TypeParameter] {
         &[]
     }
+
+    fn has_self_type_param(&self) -> bool {
+        false
+    }
 }

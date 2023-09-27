@@ -146,6 +146,10 @@ impl MonomorphizeHelper for TyFunctionDecl {
     fn name(&self) -> &Ident {
         &self.name
     }
+
+    fn has_self_type_param(&self) -> bool {
+        false
+    }
 }
 
 impl UnconstrainedTypeParameters for TyFunctionDecl {

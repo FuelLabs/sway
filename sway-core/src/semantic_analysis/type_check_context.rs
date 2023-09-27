@@ -1238,46 +1238,63 @@ impl<'a> TypeCheckContext<'a> {
     where
         T: MonomorphizeHelper + SubstTypes,
     {
+        fn make_type_arity_mismatch_error(name: Ident, span: Span, given: usize, expected: usize) -> CompileError {
+            match (expected, given) {
+                (0, 0) => unreachable!(),
+                (_, 0) => CompileError::NeedsTypeArguments { name, span },
+                (0, _) => CompileError::DoesNotTakeTypeArguments { name, span },
+                (_, _) => CompileError::IncorrectNumberOfTypeArguments {
+                        name,
+                        given,
+                        expected,
+                        span
+                    },
+            }
+        }
+
         match (
-            value.type_parameters().is_empty(),
-            type_arguments.is_empty(),
+            value.type_parameters().len(),
+            type_arguments.len()
         ) {
-            (true, true) => Ok(TypeSubstMap::default()),
-            (false, true) => {
+            (0, 0) => Ok(TypeSubstMap::default()),
+            (num_type_params, 0) => {
                 if let EnforceTypeArguments::Yes = enforce_type_arguments {
-                    return Err(handler.emit_err(CompileError::NeedsTypeArguments {
-                        name: value.name().clone(),
-                        span: call_site_span.clone(),
-                    }));
+                    return Err(handler.emit_err(
+                        make_type_arity_mismatch_error(value.name().clone(), call_site_span.clone(), 0, num_type_params)
+                    ))
                 }
                 let type_mapping =
                     TypeSubstMap::from_type_parameters(self.engines, value.type_parameters());
                 Ok(type_mapping)
             }
-            (true, false) => {
+            (0, num_type_args) => {
                 let type_arguments_span = type_arguments
                     .iter()
                     .map(|x| x.span.clone())
                     .reduce(Span::join)
                     .unwrap_or_else(|| value.name().span());
-                Err(handler.emit_err(CompileError::DoesNotTakeTypeArguments {
-                    name: value.name().clone(),
-                    span: type_arguments_span,
-                }))
+                Err(handler.emit_err(
+                    make_type_arity_mismatch_error(value.name().clone(), type_arguments_span.clone(), num_type_args, 0)
+                ))
             }
-            (false, false) => {
+            (num_type_params, num_type_args) => {
                 let type_arguments_span = type_arguments
                     .iter()
                     .map(|x| x.span.clone())
                     .reduce(Span::join)
                     .unwrap_or_else(|| value.name().span());
-                if value.type_parameters().len() != type_arguments.len() {
+                // a trait decl is passed the self type parameter and the corresponding argument
+                // but it would be confusing for the user if the error reporting mechanism
+                // reported the number of arguments including the implicit self, hence
+                // we adjust it below
+                let adjust_for_trait_decl = value.has_self_type_param() as usize;
+                let num_type_params = num_type_params - adjust_for_trait_decl;
+                let num_type_args = num_type_args - adjust_for_trait_decl;
+                if num_type_params != num_type_args {
                     return Err(
-                        handler.emit_err(CompileError::IncorrectNumberOfTypeArguments {
-                            given: type_arguments.len(),
-                            expected: value.type_parameters().len(),
-                            span: type_arguments_span,
-                        }),
+                        handler.emit_err(
+                            make_type_arity_mismatch_error(value.name().clone(), type_arguments_span, num_type_args, num_type_params)
+                        ),
                     );
                 }
                 for type_argument in type_arguments.iter_mut() {
@@ -1322,6 +1339,7 @@ impl<'a> TypeCheckContext<'a> {
 pub(crate) trait MonomorphizeHelper {
     fn name(&self) -> &Ident;
     fn type_parameters(&self) -> &[TypeParameter];
+    fn has_self_type_param(&self) -> bool;
 }
 
 /// This type is used to denote if, during monomorphization, the compiler

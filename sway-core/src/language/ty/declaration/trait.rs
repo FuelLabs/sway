@@ -256,4 +256,8 @@ impl MonomorphizeHelper for TyTraitDecl {
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
+
+    fn has_self_type_param(&self) -> bool {
+        true
+    }
 }

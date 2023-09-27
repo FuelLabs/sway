@@ -87,6 +87,10 @@ impl MonomorphizeHelper for TyEnumDecl {
     fn name(&self) -> &Ident {
         &self.call_path.suffix
     }
+
+    fn has_self_type_param(&self) -> bool {
+        false
+    }
 }
 
 impl TyEnumDecl {
