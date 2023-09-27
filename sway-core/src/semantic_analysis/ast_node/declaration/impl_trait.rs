@@ -1139,8 +1139,8 @@ fn type_check_type_decl(
     }
 
     // Ensure that the type checklist contains this type.
-    let type_decl_signature = match type_checklist.get(&type_name) {
-        Some(type_decl) => type_decl.clone(),
+    match type_checklist.get(&type_name) {
+        Some(_type_decl) => {}
         None => {
             return Err(
                 handler.emit_err(CompileError::TypeNotAPartOfInterfaceSurface {

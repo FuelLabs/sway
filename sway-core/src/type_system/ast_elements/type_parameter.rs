@@ -198,14 +198,41 @@ impl TypeParameter {
         let TypeParameter {
             initial_type_id,
             name_ident,
-            mut trait_constraints,
+            trait_constraints,
             trait_constraints_span,
             is_from_parent,
             ..
         } = type_parameter;
 
+        // Expands a trait constraint to include all its supertraits.
+        // Another way to incorporate this info would be at the level of unification,
+        // we would check that two generic type parameters should unify when
+        // the left one is a supertrait of the right one (at least in the NonDynamicEquality mode)
+        fn expand_trait_constraints(handler: &Handler, ctx: &TypeCheckContext, tc: &TraitConstraint) -> Vec<TraitConstraint> {
+            match ctx.namespace.resolve_call_path(handler, ctx.engines, &tc.trait_name).ok() {
+                Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
+                    let trait_decl = ctx.engines.de().get_trait(&decl_id);
+                    let mut result =
+                        trait_decl.supertraits.iter().flat_map(|supertrait|
+                            expand_trait_constraints(handler, ctx,
+                                &TraitConstraint {
+                                    trait_name: supertrait.name.clone(),
+                                    type_arguments: tc.type_arguments.clone(),
+                                }
+                            )).collect::<Vec<TraitConstraint>>();
+                    result.push(tc.clone());
+                    result
+                }
+                _ => vec![tc.clone()]
+            }
+        }
+
+        let mut trait_constraints_with_supertraits: Vec<TraitConstraint> = trait_constraints.iter().flat_map(|tc| {
+            expand_trait_constraints(handler, &ctx, tc)
+        }).collect();
+
         // Type check the trait constraints.
-        for trait_constraint in trait_constraints.iter_mut() {
+        for trait_constraint in trait_constraints_with_supertraits.iter_mut() {
             trait_constraint.type_check(handler, ctx.by_ref())?;
         }
 
@@ -215,7 +242,7 @@ impl TypeParameter {
             engines,
             TypeInfo::UnknownGeneric {
                 name: name_ident.clone(),
-                trait_constraints: VecSet(trait_constraints.clone()),
+                trait_constraints: VecSet(trait_constraints_with_supertraits.clone()),
             },
         );
 

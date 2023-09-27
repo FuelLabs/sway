@@ -10,6 +10,7 @@ use sway_types::span::Span;
 
 /// Enum used to pass a value asking for insertion of type into trait map when an implementation
 /// of the trait cannot be found.
+#[derive(Debug)]
 pub enum TryInsertingTraitImplOnFailure {
     Yes,
     No,
