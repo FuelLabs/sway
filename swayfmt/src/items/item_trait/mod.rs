@@ -1,7 +1,6 @@
 use crate::{
     comments::{rewrite_with_comments, write_comments},
     config::items::ItemBraceStyle,
-    constants::UNIX_NEWLINE,
     formatter::*,
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
@@ -59,7 +58,7 @@ impl Format for ItemTrait {
         if trait_items.is_empty() {
             write_comments(formatted_code, self.trait_items.span().into(), formatter)?;
         } else {
-            for (index, item) in trait_items.iter().enumerate() {
+            for item in trait_items {
                 for attr in &item.attribute_list {
                     write!(formatted_code, "{}", &formatter.indent_str()?)?;
                     attr.format(formatted_code, formatter)?;
@@ -69,10 +68,6 @@ impl Format for ItemTrait {
                         write!(formatted_code, "{}", formatter.indent_str()?)?;
                         fn_signature.format(formatted_code, formatter)?;
                         write!(formatted_code, "{}", PunctKind::Semicolon.as_char())?;
-                        // the last method does not need a trailing new line
-                        if index != trait_items.len() - 1 {
-                            writeln!(formatted_code)?;
-                        }
                     }
                     sway_ast::ItemTraitItem::Const(const_decl, _) => {
                         write!(formatted_code, "{}", formatter.indent_str()?)?;
@@ -86,6 +81,7 @@ impl Format for ItemTrait {
                         return Err(FormatterError::SyntaxError);
                     }
                 }
+                writeln!(formatted_code)?;
             }
         }
 
@@ -98,6 +94,7 @@ impl Format for ItemTrait {
                 // format `Annotated<ItemFn>`
                 trait_items.format(formatted_code, formatter)?;
             }
+            writeln!(formatted_code)?;
             Self::close_curly_brace(formatted_code, formatter)?;
         };
 
@@ -165,7 +162,7 @@ impl CurlyBrace for ItemTrait {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         formatter.unindent();
-        write!(line, "\n{}", Delimiter::Brace.as_close_char())?;
+        write!(line, "{}", Delimiter::Brace.as_close_char())?;
         Ok(())
     }
 }
