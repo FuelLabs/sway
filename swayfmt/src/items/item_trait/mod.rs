@@ -36,19 +36,13 @@ impl Format for ItemTrait {
         // `<T>`
         if let Some(generics) = &self.generics {
             generics.format(formatted_code, formatter)?;
-            write!(formatted_code, " ")?;
-        } else {
-            write!(formatted_code, " ")?;
         }
         // `where`
         if let Some(where_clause) = &self.where_clause_opt {
-            // For optional where clause remove the space before `where` token as it can be added
-            // after trait name or in optional generics check. Remove it from the beginning and add
-            // it afterwards so that there is a space before `{` even in the case of no other optional
-            // fields present after this check.
-            formatted_code.pop();
             writeln!(formatted_code)?;
             where_clause.format(formatted_code, formatter)?;
+        } else {
+            write!(formatted_code, " ")?;
         }
         // `: super_trait + super_trait`
         if let Some((colon_token, traits)) = &self.super_traits {
