@@ -3,7 +3,7 @@ use crate::{
     formatter::{shape::LineStyle, *},
     utils::map::byte_span::{ByteSpan, LeafSpans},
 };
-use std::fmt::Write;
+use std::{assert_eq, fmt::Write};
 use sway_ast::{
     keywords::CommaToken, punctuated::Punctuated, ConfigurableField, StorageField, TypeField,
 };
@@ -22,36 +22,26 @@ where
         if !self.value_separator_pairs.is_empty() || self.final_value_opt.is_some() {
             match formatter.shape.code_line.line_style {
                 LineStyle::Normal => {
-                    let value_pairs = &self.value_separator_pairs;
-                    for (type_field, punctuation) in value_pairs.iter() {
-                        type_field.format(formatted_code, formatter)?;
-                        punctuation.format(formatted_code, formatter)?;
-                        write!(formatted_code, " ")?;
-                    }
-
-                    if let Some(final_value) = &self.final_value_opt {
-                        final_value.format(formatted_code, formatter)?;
-                    } else {
-                        formatted_code.pop();
-                        formatted_code.pop();
-                    }
+                    write!(
+                        formatted_code,
+                        "{}",
+                        format_generic_pair(
+                            &self.value_separator_pairs,
+                            &self.final_value_opt,
+                            formatter
+                        )?
+                    )?;
                 }
                 LineStyle::Inline => {
-                    write!(formatted_code, " ")?;
-                    let value_pairs_iter = self.value_separator_pairs.iter();
-                    for (type_field, punctuation) in value_pairs_iter.clone() {
-                        type_field.format(formatted_code, formatter)?;
-                        punctuation.format(formatted_code, formatter)?;
-
-                        write!(formatted_code, " ")?;
-                    }
-                    if let Some(final_value) = &self.final_value_opt {
-                        final_value.format(formatted_code, formatter)?;
-                    } else {
-                        formatted_code.pop();
-                        formatted_code.pop();
-                    }
-                    write!(formatted_code, " ")?;
+                    write!(
+                        formatted_code,
+                        " {} ",
+                        format_generic_pair(
+                            &self.value_separator_pairs,
+                            &self.final_value_opt,
+                            formatter
+                        )?
+                    )?;
                 }
                 LineStyle::Multiline => {
                     if !formatted_code.ends_with('\n') {
@@ -76,6 +66,46 @@ where
 
         Ok(())
     }
+}
+
+fn format_generic_pair<T, P>(
+    value_separator_pairs: &Vec<(T, P)>,
+    final_value_opt: &Option<Box<T>>,
+    formatter: &mut Formatter,
+) -> Result<FormattedCode, FormatterError>
+where
+    T: Format,
+    P: Format,
+{
+    let mut ps: Vec<String> = value_separator_pairs
+        .iter()
+        .map(|(_, p)| -> Result<FormattedCode, FormatterError> {
+            let mut buf = FormattedCode::new();
+            p.format(&mut buf, formatter)?;
+            Ok(buf)
+        })
+        .collect::<Result<_, _>>()?;
+    let mut ts: Vec<String> = value_separator_pairs
+        .iter()
+        .map(|(t, _)| -> Result<FormattedCode, FormatterError> {
+            let mut buf = FormattedCode::new();
+            t.format(&mut buf, formatter)?;
+            Ok(buf)
+        })
+        .collect::<Result<_, _>>()?;
+    if let Some(final_value) = final_value_opt {
+        let mut buf = FormattedCode::new();
+        final_value.format(&mut buf, formatter)?;
+        ts.push(buf);
+    } else {
+        if ts.len() == ps.len() {
+            ps.truncate(ts.len() - 1); // non-destructive to formatted str
+        }
+    }
+    for (t, p) in ts.iter_mut().zip(ps.iter()) {
+        write!(t, "{p}")?;
+    }
+    Ok(ts.join(" "))
 }
 
 impl<T, P> LeafSpans for Punctuated<T, P>
