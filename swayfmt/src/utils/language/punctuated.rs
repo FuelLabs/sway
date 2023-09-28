@@ -3,7 +3,7 @@ use crate::{
     formatter::{shape::LineStyle, *},
     utils::map::byte_span::{ByteSpan, LeafSpans},
 };
-use std::{assert_eq, fmt::Write};
+use std::fmt::Write;
 use sway_ast::{
     keywords::CommaToken, punctuated::Punctuated, ConfigurableField, StorageField, TypeField,
 };
@@ -69,7 +69,7 @@ where
 }
 
 fn format_generic_pair<T, P>(
-    value_separator_pairs: &Vec<(T, P)>,
+    value_separator_pairs: &[(T, P)],
     final_value_opt: &Option<Box<T>>,
     formatter: &mut Formatter,
 ) -> Result<FormattedCode, FormatterError>
@@ -98,9 +98,10 @@ where
         final_value.format(&mut buf, formatter)?;
         ts.push(buf);
     } else {
-        if ts.len() == ps.len() {
-            ps.truncate(ts.len() - 1); // non-destructive to formatted str
-        }
+        // reduce the number of punct by 1
+        // this is safe since the number of
+        // separator pairs is always equal
+        ps.truncate(ts.len() - 1);
     }
     for (t, p) in ts.iter_mut().zip(ps.iter()) {
         write!(t, "{p}")?;
