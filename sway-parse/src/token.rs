@@ -209,6 +209,15 @@ pub fn lex_commented(
                     character = next_character;
                     index = next_index;
                 }
+                if !(character.is_xid_start() || character == '_') {
+                    let kind = LexErrorKind::InvalidCharacter {
+                        position: index,
+                        character,
+                    };
+                    let span = span_one(&l, index, character);
+                    error(l.handler, LexError { kind, span });
+                    continue;
+                }
             }
 
             // Don't accept just `_` as an identifier.
@@ -466,10 +475,14 @@ fn lex_string(
                 },
             )
         };
-        let (next_index, next_character) = l
-            .stream
-            .next()
-            .ok_or_else(|| unclosed_string_lit(l, l.src.len() - 1))?;
+        let (next_index, next_character) = l.stream.next().ok_or_else(|| {
+            // last character may not be a unicode boundary
+            let mut end = l.src.len() - 1;
+            while !l.src.is_char_boundary(end) {
+                end -= 1;
+            }
+            unclosed_string_lit(l, end)
+        })?;
         parsed.push(match next_character {
             '\\' => parse_escape_code(l)
                 .map_err(|e| e.unwrap_or_else(|| unclosed_string_lit(l, l.src.len())))?,
