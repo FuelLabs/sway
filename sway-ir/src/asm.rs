@@ -42,7 +42,7 @@ pub struct AsmArg {
 
 #[derive(Clone, Debug)]
 pub struct AsmInstruction {
-    pub name: Ident,
+    pub op_name: Ident,
     pub args: Vec<Ident>,
     pub immediate: Option<Ident>,
     pub metadata: Option<MetadataIndex>,

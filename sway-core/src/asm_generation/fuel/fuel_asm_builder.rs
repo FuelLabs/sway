@@ -432,7 +432,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 .unwrap_or_else(Span::dummy);
             let opcode = Op::parse_opcode(
                 handler,
-                &op.name,
+                &op.op_name,
                 &replaced_registers,
                 &op.immediate,
                 op_span.clone(),

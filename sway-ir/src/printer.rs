@@ -983,7 +983,7 @@ fn asm_block_to_doc(
                 body.iter()
                     .map(
                         |AsmInstruction {
-                             name,
+                             op_name: name,
                              args,
                              immediate,
                              metadata,

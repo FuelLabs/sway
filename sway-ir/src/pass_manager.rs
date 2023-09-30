@@ -6,7 +6,7 @@ use crate::{
     create_module_printer_pass, create_module_verifier_pass, create_postorder_pass,
     create_ret_demotion_pass, create_simplify_cfg_pass, create_sroa_pass, Context, Function,
     IrError, Module, CONSTCOMBINE_NAME, DCE_NAME, FUNC_DCE_NAME, INLINE_MODULE_NAME, MEM2REG_NAME,
-    SIMPLIFYCFG_NAME,
+    SIMPLIFYCFG_NAME, FNDEDUP_NAME, create_fn_dedup_pass,
 };
 use downcast_rs::{impl_downcast, Downcast};
 use rustc_hash::FxHashMap;
@@ -306,6 +306,7 @@ pub fn register_known_passes(pm: &mut PassManager) {
     pm.register(create_module_printer_pass());
     pm.register(create_module_verifier_pass());
     // Optimization passes.
+    pm.register(create_fn_dedup_pass());
     pm.register(create_mem2reg_pass());
     pm.register(create_sroa_pass());
     pm.register(create_inline_in_module_pass());
@@ -327,6 +328,7 @@ pub fn create_o1_pass_group() -> PassGroup {
     // Configure to run our passes.
     o1.append_pass(MEM2REG_NAME);
     o1.append_pass(INLINE_MODULE_NAME);
+    o1.append_pass(FNDEDUP_NAME);
     o1.append_pass(CONSTCOMBINE_NAME);
     o1.append_pass(SIMPLIFYCFG_NAME);
     o1.append_pass(CONSTCOMBINE_NAME);

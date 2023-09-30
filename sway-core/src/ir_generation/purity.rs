@@ -58,7 +58,7 @@ pub(crate) fn check_function_purity(
                         Instruction::AsmBlock(asm_block, _args) => {
                             asm_block.get_content(context).body.iter().fold(
                                 (reads, writes),
-                                |(reads, writes), asm_op| match asm_op.name.as_str() {
+                                |(reads, writes), asm_op| match asm_op.op_name.as_str() {
                                     "scwq" | "srw" | "srwq" => (true, writes),
                                     "sww" | "swwq" => (reads, true),
                                     _ => (reads, writes),
