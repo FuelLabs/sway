@@ -46,8 +46,6 @@ pub fn code_actions(
     temp_uri: &Url,
     diagnostics: &Vec<Diagnostic>,
 ) -> Option<CodeActionResponse> {
-    eprintln!("got here 1");
-
     let engines = session.engines.read();
     let (_, token) = session
         .token_map()
@@ -60,8 +58,6 @@ pub fn code_actions(
         uri,
         diagnostics,
     };
-
-    eprintln!("got here 2");
 
     let actions_by_type = token
         .typed

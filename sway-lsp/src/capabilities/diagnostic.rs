@@ -118,6 +118,9 @@ impl TryFrom<CompileError> for DiagnosticData {
             CompileError::SymbolNotFound { name, .. } => Ok(DiagnosticData {
                 name_to_import: name.to_string(),
             }),
+            CompileError::UnknownVariable { var_name, .. } => Ok(DiagnosticData {
+                name_to_import: var_name.to_string(),
+            }),
             _ => anyhow::bail!("Not implemented"),
         }
     }

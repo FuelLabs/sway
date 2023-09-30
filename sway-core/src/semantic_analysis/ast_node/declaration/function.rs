@@ -11,7 +11,7 @@ use crate::{
     language::{
         parsed::*,
         ty::{self, TyCodeBlock},
-        Visibility,
+        CallPath, Visibility,
     },
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
@@ -133,12 +133,15 @@ impl ty::TyFunctionDecl {
             (visibility, matches!(ctx.abi_mode(), AbiMode::ImplAbiFn(..)))
         };
 
+        let call_path = CallPath::from(name.clone()).to_fullpath(ctx.namespace);
+
         let function_decl = ty::TyFunctionDecl {
             name,
             body: TyCodeBlock::default(),
             parameters: new_parameters,
             implementing_type: None,
             span,
+            call_path,
             attributes,
             return_type,
             type_parameters: new_type_parameters,
@@ -303,6 +306,7 @@ fn test_function_selector_behavior() {
         body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![],
         span: Span::dummy(),
+        call_path: CallPath::from(Ident::new_no_span("foo".into())),
         attributes: Default::default(),
         return_type: TypeId::from(0).into(),
         type_parameters: vec![],
@@ -356,6 +360,7 @@ fn test_function_selector_behavior() {
             },
         ],
         span: Span::dummy(),
+        call_path: CallPath::from(Ident::new_no_span("foo".into())),
         attributes: Default::default(),
         return_type: TypeId::from(0).into(),
         type_parameters: vec![],

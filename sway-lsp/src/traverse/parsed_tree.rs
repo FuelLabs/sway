@@ -26,7 +26,7 @@ use sway_core::{
             TraitItem, TraitTypeDeclaration, TupleIndexExpression, TypeAliasDeclaration,
             UseStatement, VariableDeclaration, WhileLoopExpression,
         },
-        CallPathTree, Literal,
+        CallPathTree, HasSubmodules, Literal,
     },
     transform::{AttributeKind, AttributesMap},
     type_system::{TypeArgument, TypeParameter},
@@ -69,7 +69,7 @@ impl<'a> ParsedTree<'a> {
                 mod_name_span,
                 ..
             },
-        ) in &parse_module.submodules
+        ) in parse_module.submodules_recursive()
         {
             self.ctx.tokens.insert(
                 self.ctx.ident(&Ident::new(mod_name_span.clone())),

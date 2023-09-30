@@ -44,7 +44,7 @@ impl<'a> TypedTree<'a> {
                 module,
                 mod_name_span,
             },
-        ) in &typed_module.submodules
+        ) in typed_module.submodules_recursive()
         {
             if let Some(mut token) = self
                 .ctx

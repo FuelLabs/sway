@@ -4,7 +4,7 @@ use crate::{
 };
 use sway_core::language::{
     parsed::{AstNode, AstNodeContent, Declaration},
-    ty,
+    ty::{self, TyAstNodeContent},
 };
 
 /// Insert Declaration tokens into the TokenMap.
@@ -43,6 +43,7 @@ pub fn collect_typed_declaration(node: &ty::TyAstNode, ctx: &ParseContext) {
             | ty::TyDecl::ConstantDecl(ty::ConstantDecl { name, .. }) => name.clone(),
             _ => return,
         };
+
         let token_ident = ctx.ident(&ident);
         if let Some(mut token) = ctx.tokens.try_get_mut(&token_ident).try_unwrap() {
             token.typed = Some(typed_token);

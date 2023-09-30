@@ -4,6 +4,8 @@ use crate::language::ModName;
 pub use program::LexedProgram;
 use sway_ast::Module;
 
+use super::{HasModule, HasSubmodules};
+
 /// A module and its submodules in the form of a tree.
 #[derive(Debug, Clone)]
 pub struct LexedModule {
@@ -19,4 +21,16 @@ pub struct LexedModule {
 #[derive(Debug, Clone)]
 pub struct LexedSubmodule {
     pub module: LexedModule,
+}
+
+impl HasModule<LexedModule> for LexedSubmodule {
+    fn module(&self) -> &LexedModule {
+        &self.module
+    }
+}
+
+impl HasSubmodules<LexedSubmodule> for LexedModule {
+    fn submodules(&self) -> &Vec<(ModName, LexedSubmodule)> {
+        &self.submodules
+    }
 }

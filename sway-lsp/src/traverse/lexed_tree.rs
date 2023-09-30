@@ -11,7 +11,7 @@ use sway_ast::{
     MatchBranchKind, ModuleKind, Pattern, PatternStructField, Statement, StatementLet,
     StorageField, TraitType, Ty, TypeField, UseTree,
 };
-use sway_core::language::lexed::LexedProgram;
+use sway_core::language::{lexed::LexedProgram, HasSubmodules};
 use sway_types::{Ident, Span, Spanned};
 
 pub fn parse(lexed_program: &LexedProgram, ctx: &ParseContext) {
@@ -25,8 +25,7 @@ pub fn parse(lexed_program: &LexedProgram, ctx: &ParseContext) {
 
     lexed_program
         .root
-        .submodules
-        .par_iter()
+        .submodules_recursive()
         .for_each(|(_, dep)| {
             insert_module_kind(ctx, &dep.module.tree.kind);
             dep.module

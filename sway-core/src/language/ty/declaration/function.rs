@@ -4,10 +4,11 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+use etk_ops::london::Call;
 use sha2::{Digest, Sha256};
 use sway_error::handler::{ErrorEmitted, Handler};
 
-use crate::semantic_analysis::type_check_context::MonomorphizeHelper;
+use crate::{language::CallPath, semantic_analysis::type_check_context::MonomorphizeHelper};
 
 use crate::{
     decl_engine::*,
@@ -31,6 +32,7 @@ pub struct TyFunctionDecl {
     pub parameters: Vec<TyFunctionParameter>,
     pub implementing_type: Option<TyDecl>,
     pub span: Span,
+    pub call_path: CallPath,
     pub attributes: transform::AttributesMap,
     pub type_parameters: Vec<TypeParameter>,
     pub return_type: TypeArgument,
@@ -91,6 +93,7 @@ impl HashWithEngines for TyFunctionDecl {
             purity,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
+            call_path: _,
             span: _,
             attributes: _,
             implementing_type: _,
@@ -249,6 +252,7 @@ impl TyFunctionDecl {
             },
             implementing_type: None,
             span,
+            call_path: CallPath::from(Ident::new_no_span("foo".into())),
             attributes: Default::default(),
             is_contract_call: false,
             parameters: Default::default(),
