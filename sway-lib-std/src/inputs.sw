@@ -18,7 +18,6 @@ use ::tx::{
     tx_type,
 };
 use core::ops::Eq;
-use core::primitive_conversions::*;
 
 const GTF_INPUT_TYPE = 0x101;
 
