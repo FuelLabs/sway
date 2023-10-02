@@ -708,12 +708,12 @@ impl Dependencies {
                 ..
             } => self.gather_from_call_path(abi_name, false, false),
             TypeInfo::Custom {
-                call_path: name,
+                qualified_call_path: name,
                 type_arguments,
                 root_type_id,
             } => {
                 self.deps
-                    .insert(DependentSymbol::Symbol(name.clone().suffix));
+                    .insert(DependentSymbol::Symbol(name.clone().call_path.suffix));
                 let s = match type_arguments {
                     Some(type_arguments) => {
                         self.gather_from_type_arguments(engines, type_arguments)
@@ -881,8 +881,9 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         },
         TypeInfo::Boolean => "bool",
         TypeInfo::Custom {
-            call_path: name, ..
-        } => name.suffix.as_str(),
+            qualified_call_path: name,
+            ..
+        } => name.call_path.suffix.as_str(),
         TypeInfo::Tuple(fields) if fields.is_empty() => "unit",
         TypeInfo::Tuple(..) => "tuple",
         TypeInfo::B256 => "b256",

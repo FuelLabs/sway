@@ -9,7 +9,7 @@ use dashmap::mapref::one::RefMut;
 use sway_core::{
     decl_engine::{id::DeclId, InterfaceDeclId},
     language::{
-        parsed::{ImportType, Supertrait},
+        parsed::{ImportType, QualifiedPathRootTypes, Supertrait},
         ty::{self, GetDeclIdent, TyModule, TyProgram, TySubmodule},
         CallPathTree,
     },
@@ -804,7 +804,7 @@ impl Parse for ty::ImplTrait {
                 implementing_for
                     .call_path_tree
                     .as_ref()
-                    .map(|tree| tree.call_path.suffix.span())
+                    .map(|tree| tree.qualified_call_path.call_path.suffix.span())
                     .unwrap_or(implementing_for.span()),
             );
         }
@@ -1122,12 +1122,13 @@ fn assign_type_to_token(
 
 fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &TypeArgument) {
     let type_info = ctx.engines.te().get(type_arg.type_id);
-    collect_call_path_prefixes(ctx, &tree.call_path.prefixes);
+    collect_qualified_path_root(ctx, tree.qualified_call_path.qualified_path_root.clone());
+    collect_call_path_prefixes(ctx, &tree.qualified_call_path.call_path.prefixes);
     collect_type_id(
         ctx,
         type_arg.type_id,
         &TypedAstToken::TypedArgument(type_arg.clone()),
-        tree.call_path.suffix.span(),
+        tree.qualified_call_path.call_path.suffix.span(),
     );
     match &type_info {
         TypeInfo::Enum(decl_ref) => {
@@ -1156,18 +1157,19 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ty
             // single generic argument to ContractCaller<_> has to be a single ABI
             // definition call path which we can collect without recursion
             if let Some(child_tree) = tree.children.first() {
-                let abi_call_path = &child_tree.call_path;
-                collect_call_path_prefixes(ctx, &abi_call_path.prefixes);
+                let abi_call_path = &child_tree.qualified_call_path;
+                collect_qualified_path_root(ctx, abi_call_path.qualified_path_root.clone());
+                collect_call_path_prefixes(ctx, &abi_call_path.call_path.prefixes);
                 if let Some(mut token) = ctx
                     .tokens
-                    .try_get_mut(&ctx.ident(&abi_call_path.suffix))
+                    .try_get_mut(&ctx.ident(&abi_call_path.call_path.suffix))
                     .try_unwrap()
                 {
                     token.typed = Some(TypedAstToken::TypedArgument(type_arg.clone()));
                     if let Some(abi_def_ident) = ctx
                         .namespace
-                        .submodule(&abi_call_path.prefixes)
-                        .and_then(|module| module.symbols().get(&abi_call_path.suffix))
+                        .submodule(&abi_call_path.call_path.prefixes)
+                        .and_then(|module| module.symbols().get(&abi_call_path.call_path.suffix))
                         .and_then(|decl| decl.get_decl_ident())
                     {
                         token.type_def = Some(TypeDefinition::Ident(abi_def_ident));
@@ -1287,12 +1289,13 @@ fn collect_type_id(
         }
         TypeInfo::Custom {
             type_arguments,
-            call_path: name,
+            qualified_call_path: name,
             root_type_id: _,
         } => {
+            collect_qualified_path_root(ctx, name.qualified_path_root.clone());
             if let Some(token) = ctx
                 .tokens
-                .try_get_mut(&ctx.ident(&Ident::new(name.span())))
+                .try_get_mut(&ctx.ident(&Ident::new(name.call_path.span())))
                 .try_unwrap()
             {
                 assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
@@ -1402,4 +1405,19 @@ fn collect_enum(ctx: &ParseContext, decl_id: &DeclId<ty::TyEnumDecl>, declaratio
     enum_decl.variants.iter().for_each(|variant| {
         variant.parse(ctx);
     });
+}
+
+fn collect_qualified_path_root(
+    ctx: &ParseContext,
+    qualified_path_root: Option<Box<QualifiedPathRootTypes>>,
+) {
+    if let Some(qualified_path_root) = qualified_path_root {
+        collect_type_argument(ctx, &qualified_path_root.ty);
+        collect_type_id(
+            ctx,
+            qualified_path_root.as_trait,
+            &TypedAstToken::Ident(Ident::new(qualified_path_root.as_trait_span.clone())),
+            qualified_path_root.as_trait_span,
+        )
+    }
 }

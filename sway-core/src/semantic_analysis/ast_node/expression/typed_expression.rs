@@ -1193,7 +1193,7 @@ impl ty::TyExpression {
             let before_span = before.span();
             let type_name = before.inner;
             let type_info = type_name_to_type_info_opt(&type_name).unwrap_or(TypeInfo::Custom {
-                call_path: type_name.clone().into(),
+                qualified_call_path: type_name.clone().into(),
                 type_arguments: None,
                 root_type_id: None,
             });
@@ -1406,7 +1406,7 @@ impl ty::TyExpression {
             .last()
             .map(|type_name| {
                 type_name_to_type_info_opt(type_name).unwrap_or(TypeInfo::Custom {
-                    call_path: type_name.clone().into(),
+                    qualified_call_path: type_name.clone().into(),
                     type_arguments: None,
                     root_type_id: None,
                 })

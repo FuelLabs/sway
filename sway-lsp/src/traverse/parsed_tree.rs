@@ -19,12 +19,13 @@ use sway_core::{
             FunctionApplicationExpression, FunctionDeclaration, FunctionParameter, IfExpression,
             ImplItem, ImplSelf, ImplTrait, ImportType, IntrinsicFunctionExpression,
             LazyOperatorExpression, MatchExpression, MethodApplicationExpression, MethodName,
-            ParseModule, ParseProgram, ParseSubmodule, ReassignmentExpression, ReassignmentTarget,
-            Scrutinee, StorageAccessExpression, StorageDeclaration, StorageField,
-            StructDeclaration, StructExpression, StructExpressionField, StructField,
-            StructScrutineeField, SubfieldExpression, Supertrait, TraitDeclaration, TraitFn,
-            TraitItem, TraitTypeDeclaration, TupleIndexExpression, TypeAliasDeclaration,
-            UseStatement, VariableDeclaration, WhileLoopExpression,
+            ParseModule, ParseProgram, ParseSubmodule, QualifiedPathRootTypes,
+            ReassignmentExpression, ReassignmentTarget, Scrutinee, StorageAccessExpression,
+            StorageDeclaration, StorageField, StructDeclaration, StructExpression,
+            StructExpressionField, StructField, StructScrutineeField, SubfieldExpression,
+            Supertrait, TraitDeclaration, TraitFn, TraitItem, TraitTypeDeclaration,
+            TupleIndexExpression, TypeAliasDeclaration, UseStatement, VariableDeclaration,
+            WhileLoopExpression,
         },
         CallPathTree, Literal,
     },
@@ -457,7 +458,7 @@ impl Parse for AmbiguousPathExpression {
             qualified_path_root.ty.parse(ctx);
             collect_type_info_token(
                 ctx,
-                &qualified_path_root.as_trait,
+                &ctx.engines.te().get(qualified_path_root.as_trait),
                 Some(&qualified_path_root.as_trait_span),
             );
         }
@@ -830,13 +831,13 @@ impl Parse for ImplTrait {
 impl Parse for ImplSelf {
     fn parse(&self, ctx: &ParseContext) {
         if let TypeInfo::Custom {
-            call_path,
+            qualified_call_path,
             type_arguments,
             root_type_id: _,
         } = &ctx.engines.te().get(self.implementing_for.type_id)
         {
             ctx.tokens.insert(
-                ctx.ident(&call_path.suffix),
+                ctx.ident(&qualified_call_path.call_path.suffix),
                 Token::from_parsed(
                     AstToken::Declaration(Declaration::ImplSelf(self.clone())),
                     SymbolKind::Struct,
@@ -1095,11 +1096,13 @@ fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: 
             });
         }
         TypeInfo::Custom {
-            call_path,
+            qualified_call_path,
             type_arguments,
             root_type_id: _,
         } => {
-            let ident = call_path.suffix.clone();
+            collect_qualified_path_root(ctx, qualified_call_path.qualified_path_root.clone());
+
+            let ident = qualified_call_path.call_path.suffix.clone();
             let mut token = Token::from_parsed(AstToken::Ident(ident.clone()), symbol_kind);
             token.type_def = Some(TypeDefinition::Ident(ident.clone()));
             ctx.tokens.insert(ctx.ident(&ident), token);
@@ -1127,13 +1130,36 @@ fn collect_call_path_tree(
     token: &Token,
     tokens: &TokenMap,
 ) {
-    tree.call_path.prefixes.par_iter().for_each(|ident| {
-        tokens.insert(ctx.ident(ident), token.clone());
-    });
-    tokens.insert(ctx.ident(&tree.call_path.suffix), token.clone());
+    collect_qualified_path_root(ctx, tree.qualified_call_path.qualified_path_root.clone());
+
+    tree.qualified_call_path
+        .call_path
+        .prefixes
+        .par_iter()
+        .for_each(|ident| {
+            tokens.insert(ctx.ident(ident), token.clone());
+        });
+    tokens.insert(
+        ctx.ident(&tree.qualified_call_path.call_path.suffix),
+        token.clone(),
+    );
     tree.children.par_iter().for_each(|child| {
         collect_call_path_tree(ctx, child, token, tokens);
     });
+}
+
+fn collect_qualified_path_root(
+    ctx: &ParseContext,
+    qualified_path_root: Option<Box<QualifiedPathRootTypes>>,
+) {
+    if let Some(qualified_path_root) = qualified_path_root {
+        qualified_path_root.ty.parse(ctx);
+        collect_type_info_token(
+            ctx,
+            &ctx.engines.te().get(qualified_path_root.as_trait),
+            Some(&qualified_path_root.as_trait_span),
+        )
+    }
 }
 
 fn literal_to_symbol_kind(value: &Literal) -> SymbolKind {

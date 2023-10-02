@@ -304,7 +304,10 @@ impl TyImplTrait {
         let trait_name = CallPath {
             prefixes: vec![],
             suffix: match &type_engine.get(implementing_for.type_id) {
-                TypeInfo::Custom { call_path, .. } => call_path.suffix.clone(),
+                TypeInfo::Custom {
+                    qualified_call_path: call_path,
+                    ..
+                } => call_path.call_path.suffix.clone(),
                 _ => Ident::new_with_override("r#Self".into(), implementing_for.span()),
             },
             is_absolute: false,

@@ -9,6 +9,6 @@ category = "fail"
 # check: $()S::method(); // ambiguous method call here
 # nextln: $()Multiple applicable items in scope.
 # nextln: $()Disambiguate the associated function for candidate #0
-# nextln: $()<S as MySuperTrait>::method(
+# nextln: $()<S as MySuperTrait>::method
 # nextln: $()Disambiguate the associated function for candidate #1
-# nextln: $()<S as MyTrait>::method(
+# nextln: $()<S as MyTrait>::method
