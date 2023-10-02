@@ -57,7 +57,9 @@ impl fmt::Debug for DeclMapping {
 
 impl DeclMapping {
     pub(crate) fn new() -> Self {
-        Self { mapping: Vec::new() }
+        Self {
+            mapping: Vec::new(),
+        }
     }
 
     pub(crate) fn insert(&mut self, k: SourceDecl, v: DestinationDecl) {

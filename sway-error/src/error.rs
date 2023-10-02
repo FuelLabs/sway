@@ -728,9 +728,7 @@ pub enum CompileError {
     #[error("Cannot call ABI supertrait's method as a contract method: \"{fn_name}\"")]
     AbiSupertraitMethodCallAsContractCall { fn_name: Ident, span: Span },
     #[error("\"Self\" is not valid in the self type of an impl block")]
-    SelfIsNotValidAsImplementingFor {
-        span: Span
-    },
+    SelfIsNotValidAsImplementingFor { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {

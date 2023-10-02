@@ -58,8 +58,12 @@ impl TyTraitDecl {
         let self_type = self_type_param.type_id;
 
         // Type check the type parameters.
-        let new_type_parameters =
-            TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters, Some(self_type_param.clone()))?;
+        let new_type_parameters = TypeParameter::type_check_type_params(
+            handler,
+            ctx.by_ref(),
+            type_parameters,
+            Some(self_type_param.clone()),
+        )?;
 
         // Insert them into the current namespace.
         for p in &new_type_parameters {
@@ -135,8 +139,7 @@ impl TyTraitDecl {
                     dummy_interface_surface.push(ty::TyImplItem::Fn(
                         decl_engine
                             .insert(method.to_dummy_func(AbiMode::NonAbi))
-                            .with_parent(decl_engine, (*decl_ref.id()).into())
-                        ,
+                            .with_parent(decl_engine, (*decl_ref.id()).into()),
                     ));
                     new_interface_surface.push(ty::TyTraitInterfaceItem::TraitFn(decl_ref));
                     Some(method.name.clone())

@@ -343,13 +343,7 @@ impl TyDecl {
 
                 // Resolve the type that the type alias replaces
                 let new_ty = ctx
-                    .resolve_type(
-                        handler,
-                        ty.type_id,
-                        &span,
-                        EnforceTypeArguments::Yes,
-                        None,
-                    )
+                    .resolve_type(handler, ty.type_id, &span, EnforceTypeArguments::Yes, None)
                     .unwrap_or_else(|err| {
                         type_engine.insert(engines, TypeInfo::ErrorRecovery(err))
                     });

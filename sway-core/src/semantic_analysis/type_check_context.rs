@@ -41,7 +41,6 @@ pub struct TypeCheckContext<'a> {
     // into a new node during type checking, these fields should be updated using the `with_*`
     // methods which provides a new `TypeCheckContext`, ensuring we don't leak our changes into
     // the parent nodes.
-
     /// While type-checking an expression, this indicates the expected type.
     ///
     /// Assists type inference.
@@ -1238,30 +1237,35 @@ impl<'a> TypeCheckContext<'a> {
     where
         T: MonomorphizeHelper + SubstTypes,
     {
-        fn make_type_arity_mismatch_error(name: Ident, span: Span, given: usize, expected: usize) -> CompileError {
+        fn make_type_arity_mismatch_error(
+            name: Ident,
+            span: Span,
+            given: usize,
+            expected: usize,
+        ) -> CompileError {
             match (expected, given) {
                 (0, 0) => unreachable!(),
                 (_, 0) => CompileError::NeedsTypeArguments { name, span },
                 (0, _) => CompileError::DoesNotTakeTypeArguments { name, span },
                 (_, _) => CompileError::IncorrectNumberOfTypeArguments {
-                        name,
-                        given,
-                        expected,
-                        span
-                    },
+                    name,
+                    given,
+                    expected,
+                    span,
+                },
             }
         }
 
-        match (
-            value.type_parameters().len(),
-            type_arguments.len()
-        ) {
+        match (value.type_parameters().len(), type_arguments.len()) {
             (0, 0) => Ok(TypeSubstMap::default()),
             (num_type_params, 0) => {
                 if let EnforceTypeArguments::Yes = enforce_type_arguments {
-                    return Err(handler.emit_err(
-                        make_type_arity_mismatch_error(value.name().clone(), call_site_span.clone(), 0, num_type_params)
-                    ))
+                    return Err(handler.emit_err(make_type_arity_mismatch_error(
+                        value.name().clone(),
+                        call_site_span.clone(),
+                        0,
+                        num_type_params,
+                    )));
                 }
                 let type_mapping =
                     TypeSubstMap::from_type_parameters(self.engines, value.type_parameters());
@@ -1273,9 +1277,12 @@ impl<'a> TypeCheckContext<'a> {
                     .map(|x| x.span.clone())
                     .reduce(Span::join)
                     .unwrap_or_else(|| value.name().span());
-                Err(handler.emit_err(
-                    make_type_arity_mismatch_error(value.name().clone(), type_arguments_span.clone(), num_type_args, 0)
-                ))
+                Err(handler.emit_err(make_type_arity_mismatch_error(
+                    value.name().clone(),
+                    type_arguments_span.clone(),
+                    num_type_args,
+                    0,
+                )))
             }
             (num_type_params, num_type_args) => {
                 let type_arguments_span = type_arguments
@@ -1291,11 +1298,12 @@ impl<'a> TypeCheckContext<'a> {
                 let num_type_params = num_type_params - adjust_for_trait_decl;
                 let num_type_args = num_type_args - adjust_for_trait_decl;
                 if num_type_params != num_type_args {
-                    return Err(
-                        handler.emit_err(
-                            make_type_arity_mismatch_error(value.name().clone(), type_arguments_span, num_type_args, num_type_params)
-                        ),
-                    );
+                    return Err(handler.emit_err(make_type_arity_mismatch_error(
+                        value.name().clone(),
+                        type_arguments_span,
+                        num_type_args,
+                        num_type_params,
+                    )));
                 }
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = self

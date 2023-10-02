@@ -1,4 +1,7 @@
-use crate::{engine_threading::*, type_system::{priv_prelude::*, unify::occurs_check::OccursCheck}};
+use crate::{
+    engine_threading::*,
+    type_system::{priv_prelude::*, unify::occurs_check::OccursCheck},
+};
 use sway_types::Spanned;
 
 #[derive(Debug)]
@@ -311,9 +314,10 @@ impl<'a> UnifyCheck<'a> {
             Coercion => {
                 match (left_info, right_info) {
                     (r @ UnknownGeneric { .. }, e @ UnknownGeneric { .. })
-                        if TypeInfo::is_self_type(&r)
-                           ||
-                           TypeInfo::is_self_type(&e) => true,
+                        if TypeInfo::is_self_type(&r) || TypeInfo::is_self_type(&e) =>
+                    {
+                        true
+                    }
                     (
                         UnknownGeneric {
                             name: ln,
@@ -326,9 +330,7 @@ impl<'a> UnifyCheck<'a> {
                     ) => ln == rn && rtc.eq(&ltc, self.engines),
                     // any type can be coerced into a generic,
                     // except if the type already contains the generic
-                    (e, g @ UnknownGeneric { .. }) => {
-                        !OccursCheck::new(self.engines).check(g, &e)
-                    }
+                    (e, g @ UnknownGeneric { .. }) => !OccursCheck::new(self.engines).check(g, &e),
 
                     // Let empty enums to coerce to any other type. This is useful for Never enum.
                     (Enum(r_decl_ref), _)
@@ -423,9 +425,7 @@ impl<'a> UnifyCheck<'a> {
                     ) => rtc.eq(&ltc, self.engines),
                     // any type can be coerced into a generic,
                     // except if the type already contains the generic
-                    (e, g @ UnknownGeneric { .. }) => {
-                        !OccursCheck::new(self.engines).check(g, &e)
-                    }
+                    (e, g @ UnknownGeneric { .. }) => !OccursCheck::new(self.engines).check(g, &e),
 
                     (Enum(l_decl_ref), Enum(r_decl_ref)) => {
                         let l_decl = self.engines.de().get_enum(&l_decl_ref);

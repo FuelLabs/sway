@@ -143,4 +143,3 @@ impl SubstTypes for DeclId<TyTraitType> {
         decl_engine.replace(*self, decl);
     }
 }
-

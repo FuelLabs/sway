@@ -144,16 +144,23 @@ impl TypeParameter {
     }
 
     pub(crate) fn insert_self_type_into_namespace(&self, handler: &Handler, ctx: TypeCheckContext) {
-        let type_parameter_decl = ty::TyDecl::GenericTypeForFunctionScope (ty::GenericTypeForFunctionScope {
-            name: self.name_ident.clone(),
-            type_id: self.type_id,
-        });
+        let type_parameter_decl =
+            ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
+                name: self.name_ident.clone(),
+                type_id: self.type_id,
+            });
         let name_a = Ident::new_with_override("self".into(), self.name_ident.span());
         let name_b = Ident::new_with_override("Self".into(), self.name_ident.span());
         let const_shadowing_mode = ctx.const_shadowing_mode();
-        let _ = ctx.namespace
-            .insert_symbol(handler, name_a, type_parameter_decl.clone(), const_shadowing_mode);
-        let _ = ctx.namespace.insert_symbol(handler, name_b, type_parameter_decl, const_shadowing_mode);
+        let _ = ctx.namespace.insert_symbol(
+            handler,
+            name_a,
+            type_parameter_decl.clone(),
+            const_shadowing_mode,
+        );
+        let _ =
+            ctx.namespace
+                .insert_symbol(handler, name_b, type_parameter_decl, const_shadowing_mode);
     }
 
     /// Type check a list of [TypeParameter] and return a new list of
@@ -208,28 +215,43 @@ impl TypeParameter {
         // Another way to incorporate this info would be at the level of unification,
         // we would check that two generic type parameters should unify when
         // the left one is a supertrait of the right one (at least in the NonDynamicEquality mode)
-        fn expand_trait_constraints(handler: &Handler, ctx: &TypeCheckContext, tc: &TraitConstraint) -> Vec<TraitConstraint> {
-            match ctx.namespace.resolve_call_path(handler, ctx.engines, &tc.trait_name).ok() {
+        fn expand_trait_constraints(
+            handler: &Handler,
+            ctx: &TypeCheckContext,
+            tc: &TraitConstraint,
+        ) -> Vec<TraitConstraint> {
+            match ctx
+                .namespace
+                .resolve_call_path(handler, ctx.engines, &tc.trait_name)
+                .ok()
+            {
                 Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
                     let trait_decl = ctx.engines.de().get_trait(&decl_id);
-                    let mut result =
-                        trait_decl.supertraits.iter().flat_map(|supertrait|
-                            expand_trait_constraints(handler, ctx,
+                    let mut result = trait_decl
+                        .supertraits
+                        .iter()
+                        .flat_map(|supertrait| {
+                            expand_trait_constraints(
+                                handler,
+                                ctx,
                                 &TraitConstraint {
                                     trait_name: supertrait.name.clone(),
                                     type_arguments: tc.type_arguments.clone(),
-                                }
-                            )).collect::<Vec<TraitConstraint>>();
+                                },
+                            )
+                        })
+                        .collect::<Vec<TraitConstraint>>();
                     result.push(tc.clone());
                     result
                 }
-                _ => vec![tc.clone()]
+                _ => vec![tc.clone()],
             }
         }
 
-        let mut trait_constraints_with_supertraits: Vec<TraitConstraint> = trait_constraints.iter().flat_map(|tc| {
-            expand_trait_constraints(handler, &ctx, tc)
-        }).collect();
+        let mut trait_constraints_with_supertraits: Vec<TraitConstraint> = trait_constraints
+            .iter()
+            .flat_map(|tc| expand_trait_constraints(handler, &ctx, tc))
+            .collect();
 
         // Type check the trait constraints.
         for trait_constraint in trait_constraints_with_supertraits.iter_mut() {

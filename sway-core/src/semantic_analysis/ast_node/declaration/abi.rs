@@ -5,10 +5,10 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     decl_engine::{DeclEngineInsert, DeclId},
-    TypeParameter,
     language::ty::TyAbiDecl,
     namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
     semantic_analysis::{TypeCheckFinalization, TypeCheckFinalizationContext},
+    TypeParameter,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 
@@ -51,7 +51,7 @@ impl ty::TyAbiDecl {
             .scoped(&mut abi_namespace)
             .with_abi_mode(AbiMode::ImplAbiFn(name.clone(), None));
 
-           // Insert the "self" type param into the namespace.
+        // Insert the "self" type param into the namespace.
         let self_type_param = TypeParameter::new_self_type(ctx.engines, name.span());
         let self_type_id = self_type_param.type_id;
         self_type_param.insert_self_type_into_namespace(handler, ctx.by_ref());

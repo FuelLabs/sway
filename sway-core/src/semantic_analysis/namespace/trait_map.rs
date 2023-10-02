@@ -972,7 +972,7 @@ impl TraitMap {
         let relevant_impld_traits_names: BTreeSet<Ident> =
             relevant_impld_traits.keys().cloned().collect();
 
-                // dbg!(&try_inserting_trait_impl_on_failure);
+        // dbg!(&try_inserting_trait_impl_on_failure);
         handler.scope(|handler| {
             for trait_name in required_traits_names.difference(&relevant_impld_traits_names) {
                 if matches!(

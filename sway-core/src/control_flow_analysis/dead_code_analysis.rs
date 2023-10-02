@@ -922,7 +922,10 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
     for fn_param in fn_decl.parameters.iter() {
         let fn_param_node = graph.add_node(ControlFlowGraphNode::FunctionParameter {
             param_name: fn_param.name.clone(),
-            is_self: engines.te().get(fn_param.type_argument.initial_type_id).is_self_type(),
+            is_self: engines
+                .te()
+                .get(fn_param.type_argument.initial_type_id)
+                .is_self_type(),
         });
         graph.add_edge(entry_node, fn_param_node, "".into());
 

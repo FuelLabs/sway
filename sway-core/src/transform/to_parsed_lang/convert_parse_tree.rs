@@ -1262,7 +1262,9 @@ fn fn_args_to_function_parameters(
                 (Some(reference), None) => reference.span(),
                 (Some(reference), Some(mutable)) => Span::join(reference.span(), mutable.span()),
             };
-            let type_id = engines.te().insert(engines, TypeInfo::new_self_type(self_token.span()));
+            let type_id = engines
+                .te()
+                .insert(engines, TypeInfo::new_self_type(self_token.span()));
             let mut function_parameters = vec![FunctionParameter {
                 name: Ident::new(self_token.span()),
                 is_reference: ref_self.is_some(),

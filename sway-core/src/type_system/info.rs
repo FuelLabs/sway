@@ -1124,9 +1124,8 @@ impl TypeInfo {
         span: &Span,
     ) -> Result<(), ErrorEmitted> {
         if TypeInfo::is_self_type(self) {
-            return Err(handler.emit_err(CompileError::SelfIsNotValidAsImplementingFor{
-                span: span.clone()
-            }))
+            return Err(handler
+                .emit_err(CompileError::SelfIsNotValidAsImplementingFor { span: span.clone() }));
         }
         match self {
             TypeInfo::UnsignedInteger(_)

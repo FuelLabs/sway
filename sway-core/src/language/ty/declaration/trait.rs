@@ -5,9 +5,8 @@ use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     decl_engine::{
-        DeclRefConstant, DeclRefFunction, DeclRefTraitFn, DeclRefTraitType,
-        ReplaceFunctionImplementingType,
-        mapping::DeclMapping, DeclEngineReplace,
+        mapping::DeclMapping, DeclEngineReplace, DeclRefConstant, DeclRefFunction, DeclRefTraitFn,
+        DeclRefTraitType, ReplaceFunctionImplementingType,
     },
     engine_threading::*,
     language::{parsed, Visibility},

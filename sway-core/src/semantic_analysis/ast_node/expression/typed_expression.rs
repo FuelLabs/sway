@@ -1433,14 +1433,12 @@ impl ty::TyExpression {
             Err(_) => return None,
         };
 
-        let const_decl_ref = match ctx.find_constant_for_type(
-            const_probe_handler,
-            struct_type_id.unwrap(),
-            &suffix,
-        ) {
-            Ok(Some(val)) => val,
-            Ok(None) | Err(_) => return None,
-        };
+        let const_decl_ref =
+            match ctx.find_constant_for_type(const_probe_handler, struct_type_id.unwrap(), &suffix)
+            {
+                Ok(Some(val)) => val,
+                Ok(None) | Err(_) => return None,
+            };
 
         Some((const_decl_ref, call_path_binding.clone()))
     }

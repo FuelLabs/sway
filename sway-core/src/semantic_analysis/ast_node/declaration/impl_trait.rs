@@ -54,8 +54,12 @@ impl TyImplTrait {
         let self_type_id = self_type_param.type_id;
 
         // Type check the type parameters
-        let new_impl_type_parameters =
-            TypeParameter::type_check_type_params(handler, ctx.by_ref(), impl_type_parameters, Some(self_type_param))?;
+        let new_impl_type_parameters = TypeParameter::type_check_type_params(
+            handler,
+            ctx.by_ref(),
+            impl_type_parameters,
+            Some(self_type_param),
+        )?;
 
         // Insert them into the current namespace.
         for p in &new_impl_type_parameters {
@@ -64,8 +68,13 @@ impl TyImplTrait {
 
         // resolve the types of the trait type arguments
         for type_arg in trait_type_arguments.iter_mut() {
-            type_arg.type_id =
-                ctx.resolve_type(handler, type_arg.type_id, &type_arg.span, EnforceTypeArguments::Yes, None)?;
+            type_arg.type_id = ctx.resolve_type(
+                handler,
+                type_arg.type_id,
+                &type_arg.span,
+                EnforceTypeArguments::Yes,
+                None,
+            )?;
         }
 
         // type check the type that we are implementing for
@@ -101,7 +110,7 @@ impl TyImplTrait {
                 self_type_id,
                 &implementing_for.span,
                 "",
-                None
+                None,
             );
             Ok(())
         })?;
@@ -121,7 +130,9 @@ impl TyImplTrait {
 
                 // the following essentially is needed to map `Self` to `implementing_for`
                 // during trait decl monomorphization
-                trait_decl.type_parameters.push(trait_decl.self_type.clone());
+                trait_decl
+                    .type_parameters
+                    .push(trait_decl.self_type.clone());
                 trait_type_arguments.push(implementing_for.clone());
 
                 // monomorphize the trait declaration
@@ -129,7 +140,6 @@ impl TyImplTrait {
                     handler,
                     &mut trait_decl,
                     &mut trait_type_arguments,
-
                     EnforceTypeArguments::Yes,
                     &trait_name.span(),
                 )?;
@@ -207,7 +217,7 @@ impl TyImplTrait {
                         self_type_param.type_id,
                         &implementing_for.span,
                         "",
-                        None
+                        None,
                     );
                     Ok(())
                 })?;
@@ -299,8 +309,12 @@ impl TyImplTrait {
         };
 
         // Type check the type parameters.
-        let new_impl_type_parameters =
-            TypeParameter::type_check_type_params(handler, ctx.by_ref(), impl_type_parameters, Some(self_type_param))?;
+        let new_impl_type_parameters = TypeParameter::type_check_type_params(
+            handler,
+            ctx.by_ref(),
+            impl_type_parameters,
+            Some(self_type_param),
+        )?;
 
         // Insert them into the current namespace.
         for p in &new_impl_type_parameters {
@@ -346,7 +360,7 @@ impl TyImplTrait {
                 self_type_id,
                 &implementing_for.span,
                 "",
-                None
+                None,
             );
             Ok(())
         })?;
@@ -1296,7 +1310,12 @@ fn handle_supertraits(
                     // Retrieve the interface surfaces and implemented methods for
                     // the supertraits of this type.
                     let (next_interface_supertrait_decl_refs, next_these_supertrait_decl_refs) =
-                        match handle_supertraits(handler, ctx.by_ref(), self_type, &trait_decl.supertraits) {
+                        match handle_supertraits(
+                            handler,
+                            ctx.by_ref(),
+                            self_type,
+                            &trait_decl.supertraits,
+                        ) {
                             Ok(res) => res,
                             Err(_) => continue,
                         };

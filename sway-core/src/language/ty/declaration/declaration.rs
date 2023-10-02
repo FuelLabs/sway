@@ -575,16 +575,14 @@ impl TyDecl {
             }
             // `Self` type parameter might resolve to an Enum
             TyDecl::GenericTypeForFunctionScope(GenericTypeForFunctionScope {
-                type_id,
-                ..
-            }) =>
-                match engines.te().get(*type_id) {
-                    TypeInfo::Enum(r) => Ok(r),
-                    _ => Err(handler.emit_err(CompileError::DeclIsNotAnEnum {
-                                                  actually: self.friendly_type_name().to_string(),
-                                                  span: self.span()
-                                              }))
-                },
+                type_id, ..
+            }) => match engines.te().get(*type_id) {
+                TypeInfo::Enum(r) => Ok(r),
+                _ => Err(handler.emit_err(CompileError::DeclIsNotAnEnum {
+                    actually: self.friendly_type_name().to_string(),
+                    span: self.span(),
+                })),
+            },
             TyDecl::ErrorRecovery(_, err) => Err(*err),
             decl => Err(handler.emit_err(CompileError::DeclIsNotAnEnum {
                 actually: decl.friendly_type_name().to_string(),
