@@ -4,7 +4,6 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use etk_ops::london::Call;
 use sha2::{Digest, Sha256};
 use sway_error::handler::{ErrorEmitted, Handler};
 

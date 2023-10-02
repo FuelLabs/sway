@@ -9,7 +9,7 @@ use crate::{
         ReplaceFunctionImplementingType,
     },
     engine_threading::*,
-    language::{parsed, Visibility},
+    language::{parsed, CallPath, Visibility},
     semantic_analysis::type_check_context::MonomorphizeHelper,
     semantic_analysis::{TypeCheckFinalization, TypeCheckFinalizationContext},
     transform,
@@ -27,6 +27,7 @@ pub struct TyTraitDecl {
     pub supertraits: Vec<parsed::Supertrait>,
     pub visibility: Visibility,
     pub attributes: transform::AttributesMap,
+    pub call_path: CallPath,
     pub span: Span,
 }
 
@@ -81,6 +82,7 @@ impl HashWithEngines for TyTraitDecl {
             // reliable source of obj v. obj distinction
             attributes: _,
             span: _,
+            call_path: _,
         } = self;
         name.hash(state);
         type_parameters.hash(state, engines);

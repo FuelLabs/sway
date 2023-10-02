@@ -6,6 +6,7 @@ use crate::{
     language::{
         parsed,
         ty::{self, TyDecl},
+        CallPath,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
     semantic_analysis::{
@@ -358,6 +359,7 @@ impl TyDecl {
                 // create the type alias decl using the resolved type above
                 let decl = ty::TyTypeAliasDecl {
                     name: name.clone(),
+                    call_path: CallPath::from(name.clone()).to_fullpath(ctx.namespace),
                     attributes: decl.attributes,
                     ty: TypeArgument {
                         initial_type_id: ty.initial_type_id,

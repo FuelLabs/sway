@@ -4,8 +4,6 @@ use crate::{Ident, Namespace};
 
 use sway_types::{span::Span, Spanned};
 
-use super::ty::TyDecl;
-
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct CallPathTree {
     pub call_path: CallPath,
