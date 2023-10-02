@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use crate::{
     capabilities::{code_actions::CodeActionContext, diagnostic::DiagnosticData},
-    core::token::TypedAstToken,
+    core::{
+        session,
+        token::{AstToken, TypedAstToken},
+    },
 };
 use lsp_types::{
     CodeAction as LspCodeAction, CodeActionKind, CodeActionOrCommand, Range, TextEdit,

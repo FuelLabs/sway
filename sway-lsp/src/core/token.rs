@@ -120,7 +120,7 @@ pub enum SymbolKind {
     /// Emitted for traits.
     Trait,
     /// Emitted for associated types.
-    TraiType,
+    TraitType,
     /// Emitted for type aliases.
     TypeAlias,
     /// Emitted for type parameters.

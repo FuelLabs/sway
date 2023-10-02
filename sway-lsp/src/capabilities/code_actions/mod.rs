@@ -36,6 +36,7 @@ pub(crate) struct CodeActionContext<'a> {
     tokens: &'a TokenMap,
     token: &'a Token,
     uri: &'a Url,
+    temp_uri: &'a Url,
     diagnostics: &'a Vec<Diagnostic>,
 }
 
@@ -56,6 +57,7 @@ pub fn code_actions(
         tokens: session.token_map(),
         token: &token,
         uri,
+        temp_uri,
         diagnostics,
     };
 

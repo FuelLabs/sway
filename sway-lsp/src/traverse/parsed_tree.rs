@@ -906,7 +906,7 @@ impl Parse for TraitTypeDeclaration {
             ctx.ident(&self.name),
             Token::from_parsed(
                 AstToken::Declaration(Declaration::TraitTypeDeclaration(self.clone())),
-                SymbolKind::TraiType,
+                SymbolKind::TraitType,
             ),
         );
         if let Some(ty) = &self.ty_opt {

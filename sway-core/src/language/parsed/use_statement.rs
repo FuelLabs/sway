@@ -1,5 +1,5 @@
 use crate::parsed::Span;
-use sway_types::ident::Ident;
+use sway_types::{ident::Ident, Spanned};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ImportType {
