@@ -124,6 +124,8 @@ async fn did_change_stress_test() {
         let _ = lsp::did_change_request(&mut service, &uri).await;
         let metrics = lsp::metrics_request(&mut service, &uri).await;
         for (path, metrics) in metrics {
+            eprintln!("metrics req: {:#?}", metrics);
+
             if path.contains("sway-lib-core") || path.contains("sway-lib-std") {
                 assert!(metrics.reused_modules >= 1);
             }

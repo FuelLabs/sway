@@ -3,6 +3,7 @@ library;
 mod data_structures;
 use data_structures::{Foo, Line, Point, TupleInStruct};
 
+
 fn hardcoded_instantiation() -> Foo {
     // Instantiate `foo` as `Foo`
     let mut foo = Foo {

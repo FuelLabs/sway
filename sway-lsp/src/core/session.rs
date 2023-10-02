@@ -66,7 +66,7 @@ pub struct ParseResult {
     pub(crate) diagnostics: (Vec<CompileError>, Vec<CompileWarning>),
     pub(crate) token_map: TokenMap,
     pub(crate) metrics_map: MetricsMap,
-    pub(crate) engines: Engines,
+    // pub(crate) engines: Engines,
     pub(crate) lexed: LexedProgram,
     pub(crate) parsed: ParseProgram,
     pub(crate) typed: ty::TyProgram,
@@ -156,7 +156,7 @@ impl Session {
         self.runnables.clear();
         self.metrics.clear();
 
-        *self.engines.write() = res.engines;
+        // *self.engines.write() = res.engines;
         res.token_map.deref().iter().for_each(|item| {
             let (s, t) = item.pair();
             self.token_map.insert(s.clone(), t.clone());
@@ -533,8 +533,8 @@ pub fn traverse(
 }
 
 /// Parses the project and returns true if the compiler diagnostics are new and should be published.
-pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
-    let engines = Engines::default();
+pub fn parse_project(uri: &Url, engines: &Engines) -> Result<ParseResult, LanguageServerError> {
+    //let engines = Engines::default();
     let results = compile(uri, &engines)?;
     let TraversalResult {
         diagnostics,
@@ -547,7 +547,7 @@ pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
         diagnostics,
         token_map,
         metrics_map,
-        engines,
+        // engines,
         lexed,
         parsed,
         typed,
@@ -619,7 +619,8 @@ mod tests {
     fn parse_project_returns_manifest_file_not_found() {
         let dir = get_absolute_path("sway-lsp/tests/fixtures");
         let uri = get_url(&dir);
-        let result = parse_project(&uri).expect_err("expected ManifestFileNotFound");
+        let session = Session::new();
+        let result = parse_project(&uri, &session.engines.write()).expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(
