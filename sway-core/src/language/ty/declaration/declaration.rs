@@ -705,7 +705,7 @@ impl TyDecl {
     }
 
     /// friendly name string used for error reporting,
-    /// which consists of the the identifier for the declaration.
+    /// which consists of the identifier for the declaration.
     pub fn friendly_name(&self, engines: &Engines) -> String {
         let decl_engine = engines.de();
         let type_engine = engines.te();
