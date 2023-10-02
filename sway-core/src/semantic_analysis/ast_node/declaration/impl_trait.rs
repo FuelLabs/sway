@@ -1113,6 +1113,7 @@ fn type_check_const_decl(
     Ok(const_decl)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn type_check_type_decl(
     handler: &Handler,
     mut ctx: TypeCheckContext,
