@@ -1,7 +1,7 @@
 library;
 
 use ::bytes::Bytes;
-use ::option::Option;
+use ::option::Option::{self, *};
 use ::storage::storable_slice::*;
 use ::storage::storage_api::read;
 use ::string::String;
@@ -78,10 +78,10 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     #[storage(read)]
     fn read_slice(self) -> Option<String> {
         match read_slice(self.slot) {
-            Option::Some(slice) => {
-                Option::Some(String::from(slice))
+            Some(slice) => {
+                Some(String::from(slice))
             },
-            Option::None => Option::None,
+            None => None,
         }
     }
 
