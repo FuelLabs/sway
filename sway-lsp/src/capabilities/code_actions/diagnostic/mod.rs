@@ -5,7 +5,7 @@ use crate::{
         code_actions::{diagnostic, CodeAction, CodeActionContext},
         diagnostic::DiagnosticData,
     },
-    core::token::{TypeDefinition, TypedAstToken},
+    core::token::{AstToken, TypeDefinition, TypedAstToken},
 };
 use lsp_types::{
     CodeAction as LspCodeAction, CodeActionKind, CodeActionOrCommand, Range, TextEdit,
@@ -14,6 +14,7 @@ use lsp_types::{
 use serde_json::Value;
 use sway_core::{
     language::{
+        parsed::Declaration,
         ty::{self, ConstantDecl, TyDecl},
         CallPath,
     },
@@ -74,16 +75,11 @@ fn import_code_action(
                             //     let call_path = trait_decl.call_path.to_import_path(&namespace);
                             //     Some(call_path)
                             // }
-                            // TyDecl::FunctionDecl(decl) => {
-                            //     let function_decl = ctx.engines.de().get_function(&decl.decl_id);
-                            //     eprintln!("fn decl call_path: {:?}", function_decl.call_path);
-                            //     let call_path = function_decl.call_path.to_import_path(&namespace);
-                            //     eprintln!("fn call_path: {:?}", call_path);
-                            //     Some(call_path)
-                            // }
                             // TyDecl::TypeAliasDecl(decl) => {
-                            //     let type_alias_decl = ctx.engines.de().get_type_alias(&decl.decl_id);
-                            //     let call_path = type_alias_decl.call_path.to_import_path(&namespace);
+                            //     let type_alias_decl =
+                            //         ctx.engines.de().get_type_alias(&decl.decl_id);
+                            //     let call_path =
+                            //         type_alias_decl.call_path.to_import_path(&namespace);
                             //     Some(call_path)
                             // }
                             _ => None, // TODO: other types

@@ -16,7 +16,7 @@ use sway_core::{
     type_system::TypeArgument,
     TraitConstraint, TypeId, TypeInfo,
 };
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Named, Span, Spanned};
 use sway_utils::iter_prefixes;
 
 pub struct TypedTree<'a> {
@@ -268,10 +268,10 @@ impl Parse for ty::TyExpression {
             }
             ty::TyExpressionVariant::ConstantExpression {
                 ref const_decl,
-                span,
                 call_path,
+                ..
             } => {
-                collect_const_decl(ctx, const_decl, span);
+                collect_const_decl(ctx, const_decl);
                 if let Some(call_path) = call_path {
                     collect_call_path_prefixes(ctx, &call_path.prefixes);
                 }
@@ -594,7 +594,7 @@ impl Parse for ty::TyVariableDecl {
 impl Parse for ty::ConstantDecl {
     fn parse(&self, ctx: &ParseContext) {
         let const_decl = ctx.engines.de().get_constant(&self.decl_id);
-        collect_const_decl(ctx, &const_decl, &self.decl_span);
+        collect_const_decl(ctx, &const_decl);
     }
 }
 
@@ -677,7 +677,7 @@ impl Parse for ty::TraitDecl {
                 }
                 ty::TyTraitInterfaceItem::Constant(decl_ref) => {
                     let constant = ctx.engines.de().get_constant(decl_ref);
-                    collect_const_decl(ctx, &constant, &decl_ref.span());
+                    collect_const_decl(ctx, &constant);
                 }
                 ty::TyTraitInterfaceItem::Type(decl_ref) => {
                     let trait_type = ctx.engines.de().get_type(decl_ref);
@@ -785,7 +785,7 @@ impl Parse for ty::ImplTrait {
             }
             ty::TyTraitItem::Constant(const_ref) => {
                 let constant = ctx.engines.de().get_constant(const_ref);
-                collect_const_decl(ctx, &constant, &const_ref.span());
+                collect_const_decl(ctx, &constant);
             }
             ty::TyTraitItem::Type(type_ref) => {
                 let trait_type = ctx.engines.de().get_type(type_ref);
@@ -834,7 +834,7 @@ impl Parse for ty::AbiDecl {
                 }
                 ty::TyTraitInterfaceItem::Constant(const_ref) => {
                     let constant = ctx.engines.de().get_constant(const_ref);
-                    collect_const_decl(ctx, &constant, &const_ref.span());
+                    collect_const_decl(ctx, &constant);
                 }
                 ty::TyTraitInterfaceItem::Type(type_ref) => {
                     let trait_type = ctx.engines.de().get_type(type_ref);
@@ -1195,10 +1195,10 @@ fn collect_call_path_prefixes(ctx: &ParseContext, prefixes: &[Ident]) {
     }
 }
 
-fn collect_const_decl(ctx: &ParseContext, const_decl: &ty::TyConstantDecl, span: &Span) {
+fn collect_const_decl(ctx: &ParseContext, const_decl: &ty::TyConstantDecl) {
     if let Some(mut token) = ctx
         .tokens
-        .try_get_mut(&ctx.ident(&Ident::new(span.clone())))
+        .try_get_mut(&ctx.ident(const_decl.name()))
         .try_unwrap()
     {
         token.typed = Some(TypedAstToken::TypedConstantDeclaration(const_decl.clone()));
