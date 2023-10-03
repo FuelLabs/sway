@@ -657,7 +657,7 @@ fn type_check_trait_implementation(
         }
     }
 
-    let mut all_items_refs: Vec<TyImplItem> = impld_item_refs.values().cloned().collect();
+    let all_items_refs_temp: Vec<TyImplItem> = impld_item_refs.values().cloned().collect();
 
     // Retrieve the methods defined on the trait declaration and transform
     // them into the correct typing for this impl block by using the type
@@ -684,6 +684,28 @@ fn type_check_trait_implementation(
         BTreeMap::new(),
         impld_item_refs,
     );
+
+    let mut all_items_refs: Vec<TyImplItem> = vec![];
+    for item in all_items_refs_temp.iter() {
+        match item {
+            TyImplItem::Fn(decl_ref) => {
+                let mut method = decl_engine.get_function(decl_ref);
+                method.replace_decls(&decl_mapping, handler, &mut ctx)?;
+                all_items_refs.push(TyImplItem::Fn(
+                    decl_engine
+                        .insert(method)
+                        .with_parent(decl_engine, (*decl_ref.id()).into()),
+                ));
+            }
+            TyImplItem::Constant(decl_ref) => {
+                let mut const_decl = decl_engine.get_constant(decl_ref);
+                const_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
+                all_items_refs.push(TyImplItem::Constant(decl_engine.insert(const_decl)));
+            }
+            TyImplItem::Type(_) => all_items_refs.push(item.clone()),
+        }
+    }
+
     for item in trait_items.iter() {
         match item {
             TyImplItem::Fn(decl_ref) => {
