@@ -394,7 +394,7 @@ fn test_hasher_sha256_str_array() {
     let mut hasher = Hasher::new();
     hasher.write_str("Fastest Modular Execution Layer!");
     let sha256 = hasher.sha256();
-    assert(sha256 != 0x4a3cd7c8b44dbf7941e55179425f746adeaa97fe2d99b571fffee78e9b41743c);
+    assert(sha256 == 0x4a3cd7c8b44dbf7941e55179425f746adeaa97fe2d99b571fffee78e9b41743c);
 }
 
 // The hashes for the following test can be obtained in Rust by running the following script:
