@@ -482,6 +482,8 @@ pub fn parsed_to_ast(
         Err(e) => return Err(e),
     };
 
+    typed_program.check_deprecated(engines, handler);
+
     // Collect information about the types used in this program
     let types_metadata_result = typed_program
         .collect_types_metadata(handler, &mut CollectTypesMetadataContext::new(engines));

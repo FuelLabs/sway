@@ -11,7 +11,7 @@ use crate::{
     engine_threading::*,
     language::{parsed::TreeType, ty::*, Visibility},
     semantic_analysis::{TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext},
-    transform::AttributeKind,
+    transform::{AllowDeprecatedState, AttributeKind},
     type_system::*,
     types::*,
 };
@@ -333,6 +333,75 @@ impl TyAstNode {
             }
             TyAstNodeContent::SideEffect(_) => TypeInfo::Tuple(Vec::new()),
             TyAstNodeContent::Error(_, error) => TypeInfo::ErrorRecovery(*error),
+        }
+    }
+
+    pub(crate) fn check_deprecated(
+        &self,
+        engines: &Engines,
+        handler: &Handler,
+        allow_deprecated: &mut AllowDeprecatedState,
+    ) {
+        match &self.content {
+            TyAstNodeContent::Declaration(node) => match node {
+                TyDecl::VariableDecl(decl) => {
+                    decl.body
+                        .check_deprecated(engines, handler, allow_deprecated);
+                }
+                TyDecl::ConstantDecl(decl) => {
+                    let decl = engines.de().get(&decl.decl_id);
+                    if let Some(value) = decl.value {
+                        value.check_deprecated(engines, handler, allow_deprecated);
+                    }
+                }
+                TyDecl::TraitTypeDecl(_) => {}
+                TyDecl::FunctionDecl(decl) => {
+                    let decl = engines.de().get(&decl.decl_id);
+                    let token = allow_deprecated.enter(decl.attributes);
+                    for node in decl.body.contents.iter() {
+                        node.check_deprecated(engines, handler, allow_deprecated);
+                    }
+                    allow_deprecated.exit(token);
+                }
+                TyDecl::ImplTrait(decl) => {
+                    let decl = engines.de().get(&decl.decl_id);
+                    for item in decl.items.iter() {
+                        match item {
+                            TyTraitItem::Fn(item) => {
+                                let decl = engines.de().get(item.id());
+                                let token = allow_deprecated.enter(decl.attributes);
+                                for node in decl.body.contents.iter() {
+                                    node.check_deprecated(engines, handler, allow_deprecated);
+                                }
+                                allow_deprecated.exit(token);
+                            }
+                            TyTraitItem::Constant(item) => {
+                                let decl = engines.de().get(item.id());
+                                if let Some(expr) = decl.value.as_ref() {
+                                    expr.check_deprecated(engines, handler, allow_deprecated);
+                                }
+                            }
+                            TyTraitItem::Type(_) => {}
+                        }
+                    }
+                }
+                TyDecl::AbiDecl(_)
+                | TyDecl::GenericTypeForFunctionScope(_)
+                | TyDecl::ErrorRecovery(_, _)
+                | TyDecl::StorageDecl(_)
+                | TyDecl::TraitDecl(_)
+                | TyDecl::StructDecl(_)
+                | TyDecl::EnumDecl(_)
+                | TyDecl::EnumVariantDecl(_)
+                | TyDecl::TypeAliasDecl(_) => {}
+            },
+            TyAstNodeContent::Expression(node) => {
+                node.check_deprecated(engines, handler, allow_deprecated);
+            }
+            TyAstNodeContent::ImplicitReturnExpression(node) => {
+                node.check_deprecated(engines, handler, allow_deprecated);
+            }
+            TyAstNodeContent::SideEffect(_) | TyAstNodeContent::Error(_, _) => {}
         }
     }
 }
