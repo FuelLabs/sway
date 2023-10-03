@@ -49,8 +49,8 @@ impl<'a, 'e> Parser<'a, 'e> {
                     (self.full_span.end() + 1).saturating_sub(trim_offset),
                     self.full_span.source_id().cloned(),
                 )
+                .unwrap_or(Span::dummy())
             }
-            .unwrap(),
         };
         self.emit_error_with_span(kind, span)
     }
