@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-2E375B78114C5D9B"
+
+[[package]]
+name = "deprecated"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-2E375B78114C5D9B"
+dependencies = ["core"]

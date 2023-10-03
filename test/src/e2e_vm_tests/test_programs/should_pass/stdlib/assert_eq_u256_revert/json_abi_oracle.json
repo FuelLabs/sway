@@ -2,7 +2,14 @@
   "configurables": [],
   "functions": [
     {
-      "attributes": null,
+      "attributes": [
+        {
+          "arguments": [
+            "deprecated"
+          ],
+          "name": "allow"
+        }
+      ],
       "inputs": [],
       "name": "main",
       "output": {

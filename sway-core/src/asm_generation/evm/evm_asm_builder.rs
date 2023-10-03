@@ -176,7 +176,7 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
         self.setup_free_memory_pointer(&mut s);
 
         if is_payable {
-            // Get the the amount of ETH transferred to the contract by the parent contract,
+            // Get the amount of ETH transferred to the contract by the parent contract,
             // or by a transaction and check for a non-payable contract. Revert if caller
             // sent ether.
             //

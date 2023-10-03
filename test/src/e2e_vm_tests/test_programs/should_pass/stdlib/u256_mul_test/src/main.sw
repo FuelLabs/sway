@@ -2,6 +2,7 @@ script;
 
 use std::u256::U256;
 
+#[allow(deprecated)]
 fn main() -> bool {
     let _zero = U256::from((0, 0, 0, 0));
     let _one = U256::from((0, 0, 0, 1));
