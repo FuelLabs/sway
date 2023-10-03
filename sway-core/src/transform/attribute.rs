@@ -11,12 +11,12 @@
 //!
 //!   #[foo(bar, baz, xyzzy)]
 //!
-//! but no uniquing is done so
+//! and duplicates like
 //!
 //!   #[foo(bar)]
 //!   #[foo(bar)]
 //!
-//! is
+//! are equivalent to
 //!
 //!   #[foo(bar, bar)]
 
@@ -68,7 +68,7 @@ pub enum AttributeKind {
 }
 
 impl AttributeKind {
-    // Returns tuple with the mininum and maximum number of expected args
+    // Returns tuple with the minimum and maximum number of expected args
     // None can be returned in the second position of the tuple if there is no maximum
     pub fn expected_args_len_min_max(self) -> (usize, Option<usize>) {
         match self {
@@ -158,7 +158,7 @@ impl AllowDeprecatedState {
         if let Some(all_allows) = attributes.get(&AttributeKind::Allow) {
             for allow in all_allows {
                 for arg in allow.args.iter() {
-                    if arg.name.as_str() == "deprecated" {
+                    if arg.name.as_str() == ALLOW_DEPRECATED_NAME {
                         self.allowed += 1;
                         return AllowDeprecatedEnterToken { diff: -1 };
                     }

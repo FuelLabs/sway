@@ -435,6 +435,7 @@ impl TyExpression {
     }
 
     // Checks if this expression references a deprecated item
+    // TODO: Change this fn for more deprecated checks.
     pub(crate) fn check_deprecated(
         &self,
         engines: &Engines,
