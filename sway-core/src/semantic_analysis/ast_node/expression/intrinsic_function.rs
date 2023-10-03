@@ -209,10 +209,9 @@ fn type_check_size_of_type(
         .unwrap_or_else(TypeInfo::ErrorRecovery);
     let initial_type_id = type_engine.insert(engines, initial_type_info);
     let type_id = ctx
-        .resolve_type_with_self(
+        .resolve_type(
             handler,
             initial_type_id,
-            ctx.self_type(),
             &targ.span,
             EnforceTypeArguments::Yes,
             None,
@@ -262,10 +261,9 @@ fn type_check_is_reference_type(
         .unwrap_or_else(TypeInfo::ErrorRecovery);
     let initial_type_id = type_engine.insert(engines, initial_type_info);
     let type_id = ctx
-        .resolve_type_with_self(
+        .resolve_type(
             handler,
             initial_type_id,
-            ctx.self_type(),
             &targ.span,
             EnforceTypeArguments::Yes,
             None,
@@ -316,10 +314,9 @@ fn type_check_assert_is_str_array(
         .unwrap_or_else(TypeInfo::ErrorRecovery);
     let initial_type_id = type_engine.insert(engines, initial_type_info);
     let type_id = ctx
-        .resolve_type_with_self(
+        .resolve_type(
             handler,
             initial_type_id,
-            ctx.self_type(),
             &targ.span,
             EnforceTypeArguments::Yes,
             None,
@@ -509,10 +506,9 @@ fn type_check_gtf(
         .unwrap_or_else(TypeInfo::ErrorRecovery);
     let initial_type_id = type_engine.insert(engines, initial_type_info);
     let type_id = ctx
-        .resolve_type_with_self(
+        .resolve_type(
             handler,
             initial_type_id,
-            ctx.self_type(),
             &targ.span,
             EnforceTypeArguments::Yes,
             None,
@@ -741,10 +737,9 @@ fn type_check_state_store_word(
             .unwrap_or_else(TypeInfo::ErrorRecovery);
         let initial_type_id = type_engine.insert(engines, initial_type_info);
         let type_id = ctx
-            .resolve_type_with_self(
+            .resolve_type(
                 handler,
                 initial_type_id,
-                ctx.self_type(),
                 &targ.span,
                 EnforceTypeArguments::Yes,
                 None,
@@ -833,10 +828,9 @@ fn type_check_state_quad(
             .unwrap_or_else(TypeInfo::ErrorRecovery);
         let initial_type_id = type_engine.insert(engines, initial_type_info);
         let type_id = ctx
-            .resolve_type_with_self(
+            .resolve_type(
                 handler,
                 initial_type_id,
-                ctx.self_type(),
                 &targ.span,
                 EnforceTypeArguments::Yes,
                 None,
@@ -1188,10 +1182,9 @@ fn type_check_ptr_ops(
         .unwrap_or_else(TypeInfo::ErrorRecovery);
     let initial_type_id = type_engine.insert(engines, initial_type_info);
     let type_id = ctx
-        .resolve_type_with_self(
+        .resolve_type(
             handler,
             initial_type_id,
-            ctx.self_type(),
             &targ.span,
             EnforceTypeArguments::No,
             None,
@@ -1286,10 +1279,9 @@ fn type_check_smo(
             .unwrap_or_else(TypeInfo::ErrorRecovery);
         let initial_type_id = type_engine.insert(engines, initial_type_info);
         let type_id = ctx
-            .resolve_type_with_self(
+            .resolve_type(
                 handler,
                 initial_type_id,
-                ctx.self_type(),
                 &targ.span,
                 EnforceTypeArguments::Yes,
                 None,

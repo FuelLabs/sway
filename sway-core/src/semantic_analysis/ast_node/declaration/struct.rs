@@ -28,7 +28,7 @@ impl ty::TyStructDecl {
 
         // Type check the type parameters.
         let new_type_parameters =
-            TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters)?;
+            TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters, None)?;
 
         // Insert them into the current namespace.
         for p in &new_type_parameters {
@@ -68,10 +68,9 @@ impl ty::TyStructField {
 
         let mut type_argument = field.type_argument;
         type_argument.type_id = ctx
-            .resolve_type_with_self(
+            .resolve_type(
                 handler,
                 type_argument.type_id,
-                ctx.self_type(),
                 &type_argument.span,
                 EnforceTypeArguments::Yes,
                 None,

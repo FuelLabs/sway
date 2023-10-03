@@ -34,10 +34,9 @@ impl ty::TyConstantDecl {
         } = decl;
 
         type_ascription.type_id = ctx
-            .resolve_type_with_self(
+            .resolve_type(
                 handler,
                 type_ascription.type_id,
-                ctx.self_type(),
                 &type_ascription.span,
                 EnforceTypeArguments::No,
                 None,

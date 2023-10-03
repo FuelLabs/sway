@@ -28,10 +28,9 @@ impl ty::TyTraitType {
 
         let ty = if let Some(mut ty) = ty_opt {
             ty.type_id = ctx
-                .resolve_type_with_self(
+                .resolve_type(
                     handler,
                     ty.type_id,
-                    ctx.self_type(),
                     &ty.span,
                     EnforceTypeArguments::No,
                     None,

@@ -1262,7 +1262,9 @@ fn fn_args_to_function_parameters(
                 (Some(reference), None) => reference.span(),
                 (Some(reference), Some(mutable)) => Span::join(reference.span(), mutable.span()),
             };
-            let type_id = engines.te().insert(engines, TypeInfo::SelfType);
+            let type_id = engines
+                .te()
+                .insert(engines, TypeInfo::new_self_type(self_token.span()));
             let mut function_parameters = vec![FunctionParameter {
                 name: Ident::new(self_token.span()),
                 is_reference: ref_self.is_some(),
@@ -1314,7 +1316,7 @@ pub(crate) fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
         "str" => Some(TypeInfo::StringSlice),
         "raw_ptr" => Some(TypeInfo::RawUntypedPtr),
         "raw_slice" => Some(TypeInfo::RawUntypedSlice),
-        "Self" | "self" => Some(TypeInfo::SelfType),
+        "Self" | "self" => Some(TypeInfo::new_self_type(name.span())),
         "Contract" => Some(TypeInfo::Contract),
         _other => None,
     }
@@ -3967,24 +3969,6 @@ fn path_type_to_type_info(
     } = path_type.clone();
 
     let type_info = match type_name_to_type_info_opt(&name) {
-        Some(type_info @ TypeInfo::SelfType) => {
-            if root_opt.is_some() {
-                let error = ConvertParseTreeError::FullySpecifiedTypesNotSupported { span };
-                return Err(handler.emit_err(error.into()));
-            }
-            if !suffix.is_empty() {
-                let (call_path, type_arguments) = path_type_to_call_path_and_type_arguments(
-                    context, handler, engines, path_type,
-                )?;
-                TypeInfo::Custom {
-                    call_path,
-                    type_arguments: Some(type_arguments),
-                    root_type_id: None,
-                }
-            } else {
-                type_info
-            }
-        }
         Some(type_info) => {
             if root_opt.is_some() || !suffix.is_empty() {
                 let error = ConvertParseTreeError::FullySpecifiedTypesNotSupported { span };
@@ -4196,10 +4180,7 @@ fn error_if_self_param_is_not_allowed(
     fn_kind: &str,
 ) -> Result<(), ErrorEmitted> {
     for param in parameters {
-        if matches!(
-            engines.te().get(param.type_argument.type_id),
-            TypeInfo::SelfType
-        ) {
+        if engines.te().get(param.type_argument.type_id).is_self_type() {
             let error = ConvertParseTreeError::SelfParameterNotAllowedForFn {
                 fn_kind: fn_kind.to_owned(),
                 span: param.type_argument.span.clone(),
