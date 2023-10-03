@@ -27,6 +27,7 @@ fn rsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
 /// # Additional Information
 ///
 /// Represented as four 64-bit components: `(a, b, c, d)`, where `value = (a << 192) + (b << 128) + (c << 64) + d`.
+#[deprecated(note = "use the built-in type `u256` instead")]
 pub struct U256 {
     /// The most significant 64 bits of the `U256`.
     a: u64,
@@ -45,6 +46,7 @@ pub enum U256Error {
 }
 
 impl From<(u64, u64, u64, u64)> for U256 {
+    #[allow(deprecated)]
     fn from(components: (u64, u64, u64, u64)) -> Self {
         Self {
             a: components.0,
@@ -55,6 +57,7 @@ impl From<(u64, u64, u64, u64)> for U256 {
     }
 
     /// Function for extracting 4 `u64`s from a `U256`.
+    #[allow(deprecated)]
     fn into(self) -> (u64, u64, u64, u64) {
         (self.a, self.b, self.c, self.d)
     }
@@ -62,6 +65,7 @@ impl From<(u64, u64, u64, u64)> for U256 {
 
 impl core::ops::Eq for U256 {
     /// Function for comparing 2 `U256`s for equality.
+    #[allow(deprecated)]
     fn eq(self, other: Self) -> bool {
         self.a == other.a && self.b == other.b && self.c == other.c && self.d == other.d
     }
@@ -86,6 +90,7 @@ impl U256 {
     ///     assert(new_u256 == zero_u256);
     /// }
     /// ```
+    #[allow(deprecated)]
     pub fn new() -> Self {
         Self {
             a: 0,
@@ -122,6 +127,7 @@ impl U256 {
     ///     assert(result.is_err()))
     /// }
     /// ```
+    #[allow(deprecated)]
     pub fn as_u64(self) -> Result<u64, U256Error> {
         if self.a == 0 && self.b == 0 && self.c == 0 {
             Ok(self.d)
@@ -157,6 +163,7 @@ impl U256 {
     ///     assert(result.is_err()))
     /// }
     /// ```
+    #[allow(deprecated)]
     pub fn as_u128(self) -> Result<U128, U256Error> {
         if self.a == 0 && self.b == 0 {
             Ok(U128::from((self.c, self.d)))
@@ -183,6 +190,7 @@ impl U256 {
     ///     assert(min_u256 == zero_u256);
     /// }
     /// ```
+    #[allow(deprecated)]
     pub fn min() -> Self {
         Self {
             a: 0,
@@ -210,6 +218,7 @@ impl U256 {
     ///     assert(max_u256 == maxed_u256);
     /// }
     /// ```
+    #[allow(deprecated)]
     pub fn max() -> Self {
         Self {
             a: u64::max(),
@@ -234,12 +243,14 @@ impl U256 {
     ///
     /// assert(bits == 256);
     /// ```
+    #[allow(deprecated)]
     pub fn bits() -> u32 {
         256
     }
 }
 
 impl core::ops::Ord for U256 {
+    #[allow(deprecated)]
     fn gt(self, other: Self) -> bool {
         self.a > other.a ||
                 (self.a == other.a && (self.b > other.b ||
@@ -247,6 +258,7 @@ impl core::ops::Ord for U256 {
                                                             (self.c == other.c && self.d > other.d)))) )
         }
 
+    #[allow(deprecated)]
     fn lt(self, other: Self) -> bool {
         self.a < other.a ||
                 (self.a == other.a && (self.b < other.b ||
@@ -270,6 +282,7 @@ fn test_u256_ord() {
 }
 
 impl core::ops::BitwiseAnd for U256 {
+    #[allow(deprecated)]
     fn binary_and(self, other: Self) -> Self {
         let (value_word_1, value_word_2, value_word_3, value_word_4) = self.into();
         let (other_word_1, other_word_2, other_word_3, other_word_4) = other.into();
@@ -282,6 +295,7 @@ impl core::ops::BitwiseAnd for U256 {
 }
 
 impl core::ops::BitwiseOr for U256 {
+    #[allow(deprecated)]
     fn binary_or(self, other: Self) -> Self {
         let (value_word_1, value_word_2, value_word_3, value_word_4) = self.into();
         let (other_word_1, other_word_2, other_word_3, other_word_4) = other.into();
@@ -294,6 +308,7 @@ impl core::ops::BitwiseOr for U256 {
 }
 
 impl core::ops::BitwiseXor for U256 {
+    #[allow(deprecated)]
     fn binary_xor(self, other: Self) -> Self {
         let (value_word_1, value_word_2, value_word_3, value_word_4) = self.into();
         let (other_word_1, other_word_2, other_word_3, other_word_4) = other.into();
@@ -306,6 +321,7 @@ impl core::ops::BitwiseXor for U256 {
 }
 
 impl core::ops::Shift for U256 {
+    #[allow(deprecated)]
     fn lsh(self, shift_amount: u64) -> Self {
         let (word_1, word_2, word_3, word_4) = self.into();
         let mut w1 = 0;
@@ -340,6 +356,7 @@ impl core::ops::Shift for U256 {
         Self::from((w1, w2, w3, w4))
     }
 
+    #[allow(deprecated)]
     fn rsh(self, shift_amount: u64) -> Self {
         let (word_1, word_2, word_3, word_4) = self.into();
         let mut w1 = 0;
@@ -376,6 +393,7 @@ impl core::ops::Shift for U256 {
 }
 
 impl core::ops::Not for U256 {
+    #[allow(deprecated)]
     fn not(self) -> Self {
         Self {
             a: !self.a,
@@ -388,6 +406,7 @@ impl core::ops::Not for U256 {
 
 impl core::ops::Add for U256 {
     /// Add a `U256` to a `U256`. Reverts on overflow.
+    #[allow(deprecated)]
     fn add(self, other: Self) -> Self {
         let (word_1, word_2, word_3, word_4) = self.into();
         let (other_word_1, other_word_2, other_word_3, other_word_4) = other.into();
@@ -415,6 +434,7 @@ impl core::ops::Add for U256 {
 
 impl core::ops::Subtract for U256 {
     /// Subtract a `U256` from a `U256`. Reverts of overflow.
+    #[allow(deprecated)]
     fn subtract(self, other: Self) -> Self {
         if self == other {
             return Self::min();
@@ -575,6 +595,7 @@ impl core::ops::Multiply for U256 {
 
 impl core::ops::Divide for U256 {
     /// Divide a `U256` by a `U256`. Reverts if divisor is zero.
+    #[allow(deprecated)]
     fn divide(self, divisor: Self) -> Self {
         let zero = Self::from((0, 0, 0, 0));
         let one = Self::from((0, 0, 0, 1));
