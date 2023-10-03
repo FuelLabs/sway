@@ -41,6 +41,7 @@
   - [Advanced Types](./advanced/advanced_types.md)
   - [Generic Types](./advanced/generic_types.md)
   - [Traits](./advanced/traits.md)
+  - [Associated Types](./advanced/associated_types.md)
   - [Generics and Trait Constraints](./advanced/generics_and_trait_constraints.md)
   - [Assembly](./advanced/assembly.md)
 - [Common Collections](./common-collections/index.md)

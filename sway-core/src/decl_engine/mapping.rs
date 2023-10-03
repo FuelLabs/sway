@@ -56,6 +56,16 @@ impl fmt::Debug for DeclMapping {
 }
 
 impl DeclMapping {
+    pub(crate) fn new() -> Self {
+        Self {
+            mapping: Vec::new(),
+        }
+    }
+
+    pub(crate) fn insert(&mut self, k: SourceDecl, v: DestinationDecl) {
+        self.mapping.push((k, v))
+    }
+
     pub(crate) fn is_empty(&self) -> bool {
         self.mapping.is_empty()
     }

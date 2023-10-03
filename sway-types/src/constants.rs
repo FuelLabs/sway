@@ -52,11 +52,14 @@ pub const PAYABLE_ATTRIBUTE_NAME: &str = "payable";
 /// The valid attribute strings related to allow.
 pub const ALLOW_ATTRIBUTE_NAME: &str = "allow";
 pub const ALLOW_DEAD_CODE_NAME: &str = "dead_code";
+pub const ALLOW_DEPRECATED_NAME: &str = "deprecated";
 
 /// The valid attribute strings related to conditional compilation.
 pub const CFG_ATTRIBUTE_NAME: &str = "cfg";
 pub const CFG_TARGET_ARG_NAME: &str = "target";
 pub const CFG_PROGRAM_TYPE_ARG_NAME: &str = "program_type";
+
+pub const DEPRECATED_ATTRIBUTE_NAME: &str = "deprecated";
 
 /// The list of valid attributes.
 pub const VALID_ATTRIBUTE_NAMES: &[&str] = &[
@@ -68,4 +71,5 @@ pub const VALID_ATTRIBUTE_NAMES: &[&str] = &[
     PAYABLE_ATTRIBUTE_NAME,
     ALLOW_ATTRIBUTE_NAME,
     CFG_ATTRIBUTE_NAME,
+    DEPRECATED_ATTRIBUTE_NAME,
 ];

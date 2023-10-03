@@ -46,18 +46,24 @@ impl TyTraitDecl {
             });
         }
 
-        let type_engine = ctx.engines.te();
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
         // A temporary namespace for checking within the trait's scope.
-        let self_type = type_engine.insert(engines, TypeInfo::SelfType);
         let mut trait_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.scoped(&mut trait_namespace).with_self_type(self_type);
+        let mut ctx = ctx.scoped(&mut trait_namespace);
+
+        // Create a new type parameter for the "self type".
+        let self_type_param = TypeParameter::new_self_type(engines, name.span());
+        let self_type = self_type_param.type_id;
 
         // Type check the type parameters.
-        let new_type_parameters =
-            TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters)?;
+        let new_type_parameters = TypeParameter::type_check_type_params(
+            handler,
+            ctx.by_ref(),
+            type_parameters,
+            Some(self_type_param.clone()),
+        )?;
 
         // Insert them into the current namespace.
         for p in &new_type_parameters {
@@ -204,6 +210,7 @@ impl TyTraitDecl {
         let typed_trait_decl = ty::TyTraitDecl {
             name,
             type_parameters: new_type_parameters,
+            self_type: self_type_param,
             interface_surface: new_interface_surface,
             items: new_items,
             supertraits,
@@ -411,7 +418,6 @@ impl TyTraitDecl {
             match item {
                 ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
                     let mut method = decl_engine.get_trait_fn(decl_ref);
-                    method.replace_self_type(engines, type_id);
                     method.subst(&type_mapping, engines);
                     all_items.push(TyImplItem::Fn(
                         ctx.engines
@@ -445,7 +451,6 @@ impl TyTraitDecl {
             match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
                     let mut method = decl_engine.get_function(decl_ref);
-                    method.replace_self_type(engines, type_id);
                     method.subst(&type_mapping, engines);
                     all_items.push(TyImplItem::Fn(
                         ctx.engines
@@ -456,13 +461,11 @@ impl TyTraitDecl {
                 }
                 ty::TyTraitItem::Constant(decl_ref) => {
                     let mut const_decl = decl_engine.get_constant(decl_ref);
-                    const_decl.replace_self_type(engines, type_id);
                     const_decl.subst(&type_mapping, engines);
                     all_items.push(TyImplItem::Constant(ctx.engines.de().insert(const_decl)));
                 }
                 ty::TyTraitItem::Type(decl_ref) => {
                     let mut type_decl = decl_engine.get_type(decl_ref);
-                    type_decl.replace_self_type(engines, type_id);
                     type_decl.subst(&type_mapping, engines);
                     all_items.push(TyImplItem::Type(ctx.engines.de().insert(type_decl)));
                 }

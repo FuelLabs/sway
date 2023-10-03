@@ -14,7 +14,7 @@ use crate::{
         Namespace,
     },
     type_system::{SubstTypes, TypeArgument, TypeId, TypeInfo},
-    CreateTypeId, ReplaceSelfType, TypeParameter, TypeSubstMap, UnifyCheck,
+    CreateTypeId, TypeParameter, TypeSubstMap, UnifyCheck,
 };
 use sway_error::{
     error::CompileError,
@@ -41,10 +41,6 @@ pub struct TypeCheckContext<'a> {
     // into a new node during type checking, these fields should be updated using the `with_*`
     // methods which provides a new `TypeCheckContext`, ensuring we don't leak our changes into
     // the parent nodes.
-    /// While type-checking an `impl` (whether inherent or for a `trait`/`abi`) this represents the
-    /// type for which we are implementing. For example in `impl Foo {}` or `impl Trait for Foo
-    /// {}`, this represents the type ID of `Foo`.
-    self_type: TypeId,
     /// While type-checking an expression, this indicates the expected type.
     ///
     /// Assists type inference.
@@ -104,8 +100,6 @@ impl<'a> TypeCheckContext<'a> {
             type_annotation: engines.te().insert(engines, TypeInfo::Unknown),
             type_subst: TypeSubstMap::new(),
             help_text: "",
-            // TODO: Contract? Should this be passed in based on program kind (aka TreeType)?
-            self_type: engines.te().insert(engines, TypeInfo::Contract),
             abi_mode: AbiMode::NonAbi,
             const_shadowing_mode: ConstShadowingMode::ItemStyle,
             purity: Purity::default(),
@@ -128,7 +122,6 @@ impl<'a> TypeCheckContext<'a> {
             namespace: self.namespace,
             type_annotation: self.type_annotation,
             type_subst: self.type_subst.clone(),
-            self_type: self.self_type,
             abi_mode: self.abi_mode.clone(),
             const_shadowing_mode: self.const_shadowing_mode,
             help_text: self.help_text,
@@ -146,7 +139,6 @@ impl<'a> TypeCheckContext<'a> {
             namespace,
             type_annotation: self.type_annotation,
             type_subst: self.type_subst,
-            self_type: self.self_type,
             abi_mode: self.abi_mode,
             const_shadowing_mode: self.const_shadowing_mode,
             help_text: self.help_text,
@@ -225,11 +217,6 @@ impl<'a> TypeCheckContext<'a> {
         Self { kind, ..self }
     }
 
-    /// Map this `TypeCheckContext` instance to a new one with the given purity.
-    pub(crate) fn with_self_type(self, self_type: TypeId) -> Self {
-        Self { self_type, ..self }
-    }
-
     /// Map this `TypeCheckContext` instance to a new one with
     /// `disallow_functions` set to `true`.
     pub(crate) fn disallow_functions(self) -> Self {
@@ -289,10 +276,6 @@ impl<'a> TypeCheckContext<'a> {
         self.kind.clone()
     }
 
-    pub(crate) fn self_type(&self) -> TypeId {
-        self.self_type
-    }
-
     pub(crate) fn functions_disallowed(&self) -> bool {
         self.disallow_functions
     }
@@ -326,15 +309,14 @@ impl<'a> TypeCheckContext<'a> {
         )
     }
 
-    /// Short-hand around `type_system::unify_with_self`, where the `TypeCheckContext` provides the
-    /// type annotation, self type and help text.
-    pub(crate) fn unify_with_self(&self, handler: &Handler, ty: TypeId, span: &Span) {
-        self.engines.te().unify_with_self(
+    /// Short-hand around `type_system::unify_`, where the `TypeCheckContext`
+    /// provides the type annotation and help text.
+    pub(crate) fn unify_with_type_annotation(&self, handler: &Handler, ty: TypeId, span: &Span) {
+        self.engines.te().unify(
             handler,
             self.engines(),
             ty,
             self.type_annotation(),
-            self.self_type(),
             span,
             self.help_text(),
             None,
@@ -490,7 +472,7 @@ impl<'a> TypeCheckContext<'a> {
                                 self.engines,
                                 TypeInfo::TraitType {
                                     name,
-                                    trait_type_id: self.self_type(),
+                                    trait_type_id: type_id,
                                 },
                             )
                         }
@@ -592,44 +574,20 @@ impl<'a> TypeCheckContext<'a> {
         Ok(type_id)
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn resolve_with_self(
-        &mut self,
-        handler: &Handler,
-        mut type_id: TypeId,
-        self_type: TypeId,
-        span: &Span,
-        enforce_type_arguments: EnforceTypeArguments,
-        type_info_prefix: Option<&Path>,
-        mod_path: &Path,
-    ) -> Result<TypeId, ErrorEmitted> {
-        type_id.replace_self_type(self.engines, self_type);
-        self.resolve(
-            handler,
-            type_id,
-            span,
-            enforce_type_arguments,
-            type_info_prefix,
-            mod_path,
-        )
-    }
-
     /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
     #[allow(clippy::too_many_arguments)] // TODO: remove lint bypass once private modules are no longer experimental
-    pub(crate) fn resolve_type_with_self(
+    pub(crate) fn resolve_type(
         &mut self,
         handler: &Handler,
         type_id: TypeId,
-        self_type: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
     ) -> Result<TypeId, ErrorEmitted> {
         let mod_path = self.namespace.mod_path.clone();
-        self.resolve_with_self(
+        self.resolve(
             handler,
             type_id,
-            self_type,
             span,
             enforce_type_arguments,
             type_info_prefix,
@@ -729,10 +687,9 @@ impl<'a> TypeCheckContext<'a> {
     pub(crate) fn find_items_for_type(
         &mut self,
         handler: &Handler,
-        mut type_id: TypeId,
+        type_id: TypeId,
         item_prefix: &Path,
         item_name: &Ident,
-        self_type: TypeId,
     ) -> Result<Vec<ty::TyTraitItem>, ErrorEmitted> {
         let type_engine = self.engines.te();
         let _decl_engine = self.engines.de();
@@ -752,8 +709,6 @@ impl<'a> TypeCheckContext<'a> {
 
         // grab the local items from the local module
         let local_items = local_module.get_items_for_type(self.engines, type_id);
-
-        type_id.replace_self_type(self.engines, self_type);
 
         // resolve the type
         let type_id = self
@@ -818,7 +773,6 @@ impl<'a> TypeCheckContext<'a> {
         type_id: TypeId,
         method_prefix: &Path,
         method_name: &Ident,
-        self_type: TypeId,
         annotation_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
         as_trait: Option<TypeInfo>,
@@ -836,7 +790,7 @@ impl<'a> TypeCheckContext<'a> {
         }
 
         let matching_item_decl_refs =
-            self.find_items_for_type(handler, type_id, method_prefix, method_name, self_type)?;
+            self.find_items_for_type(handler, type_id, method_prefix, method_name)?;
 
         let matching_method_decl_refs = matching_item_decl_refs
             .into_iter()
@@ -1025,7 +979,6 @@ impl<'a> TypeCheckContext<'a> {
                     type_id,
                     method_prefix,
                     method_name,
-                    self_type,
                     annotation_type,
                     args_buf,
                     as_trait,
@@ -1057,10 +1010,9 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         type_id: TypeId,
         item_name: &Ident,
-        self_type: TypeId,
     ) -> Result<Option<DeclRefConstant>, ErrorEmitted> {
         let matching_item_decl_refs =
-            self.find_items_for_type(handler, type_id, &Vec::<Ident>::new(), item_name, self_type)?;
+            self.find_items_for_type(handler, type_id, &Vec::<Ident>::new(), item_name)?;
 
         let matching_constant_decl_refs = matching_item_decl_refs
             .into_iter()
@@ -1285,47 +1237,73 @@ impl<'a> TypeCheckContext<'a> {
     where
         T: MonomorphizeHelper + SubstTypes,
     {
-        match (
-            value.type_parameters().is_empty(),
-            type_arguments.is_empty(),
-        ) {
-            (true, true) => Ok(TypeSubstMap::default()),
-            (false, true) => {
+        fn make_type_arity_mismatch_error(
+            name: Ident,
+            span: Span,
+            given: usize,
+            expected: usize,
+        ) -> CompileError {
+            match (expected, given) {
+                (0, 0) => unreachable!(),
+                (_, 0) => CompileError::NeedsTypeArguments { name, span },
+                (0, _) => CompileError::DoesNotTakeTypeArguments { name, span },
+                (_, _) => CompileError::IncorrectNumberOfTypeArguments {
+                    name,
+                    given,
+                    expected,
+                    span,
+                },
+            }
+        }
+
+        match (value.type_parameters().len(), type_arguments.len()) {
+            (0, 0) => Ok(TypeSubstMap::default()),
+            (num_type_params, 0) => {
                 if let EnforceTypeArguments::Yes = enforce_type_arguments {
-                    return Err(handler.emit_err(CompileError::NeedsTypeArguments {
-                        name: value.name().clone(),
-                        span: call_site_span.clone(),
-                    }));
+                    return Err(handler.emit_err(make_type_arity_mismatch_error(
+                        value.name().clone(),
+                        call_site_span.clone(),
+                        0,
+                        num_type_params,
+                    )));
                 }
                 let type_mapping =
                     TypeSubstMap::from_type_parameters(self.engines, value.type_parameters());
                 Ok(type_mapping)
             }
-            (true, false) => {
+            (0, num_type_args) => {
                 let type_arguments_span = type_arguments
                     .iter()
                     .map(|x| x.span.clone())
                     .reduce(Span::join)
                     .unwrap_or_else(|| value.name().span());
-                Err(handler.emit_err(CompileError::DoesNotTakeTypeArguments {
-                    name: value.name().clone(),
-                    span: type_arguments_span,
-                }))
+                Err(handler.emit_err(make_type_arity_mismatch_error(
+                    value.name().clone(),
+                    type_arguments_span.clone(),
+                    num_type_args,
+                    0,
+                )))
             }
-            (false, false) => {
+            (num_type_params, num_type_args) => {
                 let type_arguments_span = type_arguments
                     .iter()
                     .map(|x| x.span.clone())
                     .reduce(Span::join)
                     .unwrap_or_else(|| value.name().span());
-                if value.type_parameters().len() != type_arguments.len() {
-                    return Err(
-                        handler.emit_err(CompileError::IncorrectNumberOfTypeArguments {
-                            given: type_arguments.len(),
-                            expected: value.type_parameters().len(),
-                            span: type_arguments_span,
-                        }),
-                    );
+                // a trait decl is passed the self type parameter and the corresponding argument
+                // but it would be confusing for the user if the error reporting mechanism
+                // reported the number of arguments including the implicit self, hence
+                // we adjust it below
+                let adjust_for_trait_decl = value.has_self_type_param() as usize;
+                let num_type_params = num_type_params - adjust_for_trait_decl;
+                let num_type_args = num_type_args - adjust_for_trait_decl;
+                if num_type_params != num_type_args {
+                    return Err(handler.emit_err(make_type_arity_mismatch_error(
+                        value.name().clone(),
+                        type_arguments_span,
+                        num_type_args,
+                        num_type_params,
+                    )));
                 }
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = self
@@ -1369,6 +1347,7 @@ impl<'a> TypeCheckContext<'a> {
 pub(crate) trait MonomorphizeHelper {
     fn name(&self) -> &Ident;
     fn type_parameters(&self) -> &[TypeParameter];
+    fn has_self_type_param(&self) -> bool;
 }
 
 /// This type is used to denote if, during monomorphization, the compiler
