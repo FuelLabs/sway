@@ -195,7 +195,7 @@ pub fn dedup_fns(
         hash_set_map: FxHashMap::default(),
         function_hash_map: FxHashMap::default(),
     };
-    let cg = build_call_graph(&context, &context.modules.get(module.0).unwrap().functions);
+    let cg = build_call_graph(context, &context.modules.get(module.0).unwrap().functions);
     let callee_first = callee_first_order(&cg);
     for function in callee_first {
         let hash = hash_fn(context, function, eq_class);
