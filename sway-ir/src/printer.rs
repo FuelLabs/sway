@@ -104,8 +104,8 @@ pub fn to_string(context: &Context) -> String {
 pub struct ModulePrinterResult;
 impl AnalysisResultT for ModulePrinterResult {}
 
-/// Print a module stdout.
-pub fn module_printer(
+/// Pass to print a module to stdout.
+pub fn module_printer_pass(
     context: &Context,
     _analyses: &AnalysisResults,
     module: Module,
@@ -124,6 +124,37 @@ pub fn module_printer(
     Ok(Box::new(ModulePrinterResult))
 }
 
+/// Print a module to stdout.
+pub fn module_print(context: &Context, _analyses: &AnalysisResults, module: Module) {
+    let mut md_namer = MetadataNamer::default();
+    println!(
+        "{}",
+        module_to_doc(
+            context,
+            &mut md_namer,
+            context.modules.get(module.0).unwrap()
+        )
+        .append(md_namer.to_doc(context))
+        .build()
+    );
+}
+
+/// Print a function to stdout.
+pub fn function_print(context: &Context, function: Function) {
+    let mut md_namer = MetadataNamer::default();
+    println!(
+        "{}",
+        function_to_doc(
+            context,
+            &mut md_namer,
+            &mut Namer::new(function, GlobalNamer::new()),
+            context.functions.get(function.0).unwrap()
+        )
+        .append(md_namer.to_doc(context))
+        .build()
+    );
+}
+
 pub const MODULEPRINTER_NAME: &str = "module_printer";
 
 pub fn create_module_printer_pass() -> Pass {
@@ -131,7 +162,7 @@ pub fn create_module_printer_pass() -> Pass {
         name: MODULEPRINTER_NAME,
         descr: "Print module to stdout",
         deps: vec![],
-        runner: ScopedPass::ModulePass(PassMutability::Analysis(module_printer)),
+        runner: ScopedPass::ModulePass(PassMutability::Analysis(module_printer_pass)),
     }
 }
 
@@ -936,12 +967,12 @@ fn asm_block_to_doc(
     args: &[AsmArg],
     metadata: &Option<MetadataIndex>,
 ) -> Doc {
-    let AsmBlockContent {
+    let AsmBlock {
         body,
         return_type,
         return_name,
         ..
-    } = &context.asm_blocks[asm.0];
+    } = &asm;
     args.iter()
         .fold(
             Doc::Empty,
@@ -983,7 +1014,7 @@ fn asm_block_to_doc(
                 body.iter()
                     .map(
                         |AsmInstruction {
-                             name,
+                             op_name: name,
                              args,
                              immediate,
                              metadata,
