@@ -88,6 +88,7 @@
       - [forc deploy](./forc/plugins/forc_client/forc_deploy.md)
       - [forc run](./forc/plugins/forc_client/forc_run.md)
       - [forc submit](./forc/plugins/forc_client/forc_submit.md)
+    - [forc crypto](./forc/plugins/forc_crypto.md)
     - [forc doc](./forc/plugins/forc_doc.md)
     - [forc explore](./forc/plugins/forc_explore.md)
     - [forc fmt](./forc/plugins/forc_fmt.md)
