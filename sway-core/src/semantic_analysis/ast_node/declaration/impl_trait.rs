@@ -41,17 +41,18 @@ impl TyImplTrait {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
+        // Create a new type parameter for the Self type
+        let self_type_param = TypeParameter::new_self_type(engines, implementing_for.span());
+        let self_type_id = self_type_param.type_id;
+
         // create a namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
         let mut ctx = ctx
             .by_ref()
             .scoped(&mut impl_namespace)
             .with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
+            .with_self_type(Some(self_type_id))
             .allow_functions();
-
-        // Create a new type parameter for the Self type
-        let self_type_param = TypeParameter::new_self_type(engines, implementing_for.span());
-        let self_type_id = self_type_param.type_id;
 
         // Type check the type parameters
         let new_impl_type_parameters = TypeParameter::type_check_type_params(
@@ -118,11 +119,12 @@ impl TyImplTrait {
         // Update the context
         let mut ctx = ctx
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown))
+            .with_self_type(Some(implementing_for.type_id));
 
         let impl_trait = match ctx
             .namespace
-            .resolve_call_path(handler, engines, &trait_name)
+            .resolve_call_path(handler, engines, &trait_name, ctx.self_type())
             .ok()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
@@ -663,12 +665,26 @@ fn type_check_trait_implementation(
                 let decl_ref = decl_engine.insert(type_decl.clone());
                 impld_item_refs.insert((name, implementing_for), TyTraitItem::Type(decl_ref));
 
-                let old_type_decl_info = TypeInfo::TraitType {
+                let old_type_decl_info1 = TypeInfo::TraitType {
                     name: type_decl.name.clone(),
                     trait_type_id: implementing_for,
                 };
+                let old_type_decl_info2 = TypeInfo::TraitType {
+                    name: type_decl.name.clone(),
+                    trait_type_id: type_engine.insert(
+                        engines,
+                        TypeInfo::UnknownGeneric {
+                            name: Ident::new_with_override("Self".into(), Span::dummy()),
+                            trait_constraints: VecSet(vec![]),
+                        },
+                    ),
+                };
                 trait_type_mapping.extend(TypeSubstMap::from_type_parameters_and_type_arguments(
-                    vec![type_engine.insert(engines, old_type_decl_info)],
+                    vec![type_engine.insert(engines, old_type_decl_info1)],
+                    vec![type_decl.ty.clone().unwrap().type_id],
+                ));
+                trait_type_mapping.extend(TypeSubstMap::from_type_parameters_and_type_arguments(
+                    vec![type_engine.insert(engines, old_type_decl_info2)],
                     vec![type_decl.ty.clone().unwrap().type_id],
                 ));
             }
@@ -1281,7 +1297,7 @@ fn handle_supertraits(
 
             match ctx
                 .namespace
-                .resolve_call_path(handler, engines, &supertrait.name)
+                .resolve_call_path(handler, engines, &supertrait.name, ctx.self_type())
                 .ok()
             {
                 Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
