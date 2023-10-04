@@ -73,17 +73,6 @@ impl SubstTypes for TyEnumDecl {
     }
 }
 
-impl ReplaceSelfType for TyEnumDecl {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.variants
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-    }
-}
-
 impl Spanned for TyEnumDecl {
     fn span(&self) -> Span {
         self.span.clone()
@@ -97,6 +86,10 @@ impl MonomorphizeHelper for TyEnumDecl {
 
     fn name(&self) -> &Ident {
         &self.call_path.suffix
+    }
+
+    fn has_self_type_param(&self) -> bool {
+        false
     }
 }
 
@@ -182,11 +175,5 @@ impl OrdWithEngines for TyEnumVariant {
 impl SubstTypes for TyEnumVariant {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.type_argument.subst_inner(type_mapping, engines);
-    }
-}
-
-impl ReplaceSelfType for TyEnumVariant {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.type_argument.replace_self_type(engines, self_type);
     }
 }
