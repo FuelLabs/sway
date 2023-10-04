@@ -248,7 +248,7 @@ impl Instruction {
     pub fn get_type(&self, context: &Context) -> Option<Type> {
         match self {
             // These all return something in particular.
-            Instruction::AsmBlock(asm_block, _) => Some(asm_block.get_type(context)),
+            Instruction::AsmBlock(asm_block, _) => Some(asm_block.return_type),
             Instruction::UnaryOp { arg, .. } => arg.get_type(context),
             Instruction::BinaryOp { arg1, .. } => arg1.get_type(context),
             Instruction::BitCast(_, ty) => Some(*ty),
@@ -746,7 +746,6 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
         return_name: Option<Ident>,
     ) -> Value {
         let asm = AsmBlock::new(
-            self.context,
             args.iter().map(|arg| arg.name.clone()).collect(),
             body,
             return_type,

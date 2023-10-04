@@ -224,11 +224,11 @@ fn asm_block_ret_demotion(context: &mut Context, function: Function) -> Result<b
             instr_val.get_instruction(context).and_then(|instr| {
                 // Is the instruction an ASM block?
                 if let Instruction::AsmBlock(asm_block, args) = instr {
-                    let ret_ty = asm_block.get_type(context);
+                    let ret_ty = asm_block.return_type;
                     super::target_fuel::is_demotable_type(context, &ret_ty).then_some((
                         block,
                         instr_val,
-                        *asm_block,
+                        asm_block.clone(),
                         args.clone(),
                         ret_ty,
                     ))
@@ -244,10 +244,10 @@ fn asm_block_ret_demotion(context: &mut Context, function: Function) -> Result<b
     }
 
     let mut replace_map = FxHashMap::default();
-    for (block, asm_block_instr_val, asm_block, asm_args, ret_ty) in candidates {
+    for (block, asm_block_instr_val, mut asm_block, asm_args, ret_ty) in candidates {
         // Change the ASM block return type to be a pointer.
         let ret_ptr_ty = Type::new_ptr(context, ret_ty);
-        asm_block.set_type(context, ret_ptr_ty);
+        asm_block.return_type = ret_ptr_ty;
         let new_asm_block =
             Value::new_instruction(context, Instruction::AsmBlock(asm_block, asm_args));
 

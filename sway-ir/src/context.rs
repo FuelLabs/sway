@@ -11,9 +11,9 @@ use rustc_hash::FxHashMap;
 use sway_types::SourceEngine;
 
 use crate::{
-    asm::AsmBlockContent, block::BlockContent, function::FunctionContent,
-    local_var::LocalVarContent, metadata::Metadatum, module::Kind, module::ModuleContent,
-    module::ModuleIterator, value::ValueContent, Type, TypeContent,
+    block::BlockContent, function::FunctionContent, local_var::LocalVarContent,
+    metadata::Metadatum, module::Kind, module::ModuleContent, module::ModuleIterator,
+    value::ValueContent, Type, TypeContent,
 };
 
 /// The main IR context handle.
@@ -30,7 +30,6 @@ pub struct Context<'eng> {
     pub(crate) local_vars: Arena<LocalVarContent>,
     pub(crate) types: Arena<TypeContent>,
     pub(crate) type_map: FxHashMap<TypeContent, Type>,
-    pub(crate) asm_blocks: Arena<AsmBlockContent>,
     pub(crate) metadata: Arena<Metadatum>,
 
     pub program_kind: Kind,
@@ -49,7 +48,6 @@ impl<'eng> Context<'eng> {
             local_vars: Default::default(),
             types: Default::default(),
             type_map: Default::default(),
-            asm_blocks: Default::default(),
             metadata: Default::default(),
             next_unique_sym_tag: Default::default(),
             program_kind: Kind::Contract,

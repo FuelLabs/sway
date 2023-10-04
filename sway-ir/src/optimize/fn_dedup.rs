@@ -94,7 +94,6 @@ fn hash_fn(context: &Context, function: Function, eq_class: &mut EqClass) -> u64
             // Hash non-value inputs.
             match inst {
                 crate::Instruction::AsmBlock(asm_block, args) => {
-                    let asm_block = asm_block.get_content(context);
                     for arg in args
                         .iter()
                         .map(|arg| &arg.name)

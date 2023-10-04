@@ -20,14 +20,9 @@ use crate::{
     context::Context, irtype::Type, metadata::MetadataIndex, pretty::DebugWithContext, value::Value,
 };
 
-/// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
-/// [`Context`].
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
-pub struct AsmBlock(#[in_context(asm_blocks)] pub generational_arena::Index);
-
 #[doc(hidden)]
 #[derive(Clone, Debug, DebugWithContext)]
-pub struct AsmBlockContent {
+pub struct AsmBlock {
     pub args_names: Vec<Ident>,
     pub body: Vec<AsmInstruction>,
     pub return_type: Type,
@@ -51,34 +46,16 @@ pub struct AsmInstruction {
 impl AsmBlock {
     /// Create a new [`AsmBlock`] in the passed context and return its handle.
     pub fn new(
-        context: &mut Context,
         args_names: Vec<Ident>,
         body: Vec<AsmInstruction>,
         return_type: Type,
         return_name: Option<Ident>,
     ) -> Self {
-        let content = AsmBlockContent {
+        AsmBlock {
             args_names,
             body,
             return_type,
             return_name,
-        };
-        AsmBlock(context.asm_blocks.insert(content))
-    }
-
-    /// Return the [`AsmBlock`] return type.
-    pub fn get_type(&self, context: &Context) -> Type {
-        // The type is a named register, which will be a u64.
-        context.asm_blocks[self.0].return_type
-    }
-
-    /// Change the [`AsmBlock`] return type.
-    pub fn set_type(&self, context: &mut Context, new_ret_type: Type) {
-        context.asm_blocks[self.0].return_type = new_ret_type
-    }
-
-    /// Get a reference to the [`AsmBlockContent`] for this ASM block.
-    pub fn get_content<'a>(&self, context: &'a Context) -> &'a AsmBlockContent {
-        &context.asm_blocks[self.0]
+        }
     }
 }
