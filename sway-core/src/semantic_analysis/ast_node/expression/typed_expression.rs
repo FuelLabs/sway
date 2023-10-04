@@ -653,6 +653,29 @@ impl ty::TyExpression {
             ty::TyMatchExpression::type_check(handler, ctx, typed_value, branches, span.clone())?
         };
 
+        // Emit errors for eventual multiple definitions of variables.
+        // We stop further compilation in case of duplicates in order to
+        // provide guarantee to the usefulness algorithm and the desugaring
+        // that all the requirements are satisfied for all of the variables:
+        // - existence in all OR variants with the same type
+        // - no duplicates
+        handler.scope(|handler| {
+            for scrutinee in typed_scrutinees.iter() {
+                for duplicate in collect_duplicate_match_pattern_variables(scrutinee) {
+                    handler.emit_err(CompileError::MultipleDefinitionsOfMatchArmVariable {
+                        match_value: value.span(),
+                        match_type: engines.help_out(type_id).to_string(),
+                        first_definition: duplicate.first_definition.1,
+                        first_definition_is_struct_field: duplicate.first_definition.0,
+                        duplicate: duplicate.duplicate.1,
+                        duplicate_is_struct_field: duplicate.duplicate.0,
+                    });
+                }
+            }
+
+            Ok(())
+        })?;
+
         // check to see if the match expression is exhaustive and if all match arms are reachable
         let (witness_report, arms_reachability) = check_match_expression_usefulness(
             handler,
@@ -727,22 +750,6 @@ impl ty::TyExpression {
                         is_last_arm: true,
                         is_catch_all_arm: last_arm_report.scrutinee.is_catch_all(),
                     },
-                });
-            }
-        }
-
-        // Emit errors for eventual multiple definitions of variables.
-        // These errors can be carried on. The desugared version will treat
-        // the duplicates as shadowing, which is fine for the rest of compilation.
-        for scrutinee in typed_scrutinees.iter() {
-            for duplicate in collect_duplicate_match_pattern_variables(scrutinee) {
-                handler.emit_err(CompileError::MultipleDefinitionsOfMatchArmVariable {
-                    match_value: value.span(),
-                    match_type: engines.help_out(type_id).to_string(),
-                    first_definition: duplicate.first_definition.1,
-                    first_definition_is_struct_field: duplicate.first_definition.0,
-                    duplicate: duplicate.duplicate.1,
-                    duplicate_is_struct_field: duplicate.duplicate.0,
                 });
             }
         }

@@ -1,36 +1,20 @@
-use sway_types::{integer_bits::IntegerBits, Span};
+use sway_types::Span;
 
-use crate::{
-    language::{ty, Literal},
-    semantic_analysis::ast_node::expression::match_expression::MatchReqMap,
-    Engines, TypeInfo,
-};
-// currently the unsafe downcast expr is only used for enums, so this method is specialized for enums
-pub(crate) fn instantiate_unsafe_downcast(
-    engines: &Engines,
+use crate::language::ty;
+
+/// Returns an [ty::TyExpressionVariant::UnsafeDowncast] expression that 
+/// downcasts the expression `exp`, resulting in enum variant `variant`,
+/// to its underlying type.
+/// The expression `exp` **must** result in an enum variant `variant`.
+/// E.g., for `let a = MyEnum::A(u64, u32)` downcasting `a` to `MyEnum::A`
+/// will result in `a as (u64, u32)`.
+pub(crate) fn instantiate_enum_unsafe_downcast(
     exp: &ty::TyExpression,
     variant: ty::TyEnumVariant,
     call_path_decl: ty::TyDecl,
     span: Span,
-) -> (MatchReqMap, ty::TyExpression) {
-    let type_engine = engines.te();
-    let match_req_map = vec![vec![(
-        ty::TyExpression {
-            expression: ty::TyExpressionVariant::EnumTag {
-                exp: Box::new(exp.clone()),
-            },
-            return_type: type_engine
-                .insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
-            span: exp.span.clone(),
-        },
-        ty::TyExpression {
-            expression: ty::TyExpressionVariant::Literal(Literal::U64(variant.tag as u64)),
-            return_type: type_engine
-                .insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
-            span: exp.span.clone(),
-        },
-    )]];
-    let unsafe_downcast = ty::TyExpression {
+) -> ty::TyExpression {
+    ty::TyExpression {
         expression: ty::TyExpressionVariant::UnsafeDowncast {
             exp: Box::new(exp.clone()),
             variant: variant.clone(),
@@ -38,6 +22,5 @@ pub(crate) fn instantiate_unsafe_downcast(
         },
         return_type: variant.type_argument.type_id,
         span,
-    };
-    (match_req_map, unsafe_downcast)
+    }
 }

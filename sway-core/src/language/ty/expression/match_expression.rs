@@ -1,6 +1,6 @@
 use sway_types::Span;
 
-use crate::{language::ty::*, semantic_analysis::MatchReqMap, type_system::*};
+use crate::{language::ty::*, semantic_analysis::ReqDeclTree, type_system::*};
 
 #[derive(Debug)]
 pub(crate) struct TyMatchExpression {
@@ -12,7 +12,7 @@ pub(crate) struct TyMatchExpression {
 
 #[derive(Debug)]
 pub(crate) struct TyMatchBranch {
-    pub(crate) cnf: MatchReqMap,
+    pub(crate) req_decl_tree: ReqDeclTree, // TODO-IG: Remove. Replace with new Req struct.
     pub(crate) result: TyExpression,
     #[allow(dead_code)]
     pub(crate) span: Span,

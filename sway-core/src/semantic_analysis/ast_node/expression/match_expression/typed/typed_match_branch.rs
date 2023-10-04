@@ -30,12 +30,12 @@ impl ty::TyMatchBranch {
         // type check the scrutinee
         let typed_scrutinee = ty::TyScrutinee::type_check(handler, ctx.by_ref(), scrutinee)?;
 
-        // calculate the requirements map and the declarations map
-        let (match_req_map, match_decl_map) = matcher(
+        // calculate the requirements and variable declarations
+        let req_decl_tree = matcher(
             handler,
             ctx.by_ref(),
-            typed_value,
-            typed_value,
+            typed_value, // This is the matched value. It gets propagated unchanged during matching for error reporting purposes.
+            typed_value, // This is the same match value, but this time as the top level expression to be matched.
             typed_scrutinee.clone(),
         )?;
 
@@ -43,21 +43,23 @@ impl ty::TyMatchBranch {
         let mut namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut namespace);
 
-        // for every item in the declarations map, create a variable declaration,
-        // insert it into the branch namespace, and add it to a block of code statements
+        // TODO-IG: Replace with the declarations that take OR alternatives into account.
+        // for every variable declaration, create a variable declaration,
+        // insert it into the branch namespace, and add it to the block of code statements
         let mut code_block_contents: Vec<ty::TyAstNode> = vec![];
-        for (left_decl, right_decl) in match_decl_map.into_iter() {
+
+        for (left_decl, right_decl) in req_decl_tree.variable_declarations().into_iter() {
             let type_ascription = right_decl.return_type.into();
             let return_type = right_decl.return_type;
             let span = left_decl.span().clone();
             let var_decl = ty::TyDecl::VariableDecl(Box::new(ty::TyVariableDecl {
                 name: left_decl.clone(),
-                body: right_decl,
+                body: right_decl.clone(),
                 mutability: ty::VariableMutability::Immutable,
                 return_type,
                 type_ascription,
             }));
-            let _ = ctx.insert_symbol(handler, left_decl, var_decl.clone());
+            let _ = ctx.insert_symbol(handler, left_decl.clone(), var_decl.clone());
             code_block_contents.push(ty::TyAstNode {
                 content: ty::TyAstNodeContent::Declaration(var_decl),
                 span,
@@ -112,12 +114,12 @@ impl ty::TyMatchBranch {
             span: typed_result_span,
         };
 
-        // return!
         let typed_branch = ty::TyMatchBranch {
-            cnf: match_req_map,
+            req_decl_tree,
             result: new_result,
             span: branch_span,
         };
-        Ok((typed_branch, typed_scrutinee))
+
+        Ok((typed_branch, typed_scrutinee)) // TODO-IG: Why not scrutinee part of the typed_branch?
     }
 }
