@@ -606,14 +606,14 @@ fn test_hasher_keccak256_bool() {
 fn test_hasher_keccak256_bytes() {
     use ::assert::assert;
     let mut hasher = Hasher::new();
-    let mut bytes = Bytes::new();
+    let mut bytes = Bytes::with_capacity(1);
     bytes.push(0u8);
     bytes.hash(hasher);
     let keccak256 = hasher.keccak256();
     assert(keccak256 == 0xbc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a);
 
     let mut hasher = Hasher::new();
-    let mut bytes = Bytes::new();
+    let mut bytes = Bytes::with_capacity(1);
     bytes.push(1u8);
     bytes.hash(hasher);
     let keccak256 = hasher.keccak256();
