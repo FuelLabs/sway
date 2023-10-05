@@ -34,10 +34,9 @@ impl TyDecl {
                 is_mutable,
             }) => {
                 type_ascription.type_id = ctx
-                    .resolve_type_with_self(
+                    .resolve_type(
                         handler,
                         type_ascription.type_id,
-                        ctx.self_type(),
                         &type_ascription.span,
                         EnforceTypeArguments::Yes,
                         None,
@@ -303,10 +302,11 @@ impl TyDecl {
                     ..
                 } in fields
                 {
-                    type_argument.type_id = ctx.resolve_type_without_self(
+                    type_argument.type_id = ctx.resolve_type(
                         handler,
                         type_argument.type_id,
                         &name.span(),
+                        EnforceTypeArguments::Yes,
                         None,
                     )?;
 
@@ -344,14 +344,7 @@ impl TyDecl {
 
                 // Resolve the type that the type alias replaces
                 let new_ty = ctx
-                    .resolve_type_with_self(
-                        handler,
-                        ty.type_id,
-                        ctx.self_type(),
-                        &span,
-                        EnforceTypeArguments::Yes,
-                        None,
-                    )
+                    .resolve_type(handler, ty.type_id, &span, EnforceTypeArguments::Yes, None)
                     .unwrap_or_else(|err| {
                         type_engine.insert(engines, TypeInfo::ErrorRecovery(err))
                     });

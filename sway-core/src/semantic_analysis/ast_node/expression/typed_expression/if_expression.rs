@@ -30,12 +30,11 @@ pub(crate) fn instantiate_if_expression(
         } else {
             type_engine.insert(engines, TypeInfo::Tuple(vec![]))
         };
-        type_engine.unify_with_self(
+        type_engine.unify(
             handler,
             engines,
             then.return_type,
             ty_to_check,
-            ctx.self_type(),
             &then.span,
             "`then` branch must return expected type.",
             None,
@@ -51,12 +50,11 @@ pub(crate) fn instantiate_if_expression(
         };
         if !else_deterministically_aborts {
             // if this does not deterministically_abort, check the block return type
-            type_engine.unify_with_self(
+            type_engine.unify(
                 handler,
                 engines,
                 r#else.return_type,
                 ty_to_check,
-                ctx.self_type(),
                 &r#else.span,
                 "`else` branch must return expected type.",
                 None,
@@ -73,12 +71,11 @@ pub(crate) fn instantiate_if_expression(
     if !else_deterministically_aborts && !then_deterministically_aborts {
         // delay emitting the errors until we decide if this is a missing else branch or some other set of errors
         let h = Handler::default();
-        type_engine.unify_with_self(
+        type_engine.unify(
             &h,
             engines,
             then.return_type,
             r#else_ret_ty,
-            ctx.self_type(),
             &span,
             "The two branches of an if expression must return the same type.",
             None,

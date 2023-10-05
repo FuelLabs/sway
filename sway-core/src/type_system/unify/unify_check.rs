@@ -1,6 +1,10 @@
-use crate::{engine_threading::*, type_system::priv_prelude::*};
+use crate::{
+    engine_threading::*,
+    type_system::{priv_prelude::*, unify::occurs_check::OccursCheck},
+};
 use sway_types::Spanned;
 
+#[derive(Debug)]
 enum UnifyCheckMode {
     /// Given two [TypeId]'s `left` and `right`, check to see if `left` can be
     /// coerced into `right`.
@@ -309,6 +313,11 @@ impl<'a> UnifyCheck<'a> {
         match self.mode {
             Coercion => {
                 match (left_info, right_info) {
+                    (r @ UnknownGeneric { .. }, e @ UnknownGeneric { .. })
+                        if TypeInfo::is_self_type(&r) || TypeInfo::is_self_type(&e) =>
+                    {
+                        true
+                    }
                     (
                         UnknownGeneric {
                             name: ln,
@@ -319,8 +328,9 @@ impl<'a> UnifyCheck<'a> {
                             trait_constraints: rtc,
                         },
                     ) => ln == rn && rtc.eq(&ltc, self.engines),
-                    // any type can be coerced into generic
-                    (_, UnknownGeneric { .. }) => true,
+                    // any type can be coerced into a generic,
+                    // except if the type already contains the generic
+                    (e, g @ UnknownGeneric { .. }) => !OccursCheck::new(self.engines).check(g, &e),
 
                     // Let empty enums to coerce to any other type. This is useful for Never enum.
                     (Enum(r_decl_ref), _)
@@ -413,8 +423,9 @@ impl<'a> UnifyCheck<'a> {
                             trait_constraints: rtc,
                         },
                     ) => rtc.eq(&ltc, self.engines),
-                    // any type can be coerced into generic
-                    (_, UnknownGeneric { .. }) => true,
+                    // any type can be coerced into a generic,
+                    // except if the type already contains the generic
+                    (e, g @ UnknownGeneric { .. }) => !OccursCheck::new(self.engines).check(g, &e),
 
                     (Enum(l_decl_ref), Enum(r_decl_ref)) => {
                         let l_decl = self.engines.de().get_enum(&l_decl_ref);
@@ -462,7 +473,6 @@ impl<'a> UnifyCheck<'a> {
                 // TypeId, they may later resolve to be different types in the type
                 // engine
                 (TypeInfo::Unknown, TypeInfo::Unknown) => false,
-                (TypeInfo::SelfType, TypeInfo::SelfType) => false,
                 (TypeInfo::Numeric, TypeInfo::Numeric) => false,
                 (TypeInfo::Storage { .. }, TypeInfo::Storage { .. }) => false,
 

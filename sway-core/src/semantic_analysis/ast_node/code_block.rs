@@ -91,7 +91,7 @@ impl ty::TyCodeBlock {
                 }
             });
 
-        ctx.unify_with_self(handler, block_type, &span);
+        ctx.unify_with_type_annotation(handler, block_type, &span);
 
         let typed_code_block = ty::TyCodeBlock {
             contents: evaluated_contents,

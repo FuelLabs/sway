@@ -117,7 +117,7 @@ fn test_fail() {
 > **Note:** When running `forc test`, your contract will be built twice: first *without* unit tests in order to determine the contract's ID, then a second time *with* unit tests with the `CONTRACT_ID` provided to their namespace. This `CONTRACT_ID` can be used with the `abi` cast to enable contract calls within unit tests.
 <!-- contract_id:example:end -->
 
-Unit tests can call methods of external contracts if those contracts are added as contract dependencies, i.e. in the the [`contract-dependencies`](../forc/manifest_reference.md#the-contract-dependencies-section) section of the manifest file. An example of such calls is shown below:
+Unit tests can call methods of external contracts if those contracts are added as contract dependencies, i.e. in the [`contract-dependencies`](../forc/manifest_reference.md#the-contract-dependencies-section) section of the manifest file. An example of such calls is shown below:
 
 ```sway
 {{#include ../../../../examples/multi_contract_calls/caller/src/main.sw:multi_contract_calls}}

@@ -127,6 +127,7 @@ fn combine_cmp(context: &mut Context, function: &Function) -> bool {
                             let r = match (&val1.value, &val2.value) {
                                 (Uint(val1), Uint(val2)) => val1 > val2,
                                 (U256(val1), U256(val2)) => val1 > val2,
+                                (B256(val1), B256(val2)) => val1 > val2,
                                 _ => {
                                     unreachable!(
                                         "Type checker allowed non integer value for GreaterThan"
@@ -139,6 +140,7 @@ fn combine_cmp(context: &mut Context, function: &Function) -> bool {
                             let r = match (&val1.value, &val2.value) {
                                 (Uint(val1), Uint(val2)) => val1 < val2,
                                 (U256(val1), U256(val2)) => val1 < val2,
+                                (B256(val1), B256(val2)) => val1 < val2,
                                 _ => {
                                     unreachable!(
                                         "Type checker allowed non integer value for GreaterThan"

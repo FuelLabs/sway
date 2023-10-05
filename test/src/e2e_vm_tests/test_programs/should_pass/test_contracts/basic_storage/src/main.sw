@@ -18,6 +18,9 @@ storage {
     str8: str[8] = __to_str_array("aaaaaaaa"),
     str9: str[9] = __to_str_array("aaaaaaaaa"),
     str10: str[10] = __to_str_array("aaaaaaaaaa"),
+
+    const_u256: u256 = 0x0000000000000000000000000000000000000000000000000000000001234567u256,
+    const_b256: b256 = 0x0000000000000000000000000000000000000000000000000000000001234567,
 }
 
 impl BasicStorage for Contract {
@@ -38,7 +41,7 @@ impl BasicStorage for Contract {
 
     #[storage(write)]
     fn intrinsic_store_word(key: b256, value: u64) {
-        __state_store_word(key, value);
+        let _ = __state_store_word(key, value);
     }
 
     #[storage(read)]
@@ -56,13 +59,13 @@ impl BasicStorage for Contract {
             i += 1;
         }
 
-        __state_load_quad(key, values.buf.ptr(), slots);
+        let _ = __state_load_quad(key, values.buf.ptr(), slots);
         values
     }
 
     #[storage(write)]
     fn intrinsic_store_quad(key: b256, values: Vec<Quad>) {
-        __state_store_quad(key, values.buf.ptr(), values.len());
+        let _ = __state_store_quad(key, values.buf.ptr(), values.len());
     }
 
     #[storage(read, write)]
@@ -203,6 +206,18 @@ fn test_storage() {
     assert_streq(storage.str8.read(), "aaaaaaaa");
     assert_streq(storage.str9.read(), "aaaaaaaaa");
     assert_streq(storage.str10.read(), "aaaaaaaaaa");
+
+    assert_eq(storage.c1.read(), C1);
+    storage.c1.write(2);
+    assert_eq(storage.c1.read(), 2);
+    
+    assert_eq(storage.const_u256.read(), 0x0000000000000000000000000000000000000000000000000000000001234567u256);
+    storage.const_u256.write(0x0000000000000000000000000000000000000000000000000000000012345678u256);
+    assert_eq(storage.const_u256.read(), 0x0000000000000000000000000000000000000000000000000000000012345678u256);
+
+    assert_eq(storage.const_b256.read(), 0x0000000000000000000000000000000000000000000000000000000001234567);
+    storage.const_b256.write(0x0000000000000000000000000000000000000000000000000000000012345678);
+    assert_eq(storage.const_b256.read(), 0x0000000000000000000000000000000000000000000000000000000012345678);
 }
 
 // If these comparisons are done inline just above then it blows out the register allocator due to

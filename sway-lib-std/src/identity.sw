@@ -9,7 +9,7 @@ use ::call_frames::contract_id;
 use ::constants::{ZERO_B256, BASE_ASSET_ID};
 use ::contract_id::{AssetId, ContractId};
 use ::hash::*;
-use ::option::Option;
+use ::option::Option::{self, *};
 
 /// The `Identity` type: either an `Address` or a `ContractId`.
 // ANCHOR: docs_identity
@@ -49,8 +49,8 @@ impl Identity {
     /// ```
     pub fn as_address(self) -> Option<Address> {
         match self {
-            Self::Address(addr) => Option::Some(addr),
-            Self::ContractId(_) => Option::None,
+            Self::Address(addr) => Some(addr),
+            Self::ContractId(_) => None,
         }
     }
 
@@ -73,8 +73,8 @@ impl Identity {
     /// ```
     pub fn as_contract_id(self) -> Option<ContractId> {
         match self {
-            Self::Address(_) => Option::None,
-            Self::ContractId(id) => Option::Some(id),
+            Self::Address(_) => None,
+            Self::ContractId(id) => Some(id),
         }
     }
 

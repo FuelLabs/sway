@@ -650,7 +650,7 @@ mod ir_builder {
         metadata::{MetadataIndex, Metadatum},
         module::{Kind, Module},
         value::Value,
-        BinaryOpKind, BlockArgument, UnaryOpKind,
+        BinaryOpKind, BlockArgument, UnaryOpKind, B256,
     };
 
     #[derive(Debug)]
@@ -781,10 +781,13 @@ mod ir_builder {
                 IrAstConstValue::Bool(b) => ConstantValue::Bool(*b),
                 IrAstConstValue::Hex256(bs) => match val_ty {
                     IrAstTy::U256 => {
-                        let n = U256::from_be_bytes(bs);
-                        ConstantValue::U256(n)
+                        let value = U256::from_be_bytes(bs);
+                        ConstantValue::U256(value)
                     }
-                    IrAstTy::B256 => ConstantValue::B256(*bs),
+                    IrAstTy::B256 => {
+                        let value = B256::from_be_bytes(bs);
+                        ConstantValue::B256(value)
+                    }
                     _ => unreachable!("invalid type for hex number"),
                 },
                 IrAstConstValue::Number(n) => ConstantValue::Uint(*n),
@@ -1070,7 +1073,7 @@ mod ir_builder {
                                      imm,
                                      meta_idx,
                                  }| AsmInstruction {
-                                    name,
+                                    op_name: name,
                                     args,
                                     immediate: imm,
                                     metadata: meta_idx

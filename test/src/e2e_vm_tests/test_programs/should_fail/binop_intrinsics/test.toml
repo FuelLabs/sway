@@ -63,7 +63,7 @@ category = "fail"
 # check: $()error
 # check: $()__rsh("Hello", 1)
 # nextln: $()Mismatched types
-# nextln: $()expected: numeric
+# nextln: $()expected: numeric or b256
 # nextln: $()found:    str.
 # nextln: $()help: Incorrect argument type
 

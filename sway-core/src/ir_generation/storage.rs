@@ -98,10 +98,16 @@ pub fn serialize_to_storage_slots(
                 ),
             )]
         }
+        ConstantValue::U256(b) if ty.is_uint_of(context, 256) => {
+            vec![StorageSlot::new(
+                get_storage_key(ix, indices),
+                Bytes32::new(b.to_be_bytes()),
+            )]
+        }
         ConstantValue::B256(b) if ty.is_b256(context) => {
             vec![StorageSlot::new(
                 get_storage_key(ix, indices),
-                Bytes32::new(*b),
+                Bytes32::new(b.to_be_bytes()),
             )]
         }
         ConstantValue::Array(_a) if ty.is_array(context) => {
@@ -157,7 +163,12 @@ pub fn serialize_to_words(constant: &Constant, context: &Context, ty: &Type) -> 
         ConstantValue::Uint(n) if ty.is_uint(context) => {
             vec![Bytes8::new(n.to_be_bytes())]
         }
+        ConstantValue::U256(b) if ty.is_uint_of(context, 256) => {
+            let b = b.to_be_bytes();
+            Vec::from_iter((0..4).map(|i| Bytes8::new(b[8 * i..8 * i + 8].try_into().unwrap())))
+        }
         ConstantValue::B256(b) if ty.is_b256(context) => {
+            let b = b.to_be_bytes();
             Vec::from_iter((0..4).map(|i| Bytes8::new(b[8 * i..8 * i + 8].try_into().unwrap())))
         }
         ConstantValue::String(s) if ty.is_string_array(context) => {

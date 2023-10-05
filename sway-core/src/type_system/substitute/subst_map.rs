@@ -250,7 +250,6 @@ impl TypeSubstMap {
             }
             (TypeInfo::Unknown, TypeInfo::Unknown)
             | (TypeInfo::Boolean, TypeInfo::Boolean)
-            | (TypeInfo::SelfType, TypeInfo::SelfType)
             | (TypeInfo::B256, TypeInfo::B256)
             | (TypeInfo::Numeric, TypeInfo::Numeric)
             | (TypeInfo::Contract, TypeInfo::Contract)
@@ -442,7 +441,6 @@ impl TypeSubstMap {
             | TypeInfo::UnsignedInteger(..)
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }
-            | TypeInfo::SelfType
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::RawUntypedPtr

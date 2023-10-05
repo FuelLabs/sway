@@ -30,7 +30,7 @@ pub use asm_generation::{CompiledBytecode, FinalizedEntry};
 pub use build_config::{BuildConfig, BuildTarget};
 use control_flow_analysis::ControlFlowGraph;
 use metadata::MetadataManager;
-use query_engine::{ModulePath, ProgramsCacheEntry};
+use query_engine::{ModuleCacheKey, ModulePath, ProgramsCacheEntry};
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
@@ -96,6 +96,7 @@ pub fn parse(
             config.canonical_root_module(),
             None,
             config.build_target,
+            config.include_tests,
         )
         .map(
             |ParsedModuleTree {
@@ -235,6 +236,7 @@ fn parse_submodules(
     module: &sway_ast::Module,
     module_dir: &Path,
     build_target: BuildTarget,
+    include_tests: bool,
 ) -> Submodules {
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
     let mut submods = Vec::with_capacity(module.submodules().count());
@@ -266,6 +268,7 @@ fn parse_submodules(
             submod_path.clone(),
             Some(submod.name.as_str()),
             build_target,
+            include_tests,
         ) {
             if !matches!(kind, parsed::TreeType::Library) {
                 let source_id = engines.se().get_source_id(submod_path.as_ref());
@@ -316,6 +319,7 @@ fn parse_module_tree(
     path: Arc<PathBuf>,
     module_name: Option<&str>,
     build_target: BuildTarget,
+    include_tests: bool,
 ) -> Result<ParsedModuleTree, ErrorEmitted> {
     let query_engine = engines.qe();
 
@@ -333,6 +337,7 @@ fn parse_module_tree(
         &module.value,
         module_dir,
         build_target,
+        include_tests,
     );
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
@@ -386,15 +391,21 @@ fn parse_module_tree(
         modified_time,
         hash,
         dependencies,
+        include_tests,
     };
     query_engine.insert_parse_module_cache_entry(cache_entry);
 
     Ok(parsed_module_tree)
 }
 
-fn is_parse_module_cache_up_to_date(engines: &Engines, path: &Arc<PathBuf>) -> bool {
+fn is_parse_module_cache_up_to_date(
+    engines: &Engines,
+    path: &Arc<PathBuf>,
+    include_tests: bool,
+) -> bool {
     let query_engine = engines.qe();
-    let entry = query_engine.get_parse_module_cache_entry(path);
+    let key = ModuleCacheKey::new(path.clone(), include_tests);
+    let entry = query_engine.get_parse_module_cache_entry(&key);
     match entry {
         Some(entry) => {
             let modified_time = std::fs::metadata(path.as_path())
@@ -420,7 +431,7 @@ fn is_parse_module_cache_up_to_date(engines: &Engines, path: &Arc<PathBuf>) -> b
                 entry
                     .dependencies
                     .iter()
-                    .all(|path| is_parse_module_cache_up_to_date(engines, path))
+                    .all(|path| is_parse_module_cache_up_to_date(engines, path, include_tests))
             } else {
                 false
             }
@@ -470,6 +481,8 @@ pub fn parsed_to_ast(
         Ok(typed_program) => typed_program,
         Err(e) => return Err(e),
     };
+
+    typed_program.check_deprecated(engines, handler);
 
     // Collect information about the types used in this program
     let types_metadata_result = typed_program
@@ -581,9 +594,10 @@ pub fn compile_to_ast(
 
     if let Some(config) = build_config {
         let path = config.canonical_root_module();
+        let include_tests = config.include_tests;
 
         // Check if we can re-use the data in the cache.
-        if is_parse_module_cache_up_to_date(engines, &path) {
+        if is_parse_module_cache_up_to_date(engines, &path, include_tests) {
             let mut entry = query_engine.get_programs_cache_entry(&path).unwrap();
             entry.programs.metrics.reused_modules += 1;
 

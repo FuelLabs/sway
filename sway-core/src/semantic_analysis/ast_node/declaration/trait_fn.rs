@@ -53,10 +53,9 @@ impl ty::TyTraitFn {
 
         // Type check the return type.
         return_type.type_id = ctx
-            .resolve_type_with_self(
+            .resolve_type(
                 handler,
                 return_type.type_id,
-                ctx.self_type(),
                 &return_type.span,
                 EnforceTypeArguments::Yes,
                 None,

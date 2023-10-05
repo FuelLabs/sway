@@ -31,8 +31,13 @@ impl ty::TyMatchBranch {
         let typed_scrutinee = ty::TyScrutinee::type_check(handler, ctx.by_ref(), scrutinee)?;
 
         // calculate the requirements map and the declarations map
-        let (match_req_map, match_decl_map) =
-            matcher(handler, ctx.by_ref(), typed_value, typed_scrutinee.clone())?;
+        let (match_req_map, match_decl_map) = matcher(
+            handler,
+            ctx.by_ref(),
+            typed_value,
+            typed_value,
+            typed_scrutinee.clone(),
+        )?;
 
         // create a new namespace for this branch
         let mut namespace = ctx.namespace.clone();
@@ -69,7 +74,7 @@ impl ty::TyMatchBranch {
 
         // unify the return type from the typed result with the type annotation
         if !typed_result.deterministically_aborts(decl_engine, true) {
-            ctx.unify_with_self(handler, typed_result.return_type, &typed_result.span);
+            ctx.unify_with_type_annotation(handler, typed_result.return_type, &typed_result.span);
         }
 
         // if the typed branch result is a code block, then add the contents

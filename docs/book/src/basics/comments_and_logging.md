@@ -81,7 +81,7 @@ Note that `ra` will include the value being logged. The additional registers `rc
 
 <!-- This section should explain when `LogData` receipts are produced -->
 <!-- log_data_rec:example:start -->
-`LogData` is generated for _reference_ types which include all types except for _non_reference_ types.
+`LogData` is generated for _reference_ types which include all types except for _non_reference_ types; and for  _non-reference_ types bigger than 64-bit integers, for example, `u256`;
 <!-- log_data_rec:example:end -->
 
 For example, logging a `b256` variable `b` that holds the value `0x1111111111111111111111111111111111111111111111111111111111111111` using `log(b)` may generate the following receipt:

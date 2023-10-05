@@ -48,14 +48,6 @@ impl SubstTypes for TyTraitType {
     }
 }
 
-impl ReplaceSelfType for TyTraitType {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        if let Some(ref mut ty) = self.ty {
-            ty.replace_self_type(engines, self_type);
-        }
-    }
-}
-
 impl Spanned for TyTraitType {
     fn span(&self) -> Span {
         self.span.clone()

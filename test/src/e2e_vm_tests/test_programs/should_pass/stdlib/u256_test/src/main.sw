@@ -2,6 +2,7 @@ script;
 
 use std::{u128::U128, u256::{U256, U256Error}};
 
+#[allow(deprecated)]
 fn main() -> bool {
     // test new()
     let new = U256::new();

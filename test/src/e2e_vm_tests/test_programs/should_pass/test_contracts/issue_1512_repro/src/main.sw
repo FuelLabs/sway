@@ -1,5 +1,7 @@
 contract;
 
+use std::primitive_conversions::{u32::*, u64::*};
+
 abi U128Contract {
     fn multiply_u64(a: u64, b: u64) -> (u64, u64);
 }

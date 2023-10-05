@@ -23,7 +23,7 @@ pub fn add_1(num: u32) -> u32 {
 }
 ```
 
-An `asm` block can only return a single register. If you really need to return more than one value, you can modify a tuple. Here's an example showing how can implement this `(u64, u64)`:
+An `asm` block can only return a single register. If you really need to return more than one value, you can modify a tuple. Here's an example showing how you can implement this `(u64, u64)`:
 
 ```sway
 {{#include ../../../../examples/asm_return_tuple_pointer/src/main.sw}}

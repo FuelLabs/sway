@@ -500,3 +500,119 @@ fn test_hasher_sha256_bytes() {
     let sha256 = hasher.sha256();
     assert(sha256 == 0x4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a);
 }
+
+#[test()]
+fn test_hasher_keccak256_str_array() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    hasher.write_str("test");
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658);
+
+    let mut hasher = Hasher::new();
+    hasher.write_str("Fastest Modular Execution Layer!");
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0xab8e83e041e001bcf797c9cc7d6bc472bfdb8c736bab7999f13b7c26f48c354f);
+}
+
+#[test()]
+fn test_hasher_keccak256_u8() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    0_u8.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0xbc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a);
+
+    let mut hasher = Hasher::new();
+    1_u8.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x5fe7f977e71dba2ea1a68e21057beebb9be2ac30c6410aa38d4f3fbe41dcffd2);
+}
+
+#[test()]
+fn test_hasher_keccak256_u16() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    0_u16.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x54a8c0ab653c15bfb48b47fd011ba2b9617af01cb45cab344acd57c924d56798);
+
+    let mut hasher = Hasher::new();
+    1_u16.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x49d03a195e239b52779866b33024210fc7dc66e9c2998975c0aa45c1702549d5);
+}
+
+#[test()]
+fn test_hasher_keccak256_u32() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    0_u32.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0xe8e77626586f73b955364c7b4bbf0bb7f7685ebd40e852b164633a4acbd3244c);
+
+    let mut hasher = Hasher::new();
+    1_u32.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x51f81bcdfc324a0dff2b5bec9d92e21cbebc4d5e29d3a3d30de3e03fbeab8d7f);
+}
+
+#[test()]
+fn test_hasher_keccak256_u64() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    0_u64.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x011b4d03dd8c01f1049143cf9c4c817e4b167f1d1b83e5c6f0f10d89ba1e7bce);
+
+    let mut hasher = Hasher::new();
+    1_u64.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x6c31fc15422ebad28aaf9089c306702f67540b53c7eea8b7d2941044b027100f);
+}
+
+#[test()]
+fn test_hasher_keccak256_b256() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    0x0000000000000000000000000000000000000000000000000000000000000000.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563);
+
+    let mut hasher = Hasher::new();
+    0x0000000000000000000000000000000000000000000000000000000000000001.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0xb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6);
+}
+
+#[test()]
+fn test_hasher_keccak256_bool() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    false.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0xbc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a);
+
+    let mut hasher = Hasher::new();
+    true.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x5fe7f977e71dba2ea1a68e21057beebb9be2ac30c6410aa38d4f3fbe41dcffd2);
+}
+
+#[test]
+fn test_hasher_keccak256_bytes() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    let mut bytes = Bytes::with_capacity(1);
+    bytes.push(0u8);
+    bytes.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0xbc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a);
+
+    let mut hasher = Hasher::new();
+    let mut bytes = Bytes::with_capacity(1);
+    bytes.push(1u8);
+    bytes.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x5fe7f977e71dba2ea1a68e21057beebb9be2ac30c6410aa38d4f3fbe41dcffd2);
+}

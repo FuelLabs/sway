@@ -2,6 +2,7 @@ use crate::{
     decl_engine::*,
     fuel_prelude::fuel_tx::StorageSlot,
     language::{parsed, ty::*, Purity},
+    transform::AllowDeprecatedState,
     type_system::*,
     types::*,
     Engines,
@@ -75,6 +76,7 @@ impl TyProgram {
         let mut declarations = Vec::<TyDecl>::new();
         let mut abi_entries = Vec::new();
         let mut fn_declarations = std::collections::HashSet::new();
+
         for node in &root.all_nodes {
             match &node.content {
                 TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
@@ -390,6 +392,12 @@ impl TyProgram {
             .submodules_recursive()
             .flat_map(|(_, submod)| submod.module.test_fns(decl_engine))
             .chain(self.root.test_fns(decl_engine))
+    }
+
+    pub fn check_deprecated(&self, engines: &Engines, handler: &Handler) {
+        let mut allow_deprecated = AllowDeprecatedState::default();
+        self.root
+            .check_deprecated(engines, handler, &mut allow_deprecated);
     }
 }
 

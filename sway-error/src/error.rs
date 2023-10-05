@@ -176,8 +176,9 @@ pub enum CompileError {
         missing_functions: Vec<BaseIdent>,
         span: Span,
     },
-    #[error("Expected {} type {}, but instead found {}.", expected, if *expected == 1usize { "argument" } else { "arguments" }, given)]
+    #[error("Expected {} type {} for \"{name}\", but instead found {}.", expected, if *expected == 1usize { "argument" } else { "arguments" }, given)]
     IncorrectNumberOfTypeArguments {
+        name: Ident,
         given: usize,
         expected: usize,
         span: Span,
@@ -511,8 +512,24 @@ pub enum CompileError {
         missing_fields: Vec<String>,
         span: Span,
     },
-    #[error("Variable \"{var}\" is not bound in all patterns")]
-    MatchVariableNotBoundInAllPatterns { var: Ident, span: Span },
+    #[error("Variable \"{variable}\" is not defined in all alternatives.")]
+    MatchArmVariableNotDefinedInAllAlternatives {
+        match_value: Span,
+        match_type: String,
+        variable: Ident,
+        missing_in_alternatives: Vec<Span>,
+    },
+    #[error(
+        "Variable \"{variable}\" is expected to be of type \"{expected}\", but is \"{received}\"."
+    )]
+    MatchArmVariableMismatchedType {
+        match_value: Span,
+        match_type: String,
+        variable: Ident,
+        first_definition: Span,
+        expected: String,
+        received: String,
+    },
     #[error(
         "Storage attribute access mismatch. Try giving the surrounding function more access by \
         adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\" to the function declaration."
@@ -710,6 +727,8 @@ pub enum CompileError {
     AssociatedTypeNotSupportedInAbi { span: Span },
     #[error("Cannot call ABI supertrait's method as a contract method: \"{fn_name}\"")]
     AbiSupertraitMethodCallAsContractCall { fn_name: Ident, span: Span },
+    #[error("\"Self\" is not valid in the self type of an impl block")]
+    SelfIsNotValidAsImplementingFor { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -828,7 +847,8 @@ impl Spanned for CompileError {
             GenericShadowsGeneric { name } => name.span(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
             MatchStructPatternMissingFields { span, .. } => span.clone(),
-            MatchVariableNotBoundInAllPatterns { span, .. } => span.clone(),
+            MatchArmVariableNotDefinedInAllAlternatives { variable, .. } => variable.span(),
+            MatchArmVariableMismatchedType { variable, .. } => variable.span(),
             NotAnEnum { span, .. } => span.clone(),
             StorageAccessMismatch { span, .. } => span.clone(),
             TraitDeclPureImplImpure { span, .. } => span.clone(),
@@ -893,6 +913,7 @@ impl Spanned for CompileError {
             AbiSupertraitMethodCallAsContractCall { span, .. } => span.clone(),
             TypeNotAllowed { span, .. } => span.clone(),
             ExpectedStringLiteral { span } => span.clone(),
+            SelfIsNotValidAsImplementingFor { span } => span.clone(),
         }
     }
 }
@@ -1018,7 +1039,7 @@ impl ToDiagnostic for CompileError {
                     Hint::info(
                         source_engine,
                         match_value.clone(),
-                        format!("`{}`, of type \"{match_type}\", is the value to match on.", match_value.as_str())
+                        format!("The expression to match on is of type \"{match_type}\".")
                     ),
                 ],
                 help: vec![
@@ -1028,6 +1049,61 @@ impl ToDiagnostic for CompileError {
                         (true, false) | (false, true) => format!("Consider declaring a variable for the field \"{0}\" (e.g., `{0}: var_{0}`), or renaming the variable \"{0}\".", first_definition.as_str()),
                         (false, false) => "Consider renaming either of the variables.".to_string(),
                     },
+                ],
+            },
+            MatchArmVariableMismatchedType { match_value, match_type, variable, first_definition, expected, received } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Match pattern variable has mismatched type".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    variable.span(),
+                    format!("Variable \"{variable}\" is expected to be of type \"{expected}\", but is \"{received}\".")
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        first_definition.clone(),
+                        format!("\"{variable}\" is first defined here with type \"{expected}\".")
+                    ),
+                    Hint::info(
+                        source_engine,
+                        match_value.clone(),
+                        format!("The expression to match on is of type \"{match_type}\".")
+                    ),
+                ],
+                help: vec![
+                    format!("In the same match arm, a variable must have the same type in all alternatives."),
+                ],
+            },
+            MatchArmVariableNotDefinedInAllAlternatives { match_value, match_type, variable, missing_in_alternatives} => Diagnostic {
+                reason: Some(Reason::new(code(1), "Match pattern variable is not defined in all alternatives".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    variable.span(),
+                    format!("Variable \"{variable}\" is not defined in all alternatives.")
+                ),
+                hints: {
+                    let mut hints = vec![
+                        Hint::info(
+                            source_engine,
+                            match_value.clone(),
+                            format!("The expression to match on is of type \"{match_type}\".")
+                        ),
+                    ];
+
+                    for (i, alternative) in missing_in_alternatives.iter().enumerate() {
+                        hints.push(
+                            Hint::info(
+                                source_engine,
+                                alternative.clone(),
+                                format!("\"{variable}\" is {}missing in this alternative.", if i != 0 { "also " } else { "" }),
+                            )
+                        )
+                    }
+
+                    hints
+                },
+                help: vec![
+                    format!("Consider removing the variable \"{variable}\" altogether, or adding it to all alternatives."),
                 ],
             },
            _ => Diagnostic {
