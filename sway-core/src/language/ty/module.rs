@@ -1,3 +1,4 @@
+use sway_error::handler::Handler;
 use sway_types::Span;
 
 use crate::{
@@ -5,7 +6,8 @@ use crate::{
     language::ty::*,
     language::ModName,
     semantic_analysis::namespace,
-    transform,
+    transform::{self, AllowDeprecatedState},
+    Engines,
 };
 
 #[derive(Clone, Debug)]
@@ -66,6 +68,23 @@ impl TyModule {
             }
             None
         })
+    }
+
+    pub(crate) fn check_deprecated(
+        &self,
+        engines: &Engines,
+        handler: &Handler,
+        allow_deprecated: &mut AllowDeprecatedState,
+    ) {
+        for (_, submodule) in self.submodules.iter() {
+            submodule
+                .module
+                .check_deprecated(engines, handler, allow_deprecated);
+        }
+
+        for node in self.all_nodes.iter() {
+            node.check_deprecated(engines, handler, allow_deprecated);
+        }
     }
 }
 

@@ -37,6 +37,7 @@ mod storage_map_nested;
 mod storage_string;
 mod storage_vec;
 mod storage_vec_nested;
+mod storage_vec_to_vec;
 mod superabi;
 mod superabi_supertrait;
 mod token_ops;

@@ -17,7 +17,7 @@ use crate::{
         CallPath,
     },
     type_system::{SubstTypes, TypeId},
-    ReplaceSelfType, TraitConstraint, TypeArgument, TypeInfo, TypeSubstMap, UnifyCheck,
+    TraitConstraint, TypeArgument, TypeInfo, TypeSubstMap, UnifyCheck,
 };
 
 use super::TryInsertingTraitImplOnFailure;
@@ -706,8 +706,7 @@ impl TraitMap {
                         *map_type_id,
                         *type_id,
                     );
-                    let new_self_type = type_engine.insert(engines, TypeInfo::SelfType);
-                    type_id.replace_self_type(engines, new_self_type);
+                    type_id.subst(&type_mapping, engines);
                     let trait_items: TraitItems = map_trait_items
                         .clone()
                         .into_iter()
@@ -715,7 +714,6 @@ impl TraitMap {
                             ty::TyTraitItem::Fn(decl_ref) => {
                                 let mut decl = decl_engine.get(decl_ref.id());
                                 decl.subst(&type_mapping, engines);
-                                decl.replace_self_type(engines, new_self_type);
                                 let new_ref = decl_engine
                                     .insert(decl)
                                     .with_parent(decl_engine, decl_ref.id().into());
@@ -724,14 +722,12 @@ impl TraitMap {
                             ty::TyTraitItem::Constant(decl_ref) => {
                                 let mut decl = decl_engine.get(decl_ref.id());
                                 decl.subst(&type_mapping, engines);
-                                decl.replace_self_type(engines, new_self_type);
                                 let new_ref = decl_engine.insert(decl);
                                 (name, TyImplItem::Constant(new_ref))
                             }
                             ty::TyTraitItem::Type(decl_ref) => {
                                 let mut decl = decl_engine.get(decl_ref.id());
                                 decl.subst(&type_mapping, engines);
-                                decl.replace_self_type(engines, new_self_type);
                                 let new_ref = decl_engine.insert(decl);
                                 (name, TyImplItem::Type(new_ref))
                             }

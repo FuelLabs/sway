@@ -61,34 +61,6 @@ impl TypeEngine {
         }
     }
 
-    /// Replace any instances of the [TypeInfo::SelfType] variant with
-    /// `self_type` in both `received` and `expected`, then unify `received` and
-    /// `expected`.
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn unify_with_self(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mut received: TypeId,
-        mut expected: TypeId,
-        self_type: TypeId,
-        span: &Span,
-        help_text: &str,
-        err_override: Option<CompileError>,
-    ) {
-        received.replace_self_type(engines, self_type);
-        expected.replace_self_type(engines, self_type);
-        self.unify(
-            handler,
-            engines,
-            received,
-            expected,
-            span,
-            help_text,
-            err_override,
-        )
-    }
-
     /// Make the types of `received` and `expected` equivalent (or produce an
     /// error if there is a conflict between them).
     ///
@@ -181,7 +153,6 @@ impl TypeEngine {
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Custom { .. }
-            | TypeInfo::SelfType
             | TypeInfo::B256
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery(..)
@@ -236,7 +207,6 @@ impl TypeEngine {
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Custom { .. }
-            | TypeInfo::SelfType
             | TypeInfo::B256
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery(..)

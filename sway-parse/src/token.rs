@@ -14,6 +14,7 @@ use sway_types::{
     ast::{Delimiter, PunctKind},
     Ident, SourceId, Span, Spanned,
 };
+use unicode_bidi::format_chars::{ALM, FSI, LRE, LRI, LRM, LRO, PDF, PDI, RLE, RLI, RLM, RLO};
 use unicode_xid::UnicodeXID;
 
 #[extension_trait]
@@ -207,6 +208,15 @@ pub fn lex_commented(
                 if let Some((next_index, next_character)) = l.stream.next() {
                     character = next_character;
                     index = next_index;
+                }
+                if !(character.is_xid_start() || character == '_') {
+                    let kind = LexErrorKind::InvalidCharacter {
+                        position: index,
+                        character,
+                    };
+                    let span = span_one(&l, index, character);
+                    error(l.handler, LexError { kind, span });
+                    continue;
                 }
             }
 
@@ -465,14 +475,28 @@ fn lex_string(
                 },
             )
         };
-        let (_, next_character) = l
-            .stream
-            .next()
-            .ok_or_else(|| unclosed_string_lit(l, l.src.len() - 1))?;
+        let (next_index, next_character) = l.stream.next().ok_or_else(|| {
+            // last character may not be a unicode boundary
+            let mut end = l.src.len() - 1;
+            while !l.src.is_char_boundary(end) {
+                end -= 1;
+            }
+            unclosed_string_lit(l, end)
+        })?;
         parsed.push(match next_character {
             '\\' => parse_escape_code(l)
                 .map_err(|e| e.unwrap_or_else(|| unclosed_string_lit(l, l.src.len())))?,
             '"' => break,
+            // do not allow text direction codepoints
+            ALM | FSI | LRE | LRI | LRM | LRO | PDF | PDI | RLE | RLI | RLM | RLO => {
+                let kind = LexErrorKind::UnicodeTextDirInLiteral {
+                    position: next_index,
+                    character: next_character,
+                };
+                let span = span_one(l, next_index, next_character);
+                error(l.handler, LexError { span, kind });
+                continue;
+            }
             _ => next_character,
         });
     }
@@ -507,7 +531,17 @@ fn lex_char(
         }
     };
 
-    let (_, next_char) = next(l)?;
+    let (next_index, next_char) = next(l)?;
+    // do not allow text direction codepoints
+    if let ALM | FSI | LRE | LRI | LRM | LRO | PDF | PDI | RLE | RLI | RLM | RLO = next_char {
+        let kind = LexErrorKind::UnicodeTextDirInLiteral {
+            position: next_index,
+            character: next_char,
+        };
+        let span = span_one(l, next_index, next_char);
+        error(l.handler, LexError { span, kind });
+    }
+
     let parsed = escape(l, next_char)?;
 
     // Consume the closing `'`.
@@ -817,7 +851,52 @@ mod tests {
             TokenTree,
         },
     };
-    use sway_error::handler::Handler;
+    use sway_error::{
+        error::CompileError,
+        handler::Handler,
+        lex_error::{LexError, LexErrorKind},
+    };
+
+    #[test]
+    fn lex_bidi() {
+        let input = "
+            script;
+            use std::string::String;
+            fn main() {
+                let a = String::from_ascii_str(\"fuel\");
+                let b = String::from_ascii_str(\"fuel\u{202E}\u{2066}// Same string again\u{2069}\u{2066}\");
+                if a.as_bytes() == b.as_bytes() {
+                    log(\"same\");
+                } else {
+                    log(\"different\");
+                }
+                let lrm = '\u{202E}';
+                log(lrm);
+            }
+        ";
+        let start = 0;
+        let end = input.len();
+        let path = None;
+        let handler = Handler::default();
+        let _stream = lex_commented(&handler, &Arc::from(input), start, end, &path).unwrap();
+        let (errors, warnings) = handler.consume();
+        assert_eq!(warnings.len(), 0);
+        assert_eq!(errors.len(), 5);
+        for err in errors {
+            assert_matches!(
+                err,
+                CompileError::Lex {
+                    error: LexError {
+                        span: _,
+                        kind: LexErrorKind::UnicodeTextDirInLiteral {
+                            position: _,
+                            character: _
+                        }
+                    }
+                }
+            );
+        }
+    }
 
     #[test]
     fn lex_commented_token_stream() {

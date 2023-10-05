@@ -59,14 +59,6 @@ impl SubstTypes for TyVariableDecl {
     }
 }
 
-impl ReplaceSelfType for TyVariableDecl {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.return_type.replace_self_type(engines, self_type);
-        self.type_ascription.replace_self_type(engines, self_type);
-        self.body.replace_self_type(engines, self_type)
-    }
-}
-
 impl TypeCheckFinalization for TyVariableDecl {
     fn type_check_finalize(
         &mut self,

@@ -119,9 +119,6 @@ pub(crate) fn render_type_anchor(
         TypeInfo::Custom { call_path, .. } => Ok(box_html! {
             : call_path.suffix.as_str();
         }),
-        TypeInfo::SelfType => Ok(box_html! {
-            : "Self";
-        }),
         TypeInfo::B256 => Ok(box_html! {
             : "b256";
         }),

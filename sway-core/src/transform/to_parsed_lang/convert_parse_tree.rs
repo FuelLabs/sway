@@ -25,10 +25,10 @@ use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{
     constants::{
         ALLOW_ATTRIBUTE_NAME, CFG_ATTRIBUTE_NAME, CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME,
-        DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME, INLINE_ATTRIBUTE_NAME,
-        MATCH_RETURN_VAR_NAME_PREFIX, PAYABLE_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME,
-        STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME,
-        TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
+        DEPRECATED_ATTRIBUTE_NAME, DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME,
+        DOC_COMMENT_ATTRIBUTE_NAME, INLINE_ATTRIBUTE_NAME, MATCH_RETURN_VAR_NAME_PREFIX,
+        PAYABLE_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME,
+        STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME, TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
     },
     integer_bits::IntegerBits,
 };
@@ -1262,7 +1262,9 @@ fn fn_args_to_function_parameters(
                 (Some(reference), None) => reference.span(),
                 (Some(reference), Some(mutable)) => Span::join(reference.span(), mutable.span()),
             };
-            let type_id = engines.te().insert(engines, TypeInfo::SelfType);
+            let type_id = engines
+                .te()
+                .insert(engines, TypeInfo::new_self_type(self_token.span()));
             let mut function_parameters = vec![FunctionParameter {
                 name: Ident::new(self_token.span()),
                 is_reference: ref_self.is_some(),
@@ -1314,7 +1316,7 @@ pub(crate) fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
         "str" => Some(TypeInfo::StringSlice),
         "raw_ptr" => Some(TypeInfo::RawUntypedPtr),
         "raw_slice" => Some(TypeInfo::RawUntypedSlice),
-        "Self" | "self" => Some(TypeInfo::SelfType),
+        "Self" | "self" => Some(TypeInfo::new_self_type(name.span())),
         "Contract" => Some(TypeInfo::Contract),
         _other => None,
     }
@@ -3967,24 +3969,6 @@ fn path_type_to_type_info(
     } = path_type.clone();
 
     let type_info = match type_name_to_type_info_opt(&name) {
-        Some(type_info @ TypeInfo::SelfType) => {
-            if root_opt.is_some() {
-                let error = ConvertParseTreeError::FullySpecifiedTypesNotSupported { span };
-                return Err(handler.emit_err(error.into()));
-            }
-            if !suffix.is_empty() {
-                let (call_path, type_arguments) = path_type_to_call_path_and_type_arguments(
-                    context, handler, engines, path_type,
-                )?;
-                TypeInfo::Custom {
-                    call_path,
-                    type_arguments: Some(type_arguments),
-                    root_type_id: None,
-                }
-            } else {
-                type_info
-            }
-        }
         Some(type_info) => {
             if root_opt.is_some() || !suffix.is_empty() {
                 let error = ConvertParseTreeError::FullySpecifiedTypesNotSupported { span };
@@ -4085,6 +4069,7 @@ fn item_attrs_to_map(
     attribute_list: &[AttributeDecl],
 ) -> Result<AttributesMap, ErrorEmitted> {
     let mut attrs_map: HashMap<_, Vec<Attribute>> = HashMap::new();
+
     for attr_decl in attribute_list {
         let attrs = attr_decl.attribute.get().into_iter();
         for attr in attrs {
@@ -4130,6 +4115,7 @@ fn item_attrs_to_map(
                 PAYABLE_ATTRIBUTE_NAME => Some(AttributeKind::Payable),
                 ALLOW_ATTRIBUTE_NAME => Some(AttributeKind::Allow),
                 CFG_ATTRIBUTE_NAME => Some(AttributeKind::Cfg),
+                DEPRECATED_ATTRIBUTE_NAME => Some(AttributeKind::Deprecated),
                 _ => None,
             } {
                 match attrs_map.get_mut(&attr_kind) {
@@ -4182,6 +4168,7 @@ fn item_attrs_to_map(
             }
         }
     }
+
     Ok(AttributesMap::new(Arc::new(attrs_map)))
 }
 
@@ -4193,10 +4180,7 @@ fn error_if_self_param_is_not_allowed(
     fn_kind: &str,
 ) -> Result<(), ErrorEmitted> {
     for param in parameters {
-        if matches!(
-            engines.te().get(param.type_argument.type_id),
-            TypeInfo::SelfType
-        ) {
+        if engines.te().get(param.type_argument.type_id).is_self_type() {
             let error = ConvertParseTreeError::SelfParameterNotAllowedForFn {
                 fn_kind: fn_kind.to_owned(),
                 span: param.type_argument.span.clone(),

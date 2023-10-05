@@ -51,7 +51,7 @@ pub(crate) fn struct_instantiation(
     let type_arguments = type_arguments.to_vec();
 
     let type_info = match (suffix.as_str(), type_arguments.is_empty()) {
-        ("Self", true) => TypeInfo::SelfType,
+        ("Self", true) => TypeInfo::new_self_type(suffix.span()),
         ("Self", false) => {
             return Err(handler.emit_err(CompileError::TypeArgumentsNotAllowed {
                 span: suffix.span(),
@@ -77,10 +77,9 @@ pub(crate) fn struct_instantiation(
 
     // resolve the type of the struct decl
     let type_id = ctx
-        .resolve_type_with_self(
+        .resolve_type(
             handler,
             type_engine.insert(engines, type_info),
-            ctx.self_type(),
             &inner_span,
             EnforceTypeArguments::No,
             Some(&type_info_prefix),
