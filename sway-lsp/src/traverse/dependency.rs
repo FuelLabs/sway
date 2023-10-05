@@ -4,7 +4,7 @@ use crate::{
 };
 use sway_core::language::{
     parsed::{AstNode, AstNodeContent, Declaration},
-    ty::{self, TyAstNodeContent},
+    ty,
 };
 
 /// Insert Declaration tokens into the TokenMap.

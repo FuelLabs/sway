@@ -1,11 +1,8 @@
-use std::{cmp::Ordering, collections::HashMap, iter};
+use std::{cmp::Ordering, collections::HashMap};
 
 use crate::{
     capabilities::{code_actions::CodeActionContext, diagnostic::DiagnosticData},
-    core::{
-        session,
-        token::{get_range_from_span, AstToken, Token, TypedAstToken},
-    },
+    core::token::{get_range_from_span, AstToken, TypedAstToken},
 };
 use lsp_types::{
     CodeAction as LspCodeAction, CodeActionKind, CodeActionOrCommand, Position, Range, TextEdit,
@@ -13,14 +10,13 @@ use lsp_types::{
 };
 use serde_json::Value;
 use sway_core::{
-    fuel_prelude::fuel_vm::call,
     language::{
-        parsed::{ImportType, TreeType},
+        parsed::ImportType,
         ty::{TyDecl, TyUseStatement},
     },
     Namespace,
 };
-use sway_types::{BaseIdent, Ident, Spanned};
+use sway_types::{Ident, Spanned};
 
 use super::CODE_ACTION_IMPORT_TITLE;
 
@@ -47,7 +43,7 @@ fn import_code_action(
         let call_paths = ctx
             .tokens
             .tokens_for_name(&diag_data.name_to_import)
-            .filter_map(|(ident, token)| {
+            .filter_map(|(_, token)| {
                 // If the typed token is a declaration, then we can import it.
                 match token.typed.as_ref() {
                     Some(TypedAstToken::TypedDeclaration(ty_decl)) => {
