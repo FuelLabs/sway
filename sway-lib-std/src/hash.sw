@@ -501,9 +501,6 @@ fn test_hasher_sha256_bytes() {
     assert(sha256 == 0x4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a);
 }
 
-// The hashes for the following test can be obtained in Rust by running the following script:
-// https://www.rustexplorer.com/b/kbg0oc
-
 #[test()]
 fn test_hasher_keccak256_str_array() {
     use ::assert::assert;
