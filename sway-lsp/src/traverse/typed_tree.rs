@@ -100,14 +100,18 @@ impl Parse for ty::TySideEffect {
             UseStatement(
                 use_statement @ ty::TyUseStatement {
                     call_path,
+                    span: _,
                     import_type,
                     alias,
                     is_absolute: _,
                 },
             ) => {
                 for (mod_path, ident) in iter_prefixes(call_path).zip(call_path) {
+                    eprintln!("mod_path: {:?}, ident: {:?}", mod_path, ident);
                     if let Some(mut token) = ctx.tokens.try_get_mut(&ctx.ident(ident)).try_unwrap()
                     {
+                        eprintln!("key: {:?}", ctx.ident(ident));
+                        eprintln!("inserting use stmt: {:?}", use_statement);
                         token.typed = Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
 
                         if let Some(span) = ctx

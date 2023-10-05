@@ -249,11 +249,14 @@ fn item_use_to_use_statements(
     }
     let mut ret = Vec::new();
     let mut prefix = Vec::new();
+    let item_span = item_use.span();
+
     use_tree_to_use_statements(
         item_use.tree,
         item_use.root_import.is_some(),
         &mut prefix,
         &mut ret,
+        item_span,
     );
     debug_assert!(prefix.is_empty());
     Ok(ret)
@@ -264,11 +267,12 @@ fn use_tree_to_use_statements(
     is_absolute: bool,
     path: &mut Vec<Ident>,
     ret: &mut Vec<UseStatement>,
+    item_span: Span,
 ) {
     match use_tree {
         UseTree::Group { imports } => {
             for use_tree in imports.into_inner() {
-                use_tree_to_use_statements(use_tree, is_absolute, path, ret);
+                use_tree_to_use_statements(use_tree, is_absolute, path, ret, item_span.clone());
             }
         }
         UseTree::Name { name } => {
@@ -279,6 +283,7 @@ fn use_tree_to_use_statements(
             };
             ret.push(UseStatement {
                 call_path: path.clone(),
+                span: item_span.clone(),
                 import_type,
                 is_absolute,
                 alias: None,
@@ -292,6 +297,7 @@ fn use_tree_to_use_statements(
             };
             ret.push(UseStatement {
                 call_path: path.clone(),
+                span: item_span.clone(),
                 import_type,
                 is_absolute,
                 alias: Some(alias),
@@ -300,6 +306,7 @@ fn use_tree_to_use_statements(
         UseTree::Glob { .. } => {
             ret.push(UseStatement {
                 call_path: path.clone(),
+                span: item_span.clone(),
                 import_type: ImportType::Star,
                 is_absolute,
                 alias: None,
@@ -307,7 +314,7 @@ fn use_tree_to_use_statements(
         }
         UseTree::Path { prefix, suffix, .. } => {
             path.push(prefix);
-            use_tree_to_use_statements(*suffix, is_absolute, path, ret);
+            use_tree_to_use_statements(*suffix, is_absolute, path, ret, item_span.clone());
             path.pop().unwrap();
         }
         UseTree::Error { .. } => {

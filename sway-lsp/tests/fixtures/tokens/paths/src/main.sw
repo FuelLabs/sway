@@ -3,8 +3,9 @@ contract;
 mod test_mod;
 mod deep_mod;
 
-use test_mod::A;
-use deep_mod::deeper_mod::deep_fun as dfun;
+// use test_mod::A;
+// use deep_mod::deeper_mod::deep_fun as dfun;
+use deep_mod::deeper_mod::A;
 use std::constants::{self, ZERO_B256};
 
 pub fn fun() {
@@ -14,7 +15,11 @@ pub fn fun() {
         value: b256::min(),
     };
 
-    test_mod::test_fun();
+    deep_fun();
+
+    let a = A;
+
+    test_mod::test_mod::test_fun();
     deep_mod::deeper_mod::deep_fun();
     std::assert::assert(true);
     let _ = core::primitives::u64::min();

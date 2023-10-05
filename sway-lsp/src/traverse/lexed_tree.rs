@@ -257,11 +257,6 @@ impl Parse for ItemUse {
             insert_keyword(ctx, visibility.span());
         }
         insert_keyword(ctx, self.use_token.span());
-
-        let ident = Ident::new(span);
-        let token = Token::from_parsed(AstToken::UseStatement(ident.clone()), SymbolKind::);
-        ctx.tokens.insert(ctx.ident(&ident), token);
-
         self.tree.parse(ctx);
     }
 }

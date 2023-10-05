@@ -121,6 +121,7 @@ impl ty::TyAstNode {
                         side_effect: ty::TySideEffectVariant::UseStatement(ty::TyUseStatement {
                             alias: a.alias,
                             call_path: a.call_path,
+                            span: a.span,
                             is_absolute: a.is_absolute,
                             import_type: a.import_type,
                         }),
