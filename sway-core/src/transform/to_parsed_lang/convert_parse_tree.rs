@@ -3970,7 +3970,6 @@ fn path_type_to_type_info(
 
     let type_info = match type_name_to_type_info_opt(&name) {
         Some(type_info) => {
-            // if root_opt.is_some() || !suffix.is_empty() {
             if root_opt.is_some() {
                 let error = ConvertParseTreeError::FullySpecifiedTypesNotSupported { span };
                 return Err(handler.emit_err(error.into()));

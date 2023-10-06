@@ -674,6 +674,7 @@ fn type_check_trait_implementation(
                     trait_type_id: type_engine.insert(
                         engines,
                         TypeInfo::UnknownGeneric {
+                            // Using Span::dummy just to match the type substitution, type is not used anywhere else.
                             name: Ident::new_with_override("Self".into(), Span::dummy()),
                             trait_constraints: VecSet(vec![]),
                         },
