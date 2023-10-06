@@ -161,7 +161,7 @@ fn type_check_variable(
 
     let typed_scrutinee = match ctx
         .namespace
-        .resolve_symbol(&Handler::default(), engines, &name)
+        .resolve_symbol(&Handler::default(), engines, &name, ctx.self_type())
         .ok()
     {
         // If this variable is a constant, then we turn it into a [TyScrutinee::Constant](ty::TyScrutinee::Constant).
@@ -214,9 +214,9 @@ fn type_check_struct(
     let decl_engine = engines.de();
 
     // find the struct definition from the name
-    let unknown_decl = ctx
-        .namespace
-        .resolve_symbol(handler, engines, &struct_name)?;
+    let unknown_decl =
+        ctx.namespace
+            .resolve_symbol(handler, engines, &struct_name, ctx.self_type())?;
     let struct_ref = unknown_decl.to_struct_ref(handler, ctx.engines())?;
     let mut struct_decl = decl_engine.get_struct(&struct_ref);
 
@@ -326,9 +326,12 @@ fn type_check_enum(
                 is_absolute: call_path.is_absolute,
             };
             // find the enum definition from the name
-            let unknown_decl = ctx
-                .namespace
-                .resolve_call_path(handler, engines, &enum_callpath)?;
+            let unknown_decl = ctx.namespace.resolve_call_path(
+                handler,
+                engines,
+                &enum_callpath,
+                ctx.self_type(),
+            )?;
             let enum_ref = unknown_decl.to_enum_ref(handler, ctx.engines())?;
             (
                 enum_callpath.span(),
@@ -338,9 +341,9 @@ fn type_check_enum(
         }
         None => {
             // we may have an imported variant
-            let decl = ctx
-                .namespace
-                .resolve_call_path(handler, engines, &call_path)?;
+            let decl =
+                ctx.namespace
+                    .resolve_call_path(handler, engines, &call_path, ctx.self_type())?;
             if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl { enum_ref, .. }) = decl.clone() {
                 (
                     call_path.suffix.span(),

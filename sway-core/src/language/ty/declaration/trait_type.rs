@@ -9,6 +9,7 @@ pub struct TyTraitType {
     pub name: Ident,
     pub attributes: transform::AttributesMap,
     pub ty: Option<TypeArgument>,
+    pub implementing_type: TypeId,
     pub span: Span,
 }
 
@@ -21,7 +22,9 @@ impl Named for TyTraitType {
 impl EqWithEngines for TyTraitType {}
 impl PartialEqWithEngines for TyTraitType {
     fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.name == other.name && self.ty.eq(&other.ty, engines)
+        self.name == other.name
+            && self.ty.eq(&other.ty, engines)
+            && self.implementing_type.eq(&other.implementing_type)
     }
 }
 
@@ -30,6 +33,7 @@ impl HashWithEngines for TyTraitType {
         let TyTraitType {
             name,
             ty,
+            implementing_type,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
             span: _,
@@ -37,6 +41,7 @@ impl HashWithEngines for TyTraitType {
         } = self;
         name.hash(state);
         ty.hash(state, engines);
+        implementing_type.hash(state);
     }
 }
 
@@ -45,14 +50,7 @@ impl SubstTypes for TyTraitType {
         if let Some(ref mut ty) = self.ty {
             ty.subst(type_mapping, engines);
         }
-    }
-}
-
-impl ReplaceSelfType for TyTraitType {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        if let Some(ref mut ty) = self.ty {
-            ty.replace_self_type(engines, self_type);
-        }
+        self.implementing_type.subst(type_mapping, engines);
     }
 }
 

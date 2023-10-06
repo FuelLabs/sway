@@ -349,46 +349,6 @@ impl SubstTypes for TyDecl {
     }
 }
 
-impl ReplaceSelfType for TyDecl {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        match self {
-            TyDecl::VariableDecl(ref mut var_decl) => {
-                var_decl.replace_self_type(engines, self_type)
-            }
-            TyDecl::FunctionDecl(FunctionDecl {
-                ref mut decl_id, ..
-            }) => decl_id.replace_self_type(engines, self_type),
-            TyDecl::TraitDecl(TraitDecl {
-                ref mut decl_id, ..
-            }) => decl_id.replace_self_type(engines, self_type),
-            TyDecl::StructDecl(StructDecl {
-                ref mut decl_id, ..
-            }) => decl_id.replace_self_type(engines, self_type),
-            TyDecl::EnumDecl(EnumDecl {
-                ref mut decl_id, ..
-            }) => decl_id.replace_self_type(engines, self_type),
-            TyDecl::EnumVariantDecl(EnumVariantDecl {
-                ref mut enum_ref, ..
-            }) => enum_ref.replace_self_type(engines, self_type),
-            TyDecl::ImplTrait(ImplTrait {
-                ref mut decl_id, ..
-            }) => decl_id.replace_self_type(engines, self_type),
-            TyDecl::TypeAliasDecl(TypeAliasDecl {
-                ref mut decl_id, ..
-            }) => decl_id.replace_self_type(engines, self_type),
-            TyDecl::TraitTypeDecl(TraitTypeDecl {
-                ref mut decl_id, ..
-            }) => decl_id.replace_self_type(engines, self_type),
-            // generics in an ABI is unsupported by design
-            TyDecl::AbiDecl(_)
-            | TyDecl::ConstantDecl(_)
-            | TyDecl::StorageDecl(_)
-            | TyDecl::GenericTypeForFunctionScope(_)
-            | TyDecl::ErrorRecovery(..) => (),
-        }
-    }
-}
-
 impl TyDecl {
     pub fn get_fun_decl_ref(&self) -> Option<DeclRefFunction> {
         if let TyDecl::FunctionDecl(FunctionDecl {
@@ -613,6 +573,16 @@ impl TyDecl {
                     .get(ty.type_id)
                     .expect_enum(handler, engines, "", &span)
             }
+            // `Self` type parameter might resolve to an Enum
+            TyDecl::GenericTypeForFunctionScope(GenericTypeForFunctionScope {
+                type_id, ..
+            }) => match engines.te().get(*type_id) {
+                TypeInfo::Enum(r) => Ok(r),
+                _ => Err(handler.emit_err(CompileError::DeclIsNotAnEnum {
+                    actually: self.friendly_type_name().to_string(),
+                    span: self.span(),
+                })),
+            },
             TyDecl::ErrorRecovery(_, err) => Err(*err),
             decl => Err(handler.emit_err(CompileError::DeclIsNotAnEnum {
                 actually: decl.friendly_type_name().to_string(),
@@ -733,7 +703,7 @@ impl TyDecl {
     }
 
     /// friendly name string used for error reporting,
-    /// which consists of the the identifier for the declaration.
+    /// which consists of the identifier for the declaration.
     pub fn friendly_name(&self, engines: &Engines) -> String {
         let decl_engine = engines.de();
         let type_engine = engines.te();

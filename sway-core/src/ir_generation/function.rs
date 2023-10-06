@@ -2621,7 +2621,7 @@ impl<'eng> FnCompiler<'eng> {
                      immediate,
                      span,
                  }| AsmInstruction {
-                    name: op_name.clone(),
+                    op_name: op_name.clone(),
                     args: op_args.clone(),
                     immediate: immediate.clone(),
                     metadata: md_mgr.span_to_md(context, span),

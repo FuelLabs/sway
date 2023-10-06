@@ -1073,7 +1073,7 @@ mod ir_builder {
                                      imm,
                                      meta_idx,
                                  }| AsmInstruction {
-                                    name,
+                                    op_name: name,
                                     args,
                                     immediate: imm,
                                     metadata: meta_idx

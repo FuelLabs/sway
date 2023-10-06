@@ -28,10 +28,9 @@ impl ty::TyFunctionParameter {
         } = parameter;
 
         type_argument.type_id = ctx
-            .resolve_type_with_self(
+            .resolve_type(
                 handler,
                 type_argument.type_id,
-                ctx.self_type(),
                 &type_argument.span,
                 EnforceTypeArguments::Yes,
                 None,
@@ -83,10 +82,9 @@ impl ty::TyFunctionParameter {
         } = parameter;
 
         type_argument.type_id = ctx
-            .resolve_type_with_self(
+            .resolve_type(
                 handler,
                 type_argument.type_id,
-                ctx.self_type(),
                 &type_argument.span,
                 EnforceTypeArguments::Yes,
                 None,

@@ -86,7 +86,7 @@ impl ty::TyFunctionDecl {
 
         // Type check the type parameters.
         let new_type_parameters =
-            TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters)?;
+            TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters, None)?;
 
         // Insert them into the current namespace.
         for p in &new_type_parameters {
@@ -113,10 +113,9 @@ impl ty::TyFunctionDecl {
 
         // type check the return type
         return_type.type_id = ctx
-            .resolve_type_with_self(
+            .resolve_type(
                 handler,
                 return_type.type_id,
-                ctx.self_type(),
                 &return_type.span,
                 EnforceTypeArguments::Yes,
                 None,
@@ -260,12 +259,11 @@ fn unify_return_statements(
 
     handler.scope(|handler| {
         for stmt in return_statements.iter() {
-            type_engine.unify_with_self(
+            type_engine.unify(
                 handler,
                 ctx.engines(),
                 stmt.return_type,
                 return_type,
-                ctx.self_type(),
                 &stmt.span,
                 "Return statement must return the declared function return type.",
                 None,

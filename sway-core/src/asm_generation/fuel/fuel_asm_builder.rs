@@ -399,7 +399,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
         // For each opcode in the asm expression, attempt to parse it into an opcode and
         // replace references to the above registers with the newly allocated ones.
-        let asm_block = asm.get_content(self.context);
+        let asm_block = asm;
         for op in &asm_block.body {
             let replaced_registers = op
                 .args
@@ -432,7 +432,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 .unwrap_or_else(Span::dummy);
             let opcode = Op::parse_opcode(
                 handler,
-                &op.name,
+                &op.op_name,
                 &replaced_registers,
                 &op.immediate,
                 op_span.clone(),

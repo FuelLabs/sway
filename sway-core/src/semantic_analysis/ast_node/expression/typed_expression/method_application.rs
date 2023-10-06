@@ -206,9 +206,12 @@ pub(crate) fn type_check_method_application(
     ) -> Result<(), ErrorEmitted> {
         match exp {
             ty::TyExpressionVariant::VariableExpression { name, .. } => {
-                let unknown_decl =
-                    ctx.namespace
-                        .resolve_symbol(&Handler::default(), ctx.engines, name)?;
+                let unknown_decl = ctx.namespace.resolve_symbol(
+                    &Handler::default(),
+                    ctx.engines,
+                    name,
+                    ctx.self_type(),
+                )?;
 
                 let is_decl_mutable = match unknown_decl {
                     ty::TyDecl::ConstantDecl { .. } => false,
@@ -377,12 +380,11 @@ fn unify_arguments_and_parameters(
         for ((_, arg), param) in arguments.iter().zip(parameters.iter()) {
             // unify the type of the argument with the type of the param
             let unify_res = handler.scope(|handler| {
-                type_engine.unify_with_self(
+                type_engine.unify(
                     handler,
                     engines,
                     arg.return_type,
                     param.type_argument.type_id,
-                    ctx.self_type(),
                     &arg.span,
                     "This argument's type is not castable to the declared parameter type.",
                     Some(CompileError::ArgumentParameterTypeMismatch {
@@ -437,7 +439,6 @@ pub(crate) fn resolve_method_name(
                 type_id,
                 &type_info_prefix,
                 method_name,
-                ctx.self_type(),
                 ctx.type_annotation(),
                 &arguments,
                 None,
@@ -475,7 +476,6 @@ pub(crate) fn resolve_method_name(
                 type_id,
                 &module_path,
                 &call_path.suffix,
-                ctx.self_type(),
                 ctx.type_annotation(),
                 &arguments,
                 None,
@@ -500,7 +500,6 @@ pub(crate) fn resolve_method_name(
                 type_id,
                 &module_path,
                 method_name,
-                ctx.self_type(),
                 ctx.type_annotation(),
                 &arguments,
                 None,
@@ -524,7 +523,6 @@ pub(crate) fn resolve_method_name(
                 type_id,
                 &type_info_prefix,
                 method_name,
-                ctx.self_type(),
                 ctx.type_annotation(),
                 &arguments,
                 Some(as_trait.clone()),

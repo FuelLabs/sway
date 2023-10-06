@@ -86,3 +86,4 @@ Keywords associated with defining the funcitonallity of attributes
 - [`payable`](./attributes.md#payable) - implies method is payable for compile time
 - [`storage`](./attributes.md#storage) - declaration that contains a list of stored variables
 - [`test`](./attributes.md#test) - marks a function to be executed as a test
+- [`deprecated`](./attributes.md#deprecated) - marks an item as deprecated

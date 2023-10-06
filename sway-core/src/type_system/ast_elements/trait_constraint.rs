@@ -70,14 +70,6 @@ impl SubstTypes for TraitConstraint {
     }
 }
 
-impl ReplaceSelfType for TraitConstraint {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.type_arguments
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-    }
-}
-
 impl From<&Supertrait> for TraitConstraint {
     fn from(supertrait: &Supertrait) -> Self {
         TraitConstraint {
@@ -151,10 +143,11 @@ impl TraitConstraint {
         // Type check the type arguments.
         for type_argument in self.type_arguments.iter_mut() {
             type_argument.type_id = ctx
-                .resolve_type_without_self(
+                .resolve_type(
                     handler,
                     type_argument.type_id,
                     &type_argument.span,
+                    EnforceTypeArguments::Yes,
                     None,
                 )
                 .unwrap_or_else(|err| {
@@ -185,11 +178,18 @@ impl TraitConstraint {
 
         match ctx
             .namespace
-            .resolve_call_path(handler, engines, trait_name)
+            .resolve_call_path(handler, engines, trait_name, ctx.self_type())
             .ok()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
                 let mut trait_decl = decl_engine.get_trait(&decl_id);
+
+                // the following essentially is needed to map `Self` to the right type
+                // during trait decl monomorphization
+                trait_decl
+                    .type_parameters
+                    .push(trait_decl.self_type.clone());
+                type_arguments.push(TypeArgument::from(type_id));
 
                 // Monomorphize the trait declaration.
                 ctx.monomorphize(
@@ -199,6 +199,10 @@ impl TraitConstraint {
                     EnforceTypeArguments::Yes,
                     &trait_name.span(),
                 )?;
+
+                // restore type parameters and type arguments
+                trait_decl.type_parameters.pop();
+                type_arguments.pop();
 
                 // Insert the interface surface and methods from this trait into
                 // the namespace.
