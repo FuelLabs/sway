@@ -81,7 +81,7 @@ pub struct TypeCheckContext<'a> {
 }
 
 impl<'a> TypeCheckContext<'a> {
-    /// Initialise a context at the top-level of a module with its namespace.
+    /// Initialize a context at the top-level of a module with its namespace.
     ///
     /// Initializes with:
     ///

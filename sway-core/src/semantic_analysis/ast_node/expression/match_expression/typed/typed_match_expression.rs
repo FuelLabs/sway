@@ -66,13 +66,11 @@ impl ty::TyMatchExpression {
 
         handler.scope(|handler| {
             // for every branch of the match expression, in reverse
-            for ty::TyMatchBranch { req_decl_tree, result, .. } in self.branches.into_iter().rev() {
-                let conditional = req_decl_tree.to_requirement_expression(handler, &mut ctx);
-
+            for ty::TyMatchBranch { if_condition, result, .. } in self.branches.into_iter().rev() {
                 // add to the if expression that we are building using the result component
-                // of the match branch and using the conditional that we just built
+                // of the match branch and using the if condition coming from the branch
                 let result_span = result.span.clone();
-                typed_if_exp = Some(match (typed_if_exp.clone(), conditional) {
+                typed_if_exp = Some(match (typed_if_exp.clone(), if_condition) {
                     (None, None) => result,
                     (None, Some(conditional)) => {
                         // TODO: figure out if this argument matters or not

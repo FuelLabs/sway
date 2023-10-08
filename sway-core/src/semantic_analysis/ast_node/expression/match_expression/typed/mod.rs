@@ -41,4 +41,4 @@ mod typed_match_branch;
 mod typed_match_expression;
 mod typed_scrutinee;
 
-pub(crate) use matcher::ReqDeclTree;// TODO-IG: Remove. Replace with new Req struct.
+pub(crate) use matcher::ReqDeclTree;

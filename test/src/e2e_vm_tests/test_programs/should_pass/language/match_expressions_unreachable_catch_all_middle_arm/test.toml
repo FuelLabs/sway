@@ -246,7 +246,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match or1 {
-#nextln: $()The expression to match on is of type "numeric".
+#nextln: $()The expression to match on is of type "u64".
 
 #check: $()1 | 2 | _ => 0,
 #nextln: $()Catch-all arm `1 | 2 | _` makes all match arms below it unreachable.
@@ -256,7 +256,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match or2 {
-#nextln: $()The expression to match on is of type "numeric".
+#nextln: $()The expression to match on is of type "u64".
 
 #check: $()1 | _ | 2 => 0,
 #nextln: $()Catch-all arm `1 | _ | 2` makes all match arms below it unreachable.
