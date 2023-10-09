@@ -273,7 +273,7 @@ impl Parse for ty::TyExpression {
                 call_path,
                 ..
             } => {
-                collect_const_decl(ctx, const_decl, &Some(Ident::new(span.clone())));
+                collect_const_decl(ctx, const_decl, Some(&Ident::new(span.clone())));
                 if let Some(call_path) = call_path {
                     collect_call_path_prefixes(ctx, &call_path.prefixes);
                 }
@@ -1197,7 +1197,7 @@ fn collect_call_path_prefixes(ctx: &ParseContext, prefixes: &[Ident]) {
     }
 }
 
-fn collect_const_decl(ctx: &ParseContext, const_decl: &ty::TyConstantDecl, ident: &Option<Ident>) {
+fn collect_const_decl(ctx: &ParseContext, const_decl: &ty::TyConstantDecl, ident: Option<&Ident>) {
     let key = ctx.ident(ident.unwrap_or(const_decl.name()));
 
     if let Some(mut token) = ctx.tokens.try_get_mut(&key).try_unwrap() {
