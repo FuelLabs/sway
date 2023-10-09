@@ -2,7 +2,7 @@ use either::Either;
 use indexmap::IndexMap;
 
 use crate::{
-    language::{ty::{self}, CallPath, Literal},
+    language::{ty::{self, TyConstantDecl}, CallPath, Literal},
     semantic_analysis::{
         ast_node::expression::typed_expression::{
             instantiate_struct_field_access, instantiate_tuple_index_access,
@@ -18,7 +18,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
 };
 
-use sway_types::{span::Span, Spanned, integer_bits::IntegerBits};
+use sway_types::{span::Span, Spanned, integer_bits::IntegerBits, Named};
 
 /// A single requirement that the desugared if expression must include
 /// in its condition. The requirement is in the form `<lhs> == <rhs>`.
@@ -241,11 +241,10 @@ pub(crate) fn matcher(
         ty::TyScrutineeVariant::CatchAll => Ok(ReqDeclTree::none()),
         ty::TyScrutineeVariant::Literal(value) => Ok(match_literal(exp, value, span)),
         ty::TyScrutineeVariant::Variable(name) => Ok(match_variable(exp, name)),
-        ty::TyScrutineeVariant::Constant(name, _, const_decl) => Ok(match_constant(
+        ty::TyScrutineeVariant::Constant(_, _, const_decl) => Ok(match_constant(
             ctx,
             exp,
-            name,
-            const_decl.type_ascription.type_id,
+            const_decl,
             span,
         )),
         ty::TyScrutineeVariant::StructScrutinee {
@@ -384,20 +383,21 @@ fn match_variable(exp: &ty::TyExpression, scrutinee_name: Ident) -> ReqDeclTree 
 fn match_constant(
     ctx: TypeCheckContext,
     exp: &ty::TyExpression,
-    scrutinee_name: Ident,
-    scrutinee_type_id: TypeId,
+    const_decl: TyConstantDecl,
     span: Span,
 ) -> ReqDeclTree {
+    let name = const_decl.name().clone();
+    let return_type = const_decl.type_ascription.type_id;
+
     let req = (
         exp.to_owned(),
         ty::TyExpression {
-            expression: ty::TyExpressionVariant::VariableExpression { // TODO-IG: Why not ConstantExpression?
-                name: scrutinee_name.clone(),
+            expression: ty::TyExpressionVariant::ConstantExpression {
                 span: span.clone(),
-                mutability: ty::VariableMutability::Immutable,
-                call_path: Some(CallPath::from(scrutinee_name).to_fullpath(ctx.namespace)),
+                const_decl: Box::new(const_decl),
+                call_path: Some(CallPath::from(name).to_fullpath(ctx.namespace)),
             },
-            return_type: scrutinee_type_id,
+            return_type,
             span,
         },
     );

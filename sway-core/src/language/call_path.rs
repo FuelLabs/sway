@@ -90,7 +90,7 @@ impl CallPath {
             .collect::<Vec<_>>()
     }
 
-    /// Convert a given `CallPath` to an symbol to a full `CallPath` from the root of the project
+    /// Convert a given `CallPath` to a symbol to a full `CallPath` from the root of the project
     /// in which the symbol is declared. For example, given a path `pkga::SOME_CONST` where `pkga`
     /// is an _internal_ library of a package named `my_project`, the corresponding call path is
     /// `my_project::pkga::SOME_CONST`.
