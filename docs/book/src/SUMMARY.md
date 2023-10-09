@@ -3,8 +3,7 @@
 [The Sway Programming Language](./index.md)
 
 - [Introduction](./introduction/index.md)
-  - [Installation](./introduction/installation.md)
-  - [Sway Quickstart](./introduction/sway_quickstart.md)
+  - [Getting Started](./introduction/getting_started.md)
   - [The Fuel Toolchain](./introduction/fuel_toolchain.md)
   - [A Forc Project](./introduction/forc_project.md)
   - [Standard Library](./introduction/standard_library.md)
