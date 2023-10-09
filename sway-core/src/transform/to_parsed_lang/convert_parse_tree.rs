@@ -3970,17 +3970,36 @@ fn path_type_to_type_info(
 
     let type_info = match type_name_to_type_info_opt(&name) {
         Some(type_info) => {
-            if root_opt.is_some() || !suffix.is_empty() {
+            if root_opt.is_some() {
                 let error = ConvertParseTreeError::FullySpecifiedTypesNotSupported { span };
                 return Err(handler.emit_err(error.into()));
             }
+
             if let Some((_, generic_args)) = generics_opt {
                 let error = ConvertParseTreeError::GenericsNotSupportedHere {
                     span: generic_args.span(),
                 };
                 return Err(handler.emit_err(error.into()));
             }
-            type_info
+
+            if !suffix.is_empty() {
+                let (mut call_path, type_arguments) = path_type_to_call_path_and_type_arguments(
+                    context, handler, engines, path_type,
+                )?;
+
+                let mut root_type_id = None;
+                if name.as_str() == "Self" {
+                    call_path.prefixes.remove(0);
+                    root_type_id = Some(engines.te().insert(engines, type_info));
+                }
+                TypeInfo::Custom {
+                    call_path,
+                    type_arguments: Some(type_arguments),
+                    root_type_id,
+                }
+            } else {
+                type_info
+            }
         }
         None => {
             if name.as_str() == "ContractCaller" {

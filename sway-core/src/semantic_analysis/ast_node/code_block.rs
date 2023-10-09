@@ -67,7 +67,13 @@ impl ty::TyCodeBlock {
                     let never_decl_opt = ctx
                         .namespace
                         .root()
-                        .resolve_symbol(&Handler::default(), engines, &never_mod_path, &never_ident)
+                        .resolve_symbol(
+                            &Handler::default(),
+                            engines,
+                            &never_mod_path,
+                            &never_ident,
+                            None,
+                        )
                         .ok();
 
                     if let Some(ty::TyDecl::EnumDecl(ty::EnumDecl {

@@ -134,7 +134,7 @@ impl TyDecl {
                 for supertrait in trait_decl.supertraits.iter_mut() {
                     let _ = ctx
                         .namespace
-                        .resolve_call_path(handler, engines, &supertrait.name)
+                        .resolve_call_path(handler, engines, &supertrait.name, ctx.self_type())
                         .map(|supertrait_decl| {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
                                 name: supertrait_name,
@@ -175,10 +175,13 @@ impl TyDecl {
                 // insert those since we do not allow calling contract methods
                 // from contract methods
                 let emp_vec = vec![];
-                let impl_trait_items = if let Ok(ty::TyDecl::TraitDecl { .. }) = ctx
-                    .namespace
-                    .resolve_call_path(&Handler::default(), engines, &impl_trait.trait_name)
-                {
+                let impl_trait_items = if let Ok(ty::TyDecl::TraitDecl { .. }) =
+                    ctx.namespace.resolve_call_path(
+                        &Handler::default(),
+                        engines,
+                        &impl_trait.trait_name,
+                        ctx.self_type(),
+                    ) {
                     &impl_trait.items
                 } else {
                     &emp_vec
@@ -259,7 +262,7 @@ impl TyDecl {
                 for supertrait in abi_decl.supertraits.iter_mut() {
                     let _ = ctx
                         .namespace
-                        .resolve_call_path(handler, engines, &supertrait.name)
+                        .resolve_call_path(handler, engines, &supertrait.name, ctx.self_type())
                         .map(|supertrait_decl| {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
                                 name: supertrait_name,

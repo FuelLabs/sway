@@ -222,7 +222,7 @@ impl TypeParameter {
         ) -> Vec<TraitConstraint> {
             match ctx
                 .namespace
-                .resolve_call_path(handler, ctx.engines, &tc.trait_name)
+                .resolve_call_path(handler, ctx.engines, &tc.trait_name, ctx.self_type())
                 .ok()
             {
                 Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
@@ -431,7 +431,7 @@ fn handle_trait(
     handler.scope(|handler| {
         match ctx
             .namespace
-            .resolve_call_path(handler, engines, trait_name)
+            .resolve_call_path(handler, engines, trait_name, ctx.self_type())
             .ok()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
