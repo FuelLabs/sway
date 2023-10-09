@@ -1,6 +1,7 @@
 use crate::{
     comments::{rewrite_with_comments, write_comments},
     config::items::ItemBraceStyle,
+    constants::NEW_LINE,
     formatter::*,
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
@@ -45,8 +46,8 @@ impl Format for ItemImpl {
             let comments = write_comments(formatted_code, self.span().into(), formatter)?;
             if !comments {
                 formatter.unindent();
-                if formatted_code.ends_with('\n') {
-                    formatted_code.pop();
+                if formatted_code.ends_with(NEW_LINE) {
+                    formatted_code.truncate(formatted_code.len() - NEW_LINE.len());
                 }
             }
             Self::close_curly_brace(formatted_code, formatter)?;
