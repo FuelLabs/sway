@@ -1,6 +1,6 @@
 use anyhow::Result;
 use ropey::Rope;
-use std::{collections::BTreeMap, fmt::Write, path::PathBuf, sync::Arc};
+use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
 use sway_ast::Module;
 use sway_types::SourceEngine;
 
@@ -102,6 +102,20 @@ pub fn handle_newlines(
     )?;
     Ok(())
 }
+
+#[inline]
+/// Tiny function that safely calculates the offset where the offset is a i64
+/// (it may be negative). If the offset is a negative number and the result of
+/// doing the offset would have panic (because usize cannot be negative) the
+/// unmodified base would be returned
+fn calculate_offset(base: usize, offset: i64) -> usize {
+    offset
+        .checked_add(base as i64)
+        .unwrap_or(base as i64)
+        .try_into()
+        .unwrap_or(base)
+}
+
 /// Adds the newlines from newline_map to correct places in the formatted code. This requires us
 /// both the unformatted and formatted code's modules as they will have different spans for their
 /// visitable positions. While traversing the unformatted module, `add_newlines` searches for newline sequences. If there is a newline sequence found
@@ -172,9 +186,8 @@ fn add_newlines(
                             },
                             &newline_map,
                         ) {
-                            let at = previous_formatted_newline_span.end + offset;
                             offset += insert_after_span(
-                                at,
+                                calculate_offset(previous_formatted_newline_span.end, offset),
                                 newline_sequence,
                                 formatted_code,
                                 newline_threshold,
@@ -195,9 +208,8 @@ fn add_newlines(
                         },
                         &newline_map,
                     ) {
-                        let at = previous_formatted_newline_span.end + offset;
                         offset += insert_after_span(
-                            at,
+                            calculate_offset(previous_formatted_newline_span.end, offset),
                             newline_sequence,
                             formatted_code,
                             newline_threshold,
@@ -235,9 +247,10 @@ fn add_newlines(
                                 &newline_map,
                             ) {
                                 offset += insert_after_span(
-                                    previous_formatted_newline_span.end
-                                        + end_of_last_comment
-                                        + offset,
+                                    calculate_offset(
+                                        previous_formatted_newline_span.end + end_of_last_comment,
+                                        offset,
+                                    ),
                                     newline_sequence,
                                     formatted_code,
                                     newline_threshold,
@@ -270,14 +283,23 @@ fn insert_after_span(
     newline_sequence: NewlineSequence,
     formatted_code: &mut FormattedCode,
     threshold: usize,
-) -> Result<usize, FormatterError> {
-    let mut sequence_string = String::new();
-    write!(
-        sequence_string,
-        "{}",
-        format_newline_sequence(&newline_sequence, threshold)
-    )?;
+) -> Result<i64, FormatterError> {
+    let sequence_string = format_newline_sequence(&newline_sequence, threshold);
+    let mut len = sequence_string.len() as i64;
     let mut src_rope = Rope::from_str(formatted_code);
+
+    // Remove the previous sequence_length, that will be replaced in the next statement
+    let mut remove_until = at;
+    for i in at..at + newline_sequence.sequence_length {
+        if src_rope.get_char(i) != Some('\n') {
+            break;
+        }
+        remove_until = i;
+    }
+    if remove_until > at {
+        let _ = src_rope.try_remove(at..remove_until);
+        len -= (remove_until - at) as i64;
+    }
 
     src_rope
         .try_insert(at, &sequence_string)
@@ -285,7 +307,7 @@ fn insert_after_span(
 
     formatted_code.clear();
     formatted_code.push_str(&src_rope.to_string());
-    Ok(sequence_string.len())
+    Ok(len)
 }
 
 /// Returns the first newline sequence contained in a span.
