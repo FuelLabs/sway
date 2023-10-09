@@ -49,13 +49,15 @@ impl TyTraitDecl {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
-        // A temporary namespace for checking within the trait's scope.
-        let mut trait_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.scoped(&mut trait_namespace);
-
         // Create a new type parameter for the "self type".
         let self_type_param = TypeParameter::new_self_type(engines, name.span());
         let self_type = self_type_param.type_id;
+
+        // A temporary namespace for checking within the trait's scope.
+        let mut trait_namespace = ctx.namespace.clone();
+        let mut ctx = ctx
+            .scoped(&mut trait_namespace)
+            .with_self_type(Some(self_type));
 
         // Type check the type parameters.
         let new_type_parameters = TypeParameter::type_check_type_params(

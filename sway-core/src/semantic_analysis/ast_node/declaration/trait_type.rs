@@ -1,4 +1,8 @@
-use sway_error::handler::{ErrorEmitted, Handler};
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
+use sway_types::Span;
 
 use crate::{
     language::{
@@ -41,19 +45,22 @@ impl ty::TyTraitType {
             None
         };
 
-        let trait_type = ty::TyTraitType {
-            name,
-            attributes,
-            ty,
-            span,
-        };
-
-        Ok(trait_type)
+        if let Some(implementing_type) = ctx.self_type() {
+            Ok(ty::TyTraitType {
+                name,
+                attributes,
+                ty,
+                implementing_type,
+                span,
+            })
+        } else {
+            Err(handler.emit_err(CompileError::Internal("Self type not provided.", span)))
+        }
     }
 
     /// Used to create a stubbed out constant when the constant fails to
     /// compile, preventing cascading namespace errors.
-    pub(crate) fn error(_engines: &Engines, decl: parsed::TraitTypeDeclaration) -> TyTraitType {
+    pub(crate) fn error(engines: &Engines, decl: parsed::TraitTypeDeclaration) -> TyTraitType {
         let parsed::TraitTypeDeclaration {
             name,
             attributes,
@@ -64,6 +71,9 @@ impl ty::TyTraitType {
             name,
             attributes,
             ty: ty_opt,
+            implementing_type: engines
+                .te()
+                .insert(engines, TypeInfo::new_self_type(Span::dummy())),
             span,
         }
     }
