@@ -77,22 +77,18 @@ where
     T: Format,
     P: Format,
 {
-    let mut ps: Vec<String> = value_separator_pairs
-        .iter()
-        .map(|(_, p)| -> Result<FormattedCode, FormatterError> {
-            let mut buf = FormattedCode::new();
-            p.format(&mut buf, formatter)?;
-            Ok(buf)
-        })
-        .collect::<Result<_, _>>()?;
-    let mut ts: Vec<String> = value_separator_pairs
-        .iter()
-        .map(|(t, _)| -> Result<FormattedCode, FormatterError> {
-            let mut buf = FormattedCode::new();
-            t.format(&mut buf, formatter)?;
-            Ok(buf)
-        })
-        .collect::<Result<_, _>>()?;
+    let len = value_separator_pairs.len();
+    let mut ts: Vec<String> = Vec::with_capacity(len);
+    let mut ps: Vec<String> = Vec::with_capacity(len);
+    for (t, p) in value_separator_pairs.iter() {
+        let mut t_buf = FormattedCode::new();
+        t.format(&mut t_buf, formatter)?;
+        ts.push(t_buf);
+
+        let mut p_buf = FormattedCode::new();
+        p.format(&mut p_buf, formatter)?;
+        ps.push(p_buf);
+    }
     if let Some(final_value) = final_value_opt {
         let mut buf = FormattedCode::new();
         final_value.format(&mut buf, formatter)?;
