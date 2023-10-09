@@ -26,7 +26,7 @@ use sway_types::{
     constants::{
         ALLOW_ATTRIBUTE_NAME, CFG_ATTRIBUTE_NAME, CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME,
         DEPRECATED_ATTRIBUTE_NAME, DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME,
-        DOC_COMMENT_ATTRIBUTE_NAME, INLINE_ATTRIBUTE_NAME, MATCH_RETURN_VAR_NAME_PREFIX,
+        DOC_COMMENT_ATTRIBUTE_NAME, INLINE_ATTRIBUTE_NAME, MATCH_MATCHED_VALUE_VAR_NAME_PREFIX,
         PAYABLE_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME,
         STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME, TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
     },
@@ -1930,14 +1930,14 @@ fn expr_to_expression(
             let value = expr_to_expression(context, handler, engines, *value)?;
             let var_decl_span = value.span();
 
-            // Generate a deterministic name for the variable returned by the match expression.
-            let match_return_var_name = format!(
+            // Generate a deterministic name for the variable matched by the match expression.
+            let match_matched_value_var_name = format!(
                 "{}{}",
-                MATCH_RETURN_VAR_NAME_PREFIX,
-                context.next_match_expression_return_var_unique_suffix(),
+                MATCH_MATCHED_VALUE_VAR_NAME_PREFIX,
+                context.next_match_expression_matched_value_var_unique_suffix(),
             );
             let var_decl_name =
-                Ident::new_with_override(match_return_var_name, var_decl_span.clone());
+                Ident::new_with_override(match_matched_value_var_name, var_decl_span.clone());
 
             let var_decl_exp = Expression {
                 kind: ExpressionKind::Variable(var_decl_name.clone()),

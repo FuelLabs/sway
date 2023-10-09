@@ -11,8 +11,9 @@ pub struct Context {
     /// Unique suffix used to generate unique names for destructured tuples
     destructured_tuple_unique_suffix: usize,
 
-    /// Unique suffix used to generate unique names for vars returned from `match` expressions
-    match_expression_return_var_unique_suffix: usize,
+    /// Unique suffix used to generate unique names for variables
+    /// that store values matched in match expressions
+    match_expression_matched_value_var_unique_suffix: usize,
 
     /// The build target
     build_target: BuildTarget,
@@ -52,11 +53,11 @@ impl Context {
         self.destructured_tuple_unique_suffix
     }
 
-    /// Returns a unique suffix used to generate a unique name for a var returned from a `match`
-    /// expressions
-    pub fn next_match_expression_return_var_unique_suffix(&mut self) -> usize {
-        self.match_expression_return_var_unique_suffix += 1;
-        self.match_expression_return_var_unique_suffix
+    /// Returns a unique suffix used to generate a unique name for a variable
+    /// that stores the value matched in a match expression.
+    pub fn next_match_expression_matched_value_var_unique_suffix(&mut self) -> usize {
+        self.match_expression_matched_value_var_unique_suffix += 1;
+        self.match_expression_matched_value_var_unique_suffix
     }
 
     /// Returns the build target

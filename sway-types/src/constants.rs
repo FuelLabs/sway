@@ -24,8 +24,9 @@ pub const TUPLE_NAME_PREFIX: &str = "__tuple_";
 // The default prefix for the compiler generated names of struct fields
 pub const DESTRUCTURE_PREFIX: &str = "__destructure_";
 
-/// The default prefix for the compiler generated names of match
-pub const MATCH_RETURN_VAR_NAME_PREFIX: &str = "__match_return_var_name_";
+/// The default prefix for the compiler generated names of
+/// variables that store values matched in match expressions
+pub const MATCH_MATCHED_VALUE_VAR_NAME_PREFIX: &str = "__match_matched_value_var_name_";
 
 /// The valid attribute strings related to storage and purity.
 pub const STORAGE_PURITY_ATTRIBUTE_NAME: &str = "storage";

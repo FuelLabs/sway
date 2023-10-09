@@ -32,7 +32,7 @@ use sway_core::{
     type_system::{TypeArgument, TypeParameter},
     TraitConstraint, TypeInfo,
 };
-use sway_types::constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX};
+use sway_types::constants::{DESTRUCTURE_PREFIX, MATCH_MATCHED_VALUE_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX};
 use sway_types::{Ident, Span, Spanned};
 
 pub struct ParsedTree<'a> {
@@ -194,7 +194,7 @@ impl Parse for Expression {
             }
             ExpressionKind::Variable(name) => {
                 if !name.as_str().contains(TUPLE_NAME_PREFIX)
-                    && !name.as_str().contains(MATCH_RETURN_VAR_NAME_PREFIX)
+                    && !name.as_str().contains(MATCH_MATCHED_VALUE_VAR_NAME_PREFIX)
                 {
                     let symbol_kind = if name.as_str().contains(DESTRUCTURE_PREFIX) {
                         SymbolKind::Struct
@@ -678,10 +678,10 @@ impl Parse for FunctionApplicationExpression {
 
 impl Parse for VariableDeclaration {
     fn parse(&self, ctx: &ParseContext) {
-        // Don't collect tokens if the ident's name contains __tuple_ || __match_return_var_name_
+        // Don't collect tokens if the ident's name starts with __tuple_ || __match_matched_value_var_name_
         // The individual elements are handled in the subsequent VariableDeclaration's
-        if !self.name.as_str().contains(TUPLE_NAME_PREFIX)
-            && !self.name.as_str().contains(MATCH_RETURN_VAR_NAME_PREFIX)
+        if !self.name.as_str().starts_with(TUPLE_NAME_PREFIX)
+            && !self.name.as_str().starts_with(MATCH_MATCHED_VALUE_VAR_NAME_PREFIX)
         {
             let symbol_kind = if self.name.as_str().contains(DESTRUCTURE_PREFIX) {
                 SymbolKind::Struct
