@@ -134,15 +134,18 @@ impl ty::TyMatchExpression {
 
         // return!
         match typed_if_exp {
-            None => { // TODO-IG: Check this. Provide example (Empty Enum).
+            None => {
                 // If the type that we are matching on does not have a valid
-                // constructor, then it is expected that this algorithm finds a
-                // "None". This is because the user has not provided any
+                // constructor, then it is expected that the above algorithm finds a
+                // `None`. This is because the user has not provided any
                 // branches in the match expression because the type cannot be
                 // constructed or matched upon. In this case, we manually create
                 // a typed expression that is equivalent to
-                // "if true { implicit_return }" where the implicit_return type is manually set
+                // `if true { implicit_return }` where the implicit_return type is manually set
                 // to be the return type of this typed match expression object.
+                //
+                // An example of such matching is when matching an empty enum.
+                // For an example, see the "match_expressions_empty_enums" test.
                 //
                 // NOTE: This manual construction of the expression can (and
                 // most likely will) lead to an otherwise improperly typed

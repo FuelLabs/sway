@@ -127,7 +127,7 @@ impl ty::TyMatchBranch {
             span: branch_span,
         };
 
-        Ok((typed_branch, typed_scrutinee)) // TODO-IG: Why not scrutinee part of the typed_branch?
+        Ok((typed_branch, typed_scrutinee))
     }
 }
 

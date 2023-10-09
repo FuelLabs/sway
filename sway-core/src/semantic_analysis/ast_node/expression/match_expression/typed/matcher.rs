@@ -457,7 +457,7 @@ fn match_enum(
     exp: &ty::TyExpression,
     variant: ty::TyEnumVariant,
     call_path_decl: ty::TyDecl,
-    enum_value_scrutinee: ty::TyScrutinee, // TODO-IG: What's in it if we just match the enum without value?
+    enum_value_scrutinee: ty::TyScrutinee,
     span: Span,
 ) -> Result<ReqDeclTree, ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -485,7 +485,10 @@ fn match_enum(
 
     nodes.push(ReqDeclNode::req(enum_variant_req));
 
-    // Afterwards, we need to collect the requirements for the enum underlying value.
+    // Afterwards, we need to collect the requirements for the enum variant underlying value.
+    // If the enum variant does not have a value the `enum_value_scrutinee` will be of the
+    // scrutinee variant `CatchAll` that will produce a ReqDeclTree without further requirements
+    // or variable declarations.
     let unsafe_downcast = instantiate_enum_unsafe_downcast(exp, variant, call_path_decl, span);
     let req_decl_tree = matcher(handler, ctx, match_value, &unsafe_downcast, enum_value_scrutinee)?;
 
