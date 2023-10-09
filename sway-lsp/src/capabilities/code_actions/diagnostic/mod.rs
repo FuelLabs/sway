@@ -82,64 +82,6 @@ fn import_code_action(
                 }
             });
 
-        // eprintln!("before res1");
-        // let res1 = ctx
-        //     .tokens
-        //     .tokens_for_file(ctx.temp_uri)
-        //     .filter_map(|(ident, token)| {
-        //         eprintln!("1 foreach ident: {:?}", ident);
-        //         if let Some(TypedAstToken::TypedUseStatement(use_stmt)) = token.typed {
-        //             eprintln!("use_stmt: {:?}", use_stmt);
-        //             return Some("hi");
-        //         }
-
-        //         None
-        //     });
-
-        // let (range_line, prefix) = ctx
-        // let res = ctx
-        //     .tokens
-        //     .tokens_for_file(ctx.temp_uri)
-        //     // .filter_map(|(ident, token)| {
-        //     .reduce(|(acc_ident, acc_token), (ident, token)| {
-        //         // if line > acc.0 {
-        //         //     (line, prefix)
-        //         // } else {
-        //         //     acc
-        //         // }
-
-        //         // eprintln!("2 foreach ident: {:?}", ident);
-
-        //         if let Some(TypedAstToken::TypedUseStatement(use_stmt)) = token.typed {
-        //             eprintln!("use_stmt: {:?}", use_stmt);
-        //             // return Some((use_stmt.span.end_pos().line_col().0, ""));
-        //             // todo: sort
-        //             return (ident, token);
-        //         }
-
-        //         // if let AstToken::Keyword(_) = token.parsed {
-        //         //     if ident.name == "use" {
-        //         //         return Some((ident.range.start.line, ""));
-        //         //     } else if ["mod", "contract", "script", "library", "predicate"]
-        //         //         .contains(&ident.name.as_str())
-        //         //     {
-        //         //         return Some((ident.range.end.line + 1, "\n"));
-        //         //     }
-        //         // }
-
-        //         return (acc_ident, acc_token);
-        //     });
-        // .reduce(
-        //     |acc, (line, prefix)| {
-        //         if line > acc.0 {
-        //             (line, prefix)
-        //         } else {
-        //             acc
-        //         }
-        //     },
-        // )
-        // .unwrap_or((1, "\n"));
-
         let actions = call_paths
             .filter_map(|call_path| {
                 let mut use_statements = Vec::<TyUseStatement>::new();

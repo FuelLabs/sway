@@ -55,7 +55,7 @@ impl Spanned for UseTree {
             UseTree::Rename { name, alias, .. } => Span::join(name.span(), alias.span()),
             UseTree::Glob { star_token } => star_token.span(),
             UseTree::Path { prefix, suffix, .. } => Span::join(prefix.span(), suffix.span()),
-            UseTree::Error { spans } => Span::join_all(spans.to_vec().clone().into_iter()),
+            UseTree::Error { spans } => Span::join_all(spans.to_vec().clone()),
         }
     }
 }
