@@ -2,7 +2,7 @@
 
 ## Installing the `Fuel` toolchain
 
-Please visit the Fuel [Installation Guide](https://docs.fuel.network/guides/installation) to install the Fuel toolchain binaries and pre requisites.
+Please visit the Fuel [Installation Guide](https://docs.fuel.network/guides/installation) to install the Fuel toolchain binaries and prerequisites.
 
 ## Sway Quickstart
 
