@@ -39,3 +39,17 @@ fn hi() -> bool;
     fn hi2(hello: bool);
         fn hi3(hello: bool)-> u64;// here too
 }");
+
+fmt_test_item!(abi_multiline_method
+"abi MyContract {
+    fn complex_function(
+        arg1: MyStruct<[b256; 3], u8>,
+        arg2: [MyStruct<u64, bool>; 4],
+        arg3: (str[5], bool),
+        arg4: MyOtherStruct
+    ) -> str[6];
+}",
+intermediate_whitespace
+"abi MyContract {
+    fn complex_function(    arg1: MyStruct<[b256;  3], u8> , arg2: [MyStruct <u64, bool>; 4], arg3: ( str[5], bool ), arg4: MyOtherStruct)    -> str[6] ;
+}");
