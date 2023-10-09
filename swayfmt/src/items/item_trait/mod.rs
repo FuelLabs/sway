@@ -9,7 +9,10 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_ast::{keywords::Token, ItemTrait, ItemTraitItem, Traits};
-use sway_types::{ast::Delimiter, Spanned};
+use sway_types::{
+    ast::{Delimiter, PunctKind},
+    Spanned,
+};
 
 #[cfg(test)]
 mod tests;
@@ -29,38 +32,24 @@ impl Format for ItemTrait {
         // `trait name`
         write!(
             formatted_code,
-            "{} {} ",
+            "{} {}",
             self.trait_token.span().as_str(),
             self.name.span().as_str()
         )?;
         // `<T>`
         if let Some(generics) = &self.generics {
-            // For optional generics remove the space before `<T>` part as it is added after
-            // trait name. Remove it from the beginning and add it afterwards so that there is a
-            // space before `{` even in the case of no other optional fields present after this
-            // check.
-            formatted_code.pop();
             generics.format(formatted_code, formatter)?;
-            write!(formatted_code, " ")?;
-        }
-        // `where`
-        if let Some(where_clause) = &self.where_clause_opt {
-            // For optional where clause remove the space before `where` token as it can be added
-            // after trait name or in optional generics check. Remove it from the beginning and add
-            // it afterwards so that there is a space before `{` even in the case of no other optional
-            // fields present after this check.
-            formatted_code.pop();
-            writeln!(formatted_code)?;
-            where_clause.format(formatted_code, formatter)?;
         }
         // `: super_trait + super_trait`
         if let Some((colon_token, traits)) = &self.super_traits {
-            // For optional super trait, remove the space before `:` as it can either be added after
-            // trait name or in other optional fields such as generics or where clause. Remove it
-            // from the beginning and add it afterwards so that there is a space before `{`.
-            formatted_code.pop();
             write!(formatted_code, "{} ", colon_token.ident().as_str())?;
             traits.format(formatted_code, formatter)?;
+        }
+        // `where`
+        if let Some(where_clause) = &self.where_clause_opt {
+            writeln!(formatted_code)?;
+            where_clause.format(formatted_code, formatter)?;
+        } else {
             write!(formatted_code, " ")?;
         }
         Self::open_curly_brace(formatted_code, formatter)?;
@@ -71,32 +60,29 @@ impl Format for ItemTrait {
         } else {
             for item in trait_items {
                 for attr in &item.attribute_list {
-                    write!(formatted_code, "{}", &formatter.indent_str()?,)?;
+                    write!(formatted_code, "{}", &formatter.indent_str()?)?;
                     attr.format(formatted_code, formatter)?;
                 }
                 match &item.value {
                     sway_ast::ItemTraitItem::Fn(fn_signature, _) => {
-                        write!(formatted_code, "{}", formatter.indent_str()?,)?;
+                        write!(formatted_code, "{}", formatter.indent_str()?)?;
                         fn_signature.format(formatted_code, formatter)?;
-                        writeln!(formatted_code, ";")?;
+                        write!(formatted_code, "{}", PunctKind::Semicolon.as_char())?;
                     }
                     sway_ast::ItemTraitItem::Const(const_decl, _) => {
-                        write!(formatted_code, "{}", formatter.indent_str()?,)?;
+                        write!(formatted_code, "{}", formatter.indent_str()?)?;
                         const_decl.format(formatted_code, formatter)?;
                     }
                     sway_ast::ItemTraitItem::Type(type_decl, _) => {
-                        write!(formatted_code, "{}", formatter.indent_str()?,)?;
+                        write!(formatted_code, "{}", formatter.indent_str()?)?;
                         type_decl.format(formatted_code, formatter)?;
                     }
                     ItemTraitItem::Error(_, _) => {
                         return Err(FormatterError::SyntaxError);
                     }
                 }
+                writeln!(formatted_code)?;
             }
-        }
-
-        if formatted_code.ends_with('\n') {
-            formatted_code.pop(); // pop last ending newline
         }
 
         Self::close_curly_brace(formatted_code, formatter)?;
@@ -108,6 +94,7 @@ impl Format for ItemTrait {
                 // format `Annotated<ItemFn>`
                 trait_items.format(formatted_code, formatter)?;
             }
+            writeln!(formatted_code)?;
             Self::close_curly_brace(formatted_code, formatter)?;
         };
 
@@ -175,7 +162,7 @@ impl CurlyBrace for ItemTrait {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         formatter.unindent();
-        write!(line, "\n{}", Delimiter::Brace.as_close_char())?;
+        write!(line, "{}", Delimiter::Brace.as_close_char())?;
         Ok(())
     }
 }
