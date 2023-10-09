@@ -1,9 +1,4 @@
-use anyhow::{anyhow, Result};
-use std::{
-    fs::read,
-    path::PathBuf,
-    str::{from_utf8, FromStr},
-};
+use std::{convert::Infallible, fs::read, path::PathBuf, str::FromStr};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Content {
@@ -12,35 +7,28 @@ pub enum Content {
 }
 
 impl Content {
-    pub fn from_hex_or_utf8(input: Vec<u8>) -> Result<Vec<u8>> {
-        if let Ok(text) = from_utf8(&input) {
-            let text = text.trim();
-            if let Some(text) = text.strip_prefix("0x") {
-                if let Ok(bin) = hex::decode(text) {
-                    return Ok(bin);
+    pub fn from_file_or_binary(input: &str) -> Self {
+        let path = PathBuf::from(input);
+        match read(&path) {
+            Ok(content) => Self::Path(path, content),
+            Err(_) => {
+                let text = input.trim();
+                if let Some(text) = text.strip_prefix("0x") {
+                    if let Ok(bin) = hex::decode(text) {
+                        return Self::Binary(bin);
+                    }
                 }
+                Self::Binary(text.as_bytes().to_vec())
             }
-            Ok(text.as_bytes().to_vec())
-        } else {
-            Err(anyhow!(
-                "{:?} is not a valid UTF-8 string nor a valid hex string",
-                input
-            ))
         }
     }
 }
 
 impl FromStr for Content {
-    type Err = anyhow::Error;
+    type Err = Infallible;
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        let path = PathBuf::from(s);
-        match read(&path) {
-            Ok(content) => Ok(Content::Path(path, Self::from_hex_or_utf8(content)?)),
-            Err(_) => Ok(Content::Binary(Self::from_hex_or_utf8(
-                s.as_bytes().to_vec(),
-            )?)),
-        }
+        Ok(Self::from_file_or_binary(s))
     }
 }
 
