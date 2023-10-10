@@ -33,16 +33,19 @@ where
     }
 }
 
+type NamedSubmodule<E> = (ModName, E);
+type SubmoduleItem<'module, T, E> = (
+    &'module NamedSubmodule<E>,
+    Box<SubmodulesRecursive<'module, T, E>>,
+);
+
 /// Iterator type for iterating over submodules.
 ///
 /// Used rather than `impl Iterator` to enable recursive submodule iteration.
 pub struct SubmodulesRecursive<'module, T, E> {
     _module_type: std::marker::PhantomData<T>,
-    submods: std::slice::Iter<'module, (ModName, E)>,
-    current: Option<(
-        &'module (ModName, E),
-        Box<SubmodulesRecursive<'module, T, E>>,
-    )>,
+    submods: std::slice::Iter<'module, NamedSubmodule<E>>,
+    current: Option<SubmoduleItem<'module, T, E>>,
 }
 
 impl<'module, T, E> Iterator for SubmodulesRecursive<'module, T, E>

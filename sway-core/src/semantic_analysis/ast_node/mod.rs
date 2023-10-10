@@ -127,9 +127,15 @@ impl ty::TyAstNode {
                         }),
                     })
                 }
-                AstNodeContent::IncludeStatement(_) => {
+                AstNodeContent::IncludeStatement(i) => {
                     ty::TyAstNodeContent::SideEffect(ty::TySideEffect {
-                        side_effect: ty::TySideEffectVariant::IncludeStatement,
+                        side_effect: ty::TySideEffectVariant::IncludeStatement(
+                            ty::TyIncludeStatement {
+                                mod_name: i.mod_name,
+                                span: i.span,
+                                visibility: i.visibility,
+                            },
+                        ),
                     })
                 }
                 AstNodeContent::Declaration(decl) => {

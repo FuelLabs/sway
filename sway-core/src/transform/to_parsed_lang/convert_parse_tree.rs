@@ -3530,8 +3530,9 @@ fn statement_let_to_ast_nodes(
 
 fn submodule_to_include_statement(dependency: &Submodule) -> IncludeStatement {
     IncludeStatement {
-        _span: dependency.span(),
-        _mod_name_span: dependency.name.span(),
+        span: dependency.span(),
+        mod_name: dependency.name.clone(),
+        visibility: pub_token_opt_to_visibility(dependency.visibility.clone()),
     }
 }
 
