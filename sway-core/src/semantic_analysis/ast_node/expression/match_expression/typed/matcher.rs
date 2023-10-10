@@ -20,12 +20,12 @@ use sway_error::{
 
 use sway_types::{span::Span, Spanned, integer_bits::IntegerBits, Named};
 
-/// A single requirement that the desugared if expression must include
-/// in its condition. The requirement is in the form `<lhs> == <rhs>`.
+/// A single requirement in the form `<lhs> == <rhs>` that has to be
+/// fulfilled for the match arm to match.
 pub(crate) type MatchReq = (ty::TyExpression, ty::TyExpression);
 
-/// A single variable declaration that the desugared if expression body must include.
-/// The declaration is in the form `let <ident> = <expression>`.
+/// A single variable in the form `let <ident> = <expression>`
+/// that has to be extracted from the match arm.
 pub(crate) type MatchVarDecl = (Ident, ty::TyExpression);
 
 /// A leaf of a match pattern can be either a requirement on the scrutinee or a
@@ -92,6 +92,7 @@ impl ReqDeclTree {
         }
     }
 
+    // TODO-IG: Remove from here and add to the matching of OR patterns.
     /// Returns all [MatchVarDecl]s found in the match arm
     /// in order of their appearance from left to right.
     pub(crate) fn variable_declarations(&self) -> Vec<&MatchVarDecl> {
