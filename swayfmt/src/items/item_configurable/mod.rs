@@ -74,7 +74,7 @@ impl Format for ItemConfigurable {
                         for (field_index, (configurable_field, comma_token)) in
                             value_pairs_iter.clone()
                         {
-                            write!(formatted_code, "{}", &formatter.indent_str()?)?;
+                            write!(formatted_code, "{}", &formatter.indent_to_str()?)?;
 
                             // Add name
                             configurable_field.name.format(formatted_code, formatter)?;
@@ -156,7 +156,7 @@ impl CurlyBrace for ItemConfigurable {
         write!(
             line,
             "{}{}",
-            formatter.indent_str()?,
+            formatter.indent_to_str()?,
             Delimiter::Brace.as_close_char()
         )?;
 
