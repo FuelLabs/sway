@@ -1,7 +1,6 @@
 use crate::{
-    comments::{rewrite_with_comments, write_comments},
+    comments::{has_comments_in_formatter, rewrite_with_comments, write_comments},
     config::items::ItemBraceStyle,
-    constants::NEW_LINE,
     formatter::*,
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
@@ -42,17 +41,17 @@ impl Format for ItemImpl {
 
         let contents = self.contents.get();
         if contents.is_empty() {
+            let range = self.span().into();
             Self::open_curly_brace(formatted_code, formatter)?;
-            let comments = write_comments(formatted_code, self.span().into(), formatter)?;
-            if !comments {
-                formatter.unindent();
-                if formatted_code.ends_with(NEW_LINE) {
-                    formatted_code.truncate(formatted_code.len() - NEW_LINE.len());
-                }
+            if has_comments_in_formatter(formatter, &range) {
+                formatter.indent();
+                write_comments(formatted_code, range, formatter)?;
             }
             Self::close_curly_brace(formatted_code, formatter)?;
         } else {
             Self::open_curly_brace(formatted_code, formatter)?;
+            formatter.indent();
+            writeln!(formatted_code, "")?;
             for item in contents.iter() {
                 write!(formatted_code, "{}", formatter.indent_to_str()?,)?;
                 item.format(formatted_code, formatter)?;
@@ -93,7 +92,6 @@ impl CurlyBrace for ItemImpl {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
-        formatter.indent();
         let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
@@ -102,11 +100,11 @@ impl CurlyBrace for ItemImpl {
             }
             ItemBraceStyle::SameLineWhere => match formatter.shape.code_line.has_where_clause {
                 true => {
-                    writeln!(line, "{open_brace}")?;
+                    write!(line, "{open_brace}")?;
                     formatter.shape.code_line.update_where_clause(false);
                 }
                 false => {
-                    writeln!(line, " {open_brace}")?;
+                    write!(line, " {open_brace}")?;
                 }
             },
             _ => {
