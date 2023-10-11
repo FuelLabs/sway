@@ -40,7 +40,7 @@ pub fn has_comments_in_formatter(formatter: &Formatter, range: &Range<usize>) ->
     formatter
         .comments_context
         .map
-        .comments_between(&range)
+        .comments_between(range)
         .peekable()
         .peek()
         .is_some()

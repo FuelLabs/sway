@@ -51,7 +51,7 @@ impl Format for ItemImpl {
         } else {
             Self::open_curly_brace(formatted_code, formatter)?;
             formatter.indent();
-            writeln!(formatted_code, "")?;
+            writeln!(formatted_code)?;
             for item in contents.iter() {
                 write!(formatted_code, "{}", formatter.indent_to_str()?,)?;
                 item.format(formatted_code, formatter)?;
