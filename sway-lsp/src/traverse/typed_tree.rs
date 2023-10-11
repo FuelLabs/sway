@@ -192,7 +192,7 @@ impl Parse for ty::TySideEffect {
                     ));
                     if let Some(span) = ctx
                         .namespace
-                        .submodule(&vec![mod_name.clone()])
+                        .submodule(&[mod_name.clone()])
                         .and_then(|tgt_submod| tgt_submod.span.clone())
                     {
                         token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));

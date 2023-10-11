@@ -98,7 +98,7 @@ fn get_warning_diagnostic_tags(warning: &Warning) -> Option<Vec<DiagnosticTag>> 
 /// Extra data to be sent with a diagnostic and provided in CodeAction context.
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct DiagnosticData {
-    pub name_to_import: Option<String>,
+    pub unknown_symbol_name: Option<String>,
 }
 
 impl TryFrom<CompileWarning> for DiagnosticData {
@@ -115,10 +115,10 @@ impl TryFrom<CompileError> for DiagnosticData {
     fn try_from(value: CompileError) -> Result<Self, Self::Error> {
         match value {
             CompileError::SymbolNotFound { name, .. } => Ok(DiagnosticData {
-                name_to_import: Some(name.to_string()),
+                unknown_symbol_name: Some(name.to_string()),
             }),
             CompileError::UnknownVariable { var_name, .. } => Ok(DiagnosticData {
-                name_to_import: Some(var_name.to_string()),
+                unknown_symbol_name: Some(var_name.to_string()),
             }),
             _ => anyhow::bail!("Not implemented"),
         }

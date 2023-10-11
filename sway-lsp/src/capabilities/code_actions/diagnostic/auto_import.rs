@@ -24,7 +24,7 @@ pub(crate) fn import_code_action(
     diagnostics: &mut impl Iterator<Item = DiagnosticData>,
 ) -> Option<Vec<CodeActionOrCommand>> {
     // Find a diagnostic that has the attached metadata indicating we should try to suggest an auto-import.
-    let symbol_name = diagnostics.find_map(|diag| diag.name_to_import)?;
+    let symbol_name = diagnostics.find_map(|diag| diag.unknown_symbol_name)?;
 
     // Check if there are any matching call paths to import using the name from the diagnostic data.
     let call_paths = get_call_paths_for_name(ctx, &symbol_name)?;
@@ -49,7 +49,7 @@ pub(crate) fn import_code_action(
         });
 
     let actions = call_paths
-        .filter_map(|call_path| {
+        .map(|call_path| {
             // To determine where to insert the import statement in the file, we try these options and do
             // one of the following, based on the contents of the file.
             //
@@ -69,7 +69,7 @@ pub(crate) fn import_code_action(
 
             let changes = HashMap::from([(ctx.uri.clone(), vec![text_edit])]);
 
-            Some(CodeActionOrCommand::CodeAction(LspCodeAction {
+            CodeActionOrCommand::CodeAction(LspCodeAction {
                 title: format!("{} `{}`", CODE_ACTION_IMPORT_TITLE, call_path),
                 kind: Some(CodeActionKind::QUICKFIX),
                 edit: Some(WorkspaceEdit {
@@ -78,7 +78,7 @@ pub(crate) fn import_code_action(
                 }),
                 data: Some(Value::String(ctx.uri.to_string())),
                 ..Default::default()
-            }))
+            })
         })
         .collect::<Vec<_>>();
 
@@ -133,7 +133,7 @@ fn get_call_paths_for_name<'s>(
                         let call_path = ty_decl.call_path.to_import_path(&namespace);
                         Some(call_path)
                     }
-                    _ => return None,
+                    _ => None,
                 }
             }),
     )
@@ -143,7 +143,7 @@ fn get_call_paths_for_name<'s>(
 /// [TextEdit] that inserts the call path into the existing statement. Otherwise, returns [None].
 fn get_text_edit_for_group(
     call_path: &CallPath,
-    use_statements: &Vec<TyUseStatement>,
+    use_statements: &[TyUseStatement],
 ) -> Option<TextEdit> {
     let group_statement = use_statements.iter().find(|use_stmt| {
         call_path
@@ -166,7 +166,7 @@ fn get_text_edit_for_group(
             ImportType::Item(ident) => ident.to_string(),
         };
         match &group_statement.alias {
-            Some(alias) => format!("{} as {}", name, alias.to_string()),
+            Some(alias) => format!("{} as {}", name, alias),
             None => name,
         }
     };
@@ -174,17 +174,17 @@ fn get_text_edit_for_group(
     suffixes.sort(); // TODO: test this. Is there a better way to sort?
     let suffix_string = suffixes.join(", ");
 
-    return Some(TextEdit {
+    Some(TextEdit {
         range: get_range_from_span(&group_statement.span()),
         new_text: format!("use {}::{{{}}};\n", prefix_string, suffix_string),
-    });
+    })
 }
 
 /// If there are existing [TyUseStatement]s, returns a [TextEdit] to insert the new import statement on the
 /// line above or below an existing statement, ordered alphabetically.
 fn get_text_edit_in_use_block(
     call_path: &CallPath,
-    use_statements: &Vec<TyUseStatement>,
+    use_statements: &[TyUseStatement],
 ) -> Option<TextEdit> {
     let after_statement = use_statements.iter().reduce(|acc, curr| {
         if call_path.span().as_str().cmp(curr.span().as_str()) == Ordering::Greater
@@ -192,7 +192,7 @@ fn get_text_edit_in_use_block(
         {
             return curr;
         }
-        return acc;
+        acc
     })?;
 
     let after_range = get_range_from_span(&after_statement.span());
@@ -217,7 +217,7 @@ fn get_text_edit_in_use_block(
 /// type statement, or at the beginning of the file.
 fn get_text_edit_fallback(
     call_path: &CallPath,
-    include_statements: &Vec<TyIncludeStatement>,
+    include_statements: &[TyIncludeStatement],
     program_type_keyword: &Option<Ident>,
 ) -> TextEdit {
     let range_line = include_statements
@@ -233,7 +233,7 @@ fn get_text_edit_fallback(
         .unwrap_or(
             program_type_keyword
                 .clone()
-                .and_then(|keyword| Some(get_range_from_span(&keyword.span()).end.line + 1))
+                .map(|keyword| get_range_from_span(&keyword.span()).end.line + 1)
                 .unwrap_or(1),
         );
     TextEdit {
