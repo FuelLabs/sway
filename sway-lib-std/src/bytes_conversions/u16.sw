@@ -155,3 +155,8 @@ impl u16 {
         }
     }
 }
+
+#[test]
+fn foo() {
+    assert(false);
+}
