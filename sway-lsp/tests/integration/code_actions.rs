@@ -3,18 +3,22 @@
 //! and assert the expected responses.
 
 use lsp_types::*;
+use serde_json::json;
 use std::collections::HashMap;
-use sway_lsp::{handlers::request, server_state::ServerState};
+use sway_lsp::{
+    capabilities::diagnostic::DiagnosticData, handlers::request, server_state::ServerState,
+};
 
 fn create_code_action(
     uri: Url,
     title: String,
     changes: HashMap<Url, Vec<TextEdit>>,
     disabled: Option<CodeActionDisabled>,
-) -> CodeAction {
-    CodeAction {
+    kind: Option<CodeActionKind>,
+) -> CodeActionOrCommand {
+    CodeActionOrCommand::CodeAction(CodeAction {
         title,
-        kind: Some(CodeActionKind::REFACTOR),
+        kind,
         diagnostics: None,
         edit: Some(WorkspaceEdit {
             changes: Some(changes),
@@ -25,21 +29,49 @@ fn create_code_action(
         is_preferred: None,
         disabled,
         data: Some(serde_json::to_value(uri).unwrap()),
-    }
+    })
 }
 
-fn create_code_action_params(uri: Url, range: Range) -> CodeActionParams {
+fn create_code_action_params(
+    uri: Url,
+    range: Range,
+    diagnostics: Option<Vec<Diagnostic>>,
+) -> CodeActionParams {
     CodeActionParams {
         text_document: TextDocumentIdentifier { uri },
         range,
         context: CodeActionContext {
-            diagnostics: vec![],
+            diagnostics: diagnostics.unwrap_or_default(),
             only: None,
             trigger_kind: Some(CodeActionTriggerKind::AUTOMATIC),
         },
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     }
+}
+
+fn create_diagnostic_from_data(range: Range, data: DiagnosticData) -> Option<Vec<Diagnostic>> {
+    Some(vec![Diagnostic {
+        range,
+        data: Some(json!(data)),
+        ..Default::default()
+    }])
+}
+
+fn create_changes_map(uri: &Url, range: Range, new_text: &str) -> HashMap<Url, Vec<TextEdit>> {
+    HashMap::from([(
+        uri.clone(),
+        vec![TextEdit {
+            range,
+            new_text: new_text.to_string(),
+        }],
+    )])
+}
+
+fn send_request(server: &ServerState, params: CodeActionParams) -> Vec<CodeActionOrCommand> {
+    request::handle_code_action(server, params)
+        .unwrap()
+        .expect("Empty response from server")
 }
 
 pub(crate) fn code_action_abi_request(server: &ServerState, uri: &Url) {
@@ -55,32 +87,33 @@ pub(crate) fn code_action_abi_request(server: &ServerState, uri: &Url) {
                 character: 9,
             },
         },
+        None,
     );
-    let res = request::handle_code_action(server, params);
-    let mut changes = HashMap::new();
-    changes.insert(
-        uri.clone(),
-        vec![TextEdit {
-            range: Range {
-                start: Position {
-                    line: 31,
-                    character: 0,
-                },
-                end: Position {
-                    line: 31,
-                    character: 0,
-                },
+
+    let changes = create_changes_map(
+        uri,
+        Range {
+            start: Position {
+                line: 31,
+                character: 0,
             },
-            new_text: "\nimpl FooABI for Contract {\n    fn main() -> u64 {}\n}\n".to_string(),
-        }],
+            end: Position {
+                line: 31,
+                character: 0,
+            },
+        },
+        "\nimpl FooABI for Contract {\n    fn main() -> u64 {}\n}\n",
     );
-    let expected = vec![CodeActionOrCommand::CodeAction(create_code_action(
+    let expected = vec![create_code_action(
         uri.clone(),
         "Generate impl for `FooABI`".to_string(),
         changes,
         None,
-    ))];
-    assert_eq!(res.unwrap().unwrap(), expected);
+        Some(CodeActionKind::REFACTOR),
+    )];
+
+    let actual = send_request(server, params);
+    assert_eq!(expected, actual);
 }
 
 pub(crate) fn code_action_function_request(server: &ServerState, uri: &Url) {
@@ -96,29 +129,30 @@ pub(crate) fn code_action_function_request(server: &ServerState, uri: &Url) {
                 character: 4,
             },
         },
+        None,
     );
-    let res = request::handle_code_action(server, params);
-    let mut changes = HashMap::new();
-    changes.insert(uri.clone(), vec![TextEdit {
-    range: Range {
-        start: Position {
-            line: 18,
-            character: 0,
+
+    let changes = create_changes_map(uri, Range {
+            start: Position {
+                line: 18,
+                character: 0,
+            },
+            end: Position {
+                line: 18,
+                character: 0,
+            },
         },
-        end: Position {
-            line: 18,
-            character: 0,
-        },
-      },
-      new_text: "/// Add a brief description.\n/// \n/// ### Additional Information\n/// \n/// Provide information beyond the core purpose or functionality.\n/// \n/// ### Reverts\n/// \n/// * List any cases where the function will revert\n/// \n/// ### Number of Storage Accesses\n/// \n/// * Reads: `0`\n/// * Writes: `0`\n/// * Clears: `0`\n/// \n/// ### Examples\n/// \n/// ```sway\n/// let x = test();\n/// ```\n".to_string(),
-    }]);
-    let expected = vec![CodeActionOrCommand::CodeAction(create_code_action(
+         "/// Add a brief description.\n/// \n/// ### Additional Information\n/// \n/// Provide information beyond the core purpose or functionality.\n/// \n/// ### Reverts\n/// \n/// * List any cases where the function will revert\n/// \n/// ### Number of Storage Accesses\n/// \n/// * Reads: `0`\n/// * Writes: `0`\n/// * Clears: `0`\n/// \n/// ### Examples\n/// \n/// ```sway\n/// let x = test();\n/// ```\n");
+    let expected = vec![create_code_action(
         uri.clone(),
         "Generate a documentation template".to_string(),
         changes,
         None,
-    ))];
-    assert_eq!(res.unwrap().unwrap(), expected);
+        Some(CodeActionKind::REFACTOR),
+    )];
+
+    let actual = send_request(server, params);
+    assert_eq!(expected, actual);
 }
 
 pub(crate) fn code_action_trait_fn_request(server: &ServerState, uri: &Url) {
@@ -134,12 +168,10 @@ pub(crate) fn code_action_trait_fn_request(server: &ServerState, uri: &Url) {
                 character: 10,
             },
         },
+        None,
     );
-    let res = request::handle_code_action(server, params);
-    let mut changes = HashMap::new();
 
-    changes.insert(uri.clone(), vec![TextEdit {
-      range: Range {
+    let changes = create_changes_map(uri, Range {
           start: Position {
               line: 10,
               character: 0,
@@ -149,15 +181,17 @@ pub(crate) fn code_action_trait_fn_request(server: &ServerState, uri: &Url) {
               character: 0,
           },
         },
-        new_text: "    /// Add a brief description.\n    /// \n    /// ### Additional Information\n    /// \n    /// Provide information beyond the core purpose or functionality.\n    /// \n    /// ### Returns\n    /// \n    /// * [Empty] - Add description here\n    /// \n    /// ### Reverts\n    /// \n    /// * List any cases where the function will revert\n    /// \n    /// ### Number of Storage Accesses\n    /// \n    /// * Reads: `0`\n    /// * Writes: `0`\n    /// * Clears: `0`\n    /// \n    /// ### Examples\n    /// \n    /// ```sway\n    /// let x = test_function();\n    /// ```\n".to_string(),
-      }]);
-    let expected = vec![CodeActionOrCommand::CodeAction(create_code_action(
+        "    /// Add a brief description.\n    /// \n    /// ### Additional Information\n    /// \n    /// Provide information beyond the core purpose or functionality.\n    /// \n    /// ### Returns\n    /// \n    /// * [Empty] - Add description here\n    /// \n    /// ### Reverts\n    /// \n    /// * List any cases where the function will revert\n    /// \n    /// ### Number of Storage Accesses\n    /// \n    /// * Reads: `0`\n    /// * Writes: `0`\n    /// * Clears: `0`\n    /// \n    /// ### Examples\n    /// \n    /// ```sway\n    /// let x = test_function();\n    /// ```\n");
+    let expected = vec![create_code_action(
         uri.clone(),
         "Generate a documentation template".to_string(),
         changes,
         None,
-    ))];
-    assert_eq!(res.unwrap().unwrap(), expected);
+        Some(CodeActionKind::REFACTOR),
+    )];
+
+    let actual = send_request(server, params);
+    assert_eq!(expected, actual);
 }
 
 pub(crate) fn code_action_struct_request(server: &ServerState, uri: &Url) {
@@ -173,37 +207,33 @@ pub(crate) fn code_action_struct_request(server: &ServerState, uri: &Url) {
                 character: 11,
             },
         },
+        None,
     );
-    let res = request::handle_code_action(server, params);
     let mut expected: Vec<_> = Vec::new();
-    let mut changes = HashMap::new();
-    changes.insert(
-        uri.clone(),
-        vec![TextEdit {
-            range: Range {
-                start: Position {
-                    line: 25,
-                    character: 0,
-                },
-                end: Position {
-                    line: 25,
-                    character: 0,
-                },
+
+    let changes = create_changes_map(
+        uri,
+        Range {
+            start: Position {
+                line: 25,
+                character: 0,
             },
-            new_text: "\nimpl Data {\n    \n}\n".to_string(),
-        }],
+            end: Position {
+                line: 25,
+                character: 0,
+            },
+        },
+        "\nimpl Data {\n    \n}\n",
     );
-    expected.push(CodeActionOrCommand::CodeAction(create_code_action(
+    expected.push(create_code_action(
         uri.clone(),
         "Generate impl for `Data`".to_string(),
         changes,
         None,
-    )));
-    let mut changes = HashMap::new();
-    changes.insert(
-      uri.clone(),
-      vec![TextEdit {
-          range: Range {
+        Some(CodeActionKind::REFACTOR),
+    ));
+
+    let changes = create_changes_map(uri, Range {
               start: Position {
                   line: 25,
                   character: 0,
@@ -213,20 +243,17 @@ pub(crate) fn code_action_struct_request(server: &ServerState, uri: &Url) {
                   character: 0,
               },
           },
-          new_text: "\nimpl Data {\n    fn new(value: NumberOrString, address: u64) -> Self { Self { value, address } }\n}\n".to_string(),
-      }],
-  );
-    expected.push(CodeActionOrCommand::CodeAction(create_code_action(
+           "\nimpl Data {\n    fn new(value: NumberOrString, address: u64) -> Self { Self { value, address } }\n}\n");
+    expected.push(create_code_action(
         uri.clone(),
         "Generate `new`".to_string(),
         changes,
         None,
-    )));
-    let mut changes = HashMap::new();
-    changes.insert(
-      uri.clone(),
-      vec![TextEdit {
-          range: Range {
+        Some(CodeActionKind::REFACTOR),
+    ));
+    let changes = create_changes_map(
+        uri,
+        Range {
               start: Position {
                   line: 19,
                   character: 0,
@@ -236,16 +263,17 @@ pub(crate) fn code_action_struct_request(server: &ServerState, uri: &Url) {
                   character: 0,
               },
           },
-          new_text: "/// Add a brief description.\n/// \n/// ### Additional Information\n/// \n/// Provide information beyond the core purpose or functionality.\n".to_string(),
-      }],
-  );
-    expected.push(CodeActionOrCommand::CodeAction(create_code_action(
+           "/// Add a brief description.\n/// \n/// ### Additional Information\n/// \n/// Provide information beyond the core purpose or functionality.\n");
+    expected.push(create_code_action(
         uri.clone(),
         "Generate a documentation template".to_string(),
         changes,
         None,
-    )));
-    assert_eq!(res.unwrap().unwrap(), expected);
+        Some(CodeActionKind::REFACTOR),
+    ));
+
+    let actual = send_request(server, params);
+    assert_eq!(expected, actual);
 }
 
 pub(crate) fn code_action_struct_type_params_request(server: &ServerState, uri: &Url) {
@@ -261,64 +289,58 @@ pub(crate) fn code_action_struct_type_params_request(server: &ServerState, uri: 
                 character: 9,
             },
         },
+        None,
     );
-    let res = request::handle_code_action(server, params);
     let mut expected: Vec<_> = Vec::new();
-    let mut changes = HashMap::new();
-    changes.insert(
-        uri.clone(),
-        vec![TextEdit {
-            range: Range {
-                start: Position {
-                    line: 7,
-                    character: 0,
-                },
-                end: Position {
-                    line: 7,
-                    character: 0,
-                },
+    let changes = create_changes_map(
+        uri,
+        Range {
+            start: Position {
+                line: 7,
+                character: 0,
             },
-            new_text: "\nimpl<T> Data<T> {\n    \n}\n".to_string(),
-        }],
+            end: Position {
+                line: 7,
+                character: 0,
+            },
+        },
+        "\nimpl<T> Data<T> {\n    \n}\n",
     );
-    expected.push(CodeActionOrCommand::CodeAction(create_code_action(
+    expected.push(create_code_action(
         uri.clone(),
         "Generate impl for `Data`".to_string(),
         changes,
         None,
-    )));
+        Some(CodeActionKind::REFACTOR),
+    ));
 
-    let mut changes = HashMap::new();
-    changes.insert(
-        uri.clone(),
-        vec![TextEdit {
-            range: Range {
-                start: Position {
-                    line: 9,
-                    character: 0,
-                },
-                end: Position {
-                    line: 9,
-                    character: 0,
-                },
+    let changes = create_changes_map(
+        uri,
+        Range {
+            start: Position {
+                line: 9,
+                character: 0,
             },
-            new_text: "    fn new(value: T) -> Self { Self { value } }\n".to_string(),
-        }],
+            end: Position {
+                line: 9,
+                character: 0,
+            },
+        },
+        "    fn new(value: T) -> Self { Self { value } }\n",
     );
-    expected.push(CodeActionOrCommand::CodeAction(create_code_action(
+    expected.push(create_code_action(
         uri.clone(),
         "Generate `new`".to_string(),
         changes,
         Some(CodeActionDisabled {
             reason: "Struct Data already has a `new` function".to_string(),
         }),
-    )));
+        Some(CodeActionKind::REFACTOR),
+    ));
 
-    let mut changes = HashMap::new();
-    changes.insert(
-    uri.clone(),
-    vec![TextEdit {
-        range: Range {
+    let changes = create_changes_map(
+        uri,
+        Range {
             start: Position {
                 line: 4,
                 character: 0,
@@ -328,16 +350,18 @@ pub(crate) fn code_action_struct_type_params_request(server: &ServerState, uri: 
                 character: 0,
             },
         },
-        new_text: "/// Add a brief description.\n/// \n/// ### Additional Information\n/// \n/// Provide information beyond the core purpose or functionality.\n".to_string(),
-    }],
-);
-    expected.push(CodeActionOrCommand::CodeAction(create_code_action(
+        "/// Add a brief description.\n/// \n/// ### Additional Information\n/// \n/// Provide information beyond the core purpose or functionality.\n");
+
+    expected.push(create_code_action(
         uri.clone(),
         "Generate a documentation template".to_string(),
         changes,
         None,
-    )));
-    assert_eq!(res.unwrap().unwrap(), expected);
+        Some(CodeActionKind::REFACTOR),
+    ));
+
+    let actual = send_request(server, params);
+    assert_eq!(expected, actual);
 }
 
 pub(crate) fn code_action_struct_existing_impl_request(server: &ServerState, uri: &Url) {
@@ -353,62 +377,55 @@ pub(crate) fn code_action_struct_existing_impl_request(server: &ServerState, uri
                 character: 7,
             },
         },
+        None,
     );
-    let res = request::handle_code_action(server, params);
     let mut expected: Vec<_> = Vec::new();
-    let mut changes = HashMap::new();
-    changes.insert(
-        uri.clone(),
-        vec![TextEdit {
-            range: Range {
-                start: Position {
-                    line: 6,
-                    character: 0,
-                },
-                end: Position {
-                    line: 6,
-                    character: 0,
-                },
+    let changes = create_changes_map(
+        uri,
+        Range {
+            start: Position {
+                line: 6,
+                character: 0,
             },
-            new_text: "\nimpl A {\n    \n}\n".to_string(),
-        }],
+            end: Position {
+                line: 6,
+                character: 0,
+            },
+        },
+        "\nimpl A {\n    \n}\n",
     );
-    expected.push(CodeActionOrCommand::CodeAction(create_code_action(
+    expected.push(create_code_action(
         uri.clone(),
         "Generate impl for `A`".to_string(),
         changes,
         None,
-    )));
+        Some(CodeActionKind::REFACTOR),
+    ));
 
-    let mut changes = HashMap::new();
-    changes.insert(
-        uri.clone(),
-        vec![TextEdit {
-            range: Range {
-                start: Position {
-                    line: 8,
-                    character: 0,
-                },
-                end: Position {
-                    line: 8,
-                    character: 0,
-                },
+    let changes = create_changes_map(
+        uri,
+        Range {
+            start: Position {
+                line: 8,
+                character: 0,
             },
-            new_text: "    fn new(a: u64, b: u64) -> Self { Self { a, b } }\n".to_string(),
-        }],
+            end: Position {
+                line: 8,
+                character: 0,
+            },
+        },
+        "    fn new(a: u64, b: u64) -> Self { Self { a, b } }\n",
     );
-    expected.push(CodeActionOrCommand::CodeAction(create_code_action(
+    expected.push(create_code_action(
         uri.clone(),
         "Generate `new`".to_string(),
         changes,
         None,
-    )));
-
-    let mut changes = HashMap::new();
-    changes.insert(
-      uri.clone(),
-      vec![TextEdit {
-          range: Range {
+        Some(CodeActionKind::REFACTOR),
+    ));
+    let changes = create_changes_map(
+        uri,
+        Range {
               start: Position {
                   line: 2,
                   character: 0,
@@ -418,16 +435,75 @@ pub(crate) fn code_action_struct_existing_impl_request(server: &ServerState, uri
                   character: 0,
               },
           },
-          new_text: "/// Add a brief description.\n/// \n/// ### Additional Information\n/// \n/// Provide information beyond the core purpose or functionality.\n".to_string(),
-      }],
-  );
-    expected.push(CodeActionOrCommand::CodeAction(create_code_action(
+        "/// Add a brief description.\n/// \n/// ### Additional Information\n/// \n/// Provide information beyond the core purpose or functionality.\n");
+    expected.push(create_code_action(
         uri.clone(),
         "Generate a documentation template".to_string(),
         changes,
         None,
-    )));
+        Some(CodeActionKind::REFACTOR),
+    ));
 
-    let result = res.unwrap().unwrap();
-    assert_eq!(result, expected);
+    let actual = send_request(server, params);
+    assert_eq!(expected, actual);
+}
+
+pub(crate) fn code_action_auto_import_request(server: &ServerState, uri: &Url) {
+    // let _ = EvmAddress { // l 8 c 19
+    //     value: b256::min(),
+    // };
+
+    // test_fun(); // l 14 c 9
+    // deep_fun(); // l 15 c 9
+    // A::fun(); // l 16 c 6
+
+    // let _ = ZERO_B256; // l 18 c 19
+    // let _ = DeepEnum::Variant; // l 19 c 17
+    // let _ = DeepStruct::<u64> { field: 0 }; // l 20 c 17
+
+    let range = Range {
+        start: Position {
+            line: 8,
+            character: 12,
+        },
+        end: Position {
+            line: 8,
+            character: 22,
+        },
+    };
+
+    let params = create_code_action_params(
+        uri.clone(),
+        range.clone(),
+        create_diagnostic_from_data(
+            range,
+            DiagnosticData {
+                unknown_symbol_name: Some("EvmAddress".to_string()),
+            },
+        ),
+    );
+    let changes = create_changes_map(
+        uri,
+        Range {
+            start: Position {
+                line: 5,
+                character: 0,
+            },
+            end: Position {
+                line: 5,
+                character: 0,
+            },
+        },
+        "use std::vm::evm::evm_address::EvmAddress;\n",
+    );
+    let expected = vec![create_code_action(
+        uri.clone(),
+        "Import `std::vm::evm::evm_address::EvmAddress`".to_string(),
+        changes,
+        None,
+        Some(CodeActionKind::QUICKFIX),
+    )];
+
+    let actual = send_request(server, params);
+    assert_eq!(expected, actual);
 }

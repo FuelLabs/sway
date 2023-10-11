@@ -10,7 +10,7 @@ use sway_lsp::{
 use sway_lsp_test_utils::{
     assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir,
     e2e_test_dir, generic_impl_self_dir, get_fixture, load_sway_example, runnables_test_dir,
-    self_impl_reassignment_dir, sway_workspace_dir, test_fixtures_dir,
+    self_impl_reassignment_dir, sway_workspace_dir, test_fixtures_dir, paths_dir,
 };
 use tower_lsp::LspService;
 
@@ -405,7 +405,7 @@ async fn go_to_definition_for_paths() {
     let server = ServerState::default();
     let uri = open(
         &server,
-        test_fixtures_dir().join("tokens/paths/src/main.sw"),
+        paths_dir().join("src/main.sw"),
     )
     .await;
 
@@ -1745,6 +1745,11 @@ lsp_capability_test!(
     code_action_struct_existing_impl,
     code_actions::code_action_struct_existing_impl_request,
     self_impl_reassignment_dir().join("src/main.sw")
+);
+lsp_capability_test!(
+    code_action_auto_import,
+    code_actions::code_action_auto_import_request,
+    test_fixtures_dir().join("auto_import/src/main.sw")
 );
 lsp_capability_test!(
     code_lens,

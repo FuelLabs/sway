@@ -63,6 +63,10 @@ pub fn self_impl_reassignment_dir() -> PathBuf {
         .join("self_impl_reassignment")
 }
 
+pub fn paths_dir() -> PathBuf {
+    test_fixtures_dir().join("tokens/paths")
+}
+
 pub fn get_absolute_path(path: &str) -> String {
     sway_workspace_dir().join(path).to_str().unwrap().into()
 }
