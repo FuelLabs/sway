@@ -114,7 +114,7 @@ impl CurlyBrace for ItemFn {
         write!(
             line,
             "{}{}",
-            formatter.indent_str()?,
+            formatter.indent_to_str()?,
             Delimiter::Brace.as_close_char()
         )?;
 
@@ -208,7 +208,7 @@ fn format_fn_args(
                     formatter.indent();
                     args.format(formatted_code, formatter)?;
                     formatter.unindent();
-                    write!(formatted_code, "{}", formatter.indent_str()?)?;
+                    write!(formatted_code, "{}", formatter.indent_to_str()?)?;
                 }
             }
             _ => args.format(formatted_code, formatter)?,
@@ -222,7 +222,7 @@ fn format_fn_args(
             match formatter.shape.code_line.line_style {
                 LineStyle::Multiline => {
                     formatter.indent();
-                    write!(formatted_code, "\n{}", formatter.indent_str()?)?;
+                    write!(formatted_code, "\n{}", formatter.indent_to_str()?)?;
                     format_self(self_token, ref_self, mutable_self, formatted_code)?;
                     // `args_opt`
                     if let Some((comma, args)) = args_opt {

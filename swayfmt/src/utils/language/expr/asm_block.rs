@@ -125,7 +125,7 @@ impl CurlyBrace for AsmBlock {
                 write!(
                     line,
                     "{}{}",
-                    formatter.indent_str()?,
+                    formatter.indent_to_str()?,
                     Delimiter::Brace.as_close_char()
                 )?;
             }
@@ -174,13 +174,13 @@ impl Format for AsmBlockContents {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         for (instruction, semicolon_token) in self.instructions.iter() {
-            write!(formatted_code, "{}", formatter.indent_str()?)?;
+            write!(formatted_code, "{}", formatter.indent_to_str()?)?;
             instruction.format(formatted_code, formatter)?;
             writeln!(formatted_code, "{}", semicolon_token.span().as_str())?
         }
         if let Some(final_expr) = &self.final_expr_opt {
             if formatter.shape.code_line.line_style == LineStyle::Multiline {
-                write!(formatted_code, "{}", formatter.indent_str()?)?;
+                write!(formatted_code, "{}", formatter.indent_to_str()?)?;
                 final_expr.format(formatted_code, formatter)?;
                 writeln!(formatted_code)?;
             } else {

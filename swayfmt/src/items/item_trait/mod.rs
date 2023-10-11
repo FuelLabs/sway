@@ -9,10 +9,7 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_ast::{keywords::Token, ItemTrait, ItemTraitItem, Traits};
-use sway_types::{
-    ast::{Delimiter, PunctKind},
-    Spanned,
-};
+use sway_types::{ast::Delimiter, Spanned};
 
 #[cfg(test)]
 mod tests;
@@ -59,29 +56,7 @@ impl Format for ItemTrait {
             write_comments(formatted_code, self.trait_items.span().into(), formatter)?;
         } else {
             for item in trait_items {
-                for attr in &item.attribute_list {
-                    write!(formatted_code, "{}", &formatter.indent_str()?)?;
-                    attr.format(formatted_code, formatter)?;
-                }
-                match &item.value {
-                    sway_ast::ItemTraitItem::Fn(fn_signature, _) => {
-                        write!(formatted_code, "{}", formatter.indent_str()?)?;
-                        fn_signature.format(formatted_code, formatter)?;
-                        write!(formatted_code, "{}", PunctKind::Semicolon.as_char())?;
-                    }
-                    sway_ast::ItemTraitItem::Const(const_decl, _) => {
-                        write!(formatted_code, "{}", formatter.indent_str()?)?;
-                        const_decl.format(formatted_code, formatter)?;
-                    }
-                    sway_ast::ItemTraitItem::Type(type_decl, _) => {
-                        write!(formatted_code, "{}", formatter.indent_str()?)?;
-                        type_decl.format(formatted_code, formatter)?;
-                    }
-                    ItemTraitItem::Error(_, _) => {
-                        return Err(FormatterError::SyntaxError);
-                    }
-                }
-                writeln!(formatted_code)?;
+                item.format(formatted_code, formatter)?;
             }
         }
 
@@ -90,7 +65,6 @@ impl Format for ItemTrait {
             write!(formatted_code, " ")?;
             Self::open_curly_brace(formatted_code, formatter)?;
             for trait_items in trait_defs.get() {
-                write!(formatted_code, "{}", formatter.indent_str()?)?;
                 // format `Annotated<ItemFn>`
                 trait_items.format(formatted_code, formatter)?;
             }
@@ -120,20 +94,20 @@ impl Format for ItemTraitItem {
             ItemTraitItem::Fn(fn_decl, _) => {
                 fn_decl.format(formatted_code, formatter)?;
                 writeln!(formatted_code, ";")?;
-                Ok(())
             }
             ItemTraitItem::Const(const_decl, _) => {
                 const_decl.format(formatted_code, formatter)?;
                 writeln!(formatted_code)?;
-                Ok(())
             }
             ItemTraitItem::Type(type_decl, _) => {
                 type_decl.format(formatted_code, formatter)?;
                 writeln!(formatted_code)?;
-                Ok(())
             }
-            ItemTraitItem::Error(_, _) => Err(FormatterError::SyntaxError),
+            ItemTraitItem::Error(_, _) => {
+                return Err(FormatterError::SyntaxError);
+            }
         }
+        Ok(())
     }
 }
 
