@@ -179,7 +179,7 @@ fn test_u32_from_le_bytes() {
     let mut bytes = Bytes::new();
     bytes.push(1_u8);
     bytes.push(2_u8);
-    let result = u32::from_le_bytes(bytes);
+    let result = u16::from_le_bytes(bytes);
 
     assert(result == 513_u16);
 }
@@ -198,7 +198,7 @@ fn test_u32_from_be_bytes() {
     let mut bytes = Bytes::new();
     bytes.push(2_u8);
     bytes.push(1_u8);
-    let result = u32::from_be_bytes(bytes);
+    let result = u16::from_be_bytes(bytes);
 
     assert(result == 513_u16);
 }
