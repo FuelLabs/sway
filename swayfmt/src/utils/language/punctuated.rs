@@ -49,9 +49,7 @@ where
                     }
                     let value_pairs_iter = self.value_separator_pairs.iter();
                     for (type_field, comma_token) in value_pairs_iter.clone() {
-                        if !formatted_code.ends_with(formatter.indent_to_str()?.as_ref()) {
-                            write!(formatted_code, "{}", formatter.indent_to_str()?)?;
-                        }
+                        formatter.write_indent_into_buffer(formatted_code)?;
                         type_field.format(formatted_code, formatter)?;
 
                         comma_token.format(formatted_code, formatter)?;
