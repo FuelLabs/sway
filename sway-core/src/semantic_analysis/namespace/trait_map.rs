@@ -11,10 +11,10 @@ use sway_error::{
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineGet, DeclEngineInsert, DeclRefTraitType},
+    decl_engine::{DeclEngineGet, DeclEngineInsert},
     engine_threading::*,
     language::{
-        ty::{self, TyImplItem},
+        ty::{self, TyImplItem, TyTraitItem},
         CallPath,
     },
     type_system::{SubstTypes, TypeId},
@@ -928,27 +928,45 @@ impl TraitMap {
         trait_names
     }
 
-    pub(crate) fn get_trait_type_for_type(
+    pub(crate) fn get_trait_item_for_type(
         &self,
         handler: &Handler,
         engines: &Engines,
         symbol: &Ident,
         type_id: TypeId,
         as_trait: Option<CallPath>,
-    ) -> Result<DeclRefTraitType, ErrorEmitted> {
-        let mut candidates = HashMap::<String, DeclRefTraitType>::new();
+    ) -> Result<TyTraitItem, ErrorEmitted> {
+        let mut candidates = HashMap::<String, TyTraitItem>::new();
         for (trait_item, trait_key) in self.get_items_and_trait_key_for_type(engines, type_id) {
             match trait_item {
-                ty::TyTraitItem::Fn(_) => {}
-                ty::TyTraitItem::Constant(_) => {}
-                ty::TyTraitItem::Type(type_ref) => {
-                    let type_decl = engines.de().get_type(&type_ref);
+                ty::TyTraitItem::Fn(fn_ref) => {
+                    let decl = engines.de().get_function(&fn_ref);
                     let trait_call_path_string = engines.help_out(trait_key.name).to_string();
-                    if type_decl.name.as_str() == symbol.as_str()
+                    if decl.name.as_str() == symbol.as_str()
                         && (as_trait.is_none()
                             || as_trait.clone().unwrap().to_string() == trait_call_path_string)
                     {
-                        candidates.insert(trait_call_path_string, type_ref);
+                        candidates.insert(trait_call_path_string, TyTraitItem::Fn(fn_ref));
+                    }
+                }
+                ty::TyTraitItem::Constant(const_ref) => {
+                    let decl = engines.de().get_constant(&const_ref);
+                    let trait_call_path_string = engines.help_out(trait_key.name).to_string();
+                    if decl.call_path.suffix.as_str() == symbol.as_str()
+                        && (as_trait.is_none()
+                            || as_trait.clone().unwrap().to_string() == trait_call_path_string)
+                    {
+                        candidates.insert(trait_call_path_string, TyTraitItem::Constant(const_ref));
+                    }
+                }
+                ty::TyTraitItem::Type(type_ref) => {
+                    let decl = engines.de().get_type(&type_ref);
+                    let trait_call_path_string = engines.help_out(trait_key.name).to_string();
+                    if decl.name.as_str() == symbol.as_str()
+                        && (as_trait.is_none()
+                            || as_trait.clone().unwrap().to_string() == trait_call_path_string)
+                    {
+                        candidates.insert(trait_call_path_string, TyTraitItem::Type(type_ref));
                     }
                 }
             }
@@ -958,7 +976,7 @@ impl TraitMap {
             Ordering::Greater => Err(handler.emit_err(
                 CompileError::MultipleApplicableItemsInScope {
                     item_name: symbol.as_str().to_string(),
-                    item_kind: "type".to_string(),
+                    item_kind: "item".to_string(),
                     type_name: engines.help_out(type_id).to_string(),
                     as_traits: candidates
                         .keys()

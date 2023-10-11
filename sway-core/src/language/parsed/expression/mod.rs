@@ -197,7 +197,7 @@ pub struct AmbiguousPathExpression {
 
 #[derive(Debug, Clone)]
 pub struct DelineatedPathExpression {
-    pub call_path_binding: TypeBinding<CallPath>,
+    pub call_path_binding: TypeBinding<QualifiedCallPath>,
     /// When args is equal to Option::None then it means that the
     /// [DelineatedPathExpression] was initialized from an expression
     /// that does not end with parenthesis.

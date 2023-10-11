@@ -389,6 +389,7 @@ impl Parse for DelineatedPathExpression {
         } = self;
         call_path_binding
             .inner
+            .call_path
             .prefixes
             .par_iter()
             .for_each(|ident| {
@@ -398,7 +399,7 @@ impl Parse for DelineatedPathExpression {
                 );
             });
         ctx.tokens.insert(
-            ctx.ident(&call_path_binding.inner.suffix),
+            ctx.ident(&call_path_binding.inner.call_path.suffix),
             Token::from_parsed(
                 AstToken::DelineatedPathExpression(self.clone()),
                 SymbolKind::Variant,
@@ -416,6 +417,7 @@ impl Parse for DelineatedPathExpression {
                 exp.parse(ctx);
             });
         }
+        collect_qualified_path_root(ctx, call_path_binding.inner.qualified_path_root.clone());
     }
 }
 
@@ -454,14 +456,7 @@ impl Parse for AmbiguousPathExpression {
                 type_arg.parse(ctx);
             });
         args.par_iter().for_each(|arg| arg.parse(ctx));
-        if let Some(qualified_path_root) = qualified_path_root {
-            qualified_path_root.ty.parse(ctx);
-            collect_type_info_token(
-                ctx,
-                &ctx.engines.te().get(qualified_path_root.as_trait),
-                Some(&qualified_path_root.as_trait_span),
-            );
-        }
+        collect_qualified_path_root(ctx, qualified_path_root.clone().map(Box::new));
     }
 }
 

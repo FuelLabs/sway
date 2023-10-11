@@ -1,7 +1,7 @@
 category = "fail"
 
 # check: $()<S as MyTrait>::asd::method();
-# nextln: $()Unexpected call path segments between qualified root and method name.
+# nextln: $()Could not find symbol "asd" in this scope.
 
 # check: $()<S as S2>::method();
 # nextln: $()No method named "method" found for type "S as S2".

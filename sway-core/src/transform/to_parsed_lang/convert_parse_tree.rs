@@ -2663,7 +2663,7 @@ fn path_expr_to_expression(
         }
     } else {
         let call_path_binding =
-            path_expr_to_call_path_binding(context, handler, engines, path_expr)?;
+            path_expr_to_qualified_call_path_binding(context, handler, engines, path_expr)?;
         Expression {
             kind: ExpressionKind::DelineatedPath(Box::new(DelineatedPathExpression {
                 call_path_binding,
@@ -2975,19 +2975,20 @@ fn literal_to_literal(
 /// Like [path_expr_to_call_path], but instead can potentially return type arguments.
 /// Use this when converting a call path that could potentially include type arguments, i.e. the
 /// turbofish.
-fn path_expr_to_call_path_binding(
+fn path_expr_to_qualified_call_path_binding(
     context: &mut Context,
     handler: &Handler,
     engines: &Engines,
     path_expr: PathExpr,
-) -> Result<TypeBinding<CallPath>, ErrorEmitted> {
+) -> Result<TypeBinding<QualifiedCallPath>, ErrorEmitted> {
     let PathExpr {
         root_opt,
         prefix,
         mut suffix,
         ..
     } = path_expr;
-    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
+    let (is_absolute, qualified_path_root) =
+        path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
     let (prefixes, suffix, span, regular_type_arguments, prefix_type_arguments) = match suffix.pop()
     {
         Some((_, call_path_suffix)) => {
@@ -3045,11 +3046,46 @@ fn path_expr_to_call_path_binding(
     };
 
     Ok(TypeBinding {
-        inner: CallPath {
-            prefixes,
-            suffix,
-            is_absolute,
+        inner: QualifiedCallPath {
+            call_path: CallPath {
+                prefixes,
+                suffix,
+                is_absolute,
+            },
+            qualified_path_root: qualified_path_root.map(Box::new),
         },
+        type_arguments,
+        span,
+    })
+}
+
+/// Like [path_expr_to_call_path], but instead can potentially return type arguments.
+/// Use this when converting a call path that could potentially include type arguments, i.e. the
+/// turbofish.
+fn path_expr_to_call_path_binding(
+    context: &mut Context,
+    handler: &Handler,
+    engines: &Engines,
+    path_expr: PathExpr,
+) -> Result<TypeBinding<CallPath>, ErrorEmitted> {
+    let TypeBinding {
+        inner: QualifiedCallPath {
+            call_path,
+            qualified_path_root,
+        },
+        type_arguments,
+        span,
+    } = path_expr_to_qualified_call_path_binding(context, handler, engines, path_expr)?;
+
+    if let Some(qualified_path_root) = qualified_path_root {
+        let error = ConvertParseTreeError::QualifiedPathRootsNotImplemented {
+            span: qualified_path_root.as_trait_span,
+        };
+        return Err(handler.emit_err(error.into()));
+    }
+
+    Ok(TypeBinding {
+        inner: call_path,
         type_arguments,
         span,
     })

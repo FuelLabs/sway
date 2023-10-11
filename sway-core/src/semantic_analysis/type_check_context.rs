@@ -1,11 +1,11 @@
 use std::collections::{HashMap, VecDeque};
 
 use crate::{
-    decl_engine::{DeclEngineInsert, DeclRefConstant, DeclRefFunction},
+    decl_engine::{DeclEngineInsert, DeclRefFunction},
     engine_threading::*,
     language::{
         parsed::TreeType,
-        ty::{self, TyDecl},
+        ty::{self, TyDecl, TyTraitItem},
         CallPath, Purity, QualifiedCallPath, Visibility,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf, Path, TryInsertingTraitImplOnFailure},
@@ -373,83 +373,34 @@ impl<'a> TypeCheckContext<'a> {
         let module_path = type_info_prefix.unwrap_or(mod_path);
         let type_id = match type_engine.get(type_id) {
             TypeInfo::Custom {
-                qualified_call_path: call_path,
+                qualified_call_path,
                 type_arguments,
                 root_type_id,
             } => {
-                let type_decl_opt =
-                    if let Some(qualified_path_root) = call_path.clone().qualified_path_root {
-                        let root_type_id = match &type_engine.get(qualified_path_root.ty.type_id) {
-                            TypeInfo::Custom {
-                                qualified_call_path: call_path,
-                                type_arguments,
-                                ..
-                            } => {
-                                let type_decl = self
-                                    .resolve_call_path_with_visibility_check_and_modpath(
-                                        handler,
-                                        module_path,
-                                        &call_path.clone().to_call_path(handler)?,
-                                    )?;
-                                self.type_decl_opt_to_type_id(
-                                    handler,
-                                    Some(type_decl),
-                                    call_path.clone(),
-                                    span,
-                                    enforce_type_arguments,
-                                    mod_path,
-                                    type_arguments.clone(),
-                                )?
-                            }
-                            _ => qualified_path_root.ty.type_id,
-                        };
-
-                        let as_trait_opt = match &type_engine.get(qualified_path_root.as_trait) {
-                            TypeInfo::Custom {
-                                qualified_call_path: call_path,
-                                ..
-                            } => Some(
-                                call_path
-                                    .clone()
-                                    .to_call_path(handler)?
-                                    .to_fullpath(self.namespace),
-                            ),
-                            _ => None,
-                        };
-
-                        self.namespace
-                            .root
-                            .resolve_call_path_and_root_type_id(
-                                handler,
-                                self.engines,
-                                root_type_id,
-                                as_trait_opt,
-                                &call_path.call_path,
-                            )
-                            .ok()
-                    } else if let Some(root_type_id) = root_type_id {
-                        self.namespace
-                            .root
-                            .resolve_call_path_and_root_type_id(
-                                handler,
-                                self.engines,
-                                root_type_id,
-                                None,
-                                &call_path.clone().to_call_path(handler)?,
-                            )
-                            .ok()
-                    } else {
-                        self.resolve_call_path_with_visibility_check_and_modpath(
+                let type_decl_opt = if let Some(root_type_id) = root_type_id {
+                    self.namespace
+                        .root
+                        .resolve_call_path_and_root_type_id(
                             handler,
-                            module_path,
-                            &call_path.clone().to_call_path(handler)?,
+                            self.engines,
+                            root_type_id,
+                            None,
+                            &qualified_call_path.clone().to_call_path(handler)?,
+                            self.self_type(),
                         )
                         .ok()
-                    };
+                } else {
+                    self.resolve_qualified_call_path_with_visibility_check_and_modpath(
+                        handler,
+                        module_path,
+                        &qualified_call_path,
+                    )
+                    .ok()
+                };
                 self.type_decl_opt_to_type_id(
                     handler,
                     type_decl_opt,
-                    call_path,
+                    qualified_call_path,
                     span,
                     enforce_type_arguments,
                     mod_path,
@@ -514,16 +465,23 @@ impl<'a> TypeCheckContext<'a> {
                 name,
                 trait_type_id,
             } => {
-                let type_ref = self
+                let item_ref = self
                     .namespace
                     .root
                     .implemented_traits
-                    .get_trait_type_for_type(handler, self.engines, &name, trait_type_id, None)?;
-                let type_decl = self.engines.de().get_type(type_ref.id());
-                if let Some(ty) = type_decl.ty {
-                    ty.type_id
+                    .get_trait_item_for_type(handler, self.engines, &name, trait_type_id, None)?;
+                if let TyTraitItem::Type(type_ref) = item_ref {
+                    let type_decl = self.engines.de().get_type(type_ref.id());
+                    if let Some(ty) = type_decl.ty {
+                        ty.type_id
+                    } else {
+                        type_id
+                    }
                 } else {
-                    type_id
+                    return Err(handler.emit_err(CompileError::Internal(
+                        "Expecting associated type",
+                        item_ref.span(),
+                    )));
                 }
             }
             _ => type_id,
@@ -644,6 +602,80 @@ impl<'a> TypeCheckContext<'a> {
         Ok(decl)
     }
 
+    pub(crate) fn resolve_qualified_call_path_with_visibility_check(
+        &mut self,
+        handler: &Handler,
+        qualified_call_path: &QualifiedCallPath,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        self.resolve_qualified_call_path_with_visibility_check_and_modpath(
+            handler,
+            &self.namespace.mod_path.clone(),
+            qualified_call_path,
+        )
+    }
+
+    pub(crate) fn resolve_qualified_call_path_with_visibility_check_and_modpath(
+        &mut self,
+        handler: &Handler,
+        mod_path: &Path,
+        qualified_call_path: &QualifiedCallPath,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        let type_engine = self.engines().te();
+        if let Some(qualified_path_root) = qualified_call_path.clone().qualified_path_root {
+            let root_type_id = match &type_engine.get(qualified_path_root.ty.type_id) {
+                TypeInfo::Custom {
+                    qualified_call_path: call_path,
+                    type_arguments,
+                    ..
+                } => {
+                    let type_decl = self.resolve_call_path_with_visibility_check_and_modpath(
+                        handler,
+                        mod_path,
+                        &call_path.clone().to_call_path(handler)?,
+                    )?;
+                    self.type_decl_opt_to_type_id(
+                        handler,
+                        Some(type_decl),
+                        call_path.clone(),
+                        &qualified_path_root.ty.span(),
+                        EnforceTypeArguments::No,
+                        mod_path,
+                        type_arguments.clone(),
+                    )?
+                }
+                _ => qualified_path_root.ty.type_id,
+            };
+
+            let as_trait_opt = match &type_engine.get(qualified_path_root.as_trait) {
+                TypeInfo::Custom {
+                    qualified_call_path: call_path,
+                    ..
+                } => Some(
+                    call_path
+                        .clone()
+                        .to_call_path(handler)?
+                        .to_fullpath(self.namespace),
+                ),
+                _ => None,
+            };
+
+            self.namespace.root.resolve_call_path_and_root_type_id(
+                handler,
+                self.engines,
+                root_type_id,
+                as_trait_opt,
+                &qualified_call_path.call_path,
+                self.self_type(),
+            )
+        } else {
+            self.resolve_call_path_with_visibility_check_and_modpath(
+                handler,
+                mod_path,
+                &qualified_call_path.call_path,
+            )
+        }
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn type_decl_opt_to_type_id(
         &mut self,
@@ -743,21 +775,19 @@ impl<'a> TypeCheckContext<'a> {
 
                 if let Some(ty) = decl_type.ty {
                     ty.type_id
+                } else if let Some(implementing_type) = self.self_type() {
+                    type_engine.insert(
+                        self.engines,
+                        TypeInfo::TraitType {
+                            name,
+                            trait_type_id: implementing_type,
+                        },
+                    )
                 } else {
-                    if let Some(implementing_type) = self.self_type() {
-                        type_engine.insert(
-                            self.engines,
-                            TypeInfo::TraitType {
-                                name,
-                                trait_type_id: implementing_type,
-                            },
-                        )
-                    } else {
-                        return Err(handler.emit_err(CompileError::Internal(
-                            "Self type not provided.",
-                            span.clone(),
-                        )));
-                    }
+                    return Err(handler.emit_err(CompileError::Internal(
+                        "Self type not provided.",
+                        span.clone(),
+                    )));
                 }
             }
             _ => {
@@ -1095,34 +1125,6 @@ impl<'a> TypeCheckContext<'a> {
                 span: method_name.span(),
             }))
         }
-    }
-
-    /// Given a name and a type (plus a `self_type` to potentially
-    /// resolve it), find that method in the namespace. Requires `args_buf`
-    /// because of some special casing for the standard library where we pull
-    /// the type from the arguments buffer.
-    ///
-    /// This function will generate a missing method error if the method is not
-    /// found.
-    pub(crate) fn find_constant_for_type(
-        &mut self,
-        handler: &Handler,
-        type_id: TypeId,
-        item_name: &Ident,
-    ) -> Result<Option<DeclRefConstant>, ErrorEmitted> {
-        let matching_item_decl_refs =
-            self.find_items_for_type(handler, type_id, &Vec::<Ident>::new(), item_name)?;
-
-        let matching_constant_decl_refs = matching_item_decl_refs
-            .into_iter()
-            .flat_map(|item| match item {
-                ty::TyTraitItem::Fn(_decl_ref) => None,
-                ty::TyTraitItem::Constant(decl_ref) => Some(decl_ref),
-                ty::TyTraitItem::Type(_) => None,
-            })
-            .collect::<Vec<_>>();
-
-        Ok(matching_constant_decl_refs.first().cloned())
     }
 
     /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.
