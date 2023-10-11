@@ -9,10 +9,7 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_ast::{keywords::Token, ItemTrait, ItemTraitItem, Traits};
-use sway_types::{
-    ast::{Delimiter, PunctKind},
-    Spanned,
-};
+use sway_types::{ast::Delimiter, Spanned};
 
 #[cfg(test)]
 mod tests;
@@ -68,7 +65,6 @@ impl Format for ItemTrait {
             write!(formatted_code, " ")?;
             Self::open_curly_brace(formatted_code, formatter)?;
             for trait_items in trait_defs.get() {
-                write!(formatted_code, "{}", formatter.indent_str()?)?;
                 // format `Annotated<ItemFn>`
                 trait_items.format(formatted_code, formatter)?;
             }

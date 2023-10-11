@@ -181,7 +181,7 @@ fn format_else_opt(
         )?;
 
         if comments_written {
-            write!(else_if_str, "{}", formatter.indent_str()?,)?;
+            write!(else_if_str, "{}", formatter.indent_to_str()?,)?;
         } else {
             write!(else_if_str, " ")?;
         }
@@ -215,7 +215,7 @@ impl CurlyBrace for IfExpr {
         match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
                 formatter.shape.code_line.reset_width();
-                write!(line, "\n{}{open_brace}", formatter.indent_str()?)?;
+                write!(line, "\n{}{open_brace}", formatter.indent_to_str()?)?;
                 formatter
                     .shape
                     .code_line
@@ -242,7 +242,7 @@ impl CurlyBrace for IfExpr {
                 write!(
                     line,
                     "{}{}",
-                    formatter.indent_str()?,
+                    formatter.indent_to_str()?,
                     Delimiter::Brace.as_close_char()
                 )?;
             }
@@ -315,7 +315,7 @@ impl CurlyBrace for MatchBranch {
         write!(
             line,
             "{}{}",
-            formatter.indent_str()?,
+            formatter.indent_to_str()?,
             Delimiter::Brace.as_close_char()
         )?;
 
@@ -345,7 +345,7 @@ impl Format for MatchBranchKind {
                     block.format(formatted_code, formatter)?;
                     // we handle this here to avoid needless indents
                     formatter.unindent();
-                    write!(formatted_code, "{}", formatter.indent_str()?)?;
+                    write!(formatted_code, "{}", formatter.indent_to_str()?)?;
                 }
                 Self::close_curly_brace(formatted_code, formatter)?;
                 if let Some(comma_token) = comma_token_opt {

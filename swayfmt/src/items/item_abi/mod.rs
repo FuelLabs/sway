@@ -57,7 +57,6 @@ impl Format for ItemAbi {
                 item.format(formatted_code, formatter)?;
             }
             writeln!(formatted_code)?;
-
             Self::close_curly_brace(formatted_code, formatter)?;
         }
 
@@ -103,7 +102,7 @@ impl CurlyBrace for ItemAbi {
         write!(
             line,
             "{}{}",
-            formatter.indent_str()?,
+            formatter.indent_to_str()?,
             Delimiter::Brace.as_close_char()
         )?;
 

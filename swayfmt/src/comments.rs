@@ -103,7 +103,7 @@ pub fn write_comments(
                     write!(
                         formatted_code,
                         "{}{}{}",
-                        formatter.indent_str()?,
+                        formatter.indent_to_str()?,
                         comment.span().as_str(),
                         newlines
                     )?;
