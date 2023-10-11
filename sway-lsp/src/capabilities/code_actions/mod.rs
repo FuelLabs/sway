@@ -22,7 +22,7 @@ use lsp_types::{
 };
 use serde_json::Value;
 use std::{collections::HashMap, sync::Arc};
-use sway_core::{language::ty, Engines};
+use sway_core::{language::ty, Engines, Namespace};
 use sway_types::Spanned;
 
 pub(crate) const CODE_ACTION_IMPL_TITLE: &str = "Generate impl for";
@@ -38,6 +38,7 @@ pub(crate) struct CodeActionContext<'a> {
     uri: &'a Url,
     temp_uri: &'a Url,
     diagnostics: &'a Vec<Diagnostic>,
+    namespace: &'a Option<Namespace>,
 }
 
 pub fn code_actions(
@@ -59,6 +60,7 @@ pub fn code_actions(
         uri,
         temp_uri,
         diagnostics,
+        namespace: &session.namespace(),
     };
 
     let actions_by_type = token
@@ -91,8 +93,7 @@ pub fn code_actions(
         })
         .unwrap_or_default();
 
-    let actions_by_diagnostic =
-        diagnostic::code_actions(&ctx, &session.namespace()).unwrap_or_default();
+    let actions_by_diagnostic = diagnostic::code_actions(&ctx).unwrap_or_default();
 
     Some([actions_by_type, actions_by_diagnostic].concat())
 }

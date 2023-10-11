@@ -52,7 +52,7 @@ impl<'a> TypedTree<'a> {
                 .try_get_mut(&self.ctx.ident(&Ident::new(mod_name_span.clone())))
                 .try_unwrap()
             {
-                token.typed = Some(TypedAstToken::TypedIncludeStatement);
+                token.typed = Some(TypedAstToken::TypedModuleName);
                 token.type_def = Some(TypeDefinition::Ident(Ident::new(module.span.clone())));
             }
             self.collect_module(module);
@@ -179,7 +179,26 @@ impl Parse for ty::TySideEffect {
                     ImportType::Star => {}
                 }
             }
-            IncludeStatement => {}
+            IncludeStatement(
+                include_statement @ ty::TyIncludeStatement {
+                    span: _,
+                    mod_name,
+                    visibility: _,
+                },
+            ) => {
+                if let Some(mut token) = ctx.tokens.try_get_mut(&ctx.ident(mod_name)).try_unwrap() {
+                    token.typed = Some(TypedAstToken::TypedIncludeStatement(
+                        include_statement.clone(),
+                    ));
+                    if let Some(span) = ctx
+                        .namespace
+                        .submodule(&vec![mod_name.clone()])
+                        .and_then(|tgt_submod| tgt_submod.span.clone())
+                    {
+                        token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
+                    }
+                }
+            }
         }
     }
 }

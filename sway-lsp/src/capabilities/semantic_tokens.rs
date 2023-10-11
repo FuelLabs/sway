@@ -157,7 +157,7 @@ fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
         SymbolKind::BoolLiteral => SemanticTokenType::new("boolean"),
         SymbolKind::TypeAlias => SemanticTokenType::new("typeAlias"),
         SymbolKind::TraitType => SemanticTokenType::new("traitType"),
-        SymbolKind::Keyword => SemanticTokenType::new("keyword"),
+        SymbolKind::Keyword | SymbolKind::ProgramTypeKeyword => SemanticTokenType::new("keyword"),
         SymbolKind::Unknown => SemanticTokenType::new("generic"),
         SymbolKind::BuiltinType => SemanticTokenType::new("builtinType"),
         SymbolKind::DeriveHelper => SemanticTokenType::new("deriveHelper"),

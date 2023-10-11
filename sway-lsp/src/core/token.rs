@@ -6,9 +6,9 @@ use sway_core::{
         parsed::{
             AbiCastExpression, AmbiguousPathExpression, Declaration, DelineatedPathExpression,
             EnumVariant, Expression, FunctionApplicationExpression, FunctionParameter,
-            MethodApplicationExpression, Scrutinee, StorageField, StructExpression,
-            StructExpressionField, StructField, StructScrutineeField, Supertrait, TraitFn,
-            UseStatement,
+            IncludeStatement, MethodApplicationExpression, Scrutinee, StorageField,
+            StructExpression, StructExpressionField, StructField, StructScrutineeField, Supertrait,
+            TraitFn, UseStatement,
         },
         ty,
     },
@@ -35,7 +35,8 @@ pub enum AstToken {
     FunctionApplicationExpression(FunctionApplicationExpression),
     FunctionParameter(FunctionParameter),
     Ident(Ident),
-    IncludeStatement,
+    ModuleName,
+    IncludeStatement(IncludeStatement),
     Intrinsic(Intrinsic),
     Keyword(Ident),
     LibrarySpan(Span),
@@ -77,7 +78,8 @@ pub enum TypedAstToken {
     TypedArgument(TypeArgument),
     TypedParameter(TypeParameter),
     TypedTraitConstraint(TraitConstraint),
-    TypedIncludeStatement,
+    TypedModuleName,
+    TypedIncludeStatement(ty::TyIncludeStatement),
     TypedUseStatement(ty::TyUseStatement),
     Ident(Ident),
 }
@@ -109,6 +111,8 @@ pub enum SymbolKind {
     Module,
     /// Emitted for numeric literals.
     NumericLiteral,
+    /// Emitted for keywords.
+    ProgramTypeKeyword,
     /// Emitted for the self function parameter and self path-specifier.
     SelfKeyword,
     /// Emitted for the Self type parameter.

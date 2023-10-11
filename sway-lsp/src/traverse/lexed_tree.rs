@@ -39,18 +39,27 @@ pub fn parse(lexed_program: &LexedProgram, ctx: &ParseContext) {
 fn insert_module_kind(ctx: &ParseContext, kind: &ModuleKind) {
     match kind {
         ModuleKind::Script { script_token } => {
-            insert_keyword(ctx, script_token.span());
+            insert_program_type_keyword(ctx, script_token.span());
         }
         ModuleKind::Contract { contract_token } => {
-            insert_keyword(ctx, contract_token.span());
+            insert_program_type_keyword(ctx, contract_token.span());
         }
         ModuleKind::Predicate { predicate_token } => {
-            insert_keyword(ctx, predicate_token.span());
+            insert_program_type_keyword(ctx, predicate_token.span());
         }
         ModuleKind::Library { library_token, .. } => {
-            insert_keyword(ctx, library_token.span());
+            insert_program_type_keyword(ctx, library_token.span());
         }
     }
+}
+
+fn insert_program_type_keyword(ctx: &ParseContext, span: Span) {
+    let ident = Ident::new(span);
+    let token = Token::from_parsed(
+        AstToken::Keyword(ident.clone()),
+        SymbolKind::ProgramTypeKeyword,
+    );
+    ctx.tokens.insert(ctx.ident(&ident), token);
 }
 
 fn insert_keyword(ctx: &ParseContext, span: Span) {
