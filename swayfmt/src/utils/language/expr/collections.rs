@@ -24,7 +24,7 @@ impl Format for ExprTupleDescriptor {
                 tail,
             } => match formatter.shape.code_line.line_style {
                 LineStyle::Multiline => {
-                    write!(formatted_code, "{}", formatter.indent_str()?)?;
+                    write!(formatted_code, "{}", formatter.indent_to_str()?)?;
                     head.format(formatted_code, formatter)?;
                     write!(formatted_code, "{}", comma_token.span().as_str())?;
                     tail.format(formatted_code, formatter)?;
@@ -67,7 +67,7 @@ impl Parenthesis for ExprTupleDescriptor {
                 write!(
                     line,
                     "{}{}",
-                    formatter.indent_str()?,
+                    formatter.indent_to_str()?,
                     Delimiter::Parenthesis.as_close_char()
                 )?;
             }
@@ -130,7 +130,7 @@ impl SquareBracket for ExprArrayDescriptor {
                 write!(
                     line,
                     "{}{}",
-                    formatter.indent_str()?,
+                    formatter.indent_to_str()?,
                     Delimiter::Bracket.as_close_char()
                 )?;
             }

@@ -107,8 +107,8 @@ impl Format for UseTree {
                             writeln!(
                                 formatted_code,
                                 "{}{}",
-                                formatter.indent_str()?,
-                                ord_vec.join(&format!("\n{}", formatter.indent_str()?)),
+                                formatter.indent_to_str()?,
+                                ord_vec.join(&format!("\n{}", formatter.indent_to_str()?)),
                             )?;
                         }
                         _ => {
@@ -182,7 +182,7 @@ impl CurlyBrace for UseTree {
                 write!(
                     line,
                     "{}{}",
-                    formatter.indent_str()?,
+                    formatter.indent_to_str()?,
                     Delimiter::Brace.as_close_char()
                 )?;
             }
