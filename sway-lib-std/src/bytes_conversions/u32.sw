@@ -3,6 +3,7 @@ library;
 use ::assert::assert;
 use ::bytes::Bytes;
 use ::alloc::alloc;
+use ::option::Option;
 
 impl u32 {
     /// Converts the `u32` to a sequence of little-endian bytes.
