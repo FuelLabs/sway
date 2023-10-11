@@ -49,14 +49,16 @@ where
                     }
                     let value_pairs_iter = self.value_separator_pairs.iter();
                     for (type_field, comma_token) in value_pairs_iter.clone() {
-                        write!(formatted_code, "{}", &formatter.indent_str()?)?;
+                        if !formatted_code.ends_with(formatter.indent_str()?.as_ref()) {
+                            write!(formatted_code, "{}", formatter.indent_str()?)?;
+                        }
                         type_field.format(formatted_code, formatter)?;
 
                         comma_token.format(formatted_code, formatter)?;
                         writeln!(formatted_code)?;
                     }
                     if let Some(final_value) = &self.final_value_opt {
-                        write!(formatted_code, "{}", &formatter.indent_str()?)?;
+                        write!(formatted_code, "{}", formatter.indent_str()?)?;
                         final_value.format(formatted_code, formatter)?;
                         writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
                     }

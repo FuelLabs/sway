@@ -36,10 +36,8 @@ impl Format for ItemAbi {
         let abi_items = self.abi_items.get();
 
         // abi_items
-        for annotated in abi_items.iter() {
-            // add indent + format item
-            write!(formatted_code, "{}", formatter.indent_str()?)?;
-            annotated.format(formatted_code, formatter)?;
+        for trait_item in abi_items.iter() {
+            trait_item.format(formatted_code, formatter)?;
         }
 
         if abi_items.is_empty() {
@@ -56,8 +54,6 @@ impl Format for ItemAbi {
         if let Some(abi_defs) = self.abi_defs_opt.clone() {
             Self::open_curly_brace(formatted_code, formatter)?;
             for item in abi_defs.get().iter() {
-                // add indent + format item
-                write!(formatted_code, "{}", formatter.indent_str()?,)?;
                 item.format(formatted_code, formatter)?;
             }
             writeln!(formatted_code)?;

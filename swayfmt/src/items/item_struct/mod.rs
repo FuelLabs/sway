@@ -79,8 +79,7 @@ impl Format for ItemStruct {
 
                         let value_pairs_iter = value_pairs.iter().enumerate();
                         for (var_index, (type_field, comma_token)) in value_pairs_iter.clone() {
-                            write!(formatted_code, "{}", &formatter.indent_str()?)?;
-
+                            write!(formatted_code, "{}", formatter.indent_str()?)?;
                             // Add name
                             type_field.name.format(formatted_code, formatter)?;
                             let current_variant_length = variant_length[var_index];

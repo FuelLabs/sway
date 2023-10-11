@@ -70,8 +70,7 @@ impl Format for ItemStorage {
                         let value_pairs_iter = value_pairs.iter().enumerate();
                         for (field_index, (storage_field, comma_token)) in value_pairs_iter.clone()
                         {
-                            write!(formatted_code, "{}", &formatter.indent_str()?)?;
-
+                            write!(formatted_code, "{}", formatter.indent_str()?)?;
                             // Add name
                             storage_field.name.format(formatted_code, formatter)?;
 
