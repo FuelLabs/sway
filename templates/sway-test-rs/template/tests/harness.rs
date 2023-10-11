@@ -22,7 +22,7 @@ async fn get_contract_instance() -> (MyContract<WalletUnlocked>, ContractId) {
 
     let id = Contract::load_from(
         "./out/debug/{{project-name}}.bin",
-        LoadConfiguration::default()
+        LoadConfiguration::default(),
     )
     .unwrap()
     .deploy(&wallet, TxParameters::default())
