@@ -161,11 +161,6 @@ impl u16 {
 }
 
 #[test]
-fn foo() {
-    assert(false);
-}
-
-#[test]
 fn test_u32_to_le_bytes() {
     let x: u16 = 513;
     let result = x.to_le_bytes();

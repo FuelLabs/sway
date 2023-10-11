@@ -128,19 +128,20 @@ impl u32 {
             aloc size;
             move ptr hp;
             
-            srl r1 input k;
-            sb ptr r1 i0;
+            srl  r1 input k;
+            and  r1 r1 off;
+            sw   output r1 i0;
 
-            srl r1 input j;
-            and r1 r1 off;
-            sb ptr r1 i1;
+            srl  r1 input j;
+            and  r1 r1 off;
+            sw   output r1 i1;
 
-            srl r1 input i;
-            and r1 r1 off;
-            sb ptr r1 i2;
+            srl  r1 input i;
+            and  r1 r1 off;
+            sw   output r1 i2;
 
-            and r1 input off;
-            sb ptr r1 i3;
+            and  r1 input off;
+            sw   output r1 i3;
 
             ptr: raw_ptr
         };
@@ -187,12 +188,12 @@ impl u32 {
         let d = (ptr.add_uint_offset(3)).read_byte();
 
         asm(a: a, b: b, c: c, d: d, i: 0x8, j: 0x10, k: 0x18, r1, r2, r3) {
-            sll  r1 b i;
-            or   r2 a r1;
-            sll  r1 c j;
-            or   r3 r2 r1;
-            sll  r1 d k;
-            or   r1 r3 r1;
+            sll  r1 a k;
+            sll  r2 b j;
+            or   r3 r1 r2;
+            sll  r1 c i;
+            or   r2 r3 r1;
+            or   r1 r2 d;
             r1: u32
         }
     }
