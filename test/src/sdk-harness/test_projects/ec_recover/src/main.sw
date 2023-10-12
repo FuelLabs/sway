@@ -1,10 +1,12 @@
 contract;
 
-use std::{b512::B512, ecr::{ec_recover, ec_recover_address}};
+use std::{b512::B512, ecr::{ec_recover, ec_recover_r1, ec_recover_address, ec_recover_address_r1}};
 
 abi EcRecover {
     fn recover_address(sig_r: b256, sig_v_s: b256, hash: b256) -> Address;
+    fn recover_address_r1(sig_r: b256, sig_v_s: b256, hash: b256) -> Address;
     fn recover_pub_key(sig_r: b256, sig_v_s: b256, hash: b256) -> (b256, b256);
+    fn recover_pub_key_r1(sig_r: b256, sig_v_s: b256, hash: b256) -> (b256, b256);
 }
 
 impl EcRecover for Contract {
@@ -15,5 +17,13 @@ impl EcRecover for Contract {
     fn recover_pub_key(sig_r: b256, sig_v_s: b256, hash: b256) -> (b256, b256) {
         let sig = B512::from((sig_r, sig_v_s));
         ec_recover(sig, hash).unwrap().into()
+    }
+    fn recover_address_r1(sig_r: b256, sig_v_s: b256, hash: b256) -> Address {
+        let sig = B512::from((sig_r, sig_v_s));
+        ec_recover_address_r1(sig, hash).unwrap()
+    }
+    fn recover_pub_key_r1(sig_r: b256, sig_v_s: b256, hash: b256) -> (b256, b256) {
+        let sig = B512::from((sig_r, sig_v_s));
+        ec_recover_r1(sig, hash).unwrap().into()
     }
 }
