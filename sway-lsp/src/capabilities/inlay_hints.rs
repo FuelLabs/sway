@@ -7,13 +7,17 @@ use crate::{
 };
 use lsp_types::{self, Range, Url};
 use std::sync::Arc;
-use sway_core::{language::ty::TyDecl, type_system::TypeInfo};
+use sway_core::{
+    language::ty::{TyDecl, TyVariableDecl},
+    type_system::TypeInfo,
+};
 use sway_types::Spanned;
 
 // Future PR's will add more kinds
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum InlayKind {
     TypeHint,
+    Parameter,
 }
 
 #[derive(Debug)]
@@ -39,42 +43,21 @@ pub fn inlay_hints(
     }
 
     let engines = session.engines.read();
-    let type_engine = engines.te();
-
     let hints: Vec<lsp_types::InlayHint> = session
         .token_map()
         .tokens_for_file(uri)
-        .filter_map(|(_, token)| {
+        // Filter out all tokens that have a span that fall outside of the provided range
+        .filter_map(|(ident, token)| (ident.range.start >= range.start && ident.range.end <= range.end).then(|| (ident, token)))
+        .filter_map(|(ident, token)| {
             token.typed.as_ref().and_then(|t| match t {
                 TypedAstToken::TypedDeclaration(TyDecl::VariableDecl(var_decl)) => {
-                    match var_decl.type_ascription.call_path_tree {
-                        Some(_) => None,
-                        None => {
-                            let var_range = get_range_from_span(&var_decl.name.span());
-                            if var_range.start >= range.start && var_range.end <= range.end {
-                                Some(var_decl.clone())
-                            } else {
-                                None
-                            }
-                        }
-                    }
+                    var_decl::hints(var_decl, ident.range, &config, &engines)
                 }
+                // TypedAstToken::TypedFunctionParameter(param) => {
+                //     params::hints(param, &range)
+                // }
                 _ => None,
             })
-        })
-        .filter_map(|var| {
-            let type_info = type_engine.get(var.type_ascription.type_id);
-            match type_info {
-                TypeInfo::Unknown | TypeInfo::UnknownGeneric { .. } => None,
-                _ => Some(var),
-            }
-        })
-        .map(|var| {
-            let range = get_range_from_span(&var.name.span());
-            let kind = InlayKind::TypeHint;
-            let label = format!("{}", engines.help_out(var.type_ascription));
-            let inlay_hint = InlayHint { range, kind, label };
-            self::inlay_hint(config.render_colons, inlay_hint)
         })
         .collect();
 
@@ -83,25 +66,49 @@ pub fn inlay_hints(
 
 fn inlay_hint(render_colons: bool, inlay_hint: InlayHint) -> lsp_types::InlayHint {
     lsp_types::InlayHint {
-        position: match inlay_hint.kind {
-            // after annotated thing
-            InlayKind::TypeHint => inlay_hint.range.end,
-        },
-        label: lsp_types::InlayHintLabel::String(match inlay_hint.kind {
-            InlayKind::TypeHint if render_colons => format!(": {}", inlay_hint.label),
-            _ => inlay_hint.label,
+        position: inlay_hint.range.end,
+        label: lsp_types::InlayHintLabel::String(if render_colons {
+            format!(": {}", inlay_hint.label)
+        } else {
+            inlay_hint.label
         }),
         kind: match inlay_hint.kind {
             InlayKind::TypeHint => Some(lsp_types::InlayHintKind::TYPE),
+            InlayKind::Parameter => Some(lsp_types::InlayHintKind::PARAMETER),
         },
         tooltip: None,
-        padding_left: Some(match inlay_hint.kind {
-            InlayKind::TypeHint => !render_colons,
-        }),
-        padding_right: Some(match inlay_hint.kind {
-            InlayKind::TypeHint => false,
-        }),
+        padding_left: Some(!render_colons),
+        padding_right: Some(false),
         text_edits: None,
         data: None,
+    }
+}
+
+mod var_decl {
+    use sway_core::Engines;
+
+    use super::*;
+
+    pub fn hints(
+        var_decl: &Box<TyVariableDecl>,
+        range: Range,
+        config: &InlayHintsConfig,
+        engines: &Engines,
+    ) -> Option<lsp_types::InlayHint> {
+        if var_decl.type_ascription.call_path_tree.is_some() {
+            return None;
+        }
+        match engines.te().get(var_decl.type_ascription.type_id) {
+            TypeInfo::Unknown | TypeInfo::UnknownGeneric { .. } => None,
+            _ => {
+                let label = engines.help_out(&var_decl.type_ascription).to_string();
+                let inlay_hint = InlayHint {
+                    range,
+                    kind: InlayKind::TypeHint,
+                    label,
+                };
+                Some(self::inlay_hint(config.render_colons, inlay_hint))
+            }
+        }
     }
 }
