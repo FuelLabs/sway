@@ -77,7 +77,7 @@ impl Format for ItemEnum {
 
                         let value_pairs_iter = value_pairs.iter().enumerate();
                         for (var_index, (type_field, comma_token)) in value_pairs_iter.clone() {
-                            write!(formatted_code, "{}", &formatter.indent_str()?)?;
+                            write!(formatted_code, "{}", &formatter.indent_to_str()?)?;
 
                             // Add name
                             type_field.name.format(formatted_code, formatter)?;
@@ -165,7 +165,7 @@ impl CurlyBrace for ItemEnum {
         write!(
             line,
             "{}{}",
-            formatter.indent_str()?,
+            formatter.indent_to_str()?,
             Delimiter::Brace.as_close_char()
         )?;
 

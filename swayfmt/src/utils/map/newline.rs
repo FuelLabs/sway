@@ -1,10 +1,17 @@
 use anyhow::Result;
 use ropey::Rope;
-use std::{collections::BTreeMap, fmt::Write, path::PathBuf, sync::Arc};
+use std::{
+    collections::BTreeMap,
+    iter::{Enumerate, Peekable},
+    path::PathBuf,
+    str::Chars,
+    sync::Arc,
+};
 use sway_ast::Module;
 use sway_types::SourceEngine;
 
 use crate::{
+    constants::NEW_LINE,
     formatter::{FormattedCode, Formatter},
     parse::parse_file,
     utils::map::byte_span::{ByteSpan, LeafSpans},
@@ -20,12 +27,43 @@ struct NewlineSequence {
 impl ToString for NewlineSequence {
     fn to_string(&self) -> String {
         (0..self.sequence_length - 1)
-            .map(|_| "\n")
+            .map(|_| NEW_LINE)
             .collect::<String>()
     }
 }
 
 type NewlineMap = BTreeMap<ByteSpan, NewlineSequence>;
+
+/// Checks if there is a new line at the current position of the rope
+#[inline]
+fn is_new_line_in_rope(rope: &Rope, index: usize) -> bool {
+    for (p, new_line) in NEW_LINE.chars().enumerate() {
+        if rope.get_char(index + p) != Some(new_line) {
+            return false;
+        }
+    }
+    true
+}
+
+/// Checks if there is a new line (Operating system specific) next in the iter of characters
+#[inline]
+fn is_new_line_next_in_iter(
+    input_iter: &mut Peekable<Enumerate<Chars<'_>>>,
+    new_line: &[char],
+) -> bool {
+    let total = new_line.len();
+    for (p, char_new_line) in new_line.iter().enumerate() {
+        if input_iter.peek().map(|x| x.1) == Some(*char_new_line) {
+            if total != p + 1 {
+                input_iter.next();
+            }
+        } else {
+            return false;
+        }
+    }
+
+    true
+}
 
 /// Search for newline sequences in the unformatted code and collect ByteSpan -> NewlineSequence for the input source
 fn newline_map_from_src(unformatted_input: &str) -> Result<NewlineMap, FormatterError> {
@@ -35,14 +73,15 @@ fn newline_map_from_src(unformatted_input: &str) -> Result<NewlineMap, Formatter
     let mut current_sequence_length = 0;
     let mut in_sequence = false;
     let mut sequence_start = 0;
+    let os_new_line = NEW_LINE.chars().collect::<Vec<_>>();
     while let Some((char_index, char)) = input_iter.next() {
         let next_char = input_iter.peek().map(|input| input.1);
-        if (char == '}' || char == ';') && next_char == Some('\n') {
+        if (char == '}' || char == ';') && is_new_line_next_in_iter(&mut input_iter, &os_new_line) {
             if !in_sequence {
-                sequence_start = char_index + 1;
+                sequence_start = char_index + os_new_line.len();
                 in_sequence = true;
             }
-        } else if char == '\n' && in_sequence {
+        } else if os_new_line.ends_with(&[char]) && in_sequence {
             current_sequence_length += 1;
         }
         if (Some('}') == next_char || Some('(') == next_char) && in_sequence {
@@ -53,7 +92,10 @@ fn newline_map_from_src(unformatted_input: &str) -> Result<NewlineMap, Formatter
         if next_char == Some(' ') || next_char == Some('\t') {
             continue;
         }
-        if Some('\n') != next_char && current_sequence_length > 0 && in_sequence {
+        if !is_new_line_next_in_iter(&mut input_iter, &os_new_line)
+            && current_sequence_length > 0
+            && in_sequence
+        {
             // Next char is not a newline so this is the end of the sequence
             let byte_span = ByteSpan {
                 start: sequence_start,
@@ -102,6 +144,20 @@ pub fn handle_newlines(
     )?;
     Ok(())
 }
+
+#[inline]
+/// Tiny function that safely calculates the offset where the offset is a i64
+/// (it may be negative). If the offset is a negative number and the result of
+/// doing the offset would have panic (because usize cannot be negative) the
+/// unmodified base would be returned
+fn calculate_offset(base: usize, offset: i64) -> usize {
+    offset
+        .checked_add(base as i64)
+        .unwrap_or(base as i64)
+        .try_into()
+        .unwrap_or(base)
+}
+
 /// Adds the newlines from newline_map to correct places in the formatted code. This requires us
 /// both the unformatted and formatted code's modules as they will have different spans for their
 /// visitable positions. While traversing the unformatted module, `add_newlines` searches for newline sequences. If there is a newline sequence found
@@ -172,9 +228,8 @@ fn add_newlines(
                             },
                             &newline_map,
                         ) {
-                            let at = previous_formatted_newline_span.end + offset;
                             offset += insert_after_span(
-                                at,
+                                calculate_offset(previous_formatted_newline_span.end, offset),
                                 newline_sequence,
                                 formatted_code,
                                 newline_threshold,
@@ -195,9 +250,8 @@ fn add_newlines(
                         },
                         &newline_map,
                     ) {
-                        let at = previous_formatted_newline_span.end + offset;
                         offset += insert_after_span(
-                            at,
+                            calculate_offset(previous_formatted_newline_span.end, offset),
                             newline_sequence,
                             formatted_code,
                             newline_threshold,
@@ -235,9 +289,10 @@ fn add_newlines(
                                 &newline_map,
                             ) {
                                 offset += insert_after_span(
-                                    previous_formatted_newline_span.end
-                                        + end_of_last_comment
-                                        + offset,
+                                    calculate_offset(
+                                        previous_formatted_newline_span.end + end_of_last_comment,
+                                        offset,
+                                    ),
                                     newline_sequence,
                                     formatted_code,
                                     newline_threshold,
@@ -257,7 +312,7 @@ fn add_newlines(
 
 fn format_newline_sequence(newline_sequence: &NewlineSequence, threshold: usize) -> String {
     if newline_sequence.sequence_length > threshold {
-        (0..threshold).map(|_| "\n").collect::<String>()
+        (0..threshold).map(|_| NEW_LINE).collect::<String>()
     } else {
         newline_sequence.to_string()
     }
@@ -270,14 +325,25 @@ fn insert_after_span(
     newline_sequence: NewlineSequence,
     formatted_code: &mut FormattedCode,
     threshold: usize,
-) -> Result<usize, FormatterError> {
-    let mut sequence_string = String::new();
-    write!(
-        sequence_string,
-        "{}",
-        format_newline_sequence(&newline_sequence, threshold)
-    )?;
+) -> Result<i64, FormatterError> {
+    let sequence_string = format_newline_sequence(&newline_sequence, threshold);
+    let mut len = sequence_string.len() as i64;
     let mut src_rope = Rope::from_str(formatted_code);
+
+    // Remove the previous sequence_length, that will be replaced in the next statement
+    let mut remove_until = at;
+    for i in at..at + newline_sequence.sequence_length {
+        if !is_new_line_in_rope(&src_rope, i) {
+            break;
+        }
+        remove_until = i;
+    }
+    if remove_until > at {
+        src_rope
+            .try_remove(at..remove_until)
+            .map_err(|_| FormatterError::NewlineSequenceError)?;
+        len -= (remove_until - at) as i64;
+    }
 
     src_rope
         .try_insert(at, &sequence_string)
@@ -285,7 +351,7 @@ fn insert_after_span(
 
     formatted_code.clear();
     formatted_code.push_str(&src_rope.to_string());
-    Ok(sequence_string.len())
+    Ok(len)
 }
 
 /// Returns the first newline sequence contained in a span.
