@@ -3,6 +3,7 @@
 //! and assert the expected responses.
 
 use lsp_types::*;
+use pretty_assertions::assert_eq;
 use serde_json::json;
 use std::collections::HashMap;
 use sway_lsp::{
@@ -68,10 +69,10 @@ fn create_changes_map(uri: &Url, range: Range, new_text: &str) -> HashMap<Url, V
     )])
 }
 
-fn send_request(server: &ServerState, params: CodeActionParams) -> Vec<CodeActionOrCommand> {
-    request::handle_code_action(server, params)
+fn send_request(server: &ServerState, params: &CodeActionParams) -> Vec<CodeActionOrCommand> {
+    request::handle_code_action(server, params.clone())
         .unwrap()
-        .expect("Empty response from server")
+        .unwrap_or_else(|| panic!("Empty response from server for request: {:?}", params))
 }
 
 pub(crate) fn code_action_abi_request(server: &ServerState, uri: &Url) {
@@ -112,7 +113,7 @@ pub(crate) fn code_action_abi_request(server: &ServerState, uri: &Url) {
         Some(CodeActionKind::REFACTOR),
     )];
 
-    let actual = send_request(server, params);
+    let actual = send_request(server, &params);
     assert_eq!(expected, actual);
 }
 
@@ -151,7 +152,7 @@ pub(crate) fn code_action_function_request(server: &ServerState, uri: &Url) {
         Some(CodeActionKind::REFACTOR),
     )];
 
-    let actual = send_request(server, params);
+    let actual = send_request(server, &params);
     assert_eq!(expected, actual);
 }
 
@@ -190,7 +191,7 @@ pub(crate) fn code_action_trait_fn_request(server: &ServerState, uri: &Url) {
         Some(CodeActionKind::REFACTOR),
     )];
 
-    let actual = send_request(server, params);
+    let actual = send_request(server, &params);
     assert_eq!(expected, actual);
 }
 
@@ -272,7 +273,7 @@ pub(crate) fn code_action_struct_request(server: &ServerState, uri: &Url) {
         Some(CodeActionKind::REFACTOR),
     ));
 
-    let actual = send_request(server, params);
+    let actual = send_request(server, &params);
     assert_eq!(expected, actual);
 }
 
@@ -360,7 +361,7 @@ pub(crate) fn code_action_struct_type_params_request(server: &ServerState, uri: 
         Some(CodeActionKind::REFACTOR),
     ));
 
-    let actual = send_request(server, params);
+    let actual = send_request(server, &params);
     assert_eq!(expected, actual);
 }
 
@@ -444,23 +445,12 @@ pub(crate) fn code_action_struct_existing_impl_request(server: &ServerState, uri
         Some(CodeActionKind::REFACTOR),
     ));
 
-    let actual = send_request(server, params);
+    let actual = send_request(server, &params);
     assert_eq!(expected, actual);
 }
 
-pub(crate) fn code_action_auto_import_request(server: &ServerState, uri: &Url) {
-    // let _ = EvmAddress { // l 8 c 19
-    //     value: b256::min(),
-    // };
-
-    // test_fun(); // l 14 c 9
-    // deep_fun(); // l 15 c 9
-    // A::fun(); // l 16 c 6
-
-    // let _ = ZERO_B256; // l 18 c 19
-    // let _ = DeepEnum::Variant; // l 19 c 17
-    // let _ = DeepStruct::<u64> { field: 0 }; // l 20 c 17
-
+pub(crate) fn code_action_auto_import_struct_request(server: &ServerState, uri: &Url) {
+    // EvmAddress: external library
     let range = Range {
         start: Position {
             line: 8,
@@ -474,7 +464,7 @@ pub(crate) fn code_action_auto_import_request(server: &ServerState, uri: &Url) {
 
     let params = create_code_action_params(
         uri.clone(),
-        range.clone(),
+        range,
         create_diagnostic_from_data(
             range,
             DiagnosticData {
@@ -504,6 +494,418 @@ pub(crate) fn code_action_auto_import_request(server: &ServerState, uri: &Url) {
         Some(CodeActionKind::QUICKFIX),
     )];
 
-    let actual = send_request(server, params);
+    let actual = send_request(server, &params);
+    assert_eq!(expected, actual);
+
+    // DeepStruct: local library
+    let range = Range {
+        start: Position {
+            line: 17,
+            character: 12,
+        },
+        end: Position {
+            line: 17,
+            character: 22,
+        },
+    };
+
+    let params = create_code_action_params(
+        uri.clone(),
+        range,
+        create_diagnostic_from_data(
+            range,
+            DiagnosticData {
+                unknown_symbol_name: Some("DeepStruct".to_string()),
+            },
+        ),
+    );
+    let changes = create_changes_map(
+        uri,
+        Range {
+            start: Position {
+                line: 5,
+                character: 0,
+            },
+            end: Position {
+                line: 5,
+                character: 0,
+            },
+        },
+        "use deep_mod::deeper_mod::DeepStruct;\n",
+    );
+    let expected = vec![create_code_action(
+        uri.clone(),
+        "Import `deep_mod::deeper_mod::DeepStruct`".to_string(),
+        changes,
+        None,
+        Some(CodeActionKind::QUICKFIX),
+    )];
+
+    let actual = send_request(server, &params);
+    assert_eq!(expected, actual);
+}
+
+pub(crate) fn code_action_auto_import_enum_request(server: &ServerState, uri: &Url) {
+    // AuthError: external library
+    let range = Range {
+        start: Position {
+            line: 23,
+            character: 28,
+        },
+        end: Position {
+            line: 23,
+            character: 37,
+        },
+    };
+
+    let params = create_code_action_params(
+        uri.clone(),
+        range,
+        create_diagnostic_from_data(
+            range,
+            DiagnosticData {
+                unknown_symbol_name: Some("AuthError".to_string()),
+            },
+        ),
+    );
+    let changes = create_changes_map(
+        uri,
+        Range {
+            start: Position {
+                line: 5,
+                character: 0,
+            },
+            end: Position {
+                line: 5,
+                character: 0,
+            },
+        },
+        "use std::auth::AuthError;\n",
+    );
+    let expected = vec![create_code_action(
+        uri.clone(),
+        "Import `std::auth::AuthError`".to_string(),
+        changes,
+        None,
+        Some(CodeActionKind::QUICKFIX),
+    )];
+
+    let actual = send_request(server, &params);
+    assert_eq!(expected, actual);
+
+    // DeepEnum: local library
+    let range = Range {
+        start: Position {
+            line: 16,
+            character: 11,
+        },
+        end: Position {
+            line: 16,
+            character: 19,
+        },
+    };
+
+    let params = create_code_action_params(
+        uri.clone(),
+        range,
+        create_diagnostic_from_data(
+            range,
+            DiagnosticData {
+                unknown_symbol_name: Some("DeepEnum".to_string()),
+            },
+        ),
+    );
+    let changes = create_changes_map(
+        uri,
+        Range {
+            start: Position {
+                line: 5,
+                character: 0,
+            },
+            end: Position {
+                line: 5,
+                character: 0,
+            },
+        },
+        "use deep_mod::deeper_mod::DeepEnum;\n",
+    );
+    let expected = vec![create_code_action(
+        uri.clone(),
+        "Import `deep_mod::deeper_mod::DeepEnum`".to_string(),
+        changes,
+        None,
+        Some(CodeActionKind::QUICKFIX),
+    )];
+
+    let actual = send_request(server, &params);
+    assert_eq!(expected, actual);
+}
+
+pub(crate) fn code_action_auto_import_function_request(server: &ServerState, uri: &Url) {
+    // TODO: external library, test with overflow
+
+    // deep_fun: local library
+    let range = Range {
+        start: Position {
+            line: 13,
+            character: 4,
+        },
+        end: Position {
+            line: 13,
+            character: 12,
+        },
+    };
+
+    let params = create_code_action_params(
+        uri.clone(),
+        range,
+        create_diagnostic_from_data(
+            range,
+            DiagnosticData {
+                unknown_symbol_name: Some("deep_fun".to_string()),
+            },
+        ),
+    );
+    let changes = create_changes_map(
+        uri,
+        Range {
+            start: Position {
+                line: 5,
+                character: 0,
+            },
+            end: Position {
+                line: 5,
+                character: 0,
+            },
+        },
+        "use deep_mod::deeper_mod::deep_fun;\n",
+    );
+    let expected = vec![create_code_action(
+        uri.clone(),
+        "Import `deep_mod::deeper_mod::deep_fun`".to_string(),
+        changes,
+        None,
+        Some(CodeActionKind::QUICKFIX),
+    )];
+
+    let actual = send_request(server, &params);
+    assert_eq!(expected, actual);
+}
+
+pub(crate) fn code_action_auto_import_constant_request(server: &ServerState, uri: &Url) {
+    // TODO: external library, test with ZERO_B256
+
+    // TEST_CONST: import a constant from a local library
+    let range = Range {
+        start: Position {
+            line: 19,
+            character: 12,
+        },
+        end: Position {
+            line: 19,
+            character: 22,
+        },
+    };
+
+    let params = create_code_action_params(
+        uri.clone(),
+        range,
+        create_diagnostic_from_data(
+            range,
+            DiagnosticData {
+                unknown_symbol_name: Some("TEST_CONST".to_string()),
+            },
+        ),
+    );
+    let changes = create_changes_map(
+        uri,
+        Range {
+            start: Position {
+                line: 5,
+                character: 0,
+            },
+            end: Position {
+                line: 5,
+                character: 23,
+            },
+        },
+        "use test_mod::{TEST_CONST, test_fun};\n",
+    );
+    let expected = vec![create_code_action(
+        uri.clone(),
+        "Import `test_mod::TEST_CONST`".to_string(),
+        changes,
+        None,
+        Some(CodeActionKind::QUICKFIX),
+    )];
+
+    let actual = send_request(server, &params);
+    assert_eq!(expected, actual);
+}
+
+pub(crate) fn code_action_auto_import_trait_request(server: &ServerState, uri: &Url) {
+    // TryFrom: external library
+    let range = Range {
+        start: Position {
+            line: 33,
+            character: 5,
+        },
+        end: Position {
+            line: 33,
+            character: 12,
+        },
+    };
+
+    let params = create_code_action_params(
+        uri.clone(),
+        range,
+        create_diagnostic_from_data(
+            range,
+            DiagnosticData {
+                unknown_symbol_name: Some("TryFrom".to_string()),
+            },
+        ),
+    );
+    let changes = create_changes_map(
+        uri,
+        Range {
+            start: Position {
+                line: 5,
+                character: 0,
+            },
+            end: Position {
+                line: 5,
+                character: 0,
+            },
+        },
+        "use std::convert::TryFrom;\n",
+    );
+    let expected = vec![create_code_action(
+        uri.clone(),
+        "Import `std::convert::TryFrom`".to_string(),
+        changes,
+        None,
+        Some(CodeActionKind::QUICKFIX),
+    )];
+
+    let actual = send_request(server, &params);
+    assert_eq!(expected, actual);
+
+    // DeepTrait: local library
+    let range = Range {
+        start: Position {
+            line: 29,
+            character: 5,
+        },
+        end: Position {
+            line: 29,
+            character: 14,
+        },
+    };
+
+    let params = create_code_action_params(
+        uri.clone(),
+        range,
+        create_diagnostic_from_data(
+            range,
+            DiagnosticData {
+                unknown_symbol_name: Some("DeepTrait".to_string()),
+            },
+        ),
+    );
+    let changes = create_changes_map(
+        uri,
+        Range {
+            start: Position {
+                line: 5,
+                character: 0,
+            },
+            end: Position {
+                line: 5,
+                character: 0,
+            },
+        },
+        "use deep_mod::deeper_mod::DeepTrait;\n",
+    );
+    let expected = vec![create_code_action(
+        uri.clone(),
+        "Import `deep_mod::deeper_mod::DeepTrait`".to_string(),
+        changes,
+        None,
+        Some(CodeActionKind::QUICKFIX),
+    )];
+
+    let actual = send_request(server, &params);
+    assert_eq!(expected, actual);
+}
+
+pub(crate) fn code_action_auto_import_alias_request(server: &ServerState, uri: &Url) {
+    // TODO: find an example in an external library
+    // A: local library with multiple possible imports
+    let range = Range {
+        start: Position {
+            line: 14,
+            character: 4,
+        },
+        end: Position {
+            line: 14,
+            character: 5,
+        },
+    };
+
+    let params = create_code_action_params(
+        uri.clone(),
+        range,
+        create_diagnostic_from_data(
+            range,
+            DiagnosticData {
+                unknown_symbol_name: Some("A".to_string()),
+            },
+        ),
+    );
+    let changes = create_changes_map(
+        uri,
+        Range {
+            start: Position {
+                line: 5,
+                character: 0,
+            },
+            end: Position {
+                line: 5,
+                character: 0,
+            },
+        },
+        "use deep_mod::deeper_mod::A;\n",
+    );
+    let mut expected = vec![create_code_action(
+        uri.clone(),
+        "Import `deep_mod::deeper_mod::A`".to_string(),
+        changes,
+        None,
+        Some(CodeActionKind::QUICKFIX),
+    )];
+    let changes = create_changes_map(
+        uri,
+        Range {
+            start: Position {
+                line: 5,
+                character: 0,
+            },
+            end: Position {
+                line: 5,
+                character: 23,
+            },
+        },
+        "use test_mod::{A, test_fun};\n",
+    );
+    expected.push(create_code_action(
+        uri.clone(),
+        "Import `test_mod::A`".to_string(),
+        changes,
+        None,
+        Some(CodeActionKind::QUICKFIX),
+    ));
+
+    let actual = send_request(server, &params);
     assert_eq!(expected, actual);
 }

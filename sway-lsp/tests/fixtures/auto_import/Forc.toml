@@ -6,3 +6,4 @@ name = "auto_import"
 
 [dependencies]
 std = { path = "../../../../sway-lib-std" }
+core = { path = "../../../../sway-lib-core" }

@@ -1,5 +1,4 @@
 use std::{cmp::Ordering, collections::HashMap};
-
 use crate::{
     capabilities::{code_actions::CodeActionContext, diagnostic::DiagnosticData},
     core::token::{get_range_from_span, AstToken, SymbolKind, TypedAstToken},
@@ -15,7 +14,6 @@ use sway_core::language::{
     CallPath,
 };
 use sway_types::{Ident, Spanned};
-
 use super::CODE_ACTION_IMPORT_TITLE;
 
 /// Returns a list of [CodeActionOrCommand] suggestions for inserting a missing import.
@@ -59,6 +57,7 @@ pub(crate) fn import_code_action(
             // 4. Insert the import on a new line after the program type statement (e.g. `contract;`)
             // 5. If all else fails, insert it at the beginning of the file.
 
+            // TODO: combine into 1 function and write unit test for location in the file
             let text_edit: TextEdit = get_text_edit_for_group(&call_path, &use_statements)
                 .or_else(|| get_text_edit_in_use_block(&call_path, &use_statements))
                 .unwrap_or(get_text_edit_fallback(
@@ -89,13 +88,14 @@ pub(crate) fn import_code_action(
     None
 }
 
-/// Returns an [Iterator] of [CallPath]s that match the given symbol name.
+/// Returns an [Iterator] of [CallPath]s that match the given symbol name. The [CallPath]s are sorted 
+/// alphabetically.
 fn get_call_paths_for_name<'s>(
     ctx: &'s CodeActionContext,
     symbol_name: &'s String,
 ) -> Option<impl 's + Iterator<Item = CallPath>> {
     let namespace = ctx.namespace.to_owned()?;
-    Some(
+    let mut call_paths = 
         ctx.tokens
             .tokens_for_name(symbol_name)
             .filter_map(move |(_, token)| {
@@ -135,8 +135,10 @@ fn get_call_paths_for_name<'s>(
                     }
                     _ => None,
                 }
-            }),
-    )
+            }).collect::<Vec<_>>();
+    call_paths.sort();
+    Some(call_paths.into_iter())
+    
 }
 
 /// If there is an existing [TyUseStatement] with the same prefix as the given [CallPath], returns a

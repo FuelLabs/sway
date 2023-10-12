@@ -1747,8 +1747,33 @@ lsp_capability_test!(
     self_impl_reassignment_dir().join("src/main.sw")
 );
 lsp_capability_test!(
-    code_action_auto_import,
-    code_actions::code_action_auto_import_request,
+    code_action_auto_import_struct,
+    code_actions::code_action_auto_import_struct_request,
+    test_fixtures_dir().join("auto_import/src/main.sw")
+);
+lsp_capability_test!(
+    code_action_auto_import_enum,
+    code_actions::code_action_auto_import_enum_request,
+    test_fixtures_dir().join("auto_import/src/main.sw")
+);
+lsp_capability_test!(
+    code_action_auto_import_function,
+    code_actions::code_action_auto_import_function_request,
+    test_fixtures_dir().join("auto_import/src/main.sw")
+);
+lsp_capability_test!(
+    code_action_auto_import_constant,
+    code_actions::code_action_auto_import_constant_request,
+    test_fixtures_dir().join("auto_import/src/main.sw")
+);
+lsp_capability_test!(
+    code_action_auto_import_trait,
+    code_actions::code_action_auto_import_trait_request,
+    test_fixtures_dir().join("auto_import/src/main.sw")
+);
+lsp_capability_test!(
+    code_action_auto_import_alias,
+    code_actions::code_action_auto_import_alias_request,
     test_fixtures_dir().join("auto_import/src/main.sw")
 );
 lsp_capability_test!(

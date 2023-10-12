@@ -3,7 +3,7 @@ contract;
 mod test_mod;
 mod deep_mod;
 
-use test_mod::A;
+use test_mod::test_fun;
 
 pub fn fun() {
     let _ = EvmAddress {
@@ -14,7 +14,26 @@ pub fn fun() {
     deep_fun();
     A::fun();
 
-    let _ = ZERO_B256; // l 18 c 19
-    let _ = DeepEnum::Variant; // TODO: open an issue for this
+    let a: DeepEnum = DeepEnum::Variant; // TODO: open an issue for variants
     let _ = DeepStruct::<u64> { field: 0 };
+
+    let _ = TEST_CONST;
+    let _ = ZERO_B256; // TODO: fix this
+
+    let _ = overflow(); // TODO: fix this
+    let _: Result<Identity, AuthError> = msg_sender();
+}
+
+struct LocalStruct {
+    field: u64,
+}
+
+impl DeepTrait for LocalStruct {
+    fn deep_method(self) {}
+}
+
+impl TryFrom<u32> for LocalStruct {
+    fn try_from(u: u32) -> Option<Self> {
+        None
+    }
 }

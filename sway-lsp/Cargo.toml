@@ -47,6 +47,7 @@ criterion = "0.5"
 dirs = "4.0"
 futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
 sway-lsp-test-utils = { path = "tests/utils" }
+pretty_assertions = "1.4.0"
 tower = { version = "0.4.12", default-features = false, features = ["util"] }
 
 [[bench]]
