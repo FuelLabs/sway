@@ -13,7 +13,8 @@ use self::constant_expression::instantiate_constant_expression;
 
 pub(crate) use self::{
     enum_instantiation::*, function_application::*, if_expression::*, lazy_operator::*,
-    method_application::*, struct_field_access::*, struct_instantiation::*, tuple_index_access::*,
+    method_application::*, struct_field_access::*, struct_instantiation::*,
+    tuple_index_access::*,
     unsafe_downcast::*,
 };
 
@@ -52,7 +53,26 @@ use std::collections::{HashMap, VecDeque};
 impl ty::TyExpression {
     pub(crate) fn core_ops_eq(
         handler: &Handler,
+        ctx: TypeCheckContext,
+        arguments: Vec<ty::TyExpression>,
+        span: Span,
+    ) -> Result<ty::TyExpression, ErrorEmitted> {
+        Self::core_ops(handler, ctx, OpVariant::Equals, arguments, span)
+    }
+
+    pub(crate) fn core_ops_neq(
+        handler: &Handler,
+        ctx: TypeCheckContext,
+        arguments: Vec<ty::TyExpression>,
+        span: Span,
+    ) -> Result<ty::TyExpression, ErrorEmitted> {
+        Self::core_ops(handler, ctx, OpVariant::NotEquals, arguments, span)
+    }
+
+    fn core_ops(
+        handler: &Handler,
         mut ctx: TypeCheckContext,
+        op_variant: OpVariant,
         arguments: Vec<ty::TyExpression>,
         span: Span,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
@@ -64,7 +84,7 @@ impl ty::TyExpression {
                 Ident::new_with_override("ops".into(), span.clone()),
             ],
             suffix: Op {
-                op_variant: OpVariant::Equals,
+                op_variant,
                 span: span.clone(),
             }
             .to_var_name(),

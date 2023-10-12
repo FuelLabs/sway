@@ -14,11 +14,12 @@ use crate::{language::ty::*, type_system::*};
 pub(crate) type MatchIfCondition = Option<TyExpression>;
 
 /// [TyExpression]s of the form `let <ident> = <expression>` where
-/// `<ident>` is a name of a generated `__or_variant_vars` variable
-/// and `<expression>` is an `if-else` expression that returns
-/// an Option of a tuple containing values of each of the variables
-/// declared in an OR match pattern.
-pub(crate) type MatchOrVariantVars = Vec<(Ident, TyExpression)>;
+/// `<ident>` is a name of a generated  variable that holds the
+/// index of the matched OR variant.
+/// `<expression>` is an `if-else` expression that returns
+/// the 1-based index of the matched OR variant or zero
+/// if non of the variants match.
+pub(crate) type MatchMatchedOrVariantIndexVars = Vec<(Ident, TyExpression)>;
 
 #[derive(Debug)]
 pub(crate) struct TyMatchExpression {
@@ -30,7 +31,9 @@ pub(crate) struct TyMatchExpression {
 
 #[derive(Debug)]
 pub(crate) struct TyMatchBranch {
-    pub(crate) or_variant_vars: MatchOrVariantVars,
+    /// Declarations of the variables that hold the 1-based index
+    /// of a matched OR variant or zero if non of the variants match.
+    pub(crate) matched_or_variant_index_vars: MatchMatchedOrVariantIndexVars,
     /// A boolean expression that represents the total match arm requirement,
     /// or `None` if the match arm is a catch-all arm.
     pub(crate) if_condition: MatchIfCondition,

@@ -193,6 +193,7 @@ impl Parse for Expression {
                 rhs.parse(ctx);
             }
             ExpressionKind::Variable(name) => {
+                // TODO-IG: Compiler generated names.
                 if !name.as_str().contains(TUPLE_NAME_PREFIX)
                     && !name.as_str().contains(MATCH_MATCHED_VALUE_VAR_NAME_PREFIX)
                 {
@@ -678,6 +679,7 @@ impl Parse for FunctionApplicationExpression {
 
 impl Parse for VariableDeclaration {
     fn parse(&self, ctx: &ParseContext) {
+        // TODO-IG: Compiler generated names.
         // Don't collect tokens if the ident's name starts with __tuple_ || __match_matched_value_var_name_
         // The individual elements are handled in the subsequent VariableDeclaration's
         if !self.name.as_str().starts_with(TUPLE_NAME_PREFIX)
