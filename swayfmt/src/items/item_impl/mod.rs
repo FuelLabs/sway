@@ -53,7 +53,6 @@ impl Format for ItemImpl {
             formatter.indent();
             writeln!(formatted_code)?;
             for item in contents.iter() {
-                write!(formatted_code, "{}", formatter.indent_to_str()?,)?;
                 item.format(formatted_code, formatter)?;
                 writeln!(formatted_code)?;
             }

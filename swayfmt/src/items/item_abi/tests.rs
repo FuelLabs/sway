@@ -46,7 +46,7 @@ fmt_test_item!(abi_multiline_method
         arg1: MyStruct<[b256; 3], u8>,
         arg2: [MyStruct<u64, bool>; 4],
         arg3: (str[5], bool),
-        arg4: MyOtherStruct
+        arg4: MyOtherStruct,
     ) -> str[6];
 }",
 intermediate_whitespace
