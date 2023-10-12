@@ -243,6 +243,7 @@ impl Parse for ty::TyExpression {
                     .try_get_mut(&ctx.ident(&call_path.suffix))
                     .try_unwrap()
                 {
+                    // this is too generic, we should capture the full FunctionApplication type here.
                     token.typed = Some(TypedAstToken::TypedExpression(self.clone()));
                     let function_decl = ctx.engines.de().get_function(fn_ref);
                     token.type_def = Some(TypeDefinition::Ident(function_decl.name));
@@ -251,7 +252,9 @@ impl Parse for ty::TyExpression {
                 for (ident, exp) in arguments {
                     if let Some(mut token) = ctx.tokens.try_get_mut(&ctx.ident(ident)).try_unwrap()
                     {
-                        token.typed = Some(TypedAstToken::Ident(ident.clone()));
+                        // option 2 is to capture something more meaningful here instead of the base ident
+                        // token.typed = Some(TypedAstToken::Ident(ident.clone()));
+                        token.typed = Some(TypedAstToken::FunctionApplicationArgument(exp.clone()));
                     }
                     exp.parse(ctx);
                 }

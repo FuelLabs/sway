@@ -2,7 +2,7 @@ use crate::{
     config::InlayHintsConfig,
     core::{
         session::Session,
-        token::{get_range_from_span, TypedAstToken},
+        token::TypedAstToken,
     },
 };
 use lsp_types::{self, Range, Url};
@@ -11,7 +11,6 @@ use sway_core::{
     language::ty::{TyDecl, TyVariableDecl},
     type_system::TypeInfo,
 };
-use sway_types::Spanned;
 
 // Future PR's will add more kinds
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -53,9 +52,9 @@ pub fn inlay_hints(
                 TypedAstToken::TypedDeclaration(TyDecl::VariableDecl(var_decl)) => {
                     var_decl::hints(var_decl, ident.range, &config, &engines)
                 }
-                // TypedAstToken::TypedFunctionParameter(param) => {
-                //     params::hints(param, &range)
-                // }
+                TypedAstToken::FunctionApplicationArgument(exp) => {
+                    params::hints(exp, ident.range, &config, &engines)
+                }
                 _ => None,
             })
         })
@@ -86,7 +85,6 @@ fn inlay_hint(render_colons: bool, inlay_hint: InlayHint) -> lsp_types::InlayHin
 
 mod var_decl {
     use sway_core::Engines;
-
     use super::*;
 
     pub fn hints(
@@ -105,6 +103,36 @@ mod var_decl {
                 let inlay_hint = InlayHint {
                     range,
                     kind: InlayKind::TypeHint,
+                    label,
+                };
+                Some(self::inlay_hint(config.render_colons, inlay_hint))
+            }
+        }
+    }
+}
+
+mod params {
+    use sway_core::{Engines, language::ty::{TyFunctionParameter, TyExpression}};
+    use super::*;
+
+    // find an AmbiguousPathExpression ast token
+    // iter over the arguments of this type.
+    // use the span of these arguments to somehow "lookup" the typed versions of these arguments
+    // get the type_id of the typed version of the argument
+
+    pub fn hints(
+        exp: &TyExpression,
+        range: Range,
+        config: &InlayHintsConfig,
+        engines: &Engines,
+    ) -> Option<lsp_types::InlayHint> {
+        match engines.te().get(exp.return_type) {
+            TypeInfo::Unknown | TypeInfo::UnknownGeneric { .. } => None,
+            _ => {
+                let label = engines.help_out(&exp.return_type).to_string();
+                let inlay_hint = InlayHint {
+                    range,
+                    kind: InlayKind::Parameter,
                     label,
                 };
                 Some(self::inlay_hint(config.render_colons, inlay_hint))

@@ -80,6 +80,7 @@ pub enum TypedAstToken {
     TypedIncludeStatement,
     TypedUseStatement(ty::TyUseStatement),
     Ident(Ident),
+    FunctionApplicationArgument(ty::TyExpression),
 }
 
 /// These variants are used to represent the semantic type of the [Token].
