@@ -43,7 +43,7 @@ pub(crate) fn insert_supertraits_into_namespace(
 
             let decl = ctx
                 .namespace
-                .resolve_call_path(handler, engines, &supertrait.name)
+                .resolve_call_path(handler, engines, &supertrait.name, ctx.self_type())
                 .ok();
 
             match (decl.clone(), supertraits_of) {

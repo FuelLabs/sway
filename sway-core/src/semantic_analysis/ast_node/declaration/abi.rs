@@ -45,15 +45,17 @@ impl ty::TyAbiDecl {
         // so we don't support the case of calling a contract's own interface
         // from itself. This is by design.
 
+        let self_type_param = TypeParameter::new_self_type(ctx.engines, name.span());
+        let self_type_id = self_type_param.type_id;
+
         // A temporary namespace for checking within this scope.
         let mut abi_namespace = ctx.namespace.clone();
         let mut ctx = ctx
             .scoped(&mut abi_namespace)
-            .with_abi_mode(AbiMode::ImplAbiFn(name.clone(), None));
+            .with_abi_mode(AbiMode::ImplAbiFn(name.clone(), None))
+            .with_self_type(Some(self_type_id));
 
         // Insert the "self" type param into the namespace.
-        let self_type_param = TypeParameter::new_self_type(ctx.engines, name.span());
-        let self_type_id = self_type_param.type_id;
         self_type_param.insert_self_type_into_namespace(handler, ctx.by_ref());
 
         // Recursively make the interface surfaces and methods of the

@@ -4,7 +4,6 @@ use crate::config::{
     heuristics::HeuristicsPreferences,
     imports::{GroupImports, ImportGranularity},
     items::{ItemBraceStyle, ItemsLayout},
-    lists::{ListTactic, SeparatorTactic},
     literals::HexLiteralCase,
     user_def::FieldAlignment,
     whitespace::{IndentStyle, NewlineStyle},
@@ -26,7 +25,6 @@ pub struct ImportsOptions {
     pub group_imports: Option<GroupImports>,
     pub imports_granularity: Option<ImportGranularity>,
     pub imports_indent: Option<IndentStyle>,
-    pub imports_layout: Option<ListTactic>,
 }
 /// See parent struct [Ordering].
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]
@@ -42,11 +40,6 @@ pub struct ItemsOptions {
     pub blank_lines_upper_bound: Option<usize>,
     pub blank_lines_lower_bound: Option<usize>,
     pub empty_item_single_line: Option<bool>,
-}
-/// See parent struct [Lists].
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
-pub struct ListsOptions {
-    pub trailing_comma: Option<SeparatorTactic>,
 }
 /// See parent struct [Literals].
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]

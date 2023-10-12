@@ -206,9 +206,12 @@ pub(crate) fn type_check_method_application(
     ) -> Result<(), ErrorEmitted> {
         match exp {
             ty::TyExpressionVariant::VariableExpression { name, .. } => {
-                let unknown_decl =
-                    ctx.namespace
-                        .resolve_symbol(&Handler::default(), ctx.engines, name)?;
+                let unknown_decl = ctx.namespace.resolve_symbol(
+                    &Handler::default(),
+                    ctx.engines,
+                    name,
+                    ctx.self_type(),
+                )?;
 
                 let is_decl_mutable = match unknown_decl {
                     ty::TyDecl::ConstantDecl { .. } => false,

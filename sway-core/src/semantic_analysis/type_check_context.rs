@@ -45,6 +45,10 @@ pub struct TypeCheckContext<'a> {
     ///
     /// Assists type inference.
     type_annotation: TypeId,
+    /// While type-checking an `impl` (whether inherent or for a `trait`/`abi`) this represents the
+    /// type for which we are implementing. For example in `impl Foo {}` or `impl Trait for Foo
+    /// {}`, this represents the type ID of `Foo`.
+    self_type: Option<TypeId>,
     /// While type-checking an expression, this indicates the types to be substituted when a
     /// type is resolved. This is required is to replace associated types, namely TypeInfo::TraitType.
     type_subst: TypeSubstMap,
@@ -98,6 +102,7 @@ impl<'a> TypeCheckContext<'a> {
             namespace,
             engines,
             type_annotation: engines.te().insert(engines, TypeInfo::Unknown),
+            self_type: None,
             type_subst: TypeSubstMap::new(),
             help_text: "",
             abi_mode: AbiMode::NonAbi,
@@ -121,6 +126,7 @@ impl<'a> TypeCheckContext<'a> {
         TypeCheckContext {
             namespace: self.namespace,
             type_annotation: self.type_annotation,
+            self_type: self.self_type,
             type_subst: self.type_subst.clone(),
             abi_mode: self.abi_mode.clone(),
             const_shadowing_mode: self.const_shadowing_mode,
@@ -138,6 +144,7 @@ impl<'a> TypeCheckContext<'a> {
         TypeCheckContext {
             namespace,
             type_annotation: self.type_annotation,
+            self_type: self.self_type,
             type_subst: self.type_subst,
             abi_mode: self.abi_mode,
             const_shadowing_mode: self.const_shadowing_mode,
@@ -217,6 +224,11 @@ impl<'a> TypeCheckContext<'a> {
         Self { kind, ..self }
     }
 
+    /// Map this `TypeCheckContext` instance to a new one with the given purity.
+    pub(crate) fn with_self_type(self, self_type: Option<TypeId>) -> Self {
+        Self { self_type, ..self }
+    }
+
     /// Map this `TypeCheckContext` instance to a new one with
     /// `disallow_functions` set to `true`.
     pub(crate) fn disallow_functions(self) -> Self {
@@ -253,6 +265,10 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn type_annotation(&self) -> TypeId {
         self.type_annotation
+    }
+
+    pub(crate) fn self_type(&self) -> Option<TypeId> {
+        self.self_type
     }
 
     pub(crate) fn type_subst(&self) -> TypeSubstMap {
@@ -370,6 +386,7 @@ impl<'a> TypeCheckContext<'a> {
                             self.engines,
                             root_type_id,
                             &call_path,
+                            self.self_type,
                         )
                         .ok()
                 } else {
@@ -472,7 +489,7 @@ impl<'a> TypeCheckContext<'a> {
                                 self.engines,
                                 TypeInfo::TraitType {
                                     name,
-                                    trait_type_id: type_id,
+                                    trait_type_id: decl_type.implementing_type,
                                 },
                             )
                         }
@@ -646,6 +663,7 @@ impl<'a> TypeCheckContext<'a> {
             self.engines,
             mod_path,
             call_path,
+            self.self_type,
         )?;
 
         // In case there is no mod path we don't need to check visibility
