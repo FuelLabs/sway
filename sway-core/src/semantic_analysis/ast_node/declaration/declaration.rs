@@ -33,10 +33,9 @@ impl TyDecl {
                 is_mutable,
             }) => {
                 type_ascription.type_id = ctx
-                    .resolve_type_with_self(
+                    .resolve_type(
                         handler,
                         type_ascription.type_id,
-                        ctx.self_type(),
                         &type_ascription.span,
                         EnforceTypeArguments::Yes,
                         None,
@@ -135,7 +134,7 @@ impl TyDecl {
                 for supertrait in trait_decl.supertraits.iter_mut() {
                     let _ = ctx
                         .namespace
-                        .resolve_call_path(handler, engines, &supertrait.name)
+                        .resolve_call_path(handler, engines, &supertrait.name, ctx.self_type())
                         .map(|supertrait_decl| {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
                                 name: supertrait_name,
@@ -176,10 +175,13 @@ impl TyDecl {
                 // insert those since we do not allow calling contract methods
                 // from contract methods
                 let emp_vec = vec![];
-                let impl_trait_items = if let Ok(ty::TyDecl::TraitDecl { .. }) = ctx
-                    .namespace
-                    .resolve_call_path(&Handler::default(), engines, &impl_trait.trait_name)
-                {
+                let impl_trait_items = if let Ok(ty::TyDecl::TraitDecl { .. }) =
+                    ctx.namespace.resolve_call_path(
+                        &Handler::default(),
+                        engines,
+                        &impl_trait.trait_name,
+                        ctx.self_type(),
+                    ) {
                     &impl_trait.items
                 } else {
                     &emp_vec
@@ -260,7 +262,7 @@ impl TyDecl {
                 for supertrait in abi_decl.supertraits.iter_mut() {
                     let _ = ctx
                         .namespace
-                        .resolve_call_path(handler, engines, &supertrait.name)
+                        .resolve_call_path(handler, engines, &supertrait.name, ctx.self_type())
                         .map(|supertrait_decl| {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
                                 name: supertrait_name,
@@ -302,10 +304,11 @@ impl TyDecl {
                     ..
                 } in fields
                 {
-                    type_argument.type_id = ctx.resolve_type_without_self(
+                    type_argument.type_id = ctx.resolve_type(
                         handler,
                         type_argument.type_id,
                         &name.span(),
+                        EnforceTypeArguments::Yes,
                         None,
                     )?;
 
@@ -343,14 +346,7 @@ impl TyDecl {
 
                 // Resolve the type that the type alias replaces
                 let new_ty = ctx
-                    .resolve_type_with_self(
-                        handler,
-                        ty.type_id,
-                        ctx.self_type(),
-                        &span,
-                        EnforceTypeArguments::Yes,
-                        None,
-                    )
+                    .resolve_type(handler, ty.type_id, &span, EnforceTypeArguments::Yes, None)
                     .unwrap_or_else(|err| {
                         type_engine.insert(engines, TypeInfo::ErrorRecovery(err))
                     });

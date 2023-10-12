@@ -132,7 +132,6 @@ impl<'a> Solver<'a> {
             }
             TypeInfo::ContractCaller { .. } => todo!(),
             TypeInfo::Custom { .. } => todo!(),
-            TypeInfo::SelfType => todo!(),
             TypeInfo::Numeric => todo!(),
             TypeInfo::ErrorRecovery(_) => todo!(),
             TypeInfo::Array(_, _) => todo!(),

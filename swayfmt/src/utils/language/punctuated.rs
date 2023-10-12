@@ -22,36 +22,26 @@ where
         if !self.value_separator_pairs.is_empty() || self.final_value_opt.is_some() {
             match formatter.shape.code_line.line_style {
                 LineStyle::Normal => {
-                    let value_pairs = &self.value_separator_pairs;
-                    for (type_field, punctuation) in value_pairs.iter() {
-                        type_field.format(formatted_code, formatter)?;
-                        punctuation.format(formatted_code, formatter)?;
-                        write!(formatted_code, " ")?;
-                    }
-
-                    if let Some(final_value) = &self.final_value_opt {
-                        final_value.format(formatted_code, formatter)?;
-                    } else {
-                        formatted_code.pop();
-                        formatted_code.pop();
-                    }
+                    write!(
+                        formatted_code,
+                        "{}",
+                        format_generic_pair(
+                            &self.value_separator_pairs,
+                            &self.final_value_opt,
+                            formatter
+                        )?
+                    )?;
                 }
                 LineStyle::Inline => {
-                    write!(formatted_code, " ")?;
-                    let value_pairs_iter = self.value_separator_pairs.iter();
-                    for (type_field, punctuation) in value_pairs_iter.clone() {
-                        type_field.format(formatted_code, formatter)?;
-                        punctuation.format(formatted_code, formatter)?;
-
-                        write!(formatted_code, " ")?;
-                    }
-                    if let Some(final_value) = &self.final_value_opt {
-                        final_value.format(formatted_code, formatter)?;
-                    } else {
-                        formatted_code.pop();
-                        formatted_code.pop();
-                    }
-                    write!(formatted_code, " ")?;
+                    write!(
+                        formatted_code,
+                        " {} ",
+                        format_generic_pair(
+                            &self.value_separator_pairs,
+                            &self.final_value_opt,
+                            formatter
+                        )?
+                    )?;
                 }
                 LineStyle::Multiline => {
                     if !formatted_code.ends_with('\n') {
@@ -59,14 +49,14 @@ where
                     }
                     let value_pairs_iter = self.value_separator_pairs.iter();
                     for (type_field, comma_token) in value_pairs_iter.clone() {
-                        write!(formatted_code, "{}", &formatter.indent_str()?)?;
+                        formatter.write_indent_into_buffer(formatted_code)?;
                         type_field.format(formatted_code, formatter)?;
 
                         comma_token.format(formatted_code, formatter)?;
                         writeln!(formatted_code)?;
                     }
                     if let Some(final_value) = &self.final_value_opt {
-                        write!(formatted_code, "{}", &formatter.indent_str()?)?;
+                        write!(formatted_code, "{}", formatter.indent_to_str()?)?;
                         final_value.format(formatted_code, formatter)?;
                         writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
                     }
@@ -76,6 +66,43 @@ where
 
         Ok(())
     }
+}
+
+fn format_generic_pair<T, P>(
+    value_separator_pairs: &[(T, P)],
+    final_value_opt: &Option<Box<T>>,
+    formatter: &mut Formatter,
+) -> Result<FormattedCode, FormatterError>
+where
+    T: Format,
+    P: Format,
+{
+    let len = value_separator_pairs.len();
+    let mut ts: Vec<String> = Vec::with_capacity(len);
+    let mut ps: Vec<String> = Vec::with_capacity(len);
+    for (t, p) in value_separator_pairs.iter() {
+        let mut t_buf = FormattedCode::new();
+        t.format(&mut t_buf, formatter)?;
+        ts.push(t_buf);
+
+        let mut p_buf = FormattedCode::new();
+        p.format(&mut p_buf, formatter)?;
+        ps.push(p_buf);
+    }
+    if let Some(final_value) = final_value_opt {
+        let mut buf = FormattedCode::new();
+        final_value.format(&mut buf, formatter)?;
+        ts.push(buf);
+    } else {
+        // reduce the number of punct by 1
+        // this is safe since the number of
+        // separator pairs is always equal
+        ps.truncate(ts.len() - 1);
+    }
+    for (t, p) in ts.iter_mut().zip(ps.iter()) {
+        write!(t, "{p}")?;
+    }
+    Ok(ts.join(" "))
 }
 
 impl<T, P> LeafSpans for Punctuated<T, P>

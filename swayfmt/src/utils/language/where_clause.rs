@@ -15,7 +15,7 @@ impl Format for WhereClause {
         writeln!(
             formatted_code,
             "{}{}",
-            &formatter.indent_str()?,
+            &formatter.indent_to_str()?,
             self.where_token.span().as_str(),
         )?;
         formatter.indent();
@@ -52,7 +52,7 @@ impl Format for WhereBound {
         write!(
             formatted_code,
             "{}{}{} ",
-            &formatter.indent_str()?,         // `Indent`
+            &formatter.indent_to_str()?,      // `Indent`
             self.ty_name.span().as_str(),     // `Ident`
             self.colon_token.span().as_str(), // `ColonToken`
         )?;

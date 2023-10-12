@@ -87,7 +87,6 @@ impl<'a> Unifier<'a> {
             // If they have the same `TypeInfo`, then we either compare them for
             // correctness or perform further unification.
             (Boolean, Boolean) => (),
-            (SelfType, SelfType) => (),
             (B256, B256) => (),
             (Numeric, Numeric) => (),
             (Contract, Contract) => (),
@@ -123,6 +122,48 @@ impl<'a> Unifier<'a> {
                         e_decl.fields,
                     ),
                 )
+            }
+
+            // When we don't know anything about either term, assume that
+            // they match and make the one we know nothing about reference the
+            // one we may know something about.
+            (Unknown, Unknown) => (),
+            (Unknown, e) => {
+                self.replace_received_with_expected(handler, received, expected, &Unknown, e, span)
+            }
+            (r, Unknown) => {
+                self.replace_expected_with_received(handler, received, expected, r, &Unknown, span)
+            }
+
+            (r @ Placeholder(_), e @ Placeholder(_)) => {
+                self.replace_expected_with_received(handler, received, expected, r, &e, span)
+            }
+            (r @ Placeholder(_), e) => {
+                self.replace_received_with_expected(handler, received, expected, &r, e, span)
+            }
+            (r, e @ Placeholder(_)) => {
+                self.replace_expected_with_received(handler, received, expected, r, &e, span)
+            }
+
+            // Generics are handled similarly to the case for unknowns, except
+            // we take more careful consideration for the type/purpose for the
+            // unification that we are performing.
+            (
+                UnknownGeneric {
+                    name: rn,
+                    trait_constraints: rtc,
+                },
+                UnknownGeneric {
+                    name: en,
+                    trait_constraints: etc,
+                },
+            ) if rn.as_str() == en.as_str() && rtc.eq(&etc, self.engines) => (),
+
+            (r @ UnknownGeneric { .. }, e) if !self.occurs_check(r.clone(), &e) => {
+                self.replace_received_with_expected(handler, received, expected, &r, e, span)
+            }
+            (r, e @ UnknownGeneric { .. }) if !self.occurs_check(e.clone(), &r) => {
+                self.replace_expected_with_received(handler, received, expected, r, &e, span)
             }
 
             // Type aliases and the types they encapsulate coerce to each other.
@@ -209,47 +250,6 @@ impl<'a> Unifier<'a> {
                 if r.eq(e, self.engines) =>
             {
                 // if they are the same, then it's ok
-            }
-
-            // When we don't know anything about either term, assume that
-            // they match and make the one we know nothing about reference the
-            // one we may know something about.
-            (Unknown, Unknown) => (),
-            (Unknown, e) => {
-                self.replace_received_with_expected(handler, received, expected, &Unknown, e, span)
-            }
-            (r, Unknown) => {
-                self.replace_expected_with_received(handler, received, expected, r, &Unknown, span)
-            }
-
-            (r @ Placeholder(_), e @ Placeholder(_)) => {
-                self.replace_expected_with_received(handler, received, expected, r, &e, span)
-            }
-            (r @ Placeholder(_), e) => {
-                self.replace_received_with_expected(handler, received, expected, &r, e, span)
-            }
-            (r, e @ Placeholder(_)) => {
-                self.replace_expected_with_received(handler, received, expected, r, &e, span)
-            }
-
-            // Generics are handled similarly to the case for unknowns, except
-            // we take more careful consideration for the type/purpose for the
-            // unification that we are performing.
-            (
-                UnknownGeneric {
-                    name: rn,
-                    trait_constraints: rtc,
-                },
-                UnknownGeneric {
-                    name: en,
-                    trait_constraints: etc,
-                },
-            ) if rn.as_str() == en.as_str() && rtc.eq(&etc, self.engines) => (),
-            (r @ UnknownGeneric { .. }, e) if !self.occurs_check(r.clone(), &e) => {
-                self.replace_received_with_expected(handler, received, expected, &r, e, span)
-            }
-            (r, e @ UnknownGeneric { .. }) if !self.occurs_check(e.clone(), &r) => {
-                self.replace_expected_with_received(handler, received, expected, r, &e, span)
             }
 
             // If no previous attempts to unify were successful, raise an error.

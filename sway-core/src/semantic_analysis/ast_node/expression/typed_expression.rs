@@ -138,7 +138,12 @@ impl ty::TyExpression {
                 };
                 if matches!(
                     ctx.namespace
-                        .resolve_call_path(&Handler::default(), engines, &call_path)
+                        .resolve_call_path(
+                            &Handler::default(),
+                            engines,
+                            &call_path,
+                            ctx.self_type()
+                        )
                         .ok(),
                     Some(ty::TyDecl::EnumVariantDecl { .. })
                 ) {
@@ -380,14 +385,13 @@ impl ty::TyExpression {
         };
 
         // if the return type cannot be cast into the annotation type then it is a type error
-        ctx.unify_with_self(handler, typed_expression.return_type, &expr_span);
+        ctx.unify_with_type_annotation(handler, typed_expression.return_type, &expr_span);
 
         // The annotation may result in a cast, which is handled in the type engine.
         typed_expression.return_type = ctx
-            .resolve_type_with_self(
+            .resolve_type(
                 handler,
                 typed_expression.return_type,
-                ctx.self_type(),
                 &expr_span,
                 EnforceTypeArguments::No,
                 None,
@@ -448,7 +452,7 @@ impl ty::TyExpression {
 
         let exp = match ctx
             .namespace
-            .resolve_symbol(&Handler::default(), engines, &name)
+            .resolve_symbol(&Handler::default(), engines, &name, ctx.self_type())
             .ok()
         {
             Some(ty::TyDecl::VariableDecl(decl)) => {
@@ -570,7 +574,7 @@ impl ty::TyExpression {
                 )
             });
 
-        ctx.unify_with_self(handler, block_return_type, &span);
+        ctx.unify_with_type_annotation(handler, block_return_type, &span);
 
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
@@ -836,10 +840,9 @@ impl ty::TyExpression {
             .map(|x| x.1)
             .unwrap_or_else(|| asm.whole_block_span.clone());
         let return_type = ctx
-            .resolve_type_with_self(
+            .resolve_type(
                 handler,
                 type_engine.insert(engines, asm.return_type.clone()),
-                ctx.self_type(),
                 &asm_span,
                 EnforceTypeArguments::No,
                 None,
@@ -1002,6 +1005,7 @@ impl ty::TyExpression {
             engines,
             &storage_key_mod_path,
             &storage_key_ident,
+            None,
         )?;
         let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_ref(handler, engines)?;
         let mut storage_key_struct_decl = decl_engine.get_struct(&storage_key_struct_decl_ref);
@@ -1129,7 +1133,8 @@ impl ty::TyExpression {
                 ctx.namespace.resolve_call_path(
                     &Handler::default(),
                     engines,
-                    &call_path_binding.inner
+                    &call_path_binding.inner,
+                    ctx.self_type()
                 ),
                 Ok(ty::TyDecl::EnumVariantDecl { .. })
             ) {
@@ -1169,7 +1174,12 @@ impl ty::TyExpression {
                 is_absolute,
             };
             ctx.namespace
-                .resolve_call_path(&Handler::default(), engines, &probe_call_path)
+                .resolve_call_path(
+                    &Handler::default(),
+                    engines,
+                    &probe_call_path,
+                    ctx.self_type(),
+                )
                 .and_then(|decl| decl.to_enum_ref(&Handler::default(), ctx.engines()))
                 .map(|decl_ref| decl_engine.get_enum(&decl_ref))
                 .and_then(|decl| {
@@ -1402,8 +1412,10 @@ impl ty::TyExpression {
                 })
             });
 
-        if let Some(TypeInfo::SelfType) = type_info_opt {
-            call_path_binding.strip_prefixes();
+        if let Some(type_info) = type_info_opt {
+            if TypeInfo::is_self_type(&type_info) {
+                call_path_binding.strip_prefixes();
+            }
         }
 
         let const_opt: Option<(DeclRefConstant, _)> =
@@ -1433,15 +1445,12 @@ impl ty::TyExpression {
             Err(_) => return None,
         };
 
-        let const_decl_ref = match ctx.find_constant_for_type(
-            const_probe_handler,
-            struct_type_id.unwrap(),
-            &suffix,
-            ctx.self_type(),
-        ) {
-            Ok(Some(val)) => val,
-            Ok(None) | Err(_) => return None,
-        };
+        let const_decl_ref =
+            match ctx.find_constant_for_type(const_probe_handler, struct_type_id.unwrap(), &suffix)
+            {
+                Ok(Some(val)) => val,
+                Ok(None) | Err(_) => return None,
+            };
 
         Some((const_decl_ref, call_path_binding.clone()))
     }
@@ -1473,7 +1482,7 @@ impl ty::TyExpression {
         // look up the call path and get the declaration it references
         let abi = ctx
             .namespace
-            .resolve_call_path(handler, engines, &abi_name)?;
+            .resolve_call_path(handler, engines, &abi_name, ctx.self_type())?;
         let abi_ref = match abi {
             ty::TyDecl::AbiDecl(ty::AbiDecl {
                 name,
@@ -1495,9 +1504,12 @@ impl ty::TyExpression {
                 match abi_name {
                     // look up the call path and get the declaration it references
                     AbiName::Known(abi_name) => {
-                        let unknown_decl = ctx
-                            .namespace
-                            .resolve_call_path(handler, engines, &abi_name)?;
+                        let unknown_decl = ctx.namespace.resolve_call_path(
+                            handler,
+                            engines,
+                            &abi_name,
+                            ctx.self_type(),
+                        )?;
                         unknown_decl.to_abi_ref(handler)?
                     }
                     AbiName::Deferred => {
@@ -1653,7 +1665,7 @@ impl ty::TyExpression {
             let h = Handler::default();
             ctx.by_ref()
                 .with_type_annotation(elem_type)
-                .unify_with_self(&h, typed_elem.return_type, &typed_elem.span);
+                .unify_with_type_annotation(&h, typed_elem.return_type, &typed_elem.span);
             let (new_errors, new_warnings) = h.consume();
             let no_warnings = new_warnings.is_empty();
             let no_errors = new_errors.is_empty();
@@ -1843,8 +1855,12 @@ impl ty::TyExpression {
                     match expr.kind {
                         ExpressionKind::Variable(name) => {
                             // check that the reassigned name exists
-                            let unknown_decl =
-                                ctx.namespace.resolve_symbol(handler, engines, &name)?;
+                            let unknown_decl = ctx.namespace.resolve_symbol(
+                                handler,
+                                engines,
+                                &name,
+                                ctx.self_type(),
+                            )?;
                             let variable_decl = unknown_decl.expect_variable(handler).cloned()?;
                             if !variable_decl.mutability.is_mutable() {
                                 return Err(handler.emit_err(

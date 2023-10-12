@@ -1,6 +1,6 @@
 use crate::{
     language::{ty, CallPath, Visibility},
-    Engines, Ident,
+    Engines, Ident, TypeId,
 };
 
 use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};
@@ -10,6 +10,7 @@ use sway_types::span::Span;
 
 /// Enum used to pass a value asking for insertion of type into trait map when an implementation
 /// of the trait cannot be found.
+#[derive(Debug)]
 pub enum TryInsertingTraitImplOnFailure {
     Yes,
     No,
@@ -96,9 +97,10 @@ impl Namespace {
         handler: &Handler,
         engines: &Engines,
         symbol: &Ident,
+        self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         self.root
-            .resolve_symbol(handler, engines, &self.mod_path, symbol)
+            .resolve_symbol(handler, engines, &self.mod_path, symbol, self_type)
     }
 
     /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
@@ -107,9 +109,10 @@ impl Namespace {
         handler: &Handler,
         engines: &Engines,
         call_path: &CallPath,
+        self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         self.root
-            .resolve_call_path(handler, engines, &self.mod_path, call_path)
+            .resolve_call_path(handler, engines, &self.mod_path, call_path, self_type)
     }
 
     /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].

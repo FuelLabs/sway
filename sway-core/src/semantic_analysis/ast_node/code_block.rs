@@ -67,7 +67,13 @@ impl ty::TyCodeBlock {
                     let never_decl_opt = ctx
                         .namespace
                         .root()
-                        .resolve_symbol(&Handler::default(), engines, &never_mod_path, &never_ident)
+                        .resolve_symbol(
+                            &Handler::default(),
+                            engines,
+                            &never_mod_path,
+                            &never_ident,
+                            None,
+                        )
                         .ok();
 
                     if let Some(ty::TyDecl::EnumDecl(ty::EnumDecl {
@@ -91,7 +97,7 @@ impl ty::TyCodeBlock {
                 }
             });
 
-        ctx.unify_with_self(handler, block_type, &span);
+        ctx.unify_with_type_annotation(handler, block_type, &span);
 
         let typed_code_block = ty::TyCodeBlock {
             contents: evaluated_contents,

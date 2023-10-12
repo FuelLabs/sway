@@ -59,7 +59,7 @@ impl CurlyBrace for ExprStructField {
             _ => write!(
                 line,
                 "{}{}",
-                formatter.indent_str()?,
+                formatter.indent_to_str()?,
                 Delimiter::Brace.as_close_char()
             )?,
         }

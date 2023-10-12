@@ -94,16 +94,6 @@ impl SubstTypes for TyConstantDecl {
     }
 }
 
-impl ReplaceSelfType for TyConstantDecl {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.return_type.replace_self_type(engines, self_type);
-        self.type_ascription.replace_self_type(engines, self_type);
-        if let Some(expr) = &mut self.value {
-            expr.replace_self_type(engines, self_type);
-        }
-    }
-}
-
 impl ReplaceDecls for TyConstantDecl {
     fn replace_decls_inner(
         &mut self,

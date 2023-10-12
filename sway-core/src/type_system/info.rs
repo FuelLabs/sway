@@ -127,7 +127,6 @@ pub enum TypeInfo {
         /// such as Self::T.
         root_type_id: Option<TypeId>,
     },
-    SelfType,
     B256,
     /// This means that specific type of a number is not yet known. It will be
     /// determined via inference at a later time.
@@ -245,7 +244,6 @@ impl HashWithEngines for TypeInfo {
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery(_)
             | TypeInfo::Unknown
-            | TypeInfo::SelfType
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice => {}
         }
@@ -502,7 +500,6 @@ impl DisplayWithEngines for TypeInfo {
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
-            SelfType => "Self".into(),
             B256 => "b256".into(),
             Numeric => "numeric".into(),
             Contract => "contract".into(),
@@ -575,7 +572,6 @@ impl DebugWithEngines for TypeInfo {
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
-            SelfType => "Self".into(),
             B256 => "b256".into(),
             Numeric => "numeric".into(),
             Contract => "contract".into(),
@@ -648,21 +644,44 @@ impl TypeInfo {
             TypeInfo::Tuple(_) => 8,
             TypeInfo::ContractCaller { .. } => 9,
             TypeInfo::Custom { .. } => 10,
-            TypeInfo::SelfType => 11,
-            TypeInfo::B256 => 12,
-            TypeInfo::Numeric => 13,
-            TypeInfo::Contract => 14,
-            TypeInfo::ErrorRecovery(_) => 15,
-            TypeInfo::Array(_, _) => 16,
-            TypeInfo::Storage { .. } => 17,
-            TypeInfo::RawUntypedPtr => 18,
-            TypeInfo::RawUntypedSlice => 19,
-            TypeInfo::TypeParam(_) => 20,
-            TypeInfo::Alias { .. } => 21,
-            TypeInfo::Ptr(..) => 22,
-            TypeInfo::Slice(..) => 23,
-            TypeInfo::StringSlice => 24,
-            TypeInfo::TraitType { .. } => 25,
+            TypeInfo::B256 => 11,
+            TypeInfo::Numeric => 12,
+            TypeInfo::Contract => 13,
+            TypeInfo::ErrorRecovery(_) => 14,
+            TypeInfo::Array(_, _) => 15,
+            TypeInfo::Storage { .. } => 16,
+            TypeInfo::RawUntypedPtr => 17,
+            TypeInfo::RawUntypedSlice => 18,
+            TypeInfo::TypeParam(_) => 19,
+            TypeInfo::Alias { .. } => 20,
+            TypeInfo::Ptr(..) => 21,
+            TypeInfo::Slice(..) => 22,
+            TypeInfo::StringSlice => 23,
+            TypeInfo::TraitType { .. } => 24,
+        }
+    }
+
+    pub(crate) fn new_self_type(span: Span) -> TypeInfo {
+        TypeInfo::Custom {
+            call_path: CallPath {
+                prefixes: vec![],
+                suffix: Ident::new_with_override("Self".into(), span),
+                is_absolute: false,
+            },
+            type_arguments: None,
+            root_type_id: None,
+        }
+    }
+
+    pub(crate) fn is_self_type(&self) -> bool {
+        match self {
+            TypeInfo::UnknownGeneric { name, .. } => {
+                name.as_str() == "Self" || name.as_str() == "self"
+            }
+            TypeInfo::Custom { call_path, .. } => {
+                call_path.suffix.as_str() == "Self" || call_path.suffix.as_str() == "self"
+            }
+            _ => false,
         }
     }
 
@@ -959,7 +978,10 @@ impl TypeInfo {
         matches!(
             self,
             TypeInfo::Boolean
-                | TypeInfo::UnsignedInteger(_)
+                | TypeInfo::UnsignedInteger(IntegerBits::Eight)
+                | TypeInfo::UnsignedInteger(IntegerBits::Sixteen)
+                | TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)
+                | TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
                 | TypeInfo::RawUntypedPtr
                 | TypeInfo::Numeric
         ) || self.is_unit()
@@ -1014,7 +1036,6 @@ impl TypeInfo {
             | TypeInfo::Boolean
             | TypeInfo::Tuple(_)
             | TypeInfo::ContractCaller { .. }
-            | TypeInfo::SelfType
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::RawUntypedPtr
@@ -1080,7 +1101,6 @@ impl TypeInfo {
             | TypeInfo::Slice(..)
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Custom { .. }
-            | TypeInfo::SelfType
             | TypeInfo::StringArray(_)
             | TypeInfo::StringSlice
             | TypeInfo::Contract
@@ -1103,6 +1123,10 @@ impl TypeInfo {
         handler: &Handler,
         span: &Span,
     ) -> Result<(), ErrorEmitted> {
+        if TypeInfo::is_self_type(self) {
+            return Err(handler
+                .emit_err(CompileError::SelfIsNotValidAsImplementingFor { span: span.clone() }));
+        }
         match self {
             TypeInfo::UnsignedInteger(_)
             | TypeInfo::Enum { .. }
@@ -1125,7 +1149,6 @@ impl TypeInfo {
             | TypeInfo::TraitType { .. } => Ok(()),
             TypeInfo::Unknown
             | TypeInfo::ContractCaller { .. }
-            | TypeInfo::SelfType
             | TypeInfo::Storage { .. }
             | TypeInfo::Placeholder(_)
             | TypeInfo::TypeParam(_) => Err(handler.emit_err(CompileError::Unimplemented(
@@ -1182,7 +1205,6 @@ impl TypeInfo {
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Boolean
-            | TypeInfo::SelfType
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::Contract
@@ -1446,7 +1468,6 @@ impl TypeInfo {
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Custom { .. }
-            | TypeInfo::SelfType
             | TypeInfo::Tuple(_)
             | TypeInfo::Array(_, _)
             | TypeInfo::Contract

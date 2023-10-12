@@ -48,6 +48,11 @@ pub(crate) const CARRIAGE_RETURN: char = '\r';
 pub(crate) const WINDOWS_NEWLINE: &str = "\r\n";
 pub(crate) const UNIX_NEWLINE: &str = "\n";
 
+#[cfg(target_os = "windows")]
+pub(crate) const NEW_LINE: &str = WINDOWS_NEWLINE;
+#[cfg(not(target_os = "windows"))]
+pub(crate) const NEW_LINE: &str = UNIX_NEWLINE;
+
 //INDENT_STYLE
 
 // INDENT_BUFFER.len() = 81

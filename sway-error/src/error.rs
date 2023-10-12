@@ -176,8 +176,9 @@ pub enum CompileError {
         missing_functions: Vec<BaseIdent>,
         span: Span,
     },
-    #[error("Expected {} type {}, but instead found {}.", expected, if *expected == 1usize { "argument" } else { "arguments" }, given)]
+    #[error("Expected {} type {} for \"{name}\", but instead found {}.", expected, if *expected == 1usize { "argument" } else { "arguments" }, given)]
     IncorrectNumberOfTypeArguments {
+        name: Ident,
         given: usize,
         expected: usize,
         span: Span,
@@ -726,6 +727,8 @@ pub enum CompileError {
     AssociatedTypeNotSupportedInAbi { span: Span },
     #[error("Cannot call ABI supertrait's method as a contract method: \"{fn_name}\"")]
     AbiSupertraitMethodCallAsContractCall { fn_name: Ident, span: Span },
+    #[error("\"Self\" is not valid in the self type of an impl block")]
+    SelfIsNotValidAsImplementingFor { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -910,6 +913,7 @@ impl Spanned for CompileError {
             AbiSupertraitMethodCallAsContractCall { span, .. } => span.clone(),
             TypeNotAllowed { span, .. } => span.clone(),
             ExpectedStringLiteral { span } => span.clone(),
+            SelfIsNotValidAsImplementingFor { span } => span.clone(),
         }
     }
 }

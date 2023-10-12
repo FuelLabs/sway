@@ -1,12 +1,12 @@
 use crate::{
     create_arg_demotion_pass, create_const_combine_pass, create_const_demotion_pass,
     create_dce_pass, create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass,
-    create_func_dce_pass, create_inline_in_main_pass, create_inline_in_module_pass,
-    create_mem2reg_pass, create_memcpyopt_pass, create_misc_demotion_pass,
-    create_module_printer_pass, create_module_verifier_pass, create_postorder_pass,
-    create_ret_demotion_pass, create_simplify_cfg_pass, create_sroa_pass, Context, Function,
-    IrError, Module, CONSTCOMBINE_NAME, DCE_NAME, FUNC_DCE_NAME, INLINE_MODULE_NAME, MEM2REG_NAME,
-    SIMPLIFYCFG_NAME,
+    create_fn_dedup_pass, create_func_dce_pass, create_inline_in_main_pass,
+    create_inline_in_module_pass, create_mem2reg_pass, create_memcpyopt_pass,
+    create_misc_demotion_pass, create_module_printer_pass, create_module_verifier_pass,
+    create_postorder_pass, create_ret_demotion_pass, create_simplify_cfg_pass, create_sroa_pass,
+    Context, Function, IrError, Module, CONSTCOMBINE_NAME, DCE_NAME, FNDEDUP_NAME, FUNC_DCE_NAME,
+    INLINE_MODULE_NAME, MEM2REG_NAME, SIMPLIFYCFG_NAME,
 };
 use downcast_rs::{impl_downcast, Downcast};
 use rustc_hash::FxHashMap;
@@ -306,6 +306,7 @@ pub fn register_known_passes(pm: &mut PassManager) {
     pm.register(create_module_printer_pass());
     pm.register(create_module_verifier_pass());
     // Optimization passes.
+    pm.register(create_fn_dedup_pass());
     pm.register(create_mem2reg_pass());
     pm.register(create_sroa_pass());
     pm.register(create_inline_in_module_pass());
@@ -327,6 +328,7 @@ pub fn create_o1_pass_group() -> PassGroup {
     // Configure to run our passes.
     o1.append_pass(MEM2REG_NAME);
     o1.append_pass(INLINE_MODULE_NAME);
+    o1.append_pass(FNDEDUP_NAME);
     o1.append_pass(CONSTCOMBINE_NAME);
     o1.append_pass(SIMPLIFYCFG_NAME);
     o1.append_pass(CONSTCOMBINE_NAME);
