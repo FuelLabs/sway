@@ -130,18 +130,18 @@ impl u32 {
             
             srl  r1 input k;
             and  r1 r1 off;
-            sw   output r1 i0;
+            sb   ptr r1 i0;
 
             srl  r1 input j;
             and  r1 r1 off;
-            sw   output r1 i1;
+            sb   ptr r1 i1;
 
             srl  r1 input i;
             and  r1 r1 off;
-            sw   output r1 i2;
+            sb   ptr r1 i2;
 
             and  r1 input off;
-            sw   output r1 i3;
+            sb   ptr r1 i3;
 
             ptr: raw_ptr
         };
