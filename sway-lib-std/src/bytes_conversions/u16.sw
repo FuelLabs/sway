@@ -161,7 +161,7 @@ impl u16 {
 }
 
 #[test]
-fn test_u32_to_le_bytes() {
+fn test_u16_to_le_bytes() {
     let x: u16 = 513;
     let result = x.to_le_bytes();
 
@@ -170,7 +170,7 @@ fn test_u32_to_le_bytes() {
 }
 
 #[test]
-fn test_u32_from_le_bytes() {
+fn test_u16_from_le_bytes() {
     let mut bytes = Bytes::new();
     bytes.push(1_u8);
     bytes.push(2_u8);
@@ -180,16 +180,16 @@ fn test_u32_from_le_bytes() {
 }
 
 #[test]
-fn test_u32_to_be_bytes() {
+fn test_u16_to_be_bytes() {
     let x: u16 = 513;
     let result = x.to_be_bytes();
 
-    assert(result.get(2).unwrap() == 2_u8);
-    assert(result.get(3).unwrap() == 1_u8);
+    assert(result.get(0).unwrap() == 2_u8);
+    assert(result.get(1).unwrap() == 1_u8);
 }
 
 #[test]
-fn test_u32_from_be_bytes() {
+fn test_u16_from_be_bytes() {
     let mut bytes = Bytes::new();
     bytes.push(2_u8);
     bytes.push(1_u8);

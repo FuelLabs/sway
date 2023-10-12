@@ -14,7 +14,7 @@ impl u64 {
     ///
     /// # Examples
     ///
-    /// ```sway
+    /// ```sbay
     /// use std::bytes_conversions::u64::*;
     ///
     /// fn foo() {
@@ -89,7 +89,7 @@ impl u64 {
     ///
     /// # Examples
     ///
-    /// ```sway
+    /// ```sbay
     /// use std::{bytes::Bytes, bytes_conversions::u64::*};
     ///
     /// fn foo() {
@@ -147,7 +147,7 @@ impl u64 {
     ///
     /// # Examples
     ///
-    /// ```sway
+    /// ```sbay
     /// use std::bytes_conversions::u64::*;
     ///
     /// fn foo() {
@@ -170,37 +170,37 @@ impl u64 {
             move ptr hp;
 
             and  r1 input off;
-            sw  ptr r1 i7;
+            sb  ptr r1 i7;
 
             srl  r1 input i;
             and  r1 r1 off;
-            sw  ptr r1 i6;
+            sb  ptr r1 i6;
 
             srl  r1 input j;
             and  r1 r1 off;
-            sw  ptr r1 i5;
+            sb  ptr r1 i5;
 
             srl  r1 input k;
             and  r1 r1 off;
-            sw  ptr r1 i4;
+            sb  ptr r1 i4;
 
             srl  r1 input l;
             and  r1 r1 off;
-            sw  ptr r1 i3;
+            sb  ptr r1 i3;
 
             srl  r1 input m;
             and  r1 r1 off;
-            sw  ptr r1 i2;
+            sb  ptr r1 i2;
 
             srl  r1 input n;
             and  r1 r1 off;
-            sw  ptr r1 i1;
+            sb  ptr r1 i1;
 
             srl  r1 input o;
             and  r1 r1 off;
-            sw  ptr r1 i0;
+            sb  ptr r1 i0;
 
-            ptr: Bytes
+            ptr: raw_ptr
         };
         
         let rs = asm(parts: (ptr, 8)) {
@@ -222,7 +222,7 @@ impl u64 {
     ///
     /// # Examples
     ///
-    /// ```sway
+    /// ```sbay
     /// use std::{bytes::Bytes, bytes_conversions::u64::*};
     ///
     /// fn foo() {
