@@ -1702,3 +1702,17 @@ pub enum Input {
 "#,
     );
 }
+
+#[test]
+fn empty_impl() {
+    check(
+        r#"
+library;
+impl OrdEq for u256 {
+}
+        "#,
+        r#"library;
+impl OrdEq for u256 {}
+"#,
+    );
+}
