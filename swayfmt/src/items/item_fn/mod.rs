@@ -129,7 +129,9 @@ impl Format for FnSignature {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         formatter.shape.code_line.has_where_clause = formatter.with_shape(
-            formatter.shape,
+            formatter
+                .shape
+                .with_code_line_from(LineStyle::Normal, ExprKind::Function),
             |formatter| -> Result<bool, FormatterError> {
                 let mut fn_sig = FormattedCode::new();
                 let mut fn_args = FormattedCode::new();
