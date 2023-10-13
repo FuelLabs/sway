@@ -116,8 +116,11 @@ pub(crate) fn render_type_anchor(
                 Err(anyhow!("Deferred AbiName is unhandled"))
             }
         }
-        TypeInfo::Custom { call_path, .. } => Ok(box_html! {
-            : call_path.suffix.as_str();
+        TypeInfo::Custom {
+            qualified_call_path,
+            ..
+        } => Ok(box_html! {
+            : qualified_call_path.call_path.suffix.as_str();
         }),
         TypeInfo::B256 => Ok(box_html! {
             : "b256";

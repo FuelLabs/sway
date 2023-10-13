@@ -135,15 +135,27 @@ impl TypeId {
         resolved_type_id: TypeId,
     ) -> bool {
         match (type_engine.get(self), type_engine.get(resolved_type_id)) {
-            (TypeInfo::Custom { call_path, .. }, TypeInfo::Enum(decl_ref)) => {
-                call_path.suffix != decl_engine.get_enum(&decl_ref).call_path.suffix
-            }
-            (TypeInfo::Custom { call_path, .. }, TypeInfo::Struct(decl_ref)) => {
-                call_path.suffix != decl_engine.get_struct(&decl_ref).call_path.suffix
-            }
-            (TypeInfo::Custom { call_path, .. }, TypeInfo::Alias { name, .. }) => {
-                call_path.suffix != name
-            }
+            (
+                TypeInfo::Custom {
+                    qualified_call_path: call_path,
+                    ..
+                },
+                TypeInfo::Enum(decl_ref),
+            ) => call_path.call_path.suffix != decl_engine.get_enum(&decl_ref).call_path.suffix,
+            (
+                TypeInfo::Custom {
+                    qualified_call_path: call_path,
+                    ..
+                },
+                TypeInfo::Struct(decl_ref),
+            ) => call_path.call_path.suffix != decl_engine.get_struct(&decl_ref).call_path.suffix,
+            (
+                TypeInfo::Custom {
+                    qualified_call_path: call_path,
+                    ..
+                },
+                TypeInfo::Alias { name, .. },
+            ) => call_path.call_path.suffix != name,
             (TypeInfo::Custom { .. }, _) => true,
             _ => false,
         }

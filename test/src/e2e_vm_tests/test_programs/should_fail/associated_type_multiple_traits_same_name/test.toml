@@ -1,0 +1,8 @@
+category = "fail"
+
+# check: $()let _i : Struct::T = 1;
+# nextln: $()Multiple applicable items in scope.
+# nextln: $()Disambiguate the associated item for candidate #0
+# nextln: $()<Struct as TypeTrait1>::T
+# nextln: $()Disambiguate the associated item for candidate #1
+# nextln: $()<Struct as TypeTrait2>::T
