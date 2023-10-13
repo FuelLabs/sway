@@ -1,3 +1,4 @@
 category = "run"
-expected_result = { action = "return", value = 101 }
+expected_result = { action = "return", value = 126 }
 validate_abi = false
+expected_warnings=6
