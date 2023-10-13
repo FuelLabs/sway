@@ -170,11 +170,11 @@ impl u32 {
     ///
     /// fn foo() {
     ///     let mut bytes = Bytes::new();
-    ///     bytes.push(1_u8);
-    ///     bytes.push(2_u8);
-    ///     bytes.push(3_u8);
     ///     bytes.push(4_u8);
-    ///     let result = u32::from_le_bytes(bytes);
+    ///     bytes.push(3_u8);
+    ///     bytes.push(2_u8);
+    ///     bytes.push(1_u8);
+    ///     let result = u32::from_be_bytes(bytes);
     ///
     ///     assert(result == 67305985_u32);
     /// }
