@@ -84,11 +84,11 @@ pub fn ec_recover(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverErro
 /// use std::{ecr::ec_recover_r1, b512::B512};
 ///
 /// fn foo() {
-///     let hi = 0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c;
-///     let lo = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
-///     let msg_hash = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
+///     let hi = 0xbd0c9b8792876712afadbff382e1bf31c44437823ed761cc3600d0016de511ac;
+///     let lo = 0x44ac566bd156b4fc71a4a4cb2655d3da360c695edb27dc3b64d621e122fea23d;
+///     let msg_hash = 0x1e45523606c96c98ba970ff7cf9511fab8b25e1bcd52ced30b81df1e4a9c4323;
 ///     let pub_hi = 0xD73A188181464CC84AE267E45041AEF6AB938F278E636AA1D02D3014C1BEF74E;
-///     let pub_lo = 0xC44415635160ACFC87A84300EED97928C949A2D958FC0947C535F7539C59AE75;
+///     let pub_lo = 0x62660ecce5979493fe5684526e8e00875b948e507a89a47096bc84064a175452;
 ///     let signature: B512 = B512::from((hi, lo));
 ///     // A recovered public key pair.
 ///     let public_key = ec_recover_r1(signature, msg_hash).unwrap();
@@ -178,10 +178,10 @@ pub fn ec_recover_address(signature: B512, msg_hash: b256) -> Result<Address, Ec
 /// use std::{ecr::ec_recover_address_r1, b512::B512};
 ///
 /// fn foo() {
-///     let hi = 0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c;
+///     let hi = 0xbd0c9b8792876713afa8bf3383eebf31c43437823ed761cc3600d0016de5110c;
 ///     let lo = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
 ///     let msg_hash = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
-///     let address = Address::from(0x7AAE2D980BE4C3275C72CE5B527FA23FFB97B766966559DD062E2B78FD9D3766);
+///     let address = Address::from(0xb4a5fabee8cc852084b71f17107e9c18d682033a58967027af0ab01edf2f9a6a);
 ///     let signature: B512 = B512::from((hi, lo));
 ///     // A recovered Fuel address.
 ///     let result_address = ec_recover_address_r1(signature, msg_hash).unwrap();
@@ -199,4 +199,35 @@ pub fn ec_recover_address_r1(signature: B512, msg_hash: b256) -> Result<Address,
         let address = sha256(((pub_key.bytes)[0], (pub_key.bytes)[1]));
         Ok(Address::from(address))
     }
+}
+
+#[test]
+fn test_ec_recover_r1() {
+    use ::assert::assert;
+    
+    let hi = 0xbd0c9b8792876712afadbff382e1bf31c44437823ed761cc3600d0016de511ac;
+    let lo = 0x44ac566bd156b4fc71a4a4cb2655d3da360c695edb27dc3b64d621e122fea23d;
+    let msg_hash = 0x1e45523606c96c98ba970ff7cf9511fab8b25e1bcd52ced30b81df1e4a9c4323;
+    let pub_hi = 0xd6ea577a54ae42411fbc78d686d4abba2150ca83540528e4b868002e346004b2;
+    let pub_lo = 0x62660ecce5979493fe5684526e8e00875b948e507a89a47096bc84064a175452;
+    let signature: B512 = B512::from((hi, lo));
+    // A recovered public key pair.
+    let public_key = ec_recover_r1(signature, msg_hash).unwrap();
+
+    assert(public_key.bytes[0] == pub_hi);
+    assert(public_key.bytes[1] == pub_lo);
+}
+
+#[test]
+fn test_ec_recover_address_r1() {
+    use ::assert::assert;
+    
+    let hi = 0xbd0c9b8792876713afa8bf3383eebf31c43437823ed761cc3600d0016de5110c;
+    let lo = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
+    let msg_hash = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
+    let address = Address::from(0xb4a5fabee8cc852084b71f17107e9c18d682033a58967027af0ab01edf2f9a6a);
+    let signature: B512 = B512::from((hi, lo));
+    // A recovered Fuel address.
+    let result_address = ec_recover_address_r1(signature, msg_hash).unwrap();
+    assert(result_address == address);
 }
