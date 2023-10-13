@@ -8,7 +8,11 @@ use lsp_types::{
     WorkspaceEdit,
 };
 use serde_json::Value;
-use std::{cmp::Ordering, collections::HashMap, iter};
+use std::{
+    cmp::Ordering,
+    collections::{BTreeSet, HashMap},
+    iter,
+};
 use sway_core::language::{
     parsed::ImportType,
     ty::{TyDecl, TyIncludeStatement, TyUseStatement},
@@ -191,6 +195,8 @@ fn get_text_edit_for_group(
             }
         })
         .chain(iter::once(call_path.suffix.to_string()))
+        .collect::<BTreeSet<_>>()
+        .into_iter()
         .collect::<Vec<_>>();
 
     // If there were no imports with the same prefix, return None. Otherwise, build the text edit response.

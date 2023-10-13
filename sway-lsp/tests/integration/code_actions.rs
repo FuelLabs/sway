@@ -751,11 +751,11 @@ pub(crate) fn code_action_auto_import_trait_request(server: &ServerState, uri: &
     // TryFrom: external library
     let range = Range {
         start: Position {
-            line: 33,
+            line: 34,
             character: 5,
         },
         end: Position {
-            line: 33,
+            line: 34,
             character: 12,
         },
     };
@@ -798,11 +798,11 @@ pub(crate) fn code_action_auto_import_trait_request(server: &ServerState, uri: &
     // DeepTrait: local library
     let range = Range {
         start: Position {
-            line: 29,
+            line: 30,
             character: 5,
         },
         end: Position {
-            line: 29,
+            line: 30,
             character: 14,
         },
     };

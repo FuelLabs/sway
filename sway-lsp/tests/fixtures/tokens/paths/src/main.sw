@@ -4,7 +4,7 @@ mod test_mod;
 mod deep_mod;
 
 use test_mod::A;
-use deep_mod::deeper_mod::{deep_fun, DeepEnum};
+use deep_mod::deeper_mod::deep_fun as dfun;
 use std::constants::{self, ZERO_B256};
 
 pub fn fun() {
@@ -31,5 +31,5 @@ pub fn fun() {
     let _ = deep_mod::deeper_mod::DeepEnum::Number(0);
 
     let _ = ::deep_mod::deeper_mod::DeepStruct::<u64> { field: 0 };
-    let _ = DeepStruct::<u64> { field: 0 };
+    let _ = deep_mod::deeper_mod::DeepStruct::<u64> { field: 0 };
 }
