@@ -35,7 +35,7 @@ pub struct HashArgs {
 
 fn read_stdin() -> Vec<u8> {
     let mut buffer = Vec::new();
-    if let Ok(_) = io::stdin().lock().read_to_end(&mut buffer) {
+    if io::stdin().lock().read_to_end(&mut buffer).is_ok() {
         buffer
     } else {
         vec![]
@@ -61,7 +61,7 @@ impl From<HashArgs> for Vec<u8> {
     fn from(value: HashArgs) -> Self {
         if let Some(content_or_filepath) = value.content_or_filepath {
             let path = PathBuf::from(&content_or_filepath);
-            match read(&path) {
+            match read(path) {
                 Ok(bytes) => bytes,
                 Err(_) => {
                     let text = content_or_filepath.trim();
