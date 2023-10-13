@@ -1,7 +1,7 @@
 use crate::{
     decl_engine::{DeclEngine, DeclRefEnum, DeclRefStruct},
     engine_threading::*,
-    language::{ty, CallPath},
+    language::{ty, CallPath, QualifiedCallPath},
     type_system::priv_prelude::*,
     Ident,
 };
@@ -119,7 +119,7 @@ pub enum TypeInfo {
     /// At parse time, there is no sense of scope, so this determination is not made
     /// until the semantic analysis stage.
     Custom {
-        call_path: CallPath,
+        qualified_call_path: QualifiedCallPath,
         type_arguments: Option<Vec<TypeArgument>>,
         /// When root_type_id contains some type id then the call path applies
         /// to the specified root_type_id as root.
@@ -199,11 +199,11 @@ impl HashWithEngines for TypeInfo {
                 trait_constraints.hash(state, engines);
             }
             TypeInfo::Custom {
-                call_path,
+                qualified_call_path: call_path,
                 type_arguments,
                 root_type_id,
             } => {
-                call_path.hash(state);
+                call_path.hash(state, engines);
                 type_arguments.as_deref().hash(state, engines);
                 root_type_id.hash(state);
             }
@@ -269,17 +269,20 @@ impl PartialEqWithEngines for TypeInfo {
             (Self::TypeParam(l), Self::TypeParam(r)) => l == r,
             (
                 Self::Custom {
-                    call_path: l_name,
+                    qualified_call_path: l_name,
                     type_arguments: l_type_args,
                     root_type_id: l_root_type_id,
                 },
                 Self::Custom {
-                    call_path: r_name,
+                    qualified_call_path: r_name,
                     type_arguments: r_type_args,
                     root_type_id: r_root_type_id,
                 },
             ) => {
-                l_name.suffix == r_name.suffix
+                l_name.call_path.suffix == r_name.call_path.suffix
+                    && l_name
+                        .qualified_path_root
+                        .eq(&r_name.qualified_path_root, engines)
                     && l_type_args.as_deref().eq(&r_type_args.as_deref(), engines)
                     && l_root_type_id.eq(r_root_type_id)
             }
@@ -385,18 +388,24 @@ impl OrdWithEngines for TypeInfo {
             (Self::Placeholder(l), Self::Placeholder(r)) => l.cmp(r, engines),
             (
                 Self::Custom {
-                    call_path: l_call_path,
+                    qualified_call_path: l_call_path,
                     type_arguments: l_type_args,
                     root_type_id: l_root_type_id,
                 },
                 Self::Custom {
-                    call_path: r_call_path,
+                    qualified_call_path: r_call_path,
                     type_arguments: r_type_args,
                     root_type_id: r_root_type_id,
                 },
             ) => l_call_path
+                .call_path
                 .suffix
-                .cmp(&r_call_path.suffix)
+                .cmp(&r_call_path.call_path.suffix)
+                .then_with(|| {
+                    l_call_path
+                        .qualified_path_root
+                        .cmp(&r_call_path.qualified_path_root, engines)
+                })
                 .then_with(|| l_type_args.as_deref().cmp(&r_type_args.as_deref(), engines))
                 .then_with(|| l_root_type_id.cmp(r_root_type_id)),
             (Self::StringArray(l), Self::StringArray(r)) => l.val().cmp(&r.val()),
@@ -492,7 +501,10 @@ impl DisplayWithEngines for TypeInfo {
             }
             .into(),
             Boolean => "bool".into(),
-            Custom { call_path, .. } => call_path.suffix.to_string(),
+            Custom {
+                qualified_call_path: call_path,
+                ..
+            } => call_path.call_path.suffix.to_string(),
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
@@ -562,8 +574,11 @@ impl DebugWithEngines for TypeInfo {
             }
             .into(),
             Boolean => "bool".into(),
-            Custom { call_path, .. } => {
-                format!("unresolved {}", call_path.suffix.as_str())
+            Custom {
+                qualified_call_path: call_path,
+                ..
+            } => {
+                format!("unresolved {}", call_path.call_path.suffix.as_str())
             }
             Tuple(fields) => {
                 let field_strs = fields
@@ -663,10 +678,13 @@ impl TypeInfo {
 
     pub(crate) fn new_self_type(span: Span) -> TypeInfo {
         TypeInfo::Custom {
-            call_path: CallPath {
-                prefixes: vec![],
-                suffix: Ident::new_with_override("Self".into(), span),
-                is_absolute: false,
+            qualified_call_path: QualifiedCallPath {
+                call_path: CallPath {
+                    prefixes: vec![],
+                    suffix: Ident::new_with_override("Self".into(), span),
+                    is_absolute: false,
+                },
+                qualified_path_root: None,
             },
             type_arguments: None,
             root_type_id: None,
@@ -678,8 +696,12 @@ impl TypeInfo {
             TypeInfo::UnknownGeneric { name, .. } => {
                 name.as_str() == "Self" || name.as_str() == "self"
             }
-            TypeInfo::Custom { call_path, .. } => {
-                call_path.suffix.as_str() == "Self" || call_path.suffix.as_str() == "self"
+            TypeInfo::Custom {
+                qualified_call_path,
+                ..
+            } => {
+                qualified_call_path.call_path.suffix.as_str() == "Self"
+                    || qualified_call_path.call_path.suffix.as_str() == "self"
             }
             _ => false,
         }
@@ -1012,7 +1034,7 @@ impl TypeInfo {
                 )))
             }
             TypeInfo::Custom {
-                call_path,
+                qualified_call_path: call_path,
                 type_arguments: other_type_arguments,
                 root_type_id,
             } => {
@@ -1021,7 +1043,7 @@ impl TypeInfo {
                         .emit_err(CompileError::TypeArgumentsNotAllowed { span: span.clone() }))
                 } else {
                     let type_info = TypeInfo::Custom {
-                        call_path,
+                        qualified_call_path: call_path,
                         type_arguments: Some(type_arguments),
                         root_type_id,
                     };
@@ -1279,7 +1301,7 @@ impl TypeInfo {
                 }
             }
             TypeInfo::Custom {
-                call_path: _,
+                qualified_call_path: _,
                 type_arguments,
                 root_type_id: _,
             } => {
