@@ -218,7 +218,7 @@ impl TyTraitDecl {
             supertraits,
             visibility,
             attributes,
-            call_path: CallPath::from(name.clone()).to_fullpath(ctx.namespace),
+            call_path: CallPath::from(name).to_fullpath(ctx.namespace),
             span,
         };
         Ok(typed_trait_decl)

@@ -283,7 +283,7 @@ fn use_tree_to_use_statements(
             };
             ret.push(UseStatement {
                 call_path: path.clone(),
-                span: item_span.clone(),
+                span: item_span,
                 import_type,
                 is_absolute,
                 alias: None,
@@ -297,7 +297,7 @@ fn use_tree_to_use_statements(
             };
             ret.push(UseStatement {
                 call_path: path.clone(),
-                span: item_span.clone(),
+                span: item_span,
                 import_type,
                 is_absolute,
                 alias: Some(alias),
@@ -306,7 +306,7 @@ fn use_tree_to_use_statements(
         UseTree::Glob { .. } => {
             ret.push(UseStatement {
                 call_path: path.clone(),
-                span: item_span.clone(),
+                span: item_span,
                 import_type: ImportType::Star,
                 is_absolute,
                 alias: None,
@@ -314,7 +314,7 @@ fn use_tree_to_use_statements(
         }
         UseTree::Path { prefix, suffix, .. } => {
             path.push(prefix);
-            use_tree_to_use_statements(*suffix, is_absolute, path, ret, item_span.clone());
+            use_tree_to_use_statements(*suffix, is_absolute, path, ret, item_span);
             path.pop().unwrap();
         }
         UseTree::Error { .. } => {
