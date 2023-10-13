@@ -1,6 +1,6 @@
 //! Configuration options related to item formatting.
 use crate::{
-    config::{lists::ListTactic, user_opts::ItemsOptions},
+    config::user_opts::ItemsOptions,
     constants::{DEFAULT_BLANK_LINES_LOWER_BOUND, DEFAULT_BLANK_LINES_UPPER_BOUND},
 };
 use serde::{Deserialize, Serialize};
@@ -55,17 +55,6 @@ pub enum ItemsLayout {
     Tall,
     /// Place every item on a separate line.
     Vertical,
-}
-
-impl ItemsLayout {
-    pub fn to_list_tactic(self, len: usize) -> ListTactic {
-        match self {
-            ItemsLayout::Compressed => ListTactic::Mixed,
-            ItemsLayout::Tall => ListTactic::HorizontalVertical,
-            ItemsLayout::Vertical if len == 1 => ListTactic::Horizontal,
-            ItemsLayout::Vertical => ListTactic::Vertical,
-        }
-    }
 }
 
 /// Where to put the opening brace of items (`fn`, `impl`, etc.).
