@@ -1,6 +1,6 @@
 use crate::{
     comments::{rewrite_with_comments, write_comments},
-    config::{items::ItemBraceStyle, user_def::FieldAlignment},
+    config::user_def::FieldAlignment,
     formatter::{
         shape::{ExprKind, LineStyle},
         *,

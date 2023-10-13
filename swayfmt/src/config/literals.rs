@@ -2,7 +2,7 @@
 use crate::config::user_opts::LiteralsOptions;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub struct Literals {
     /// Format string literals where necessary.
     /// Defaults to `false`.
@@ -10,15 +10,6 @@ pub struct Literals {
     /// Format hexadecimal integer literals.
     /// Defaults to [`HexLiteralCase::Preserve`].
     pub hex_literal_case: HexLiteralCase,
-}
-
-impl Default for Literals {
-    fn default() -> Self {
-        Self {
-            format_strings: false,
-            hex_literal_case: Default::default(),
-        }
-    }
 }
 
 impl Literals {

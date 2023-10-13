@@ -1,6 +1,5 @@
 use crate::{
     comments::{has_comments_in_formatter, rewrite_with_comments, write_comments},
-    config::items::ItemBraceStyle,
     formatter::{
         shape::{ExprKind, LineStyle},
         *,
