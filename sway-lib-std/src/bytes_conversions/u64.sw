@@ -14,7 +14,7 @@ impl u64 {
     ///
     /// # Examples
     ///
-    /// ```sbay
+    /// ```sway
     /// use std::bytes_conversions::u64::*;
     ///
     /// fn foo() {
@@ -81,7 +81,7 @@ impl u64 {
     ///
     /// # Arguments
     /// 
-    /// * `bytes`: Bytes - A `Bytes` object that represent a `u64`.
+    /// * `bytes`: [Bytes] - A `Bytes` object that represent a `u64`.
     ///
     /// # Returns
     ///
@@ -89,7 +89,7 @@ impl u64 {
     ///
     /// # Examples
     ///
-    /// ```sbay
+    /// ```sway
     /// use std::{bytes::Bytes, bytes_conversions::u64::*};
     ///
     /// fn foo() {
@@ -147,7 +147,7 @@ impl u64 {
     ///
     /// # Examples
     ///
-    /// ```sbay
+    /// ```sway
     /// use std::bytes_conversions::u64::*;
     ///
     /// fn foo() {
@@ -214,7 +214,7 @@ impl u64 {
     ///
     /// # Arguments
     /// 
-    /// * `bytes`: Bytes - A `Bytes` object that represent a `u64`.
+    /// * `bytes`: [Bytes] - A `Bytes` object that represent a `u64`.
     ///
     /// # Returns
     ///
@@ -222,7 +222,7 @@ impl u64 {
     ///
     /// # Examples
     ///
-    /// ```sbay
+    /// ```sway
     /// use std::{bytes::Bytes, bytes_conversions::u64::*};
     ///
     /// fn foo() {

@@ -10,7 +10,7 @@ impl u32 {
     /// 
     /// # Returns
     ///
-    /// * [Bytes] - The bytes that compose the `u32`.
+    /// * [Bytes] - The 4 bytes that compose the `u32`.
     ///
     /// # Examples
     ///
@@ -61,7 +61,7 @@ impl u32 {
     ///
     /// # Arguments
     /// 
-    /// * `bytes`: Bytes - A `Bytes` object that represent a `u32`.
+    /// * `bytes`: [Bytes] - The 4 bytes that compose the `u32`.
     ///
     /// # Returns
     ///
@@ -106,7 +106,7 @@ impl u32 {
     /// 
     /// # Returns
     ///
-    /// * [Bytes] - The bytes that compose the `u32`.
+    /// * [Bytes] - The 4 bytes that compose the `u32`.
     ///
     /// # Examples
     ///
@@ -153,11 +153,11 @@ impl u32 {
         Bytes::from(rs)
     }
 
-    /// Converts a sequence of little-endian bytes to a `u32`.
+    /// Converts a sequence of big-endian bytes to a `u32`.
     ///
     /// # Arguments
     /// 
-    /// * `bytes`: Bytes - A `Bytes` object that represent a `u32`.
+    /// * `bytes`: [Bytes] - The 4 bytes that compose the `u32`.
     ///
     /// # Returns
     ///

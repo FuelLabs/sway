@@ -10,7 +10,7 @@ impl u16 {
     /// 
     /// # Returns
     ///
-    /// * [Bytes] - The bytes that compose the `u16`.
+    /// * [Bytes] - The 2 bytes that compose the `u16`.
     ///
     /// # Examples
     ///
@@ -49,7 +49,7 @@ impl u16 {
     ///
     /// # Arguments
     /// 
-    /// * `bytes`: Bytes - A `Bytes` object that represent a `u16`.
+    /// * `bytes`: [Bytes] - The 2 bytes that compose the `u16`.
     ///
     /// # Returns
     ///
@@ -86,7 +86,7 @@ impl u16 {
     /// 
     /// # Returns
     ///
-    /// * [Bytes] - The bytes that compose the `u16`.
+    /// * [Bytes] - The 2 bytes that compose the `u16`.
     ///
     /// # Examples
     ///
@@ -122,11 +122,11 @@ impl u16 {
         Bytes::from(rs)
     }
 
-    /// Converts a sequence of little-endian bytes to a `u16`.
+    /// Converts a sequence of big-endian bytes to a `u16`.
     ///
     /// # Arguments
     /// 
-    /// * `bytes`: Bytes - A `Bytes` object that represent a `u16`.
+    /// * `bytes`: [Bytes] - The 2 bytes that compose the `u16`.
     ///
     /// # Returns
     ///
@@ -139,9 +139,9 @@ impl u16 {
     ///
     /// fn foo() {
     ///     let mut bytes = Bytes::new();
-    ///     bytes.push(1_u8);
     ///     bytes.push(2_u8);
-    ///     let result = u16::from_le_bytes(bytes);
+    ///     bytes.push(1_u8);
+    ///     let result = u16::from_be_bytes(bytes);
     ///
     ///     assert(result == 513_u16);
     /// }
