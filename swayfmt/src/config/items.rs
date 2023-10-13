@@ -9,12 +9,16 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Copy, Clone)]
 pub struct Items {
     /// Brace style for items.
+    /// Defaults to [`ItemBraceStyle::SameLineWhere`].
     pub item_brace_style: ItemBraceStyle,
     /// Maximum number of blank lines which can be put between items.
+    /// Defaults to `1`.
     pub blank_lines_upper_bound: usize,
     /// Minimum number of blank lines which must be put between items.
+    /// Defaults to `0`.
     pub blank_lines_lower_bound: usize,
     /// Put empty-body functions and impls on a single line.
+    /// Defaults to `true`.
     pub empty_item_single_line: bool,
 }
 
@@ -48,6 +52,8 @@ impl Items {
 }
 
 /// Preference of how list-like items are displayed.
+///
+/// Defaults to `Tall`.
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
 pub enum ItemsLayout {
     /// Fit as much on one line as possible.
@@ -60,6 +66,8 @@ pub enum ItemsLayout {
 }
 
 /// Where to put the opening brace of items (`fn`, `impl`, etc.).
+///
+/// Defaults to `SameLineWhere`.
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
 pub enum ItemBraceStyle {
     /// Put the opening brace on the next line.

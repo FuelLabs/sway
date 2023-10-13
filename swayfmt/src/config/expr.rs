@@ -4,34 +4,45 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Expressions {
-    /////PUNCTUATION/////
+    // PUNCTUATION
     /// Brace style for control flow constructs.
+    /// Defaults to [`ExprBraceStyle::AlwaysSameLine`].
     pub expr_brace_style: ExprBraceStyle,
     /// Add trailing semicolon after break, continue and return.
+    /// Defaults to `true`.
     pub trailing_semicolon: bool,
     /// Leave a space before the colon.
+    /// Defaults to `false`.
     pub space_before_colon: bool,
     /// Leave a space after the colon.
+    /// Defaults to `false`.
     pub space_after_colon: bool,
 
-    /////OPERATORS/////
+    // OPERATORS
     /// Determines if `+` or `=` are wrapped in spaces in the punctuation of types.
+    /// Defaults to [`TypeCombinatorLayout::Wide`].
     pub type_combinator_layout: TypeCombinatorLayout,
     /// Put spaces around the `..` and `..=` range operators.
+    /// Defaults to `false`.
     pub spaces_around_ranges: bool,
 
-    /////MATCH EXPR/////
+    // MATCH EXPR
     /// Put a trailing comma after a block based match arm (non-block arms are not affected).
+    /// Defaults to `false`.
     pub match_block_trailing_comma: bool,
     /// Determines whether leading pipes are emitted on match arms.
+    /// Defaults to [`MatchArmLeadingPipe::Never`].
     pub match_arm_leading_pipe: MatchArmLeadingPipe,
 
-    /////FUNCTIONS/////
+    // FUNCTIONS
     /// Force multiline closure bodies and match arms to be wrapped in a block.
+    /// Defaults to `false`.
     pub force_multiline_blocks: bool,
     /// Control the layout of arguments in a function.
+    /// Defaults to [`ItemsLayout::Tall`].
     pub fn_args_layout: ItemsLayout,
     /// Put single-expression functions on a single line.
+    /// Defaults to `false`.
     pub fn_single_line: bool,
 }
 

@@ -5,10 +5,13 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Copy, Clone, Default)]
 pub struct Imports {
     /// Controls the strategy for how imports are grouped together.
+    /// Defaults to [`GroupImports::Preserve`].
     pub group_imports: GroupImports,
     /// Merge or split imports to the provided granularity.
+    /// Defaults to [`ImportGranularity::Preserve`].
     pub imports_granularity: ImportGranularity,
     /// Indent of imports.
+    /// Defaults to [`IndentStyle::Block`].
     pub imports_indent: IndentStyle,
 }
 

@@ -4,10 +4,13 @@ use crate::config::user_opts::OrderingOptions;
 #[derive(Debug, Clone)]
 pub struct Ordering {
     /// Reorder import and extern crate statements alphabetically.
+    /// Defaults to `true`.
     pub reorder_imports: bool,
     /// Reorder module statements alphabetically in group.
+    /// Defaults to `true`.
     pub reorder_modules: bool,
     /// Reorder `impl` items.
+    /// Defaults to `false`.
     pub reorder_impl_items: bool,
 }
 
