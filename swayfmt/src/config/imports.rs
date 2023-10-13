@@ -1,5 +1,5 @@
 //! Configuration options related to formatting imports.
-use crate::config::{lists::ListTactic, user_opts::ImportsOptions, whitespace::IndentStyle};
+use crate::config::{user_opts::ImportsOptions, whitespace::IndentStyle};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone)]
@@ -10,8 +10,6 @@ pub struct Imports {
     pub imports_granularity: ImportGranularity,
     /// Indent of imports.
     pub imports_indent: IndentStyle,
-    /// Item layout inside a import block.
-    pub imports_layout: ListTactic,
 }
 
 impl Default for Imports {
@@ -20,7 +18,6 @@ impl Default for Imports {
             group_imports: GroupImports::Preserve,
             imports_granularity: ImportGranularity::Preserve,
             imports_indent: IndentStyle::Block,
-            imports_layout: ListTactic::Mixed,
         }
     }
 }
@@ -34,7 +31,6 @@ impl Imports {
                 .imports_granularity
                 .unwrap_or(default.imports_granularity),
             imports_indent: opts.imports_indent.unwrap_or(default.imports_indent),
-            imports_layout: opts.imports_layout.unwrap_or(default.imports_layout),
         }
     }
 }

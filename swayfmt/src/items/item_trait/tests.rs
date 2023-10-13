@@ -92,3 +92,16 @@ intermediate_whitespace
          fn b(self);
     }   "
 );
+fmt_test_item!(trait_multiline_method
+"trait MyComplexTrait {
+    fn complex_function(
+        arg1: MyStruct<[b256; 3], u8>,
+        arg2: [MyStruct<u64, bool>; 4],
+        arg3: (str[5], bool),
+        arg4: MyOtherStruct,
+    ) -> str[6];
+}",
+intermediate_whitespace
+"trait MyComplexTrait {
+    fn complex_function(    arg1: MyStruct<[b256;  3], u8> , arg2: [MyStruct <u64, bool>; 4], arg3: ( str[5], bool ), arg4: MyOtherStruct)    -> str[6] ;
+}");
