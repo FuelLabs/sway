@@ -644,7 +644,8 @@ pub(crate) fn code_action_auto_import_enum_request(server: &ServerState, uri: &U
 }
 
 pub(crate) fn code_action_auto_import_function_request(server: &ServerState, uri: &Url) {
-    // TODO: external library, test with overflow
+    // TODO: external library, test with `overflow``
+    // Tracking issue: https://github.com/FuelLabs/sway/issues/5191
 
     // deep_fun: local library
     let range = Range {
@@ -696,6 +697,7 @@ pub(crate) fn code_action_auto_import_function_request(server: &ServerState, uri
 
 pub(crate) fn code_action_auto_import_constant_request(server: &ServerState, uri: &Url) {
     // TODO: external library, test with ZERO_B256
+    // Tracking issue: https://github.com/FuelLabs/sway/issues/5192
 
     // TEST_CONST: import a constant from a local library
     let range = Range {

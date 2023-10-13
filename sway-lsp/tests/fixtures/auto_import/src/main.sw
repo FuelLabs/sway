@@ -14,13 +14,13 @@ pub fn fun() {
     deep_fun();
     A::fun();
 
-    let a: DeepEnum = DeepEnum::Variant; // TODO: open an issue for variants
+    let a: DeepEnum = DeepEnum::Variant;
     let _ = DeepStruct::<u64> { field: 0 };
 
     let _ = TEST_CONST;
-    let _ = ZERO_B256; // TODO: fix this
+    let _ = ZERO_B256;
 
-    let _ = overflow(); // TODO: fix this
+    let _ = overflow();
     let _: Result<Identity, AuthError> = msg_sender();
 }
 
