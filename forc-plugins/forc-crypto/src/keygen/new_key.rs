@@ -1,4 +1,5 @@
-//! This file is migrated from https://github.com/FuelLabs/fuel-core/blob/master/bin/keygen/src/keygen.rs
+//! This file will be hosted here until
+//! https://github.com/FuelLabs/sway/issues/5170 is fixed
 use super::{KeyType, BLOCK_PRODUCTION, P2P};
 use anyhow::Result;
 use fuel_core_types::{
