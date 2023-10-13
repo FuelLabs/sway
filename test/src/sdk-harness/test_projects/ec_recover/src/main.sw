@@ -4,7 +4,7 @@ use std::{b512::B512, ecr::{ec_recover, ec_recover_address}};
 
 abi EcRecover {
     fn recover_address(sig_r: b256, sig_v_s: b256, hash: b256) -> Address;
-    fn recover_address_r1(sig_r: b256, sig_v_s: b256, hash: b256) -> Address;
+    fn recover_pub_key(sig_r: b256, sig_v_s: b256, hash: b256) -> (b256, b256);
 }
 
 impl EcRecover for Contract {
