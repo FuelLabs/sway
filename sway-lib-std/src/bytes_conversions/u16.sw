@@ -19,8 +19,8 @@ impl u16 {
     ///     let x: u16 = 513;
     ///     let result = x.to_le_bytes();
     /// 
-    ///     assert(result[0] == 1_u8);
-    ///     assert(result[1] == 2_u8);
+    ///     assert(result.get(0).unwrap() == 1_u8);
+    ///     assert(result.get(1).unwrap() == 2_u8);
     /// }
     /// ```
     pub fn to_le_bytes(self) -> Bytes {
