@@ -170,6 +170,16 @@ impl TypeCheckFinalization for TyTraitItem {
     }
 }
 
+impl Spanned for TyTraitItem {
+    fn span(&self) -> Span {
+        match self {
+            TyTraitItem::Fn(fn_decl) => fn_decl.span(),
+            TyTraitItem::Constant(const_decl) => const_decl.span(),
+            TyTraitItem::Type(type_decl) => type_decl.span(),
+        }
+    }
+}
+
 impl SubstTypes for TyTraitDecl {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let mut decl_mapping = DeclMapping::new();

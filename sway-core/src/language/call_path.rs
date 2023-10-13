@@ -1,13 +1,171 @@
-use std::{fmt, sync::Arc};
+use std::{
+    cmp::Ordering,
+    fmt,
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
 
-use crate::{Ident, Namespace};
+use crate::{
+    engine_threading::{
+        DebugWithEngines, DisplayWithEngines, EqWithEngines, HashWithEngines, OrdWithEngines,
+        PartialEqWithEngines,
+    },
+    Engines, Ident, Namespace,
+};
 
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{span::Span, Spanned};
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+use super::parsed::QualifiedPathRootTypes;
+
+#[derive(Clone, Debug)]
 pub struct CallPathTree {
-    pub call_path: CallPath,
+    pub qualified_call_path: QualifiedCallPath,
     pub children: Vec<CallPathTree>,
+}
+
+impl HashWithEngines for CallPathTree {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+        let CallPathTree {
+            qualified_call_path,
+            children,
+        } = self;
+        qualified_call_path.hash(state, engines);
+        children.hash(state, engines);
+    }
+}
+
+impl EqWithEngines for CallPathTree {}
+impl PartialEqWithEngines for CallPathTree {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+        let CallPathTree {
+            qualified_call_path,
+            children,
+        } = self;
+        qualified_call_path.eq(&other.qualified_call_path, engines)
+            && children.eq(&other.children, engines)
+    }
+}
+
+impl OrdWithEngines for CallPathTree {
+    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
+        let CallPathTree {
+            qualified_call_path: l_call_path,
+            children: l_children,
+        } = self;
+        let CallPathTree {
+            qualified_call_path: r_call_path,
+            children: r_children,
+        } = other;
+        l_call_path
+            .cmp(r_call_path, engines)
+            .then_with(|| l_children.cmp(r_children, engines))
+    }
+}
+
+#[derive(Clone, Debug)]
+
+pub struct QualifiedCallPath {
+    pub call_path: CallPath,
+    pub qualified_path_root: Option<Box<QualifiedPathRootTypes>>,
+}
+
+impl std::convert::From<Ident> for QualifiedCallPath {
+    fn from(other: Ident) -> Self {
+        QualifiedCallPath {
+            call_path: CallPath {
+                prefixes: vec![],
+                suffix: other,
+                is_absolute: false,
+            },
+            qualified_path_root: None,
+        }
+    }
+}
+
+impl std::convert::From<CallPath> for QualifiedCallPath {
+    fn from(other: CallPath) -> Self {
+        QualifiedCallPath {
+            call_path: other,
+            qualified_path_root: None,
+        }
+    }
+}
+
+impl QualifiedCallPath {
+    pub fn to_call_path(self, handler: &Handler) -> Result<CallPath, ErrorEmitted> {
+        if let Some(qualified_path_root) = self.qualified_path_root {
+            Err(handler.emit_err(CompileError::Internal(
+                "Unexpected qualified path.",
+                qualified_path_root.as_trait_span,
+            )))
+        } else {
+            Ok(self.call_path)
+        }
+    }
+}
+
+impl HashWithEngines for QualifiedCallPath {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+        let QualifiedCallPath {
+            call_path,
+            qualified_path_root,
+        } = self;
+        call_path.hash(state);
+        qualified_path_root.hash(state, engines);
+    }
+}
+
+impl EqWithEngines for QualifiedCallPath {}
+impl PartialEqWithEngines for QualifiedCallPath {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+        let QualifiedCallPath {
+            call_path,
+            qualified_path_root,
+        } = self;
+        call_path.eq(&other.call_path)
+            && qualified_path_root.eq(&other.qualified_path_root, engines)
+    }
+}
+
+impl OrdWithEngines for QualifiedCallPath {
+    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
+        let QualifiedCallPath {
+            call_path: l_call_path,
+            qualified_path_root: l_qualified_path_root,
+        } = self;
+        let QualifiedCallPath {
+            call_path: r_call_path,
+            qualified_path_root: r_qualified_path_root,
+        } = other;
+        l_call_path
+            .cmp(r_call_path)
+            .then_with(|| l_qualified_path_root.cmp(r_qualified_path_root, engines))
+    }
+}
+
+impl DisplayWithEngines for QualifiedCallPath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        if let Some(qualified_path_root) = &self.qualified_path_root {
+            write!(
+                f,
+                "{}::{}",
+                engines.help_out(qualified_path_root),
+                &self.call_path
+            )
+        } else {
+            write!(f, "{}", &self.call_path)
+        }
+    }
+}
+
+impl DebugWithEngines for QualifiedCallPath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(f, "{}", engines.help_out(self))
+    }
 }
 
 /// in the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
@@ -40,6 +198,24 @@ where
             write!(f, "{}::", prefix.as_str())?;
         }
         write!(f, "{}", &self.suffix)
+    }
+}
+
+impl<T: DisplayWithEngines> DisplayWithEngines for CallPath<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        for prefix in self.prefixes.iter() {
+            write!(f, "{}::", prefix.as_str())?;
+        }
+        write!(f, "{}", engines.help_out(&self.suffix))
+    }
+}
+
+impl<T: DisplayWithEngines> DebugWithEngines for CallPath<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        for prefix in self.prefixes.iter() {
+            write!(f, "{}::", prefix.as_str())?;
+        }
+        write!(f, "{}", engines.help_out(&self.suffix))
     }
 }
 

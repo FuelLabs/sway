@@ -799,7 +799,10 @@ impl TypeInfo {
             }
             .into(),
             Boolean => "bool".into(),
-            Custom { call_path, .. } => call_path.suffix.to_string(),
+            Custom {
+                qualified_call_path: call_path,
+                ..
+            } => call_path.call_path.suffix.to_string(),
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
