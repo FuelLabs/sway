@@ -18,3 +18,23 @@ fmt_test_item!(  annotated_struct
                 bar   : String,
             }"
 );
+
+fmt_test_item!(  struct_with_where_clause
+"pub struct HasWhereClause<T, A>
+where
+    T: Something,
+    A: Something,
+{
+    t: T,
+    a: A,
+}",
+            intermediate_whitespace
+"pub  struct  HasWhereClause <  T, A >
+   where
+     T: Something,
+    A :   Something,
+ {
+    t  : T,
+    a : A,
+} "
+);

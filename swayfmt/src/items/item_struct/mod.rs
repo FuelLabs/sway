@@ -1,6 +1,6 @@
 use crate::{
     comments::{rewrite_with_comments, write_comments},
-    config::user_def::FieldAlignment,
+    config::{items::ItemBraceStyle, user_def::FieldAlignment},
     formatter::{
         shape::{ExprKind, LineStyle},
         *,
@@ -40,6 +40,11 @@ impl Format for ItemStruct {
                 // Format `GenericParams`, if any
                 if let Some(generics) = &self.generics {
                     generics.format(formatted_code, formatter)?;
+                }
+                if let Some(where_clause) = &self.where_clause_opt {
+                    writeln!(formatted_code)?;
+                    where_clause.format(formatted_code, formatter)?;
+                    formatter.shape.code_line.update_where_clause(true);
                 }
 
                 let fields = self.fields.get();
@@ -137,8 +142,16 @@ impl CurlyBrace for ItemStruct {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         formatter.indent();
-        // Add opening brace to the same line
-        write!(line, " {}", Delimiter::Brace.as_open_char())?;
+        let open_brace = Delimiter::Brace.as_open_char();
+        match formatter.shape.code_line.has_where_clause {
+            true => {
+                write!(line, "{open_brace}")?;
+                formatter.shape.code_line.update_where_clause(false);
+            }
+            false => {
+                write!(line, " {open_brace}")?;
+            }
+        }
 
         Ok(())
     }

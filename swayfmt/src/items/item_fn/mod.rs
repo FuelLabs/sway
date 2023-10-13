@@ -81,21 +81,14 @@ impl CurlyBrace for ItemFn {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let brace_style = formatter.config.items.item_brace_style;
         let open_brace = Delimiter::Brace.as_open_char();
-        match brace_style {
-            ItemBraceStyle::SameLineWhere => match formatter.shape.code_line.has_where_clause {
-                true => {
-                    write!(line, "{open_brace}")?;
-                    formatter.shape.code_line.update_where_clause(false);
-                }
-                false => {
-                    write!(line, " {open_brace}")?;
-                }
-            },
-            _ => {
-                // TODO: implement PreferSameLine
-                writeln!(line, " {open_brace}")?;
+        match formatter.shape.code_line.has_where_clause {
+            true => {
+                write!(line, "{open_brace}")?;
+                formatter.shape.code_line.update_where_clause(false);
+            }
+            false => {
+                write!(line, " {open_brace}")?;
             }
         }
 

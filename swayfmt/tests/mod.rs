@@ -403,7 +403,7 @@ trait CompSciStudent: Programmer + Student {
 }
 trait TraitWithGenerics<T>
 where
-    T: String
+    T: String,
 {
     fn from(b: T) -> Self;
 }
@@ -864,7 +864,8 @@ trait Qux {
     fn is_baz_true(self) -> bool;
 }
 
-impl<A, B> Qux<A, B> for Foo where
+impl<A, B> Qux<A, B> for Foo
+where
     A: Qux,
     B: Qux,
 {
