@@ -23,7 +23,7 @@ pub struct HashArgs {
 }
 
 fn checked_read_file<P: AsRef<Path>>(path: &Option<P>) -> Option<Vec<u8>> {
-    path.as_ref().map(|p| read(p))?.ok()
+    path.as_ref().map(read)?.ok()
 }
 
 fn checked_read_stdin<R: BufRead>(content: &Option<String>, mut stdin: R) -> Option<Vec<u8>> {
