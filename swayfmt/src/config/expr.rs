@@ -38,16 +38,16 @@ pub struct Expressions {
 impl Default for Expressions {
     fn default() -> Self {
         Self {
-            expr_brace_style: ExprBraceStyle::AlwaysSameLine,
+            expr_brace_style: Default::default(),
             trailing_semicolon: true,
             space_before_colon: false,
             space_after_colon: false,
-            type_combinator_layout: TypeCombinatorLayout::Wide,
+            type_combinator_layout: Default::default(),
             spaces_around_ranges: false,
             match_block_trailing_comma: false,
-            match_arm_leading_pipe: MatchArmLeadingPipe::Never,
+            match_arm_leading_pipe: Default::default(),
             force_multiline_blocks: false,
-            fn_args_layout: ItemsLayout::Tall,
+            fn_args_layout: Default::default(),
             fn_single_line: false,
         }
     }
@@ -90,9 +90,10 @@ impl Expressions {
 
 /// Where to put the opening brace of conditional expressions (`if`, `match`, etc.).
 #[allow(clippy::enum_variant_names)]
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
 pub enum ExprBraceStyle {
     /// K&R style, Rust community default
+    #[default]
     AlwaysSameLine,
     /// Stroustrup style
     ClosingNextLine,
@@ -101,22 +102,24 @@ pub enum ExprBraceStyle {
 }
 
 /// Spacing around type combinators.
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
 pub enum TypeCombinatorLayout {
     /// No spaces around "=" and "+"
     Compressed,
     /// Spaces around " = " and " + "
+    #[default]
     Wide,
 }
 
 /////MATCH EXPR/////
 
 /// Controls how swayfmt should handle leading pipes on match arms.
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
 pub enum MatchArmLeadingPipe {
     /// Place leading pipes on all match arms
     Always,
     /// Never emit leading pipes on match arms
+    #[default]
     Never,
     /// Preserve any existing leading pipes
     Preserve,

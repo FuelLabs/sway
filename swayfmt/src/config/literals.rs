@@ -14,7 +14,7 @@ impl Default for Literals {
     fn default() -> Self {
         Self {
             format_strings: false,
-            hex_literal_case: HexLiteralCase::Preserve,
+            hex_literal_case: Default::default(),
         }
     }
 }
@@ -30,9 +30,10 @@ impl Literals {
 }
 
 /// Controls how swayfmt should handle case in hexadecimal literals.
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
 pub enum HexLiteralCase {
     /// Leave the literal as-is
+    #[default]
     Preserve,
     /// Ensure all literals use uppercase lettering
     Upper,

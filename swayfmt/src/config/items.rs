@@ -21,7 +21,7 @@ pub struct Items {
 impl Default for Items {
     fn default() -> Self {
         Self {
-            item_brace_style: ItemBraceStyle::SameLineWhere,
+            item_brace_style: Default::default(),
             blank_lines_upper_bound: DEFAULT_BLANK_LINES_UPPER_BOUND,
             blank_lines_lower_bound: DEFAULT_BLANK_LINES_LOWER_BOUND,
             empty_item_single_line: true,
@@ -48,11 +48,12 @@ impl Items {
 }
 
 /// Preference of how list-like items are displayed.
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
 pub enum ItemsLayout {
     /// Fit as much on one line as possible.
     Compressed,
     /// Items are placed horizontally if sufficient space, vertically otherwise.
+    #[default]
     Tall,
     /// Place every item on a separate line.
     Vertical,
