@@ -18,7 +18,7 @@ pub struct CallPath<T = Ident> {
     pub suffix: T,
     // If `is_absolute` is true, then this call path is an absolute path from
     // the project root namespace. If not, then it is relative to the current namespace.
-    pub(crate) is_absolute: bool,
+    pub is_absolute: bool,
 }
 
 impl std::convert::From<Ident> for CallPath {

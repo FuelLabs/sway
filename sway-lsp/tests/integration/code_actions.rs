@@ -546,6 +546,8 @@ pub(crate) fn code_action_auto_import_struct_request(server: &ServerState, uri: 
 }
 
 pub(crate) fn code_action_auto_import_enum_request(server: &ServerState, uri: &Url) {
+    // TODO: Add a test for an enum variant when https://github.com/FuelLabs/sway/issues/5188 is fixed.
+
     // AuthError: external library
     let range = Range {
         start: Position {
