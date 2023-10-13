@@ -1,4 +1,5 @@
 //! Configuration options related to item formatting.
+
 use crate::{
     config::user_opts::ItemsOptions,
     constants::{DEFAULT_BLANK_LINES_LOWER_BOUND, DEFAULT_BLANK_LINES_UPPER_BOUND},
@@ -58,7 +59,7 @@ pub enum ItemsLayout {
 }
 
 /// Where to put the opening brace of items (`fn`, `impl`, etc.).
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
 pub enum ItemBraceStyle {
     /// Put the opening brace on the next line.
     AlwaysNextLine,
@@ -66,5 +67,6 @@ pub enum ItemBraceStyle {
     PreferSameLine,
     /// Prefer the same line except where there is a where-clause, in which
     /// case force the brace to be put on the next line.
+    #[default]
     SameLineWhere,
 }

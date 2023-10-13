@@ -93,10 +93,6 @@ impl CurlyBrace for ItemImpl {
         let brace_style = formatter.config.items.item_brace_style;
         let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
-            ItemBraceStyle::AlwaysNextLine => {
-                // Add opening brace to the next line.
-                writeln!(line, "\n{open_brace}")?;
-            }
             ItemBraceStyle::SameLineWhere => match formatter.shape.code_line.has_where_clause {
                 true => {
                     write!(line, "{open_brace}")?;

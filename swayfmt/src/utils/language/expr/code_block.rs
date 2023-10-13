@@ -1,6 +1,5 @@
 use crate::{
     comments::write_comments,
-    config::items::ItemBraceStyle,
     formatter::{shape::LineStyle, *},
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
@@ -66,18 +65,8 @@ impl CurlyBrace for CodeBlockContents {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         formatter.indent();
-
-        let brace_style = formatter.config.items.item_brace_style;
-        match brace_style {
-            ItemBraceStyle::AlwaysNextLine => {
-                // Add opening brace to the next line.
-                write!(line, "\n{}", Delimiter::Brace.as_open_char())?;
-            }
-            _ => {
-                // Add opening brace to the same line
-                write!(line, "{}", Delimiter::Brace.as_open_char())?;
-            }
-        }
+        // Add opening brace to the same line
+        write!(line, "{}", Delimiter::Brace.as_open_char())?;
 
         Ok(())
     }
