@@ -1,0 +1,13 @@
+[[package]]
+name = "associated_type_fully_qualified"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "core"
+source = "path+from-root-6CFB706777B29A95"
+
+[[package]]
+name = "std"
+source = "path+from-root-6CFB706777B29A95"
+dependencies = ["core"]

@@ -1,12 +1,12 @@
 use std::collections::{HashMap, VecDeque};
 
 use crate::{
-    decl_engine::{DeclEngineInsert, DeclRefConstant, DeclRefFunction},
+    decl_engine::{DeclEngineInsert, DeclRefFunction},
     engine_threading::*,
     language::{
         parsed::TreeType,
-        ty::{self, TyDecl},
-        CallPath, Purity, Visibility,
+        ty::{self, TyDecl, TyTraitItem},
+        CallPath, Purity, QualifiedCallPath, Visibility,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf, Path, TryInsertingTraitImplOnFailure},
     semantic_analysis::{
@@ -369,12 +369,11 @@ impl<'a> TypeCheckContext<'a> {
         type_info_prefix: Option<&Path>,
         mod_path: &Path,
     ) -> Result<TypeId, ErrorEmitted> {
-        let decl_engine = self.engines.de();
         let type_engine = self.engines.te();
         let module_path = type_info_prefix.unwrap_or(mod_path);
         let type_id = match type_engine.get(type_id) {
             TypeInfo::Custom {
-                call_path,
+                qualified_call_path,
                 type_arguments,
                 root_type_id,
             } => {
@@ -385,123 +384,28 @@ impl<'a> TypeCheckContext<'a> {
                             handler,
                             self.engines,
                             root_type_id,
-                            &call_path,
-                            self.self_type,
+                            None,
+                            &qualified_call_path.clone().to_call_path(handler)?,
+                            self.self_type(),
                         )
                         .ok()
                 } else {
-                    self.resolve_call_path_with_visibility_check_and_modpath(
+                    self.resolve_qualified_call_path_with_visibility_check_and_modpath(
                         handler,
                         module_path,
-                        &call_path,
+                        &qualified_call_path,
                     )
                     .ok()
                 };
-                match type_decl_opt {
-                    Some(ty::TyDecl::StructDecl(ty::StructDecl {
-                        decl_id: original_id,
-                        ..
-                    })) => {
-                        // get the copy from the declaration engine
-                        let mut new_copy = decl_engine.get_struct(&original_id);
-
-                        // monomorphize the copy, in place
-                        self.monomorphize_with_modpath(
-                            handler,
-                            &mut new_copy,
-                            &mut type_arguments.unwrap_or_default(),
-                            enforce_type_arguments,
-                            span,
-                            mod_path,
-                        )?;
-
-                        // insert the new copy in the decl engine
-                        let new_decl_ref = decl_engine.insert(new_copy);
-
-                        // create the type id from the copy
-                        let type_id =
-                            type_engine.insert(self.engines, TypeInfo::Struct(new_decl_ref));
-
-                        // take any trait methods that apply to this type and copy them to the new type
-                        self.insert_trait_implementation_for_type(type_id);
-
-                        // return the id
-                        type_id
-                    }
-                    Some(ty::TyDecl::EnumDecl(ty::EnumDecl {
-                        decl_id: original_id,
-                        ..
-                    })) => {
-                        // get the copy from the declaration engine
-                        let mut new_copy = decl_engine.get_enum(&original_id);
-
-                        // monomorphize the copy, in place
-                        self.monomorphize_with_modpath(
-                            handler,
-                            &mut new_copy,
-                            &mut type_arguments.unwrap_or_default(),
-                            enforce_type_arguments,
-                            span,
-                            mod_path,
-                        )?;
-
-                        // insert the new copy in the decl engine
-                        let new_decl_ref = decl_engine.insert(new_copy);
-
-                        // create the type id from the copy
-                        let type_id =
-                            type_engine.insert(self.engines, TypeInfo::Enum(new_decl_ref));
-
-                        // take any trait methods that apply to this type and copy them to the new type
-                        self.insert_trait_implementation_for_type(type_id);
-
-                        // return the id
-                        type_id
-                    }
-                    Some(ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl {
-                        decl_id: original_id,
-                        ..
-                    })) => {
-                        let new_copy = decl_engine.get_type_alias(&original_id);
-
-                        // TODO: monomorphize the copy, in place, when generic type aliases are
-                        // supported
-
-                        let type_id = new_copy.create_type_id(self.engines);
-                        self.insert_trait_implementation_for_type(type_id);
-
-                        type_id
-                    }
-                    Some(ty::TyDecl::GenericTypeForFunctionScope(
-                        ty::GenericTypeForFunctionScope { type_id, .. },
-                    )) => type_id,
-                    Some(ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl {
-                        decl_id,
-                        name,
-                        decl_span: _,
-                    })) => {
-                        let decl_type = decl_engine.get_type(&decl_id);
-
-                        if let Some(ty) = decl_type.ty {
-                            ty.type_id
-                        } else {
-                            type_engine.insert(
-                                self.engines,
-                                TypeInfo::TraitType {
-                                    name,
-                                    trait_type_id: decl_type.implementing_type,
-                                },
-                            )
-                        }
-                    }
-                    _ => {
-                        let err = handler.emit_err(CompileError::UnknownTypeName {
-                            name: call_path.to_string(),
-                            span: call_path.span(),
-                        });
-                        type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err))
-                    }
-                }
+                self.type_decl_opt_to_type_id(
+                    handler,
+                    type_decl_opt,
+                    qualified_call_path,
+                    span,
+                    enforce_type_arguments,
+                    mod_path,
+                    type_arguments,
+                )?
             }
             TypeInfo::Array(mut elem_ty, n) => {
                 elem_ty.type_id = self
@@ -561,26 +465,24 @@ impl<'a> TypeCheckContext<'a> {
                 name,
                 trait_type_id,
             } => {
-                for trait_item in self
+                let item_ref = self
                     .namespace
+                    .root
                     .implemented_traits
-                    .get_items_for_type(self.engines, trait_type_id)
-                {
-                    match trait_item {
-                        ty::TyTraitItem::Fn(_) => {}
-                        ty::TyTraitItem::Constant(_) => {}
-                        ty::TyTraitItem::Type(type_ref) => {
-                            let type_decl = self.engines.de().get_type(type_ref.id());
-                            if type_decl.name.as_str() == name.as_str() {
-                                if let Some(ty) = type_decl.ty {
-                                    return Ok(ty.type_id);
-                                }
-                            }
-                        }
+                    .get_trait_item_for_type(handler, self.engines, &name, trait_type_id, None)?;
+                if let TyTraitItem::Type(type_ref) = item_ref {
+                    let type_decl = self.engines.de().get_type(type_ref.id());
+                    if let Some(ty) = type_decl.ty {
+                        ty.type_id
+                    } else {
+                        type_id
                     }
+                } else {
+                    return Err(handler.emit_err(CompileError::Internal(
+                        "Expecting associated type",
+                        item_ref.span(),
+                    )));
                 }
-
-                type_id
             }
             _ => type_id,
         };
@@ -700,6 +602,204 @@ impl<'a> TypeCheckContext<'a> {
         Ok(decl)
     }
 
+    pub(crate) fn resolve_qualified_call_path_with_visibility_check(
+        &mut self,
+        handler: &Handler,
+        qualified_call_path: &QualifiedCallPath,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        self.resolve_qualified_call_path_with_visibility_check_and_modpath(
+            handler,
+            &self.namespace.mod_path.clone(),
+            qualified_call_path,
+        )
+    }
+
+    pub(crate) fn resolve_qualified_call_path_with_visibility_check_and_modpath(
+        &mut self,
+        handler: &Handler,
+        mod_path: &Path,
+        qualified_call_path: &QualifiedCallPath,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        let type_engine = self.engines().te();
+        if let Some(qualified_path_root) = qualified_call_path.clone().qualified_path_root {
+            let root_type_id = match &type_engine.get(qualified_path_root.ty.type_id) {
+                TypeInfo::Custom {
+                    qualified_call_path: call_path,
+                    type_arguments,
+                    ..
+                } => {
+                    let type_decl = self.resolve_call_path_with_visibility_check_and_modpath(
+                        handler,
+                        mod_path,
+                        &call_path.clone().to_call_path(handler)?,
+                    )?;
+                    self.type_decl_opt_to_type_id(
+                        handler,
+                        Some(type_decl),
+                        call_path.clone(),
+                        &qualified_path_root.ty.span(),
+                        EnforceTypeArguments::No,
+                        mod_path,
+                        type_arguments.clone(),
+                    )?
+                }
+                _ => qualified_path_root.ty.type_id,
+            };
+
+            let as_trait_opt = match &type_engine.get(qualified_path_root.as_trait) {
+                TypeInfo::Custom {
+                    qualified_call_path: call_path,
+                    ..
+                } => Some(
+                    call_path
+                        .clone()
+                        .to_call_path(handler)?
+                        .to_fullpath(self.namespace),
+                ),
+                _ => None,
+            };
+
+            self.namespace.root.resolve_call_path_and_root_type_id(
+                handler,
+                self.engines,
+                root_type_id,
+                as_trait_opt,
+                &qualified_call_path.call_path,
+                self.self_type(),
+            )
+        } else {
+            self.resolve_call_path_with_visibility_check_and_modpath(
+                handler,
+                mod_path,
+                &qualified_call_path.call_path,
+            )
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn type_decl_opt_to_type_id(
+        &mut self,
+        handler: &Handler,
+        type_decl_opt: Option<TyDecl>,
+        call_path: QualifiedCallPath,
+        span: &Span,
+        enforce_type_arguments: EnforceTypeArguments,
+        mod_path: &Path,
+        type_arguments: Option<Vec<TypeArgument>>,
+    ) -> Result<TypeId, ErrorEmitted> {
+        let decl_engine = self.engines.de();
+        let type_engine = self.engines.te();
+        Ok(match type_decl_opt {
+            Some(ty::TyDecl::StructDecl(ty::StructDecl {
+                decl_id: original_id,
+                ..
+            })) => {
+                // get the copy from the declaration engine
+                let mut new_copy = decl_engine.get_struct(&original_id);
+
+                // monomorphize the copy, in place
+                self.monomorphize_with_modpath(
+                    handler,
+                    &mut new_copy,
+                    &mut type_arguments.unwrap_or_default(),
+                    enforce_type_arguments,
+                    span,
+                    mod_path,
+                )?;
+
+                // insert the new copy in the decl engine
+                let new_decl_ref = decl_engine.insert(new_copy);
+
+                // create the type id from the copy
+                let type_id = type_engine.insert(self.engines, TypeInfo::Struct(new_decl_ref));
+
+                // take any trait methods that apply to this type and copy them to the new type
+                self.insert_trait_implementation_for_type(type_id);
+
+                // return the id
+                type_id
+            }
+            Some(ty::TyDecl::EnumDecl(ty::EnumDecl {
+                decl_id: original_id,
+                ..
+            })) => {
+                // get the copy from the declaration engine
+                let mut new_copy = decl_engine.get_enum(&original_id);
+
+                // monomorphize the copy, in place
+                self.monomorphize_with_modpath(
+                    handler,
+                    &mut new_copy,
+                    &mut type_arguments.unwrap_or_default(),
+                    enforce_type_arguments,
+                    span,
+                    mod_path,
+                )?;
+
+                // insert the new copy in the decl engine
+                let new_decl_ref = decl_engine.insert(new_copy);
+
+                // create the type id from the copy
+                let type_id = type_engine.insert(self.engines, TypeInfo::Enum(new_decl_ref));
+
+                // take any trait methods that apply to this type and copy them to the new type
+                self.insert_trait_implementation_for_type(type_id);
+
+                // return the id
+                type_id
+            }
+            Some(ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl {
+                decl_id: original_id,
+                ..
+            })) => {
+                let new_copy = decl_engine.get_type_alias(&original_id);
+
+                // TODO: monomorphize the copy, in place, when generic type aliases are
+                // supported
+
+                let type_id = new_copy.create_type_id(self.engines);
+                self.insert_trait_implementation_for_type(type_id);
+
+                type_id
+            }
+            Some(ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
+                type_id,
+                ..
+            })) => type_id,
+            Some(ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl {
+                decl_id,
+                name,
+                decl_span: _,
+            })) => {
+                let decl_type = decl_engine.get_type(&decl_id);
+
+                if let Some(ty) = decl_type.ty {
+                    ty.type_id
+                } else if let Some(implementing_type) = self.self_type() {
+                    type_engine.insert(
+                        self.engines,
+                        TypeInfo::TraitType {
+                            name,
+                            trait_type_id: implementing_type,
+                        },
+                    )
+                } else {
+                    return Err(handler.emit_err(CompileError::Internal(
+                        "Self type not provided.",
+                        span.clone(),
+                    )));
+                }
+            }
+            _ => {
+                let err = handler.emit_err(CompileError::UnknownTypeName {
+                    name: call_path.call_path.to_string(),
+                    span: call_path.call_path.span(),
+                });
+                type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err))
+            }
+        })
+    }
+
     /// Given a name and a type (plus a `self_type` to potentially
     /// resolve it), find items matching in the namespace.
     pub(crate) fn find_items_for_type(
@@ -793,7 +893,7 @@ impl<'a> TypeCheckContext<'a> {
         method_name: &Ident,
         annotation_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
-        as_trait: Option<TypeInfo>,
+        as_trait: Option<TypeId>,
         try_inserting_trait_impl_on_failure: TryInsertingTraitImplOnFailure,
     ) -> Result<DeclRefFunction, ErrorEmitted> {
         let decl_engine = self.engines.de();
@@ -850,54 +950,60 @@ impl<'a> TypeCheckContext<'a> {
                         method.implementing_type.clone()
                     {
                         let trait_decl = decl_engine.get_impl_trait(&impl_trait.decl_id);
-                        if let Some(TypeInfo::Custom {
-                            call_path,
-                            type_arguments,
-                            root_type_id: _,
-                        }) = as_trait.clone()
-                        {
-                            qualified_call_path = Some(call_path.clone());
-                            // When `<S as Trait<T>>::method()` is used we only add methods to `trait_methods` that
-                            // originate from the qualified trait.
-                            if trait_decl.trait_name == call_path {
-                                let mut params_equal = true;
-                                if let Some(params) = type_arguments {
-                                    if params.len() != trait_decl.trait_type_arguments.len() {
-                                        params_equal = false;
-                                    } else {
-                                        for (p1, p2) in params
-                                            .iter()
-                                            .zip(trait_decl.trait_type_arguments.clone())
-                                        {
-                                            let p1_type_id = self.resolve_type_without_self(
-                                                handler, p1.type_id, &p1.span, None,
-                                            )?;
-                                            let p2_type_id = self.resolve_type_without_self(
-                                                handler, p2.type_id, &p2.span, None,
-                                            )?;
-                                            if !eq_check.check(p1_type_id, p2_type_id) {
-                                                params_equal = false;
-                                                break;
+                        let mut skip_insert = false;
+                        if let Some(as_trait) = as_trait {
+                            if let TypeInfo::Custom {
+                                qualified_call_path: call_path,
+                                type_arguments,
+                                root_type_id: _,
+                            } = type_engine.get(as_trait)
+                            {
+                                qualified_call_path = Some(call_path.clone());
+                                // When `<S as Trait<T>>::method()` is used we only add methods to `trait_methods` that
+                                // originate from the qualified trait.
+                                if trait_decl.trait_name == call_path.to_call_path(handler)? {
+                                    let mut params_equal = true;
+                                    if let Some(params) = type_arguments {
+                                        if params.len() != trait_decl.trait_type_arguments.len() {
+                                            params_equal = false;
+                                        } else {
+                                            for (p1, p2) in params
+                                                .iter()
+                                                .zip(trait_decl.trait_type_arguments.clone())
+                                            {
+                                                let p1_type_id = self.resolve_type_without_self(
+                                                    handler, p1.type_id, &p1.span, None,
+                                                )?;
+                                                let p2_type_id = self.resolve_type_without_self(
+                                                    handler, p2.type_id, &p2.span, None,
+                                                )?;
+                                                if !eq_check.check(p1_type_id, p2_type_id) {
+                                                    params_equal = false;
+                                                    break;
+                                                }
                                             }
                                         }
                                     }
+                                    if params_equal {
+                                        trait_methods.insert(
+                                            (
+                                                trait_decl.trait_name.clone(),
+                                                trait_decl
+                                                    .trait_type_arguments
+                                                    .iter()
+                                                    .cloned()
+                                                    .map(|a| self.engines.help_out(a))
+                                                    .collect::<Vec<_>>(),
+                                            ),
+                                            method_ref.clone(),
+                                        );
+                                    }
                                 }
-                                if params_equal {
-                                    trait_methods.insert(
-                                        (
-                                            trait_decl.trait_name,
-                                            trait_decl
-                                                .trait_type_arguments
-                                                .iter()
-                                                .cloned()
-                                                .map(|a| self.engines.help_out(a))
-                                                .collect::<Vec<_>>(),
-                                        ),
-                                        method_ref.clone(),
-                                    );
-                                }
+                                skip_insert = true;
                             }
-                        } else {
+                        }
+
+                        if !skip_insert {
                             trait_methods.insert(
                                 (
                                     trait_decl.trait_name,
@@ -953,7 +1059,8 @@ impl<'a> TypeCheckContext<'a> {
                         trait_strings.sort();
                         return Err(handler.emit_err(
                             CompileError::MultipleApplicableItemsInScope {
-                                method_name: method_name.as_str().to_string(),
+                                item_name: method_name.as_str().to_string(),
+                                item_kind: "function".to_string(),
                                 type_name: self.engines.help_out(type_id).to_string(),
                                 as_traits: trait_strings,
                                 span: method_name.span(),
@@ -1004,7 +1111,11 @@ impl<'a> TypeCheckContext<'a> {
                 );
             }
             let type_name = if let Some(call_path) = qualified_call_path {
-                format!("{} as {}", self.engines.help_out(type_id), call_path)
+                format!(
+                    "{} as {}",
+                    self.engines.help_out(type_id),
+                    call_path.call_path
+                )
             } else {
                 self.engines.help_out(type_id).to_string()
             };
@@ -1014,34 +1125,6 @@ impl<'a> TypeCheckContext<'a> {
                 span: method_name.span(),
             }))
         }
-    }
-
-    /// Given a name and a type (plus a `self_type` to potentially
-    /// resolve it), find that method in the namespace. Requires `args_buf`
-    /// because of some special casing for the standard library where we pull
-    /// the type from the arguments buffer.
-    ///
-    /// This function will generate a missing method error if the method is not
-    /// found.
-    pub(crate) fn find_constant_for_type(
-        &mut self,
-        handler: &Handler,
-        type_id: TypeId,
-        item_name: &Ident,
-    ) -> Result<Option<DeclRefConstant>, ErrorEmitted> {
-        let matching_item_decl_refs =
-            self.find_items_for_type(handler, type_id, &Vec::<Ident>::new(), item_name)?;
-
-        let matching_constant_decl_refs = matching_item_decl_refs
-            .into_iter()
-            .flat_map(|item| match item {
-                ty::TyTraitItem::Fn(_decl_ref) => None,
-                ty::TyTraitItem::Constant(decl_ref) => Some(decl_ref),
-                ty::TyTraitItem::Type(_) => None,
-            })
-            .collect::<Vec<_>>();
-
-        Ok(matching_constant_decl_refs.first().cloned())
     }
 
     /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.

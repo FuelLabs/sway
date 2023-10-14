@@ -699,15 +699,19 @@ pub enum CompileError {
     ConfigurableInLibrary { span: Span },
     #[error("Multiple applicable items in scope. {}", {
         let mut candidates = "".to_string();
+        let mut as_traits = as_traits.clone();
+        // Make order deterministic
+        as_traits.sort_by_key(|a| a.to_lowercase());
         for (index, as_trait) in as_traits.iter().enumerate() {
-            candidates = format!("{candidates}\n  Disambiguate the associated function for candidate #{index}\n    <{type_name} as {as_trait}>::{method_name}(");
+            candidates = format!("{candidates}\n  Disambiguate the associated {item_kind} for candidate #{index}\n    <{type_name} as {as_trait}>::{item_name}");
         }
         candidates
     })]
     MultipleApplicableItemsInScope {
         span: Span,
         type_name: String,
-        method_name: String,
+        item_name: String,
+        item_kind: String,
         as_traits: Vec<String>,
     },
     #[error("Provided generic type is not of type str.")]
