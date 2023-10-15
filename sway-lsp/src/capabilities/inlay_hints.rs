@@ -52,8 +52,10 @@ pub fn inlay_hints(
                 TypedAstToken::TypedDeclaration(TyDecl::VariableDecl(var_decl)) => {
                     var_decl::hints(var_decl, ident.range, &config, &engines)
                 }
-                TypedAstToken::FunctionApplicationArgument(exp) => {
-                    params::hints(exp, ident.range, &config, &engines)
+                TypedAstToken::TypedFunctionApplicationArgument((base_ident, exp)) => {
+                    eprintln!("inlay_hints: TypedFunctionApplicationArgument: {:#?}", exp);
+                    eprintln!("range: {:#?}", ident.range);
+                    params::hints(base_ident, ident.range, &config, &engines)
                 }
                 _ => None,
             })
@@ -65,9 +67,16 @@ pub fn inlay_hints(
 
 fn inlay_hint(render_colons: bool, inlay_hint: InlayHint) -> lsp_types::InlayHint {
     lsp_types::InlayHint {
-        position: inlay_hint.range.end,
-        label: lsp_types::InlayHintLabel::String(if render_colons {
-            format!(": {}", inlay_hint.label)
+        position: match inlay_hint.kind {
+            InlayKind::TypeHint => inlay_hint.range.end,
+            InlayKind::Parameter => inlay_hint.range.start,
+        },
+        label: lsp_types::InlayHintLabel::String(
+            if render_colons {
+                match inlay_hint.kind { 
+                    InlayKind::TypeHint => format!(": {}", inlay_hint.label),
+                    InlayKind::Parameter => format!("{}:", inlay_hint.label),
+                }
         } else {
             inlay_hint.label
         }),
@@ -77,10 +86,18 @@ fn inlay_hint(render_colons: bool, inlay_hint: InlayHint) -> lsp_types::InlayHin
         },
         tooltip: None,
         padding_left: Some(!render_colons),
-        padding_right: Some(false),
+        padding_right: Some(true),
         text_edits: None,
         data: None,
     }
+}
+
+fn test() {
+    let y = my_func_addr(400, false);
+}
+
+fn my_func_addr(x: u32, b: bool) {
+    x + 1;
 }
 
 mod var_decl {
@@ -113,6 +130,7 @@ mod var_decl {
 
 mod params {
     use sway_core::{Engines, language::ty::{TyFunctionParameter, TyExpression}};
+    use sway_types::Ident;
     use super::*;
 
     // find an AmbiguousPathExpression ast token
@@ -121,22 +139,17 @@ mod params {
     // get the type_id of the typed version of the argument
 
     pub fn hints(
-        exp: &TyExpression,
+        name: &Ident,
         range: Range,
         config: &InlayHintsConfig,
         engines: &Engines,
     ) -> Option<lsp_types::InlayHint> {
-        match engines.te().get(exp.return_type) {
-            TypeInfo::Unknown | TypeInfo::UnknownGeneric { .. } => None,
-            _ => {
-                let label = engines.help_out(&exp.return_type).to_string();
-                let inlay_hint = InlayHint {
-                    range,
-                    kind: InlayKind::Parameter,
-                    label,
-                };
-                Some(self::inlay_hint(config.render_colons, inlay_hint))
-            }
-        }
+        let label = name.as_str().to_string();
+        let inlay_hint = InlayHint {
+            range,
+            kind: InlayKind::Parameter,
+            label,
+        };
+        Some(self::inlay_hint(config.render_colons, inlay_hint))
     }
 }

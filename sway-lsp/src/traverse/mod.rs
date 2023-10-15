@@ -22,7 +22,11 @@ impl<'a> ParseContext<'a> {
     }
 
     pub fn ident(&self, ident: &sway_types::Ident) -> TokenIdent {
-        TokenIdent::new(ident, self.engines.se())
+        let t = TokenIdent::new(ident, self.engines.se());
+        if t.name == "false" {
+            eprintln!("token ident {:#?}", &t);
+        }
+        t
     }
 }
 

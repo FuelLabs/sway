@@ -166,6 +166,7 @@ impl Parse for UseStatement {
 
 impl Parse for Expression {
     fn parse(&self, ctx: &ParseContext) {
+        eprintln!("Expression::parse {:#?}", self);
         match &self.kind {
             ExpressionKind::Error(part_spans, _) => {
                 part_spans.par_iter().for_each(|span| {
@@ -420,6 +421,7 @@ impl Parse for DelineatedPathExpression {
 
 impl Parse for AmbiguousPathExpression {
     fn parse(&self, ctx: &ParseContext) {
+        eprintln!("AmbiguousPathExpression::parse {:#?}", self);
         let AmbiguousPathExpression {
             call_path_binding,
             args,

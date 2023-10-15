@@ -10,7 +10,7 @@ use sway_core::{
             StructExpressionField, StructField, StructScrutineeField, Supertrait, TraitFn,
             UseStatement,
         },
-        ty,
+        ty, CallPath,
     },
     transform::Attribute,
     type_system::{TypeId, TypeInfo, TypeParameter},
@@ -80,7 +80,8 @@ pub enum TypedAstToken {
     TypedIncludeStatement,
     TypedUseStatement(ty::TyUseStatement),
     Ident(Ident),
-    FunctionApplicationArgument(ty::TyExpression),
+
+    TypedFunctionApplicationArgument((Ident, ty::TyExpression)),
 }
 
 /// These variants are used to represent the semantic type of the [Token].
