@@ -58,12 +58,12 @@ pub(crate) fn struct_instantiation(
             }));
         }
         (_, true) => TypeInfo::Custom {
-            call_path: suffix.into(),
+            qualified_call_path: suffix.into(),
             type_arguments: None,
             root_type_id: None,
         },
         (_, false) => TypeInfo::Custom {
-            call_path: suffix.into(),
+            qualified_call_path: suffix.into(),
             type_arguments: Some(type_arguments),
             root_type_id: None,
         },

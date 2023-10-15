@@ -353,7 +353,7 @@ fn item_struct_to_struct_declaration(
         .collect::<Result<Vec<_>, _>>()?;
 
     if fields.iter().any(
-        |field| matches!(&engines.te().get(field.type_argument.type_id), TypeInfo::Custom { call_path, ..} if call_path.suffix == item_struct.name),
+        |field| matches!(&engines.te().get(field.type_argument.type_id), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_struct.name),
     ) {
         errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
@@ -422,7 +422,7 @@ fn item_enum_to_enum_declaration(
         .collect::<Result<Vec<_>, _>>()?;
 
     if variants.iter().any(|variant| {
-       matches!(&engines.te().get(variant.type_argument.type_id), TypeInfo::Custom { call_path, ..} if call_path.suffix == item_enum.name)
+       matches!(&engines.te().get(variant.type_argument.type_id), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_enum.name)
     }) {
         errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
@@ -704,7 +704,7 @@ fn item_impl_to_declaration(
                 path_type_to_call_path_and_type_arguments(context, handler, engines, path_type)?;
             let impl_trait = ImplTrait {
                 impl_type_parameters,
-                trait_name,
+                trait_name: trait_name.to_call_path(handler)?,
                 trait_type_arguments,
                 implementing_for,
                 items,
@@ -733,14 +733,20 @@ fn path_type_to_call_path_and_type_arguments(
     handler: &Handler,
     engines: &Engines,
     path_type: PathType,
-) -> Result<(CallPath, Vec<TypeArgument>), ErrorEmitted> {
+) -> Result<(QualifiedCallPath, Vec<TypeArgument>), ErrorEmitted> {
     let root_opt = path_type.root_opt.clone();
     let (prefixes, suffix) = path_type_to_prefixes_and_suffix(context, handler, path_type)?;
 
-    let call_path = CallPath {
-        prefixes,
-        suffix: suffix.name,
-        is_absolute: path_root_opt_to_bool(context, handler, root_opt)?,
+    let (is_absolute, qualified_path) =
+        path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
+
+    let qualified_call_path = QualifiedCallPath {
+        call_path: CallPath {
+            prefixes,
+            suffix: suffix.name,
+            is_absolute,
+        },
+        qualified_path_root: qualified_path.map(Box::new),
     };
 
     let ty_args = match suffix.generics_opt {
@@ -750,7 +756,7 @@ fn path_type_to_call_path_and_type_arguments(
         None => vec![],
     };
 
-    Ok((call_path, ty_args))
+    Ok((qualified_call_path, ty_args))
 }
 
 fn item_abi_to_abi_declaration(
@@ -1115,7 +1121,7 @@ fn generic_params_opt_to_type_parameters_with_parent(
                 let custom_type = type_engine.insert(
                     engines,
                     TypeInfo::Custom {
-                        call_path: ident.clone().into(),
+                        qualified_call_path: ident.clone().into(),
                         type_arguments: None,
                         root_type_id: None,
                     },
@@ -1388,6 +1394,7 @@ fn path_type_to_prefixes_and_suffix(
 fn ty_to_call_path_tree(
     context: &mut Context,
     handler: &Handler,
+    engines: &Engines,
     ty: Ty,
 ) -> Result<Option<CallPathTree>, ErrorEmitted> {
     if let Ty::Path(path_type) = ty {
@@ -1399,20 +1406,25 @@ fn ty_to_call_path_tree(
                 .parameters
                 .inner
                 .into_iter()
-                .filter_map(|ty| ty_to_call_path_tree(context, handler, ty).transpose())
+                .filter_map(|ty| ty_to_call_path_tree(context, handler, engines, ty).transpose())
                 .collect::<Result<Vec<_>, _>>()?
         } else {
             vec![]
         };
 
-        let call_path = CallPath {
-            prefixes,
-            suffix: suffix.name,
-            is_absolute: path_root_opt_to_bool(context, handler, root_opt)?,
+        let (is_absolute, qualified_path) =
+            path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
+        let call_path = QualifiedCallPath {
+            call_path: CallPath {
+                prefixes,
+                suffix: suffix.name,
+                is_absolute,
+            },
+            qualified_path_root: qualified_path.map(Box::new),
         };
 
         Ok(Some(CallPathTree {
-            call_path,
+            qualified_call_path: call_path,
             children,
         }))
     } else {
@@ -1428,7 +1440,7 @@ fn ty_to_type_argument(
 ) -> Result<TypeArgument, ErrorEmitted> {
     let type_engine = engines.te();
     let span = ty.span();
-    let call_path_tree = ty_to_call_path_tree(context, handler, ty.clone())?;
+    let call_path_tree = ty_to_call_path_tree(context, handler, engines, ty.clone())?;
     let initial_type_id =
         type_engine.insert(engines, ty_to_type_info(context, handler, engines, ty)?);
 
@@ -1495,13 +1507,14 @@ fn traits_to_trait_constraints(
             path_type_to_call_path_and_type_arguments(context, handler, engines, suffix)?;
         parsed_traits.push(supertrait);
     }
-    Ok(parsed_traits
-        .into_iter()
-        .map(|(trait_name, type_arguments)| TraitConstraint {
-            trait_name,
+    let mut trait_constraints = vec![];
+    for (trait_name, type_arguments) in parsed_traits {
+        trait_constraints.push(TraitConstraint {
+            trait_name: trait_name.to_call_path(handler)?,
             type_arguments,
         })
-        .collect())
+    }
+    Ok(trait_constraints)
 }
 
 fn traits_to_supertraits(
@@ -2650,7 +2663,7 @@ fn path_expr_to_expression(
         }
     } else {
         let call_path_binding =
-            path_expr_to_call_path_binding(context, handler, engines, path_expr)?;
+            path_expr_to_qualified_call_path_binding(context, handler, engines, path_expr)?;
         Expression {
             kind: ExpressionKind::DelineatedPath(Box::new(DelineatedPathExpression {
                 call_path_binding,
@@ -2820,12 +2833,10 @@ fn path_root_opt_to_bool_and_qualified_path_root(
             if let Some((_, path_type)) = as_trait {
                 Some(QualifiedPathRootTypes {
                     ty: ty_to_type_argument(context, handler, engines, *ty)?,
-                    as_trait: path_type_to_type_info(
-                        context,
-                        handler,
+                    as_trait: engines.te().insert(
                         engines,
-                        *path_type.clone(),
-                    )?,
+                        path_type_to_type_info(context, handler, engines, *path_type.clone())?,
+                    ),
                     as_trait_span: path_type.span(),
                 })
             } else {
@@ -2964,19 +2975,20 @@ fn literal_to_literal(
 /// Like [path_expr_to_call_path], but instead can potentially return type arguments.
 /// Use this when converting a call path that could potentially include type arguments, i.e. the
 /// turbofish.
-fn path_expr_to_call_path_binding(
+fn path_expr_to_qualified_call_path_binding(
     context: &mut Context,
     handler: &Handler,
     engines: &Engines,
     path_expr: PathExpr,
-) -> Result<TypeBinding<CallPath>, ErrorEmitted> {
+) -> Result<TypeBinding<QualifiedCallPath>, ErrorEmitted> {
     let PathExpr {
         root_opt,
         prefix,
         mut suffix,
         ..
     } = path_expr;
-    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
+    let (is_absolute, qualified_path_root) =
+        path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
     let (prefixes, suffix, span, regular_type_arguments, prefix_type_arguments) = match suffix.pop()
     {
         Some((_, call_path_suffix)) => {
@@ -3034,11 +3046,46 @@ fn path_expr_to_call_path_binding(
     };
 
     Ok(TypeBinding {
-        inner: CallPath {
-            prefixes,
-            suffix,
-            is_absolute,
+        inner: QualifiedCallPath {
+            call_path: CallPath {
+                prefixes,
+                suffix,
+                is_absolute,
+            },
+            qualified_path_root: qualified_path_root.map(Box::new),
         },
+        type_arguments,
+        span,
+    })
+}
+
+/// Like [path_expr_to_call_path], but instead can potentially return type arguments.
+/// Use this when converting a call path that could potentially include type arguments, i.e. the
+/// turbofish.
+fn path_expr_to_call_path_binding(
+    context: &mut Context,
+    handler: &Handler,
+    engines: &Engines,
+    path_expr: PathExpr,
+) -> Result<TypeBinding<CallPath>, ErrorEmitted> {
+    let TypeBinding {
+        inner: QualifiedCallPath {
+            call_path,
+            qualified_path_root,
+        },
+        type_arguments,
+        span,
+    } = path_expr_to_qualified_call_path_binding(context, handler, engines, path_expr)?;
+
+    if let Some(qualified_path_root) = qualified_path_root {
+        let error = ConvertParseTreeError::QualifiedPathRootsNotImplemented {
+            span: qualified_path_root.as_trait_span,
+        };
+        return Err(handler.emit_err(error.into()));
+    }
+
+    Ok(TypeBinding {
+        inner: call_path,
         type_arguments,
         span,
     })
@@ -3727,7 +3774,7 @@ fn ty_to_type_parameter(
     let custom_type = type_engine.insert(
         engines,
         TypeInfo::Custom {
-            call_path: name_ident.clone().into(),
+            qualified_call_path: name_ident.clone().into(),
             type_arguments: None,
             root_type_id: None,
         },
@@ -3989,11 +4036,11 @@ fn path_type_to_type_info(
 
                 let mut root_type_id = None;
                 if name.as_str() == "Self" {
-                    call_path.prefixes.remove(0);
+                    call_path.call_path.prefixes.remove(0);
                     root_type_id = Some(engines.te().insert(engines, type_info));
                 }
                 TypeInfo::Custom {
-                    call_path,
+                    qualified_call_path: call_path,
                     type_arguments: Some(type_arguments),
                     root_type_id,
                 }
@@ -4039,7 +4086,7 @@ fn path_type_to_type_info(
                     context, handler, engines, path_type,
                 )?;
                 TypeInfo::Custom {
-                    call_path,
+                    qualified_call_path: call_path,
                     type_arguments: Some(type_arguments),
                     root_type_id: None,
                 }
