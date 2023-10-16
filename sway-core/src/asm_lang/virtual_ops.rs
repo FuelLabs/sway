@@ -183,6 +183,8 @@ pub(crate) enum VirtualOp {
 
     /* Cryptographic Instructions */
     ECK1(VirtualRegister, VirtualRegister, VirtualRegister),
+    ECR1(VirtualRegister, VirtualRegister, VirtualRegister),
+    ED19(VirtualRegister, VirtualRegister, VirtualRegister),
     K256(VirtualRegister, VirtualRegister, VirtualRegister),
     S256(VirtualRegister, VirtualRegister, VirtualRegister),
 
@@ -297,6 +299,8 @@ impl VirtualOp {
 
             /* Cryptographic Instructions */
             ECK1(r1, r2, r3) => vec![r1, r2, r3],
+            ECR1(r1, r2, r3) => vec![r1, r2, r3],
+            ED19(r1, r2, r3) => vec![r1, r2, r3],
             K256(r1, r2, r3) => vec![r1, r2, r3],
             S256(r1, r2, r3) => vec![r1, r2, r3],
 
@@ -413,6 +417,8 @@ impl VirtualOp {
 
             /* Cryptographic Instructions */
             ECK1(r1, r2, r3) => vec![r1, r2, r3],
+            ECR1(r1, r2, r3) => vec![r1, r2, r3],
+            ED19(r1, r2, r3) => vec![r1, r2, r3],
             K256(r1, r2, r3) => vec![r1, r2, r3],
             S256(r1, r2, r3) => vec![r1, r2, r3],
 
@@ -529,6 +535,8 @@ impl VirtualOp {
 
             /* Cryptographic Instructions */
             ECK1(_r1, _r2, _r3) => vec![],
+            ECR1(_r1, _r2, _r3) => vec![],
+            ED19(_r1, _r2, _r3) => vec![],
             K256(_r1, _r2, _r3) => vec![],
             S256(_r1, _r2, _r3) => vec![],
 
@@ -931,6 +939,16 @@ impl VirtualOp {
 
             /* Cryptographic Instructions */
             ECK1(r1, r2, r3) => Self::ECK1(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            ECR1(r1, r2, r3) => Self::ECR1(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            ED19(r1, r2, r3) => Self::ED19(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
@@ -1378,6 +1396,16 @@ impl VirtualOp {
 
             /* Cryptographic Instructions */
             ECK1(reg1, reg2, reg3) => AllocatedOpcode::ECK1(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+            ),
+            ECR1(reg1, reg2, reg3) => AllocatedOpcode::ECR1(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+            ),
+            ED19(reg1, reg2, reg3) => AllocatedOpcode::ED19(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
