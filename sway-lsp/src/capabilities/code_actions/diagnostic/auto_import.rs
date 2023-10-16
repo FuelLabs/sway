@@ -15,7 +15,9 @@ use std::{
 };
 use sway_core::language::{
     parsed::ImportType,
-    ty::{TyDecl, TyIncludeStatement, TyUseStatement, TyFunctionDecl, TyConstantDecl, TyTypeAliasDecl},
+    ty::{
+        TyConstantDecl, TyDecl, TyFunctionDecl, TyIncludeStatement, TyTypeAliasDecl, TyUseStatement,
+    },
     CallPath,
 };
 use sway_types::{Ident, Spanned};
