@@ -388,7 +388,7 @@ impl PartialEqWithEngines for TyExpressionVariant {
                 },
             ) => l_exp.eq(r_exp, engines) && l_variant.eq(r_variant, engines),
             (Self::EnumTag { exp: l_exp }, Self::EnumTag { exp: r_exp }) => {
-                l_exp.eq(&**r_exp, engines)
+                l_exp.eq(r_exp, engines)
             }
             (Self::StorageAccess(l_exp), Self::StorageAccess(r_exp)) => l_exp.eq(r_exp, engines),
             (

@@ -21,11 +21,11 @@ impl<T: Format + Spanned> Format for Annotated<T> {
     ) -> Result<(), FormatterError> {
         // format each `Attribute`
         for attr in &self.attribute_list {
+            formatter.write_indent_into_buffer(formatted_code)?;
             attr.format(formatted_code, formatter)?;
-
-            write!(formatted_code, "{}", &formatter.indent_str()?,)?;
         }
         // format `ItemKind`
+        formatter.write_indent_into_buffer(formatted_code)?;
         self.value.format(formatted_code, formatter)?;
 
         Ok(())

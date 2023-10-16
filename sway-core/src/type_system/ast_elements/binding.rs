@@ -4,7 +4,7 @@ use sway_types::{Span, Spanned};
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    language::{ty, CallPath},
+    language::{ty, CallPath, QualifiedCallPath},
     semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
     type_system::priv_prelude::*,
     Ident,
@@ -354,6 +354,23 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         let new_enum_ref = ctx.engines.de().insert(new_copy);
         let type_id = type_engine.insert(engines, TypeInfo::Enum(new_enum_ref.clone()));
         Ok((new_enum_ref, Some(type_id), Some(unknown_decl)))
+    }
+}
+
+impl TypeBinding<QualifiedCallPath> {
+    pub(crate) fn type_check_qualified(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckContext,
+    ) -> Result<DeclRef<DeclId<ty::TyConstantDecl>>, ErrorEmitted> {
+        // Grab the declaration.
+        let unknown_decl =
+            ctx.resolve_qualified_call_path_with_visibility_check(handler, &self.inner)?;
+
+        // Check to see if this is a const declaration.
+        let const_ref = unknown_decl.to_const_ref(handler)?;
+
+        Ok(const_ref)
     }
 }
 

@@ -140,7 +140,7 @@ impl Scrutinee {
                 ..
             } => {
                 let name = vec![TypeInfo::Custom {
-                    call_path: struct_name.clone(),
+                    qualified_call_path: struct_name.clone().into(),
                     type_arguments: None,
                     root_type_id: None,
                 }];
@@ -161,7 +161,7 @@ impl Scrutinee {
             } => {
                 let enum_name = call_path.prefixes.last().unwrap_or(&call_path.suffix);
                 let name = vec![TypeInfo::Custom {
-                    call_path: enum_name.clone().into(),
+                    qualified_call_path: enum_name.clone().into(),
                     type_arguments: None,
                     root_type_id: None,
                 }];

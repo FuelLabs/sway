@@ -297,20 +297,7 @@ impl ty::TyAbiDecl {
                         );
                     }
                     ty::TyTraitInterfaceItem::Type(decl_ref) => {
-                        let type_decl = decl_engine.get_type(decl_ref);
-                        let type_name = type_decl.name;
                         all_items.push(TyImplItem::Type(decl_ref.clone()));
-                        let const_shadowing_mode = ctx.const_shadowing_mode();
-                        let _ = ctx.namespace.insert_symbol(
-                            handler,
-                            type_name.clone(),
-                            ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl {
-                                name: type_name,
-                                decl_id: *decl_ref.id(),
-                                decl_span: type_decl.span.clone(),
-                            }),
-                            const_shadowing_mode,
-                        );
                     }
                 }
             }

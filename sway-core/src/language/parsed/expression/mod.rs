@@ -1,7 +1,13 @@
+use std::{cmp::Ordering, fmt, hash::Hasher};
+
 use crate::{
+    engine_threading::{
+        DebugWithEngines, DisplayWithEngines, EqWithEngines, HashWithEngines, OrdWithEngines,
+        PartialEqWithEngines,
+    },
     language::{parsed::CodeBlock, *},
     type_system::TypeBinding,
-    TypeArgument, TypeInfo,
+    Engines, TypeArgument, TypeId,
 };
 use sway_error::handler::ErrorEmitted;
 use sway_types::{ident::Ident, Span, Spanned};
@@ -108,8 +114,78 @@ impl Spanned for AmbiguousSuffix {
 #[derive(Debug, Clone)]
 pub struct QualifiedPathRootTypes {
     pub ty: TypeArgument,
-    pub as_trait: TypeInfo,
+    pub as_trait: TypeId,
     pub as_trait_span: Span,
+}
+
+impl HashWithEngines for QualifiedPathRootTypes {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+        let QualifiedPathRootTypes {
+            ty,
+            as_trait,
+            // ignored fields
+            as_trait_span: _,
+        } = self;
+        ty.hash(state, engines);
+        engines.te().get(*as_trait).hash(state, engines);
+    }
+}
+
+impl EqWithEngines for QualifiedPathRootTypes {}
+impl PartialEqWithEngines for QualifiedPathRootTypes {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+        let QualifiedPathRootTypes {
+            ty,
+            as_trait,
+            // ignored fields
+            as_trait_span: _,
+        } = self;
+        ty.eq(&other.ty, engines)
+            && engines
+                .te()
+                .get(*as_trait)
+                .eq(&engines.te().get(other.as_trait), engines)
+    }
+}
+
+impl OrdWithEngines for QualifiedPathRootTypes {
+    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
+        let QualifiedPathRootTypes {
+            ty: l_ty,
+            as_trait: l_as_trait,
+            // ignored fields
+            as_trait_span: _,
+        } = self;
+        let QualifiedPathRootTypes {
+            ty: r_ty,
+            as_trait: r_as_trait,
+            // ignored fields
+            as_trait_span: _,
+        } = other;
+        l_ty.cmp(r_ty, engines).then_with(|| {
+            engines
+                .te()
+                .get(*l_as_trait)
+                .cmp(&engines.te().get(*r_as_trait), engines)
+        })
+    }
+}
+
+impl DisplayWithEngines for QualifiedPathRootTypes {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(
+            f,
+            "<{} as {}>",
+            engines.help_out(self.ty.clone()),
+            engines.help_out(self.as_trait)
+        )
+    }
+}
+
+impl DebugWithEngines for QualifiedPathRootTypes {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(f, "{}", engines.help_out(self),)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -121,7 +197,7 @@ pub struct AmbiguousPathExpression {
 
 #[derive(Debug, Clone)]
 pub struct DelineatedPathExpression {
-    pub call_path_binding: TypeBinding<CallPath>,
+    pub call_path_binding: TypeBinding<QualifiedCallPath>,
     /// When args is equal to Option::None then it means that the
     /// [DelineatedPathExpression] was initialized from an expression
     /// that does not end with parenthesis.
