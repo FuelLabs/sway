@@ -1,6 +1,6 @@
 use crate::language::CallPath;
 use crate::type_system::TypeBinding;
-use crate::{Ident, TypeArgument, TypeInfo};
+use crate::{Ident, TypeArgument, TypeId, TypeInfo};
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
@@ -24,7 +24,7 @@ pub enum MethodName {
     /// like <S as Trait>::method()
     FromQualifiedPathRoot {
         ty: TypeArgument,
-        as_trait: TypeInfo,
+        as_trait: TypeId,
         method_name: Ident,
     },
 }

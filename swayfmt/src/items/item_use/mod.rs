@@ -9,7 +9,7 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{ItemUse, UseTree};
+use sway_ast::{CommaToken, ItemUse, UseTree};
 use sway_types::{
     ast::{Delimiter, PunctKind},
     Spanned,
@@ -73,14 +73,14 @@ impl Format for UseTree {
                     // sort group imports
                     let imports = imports.get();
                     let value_pairs = &imports.value_separator_pairs;
+                    let mut commas: Vec<&CommaToken> = Vec::new();
                     let mut ord_vec: Vec<String> = value_pairs
                         .iter()
                         .map(
                             |(use_tree, comma_token)| -> Result<FormattedCode, FormatterError> {
                                 let mut buf = FormattedCode::new();
                                 use_tree.format(&mut buf, formatter)?;
-                                write!(buf, "{}", comma_token.span().as_str())?;
-
+                                commas.push(comma_token);
                                 Ok(buf)
                             },
                         )
@@ -88,25 +88,31 @@ impl Format for UseTree {
                     if let Some(final_value) = &imports.final_value_opt {
                         let mut buf = FormattedCode::new();
                         final_value.format(&mut buf, formatter)?;
-                        write!(buf, "{}", PunctKind::Comma.as_char())?;
 
                         ord_vec.push(buf);
                     }
                     ord_vec.sort_by_key(|x| x.to_lowercase());
+                    for (use_tree, comma) in ord_vec.iter_mut().zip(commas.iter()) {
+                        write!(use_tree, "{}", comma.span().as_str())?;
+                    }
 
                     match formatter.shape.code_line.line_style {
-                        LineStyle::Multiline => writeln!(
-                            formatted_code,
-                            "{}{}",
-                            formatter.indent_str()?,
-                            ord_vec.join(&format!("\n{}", formatter.indent_str()?))
-                        )?,
-                        _ => {
-                            let mut import_str = ord_vec.join(" ");
-                            if import_str.ends_with(PunctKind::Comma.as_char()) {
-                                import_str.pop();
+                        LineStyle::Multiline => {
+                            if imports.final_value_opt.is_some() {
+                                if let Some(last) = ord_vec.iter_mut().last() {
+                                    write!(last, "{}", PunctKind::Comma.as_char())?;
+                                }
                             }
-                            write!(formatted_code, "{import_str}")?;
+
+                            writeln!(
+                                formatted_code,
+                                "{}{}",
+                                formatter.indent_to_str()?,
+                                ord_vec.join(&format!("\n{}", formatter.indent_to_str()?)),
+                            )?;
+                        }
+                        _ => {
+                            write!(formatted_code, "{}", ord_vec.join(" "))?;
                         }
                     }
                     Self::close_curly_brace(formatted_code, formatter)?;
@@ -176,7 +182,7 @@ impl CurlyBrace for UseTree {
                 write!(
                     line,
                     "{}{}",
-                    formatter.indent_str()?,
+                    formatter.indent_to_str()?,
                     Delimiter::Brace.as_close_char()
                 )?;
             }

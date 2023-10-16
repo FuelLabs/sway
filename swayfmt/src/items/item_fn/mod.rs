@@ -1,5 +1,5 @@
 use crate::{
-    comments::{rewrite_with_comments, write_comments},
+    comments::{has_comments_in_formatter, rewrite_with_comments, write_comments},
     config::items::ItemBraceStyle,
     formatter::{
         shape::{ExprKind, LineStyle},
@@ -51,11 +51,11 @@ impl Format for ItemFn {
 
                     Self::close_curly_brace(formatted_code, formatter)?;
                 } else {
+                    let range = self.span().into();
                     Self::open_curly_brace(formatted_code, formatter)?;
-                    formatter.indent();
-                    let comments = write_comments(formatted_code, self.span().into(), formatter)?;
-                    if !comments {
-                        formatter.unindent();
+                    if has_comments_in_formatter(formatter, &range) {
+                        formatter.indent();
+                        write_comments(formatted_code, range, formatter)?;
                     }
                     Self::close_curly_brace(formatted_code, formatter)?;
                 }
@@ -114,7 +114,7 @@ impl CurlyBrace for ItemFn {
         write!(
             line,
             "{}{}",
-            formatter.indent_str()?,
+            formatter.indent_to_str()?,
             Delimiter::Brace.as_close_char()
         )?;
 
@@ -129,7 +129,9 @@ impl Format for FnSignature {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         formatter.shape.code_line.has_where_clause = formatter.with_shape(
-            formatter.shape,
+            formatter
+                .shape
+                .with_code_line_from(LineStyle::Normal, ExprKind::Function),
             |formatter| -> Result<bool, FormatterError> {
                 let mut fn_sig = FormattedCode::new();
                 let mut fn_args = FormattedCode::new();
@@ -208,7 +210,7 @@ fn format_fn_args(
                     formatter.indent();
                     args.format(formatted_code, formatter)?;
                     formatter.unindent();
-                    write!(formatted_code, "{}", formatter.indent_str()?)?;
+                    write!(formatted_code, "{}", formatter.indent_to_str()?)?;
                 }
             }
             _ => args.format(formatted_code, formatter)?,
@@ -222,7 +224,7 @@ fn format_fn_args(
             match formatter.shape.code_line.line_style {
                 LineStyle::Multiline => {
                     formatter.indent();
-                    write!(formatted_code, "\n{}", formatter.indent_str()?)?;
+                    write!(formatted_code, "\n{}", formatter.indent_to_str()?)?;
                     format_self(self_token, ref_self, mutable_self, formatted_code)?;
                     // `args_opt`
                     if let Some((comma, args)) = args_opt {

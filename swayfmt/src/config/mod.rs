@@ -3,7 +3,6 @@ pub mod expr;
 pub mod heuristics;
 pub mod imports;
 pub mod items;
-pub mod lists;
 pub mod literals;
 pub mod manifest;
 pub mod ordering;

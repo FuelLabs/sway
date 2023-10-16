@@ -45,16 +45,31 @@ impl Formatter {
         })
     }
 
+    /// Adds a block to the indentation level of the current [`Shape`].
     pub fn indent(&mut self) {
         self.shape.block_indent(&self.config);
     }
 
+    /// Removes a block from the indentation level of the current [`Shape`].
     pub fn unindent(&mut self) {
         self.shape.block_unindent(&self.config);
     }
 
-    pub fn indent_str(&self) -> Result<Cow<'static, str>, FormatterError> {
+    /// Returns the [`Shape`]'s indentation blocks as a `Cow<'static, str>`.
+    pub fn indent_to_str(&self) -> Result<Cow<'static, str>, FormatterError> {
         self.shape.indent.to_string(&self.config)
+    }
+
+    /// Checks the current level of indentation before writing the indent str into the buffer.
+    pub fn write_indent_into_buffer(
+        &self,
+        formatted_code: &mut FormattedCode,
+    ) -> Result<(), FormatterError> {
+        let indent_str = self.indent_to_str()?;
+        if !formatted_code.ends_with(indent_str.as_ref()) {
+            write!(formatted_code, "{indent_str}")?
+        }
+        Ok(())
     }
 
     /// Collect a mapping of Span -> Comment from unformatted input.

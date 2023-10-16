@@ -45,15 +45,17 @@ impl ty::TyAbiDecl {
         // so we don't support the case of calling a contract's own interface
         // from itself. This is by design.
 
+        let self_type_param = TypeParameter::new_self_type(ctx.engines, name.span());
+        let self_type_id = self_type_param.type_id;
+
         // A temporary namespace for checking within this scope.
         let mut abi_namespace = ctx.namespace.clone();
         let mut ctx = ctx
             .scoped(&mut abi_namespace)
-            .with_abi_mode(AbiMode::ImplAbiFn(name.clone(), None));
+            .with_abi_mode(AbiMode::ImplAbiFn(name.clone(), None))
+            .with_self_type(Some(self_type_id));
 
         // Insert the "self" type param into the namespace.
-        let self_type_param = TypeParameter::new_self_type(ctx.engines, name.span());
-        let self_type_id = self_type_param.type_id;
         self_type_param.insert_self_type_into_namespace(handler, ctx.by_ref());
 
         // Recursively make the interface surfaces and methods of the
@@ -295,20 +297,7 @@ impl ty::TyAbiDecl {
                         );
                     }
                     ty::TyTraitInterfaceItem::Type(decl_ref) => {
-                        let type_decl = decl_engine.get_type(decl_ref);
-                        let type_name = type_decl.name;
                         all_items.push(TyImplItem::Type(decl_ref.clone()));
-                        let const_shadowing_mode = ctx.const_shadowing_mode();
-                        let _ = ctx.namespace.insert_symbol(
-                            handler,
-                            type_name.clone(),
-                            ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl {
-                                name: type_name,
-                                decl_id: *decl_ref.id(),
-                                decl_span: type_decl.span.clone(),
-                            }),
-                            const_shadowing_mode,
-                        );
                     }
                 }
             }

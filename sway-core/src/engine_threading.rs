@@ -124,6 +124,21 @@ impl<T: DisplayWithEngines> DisplayWithEngines for &T {
     }
 }
 
+impl<T: DisplayWithEngines> DisplayWithEngines for Option<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        match self {
+            None => Ok(()),
+            Some(x) => x.fmt(f, engines),
+        }
+    }
+}
+
+impl<T: DisplayWithEngines> DisplayWithEngines for Box<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        (**self).fmt(f, engines)
+    }
+}
+
 pub(crate) trait DebugWithEngines {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result;
 }
@@ -131,6 +146,21 @@ pub(crate) trait DebugWithEngines {
 impl<T: DebugWithEngines> DebugWithEngines for &T {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         (*self).fmt(f, engines)
+    }
+}
+
+impl<T: DebugWithEngines> DebugWithEngines for Option<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        match self {
+            None => Ok(()),
+            Some(x) => x.fmt(f, engines),
+        }
+    }
+}
+
+impl<T: DebugWithEngines> DebugWithEngines for Box<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        (**self).fmt(f, engines)
     }
 }
 
@@ -158,6 +188,12 @@ impl<T: HashWithEngines> HashWithEngines for [T] {
         for x in self {
             x.hash(state, engines)
         }
+    }
+}
+
+impl<T: HashWithEngines> HashWithEngines for Box<T> {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+        (**self).hash(state, engines)
     }
 }
 
@@ -194,6 +230,12 @@ impl<T: OrdWithEngines> OrdWithEngines for Option<T> {
     }
 }
 
+impl<T: OrdWithEngines> OrdWithEngines for Box<T> {
+    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
+        (**self).cmp(&(**other), engines)
+    }
+}
+
 impl<T: EqWithEngines> EqWithEngines for Option<T> {}
 impl<T: PartialEqWithEngines> PartialEqWithEngines for Option<T> {
     fn eq(&self, other: &Self, engines: &Engines) -> bool {
@@ -202,6 +244,13 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for Option<T> {
             (Some(x), Some(y)) => x.eq(y, engines),
             _ => false,
         }
+    }
+}
+
+impl<T: EqWithEngines> EqWithEngines for Box<T> {}
+impl<T: PartialEqWithEngines> PartialEqWithEngines for Box<T> {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+        (**self).eq(&(**other), engines)
     }
 }
 

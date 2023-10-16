@@ -271,12 +271,12 @@ impl<'a> UnifyCheck<'a> {
             }
             (
                 Custom {
-                    call_path: l_name,
+                    qualified_call_path: l_name,
                     type_arguments: l_type_args,
                     root_type_id: l_root_type_id,
                 },
                 Custom {
-                    call_path: r_name,
+                    qualified_call_path: r_name,
                     type_arguments: r_type_args,
                     root_type_id: r_root_type_id,
                 },
@@ -303,7 +303,25 @@ impl<'a> UnifyCheck<'a> {
                 } else {
                     vec![]
                 };
-                return l_name.suffix == r_name.suffix
+                let same_qualified_path_root = match (
+                    l_name.qualified_path_root.clone(),
+                    r_name.qualified_path_root.clone(),
+                ) {
+                    (Some(l_qualified_path_root), Some(r_qualified_path_root)) => {
+                        self.check_inner(
+                            l_qualified_path_root.ty.type_id,
+                            r_qualified_path_root.ty.type_id,
+                        ) && self.check_inner(
+                            l_qualified_path_root.as_trait,
+                            r_qualified_path_root.as_trait,
+                        )
+                    }
+                    (None, None) => true,
+                    _ => false,
+                };
+
+                return l_name.call_path.suffix == r_name.call_path.suffix
+                    && same_qualified_path_root
                     && self.check_multiple(&l_types, &r_types)
                     && self.check_multiple(&l_root_type_ids, &r_root_type_ids);
             }
