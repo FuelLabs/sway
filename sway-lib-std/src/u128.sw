@@ -468,36 +468,34 @@ impl core::ops::Divide for U128 {
 }
 
 impl Power for U128 {
-    fn pow(self, exponent: Self) -> Self {
+    fn pow(self, exponent: u32) -> Self {
         let mut value = self;
         let mut exp = exponent;
-        let one = Self::from((0, 1));
-        let zero = Self::from((0, 0));
 
-        if exp == zero {
-            return one;
+        if exp == 0 {
+            return Self::from((0, 1));
         }
 
-        if exp == one {
+        if exp == 1 {
             // Manually clone `self`. Otherwise, we may have a `MemoryOverflow`
             // issue with code that looks like: `x = x.pow(other)`
             return Self::from((self.upper, self.lower));
         }
 
-        while exp & one == zero {
+        while exp & 1 == 0 {
             value = value * value;
             exp >>= 1;
         }
 
-        if exp == one {
+        if exp == 1 {
             return value;
         }
 
         let mut acc = value;
-        while exp > one {
+        while exp > 1 {
             exp >>= 1;
             value = value * value;
-            if exp & one == one {
+            if exp & 1 == 1 {
                 acc = acc * value;
             }
         }
