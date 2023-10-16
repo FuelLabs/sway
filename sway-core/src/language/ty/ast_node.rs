@@ -10,7 +10,10 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::{parsed::TreeType, ty::*, Visibility},
-    semantic_analysis::{TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext},
+    semantic_analysis::{
+        TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
+        TypeCheckFinalizationContext,
+    },
     transform::{AllowDeprecatedState, AttributeKind},
     type_system::*,
     types::*,
@@ -109,6 +112,16 @@ impl UpdateConstantExpression for TyAstNode {
             TyAstNodeContent::SideEffect(_) => (),
             TyAstNodeContent::Error(_, _) => (),
         }
+    }
+}
+
+impl TypeCheckAnalysis for TyAstNode {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.content.type_check_analyze(handler, ctx)
     }
 }
 
@@ -429,6 +442,25 @@ impl HashWithEngines for TyAstNodeContent {
             }
             Error(_, _) => {}
         }
+    }
+}
+
+impl TypeCheckAnalysis for TyAstNodeContent {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        match self {
+            TyAstNodeContent::Declaration(node) => node.type_check_analyze(handler, ctx)?,
+            TyAstNodeContent::Expression(node) => node.type_check_analyze(handler, ctx)?,
+            TyAstNodeContent::ImplicitReturnExpression(node) => {
+                node.type_check_analyze(handler, ctx)?
+            }
+            TyAstNodeContent::SideEffect(_) => {}
+            TyAstNodeContent::Error(_, _) => {}
+        }
+        Ok(())
     }
 }
 

@@ -106,6 +106,19 @@ impl ty::TyCodeBlock {
     }
 }
 
+impl TypeCheckAnalysis for ty::TyCodeBlock {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        for node in self.contents.iter() {
+            node.type_check_analyze(handler, ctx)?;
+        }
+        Ok(())
+    }
+}
+
 impl TypeCheckFinalization for ty::TyCodeBlock {
     fn type_check_finalize(
         &mut self,

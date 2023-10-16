@@ -16,8 +16,9 @@ use crate::{
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
     semantic_analysis::{
-        type_check_context::EnforceTypeArguments, AbiMode, ConstShadowingMode, TypeCheckContext,
-        TypeCheckFinalization, TypeCheckFinalizationContext,
+        type_check_context::EnforceTypeArguments, AbiMode, ConstShadowingMode, TypeCheckAnalysis,
+        TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
+        TypeCheckFinalizationContext,
     },
     type_system::*,
 };
@@ -1346,6 +1347,34 @@ fn handle_supertraits(
 
         Ok((interface_surface_item_ids, impld_item_refs))
     })
+}
+
+impl TypeCheckAnalysis for ty::ImplTrait {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        let decl_engine = ctx.engines.de();
+        let impl_trait = decl_engine.get_impl_trait(&self.decl_id);
+
+        // Lets create a graph node for the impl trait and for every item in the trait.
+        ctx.push_impl_trait(self);
+
+        // Now lets analyze each impl trait item.
+        for (i, item) in impl_trait.items.iter().enumerate() {
+            let node = ctx.items_node_stack[i];
+            ctx.node_stack.push(node);
+            item.type_check_analyze(handler, ctx)?;
+            ctx.node_stack.pop();
+        }
+
+        // Clear the work-in-progress node stacks.
+        ctx.node_stack.clear();
+        ctx.items_node_stack.clear();
+
+        Ok(())
+    }
 }
 
 impl TypeCheckFinalization for TyImplTrait {

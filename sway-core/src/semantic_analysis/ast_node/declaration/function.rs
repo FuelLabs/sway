@@ -268,6 +268,16 @@ fn unify_return_statements(
     })
 }
 
+impl TypeCheckAnalysis for ty::TyFunctionDecl {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.body.type_check_analyze(handler, ctx)
+    }
+}
+
 impl TypeCheckFinalization for ty::TyFunctionDecl {
     fn type_check_finalize(
         &mut self,

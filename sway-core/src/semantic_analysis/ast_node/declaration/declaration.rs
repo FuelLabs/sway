@@ -9,8 +9,8 @@ use crate::{
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
     semantic_analysis::{
-        type_check_context::EnforceTypeArguments, TypeCheckContext, TypeCheckFinalization,
-        TypeCheckFinalizationContext,
+        type_check_context::EnforceTypeArguments, TypeCheckAnalysis, TypeCheckAnalysisContext,
+        TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext,
     },
     type_system::*,
 };
@@ -374,6 +374,58 @@ impl TyDecl {
         };
 
         Ok(decl)
+    }
+}
+
+impl TypeCheckAnalysis for TyDecl {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        match self {
+            TyDecl::VariableDecl(node) => {
+                node.type_check_analyze(handler, ctx)?;
+            }
+            TyDecl::ConstantDecl(node) => {
+                let const_decl = ctx.engines.de().get_constant(&node.decl_id);
+                const_decl.type_check_analyze(handler, ctx)?;
+            }
+            TyDecl::FunctionDecl(node) => {
+                let fn_decl = ctx.engines.de().get_function(&node.decl_id);
+                fn_decl.type_check_analyze(handler, ctx)?;
+            }
+            TyDecl::TraitDecl(node) => {
+                let trait_decl = ctx.engines.de().get_trait(&node.decl_id);
+                trait_decl.type_check_analyze(handler, ctx)?;
+            }
+            TyDecl::StructDecl(node) => {
+                let struct_decl = ctx.engines.de().get_struct(&node.decl_id);
+                struct_decl.type_check_analyze(handler, ctx)?;
+            }
+            TyDecl::EnumDecl(node) => {
+                let enum_decl = ctx.engines.de().get_enum(&node.decl_id);
+                enum_decl.type_check_analyze(handler, ctx)?;
+            }
+            TyDecl::EnumVariantDecl(_) => {}
+            TyDecl::ImplTrait(node) => {
+                node.type_check_analyze(handler, ctx)?;
+            }
+            TyDecl::AbiDecl(node) => {
+                let abi_decl = ctx.engines.de().get_abi(&node.decl_id);
+                abi_decl.type_check_analyze(handler, ctx)?;
+            }
+            TyDecl::GenericTypeForFunctionScope(_) => {}
+            TyDecl::ErrorRecovery(_, _) => {}
+            TyDecl::StorageDecl(node) => {
+                let storage_decl = ctx.engines.de().get_storage(&node.decl_id);
+                storage_decl.type_check_analyze(handler, ctx)?;
+            }
+            TyDecl::TypeAliasDecl(_) => {}
+            TyDecl::TraitTypeDecl(_) => {}
+        }
+
+        Ok(())
     }
 }
 

@@ -6,7 +6,10 @@ use sway_types::Ident;
 use crate::{
     engine_threading::*,
     language::ty::*,
-    semantic_analysis::{TypeCheckFinalization, TypeCheckFinalizationContext},
+    semantic_analysis::{
+        TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
+        TypeCheckFinalizationContext,
+    },
     type_system::*,
 };
 
@@ -56,6 +59,17 @@ impl SubstTypes for TyVariableDecl {
         self.return_type.subst(type_mapping, engines);
         self.type_ascription.subst(type_mapping, engines);
         self.body.subst(type_mapping, engines)
+    }
+}
+
+impl TypeCheckAnalysis for TyVariableDecl {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.body.type_check_analyze(handler, ctx)?;
+        Ok(())
     }
 }
 
