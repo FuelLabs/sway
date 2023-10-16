@@ -61,7 +61,7 @@ impl Power for u256 {
     fn pow(self, exp: Self) -> Self {
         let one = 0x0000000000000000000000000000000000000000000000000000000000000001u256;
 
-        if exp.is_zero() {
+        if exp == 0x0000000000000000000000000000000000000000000000000000000000000000u256 {
             return one;
         }
 
@@ -196,9 +196,9 @@ impl BinaryLogarithm for u8 {
 
 #[test]
 fn u256_pow_tests() {
-    let five = u256::from_be_words([0, 0, 0, 5]);
-    let two = u256::from_be_words([0, 0, 0, 2]);
-    let twenty_eight = u256::from_be_words([0, 0, 0, 28]);
+    let five = 0x0000000000000000000000000000000000000000000000000000000000000005u256;
+    let two = 0x0000000000000000000000000000000000000000000000000000000000000002u256;
+    let twenty_eight = 0x000000000000000000000000000000000000000000000000000000000000001Cu256; // 28
 
     use ::assert::*;
     

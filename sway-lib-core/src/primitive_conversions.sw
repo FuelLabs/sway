@@ -275,18 +275,6 @@ impl u256 {
             input: b256
         }
     }
-
-    pub fn to_be_words(self) -> [u64; 4] {
-        asm(r1: self) {
-            r1: [u64; 4]
-        }
-    }
-
-    pub fn from_be_words(words: [u64; 4]) -> Self {
-        asm(r1: words) {
-            r1: u256
-        }
-    }
 }
 
 fn assert(condition: bool) {
