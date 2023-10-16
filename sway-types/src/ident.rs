@@ -75,6 +75,14 @@ impl BaseIdent {
             is_raw_ident: false,
         }
     }
+
+    pub fn dummy() -> Ident {
+        Ident {
+            name_override_opt: Some("foo".into()),
+            span: Span::dummy(),
+            is_raw_ident: false,
+        }
+    }
 }
 
 /// An [Ident] is an _identifier_ with a corresponding `span` from which it was derived.

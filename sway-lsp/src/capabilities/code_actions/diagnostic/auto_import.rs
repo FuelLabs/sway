@@ -15,7 +15,7 @@ use std::{
 };
 use sway_core::language::{
     parsed::ImportType,
-    ty::{TyDecl, TyIncludeStatement, TyUseStatement},
+    ty::{TyDecl, TyIncludeStatement, TyUseStatement, TyFunctionDecl, TyConstantDecl, TyTypeAliasDecl},
     CallPath,
 };
 use sway_types::{Ident, Spanned};
@@ -114,16 +114,17 @@ fn get_call_paths_for_name<'s>(
                         _ => None,
                     };
                 }
-                Some(TypedAstToken::TypedFunctionDeclaration(ty_decl)) => {
-                    let call_path = ty_decl.call_path.to_import_path(&namespace);
-                    Some(call_path)
-                }
-                Some(TypedAstToken::TypedConstantDeclaration(ty_decl)) => {
-                    let call_path = ty_decl.call_path.to_import_path(&namespace);
-                    Some(call_path)
-                }
-                Some(TypedAstToken::TypedTypeAliasDeclaration(ty_decl)) => {
-                    let call_path = ty_decl.call_path.to_import_path(&namespace);
+                Some(TypedAstToken::TypedFunctionDeclaration(TyFunctionDecl {
+                    call_path, ..
+                }))
+                | Some(TypedAstToken::TypedConstantDeclaration(TyConstantDecl {
+                    call_path, ..
+                }))
+                | Some(TypedAstToken::TypedTypeAliasDeclaration(TyTypeAliasDecl {
+                    call_path,
+                    ..
+                })) => {
+                    let call_path = call_path.to_import_path(&namespace);
                     Some(call_path)
                 }
                 _ => None,

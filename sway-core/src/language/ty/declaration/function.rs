@@ -242,7 +242,7 @@ impl TyFunctionDecl {
             },
             implementing_type: None,
             span,
-            call_path: CallPath::from(Ident::new_no_span("foo".into())),
+            call_path: CallPath::from(Ident::dummy()),
             attributes: Default::default(),
             is_contract_call: false,
             parameters: Default::default(),

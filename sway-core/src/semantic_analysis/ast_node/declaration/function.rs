@@ -299,12 +299,12 @@ fn test_function_selector_behavior() {
     let handler = Handler::default();
     let decl = ty::TyFunctionDecl {
         purity: Default::default(),
-        name: Ident::new_no_span("foo".into()),
+        name: Ident::dummy(),
         implementing_type: None,
         body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![],
         span: Span::dummy(),
-        call_path: CallPath::from(Ident::new_no_span("foo".into())),
+        call_path: CallPath::from(Ident::dummy()),
         attributes: Default::default(),
         return_type: TypeId::from(0).into(),
         type_parameters: vec![],
@@ -327,7 +327,7 @@ fn test_function_selector_behavior() {
         body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![
             ty::TyFunctionParameter {
-                name: Ident::new_no_span("foo".into()),
+                name: Ident::dummy(),
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
@@ -358,7 +358,7 @@ fn test_function_selector_behavior() {
             },
         ],
         span: Span::dummy(),
-        call_path: CallPath::from(Ident::new_no_span("foo".into())),
+        call_path: CallPath::from(Ident::dummy()),
         attributes: Default::default(),
         return_type: TypeId::from(0).into(),
         type_parameters: vec![],
