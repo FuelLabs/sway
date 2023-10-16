@@ -1,17 +1,53 @@
 script;
 
+struct Struct {
+    x: u64,
+    y: u64,
+    z: u64
+}
+ 
+// For testing side effects.
+fn inc_i(ref mut i: u64) -> Struct {
+    i = i + 11;
+ 
+    Struct { x: 21, y: 21, z: 1 }
+}
+
 fn main() -> u64 {
-    let x = 5;
-    let _a = match 8 {
+    let x = match 8 {
         7 => { 4 },
         9 => { 5 },
-        8 => { 6 },
+        8 => { 42 },
         _ => { 100 },
     };
-    let _b = match x {
+    assert(x == 42);
+
+    let a = 5;
+    let x = match a {
+        7 => { 4 },
         5 => { 42 },
         _ => { 24 },
     };
+    assert(x == 42);
+
+    let a = 5;
+    let x = match a {
+        7 | 8 | 9 => { 4 },
+        3 | 4 | 5 => { 42 },
+        _ => { 24 },
+    };
+    assert(x == 42);
+
+    // Test side effects. `inc_i` must be called exactly once.
+    let mut i = 0;
+    let x = match inc_i(i) {
+        Struct { x, y, z: 0 } => x + y,
+        Struct { x, y, z: 1 } => x + y,
+        _ => 24,
+    };
+    assert(i == 11);
+    assert(x == 42);
+
     match 42 {
         0 => { 24 },
         foo => { foo },

@@ -105,6 +105,54 @@ fn main() -> u64 {
     
     assert(c == 42);
 
+    let c = match return_me(MOD_X) {
+        MOD_X | MAIN_X | LIB_X => {
+            42
+        },
+        ALIAS_LIB_Y => {
+            1
+        },
+        _ => 9999,
+    };
+    
+    assert(c == 42);
+
+    let c = match return_me(MAIN_X) {
+        MOD_X | MAIN_X | LIB_X => {
+            42
+        },
+        ALIAS_LIB_Y => {
+            1
+        },
+        _ => 9999,
+    };
+    
+    assert(c == 42);
+
+    let c = match return_me(LIB_X) {
+        MOD_X | MAIN_X | LIB_X => {
+            42
+        },
+        ALIAS_LIB_Y => {
+            1
+        },
+        _ => 9999,
+    };
+    
+    assert(c == 42);
+
+    let c = match return_me(ALIAS_LIB_Y) {
+        MOD_X | MAIN_X | LIB_X => {
+            1
+        },
+        ALIAS_LIB_Y => {
+            42
+        },
+        _ => 9999,
+    };
+    
+    assert(c == 42);
+
     a + b + c
 }
 
