@@ -73,7 +73,7 @@ impl Power for u256 {
             if (exp & one) == one {
                 acc = acc * base;
             }
-            exp /= 0x0000000000000000000000000000000000000000000000000000000000000002u256;
+            exp = exp >> 1;
             base = base * base;
         }
 

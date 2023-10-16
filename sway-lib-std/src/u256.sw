@@ -1,7 +1,7 @@
 //! A 256-bit unsigned integer type.
 library;
 
-use ::assert::assert;
+use ::assert::*;
 use ::convert::From;
 use ::result::Result::{self, *};
 use ::u128::U128;
@@ -680,34 +680,32 @@ impl core::ops::Divide for U256 {
 }
 
 impl Power for U256 {
-    /// Fast exponentiation by squaring
-	/// https://en.wikipedia.org/wiki/Exponentiation_by_squaring
+    /// Raises self to the power of `exp`, using exponentiation by squaring.
 	///
 	/// # Panics
 	///
 	/// Panics if the result overflows the type.
     fn pow(self, expon: Self) -> Self {
+        let one = U256::from((0, 0, 0, 1));
+        let two = U256::from((0, 0, 0, 2));
+
         if expon.is_zero() {
-            return Self::one()
+            return one;
         }
-        
-        let u_one = Self::one();
-        let mut y = u_one;
-        let mut n = expon;
-        let mut x = self;
-        while n > u_one {
-            if is_even(n) {
-                x = x * x;
-                n >>= 1;
-            } else {
-                y = x * y;
-                x = x * x;
-                // to reduce odd number by 1 we should just clear the last bit
-                n.d = n.d & ((!0u64)>>1);
-                n >>= 1;
+
+        let mut exp = expon;
+        let mut base = self;
+        let mut acc = one;
+
+        while exp > one {
+            if (exp & one) == one {
+                acc = acc * base;
             }
+            exp = exp >> 1;
+            base = base * base;
         }
-        x * y
+
+        acc * base
     }
 }
 
@@ -734,10 +732,10 @@ fn test_five_pow_three_u256() {
     let three = U256::from((0, 0, 0, 3));
 
     let five_pow_three = five.pow(three);
-    assert(five_pow_three.a == 0);
-    assert(five_pow_three.b == 0);
-    assert(five_pow_three.c == 0);
-    assert(five_pow_three.d == 125);
+    assert_eq(five_pow_three.a, 0);
+    assert_eq(five_pow_three.b, 0);
+    assert_eq(five_pow_three.c, 0);
+    assert_eq(five_pow_three.d, 125);
 }
 
 #[test]
@@ -746,10 +744,10 @@ fn test_five_pow_28_u256() {
     let twenty_eight = U256::from((0, 0, 0, 28));
 
     let five_pow_28 = five.pow(twenty_eight);
-    assert(five_pow_28.a == 0);
-    assert(five_pow_28.b == 0);
-    assert(five_pow_28.c == 2);
-    assert(five_pow_28.d == 359414837200037395);
+    assert_eq(five_pow_28.a, 0);
+    assert_eq(five_pow_28.b, 0);
+    assert_eq(five_pow_28.c, 2);
+    assert_eq(five_pow_28.d, 359414837200037393);
 }
 
 #[test]
