@@ -134,7 +134,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     VirtualImmediate12::new(self.locals_size_bytes(), Span::dummy())
                         .expect("Too many arguments, cannot handle."),
                 )),
-                comment: format!("Save address of stack arguments in last arg register"),
+                comment: "Save address of stack arguments in last arg register".to_string(),
                 owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
             });
         }
