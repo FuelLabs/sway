@@ -580,6 +580,14 @@ impl Op {
                 let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
                 VirtualOp::ECK1(r1, r2, r3)
             }
+            "ecr1" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::ECR1(r1, r2, r3)
+            }
+            "ed19" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::ED19(r1, r2, r3)
+            }
             "k256" => {
                 let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
                 VirtualOp::K256(r1, r2, r3)
@@ -1104,6 +1112,8 @@ impl fmt::Display for VirtualOp {
 
             /* Cryptographic Instructions */
             ECK1(a, b, c) => write!(fmtr, "eck1 {a} {b} {c}"),
+            ECR1(a, b, c) => write!(fmtr, "ecr1 {a} {b} {c}"),
+            ED19(a, b, c) => write!(fmtr, "ed19 {a} {b} {c}"),
             K256(a, b, c) => write!(fmtr, "k256 {a} {b} {c}"),
             S256(a, b, c) => write!(fmtr, "s256 {a} {b} {c}"),
 
