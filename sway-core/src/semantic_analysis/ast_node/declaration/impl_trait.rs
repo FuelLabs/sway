@@ -288,8 +288,7 @@ impl TyImplTrait {
         let mut ctx = ctx
             .scoped(&mut impl_namespace)
             .with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
-            .allow_functions()
-            .with_defer_monomorphization();
+            .allow_functions();
 
         // Create a new type parameter for the "self type".
         let self_type_param = TypeParameter::new_self_type(engines, implementing_for.span());

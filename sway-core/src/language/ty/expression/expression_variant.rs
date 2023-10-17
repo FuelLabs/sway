@@ -912,20 +912,12 @@ impl TypeCheckFinalization for TyExpressionVariant {
                     deferred_monomorphization,
                     ..
                 } => {
+                    // If the function application was deferred we need to monomorphize it here.
+                    // But at the moment monomorphization is fully resolved before type check finalization.
+                    assert!(!(*deferred_monomorphization));
+
                     for (_, arg) in arguments.iter_mut() {
                         let _ = arg.type_check_finalize(handler, ctx);
-                    }
-                    // If the function application was deferred we need to monomorphize it.
-                    // This is because sometimes we don't know the correct order to evaluate
-                    // the items. So we create an initial "stub" typed function application node,
-                    // run an analysis pass to compute a dependency graph, and then finalize type
-                    // checking in the correct ordering.
-                    if *deferred_monomorphization {
-                        replace_decls_method_application(
-                            self,
-                            handler,
-                            ctx.type_check_ctx.by_ref(),
-                        )?;
                     }
                 }
                 TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
