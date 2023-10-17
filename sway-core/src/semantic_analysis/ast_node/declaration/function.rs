@@ -33,7 +33,7 @@ impl ty::TyFunctionDecl {
             is_method,
             is_in_impl_self,
         )?;
-        Self::type_check_body(handler, ctx, fn_decl, &mut ty_fn_decl)
+        Self::type_check_body(handler, ctx, &fn_decl, &mut ty_fn_decl)
     }
 
     pub fn type_check_signature(
@@ -149,7 +149,7 @@ impl ty::TyFunctionDecl {
     pub fn type_check_body(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        fn_decl: FunctionDeclaration,
+        fn_decl: &FunctionDeclaration,
         ty_fn_decl: &mut Self,
     ) -> Result<Self, ErrorEmitted> {
         let FunctionDeclaration { body, .. } = fn_decl;

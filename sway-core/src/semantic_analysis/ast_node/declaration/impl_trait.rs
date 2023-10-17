@@ -443,7 +443,7 @@ impl TyImplTrait {
                         let new_ty_fn_decl = match ty::TyFunctionDecl::type_check_body(
                             handler,
                             defer_ctx.by_ref(),
-                            fn_decl,
+                            &fn_decl,
                             &mut ty_fn_decl,
                         ) {
                             Ok(res) => res,
@@ -469,7 +469,7 @@ impl TyImplTrait {
                         let new_ty_fn_decl = match ty::TyFunctionDecl::type_check_body(
                             handler,
                             ctx.by_ref(),
-                            fn_decl,
+                            &fn_decl,
                             &mut ty_fn_decl,
                         ) {
                             Ok(res) => res,

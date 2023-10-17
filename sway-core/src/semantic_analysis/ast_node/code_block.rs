@@ -8,7 +8,7 @@ impl ty::TyCodeBlock {
     pub(crate) fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        code_block: CodeBlock,
+        code_block: &CodeBlock,
     ) -> Result<(Self, TypeId), ErrorEmitted> {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
