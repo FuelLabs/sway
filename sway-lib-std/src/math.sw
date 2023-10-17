@@ -48,11 +48,11 @@ impl Root for u8 {
 
 /// Calculates a number to a given power.
 pub trait Power {
-    fn pow(self, exponent: Self) -> Self;
+    fn pow(self, exponent: u32) -> Self;
 }
 
 impl Power for u64 {
-    fn pow(self, exponent: Self) -> Self {
+    fn pow(self, exponent: u32) -> Self {
         asm(r1: self, r2: exponent, r3) {
             exp r3 r1 r2;
             r3: Self
@@ -61,7 +61,7 @@ impl Power for u64 {
 }
 
 impl Power for u32 {
-    fn pow(self, exponent: Self) -> Self {
+    fn pow(self, exponent: u32) -> Self {
         asm(r1: self, r2: exponent, r3) {
             exp r3 r1 r2;
             r3: Self
@@ -70,7 +70,7 @@ impl Power for u32 {
 }
 
 impl Power for u16 {
-    fn pow(self, exponent: Self) -> Self {
+    fn pow(self, exponent: u32) -> Self {
         asm(r1: self, r2: exponent, r3) {
             exp r3 r1 r2;
             r3: Self
@@ -79,7 +79,7 @@ impl Power for u16 {
 }
 
 impl Power for u8 {
-    fn pow(self, exponent: Self) -> Self {
+    fn pow(self, exponent: u32) -> Self {
         asm(r1: self, r2: exponent, r3) {
             exp r3 r1 r2;
             r3: Self
