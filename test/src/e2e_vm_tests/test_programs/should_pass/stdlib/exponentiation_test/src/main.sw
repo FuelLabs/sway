@@ -57,60 +57,60 @@ fn main() -> bool {
     assert(0u32 ** 2u32 == 0u32);
 
     // u16
-    assert(2u16.pow(2u16) == 4u16);
-    assert(2u16 ** 2u16 == 4u16);
+    assert(2u16.pow(2u32) == 4u16);
+    assert(2u16 ** 2u32 == 4u16);
 
-    assert(2u16.pow(3u16) == 8u16);
-    assert(2u16 ** 3u16 == 8u16);
+    assert(2u16.pow(3u32) == 8u16);
+    assert(2u16 ** 3u32 == 8u16);
 
-    assert(42u16.pow(2u16) == 1764u16);
-    assert(42u16 ** 2u16 == 1764u16);
+    assert(42u16.pow(2u32) == 1764u16);
+    assert(42u16 ** 2u32 == 1764u16);
 
-    assert(20u16.pow(3u16) == 8000u16);
-    assert(20u16 ** 3u16 == 8000u16);
+    assert(20u16.pow(3u32) == 8000u16);
+    assert(20u16 ** 3u32 == 8000u16);
 
-    assert(15u16.pow(4u16) == 50625u16);
-    assert(15u16 ** 4u16 == 50625u16);
+    assert(15u16.pow(4u32) == 50625u16);
+    assert(15u16 ** 4u32 == 50625u16);
 
-    assert(2u16.pow(0u16) == 1u16);
-    assert(2u16 ** 0u16 == 1u16);
+    assert(2u16.pow(0u32) == 1u16);
+    assert(2u16 ** 0u32 == 1u16);
 
-    assert(0u16.pow(1u16) == 0u16);
-    assert(0u16 ** 1u16 == 0u16);
+    assert(0u16.pow(1u32) == 0u16);
+    assert(0u16 ** 1u32 == 0u16);
 
-    assert(0u16.pow(2u16) == 0u16);
-    assert(0u16 ** 2u16 == 0u16);
+    assert(0u16.pow(2u32) == 0u16);
+    assert(0u16 ** 2u32 == 0u16);
 
     // u8
-    assert(2u8.pow(2u8) == 4u8);
-    assert(2u8 ** 2u8 == 4u8);
+    assert(2u8.pow(2u32) == 4u8);
+    assert(2u8 ** 2u32 == 4u8);
 
-    assert(2u8.pow(3u8) == 8u8);
-    assert(2u8 ** 3u8 == 8u8);
+    assert(2u8.pow(3u32) == 8u8);
+    assert(2u8 ** 3u32 == 8u8);
 
-    assert(4u8.pow(3u8) == 64u8);
-    assert(4u8 ** 3u8 == 64u8);
+    assert(4u8.pow(3u32) == 64u8);
+    assert(4u8 ** 3u32 == 64u8);
 
-    assert(3u8.pow(4u8) == 81u8);
-    assert(3u8 ** 4u8 == 81u8);
+    assert(3u8.pow(4u32) == 81u8);
+    assert(3u8 ** 4u32 == 81u8);
 
-    assert(10u8.pow(2u8) == 100u8);
-    assert(10u8 ** 2u8 == 100u8);
+    assert(10u8.pow(2u32) == 100u8);
+    assert(10u8 ** 2u32 == 100u8);
 
-    assert(5u8.pow(3u8) == 125u8);
-    assert(5u8 ** 3u8 == 125u8);
+    assert(5u8.pow(3u32) == 125u8);
+    assert(5u8 ** 3u32 == 125u8);
 
-    assert(3u8.pow(5u8) == 243u8);
-    assert(3u8 ** 5u8 == 243u8);
+    assert(3u8.pow(5u32) == 243u8);
+    assert(3u8 ** 5u32 == 243u8);
 
-    assert(2u8.pow(0u8) == 1u8);
-    assert(2u8 ** 0u8 == 1u8);
+    assert(2u8.pow(0u32) == 1u8);
+    assert(2u8 ** 0u32 == 1u8);
 
-    assert(0u8.pow(1u8) == 0u8);
-    assert(0u8 ** 1u8 == 0u8);
+    assert(0u8.pow(1u32) == 0u8);
+    assert(0u8 ** 1u32 == 0u8);
 
-    assert(0u8.pow(2u8) == 0u8);
-    assert(0u8 ** 2u8 == 0u8);
+    assert(0u8.pow(2u32) == 0u8);
+    assert(0u8 ** 2u32 == 0u8);
 
     true
 }

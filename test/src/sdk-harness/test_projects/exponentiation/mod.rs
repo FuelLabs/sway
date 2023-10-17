@@ -14,7 +14,7 @@ async fn overflowing_pow_u64_panics() {
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
     pow_instance
         .methods()
-        .u64_overflow(100u64, 100u64)
+        .u64_overflow(100u64, 100u32)
         .call()
         .await
         .unwrap();
@@ -55,7 +55,7 @@ async fn overflowing_pow_u16_panics() {
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
     pow_instance
         .methods()
-        .u16_overflow(10u16, 5u16)
+        .u16_overflow(10u16, 5u32)
         .call()
         .await
         .unwrap();
@@ -68,7 +68,7 @@ async fn overflowing_pow_u16_panics_max() {
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
     pow_instance
         .methods()
-        .u16_overflow(u16::MAX, u16::MAX)
+        .u16_overflow(u16::MAX, u32::MAX)
         .call()
         .await
         .unwrap();
@@ -82,7 +82,7 @@ async fn overflowing_pow_u8_panics() {
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
     pow_instance
         .methods()
-        .u8_overflow(10u8, 3u8)
+        .u8_overflow(10u8, 3u32)
         .call()
         .await
         .unwrap();
@@ -95,7 +95,7 @@ async fn overflowing_pow_u8_panics_max() {
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
     pow_instance
         .methods()
-        .u8_overflow(u8::MAX, u8::MAX)
+        .u8_overflow(u8::MAX, u32::MAX)
         .call()
         .await
         .unwrap();
