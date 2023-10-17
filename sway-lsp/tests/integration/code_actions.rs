@@ -733,7 +733,7 @@ pub(crate) fn code_action_auto_import_constant_request(server: &ServerState, uri
                 character: 23,
             },
         },
-        "use test_mod::{TEST_CONST, test_fun};\n",
+        "use test_mod::{TEST_CONST, test_fun};",
     );
     let expected = vec![create_code_action(
         uri.clone(),
@@ -900,7 +900,7 @@ pub(crate) fn code_action_auto_import_alias_request(server: &ServerState, uri: &
                 character: 23,
             },
         },
-        "use test_mod::{A, test_fun};\n",
+        "use test_mod::{A, test_fun};",
     );
     expected.push(create_code_action(
         uri.clone(),

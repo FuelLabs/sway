@@ -206,7 +206,7 @@ fn get_text_edit_for_group(
     group_statement_span.map(|span| {
         suffixes.sort();
         let suffix_string = suffixes.join(", ");
-
+        
         let prefix_string = call_path
             .prefixes
             .iter()
@@ -216,7 +216,7 @@ fn get_text_edit_for_group(
 
         TextEdit {
             range: get_range_from_span(&span.clone()),
-            new_text: format!("use {}::{{{}}};\n", prefix_string, suffix_string),
+            new_text: format!("use {}::{{{}}};", prefix_string, suffix_string),
         }
     })
 }
@@ -373,7 +373,7 @@ use b:c:*;
         let program_type_keyword = get_ident_from_src(src, "contract");
 
         let expected_range = Range::new(Position::new(2, 0), Position::new(2, 10));
-        let expected_text = "use a::b::{C, D};\n".into();
+        let expected_text = "use a::b::{C, D};".into();
 
         let text_edit = get_text_edit(
             &new_call_path,
@@ -439,7 +439,7 @@ use b:c:{D, F};
         let program_type_keyword = get_ident_from_src(src, "contract");
 
         let expected_range = Range::new(Position::new(2, 0), Position::new(2, 15));
-        let expected_text = "use b::c::{D, E, F};\n".into();
+        let expected_text = "use b::c::{D, E, F};".into();
 
         let text_edit = get_text_edit(
             &new_call_path,
