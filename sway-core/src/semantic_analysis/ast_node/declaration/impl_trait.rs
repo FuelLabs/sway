@@ -11,7 +11,7 @@ use crate::{
     engine_threading::*,
     language::{
         parsed::*,
-        ty::{self, TyImplItem, TyImplTrait, TyTraitInterfaceItem, TyTraitItem},
+        ty::{self, TyDecl, TyImplItem, TyImplTrait, TyTraitInterfaceItem, TyTraitItem},
         *,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
@@ -272,7 +272,7 @@ impl TyImplTrait {
         handler: &Handler,
         ctx: TypeCheckContext,
         impl_self: ImplSelf,
-    ) -> Result<Self, ErrorEmitted> {
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
         let ImplSelf {
             impl_type_parameters,
             mut implementing_for,
@@ -420,7 +420,7 @@ impl TyImplTrait {
                 }
             }
 
-            let impl_trait = ty::TyImplTrait {
+            let mut impl_trait = ty::TyImplTrait {
                 impl_type_parameters: new_impl_type_parameters,
                 trait_name,
                 trait_type_arguments: vec![], // this is empty because impl selfs don't support generics on the "Self" trait,
@@ -457,6 +457,8 @@ impl TyImplTrait {
                 }
             }
 
+            let impl_trait_decl: ty::TyDecl = decl_engine.insert(impl_trait.clone()).into();
+
             let mut finalizing_ctx = TypeCheckFinalizationContext::new(ctx.engines, ctx.by_ref());
             for item in new_items {
                 match item {
@@ -473,7 +475,17 @@ impl TyImplTrait {
                     _ => {}
                 }
             }
-            Ok(impl_trait)
+
+            impl_trait
+                .items
+                .iter_mut()
+                .for_each(|item| item.replace_implementing_type(engines, impl_trait_decl.clone()));
+
+            if let TyDecl::ImplTrait(impl_trait_id) = &impl_trait_decl {
+                decl_engine.replace(impl_trait_id.decl_id, impl_trait);
+            }
+
+            Ok(impl_trait_decl)
         })
     }
 }

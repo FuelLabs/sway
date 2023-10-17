@@ -208,11 +208,16 @@ impl TyDecl {
             }
             parsed::Declaration::ImplSelf(impl_self) => {
                 let span = impl_self.block_span.clone();
-                let mut impl_trait =
+                let impl_trait_decl =
                     match ty::TyImplTrait::type_check_impl_self(handler, ctx.by_ref(), impl_self) {
                         Ok(val) => val,
                         Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                     };
+                let impl_trait = if let TyDecl::ImplTrait(impl_trait_id) = &impl_trait_decl {
+                    decl_engine.get_impl_trait(&impl_trait_id.decl_id)
+                } else {
+                    unreachable!();
+                };
                 ctx.insert_trait_implementation(
                     handler,
                     impl_trait.trait_name.clone(),
@@ -227,10 +232,6 @@ impl TyDecl {
                     IsImplSelf::Yes,
                     IsExtendingExistingImpl::No,
                 )?;
-                let impl_trait_decl: ty::TyDecl = decl_engine.insert(impl_trait.clone()).into();
-                impl_trait.items.iter_mut().for_each(|item| {
-                    item.replace_implementing_type(engines, impl_trait_decl.clone())
-                });
                 impl_trait_decl
             }
             parsed::Declaration::StructDeclaration(decl) => {
