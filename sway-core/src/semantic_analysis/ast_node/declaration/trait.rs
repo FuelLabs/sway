@@ -67,11 +67,6 @@ impl TyTraitDecl {
             Some(self_type_param.clone()),
         )?;
 
-        // Insert them into the current namespace.
-        for p in &new_type_parameters {
-            p.insert_into_namespace(handler, ctx.by_ref())?;
-        }
-
         // Recursively make the interface surfaces and methods of the
         // supertraits available to this trait.
         insert_supertraits_into_namespace(
