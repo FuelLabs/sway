@@ -206,7 +206,6 @@ fn get_text_edit_for_group(
     group_statement_span.map(|span| {
         suffixes.sort();
         let suffix_string = suffixes.join(", ");
-        
         let prefix_string = call_path
             .prefixes
             .iter()
