@@ -1,9 +1,11 @@
 //! This module handles the process of iterating through the typed AST and doing an analysis.
 //! At the moment we compute an dependency graph between typed nodes.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 
+use petgraph::stable_graph::NodeIndex;
+use petgraph::Graph;
 use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::decl_engine::{DeclId, DeclIdIndexType, DeclRef};
@@ -13,10 +15,9 @@ use crate::Engines;
 
 pub type TyNodeDepGraphNodeId = petgraph::graph::NodeIndex;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TyNodeDepGraphEdge(pub String);
 
-#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug)]
 pub enum TyNodeDepGraphNode {
     ImplTrait { node: ty::ImplTrait },
@@ -45,39 +46,31 @@ impl TypeCheckAnalysisContext<'_> {
             .add_edge(*self.node_stack.last().unwrap(), a, edge);
     }
 
+    #[allow(clippy::map_entry)]
     pub(crate) fn push_impl_trait(&mut self, impl_trait: &ty::ImplTrait) -> TyNodeDepGraphNodeId {
-        let node = if self.nodes.contains_key(&impl_trait.decl_id.inner()) {
+        if self.nodes.contains_key(&impl_trait.decl_id.inner()) {
             *self.nodes.get(&impl_trait.decl_id.inner()).unwrap()
         } else {
-            self.add_node(TyNodeDepGraphNode::ImplTrait {
+            let node = self.add_node(TyNodeDepGraphNode::ImplTrait {
                 node: impl_trait.clone(),
-            })
-        };
+            });
+            self.nodes.insert(impl_trait.decl_id.inner(), node);
 
-        let decl_engine = self.engines.de();
-        let impl_trait = decl_engine.get_impl_trait(&impl_trait.decl_id);
+            let decl_engine = self.engines.de();
+            let impl_trait = decl_engine.get_impl_trait(&impl_trait.decl_id);
 
-        for item in impl_trait.items.iter() {
-            let decl_id = match item {
-                TyTraitItem::Fn(node) => node.id().inner(),
-                TyTraitItem::Constant(node) => node.id().inner(),
-                TyTraitItem::Type(node) => node.id().inner(),
-            };
+            for item in impl_trait.items.iter() {
+                let item_node =
+                    self.add_node(TyNodeDepGraphNode::ImplTraitItem { node: item.clone() });
 
-            let item_node = if self.nodes.contains_key(&decl_id) {
-                *self.nodes.get(&decl_id).unwrap()
-            } else {
-                self.add_node(TyNodeDepGraphNode::ImplTraitItem { node: item.clone() })
-            };
+                // Connect the item node to the impl trait node.
+                self.dep_graph
+                    .add_edge(node, item_node, TyNodeDepGraphEdge(String::from("")));
 
-            // Connect the item node to the impl trait node.
-            self.dep_graph
-                .add_edge(node, item_node, TyNodeDepGraphEdge(String::from("")));
-
-            self.items_node_stack.push(item_node);
+                self.items_node_stack.push(item_node);
+            }
+            node
         }
-
-        node
     }
 
     #[allow(dead_code)]
@@ -192,6 +185,27 @@ impl TypeCheckAnalysisContext<'_> {
     pub(crate) fn sort_nodes(&self) {
         let _res = petgraph::algo::toposort(&self.dep_graph, None)
             .expect("found a cycle in the dependency graph");
+    }
+
+    pub(crate) fn get_sub_graph(
+        &self,
+        node_index: NodeIndex,
+    ) -> Graph<&TyNodeDepGraphNode, &TyNodeDepGraphEdge> {
+        let neighbors: Vec<_> = self
+            .dep_graph
+            .neighbors_directed(node_index, petgraph::Direction::Outgoing)
+            .collect();
+        let neighbors_set: HashSet<&NodeIndex> = HashSet::from_iter(neighbors.iter());
+        self.dep_graph.filter_map(
+            |node_index, node| {
+                if neighbors_set.contains(&node_index) {
+                    Some(node)
+                } else {
+                    None
+                }
+            },
+            |_edge_index, edge| Some(edge),
+        )
     }
 }
 

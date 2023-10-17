@@ -16,9 +16,9 @@ use crate::{
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
     semantic_analysis::{
-        type_check_context::EnforceTypeArguments, AbiMode, ConstShadowingMode, TypeCheckAnalysis,
-        TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
-        TypeCheckFinalizationContext,
+        type_check_context::EnforceTypeArguments, AbiMode, ConstShadowingMode,
+        TyNodeDepGraphNodeId, TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext,
+        TypeCheckFinalization, TypeCheckFinalizationContext,
     },
     type_system::*,
 };
@@ -461,15 +461,37 @@ impl TyImplTrait {
                 }
             }
 
+            let impl_trait_decl = decl_engine.insert(impl_trait.clone()).into();
+
+            // First lets perform an analysis pass.
+            // This returns a vector with ordered indexes to the items in the order that they
+            // should be processed.
+            let ordered_node_indices_opt = if let TyDecl::ImplTrait(impl_trait) = &impl_trait_decl {
+                ty::TyImplTrait::type_check_analyze_impl_self_items(
+                    handler,
+                    ctx.by_ref(),
+                    impl_trait,
+                )?
+            } else {
+                unreachable!();
+            };
+
+            // In case there was any issue processing the dependency graph, then lets just
+            // process them in the original order.
+            let ordered_node_indices: Vec<_> = match ordered_node_indices_opt {
+                Some(value) => value.iter().map(|n| n.index()).collect(),
+                None => (0..new_items.len()).collect(),
+            };
+
             // Now lets type check the body of the functions (for real this time).
-            for (item, new_item) in items.into_iter().zip(new_items) {
-                match (item, new_item) {
+            for idx in ordered_node_indices {
+                match (&items[idx], &new_items[idx]) {
                     (ImplItem::Fn(fn_decl), TyTraitItem::Fn(decl_ref)) => {
                         let mut ty_fn_decl = decl_engine.get_function(decl_ref.id());
                         let new_ty_fn_decl = match ty::TyFunctionDecl::type_check_body(
                             handler,
                             ctx.by_ref(),
-                            &fn_decl,
+                            fn_decl,
                             &mut ty_fn_decl,
                         ) {
                             Ok(res) => res,
@@ -516,6 +538,34 @@ impl TyImplTrait {
             }
 
             Ok(impl_trait_decl)
+        })
+    }
+
+    pub(crate) fn type_check_analyze_impl_self_items(
+        handler: &Handler,
+        ctx: TypeCheckContext,
+        impl_self: &ty::ImplTrait,
+    ) -> Result<Option<Vec<TyNodeDepGraphNodeId>>, ErrorEmitted> {
+        let engines = ctx.engines;
+        handler.scope(|handler| {
+            let mut analysis_ctx = TypeCheckAnalysisContext::new(engines);
+            let _ = impl_self.type_check_analyze(handler, &mut analysis_ctx);
+
+            // Build a sub graph that just contains the items for this impl trait.
+            let impl_trait_node_index = analysis_ctx.nodes.get(&impl_self.decl_id.inner());
+            let sub_graph = analysis_ctx.get_sub_graph(
+                *impl_trait_node_index.expect("expected a valid impl trait node id"),
+            );
+
+            // Do a topological sort to compute an ordered list of nodes (by function calls).
+            let sorted = match petgraph::algo::toposort(&sub_graph, None) {
+                Ok(value) => Some(value),
+                // If the dependency graph contains cycles, then this means there are recursive
+                // function calls, which we will report later.
+                Err(_) => None,
+            };
+
+            Ok(sorted)
         })
     }
 }
