@@ -525,7 +525,7 @@ pub fn parsed_to_ast(
         print_graph_url_format,
     );
 
-    // Evaluate const declarations, to allow storage slots initializion with consts.
+    // Evaluate const declarations, to allow storage slots initialization with consts.
     let mut ctx = Context::new(engines.se());
     let mut md_mgr = MetadataManager::default();
     let module = Module::new(&mut ctx, Kind::Contract);
