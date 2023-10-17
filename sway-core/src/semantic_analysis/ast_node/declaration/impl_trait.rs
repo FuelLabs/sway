@@ -430,8 +430,38 @@ impl TyImplTrait {
                 implementing_for,
             };
 
-            // Now lets type check the body of the functions (while deferring full monomorphization of function applications).
+            // Now lets do a partial type check of the body of the functions (while deferring full
+            // monomorphization of function applications). We will use this tree to perform type check
+            // analysis (mainly dependency analysis), and re-type check the items ordered by dependency.
+            let mut defer_ctx = ctx.by_ref().with_defer_monomorphization();
+
             let new_items = &impl_trait.items;
+            for (item, new_item) in items.clone().into_iter().zip(new_items) {
+                match (item, new_item) {
+                    (ImplItem::Fn(fn_decl), TyTraitItem::Fn(decl_ref)) => {
+                        let mut ty_fn_decl = decl_engine.get_function(decl_ref.id());
+                        let new_ty_fn_decl = match ty::TyFunctionDecl::type_check_body(
+                            handler,
+                            defer_ctx.by_ref(),
+                            fn_decl,
+                            &mut ty_fn_decl,
+                        ) {
+                            Ok(res) => res,
+                            Err(_) => continue,
+                        };
+                        decl_engine.replace(*decl_ref.id(), new_ty_fn_decl);
+                    }
+                    (ImplItem::Constant(_const_decl), TyTraitItem::Constant(_decl_ref)) => {
+                        // Already processed.
+                    }
+                    (ImplItem::Type(_type_decl), TyTraitItem::Type(_decl_ref)) => {
+                        // Already processed.
+                    }
+                    _ => unreachable!(),
+                }
+            }
+
+            // Now lets type check the body of the functions (for real this time).
             for (item, new_item) in items.into_iter().zip(new_items) {
                 match (item, new_item) {
                     (ImplItem::Fn(fn_decl), TyTraitItem::Fn(decl_ref)) => {
