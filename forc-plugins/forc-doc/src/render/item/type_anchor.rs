@@ -57,9 +57,10 @@ pub(crate) fn render_type_anchor(
                     : decl_ref.name().clone().as_str();
                 })
             } else {
-                let module_info = ModuleInfo::from_call_path(enum_decl.call_path);
+                let module_info = ModuleInfo::from_call_path(&enum_decl.call_path);
                 let file_name = format!("enum.{}.html", decl_ref.name().clone().as_str());
-                let href = module_info.file_path_from_location(&file_name, current_module_info)?;
+                let href =
+                    module_info.file_path_from_location(&file_name, current_module_info, false)?;
                 Ok(box_html! {
                     a(class="enum", href=href) {
                         : decl_ref.name().clone().as_str();
@@ -74,9 +75,10 @@ pub(crate) fn render_type_anchor(
                     : decl_ref.name().clone().as_str();
                 })
             } else {
-                let module_info = ModuleInfo::from_call_path(struct_decl.call_path);
+                let module_info = ModuleInfo::from_call_path(&struct_decl.call_path);
                 let file_name = format!("struct.{}.html", decl_ref.name().clone().as_str());
-                let href = module_info.file_path_from_location(&file_name, current_module_info)?;
+                let href =
+                    module_info.file_path_from_location(&file_name, current_module_info, false)?;
                 Ok(box_html! {
                     a(class="struct", href=href) {
                         : decl_ref.name().clone().as_str();

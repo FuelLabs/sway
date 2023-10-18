@@ -26,12 +26,14 @@ pub(crate) const ASSETS_DIR_NAME: &str = "static.files";
 /// Information passed to the render phase to get TypeInfo, CallPath or visibility for type anchors.
 #[derive(Clone)]
 struct RenderPlan<'e> {
+    no_deps: bool,
     document_private_items: bool,
     engines: &'e Engines,
 }
 impl<'e> RenderPlan<'e> {
-    fn new(document_private_items: bool, engines: &'e Engines) -> RenderPlan<'e> {
+    fn new(no_deps: bool, document_private_items: bool, engines: &'e Engines) -> RenderPlan<'e> {
         Self {
+            no_deps,
             document_private_items,
             engines,
         }
@@ -196,6 +198,7 @@ fn build_docs(
 ) -> Result<()> {
     let Command {
         document_private_items,
+        no_deps,
         ..
     } = *build_instructions;
     let ProgramInfo {
@@ -228,7 +231,7 @@ fn build_docs(
     // render docs to HTML
     let rendered_docs = RenderedDocumentation::from_raw_docs(
         raw_docs,
-        RenderPlan::new(document_private_items, engines),
+        RenderPlan::new(no_deps, document_private_items, engines),
         root_attributes,
         ty_program.kind,
         forc_version,
