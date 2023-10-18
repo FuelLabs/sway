@@ -131,7 +131,7 @@ $ tree
 
 As `internal_lib` is an internal library, it can be imported into `main.sw` as follows:
 
-- Use the `mod` keyword followed by the library name to make the internal library a dependancy
+- Use the `mod` keyword followed by the library name to make the internal library a dependency
 - Use the `use` keyword with a `::` separating the name of the library and the imported item(s)
 
 ```sway

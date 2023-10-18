@@ -43,7 +43,7 @@ members = ["member1", "path/to/member2"]
 std = { git = "https://github.com/fuellabs/sway", branch = "test" }
 ```
 
-In the above example each occurance of `std` as a dependency in the workspace will be changed with `std` from `test` branch of sway repo.
+In the above example each occurrence of `std` as a dependency in the workspace will be changed with `std` from `test` branch of sway repo.
 
 ## Some `forc` commands that support workspaces
 

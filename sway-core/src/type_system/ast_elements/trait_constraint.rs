@@ -7,7 +7,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Span, Spanned};
+use sway_types::Spanned;
 
 use crate::{
     engine_threading::*,
@@ -117,29 +117,6 @@ impl TraitConstraint {
             )));
         }
 
-        // Right now we aren't supporting generic traits in trait constraints
-        // because of how we type check trait constraints.
-        // Essentially type checking trait constraints with generic traits
-        // creates a chicken and an egg problem where, in order to type check
-        // the type arguments to the generic traits, we must first type check
-        // all of the type parameters, but we cannot finish type checking one
-        // type parameter until we type check the trait constraints for that
-        // type parameter. This is not an unsolvable problem, it will just
-        // require some hacking.
-        //
-        // TODO: implement a fix for the above in a future PR
-        if !self.type_arguments.is_empty() {
-            return Err(handler.emit_err(CompileError::Unimplemented(
-                "Using generic traits in trait constraints is not supported yet.",
-                Span::join_all(
-                    self.type_arguments
-                        .iter()
-                        .map(|x| x.span())
-                        .collect::<Vec<_>>(),
-                ),
-            )));
-        }
-
         // Type check the type arguments.
         for type_argument in self.type_arguments.iter_mut() {
             type_argument.type_id = ctx
@@ -189,7 +166,12 @@ impl TraitConstraint {
                 trait_decl
                     .type_parameters
                     .push(trait_decl.self_type.clone());
-                type_arguments.push(TypeArgument::from(type_id));
+                type_arguments.push(TypeArgument {
+                    type_id,
+                    initial_type_id: type_id,
+                    span: trait_name.span(),
+                    call_path_tree: None,
+                });
 
                 // Monomorphize the trait declaration.
                 ctx.monomorphize(

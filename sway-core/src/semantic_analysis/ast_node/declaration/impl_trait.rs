@@ -62,11 +62,6 @@ impl TyImplTrait {
             Some(self_type_param),
         )?;
 
-        // Insert them into the current namespace.
-        for p in &new_impl_type_parameters {
-            p.insert_into_namespace(handler, ctx.by_ref())?;
-        }
-
         // resolve the types of the trait type arguments
         for type_arg in trait_type_arguments.iter_mut() {
             type_arg.type_id = ctx.resolve_type(
@@ -320,11 +315,6 @@ impl TyImplTrait {
             impl_type_parameters,
             Some(self_type_param),
         )?;
-
-        // Insert them into the current namespace.
-        for p in &new_impl_type_parameters {
-            p.insert_into_namespace(handler, ctx.by_ref())?;
-        }
 
         // type check the type that we are implementing for
         implementing_for.type_id = ctx.resolve_type(

@@ -8,7 +8,7 @@ The `Forc.toml` (the _manifest_ file) is a compulsory file for each package and 
   * `organization` — The organization of the project.
   * `license`— The project license.
   * `entry` — The entry point for the compiler to start parsing from.
-    * For the recomended way of selecting an entry point of large libraries please take a look at: [Libraries](./../sway-program-types/libraries.md)
+    * For the recommended way of selecting an entry point of large libraries please take a look at: [Libraries](./../sway-program-types/libraries.md)
   * `implicit-std` -  Controls whether provided `std` version (with the current `forc` version) will get added as a dependency _implicitly_. _Unless you know what you are doing, leave this as default._
   * `forc-version` - The minimum forc version required for this project to work properly.
 
@@ -166,7 +166,7 @@ Note that each key after the `[patch]` is a URL of the source that is being patc
 
 ## The `[contract-dependencies]` section
 
-The `[contract-dependenices]` table can be used to declare contract dependencies for a Sway contract or script. Contract dependencies are the set of contracts that our contract or script may interact with. Declaring `[contract-dependencies]` makes it easier to refer to contracts in your Sway source code without having to manually update IDs each time a new version is deployed. Instead, we can use forc to pin and update contract dependencies just like we do for regular library dependencies.
+The `[contract-dependencies]` table can be used to declare contract dependencies for a Sway contract or script. Contract dependencies are the set of contracts that our contract or script may interact with. Declaring `[contract-dependencies]` makes it easier to refer to contracts in your Sway source code without having to manually update IDs each time a new version is deployed. Instead, we can use forc to pin and update contract dependencies just like we do for regular library dependencies.
 
 Contracts declared under `[contract-dependencies]` are built and pinned just like regular `[dependencies]` however rather than importing each contract dependency's entire public namespace we instead import their respective contract IDs as `CONTRACT_ID` constants available via each contract dependency's namespace root. This means you can use a contract dependency's ID as if it were declared as a `pub const` in the root of the contract dependency package as demonstrated in the example below.
 
