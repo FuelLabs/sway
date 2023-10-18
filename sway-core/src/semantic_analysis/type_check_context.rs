@@ -30,7 +30,7 @@ pub struct TypeCheckContext<'a> {
     /// Internally, this includes:
     ///
     /// - The `root` module from which all other modules maybe be accessed using absolute paths.
-    /// - The `init` module used to initialise submodule namespaces.
+    /// - The `init` module used to initialize submodule namespaces.
     /// - A `mod_path` that represents the current module being type-checked. This is automatically
     ///   updated upon entering/exiting submodules via the `enter_submodule` method.
     pub(crate) namespace: &'a mut Namespace,

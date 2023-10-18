@@ -91,32 +91,6 @@ impl ReqDeclTree {
             _priv: (),
         }
     }
-
-    // TODO-IG: Remove from here and add to the matching of OR patterns.
-    /// Returns all [MatchVarDecl]s found in the match arm
-    /// in order of their appearance from left to right.
-    pub(crate) fn variable_declarations(&self) -> Vec<&MatchVarDecl> {
-        let mut result = vec![];
-
-        collect_variable_declarations(&self.root, &mut result);
-
-        return result;
-
-        fn collect_variable_declarations<'a>(node: &'a ReqDeclNode, declarations: &mut Vec<&'a MatchVarDecl>) {
-            // Traverse the tree depth-first, left to right.
-            match node {
-                ReqDeclNode::ReqOrVarDecl(Some(Either::Right(decl))) => {
-                    declarations.push(decl);
-                },
-                ReqDeclNode::ReqOrVarDecl(_) => (),
-                ReqDeclNode::And(nodes) | ReqDeclNode::Or(nodes) => {
-                    for node in nodes {
-                        collect_variable_declarations(node, declarations);
-                    }
-                },
-            }
-        }
-    }
 }
 
 /// A single node in the [ReqDeclTree].
@@ -275,7 +249,7 @@ pub(crate) fn matcher(
 }
 
 fn match_or(handler: &Handler, mut ctx: TypeCheckContext, match_value: &ty::TyExpression, exp: &ty::TyExpression, alternatives: Vec<ty::TyScrutinee>) -> Result<ReqDeclTree, ErrorEmitted> {
-    handler.scope(|handler| {
+    return handler.scope(|handler| {
             let mut nodes = vec![];
             let mut variables_in_alternatives: Vec<(Span, Vec<(Ident, TypeId)>)> = vec![]; // Span is the span of the alternative.
 
@@ -285,13 +259,12 @@ fn match_or(handler: &Handler, mut ctx: TypeCheckContext, match_value: &ty::TyEx
                 // We want to collect as many errors as possible.
                 // If an alternative has any internal issues we will emit them, ignore that alternative,
                 // but still process the remaining alternatives.
-                let alternative_req_decl_tree =
-                    match matcher(handler, ctx.by_ref(), match_value, exp, alternative) {
+                let alternative_req_decl_tree = match matcher(handler, ctx.by_ref(), match_value, exp, alternative) {
                         Ok(req_decl_tree) => req_decl_tree,
                         Err(_) => continue,
                     };
 
-                variables_in_alternatives.push((alternative_span, alternative_req_decl_tree.variable_declarations().into_iter().map(|(ident, exp)| (ident.clone(), exp.return_type)).collect()));
+                variables_in_alternatives.push((alternative_span, variable_declarations(&alternative_req_decl_tree)));
 
                 nodes.push(alternative_req_decl_tree.root);
             }
@@ -359,7 +332,32 @@ fn match_or(handler: &Handler, mut ctx: TypeCheckContext, match_value: &ty::TyEx
             }
 
             Ok(ReqDeclTree::or(nodes))
-        })
+    });
+
+    /// Returns all [MatchVarDecl]s found in the match arm
+    /// in order of their appearance from left to right.
+    fn variable_declarations(req_decl_tree: &ReqDeclTree) -> Vec<(Ident, TypeId)> {
+        let mut result = vec![];
+
+        collect_variable_declarations(&req_decl_tree.root, &mut result);
+
+        return result;
+
+        fn collect_variable_declarations(node: &ReqDeclNode, declarations: &mut Vec<(Ident, TypeId)>) {
+            // Traverse the tree depth-first, left to right.
+            match node {
+                ReqDeclNode::ReqOrVarDecl(Some(Either::Right((ident, exp)))) => {
+                    declarations.push((ident.clone(), exp.return_type));
+                },
+                ReqDeclNode::ReqOrVarDecl(_) => (),
+                ReqDeclNode::And(nodes) | ReqDeclNode::Or(nodes) => {
+                    for node in nodes {
+                        collect_variable_declarations(node, declarations);
+                    }
+                },
+            }
+        }
+    }
 }
 
 fn match_literal(exp: &ty::TyExpression, scrutinee: Literal, span: Span) -> ReqDeclTree {

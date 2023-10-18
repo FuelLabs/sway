@@ -1,13 +1,13 @@
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Span, constants::INVALID_DESUGARED_MATCHED_EXPRESSION_SIGNAL, integer_bits::IntegerBits, Ident, Spanned};
+use sway_types::{Span, constants::INVALID_DESUGARED_MATCHED_EXPRESSION_SIGNAL, Spanned};
 
 use crate::{
-    language::{parsed::*, ty, *},
+    language::{parsed::*, ty},
     semantic_analysis::{
         ast_node::expression::typed_expression::instantiate_if_expression,
-        TypeCheckContext,
+        TypeCheckContext, expression::match_expression::typed::instantiate::Instantiate,
     },
-    CompileError, TypeInfo, TypeId, Engines,
+    CompileError, TypeId,
 };
 
 impl ty::TyMatchExpression {
@@ -57,59 +57,54 @@ impl ty::TyMatchExpression {
         handler: &Handler,
         mut ctx: TypeCheckContext,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
-        if self.branches.is_empty() {
-            return instantiate_if_expression_for_empty_match_expression(handler, ctx, self.value_type_id, self.return_type_id, self.span);
-        }
+        let instantiate = Instantiate::new(ctx.engines, self.span.clone());
 
-        let type_engine = ctx.engines.te();
-        let engines = ctx.engines();
+        if self.branches.is_empty() {
+            return instantiate_if_expression_for_empty_match_expression(handler, ctx, &instantiate, self.value_type_id, self.return_type_id, self.span.clone());
+        }
 
         let typed_if_exp = handler.scope(|handler| {
             // Create the typed if expression object that we will be building on to.
-            let mut typed_if_exp = instantiate_final_else_block(engines, self.span.clone());
+            let mut typed_if_exp = instantiate.code_block_with_implicit_return_revert(INVALID_DESUGARED_MATCHED_EXPRESSION_SIGNAL);
 
-            // for every branch of the match expression, bottom-up, means in reverse
+            // For every branch of the match expression, bottom-up, means in reverse.
             for ty::TyMatchBranch { matched_or_variant_index_vars, if_condition, result, .. } in self.branches.into_iter().rev() {
                 let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
                 let result_span = result.span.clone();
 
-                let condition = if_condition.unwrap_or(
-            ty::TyExpression {
-                        expression: ty::TyExpressionVariant::Literal(Literal::Boolean(true)),
-                        return_type: type_engine.insert(engines, TypeInfo::Boolean),
-                        span: result_span.clone(),
-                    });
+                let condition = if_condition.unwrap_or(instantiate.boolean_literal(true));
+
+                // Create a new namespace for this branch result.
+                let mut namespace = ctx.namespace.clone();
+                let mut branch_ctx = ctx.scoped(&mut namespace);
+
+                let if_exp = match instantiate_if_expression(
+                    handler,
+                    branch_ctx.by_ref(),
+                    condition,
+                    result,
+                    Some(typed_if_exp.clone()), // Put the previous if into else.
+                    result_span.clone(),
+                ) {
+                    Ok(if_exp) => if_exp,
+                    Err(_) => {
+                        continue;
+                    }
+                };
 
                 typed_if_exp = if matched_or_variant_index_vars.is_empty() {
                     // No OR variants with vars. We just have to instantiate the if expression.
-                    match instantiate_if_expression(
-                        handler,
-                        ctx,
-                        condition,
-                        result,
-                        Some(typed_if_exp.clone()), // Put the previous if into else.
-                        result_span.clone(),
-                    ) {
-                        Ok(if_exp) => if_exp,
-                        Err(_) => {
-                            continue;
-                        }
-                    }
+                    if_exp
                 }
                 else {
                     // We have matched OR variant index vars.
                     // We need to add them to the block before the if expression.
                     // The resulting `typed_if_exp` in this case is actually not
                     // an if expression but rather a code block.
-
-                    // Create a new namespace for this branch result.
-                    let mut namespace = ctx.namespace.clone();
-                    let mut branch_ctx = ctx.scoped(&mut namespace);
-
                     let mut code_block_contents: Vec<ty::TyAstNode> = vec![];
 
                     for (var_ident, var_body) in matched_or_variant_index_vars {
-                        let var_decl = instantiate_variable_declaration(var_ident.clone(), var_body);
+                        let var_decl = instantiate.var_decl(var_ident.clone(), var_body);
                         let span = var_ident.span();
                         let _ = branch_ctx.insert_symbol(handler, var_ident, var_decl.clone());
                         code_block_contents.push(ty::TyAstNode {
@@ -117,21 +112,6 @@ impl ty::TyMatchExpression {
                             span,
                         });
                     }
-
-                    // TODO-IG: Remove code duplication.
-                    let if_exp = match instantiate_if_expression(
-                        handler,
-                        branch_ctx,
-                        condition,
-                        result,
-                        Some(typed_if_exp.clone()), // Put the previous if into else.
-                        result_span.clone(),
-                    ) {
-                        Ok(if_exp) => if_exp,
-                        Err(_) => {
-                            continue;
-                        }
-                    };
 
                     code_block_contents.push(ty::TyAstNode {
                         content: ty::TyAstNodeContent::ImplicitReturnExpression(if_exp),
@@ -153,47 +133,16 @@ impl ty::TyMatchExpression {
 
         return Ok(typed_if_exp);
 
-        // TODO-IG: Code duplication with typed_match_branch.
-        /// Instantiates a block with an implicit return of `__revert()`.
-        fn instantiate_final_else_block(engines: &Engines, dummy_span: Span) -> ty::TyExpression {
-            let type_engine = engines.te();
-            let revert_type = type_engine.insert(engines, TypeInfo::Unknown); // TODO: Change this to the `Never` type once available.
-
-            ty::TyExpression {
-                expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
-                    contents: vec![ty::TyAstNode {
-                        content: ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
-                                expression: ty::TyExpressionVariant::IntrinsicFunction(ty::TyIntrinsicFunctionKind {
-                                    kind: sway_ast::Intrinsic::Revert,
-                                    arguments: vec![ty::TyExpression {
-                                        expression: ty::TyExpressionVariant::Literal(Literal::U64(INVALID_DESUGARED_MATCHED_EXPRESSION_SIGNAL)),
-                                        return_type: type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
-                                        span: dummy_span.clone(),
-                                    }],
-                                    type_arguments: vec![],
-                                    span: dummy_span.clone(),
-                                }),
-                                return_type: revert_type,
-                                span: dummy_span.clone(),
-                            }),
-                        span: dummy_span.clone(),
-                    }],
-                }),
-                return_type: revert_type,
-                span: dummy_span,
-            }
-        }
-
         fn instantiate_if_expression_for_empty_match_expression(
             handler: &Handler,
             ctx: TypeCheckContext,
+            instantiate: &Instantiate,
             value_type_id: TypeId,
             return_type_id: TypeId,
             span: Span
         ) -> Result<ty::TyExpression, ErrorEmitted> {
             let type_engine = ctx.engines.te();
             let decl_engine = ctx.engines.de();
-            let engines = ctx.engines();
 
             // An empty match expression can happen only if the type we
             // are matching on does not have a valid constructor.
@@ -213,15 +162,11 @@ impl ty::TyMatchExpression {
                 .get(value_type_id)
                 .has_valid_constructor(decl_engine)
             {
-                let condition = ty::TyExpression {
-                    expression: ty::TyExpressionVariant::Literal(Literal::Boolean(true)),
-                    return_type: type_engine.insert(engines, TypeInfo::Boolean),
-                    span: span.clone(),
-                };
+                let condition = instantiate.boolean_literal(true);
                 let then_exp = ty::TyExpression {
                     expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
                     return_type: return_type_id,
-                    span: span.clone(),
+                    span: instantiate.dummy_span(),
                 };
                 let inner_exp = ty::TyExpressionVariant::IfExp {
                     condition: Box::new(condition),
@@ -231,7 +176,7 @@ impl ty::TyMatchExpression {
                 let typed_if_exp = ty::TyExpression {
                     expression: inner_exp,
                     return_type: return_type_id,
-                    span: span.clone(),
+                    span: instantiate.dummy_span(),
                 };
 
                 return Ok(typed_if_exp);
@@ -243,19 +188,4 @@ impl ty::TyMatchExpression {
             )))
         }
     }
-}
-
-// TODO-IG: Extract helper methods.
-/// Instantiates a variable declaration for an immutable variable of the form `let <name> = <body>;`.
-fn instantiate_variable_declaration(name: Ident, body: ty::TyExpression) -> ty::TyDecl {
-    let return_type = body.return_type;
-    let type_ascription = body.return_type.into();
-
-    ty::TyDecl::VariableDecl(Box::new(ty::TyVariableDecl {
-        name,
-        body,
-        mutability: ty::VariableMutability::Immutable,
-        return_type,
-        type_ascription,
-    }))
 }

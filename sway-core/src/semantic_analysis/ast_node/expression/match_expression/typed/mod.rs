@@ -40,5 +40,6 @@ mod matcher;
 mod typed_match_branch;
 mod typed_match_expression;
 mod typed_scrutinee;
+mod instantiate;
 
 pub(crate) use matcher::ReqDeclTree;
