@@ -1,5 +1,7 @@
+use atty::Stream;
 use clap::ValueEnum;
-use std::io::{Read, Write};
+use std::io::{stdin, stdout, Read, Write};
+use termion::screen::IntoAlternateScreen;
 
 pub mod new_key;
 pub mod parse_secret;
@@ -16,18 +18,21 @@ pub enum KeyType {
 
 fn wait_for_keypress() {
     let mut single_key = [0u8];
-    std::io::stdin().read_exact(&mut single_key).unwrap();
+    stdin().read_exact(&mut single_key).unwrap();
 }
 
 pub(crate) fn display_string_discreetly(
     discreet_string: &str,
     continue_message: &str,
 ) -> anyhow::Result<()> {
-    use termion::screen::IntoAlternateScreen;
-    let mut screen = std::io::stdout().into_alternate_screen()?;
-    writeln!(screen, "{discreet_string}")?;
-    screen.flush()?;
-    println!("{continue_message}");
-    wait_for_keypress();
+    if atty::is(Stream::Stdout) {
+        let mut screen = stdout().into_alternate_screen()?;
+        writeln!(screen, "{discreet_string}")?;
+        screen.flush()?;
+        println!("{continue_message}");
+        wait_for_keypress();
+    } else {
+        print!("{discreet_string}");
+    }
     Ok(())
 }

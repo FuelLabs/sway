@@ -1893,6 +1893,7 @@ version = "0.46.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "atty",
  "clap 3.2.25",
  "forc-tracing",
  "fuel-core-types",
