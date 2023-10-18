@@ -2,6 +2,7 @@
 //! At the moment we compute an dependency graph between typed nodes.
 
 use std::collections::{HashMap, HashSet};
+use std::fmt::Display;
 use std::fs;
 
 use petgraph::stable_graph::NodeIndex;
@@ -16,7 +17,20 @@ use crate::Engines;
 pub type TyNodeDepGraphNodeId = petgraph::graph::NodeIndex;
 
 #[derive(Clone, Debug)]
-pub struct TyNodeDepGraphEdge(pub String);
+pub enum TyNodeDepGraphEdgeInfo {
+    FnApp
+}
+
+#[derive(Clone, Debug)]
+pub struct TyNodeDepGraphEdge(pub TyNodeDepGraphEdgeInfo);
+
+impl Display for TyNodeDepGraphEdge {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            TyNodeDepGraphEdgeInfo::FnApp => write!(f, "fn app"),
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub enum TyNodeDepGraphNode {
@@ -65,7 +79,7 @@ impl TypeCheckAnalysisContext<'_> {
 
                 // Connect the item node to the impl trait node.
                 self.dep_graph
-                    .add_edge(node, item_node, TyNodeDepGraphEdge(String::from("")));
+                    .add_edge(node, item_node, TyNodeDepGraphEdge(TyNodeDepGraphEdgeInfo::FnApp));
 
                 self.items_node_stack.push(item_node);
             }
@@ -127,13 +141,12 @@ impl TypeCheckAnalysisContext<'_> {
         &self,
         engines: &Engines,
         print_graph: Option<String>,
-        print_graph_url_format: Option<String>,
     ) {
         if let Some(graph_path) = print_graph {
             use petgraph::dot::{Config, Dot};
             let string_graph = self.dep_graph.filter_map(
                 |_idx, node| Some(format!("{:?}", engines.help_out(node))),
-                |_idx, edge| Some(edge.0.clone()),
+                |_idx, edge| Some(format!("{}", edge)),
             );
 
             let output = format!(
@@ -145,24 +158,7 @@ impl TypeCheckAnalysisContext<'_> {
                     &|_, nr| {
                         let _node = &self.dep_graph[nr.0];
                         let shape = "";
-                        // if self.entry_points.contains(&nr.0) {
-                        //     shape = "shape=doubleoctagon";
-                        // }
                         let url = "".to_string();
-                        if let Some(_url_format) = print_graph_url_format.clone() {
-                            // if let Some(span) = node.span() {
-                            //     if let Some(source_id) = span.source_id() {
-                            //         let path = engines.se().get_path(source_id);
-                            //         let path = path.to_string_lossy();
-                            //         let (line, col) = span.start_pos().line_col();
-                            //         let url_format = url_format
-                            //             .replace("{path}", path.to_string().as_str())
-                            //             .replace("{line}", line.to_string().as_str())
-                            //             .replace("{col}", col.to_string().as_str());
-                            //         url = format!("URL = {url_format:?}");
-                            //     }
-                            // }
-                        }
                         format!("{shape} label = {:?} {url}", nr.1)
                     },
                 )

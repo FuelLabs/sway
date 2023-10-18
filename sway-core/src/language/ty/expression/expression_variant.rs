@@ -13,7 +13,7 @@ use crate::{
     language::{ty::*, *},
     semantic_analysis::{
         TyNodeDepGraphEdge, TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext,
-        TypeCheckFinalization, TypeCheckFinalizationContext,
+        TypeCheckFinalization, TypeCheckFinalizationContext, TyNodeDepGraphEdgeInfo,
     },
     type_system::*,
 };
@@ -909,7 +909,7 @@ impl TypeCheckAnalysis for TyExpressionVariant {
             TyExpressionVariant::FunctionApplication { fn_ref, .. } => {
                 let fn_node = ctx.get_node_from_impl_trait_fn_ref_app(fn_ref);
                 if let Some(fn_node) = fn_node {
-                    ctx.add_edge_from_current(fn_node, TyNodeDepGraphEdge(String::from("fn app")));
+                    ctx.add_edge_from_current(fn_node, TyNodeDepGraphEdge(TyNodeDepGraphEdgeInfo::FnApp));
                 }
             }
             TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
