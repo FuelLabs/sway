@@ -18,7 +18,7 @@ pub type TyNodeDepGraphNodeId = petgraph::graph::NodeIndex;
 
 #[derive(Clone, Debug)]
 pub enum TyNodeDepGraphEdgeInfo {
-    FnApp
+    FnApp,
 }
 
 #[derive(Clone, Debug)]
@@ -78,8 +78,11 @@ impl TypeCheckAnalysisContext<'_> {
                     self.add_node(TyNodeDepGraphNode::ImplTraitItem { node: item.clone() });
 
                 // Connect the item node to the impl trait node.
-                self.dep_graph
-                    .add_edge(node, item_node, TyNodeDepGraphEdge(TyNodeDepGraphEdgeInfo::FnApp));
+                self.dep_graph.add_edge(
+                    node,
+                    item_node,
+                    TyNodeDepGraphEdge(TyNodeDepGraphEdgeInfo::FnApp),
+                );
 
                 self.items_node_stack.push(item_node);
             }
@@ -137,11 +140,7 @@ impl TypeCheckAnalysisContext<'_> {
 
     /// Prints out GraphViz DOT format for the dependency graph.
     #[allow(dead_code)]
-    pub(crate) fn visualize(
-        &self,
-        engines: &Engines,
-        print_graph: Option<String>,
-    ) {
+    pub(crate) fn visualize(&self, engines: &Engines, print_graph: Option<String>) {
         if let Some(graph_path) = print_graph {
             use petgraph::dot::{Config, Dot};
             let string_graph = self.dep_graph.filter_map(

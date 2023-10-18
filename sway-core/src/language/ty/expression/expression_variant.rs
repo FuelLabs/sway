@@ -12,8 +12,8 @@ use crate::{
     engine_threading::*,
     language::{ty::*, *},
     semantic_analysis::{
-        TyNodeDepGraphEdge, TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext,
-        TypeCheckFinalization, TypeCheckFinalizationContext, TyNodeDepGraphEdgeInfo,
+        TyNodeDepGraphEdge, TyNodeDepGraphEdgeInfo, TypeCheckAnalysis, TypeCheckAnalysisContext,
+        TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext,
     },
     type_system::*,
 };
@@ -909,7 +909,10 @@ impl TypeCheckAnalysis for TyExpressionVariant {
             TyExpressionVariant::FunctionApplication { fn_ref, .. } => {
                 let fn_node = ctx.get_node_from_impl_trait_fn_ref_app(fn_ref);
                 if let Some(fn_node) = fn_node {
-                    ctx.add_edge_from_current(fn_node, TyNodeDepGraphEdge(TyNodeDepGraphEdgeInfo::FnApp));
+                    ctx.add_edge_from_current(
+                        fn_node,
+                        TyNodeDepGraphEdge(TyNodeDepGraphEdgeInfo::FnApp),
+                    );
                 }
             }
             TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
@@ -934,11 +937,7 @@ impl TypeCheckAnalysis for TyExpressionVariant {
                 prefix.type_check_analyze(handler, ctx)?;
                 index.type_check_analyze(handler, ctx)?;
             }
-            TyExpressionVariant::StructExpression { fields: _, .. } => {
-                // for field in fields.iter() {
-                //     field.type_check_analyze(handler, ctx)?;
-                // }
-            }
+            TyExpressionVariant::StructExpression { fields: _, .. } => {}
             TyExpressionVariant::CodeBlock(block) => {
                 block.type_check_analyze(handler, ctx)?;
             }
@@ -948,9 +947,6 @@ impl TypeCheckAnalysis for TyExpressionVariant {
                 scrutinees: _,
             } => {
                 desugared.type_check_analyze(handler, ctx)?;
-                // for scrutinee in scrutinees.iter() {
-                //     scrutinee.type_check_analyze(handler, ctx)?
-                // }
             }
             TyExpressionVariant::IfExp {
                 condition,
