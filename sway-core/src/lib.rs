@@ -485,7 +485,7 @@ pub fn parsed_to_ast(
 
     typed_program.check_deprecated(engines, handler);
 
-    // // Analyze the AST for dependency information.
+    // Analyze the AST for dependency information.
     let mut ctx = TypeCheckAnalysisContext::new(engines);
     typed_program.type_check_analyze(handler, &mut ctx)?;
 
