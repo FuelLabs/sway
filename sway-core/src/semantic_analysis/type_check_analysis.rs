@@ -176,12 +176,6 @@ impl TypeCheckAnalysisContext<'_> {
         }
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn sort_nodes(&self) {
-        let _res = petgraph::algo::toposort(&self.dep_graph, None)
-            .expect("found a cycle in the dependency graph");
-    }
-
     pub(crate) fn get_sub_graph(
         &self,
         node_index: NodeIndex,
