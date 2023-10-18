@@ -193,10 +193,13 @@ impl HashWithEngines for TypeInfo {
             }
             TypeInfo::UnknownGeneric {
                 name,
-                trait_constraints,
+                trait_constraints: _,
             } => {
                 name.hash(state);
-                trait_constraints.hash(state, engines);
+                // Do not hash trait_constraints as those can point back to this type_info
+                // This avoids infinite hash loop. More collisions should occur but
+                // Eq implementations can disambiguate.
+                //trait_constraints.hash(state, engines);
             }
             TypeInfo::Custom {
                 qualified_call_path: call_path,

@@ -88,11 +88,6 @@ impl ty::TyFunctionDecl {
         let new_type_parameters =
             TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters, None)?;
 
-        // Insert them into the current namespace.
-        for p in &new_type_parameters {
-            p.insert_into_namespace(handler, ctx.by_ref())?;
-        }
-
         // type check the function parameters, which will also insert them into the namespace
         let mut new_parameters = vec![];
         handler.scope(|handler| {
