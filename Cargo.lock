@@ -1905,6 +1905,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha3",
+ "termion",
  "tokio",
  "tracing",
 ]

@@ -24,5 +24,6 @@ rand = "0.8"
 serde = "1.0"
 serde_json = "1"
 sha3 = "0.10.8"
+termion = "2.0.1"
 tokio = { version = "1.8", features = ["macros", "rt-multi-thread", "process"] }
 tracing = "0.1"
