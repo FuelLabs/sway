@@ -118,7 +118,7 @@ impl HasModule<TyModule> for TySubmodule {
 }
 
 impl HasSubmodules<TySubmodule> for TyModule {
-    fn submodules(&self) -> &Vec<(ModName, TySubmodule)> {
+    fn submodules(&self) -> &[(ModName, TySubmodule)] {
         &self.submodules
     }
 }

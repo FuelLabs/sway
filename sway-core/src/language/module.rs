@@ -21,7 +21,7 @@ where
     Self: Sized,
 {
     /// Returns the submodules of this module.
-    fn submodules(&self) -> &Vec<(ModName, E)>;
+    fn submodules(&self) -> &[(ModName, E)];
 
     /// An iterator yielding all submodules recursively, depth-first.
     fn submodules_recursive(&self) -> SubmodulesRecursive<Self, E> {

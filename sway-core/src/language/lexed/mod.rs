@@ -30,7 +30,7 @@ impl HasModule<LexedModule> for LexedSubmodule {
 }
 
 impl HasSubmodules<LexedSubmodule> for LexedModule {
-    fn submodules(&self) -> &Vec<(ModName, LexedSubmodule)> {
+    fn submodules(&self) -> &[(ModName, LexedSubmodule)] {
         &self.submodules
     }
 }

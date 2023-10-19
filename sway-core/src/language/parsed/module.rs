@@ -41,7 +41,7 @@ impl HasModule<ParseModule> for ParseSubmodule {
 }
 
 impl HasSubmodules<ParseSubmodule> for ParseModule {
-    fn submodules(&self) -> &Vec<(ModName, ParseSubmodule)> {
+    fn submodules(&self) -> &[(ModName, ParseSubmodule)] {
         &self.submodules
     }
 }
