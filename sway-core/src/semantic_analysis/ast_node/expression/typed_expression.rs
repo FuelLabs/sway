@@ -202,8 +202,9 @@ impl ty::TyExpression {
             ExpressionKind::CodeBlock(contents) => {
                 Self::type_check_code_block(handler, ctx.by_ref(), contents, span)
             }
-            // TODO if _condition_ is constant, evaluate it and compile this to an
-            // expression with only one branch
+            // TODO: If _condition_ is constant, evaluate it and compile this to an
+            // expression with only one branch. Think at which stage to do it because
+            // the same optimization should be done on desugared match expressions.
             ExpressionKind::If(IfExpression {
                 condition,
                 then,
@@ -668,33 +669,7 @@ impl ty::TyExpression {
             .expect_is_supported_in_match_expressions(handler, &typed_value.span)?;
 
         // type check the match expression and create a ty::TyMatchExpression object
-        let (typed_match_expression, typed_scrutinees) = {
-            let ctx = ctx.by_ref().with_help_text("");
-            ty::TyMatchExpression::type_check(handler, ctx, typed_value, branches, span.clone())?
-        };
-
-        // Emit errors for eventual multiple definitions of variables.
-        // We stop further compilation in case of duplicates in order to
-        // provide guarantee to the usefulness algorithm and the desugaring
-        // that all the requirements are satisfied for all of the variables:
-        // - existence in all OR variants with the same type
-        // - no duplicates
-        handler.scope(|handler| {
-            for scrutinee in typed_scrutinees.iter() {
-                for duplicate in collect_duplicate_match_pattern_variables(scrutinee) {
-                    handler.emit_err(CompileError::MultipleDefinitionsOfMatchArmVariable {
-                        match_value: value.span(),
-                        match_type: engines.help_out(type_id).to_string(),
-                        first_definition: duplicate.first_definition.1,
-                        first_definition_is_struct_field: duplicate.first_definition.0,
-                        duplicate: duplicate.duplicate.1,
-                        duplicate_is_struct_field: duplicate.duplicate.0,
-                    });
-                }
-            }
-
-            Ok(())
-        })?;
+        let (typed_match_expression, typed_scrutinees) = ty::TyMatchExpression::type_check(handler, ctx.by_ref().with_help_text(""), typed_value, branches, span.clone())?;
 
         // check to see if the match expression is exhaustive and if all match arms are reachable
         let (witness_report, arms_reachability) = check_match_expression_usefulness(

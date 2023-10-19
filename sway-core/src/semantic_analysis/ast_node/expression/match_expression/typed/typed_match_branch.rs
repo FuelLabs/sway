@@ -10,7 +10,7 @@ use crate::{
     language::{parsed::MatchBranch, ty::{self, MatchIfCondition, MatchMatchedOrVariantIndexVars}},
     semantic_analysis::*,
     types::DeterministicallyAborts,
-    TypeInfo, TypeArgument,
+    TypeInfo, TypeArgument, UnifyCheck, Engines,
 };
 
 use super::{matcher::matcher, instantiate::Instantiate};
@@ -31,6 +31,7 @@ impl ty::TyMatchBranch {
         // For the dummy span of all the instantiated code elements that cannot be mapped on
         // any of the elements from the original code, we will simply take the span of the
         // whole match arm. We assume that these spans will never be used.
+        // This is also the error span in case of internal compiler errors.
         let instantiate = Instantiate::new(&ctx.engines, branch_span.clone());
 
         let type_engine = ctx.engines.te();
@@ -49,7 +50,28 @@ impl ty::TyMatchBranch {
             typed_scrutinee.clone(),
         )?;
 
-        let (if_condition, result_var_declarations, or_variant_vars) = instantiate_if_condition_result_var_declarations_and_matched_or_variant_index_vars(&handler, &mut ctx, &instantiate, &req_decl_tree, &branch_span)?;
+        // Emit errors for eventual multiple definitions of variables.
+        // We stop further compilation in case of duplicates in order to
+        // provide guarantee to the desugaring that all the requirements
+        // are satisfied for all of the variables:
+        // - existence in all OR variants with the same type
+        // - no duplicates
+        handler.scope(|handler| {
+            for duplicate in collect_duplicate_match_pattern_variables(&typed_scrutinee) {
+                handler.emit_err(CompileError::MultipleDefinitionsOfMatchArmVariable {
+                    match_value: typed_value.span.clone(),
+                    match_type: engines.help_out(typed_value.return_type).to_string(),
+                    first_definition: duplicate.first_definition.1,
+                    first_definition_is_struct_field: duplicate.first_definition.0,
+                    duplicate: duplicate.duplicate.1,
+                    duplicate_is_struct_field: duplicate.duplicate.0,
+                });
+            }
+
+            Ok(())
+        })?;
+
+        let (if_condition, result_var_declarations, or_variant_vars) = instantiate_if_condition_result_var_declarations_and_matched_or_variant_index_vars(&handler, &mut ctx, &instantiate, &req_decl_tree)?;
 
         // create a new namespace for this branch result
         let mut namespace = ctx.namespace.clone();
@@ -142,8 +164,7 @@ fn instantiate_if_condition_result_var_declarations_and_matched_or_variant_index
     handler: &Handler,
     ctx: &mut TypeCheckContext,
     instantiate: &Instantiate,
-    req_decl_tree: &ReqDeclTree,
-    branch_span: &Span,
+    req_decl_tree: &ReqDeclTree
 ) -> Result<(MatchIfCondition, ResultVarDeclarations, MatchMatchedOrVariantIndexVars), ErrorEmitted> {
     let mut result_var_declarations = ResultVarDeclarations::new();
     let mut or_variants_vars = MatchMatchedOrVariantIndexVars::new();
@@ -155,7 +176,7 @@ fn instantiate_if_condition_result_var_declarations_and_matched_or_variant_index
     return if !result.1.is_empty() {
             Err(handler.emit_err(CompileError::Internal(
                 "unable to extract match arm variables",
-                branch_span.clone(),
+                instantiate.error_span(),
             )))
         }
         else {
@@ -244,11 +265,12 @@ fn instantiate_if_condition_result_var_declarations_and_matched_or_variant_index
                         // of the variables declared in OR variants.
 
                         let (tuple, mut redefined_vars) = instantiate_matched_or_variant_vars_expressions(
+                            handler,
                             ctx.by_ref(),
                             &instantiate,
                             &matched_or_variant_index_variable,
                             suffix,
-                            carry_over_vars);
+                            carry_over_vars)?;
 
                         // Always push the tuple declaration to the result variable declarations.
                         result_var_declarations.push(tuple);
@@ -369,15 +391,15 @@ fn instantiate_if_condition_result_var_declarations_and_matched_or_variant_index
         /// ...
         /// let <var_n> = __match_matched_or_variant_variables_<suffix>.(n-1);
         fn instantiate_matched_or_variant_vars_expressions(
+            handler: &Handler,
             mut ctx: TypeCheckContext,
             instantiate: &Instantiate,
             matched_or_variant_index_variable: &ty::TyExpression,
             suffix: usize,
             mut var_declarations: Vec<CarryOverVarDeclarations>
-        ) -> (VarDecl, Vec<VarDecl>) {
+        ) -> Result<(VarDecl, Vec<VarDecl>), ErrorEmitted> {
             let type_engine = ctx.engines.te();
-            // TODO-IG: Assert invariants.
-            // At this point we have the guarantee given by the matcher that we have:
+            // At this point we have the guarantee that we have:
             // - exactly the same variables in each OR variant
             // - that variables of the same name are of the same type
             // - that we do not have duplicates in variable names inside of alternatives
@@ -389,6 +411,9 @@ fn instantiate_if_condition_result_var_declarations_and_matched_or_variant_index
             for vars_in_alternative in var_declarations.iter_mut() {
                 vars_in_alternative.sort_by(|(a, _), (b, _)| a.cmp(b));
             }
+
+            // Still, check the above guarantee and emit internal compiler errors if they are not satisfied.
+            check_variables_guarantee(handler, ctx.engines, &var_declarations, instantiate.error_span())?;
 
             // Build the `if-else` chain for the declaration of the tuple variable.
             // Build it bottom up, means traverse in reverse order.
@@ -452,13 +477,65 @@ fn instantiate_if_condition_result_var_declarations_and_matched_or_variant_index
                 redefined_variables.push((variable, instantiate.tuple_elem_access(ctx.engines, tuple_variable.clone(), index)));
             }
 
-            return ((matched_or_variant_variables_tuple_ident, if_expr), redefined_variables);
+            return Ok(((matched_or_variant_variables_tuple_ident, if_expr), redefined_variables));
 
             /// Creates a boolean condition of the form `<matched_or_variant_index_variable> == <variant_index>`.
             /// `matched_or_variant_index_variable` is the corresponding variable of the name `__match_matched_or_variant_index_<suffix>`.
             fn instantiate_or_variant_has_matched_condition(ctx: TypeCheckContext, instantiate: &Instantiate, matched_or_variant_index_variable: &ty::TyExpression, variant_index: u64) -> ty::TyExpression {
                 let variant_index_exp = instantiate.u64_literal(variant_index);
                 instantiate.eq(ctx, matched_or_variant_index_variable.clone(), variant_index_exp)
+            }
+
+            fn check_variables_guarantee(handler: &Handler, engines: &Engines, sorted_var_declarations: &Vec<CarryOverVarDeclarations>, error_span: Span) -> Result<(), ErrorEmitted> {
+                // Guarantees:
+                // - exactly the same variables in each OR variant
+                // - variables of the same name are of the same type
+                // - we do not have duplicates in variable names inside of alternatives
+                let (first_alternative_vars, other_alternatives_vars) = sorted_var_declarations.split_first().expect("Variable declarations must come from at least two OR alternatives.");
+
+                if other_alternatives_vars.iter().any(|vars| vars.len() != first_alternative_vars.len()) {
+                    return Err(handler.emit_err(CompileError::Internal(
+                        "OR alternatives have different number of declared variables",
+                        error_span,
+                    )));
+                }
+
+                let equality = UnifyCheck::non_dynamic_equality(engines);
+
+                for (index, (var_name, var_exp)) in first_alternative_vars.iter().enumerate() {
+                    for other_vars in other_alternatives_vars.iter() {
+                        let (other_var_name, other_var_exp) = &other_vars[index];
+
+                        if var_name != other_var_name {
+                            return Err(handler.emit_err(CompileError::Internal(
+                                "OR alternatives have different variables declared",
+                                error_span,
+                            )));
+                        }
+
+                        if !equality.check(var_exp.return_type, other_var_exp.return_type) {
+                            return Err(handler.emit_err(CompileError::Internal(
+                                "variables of the same name in OR alternatives have different types",
+                                error_span,
+                            )));
+                        }
+                    }
+                }
+
+                // Check for duplicates.
+                // At this point, we know already that we have the same variables in all alternatives
+                // and that they are sorted by name.
+                // Means, we need to check just the first alternative, and its immediate successor.
+                for index in 0..first_alternative_vars.len()-1 {
+                    if &first_alternative_vars[index].0 == &first_alternative_vars[index+1].0 {
+                        return Err(handler.emit_err(CompileError::Internal(
+                            "OR alternatives have duplicate variables",
+                            error_span,
+                        )));
+                    }
+                }
+
+                Ok(())
             }
         }
     }

@@ -5,21 +5,23 @@ use crate::{language::{ty, Literal, LazyOp}, TypeId, TypeInfo, Engines, semantic
 
 /// Simplifies instantiation of desugared code in the match expression and match arms.
 pub(super) struct Instantiate {
-    dummy_span: Span,
+    /// Both dummy span for instantiation of desugared elements
+    /// and error span for internal compiler errors.
+    span: Span,
     u64_type: TypeId,
     boolean_type: TypeId,
     revert_type: TypeId,
 }
 
 impl Instantiate {
-    pub(super) fn new(engines: &Engines, dummy_span: Span) -> Self {
+    pub(super) fn new(engines: &Engines, span: Span) -> Self {
         let type_engine = engines.te();
         let u64_type = type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour));
         let boolean_type = type_engine.insert(engines, TypeInfo::Boolean);
         let revert_type = type_engine.insert(engines, TypeInfo::Unknown); // TODO: Change this to the `Never` type once available.
 
         Self {
-            dummy_span,
+            span,
             u64_type,
             boolean_type,
             revert_type,
@@ -27,7 +29,11 @@ impl Instantiate {
     }
 
     pub(super) fn dummy_span(&self) -> Span {
-        self.dummy_span.clone()
+        self.span.clone()
+    }
+
+    pub(super) fn error_span(&self) -> Span {
+        self.span.clone()
     }
 
     pub(super) fn u64_type(&self) -> TypeId {
