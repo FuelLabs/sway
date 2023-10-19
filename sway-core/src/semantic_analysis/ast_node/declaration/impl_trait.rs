@@ -430,6 +430,21 @@ impl TyImplTrait {
                 implementing_for,
             };
 
+            ctx.insert_trait_implementation(
+                handler,
+                impl_trait.trait_name.clone(),
+                impl_trait.trait_type_arguments.clone(),
+                impl_trait.implementing_for.type_id,
+                &impl_trait.items,
+                &impl_trait.span,
+                impl_trait
+                    .trait_decl_ref
+                    .as_ref()
+                    .map(|decl_ref| decl_ref.decl_span().clone()),
+                IsImplSelf::Yes,
+                IsExtendingExistingImpl::No,
+            )?;
+
             // Now lets do a partial type check of the body of the functions (while deferring full
             // monomorphization of function applications). We will use this tree to perform type check
             // analysis (mainly dependency analysis), and re-type check the items ordered by dependency.
