@@ -10,8 +10,8 @@ use crate::{
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
     semantic_analysis::{
-        type_check_context::EnforceTypeArguments, TypeCheckContext, TypeCheckFinalization,
-        TypeCheckFinalizationContext,
+        type_check_context::EnforceTypeArguments, TypeCheckAnalysis, TypeCheckAnalysisContext,
+        TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext,
     },
     type_system::*,
 };
@@ -209,11 +209,16 @@ impl TyDecl {
             }
             parsed::Declaration::ImplSelf(impl_self) => {
                 let span = impl_self.block_span.clone();
-                let mut impl_trait =
+                let impl_trait_decl =
                     match ty::TyImplTrait::type_check_impl_self(handler, ctx.by_ref(), impl_self) {
                         Ok(val) => val,
                         Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                     };
+                let impl_trait = if let TyDecl::ImplTrait(impl_trait_id) = &impl_trait_decl {
+                    decl_engine.get_impl_trait(&impl_trait_id.decl_id)
+                } else {
+                    unreachable!();
+                };
                 ctx.insert_trait_implementation(
                     handler,
                     impl_trait.trait_name.clone(),
@@ -228,10 +233,6 @@ impl TyDecl {
                     IsImplSelf::Yes,
                     IsExtendingExistingImpl::No,
                 )?;
-                let impl_trait_decl: ty::TyDecl = decl_engine.insert(impl_trait.clone()).into();
-                impl_trait.items.iter_mut().for_each(|item| {
-                    item.replace_implementing_type(engines, impl_trait_decl.clone())
-                });
                 impl_trait_decl
             }
             parsed::Declaration::StructDeclaration(decl) => {
@@ -376,6 +377,58 @@ impl TyDecl {
         };
 
         Ok(decl)
+    }
+}
+
+impl TypeCheckAnalysis for TyDecl {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        match self {
+            TyDecl::VariableDecl(node) => {
+                node.type_check_analyze(handler, ctx)?;
+            }
+            TyDecl::ConstantDecl(node) => {
+                let const_decl = ctx.engines.de().get_constant(&node.decl_id);
+                const_decl.type_check_analyze(handler, ctx)?;
+            }
+            TyDecl::FunctionDecl(node) => {
+                let fn_decl = ctx.engines.de().get_function(&node.decl_id);
+                fn_decl.type_check_analyze(handler, ctx)?;
+            }
+            TyDecl::TraitDecl(node) => {
+                let trait_decl = ctx.engines.de().get_trait(&node.decl_id);
+                trait_decl.type_check_analyze(handler, ctx)?;
+            }
+            TyDecl::StructDecl(node) => {
+                let struct_decl = ctx.engines.de().get_struct(&node.decl_id);
+                struct_decl.type_check_analyze(handler, ctx)?;
+            }
+            TyDecl::EnumDecl(node) => {
+                let enum_decl = ctx.engines.de().get_enum(&node.decl_id);
+                enum_decl.type_check_analyze(handler, ctx)?;
+            }
+            TyDecl::EnumVariantDecl(_) => {}
+            TyDecl::ImplTrait(node) => {
+                node.type_check_analyze(handler, ctx)?;
+            }
+            TyDecl::AbiDecl(node) => {
+                let abi_decl = ctx.engines.de().get_abi(&node.decl_id);
+                abi_decl.type_check_analyze(handler, ctx)?;
+            }
+            TyDecl::GenericTypeForFunctionScope(_) => {}
+            TyDecl::ErrorRecovery(_, _) => {}
+            TyDecl::StorageDecl(node) => {
+                let storage_decl = ctx.engines.de().get_storage(&node.decl_id);
+                storage_decl.type_check_analyze(handler, ctx)?;
+            }
+            TyDecl::TypeAliasDecl(_) => {}
+            TyDecl::TraitTypeDecl(_) => {}
+        }
+
+        Ok(())
     }
 }
 
