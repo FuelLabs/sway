@@ -247,7 +247,7 @@ impl Function {
     }
 
     /// Return the module that this function belongs to.
-    pub fn get_module<'a>(&self, context: &'a Context) -> Module {
+    pub fn get_module(&self, context: &Context) -> Module {
         context.functions[self.0].module
     }
 

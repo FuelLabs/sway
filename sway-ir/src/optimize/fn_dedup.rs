@@ -123,7 +123,7 @@ fn hash_fn(context: &Context, function: Function, eq_class: &mut EqClass) -> u64
                 }
 
                 crate::InstOp::Call(callee, _) => {
-                    match eq_class.function_hash_map.get(&callee) {
+                    match eq_class.function_hash_map.get(callee) {
                         Some(callee_hash) => {
                             callee_hash.hash(state);
                         }
@@ -166,7 +166,7 @@ fn hash_fn(context: &Context, function: Function, eq_class: &mut EqClass) -> u64
                     crate::FuelVmInstruction::WideCmpOp { op, .. } => op.hash(state),
                 },
                 crate::InstOp::GetLocal(local) => function
-                    .lookup_local_name(context, &local)
+                    .lookup_local_name(context, local)
                     .unwrap()
                     .hash(state),
                 crate::InstOp::GetElemPtr { elem_ptr_ty, .. } => elem_ptr_ty.hash(state),

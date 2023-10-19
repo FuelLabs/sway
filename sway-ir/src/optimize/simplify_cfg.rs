@@ -213,7 +213,7 @@ fn merge_blocks(context: &mut Context, function: &Function) -> Result<bool, IrEr
                 replace_map.insert(to_block_arg, from_params[arg_idx]);
             }
 
-            // Update the parent block field for every instruction 
+            // Update the parent block field for every instruction
             // in `to_block` to `from_block`.
             for val in to_block.instruction_iter(context) {
                 let instr = val.get_instruction_mut(context).unwrap();

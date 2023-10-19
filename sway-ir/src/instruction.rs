@@ -456,12 +456,9 @@ impl InstOp {
             }
         };
         match self {
-            InstOp::AsmBlock(_, args) => args.iter_mut().for_each(|asm_arg| {
-                asm_arg
-                    .initializer
-                    .iter_mut()
-                    .for_each(|init_val| replace(init_val))
-            }),
+            InstOp::AsmBlock(_, args) => args
+                .iter_mut()
+                .for_each(|asm_arg| asm_arg.initializer.iter_mut().for_each(replace)),
             InstOp::BitCast(value, _) => replace(value),
             InstOp::UnaryOp { op: _, arg } => {
                 replace(arg);
