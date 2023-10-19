@@ -1716,3 +1716,51 @@ impl OrdEq for u256 {}
 "#,
     );
 }
+
+#[test]
+fn chained_methods() {
+    check(
+        r#"
+library;
+
+fn test() {
+    fuelcoin.really_long_field.other_really_long_field.foo().bar().baz.quux().yet_another_call().to_go_above_max_line_length();
+}
+        "#,
+        r#"library;
+
+fn test() {
+    fuelcoin
+        .really_long_field
+        .other_really_long_field
+        .foo()
+        .bar()
+        .baz
+        .quux()
+        .yet_another_call()
+        .to_go_above_max_line_length();
+}
+"#,
+    );
+}
+
+#[test]
+fn comment_in_the_middle() {
+    check(
+        r#"
+        library;
+
+        fn test() {
+            let number: /* this number is for counting */ u64 = 10;
+
+
+
+        }"#,
+        r#"library;
+
+fn test() {
+    let number: /* this number is for counting */ u64 = 10;
+}
+"#,
+    );
+}

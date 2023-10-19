@@ -275,8 +275,20 @@ impl Format for Expr {
                 name,
             } => {
                 target.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", dot_token.span().as_str())?;
-                name.format(formatted_code, formatter)?;
+                if formatter.shape.code_line.expr_new_line {
+                    formatter.indent();
+                    write!(
+                        formatted_code,
+                        "\n{}{}",
+                        formatter.indent_to_str()?,
+                        dot_token.span().as_str()
+                    )?;
+                    name.format(formatted_code, formatter)?;
+                    formatter.unindent();
+                } else {
+                    write!(formatted_code, "{}", dot_token.span().as_str())?;
+                    name.format(formatted_code, formatter)?;
+                }
             }
             Self::TupleFieldProjection {
                 target,
@@ -646,6 +658,13 @@ fn format_method_call(
         write!(formatted_code, "{}", formatter.indent_to_str()?)?;
     }
     target.format(formatted_code, formatter)?;
+
+    if formatter.shape.code_line.expr_new_line {
+        formatter.indent();
+        write!(formatted_code, "\n{}", formatter.indent_to_str()?)?;
+        formatter.unindent();
+    }
+
     write!(formatted_code, "{}", dot_token.span().as_str())?;
     path_seg.format(formatted_code, formatter)?;
     if let Some(contract_args) = &contract_args_opt {
