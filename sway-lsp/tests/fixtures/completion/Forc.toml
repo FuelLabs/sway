@@ -5,4 +5,4 @@ license = "Apache-2.0"
 name = "completion"
 
 [dependencies]
-std = { path = "../../../../sway-lib-std" }
+std = { path = "../fixtures-std" }
