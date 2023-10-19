@@ -58,10 +58,10 @@ impl Power for u256 {
 	/// # Panics
 	///
 	/// Panics if the result overflows the type.
-    fn pow(self, exp: Self) -> Self {
+    fn pow(self, exp: u32) -> Self {
         let one = 0x0000000000000000000000000000000000000000000000000000000000000001u256;
 
-        if exp == 0x0000000000000000000000000000000000000000000000000000000000000000u256 {
+        if exp == 0 {
             return one;
         }
 
@@ -69,8 +69,8 @@ impl Power for u256 {
         let mut base = self;
         let mut acc = one;
 
-        while exp > one {
-            if (exp & one) == one {
+        while exp > 1 {
+            if (exp & 1) == 1 {
                 acc = acc * base;
             }
             exp = exp >> 1;
@@ -197,14 +197,12 @@ impl BinaryLogarithm for u8 {
 #[test]
 fn u256_pow_tests() {
     let five = 0x0000000000000000000000000000000000000000000000000000000000000005u256;
-    let two = 0x0000000000000000000000000000000000000000000000000000000000000002u256;
-    let twenty_eight = 0x000000000000000000000000000000000000000000000000000000000000001Cu256; // 28
 
     use ::assert::*;
     
     // 5^2 = 25 = 0x19
-    assert_eq(five.pow(two), 0x0000000000000000000000000000000000000000000000000000000000000019u256);
+    assert_eq(five.pow(2), 0x0000000000000000000000000000000000000000000000000000000000000019u256);
 
     // 5^28 = 0x204FCE5E3E2502611 (see https://www.wolframalpha.com/input?i=convert+5%5E28+in+hex)
-    assert_eq(five.pow(twenty_eight), 0x0000000000000000204FCE5E3E2502611u256);
+    assert_eq(five.pow(28), 0x0000000000000000204FCE5E3E2502611u256);
 }

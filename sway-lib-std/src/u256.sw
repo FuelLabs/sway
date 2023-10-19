@@ -685,11 +685,11 @@ impl Power for U256 {
 	/// # Panics
 	///
 	/// Panics if the result overflows the type.
-    fn pow(self, expon: Self) -> Self {
+    fn pow(self, expon: u32) -> Self {
         let one = U256::from((0, 0, 0, 1));
         let two = U256::from((0, 0, 0, 2));
 
-        if expon.is_zero() {
+        if expon == 0 {
             return one;
         }
 
@@ -697,8 +697,8 @@ impl Power for U256 {
         let mut base = self;
         let mut acc = one;
 
-        while exp > one {
-            if (exp & one) == one {
+        while exp > 1 {
+            if (exp & 1) == 1 {
                 acc = acc * base;
             }
             exp = exp >> 1;
@@ -717,9 +717,8 @@ fn is_even(x: U256) -> bool {
 #[test]
 fn test_five_pow_two_u256() {
     let five = U256::from((0, 0, 0, 5));
-    let two = U256::from((0, 0, 0, 2));
   
-    let five_pow_two = five.pow(two);
+    let five_pow_two = five.pow(2);
     assert(five_pow_two.a == 0);
     assert(five_pow_two.b == 0);
     assert(five_pow_two.c == 0);
@@ -729,9 +728,8 @@ fn test_five_pow_two_u256() {
 #[test]
 fn test_five_pow_three_u256() {
     let five = U256::from((0, 0, 0, 5));
-    let three = U256::from((0, 0, 0, 3));
 
-    let five_pow_three = five.pow(three);
+    let five_pow_three = five.pow(3);
     assert_eq(five_pow_three.a, 0);
     assert_eq(five_pow_three.b, 0);
     assert_eq(five_pow_three.c, 0);
@@ -741,9 +739,8 @@ fn test_five_pow_three_u256() {
 #[test]
 fn test_five_pow_28_u256() {
     let five = U256::from((0, 0, 0, 5));
-    let twenty_eight = U256::from((0, 0, 0, 28));
 
-    let five_pow_28 = five.pow(twenty_eight);
+    let five_pow_28 = five.pow(28);
     assert_eq(five_pow_28.a, 0);
     assert_eq(five_pow_28.b, 0);
     assert_eq(five_pow_28.c, 2);
