@@ -33,7 +33,7 @@ impl ty::TyFunctionDecl {
             is_method,
             is_in_impl_self,
         )?;
-        Self::type_check_body(handler, ctx, fn_decl, &mut ty_fn_decl)
+        Self::type_check_body(handler, ctx, &fn_decl, &mut ty_fn_decl)
     }
 
     pub fn type_check_signature(
@@ -87,11 +87,6 @@ impl ty::TyFunctionDecl {
         // Type check the type parameters.
         let new_type_parameters =
             TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters, None)?;
-
-        // Insert them into the current namespace.
-        for p in &new_type_parameters {
-            p.insert_into_namespace(handler, ctx.by_ref())?;
-        }
 
         // type check the function parameters, which will also insert them into the namespace
         let mut new_parameters = vec![];
@@ -154,7 +149,7 @@ impl ty::TyFunctionDecl {
     pub fn type_check_body(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        fn_decl: FunctionDeclaration,
+        fn_decl: &FunctionDeclaration,
         ty_fn_decl: &mut Self,
     ) -> Result<Self, ErrorEmitted> {
         let FunctionDeclaration { body, .. } = fn_decl;
@@ -271,6 +266,16 @@ fn unify_return_statements(
         }
         Ok(())
     })
+}
+
+impl TypeCheckAnalysis for ty::TyFunctionDecl {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.body.type_check_analyze(handler, ctx)
+    }
 }
 
 impl TypeCheckFinalization for ty::TyFunctionDecl {

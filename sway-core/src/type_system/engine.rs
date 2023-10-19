@@ -45,6 +45,11 @@ impl TypeEngine {
         }
     }
 
+    pub fn replace(&self, id: TypeId, engines: &Engines, new_value: TypeInfo) {
+        let prev_value = self.slab.get(id.index());
+        self.slab.replace(id, &prev_value, new_value, engines);
+    }
+
     /// Performs a lookup of `id` into the [TypeEngine].
     pub fn get(&self, id: TypeId) -> TypeInfo {
         self.slab.get(id.index())

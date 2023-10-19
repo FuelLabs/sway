@@ -12,8 +12,10 @@ use crate::{
     type_system::*,
 };
 
+pub type DeclIdIndexType = usize;
+
 /// An ID used to refer to an item in the [DeclEngine](super::decl_engine::DeclEngine)
-pub struct DeclId<T>(usize, PhantomData<T>);
+pub struct DeclId<T>(DeclIdIndexType, PhantomData<T>);
 
 impl<T> fmt::Debug for DeclId<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -22,7 +24,7 @@ impl<T> fmt::Debug for DeclId<T> {
 }
 
 impl<T> DeclId<T> {
-    pub(crate) fn inner(&self) -> usize {
+    pub(crate) fn inner(&self) -> DeclIdIndexType {
         self.0
     }
 }
