@@ -4,13 +4,13 @@ use ast_node::expression::match_expression::typed::matcher::ReqDeclNode;
 use either::Either;
 use itertools::Itertools;
 use sway_error::{handler::{ErrorEmitted, Handler}, error::CompileError};
-use sway_types::{Spanned, Span, Ident, constants::{MATCH_MATCHED_OR_VARIANT_INDEX_VAR_NAME_PREFIX, MATCH_MATCHED_OR_VARIANT_VARIABLES_VAR_NAME_PREFIX, INVALID_MATCHED_OR_VARIABLE_INDEX_SIGNAL}};
+use sway_types::{Spanned, Span, Ident};
 
 use crate::{
     language::{parsed::MatchBranch, ty::{self, MatchIfCondition, MatchMatchedOrVariantIndexVars}},
     semantic_analysis::*,
     types::DeterministicallyAborts,
-    TypeInfo, TypeArgument, UnifyCheck, Engines,
+    TypeInfo, TypeArgument, UnifyCheck, Engines, compiler_generated::{generate_matched_or_variant_index_var_name, INVALID_MATCHED_OR_VARIABLE_INDEX_SIGNAL, generate_matched_or_variant_variables_var_name},
 };
 
 use super::{matcher::matcher, instantiate::Instantiate};
@@ -334,7 +334,7 @@ fn instantiate_if_condition_result_var_declarations_and_matched_or_variant_index
         ///         0u64
         ///     };
         fn instantiate_matched_or_variant_index_var_expression(instantiate: &Instantiate, suffix: usize, conditions: Vec<MatchIfCondition>) -> (Ident, ty::TyExpression) {
-            let ident = instantiate.ident(format!("{}{}", MATCH_MATCHED_OR_VARIANT_INDEX_VAR_NAME_PREFIX, suffix));
+            let ident = instantiate.ident(generate_matched_or_variant_index_var_name(suffix));
 
             // Build the expression bottom up by putting the previous if expression into
             // the else part of the current one.
@@ -463,7 +463,7 @@ fn instantiate_if_condition_result_var_declarations_and_matched_or_variant_index
                 }
             };
 
-            let matched_or_variant_variables_tuple_ident = instantiate.ident(format!("{}{}", MATCH_MATCHED_OR_VARIANT_VARIABLES_VAR_NAME_PREFIX, suffix));
+            let matched_or_variant_variables_tuple_ident = instantiate.ident(generate_matched_or_variant_variables_var_name(suffix));
             
             // For every variable in alternatives, redefined it by initializing it to the corresponding tuple field.
             let mut redefined_variables = vec![];

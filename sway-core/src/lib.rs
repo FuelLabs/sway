@@ -8,6 +8,7 @@ pub mod abi_generation;
 pub mod asm_generation;
 mod asm_lang;
 mod build_config;
+pub mod compiler_generated;
 mod concurrent_slab;
 mod control_flow_analysis;
 pub mod decl_engine;

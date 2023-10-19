@@ -1,5 +1,5 @@
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Span, constants::INVALID_DESUGARED_MATCHED_EXPRESSION_SIGNAL, Spanned};
+use sway_types::{Span, Spanned};
 
 use crate::{
     language::{parsed::*, ty},
@@ -7,7 +7,7 @@ use crate::{
         ast_node::expression::typed_expression::instantiate_if_expression,
         TypeCheckContext, expression::match_expression::typed::instantiate::Instantiate,
     },
-    CompileError, TypeId,
+    CompileError, TypeId, compiler_generated::INVALID_DESUGARED_MATCHED_EXPRESSION_SIGNAL,
 };
 
 impl ty::TyMatchExpression {
