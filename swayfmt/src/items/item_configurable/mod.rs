@@ -38,6 +38,8 @@ impl Format for ItemConfigurable {
                 // Handle opening brace
                 Self::open_curly_brace(formatted_code, formatter)?;
 
+                formatter.shape.code_line.update_expr_new_line(true);
+
                 // Determine alignment tactic
                 match formatter.config.structures.field_alignment {
                     FieldAlignment::AlignFields(configurable_field_align_threshold) => {

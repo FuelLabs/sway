@@ -206,6 +206,7 @@ fn format_fn_args(
     match fn_args {
         FnArgs::Static(args) => match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
+                formatter.shape.code_line.update_expr_new_line(true);
                 if !args.value_separator_pairs.is_empty() || args.final_value_opt.is_some() {
                     formatter.indent();
                     args.format(formatted_code, formatter)?;
@@ -223,6 +224,7 @@ fn format_fn_args(
         } => {
             match formatter.shape.code_line.line_style {
                 LineStyle::Multiline => {
+                    formatter.shape.code_line.update_expr_new_line(true);
                     formatter.indent();
                     write!(formatted_code, "\n{}", formatter.indent_to_str()?)?;
                     format_self(self_token, ref_self, mutable_self, formatted_code)?;

@@ -1718,7 +1718,7 @@ impl OrdEq for u256 {}
 }
 
 #[test]
-fn chained_methods() {
+fn chained_methods_1() {
     check(
         r#"
 library;
@@ -1745,6 +1745,92 @@ fn test() {
 }
 
 #[test]
+fn chained_methods_2() {
+    check(
+        r#"
+library;
+
+fn test() {
+    fuelcoin.really_long_field.other_really_long_field.foo().bar().baz.quux([1,2]).yet_another_call([1, 2, 3, 4, 6, 7, 7, 8, 8, 9, 9, 9, 19, 1123123, 12312, 312, 312, 3123, 12,31, 44],[1,2], true).to_go_above_max_line_length();ping();
+}
+        "#,
+        r#"library;
+
+fn test() {
+    fuelcoin
+        .really_long_field
+        .other_really_long_field
+        .foo()
+        .bar()
+        .baz
+        .quux([1, 2])
+        .yet_another_call(
+            [
+                1, 2, 3, 4, 6, 7, 7, 8, 8, 9, 9, 9, 19, 1123123,
+                12312, 312, 312, 3123, 12, 31, 44,
+            ],
+            [1, 2],
+            true,
+        )
+        .to_go_above_max_line_length();
+    ping();
+}
+"#,
+    );
+}
+
+#[test]
+fn chained_methods_3() {
+    check(
+        r#"
+library;
+
+fn test() {
+    fuelcoin.really_long_field.other_really_long_field.foo().bar().baz.quux([1,2]).yet_another_call(1, 2, 3, 4, 6, 7, 7, 8, 8, 9, 9, 9, 19, 1123123, 12312, 312, 312, 3123, 12,31, 44,[1,2], true).to_go_above_max_line_length();
+}
+        "#,
+        r#"library;
+
+fn test() {
+    fuelcoin
+        .really_long_field
+        .other_really_long_field
+        .foo()
+        .bar()
+        .baz
+        .quux([1, 2])
+        .yet_another_call(
+            1,
+            2,
+            3,
+            4,
+            6,
+            7,
+            7,
+            8,
+            8,
+            9,
+            9,
+            9,
+            19,
+            1123123,
+            12312,
+            312,
+            312,
+            3123,
+            12,
+            31,
+            44,
+            [1, 2],
+            true,
+        )
+        .to_go_above_max_line_length();
+}
+"#,
+    );
+}
+
+#[test]
 fn comment_in_the_middle() {
     check(
         r#"
@@ -1760,6 +1846,25 @@ fn comment_in_the_middle() {
 
 fn test() {
     let number: /* this number is for counting */ u64 = 10;
+}
+"#,
+    );
+}
+
+#[test]
+fn trait_multiline_method_x() {
+    check(
+        r#"library; trait MyComplexTrait { fn complex_function( arg1: MyStruct<[b256; 3], u8>, arg2: [MyStruct<u64, bool>; 4],
+        arg3: (str[5], bool),
+        arg4: MyOtherStruct) -> str[6]; }"#,
+        r#"library;
+trait MyComplexTrait {
+    fn complex_function(
+        arg1: MyStruct<[b256; 3], u8>,
+        arg2: [MyStruct<u64, bool>; 4],
+        arg3: (str[5], bool),
+        arg4: MyOtherStruct,
+    ) -> str[6];
 }
 "#,
     );

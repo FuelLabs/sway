@@ -33,7 +33,7 @@ fn format_statement(
         } => {
             let mut temp_expr = FormattedCode::new();
             expr.format(&mut temp_expr, formatter)?;
-            if temp_expr.len() > formatter.config.whitespace.max_width {
+            if temp_expr.len() > formatter.shape.width_heuristics.chain_width {
                 formatter.shape.code_line.expr_new_line = true;
                 // reformat the expression adding a break
                 expr.format(formatted_code, formatter)?;

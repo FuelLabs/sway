@@ -138,7 +138,13 @@ impl Format for Expr {
                             .shape
                             .get_line_style(None, Some(body_width), &formatter.config);
 
-                        array_descriptor.format(formatted_code, formatter)?;
+                        if formatter.shape.code_line.line_style == LineStyle::Multiline {
+                            // Expr needs to be splitten into multiple lines
+                            array_descriptor.format(formatted_code, formatter)?;
+                        } else {
+                            // Expr fits in a single line
+                            write!(formatted_code, "{}", buf)?;
+                        }
 
                         Ok(())
                     },
@@ -662,7 +668,6 @@ fn format_method_call(
     if formatter.shape.code_line.expr_new_line {
         formatter.indent();
         write!(formatted_code, "\n{}", formatter.indent_to_str()?)?;
-        formatter.unindent();
     }
 
     write!(formatted_code, "{}", dot_token.span().as_str())?;
@@ -680,17 +685,50 @@ fn format_method_call(
         }
         ExprStructField::close_curly_brace(formatted_code, formatter)?;
     }
+
     formatter.with_shape(
-        formatter.shape.with_default_code_line(),
+        formatter
+            .shape
+            .with_code_line_from(LineStyle::default(), ExprKind::Function),
         |formatter| -> Result<(), FormatterError> {
+            // Write arguements to a temporary string
+            let mut buf = FormattedCode::new();
+            args.get().format(&mut buf, formatter)?;
+
+            // Check if the arguements can fit on a single line
+            let expr_width = buf.chars().count();
+            formatter.shape.code_line.add_width(expr_width);
+            formatter
+                .shape
+                .get_line_style(None, Some(expr_width), &formatter.config);
+
             Expr::open_parenthesis(formatted_code, formatter)?;
-            args.get().format(formatted_code, formatter)?;
+            match formatter.shape.code_line.line_style {
+                LineStyle::Multiline => {
+                    // force each param to be a new line
+                    formatter.shape.code_line.update_expr_new_line(true);
+                    formatter.indent();
+                    let mut buf = FormattedCode::new();
+                    // should be rewritten to a multi-line
+                    args.get().format(&mut buf, formatter)?;
+                    formatter.unindent();
+                    writeln!(formatted_code, "{}", buf.trim_end())?;
+                    formatter.write_indent_into_buffer(formatted_code)?;
+                }
+                _ => {
+                    // single line is fine
+                    write!(formatted_code, "{}", buf)?;
+                }
+            };
             Expr::close_parenthesis(formatted_code, formatter)?;
 
             Ok(())
         },
     )?;
 
+    if formatter.shape.code_line.expr_new_line {
+        formatter.unindent();
+    }
     Ok(())
 }
 

@@ -9,6 +9,21 @@ use sway_ast::{
 };
 use sway_types::{ast::PunctKind, Ident, Spanned};
 
+fn should_write_multiline(code: &str, formatter: &Formatter) -> bool {
+    if formatter.shape.code_line.expr_new_line {
+        true
+    } else {
+        let max_per_line = formatter.shape.width_heuristics.collection_width;
+        for (i, c) in code.chars().rev().enumerate() {
+            if c == '\n' {
+                return i > max_per_line;
+            }
+        }
+
+        false
+    }
+}
+
 impl<T, P> Format for Punctuated<T, P>
 where
     T: Format,
@@ -47,18 +62,31 @@ where
                     if !formatted_code.ends_with('\n') {
                         writeln!(formatted_code)?;
                     }
-                    let value_pairs_iter = self.value_separator_pairs.iter();
-                    for (type_field, comma_token) in value_pairs_iter.clone() {
+                    if !self.value_separator_pairs.is_empty() {
                         formatter.write_indent_into_buffer(formatted_code)?;
-                        type_field.format(formatted_code, formatter)?;
+                    }
 
+                    let mut iter = self.value_separator_pairs.iter().peekable();
+
+                    while let Some((type_field, comma_token)) = iter.next() {
+                        type_field.format(formatted_code, formatter)?;
                         comma_token.format(formatted_code, formatter)?;
-                        writeln!(formatted_code)?;
+                        if iter.peek().is_none() && self.final_value_opt.is_none() {
+                            break;
+                        }
+                        if should_write_multiline(formatted_code, formatter) {
+                            writeln!(formatted_code)?;
+                            formatter.write_indent_into_buffer(formatted_code)?;
+                        } else {
+                            write!(formatted_code, " ")?;
+                        }
                     }
                     if let Some(final_value) = &self.final_value_opt {
-                        write!(formatted_code, "{}", formatter.indent_to_str()?)?;
                         final_value.format(formatted_code, formatter)?;
-                        writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
+                        write!(formatted_code, "{}", PunctKind::Comma.as_char())?;
+                    }
+                    if !formatted_code.ends_with('\n') {
+                        writeln!(formatted_code, "")?;
                     }
                 }
             }
