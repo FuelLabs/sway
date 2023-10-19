@@ -81,6 +81,16 @@ impl ty::TyStructField {
     }
 }
 
+impl TypeCheckAnalysis for ty::TyStructDecl {
+    fn type_check_analyze(
+        &self,
+        _handler: &Handler,
+        _ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
+    }
+}
+
 impl TypeCheckFinalization for ty::TyStructDecl {
     fn type_check_finalize(
         &mut self,
