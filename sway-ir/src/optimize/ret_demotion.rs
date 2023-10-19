@@ -6,8 +6,8 @@
 /// An extra argument pointer is added to the function and this pointer is also returned.  The
 /// return value is mem_copied to the new argument instead of being returned by value.
 use crate::{
-    AnalysisResults, BlockArgument, Context, Function, Instruction, IrError, Pass, PassMutability,
-    ScopedPass, Type, Value,
+    AnalysisResults, BlockArgument, Context, Function, InstOp, Instruction, IrError, Pass,
+    PassMutability, ScopedPass, Type, Value,
 };
 
 pub const RETDEMOTION_NAME: &str = "retdemotion";
@@ -45,7 +45,7 @@ pub fn ret_val_demotion(
             function.new_unique_local_var(context, "__ret_value".to_owned(), ret_type, None, false);
 
         // Insert the return value pointer at the start of the entry block.
-        let get_ret_var = Value::new_instruction(context, Instruction::GetLocal(ret_var));
+        let get_ret_var = Value::new_instruction(context, entry_block, InstOp::GetLocal(ret_var));
         context.blocks[entry_block.0]
             .instructions
             .insert(0, get_ret_var);
@@ -69,8 +69,8 @@ pub fn ret_val_demotion(
         .block_iter(context)
         .filter_map(|block| {
             block.get_terminator(context).and_then(|term| {
-                if let Instruction::Ret(ret_val, _ty) = term {
-                    Some((block, *ret_val))
+                if let InstOp::Ret(ret_val, _ty) = term.op {
+                    Some((block, ret_val))
                 } else {
                     None
                 }
@@ -119,7 +119,10 @@ fn update_callers(context: &mut Context, function: Function, ret_type: Type) {
                     block
                         .instruction_iter(context)
                         .filter_map(|instr_val| {
-                            if let Instruction::Call(call_to_func, _) = instr_val
+                            if let Instruction {
+                                op: InstOp::Call(call_to_func, _),
+                                ..
+                            } = instr_val
                                 .get_instruction(context)
                                 .expect("`instruction_iter()` must return instruction values.")
                             {
@@ -149,18 +152,23 @@ fn update_callers(context: &mut Context, function: Function, ret_type: Type) {
             None,
             false,
         );
-        let get_loc_val = Value::new_instruction(context, Instruction::GetLocal(loc_var));
+        let get_loc_val = Value::new_instruction(context, calling_block, InstOp::GetLocal(loc_var));
 
         // Next we need to copy the original `call` but add the extra arg.
-        let Some(Instruction::Call(_, args)) = call_val.get_instruction(context) else {
+        let Some(Instruction {
+            op: InstOp::Call(_, args),
+            ..
+        }) = call_val.get_instruction(context)
+        else {
             unreachable!("`call_val` is definitely a call instruction.");
         };
         let mut new_args = args.clone();
         new_args.push(get_loc_val);
-        let new_call_val = Value::new_instruction(context, Instruction::Call(function, new_args));
+        let new_call_val =
+            Value::new_instruction(context, calling_block, InstOp::Call(function, new_args));
 
         // And finally load the value from the new local var.
-        let load_val = Value::new_instruction(context, Instruction::Load(new_call_val));
+        let load_val = Value::new_instruction(context, calling_block, InstOp::Load(new_call_val));
 
         // We don't have an actual instruction _inserter_ yet, just an appender, so we need to do
         // this manually.

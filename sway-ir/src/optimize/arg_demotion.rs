@@ -3,7 +3,7 @@
 /// This pass demotes 'by-value' function arg types to 'by-reference` pointer types, based on target
 /// specific parameters.
 use crate::{
-    AnalysisResults, Block, BlockArgument, Context, Function, Instruction, IrError, Pass,
+    AnalysisResults, Block, BlockArgument, Context, Function, InstOp, Instruction, IrError, Pass,
     PassMutability, ScopedPass, Type, Value, ValueDatum,
 };
 
@@ -63,11 +63,12 @@ fn fn_arg_demotion(context: &mut Context, function: Function) -> Result<bool, Ir
             block
                 .instruction_iter(context)
                 .filter_map(|instr_val| {
-                    if let Instruction::Call(call_to_func, _) = instr_val
+                    if let InstOp::Call(call_to_func, _) = instr_val
                         .get_instruction(context)
                         .expect("`instruction_iter()` must return instruction values.")
+                        .op
                     {
-                        (call_to_func == &function).then_some((block, instr_val))
+                        (call_to_func == function).then_some((block, instr_val))
                     } else {
                         None
                     }
@@ -126,7 +127,8 @@ fn demote_fn_signature(context: &mut Context, function: &Function, arg_idcs: &[(
         .into_iter()
         .rev()
         .map(|(old_arg_val, new_arg_val)| {
-            let load_from_new_arg = Value::new_instruction(context, Instruction::Load(new_arg_val));
+            let load_from_new_arg =
+                Value::new_instruction(context, entry_block, InstOp::Load(new_arg_val));
             context.blocks[entry_block.0]
                 .instructions
                 .insert(0, load_from_new_arg);
@@ -151,7 +153,11 @@ fn demote_caller(
     assert!(!arg_idcs.is_empty());
 
     // Grab the original args and copy them.
-    let Some(Instruction::Call(_, args)) = call_val.get_instruction(context) else {
+    let Some(Instruction {
+        op: InstOp::Call(_, args),
+        ..
+    }) = call_val.get_instruction(context)
+    else {
         unreachable!("`call_val` is definitely a call instruction.");
     };
 
@@ -170,12 +176,13 @@ fn demote_caller(
             None,
             false,
         );
-        let get_loc_val = Value::new_instruction(context, Instruction::GetLocal(loc_var));
+        let get_loc_val = Value::new_instruction(context, call_block, InstOp::GetLocal(loc_var));
 
         // Before the call we store the original arg value to the new local var.
         let store_val = Value::new_instruction(
             context,
-            Instruction::Store {
+            call_block,
+            InstOp::Store {
                 dst_val_ptr: get_loc_val,
                 stored_val: args[*arg_idx],
             },
@@ -190,7 +197,7 @@ fn demote_caller(
     }
 
     // Append the new call with updated args.
-    let new_call_val = Value::new_instruction(context, Instruction::Call(*function, args));
+    let new_call_val = Value::new_instruction(context, call_block, InstOp::Call(*function, args));
     new_instrs.push(new_call_val);
 
     // We don't have an actual instruction _inserter_ yet, just an appender, so we need to find the
@@ -249,7 +256,7 @@ fn demote_block_signature(context: &mut Context, function: &Function, block: Blo
             );
             block.set_arg(context, new_blk_arg_val);
 
-            let load_val = Value::new_instruction(context, Instruction::Load(new_blk_arg_val));
+            let load_val = Value::new_instruction(context, block, InstOp::Load(new_blk_arg_val));
             let block_instrs = &mut context.blocks[block.0].instructions;
             block_instrs.insert(0, load_val);
 
@@ -285,10 +292,11 @@ fn demote_block_signature(context: &mut Context, function: &Function, block: Blo
 
             // Insert a `get_local` and `store` for each candidate argument and insert them at the
             // end of this block, before the terminator.
-            let get_local_val = Value::new_instruction(context, Instruction::GetLocal(*arg_var));
+            let get_local_val = Value::new_instruction(context, pred, InstOp::GetLocal(*arg_var));
             let store_val = Value::new_instruction(
                 context,
-                Instruction::Store {
+                pred,
+                InstOp::Store {
                     dst_val_ptr: get_local_val,
                     stored_val: arg_val,
                 },

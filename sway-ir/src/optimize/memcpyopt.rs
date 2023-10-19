@@ -5,8 +5,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     get_symbol, get_symbols, memory_utils, AnalysisResults, Block, Context, EscapedSymbols,
-    Function, Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type,
-    Value, ValueDatum, ESCAPED_SYMBOLS_NAME,
+    Function, InstOp, Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol,
+    Type, Value, ValueDatum, ESCAPED_SYMBOLS_NAME,
 };
 
 pub const MEMCPYOPT_NAME: &str = "memcpyopt";
@@ -50,7 +50,10 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
         let info = || InstInfo { block, pos };
         let inst_e = inst.get_instruction(context).unwrap();
         match inst_e {
-            Instruction::Load(src_val_ptr) => {
+            Instruction {
+                op: InstOp::Load(src_val_ptr),
+                ..
+            } => {
                 if let Some(local) = get_symbol(context, *src_val_ptr) {
                     loads_map
                         .entry(local)
@@ -59,7 +62,10 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
                     instr_info_map.insert(inst, info());
                 }
             }
-            Instruction::Store { dst_val_ptr, .. } => {
+            Instruction {
+                op: InstOp::Store { dst_val_ptr, .. },
+                ..
+            } => {
                 if let Some(local) = get_symbol(context, *dst_val_ptr) {
                     stores_map
                         .entry(local)
@@ -68,7 +74,10 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
                     instr_info_map.insert(inst, info());
                 }
             }
-            Instruction::AsmBlock(_, args) => {
+            Instruction {
+                op: InstOp::AsmBlock(_, args),
+                ..
+            } => {
                 for arg in args {
                     if let Some(arg) = arg.initializer {
                         if let Some(local) = get_symbol(context, arg) {
@@ -90,9 +99,13 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
                 .get_instruction(context)
                 .and_then(|instr| {
                     // Is the instruction a Store?
-                    if let Instruction::Store {
-                        dst_val_ptr,
-                        stored_val,
+                    if let Instruction {
+                        op:
+                            InstOp::Store {
+                                dst_val_ptr,
+                                stored_val,
+                            },
+                        ..
                     } = instr
                     {
                         get_symbol(context, *dst_val_ptr).and_then(|dst_local| {
@@ -106,7 +119,11 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
                 })
                 .and_then(|(src_instr, stored_val, dst_local)| {
                     // Is the Store source a Load?
-                    if let Instruction::Load(src_val_ptr) = src_instr {
+                    if let Instruction {
+                        op: InstOp::Load(src_val_ptr),
+                        ..
+                    } = src_instr
+                    {
                         get_symbol(context, *src_val_ptr)
                             .map(|src_local| (stored_val, dst_local, src_local))
                     } else {
@@ -167,19 +184,20 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
     let replaces: Vec<_> = function
         .instruction_iter(context)
         .filter_map(|(_block, value)| match value.get_instruction(context) {
-            Some(Instruction::GetLocal(local)) => {
-                closure(&candidates, &Symbol::Local(*local)).map(|replace_with| {
-                    (
-                        value,
-                        match replace_with {
-                            Symbol::Local(local) => ReplaceWith::InPlaceLocal(local),
-                            Symbol::Arg(ba) => {
-                                ReplaceWith::Value(ba.block.get_arg(context, ba.idx).unwrap())
-                            }
-                        },
-                    )
-                })
-            }
+            Some(Instruction {
+                op: InstOp::GetLocal(local),
+                ..
+            }) => closure(&candidates, &Symbol::Local(*local)).map(|replace_with| {
+                (
+                    value,
+                    match replace_with {
+                        Symbol::Local(local) => ReplaceWith::InPlaceLocal(local),
+                        Symbol::Arg(ba) => {
+                            ReplaceWith::Value(ba.block.get_arg(context, ba.idx).unwrap())
+                        }
+                    },
+                )
+            }),
             _ => None,
         })
         .collect();
@@ -188,7 +206,10 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
     for (value, replace_with) in replaces.into_iter() {
         match replace_with {
             ReplaceWith::InPlaceLocal(replacement_var) => {
-                let Some(Instruction::GetLocal(redundant_var)) = value.get_instruction(context)
+                let Some(&Instruction {
+                    op: InstOp::GetLocal(redundant_var),
+                    parent,
+                }) = value.get_instruction(context)
                 else {
                     panic!("earlier match now fails");
                 };
@@ -197,7 +218,10 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
                 }
                 value.replace(
                     context,
-                    ValueDatum::Instruction(Instruction::GetLocal(replacement_var)),
+                    ValueDatum::Instruction(Instruction {
+                        op: InstOp::GetLocal(replacement_var),
+                        parent,
+                    }),
                 )
             }
             ReplaceWith::Value(replace_with) => {
@@ -255,14 +279,22 @@ fn local_copy_prop(
             if let Some(copies) = dest_to_copies.get_mut(&sym) {
                 for copy in &*copies {
                     let (dest_ptr, copy_size) = match copy.get_instruction(context).unwrap() {
-                        Instruction::MemCopyBytes {
-                            dst_val_ptr,
-                            src_val_ptr: _,
-                            byte_len,
+                        Instruction {
+                            op:
+                                InstOp::MemCopyBytes {
+                                    dst_val_ptr,
+                                    src_val_ptr: _,
+                                    byte_len,
+                                },
+                            ..
                         } => (*dst_val_ptr, *byte_len),
-                        Instruction::MemCopyVal {
-                            dst_val_ptr,
-                            src_val_ptr: _,
+                        Instruction {
+                            op:
+                                InstOp::MemCopyVal {
+                                    dst_val_ptr,
+                                    src_val_ptr: _,
+                                },
+                            ..
                         } => (
                             *dst_val_ptr,
                             memory_utils::pointee_size(context, *dst_val_ptr),
@@ -315,14 +347,22 @@ fn local_copy_prop(
     // Deconstruct a memcpy into (dst_val_ptr, src_val_ptr, copy_len).
     fn deconstruct_memcpy(context: &Context, inst: Value) -> (Value, Value, u64) {
         match inst.get_instruction(context).unwrap() {
-            Instruction::MemCopyBytes {
-                dst_val_ptr,
-                src_val_ptr,
-                byte_len,
+            Instruction {
+                op:
+                    InstOp::MemCopyBytes {
+                        dst_val_ptr,
+                        src_val_ptr,
+                        byte_len,
+                    },
+                ..
             } => (*dst_val_ptr, *src_val_ptr, *byte_len),
-            Instruction::MemCopyVal {
-                dst_val_ptr,
-                src_val_ptr,
+            Instruction {
+                op:
+                    InstOp::MemCopyVal {
+                        dst_val_ptr,
+                        src_val_ptr,
+                    },
+                ..
             } => (
                 *dst_val_ptr,
                 *src_val_ptr,
@@ -464,14 +504,20 @@ fn local_copy_prop(
 
             for inst in block.instruction_iter(context) {
                 match inst.get_instruction(context).unwrap() {
-                    Instruction::Call(_, args) => kill_escape_args(
+                    Instruction {
+                        op: InstOp::Call(_, args),
+                        ..
+                    } => kill_escape_args(
                         context,
                         args,
                         &mut available_copies,
                         &mut src_to_copies,
                         &mut dest_to_copies,
                     ),
-                    Instruction::AsmBlock(_, args) => {
+                    Instruction {
+                        op: InstOp::AsmBlock(_, args),
+                        ..
+                    } => {
                         let args = args.iter().filter_map(|arg| arg.initializer).collect();
                         kill_escape_args(
                             context,
@@ -481,13 +527,19 @@ fn local_copy_prop(
                             &mut dest_to_copies,
                         );
                     }
-                    Instruction::IntToPtr(_, _) => {
+                    Instruction {
+                        op: InstOp::IntToPtr(_, _),
+                        ..
+                    } => {
                         // The only safe thing we can do is to clear all information.
                         available_copies.clear();
                         src_to_copies.clear();
                         dest_to_copies.clear();
                     }
-                    Instruction::Load(src_val_ptr) => {
+                    Instruction {
+                        op: InstOp::Load(src_val_ptr),
+                        ..
+                    } => {
                         process_load(
                             context,
                             escaped_symbols,
@@ -497,7 +549,10 @@ fn local_copy_prop(
                             &mut replacements,
                         );
                     }
-                    Instruction::MemCopyBytes { .. } | Instruction::MemCopyVal { .. } => {
+                    Instruction {
+                        op: InstOp::MemCopyBytes { .. } | InstOp::MemCopyVal { .. },
+                        ..
+                    } => {
                         let (dst_val_ptr, src_val_ptr, copy_len) =
                             deconstruct_memcpy(context, inst);
                         kill_defined_symbol(
@@ -529,9 +584,13 @@ fn local_copy_prop(
                             );
                         }
                     }
-                    Instruction::Store {
-                        dst_val_ptr,
-                        stored_val: _,
+                    Instruction {
+                        op:
+                            InstOp::Store {
+                                dst_val_ptr,
+                                stored_val: _,
+                            },
+                        ..
                     } => {
                         kill_defined_symbol(
                             context,
@@ -570,7 +629,8 @@ fn local_copy_prop(
                                 Symbol::Local(local) => {
                                     let base = Value::new_instruction(
                                         context,
-                                        Instruction::GetLocal(local),
+                                        block,
+                                        InstOp::GetLocal(local),
                                     );
                                     new_insts.push(base);
                                     base
@@ -581,7 +641,8 @@ fn local_copy_prop(
                             };
                             let v = Value::new_instruction(
                                 context,
-                                Instruction::GetElemPtr {
+                                block,
+                                InstOp::GetElemPtr {
                                     base,
                                     elem_ptr_ty,
                                     indices,
@@ -592,13 +653,24 @@ fn local_copy_prop(
                         }
                     };
                     match inst.get_instruction_mut(context) {
-                        Some(Instruction::Load(ref mut src_val_ptr))
-                        | Some(Instruction::MemCopyBytes {
-                            ref mut src_val_ptr,
+                        Some(Instruction {
+                            op: InstOp::Load(ref mut src_val_ptr),
                             ..
                         })
-                        | Some(Instruction::MemCopyVal {
-                            ref mut src_val_ptr,
+                        | Some(Instruction {
+                            op:
+                                InstOp::MemCopyBytes {
+                                    ref mut src_val_ptr,
+                                    ..
+                                },
+                            ..
+                        })
+                        | Some(Instruction {
+                            op:
+                                InstOp::MemCopyVal {
+                                    ref mut src_val_ptr,
+                                    ..
+                                },
                             ..
                         }) => *src_val_ptr = replacement,
                         _ => panic!("Unexpected instruction type"),
@@ -643,9 +715,13 @@ fn is_clobbered(
                 // We don't need to go beyond either the source load or the candidate store.
                 continue 'next_job;
             }
-            if let Some(Instruction::Store {
-                dst_val_ptr,
-                stored_val: _,
+            if let Some(Instruction {
+                op:
+                    InstOp::Store {
+                        dst_val_ptr,
+                        stored_val: _,
+                    },
+                ..
             }) = inst.get_instruction(context)
             {
                 if get_symbols(context, *dst_val_ptr)
@@ -679,9 +755,13 @@ fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bo
                 .get_instruction(context)
                 .and_then(|instr| {
                     // Is the instruction a Store?
-                    if let Instruction::Store {
-                        dst_val_ptr,
-                        stored_val,
+                    if let Instruction {
+                        op:
+                            InstOp::Store {
+                                dst_val_ptr,
+                                stored_val,
+                            },
+                        ..
                     } = instr
                     {
                         stored_val
@@ -693,7 +773,11 @@ fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bo
                 })
                 .and_then(|(src_instr_val, src_instr, dst_val_ptr)| {
                     // Is the Store source a Load?
-                    if let Instruction::Load(src_val_ptr) = src_instr {
+                    if let Instruction {
+                        op: InstOp::Load(src_val_ptr),
+                        ..
+                    } = src_instr
+                    {
                         Some((
                             block,
                             src_instr_val,
@@ -722,7 +806,8 @@ fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bo
     for (block, _src_instr_val, store_val, dst_val_ptr, src_val_ptr) in candidates {
         let mem_copy_val = Value::new_instruction(
             context,
-            Instruction::MemCopyVal {
+            block,
+            InstOp::MemCopyVal {
                 dst_val_ptr,
                 src_val_ptr,
             },

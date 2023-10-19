@@ -12,8 +12,8 @@ use std::hash::{Hash, Hasher};
 use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 
 use crate::{
-    build_call_graph, callee_first_order, AnalysisResults, Block, Context, Function, Instruction,
-    IrError, Module, Pass, PassMutability, ScopedPass, Value,
+    build_call_graph, callee_first_order, AnalysisResults, Block, Context, Function, InstOp,
+    Instruction, IrError, Module, Pass, PassMutability, ScopedPass, Value,
 };
 
 pub const FNDEDUP_NAME: &str = "fndedup";
@@ -86,14 +86,14 @@ fn hash_fn(context: &Context, function: Function, eq_class: &mut EqClass) -> u64
         for inst in block.instruction_iter(context) {
             get_localised_id(inst, localised_value_id).hash(state);
             let inst = inst.get_instruction(context).unwrap();
-            std::mem::discriminant(inst).hash(state);
+            std::mem::discriminant(&inst.op).hash(state);
             // Hash value inputs to instructions in one-go.
-            for v in inst.get_operands() {
+            for v in inst.op.get_operands() {
                 hash_value(context, v, localised_value_id, state);
             }
             // Hash non-value inputs.
-            match inst {
-                crate::Instruction::AsmBlock(asm_block, args) => {
+            match &inst.op {
+                crate::InstOp::AsmBlock(asm_block, args) => {
                     for arg in args
                         .iter()
                         .map(|arg| &arg.name)
@@ -115,15 +115,15 @@ fn hash_fn(context: &Context, function: Function, eq_class: &mut EqClass) -> u64
                         }
                     }
                 }
-                crate::Instruction::UnaryOp { op, .. } => op.hash(state),
-                crate::Instruction::BinaryOp { op, .. } => op.hash(state),
-                crate::Instruction::BitCast(_, ty) => ty.hash(state),
-                crate::Instruction::Branch(b) => {
+                crate::InstOp::UnaryOp { op, .. } => op.hash(state),
+                crate::InstOp::BinaryOp { op, .. } => op.hash(state),
+                crate::InstOp::BitCast(_, ty) => ty.hash(state),
+                crate::InstOp::Branch(b) => {
                     get_localised_id(b.block, localised_block_id).hash(state)
                 }
 
-                crate::Instruction::Call(callee, _) => {
-                    match eq_class.function_hash_map.get(callee) {
+                crate::InstOp::Call(callee, _) => {
+                    match eq_class.function_hash_map.get(&callee) {
                         Some(callee_hash) => {
                             callee_hash.hash(state);
                         }
@@ -133,9 +133,9 @@ fn hash_fn(context: &Context, function: Function, eq_class: &mut EqClass) -> u64
                         }
                     }
                 }
-                crate::Instruction::CastPtr(_, ty) => ty.hash(state),
-                crate::Instruction::Cmp(p, _, _) => p.hash(state),
-                crate::Instruction::ConditionalBranch {
+                crate::InstOp::CastPtr(_, ty) => ty.hash(state),
+                crate::InstOp::Cmp(p, _, _) => p.hash(state),
+                crate::InstOp::ConditionalBranch {
                     cond_value: _,
                     true_block,
                     false_block,
@@ -143,13 +143,13 @@ fn hash_fn(context: &Context, function: Function, eq_class: &mut EqClass) -> u64
                     get_localised_id(true_block.block, localised_block_id).hash(state);
                     get_localised_id(false_block.block, localised_block_id).hash(state);
                 }
-                crate::Instruction::ContractCall {
+                crate::InstOp::ContractCall {
                     return_type, name, ..
                 } => {
                     return_type.hash(state);
                     name.hash(state);
                 }
-                crate::Instruction::FuelVm(fuel_vm_inst) => match fuel_vm_inst {
+                crate::InstOp::FuelVm(fuel_vm_inst) => match fuel_vm_inst {
                     crate::FuelVmInstruction::Gtf { tx_field_id, .. } => tx_field_id.hash(state),
                     crate::FuelVmInstruction::Log { log_ty, .. } => log_ty.hash(state),
                     crate::FuelVmInstruction::ReadRegister(reg) => reg.hash(state),
@@ -165,18 +165,18 @@ fn hash_fn(context: &Context, function: Function, eq_class: &mut EqClass) -> u64
                     crate::FuelVmInstruction::WideModularOp { op, .. } => op.hash(state),
                     crate::FuelVmInstruction::WideCmpOp { op, .. } => op.hash(state),
                 },
-                crate::Instruction::GetLocal(local) => function
-                    .lookup_local_name(context, local)
+                crate::InstOp::GetLocal(local) => function
+                    .lookup_local_name(context, &local)
                     .unwrap()
                     .hash(state),
-                crate::Instruction::GetElemPtr { elem_ptr_ty, .. } => elem_ptr_ty.hash(state),
-                crate::Instruction::IntToPtr(_, ty) => ty.hash(state),
-                crate::Instruction::Load(_) => (),
-                crate::Instruction::MemCopyBytes { byte_len, .. } => byte_len.hash(state),
-                crate::Instruction::MemCopyVal { .. } | crate::Instruction::Nop => (),
-                crate::Instruction::PtrToInt(_, ty) => ty.hash(state),
-                crate::Instruction::Ret(_, ty) => ty.hash(state),
-                crate::Instruction::Store { .. } => (),
+                crate::InstOp::GetElemPtr { elem_ptr_ty, .. } => elem_ptr_ty.hash(state),
+                crate::InstOp::IntToPtr(_, ty) => ty.hash(state),
+                crate::InstOp::Load(_) => (),
+                crate::InstOp::MemCopyBytes { byte_len, .. } => byte_len.hash(state),
+                crate::InstOp::MemCopyVal { .. } | crate::InstOp::Nop => (),
+                crate::InstOp::PtrToInt(_, ty) => ty.hash(state),
+                crate::InstOp::Ret(_, ty) => ty.hash(state),
+                crate::InstOp::Store { .. } => (),
             }
         }
     }
@@ -213,7 +213,11 @@ pub fn dedup_fns(
     for function in module.function_iter(context) {
         let mut replacements = vec![];
         for (_block, inst) in function.instruction_iter(context) {
-            let Some(Instruction::Call(callee, args)) = inst.get_instruction(context) else {
+            let Some(Instruction {
+                op: InstOp::Call(callee, args),
+                ..
+            }) = inst.get_instruction(context)
+            else {
                 continue;
             };
             let Some(callee_hash) = eq_class.function_hash_map.get(callee) else {
@@ -236,7 +240,10 @@ pub fn dedup_fns(
         for (inst, args, callee_rep) in replacements {
             inst.replace(
                 context,
-                crate::ValueDatum::Instruction(Instruction::Call(*callee_rep, args.clone())),
+                crate::ValueDatum::Instruction(Instruction {
+                    op: InstOp::Call(*callee_rep, args.clone()),
+                    parent: inst.get_instruction(context).unwrap().parent,
+                }),
             );
         }
     }

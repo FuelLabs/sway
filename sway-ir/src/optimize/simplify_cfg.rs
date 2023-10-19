@@ -11,8 +11,9 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    block::Block, context::Context, error::IrError, function::Function, instruction::Instruction,
-    value::ValueDatum, AnalysisResults, BranchToWithArgs, Pass, PassMutability, ScopedPass, Value,
+    block::Block, context::Context, error::IrError, function::Function, instruction::InstOp,
+    value::ValueDatum, AnalysisResults, BranchToWithArgs, Instruction, Pass, PassMutability,
+    ScopedPass, Value,
 };
 
 pub const SIMPLIFYCFG_NAME: &str = "simplifycfg";
@@ -48,9 +49,10 @@ fn unlink_empty_blocks(context: &mut Context, function: &Function) -> Result<boo
             match block.get_terminator(context) {
                 // Except for a branch, we don't want anything else.
                 // If the block has PHI nodes, then values merge here. Cannot remove the block.
-                Some(Instruction::Branch(to_block))
-                    if block.num_instructions(context) <= 1 && block.num_args(context) == 0 =>
-                {
+                Some(Instruction {
+                    op: InstOp::Branch(to_block),
+                    ..
+                }) if block.num_instructions(context) <= 1 && block.num_args(context) == 0 => {
                     Some((block, to_block.clone()))
                 }
                 _ => None,
@@ -147,9 +149,13 @@ fn merge_blocks(context: &mut Context, function: &Function) -> Result<bool, IrEr
         from_block
             .get_terminator(context)
             .and_then(|term| match term {
-                Instruction::Branch(BranchToWithArgs {
-                    block: to_block, ..
-                }) if to_block.num_predecessors(context) == 1 => Some((from_block, *to_block)),
+                Instruction {
+                    op:
+                        InstOp::Branch(BranchToWithArgs {
+                            block: to_block, ..
+                        }),
+                    ..
+                } if to_block.num_predecessors(context) == 1 => Some((from_block, *to_block)),
                 _ => None,
             })
     }
@@ -205,6 +211,13 @@ fn merge_blocks(context: &mut Context, function: &Function) -> Result<bool, IrEr
             for (arg_idx, to_block_arg) in to_blocks {
                 // replace all uses of `to_block_arg` with the parameter from `from_block`.
                 replace_map.insert(to_block_arg, from_params[arg_idx]);
+            }
+
+            // Update the parent block field for every instruction 
+            // in `to_block` to `from_block`.
+            for val in to_block.instruction_iter(context) {
+                let instr = val.get_instruction_mut(context).unwrap();
+                instr.parent = from_block;
             }
 
             // Re-get the block contents mutably.
