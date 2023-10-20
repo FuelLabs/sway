@@ -12,7 +12,7 @@ The Sway Language Server `forc-lsp` is provided to expose features to IDEs. [Ins
 
 ## Sway Formatter (`forc-fmt`)
 
-A canonical formatter is provided with `forc-fmt`. [Installation instructions](./installation.md). It can be run manually with
+A canonical formatter is provided with `forc-fmt`. [Installation instructions](./getting_started.md). It can be run manually with
 
 ```sh
 forc fmt

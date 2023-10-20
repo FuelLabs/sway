@@ -8,7 +8,7 @@ impl ty::TyCodeBlock {
     pub(crate) fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        code_block: CodeBlock,
+        code_block: &CodeBlock,
     ) -> Result<(Self, TypeId), ErrorEmitted> {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
@@ -67,7 +67,13 @@ impl ty::TyCodeBlock {
                     let never_decl_opt = ctx
                         .namespace
                         .root()
-                        .resolve_symbol(&Handler::default(), engines, &never_mod_path, &never_ident)
+                        .resolve_symbol(
+                            &Handler::default(),
+                            engines,
+                            &never_mod_path,
+                            &never_ident,
+                            None,
+                        )
                         .ok();
 
                     if let Some(ty::TyDecl::EnumDecl(ty::EnumDecl {
@@ -97,6 +103,19 @@ impl ty::TyCodeBlock {
             contents: evaluated_contents,
         };
         Ok((typed_code_block, block_type))
+    }
+}
+
+impl TypeCheckAnalysis for ty::TyCodeBlock {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        for node in self.contents.iter() {
+            node.type_check_analyze(handler, ctx)?;
+        }
+        Ok(())
     }
 }
 

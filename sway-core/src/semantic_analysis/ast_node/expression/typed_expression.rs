@@ -158,7 +158,12 @@ impl ty::TyExpression {
                 };
                 if matches!(
                     ctx.namespace
-                        .resolve_call_path(&Handler::default(), engines, &call_path)
+                        .resolve_call_path(
+                            &Handler::default(),
+                            engines,
+                            &call_path,
+                            ctx.self_type()
+                        )
                         .ok(),
                     Some(ty::TyDecl::EnumVariantDecl { .. })
                 ) {
@@ -167,7 +172,10 @@ impl ty::TyExpression {
                         ctx.by_ref(),
                         TypeBinding {
                             span: call_path.span(),
-                            inner: call_path,
+                            inner: QualifiedCallPath {
+                                call_path,
+                                qualified_path_root: None,
+                            },
                             type_arguments: TypeArgs::Regular(vec![]),
                         },
                         span,
@@ -468,7 +476,7 @@ impl ty::TyExpression {
 
         let exp = match ctx
             .namespace
-            .resolve_symbol(&Handler::default(), engines, &name)
+            .resolve_symbol(&Handler::default(), engines, &name, ctx.self_type())
             .ok()
         {
             Some(ty::TyDecl::VariableDecl(decl)) => {
@@ -583,7 +591,7 @@ impl ty::TyExpression {
         let engines = ctx.engines();
 
         let (typed_block, block_return_type) =
-            ty::TyCodeBlock::type_check(handler, ctx.by_ref(), contents).unwrap_or_else(|_| {
+            ty::TyCodeBlock::type_check(handler, ctx.by_ref(), &contents).unwrap_or_else(|_| {
                 (
                     ty::TyCodeBlock { contents: vec![] },
                     type_engine.insert(engines, TypeInfo::Tuple(Vec::new())),
@@ -1002,6 +1010,7 @@ impl ty::TyExpression {
             engines,
             &storage_key_mod_path,
             &storage_key_ident,
+            None,
         )?;
         let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_ref(handler, engines)?;
         let mut storage_key_struct_decl = decl_engine.get_struct(&storage_key_struct_decl_ref);
@@ -1081,24 +1090,55 @@ impl ty::TyExpression {
         let engines = ctx.engines;
         let decl_engine = engines.de();
 
-        if let Some(QualifiedPathRootTypes { ty, as_trait, .. }) = qualified_path_root {
-            if !prefixes.is_empty() || before.is_some() {
-                return Err(handler.emit_err(
-                    ConvertParseTreeError::UnexpectedCallPathPrefixAfterQualifiedRoot {
-                        span: path_span,
-                    }
-                    .into(),
-                ));
-            }
+        if let Some(QualifiedPathRootTypes { ty, as_trait, .. }) = qualified_path_root.clone() {
+            let method_name_binding = if !prefixes.is_empty() || before.is_some() {
+                let mut prefixes_and_before = prefixes.clone();
+                if let Some(before) = before {
+                    prefixes_and_before.push(before.inner);
+                }
+                let prefixes_and_before_last =
+                    prefixes_and_before.remove(prefixes_and_before.len() - 1);
 
-            let method_name_binding = TypeBinding {
-                inner: MethodName::FromQualifiedPathRoot {
-                    ty,
-                    as_trait,
-                    method_name: suffix,
-                },
-                type_arguments,
-                span: path_span,
+                let qualified_call_path = QualifiedCallPath {
+                    call_path: CallPath {
+                        prefixes: prefixes_and_before.clone(),
+                        suffix: prefixes_and_before_last.clone(),
+                        is_absolute,
+                    },
+                    qualified_path_root: qualified_path_root.map(Box::new),
+                };
+                let type_info = TypeInfo::Custom {
+                    qualified_call_path: qualified_call_path.clone(),
+                    type_arguments: None,
+                    root_type_id: None,
+                };
+
+                TypeBinding {
+                    inner: MethodName::FromType {
+                        call_path_binding: TypeBinding {
+                            span: qualified_call_path.call_path.span(),
+                            type_arguments: type_arguments.clone(),
+                            inner: CallPath {
+                                prefixes,
+                                suffix: (type_info, prefixes_and_before_last),
+                                is_absolute,
+                            },
+                        },
+                        method_name: suffix,
+                    },
+                    type_arguments,
+                    span: path_span,
+                }
+            } else {
+                TypeBinding {
+                    inner: MethodName::FromQualifiedPathRoot {
+                        ty,
+                        as_trait,
+                        method_name: suffix,
+                    },
+                    type_arguments,
+                    span: path_span,
+                }
             };
 
             return type_check_method_application(
@@ -1115,24 +1155,29 @@ impl ty::TyExpression {
         let before = if let Some(b) = before {
             b
         } else {
-            // if it's a singleton it's either an enum variant or a function
-            let call_path_binding = TypeBinding {
-                inner: CallPath {
-                    prefixes,
-                    suffix,
-                    is_absolute,
-                },
-                type_arguments,
-                span: path_span,
+            let call_path = CallPath {
+                prefixes,
+                suffix,
+                is_absolute,
             };
             if matches!(
                 ctx.namespace.resolve_call_path(
                     &Handler::default(),
                     engines,
-                    &call_path_binding.inner
+                    &call_path,
+                    ctx.self_type()
                 ),
                 Ok(ty::TyDecl::EnumVariantDecl { .. })
             ) {
+                // if it's a singleton it's either an enum variant or a function
+                let call_path_binding = TypeBinding {
+                    inner: QualifiedCallPath {
+                        call_path,
+                        qualified_path_root: None,
+                    },
+                    type_arguments,
+                    span: path_span,
+                };
                 return Self::type_check_delineated_path(
                     handler,
                     ctx,
@@ -1141,6 +1186,12 @@ impl ty::TyExpression {
                     Some(args),
                 );
             } else {
+                // if it's a singleton it's either an enum variant or a function
+                let call_path_binding = TypeBinding {
+                    inner: call_path,
+                    type_arguments,
+                    span: path_span,
+                };
                 return Self::type_check_function_application(
                     handler,
                     ctx.by_ref(),
@@ -1169,7 +1220,12 @@ impl ty::TyExpression {
                 is_absolute,
             };
             ctx.namespace
-                .resolve_call_path(&Handler::default(), engines, &probe_call_path)
+                .resolve_call_path(
+                    &Handler::default(),
+                    engines,
+                    &probe_call_path,
+                    ctx.self_type(),
+                )
                 .and_then(|decl| decl.to_enum_ref(&Handler::default(), ctx.engines()))
                 .map(|decl_ref| decl_engine.get_enum(&decl_ref))
                 .and_then(|decl| {
@@ -1183,7 +1239,7 @@ impl ty::TyExpression {
             let before_span = before.span();
             let type_name = before.inner;
             let type_info = type_name_to_type_info_opt(&type_name).unwrap_or(TypeInfo::Custom {
-                call_path: type_name.clone().into(),
+                qualified_call_path: type_name.clone().into(),
                 type_arguments: None,
                 root_type_id: None,
             });
@@ -1226,10 +1282,13 @@ impl ty::TyExpression {
             }
 
             let call_path_binding = TypeBinding {
-                inner: CallPath {
-                    prefixes: path,
-                    suffix,
-                    is_absolute,
+                inner: QualifiedCallPath {
+                    call_path: CallPath {
+                        prefixes: path,
+                        suffix,
+                        is_absolute,
+                    },
+                    qualified_path_root: None,
                 },
                 type_arguments,
                 span: path_span,
@@ -1241,7 +1300,7 @@ impl ty::TyExpression {
     fn type_check_delineated_path(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        unknown_call_path_binding: TypeBinding<CallPath>,
+        unknown_call_path_binding: TypeBinding<QualifiedCallPath>,
         span: Span,
         args: Option<Vec<Expression>>,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
@@ -1250,62 +1309,78 @@ impl ty::TyExpression {
         // If only one exists, then we use that one. Otherwise, if more than one exist, it is
         // an ambiguous reference error.
 
-        // Check if this could be a module
+        let mut is_module = false;
+        let mut maybe_function: Option<(DeclRefFunction, _)> = None;
+        let mut maybe_enum: Option<(DeclRefEnum, _, _, _)> = None;
+
         let module_probe_handler = Handler::default();
-        let is_module = {
-            let call_path_binding = unknown_call_path_binding.clone();
-            ctx.namespace
-                .check_submodule(
-                    &module_probe_handler,
-                    &[
-                        call_path_binding.inner.prefixes,
-                        vec![call_path_binding.inner.suffix],
-                    ]
-                    .concat(),
+        let function_probe_handler = Handler::default();
+        let enum_probe_handler = Handler::default();
+        let const_probe_handler = Handler::default();
+
+        if unknown_call_path_binding
+            .inner
+            .qualified_path_root
+            .is_none()
+        {
+            // Check if this could be a module
+            is_module = {
+                let call_path_binding = unknown_call_path_binding.clone();
+                ctx.namespace
+                    .check_submodule(
+                        &module_probe_handler,
+                        &[
+                            call_path_binding.inner.call_path.prefixes,
+                            vec![call_path_binding.inner.call_path.suffix],
+                        ]
+                        .concat(),
+                    )
+                    .ok()
+                    .is_some()
+            };
+
+            // Check if this could be a function
+            maybe_function = {
+                let call_path_binding = unknown_call_path_binding.clone();
+                let mut call_path_binding = TypeBinding {
+                    inner: call_path_binding.inner.call_path,
+                    type_arguments: call_path_binding.type_arguments,
+                    span: call_path_binding.span,
+                };
+                TypeBinding::type_check(
+                    &mut call_path_binding,
+                    &function_probe_handler,
+                    ctx.by_ref(),
                 )
                 .ok()
-                .is_some()
-        };
-
-        // Check if this could be a function
-        let function_probe_handler = Handler::default();
-        let maybe_function: Option<(DeclRefFunction, _)> = {
-            let mut call_path_binding = unknown_call_path_binding.clone();
-            TypeBinding::type_check(
-                &mut call_path_binding,
-                &function_probe_handler,
-                ctx.by_ref(),
-            )
-            .ok()
-            .map(|(fn_ref, _, _)| (fn_ref, call_path_binding))
-        };
-
-        // Check if this could be an enum
-        let enum_probe_handler = Handler::default();
-        let maybe_enum: Option<(DeclRefEnum, _, _, _)> = {
-            let call_path_binding = unknown_call_path_binding.clone();
-            let variant_name = call_path_binding.inner.suffix.clone();
-            let enum_call_path = call_path_binding.inner.rshift();
-
-            let mut call_path_binding = TypeBinding {
-                inner: enum_call_path,
-                type_arguments: call_path_binding.type_arguments,
-                span: call_path_binding.span,
+                .map(|(fn_ref, _, _)| (fn_ref, call_path_binding))
             };
-            TypeBinding::type_check(&mut call_path_binding, &enum_probe_handler, ctx.by_ref())
-                .ok()
-                .map(|(enum_ref, _, ty_decl)| {
-                    (
-                        enum_ref,
-                        variant_name,
-                        call_path_binding,
-                        ty_decl.expect("type_check for TyEnumDecl should always return TyDecl"),
-                    )
-                })
-        };
+
+            // Check if this could be an enum
+            maybe_enum = {
+                let call_path_binding = unknown_call_path_binding.clone();
+                let variant_name = call_path_binding.inner.call_path.suffix.clone();
+                let enum_call_path = call_path_binding.inner.call_path.rshift();
+
+                let mut call_path_binding = TypeBinding {
+                    inner: enum_call_path,
+                    type_arguments: call_path_binding.type_arguments,
+                    span: call_path_binding.span,
+                };
+                TypeBinding::type_check(&mut call_path_binding, &enum_probe_handler, ctx.by_ref())
+                    .ok()
+                    .map(|(enum_ref, _, ty_decl)| {
+                        (
+                            enum_ref,
+                            variant_name,
+                            call_path_binding,
+                            ty_decl.expect("type_check for TyEnumDecl should always return TyDecl"),
+                        )
+                    })
+            };
+        }
 
         // Check if this could be a constant
-        let const_probe_handler = Handler::default();
         let maybe_const =
             { Self::probe_const_decl(&unknown_call_path_binding, &mut ctx, &const_probe_handler) };
 
@@ -1371,8 +1446,8 @@ impl ty::TyExpression {
             }
             (false, None, None, None) => {
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
-                    name: unknown_call_path_binding.inner.suffix.clone(),
-                    span: unknown_call_path_binding.inner.suffix.span(),
+                    name: unknown_call_path_binding.inner.call_path.suffix.clone(),
+                    span: unknown_call_path_binding.inner.call_path.suffix.span(),
                 }));
             }
             _ => {
@@ -1383,11 +1458,17 @@ impl ty::TyExpression {
     }
 
     fn probe_const_decl(
-        unknown_call_path_binding: &TypeBinding<CallPath>,
+        unknown_call_path_binding: &TypeBinding<QualifiedCallPath>,
         ctx: &mut TypeCheckContext,
         const_probe_handler: &Handler,
     ) -> Option<(DeclRefConstant, TypeBinding<CallPath>)> {
-        let mut call_path_binding = unknown_call_path_binding.clone();
+        let mut qualified_call_path_binding = unknown_call_path_binding.clone();
+
+        let mut call_path_binding = TypeBinding {
+            inner: qualified_call_path_binding.inner.call_path.clone(),
+            type_arguments: qualified_call_path_binding.type_arguments.clone(),
+            span: qualified_call_path_binding.span.clone(),
+        };
 
         let type_info_opt = call_path_binding
             .clone()
@@ -1396,7 +1477,7 @@ impl ty::TyExpression {
             .last()
             .map(|type_name| {
                 type_name_to_type_info_opt(type_name).unwrap_or(TypeInfo::Custom {
-                    call_path: type_name.clone().into(),
+                    qualified_call_path: type_name.clone().into(),
                     type_arguments: None,
                     root_type_id: None,
                 })
@@ -1417,29 +1498,14 @@ impl ty::TyExpression {
         }
 
         // If we didn't find a constant, check for the constant inside the impl.
-        let suffix = call_path_binding.inner.suffix.clone();
-        let const_call_path = call_path_binding.inner.rshift();
-
-        let mut const_call_path_binding = TypeBinding {
-            inner: const_call_path,
-            type_arguments: call_path_binding.type_arguments.clone(),
-            span: call_path_binding.span.clone(),
-        };
-
-        let (_, struct_type_id, _): (DeclRefStruct, _, _) = match TypeBinding::type_check(
-            &mut const_call_path_binding,
-            const_probe_handler,
-            ctx.by_ref(),
-        ) {
-            Ok(val) => val,
-            Err(_) => return None,
-        };
-
-        let const_decl_ref =
-            match ctx.find_constant_for_type(const_probe_handler, struct_type_id.unwrap(), &suffix)
-            {
-                Ok(Some(val)) => val,
-                Ok(None) | Err(_) => return None,
+        let const_decl_ref: DeclRefConstant =
+            match TypeBinding::<QualifiedCallPath>::type_check_qualified(
+                &mut qualified_call_path_binding,
+                const_probe_handler,
+                ctx,
+            ) {
+                Ok(val) => val,
+                Err(_) => return None,
             };
 
         Some((const_decl_ref, call_path_binding.clone()))
@@ -1472,7 +1538,7 @@ impl ty::TyExpression {
         // look up the call path and get the declaration it references
         let abi = ctx
             .namespace
-            .resolve_call_path(handler, engines, &abi_name)?;
+            .resolve_call_path(handler, engines, &abi_name, ctx.self_type())?;
         let abi_ref = match abi {
             ty::TyDecl::AbiDecl(ty::AbiDecl {
                 name,
@@ -1494,9 +1560,12 @@ impl ty::TyExpression {
                 match abi_name {
                     // look up the call path and get the declaration it references
                     AbiName::Known(abi_name) => {
-                        let unknown_decl = ctx
-                            .namespace
-                            .resolve_call_path(handler, engines, &abi_name)?;
+                        let unknown_decl = ctx.namespace.resolve_call_path(
+                            handler,
+                            engines,
+                            &abi_name,
+                            ctx.self_type(),
+                        )?;
                         unknown_decl.to_abi_ref(handler)?
                     }
                     AbiName::Deferred => {
@@ -1808,7 +1877,8 @@ impl ty::TyExpression {
                  assigning it to a mutable variable declared outside of the loop \
                  instead.",
         );
-        let (typed_body, _block_implicit_return) = ty::TyCodeBlock::type_check(handler, ctx, body)?;
+        let (typed_body, _block_implicit_return) =
+            ty::TyCodeBlock::type_check(handler, ctx, &body)?;
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::WhileLoop {
                 condition: Box::new(typed_condition),
@@ -1842,8 +1912,12 @@ impl ty::TyExpression {
                     match expr.kind {
                         ExpressionKind::Variable(name) => {
                             // check that the reassigned name exists
-                            let unknown_decl =
-                                ctx.namespace.resolve_symbol(handler, engines, &name)?;
+                            let unknown_decl = ctx.namespace.resolve_symbol(
+                                handler,
+                                engines,
+                                &name,
+                                ctx.self_type(),
+                            )?;
                             let variable_decl = unknown_decl.expect_variable(handler).cloned()?;
                             if !variable_decl.mutability.is_mutable() {
                                 return Err(handler.emit_err(

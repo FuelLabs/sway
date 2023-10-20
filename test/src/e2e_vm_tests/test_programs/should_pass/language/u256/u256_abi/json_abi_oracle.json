@@ -1,5 +1,15 @@
 {
-  "configurables": [],
+  "configurables": [
+    {
+      "configurableType": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      },
+      "name": "SOME_U256",
+      "offset": 108
+    }
+  ],
   "functions": [
     {
       "attributes": null,

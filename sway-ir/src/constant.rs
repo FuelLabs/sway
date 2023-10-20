@@ -4,7 +4,7 @@ use crate::{context::Context, irtype::Type, pretty::DebugWithContext, value::Val
 use sway_types::u256::U256;
 
 /// A [`Type`] and constant value, including [`ConstantValue::Undef`] for uninitialized constants.
-#[derive(Debug, Clone, DebugWithContext)]
+#[derive(Debug, Clone, DebugWithContext, Hash)]
 pub struct Constant {
     pub ty: Type,
     pub value: ConstantValue,
@@ -13,7 +13,7 @@ pub struct Constant {
 pub type B256 = U256;
 
 /// A constant representation of each of the supported [`Type`]s.
-#[derive(Debug, Clone, DebugWithContext)]
+#[derive(Debug, Clone, DebugWithContext, Hash)]
 pub enum ConstantValue {
     Undef,
     Unit,

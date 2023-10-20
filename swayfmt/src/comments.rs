@@ -35,6 +35,18 @@ impl CommentsContext {
     }
 }
 
+#[inline]
+pub fn has_comments_in_formatter(formatter: &Formatter, range: &Range<usize>) -> bool {
+    formatter
+        .comments_context
+        .map
+        .comments_between(range)
+        .peekable()
+        .peek()
+        .is_some()
+}
+
+#[inline]
 pub fn has_comments<I: Iterator>(comments: I) -> bool {
     comments.peekable().peek().is_some()
 }
@@ -103,7 +115,7 @@ pub fn write_comments(
                     write!(
                         formatted_code,
                         "{}{}{}",
-                        formatter.indent_str()?,
+                        formatter.indent_to_str()?,
                         comment.span().as_str(),
                         newlines
                     )?;

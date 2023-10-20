@@ -217,18 +217,21 @@ pub fn inline_some_function_calls<F: Fn(&Context, &Function, &Value) -> bool>(
     // Find call sites which passes the predicate.
     // We use a RefCell so that the inliner can modify the value
     // when it moves other instructions (which could be in call_date) after an inline.
-    let call_data: FxHashMap<Value, RefCell<(Block, Function)>> = function
+    let (call_sites, call_data): (Vec<_>, FxHashMap<_, _>) = function
         .instruction_iter(context)
         .filter_map(|(block, call_val)| match context.values[call_val.0].value {
             ValueDatum::Instruction(Instruction::Call(inlined_function, _)) => {
-                predicate(context, &inlined_function, &call_val)
-                    .then_some((call_val, RefCell::new((block, inlined_function))))
+                predicate(context, &inlined_function, &call_val).then_some((
+                    call_val,
+                    (call_val, RefCell::new((block, inlined_function))),
+                ))
             }
             _ => None,
         })
-        .collect();
+        .unzip();
 
-    for (call_site, call_site_in) in &call_data {
+    for call_site in &call_sites {
+        let call_site_in = call_data.get(call_site).unwrap();
         let (block, inlined_function) = *call_site_in.borrow();
         inline_function_call(
             context,

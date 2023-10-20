@@ -1,5 +1,6 @@
 use std::{
     cmp::Ordering,
+    fmt,
     hash::{Hash, Hasher},
 };
 
@@ -7,7 +8,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Span, Spanned};
+use sway_types::Spanned;
 
 use crate::{
     engine_threading::*,
@@ -53,6 +54,26 @@ impl OrdWithEngines for TraitConstraint {
             type_arguments: rta,
         } = other;
         ltn.cmp(rtn).then_with(|| lta.cmp(rta, engines))
+    }
+}
+
+impl DisplayWithEngines for TraitConstraint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(f, "{:?}", engines.help_out(self))
+    }
+}
+
+impl DebugWithEngines for TraitConstraint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        let mut res = write!(f, "{}", self.trait_name);
+        if !self.type_arguments.is_empty() {
+            write!(f, "<")?;
+            for ty_arg in self.type_arguments.clone() {
+                write!(f, "{:?}", engines.help_out(ty_arg))?;
+            }
+            res = write!(f, ">");
+        }
+        res
     }
 }
 
@@ -117,29 +138,6 @@ impl TraitConstraint {
             )));
         }
 
-        // Right now we aren't supporting generic traits in trait constraints
-        // because of how we type check trait constraints.
-        // Essentially type checking trait constraints with generic traits
-        // creates a chicken and an egg problem where, in order to type check
-        // the type arguments to the generic traits, we must first type check
-        // all of the type parameters, but we cannot finish type checking one
-        // type parameter until we type check the trait constraints for that
-        // type parameter. This is not an unsolvable problem, it will just
-        // require some hacking.
-        //
-        // TODO: implement a fix for the above in a future PR
-        if !self.type_arguments.is_empty() {
-            return Err(handler.emit_err(CompileError::Unimplemented(
-                "Using generic traits in trait constraints is not supported yet.",
-                Span::join_all(
-                    self.type_arguments
-                        .iter()
-                        .map(|x| x.span())
-                        .collect::<Vec<_>>(),
-                ),
-            )));
-        }
-
         // Type check the type arguments.
         for type_argument in self.type_arguments.iter_mut() {
             type_argument.type_id = ctx
@@ -178,7 +176,7 @@ impl TraitConstraint {
 
         match ctx
             .namespace
-            .resolve_call_path(handler, engines, trait_name)
+            .resolve_call_path(handler, engines, trait_name, ctx.self_type())
             .ok()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
@@ -189,7 +187,12 @@ impl TraitConstraint {
                 trait_decl
                     .type_parameters
                     .push(trait_decl.self_type.clone());
-                type_arguments.push(TypeArgument::from(type_id));
+                type_arguments.push(TypeArgument {
+                    type_id,
+                    initial_type_id: type_id,
+                    span: trait_name.span(),
+                    call_path_tree: None,
+                });
 
                 // Monomorphize the trait declaration.
                 ctx.monomorphize(

@@ -10,7 +10,10 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::{ty::*, Literal},
-    semantic_analysis::{TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext},
+    semantic_analysis::{
+        TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
+        TypeCheckFinalizationContext,
+    },
     transform::{AllowDeprecatedState, AttributeKind, AttributesMap},
     type_system::*,
     types::*,
@@ -93,6 +96,16 @@ impl DebugWithEngines for TyExpression {
             engines.help_out(&self.expression),
             engines.help_out(self.return_type)
         )
+    }
+}
+
+impl TypeCheckAnalysis for TyExpression {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.expression.type_check_analyze(handler, ctx)
     }
 }
 

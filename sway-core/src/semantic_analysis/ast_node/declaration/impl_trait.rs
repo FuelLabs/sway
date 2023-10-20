@@ -11,12 +11,13 @@ use crate::{
     engine_threading::*,
     language::{
         parsed::*,
-        ty::{self, TyImplItem, TyImplTrait, TyTraitInterfaceItem, TyTraitItem},
+        ty::{self, TyDecl, TyImplItem, TyImplTrait, TyTraitInterfaceItem, TyTraitItem},
         *,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
     semantic_analysis::{
-        type_check_context::EnforceTypeArguments, AbiMode, ConstShadowingMode, TypeCheckContext,
+        type_check_context::EnforceTypeArguments, AbiMode, ConstShadowingMode,
+        TyNodeDepGraphNodeId, TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext,
         TypeCheckFinalization, TypeCheckFinalizationContext,
     },
     type_system::*,
@@ -41,17 +42,18 @@ impl TyImplTrait {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
+        // Create a new type parameter for the Self type
+        let self_type_param = TypeParameter::new_self_type(engines, implementing_for.span());
+        let self_type_id = self_type_param.type_id;
+
         // create a namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
         let mut ctx = ctx
             .by_ref()
             .scoped(&mut impl_namespace)
             .with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
+            .with_self_type(Some(self_type_id))
             .allow_functions();
-
-        // Create a new type parameter for the Self type
-        let self_type_param = TypeParameter::new_self_type(engines, implementing_for.span());
-        let self_type_id = self_type_param.type_id;
 
         // Type check the type parameters
         let new_impl_type_parameters = TypeParameter::type_check_type_params(
@@ -60,11 +62,6 @@ impl TyImplTrait {
             impl_type_parameters,
             Some(self_type_param),
         )?;
-
-        // Insert them into the current namespace.
-        for p in &new_impl_type_parameters {
-            p.insert_into_namespace(handler, ctx.by_ref())?;
-        }
 
         // resolve the types of the trait type arguments
         for type_arg in trait_type_arguments.iter_mut() {
@@ -118,11 +115,12 @@ impl TyImplTrait {
         // Update the context
         let mut ctx = ctx
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown))
+            .with_self_type(Some(implementing_for.type_id));
 
         let impl_trait = match ctx
             .namespace
-            .resolve_call_path(handler, engines, &trait_name)
+            .resolve_call_path(handler, engines, &trait_name, ctx.self_type())
             .ok()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
@@ -274,7 +272,7 @@ impl TyImplTrait {
         handler: &Handler,
         ctx: TypeCheckContext,
         impl_self: ImplSelf,
-    ) -> Result<Self, ErrorEmitted> {
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
         let ImplSelf {
             impl_type_parameters,
             mut implementing_for,
@@ -291,8 +289,7 @@ impl TyImplTrait {
         let mut ctx = ctx
             .scoped(&mut impl_namespace)
             .with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
-            .allow_functions()
-            .with_defer_monomorphization();
+            .allow_functions();
 
         // Create a new type parameter for the "self type".
         let self_type_param = TypeParameter::new_self_type(engines, implementing_for.span());
@@ -302,7 +299,10 @@ impl TyImplTrait {
         let trait_name = CallPath {
             prefixes: vec![],
             suffix: match &type_engine.get(implementing_for.type_id) {
-                TypeInfo::Custom { call_path, .. } => call_path.suffix.clone(),
+                TypeInfo::Custom {
+                    qualified_call_path: call_path,
+                    ..
+                } => call_path.call_path.suffix.clone(),
                 _ => Ident::new_with_override("r#Self".into(), implementing_for.span()),
             },
             is_absolute: false,
@@ -315,11 +315,6 @@ impl TyImplTrait {
             impl_type_parameters,
             Some(self_type_param),
         )?;
-
-        // Insert them into the current namespace.
-        for p in &new_impl_type_parameters {
-            p.insert_into_namespace(handler, ctx.by_ref())?;
-        }
 
         // type check the type that we are implementing for
         implementing_for.type_id = ctx.resolve_type(
@@ -425,7 +420,7 @@ impl TyImplTrait {
                 }
             }
 
-            let impl_trait = ty::TyImplTrait {
+            let mut impl_trait = ty::TyImplTrait {
                 impl_type_parameters: new_impl_type_parameters,
                 trait_name,
                 trait_type_arguments: vec![], // this is empty because impl selfs don't support generics on the "Self" trait,
@@ -435,10 +430,62 @@ impl TyImplTrait {
                 implementing_for,
             };
 
-            // Now lets type check the body of the functions (while deferring full monomorphization of function applications).
+            // Now lets do a partial type check of the body of the functions (while deferring full
+            // monomorphization of function applications). We will use this tree to perform type check
+            // analysis (mainly dependency analysis), and re-type check the items ordered by dependency.
+            let mut defer_ctx = ctx.by_ref().with_defer_monomorphization();
+
             let new_items = &impl_trait.items;
-            for (item, new_item) in items.into_iter().zip(new_items) {
+            for (item, new_item) in items.clone().into_iter().zip(new_items) {
                 match (item, new_item) {
+                    (ImplItem::Fn(fn_decl), TyTraitItem::Fn(decl_ref)) => {
+                        let mut ty_fn_decl = decl_engine.get_function(decl_ref.id());
+                        let new_ty_fn_decl = match ty::TyFunctionDecl::type_check_body(
+                            handler,
+                            defer_ctx.by_ref(),
+                            &fn_decl,
+                            &mut ty_fn_decl,
+                        ) {
+                            Ok(res) => res,
+                            Err(_) => continue,
+                        };
+                        decl_engine.replace(*decl_ref.id(), new_ty_fn_decl);
+                    }
+                    (ImplItem::Constant(_const_decl), TyTraitItem::Constant(_decl_ref)) => {
+                        // Already processed.
+                    }
+                    (ImplItem::Type(_type_decl), TyTraitItem::Type(_decl_ref)) => {
+                        // Already processed.
+                    }
+                    _ => unreachable!(),
+                }
+            }
+
+            let impl_trait_decl = decl_engine.insert(impl_trait.clone()).into();
+
+            // First lets perform an analysis pass.
+            // This returns a vector with ordered indexes to the items in the order that they
+            // should be processed.
+            let ordered_node_indices_opt = if let TyDecl::ImplTrait(impl_trait) = &impl_trait_decl {
+                ty::TyImplTrait::type_check_analyze_impl_self_items(
+                    handler,
+                    ctx.by_ref(),
+                    impl_trait,
+                )?
+            } else {
+                unreachable!();
+            };
+
+            // In case there was any issue processing the dependency graph, then lets just
+            // process them in the original order.
+            let ordered_node_indices: Vec<_> = match ordered_node_indices_opt {
+                Some(value) => value.iter().map(|n| n.index()).collect(),
+                None => (0..new_items.len()).collect(),
+            };
+
+            // Now lets type check the body of the functions (for real this time).
+            for idx in ordered_node_indices {
+                match (&items[idx], &new_items[idx]) {
                     (ImplItem::Fn(fn_decl), TyTraitItem::Fn(decl_ref)) => {
                         let mut ty_fn_decl = decl_engine.get_function(decl_ref.id());
                         let new_ty_fn_decl = match ty::TyFunctionDecl::type_check_body(
@@ -462,6 +509,8 @@ impl TyImplTrait {
                 }
             }
 
+            let impl_trait_decl: ty::TyDecl = decl_engine.insert(impl_trait.clone()).into();
+
             let mut finalizing_ctx = TypeCheckFinalizationContext::new(ctx.engines, ctx.by_ref());
             for item in new_items {
                 match item {
@@ -478,7 +527,45 @@ impl TyImplTrait {
                     _ => {}
                 }
             }
-            Ok(impl_trait)
+
+            impl_trait
+                .items
+                .iter_mut()
+                .for_each(|item| item.replace_implementing_type(engines, impl_trait_decl.clone()));
+
+            if let TyDecl::ImplTrait(impl_trait_id) = &impl_trait_decl {
+                decl_engine.replace(impl_trait_id.decl_id, impl_trait);
+            }
+
+            Ok(impl_trait_decl)
+        })
+    }
+
+    pub(crate) fn type_check_analyze_impl_self_items(
+        handler: &Handler,
+        ctx: TypeCheckContext,
+        impl_self: &ty::ImplTrait,
+    ) -> Result<Option<Vec<TyNodeDepGraphNodeId>>, ErrorEmitted> {
+        let engines = ctx.engines;
+        handler.scope(|handler| {
+            let mut analysis_ctx = TypeCheckAnalysisContext::new(engines);
+            let _ = impl_self.type_check_analyze(handler, &mut analysis_ctx);
+
+            // Build a sub graph that just contains the items for this impl trait.
+            let impl_trait_node_index = analysis_ctx.nodes.get(&impl_self.decl_id.inner());
+            let sub_graph = analysis_ctx.get_sub_graph(
+                *impl_trait_node_index.expect("expected a valid impl trait node id"),
+            );
+
+            // Do a topological sort to compute an ordered list of nodes (by function calls).
+            let sorted = match petgraph::algo::toposort(&sub_graph, None) {
+                Ok(value) => Some(value),
+                // If the dependency graph contains cycles, then this means there are recursive
+                // function calls, which we will report later.
+                Err(_) => None,
+            };
+
+            Ok(sorted)
         })
     }
 }
@@ -663,12 +750,27 @@ fn type_check_trait_implementation(
                 let decl_ref = decl_engine.insert(type_decl.clone());
                 impld_item_refs.insert((name, implementing_for), TyTraitItem::Type(decl_ref));
 
-                let old_type_decl_info = TypeInfo::TraitType {
+                let old_type_decl_info1 = TypeInfo::TraitType {
                     name: type_decl.name.clone(),
                     trait_type_id: implementing_for,
                 };
+                let old_type_decl_info2 = TypeInfo::TraitType {
+                    name: type_decl.name.clone(),
+                    trait_type_id: type_engine.insert(
+                        engines,
+                        TypeInfo::UnknownGeneric {
+                            // Using Span::dummy just to match the type substitution, type is not used anywhere else.
+                            name: Ident::new_with_override("Self".into(), Span::dummy()),
+                            trait_constraints: VecSet(vec![]),
+                        },
+                    ),
+                };
                 trait_type_mapping.extend(TypeSubstMap::from_type_parameters_and_type_arguments(
-                    vec![type_engine.insert(engines, old_type_decl_info)],
+                    vec![type_engine.insert(engines, old_type_decl_info1)],
+                    vec![type_decl.ty.clone().unwrap().type_id],
+                ));
+                trait_type_mapping.extend(TypeSubstMap::from_type_parameters_and_type_arguments(
+                    vec![type_engine.insert(engines, old_type_decl_info2)],
                     vec![type_decl.ty.clone().unwrap().type_id],
                 ));
             }
@@ -1223,14 +1325,9 @@ fn check_for_unconstrained_type_parameters(
     // create a list of the generics in use in the impl signature
     let mut generics_in_use = HashSet::new();
     for type_arg in trait_type_arguments.iter() {
-        generics_in_use.extend(
-            engines
-                .te()
-                .get(type_arg.type_id)
-                .extract_nested_generics(engines),
-        );
+        generics_in_use.extend(type_arg.type_id.extract_nested_generics(engines));
     }
-    generics_in_use.extend(engines.te().get(self_type).extract_nested_generics(engines));
+    generics_in_use.extend(self_type.extract_nested_generics(engines));
 
     // TODO: add a lookup in the trait constraints here and add it to
     // generics_in_use
@@ -1281,7 +1378,7 @@ fn handle_supertraits(
 
             match ctx
                 .namespace
-                .resolve_call_path(handler, engines, &supertrait.name)
+                .resolve_call_path(handler, engines, &supertrait.name, ctx.self_type())
                 .ok()
             {
                 Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
@@ -1337,6 +1434,34 @@ fn handle_supertraits(
 
         Ok((interface_surface_item_ids, impld_item_refs))
     })
+}
+
+impl TypeCheckAnalysis for ty::ImplTrait {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        let decl_engine = ctx.engines.de();
+        let impl_trait = decl_engine.get_impl_trait(&self.decl_id);
+
+        // Lets create a graph node for the impl trait and for every item in the trait.
+        ctx.push_impl_trait(self);
+
+        // Now lets analyze each impl trait item.
+        for (i, item) in impl_trait.items.iter().enumerate() {
+            let node = ctx.items_node_stack[i];
+            ctx.node_stack.push(node);
+            item.type_check_analyze(handler, ctx)?;
+            ctx.node_stack.pop();
+        }
+
+        // Clear the work-in-progress node stacks.
+        ctx.node_stack.clear();
+        ctx.items_node_stack.clear();
+
+        Ok(())
+    }
 }
 
 impl TypeCheckFinalization for TyImplTrait {

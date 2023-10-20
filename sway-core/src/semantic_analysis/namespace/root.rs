@@ -7,7 +7,7 @@ use sway_types::Spanned;
 use crate::{
     decl_engine::DeclRef,
     language::{
-        ty::{self, TraitTypeDecl},
+        ty::{self, TyTraitItem},
         CallPath,
     },
     Engines, Ident, TypeId, TypeInfo,
@@ -39,9 +39,10 @@ impl Root {
         engines: &Engines,
         mod_path: &Path,
         call_path: &CallPath,
+        self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         let (decl, _) =
-            self.resolve_call_path_and_mod_path(handler, engines, mod_path, call_path)?;
+            self.resolve_call_path_and_mod_path(handler, engines, mod_path, call_path, self_type)?;
         Ok(decl)
     }
 
@@ -51,13 +52,20 @@ impl Root {
         engines: &Engines,
         mod_path: &Path,
         call_path: &CallPath,
+        self_type: Option<TypeId>,
     ) -> Result<(ty::TyDecl, Vec<Ident>), ErrorEmitted> {
         let symbol_path: Vec<_> = mod_path
             .iter()
             .chain(&call_path.prefixes)
             .cloned()
             .collect();
-        self.resolve_symbol_and_mod_path(handler, engines, &symbol_path, &call_path.suffix)
+        self.resolve_symbol_and_mod_path(
+            handler,
+            engines,
+            &symbol_path,
+            &call_path.suffix,
+            self_type,
+        )
     }
 
     pub(crate) fn resolve_call_path_and_root_type_id(
@@ -65,7 +73,9 @@ impl Root {
         handler: &Handler,
         engines: &Engines,
         root_type_id: TypeId,
+        mut as_trait: Option<CallPath>,
         call_path: &CallPath,
+        self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         // This block tries to resolve associated types
         let mut decl_opt = None;
@@ -73,11 +83,25 @@ impl Root {
         for ident in call_path.prefixes.iter() {
             if let Some(type_id) = type_id_opt {
                 type_id_opt = None;
-                decl_opt = Some(
-                    self.resolve_associated_type_from_type_id(handler, engines, ident, type_id)?,
-                );
+                decl_opt = Some(self.resolve_associated_type_from_type_id(
+                    handler,
+                    engines,
+                    ident,
+                    type_id,
+                    as_trait.clone(),
+                    self_type,
+                )?);
+                as_trait = None;
             } else if let Some(decl) = decl_opt {
-                decl_opt = Some(self.resolve_associated_type(handler, engines, ident, decl)?);
+                decl_opt = Some(self.resolve_associated_type(
+                    handler,
+                    engines,
+                    ident,
+                    decl,
+                    as_trait.clone(),
+                    self_type,
+                )?);
+                as_trait = None;
             }
         }
         if let Some(type_id) = type_id_opt {
@@ -86,11 +110,20 @@ impl Root {
                 engines,
                 &call_path.suffix,
                 type_id,
+                as_trait,
+                self_type,
             )?;
             return Ok(decl);
         }
         if let Some(decl) = decl_opt {
-            let decl = self.resolve_associated_type(handler, engines, &call_path.suffix, decl)?;
+            let decl = self.resolve_associated_item(
+                handler,
+                engines,
+                &call_path.suffix,
+                decl,
+                as_trait,
+                self_type,
+            )?;
             Ok(decl)
         } else {
             Err(handler.emit_err(CompileError::Internal("Unexpected error", call_path.span())))
@@ -108,8 +141,10 @@ impl Root {
         engines: &Engines,
         mod_path: &Path,
         symbol: &Ident,
+        self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-        let (decl, _) = self.resolve_symbol_and_mod_path(handler, engines, mod_path, symbol)?;
+        let (decl, _) =
+            self.resolve_symbol_and_mod_path(handler, engines, mod_path, symbol, self_type)?;
         Ok(decl)
     }
 
@@ -119,6 +154,7 @@ impl Root {
         engines: &Engines,
         mod_path: &Path,
         symbol: &Ident,
+        self_type: Option<TypeId>,
     ) -> Result<(ty::TyDecl, Vec<Ident>), ErrorEmitted> {
         // This block tries to resolve associated types
         let mut module = &self.module;
@@ -126,7 +162,9 @@ impl Root {
         let mut decl_opt = None;
         for ident in mod_path.iter() {
             if let Some(decl) = decl_opt {
-                decl_opt = Some(self.resolve_associated_type(handler, engines, ident, decl)?);
+                decl_opt = Some(
+                    self.resolve_associated_type(handler, engines, ident, decl, None, self_type)?,
+                );
             } else {
                 match module.submodules.get(ident.as_str()) {
                     Some(ns) => {
@@ -140,18 +178,21 @@ impl Root {
                             &current_mod_path,
                             ident,
                             module,
+                            self_type,
                         )?);
                     }
                 }
             }
         }
         if let Some(decl) = decl_opt {
-            let decl = self.resolve_associated_type(handler, engines, symbol, decl)?;
+            let decl =
+                self.resolve_associated_item(handler, engines, symbol, decl, None, self_type)?;
             return Ok((decl, current_mod_path));
         }
 
         self.check_submodule(handler, mod_path).and_then(|module| {
-            let decl = self.resolve_symbol_helper(handler, engines, mod_path, symbol, module)?;
+            let decl =
+                self.resolve_symbol_helper(handler, engines, mod_path, symbol, module, self_type)?;
             Ok((decl, mod_path.to_vec()))
         })
     }
@@ -162,8 +203,50 @@ impl Root {
         engines: &Engines,
         symbol: &Ident,
         decl: ty::TyDecl,
+        as_trait: Option<CallPath>,
+        self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-        let type_info = match decl.clone() {
+        let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
+
+        self.resolve_associated_type_from_type_id(
+            handler,
+            engines,
+            symbol,
+            engines.te().insert(engines, type_info),
+            as_trait,
+            self_type,
+        )
+    }
+
+    fn resolve_associated_item(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        symbol: &Ident,
+        decl: ty::TyDecl,
+        as_trait: Option<CallPath>,
+        self_type: Option<TypeId>,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
+
+        self.resolve_associated_item_from_type_id(
+            handler,
+            engines,
+            symbol,
+            engines.te().insert(engines, type_info),
+            as_trait,
+            self_type,
+        )
+    }
+
+    fn decl_to_type_info(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        symbol: &Ident,
+        decl: ty::TyDecl,
+    ) -> Result<TypeInfo, ErrorEmitted> {
+        Ok(match decl.clone() {
             ty::TyDecl::StructDecl(struct_decl) => TypeInfo::Struct(DeclRef::new(
                 struct_decl.name.clone(),
                 struct_decl.decl_id,
@@ -184,14 +267,7 @@ impl Root {
                     span: symbol.span(),
                 }))
             }
-        };
-
-        self.resolve_associated_type_from_type_id(
-            handler,
-            engines,
-            symbol,
-            engines.te().insert(engines, type_info),
-        )
+        })
     }
 
     fn resolve_associated_type_from_type_id(
@@ -200,28 +276,50 @@ impl Root {
         engines: &Engines,
         symbol: &Ident,
         type_id: TypeId,
+        as_trait: Option<CallPath>,
+        self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-        for trait_item in self.implemented_traits.get_items_for_type(engines, type_id) {
-            match trait_item {
-                ty::TyTraitItem::Fn(_) => {}
-                ty::TyTraitItem::Constant(_) => {}
-                ty::TyTraitItem::Type(type_ref) => {
-                    let type_decl = engines.de().get_type(type_ref.id());
-                    if type_decl.name.as_str() == symbol.as_str() {
-                        return Ok(ty::TyDecl::TraitTypeDecl(TraitTypeDecl {
-                            name: type_decl.name.clone(),
-                            decl_id: *type_ref.id(),
-                            decl_span: type_decl.name.span(),
-                        }));
-                    }
-                }
-            }
+        let item_decl = self.resolve_associated_item_from_type_id(
+            handler, engines, symbol, type_id, as_trait, self_type,
+        )?;
+        if !matches!(item_decl, ty::TyDecl::TraitTypeDecl(_)) {
+            return Err(handler.emit_err(CompileError::Internal(
+                "Expecting associated type",
+                item_decl.span(),
+            )));
         }
+        Ok(item_decl)
+    }
 
-        Err(handler.emit_err(CompileError::SymbolNotFound {
-            name: symbol.clone(),
-            span: symbol.span(),
-        }))
+    fn resolve_associated_item_from_type_id(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        symbol: &Ident,
+        type_id: TypeId,
+        as_trait: Option<CallPath>,
+        self_type: Option<TypeId>,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        let type_id = if engines.te().get(type_id).is_self_type() {
+            if let Some(self_type) = self_type {
+                self_type
+            } else {
+                return Err(handler.emit_err(CompileError::Internal(
+                    "Self type not provided.",
+                    symbol.span(),
+                )));
+            }
+        } else {
+            type_id
+        };
+        let item_ref = self
+            .implemented_traits
+            .get_trait_item_for_type(handler, engines, symbol, type_id, as_trait)?;
+        match item_ref {
+            TyTraitItem::Fn(fn_ref) => Ok(fn_ref.into()),
+            TyTraitItem::Constant(const_ref) => Ok(const_ref.into()),
+            TyTraitItem::Type(type_ref) => Ok(type_ref.into()),
+        }
     }
 
     fn resolve_symbol_helper(
@@ -231,6 +329,7 @@ impl Root {
         mod_path: &Path,
         symbol: &Ident,
         module: &Module,
+        self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         let true_symbol = self[mod_path]
             .use_aliases
@@ -240,7 +339,7 @@ impl Root {
             Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. }, _)) => Ok(decl.clone()),
             Some((src_path, _, _, _)) if mod_path != src_path => {
                 // TODO: check that the symbol import is public?
-                self.resolve_symbol(handler, engines, src_path, true_symbol)
+                self.resolve_symbol(handler, engines, src_path, true_symbol, self_type)
             }
             _ => module
                 .check_symbol(true_symbol)

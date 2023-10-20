@@ -8,7 +8,7 @@ A smart contract consists of two parts:
 
 <!--no toc-->
 - [Application Binary Interface (`ABI`)](#application-binary-interface-abi)
-- [Implementation of the `ABI`](#implementating-the-abi)
+- [Implementation of the `ABI`](#implementation-the-abi)
 
 ## Application Binary Interface (`ABI`)
 
@@ -24,7 +24,7 @@ Inside the declaration are function signatures, annotations denoting the interac
 {{#include ../../../code/language/program-types/contracts/interface/src/lib.sw}}
 ```
 
-## Implementating the `ABI`
+## Implementation the `ABI`
 
 Similar to [traits](https://doc.rust-lang.org/rust-by-example/trait.html) in Rust implementing the `ABI` is done with the syntax `impl <name-of-abi> for Contract`.
 

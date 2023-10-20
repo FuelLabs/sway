@@ -35,6 +35,8 @@ pub mod simplify_cfg;
 pub use simplify_cfg::*;
 pub mod sroa;
 pub use sroa::*;
+pub mod fn_dedup;
+pub use fn_dedup::*;
 
 mod target_fuel;
 
