@@ -168,7 +168,7 @@ impl DebugWithEngines for QualifiedCallPath {
     }
 }
 
-/// in the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
+/// In the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
 /// `c` can be any type `T`, but in practice `c` is either an `Ident` or a `TypeInfo`.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct CallPath<T = Ident> {
@@ -279,7 +279,7 @@ impl CallPath {
             .collect::<Vec<_>>()
     }
 
-    /// Convert a given `CallPath` to a symbol to a full `CallPath` from the root of the project
+    /// Convert a given [CallPath] to a symbol to a full [CallPath] from the root of the project
     /// in which the symbol is declared. For example, given a path `pkga::SOME_CONST` where `pkga`
     /// is an _internal_ library of a package named `my_project`, the corresponding call path is
     /// `my_project::pkga::SOME_CONST`.
