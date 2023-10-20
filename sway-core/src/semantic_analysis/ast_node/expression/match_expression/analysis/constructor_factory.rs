@@ -20,7 +20,7 @@ pub(crate) struct ConstructorFactory {
 
 impl ConstructorFactory {
     pub(crate) fn new(engines: &Engines, type_id: TypeId) -> Self {
-        let possible_types = engines.te().get(type_id).extract_nested_types(engines);
+        let possible_types = type_id.extract_nested_types(engines);
         ConstructorFactory { possible_types }
     }
 
