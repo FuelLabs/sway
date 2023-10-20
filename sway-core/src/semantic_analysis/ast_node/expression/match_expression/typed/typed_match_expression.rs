@@ -68,11 +68,11 @@ impl ty::TyMatchExpression {
             let mut typed_if_exp = instantiate.code_block_with_implicit_return_revert(INVALID_DESUGARED_MATCHED_EXPRESSION_SIGNAL);
 
             // For every branch of the match expression, bottom-up, means in reverse.
-            for ty::TyMatchBranch { matched_or_variant_index_vars, if_condition, result, .. } in self.branches.into_iter().rev() {
+            for ty::TyMatchBranch { matched_or_variant_index_vars, condition, result, .. } in self.branches.into_iter().rev() {
                 let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
                 let result_span = result.span.clone();
 
-                let condition = if_condition.unwrap_or(instantiate.boolean_literal(true));
+                let condition = condition.unwrap_or(instantiate.boolean_literal(true));
 
                 // Create a new namespace for this branch result.
                 let mut namespace = ctx.namespace.clone();

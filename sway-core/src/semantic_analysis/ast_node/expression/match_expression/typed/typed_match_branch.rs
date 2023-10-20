@@ -2,12 +2,12 @@ use std::convert::identity;
 
 use ast_node::expression::match_expression::typed::matcher::ReqDeclNode;
 use either::Either;
-use itertools::Itertools;
+use itertools::{Itertools, multiunzip};
 use sway_error::{handler::{ErrorEmitted, Handler}, error::CompileError};
 use sway_types::{Spanned, Span, Ident};
 
 use crate::{
-    language::{parsed::MatchBranch, ty::{self, MatchIfCondition, MatchMatchedOrVariantIndexVars}},
+    language::{parsed::MatchBranch, ty::{self, MatchBranchCondition, MatchedOrVariantIndexVars}},
     semantic_analysis::*,
     types::DeterministicallyAborts,
     TypeInfo, TypeArgument, UnifyCheck, Engines, compiler_generated::{generate_matched_or_variant_index_var_name, INVALID_MATCHED_OR_VARIABLE_INDEX_SIGNAL, generate_matched_or_variant_variables_var_name},
@@ -71,7 +71,7 @@ impl ty::TyMatchBranch {
             Ok(())
         })?;
 
-        let (if_condition, result_var_declarations, or_variant_vars) = instantiate_if_condition_result_var_declarations_and_matched_or_variant_index_vars(&handler, &mut ctx, &instantiate, &req_decl_tree)?;
+        let (condition, result_var_declarations, or_variant_vars) = instantiate_branch_condition_result_var_declarations_and_matched_or_variant_index_vars(&handler, &mut ctx, &instantiate, &req_decl_tree)?;
 
         // create a new namespace for this branch result
         let mut namespace = ctx.namespace.clone();
@@ -140,7 +140,7 @@ impl ty::TyMatchBranch {
 
         let typed_branch = ty::TyMatchBranch {
             matched_or_variant_index_vars: or_variant_vars,
-            if_condition,
+            condition,
             result: new_result,
             span: branch_span,
         };
@@ -152,65 +152,78 @@ impl ty::TyMatchBranch {
 type VarDecl = (Ident, ty::TyExpression);
 /// Declarations of variables that have to be inserted at the beginning
 /// of the match arm result.
+/// These can be simple variable declarations in the form `let <ident> = <exp>;`
+/// or the declarations of tuple variables holding values coming from OR
+/// variants. In the former case, the variable body can be an arbitrary long
+/// chain of nested `if` expressions: `let <tuple> = if .. else ..`.
 type ResultVarDeclarations = Vec<VarDecl>;
 /// Declarations of variables that are carried over from the lower parts
 /// of the [ReqDeclTree] towards the upper parts. The decision which of
 /// those variables should be added to [ResultVarDeclarations] is always
 /// done at the AND and OR nodes upper in the tree.
+/// The OR nodes can transform the variables before passing them to the
+/// upper nodes.
 type CarryOverVarDeclarations = Vec<VarDecl>;
+/// Declarations of tuple variables that are carried over from the lower parts
+/// of the [ReqDeclTree] towards the upper parts. The decision which of
+/// those tuple variables should be added to [ResultVarDeclarations] is always
+/// done at the AND and OR nodes upper in the tree.
+/// The OR nodes can embed tuple variables into definitions of other tuple
+/// variables, thus, not passing them any more to the upper nodes.
+type CarryOverTupleDeclarations = Vec<VarDecl>;
 
 /// TODO-IG: Document in detail.
-fn instantiate_if_condition_result_var_declarations_and_matched_or_variant_index_vars(
+fn instantiate_branch_condition_result_var_declarations_and_matched_or_variant_index_vars(
     handler: &Handler,
     ctx: &mut TypeCheckContext,
     instantiate: &Instantiate,
     req_decl_tree: &ReqDeclTree
-) -> Result<(MatchIfCondition, ResultVarDeclarations, MatchMatchedOrVariantIndexVars), ErrorEmitted> {
+) -> Result<(MatchBranchCondition, ResultVarDeclarations, MatchedOrVariantIndexVars), ErrorEmitted> {
     let mut result_var_declarations = ResultVarDeclarations::new();
-    let mut or_variants_vars = MatchMatchedOrVariantIndexVars::new();
+    let mut or_variants_index_vars = MatchedOrVariantIndexVars::new();
 
-    let result = instantiate_conditions_and_declarations(handler, ctx.by_ref(), &instantiate, None, &req_decl_tree.root, &mut result_var_declarations, &mut or_variants_vars)?;
+    let (condition, carry_over_var_declarations, carry_over_tuple_declarations) = recursively_instantiate_conditions_declarations_and_variant_index_vars(handler, ctx.by_ref(), &instantiate, None, &req_decl_tree.root, &mut result_var_declarations, &mut or_variants_index_vars)?;
 
-    // At the end, there must not be any carry-over variable declarations.
+    // At the end, there must not be any carry-over declarations.
     // All variable declarations must end up in the `result_var_declarations`.
-    return if !result.1.is_empty() {
+    return if !(carry_over_var_declarations.is_empty() && carry_over_tuple_declarations.is_empty()) {
             Err(handler.emit_err(CompileError::Internal(
                 "unable to extract match arm variables",
                 instantiate.error_span(),
             )))
         }
         else {
-            Ok((result.0, result_var_declarations, or_variants_vars))
+            Ok((condition, result_var_declarations, or_variants_index_vars))
         };
 
-    fn instantiate_conditions_and_declarations(
+    fn recursively_instantiate_conditions_declarations_and_variant_index_vars(
         handler: &Handler,
         mut ctx: TypeCheckContext,
         instantiate: &Instantiate,
         parent_node: Option<&ReqDeclNode>,
         req_decl_node: &ReqDeclNode,
         result_var_declarations: &mut ResultVarDeclarations,
-        or_variants_vars: &mut MatchMatchedOrVariantIndexVars,
-    ) -> Result<(MatchIfCondition, CarryOverVarDeclarations), ErrorEmitted> {
+        or_variants_index_vars: &mut MatchedOrVariantIndexVars,
+    ) -> Result<(MatchBranchCondition, CarryOverVarDeclarations, CarryOverTupleDeclarations), ErrorEmitted> {
         return match req_decl_node {
             ReqDeclNode::ReqOrVarDecl(Some(Either::Left(req))) => {
                 let condition = instantiate.eq_result(handler, ctx.by_ref(), req.0.clone(), req.1.clone()).map(|exp| Some(exp))?;
-                Ok((condition, vec![]))
+                Ok((condition, vec![], vec![]))
             },
             ReqDeclNode::ReqOrVarDecl(Some(Either::Right(decl))) => {
                 if parent_node.is_none() {
                     // I am the root/only node. Add my declaration to the result var declarations and pass no requirements and no carry over vars.
                     result_var_declarations.push(decl.clone());
-                    Ok((None, vec![]))
+                    Ok((None, vec![], vec![]))
                 }
                 else {
                     // I am embedded with an AND or OR node. The parent node needs to decide what to do with my variable declaration.
-                    Ok((None, vec![decl.clone()]))
+                    Ok((None, vec![decl.clone()], vec![]))
                 }
             },
-            ReqDeclNode::ReqOrVarDecl(None) => Ok((None, vec![])),
+            ReqDeclNode::ReqOrVarDecl(None) => Ok((None, vec![], vec![])),
             ReqDeclNode::And(nodes) | ReqDeclNode::Or(nodes) => {
-                instantiate_child_nodes_conditions_and_declarations(handler, ctx.by_ref(), &instantiate, &req_decl_node, parent_node.is_none(), nodes, result_var_declarations, or_variants_vars)
+                instantiate_child_nodes_conditions_and_declarations(handler, ctx.by_ref(), &instantiate, &req_decl_node, parent_node.is_none(), nodes, result_var_declarations, or_variants_index_vars)
             },
         };
 
@@ -222,12 +235,12 @@ fn instantiate_if_condition_result_var_declarations_and_matched_or_variant_index
             parent_node_is_root_node: bool,
             nodes: &Vec<ReqDeclNode>,
             result_var_declarations: &mut ResultVarDeclarations,
-            matched_or_variant_index_vars: &mut MatchMatchedOrVariantIndexVars
-        ) -> Result<(MatchIfCondition, CarryOverVarDeclarations), ErrorEmitted> {
-            let conditions_and_carry_over_vars: Result<Vec<_>, _> = nodes.iter().map(|node| instantiate_conditions_and_declarations(handler, ctx.by_ref(), &instantiate, Some(parent_node), node, result_var_declarations, matched_or_variant_index_vars)).collect();
-            let (conditions, carry_over_vars): (Vec<_>, Vec<_>) = conditions_and_carry_over_vars?.into_iter().unzip();
+            or_variant_index_vars: &mut MatchedOrVariantIndexVars
+        ) -> Result<(MatchBranchCondition, CarryOverVarDeclarations, CarryOverTupleDeclarations), ErrorEmitted> {
+            let conditions_and_carry_overs: Result<Vec<_>, _> = nodes.iter().map(|node| recursively_instantiate_conditions_declarations_and_variant_index_vars(handler, ctx.by_ref(), &instantiate, Some(parent_node), node, result_var_declarations, or_variant_index_vars)).collect();
+            let (conditions, carry_over_vars, carry_over_tuples): (Vec<_>, Vec<_>, Vec<_>) = multiunzip(conditions_and_carry_overs?);
 
-            let (condition, vars) = match parent_node {
+            let (condition, vars, tuples) = match parent_node {
                 ReqDeclNode::And(_) => {
                     let conditions = conditions.into_iter().filter_map(identity).collect_vec();
                     let condition = match conditions[..] {
@@ -235,23 +248,36 @@ fn instantiate_if_condition_result_var_declarations_and_matched_or_variant_index
                         _ => Some(build_condition_expression(&conditions[..], &|lhs, rhs| instantiate.lazy_and(lhs, rhs))),
                     };
                     let mut vars = carry_over_vars.into_iter().flatten().collect_vec();
+                    let mut tuples = carry_over_tuples.into_iter().flatten().collect_vec();
 
                     if parent_node_is_root_node {
                         // We are within an AND root node. Add all the variable declarations to the result var declarations and
-                        // return the calculated condition and no carry over vars.
-                        result_var_declarations.append(&mut vars); // `vars` are empty after this.
+                        // return the calculated condition and no carry overs.
+                        // `vars` and `tuples` will be empty after appending.
+
+                        // Note that if we have more then one tuple in carry over, this means they
+                        // are coming from an AND node (because an OR node always produces a single tuple).
+                        // In that case the `vars` redefined in tuples are never the same and we can
+                        // safely declare them in any order after the tuples.
+                        result_var_declarations.append(&mut tuples);
+                        result_var_declarations.append(&mut vars);
                     }
 
-                    // Return the condition and either the empty `vars` if the parent is the root node, or carry over
-                    // all the variable declarations from all the child nodes.
-                    (condition, vars)
+                    // Return the condition and either the empty `vars` and `tuples` if the parent is the root node, or carry over
+                    // all the declarations from all the child nodes.
+                    (condition, vars, tuples)
                 },
                 ReqDeclNode::Or(_) => {
                     let has_var_decls = carry_over_vars.iter().any(|v| !v.is_empty());
 
                     if has_var_decls {
-                        // Instantiate and return the expression for matched or variant index variable.
-                        let suffix = matched_or_variant_index_vars.len() + 1;
+                        // We need to:
+                        // - instantiate the index variable for this OR.
+                        // - instantiate a single tuple variable that holds the variables taken from the alternatives.
+                        // - instantiate redefined declared variables that are initialized from the tuple fields.
+
+                        // Instantiate and return the expression for matched OR variant index variable.
+                        let suffix = or_variant_index_vars.len() + 1;
                         let matched_or_variant_index_var_decl = instantiate_matched_or_variant_index_var_expression(&instantiate, suffix, conditions);
                         // Variable expression used to instantiate the corresponding tuple variable
                         // that will hold matched variant variables.
@@ -259,7 +285,7 @@ fn instantiate_if_condition_result_var_declarations_and_matched_or_variant_index
                         // to the context in order for the tuple variable to be created.
                         let matched_or_variant_index_variable = instantiate.var_exp(matched_or_variant_index_var_decl.0.clone(), matched_or_variant_index_var_decl.1.return_type);
 
-                        matched_or_variant_index_vars.push(matched_or_variant_index_var_decl);
+                        or_variant_index_vars.push(matched_or_variant_index_var_decl);
 
                         // Instantiate the tuple variable and the redefined variable declarations
                         // of the variables declared in OR variants.
@@ -270,42 +296,44 @@ fn instantiate_if_condition_result_var_declarations_and_matched_or_variant_index
                             &instantiate,
                             &matched_or_variant_index_variable,
                             suffix,
-                            carry_over_vars)?;
-
-                        // Always push the tuple declaration to the result variable declarations.
-                        result_var_declarations.push(tuple);
-
-                        if parent_node_is_root_node {
-                            // We are within an OR root node. Add all the variable declarations to the result var declarations and
-                            // return the calculated condition and no carry over vars.
-                            result_var_declarations.append(&mut redefined_vars); // `redefined_vars` are empty after this.
-                        }
+                            carry_over_vars,
+                            carry_over_tuples
+                        )?;
 
                         // Instantiate the new condition that will be just the check if the 1-based matched variant index is different
                         // then zero.
-                        let zero_u64_literal = instantiate.u64_literal(0);
+                        let condition = instantiate.neq_result(handler, ctx.by_ref(), matched_or_variant_index_variable, instantiate.u64_literal(0))?;
 
-                        let condition = instantiate.neq_result(handler, ctx.by_ref(), matched_or_variant_index_variable.clone(), zero_u64_literal.clone())?;
+                        if parent_node_is_root_node {
+                            // We are within an OR root node. Add the tuple and all the variable declarations to the result var declarations and
+                            // return the calculated condition and no carry overs.
+                            result_var_declarations.push(tuple);
+                            result_var_declarations.append(&mut redefined_vars);
 
-                        // Return the condition and either the empty `redefined_vars` if the parent is the root node, or carry over
-                        // all the redefined variable declarations to the upper nodes.
-                        (Some(condition), redefined_vars)
+                            (Some(condition), vec![], vec![])
+                        }
+                        else {
+                            // Return the condition and or carry over the created tuple and
+                            // all the redefined variable declarations to the upper nodes.
+                            (Some(condition), redefined_vars, vec![tuple])
+                        }
                     }
-                    else {
+                    else { // No variable declarations in OR variants.
+                        // This also means we don't have tuples because they are created only to extract variables.
+                        // In this case we only have to calculate the final condition.
                         let conditions = conditions.into_iter().filter_map(identity).collect_vec();
                         let condition = match conditions[..] {
                             [] => None,
                             _ => Some(build_condition_expression(&conditions[..], &|lhs, rhs| instantiate.lazy_or(lhs, rhs))),
                         };
 
-                        (condition, vec![])
+                        (condition, vec![], vec![])
                     }
                 },
                 _ => unreachable!("A parent node can only be an AND or an OR node."),
             };
 
-
-            Ok((condition, vars))
+            Ok((condition, vars, tuples))
         }
     
         fn build_condition_expression(expressions: &[ty::TyExpression], operator: &impl Fn(ty::TyExpression, ty::TyExpression) -> ty::TyExpression) -> ty::TyExpression {
@@ -323,7 +351,7 @@ fn instantiate_if_condition_result_var_declarations_and_matched_or_variant_index
         /// If none of the variants match the variable will be initialized
         /// to zero.
         /// 
-        /// let __match_matched_or_variant_index_<suffix>: u64 = if <variant_1_condition> {
+        /// let __matched_or_variant_index_<suffix>: u64 = if <variant_1_condition> {
         ///         1u64
         ///     } else if <variant_2_condition> {
         ///         2u64
@@ -333,7 +361,7 @@ fn instantiate_if_condition_result_var_declarations_and_matched_or_variant_index
         ///     } else {
         ///         0u64
         ///     };
-        fn instantiate_matched_or_variant_index_var_expression(instantiate: &Instantiate, suffix: usize, conditions: Vec<MatchIfCondition>) -> (Ident, ty::TyExpression) {
+        fn instantiate_matched_or_variant_index_var_expression(instantiate: &Instantiate, suffix: usize, conditions: Vec<MatchBranchCondition>) -> (Ident, ty::TyExpression) {
             let ident = instantiate.ident(generate_matched_or_variant_index_var_name(suffix));
 
             // Build the expression bottom up by putting the previous if expression into
@@ -367,17 +395,21 @@ fn instantiate_if_condition_result_var_declarations_and_matched_or_variant_index
         /// declared in an OR match expression.
         /// Choosing the right initialization, the initialization coming from
         /// the OR variant that actually matched, is done by inspecting
-        /// the result of the corresponding __match_matched_or_variant_index_<suffix>
+        /// the result of the corresponding __matched_or_variant_index_<suffix>
         /// variable.
         /// 
         /// The function returns:
-        /// - a variable declaration of a temporary tuple variable that holds
+        /// - a variable declaration of the tuple variable that holds
         ///   the values of all the variables declared in the OR match expression
-        /// - declarations of each individual variable.
+        /// - redefined declarations of each individual variable.
         /// 
-        /// let __match_matched_or_variant_variables_<suffix>: <tuple> = if __match_matched_or_variant_index_<suffix> == 1 {
+        /// let __matched_or_variant_variables_<suffix>: <tuple> = if __matched_or_variant_index_<suffix> == 1 {
+        ///         <potential tuple declarations carried over from the child nodes>
+        /// 
         ///         (<var_1_variant_1_initialization>, ... <var_n_variant_1_initialization>)
         ///     } else if __match_matched_or_variant_index_<suffix> == 2 {
+        ///         <potential tuple declarations carried over from the child nodes>
+        /// 
         ///         (<var_1_variant_2_initialization>, ... <var_n_variant_2_initialization>)
         ///     } else if ... {
         ///         ...
@@ -394,9 +426,10 @@ fn instantiate_if_condition_result_var_declarations_and_matched_or_variant_index
             handler: &Handler,
             mut ctx: TypeCheckContext,
             instantiate: &Instantiate,
-            matched_or_variant_index_variable: &ty::TyExpression,
+            matched_or_variant_index_var: &ty::TyExpression,
             suffix: usize,
-            mut var_declarations: Vec<CarryOverVarDeclarations>
+            mut carry_over_vars: Vec<CarryOverVarDeclarations>,
+            carry_over_tuples: Vec<CarryOverTupleDeclarations>
         ) -> Result<(VarDecl, Vec<VarDecl>), ErrorEmitted> {
             let type_engine = ctx.engines.te();
             // At this point we have the guarantee that we have:
@@ -404,36 +437,59 @@ fn instantiate_if_condition_result_var_declarations_and_matched_or_variant_index
             // - that variables of the same name are of the same type
             // - that we do not have duplicates in variable names inside of alternatives
 
-            // Sort variables in all alternatives by name to get deterministic ordering in tuples.
+            // Sort variables in all alternatives by name to get deterministic ordering in the resulting tuple.
             // Note that the var declarations in match patterns are mutually independent, thus,
             // we can shuffle their ordering.
 
-            for vars_in_alternative in var_declarations.iter_mut() {
+            for vars_in_alternative in carry_over_vars.iter_mut() {
                 vars_in_alternative.sort_by(|(a, _), (b, _)| a.cmp(b));
             }
 
             // Still, check the above guarantee and emit internal compiler errors if they are not satisfied.
-            check_variables_guarantee(handler, ctx.engines, &var_declarations, instantiate.error_span())?;
+            check_variables_guarantee(handler, ctx.engines, &carry_over_vars, instantiate.error_span())?;
 
             // Build the `if-else` chain for the declaration of the tuple variable.
             // Build it bottom up, means traverse in reverse order.
 
             // All variants have same variable types and names, thus we pick them from the first alternative.
-            let tuple_field_types = var_declarations[0].iter().map(|(_, var_body)| TypeArgument {
+            let tuple_field_types = carry_over_vars[0].iter().map(|(_, var_body)| TypeArgument {
                 type_id: var_body.return_type,
                 initial_type_id: var_body.return_type,
                 span: var_body.span.clone(), // Although not needed, this span can be mapped to var declaration.
                 call_path_tree: None,
             }).collect();
             let tuple_type = type_engine.insert(ctx.engines, TypeInfo::Tuple(tuple_field_types));
-            let variable_names = var_declarations[0].iter().map(|(ident, _)| ident.clone()).collect_vec();
+            let variable_names = carry_over_vars[0].iter().map(|(ident, _)| ident.clone()).collect_vec();
 
             // Build the expression bottom up by putting the previous if expression into
             // the else part of the current one.
-            let number_of_alternatives = var_declarations.len();
+            let number_of_alternatives = carry_over_vars.len();
             let mut if_expr = instantiate.code_block_with_implicit_return_revert(INVALID_MATCHED_OR_VARIABLE_INDEX_SIGNAL);
-            for (rev_index, vars) in var_declarations.into_iter().rev().enumerate() {
-                let condition = instantiate_or_variant_has_matched_condition(ctx.by_ref(), &instantiate, matched_or_variant_index_variable,(number_of_alternatives - rev_index).try_into().unwrap());
+            // The vectors of vars and tuples defined in alternatives, are of the same size, which is the number of OR alternatives.
+            for (rev_index, (vars_in_alternative, tuples_in_alternative)) in carry_over_vars.into_iter().rev().zip_eq(carry_over_tuples.into_iter().rev()).enumerate() {
+                let condition = instantiate_or_variant_has_matched_condition(ctx.by_ref(), &instantiate, matched_or_variant_index_var,(number_of_alternatives - rev_index).try_into().unwrap());
+
+                let mut code_block_contents = vec![];
+
+                // Add carry over tuples, if any.
+                for tuple in tuples_in_alternative {
+                    code_block_contents.push(ty::TyAstNode {
+                        content: ty::TyAstNodeContent::Declaration(instantiate.var_decl(tuple.0, tuple.1)),
+                        span: instantiate.dummy_span(),
+                    });
+                }
+
+                // Add the implicit return tuple that captures the values of the variables.
+                code_block_contents.push(ty::TyAstNode {
+                    content: ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
+                        expression: ty::TyExpressionVariant::Tuple {
+                            fields: vars_in_alternative.into_iter().map(|(_, exp)| exp).collect(),
+                        },
+                        return_type: tuple_type,
+                        span: instantiate.dummy_span(),
+                    }),
+                    span: instantiate.dummy_span(),
+                });
 
                 if_expr = ty::TyExpression {
                     expression: ty::TyExpressionVariant::IfExp {
@@ -441,16 +497,7 @@ fn instantiate_if_condition_result_var_declarations_and_matched_or_variant_index
                         then: Box::new(
                             ty::TyExpression {
                                 expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
-                                    contents: vec![ty::TyAstNode {
-                                        content: ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
-                                            expression: ty::TyExpressionVariant::Tuple {
-                                                fields: vars.into_iter().map(|(_, exp)| exp).collect(),
-                                            },
-                                            return_type: tuple_type,
-                                            span: instantiate.dummy_span(),
-                                        }),
-                                        span: instantiate.dummy_span(),
-                                    }],
+                                    contents: code_block_contents,
                                 }),
                                 return_type: tuple_type,
                                 span: instantiate.dummy_span(),

@@ -44,74 +44,73 @@ pub fn test() -> u64 {
     // First OR variant.
 
     // a_x: 10, a_y: 20, b_x: 30
-    //let a = StructA { x: 10, y: 20, z: 301, e: Enum::A(0) };
-    //let b = StructB { a, x: 30, y: 111 };
-    //let x = match_nested(b);
-    //assert(x == 60);
+    let a = StructA { x: 10, y: 20, z: 301, e: Enum::A(0) };
+    let b = StructB { a, x: 30, y: 111 };
+    let x = match_nested(b);
+    assert(x == 60);
 
-    // TODO-IG: Uncomment.
     // a_x: 11, a_y: 22, b_x: 33
-    //let a = StructA { x: 102, y: 11, z: 22, e: Enum::B((0, 0)) };
-    //let b = StructB { a, x: 33, y: 111 };
-    //let x = match_nested(b);
-    //assert(x == 66);
+    let a = StructA { x: 102, y: 11, z: 22, e: Enum::B((0, 0)) };
+    let b = StructB { a, x: 33, y: 111 };
+    let x = match_nested(b);
+    assert(x == 66);
 
     // a_x: 100, a_y: 200, b_x: 300
-    //let a = StructA { x: 103, y: 203, z: 100, e: Enum::A(200) };
-    //let b = StructB { a, x: 300, y: 111 };
-    //let x = match_nested(b);
-    //assert(x == 600);
+    let a = StructA { x: 103, y: 203, z: 100, e: Enum::A(200) };
+    let b = StructB { a, x: 300, y: 111 };
+    let x = match_nested(b);
+    assert(x == 600);
 
     // a_x: 100, a_y: 200, b_x: 300
-    //let a = StructA { x: 103, y: 203, z: 100, e: Enum::B((0, 200)) };
-    //let b = StructB { a, x: 300, y: 111 };
-    //let x = match_nested(b);
-    //assert(x == 600);
+    let a = StructA { x: 103, y: 203, z: 100, e: Enum::B((0, 200)) };
+    let b = StructB { a, x: 300, y: 111 };
+    let x = match_nested(b);
+    assert(x == 600);
 
     // a_x: 100, a_y: 200, b_x: 300
-    //let a = StructA { x: 103, y: 203, z: 100, e: Enum::C((200, 0, 0)) };
-    //let b = StructB { a, x: 300, y: 111 };
-    //let x = match_nested(b);
-    //assert(x == 600);
+    let a = StructA { x: 103, y: 203, z: 100, e: Enum::C((0, 0, 200)) };
+    let b = StructB { a, x: 300, y: 111 };
+    let x = match_nested(b);
+    assert(x == 600);
 
     // Second OR variant.
     
     // a_x: 10, a_y: 20, b_x: 30
-    //let a = StructA { x: 30, y: 201, z: 301, e: Enum::A(20) };
-    //let b = StructB { a, x: 111, y: 10 };
-    //let x = match_nested(b);
-    //assert(x == 60);
+    let a = StructA { x: 30, y: 201, z: 301, e: Enum::A(20) };
+    let b = StructB { a, x: 111, y: 10 };
+    let x = match_nested(b);
+    assert(x == 60);
     
     // a_x: 10, a_y: 20, b_x: 30
-    //let a = StructA { x: 30, y: 201, z: 301, e: Enum::B((20, 0)) };
-    //let b = StructB { a, x: 111, y: 10 };
-    //let x = match_nested(b);
-    //assert(x == 60);
+    let a = StructA { x: 30, y: 201, z: 301, e: Enum::B((20, 0)) };
+    let b = StructB { a, x: 111, y: 10 };
+    let x = match_nested(b);
+    assert(x == 60);
     
     // a_x: 10, a_y: 20, b_x: 30
-    //let a = StructA { x: 30, y: 201, z: 301, e: Enum::C((20, 0, 0)) };
-    //let b = StructB { a, x: 111, y: 10 };
-    //let x = match_nested(b);
-    //assert(x == 60);
+    let a = StructA { x: 30, y: 201, z: 301, e: Enum::C((20, 0, 0)) };
+    let b = StructB { a, x: 111, y: 10 };
+    let x = match_nested(b);
+    assert(x == 60);
     
     // a_x: 11, a_y: 22, b_x: 33
-    //let a = StructA { x: 102, y: 33, z: 22, e: Enum::A(0) };
-    //let b = StructB { a, x: 111, y: 11 };
-    //let x = match_nested(b);
-    //assert(x == 66);
+    let a = StructA { x: 102, y: 33, z: 22, e: Enum::A(0) };
+    let b = StructB { a, x: 111, y: 11 };
+    let x = match_nested(b);
+    assert(x == 66);
     
     // a_x: 100, a_y: 200, b_x: 300
-    //let a = StructA { x: 200, y: 203, z: 300, e: Enum::A(0) };
-    //let b = StructB { a, x: 111, y: 100 };
-    //let x = match_nested(b);
-    //assert(x == 600);
+    let a = StructA { x: 200, y: 203, z: 300, e: Enum::A(0) };
+    let b = StructB { a, x: 111, y: 100 };
+    let x = match_nested(b);
+    assert(x == 600);
 
     // No match. Catch-all.
 
-    //let a = StructA { x: 1234, y: 1234, z: 1234, e: Enum::A(1234) };
-    //let b = StructB { a, x: 1234, y: 1234 };
-    //let x = match_nested(b);
-    //assert(x == 9999);
+    let a = StructA { x: 1234, y: 1234, z: 1234, e: Enum::A(1234) };
+    let b = StructB { a, x: 1234, y: 1234 };
+    let x = match_nested(b);
+    assert(x == 9999);
 
     42
 }

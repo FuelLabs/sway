@@ -5,13 +5,9 @@ use crate::{language::ty::*, type_system::*};
 /// [TyExpression] of type bool that contains the condition to be used
 /// in the desugared if expression or `None` if the match arm is
 /// a catch-all arm without condition.
-/// The catch-all case needs to be distinguished later on when building
-/// the overall desugared match arm representation.
-/// That's why we return [Option] here and not an expression
-/// representing a boolean constant `true`.
 /// E.g., a condition might look like:
 /// `__match_val_1.x == 11 && __match_val_1.y == 22 || __match_val_1.x == 33 && __match_val_1.y == 44`
-pub(crate) type MatchIfCondition = Option<TyExpression>;
+pub(crate) type MatchBranchCondition = Option<TyExpression>;
 
 /// [TyExpression]s of the form `let <ident> = <expression>` where
 /// `<ident>` is a name of a generated  variable that holds the
@@ -19,7 +15,7 @@ pub(crate) type MatchIfCondition = Option<TyExpression>;
 /// `<expression>` is an `if-else` expression that returns
 /// the 1-based index of the matched OR variant or zero
 /// if non of the variants match.
-pub(crate) type MatchMatchedOrVariantIndexVars = Vec<(Ident, TyExpression)>;
+pub(crate) type MatchedOrVariantIndexVars = Vec<(Ident, TyExpression)>;
 
 #[derive(Debug)]
 pub(crate) struct TyMatchExpression {
@@ -33,10 +29,10 @@ pub(crate) struct TyMatchExpression {
 pub(crate) struct TyMatchBranch {
     /// Declarations of the variables that hold the 1-based index
     /// of a matched OR variant or zero if non of the variants match.
-    pub(crate) matched_or_variant_index_vars: MatchMatchedOrVariantIndexVars,
+    pub(crate) matched_or_variant_index_vars: MatchedOrVariantIndexVars,
     /// A boolean expression that represents the total match arm requirement,
     /// or `None` if the match arm is a catch-all arm.
-    pub(crate) if_condition: MatchIfCondition,
+    pub(crate) condition: MatchBranchCondition,
     /// The resulting [ty::TyCodeBlock] that includes the match arm variable declarations
     /// and the typed result from the original untyped branch result.
     pub(crate) result: TyExpression,
