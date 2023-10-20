@@ -3,7 +3,9 @@ use crate::{cli::Command, compile_html};
 use expect_test::{expect, Expect};
 use std::path::PathBuf;
 
-const DEPENDENCY_IMPL_TRAIT_FILE_PATH: &str = "src/tests/data/impl_traits";
+/// The path to the generated HTML of the type the traits are implemented on.
+const IMPL_FOR: &str = "impl_traits/bar/struct.Bar.html";
+const IMPL_TRAIT_FILE_PATH: &str = "src/tests/data/impl_traits";
 
 pub(crate) fn check(command: Command, path_to_file: PathBuf, expect: &Expect) {
     let (doc_path, _) = compile_html(&command, &get_doc_dir).unwrap();
@@ -17,10 +19,11 @@ fn get_doc_dir(build_instructions: &Command) -> String {
 
 #[test]
 fn impl_traits_default() {
+    const DOC_DIR_NAME: &str = "impl_traits_default";
     let mut command = Command::default();
-    command.manifest_path = Some(DEPENDENCY_IMPL_TRAIT_FILE_PATH.into());
-    command.doc_path = Some("impl_traits_default".into());
-    let path_to_file = PathBuf::from("impl_traits/bar/struct.Bar.html");
+    command.manifest_path = Some(IMPL_TRAIT_FILE_PATH.into());
+    command.doc_path = Some(DOC_DIR_NAME.into());
+    let path_to_file = PathBuf::from(IMPL_FOR);
     check(
         command,
         path_to_file,
@@ -32,11 +35,12 @@ fn impl_traits_default() {
 
 #[test]
 fn impl_traits_no_deps() {
+    const DOC_DIR_NAME: &str = "impl_traits_no_deps";
     let mut command = Command::default();
-    command.manifest_path = Some(DEPENDENCY_IMPL_TRAIT_FILE_PATH.into());
-    command.doc_path = Some("impl_traits_no_deps".into());
+    command.manifest_path = Some(IMPL_TRAIT_FILE_PATH.into());
+    command.doc_path = Some(DOC_DIR_NAME.into());
     command.no_deps = true;
-    let path_to_file = PathBuf::from("impl_traits/bar/struct.Bar.html");
+    let path_to_file = PathBuf::from(IMPL_FOR);
     check(
         command,
         path_to_file,
