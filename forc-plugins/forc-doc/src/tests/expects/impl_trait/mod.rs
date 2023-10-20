@@ -1,21 +1,11 @@
 #![cfg(test)]
-use crate::{cli::Command, compile_html};
-use expect_test::{expect, Expect};
+use crate::{cli::Command, tests::expects::check};
+use expect_test::expect;
 use std::path::PathBuf;
 
 /// The path to the generated HTML of the type the traits are implemented on.
 const IMPL_FOR: &str = "impl_traits/bar/struct.Bar.html";
 const IMPL_TRAIT_FILE_PATH: &str = "src/tests/data/impl_traits";
-
-pub(crate) fn check(command: Command, path_to_file: PathBuf, expect: &Expect) {
-    let (doc_path, _) = compile_html(&command, &get_doc_dir).unwrap();
-    let actual = std::fs::read_to_string(doc_path.join(path_to_file)).unwrap();
-    expect.assert_eq(&actual)
-}
-
-fn get_doc_dir(build_instructions: &Command) -> String {
-    build_instructions.doc_path.to_owned().unwrap()
-}
 
 #[test]
 fn impl_traits_default() {
