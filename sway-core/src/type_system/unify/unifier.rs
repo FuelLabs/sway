@@ -159,10 +159,10 @@ impl<'a> Unifier<'a> {
                 },
             ) if rn.as_str() == en.as_str() && rtc.eq(&etc, self.engines) => (),
 
-            (r @ UnknownGeneric { .. }, e) if !self.occurs_check(r.clone(), &e) => {
+            (r @ UnknownGeneric { .. }, e) if !self.occurs_check(received, expected) => {
                 self.replace_received_with_expected(handler, received, expected, &r, e, span)
             }
-            (r, e @ UnknownGeneric { .. }) if !self.occurs_check(e.clone(), &r) => {
+            (r, e @ UnknownGeneric { .. }) if !self.occurs_check(expected, received) => {
                 self.replace_expected_with_received(handler, received, expected, r, &e, span)
             }
 
@@ -270,7 +270,7 @@ impl<'a> Unifier<'a> {
         }
     }
 
-    fn occurs_check(&self, generic: TypeInfo, other: &TypeInfo) -> bool {
+    fn occurs_check(&self, generic: TypeId, other: TypeId) -> bool {
         OccursCheck::new(self.engines).check(generic, other)
     }
 

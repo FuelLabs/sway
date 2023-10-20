@@ -1325,14 +1325,9 @@ fn check_for_unconstrained_type_parameters(
     // create a list of the generics in use in the impl signature
     let mut generics_in_use = HashSet::new();
     for type_arg in trait_type_arguments.iter() {
-        generics_in_use.extend(
-            engines
-                .te()
-                .get(type_arg.type_id)
-                .extract_nested_generics(engines),
-        );
+        generics_in_use.extend(type_arg.type_id.extract_nested_generics(engines));
     }
-    generics_in_use.extend(engines.te().get(self_type).extract_nested_generics(engines));
+    generics_in_use.extend(self_type.extract_nested_generics(engines));
 
     // TODO: add a lookup in the trait constraints here and add it to
     // generics_in_use
