@@ -1,4 +1,4 @@
-use super::TyUseStatement;
+use super::{TyIncludeStatement, TyUseStatement};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TySideEffect {
@@ -7,6 +7,6 @@ pub struct TySideEffect {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum TySideEffectVariant {
-    IncludeStatement,
+    IncludeStatement(TyIncludeStatement),
     UseStatement(TyUseStatement),
 }

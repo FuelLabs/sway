@@ -10,12 +10,12 @@ use super::common::basic_doc_comment::BasicDocCommentCodeAction;
 
 pub(crate) fn code_actions(
     decl_id: &DeclId<ty::TyStructDecl>,
-    ctx: CodeActionContext,
+    ctx: &CodeActionContext,
 ) -> Option<Vec<CodeActionOrCommand>> {
     let decl = ctx.engines.de().get_struct(decl_id);
     Some(vec![
-        StructImplCodeAction::new(ctx.clone(), &decl).code_action(),
-        StructNewCodeAction::new(ctx.clone(), &decl).code_action(),
+        StructImplCodeAction::new(ctx, &decl).code_action(),
+        StructNewCodeAction::new(ctx, &decl).code_action(),
         BasicDocCommentCodeAction::new(ctx, &decl).code_action(),
     ])
 }

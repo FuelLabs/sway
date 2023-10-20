@@ -6,7 +6,7 @@ use super::common::basic_doc_comment::BasicDocCommentCodeAction;
 
 pub(crate) fn code_actions(
     decl: &ty::TyStructField,
-    ctx: CodeActionContext,
+    ctx: &CodeActionContext,
 ) -> Option<Vec<CodeActionOrCommand>> {
     Some(vec![BasicDocCommentCodeAction::new(ctx, decl).code_action()])
 }

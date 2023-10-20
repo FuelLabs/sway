@@ -21,17 +21,17 @@ use sway_core::{
             ArrayIndexExpression, AstNode, AstNodeContent, ConstantDeclaration, Declaration,
             DelineatedPathExpression, EnumDeclaration, EnumVariant, Expression, ExpressionKind,
             FunctionApplicationExpression, FunctionDeclaration, FunctionParameter, IfExpression,
-            ImplItem, ImplSelf, ImplTrait, ImportType, IntrinsicFunctionExpression,
-            LazyOperatorExpression, MatchExpression, MethodApplicationExpression, MethodName,
-            ParseModule, ParseProgram, ParseSubmodule, QualifiedPathRootTypes,
-            ReassignmentExpression, ReassignmentTarget, Scrutinee, StorageAccessExpression,
-            StorageDeclaration, StorageField, StructDeclaration, StructExpression,
-            StructExpressionField, StructField, StructScrutineeField, SubfieldExpression,
-            Supertrait, TraitDeclaration, TraitFn, TraitItem, TraitTypeDeclaration,
-            TupleIndexExpression, TypeAliasDeclaration, UseStatement, VariableDeclaration,
-            WhileLoopExpression,
+            ImplItem, ImplSelf, ImplTrait, ImportType, IncludeStatement,
+            IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
+            MethodApplicationExpression, MethodName, ParseModule, ParseProgram, ParseSubmodule,
+            QualifiedPathRootTypes, ReassignmentExpression, ReassignmentTarget, Scrutinee,
+            StorageAccessExpression, StorageDeclaration, StorageField, StructDeclaration,
+            StructExpression, StructExpressionField, StructField, StructScrutineeField,
+            SubfieldExpression, Supertrait, TraitDeclaration, TraitFn, TraitItem,
+            TraitTypeDeclaration, TupleIndexExpression, TypeAliasDeclaration, UseStatement,
+            VariableDeclaration, WhileLoopExpression,
         },
-        CallPathTree, Literal,
+        CallPathTree, HasSubmodules, Literal,
     },
     transform::{AttributeKind, AttributesMap},
     type_system::{TypeArgument, TypeParameter},
@@ -73,11 +73,11 @@ impl<'a> ParsedTree<'a> {
                 mod_name_span,
                 ..
             },
-        ) in &parse_module.submodules
+        ) in parse_module.submodules_recursive()
         {
             self.ctx.tokens.insert(
                 self.ctx.ident(&Ident::new(mod_name_span.clone())),
-                Token::from_parsed(AstToken::IncludeStatement, SymbolKind::Module),
+                Token::from_parsed(AstToken::ModuleName, SymbolKind::Module),
             );
             self.collect_parse_module(module);
         }
@@ -110,8 +110,7 @@ impl Parse for AstNode {
                 expression.parse(ctx);
             }
             AstNodeContent::UseStatement(use_statement) => use_statement.parse(ctx),
-            // include statements are handled throught [`collect_module_spans`]
-            AstNodeContent::IncludeStatement(_) => {}
+            AstNodeContent::IncludeStatement(include_statement) => include_statement.parse(ctx),
             AstNodeContent::Error(_, _) => {}
         }
     }
@@ -165,6 +164,18 @@ impl Parse for UseStatement {
             }
             ImportType::Star => {}
         }
+    }
+}
+
+impl Parse for IncludeStatement {
+    fn parse(&self, ctx: &ParseContext) {
+        ctx.tokens.insert(
+            ctx.ident(&self.mod_name),
+            Token::from_parsed(
+                AstToken::IncludeStatement(self.clone()),
+                SymbolKind::Unknown,
+            ),
+        );
     }
 }
 
@@ -905,7 +916,7 @@ impl Parse for TraitTypeDeclaration {
             ctx.ident(&self.name),
             Token::from_parsed(
                 AstToken::Declaration(Declaration::TraitTypeDeclaration(self.clone())),
-                SymbolKind::TraiType,
+                SymbolKind::TraitType,
             ),
         );
         if let Some(ty) = &self.ty_opt {

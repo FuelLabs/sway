@@ -2,7 +2,7 @@ use sway_types::{Span, Spanned};
 
 use crate::{
     decl_engine::DeclId,
-    language::{parsed, ty, Visibility},
+    language::{parsed, ty, CallPath, Visibility},
     semantic_analysis::type_check_context::EnforceTypeArguments,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -98,6 +98,7 @@ impl ty::TyTraitFn {
                 AbiMode::NonAbi => None,
             },
             span: self.name.span(),
+            call_path: CallPath::from(self.name.clone()),
             attributes: self.attributes.clone(),
             return_type: self.return_type.clone(),
             visibility: Visibility::Public,

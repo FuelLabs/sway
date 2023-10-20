@@ -75,7 +75,9 @@ fn benchmarks(c: &mut Criterion) {
 
     c.bench_function("code_action", |b| {
         let range = Range::new(Position::new(4, 10), Position::new(4, 10));
-        b.iter(|| capabilities::code_actions::code_actions(session.clone(), &range, &uri, &uri))
+        b.iter(|| {
+            capabilities::code_actions::code_actions(session.clone(), &range, &uri, &uri, &vec![])
+        })
     });
 
     c.bench_function("code_lens", |b| {
