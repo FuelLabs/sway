@@ -117,7 +117,15 @@ pub fn prepare_rename(
 
     // Make sure we don't allow renaming of tokens that
     // are keywords or intrinsics.
-    if matches!(token.kind, SymbolKind::Keyword | SymbolKind::Intrinsic) {
+    if matches!(
+        token.kind,
+        SymbolKind::Keyword
+            | SymbolKind::SelfKeyword
+            | SymbolKind::SelfTypeKeyword
+            | SymbolKind::ProgramTypeKeyword
+            | SymbolKind::BoolLiteral
+            | SymbolKind::Intrinsic
+    ) {
         return Err(LanguageServerError::RenameError(
             RenameError::SymbolKindNotAllowed,
         ));
