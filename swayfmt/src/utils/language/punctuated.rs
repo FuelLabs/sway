@@ -66,15 +66,39 @@ where
                         formatter.write_indent_into_buffer(formatted_code)?;
                     }
 
-                    let mut iter = self.value_separator_pairs.iter().peekable();
+                    let mut is_value_too_long = false;
+                    let value_separator_pairs = formatter.with_shape(
+                        formatter.shape.with_default_code_line(),
+                        |formatter| -> Result<Vec<(String, String)>, FormatterError> {
+                            self.value_separator_pairs
+                                .iter()
+                                .map(|(type_field, comma_token)| {
+                                    let mut field = FormattedCode::new();
+                                    let mut comma = FormattedCode::new();
+                                    type_field.format(&mut field, formatter)?;
+                                    comma_token.format(&mut comma, formatter)?;
+                                    if field.len()
+                                        > formatter.shape.width_heuristics.short_array_element_width
+                                    {
+                                        is_value_too_long = true;
+                                    }
+                                    Ok((
+                                        field.trim_start().to_owned(),
+                                        comma.trim_start().to_owned(),
+                                    ))
+                                })
+                                .collect()
+                        },
+                    )?;
+
+                    let mut iter = value_separator_pairs.iter().peekable();
 
                     while let Some((type_field, comma_token)) = iter.next() {
-                        type_field.format(formatted_code, formatter)?;
-                        comma_token.format(formatted_code, formatter)?;
+                        write!(formatted_code, "{}{}", type_field, comma_token)?;
                         if iter.peek().is_none() && self.final_value_opt.is_none() {
                             break;
                         }
-                        if should_write_multiline(formatted_code, formatter) {
+                        if is_value_too_long || should_write_multiline(formatted_code, formatter) {
                             writeln!(formatted_code)?;
                             formatter.write_indent_into_buffer(formatted_code)?;
                         } else {
@@ -86,7 +110,7 @@ where
                         write!(formatted_code, "{}", PunctKind::Comma.as_char())?;
                     }
                     if !formatted_code.ends_with('\n') {
-                        writeln!(formatted_code, "")?;
+                        writeln!(formatted_code)?;
                     }
                 }
             }

@@ -1163,7 +1163,9 @@ fn main() {
 fn main() {
     if pledge_history_index != 0 {
         // This is a comment
-        storage.pledge_history.insert((user, pledge_history_index), pledge);
+        storage
+            .pledge_history
+            .insert((user, pledge_history_index), pledge);
     }
     // This is also a comment,
     // but multiline
@@ -1865,6 +1867,25 @@ trait MyComplexTrait {
         arg3: (str[5], bool),
         arg4: MyOtherStruct,
     ) -> str[6];
+}
+"#,
+    );
+}
+
+#[test]
+fn long_array() {
+    check(
+        r#"library; 
+
+        fn main() {
+            let x = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22];
+        }"#,
+        r#"library;
+fn main() {
+    let x = [
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+        17, 18, 19, 20, 21, 22,
+    ];
 }
 "#,
     );
