@@ -41,7 +41,6 @@ pub struct TypeCheckContext<'a> {
     // into a new node during type checking, these fields should be updated using the `with_*`
     // methods which provides a new `TypeCheckContext`, ensuring we don't leak our changes into
     // the parent nodes.
-
     /// While type-checking an expression, this indicates the expected type.
     ///
     /// Assists type inference.

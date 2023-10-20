@@ -13,8 +13,7 @@ use self::constant_expression::instantiate_constant_expression;
 
 pub(crate) use self::{
     enum_instantiation::*, function_application::*, if_expression::*, lazy_operator::*,
-    method_application::*, struct_field_access::*, struct_instantiation::*,
-    tuple_index_access::*,
+    method_application::*, struct_field_access::*, struct_instantiation::*, tuple_index_access::*,
     unsafe_downcast::*,
 };
 
@@ -677,7 +676,13 @@ impl ty::TyExpression {
             .expect_is_supported_in_match_expressions(handler, &typed_value.span)?;
 
         // type check the match expression and create a ty::TyMatchExpression object
-        let (typed_match_expression, typed_scrutinees) = ty::TyMatchExpression::type_check(handler, ctx.by_ref().with_help_text(""), typed_value, branches, span.clone())?;
+        let (typed_match_expression, typed_scrutinees) = ty::TyMatchExpression::type_check(
+            handler,
+            ctx.by_ref().with_help_text(""),
+            typed_value,
+            branches,
+            span.clone(),
+        )?;
 
         // check to see if the match expression is exhaustive and if all match arms are reachable
         let (witness_report, arms_reachability) = check_match_expression_usefulness(

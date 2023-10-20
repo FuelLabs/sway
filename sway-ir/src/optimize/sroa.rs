@@ -212,7 +212,7 @@ pub fn sroa(
                         let remapped_var = offset_scalar_map
                             .get(src_sym)
                             .unwrap()
-                            .get(&(actual_offset as u32))
+                            .get(&actual_offset)
                             .unwrap();
                         let scalarized_local =
                             Value::new_instruction(context, Instruction::GetLocal(*remapped_var));
@@ -255,7 +255,7 @@ pub fn sroa(
                 }
                 if let Some(dst_sym) = dst_sym {
                     // The dst symbol is a candidate. So it has been split into scalars.
-                    // Store to each of these from the SSA varible we crated above.
+                    // Store to each of these from the SSA variable we crated above.
                     let base_offset = combine_indices(context, dst_val_ptr)
                         .and_then(|indices| {
                             dst_sym
@@ -272,7 +272,7 @@ pub fn sroa(
                         let remapped_var = offset_scalar_map
                             .get(dst_sym)
                             .unwrap()
-                            .get(&(actual_offset as u32))
+                            .get(&actual_offset)
                             .unwrap();
                         let scalarized_local =
                             Value::new_instruction(context, Instruction::GetLocal(*remapped_var));

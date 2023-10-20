@@ -1,7 +1,14 @@
-use sway_error::handler::{Handler, ErrorEmitted};
-use sway_types::{Ident, Span, integer_bits::IntegerBits};
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::{integer_bits::IntegerBits, Ident, Span};
 
-use crate::{language::{ty, Literal, LazyOp}, TypeId, TypeInfo, Engines, semantic_analysis::{TypeCheckContext, typed_expression::{instantiate_tuple_index_access, instantiate_lazy_operator}}};
+use crate::{
+    language::{ty, LazyOp, Literal},
+    semantic_analysis::{
+        typed_expression::{instantiate_lazy_operator, instantiate_tuple_index_access},
+        TypeCheckContext,
+    },
+    Engines, TypeId, TypeInfo,
+};
 
 /// Simplifies instantiation of desugared code in the match expression and match arms.
 pub(super) struct Instantiate {
@@ -16,7 +23,8 @@ pub(super) struct Instantiate {
 impl Instantiate {
     pub(super) fn new(engines: &Engines, span: Span) -> Self {
         let type_engine = engines.te();
-        let u64_type = type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour));
+        let u64_type =
+            type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour));
         let boolean_type = type_engine.insert(engines, TypeInfo::Boolean);
         let revert_type = type_engine.insert(engines, TypeInfo::Unknown); // TODO: Change this to the `Never` type once available.
 
@@ -62,7 +70,7 @@ impl Instantiate {
                 name,
                 span: self.dummy_span(),
                 mutability: ty::VariableMutability::Immutable,
-                call_path: None
+                call_path: None,
             },
             return_type: type_id,
             span: self.dummy_span(),
@@ -113,24 +121,31 @@ impl Instantiate {
 
     /// Instantiates a [ty::TyExpressionVariant::CodeBlock] with a single
     /// [ty::TyAstNodeContent::ImplicitReturnExpression] that returns calls `__revert(revert_code)`.
-    pub(super) fn code_block_with_implicit_return_revert(&self, revert_code: u64) -> ty::TyExpression {
+    pub(super) fn code_block_with_implicit_return_revert(
+        &self,
+        revert_code: u64,
+    ) -> ty::TyExpression {
         ty::TyExpression {
             expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
                 contents: vec![ty::TyAstNode {
                     content: ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
-                            expression: ty::TyExpressionVariant::IntrinsicFunction(ty::TyIntrinsicFunctionKind {
+                        expression: ty::TyExpressionVariant::IntrinsicFunction(
+                            ty::TyIntrinsicFunctionKind {
                                 kind: sway_ast::Intrinsic::Revert,
                                 arguments: vec![ty::TyExpression {
-                                    expression: ty::TyExpressionVariant::Literal(Literal::U64(revert_code)),
+                                    expression: ty::TyExpressionVariant::Literal(Literal::U64(
+                                        revert_code,
+                                    )),
                                     return_type: self.u64_type,
                                     span: self.dummy_span(),
                                 }],
                                 type_arguments: vec![],
                                 span: self.dummy_span(),
-                            }),
-                            return_type: self.revert_type,
-                            span: self.dummy_span(),
-                        }),
+                            },
+                        ),
+                        return_type: self.revert_type,
+                        span: self.dummy_span(),
+                    }),
                     span: self.dummy_span(),
                 }],
             }),
@@ -140,60 +155,69 @@ impl Instantiate {
     }
 
     /// Instantiates an expression equivalent to `<lhs> == <rhs>`.
-    pub(super) fn eq_result(&self, handler: &Handler, ctx: TypeCheckContext, lhs: ty::TyExpression, rhs: ty::TyExpression) -> Result<ty::TyExpression, ErrorEmitted> {
-        ty::TyExpression::core_ops_eq(
-            handler,
-            ctx,
-            vec![lhs, rhs],
-            self.dummy_span()
-        )
+    pub(super) fn eq_result(
+        &self,
+        handler: &Handler,
+        ctx: TypeCheckContext,
+        lhs: ty::TyExpression,
+        rhs: ty::TyExpression,
+    ) -> Result<ty::TyExpression, ErrorEmitted> {
+        ty::TyExpression::core_ops_eq(handler, ctx, vec![lhs, rhs], self.dummy_span())
     }
 
     /// Instantiates an expression equivalent to `<lhs> != <rhs>`.
-    pub(super) fn neq_result(&self, handler: &Handler, ctx: TypeCheckContext, lhs: ty::TyExpression, rhs: ty::TyExpression) -> Result<ty::TyExpression, ErrorEmitted> {
-        ty::TyExpression::core_ops_neq(
-            handler,
-            ctx,
-            vec![lhs, rhs],
-            self.dummy_span()
-        )
+    pub(super) fn neq_result(
+        &self,
+        handler: &Handler,
+        ctx: TypeCheckContext,
+        lhs: ty::TyExpression,
+        rhs: ty::TyExpression,
+    ) -> Result<ty::TyExpression, ErrorEmitted> {
+        ty::TyExpression::core_ops_neq(handler, ctx, vec![lhs, rhs], self.dummy_span())
     }
 
     /// Instantiates an expression equivalent to `<lhs> == <rhs>`. The method expects that
     /// the expression can be instantiated and panics if that's not the case.
-    pub(super) fn eq(&self, ctx: TypeCheckContext, lhs: ty::TyExpression, rhs: ty::TyExpression) -> ty::TyExpression {
+    pub(super) fn eq(
+        &self,
+        ctx: TypeCheckContext,
+        lhs: ty::TyExpression,
+        rhs: ty::TyExpression,
+    ) -> ty::TyExpression {
         ty::TyExpression::core_ops_eq(&Handler::default(), ctx, vec![lhs, rhs], self.dummy_span())
-            .ok()
             .expect("Instantiating `core::ops::eq` is expected to always work.")
     }
 
     /// Instantiates a [ty::TyExpressionVariant::TupleElemAccess] `<tuple_variable>.<index>`. The method expects that
     /// the expression can be instantiated and panics if that's not the case.
-    pub(super) fn tuple_elem_access(&self, engines: &Engines, tuple_variable: ty::TyExpression, index: usize) -> ty::TyExpression {
-        instantiate_tuple_index_access(&Handler::default(), engines, tuple_variable, index, self.dummy_span(), self.dummy_span())
-            .ok()
-            .expect("Instantiating tuple element access expression is expected to always work.")
+    pub(super) fn tuple_elem_access(
+        &self,
+        engines: &Engines,
+        tuple_variable: ty::TyExpression,
+        index: usize,
+    ) -> ty::TyExpression {
+        instantiate_tuple_index_access(
+            &Handler::default(),
+            engines,
+            tuple_variable,
+            index,
+            self.dummy_span(),
+            self.dummy_span(),
+        )
+        .expect("Instantiating tuple element access expression is expected to always work.")
     }
 
     /// Instantiates a [LazyOp::And] expression of the form `<lhs> && <rhs>`.
-    pub(super) fn lazy_and(&self, lhs: ty::TyExpression, rhs: ty::TyExpression) -> ty::TyExpression {
-        instantiate_lazy_operator(
-            LazyOp::And,
-            lhs,
-            rhs,
-            self.boolean_type,
-            self.dummy_span()
-        )
+    pub(super) fn lazy_and(
+        &self,
+        lhs: ty::TyExpression,
+        rhs: ty::TyExpression,
+    ) -> ty::TyExpression {
+        instantiate_lazy_operator(LazyOp::And, lhs, rhs, self.boolean_type, self.dummy_span())
     }
 
     /// Instantiates a [LazyOp::Or] expression of the form `<lhs> || <rhs>`.
     pub(super) fn lazy_or(&self, lhs: ty::TyExpression, rhs: ty::TyExpression) -> ty::TyExpression {
-        instantiate_lazy_operator(
-            LazyOp::Or,
-            lhs,
-            rhs,
-            self.boolean_type,
-            self.dummy_span()
-        )
+        instantiate_lazy_operator(LazyOp::Or, lhs, rhs, self.boolean_type, self.dummy_span())
     }
 }

@@ -55,9 +55,9 @@ pub(crate) fn generate_matched_or_variant_variables_var_name(suffix: usize) -> S
 }
 
 pub fn is_generated_any_match_expression_var_name(name: &str) -> bool {
-    name.starts_with(MATCHED_VALUE_VAR_NAME_PREFIX) ||
-    name.starts_with(MATCHED_OR_VARIANT_INDEX_VAR_NAME_PREFIX) ||
-    name.starts_with(MATCHED_OR_VARIANT_VARIABLES_VAR_NAME_PREFIX)
+    name.starts_with(MATCHED_VALUE_VAR_NAME_PREFIX)
+        || name.starts_with(MATCHED_OR_VARIANT_INDEX_VAR_NAME_PREFIX)
+        || name.starts_with(MATCHED_OR_VARIANT_VARIABLES_VAR_NAME_PREFIX)
 }
 
 /// A revert with this value signals that it was caused by an internal compiler error that

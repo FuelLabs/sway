@@ -2,7 +2,7 @@ use sway_types::Span;
 
 use crate::language::ty;
 
-/// Returns an [ty::TyExpressionVariant::UnsafeDowncast] expression that 
+/// Returns an [ty::TyExpressionVariant::UnsafeDowncast] expression that
 /// downcasts the expression `exp`, resulting in enum variant `variant`,
 /// to its underlying type.
 /// The expression `exp` **must** result in an enum variant `variant`.

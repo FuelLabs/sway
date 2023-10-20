@@ -35,7 +35,8 @@ impl HashWithEngines for TyStorageAccess {
 }
 
 impl Spanned for TyStorageAccess {
-    fn span(&self) -> Span { // TODO: Use Span::join_all().
+    fn span(&self) -> Span {
+        // TODO: Use Span::join_all().
         self.fields
             .iter()
             .fold(self.fields[0].span.clone(), |acc, field| {

@@ -2,12 +2,13 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Span, Spanned};
 
 use crate::{
+    compiler_generated::INVALID_DESUGARED_MATCHED_EXPRESSION_SIGNAL,
     language::{parsed::*, ty},
     semantic_analysis::{
         ast_node::expression::typed_expression::instantiate_if_expression,
-        TypeCheckContext, expression::match_expression::typed::instantiate::Instantiate,
+        expression::match_expression::typed::instantiate::Instantiate, TypeCheckContext,
     },
-    CompileError, TypeId, compiler_generated::INVALID_DESUGARED_MATCHED_EXPRESSION_SIGNAL,
+    CompileError, TypeId,
 };
 
 impl ty::TyMatchExpression {
@@ -60,15 +61,30 @@ impl ty::TyMatchExpression {
         let instantiate = Instantiate::new(ctx.engines, self.span.clone());
 
         if self.branches.is_empty() {
-            return instantiate_if_expression_for_empty_match_expression(handler, ctx, &instantiate, self.value_type_id, self.return_type_id, self.span.clone());
+            return instantiate_if_expression_for_empty_match_expression(
+                handler,
+                ctx,
+                &instantiate,
+                self.value_type_id,
+                self.return_type_id,
+                self.span.clone(),
+            );
         }
 
         let typed_if_exp = handler.scope(|handler| {
             // Create the typed if expression object that we will be building on to.
-            let mut typed_if_exp = instantiate.code_block_with_implicit_return_revert(INVALID_DESUGARED_MATCHED_EXPRESSION_SIGNAL);
+            let mut typed_if_exp = instantiate.code_block_with_implicit_return_revert(
+                INVALID_DESUGARED_MATCHED_EXPRESSION_SIGNAL,
+            );
 
             // For every branch of the match expression, bottom-up, means in reverse.
-            for ty::TyMatchBranch { matched_or_variant_index_vars, condition, result, .. } in self.branches.into_iter().rev() {
+            for ty::TyMatchBranch {
+                matched_or_variant_index_vars,
+                condition,
+                result,
+                ..
+            } in self.branches.into_iter().rev()
+            {
                 let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
                 let result_span = result.span.clone();
 
@@ -95,8 +111,7 @@ impl ty::TyMatchExpression {
                 typed_if_exp = if matched_or_variant_index_vars.is_empty() {
                     // No OR variants with vars. We just have to instantiate the if expression.
                     if_exp
-                }
-                else {
+                } else {
                     // We have matched OR variant index vars.
                     // We need to add them to the block before the if expression.
                     // The resulting `typed_if_exp` in this case is actually not
@@ -119,11 +134,11 @@ impl ty::TyMatchExpression {
                     });
 
                     ty::TyExpression {
-                       expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
-                        contents: code_block_contents,
-                       }),
-                       return_type: self.return_type_id,
-                       span: result_span.clone(),
+                        expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
+                            contents: code_block_contents,
+                        }),
+                        return_type: self.return_type_id,
+                        span: result_span.clone(),
                     }
                 }
             }
@@ -139,7 +154,7 @@ impl ty::TyMatchExpression {
             instantiate: &Instantiate,
             value_type_id: TypeId,
             return_type_id: TypeId,
-            span: Span
+            span: Span,
         ) -> Result<ty::TyExpression, ErrorEmitted> {
             let type_engine = ctx.engines.te();
             let decl_engine = ctx.engines.de();

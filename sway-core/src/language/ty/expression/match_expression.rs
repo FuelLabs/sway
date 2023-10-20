@@ -1,4 +1,4 @@
-use sway_types::{Span, Ident};
+use sway_types::{Ident, Span};
 
 use crate::{language::ty::*, type_system::*};
 

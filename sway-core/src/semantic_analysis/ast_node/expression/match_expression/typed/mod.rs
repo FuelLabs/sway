@@ -2,20 +2,20 @@
 //! The desugaring does not provides any kind of optimizations. It provides a structure that
 //! can later on be used for code analysis by reusing the existing analysis available for `if` expressions.
 //! The optimizations will be done on the IR level.
-//! 
+//!
 //! ## Type Checking
-//! 
+//!
 //! The central module for type checking is the [matcher].
-//! 
+//!
 //! The [matcher::matcher] function will type check the matched value with the match arm pattern (scrutinee).
 //! Successful type check will result in an [matcher::ReqDeclTree] that accurately represents all the
 //! requirements and variable declarations given by the scrutinee pattern.
-//! 
+//!
 //! The resulting [matcher::ReqDeclTree] will be given over to [crate::ty::TyMatchBranch] for additional
 //! type checking. E.g., checking for duplicates in declared variables is done on this stage.
-//! 
+//!
 //! ## Desugaring
-//! 
+//!
 //! Desugaring to if expressions starts in the [crate::ty::TyMatchBranch] where three artifacts are provided
 //! for a particular match branch (arm):
 //! - branch condition: Overall condition that must be `true` for the branch to match.
@@ -26,25 +26,25 @@
 //! - OR variant index variables: Variable declarations that are generated in case of having
 //! variables in OR patterns. Index variables hold 1-based index of the OR variant being matched
 //! or zero if non of the OR variants has matched.
-//! 
+//!
 //! Afterwards, these three artifacts coming from every individual branch are glued together in the
 //! [crate::ty::TyMatchExpression] to form the final desugaring.
-//! 
+//!
 //! All desugared `if-else` chains end in a `__revert(...)` call with dedicated revert codes.
 //! These reverts can happen only if we have bugs in the implementation of match expressions and
 //! is the only safe way to communicate compiler bug detectable only at runtime.
-//! 
+//!
 //! ## Desugaring Examples
-//! 
+//!
 //! The easiest way to explain the desugaring algorithm is to take a look at a few examples of
 //! different kinds of match arm patterns, and how they are desugared.
-//! 
+//!
 //! Applying the rules sketched below recursively, we can desugar an arbitrary match arm pattern.
-//! 
+//!
 //! ### Literals, Constants, and Variables
-//! 
+//!
 //! In case of literals, constants, and variables the desugared if expression is straightforward.
-//! 
+//!
 //! ```ignore
 //! match exp {
 //!     1 => 111,
@@ -70,14 +70,14 @@
 //! ```
 //!
 //! ### Structs, Enums, Tuples
-//! 
+//!
 //! In case of structs, enums, and tuples the overall requirement becomes the lazy AND of
 //! all requirements, and all the variables get extracted.
-//! 
+//!
 //! The construction of the match arm condition and the extraction of variables works
 //! recursively in case of nested structures. E.g., if we have struct fields being enums
 //! of tuples of structs etc.
-//! 
+//!
 //! But the resulting condition will always contain only the lazy AND operator and all the
 //! variable definitions will be listed at the top of the match arm result.
 //!
@@ -112,12 +112,12 @@
 //!     __revert(14757395258967588866)
 //! }
 //! ```
-//! 
+//!
 //! ### Or Patterns
-//! 
+//!
 //! In case of or patterns without variables, the resulting desugaring is again straightforward.
 //! We simply construct the overall condition by using the lazy OR operator.
-//! 
+//!
 //! ```ignore
 //! match exp {
 //!     1 | 2 => 111,
@@ -141,36 +141,36 @@
 //!     __revert(14757395258967588866)
 //! }
 //! ```
-//! 
+//!
 //! In case of having or patterns with variables, the desugaring pattern gets more complex.
 //! Essentially, we have to extract the variables exactly from the variant that has matched.
 //! Also, we want to check the conditions for every variant exactly once.
-//! 
+//!
 //! To accomplish this, we move the checking of variants outside of the match arm `if` and
 //! track the 1-based index of the matched variant in a so called "matched or variant index variable".
 //! If no variant matches this variable will be set to zero.
-//! 
+//!
 //! We create such "matched or variant index variable" for every or pattern with variables that we
 //! encounter in the match arm pattern.
-//! 
+//!
 //! Afterwards, in the match arm `if` condition we just check if the index variable is different then
 //! zero which means there is a match.
-//! 
+//!
 //! To properly extract the variables, in the result, we again check which variant has matched and
 //! store all the variables from that variant in a tuple variable called "matched or variants variables".
 //! In these tuple variables, the values of the declared variables are stored ordered by the variable name.
 //! We can safely do this, knowing that at this point we have fully valid variables, e.g., no duplicates.
-//! 
+//!
 //! The final definition of the variables declared in the or pattern is then tuple access to the
 //! element of the tuple that holds the value of that particular variable.
-//! 
+//!
 //! ```ignore
 //! enum Enum {
 //!     A: (u64, u64, u64),
 //!     B: (u64, u64, u64),
 //!     C: (u64, u64, u64),
 //! }
-//! 
+//!
 //! match e {
 //!     Enum::A((_, _, x)) | Enum::B((_, x, _)) | Enum::C((x, _, _)) => x,
 //! };
@@ -217,16 +217,16 @@
 //!    }
 //!}
 //! ```
-//! 
+//!
 //! In the case of nested OR patterns, there will be a one `__matched_or_variant_index_<unique suffix>` variable for
 //! every encountered OR pattern and they will all be listed above the match arm `if` expression.
 //! Also, in that case, the `if-else` definitions of `__matched_or_variant_variables_<unique suffix>` variables will
 //! be contained within the `if-else` definitions of their parent `__matched_or_variant_variables_<unique suffix>` variables.
 
+mod instantiate;
 mod matcher;
 mod typed_match_branch;
 mod typed_match_expression;
 mod typed_scrutinee;
-mod instantiate;
 
 pub(self) use matcher::ReqDeclTree;

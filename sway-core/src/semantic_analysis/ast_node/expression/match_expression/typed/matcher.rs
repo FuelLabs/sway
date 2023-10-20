@@ -2,15 +2,18 @@ use either::Either;
 use indexmap::IndexMap;
 
 use crate::{
-    language::{ty::{self, TyConstantDecl}, CallPath, Literal},
+    language::{
+        ty::{self, TyConstantDecl},
+        CallPath, Literal,
+    },
     semantic_analysis::{
         ast_node::expression::typed_expression::{
-            instantiate_struct_field_access, instantiate_tuple_index_access,
-            instantiate_enum_unsafe_downcast,
+            instantiate_enum_unsafe_downcast, instantiate_struct_field_access,
+            instantiate_tuple_index_access,
         },
         TypeCheckContext,
     },
-    Ident, TypeId, UnifyCheck, TypeInfo,
+    Ident, TypeId, TypeInfo, UnifyCheck,
 };
 
 use sway_error::{
@@ -18,7 +21,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
 };
 
-use sway_types::{span::Span, Spanned, integer_bits::IntegerBits, Named};
+use sway_types::{integer_bits::IntegerBits, span::Span, Named, Spanned};
 
 /// A single requirement in the form `<lhs> == <rhs>` that has to be
 /// fulfilled for the match arm to match.
@@ -37,12 +40,13 @@ pub(super) type ReqOrVarDecl = Option<Either<MatchReq, MatchVarDecl>>;
 /// A tree structure that describes:
 /// - the overall requirement that needs to be satisfied in order for the match arm to match
 /// - all variable declarations within the match arm
-/// 
+///
 /// The tree represents a logical expression that consists of equality comparisons, and
 /// lazy AND and OR operators.
-/// 
+///
 /// The leafs of the tree are either equality comparisons or eventual variable declarations
 /// or none of those in the case of catch-all `_` pattern or only a single rest `..` in structs.
+#[allow(clippy::manual_non_exhaustive)]
 pub(super) struct ReqDeclTree {
     pub root: ReqDeclNode,
     _priv: (), // Only the matcher can create trees of requirements and declarations.
@@ -115,7 +119,7 @@ pub(super) enum ReqDeclNode {
     /// if there are more then two of them.
     /// Notice that the vector of contained nodes can be empty or have only one element.
     /// OR semantics is applied if there are two or more elements.
-    /// Only the requirements coming from the individual variants of an OR match arm 
+    /// Only the requirements coming from the individual variants of an OR match arm
     /// will be connected with the OR operator.
     Or(Vec<ReqDeclNode>),
 }
@@ -134,7 +138,7 @@ impl ReqDeclNode {
 
 /// The [matcher] returns the [ReqDeclTree] for the given `scrutinee` that tries
 /// to match the given expression `exp`.
-/// 
+///
 /// Given the following example:
 ///
 /// ```ignore
@@ -153,42 +157,42 @@ impl ReqDeclNode {
 ///     Point { x, y: 5 } | Point { x, y: 10 } => { x },   // 2.
 ///     Point { x: 10, y: 24 } => { 1 },                   // 3.    
 ///     Point { x: 22, .. } => { 2 },                      // 4.          
-///     Point { .. } => { 3 },                             // 5. 
+///     Point { .. } => { 3 },                             // 5.
 ///     _ => 0                                             // 6.
 /// }
 /// ```
-/// 
+///
 /// the returned [ReqDeclTree] for each match arm will have the following form
 /// (square brackets represent each individual leaf node [ReqDeclNode::ReqOrVarDecl]):
-/// 
+///
 /// ```ignore
 /// 1.
 ///               &&  
 ///              /  \
 /// [let x = p.x]    [p.y == 5]
-/// 
+///
 /// 2.
 ///                             ||       
 ///                 ___________/  \____________
 ///               &&                           &&    
 ///              /  \                         /  \  
 /// [let x = p.x]    [p.y == 5]  [let x = p.x]    [p.y == 10]
-/// 
+///
 /// 3.
 ///             &&  
 ///            /  \
 /// [p.x == 10]    [p.y == 24]
-/// 
+///
 /// 4.
 ///      &&      // Note that this AND node has only one childe node.
 ///      |
 /// [p.x == 22]
-/// 
+///
 /// 5.
 ///   &&      // Note that this AND node has only one childe node.
 ///   |
 /// [None]
-/// 
+///
 /// 6.
 /// [None]
 /// ```
@@ -214,16 +218,15 @@ pub(super) fn matcher(
     })?;
 
     match variant {
-        ty::TyScrutineeVariant::Or(alternatives) => match_or(handler, ctx, match_value, exp, alternatives),
+        ty::TyScrutineeVariant::Or(alternatives) => {
+            match_or(handler, ctx, match_value, exp, alternatives)
+        }
         ty::TyScrutineeVariant::CatchAll => Ok(ReqDeclTree::none()),
         ty::TyScrutineeVariant::Literal(value) => Ok(match_literal(exp, value, span)),
         ty::TyScrutineeVariant::Variable(name) => Ok(match_variable(exp, name)),
-        ty::TyScrutineeVariant::Constant(_, _, const_decl) => Ok(match_constant(
-            ctx,
-            exp,
-            const_decl,
-            span,
-        )),
+        ty::TyScrutineeVariant::Constant(_, _, const_decl) => {
+            Ok(match_constant(ctx, exp, const_decl, span))
+        }
         ty::TyScrutineeVariant::StructScrutinee {
             struct_ref: _,
             fields,
@@ -250,90 +253,95 @@ pub(super) fn matcher(
     }
 }
 
-fn match_or(handler: &Handler, mut ctx: TypeCheckContext, match_value: &ty::TyExpression, exp: &ty::TyExpression, alternatives: Vec<ty::TyScrutinee>) -> Result<ReqDeclTree, ErrorEmitted> {
+fn match_or(
+    handler: &Handler,
+    mut ctx: TypeCheckContext,
+    match_value: &ty::TyExpression,
+    exp: &ty::TyExpression,
+    alternatives: Vec<ty::TyScrutinee>,
+) -> Result<ReqDeclTree, ErrorEmitted> {
     return handler.scope(|handler| {
-            let mut nodes = vec![];
-            let mut variables_in_alternatives: Vec<(Span, Vec<(Ident, TypeId)>)> = vec![]; // Span is the span of the alternative.
+        let mut nodes = vec![];
+        let mut variables_in_alternatives: Vec<(Span, Vec<(Ident, TypeId)>)> = vec![]; // Span is the span of the alternative.
 
-            for alternative in alternatives {
-                let alternative_span = alternative.span.clone();
+        for alternative in alternatives {
+            let alternative_span = alternative.span.clone();
 
-                // We want to collect as many errors as possible.
-                // If an alternative has any internal issues we will emit them, ignore that alternative,
-                // but still process the remaining alternatives.
-                let alternative_req_decl_tree = match matcher(handler, ctx.by_ref(), match_value, exp, alternative) {
-                        Ok(req_decl_tree) => req_decl_tree,
-                        Err(_) => continue,
-                    };
+            // We want to collect as many errors as possible.
+            // If an alternative has any internal issues we will emit them, ignore that alternative,
+            // but still process the remaining alternatives.
+            let alternative_req_decl_tree =
+                match matcher(handler, ctx.by_ref(), match_value, exp, alternative) {
+                    Ok(req_decl_tree) => req_decl_tree,
+                    Err(_) => continue,
+                };
 
-                variables_in_alternatives.push((alternative_span, variable_declarations(&alternative_req_decl_tree)));
+            variables_in_alternatives.push((
+                alternative_span,
+                variable_declarations(&alternative_req_decl_tree),
+            ));
 
-                nodes.push(alternative_req_decl_tree.root);
-            }
+            nodes.push(alternative_req_decl_tree.root);
+        }
 
-            // All the first occurrences of variables in order of appearance.
-            let mut variables: IndexMap<&Ident, TypeId> = IndexMap::new();
-            for (ident, type_id) in variables_in_alternatives
+        // All the first occurrences of variables in order of appearance.
+        let mut variables: IndexMap<&Ident, TypeId> = IndexMap::new();
+        for (ident, type_id) in variables_in_alternatives.iter().flat_map(|(_, vars)| vars) {
+            variables.entry(ident).or_insert(*type_id);
+        }
+
+        // At this stage, in the matcher, we are not concerned about the duplicates
+        // in individual alternatives.
+
+        // Check that we have all variables in all alternatives.
+        for (variable, _) in variables.iter() {
+            let missing_in_alternatives: Vec<Span> = variables_in_alternatives
                 .iter()
-                .flat_map(|(_, vars)| vars)
-            {
-                variables.entry(ident).or_insert(*type_id);
+                .filter(|(_, vars)| !vars.iter().any(|(ident, _)| ident == *variable))
+                .map(|(span, _)| span.clone())
+                .collect();
+
+            if missing_in_alternatives.is_empty() {
+                continue;
             }
 
-            // At this stage, in the matcher, we are not concerned about the duplicates
-            // in individual alternatives.
+            handler.emit_err(CompileError::MatchArmVariableNotDefinedInAllAlternatives {
+                match_value: match_value.span.clone(),
+                match_type: ctx.engines.help_out(match_value.return_type).to_string(),
+                variable: (*variable).clone(),
+                missing_in_alternatives,
+            });
+        }
 
-            // Check that we have all variables in all alternatives.
-            for (variable, _) in variables.iter() {
-                let missing_in_alternatives: Vec<Span> = variables_in_alternatives
-                    .iter()
-                    .filter(|(_, vars)| !vars.iter().any(|(ident, _)| ident == *variable))
-                    .map(|(span, _)| span.clone())
-                    .collect();
+        // Check that the variable types are the same in all alternatives
+        // (assuming that the variable exist in the alternative).
 
-                if missing_in_alternatives.is_empty() {
-                    continue;
-                }
+        // To the equality, we accept type aliases and the types they encapsulate
+        // to be equal, otherwise, we are strict, e.g., no coercion between u8 and u16, etc.
+        let equality = UnifyCheck::non_dynamic_equality(ctx.engines);
 
-                handler.emit_err(CompileError::MatchArmVariableNotDefinedInAllAlternatives {
+        for (variable, type_id) in variables {
+            let type_mismatched_vars = variables_in_alternatives.iter().flat_map(|(_, vars)| {
+                vars.iter()
+                    .filter(|(ident, var_type_id)| {
+                        ident == variable && !equality.check(type_id, *var_type_id)
+                    })
+                    .map(|(ident, var_type_id)| (ident.clone(), var_type_id))
+            });
+
+            for type_mismatched_var in type_mismatched_vars {
+                handler.emit_err(CompileError::MatchArmVariableMismatchedType {
                     match_value: match_value.span.clone(),
                     match_type: ctx.engines.help_out(match_value.return_type).to_string(),
-                    variable: (*variable).clone(),
-                    missing_in_alternatives,
+                    variable: type_mismatched_var.0,
+                    first_definition: variable.span(),
+                    expected: ctx.engines.help_out(type_id).to_string(),
+                    received: ctx.engines.help_out(type_mismatched_var.1).to_string(),
                 });
             }
+        }
 
-            // Check that the variable types are the same in all alternatives
-            // (assuming that the variable exist in the alternative).
-
-            // To the equality, we accept type aliases and the types they encapsulate
-            // to be equal, otherwise, we are strict, e.g., no coercion between u8 and u16, etc.
-            let equality = UnifyCheck::non_dynamic_equality(ctx.engines);
-
-            for (variable, type_id) in variables {
-                let type_mismatched_vars =
-                    variables_in_alternatives.iter().flat_map(|(_, vars)| {
-                        vars
-                            .iter()
-                            .filter(|(ident, var_type_id)| {
-                                ident == variable && !equality.check(type_id, *var_type_id)
-                            })
-                            .map(|(ident, var_type_id)| (ident.clone(), var_type_id))
-                    });
-
-                for type_mismatched_var in type_mismatched_vars {
-                    handler.emit_err(CompileError::MatchArmVariableMismatchedType {
-                        match_value: match_value.span.clone(),
-                        match_type: ctx.engines.help_out(match_value.return_type).to_string(),
-                        variable: type_mismatched_var.0,
-                        first_definition: variable.span(),
-                        expected: ctx.engines.help_out(type_id).to_string(),
-                        received: ctx.engines.help_out(type_mismatched_var.1).to_string(),
-                    });
-                }
-            }
-
-            Ok(ReqDeclTree::or(nodes))
+        Ok(ReqDeclTree::or(nodes))
     });
 
     /// Returns all [MatchVarDecl]s found in the match arm
@@ -345,18 +353,21 @@ fn match_or(handler: &Handler, mut ctx: TypeCheckContext, match_value: &ty::TyEx
 
         return result;
 
-        fn collect_variable_declarations(node: &ReqDeclNode, declarations: &mut Vec<(Ident, TypeId)>) {
+        fn collect_variable_declarations(
+            node: &ReqDeclNode,
+            declarations: &mut Vec<(Ident, TypeId)>,
+        ) {
             // Traverse the tree depth-first, left to right.
             match node {
                 ReqDeclNode::ReqOrVarDecl(Some(Either::Right((ident, exp)))) => {
                     declarations.push((ident.clone(), exp.return_type));
-                },
+                }
                 ReqDeclNode::ReqOrVarDecl(_) => (),
                 ReqDeclNode::And(nodes) | ReqDeclNode::Or(nodes) => {
                     for node in nodes {
                         collect_variable_declarations(node, declarations);
                     }
-                },
+                }
             }
         }
     }
@@ -441,7 +452,13 @@ fn match_struct(
             // If the scrutinee exist, we have the form `<field>: <match_sub_pattern>`.
             // We need to match the subfield against the sub pattern.
             Some(match_sub_pattern) => {
-                let req_decl_tree = matcher(handler, ctx.by_ref(), match_value, &subfield, match_sub_pattern)?;
+                let req_decl_tree = matcher(
+                    handler,
+                    ctx.by_ref(),
+                    match_value,
+                    &subfield,
+                    match_sub_pattern,
+                )?;
                 nodes.push(req_decl_tree.root);
             }
         }
@@ -472,14 +489,18 @@ fn match_enum(
             expression: ty::TyExpressionVariant::EnumTag {
                 exp: Box::new(exp.clone()),
             },
-            return_type: type_engine
-                .insert(ctx.engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+            return_type: type_engine.insert(
+                ctx.engines,
+                TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+            ),
             span: exp.span.clone(),
         },
         ty::TyExpression {
             expression: ty::TyExpressionVariant::Literal(Literal::U64(variant.tag as u64)),
-            return_type: type_engine
-                .insert(ctx.engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+            return_type: type_engine.insert(
+                ctx.engines,
+                TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+            ),
             span: exp.span.clone(),
         },
     );
@@ -491,7 +512,13 @@ fn match_enum(
     // scrutinee variant `CatchAll` that will produce a ReqDeclTree without further requirements
     // or variable declarations.
     let unsafe_downcast = instantiate_enum_unsafe_downcast(exp, variant, call_path_decl, span);
-    let req_decl_tree = matcher(handler, ctx, match_value, &unsafe_downcast, enum_value_scrutinee)?;
+    let req_decl_tree = matcher(
+        handler,
+        ctx,
+        match_value,
+        &unsafe_downcast,
+        enum_value_scrutinee,
+    )?;
 
     nodes.push(req_decl_tree.root);
 

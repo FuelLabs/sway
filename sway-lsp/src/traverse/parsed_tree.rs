@@ -11,6 +11,10 @@ use crate::{
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use sway_core::{
+    compiler_generated::{
+        is_generated_any_match_expression_var_name, is_generated_destructured_struct_var_name,
+        is_generated_tuple_var_name,
+    },
     language::{
         parsed::{
             AbiCastExpression, AbiDeclaration, AmbiguousPathExpression, ArrayExpression,
@@ -31,7 +35,7 @@ use sway_core::{
     },
     transform::{AttributeKind, AttributesMap},
     type_system::{TypeArgument, TypeParameter},
-    TraitConstraint, TypeInfo, compiler_generated::{is_generated_tuple_var_name, is_generated_any_match_expression_var_name, is_generated_destructured_struct_var_name},
+    TraitConstraint, TypeInfo,
 };
 use sway_types::{Ident, Span, Spanned};
 
@@ -193,7 +197,8 @@ impl Parse for Expression {
                 rhs.parse(ctx);
             }
             ExpressionKind::Variable(name) => {
-                if !(is_generated_tuple_var_name(name.as_str()) || is_generated_any_match_expression_var_name(name.as_str()))
+                if !(is_generated_tuple_var_name(name.as_str())
+                    || is_generated_any_match_expression_var_name(name.as_str()))
                 {
                     let symbol_kind = if is_generated_destructured_struct_var_name(name.as_str()) {
                         SymbolKind::Struct
@@ -674,7 +679,8 @@ impl Parse for VariableDeclaration {
     fn parse(&self, ctx: &ParseContext) {
         // Don't collect tokens if the idents are generated tuple or match desugaring names.
         // The individual elements are handled in the subsequent VariableDeclaration's.
-        if !(is_generated_tuple_var_name(self.name.as_str()) || is_generated_any_match_expression_var_name(self.name.as_str()))
+        if !(is_generated_tuple_var_name(self.name.as_str())
+            || is_generated_any_match_expression_var_name(self.name.as_str()))
         {
             let symbol_kind = if is_generated_destructured_struct_var_name(self.name.as_str()) {
                 SymbolKind::Struct
