@@ -1493,18 +1493,15 @@ impl TypeCheckAnalysis for ty::ImplTrait {
         let impl_trait = decl_engine.get_impl_trait(&self.decl_id);
 
         // Lets create a graph node for the impl trait and for every item in the trait.
-        ctx.push_impl_trait(self);
+        ctx.push_nodes_for_impl_trait(self);
 
         // Now lets analyze each impl trait item.
         for (i, item) in impl_trait.items.iter().enumerate() {
-            let node = ctx.items_node_stack[i];
-            ctx.node_stack.push(node);
+            let _node = ctx.items_node_stack[i];
             item.type_check_analyze(handler, ctx)?;
-            ctx.node_stack.pop();
         }
 
-        // Clear the work-in-progress node stacks.
-        ctx.node_stack.clear();
+        // Clear the work-in-progress node stack.
         ctx.items_node_stack.clear();
 
         Ok(())

@@ -907,12 +907,18 @@ impl TypeCheckAnalysis for TyExpressionVariant {
         match self {
             TyExpressionVariant::Literal(_) => {}
             TyExpressionVariant::FunctionApplication { fn_ref, .. } => {
-                let fn_node = ctx.get_node_from_impl_trait_fn_ref_app(fn_ref);
+                let fn_decl_id = ctx.get_normalized_fn_node_id(fn_ref.id());
+
+                let fn_node = ctx.get_node_for_fn_decl(&fn_decl_id);
                 if let Some(fn_node) = fn_node {
                     ctx.add_edge_from_current(
                         fn_node,
                         TyNodeDepGraphEdge(TyNodeDepGraphEdgeInfo::FnApp),
                     );
+
+                    if !ctx.node_stack.contains(&fn_node) {
+                        let _ = fn_decl_id.type_check_analyze(handler, ctx);
+                    }
                 }
             }
             TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
