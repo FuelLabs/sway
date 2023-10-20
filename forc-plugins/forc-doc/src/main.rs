@@ -182,7 +182,7 @@ pub fn compile_html(
 
     // create doc path
     let out_path = default_output_directory(manifest.dir());
-    let doc_dir = get_doc_dir(&build_instructions);
+    let doc_dir = get_doc_dir(build_instructions);
     let doc_path = out_path.join(doc_dir);
     if doc_path.exists() {
         std::fs::remove_dir_all(&doc_path)?;
@@ -242,7 +242,7 @@ pub fn compile_html(
                     pkg_manifest: pkg_manifest_file,
                 };
 
-                build_docs(program_info, &doc_path, &build_instructions)?;
+                build_docs(program_info, &doc_path, build_instructions)?;
             }
         }
     } else {
@@ -263,7 +263,7 @@ pub fn compile_html(
             manifest: &manifest,
             pkg_manifest,
         };
-        build_docs(program_info, &doc_path, &build_instructions)?;
+        build_docs(program_info, &doc_path, build_instructions)?;
     }
     Ok((doc_path, pkg_manifest.to_owned()))
 }

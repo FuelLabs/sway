@@ -10,9 +10,11 @@ const IMPL_TRAIT_FILE_PATH: &str = "src/tests/data/impl_traits";
 #[test]
 fn impl_traits_default() {
     const DOC_DIR_NAME: &str = "impl_traits_default";
-    let mut command = Command::default();
-    command.manifest_path = Some(IMPL_TRAIT_FILE_PATH.into());
-    command.doc_path = Some(DOC_DIR_NAME.into());
+    let command = Command {
+        manifest_path: Some(IMPL_TRAIT_FILE_PATH.into()),
+        doc_path: Some(DOC_DIR_NAME.into()),
+        ..Default::default()
+    };
     let path_to_file = PathBuf::from(IMPL_FOR);
     check(
         command,
@@ -26,10 +28,12 @@ fn impl_traits_default() {
 #[test]
 fn impl_traits_no_deps() {
     const DOC_DIR_NAME: &str = "impl_traits_no_deps";
-    let mut command = Command::default();
-    command.manifest_path = Some(IMPL_TRAIT_FILE_PATH.into());
-    command.doc_path = Some(DOC_DIR_NAME.into());
-    command.no_deps = true;
+    let command = Command {
+        manifest_path: Some(IMPL_TRAIT_FILE_PATH.into()),
+        doc_path: Some(DOC_DIR_NAME.into()),
+        no_deps: true,
+        ..Default::default()
+    };
     let path_to_file = PathBuf::from(IMPL_FOR);
     check(
         command,
