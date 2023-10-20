@@ -13,7 +13,7 @@ use crate::{
     TypeInfo, TypeArgument, UnifyCheck, Engines, compiler_generated::{generate_matched_or_variant_index_var_name, INVALID_MATCHED_OR_VARIABLE_INDEX_SIGNAL, generate_matched_or_variant_variables_var_name},
 };
 
-use super::{matcher::matcher, instantiate::Instantiate};
+use super::{matcher::matcher, instantiate::Instantiate, ReqDeclTree};
 
 impl ty::TyMatchBranch {
     pub(crate) fn type_check(
@@ -172,7 +172,32 @@ type CarryOverVarDeclarations = Vec<VarDecl>;
 /// variables, thus, not passing them any more to the upper nodes.
 type CarryOverTupleDeclarations = Vec<VarDecl>;
 
-/// TODO-IG: Document in detail.
+/// Instantiates three artifacts, that are in the end carried over to the typed match expression
+/// via [ty::TyMatchBranch]:
+/// - branch condition: Overall condition that must be `true` for the branch to match.
+/// - result variable declarations: Variable declarations that needs to be added to the
+/// match branch result, before the actual body. Here we distinguish between the variables
+/// actually declared in the match arm pattern and so called "tuple variables" that are
+/// compiler generated and contain values for variables extracted out of individual OR variants.
+/// - OR variant index variables: Variable declarations that are generated in case of having
+/// variables in OR patterns. Index variables hold 1-based index of the OR variant being matched
+/// or zero if non of the OR variants has matched.
+/// 
+/// ## Algorithm Overview
+/// The algorithm traverses the `req_decl_tree` bottom up from left to right and collects the
+/// overall condition, variable declarations, and tuple variable declarations.
+/// 
+/// In general, if the visited node is not the root node, the variables and requirements encountered
+/// at that node must be carried over to the upper node that decides how to interpret them.
+/// 
+/// E.g., if the upper node is an AND node with three sub nodes each having a requirement, the AND
+/// node will decide to combine the three requirements using the lazy and operator, and to pass only
+/// the new single requirement to the upper nodes.
+/// 
+/// Detailed explanation on how the condition and carry over declarations are constructed and
+/// carried over is given on other implementation functions.
+/// 
+/// Examples of resulting desugared match expressions can be found in the module description ([super]);
 fn instantiate_branch_condition_result_var_declarations_and_matched_or_variant_index_vars(
     handler: &Handler,
     ctx: &mut TypeCheckContext,

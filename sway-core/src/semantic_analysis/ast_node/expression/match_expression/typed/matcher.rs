@@ -22,26 +22,28 @@ use sway_types::{span::Span, Spanned, integer_bits::IntegerBits, Named};
 
 /// A single requirement in the form `<lhs> == <rhs>` that has to be
 /// fulfilled for the match arm to match.
-pub(crate) type MatchReq = (ty::TyExpression, ty::TyExpression);
+pub(super) type MatchReq = (ty::TyExpression, ty::TyExpression);
 
 /// A single variable in the form `let <ident> = <expression>`
 /// that has to be extracted from the match arm.
-pub(crate) type MatchVarDecl = (Ident, ty::TyExpression);
+pub(super) type MatchVarDecl = (Ident, ty::TyExpression);
 
 /// A leaf of a match pattern can be either a requirement on the scrutinee or a
 /// variable declaration but not both at the same time.
 /// In the case of the catch-all `_` we will have neither a requirement nor
 /// a variable declaration.
-pub(crate) type ReqOrVarDecl = Option<Either<MatchReq, MatchVarDecl>>;
+pub(super) type ReqOrVarDecl = Option<Either<MatchReq, MatchVarDecl>>;
 
 /// A tree structure that describes:
 /// - the overall requirement that needs to be satisfied in order for the match arm to match
 /// - all variable declarations within the match arm
+/// 
 /// The tree represents a logical expression that consists of equality comparisons, and
 /// lazy AND and OR operators.
+/// 
 /// The leafs of the tree are either equality comparisons or eventual variable declarations
 /// or none of those in the case of catch-all `_` pattern or only a single rest `..` in structs.
-pub(crate) struct ReqDeclTree {
+pub(super) struct ReqDeclTree {
     pub root: ReqDeclNode,
     _priv: (), // Only the matcher can create trees of requirements and declarations.
 }
@@ -94,7 +96,7 @@ impl ReqDeclTree {
 }
 
 /// A single node in the [ReqDeclTree].
-pub(crate) enum ReqDeclNode {
+pub(super) enum ReqDeclNode {
     /// The leaf node. Contains the information about a single requirement or
     /// variable declaration.
     /// E.g., a catch all `_` will have neither a requirement nor a variable declaration.
@@ -157,7 +159,7 @@ impl ReqDeclNode {
 /// ```
 /// 
 /// the returned [ReqDeclTree] for each match arm will have the following form
-/// (square brackets represent each individual leaf node [ReqDeclNode::ReqVarDecl]):
+/// (square brackets represent each individual leaf node [ReqDeclNode::ReqOrVarDecl]):
 /// 
 /// ```ignore
 /// 1.
@@ -190,7 +192,7 @@ impl ReqDeclNode {
 /// 6.
 /// [None]
 /// ```
-pub(crate) fn matcher(
+pub(super) fn matcher(
     handler: &Handler,
     ctx: TypeCheckContext,
     match_value: &ty::TyExpression,
