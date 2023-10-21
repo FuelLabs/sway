@@ -172,7 +172,7 @@
 //! }
 //!
 //! match e {
-//!     Enum::A((_, _, x)) | Enum::B((_, x, _)) | Enum::C((x, _, _)) => x,
+//!     Enum::A((y, _, x)) | Enum::B((_, x, y)) | Enum::C((x, _, y)) => x + y,
 //! };
 //! ```
 //! ```ignore
@@ -191,26 +191,32 @@
 //!        0 // None of the variants matches.
 //!    };
 //
-//!    if __matched_or_variant_index_1 != 0 { // If any of the variants has matched.
+//!    if __matched_or_variant_index_1 != 0 { // If any of the variants has matched, means if the arm matches.
+//!        // Store the values of the variables in a tuple, ordered alphabetically by the variable name.
 //!        let __matched_or_variant_variables_1 = if __matched_or_variant_index_1 == 1 {
 //!                 // If the first OR variant has matched.
-//!                (__matched_value_1 as A: (u64, u64, u64)).2 // Take x from the third (2) element.
+//!                 ((__matched_value_1 as A: (u64, u64, u64)).2, // Take x from the third (2) element of Enum::A.
+//!                  (__matched_value_1 as A: (u64, u64, u64)).0) // Take y from the first (0) element of Enum::A.
 //!            }
 //!            else if __matched_or_variant_index_1 == 2 {
 //!                 // If the second OR variant has matched.
-//!                (__matched_value_1 as B: (u64, u64, u64)).1 // Take x from the second (1) element.
+//!                 ((__matched_value_1 as B: (u64, u64, u64)).1, // Take x from the second (1) element of Enum::B.
+//!                  (__matched_value_1 as B: (u64, u64, u64)).2) // Take y from the third (2) element of Enum::B.
 //!            }
 //!            else if __matched_or_variant_index_1 == 3 {
 //!                 // If the third OR variant has matched.
-//!                (__matched_value_1 as C: (u64, u64, u64)).0 // Take x from the first (0) element.
+//!                 ((__matched_value_1 as C: (u64, u64, u64)).0, // Take x from the first (0) element of Enum::C.
+//!                  (__matched_value_1 as C: (u64, u64, u64)).2) // Take y from the third (2) element of Enum::C.
 //!            }
 //!            else {
 //!                __revert(14757395258967588865)
 //!            };
 //!        
-//!        // Finally, redefine the declared x variable to take the value from the tuple.
+//!        // Finally, define the declared variable x and y to take their values from the tuple.
 //!        let x = __matched_or_variant_variables_1.0;
-//!        x
+//!        let y = __matched_or_variant_variables_1.1;
+//! 
+//!        x + y
 //!    }
 //!    else {
 //!        __revert(14757395258967588866)
@@ -222,6 +228,13 @@
 //! every encountered OR pattern and they will all be listed above the match arm `if` expression.
 //! Also, in that case, the `if-else` definitions of `__matched_or_variant_variables_<unique suffix>` variables will
 //! be contained within the `if-else` definitions of their parent `__matched_or_variant_variables_<unique suffix>` variables.
+//! 
+//! For the record, an alternative approach was also considered, in which the tuple variables are declared immediately
+//! during the check if variants match. Such tuples would carry a boolean field to communicate if there was a match and
+//! in case of a non-match the last tuple would have dummy values from the previous one. This would save us double checking
+//! which variant has match, but would mean always instantiating a tuple that is not needed in a case of non-match.
+//! In this trade-off we went for the option explained above.
+//! Note that we will anyhow optimize match expressions on the IR level.
 
 mod instantiate;
 mod matcher;
