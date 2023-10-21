@@ -25,8 +25,11 @@ fn main() {
     // ANCHOR_END: vec_get_oob
     // ANCHOR: vec_iterate
     let mut i = 0;
-    while i < v.len() {
-        log(v.get(i).unwrap());
+    while i < v
+        .len() {
+        log(v
+            .get(i)
+            .unwrap());
         i += 1;
     }
     // ANCHOR_END: vec_iterate
@@ -39,7 +42,10 @@ fn main() {
 
     let mut row = Vec::new();
     row.push(TableCell::Int(3));
-    row.push(TableCell::B256(0x0101010101010101010101010101010101010101010101010101010101010101));
+    row
+        .push(
+            TableCell::B256(0x0101010101010101010101010101010101010101010101010101010101010101),
+        );
     row.push(TableCell::Boolean(true));
     // ANCHOR_END: vec_multiple_data_types
 }

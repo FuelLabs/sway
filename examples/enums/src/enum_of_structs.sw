@@ -12,8 +12,6 @@ enum MyEnum {
 
 fn main() {
     let my_enum = MyEnum::Item(Item {
-        price: 5,
-        amount: 2,
-        id: 42,
+        price: 5, amount: 2, id: 42,
     });
 }

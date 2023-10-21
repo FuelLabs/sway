@@ -56,9 +56,19 @@ impl StorageMapExample for Contract {
         storage.nested_map.get(2).insert(3, 24);
 
         assert(storage.nested_map.get(0).get(1).read() == 42);
-        assert(storage.nested_map.get(0).get(0).try_read().is_none()); // Nothing inserted here
+        assert(storage
+            .nested_map
+            .get(0)
+            .get(0)
+            .try_read()
+            .is_none()); // Nothing inserted here
         assert(storage.nested_map.get(2).get(3).read() == 24);
-        assert(storage.nested_map.get(2).get(2).try_read().is_none()); // Nothing inserted here
+        assert(storage
+            .nested_map
+            .get(2)
+            .get(2)
+            .try_read()
+            .is_none()); // Nothing inserted here
     }
     // ANCHOR_END: storage_map_nested_access
 }

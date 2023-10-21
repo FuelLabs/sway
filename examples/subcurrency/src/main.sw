@@ -64,7 +64,16 @@ impl Token for Contract {
         };
 
         // Increase the balance of receiver
-        storage.balances.insert(receiver, storage.balances.get(receiver).try_read().unwrap_or(0) + amount);
+        storage
+            .balances
+            .insert(
+                receiver,
+                storage
+                    .balances
+                    .get(receiver)
+                    .try_read()
+                    .unwrap_or(0) + amount,
+            );
     }
 
     #[storage(read, write)]
@@ -81,7 +90,16 @@ impl Token for Contract {
         storage.balances.insert(sender, sender_amount - amount);
 
         // Increase the balance of receiver
-        storage.balances.insert(receiver, storage.balances.get(receiver).try_read().unwrap_or(0) + amount);
+        storage
+            .balances
+            .insert(
+                receiver,
+                storage
+                    .balances
+                    .get(receiver)
+                    .try_read()
+                    .unwrap_or(0) + amount,
+            );
 
         log(Sent {
             from: sender,
