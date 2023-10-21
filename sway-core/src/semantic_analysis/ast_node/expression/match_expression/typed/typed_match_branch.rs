@@ -238,7 +238,7 @@ fn instantiate_branch_condition_result_var_declarations_and_matched_or_variant_i
             ctx.by_ref(),
             instantiate,
             None,
-            &req_decl_tree.root,
+            req_decl_tree.root(),
             &mut result_var_declarations,
             &mut or_variants_index_vars,
         )?;

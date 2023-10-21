@@ -46,10 +46,8 @@ pub(super) type ReqOrVarDecl = Option<Either<MatchReq, MatchVarDecl>>;
 ///
 /// The leafs of the tree are either equality comparisons or eventual variable declarations
 /// or none of those in the case of catch-all `_` pattern or only a single rest `..` in structs.
-#[allow(clippy::manual_non_exhaustive)]
 pub(super) struct ReqDeclTree {
-    pub root: ReqDeclNode,
-    _priv: (), // Only the matcher can create trees of requirements and declarations.
+    root: ReqDeclNode,
 }
 
 impl ReqDeclTree {
@@ -58,7 +56,6 @@ impl ReqDeclTree {
     fn req(req: MatchReq) -> Self {
         Self {
             root: ReqDeclNode::ReqOrVarDecl(Some(Either::Left(req))),
-            _priv: (),
         }
     }
 
@@ -67,7 +64,6 @@ impl ReqDeclTree {
     fn decl(decl: MatchVarDecl) -> Self {
         Self {
             root: ReqDeclNode::ReqOrVarDecl(Some(Either::Right(decl))),
-            _priv: (),
         }
     }
 
@@ -76,7 +72,6 @@ impl ReqDeclTree {
     fn none() -> Self {
         Self {
             root: ReqDeclNode::ReqOrVarDecl(None),
-            _priv: (),
         }
     }
 
@@ -85,7 +80,6 @@ impl ReqDeclTree {
     fn and(nodes: Vec<ReqDeclNode>) -> Self {
         Self {
             root: ReqDeclNode::And(nodes),
-            _priv: (),
         }
     }
 
@@ -94,8 +88,11 @@ impl ReqDeclTree {
     fn or(nodes: Vec<ReqDeclNode>) -> Self {
         Self {
             root: ReqDeclNode::Or(nodes),
-            _priv: (),
         }
+    }
+
+    pub fn root(&self) -> &ReqDeclNode {
+        &self.root
     }
 }
 
