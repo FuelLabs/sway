@@ -446,12 +446,9 @@ impl Instruction {
             }
         };
         match self {
-            Instruction::AsmBlock(_, args) => args.iter_mut().for_each(|asm_arg| {
-                asm_arg
-                    .initializer
-                    .iter_mut()
-                    .for_each(|init_val| replace(init_val))
-            }),
+            Instruction::AsmBlock(_, args) => args
+                .iter_mut()
+                .for_each(|asm_arg| asm_arg.initializer.iter_mut().for_each(replace)),
             Instruction::BitCast(value, _) => replace(value),
             Instruction::UnaryOp { op: _, arg } => {
                 replace(arg);

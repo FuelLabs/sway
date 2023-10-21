@@ -215,7 +215,7 @@
 //!        // Finally, define the declared variable x and y to take their values from the tuple.
 //!        let x = __matched_or_variant_variables_1.0;
 //!        let y = __matched_or_variant_variables_1.1;
-//! 
+//!
 //!        x + y
 //!    }
 //!    else {
@@ -228,7 +228,7 @@
 //! every encountered OR pattern and they will all be listed above the match arm `if` expression.
 //! Also, in that case, the `if-else` definitions of `__matched_or_variant_variables_<unique suffix>` variables will
 //! be contained within the `if-else` definitions of their parent `__matched_or_variant_variables_<unique suffix>` variables.
-//! 
+//!
 //! For the record, an alternative approach was also considered, in which the tuple variables are declared immediately
 //! during the check if variants match. Such tuples would carry a boolean field to communicate if there was a match and
 //! in case of a non-match the last tuple would have dummy values from the previous one. This would save us double checking
@@ -242,4 +242,4 @@ mod typed_match_branch;
 mod typed_match_expression;
 mod typed_scrutinee;
 
-pub(self) use matcher::ReqDeclTree;
+use matcher::ReqDeclTree;
