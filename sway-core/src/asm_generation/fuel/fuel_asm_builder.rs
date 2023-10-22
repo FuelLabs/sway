@@ -58,8 +58,8 @@ pub struct FuelAsmBuilder<'ir, 'eng> {
     // will usually have 0 or 1 entry.
     pub(super) return_ctxs: Vec<(Label, VirtualRegister)>,
 
-    // Stack size and base register for locals.
-    pub(super) locals_ctxs: Vec<(u64, VirtualRegister)>,
+    // Stack size and base register for locals and num_extra_args in any call in the function.
+    pub(super) locals_ctxs: Vec<(u64, VirtualRegister, u64)>,
 
     // IR context we're compiling.
     pub(super) context: &'ir Context<'eng>,
