@@ -1,6 +1,6 @@
 [package]
 name = "forc-crypto"
-version = "0.46.0"
+version = "0.46.1"
 description = "A `forc` plugin for handling various cryptographic operations and conversions."
 authors.workspace = true
 edition.workspace = true
