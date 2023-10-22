@@ -65,6 +65,8 @@ impl Format for Expr {
                         let (field_width, body_width) =
                             get_field_width(fields.get(), &mut formatter.clone())?;
 
+                        formatter.shape.code_line.update_expr_new_line(true);
+
                         // changes to the actual formatter
                         let expr_width = buf.chars().count();
                         formatter.shape.code_line.update_width(expr_width);
@@ -648,6 +650,21 @@ fn format_expr_struct(
     ExprStructField::close_curly_brace(formatted_code, formatter)?;
 
     Ok(())
+}
+
+pub fn should_write_multiline(code: &str, formatter: &Formatter) -> bool {
+    if formatter.shape.code_line.expr_new_line {
+        true
+    } else {
+        let max_per_line = formatter.shape.width_heuristics.collection_width;
+        for (i, c) in code.chars().rev().enumerate() {
+            if c == '\n' {
+                return i > max_per_line;
+            }
+        }
+
+        false
+    }
 }
 
 fn format_method_call(

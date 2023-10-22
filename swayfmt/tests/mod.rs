@@ -1890,3 +1890,70 @@ fn main() {
 "#,
     );
 }
+
+#[test]
+fn struct_new_line() {
+    check(
+        r#"
+        library;
+
+struct Item {
+    price: u64, amount: u64,
+    id: u64,
+}
+
+enum MyEnum {
+    Item: Item,
+}
+
+fn main() {
+    let my_enum = MyEnum::Item(Item {
+        price: 5, amount: 2, id: 42,
+    });
+}
+            "#,
+        r#"library;
+
+struct Item {
+    price: u64,
+    amount: u64,
+    id: u64,
+}
+
+enum MyEnum {
+    Item: Item,
+}
+
+fn main() {
+    let my_enum = MyEnum::Item(Item {
+        price: 5,
+        amount: 2,
+        id: 42,
+    });
+}
+"#,
+    )
+}
+
+#[test]
+fn struct_new_line_2() {
+    check(
+        r#"
+        library;
+impl Convert<Square> for Rectangle { fn from(t: Square) -> Self {
+Self { width: t
+    .width,length: t.width,
+}}}
+            "#,
+        r#"library;
+impl Convert<Square> for Rectangle {
+    fn from(t: Square) -> Self {
+        Self {
+            width: t.width,
+            length: t.width,
+        }
+    }
+}
+"#,
+    )
+}

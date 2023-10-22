@@ -9,20 +9,7 @@ use sway_ast::{
 };
 use sway_types::{ast::PunctKind, Ident, Spanned};
 
-fn should_write_multiline(code: &str, formatter: &Formatter) -> bool {
-    if formatter.shape.code_line.expr_new_line {
-        true
-    } else {
-        let max_per_line = formatter.shape.width_heuristics.collection_width;
-        for (i, c) in code.chars().rev().enumerate() {
-            if c == '\n' {
-                return i > max_per_line;
-            }
-        }
-
-        false
-    }
-}
+use super::expr::should_write_multiline;
 
 impl<T, P> Format for Punctuated<T, P>
 where

@@ -6,7 +6,8 @@ use data_structures::{Foo, Line, Point, TupleInStruct};
 fn hardcoded_instantiation() -> Foo {
     // Instantiate `foo` as `Foo`
     let mut foo = Foo {
-        bar: 42, baz: false,
+        bar: 42,
+        baz: false,
     };
 
     // Access and write to "baz"
@@ -59,7 +60,8 @@ fn struct_destructuring() {
     let Point { x, .. } = point2;
 
     let line = Line {
-        p1: point1, p2: point2,
+        p1: point1,
+        p2: point2,
     };
     // Destructure the values from the nested structs into variables
     let Line {
