@@ -16,7 +16,7 @@
 //!
 //! ## Desugaring
 //!
-//! Desugaring to if expressions starts in the [crate::ty::TyMatchBranch] where three artifacts are provided
+//! Desugaring to `if` expressions starts in the [crate::ty::TyMatchBranch] where three artifacts are provided
 //! for a particular match branch (arm):
 //! - branch condition: Overall condition that must be `true` for the branch to match.
 //! - result variable declarations: Variable declarations that needs to be added to the
@@ -30,7 +30,8 @@
 //! Afterwards, these three artifacts coming from every individual branch are glued together in the
 //! [crate::ty::TyMatchExpression] to form the final desugaring.
 //!
-//! All desugared `if-else` chains end in a `__revert(...)` call with dedicated revert codes.
+//! The desugared `if-else` chains end either in an `else` that contains the result of the last match arm, if the
+//! match arm is a catch-all arm, or in a `__revert(...)` call with the dedicated revert code.
 //! These reverts can happen only if we have bugs in the implementation of match expressions and
 //! is the only safe way to communicate compiler bug detectable only at runtime.
 //!
@@ -43,7 +44,7 @@
 //!
 //! ### Literals, Constants, and Variables
 //!
-//! In case of literals, constants, and variables the desugared if expression is straightforward.
+//! In case of literals, constants, and variables the desugared `if` expression is straightforward.
 //!
 //! ```ignore
 //! match exp {
@@ -60,9 +61,30 @@
 //! else if __matched_value_1 == CONST_X {
 //!     222
 //! }
-//! else if true {
+//! else {
 //!     let x = __matched_value_1;
 //!     x + x
+//! }
+//! else {
+//!     __revert(14757395258967588866)
+//! }
+//! ```
+//!
+//! If the last match arm is not a catch-all arm, the `if-else` chain will end in a `__revert()`.
+//!
+//! ```ignore
+//! match exp {
+//!     true => 111,
+//!     false => 222,
+//! }
+//! ```
+//! ```ignore
+//! let __matched_value_1 = exp;
+//! if __matched_value_1 == true {
+//!     111
+//! }
+//! else if __matched_value_1 == false {
+//!     222
 //! }
 //! else {
 //!     __revert(14757395258967588866)
@@ -104,12 +126,9 @@
 //!     let y = __matched_value_1.y;
 //!     y
 //! }
-//! else if true {
+//! else {
 //!     let z = __matched_value_1.z;
 //!     z
-//! }
-//! else {
-//!     __revert(14757395258967588866)
 //! }
 //! ```
 //!
@@ -133,12 +152,9 @@
 //! else if __matched_value_1 == CONST_X || __matched_value_1 == CONST_Y {
 //!     222
 //! }
-//! else if true {
+//! else {
 //!     let x = __matched_value_1;
 //!     x + x
-//! }
-//! else {
-//!     __revert(14757395258967588866)
 //! }
 //! ```
 //!

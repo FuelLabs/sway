@@ -72,12 +72,11 @@ impl ty::TyMatchExpression {
         }
 
         let typed_if_exp = handler.scope(|handler| {
-            // Create the typed if expression object that we will be building on to.
-            let mut typed_if_exp = instantiate.code_block_with_implicit_return_revert(
-                INVALID_DESUGARED_MATCHED_EXPRESSION_SIGNAL,
-            );
+            // The typed if expression object that we will be building on to.
+            // We will do it bottom up, starting from the final `else`.
+            let mut typed_if_exp = None;
 
-            // For every branch of the match expression, bottom-up, means in reverse.
+            // For every branch, bottom-up, means in reverse.
             for ty::TyMatchBranch {
                 matched_or_variant_index_vars,
                 condition,
@@ -85,21 +84,43 @@ impl ty::TyMatchExpression {
                 ..
             } in self.branches.into_iter().rev()
             {
-                let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
-                let result_span = result.span.clone();
+                // If we are instantiating the final `else` block.
+                if typed_if_exp.is_none() {
+                    // If the last match arm is a catch-all arm make its result the final else.
+                    // Note that this will always be the case with `if let` expressions that
+                    // desugar to match expressions.
+                    if condition.is_none() {
+                        typed_if_exp = Some(result);
+                        continue; // Last branch added, move to the previous one.
+                    } else {
+                        // Otherwise instantiate the final `__revert`.
+                        let final_revert = instantiate.code_block_with_implicit_return_revert(
+                            INVALID_DESUGARED_MATCHED_EXPRESSION_SIGNAL,
+                        );
 
-                let condition = condition.unwrap_or(instantiate.boolean_literal(true));
+                        typed_if_exp = Some(final_revert);
+                        // Continue with adding the last branch.
+                    };
+                }
 
                 // Create a new namespace for this branch result.
+                let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
                 let mut namespace = ctx.namespace.clone();
                 let mut branch_ctx = ctx.scoped(&mut namespace);
+
+                let result_span = result.span.clone();
+                let condition = condition.unwrap_or(instantiate.boolean_literal(true));
 
                 let if_exp = match instantiate_if_expression(
                     handler,
                     branch_ctx.by_ref(),
                     condition,
                     result,
-                    Some(typed_if_exp.clone()), // Put the previous if into else.
+                    Some(
+                        typed_if_exp
+                            .clone()
+                            .expect("The previously created expression exist at this point."),
+                    ), // Put the previous if into else.
                     result_span.clone(),
                 ) {
                     Ok(if_exp) => if_exp,
@@ -110,7 +131,7 @@ impl ty::TyMatchExpression {
 
                 typed_if_exp = if matched_or_variant_index_vars.is_empty() {
                     // No OR variants with vars. We just have to instantiate the if expression.
-                    if_exp
+                    Some(if_exp)
                 } else {
                     // We have matched OR variant index vars.
                     // We need to add them to the block before the if expression.
@@ -133,17 +154,17 @@ impl ty::TyMatchExpression {
                         span: result_span.clone(),
                     });
 
-                    ty::TyExpression {
+                    Some(ty::TyExpression {
                         expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
                             contents: code_block_contents,
                         }),
                         return_type: self.return_type_id,
                         span: result_span.clone(),
-                    }
+                    })
                 }
             }
 
-            Ok(typed_if_exp)
+            Ok(typed_if_exp.expect("The expression exists because we have at least one branch."))
         })?;
 
         return Ok(typed_if_exp);

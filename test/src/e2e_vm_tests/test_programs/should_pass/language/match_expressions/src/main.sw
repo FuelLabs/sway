@@ -1,5 +1,10 @@
 script;
 
+enum Enum {
+    A: (u64),
+    B: (u64),
+}
+
 struct Struct {
     x: u64,
     y: u64,
@@ -47,6 +52,39 @@ fn main() -> u64 {
     };
     assert(i == 11);
     assert(x == 42);
+
+    // Test match expressions with just one arm.
+    let e = Enum::A(42);
+
+    let x = match e {
+        _ => 9999,
+    };
+    assert(x == 9999);
+
+    let e = Enum::B(42);
+    let x = match e {
+        Enum::A(x) | Enum::B(x) => x,
+    };
+    assert(x == 42);
+
+    let x = match e {
+        Enum::A(_) | Enum::B(_) => 9999,
+    };
+    assert(x == 9999);
+
+    let e = 42u64;
+    let x = match e {
+        y => y,
+    };
+    assert(x == 42);
+
+    let mut i = 0;
+    match e {
+        _ => {
+            let _s = inc_i(i);
+        }
+    };
+    assert(i == 11);
 
     match 42 {
         0 => { 24 },
