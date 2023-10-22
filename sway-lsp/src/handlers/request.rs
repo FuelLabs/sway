@@ -228,6 +228,7 @@ pub fn handle_code_action(
             &params.range,
             &params.text_document.uri,
             &temp_uri,
+            &params.context.diagnostics,
         )),
         Err(err) => {
             tracing::error!("{}", err.to_string());

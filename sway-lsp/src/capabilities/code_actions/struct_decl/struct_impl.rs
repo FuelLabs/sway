@@ -17,7 +17,7 @@ impl<'a> GenerateImplCodeAction<'a, TyStructDecl> for StructImplCodeAction<'a> {
 }
 
 impl<'a> CodeAction<'a, TyStructDecl> for StructImplCodeAction<'a> {
-    fn new(ctx: CodeActionContext<'a>, decl: &'a TyStructDecl) -> Self {
+    fn new(ctx: &CodeActionContext<'a>, decl: &'a TyStructDecl) -> Self {
         Self { decl, uri: ctx.uri }
     }
 
