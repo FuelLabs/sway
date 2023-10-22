@@ -53,19 +53,19 @@ pub trait Power {
 
 
 impl Power for u256 {
-    /// Raises self to the power of `exp`, using exponentiation by squaring.
+    /// Raises self to the power of `exponent`, using exponentiation by squaring.
 	///
 	/// # Panics
 	///
 	/// Panics if the result overflows the type.
-    fn pow(self, exp: u32) -> Self {
+    fn pow(self, exponent: u32) -> Self {
         let one = 0x0000000000000000000000000000000000000000000000000000000000000001u256;
 
-        if exp == 0 {
+        if exponent == 0 {
             return one;
         }
 
-        let mut exp = exp;
+        let mut exp = exponentgi;
         let mut base = self;
         let mut acc = one;
 

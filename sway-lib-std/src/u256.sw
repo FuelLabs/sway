@@ -680,20 +680,20 @@ impl core::ops::Divide for U256 {
 }
 
 impl Power for U256 {
-    /// Raises self to the power of `exp`, using exponentiation by squaring.
+    /// Raises self to the power of `exponent`, using exponentiation by squaring.
 	///
 	/// # Panics
 	///
 	/// Panics if the result overflows the type.
-    fn pow(self, expon: u32) -> Self {
+    fn pow(self, exponent: u32) -> Self {
         let one = U256::from((0, 0, 0, 1));
         let two = U256::from((0, 0, 0, 2));
 
-        if expon == 0 {
+        if exponent == 0 {
             return one;
         }
 
-        let mut exp = expon;
+        let mut exp = exponent;
         let mut base = self;
         let mut acc = one;
 
