@@ -694,16 +694,13 @@ where
 {
     let has_single_argument_and_can_be_inlined =
         if args.value_separator_pairs.len() == 1 && args.final_value_opt.is_none() {
-            match args.value_separator_pairs[0].0 {
-                Expr::Struct { path: _, fields: _ } => true,
-                _ => false,
-            }
-        } else if args.value_separator_pairs.len() == 0 {
+            matches!(
+                args.value_separator_pairs[0].0,
+                Expr::Struct { path: _, fields: _ }
+            )
+        } else if args.value_separator_pairs.is_empty() {
             if let Some(final_value) = &args.final_value_opt {
-                match **final_value {
-                    Expr::Struct { path: _, fields: _ } => true,
-                    _ => false,
-                }
+                matches!(**final_value, Expr::Struct { path: _, fields: _ })
             } else {
                 true
             }
