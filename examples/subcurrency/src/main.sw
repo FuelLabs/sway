@@ -37,7 +37,9 @@ abi Token {
 // Constants
 ////////////////////////////////////////
 /// Address of contract creator.
-const MINTER = Address::from(0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b);
+const MINTER = Address::from(
+    0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b,
+);
 
 ////////////////////////////////////////
 // Contract storage
@@ -87,7 +89,12 @@ impl Token for Contract {
         // Reduce the balance of sender
         let sender_amount = storage.balances.get(sender).try_read().unwrap_or(0);
         assert(sender_amount > amount);
-        storage.balances.insert(sender, sender_amount - amount);
+        storage
+            .balances
+            .insert(
+                sender,
+                sender_amount - amount,
+            );
 
         // Increase the balance of receiver
         storage

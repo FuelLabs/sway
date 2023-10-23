@@ -1165,17 +1165,30 @@ fn main() {
         // This is a comment
         storage
             .pledge_history
-            .insert((user, pledge_history_index), pledge);
+            .insert(
+                (user, pledge_history_index),
+                pledge,
+            );
     }
     // This is also a comment,
     // but multiline
     else if true {
         // This is yet another comment
-        storage.pledge_count.insert(user, pledge_count + 1);
+        storage
+            .pledge_count
+            .insert(
+                user,
+                pledge_count + 1,
+            );
     }
     // This is the last comment
     else {
-        storage.pledge_count.insert(user, pledge_count + 1);
+        storage
+            .pledge_count
+            .insert(
+                user,
+                pledge_count + 1,
+            );
     }
 }
 "#,
@@ -1910,6 +1923,9 @@ fn main() {
     let my_enum = MyEnum::Item(Item {
         price: 5, amount: 2, id: 42,
     });
+    my_enum.test(Item {
+        price: 5, amount: 2, id: 42,
+    });
 }
             "#,
         r#"library;
@@ -1930,6 +1946,12 @@ fn main() {
         amount: 2,
         id: 42,
     });
+    my_enum
+        .test(Item {
+            price: 5,
+            amount: 2,
+            id: 42,
+        });
 }
 "#,
     )
@@ -1953,6 +1975,103 @@ impl Convert<Square> for Rectangle {
             length: t.width,
         }
     }
+}
+"#,
+    )
+}
+
+#[test]
+fn func_call_long_args() {
+    check(
+        r#"
+        library;
+
+        fn access_control_with_identity() {
+            // ANCHOR: access_control_with_identity
+            let sender = msg_sender().unwrap();
+            require(sender == storage.owner.read(), MyError::UnauthorizedUser(sender));
+            // ANCHOR_END: access_control_with_identity
+        }
+    "#,
+        r#"library;
+
+fn access_control_with_identity() {
+    // ANCHOR: access_control_with_identity
+    let sender = msg_sender().unwrap();
+    require(
+        sender == storage
+            .owner
+            .read(),
+        MyError::UnauthorizedUser(sender),
+    );
+    // ANCHOR_END: access_control_with_identity
+}
+"#,
+    )
+}
+
+#[test]
+fn func_call_long_args_with_long_expr() {
+    check(
+        r#"
+        library;
+
+        fn access_control_with_identity() {
+            // ANCHOR: access_control_with_identity
+            let sender = msg_sender().unwrap();
+            require(sender == storage.owner.read().some_prop().that_is_too_long_to_fit_in_one_line().or_two_lines(), MyError::UnauthorizedUser(sender));
+            // ANCHOR_END: access_control_with_identity
+        }
+    "#,
+        r#"library;
+
+fn access_control_with_identity() {
+    // ANCHOR: access_control_with_identity
+    let sender = msg_sender().unwrap();
+    require(
+        sender == storage
+            .owner
+            .read()
+            .some_prop()
+            .that_is_too_long_to_fit_in_one_line()
+            .or_two_lines(),
+        MyError::UnauthorizedUser(sender),
+    );
+    // ANCHOR_END: access_control_with_identity
+}
+"#,
+    )
+}
+
+#[test]
+fn method_call_long_args_with_long_expr() {
+    check(
+        r#"
+        library;
+
+        fn access_control_with_identity() {
+            // ANCHOR: access_control_with_identity
+            let sender = msg_sender().unwrap();
+            sender.require(sender == storage.owner.read().some_prop().that_is_too_long_to_fit_in_one_line().or_two_lines(), MyError::UnauthorizedUser(sender));
+            // ANCHOR_END: access_control_with_identity
+        }
+    "#,
+        r#"library;
+
+fn access_control_with_identity() {
+    // ANCHOR: access_control_with_identity
+    let sender = msg_sender().unwrap();
+    sender
+        .require(
+            sender == storage
+                .owner
+                .read()
+                .some_prop()
+                .that_is_too_long_to_fit_in_one_line()
+                .or_two_lines(),
+            MyError::UnauthorizedUser(sender),
+        );
+        // ANCHOR_END: access_control_with_identity
 }
 "#,
     )

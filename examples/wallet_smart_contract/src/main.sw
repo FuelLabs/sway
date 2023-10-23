@@ -11,7 +11,9 @@ use std::{
 // ANCHOR: abi_import
 use wallet_abi::Wallet;
 // ANCHOR_END: abi_import
-const OWNER_ADDRESS = Address::from(0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861);
+const OWNER_ADDRESS = Address::from(
+    0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861,
+);
 
 storage {
     balance: u64 = 0,
@@ -25,7 +27,13 @@ impl Wallet for Contract {
             // If we received `BASE_ASSET_ID` then keep track of the balance.
             // Otherwise, we're receiving other native assets and don't care
             // about our balance of tokens.
-            storage.balance.write(storage.balance.read() + msg_amount());
+            storage
+                .balance
+                .write(
+                    storage
+                        .balance
+                        .read() + msg_amount(),
+                );
         }
     }
 
@@ -40,7 +48,11 @@ impl Wallet for Contract {
         let current_balance = storage.balance.read();
         assert(current_balance >= amount_to_send);
 
-        storage.balance.write(current_balance - amount_to_send);
+        storage
+            .balance
+            .write(
+                current_balance - amount_to_send,
+            );
 
         // Note: `transfer_to_address()` is not a call and thus not an
         // interaction. Regardless, this code conforms to

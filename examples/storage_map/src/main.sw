@@ -29,8 +29,12 @@ impl StorageMapExample for Contract {
     // ANCHOR: storage_map_insert
     #[storage(write)]
     fn insert_into_storage_map() {
-        let addr1 = Address::from(0x0101010101010101010101010101010101010101010101010101010101010101);
-        let addr2 = Address::from(0x0202020202020202020202020202020202020202020202020202020202020202);
+        let addr1 = Address::from(
+            0x0101010101010101010101010101010101010101010101010101010101010101,
+        );
+        let addr2 = Address::from(
+            0x0202020202020202020202020202020202020202020202020202020202020202,
+        );
 
         storage.map.insert(addr1, 42);
         storage.map.insert(addr2, 77);
@@ -39,8 +43,12 @@ impl StorageMapExample for Contract {
     // ANCHOR: storage_map_get
     #[storage(read, write)]
     fn get_from_storage_map() {
-        let addr1 = Address::from(0x0101010101010101010101010101010101010101010101010101010101010101);
-        let addr2 = Address::from(0x0202020202020202020202020202020202020202020202020202020202020202);
+        let addr1 = Address::from(
+            0x0101010101010101010101010101010101010101010101010101010101010101,
+        );
+        let addr2 = Address::from(
+            0x0202020202020202020202020202020202020202020202020202020202020202,
+        );
 
         storage.map.insert(addr1, 42);
         storage.map.insert(addr2, 77);
@@ -56,19 +64,9 @@ impl StorageMapExample for Contract {
         storage.nested_map.get(2).insert(3, 24);
 
         assert(storage.nested_map.get(0).get(1).read() == 42);
-        assert(storage
-            .nested_map
-            .get(0)
-            .get(0)
-            .try_read()
-            .is_none()); // Nothing inserted here
+        assert(storage.nested_map.get(0).get(0).try_read().is_none()); // Nothing inserted here
         assert(storage.nested_map.get(2).get(3).read() == 24);
-        assert(storage
-            .nested_map
-            .get(2)
-            .get(2)
-            .try_read()
-            .is_none()); // Nothing inserted here
+        assert(storage.nested_map.get(2).get(2).try_read().is_none()); // Nothing inserted here
     }
     // ANCHOR_END: storage_map_nested_access
 }

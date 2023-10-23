@@ -198,15 +198,22 @@ impl Format for Expr {
             }
             Self::FuncApp { func, args } => {
                 formatter.with_shape(
-                    formatter.shape.with_default_code_line(),
+                    formatter
+                        .shape
+                        .with_code_line_from(LineStyle::Normal, ExprKind::Function),
                     |formatter| -> Result<(), FormatterError> {
                         // don't indent unless on new line
                         if formatted_code.ends_with('\n') {
                             write!(formatted_code, "{}", formatter.indent_to_str()?)?;
                         }
                         func.format(formatted_code, formatter)?;
+
                         Self::open_parenthesis(formatted_code, formatter)?;
-                        args.get().format(formatted_code, formatter)?;
+                        write!(
+                            formatted_code,
+                            "{}",
+                            write_function_call_arguments(args.get(), formatter)?
+                        )?;
                         Self::close_parenthesis(formatted_code, formatter)?;
 
                         Ok(())
@@ -247,11 +254,12 @@ impl Format for Expr {
                         )?;
 
                         // get the largest field size
-                        let (mut field_width, mut body_width): (usize, usize) = (0, 0);
-                        if let Some(contract_args) = &contract_args_opt {
-                            (field_width, body_width) =
-                                get_field_width(contract_args.get(), &mut formatter.clone())?;
-                        }
+                        let (field_width, body_width) =
+                            if let Some(contract_args) = &contract_args_opt {
+                                get_field_width(contract_args.get(), &mut formatter.clone())?
+                            } else {
+                                (0, 0)
+                            };
 
                         // changes to the actual formatter
                         let expr_width = buf.chars().count();
@@ -652,6 +660,13 @@ fn format_expr_struct(
     Ok(())
 }
 
+/// Checks if the current generated code is too long to fit into a single line
+/// or it should be broken into multiple lines. The logic to break the
+/// expression into multiple line is handled inside each struct.
+///
+/// Alternatively, if `expr_new_line` is set to true this function always will
+/// return true
+#[inline]
 pub fn should_write_multiline(code: &str, formatter: &Formatter) -> bool {
     if formatter.shape.code_line.expr_new_line {
         true
@@ -665,6 +680,67 @@ pub fn should_write_multiline(code: &str, formatter: &Formatter) -> bool {
 
         false
     }
+}
+
+/// Writes the `(args)` of a function call. This is a common abstraction for
+/// methods and functions and how to organize their arguments.
+#[inline]
+pub fn write_function_call_arguments<P>(
+    args: &Punctuated<Expr, P>,
+    formatter: &mut Formatter,
+) -> Result<String, FormatterError>
+where
+    P: Format,
+{
+    let has_single_argument_and_can_be_inlined =
+        if args.value_separator_pairs.len() == 1 && args.final_value_opt.is_none() {
+            match args.value_separator_pairs[0].0 {
+                Expr::Struct { path: _, fields: _ } => true,
+                _ => false,
+            }
+        } else if args.value_separator_pairs.len() == 0 {
+            if let Some(final_value) = &args.final_value_opt {
+                match **final_value {
+                    Expr::Struct { path: _, fields: _ } => true,
+                    _ => false,
+                }
+            } else {
+                true
+            }
+        } else {
+            false
+        };
+
+    let mut buf = FormattedCode::new();
+    args.format(&mut buf, formatter)?;
+
+    Ok(if has_single_argument_and_can_be_inlined {
+        buf.trim().to_owned()
+    } else {
+        // Check if the arguments can fit on a single line
+        let expr_width = buf.chars().count();
+        formatter.shape.code_line.add_width(expr_width);
+        formatter
+            .shape
+            .get_line_style(None, Some(expr_width), &formatter.config);
+
+        match formatter.shape.code_line.line_style {
+            LineStyle::Multiline => {
+                // force each param to be a new line
+                formatter.shape.code_line.update_expr_new_line(true);
+                formatter.indent();
+                // should be rewritten to a multi-line
+                let mut formatted_code = FormattedCode::new();
+                let mut buf = FormattedCode::new();
+                args.format(&mut buf, formatter)?;
+                formatter.unindent();
+                writeln!(formatted_code, "{}", buf.trim_end())?;
+                formatter.write_indent_into_buffer(&mut formatted_code)?;
+                formatted_code
+            }
+            _ => buf.trim().to_owned(),
+        }
+    })
 }
 
 fn format_method_call(
@@ -703,45 +779,13 @@ fn format_method_call(
         ExprStructField::close_curly_brace(formatted_code, formatter)?;
     }
 
-    formatter.with_shape(
-        formatter
-            .shape
-            .with_code_line_from(LineStyle::default(), ExprKind::Function),
-        |formatter| -> Result<(), FormatterError> {
-            // Write arguements to a temporary string
-            let mut buf = FormattedCode::new();
-            args.get().format(&mut buf, formatter)?;
-
-            // Check if the arguements can fit on a single line
-            let expr_width = buf.chars().count();
-            formatter.shape.code_line.add_width(expr_width);
-            formatter
-                .shape
-                .get_line_style(None, Some(expr_width), &formatter.config);
-
-            Expr::open_parenthesis(formatted_code, formatter)?;
-            match formatter.shape.code_line.line_style {
-                LineStyle::Multiline => {
-                    // force each param to be a new line
-                    formatter.shape.code_line.update_expr_new_line(true);
-                    formatter.indent();
-                    let mut buf = FormattedCode::new();
-                    // should be rewritten to a multi-line
-                    args.get().format(&mut buf, formatter)?;
-                    formatter.unindent();
-                    writeln!(formatted_code, "{}", buf.trim_end())?;
-                    formatter.write_indent_into_buffer(formatted_code)?;
-                }
-                _ => {
-                    // single line is fine
-                    write!(formatted_code, "{}", buf)?;
-                }
-            };
-            Expr::close_parenthesis(formatted_code, formatter)?;
-
-            Ok(())
-        },
+    Expr::open_parenthesis(formatted_code, formatter)?;
+    write!(
+        formatted_code,
+        "{}",
+        write_function_call_arguments(args.get(), formatter)?
     )?;
+    Expr::close_parenthesis(formatted_code, formatter)?;
 
     if formatter.shape.code_line.expr_new_line {
         formatter.unindent();
