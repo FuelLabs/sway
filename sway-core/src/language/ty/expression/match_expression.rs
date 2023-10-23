@@ -6,7 +6,7 @@ use crate::{language::ty::*, type_system::*};
 /// in the desugared if expression or `None` if the match arm is
 /// a catch-all arm without condition.
 /// E.g., a condition might look like:
-/// `__match_val_1.x == 11 && __match_val_1.y == 22 || __match_val_1.x == 33 && __match_val_1.y == 44`
+/// `__matched_value_1.x == 11 && __matched_value_1.y == 22 || __matched_value_1.x == 33 && __matched_value_1.y == 44`
 pub(crate) type MatchBranchCondition = Option<TyExpression>;
 
 /// [TyExpression]s of the form `let <ident> = <expression>` where
@@ -33,7 +33,7 @@ pub(crate) struct TyMatchBranch {
     /// A boolean expression that represents the total match arm requirement,
     /// or `None` if the match arm is a catch-all arm.
     pub(crate) condition: MatchBranchCondition,
-    /// The resulting [ty::TyCodeBlock] that includes the match arm variable declarations
+    /// The resulting [crate::ty::TyCodeBlock] that includes the match arm variable declarations
     /// and the typed result from the original untyped branch result.
     pub(crate) result: TyExpression,
     #[allow(dead_code)]

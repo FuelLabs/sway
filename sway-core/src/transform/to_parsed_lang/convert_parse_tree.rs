@@ -1956,7 +1956,7 @@ fn expr_to_expression(
 
             // Generate a deterministic name for the variable matched by the match expression.
             let matched_value_var_name = generate_matched_value_var_name(
-                context.next_match_expression_matched_value_var_unique_suffix(),
+                context.next_match_expression_matched_value_unique_suffix(),
             );
             let var_decl_name =
                 Ident::new_with_override(matched_value_var_name, var_decl_span.clone());

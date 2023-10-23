@@ -471,16 +471,17 @@ fn instantiate_branch_condition_result_var_declarations_and_matched_or_variant_i
         /// If none of the variants match the variable will be initialized
         /// to zero.
         ///
+        /// ```ignore
         /// let __matched_or_variant_index_<suffix>: u64 = if <variant_1_condition> {
         ///         1u64
         ///     } else if <variant_2_condition> {
         ///         2u64
         ///     } else if ... {
         ///         ...
-        ///     }
         ///     } else {
         ///         0u64
         ///     };
+        /// ```
         fn instantiate_matched_or_variant_index_var_expression(
             instantiate: &Instantiate,
             suffix: usize,
@@ -529,25 +530,26 @@ fn instantiate_branch_condition_result_var_declarations_and_matched_or_variant_i
         ///   the values of all the variables declared in the OR match expression
         /// - redefined declarations of each individual variable.
         ///
+        /// ```ignore
         /// let __matched_or_variant_variables_<suffix>: <tuple> = if __matched_or_variant_index_<suffix> == 1 {
         ///         <potential tuple declarations carried over from the child nodes>
         ///
-        ///         (<var_1_variant_1_initialization>, ... <var_n_variant_1_initialization>)
+        ///         (<var_1_variant_1_initialization>, ..., <var_n_variant_1_initialization>)
         ///     } else if __match_matched_or_variant_index_<suffix> == 2 {
         ///         <potential tuple declarations carried over from the child nodes>
         ///
-        ///         (<var_1_variant_2_initialization>, ... <var_n_variant_2_initialization>)
+        ///         (<var_1_variant_2_initialization>, ..., <var_n_variant_2_initialization>)
         ///     } else if ... {
         ///         ...
-        ///     }
         ///     } else {
         ///         __revert(...) // This should never happen and means internal compiler error.
         ///     };
         ///
-        /// let <var_1> = __match_matched_or_variant_variables_<suffix>.0;
-        /// let <var_2> = __match_matched_or_variant_variables_<suffix>.1;
+        /// let <var_1> = __matched_or_variant_variables_<suffix>.0;
+        /// let <var_2> = __matched_or_variant_variables_<suffix>.1;
         /// ...
-        /// let <var_n> = __match_matched_or_variant_variables_<suffix>.(n-1);
+        /// let <var_n> = __matched_or_variant_variables_<suffix>.(n-1);
+        /// ```
         fn instantiate_matched_or_variant_vars_expressions(
             handler: &Handler,
             mut ctx: TypeCheckContext,
