@@ -1,6 +1,8 @@
-use super::CODE_ACTION_IMPORT_TITLE;
 use crate::{
-    capabilities::{code_actions::CodeActionContext, diagnostic::DiagnosticData},
+    capabilities::{
+        code_actions::{CodeActionContext, CODE_ACTION_IMPORT_TITLE},
+        diagnostic::DiagnosticData,
+    },
     core::token::{get_range_from_span, AstToken, SymbolKind, TypedAstToken},
 };
 use lsp_types::{
@@ -25,10 +27,10 @@ use sway_types::{Ident, Spanned};
 /// Returns a list of [CodeActionOrCommand] suggestions for inserting a missing import.
 pub(crate) fn import_code_action(
     ctx: &CodeActionContext,
-    diagnostics: &mut impl Iterator<Item = DiagnosticData>,
+    diagnostics: &mut impl Iterator<Item = (Range, DiagnosticData)>,
 ) -> Option<Vec<CodeActionOrCommand>> {
     // Find a diagnostic that has the attached metadata indicating we should try to suggest an auto-import.
-    let symbol_name = diagnostics.find_map(|diag| diag.unknown_symbol_name)?;
+    let symbol_name = diagnostics.find_map(|(_, diag)| diag.unknown_symbol_name)?;
 
     // Check if there are any matching call paths to import using the name from the diagnostic data.
     let call_paths = get_call_paths_for_name(ctx, &symbol_name)?;
@@ -85,7 +87,7 @@ pub(crate) fn import_code_action(
 
 /// Returns an [Iterator] of [CallPath]s that match the given symbol name. The [CallPath]s are sorted
 /// alphabetically.
-fn get_call_paths_for_name<'s>(
+pub(crate) fn get_call_paths_for_name<'s>(
     ctx: &'s CodeActionContext,
     symbol_name: &'s String,
 ) -> Option<impl 's + Iterator<Item = CallPath>> {
