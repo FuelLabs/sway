@@ -121,14 +121,21 @@ impl ty::TyAstNode {
                         side_effect: ty::TySideEffectVariant::UseStatement(ty::TyUseStatement {
                             alias: a.alias,
                             call_path: a.call_path,
+                            span: a.span,
                             is_absolute: a.is_absolute,
                             import_type: a.import_type,
                         }),
                     })
                 }
-                AstNodeContent::IncludeStatement(_) => {
+                AstNodeContent::IncludeStatement(i) => {
                     ty::TyAstNodeContent::SideEffect(ty::TySideEffect {
-                        side_effect: ty::TySideEffectVariant::IncludeStatement,
+                        side_effect: ty::TySideEffectVariant::IncludeStatement(
+                            ty::TyIncludeStatement {
+                                mod_name: i.mod_name,
+                                span: i.span,
+                                visibility: i.visibility,
+                            },
+                        ),
                     })
                 }
                 AstNodeContent::Declaration(decl) => {

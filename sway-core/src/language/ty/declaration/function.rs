@@ -7,7 +7,7 @@ use std::{
 use sha2::{Digest, Sha256};
 use sway_error::handler::{ErrorEmitted, Handler};
 
-use crate::semantic_analysis::type_check_context::MonomorphizeHelper;
+use crate::{language::CallPath, semantic_analysis::type_check_context::MonomorphizeHelper};
 
 use crate::{
     decl_engine::*,
@@ -31,6 +31,7 @@ pub struct TyFunctionDecl {
     pub parameters: Vec<TyFunctionParameter>,
     pub implementing_type: Option<TyDecl>,
     pub span: Span,
+    pub call_path: CallPath,
     pub attributes: transform::AttributesMap,
     pub type_parameters: Vec<TypeParameter>,
     pub return_type: TypeArgument,
@@ -91,6 +92,7 @@ impl HashWithEngines for TyFunctionDecl {
             purity,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
+            call_path: _,
             span: _,
             attributes: _,
             implementing_type: _,
@@ -165,17 +167,11 @@ impl UnconstrainedTypeParameters for TyFunctionDecl {
             .map(|type_param| type_param.type_id)
             .collect();
         all_types.extend(self.parameters.iter().flat_map(|param| {
-            let mut inner = type_engine
-                .get(param.type_argument.type_id)
-                .extract_inner_types(engines);
+            let mut inner = param.type_argument.type_id.extract_inner_types(engines);
             inner.insert(param.type_argument.type_id);
             inner
         }));
-        all_types.extend(
-            type_engine
-                .get(self.return_type.type_id)
-                .extract_inner_types(engines),
-        );
+        all_types.extend(self.return_type.type_id.extract_inner_types(engines));
         all_types.insert(self.return_type.type_id);
         let type_parameter_info = type_engine.get(type_parameter.type_id);
         all_types
@@ -240,6 +236,7 @@ impl TyFunctionDecl {
             },
             implementing_type: None,
             span,
+            call_path: CallPath::from(Ident::dummy()),
             attributes: Default::default(),
             is_contract_call: false,
             parameters: Default::default(),

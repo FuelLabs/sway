@@ -7,7 +7,10 @@ use crate::{
     decl_engine::{DeclEngineInsert, DeclId},
     language::ty::TyAbiDecl,
     namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
-    semantic_analysis::{TypeCheckFinalization, TypeCheckFinalizationContext},
+    semantic_analysis::{
+        TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
+        TypeCheckFinalizationContext,
+    },
     TypeParameter,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -368,6 +371,21 @@ impl ty::TyAbiDecl {
                 IsImplSelf::No,
                 IsExtendingExistingImpl::No,
             );
+            Ok(())
+        })
+    }
+}
+
+impl TypeCheckAnalysis for TyAbiDecl {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            for item in self.items.iter() {
+                let _ = item.type_check_analyze(handler, ctx);
+            }
             Ok(())
         })
     }
