@@ -1,12 +1,14 @@
 /// Represents the position in a storage statement that a field was declared.
 /// For example, in the following storage declaration, `foo` has [StateIndex] 0 and `bar` has
 /// [StateIndex] 1.
-/// ```
+///
+/// ```ignore
 /// storage {
 ///   foo: u32 = 0,
 ///   bar: u32 = 0,
 /// }
 /// ```
+///
 /// The actual [StorageSlot] is calculated as the sha256 hash of the domain separator
 /// [sway_utils::constants::STORAGE_DOMAIN_SEPARATOR] concatenated with the index.
 ///
