@@ -12,7 +12,7 @@ pub(crate) fn code_actions(ctx: &CodeActionContext) -> Option<Vec<CodeActionOrCo
     // Find diagnostics that have attached metadata.
     let diagnostics_with_data = ctx.diagnostics.iter().filter_map(|diag| {
         if let Some(data) = diag.clone().data {
-            if let Some(data) = serde_json::from_value::<DiagnosticData>(data).ok() {
+            if let Ok(data) = serde_json::from_value::<DiagnosticData>(data) {
                 return Some((diag.range, data));
             }
         }
