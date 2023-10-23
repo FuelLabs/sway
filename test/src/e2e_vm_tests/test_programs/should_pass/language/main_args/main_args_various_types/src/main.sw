@@ -1,7 +1,8 @@
 script;
 
-fn eq_str_3(a: str[3], b: str[3]) -> bool {
-    asm(a: a, b: b, len: 3, r) {
+fn eq_str_3(a: str[3], b: str) -> bool {
+    let ptr_b = b.as_ptr();
+    asm(a: a, b: ptr_b, len: 3, r) {
         meq r a b len;
         r: bool
     }
@@ -17,36 +18,17 @@ struct OpName {
 }
 
 fn main(ops: [(OpName, SignedNum); 2]) -> u64 {
-    let mut result = 0;
-    
-    let mut i = 0;
-    while i < 2 {
-        let (op, val) = ops[i];
+    assert(eq_str_3(ops[0].0.val, "set"));
+    assert(match ops[0].1 {
+        SignedNum::Positive(n) => n,
+        _ => revert(1),
+    } == 1338);
 
-        if eq_str_3(op.val, "set") {
-            match val {
-                SignedNum::Positive(v) => {
-                    result = v;
-                }
-                SignedNum::Negative(_) => {
-                    revert(0);
-                }
-            }
-        } else if eq_str_3(op.val, "add") {
-            match val {
-                SignedNum::Positive(v) => {
-                    result += v;
-                }
-                SignedNum::Negative(v) => {
-                    result -= v;
-                }
-            }
-        } else {
-            revert(0);
-        }
+    assert(eq_str_3(ops[1].0.val, "add"));
+    assert(match ops[1].1 {
+        SignedNum::Negative(n) => n,
+        _ => revert(2),
+    } == 1);
 
-        i += 1;
-    }
-
-    result
+    1
 }

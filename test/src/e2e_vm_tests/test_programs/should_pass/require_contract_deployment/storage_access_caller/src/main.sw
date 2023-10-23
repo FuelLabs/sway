@@ -1,10 +1,10 @@
 script;
 
 use storage_access_abi::*;
-use std::hash::sha256;
+use std::hash::*;
 
 fn main() -> bool {
-    let contract_id = 0x1838d1e56392f46b1da5620c81cbb0d371520365dee7300b56112e74dd6fc24d;
+    let contract_id = 0xe04d4f20b47fd753cfcc55e1f7adb2b9548f488b33b13bee7a0fb9d011d6a8e2;
     let caller = abi(StorageAccess, contract_id);
 
     // Test initializers
@@ -49,7 +49,7 @@ fn main() -> bool {
             revert(0)
         }
     }
-    assert(sha256(caller.get_string()) == sha256("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"));
+    assert(sha256_str_array(caller.get_string()) == sha256("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"));
 
     // Test 1
     caller.set_x(1);
@@ -189,10 +189,10 @@ fn main() -> bool {
         }
     };
 
-    caller.set_string("fuelfuelfuelfuelfuelfuelfuelfuelfuelfuel");
+    caller.set_string(__to_str_array("fuelfuelfuelfuelfuelfuelfuelfuelfuelfuel"));
 
     // Can't compare strings right now so compare hashes instead
-    assert(sha256(caller.get_string()) == sha256("fuelfuelfuelfuelfuelfuelfuelfuelfuelfuel"));
+    assert(sha256_str_array(caller.get_string()) == sha256("fuelfuelfuelfuelfuelfuelfuelfuelfuelfuel"));
 
     true
 }

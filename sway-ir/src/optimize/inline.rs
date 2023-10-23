@@ -50,11 +50,6 @@ enum Inline {
     Always,
     Never,
 }
-/// This is a copy of sway_core::asm_generation::compiler_constants.
-/// TODO: Once we have a target specific IR generator / legalizer,
-///       use that to mark related functions as ALWAYS_INLINE.
-///       Then we no longer depend on this const value below.
-const NUM_ARG_REGISTERS: u8 = 6;
 
 fn metadata_to_inline(context: &Context, md_idx: Option<MetadataIndex>) -> Option<Inline> {
     fn for_each_md_idx<T, F: FnMut(MetadataIndex) -> Option<T>>(
@@ -122,24 +117,6 @@ pub fn inline_in_module(
             None => {}
         }
 
-        let ret_type = func.get_return_type(ctx);
-        let num_args = {
-            func.args_iter(ctx).count()
-                + if super::target_fuel::is_demotable_type(ctx, &ret_type) {
-                    // The return type will be demoted to memory,
-                    // which means that there'll be an additional return arg.
-                    1
-                } else {
-                    0
-                }
-        };
-
-        // For now, pending improvements to ASMgen for calls, we must inline any function which has
-        // too many args.
-        if num_args as u8 > NUM_ARG_REGISTERS {
-            return true;
-        }
-
         // If the function is called only once then definitely inline it.
         if call_counts.get(func).copied().unwrap_or(0) == 1 {
             return true;
@@ -148,6 +125,15 @@ pub fn inline_in_module(
         // If the function is (still) small then also inline it.
         const MAX_INLINE_INSTRS_COUNT: usize = 4;
         if func.num_instructions(ctx) <= MAX_INLINE_INSTRS_COUNT {
+            return true;
+        }
+
+        // See https://github.com/FuelLabs/sway/pull/4899
+        if func.args_iter(ctx).any(|(_name, arg_val)| {
+            arg_val.get_type(ctx).map_or(false, |ty| {
+                ty.is_ptr(ctx) || !(ty.is_unit(ctx) | ty.is_bool(ctx) | ty.is_uint(ctx))
+            })
+        }) {
             return true;
         }
 
@@ -208,18 +194,21 @@ pub fn inline_some_function_calls<F: Fn(&Context, &Function, &Value) -> bool>(
     // Find call sites which passes the predicate.
     // We use a RefCell so that the inliner can modify the value
     // when it moves other instructions (which could be in call_date) after an inline.
-    let call_data: FxHashMap<Value, RefCell<(Block, Function)>> = function
+    let (call_sites, call_data): (Vec<_>, FxHashMap<_, _>) = function
         .instruction_iter(context)
         .filter_map(|(block, call_val)| match context.values[call_val.0].value {
             ValueDatum::Instruction(Instruction::Call(inlined_function, _)) => {
-                predicate(context, &inlined_function, &call_val)
-                    .then_some((call_val, RefCell::new((block, inlined_function))))
+                predicate(context, &inlined_function, &call_val).then_some((
+                    call_val,
+                    (call_val, RefCell::new((block, inlined_function))),
+                ))
             }
             _ => None,
         })
-        .collect();
+        .unzip();
 
-    for (call_site, call_site_in) in &call_data {
+    for call_site in &call_sites {
+        let call_site_in = call_data.get(call_site).unwrap();
         let (block, inlined_function) = *call_site_in.borrow();
         inline_function_call(
             context,
@@ -576,6 +565,36 @@ fn inline_instruction(
                 FuelVmInstruction::StateStoreWord { stored_val, key } => new_block
                     .ins(context)
                     .state_store_word(map_value(stored_val), map_value(key)),
+                FuelVmInstruction::WideUnaryOp { op, arg, result } => new_block
+                    .ins(context)
+                    .wide_unary_op(op, map_value(arg), map_value(result)),
+                FuelVmInstruction::WideBinaryOp {
+                    op,
+                    arg1,
+                    arg2,
+                    result,
+                } => new_block.ins(context).wide_binary_op(
+                    op,
+                    map_value(arg1),
+                    map_value(arg2),
+                    map_value(result),
+                ),
+                FuelVmInstruction::WideModularOp {
+                    op,
+                    result,
+                    arg1,
+                    arg2,
+                    arg3,
+                } => new_block.ins(context).wide_modular_op(
+                    op,
+                    map_value(result),
+                    map_value(arg1),
+                    map_value(arg2),
+                    map_value(arg3),
+                ),
+                FuelVmInstruction::WideCmpOp { op, arg1, arg2 } => new_block
+                    .ins(context)
+                    .wide_cmp_op(op, map_value(arg1), map_value(arg2)),
             },
             Instruction::GetElemPtr {
                 base,

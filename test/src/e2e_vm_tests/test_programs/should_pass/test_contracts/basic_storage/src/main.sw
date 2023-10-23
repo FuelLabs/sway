@@ -1,23 +1,26 @@
 contract;
-use std::{hash::sha256, storage::storage_api::{read, write}};
+use std::{hash::*, storage::storage_api::{read, write}};
 use basic_storage_abi::*;
 
 const C1 = 1;
-const S5 = "aaaaa";
+const S5 = __to_str_array("aaaaa");
 
 storage {
     c1: u64 = C1,
-    str0: str[0] = "",
-    str1: str[1] = "a",
-    str2: str[2] = "aa",
-    str3: str[3] = "aaa",
-    str4: str[4] = "aaaa",
+    str0: str[0] = __to_str_array(""),
+    str1: str[1] = __to_str_array("a"),
+    str2: str[2] = __to_str_array("aa"),
+    str3: str[3] = __to_str_array("aaa"),
+    str4: str[4] = __to_str_array("aaaa"),
     str5: str[5] = S5,
-    str6: str[6] = "aaaaaa",
-    str7: str[7] = "aaaaaaa",
-    str8: str[8] = "aaaaaaaa",
-    str9: str[9] = "aaaaaaaaa",
-    str10: str[10] = "aaaaaaaaaa",
+    str6: str[6] = __to_str_array("aaaaaa"),
+    str7: str[7] = __to_str_array("aaaaaaa"),
+    str8: str[8] = __to_str_array("aaaaaaaa"),
+    str9: str[9] = __to_str_array("aaaaaaaaa"),
+    str10: str[10] = __to_str_array("aaaaaaaaaa"),
+
+    const_u256: u256 = 0x0000000000000000000000000000000000000000000000000000000001234567u256,
+    const_b256: b256 = 0x0000000000000000000000000000000000000000000000000000000001234567,
 }
 
 impl BasicStorage for Contract {
@@ -38,7 +41,7 @@ impl BasicStorage for Contract {
 
     #[storage(write)]
     fn intrinsic_store_word(key: b256, value: u64) {
-        __state_store_word(key, value);
+        let _ = __state_store_word(key, value);
     }
 
     #[storage(read)]
@@ -56,13 +59,13 @@ impl BasicStorage for Contract {
             i += 1;
         }
 
-        __state_load_quad(key, values.buf.ptr(), slots);
+        let _ = __state_load_quad(key, values.buf.ptr(), slots);
         values
     }
 
     #[storage(write)]
     fn intrinsic_store_quad(key: b256, values: Vec<Quad>) {
-        __state_store_quad(key, values.buf.ptr(), values.len());
+        let _ = __state_store_quad(key, values.buf.ptr(), values.len());
     }
 
     #[storage(read, write)]
@@ -203,11 +206,23 @@ fn test_storage() {
     assert_streq(storage.str8.read(), "aaaaaaaa");
     assert_streq(storage.str9.read(), "aaaaaaaaa");
     assert_streq(storage.str10.read(), "aaaaaaaaaa");
+
+    assert_eq(storage.c1.read(), C1);
+    storage.c1.write(2);
+    assert_eq(storage.c1.read(), 2);
+    
+    assert_eq(storage.const_u256.read(), 0x0000000000000000000000000000000000000000000000000000000001234567u256);
+    storage.const_u256.write(0x0000000000000000000000000000000000000000000000000000000012345678u256);
+    assert_eq(storage.const_u256.read(), 0x0000000000000000000000000000000000000000000000000000000012345678u256);
+
+    assert_eq(storage.const_b256.read(), 0x0000000000000000000000000000000000000000000000000000000001234567);
+    storage.const_b256.write(0x0000000000000000000000000000000000000000000000000000000012345678);
+    assert_eq(storage.const_b256.read(), 0x0000000000000000000000000000000000000000000000000000000012345678);
 }
 
 // If these comparisons are done inline just above then it blows out the register allocator due to
 // all the ASM blocks.
 #[inline(never)]
-fn assert_streq<S1, S2>(lhs: S1, rhs: S2) {
-    assert(sha256(lhs) == sha256(rhs));
+fn assert_streq<S1, S2>(lhs: S1, rhs: str) {
+    assert(sha256_str_array(lhs) == sha256(rhs));
 }

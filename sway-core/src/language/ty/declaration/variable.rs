@@ -1,8 +1,17 @@
 use std::hash::{Hash, Hasher};
 
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Ident;
 
-use crate::{engine_threading::*, language::ty::*, type_system::*};
+use crate::{
+    engine_threading::*,
+    language::ty::*,
+    semantic_analysis::{
+        TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
+        TypeCheckFinalizationContext,
+    },
+    type_system::*,
+};
 
 #[derive(Clone, Debug)]
 pub struct TyVariableDecl {
@@ -53,10 +62,23 @@ impl SubstTypes for TyVariableDecl {
     }
 }
 
-impl ReplaceSelfType for TyVariableDecl {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.return_type.replace_self_type(engines, self_type);
-        self.type_ascription.replace_self_type(engines, self_type);
-        self.body.replace_self_type(engines, self_type)
+impl TypeCheckAnalysis for TyVariableDecl {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.body.type_check_analyze(handler, ctx)?;
+        Ok(())
+    }
+}
+
+impl TypeCheckFinalization for TyVariableDecl {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.body.type_check_finalize(handler, ctx)
     }
 }

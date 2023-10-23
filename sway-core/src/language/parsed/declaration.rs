@@ -33,6 +33,7 @@ pub enum Declaration {
     ConstantDeclaration(ConstantDeclaration),
     StorageDeclaration(StorageDeclaration),
     TypeAliasDeclaration(TypeAliasDeclaration),
+    TraitTypeDeclaration(TraitTypeDeclaration),
 }
 
 impl Declaration {

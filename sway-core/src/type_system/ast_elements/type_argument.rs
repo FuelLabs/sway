@@ -46,9 +46,10 @@ impl EqWithEngines for TypeArgument {}
 impl PartialEqWithEngines for TypeArgument {
     fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let type_engine = engines.te();
-        type_engine
-            .get(self.type_id)
-            .eq(&type_engine.get(other.type_id), engines)
+        self.type_id == other.type_id
+            || type_engine
+                .get(self.type_id)
+                .eq(&type_engine.get(other.type_id), engines)
     }
 }
 
@@ -94,12 +95,6 @@ impl From<&TypeParameter> for TypeArgument {
             span: type_param.name_ident.span(),
             call_path_tree: None,
         }
-    }
-}
-
-impl ReplaceSelfType for TypeArgument {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.type_id.replace_self_type(engines, self_type);
     }
 }
 

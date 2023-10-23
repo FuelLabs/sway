@@ -14,6 +14,6 @@ fn main() -> u64 {
     //let (x, y): (u32, _) = (42, true); // this generates a parsing error
     test(true, false);
     test (42, 42);
-    let (a, (_b, (_c, _d) ) ): (u64, (u32, (bool, str[2]) ) ) = (42u64, (42u32, (true, "ok") ) );
+    let (a, (_b, (_c, _d) ) ): (u64, (u32, (bool, str) ) ) = (42u64, (42u32, (true, "ok") ) );
     a
 }

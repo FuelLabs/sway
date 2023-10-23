@@ -1,6 +1,7 @@
 use std::marker::PhantomData;
 use std::{fmt, hash::Hash};
 
+use crate::language::ty::TyTraitType;
 use crate::{
     decl_engine::*,
     engine_threading::*,
@@ -11,8 +12,10 @@ use crate::{
     type_system::*,
 };
 
+pub type DeclIdIndexType = usize;
+
 /// An ID used to refer to an item in the [DeclEngine](super::decl_engine::DeclEngine)
-pub struct DeclId<T>(usize, PhantomData<T>);
+pub struct DeclId<T>(DeclIdIndexType, PhantomData<T>);
 
 impl<T> fmt::Debug for DeclId<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -21,7 +24,7 @@ impl<T> fmt::Debug for DeclId<T> {
 }
 
 impl<T> DeclId<T> {
-    pub(crate) fn inner(&self) -> usize {
+    pub(crate) fn inner(&self) -> DeclIdIndexType {
         self.0
     }
 }
@@ -29,7 +32,7 @@ impl<T> DeclId<T> {
 impl<T> Copy for DeclId<T> {}
 impl<T> Clone for DeclId<T> {
     fn clone(&self) -> Self {
-        Self(self.0, PhantomData)
+        *self
     }
 }
 
@@ -46,7 +49,7 @@ impl<T> PartialEq for DeclId<T> {
 }
 impl<T> PartialOrd for DeclId<T> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.0.partial_cmp(&other.0)
+        Some(self.cmp(other))
     }
 }
 impl<T> Ord for DeclId<T> {
@@ -62,6 +65,11 @@ impl<T> DeclId<T> {
 
     pub(crate) fn replace_id(&mut self, index: Self) {
         self.0 = index.0;
+    }
+
+    pub(crate) fn dummy() -> Self {
+        // we assume that `usize::MAX` id is not possible in practice
+        Self(usize::MAX, PhantomData)
     }
 }
 
@@ -129,59 +137,11 @@ impl SubstTypes for DeclId<TyTypeAliasDecl> {
     }
 }
 
-impl ReplaceSelfType for DeclId<TyFunctionDecl> {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
+impl SubstTypes for DeclId<TyTraitType> {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
-        decl.replace_self_type(engines, self_type);
-        decl_engine.replace(*self, decl);
-    }
-}
-impl ReplaceSelfType for DeclId<TyTraitDecl> {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.replace_self_type(engines, self_type);
-        decl_engine.replace(*self, decl);
-    }
-}
-impl ReplaceSelfType for DeclId<TyTraitFn> {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.replace_self_type(engines, self_type);
-        decl_engine.replace(*self, decl);
-    }
-}
-impl ReplaceSelfType for DeclId<TyImplTrait> {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.replace_self_type(engines, self_type);
-        decl_engine.replace(*self, decl);
-    }
-}
-impl ReplaceSelfType for DeclId<TyStructDecl> {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.replace_self_type(engines, self_type);
-        decl_engine.replace(*self, decl);
-    }
-}
-impl ReplaceSelfType for DeclId<TyEnumDecl> {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.replace_self_type(engines, self_type);
-        decl_engine.replace(*self, decl);
-    }
-}
-impl ReplaceSelfType for DeclId<TyTypeAliasDecl> {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.replace_self_type(engines, self_type);
+        decl.subst(type_mapping, engines);
         decl_engine.replace(*self, decl);
     }
 }

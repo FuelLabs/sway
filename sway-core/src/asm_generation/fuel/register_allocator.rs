@@ -146,11 +146,11 @@ impl RegisterPool {
 /// This function finally returns `live_out` because it has all the liveness information needed.
 /// `live_in` is computed because it is needed to compute `live_out` iteratively.
 ///
-pub(crate) fn liveness_analysis(ops: &[Op]) -> Vec<FxHashSet<VirtualRegister>> {
+pub(crate) fn liveness_analysis(ops: &[Op]) -> Vec<BTreeSet<VirtualRegister>> {
     // Vectors representing maps that will reprsent the live_in and live_out tables. Each entry
     // corresponds to an instruction in `ops`.
     let mut live_in: Vec<FxHashSet<VirtualRegister>> = vec![FxHashSet::default(); ops.len()];
-    let mut live_out: Vec<FxHashSet<VirtualRegister>> = vec![FxHashSet::default(); ops.len()];
+    let mut live_out: Vec<BTreeSet<VirtualRegister>> = vec![BTreeSet::default(); ops.len()];
     let mut label_to_index: HashMap<Label, usize> = HashMap::new();
 
     // Keep track of an map between jump labels and op indices. Useful to compute op successors.
@@ -222,7 +222,7 @@ pub(crate) fn liveness_analysis(ops: &[Op]) -> Vec<FxHashSet<VirtualRegister>> {
 ///
 pub(crate) fn create_interference_graph(
     ops: &[Op],
-    live_out: &[FxHashSet<VirtualRegister>],
+    live_out: &[BTreeSet<VirtualRegister>],
 ) -> (InterferenceGraph, HashMap<VirtualRegister, NodeIndex>) {
     let mut interference_graph = InterferenceGraph::with_capacity(0, 0);
 
@@ -235,7 +235,7 @@ pub(crate) fn create_interference_graph(
         .fold(BTreeSet::new(), |mut tree, elem| {
             let mut regs = elem.registers();
             regs.retain(|&reg| reg.is_virtual());
-            tree.extend(regs.into_iter());
+            tree.extend(regs);
             tree
         })
         .iter()
@@ -293,17 +293,17 @@ pub(crate) fn create_interference_graph(
 ///
 pub(crate) fn coalesce_registers(
     ops: &[Op],
-    live_out: Vec<FxHashSet<VirtualRegister>>,
+    live_out: Vec<BTreeSet<VirtualRegister>>,
     interference_graph: &mut InterferenceGraph,
     reg_to_node_map: &mut HashMap<VirtualRegister, NodeIndex>,
-) -> (Vec<Op>, Vec<FxHashSet<VirtualRegister>>) {
+) -> (Vec<Op>, Vec<BTreeSet<VirtualRegister>>) {
     // A map from the virtual registers that are removed to the virtual registers that they are
     // replaced with during the coalescing process.
     let mut reg_to_reg_map: HashMap<&VirtualRegister, &VirtualRegister> = HashMap::new();
 
     // To hold the final *reduced* list of ops
     let mut reduced_ops: Vec<Op> = Vec::with_capacity(ops.len());
-    let mut reduced_live_out: Vec<FxHashSet<VirtualRegister>> = Vec::with_capacity(live_out.len());
+    let mut reduced_live_out: Vec<BTreeSet<VirtualRegister>> = Vec::with_capacity(live_out.len());
     assert!(ops.len() == live_out.len());
 
     for (op_idx, op) in ops.iter().enumerate() {
@@ -488,7 +488,7 @@ fn compute_def_use_points(ops: &[Op]) -> FxHashMap<VirtualRegister, (Vec<usize>,
 pub(crate) fn color_interference_graph(
     interference_graph: &mut InterferenceGraph,
     ops: &[Op],
-    live_out: &[FxHashSet<VirtualRegister>],
+    live_out: &[BTreeSet<VirtualRegister>],
 ) -> Result<Vec<NodeIndex>, FxHashSet<VirtualRegister>> {
     let mut stack = Vec::with_capacity(interference_graph.node_count());
     let mut on_stack = FxHashSet::default();
@@ -825,9 +825,12 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
 
     let cfe_idx = cfe_idx_opt.expect("Function does not have CFEI instruction for locals");
 
-    let Either::Left(VirtualOp::CFEI(VirtualImmediate24 { value: locals_size_bytes })) = ops[cfe_idx].opcode else {
-            panic!("Unexpected opcode");
-        };
+    let Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
+        value: locals_size_bytes,
+    })) = ops[cfe_idx].opcode
+    else {
+        panic!("Unexpected opcode");
+    };
 
     // pad up the locals size in bytes to a word.
     let locals_size_bytes = size_bytes_round_up_to_word_alignment!(locals_size_bytes);

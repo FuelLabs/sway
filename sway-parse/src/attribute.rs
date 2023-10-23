@@ -55,15 +55,45 @@ impl<T: Parse> Parse for Annotated<T> {
                 ),
             });
         }
+
         while let Some(attr) = parser.guarded_parse::<HashToken, _>()? {
             attribute_list.push(attr);
         }
 
-        // Parse the `T` value.
-        let value = parser.parse()?;
+        if parser.check_empty().is_some() {
+            let error = parser.emit_error(ParseErrorKind::ExpectedAnItemAfterDocComment);
+            Err(error)
+        } else {
+            // Parse the `T` value.
+            let value = match parser.parse_with_recovery() {
+                Ok(value) => value,
+                Err(r) => {
+                    let (spans, error) =
+                        r.recover_at_next_line_with_fallback_error(ParseErrorKind::InvalidItem);
+                    if let Some(error) = T::error(spans, error) {
+                        error
+                    } else {
+                        Err(error)?
+                    }
+                }
+            };
 
-        Ok(Annotated {
-            attribute_list,
+            Ok(Annotated {
+                attribute_list,
+                value,
+            })
+        }
+    }
+
+    fn error(
+        spans: Box<[sway_types::Span]>,
+        error: sway_error::handler::ErrorEmitted,
+    ) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        T::error(spans, error).map(|value| Annotated {
+            attribute_list: vec![],
             value,
         })
     }
@@ -237,6 +267,7 @@ mod tests {
                   inner: Nil,
                   span: (178, 180),
                 ))),
+                span: (161, 193),
               ),
               span: (160, 194),
             ),

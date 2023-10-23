@@ -1,6 +1,6 @@
 script;
 
-use std::hash::sha256;
+use std::hash::*;
 
 enum SimpleEnum {
     A: b256,

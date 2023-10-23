@@ -40,7 +40,7 @@ pub struct Command {
 pub(crate) fn exec(command: Command) -> ForcResult<()> {
     let engines = Engines::default();
     let res = forc_check::check(command, &engines)?;
-    if !res.is_ok() {
+    if res.0.is_none() {
         forc_result_bail!("unable to type check");
     }
     Ok(())

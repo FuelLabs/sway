@@ -7,7 +7,7 @@ use sway_ast::keywords::{
 };
 use sway_ast::{
     FnArg, FnArgs, FnSignature, ItemConst, ItemEnum, ItemFn, ItemKind, ItemStruct, ItemTrait,
-    ItemTypeAlias, ItemUse, Submodule, TypeField,
+    ItemTypeAlias, ItemUse, Submodule, TraitType, TypeField,
 };
 use sway_error::parser_error::ParseErrorKind;
 
@@ -75,6 +75,16 @@ impl Parse for ItemKind {
         let _ = parser.ban_visibility_qualifier(&visibility);
 
         Ok(kind)
+    }
+
+    fn error(
+        spans: Box<[sway_types::Span]>,
+        error: sway_error::handler::ErrorEmitted,
+    ) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        Some(ItemKind::Error(spans, error))
     }
 }
 
@@ -163,6 +173,26 @@ impl Parse for FnSignature {
                 None => None,
             },
             where_clause_opt: parser.guarded_parse::<WhereToken, _>()?,
+        })
+    }
+}
+
+impl Parse for TraitType {
+    fn parse(parser: &mut Parser) -> ParseResult<TraitType> {
+        let type_token = parser.parse()?;
+        let name = parser.parse()?;
+        let eq_token_opt = parser.take();
+        let ty_opt = match &eq_token_opt {
+            Some(_eq) => Some(parser.parse()?),
+            None => None,
+        };
+        let semicolon_token = parser.peek().unwrap_or_default();
+        Ok(TraitType {
+            type_token,
+            name,
+            eq_token_opt,
+            ty_opt,
+            semicolon_token,
         })
     }
 }
@@ -508,8 +538,8 @@ mod tests {
 
             let trait_item = decls.next();
             assert!(trait_item.is_some());
-            let (annotated, _) = trait_item.unwrap();
-            if let ItemTraitItem::Fn(_fn_sig) = &annotated.value {
+            let annotated = trait_item.unwrap();
+            if let ItemTraitItem::Fn(_fn_sig, _) = &annotated.value {
                 assert_eq!(
                     attributes(&annotated.attribute_list),
                     vec![[("foo", Some(vec!["one"]))], [("bar", None)]]
@@ -565,7 +595,7 @@ mod tests {
             assert!(f_sig.is_some());
 
             assert_eq!(
-                attributes(&f_sig.unwrap().0.attribute_list),
+                attributes(&f_sig.unwrap().attribute_list),
                 vec![[("bar", Some(vec!["one", "two", "three"]))],]
             );
 
@@ -573,7 +603,7 @@ mod tests {
             assert!(g_sig.is_some());
 
             assert_eq!(
-                attributes(&g_sig.unwrap().0.attribute_list),
+                attributes(&g_sig.unwrap().attribute_list),
                 vec![[("foo", None)],]
             );
             assert!(decls.next().is_none());

@@ -1,6 +1,10 @@
-use crate::{engine_threading::*, type_system::priv_prelude::*};
+use crate::{
+    engine_threading::*,
+    type_system::{priv_prelude::*, unify::occurs_check::OccursCheck},
+};
 use sway_types::Spanned;
 
+#[derive(Debug)]
 enum UnifyCheckMode {
     /// Given two [TypeId]'s `left` and `right`, check to see if `left` can be
     /// coerced into `right`.
@@ -267,12 +271,14 @@ impl<'a> UnifyCheck<'a> {
             }
             (
                 Custom {
-                    call_path: l_name,
+                    qualified_call_path: l_name,
                     type_arguments: l_type_args,
+                    root_type_id: l_root_type_id,
                 },
                 Custom {
-                    call_path: r_name,
+                    qualified_call_path: r_name,
                     type_arguments: r_type_args,
+                    root_type_id: r_root_type_id,
                 },
             ) => {
                 let l_types = l_type_args
@@ -287,7 +293,37 @@ impl<'a> UnifyCheck<'a> {
                     .iter()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
-                return l_name.suffix == r_name.suffix && self.check_multiple(&l_types, &r_types);
+                let l_root_type_ids = if let Some(l_root_type_id) = l_root_type_id {
+                    vec![*l_root_type_id]
+                } else {
+                    vec![]
+                };
+                let r_root_type_ids = if let Some(r_root_type_id) = r_root_type_id {
+                    vec![*r_root_type_id]
+                } else {
+                    vec![]
+                };
+                let same_qualified_path_root = match (
+                    l_name.qualified_path_root.clone(),
+                    r_name.qualified_path_root.clone(),
+                ) {
+                    (Some(l_qualified_path_root), Some(r_qualified_path_root)) => {
+                        self.check_inner(
+                            l_qualified_path_root.ty.type_id,
+                            r_qualified_path_root.ty.type_id,
+                        ) && self.check_inner(
+                            l_qualified_path_root.as_trait,
+                            r_qualified_path_root.as_trait,
+                        )
+                    }
+                    (None, None) => true,
+                    _ => false,
+                };
+
+                return l_name.call_path.suffix == r_name.call_path.suffix
+                    && same_qualified_path_root
+                    && self.check_multiple(&l_types, &r_types)
+                    && self.check_multiple(&l_root_type_ids, &r_root_type_ids);
             }
             _ => {}
         }
@@ -295,6 +331,11 @@ impl<'a> UnifyCheck<'a> {
         match self.mode {
             Coercion => {
                 match (left_info, right_info) {
+                    (r @ UnknownGeneric { .. }, e @ UnknownGeneric { .. })
+                        if TypeInfo::is_self_type(&r) || TypeInfo::is_self_type(&e) =>
+                    {
+                        true
+                    }
                     (
                         UnknownGeneric {
                             name: ln,
@@ -305,8 +346,11 @@ impl<'a> UnifyCheck<'a> {
                             trait_constraints: rtc,
                         },
                     ) => ln == rn && rtc.eq(&ltc, self.engines),
-                    // any type can be coerced into generic
-                    (_, UnknownGeneric { .. }) => true,
+                    // any type can be coerced into a generic,
+                    // except if the type already contains the generic
+                    (_e, _g @ UnknownGeneric { .. }) => {
+                        !OccursCheck::new(self.engines).check(right, left)
+                    }
 
                     // Let empty enums to coerce to any other type. This is useful for Never enum.
                     (Enum(r_decl_ref), _)
@@ -358,7 +402,9 @@ impl<'a> UnifyCheck<'a> {
                     (UnsignedInteger(_), UnsignedInteger(_)) => true,
                     (Numeric, UnsignedInteger(_)) => true,
                     (UnsignedInteger(_), Numeric) => true,
-                    (Str(l), Str(r)) => l.val() == r.val(),
+
+                    (StringSlice, StringSlice) => true,
+                    (StringArray(l), StringArray(r)) => l.val() == r.val(),
 
                     // For contract callers, they can be coerced if they have the same
                     // name and at least one has an address of `None`
@@ -379,8 +425,8 @@ impl<'a> UnifyCheck<'a> {
                             || matches!(ean, AbiName::Deferred)
                     }
 
-                    (ErrorRecovery, _) => true,
-                    (_, ErrorRecovery) => true,
+                    (ErrorRecovery(_), _) => true,
+                    (_, ErrorRecovery(_)) => true,
 
                     (a, b) => a.eq(&b, self.engines),
                 }
@@ -397,8 +443,11 @@ impl<'a> UnifyCheck<'a> {
                             trait_constraints: rtc,
                         },
                     ) => rtc.eq(&ltc, self.engines),
-                    // any type can be coerced into generic
-                    (_, UnknownGeneric { .. }) => true,
+                    // any type can be coerced into a generic,
+                    // except if the type already contains the generic
+                    (_e, _g @ UnknownGeneric { .. }) => {
+                        !OccursCheck::new(self.engines).check(right, left)
+                    }
 
                     (Enum(l_decl_ref), Enum(r_decl_ref)) => {
                         let l_decl = self.engines.de().get_enum(&l_decl_ref);
@@ -446,7 +495,6 @@ impl<'a> UnifyCheck<'a> {
                 // TypeId, they may later resolve to be different types in the type
                 // engine
                 (TypeInfo::Unknown, TypeInfo::Unknown) => false,
-                (TypeInfo::SelfType, TypeInfo::SelfType) => false,
                 (TypeInfo::Numeric, TypeInfo::Numeric) => false,
                 (TypeInfo::Storage { .. }, TypeInfo::Storage { .. }) => false,
 
@@ -454,8 +502,9 @@ impl<'a> UnifyCheck<'a> {
                 (TypeInfo::Contract, TypeInfo::Contract) => true,
                 (TypeInfo::Boolean, TypeInfo::Boolean) => true,
                 (TypeInfo::B256, TypeInfo::B256) => true,
-                (TypeInfo::ErrorRecovery, TypeInfo::ErrorRecovery) => true,
-                (TypeInfo::Str(l), TypeInfo::Str(r)) => l.val() == r.val(),
+                (TypeInfo::ErrorRecovery(_), TypeInfo::ErrorRecovery(_)) => true,
+                (TypeInfo::StringSlice, TypeInfo::StringSlice) => true,
+                (TypeInfo::StringArray(l), TypeInfo::StringArray(r)) => l.val() == r.val(),
                 (TypeInfo::UnsignedInteger(l), TypeInfo::UnsignedInteger(r)) => l == r,
                 (TypeInfo::RawUntypedPtr, TypeInfo::RawUntypedPtr) => true,
                 (TypeInfo::RawUntypedSlice, TypeInfo::RawUntypedSlice) => true,

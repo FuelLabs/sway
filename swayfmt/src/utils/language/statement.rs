@@ -32,9 +32,6 @@ fn format_statement(
             semicolon_token_opt,
         } => {
             expr.format(formatted_code, formatter)?;
-            if formatted_code.ends_with('\n') {
-                formatted_code.pop();
-            }
             if let Some(semicolon) = semicolon_token_opt {
                 if formatter.shape.code_line.line_style == LineStyle::Inline {
                     write!(formatted_code, "{}", semicolon.span().as_str())?;
@@ -42,6 +39,9 @@ fn format_statement(
                     writeln!(formatted_code, "{}", semicolon.span().as_str())?;
                 }
             }
+        }
+        Statement::Error(_, _) => {
+            return Err(FormatterError::SyntaxError);
         }
     }
 
@@ -93,6 +93,9 @@ impl LeafSpans for Statement {
                     collected_spans.push(ByteSpan::from(semicolon_token.span()));
                 }
                 collected_spans
+            }
+            Statement::Error(spans, _) => {
+                vec![sway_types::Span::join_all(spans.iter().cloned()).into()]
             }
         }
     }

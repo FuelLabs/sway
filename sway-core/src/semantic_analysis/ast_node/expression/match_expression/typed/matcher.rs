@@ -1,5 +1,6 @@
+use indexmap::IndexMap;
+
 use crate::{
-    error::{err, ok},
     language::{ty, CallPath, Literal},
     semantic_analysis::{
         ast_node::expression::typed_expression::{
@@ -8,13 +9,15 @@ use crate::{
         },
         TypeCheckContext,
     },
-    CompileResult, Ident, TypeId,
+    Ident, TypeId, UnifyCheck,
 };
 
-use sway_error::error::CompileError;
-use sway_types::span::Span;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 
-use itertools::{EitherOrBoth, Itertools};
+use sway_types::{span::Span, Spanned};
 
 /// List of requirements that a desugared if expression must include in the conditional in conjunctive normal form.
 pub(crate) type MatchReqMap = Vec<Vec<(ty::TyExpression, ty::TyExpression)>>;
@@ -26,7 +29,7 @@ pub(crate) type MatcherResult = (MatchReqMap, MatchDeclMap);
 /// This algorithm desugars pattern matching into a [MatcherResult], by creating two lists,
 /// the [MatchReqMap] which is a list of requirements that a desugared if expression
 /// must include in the conditional in conjunctive normal form.
-/// and the [MatchImplMap] which is a list of variable
+/// and the [MatchDeclMap] which is a list of variable
 /// declarations that must be placed inside the body of the if expression.
 ///
 /// Given the following example
@@ -60,12 +63,13 @@ pub(crate) type MatcherResult = (MatchReqMap, MatchDeclMap);
 /// ]
 /// ```
 ///
-/// The first match arm would create a [MatchImplMap] of roughly:
+/// The first match arm would create a [MatchDeclMap] of roughly:
 ///
 /// ```ignore
 /// [
 ///     (x, 42) // add `let x = 42` in the body of the desugared if expression
 /// ]
+/// ```
 ///
 /// The second match arm would create a [MatchReqMap] of roughly:
 ///
@@ -73,13 +77,13 @@ pub(crate) type MatcherResult = (MatchReqMap, MatchDeclMap);
 /// // y must equal 5 or 10 to trigger this case
 /// [
 ///   [
-///     (y, 5)
+///     (y, 5),
 ///     (y, 10)
 ///   ],
 /// ]
 /// ```
 ///
-/// The second match arm would create a [MatchImplMap] of roughly:
+/// The second match arm would create a [MatchDeclMap] of roughly:
 ///
 /// ```ignore
 /// [
@@ -101,18 +105,18 @@ pub(crate) type MatcherResult = (MatchReqMap, MatchDeclMap);
 /// ]
 /// ```
 ///
-/// The third match arm would create a [MatchImplMap] of roughly:
+/// The third match arm would create a [MatchDeclMap] of roughly:
 ///
 /// ```ignore
 /// []
 /// ```
 pub(crate) fn matcher(
+    handler: &Handler,
     mut ctx: TypeCheckContext,
+    match_value: &ty::TyExpression,
     exp: &ty::TyExpression,
     scrutinee: ty::TyScrutinee,
-) -> CompileResult<MatcherResult> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+) -> Result<MatcherResult, ErrorEmitted> {
     let ty::TyScrutinee {
         variant,
         type_id,
@@ -123,86 +127,136 @@ pub(crate) fn matcher(
     let engines = ctx.engines();
 
     // unify the type of the scrutinee with the type of the expression
-    check!(
-        CompileResult::from(type_engine.unify(engines, type_id, exp.return_type, &span, "", None)),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    handler.scope(|h| {
+        type_engine.unify(h, engines, type_id, exp.return_type, &span, "", None);
+        Ok(())
+    })?;
 
     match variant {
-        ty::TyScrutineeVariant::Or(elems) => {
+        ty::TyScrutineeVariant::Or(alternatives) => handler.scope(|handler| {
             let mut match_req_map: MatchReqMap = vec![];
-            let mut match_decl_map: Option<MatchDeclMap> = None;
-            for scrutinee in elems {
-                let scrutinee_span = scrutinee.span.clone();
+            let mut variables_in_alternatives: Vec<(Span, MatchDeclMap)> = vec![]; // Span is the span of the alternative.
 
-                let (new_req_map, mut new_decl_map) = check!(
-                    matcher(ctx.by_ref(), exp, scrutinee),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+            for alternative in alternatives {
+                let alternative_span = alternative.span.clone();
 
-                // check that the bindings are the same between clauses
+                // We want to collect as many errors as possible.
+                // If an alternative has any internal issues we will emit them, ignore that alternative,
+                // but still process the remaining alternatives.
+                let (req_map, decl_map) =
+                    match matcher(handler, ctx.by_ref(), match_value, exp, alternative) {
+                        Ok(matcher_result) => matcher_result,
+                        Err(_) => continue,
+                    };
 
-                new_decl_map.sort_by(|(a, _), (b, _)| a.cmp(b));
-                if let Some(match_decl_map) = match_decl_map {
-                    for pair in match_decl_map.iter().zip_longest(new_decl_map.iter()) {
-                        use EitherOrBoth::*;
-                        let missing_var = match pair {
-                            Both((l_ident, _), (r_ident, _)) => {
-                                if l_ident == r_ident {
-                                    None
-                                } else {
-                                    Some(l_ident)
-                                }
-                            }
-                            Left((ident, _)) => Some(ident),
-                            Right((ident, _)) => Some(ident),
-                        };
-                        if let Some(var) = missing_var {
-                            errors.push(CompileError::MatchVariableNotBoundInAllPatterns {
-                                var: var.clone(),
-                                span: scrutinee_span,
-                            });
-                            return err(warnings, errors);
-                        }
-                    }
+                variables_in_alternatives.push((alternative_span, decl_map));
+
+                match_req_map = factor_or_on_cnf(match_req_map, req_map);
+            }
+
+            // All the first occurrences of variables in order of appearance.
+            let mut variables: IndexMap<&Ident, TypeId> = IndexMap::new();
+            for (ident, expr) in variables_in_alternatives
+                .iter()
+                .flat_map(|(_, decl_map)| decl_map)
+            {
+                variables.entry(ident).or_insert(expr.return_type);
+            }
+
+            // At this stage, in the matcher, we are not concerned about the duplicates
+            // in individual alternatives.
+
+            // Check that we have all variables in all alternatives.
+            for (variable, _) in variables.iter() {
+                let missing_in_alternatives: Vec<Span> = variables_in_alternatives
+                    .iter()
+                    .filter(|(_, decl_map)| !decl_map.iter().any(|(ident, _)| ident == *variable))
+                    .map(|(span, _)| span.clone())
+                    .collect();
+
+                if missing_in_alternatives.is_empty() {
+                    continue;
                 }
 
-                match_decl_map = Some(new_decl_map);
-                match_req_map = factor_or_on_cnf(match_req_map, new_req_map);
+                handler.emit_err(CompileError::MatchArmVariableNotDefinedInAllAlternatives {
+                    match_value: match_value.span.clone(),
+                    match_type: engines.help_out(match_value.return_type).to_string(),
+                    variable: (*variable).clone(),
+                    missing_in_alternatives,
+                });
             }
-            ok(
-                (match_req_map, match_decl_map.unwrap_or(vec![])),
-                vec![],
-                vec![],
-            )
-        }
-        ty::TyScrutineeVariant::CatchAll => ok((vec![], vec![]), vec![], vec![]),
-        ty::TyScrutineeVariant::Literal(value) => {
-            ok(match_literal(exp, value, span), vec![], vec![])
-        }
-        ty::TyScrutineeVariant::Variable(name) => ok(match_variable(exp, name), vec![], vec![]),
-        ty::TyScrutineeVariant::Constant(name, _, const_decl) => ok(
-            match_constant(ctx, exp, name, const_decl.type_ascription.type_id, span),
-            vec![],
-            vec![],
-        ),
+
+            // Check that the variable types are the same in all alternatives
+            // (assuming that the variable exist in the alternative).
+
+            // To the equality, we accept type aliases and the types they encapsulate
+            // to be equal, otherwise, we are strict, e.g., no coercion between u8 and u16, etc.
+            let equality = UnifyCheck::non_dynamic_equality(engines);
+
+            for (variable, type_id) in variables {
+                let type_mismatched_vars =
+                    variables_in_alternatives.iter().flat_map(|(_, decl_map)| {
+                        decl_map
+                            .iter()
+                            .filter(|(ident, decl_expr)| {
+                                ident == variable && !equality.check(type_id, decl_expr.return_type)
+                            })
+                            .map(|(ident, decl_expr)| (ident.clone(), decl_expr.return_type))
+                    });
+
+                for type_mismatched_var in type_mismatched_vars {
+                    handler.emit_err(CompileError::MatchArmVariableMismatchedType {
+                        match_value: match_value.span.clone(),
+                        match_type: engines.help_out(match_value.return_type).to_string(),
+                        variable: type_mismatched_var.0,
+                        first_definition: variable.span(),
+                        expected: engines.help_out(type_id).to_string(),
+                        received: engines.help_out(type_mismatched_var.1).to_string(),
+                    });
+                }
+            }
+
+            Ok((
+                match_req_map,
+                variables_in_alternatives
+                    .last()
+                    .map_or(vec![], |(_, decl_map)| decl_map.clone()),
+            ))
+        }),
+        ty::TyScrutineeVariant::CatchAll => Ok((vec![], vec![])),
+        ty::TyScrutineeVariant::Literal(value) => Ok(match_literal(exp, value, span)),
+        ty::TyScrutineeVariant::Variable(name) => Ok(match_variable(exp, name)),
+        ty::TyScrutineeVariant::Constant(name, _, const_decl) => Ok(match_constant(
+            ctx,
+            exp,
+            name,
+            const_decl.type_ascription.type_id,
+            span,
+        )),
         ty::TyScrutineeVariant::StructScrutinee {
             struct_ref: _,
             fields,
             ..
-        } => match_struct(ctx, exp, fields),
+        } => match_struct(handler, ctx, match_value, exp, fields),
         ty::TyScrutineeVariant::EnumScrutinee {
             enum_ref: _,
             variant,
             call_path_decl,
             value,
             ..
-        } => match_enum(ctx, exp, *variant, call_path_decl, *value, span),
-        ty::TyScrutineeVariant::Tuple(elems) => match_tuple(ctx, exp, elems, span),
+        } => match_enum(
+            handler,
+            ctx,
+            match_value,
+            exp,
+            *variant,
+            call_path_decl,
+            *value,
+            span,
+        ),
+        ty::TyScrutineeVariant::Tuple(elems) => {
+            match_tuple(handler, ctx, match_value, exp, elems, span)
+        }
     }
 }
 
@@ -269,12 +323,12 @@ fn match_constant(
 }
 
 fn match_struct(
+    handler: &Handler,
     mut ctx: TypeCheckContext,
+    match_value: &ty::TyExpression,
     exp: &ty::TyExpression,
     fields: Vec<ty::TyStructScrutineeField>,
-) -> CompileResult<MatcherResult> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+) -> Result<MatcherResult, ErrorEmitted> {
     let mut match_req_map = vec![];
     let mut match_decl_map = vec![];
     for ty::TyStructScrutineeField {
@@ -284,12 +338,13 @@ fn match_struct(
         field_def_name: _,
     } in fields.into_iter()
     {
-        let subfield = check!(
-            instantiate_struct_field_access(ctx.engines(), exp.clone(), field.clone(), field_span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let subfield = instantiate_struct_field_access(
+            handler,
+            ctx.engines(),
+            exp.clone(),
+            field.clone(),
+            field_span,
+        )?;
         match scrutinee {
             // if the scrutinee is simply naming the struct field ...
             None => {
@@ -297,74 +352,64 @@ fn match_struct(
             }
             // or if the scrutinee has a more complex agenda
             Some(scrutinee) => {
-                let (mut new_match_req_map, mut new_match_decl_map) = check!(
-                    matcher(ctx.by_ref(), &subfield, scrutinee),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let (mut new_match_req_map, mut new_match_decl_map) =
+                    matcher(handler, ctx.by_ref(), match_value, &subfield, scrutinee)?;
                 match_req_map.append(&mut new_match_req_map);
                 match_decl_map.append(&mut new_match_decl_map);
             }
         }
     }
 
-    ok((match_req_map, match_decl_map), warnings, errors)
+    Ok((match_req_map, match_decl_map))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn match_enum(
+    handler: &Handler,
     ctx: TypeCheckContext,
+    match_value: &ty::TyExpression,
     exp: &ty::TyExpression,
     variant: ty::TyEnumVariant,
     call_path_decl: ty::TyDecl,
     scrutinee: ty::TyScrutinee,
     span: Span,
-) -> CompileResult<MatcherResult> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+) -> Result<MatcherResult, ErrorEmitted> {
     let (mut match_req_map, unsafe_downcast) =
         instantiate_unsafe_downcast(ctx.engines(), exp, variant, call_path_decl, span);
-    let (mut new_match_req_map, match_decl_map) = check!(
-        matcher(ctx, &unsafe_downcast, scrutinee),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let (mut new_match_req_map, match_decl_map) =
+        matcher(handler, ctx, match_value, &unsafe_downcast, scrutinee)?;
     match_req_map.append(&mut new_match_req_map);
-    ok((match_req_map, match_decl_map), warnings, errors)
+    Ok((match_req_map, match_decl_map))
 }
 
 fn match_tuple(
+    handler: &Handler,
     mut ctx: TypeCheckContext,
+    match_value: &ty::TyExpression,
     exp: &ty::TyExpression,
     elems: Vec<ty::TyScrutinee>,
     span: Span,
-) -> CompileResult<MatcherResult> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+) -> Result<MatcherResult, ErrorEmitted> {
     let mut match_req_map = vec![];
     let mut match_decl_map = vec![];
     for (pos, elem) in elems.into_iter().enumerate() {
-        let tuple_index_access = check!(
-            instantiate_tuple_index_access(
-                ctx.engines(),
-                exp.clone(),
-                pos,
-                span.clone(),
-                span.clone()
-            ),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        let (mut new_match_req_map, mut new_match_decl_map) = check!(
-            matcher(ctx.by_ref(), &tuple_index_access, elem),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let tuple_index_access = instantiate_tuple_index_access(
+            handler,
+            ctx.engines(),
+            exp.clone(),
+            pos,
+            span.clone(),
+            span.clone(),
+        )?;
+        let (mut new_match_req_map, mut new_match_decl_map) = matcher(
+            handler,
+            ctx.by_ref(),
+            match_value,
+            &tuple_index_access,
+            elem,
+        )?;
         match_req_map.append(&mut new_match_req_map);
         match_decl_map.append(&mut new_match_decl_map);
     }
-    ok((match_req_map, match_decl_map), warnings, errors)
+    Ok((match_req_map, match_decl_map))
 }

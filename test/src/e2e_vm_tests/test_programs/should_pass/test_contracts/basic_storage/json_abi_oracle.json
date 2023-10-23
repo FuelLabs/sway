@@ -24,7 +24,7 @@
         "typeArguments": [
           {
             "name": "",
-            "type": 8,
+            "type": 9,
             "typeArguments": null
           }
         ]
@@ -47,7 +47,7 @@
         },
         {
           "name": "slots",
-          "type": 8,
+          "type": 9,
           "typeArguments": null
         }
       ],
@@ -83,7 +83,7 @@
       "name": "intrinsic_load_word",
       "output": {
         "name": "",
-        "type": 8,
+        "type": 9,
         "typeArguments": null
       }
     },
@@ -138,7 +138,7 @@
         },
         {
           "name": "value",
-          "type": 8,
+          "type": 9,
           "typeArguments": null
         }
       ],
@@ -166,7 +166,7 @@
         },
         {
           "name": "value",
-          "type": 8,
+          "type": 9,
           "typeArguments": null
         }
       ],
@@ -196,7 +196,104 @@
       }
     }
   ],
-  "loggedTypes": [],
+  "loggedTypes": [
+    {
+      "logId": 0,
+      "loggedType": {
+        "name": "",
+        "type": 9,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 1,
+      "loggedType": {
+        "name": "",
+        "type": 9,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 2,
+      "loggedType": {
+        "name": "",
+        "type": 9,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 3,
+      "loggedType": {
+        "name": "",
+        "type": 9,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 4,
+      "loggedType": {
+        "name": "",
+        "type": 8,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 5,
+      "loggedType": {
+        "name": "",
+        "type": 8,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 6,
+      "loggedType": {
+        "name": "",
+        "type": 8,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 7,
+      "loggedType": {
+        "name": "",
+        "type": 8,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 8,
+      "loggedType": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 9,
+      "loggedType": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 10,
+      "loggedType": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 11,
+      "loggedType": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      }
+    }
+  ],
   "messagesTypes": [],
   "types": [
     {
@@ -246,22 +343,22 @@
       "components": [
         {
           "name": "v1",
-          "type": 8,
+          "type": 9,
           "typeArguments": null
         },
         {
           "name": "v2",
-          "type": 8,
+          "type": 9,
           "typeArguments": null
         },
         {
           "name": "v3",
-          "type": 8,
+          "type": 9,
           "typeArguments": null
         },
         {
           "name": "v4",
-          "type": 8,
+          "type": 9,
           "typeArguments": null
         }
       ],
@@ -278,7 +375,7 @@
         },
         {
           "name": "cap",
-          "type": 8,
+          "type": 9,
           "typeArguments": null
         }
       ],
@@ -303,7 +400,7 @@
         },
         {
           "name": "len",
-          "type": 8,
+          "type": 9,
           "typeArguments": null
         }
       ],
@@ -315,8 +412,14 @@
     },
     {
       "components": null,
-      "type": "u64",
+      "type": "u256",
       "typeId": 8,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 9,
       "typeParameters": null
     }
   ]

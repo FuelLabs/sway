@@ -4,12 +4,10 @@ mod submodule;
 
 fn main() -> u64 {
     single();
-    glob();
-    shadowing_glob();
+    //glob();
+    //shadowing_glob();
     0
 }
-
-
 
 fn single() {
     use submodule::Enum;

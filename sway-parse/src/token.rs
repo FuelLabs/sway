@@ -4,13 +4,17 @@ use num_bigint::BigUint;
 use std::sync::Arc;
 use sway_ast::literal::{LitChar, LitInt, LitIntType, LitString, Literal};
 use sway_ast::token::{
-    Comment, CommentKind, CommentedGroup, CommentedTokenStream, CommentedTokenTree, Delimiter,
-    DocComment, DocStyle, GenericTokenTree, Punct, PunctKind, Spacing, TokenStream,
+    Comment, CommentKind, CommentedGroup, CommentedTokenStream, CommentedTokenTree, DocComment,
+    DocStyle, GenericTokenTree, Punct, Spacing, TokenStream,
 };
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::lex_error::{LexError, LexErrorKind};
-use sway_types::{Ident, SourceId, Span, Spanned};
+use sway_types::{
+    ast::{Delimiter, PunctKind},
+    Ident, SourceId, Span, Spanned,
+};
+use unicode_bidi::format_chars::{ALM, FSI, LRE, LRI, LRM, LRO, PDF, PDI, RLE, RLI, RLM, RLO};
 use unicode_xid::UnicodeXID;
 
 #[extension_trait]
@@ -204,6 +208,15 @@ pub fn lex_commented(
                 if let Some((next_index, next_character)) = l.stream.next() {
                     character = next_character;
                     index = next_index;
+                }
+                if !(character.is_xid_start() || character == '_') {
+                    let kind = LexErrorKind::InvalidCharacter {
+                        position: index,
+                        character,
+                    };
+                    let span = span_one(&l, index, character);
+                    error(l.handler, LexError { kind, span });
+                    continue;
                 }
             }
 
@@ -462,14 +475,28 @@ fn lex_string(
                 },
             )
         };
-        let (_, next_character) = l
-            .stream
-            .next()
-            .ok_or_else(|| unclosed_string_lit(l, l.src.len() - 1))?;
+        let (next_index, next_character) = l.stream.next().ok_or_else(|| {
+            // last character may not be a unicode boundary
+            let mut end = l.src.len() - 1;
+            while !l.src.is_char_boundary(end) {
+                end -= 1;
+            }
+            unclosed_string_lit(l, end)
+        })?;
         parsed.push(match next_character {
             '\\' => parse_escape_code(l)
                 .map_err(|e| e.unwrap_or_else(|| unclosed_string_lit(l, l.src.len())))?,
             '"' => break,
+            // do not allow text direction codepoints
+            ALM | FSI | LRE | LRI | LRM | LRO | PDF | PDI | RLE | RLI | RLM | RLO => {
+                let kind = LexErrorKind::UnicodeTextDirInLiteral {
+                    position: next_index,
+                    character: next_character,
+                };
+                let span = span_one(l, next_index, next_character);
+                error(l.handler, LexError { span, kind });
+                continue;
+            }
             _ => next_character,
         });
     }
@@ -504,7 +531,17 @@ fn lex_char(
         }
     };
 
-    let (_, next_char) = next(l)?;
+    let (next_index, next_char) = next(l)?;
+    // do not allow text direction codepoints
+    if let ALM | FSI | LRE | LRI | LRM | LRO | PDF | PDI | RLE | RLI | RLM | RLO = next_char {
+        let kind = LexErrorKind::UnicodeTextDirInLiteral {
+            position: next_index,
+            character: next_char,
+        };
+        let span = span_one(l, next_index, next_char);
+        error(l.handler, LexError { span, kind });
+    }
+
     let parsed = escape(l, next_char)?;
 
     // Consume the closing `'`.
@@ -645,7 +682,7 @@ fn lex_int_lit(
         let end_opt = parse_digits(&mut big_uint, l, 10);
         (big_uint, end_opt)
     };
-    let (big_uint, end_opt) = if digit == 0 {
+    let (radix, (big_uint, end_opt)) = if digit == 0 {
         let prefixed_int_lit = |l: &mut Lexer<'_>, radix| {
             let _ = l.stream.next();
             let d = l.stream.next();
@@ -669,21 +706,38 @@ fn lex_int_lit(
         };
 
         match l.stream.peek() {
-            Some((_, 'x')) => prefixed_int_lit(l, 16)?,
-            Some((_, 'o')) => prefixed_int_lit(l, 8)?,
-            Some((_, 'b')) => prefixed_int_lit(l, 2)?,
-            Some((_, '_' | '0'..='9')) => decimal_int_lit(l, 0),
-            Some(&(next_index, _)) => (BigUint::from(0u32), Some(next_index)),
-            None => (BigUint::from(0u32), None),
+            Some((_, 'x')) => (16, prefixed_int_lit(l, 16)?),
+            Some((_, 'o')) => (8, prefixed_int_lit(l, 8)?),
+            Some((_, 'b')) => (2, prefixed_int_lit(l, 2)?),
+            Some((_, '_' | '0'..='9')) => (10, decimal_int_lit(l, 0)),
+            Some(&(next_index, _)) => (10, (BigUint::from(0u32), Some(next_index))),
+            None => (10, (BigUint::from(0u32), None)),
         }
     } else {
-        decimal_int_lit(l, digit)
+        (10, decimal_int_lit(l, digit))
     };
+
+    let ty_opt = lex_int_ty_opt(l)?;
+
+    // Only accepts u256 literals in hex form
+    if let Some((LitIntType::U256, span)) = &ty_opt {
+        if radix != 16 {
+            return Err(error(
+                l.handler,
+                LexError {
+                    kind: LexErrorKind::U256NotInHex,
+                    span: span.clone(),
+                },
+            ));
+        }
+    }
+
     let literal = Literal::Int(LitInt {
         span: span(l, index, end_opt.unwrap_or(l.src.len())),
         parsed: big_uint,
-        ty_opt: lex_int_ty_opt(l)?,
+        ty_opt,
     });
+
     Ok(Some(CommentedTokenTree::Tree(literal.into())))
 }
 
@@ -726,6 +780,7 @@ pub fn parse_int_suffix(suffix: &str) -> Option<LitIntType> {
         "u16" => LitIntType::U16,
         "u32" => LitIntType::U32,
         "u64" => LitIntType::U64,
+        "u256" => LitIntType::U256,
         "i8" => LitIntType::I8,
         "i16" => LitIntType::I16,
         "i32" => LitIntType::I32,
@@ -796,7 +851,52 @@ mod tests {
             TokenTree,
         },
     };
-    use sway_error::handler::Handler;
+    use sway_error::{
+        error::CompileError,
+        handler::Handler,
+        lex_error::{LexError, LexErrorKind},
+    };
+
+    #[test]
+    fn lex_bidi() {
+        let input = "
+            script;
+            use std::string::String;
+            fn main() {
+                let a = String::from_ascii_str(\"fuel\");
+                let b = String::from_ascii_str(\"fuel\u{202E}\u{2066}// Same string again\u{2069}\u{2066}\");
+                if a.as_bytes() == b.as_bytes() {
+                    log(\"same\");
+                } else {
+                    log(\"different\");
+                }
+                let lrm = '\u{202E}';
+                log(lrm);
+            }
+        ";
+        let start = 0;
+        let end = input.len();
+        let path = None;
+        let handler = Handler::default();
+        let _stream = lex_commented(&handler, &Arc::from(input), start, end, &path).unwrap();
+        let (errors, warnings) = handler.consume();
+        assert_eq!(warnings.len(), 0);
+        assert_eq!(errors.len(), 5);
+        for err in errors {
+            assert_matches!(
+                err,
+                CompileError::Lex {
+                    error: LexError {
+                        span: _,
+                        kind: LexErrorKind::UnicodeTextDirInLiteral {
+                            position: _,
+                            character: _
+                        }
+                    }
+                }
+            );
+        }
+    }
 
     #[test]
     fn lex_commented_token_stream() {
@@ -980,9 +1080,9 @@ mod tests {
 
     #[test]
     fn lex_char_escaped_quote() {
-        let input = r#"
+        let input = r"
         '\''
-        "#;
+        ";
         let handler = Handler::default();
         let stream = lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
         assert!(handler.consume().0.is_empty());

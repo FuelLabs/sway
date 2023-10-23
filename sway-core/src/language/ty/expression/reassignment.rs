@@ -3,9 +3,19 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{decl_engine::*, engine_threading::*, language::ty::*, type_system::*};
+use crate::{
+    decl_engine::*,
+    engine_threading::*,
+    language::ty::*,
+    semantic_analysis::{
+        TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
+        TypeCheckFinalizationContext,
+    },
+    type_system::*,
+};
 
 #[derive(Clone, Debug)]
 pub struct TyReassignment {
@@ -53,16 +63,34 @@ impl SubstTypes for TyReassignment {
     }
 }
 
-impl ReplaceSelfType for TyReassignment {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.rhs.replace_self_type(engines, self_type);
-        self.lhs_type.replace_self_type(engines, self_type);
+impl ReplaceDecls for TyReassignment {
+    fn replace_decls_inner(
+        &mut self,
+        decl_mapping: &DeclMapping,
+        handler: &Handler,
+        ctx: &mut TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.rhs.replace_decls(decl_mapping, handler, ctx)
     }
 }
 
-impl ReplaceDecls for TyReassignment {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
-        self.rhs.replace_decls(decl_mapping, engines);
+impl TypeCheckAnalysis for TyReassignment {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.rhs.type_check_analyze(handler, ctx)
+    }
+}
+
+impl TypeCheckFinalization for TyReassignment {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.rhs.type_check_finalize(handler, ctx)
     }
 }
 

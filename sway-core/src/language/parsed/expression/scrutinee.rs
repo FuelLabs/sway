@@ -3,6 +3,7 @@ use crate::{
     TypeInfo,
 };
 
+use sway_error::handler::ErrorEmitted;
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 /// A [Scrutinee] is on the left-hand-side of a pattern, and dictates whether or
@@ -44,6 +45,7 @@ pub enum Scrutinee {
     // this is to handle parser recovery
     Error {
         spans: Box<[Span]>,
+        err: ErrorEmitted,
     },
 }
 
@@ -71,7 +73,7 @@ impl Spanned for Scrutinee {
             Scrutinee::StructScrutinee { span, .. } => span.clone(),
             Scrutinee::EnumScrutinee { span, .. } => span.clone(),
             Scrutinee::Tuple { span, .. } => span.clone(),
-            Scrutinee::Error { spans } => spans.iter().cloned().reduce(Span::join).unwrap(),
+            Scrutinee::Error { spans, .. } => spans.iter().cloned().reduce(Span::join).unwrap(),
         }
     }
 }
@@ -138,8 +140,9 @@ impl Scrutinee {
                 ..
             } => {
                 let name = vec![TypeInfo::Custom {
-                    call_path: struct_name.clone(),
+                    qualified_call_path: struct_name.clone().into(),
                     type_arguments: None,
+                    root_type_id: None,
                 }];
                 let fields = fields
                     .iter()
@@ -151,18 +154,19 @@ impl Scrutinee {
                         _ => vec![],
                     })
                     .collect::<Vec<TypeInfo>>();
-                vec![name, fields].concat()
+                [name, fields].concat()
             }
             Scrutinee::EnumScrutinee {
                 call_path, value, ..
             } => {
                 let enum_name = call_path.prefixes.last().unwrap_or(&call_path.suffix);
                 let name = vec![TypeInfo::Custom {
-                    call_path: enum_name.clone().into(),
+                    qualified_call_path: enum_name.clone().into(),
                     type_arguments: None,
+                    root_type_id: None,
                 }];
                 let value = value.gather_approximate_typeinfo_dependencies();
-                vec![name, value].concat()
+                [name, value].concat()
             }
             Scrutinee::Tuple { elems, .. } | Scrutinee::Or { elems, .. } => elems
                 .iter()

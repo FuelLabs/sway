@@ -7,7 +7,7 @@ library;
 fn foo() {}
 
 // Can import everything below because they are using the `pub` keyword
-pub const ONE = "1";
+pub const ONE = __to_str_array("1");
 
 pub struct MyStruct {}
 

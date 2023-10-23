@@ -1,4 +1,8 @@
+use crate::diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic};
+
 use core::fmt;
+
+use either::Either;
 
 use sway_types::{Ident, SourceId, Span, Spanned};
 
@@ -82,7 +86,15 @@ pub enum Warning {
     DeadStorageDeclarationForFunction {
         unneeded_attrib: String,
     },
-    MatchExpressionUnreachableArm,
+    MatchExpressionUnreachableArm {
+        match_value: Span,
+        match_type: String,
+        // Either preceding non catch-all arms or a single interior catch-all arm.
+        preceding_arms: Either<Vec<Span>, Span>,
+        unreachable_arm: Span,
+        is_last_arm: bool,
+        is_catch_all_arm: bool,
+    },
     UnrecognizedAttribute {
         attrib_name: Ident,
     },
@@ -103,6 +115,9 @@ pub enum Warning {
         block_name: Ident,
     },
     ModulePrivacyDisabled,
+    UsingDeprecated {
+        message: String,
+    },
 }
 
 impl fmt::Display for Warning {
@@ -215,7 +230,7 @@ impl fmt::Display for Warning {
                 "This function's storage attributes declaration does not match its \
                  actual storage access pattern: '{unneeded_attrib}' attribute(s) can be removed."
             ),
-            MatchExpressionUnreachableArm => write!(f, "This match arm is unreachable."),
+            MatchExpressionUnreachableArm { .. } => write!(f, "This match arm is unreachable."),
             UnrecognizedAttribute {attrib_name} => write!(f, "Unknown attribute: \"{attrib_name}\"."),
             AttributeExpectedNumberOfArguments {attrib_name, received_args, expected_min_len, expected_max_len } => write!(
                 f,
@@ -241,6 +256,101 @@ impl fmt::Display for Warning {
             ModulePrivacyDisabled => write!(f, "Module privacy rules will soon change to make modules private by default.
                                             You can enable the new behavior with the --experimental-private-modules flag, which will become the default behavior in a later release.
                                             More details are available in the related RFC: https://github.com/FuelLabs/sway-rfcs/blob/master/rfcs/0008-private-modules.md"),
+            UsingDeprecated { message } => write!(f, "{}", message),
+        }
+    }
+}
+
+impl ToDiagnostic for CompileWarning {
+    fn to_diagnostic(&self, source_engine: &sway_types::SourceEngine) -> Diagnostic {
+        let code = Code::warnings;
+        use sway_types::style::*;
+        use Warning::*;
+        match &self.warning_content {
+            NonScreamingSnakeCaseConstName { name } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Constant name is not idiomatic".to_string())),
+                issue: Issue::warning(
+                    source_engine,
+                    name.span(),
+                    format!("Constant \"{name}\" should be SCREAMING_SNAKE_CASE."),
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        name.span(),
+                        format!("Consider renaming it to, e.g., \"{}\".", to_screaming_snake_case(name.as_str())),
+                    ),
+                ],
+                help: vec![
+                    format!("In Sway, ABIs, structs, traits, and enums are CapitalCase."),
+                    format!("Modules, variables, and functions are snake_case, while constants are SCREAMING_SNAKE_CASE."),
+                ],
+            },
+            MatchExpressionUnreachableArm { match_value, match_type, preceding_arms, unreachable_arm, is_last_arm, is_catch_all_arm } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Match arm is unreachable".to_string())),
+                issue: Issue::warning(
+                    source_engine,
+                    unreachable_arm.clone(),
+                    match (*is_last_arm, *is_catch_all_arm) {
+                        (true, true) => format!("Last catch-all match arm `{}` is unreachable.", unreachable_arm.as_str()),
+                        _ => format!("Match arm `{}` is unreachable.", unreachable_arm.as_str())
+                    }
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        match_value.clone(),
+                        format!("The expression to match on is of type \"{match_type}\".")
+                    ),
+                    if preceding_arms.is_right() {
+                        Hint::help(
+                            source_engine,
+                            preceding_arms.as_ref().unwrap_right().clone(),
+                            format!("Catch-all arm `{}` makes all match arms below it unreachable.", preceding_arms.as_ref().unwrap_right().as_str())
+                        )
+                    }
+                    else {
+                        Hint::info(
+                            source_engine,
+                            Span::join_all(preceding_arms.as_ref().unwrap_left().clone()),
+                            if *is_last_arm {
+                                format!("Preceding match arms already match all possible values of `{}`.", match_value.as_str())
+                            }
+                            else {
+                                format!("Preceding match arms already match all the values that `{}` can match.", unreachable_arm.as_str())
+                            }
+                        )
+                    }
+                ],
+                help: if preceding_arms.is_right() {
+                    let catch_all_arm = preceding_arms.as_ref().unwrap_right().as_str();
+                    vec![
+                        format!("Catch-all patterns make sense only in last match arms."),
+                        format!("Consider removing the catch-all arm `{catch_all_arm}` or making it the last arm."),
+                        format!("Consider removing the unreachable arms below the `{catch_all_arm}` arm."),
+                    ]
+                }
+                else if *is_last_arm && *is_catch_all_arm {
+                    vec![
+                        format!("Catch-all patterns are often used in last match arms."),
+                        format!("But in this case, the preceding arms already match all possible values of `{}`.", match_value.as_str()),
+                        format!("Consider removing the unreachable last catch-all arm."),
+                    ]
+                }
+                else {
+                    vec![
+                        format!("Consider removing the unreachable arm."),
+                    ]
+                }
+            },
+           _ => Diagnostic {
+                    // TODO: Temporary we use self here to achieve backward compatibility.
+                    //       In general, self must not be used and will not be used once we
+                    //       switch to our own #[error] macro. All the values for the formating
+                    //       of a diagnostic must come from the enum variant parameters.
+                    issue: Issue::warning(source_engine, self.span(), format!("{}", self.warning_content)),
+                    ..Default::default()
+                }
         }
     }
 }

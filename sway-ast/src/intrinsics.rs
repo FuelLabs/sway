@@ -3,10 +3,12 @@ use std::fmt;
 #[derive(Eq, PartialEq, Debug, Clone, Hash)]
 pub enum Intrinsic {
     IsReferenceType,
-    IsStrType,
+    IsStrArray,
     SizeOfType,
     SizeOfVal,
     SizeOfStr,
+    AssertIsStrArray,
+    ToStrArray,
     Eq,
     Gt,
     Lt,
@@ -39,10 +41,12 @@ impl fmt::Display for Intrinsic {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match self {
             Intrinsic::IsReferenceType => "is_reference_type",
-            Intrinsic::IsStrType => "is_str_type",
+            Intrinsic::IsStrArray => "is_str_type",
             Intrinsic::SizeOfType => "size_of",
             Intrinsic::SizeOfVal => "size_of_val",
-            Intrinsic::SizeOfStr => "size_of_str",
+            Intrinsic::SizeOfStr => "size_of_str_array",
+            Intrinsic::AssertIsStrArray => "assert_is_str_array",
+            Intrinsic::ToStrArray => "to_str_array",
             Intrinsic::Eq => "eq",
             Intrinsic::Gt => "gt",
             Intrinsic::Lt => "lt",
@@ -79,10 +83,12 @@ impl Intrinsic {
         use Intrinsic::*;
         Some(match raw {
             "__is_reference_type" => IsReferenceType,
-            "__is_str_type" => IsStrType,
+            "__is_str_array" => IsStrArray,
             "__size_of" => SizeOfType,
             "__size_of_val" => SizeOfVal,
-            "__size_of_str" => SizeOfStr,
+            "__size_of_str_array" => SizeOfStr,
+            "__assert_is_str_array" => AssertIsStrArray,
+            "__to_str_array" => ToStrArray,
             "__eq" => Eq,
             "__gt" => Gt,
             "__lt" => Lt,

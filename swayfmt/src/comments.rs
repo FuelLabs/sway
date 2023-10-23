@@ -1,8 +1,3 @@
-use ropey::Rope;
-use std::{fmt::Write, ops::Range};
-use sway_ast::token::{Comment, CommentKind};
-use sway_types::{Span, Spanned};
-
 use crate::{
     formatter::FormattedCode,
     parse::parse_snippet,
@@ -12,6 +7,10 @@ use crate::{
     },
     Format, Formatter, FormatterError,
 };
+use ropey::Rope;
+use std::{fmt::Write, ops::Range};
+use sway_ast::token::{Comment, CommentKind};
+use sway_types::{Span, Spanned};
 
 pub type UnformattedCode = String;
 
@@ -36,6 +35,18 @@ impl CommentsContext {
     }
 }
 
+#[inline]
+pub fn has_comments_in_formatter(formatter: &Formatter, range: &Range<usize>) -> bool {
+    formatter
+        .comments_context
+        .map
+        .comments_between(range)
+        .peekable()
+        .peek()
+        .is_some()
+}
+
+#[inline]
 pub fn has_comments<I: Iterator>(comments: I) -> bool {
     comments.peekable().peek().is_some()
 }
@@ -104,7 +115,7 @@ pub fn write_comments(
                     write!(
                         formatted_code,
                         "{}{}{}",
-                        formatter.shape.indent.to_string(&formatter.config)?,
+                        formatter.indent_to_str()?,
                         comment.span().as_str(),
                         newlines
                     )?;
@@ -151,9 +162,7 @@ pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
     let mut offset = 0;
     let mut to_rewrite = formatted_code[last_formatted..].to_string();
 
-    let formatted_leaf_spans = parse_snippet::<T>(&formatted_code[last_formatted..])
-        .unwrap()
-        .leaf_spans();
+    let formatted_leaf_spans = parse_snippet::<T>(&formatted_code[last_formatted..])?.leaf_spans();
 
     let mut previous_unformatted_leaf_span = unformatted_leaf_spans
         .first()
@@ -352,13 +361,17 @@ fn insert_after_span(
         };
 
         // Insert the actual comment(s).
-        src_rope.insert(from.end + offset, &comment_str);
+        src_rope
+            .try_insert(from.end + offset, &comment_str)
+            .map_err(|_| FormatterError::CommentError)?;
 
         formatted_code.clear();
         formatted_code.push_str(&src_rope.to_string());
     }
 
-    Ok(comment_str.len())
+    // In order to handle special characters, we return the number of characters rather than
+    // the size of the string.
+    Ok(comment_str.chars().count())
 }
 
 #[cfg(test)]

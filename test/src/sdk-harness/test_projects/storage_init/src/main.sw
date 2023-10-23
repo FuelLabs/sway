@@ -1,5 +1,7 @@
 contract;
 
+use std::hash::*;
+
 pub struct S {
     x: u64,
     y: u64,
@@ -75,7 +77,7 @@ storage {
         int32: 6,
     }),
     e2: E = E::A(777),
-    string: str[40] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    string: str[40] = __to_str_array("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),
 }
 
 abi ExperimentalStorageInitTest {
@@ -116,7 +118,7 @@ impl ExperimentalStorageInitTest for Contract {
             int32: 6,
         });
         let e2: E = E::A(777);
-        let string: str[40] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+        let string: str[40] = __to_str_array("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
 
         assert(storage.x.read() == x);
         assert(storage.y.read() == y);
@@ -138,7 +140,7 @@ impl ExperimentalStorageInitTest for Contract {
         assert(storage.s.t.int32.read() == s.t.int32);
         assert(storage.e.read() == e);
         assert(storage.e2.read() == e2);
-        assert(std::hash::sha256(storage.string.read()) == std::hash::sha256(string));
+        assert(sha256_str_array(storage.string.read()) == sha256_str_array(string));
         true
     }
 }

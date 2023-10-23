@@ -1,3 +1,4 @@
+//! Creation of HTML anchors for types that can be linked.
 use crate::{doc::module::ModuleInfo, RenderPlan};
 use anyhow::{anyhow, Result};
 use horrorshow::{box_html, RenderBox};
@@ -86,7 +87,7 @@ pub(crate) fn render_type_anchor(
         TypeInfo::UnknownGeneric { name, .. } => Ok(box_html! {
             : name.as_str();
         }),
-        TypeInfo::Str(len) => Ok(box_html! {
+        TypeInfo::StringArray(len) => Ok(box_html! {
             : len.span().as_str();
         }),
         TypeInfo::UnsignedInteger(int_bits) => {
@@ -96,6 +97,7 @@ pub(crate) fn render_type_anchor(
                 IntegerBits::Sixteen => "u16",
                 IntegerBits::ThirtyTwo => "u32",
                 IntegerBits::SixtyFour => "u64",
+                IntegerBits::V256 => "u256",
             };
             Ok(box_html! {
                 : uint;
@@ -114,11 +116,11 @@ pub(crate) fn render_type_anchor(
                 Err(anyhow!("Deferred AbiName is unhandled"))
             }
         }
-        TypeInfo::Custom { call_path, .. } => Ok(box_html! {
-            : call_path.suffix.as_str();
-        }),
-        TypeInfo::SelfType => Ok(box_html! {
-            : "Self";
+        TypeInfo::Custom {
+            qualified_call_path,
+            ..
+        } => Ok(box_html! {
+            : qualified_call_path.call_path.suffix.as_str();
         }),
         TypeInfo::B256 => Ok(box_html! {
             : "b256";

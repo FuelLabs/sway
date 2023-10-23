@@ -2,11 +2,17 @@ use std::hash::{Hash, Hasher};
 
 use sway_types::{Ident, Named, Span, Spanned};
 
-use crate::{engine_threading::*, language::Visibility, transform, type_system::*};
+use crate::{
+    engine_threading::*,
+    language::{CallPath, Visibility},
+    transform,
+    type_system::*,
+};
 
 #[derive(Clone, Debug)]
 pub struct TyTypeAliasDecl {
     pub name: Ident,
+    pub call_path: CallPath,
     pub attributes: transform::AttributesMap,
     pub ty: TypeArgument,
     pub visibility: Visibility,
@@ -36,6 +42,7 @@ impl HashWithEngines for TyTypeAliasDecl {
             visibility,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
+            call_path: _,
             span: _,
             attributes: _,
         } = self;
@@ -48,12 +55,6 @@ impl HashWithEngines for TyTypeAliasDecl {
 impl SubstTypes for TyTypeAliasDecl {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.ty.subst(type_mapping, engines);
-    }
-}
-
-impl ReplaceSelfType for TyTypeAliasDecl {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.ty.replace_self_type(engines, self_type);
     }
 }
 

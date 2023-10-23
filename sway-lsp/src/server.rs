@@ -2,19 +2,20 @@
 //! It provides an interface between the LSP protocol and the sway-lsp internals.
 
 use crate::{
+    core::document,
     handlers::{notification, request},
-    lsp_ext::ShowAstParams,
+    lsp_ext::{OnEnterParams, ShowAstParams},
     server_state::ServerState,
 };
 use lsp_types::{
     CodeActionParams, CodeActionResponse, CodeLens, CodeLensParams, CompletionParams,
     CompletionResponse, DidChangeTextDocumentParams, DidChangeWatchedFilesParams,
-    DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentFormattingParams,
-    DocumentHighlight, DocumentHighlightParams, DocumentSymbolParams, DocumentSymbolResponse,
-    GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams, InitializeParams,
-    InitializeResult, InitializedParams, InlayHint, InlayHintParams, PrepareRenameResponse,
-    RenameParams, SemanticTokensParams, SemanticTokensResult, TextDocumentIdentifier,
-    TextDocumentPositionParams, TextEdit, WorkspaceEdit,
+    DidCloseTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams,
+    DocumentFormattingParams, DocumentHighlight, DocumentHighlightParams, DocumentSymbolParams,
+    DocumentSymbolResponse, GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams,
+    InitializeParams, InitializeResult, InitializedParams, InlayHint, InlayHintParams,
+    PrepareRenameResponse, RenameParams, SemanticTokensParams, SemanticTokensResult,
+    TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, WorkspaceEdit,
 };
 use tower_lsp::{jsonrpc::Result, LanguageServer};
 
@@ -33,19 +34,33 @@ impl LanguageServer for ServerState {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        notification::handle_did_open_text_document(self, params).await;
+        if let Err(err) = notification::handle_did_open_text_document(self, params).await {
+            tracing::error!("{}", err.to_string());
+        }
+    }
+
+    async fn did_close(&self, params: DidCloseTextDocumentParams) {
+        if let Err(err) = document::remove_dirty_flag(&params.text_document.uri) {
+            tracing::error!("{}", err.to_string());
+        }
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        notification::handle_did_change_text_document(self, params).await;
+        if let Err(err) = notification::handle_did_change_text_document(self, params).await {
+            tracing::error!("{}", err.to_string());
+        }
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        notification::handle_did_save_text_document(self, params).await;
+        if let Err(err) = notification::handle_did_save_text_document(self, params).await {
+            tracing::error!("{}", err.to_string());
+        }
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
-        notification::handle_did_change_watched_files(self, params).await;
+        if let Err(err) = notification::handle_did_change_watched_files(self, params) {
+            tracing::error!("{}", err.to_string());
+        }
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
@@ -116,5 +131,9 @@ impl LanguageServer for ServerState {
 impl ServerState {
     pub async fn show_ast(&self, params: ShowAstParams) -> Result<Option<TextDocumentIdentifier>> {
         request::handle_show_ast(self, params)
+    }
+
+    pub async fn on_enter(&self, params: OnEnterParams) -> Result<Option<WorkspaceEdit>> {
+        request::on_enter(self, params)
     }
 }

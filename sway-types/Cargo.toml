@@ -1,6 +1,6 @@
 [package]
 name = "sway-types"
-version = "0.42.1"
+version = "0.46.1"
 description = "Sway core types."
 authors.workspace = true
 edition.workspace = true
@@ -13,7 +13,10 @@ fuel-asm = { workspace = true }
 fuel-crypto = { workspace = true }
 fuel-tx = { workspace = true }
 lazy_static = "1.4"
+num-bigint = "0.4.3"
+num-traits = "0.2.16"
 serde = { version = "1.0", features = ["derive"] }
+thiserror = "1"
 
 [features]
 no-span-debug = []

@@ -11,8 +11,8 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{keywords::Token, token::Delimiter, ItemStorage, StorageField};
-use sway_types::Spanned;
+use sway_ast::{keywords::Token, ItemStorage, StorageField};
+use sway_types::{ast::Delimiter, Spanned};
 
 #[cfg(test)]
 mod tests;
@@ -35,7 +35,7 @@ impl Format for ItemStorage {
                 write!(formatted_code, "{}", self.storage_token.span().as_str())?;
                 let fields = self.fields.get();
 
-                // Handle openning brace
+                // Handle opening brace
                 Self::open_curly_brace(formatted_code, formatter)?;
 
                 // Determine alignment tactic
@@ -70,12 +70,7 @@ impl Format for ItemStorage {
                         let value_pairs_iter = value_pairs.iter().enumerate();
                         for (field_index, (storage_field, comma_token)) in value_pairs_iter.clone()
                         {
-                            write!(
-                                formatted_code,
-                                "{}",
-                                &formatter.shape.indent.to_string(&formatter.config)?
-                            )?;
-
+                            write!(formatted_code, "{}", formatter.indent_to_str()?)?;
                             // Add name
                             storage_field.name.format(formatted_code, formatter)?;
 
@@ -140,7 +135,7 @@ impl CurlyBrace for ItemStorage {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
-        formatter.shape.block_indent(&formatter.config);
+        formatter.indent();
         let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
@@ -161,11 +156,11 @@ impl CurlyBrace for ItemStorage {
     ) -> Result<(), FormatterError> {
         // shrink_left would return error if the current indentation level is becoming < 0, in that
         // case we should use the Shape::default() which has 0 indentation level.
-        formatter.shape.block_unindent(&formatter.config);
+        formatter.unindent();
         write!(
             line,
             "{}{}",
-            formatter.shape.indent.to_string(&formatter.config)?,
+            formatter.indent_to_str()?,
             Delimiter::Brace.as_close_char()
         )?;
 

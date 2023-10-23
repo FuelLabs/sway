@@ -20,7 +20,7 @@ use crate::{
     types::*,
 };
 use sway_ast::intrinsics::Intrinsic;
-use sway_error::error::{CompileError, Hint};
+use sway_error::error::CompileError;
 use sway_ir::{Context, *};
 use sway_types::{
     constants,
@@ -102,9 +102,9 @@ impl<'eng> FnCompiler<'eng> {
         }
     }
 
-    fn compile_with_new_scope<F, T>(&mut self, inner: F) -> Result<T, CompileError>
+    fn compile_with_new_scope<F, T, R>(&mut self, inner: F) -> Result<T, R>
     where
-        F: FnOnce(&mut FnCompiler) -> Result<T, CompileError>,
+        F: FnOnce(&mut FnCompiler) -> Result<T, R>,
     {
         self.lexical_map.enter_scope();
         let result = inner(self);
@@ -117,19 +117,29 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_block: &ty::TyCodeBlock,
-    ) -> Result<Value, CompileError> {
+    ) -> Result<Value, Vec<CompileError>> {
         self.compile_with_new_scope(|fn_compiler| {
+            let mut errors = vec![];
+
             let mut ast_nodes = ast_block.contents.iter();
-            loop {
+            let v = loop {
                 let ast_node = match ast_nodes.next() {
                     Some(ast_node) => ast_node,
-                    None => break Ok(Constant::get_unit(context)),
+                    None => break Constant::get_unit(context),
                 };
                 match fn_compiler.compile_ast_node(context, md_mgr, ast_node) {
-                    Ok(Some(val)) => break Ok(val),
+                    Ok(Some(val)) => break val,
                     Ok(None) => (),
-                    Err(err) => break Err(err),
+                    Err(e) => {
+                        errors.push(e);
+                    }
                 }
+            };
+
+            if !errors.is_empty() {
+                Err(errors)
+            } else {
+                Ok(v)
             }
         })
     }
@@ -189,6 +199,7 @@ impl<'eng> FnCompiler<'eng> {
                 ty::TyDecl::ErrorRecovery { .. } => unexpected_decl("error recovery"),
                 ty::TyDecl::StorageDecl { .. } => unexpected_decl("storage"),
                 ty::TyDecl::EnumVariantDecl { .. } => unexpected_decl("enum variant"),
+                ty::TyDecl::TraitTypeDecl { .. } => unexpected_decl("trait type"),
             },
             ty::TyAstNodeContent::Expression(te) => {
                 // An expression with an ignored return value... I assume.
@@ -205,6 +216,9 @@ impl<'eng> FnCompiler<'eng> {
             // a side effect can be () because it just impacts the type system/namespacing.
             // There should be no new IR generated.
             ty::TyAstNodeContent::SideEffect(_) => Ok(None),
+            ty::TyAstNodeContent::Error(_, _) => {
+                unreachable!("error node found when generating IR");
+            }
         }
     }
 
@@ -252,6 +266,89 @@ impl<'eng> FnCompiler<'eng> {
         Ok(tmp_val)
     }
 
+    fn compile_string_slice(
+        &mut self,
+        context: &mut Context,
+        span_md_idx: Option<MetadataIndex>,
+        string_data: Value,
+        string_len: u64,
+    ) -> Result<Value, CompileError> {
+        let int_ty = Type::get_uint64(context);
+
+        // build field values of the slice
+        let ptr_val = self
+            .current_block
+            .ins(context)
+            .ptr_to_int(string_data, int_ty)
+            .add_metadatum(context, span_md_idx);
+        let len_val = Constant::get_uint(context, 64, string_len);
+
+        // a slice is a pointer and a length
+        let field_types = vec![int_ty, int_ty];
+
+        // build a struct variable to store the values
+        let struct_type = Type::new_struct(context, field_types.clone());
+        let struct_var = self
+            .function
+            .new_local_var(
+                context,
+                self.lexical_map.insert_anon(),
+                struct_type,
+                None,
+                false,
+            )
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+        let struct_val = self
+            .current_block
+            .ins(context)
+            .get_local(struct_var)
+            .add_metadatum(context, span_md_idx);
+
+        // put field values inside the struct variable
+        [ptr_val, len_val]
+            .into_iter()
+            .zip(field_types)
+            .enumerate()
+            .for_each(|(insert_idx, (insert_val, field_type))| {
+                let gep_val = self.current_block.ins(context).get_elem_ptr_with_idx(
+                    struct_val,
+                    field_type,
+                    insert_idx as u64,
+                );
+
+                self.current_block
+                    .ins(context)
+                    .store(gep_val, insert_val)
+                    .add_metadatum(context, span_md_idx);
+            });
+
+        // build a slice variable to return
+        let slice_type = Type::get_slice(context);
+        let slice_var = self
+            .function
+            .new_local_var(
+                context,
+                self.lexical_map.insert_anon(),
+                slice_type,
+                None,
+                false,
+            )
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+        let slice_val = self
+            .current_block
+            .ins(context)
+            .get_local(slice_var)
+            .add_metadatum(context, span_md_idx);
+
+        // copy the value of the struct variable into the slice
+        self.current_block
+            .ins(context)
+            .mem_copy_bytes(slice_val, struct_val, 16);
+
+        // return the slice
+        Ok(slice_val)
+    }
+
     fn compile_expression(
         &mut self,
         context: &mut Context,
@@ -260,6 +357,11 @@ impl<'eng> FnCompiler<'eng> {
     ) -> Result<Value, CompileError> {
         let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
         match &ast_expr.expression {
+            ty::TyExpressionVariant::Literal(Literal::String(s)) => {
+                let string_data = Constant::get_string(context, s.as_str().as_bytes().to_vec());
+                let string_len = s.as_str().len() as u64;
+                self.compile_string_slice(context, span_md_idx, string_data, string_len)
+            }
             ty::TyExpressionVariant::Literal(l) => {
                 Ok(convert_literal_to_value(context, l).add_metadatum(context, span_md_idx))
             }
@@ -271,7 +373,11 @@ impl<'eng> FnCompiler<'eng> {
                 selector,
                 type_binding: _,
                 call_path_typeid: _,
+                deferred_monomorphization,
             } => {
+                if *deferred_monomorphization {
+                    return Err(CompileError::Internal("Trying to compile a deferred function application with deferred monomorphization", name.span()));
+                }
                 if let Some(metadata) = selector {
                     self.compile_contract_call(
                         context,
@@ -307,7 +413,11 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::StructExpression { fields, .. } => {
                 self.compile_struct_expr(context, md_mgr, fields, span_md_idx)
             }
-            ty::TyExpressionVariant::CodeBlock(cb) => self.compile_code_block(context, md_mgr, cb),
+            ty::TyExpressionVariant::CodeBlock(cb) => {
+                //TODO return all errors
+                self.compile_code_block(context, md_mgr, cb)
+                    .map_err(|mut x| x.pop().unwrap())
+            }
             ty::TyExpressionVariant::FunctionParameter => Err(CompileError::Internal(
                 "Unexpected function parameter declaration.",
                 ast_expr.span.clone(),
@@ -547,11 +657,39 @@ impl<'eng> FnCompiler<'eng> {
                 let val = !engines.te().get_unaliased(targ.type_id).is_copy_type();
                 Ok(Constant::get_bool(context, val))
             }
-            Intrinsic::IsStrType => {
+            Intrinsic::IsStrArray => {
                 let targ = type_arguments[0].clone();
-                let val = matches!(engines.te().get_unaliased(targ.type_id), TypeInfo::Str(_));
+                let val = matches!(
+                    engines.te().get_unaliased(targ.type_id),
+                    TypeInfo::StringArray(_) | TypeInfo::StringSlice
+                );
                 Ok(Constant::get_bool(context, val))
             }
+            Intrinsic::AssertIsStrArray => {
+                let targ = type_arguments[0].clone();
+                let ir_type = convert_resolved_typeid(
+                    engines.te(),
+                    engines.de(),
+                    context,
+                    &targ.type_id,
+                    &targ.span,
+                )?;
+                match ir_type.get_content(context) {
+                    TypeContent::StringSlice | TypeContent::StringArray(_) => {
+                        Ok(Constant::get_unit(context))
+                    }
+                    _ => Err(CompileError::NonStrGenericType {
+                        span: targ.span.clone(),
+                    }),
+                }
+            }
+            Intrinsic::ToStrArray => match arguments[0].expression.extract_literal_value() {
+                Some(Literal::String(span)) => Ok(Constant::get_string(
+                    context,
+                    span.as_str().as_bytes().to_vec(),
+                )),
+                _ => unreachable!(),
+            },
             Intrinsic::Eq | Intrinsic::Gt | Intrinsic::Lt => {
                 let lhs = &arguments[0];
                 let rhs = &arguments[1];
@@ -676,7 +814,7 @@ impl<'eng> FnCompiler<'eng> {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,
-                        hint: Hint::new("This argument must be a copy type".to_string()),
+                        hint: "This argument must be a copy type".to_string(),
                     });
                 }
                 let key_value = self.compile_expression_to_value(context, md_mgr, key_exp)?;
@@ -700,7 +838,7 @@ impl<'eng> FnCompiler<'eng> {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,
-                        hint: Hint::new("This argument must be raw_ptr".to_string()),
+                        hint: "This argument must be raw_ptr".to_string(),
                     });
                 }
                 let key_value = self.compile_expression_to_value(context, md_mgr, &key_exp)?;
@@ -1138,7 +1276,7 @@ impl<'eng> FnCompiler<'eng> {
                     .add_metadatum(context, span_md_idx);
                 compiled_args
                     .into_iter()
-                    .zip(field_types.into_iter())
+                    .zip(field_types)
                     .enumerate()
                     .for_each(|(insert_idx, (field_val, field_type))| {
                         let gep_val = self
@@ -1377,7 +1515,8 @@ impl<'eng> FnCompiler<'eng> {
                     &self.messages_types_map,
                     is_entry,
                     None,
-                )?
+                )
+                .map_err(|mut x| x.pop().unwrap())?
                 .unwrap();
                 self.recreated_fns.insert(fn_key, new_func);
                 new_func
@@ -1596,7 +1735,8 @@ impl<'eng> FnCompiler<'eng> {
             .function
             .create_block(context, Some("while_body".into()));
         self.current_block = body_block;
-        self.compile_code_block(context, md_mgr, body)?;
+        self.compile_code_block(context, md_mgr, body)
+            .map_err(|mut x| x.pop().unwrap())?;
         if !self.current_block.is_terminated(context) {
             self.current_block.ins(context).branch(cond_block, vec![]);
         }
@@ -1648,18 +1788,26 @@ impl<'eng> FnCompiler<'eng> {
         const_decl: &TyConstantDecl,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
-        let result = self.compile_var_expr(
-            context,
-            &Some(const_decl.call_path.clone()),
-            const_decl.name(),
-            span_md_idx,
-        );
+        let result = self
+            .compile_var_expr(
+                context,
+                &Some(const_decl.call_path.clone()),
+                const_decl.name(),
+                span_md_idx,
+            )
+            .or(self.compile_const_decl(context, md_mgr, const_decl, span_md_idx, true))?;
 
-        if result.is_ok() {
-            result
-        } else {
-            self.compile_const_decl(context, md_mgr, const_decl, span_md_idx, true)
+        // String slices are not allowed in constants
+        if let Some(TypeContent::StringSlice) =
+            result.get_type(context).map(|t| t.get_content(context))
+        {
+            return Err(CompileError::TypeNotAllowed {
+                reason: sway_error::error::TypeNotAllowedReason::StringSliceInConst,
+                span: const_decl.span.clone(),
+            });
         }
+
+        Ok(result)
     }
 
     fn compile_var_expr(
@@ -2133,7 +2281,7 @@ impl<'eng> FnCompiler<'eng> {
         // Fill it in.
         insert_values
             .into_iter()
-            .zip(field_types.into_iter())
+            .zip(field_types)
             .enumerate()
             .for_each(|(insert_idx, (insert_val, field_type))| {
                 let gep_val = self.current_block.ins(context).get_elem_ptr_with_idx(
@@ -2328,7 +2476,7 @@ impl<'eng> FnCompiler<'eng> {
 
             init_values
                 .into_iter()
-                .zip(init_types.into_iter())
+                .zip(init_types)
                 .enumerate()
                 .for_each(|(insert_idx, (field_val, field_type))| {
                     let gep_val = self
@@ -2473,7 +2621,7 @@ impl<'eng> FnCompiler<'eng> {
                      immediate,
                      span,
                  }| AsmInstruction {
-                    name: op_name.clone(),
+                    op_name: op_name.clone(),
                     args: op_args.clone(),
                     immediate: immediate.clone(),
                     metadata: md_mgr.span_to_md(context, span),

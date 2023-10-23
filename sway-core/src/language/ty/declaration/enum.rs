@@ -3,13 +3,16 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
-    error::*,
     language::{CallPath, Visibility},
+    semantic_analysis::type_check_context::MonomorphizeHelper,
     transform,
     type_system::*,
 };
@@ -70,17 +73,6 @@ impl SubstTypes for TyEnumDecl {
     }
 }
 
-impl ReplaceSelfType for TyEnumDecl {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.variants
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-    }
-}
-
 impl Spanned for TyEnumDecl {
     fn span(&self) -> Span {
         self.span.clone()
@@ -95,29 +87,29 @@ impl MonomorphizeHelper for TyEnumDecl {
     fn name(&self) -> &Ident {
         &self.call_path.suffix
     }
+
+    fn has_self_type_param(&self) -> bool {
+        false
+    }
 }
 
 impl TyEnumDecl {
     pub(crate) fn expect_variant_from_name(
         &self,
+        handler: &Handler,
         variant_name: &Ident,
-    ) -> CompileResult<&TyEnumVariant> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    ) -> Result<&TyEnumVariant, ErrorEmitted> {
         match self
             .variants
             .iter()
             .find(|x| x.name.as_str() == variant_name.as_str())
         {
-            Some(variant) => ok(variant, warnings, errors),
-            None => {
-                errors.push(CompileError::UnknownEnumVariant {
-                    enum_name: self.call_path.suffix.clone(),
-                    variant_name: variant_name.clone(),
-                    span: variant_name.span(),
-                });
-                err(warnings, errors)
-            }
+            Some(variant) => Ok(variant),
+            None => Err(handler.emit_err(CompileError::UnknownEnumVariant {
+                enum_name: self.call_path.suffix.clone(),
+                variant_name: variant_name.clone(),
+                span: variant_name.span(),
+            })),
         }
     }
 }
@@ -183,11 +175,5 @@ impl OrdWithEngines for TyEnumVariant {
 impl SubstTypes for TyEnumVariant {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.type_argument.subst_inner(type_mapping, engines);
-    }
-}
-
-impl ReplaceSelfType for TyEnumVariant {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.type_argument.replace_self_type(engines, self_type);
     }
 }

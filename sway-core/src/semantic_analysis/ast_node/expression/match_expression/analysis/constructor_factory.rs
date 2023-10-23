@@ -1,11 +1,12 @@
 use std::collections::HashSet;
 
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{Ident, Span};
 
-use crate::{
-    decl_engine::DeclEngine, error::*, language::ty, type_system::TypeId, Engines, TypeInfo,
-};
+use crate::{decl_engine::DeclEngine, language::ty, type_system::TypeId, Engines, TypeInfo};
 
 use super::{
     patstack::PatStack,
@@ -19,7 +20,7 @@ pub(crate) struct ConstructorFactory {
 
 impl ConstructorFactory {
     pub(crate) fn new(engines: &Engines, type_id: TypeId) -> Self {
-        let possible_types = engines.te().get(type_id).extract_nested_types(engines);
+        let possible_types = type_id.extract_nested_types(engines);
         ConstructorFactory { possible_types }
     }
 
@@ -62,18 +63,15 @@ impl ConstructorFactory {
     /// ```
     pub(crate) fn create_pattern_not_present(
         &self,
+        handler: &Handler,
         engines: &Engines,
         sigma: PatStack,
         span: &Span,
-    ) -> CompileResult<Pattern> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let (first, rest) = check!(
-            sigma.flatten().filter_out_wildcards().split_first(span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+    ) -> Result<Pattern, ErrorEmitted> {
+        let (first, rest) = sigma
+            .flatten()
+            .filter_out_wildcards()
+            .split_first(handler, span)?;
         let pat = match first {
             Pattern::U8(range) => {
                 let mut ranges = vec![range];
@@ -81,30 +79,20 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U8(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal(
+                            return Err(handler.emit_err(CompileError::Internal(
                                 "expected all patterns to be of the same type",
                                 span.clone(),
-                            ));
-                            return err(warnings, errors);
+                            )));
                         }
                     }
                 }
-                let unincluded: PatStack = check!(
-                    Range::find_exclusionary_ranges(ranges, Range::u8(), span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
-                .into_iter()
-                .map(Pattern::U8)
-                .collect::<Vec<_>>()
-                .into();
-                check!(
-                    Pattern::from_pat_stack(unincluded, span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
+                let unincluded: PatStack =
+                    Range::find_exclusionary_ranges(handler, ranges, Range::u8(), span)?
+                        .into_iter()
+                        .map(Pattern::U8)
+                        .collect::<Vec<_>>()
+                        .into();
+                Pattern::from_pat_stack(handler, unincluded, span)?
             }
             Pattern::U16(range) => {
                 let mut ranges = vec![range];
@@ -112,30 +100,20 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U16(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal(
+                            return Err(handler.emit_err(CompileError::Internal(
                                 "expected all patterns to be of the same type",
                                 span.clone(),
-                            ));
-                            return err(warnings, errors);
+                            )));
                         }
                     }
                 }
-                let unincluded: PatStack = check!(
-                    Range::find_exclusionary_ranges(ranges, Range::u16(), span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
-                .into_iter()
-                .map(Pattern::U16)
-                .collect::<Vec<_>>()
-                .into();
-                check!(
-                    Pattern::from_pat_stack(unincluded, span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
+                let unincluded: PatStack =
+                    Range::find_exclusionary_ranges(handler, ranges, Range::u16(), span)?
+                        .into_iter()
+                        .map(Pattern::U16)
+                        .collect::<Vec<_>>()
+                        .into();
+                Pattern::from_pat_stack(handler, unincluded, span)?
             }
             Pattern::U32(range) => {
                 let mut ranges = vec![range];
@@ -143,30 +121,20 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U32(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal(
+                            return Err(handler.emit_err(CompileError::Internal(
                                 "expected all patterns to be of the same type",
                                 span.clone(),
-                            ));
-                            return err(warnings, errors);
+                            )));
                         }
                     }
                 }
-                let unincluded: PatStack = check!(
-                    Range::find_exclusionary_ranges(ranges, Range::u32(), span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
-                .into_iter()
-                .map(Pattern::U32)
-                .collect::<Vec<_>>()
-                .into();
-                check!(
-                    Pattern::from_pat_stack(unincluded, span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
+                let unincluded: PatStack =
+                    Range::find_exclusionary_ranges(handler, ranges, Range::u32(), span)?
+                        .into_iter()
+                        .map(Pattern::U32)
+                        .collect::<Vec<_>>()
+                        .into();
+                Pattern::from_pat_stack(handler, unincluded, span)?
             }
             Pattern::U64(range) => {
                 let mut ranges = vec![range];
@@ -174,30 +142,20 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U64(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal(
+                            return Err(handler.emit_err(CompileError::Internal(
                                 "expected all patterns to be of the same type",
                                 span.clone(),
-                            ));
-                            return err(warnings, errors);
+                            )));
                         }
                     }
                 }
-                let unincluded: PatStack = check!(
-                    Range::find_exclusionary_ranges(ranges, Range::u64(), span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
-                .into_iter()
-                .map(Pattern::U64)
-                .collect::<Vec<_>>()
-                .into();
-                check!(
-                    Pattern::from_pat_stack(unincluded, span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
+                let unincluded: PatStack =
+                    Range::find_exclusionary_ranges(handler, ranges, Range::u64(), span)?
+                        .into_iter()
+                        .map(Pattern::U64)
+                        .collect::<Vec<_>>()
+                        .into();
+                Pattern::from_pat_stack(handler, unincluded, span)?
             }
             Pattern::Numeric(range) => {
                 let mut ranges = vec![range];
@@ -205,30 +163,20 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::Numeric(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal(
+                            return Err(handler.emit_err(CompileError::Internal(
                                 "expected all patterns to be of the same type",
                                 span.clone(),
-                            ));
-                            return err(warnings, errors);
+                            )));
                         }
                     }
                 }
-                let unincluded: PatStack = check!(
-                    Range::find_exclusionary_ranges(ranges, Range::u64(), span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
-                .into_iter()
-                .map(Pattern::Numeric)
-                .collect::<Vec<_>>()
-                .into();
-                check!(
-                    Pattern::from_pat_stack(unincluded, span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
+                let unincluded: PatStack =
+                    Range::find_exclusionary_ranges(handler, ranges, Range::u64(), span)?
+                        .into_iter()
+                        .map(Pattern::Numeric)
+                        .collect::<Vec<_>>()
+                        .into();
+                Pattern::from_pat_stack(handler, unincluded, span)?
             }
             // we will not present every string case
             Pattern::String(_) => Pattern::Wildcard,
@@ -249,11 +197,10 @@ impl ConstructorFactory {
                     false_found = true;
                 }
                 if true_found && false_found {
-                    errors.push(CompileError::Internal(
+                    return Err(handler.emit_err(CompileError::Internal(
                         "unable to create a new pattern",
                         span.clone(),
-                    ));
-                    return err(warnings, errors);
+                    )));
                 } else if true_found {
                     Pattern::Boolean(false)
                 } else {
@@ -272,73 +219,52 @@ impl ConstructorFactory {
                 ))
             }
             ref pat @ Pattern::Enum(ref enum_pattern) => {
-                let type_info = check!(
-                    self.resolve_possible_types(pat, span, engines.de()),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                let enum_decl = engines.de().get_enum(&check!(
-                    type_info.expect_enum(engines, "", span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
+                let type_info = self.resolve_possible_types(handler, pat, span, engines.de())?;
+                let enum_decl = engines
+                    .de()
+                    .get_enum(&type_info.expect_enum(handler, engines, "", span)?);
                 let enum_name = enum_decl.call_path.suffix;
                 let enum_variants = enum_decl.variants;
-                let (all_variants, variant_tracker) = check!(
-                    ConstructorFactory::resolve_enum(
-                        &enum_name,
-                        &enum_variants,
-                        enum_pattern,
-                        rest,
-                        span
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                check!(
-                    Pattern::from_pat_stack(
-                        PatStack::from(
-                            all_variants
-                                .difference(&variant_tracker)
-                                .map(|x| {
-                                    Pattern::Enum(EnumPattern {
-                                        enum_name: enum_name.to_string(),
-                                        variant_name: x.clone(),
-                                        value: Box::new(Pattern::Wildcard),
-                                    })
+                let (all_variants, variant_tracker) = ConstructorFactory::resolve_enum(
+                    handler,
+                    &enum_name,
+                    &enum_variants,
+                    enum_pattern,
+                    rest,
+                    span,
+                )?;
+                Pattern::from_pat_stack(
+                    handler,
+                    PatStack::from(
+                        all_variants
+                            .difference(&variant_tracker)
+                            .map(|x| {
+                                Pattern::Enum(EnumPattern {
+                                    enum_name: enum_name.to_string(),
+                                    variant_name: x.clone(),
+                                    value: Box::new(Pattern::Wildcard),
                                 })
-                                .collect::<Vec<_>>()
-                        ),
-                        span
+                            })
+                            .collect::<Vec<_>>(),
                     ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
+                    span,
+                )?
             }
             Pattern::Tuple(elems) => Pattern::Tuple(PatStack::fill_wildcards(elems.len())),
             Pattern::Or(elems) => {
                 let mut pat_stack = PatStack::empty();
                 for pat in elems.into_iter() {
-                    pat_stack.push(check!(
-                        self.create_pattern_not_present(engines, PatStack::from_pattern(pat), span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
+                    pat_stack.push(self.create_pattern_not_present(
+                        handler,
+                        engines,
+                        PatStack::from_pattern(pat),
+                        span,
+                    )?);
                 }
-                check!(
-                    Pattern::from_pat_stack(pat_stack, span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
+                Pattern::from_pat_stack(handler, pat_stack, span)?
             }
         };
-        ok(pat, warnings, errors)
+        Ok(pat)
     }
 
     /// Reports if the `PatStack` Σ is a "complete signature" of the type of the
@@ -395,59 +321,48 @@ impl ConstructorFactory {
     /// from the "`Tuple` with 2 sub-patterns" type.
     pub(crate) fn is_complete_signature(
         &self,
+        handler: &Handler,
         engines: &Engines,
         pat_stack: &PatStack,
         span: &Span,
-    ) -> CompileResult<bool> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
+    ) -> Result<bool, ErrorEmitted> {
         // flatten or patterns
-        let pat_stack = check!(
-            pat_stack.clone().serialize_multi_patterns(span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        )
-        .into_iter()
-        .fold(PatStack::empty(), |mut acc, mut pats| {
-            acc.append(&mut pats);
-            acc
-        });
+        let pat_stack = pat_stack
+            .clone()
+            .serialize_multi_patterns(handler, span)?
+            .into_iter()
+            .fold(PatStack::empty(), |mut acc, mut pats| {
+                acc.append(&mut pats);
+                acc
+            });
 
         if pat_stack.is_empty() {
-            return ok(false, warnings, errors);
+            return Ok(false);
         }
         if pat_stack.contains(&Pattern::Wildcard) {
-            return ok(true, warnings, errors);
+            return Ok(true);
         }
 
-        let (first, mut rest) = check!(
-            pat_stack.split_first(span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let (first, mut rest) = pat_stack.split_first(handler, span)?;
         match first {
             // its assumed that no one is ever going to list every string
-            Pattern::String(_) => ok(false, warnings, errors),
+            Pattern::String(_) => Ok(false),
             // its assumed that no one is ever going to list every B256
-            Pattern::B256(_) => ok(false, warnings, errors),
+            Pattern::B256(_) => Ok(false),
             Pattern::U8(range) => {
                 let mut ranges = vec![range];
                 for pat in rest.into_iter() {
                     match pat {
                         Pattern::U8(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal(
+                            return Err(handler.emit_err(CompileError::Internal(
                                 "expected all patterns to be of the same type",
                                 span.clone(),
-                            ));
-                            return err(warnings, errors);
+                            )));
                         }
                     }
                 }
-                Range::do_ranges_equal_range(ranges, Range::u8(), span)
+                Range::do_ranges_equal_range(handler, ranges, Range::u8(), span)
             }
             Pattern::U16(range) => {
                 let mut ranges = vec![range];
@@ -455,15 +370,14 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U16(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal(
+                            return Err(handler.emit_err(CompileError::Internal(
                                 "expected all patterns to be of the same type",
                                 span.clone(),
-                            ));
-                            return err(warnings, errors);
+                            )));
                         }
                     }
                 }
-                Range::do_ranges_equal_range(ranges, Range::u16(), span)
+                Range::do_ranges_equal_range(handler, ranges, Range::u16(), span)
             }
             Pattern::U32(range) => {
                 let mut ranges = vec![range];
@@ -471,15 +385,14 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U32(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal(
+                            return Err(handler.emit_err(CompileError::Internal(
                                 "expected all patterns to be of the same type",
                                 span.clone(),
-                            ));
-                            return err(warnings, errors);
+                            )));
                         }
                     }
                 }
-                Range::do_ranges_equal_range(ranges, Range::u32(), span)
+                Range::do_ranges_equal_range(handler, ranges, Range::u32(), span)
             }
             Pattern::U64(range) => {
                 let mut ranges = vec![range];
@@ -487,15 +400,14 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::U64(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal(
+                            return Err(handler.emit_err(CompileError::Internal(
                                 "expected all patterns to be of the same type",
                                 span.clone(),
-                            ));
-                            return err(warnings, errors);
+                            )));
                         }
                     }
                 }
-                Range::do_ranges_equal_range(ranges, Range::u64(), span)
+                Range::do_ranges_equal_range(handler, ranges, Range::u64(), span)
             }
             Pattern::Numeric(range) => {
                 let mut ranges = vec![range];
@@ -503,15 +415,14 @@ impl ConstructorFactory {
                     match pat {
                         Pattern::Numeric(range) => ranges.push(range),
                         _ => {
-                            errors.push(CompileError::Internal(
+                            return Err(handler.emit_err(CompileError::Internal(
                                 "expected all patterns to be of the same type",
                                 span.clone(),
-                            ));
-                            return err(warnings, errors);
+                            )));
                         }
                     }
                 }
-                Range::do_ranges_equal_range(ranges, Range::u64(), span)
+                Range::do_ranges_equal_range(handler, ranges, Range::u64(), span)
             }
             Pattern::Boolean(b) => {
                 let mut true_found = false;
@@ -527,96 +438,66 @@ impl ConstructorFactory {
                             false => false_found = true,
                         },
                         _ => {
-                            errors.push(CompileError::Internal(
+                            return Err(handler.emit_err(CompileError::Internal(
                                 "expected all patterns to be of the same type",
                                 span.clone(),
-                            ));
-                            return err(warnings, errors);
+                            )));
                         }
                     }
                 }
-                ok(true_found && false_found, warnings, errors)
+                Ok(true_found && false_found)
             }
             ref pat @ Pattern::Enum(ref enum_pattern) => {
-                let type_info = check!(
-                    self.resolve_possible_types(pat, span, engines.de()),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                let enum_decl = engines.de().get_enum(&check!(
-                    type_info.expect_enum(engines, "", span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
+                let type_info = self.resolve_possible_types(handler, pat, span, engines.de())?;
+                let enum_decl = engines
+                    .de()
+                    .get_enum(&type_info.expect_enum(handler, engines, "", span)?);
                 let enum_name = enum_decl.call_path.suffix;
                 let enum_variants = enum_decl.variants;
-                let (all_variants, variant_tracker) = check!(
-                    ConstructorFactory::resolve_enum(
-                        &enum_name,
-                        &enum_variants,
-                        enum_pattern,
-                        rest,
-                        span
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                ok(
-                    all_variants.difference(&variant_tracker).next().is_none(),
-                    warnings,
-                    errors,
-                )
+                let (all_variants, variant_tracker) = ConstructorFactory::resolve_enum(
+                    handler,
+                    &enum_name,
+                    &enum_variants,
+                    enum_pattern,
+                    rest,
+                    span,
+                )?;
+                Ok(all_variants.difference(&variant_tracker).next().is_none())
             }
             ref tup @ Pattern::Tuple(_) => {
                 for pat in rest.iter() {
                     if !pat.has_the_same_constructor(tup) {
-                        return ok(false, warnings, errors);
+                        return Ok(false);
                     }
                 }
-                ok(true, warnings, errors)
+                Ok(true)
             }
             ref strct @ Pattern::Struct(_) => {
                 for pat in rest.iter() {
                     if !pat.has_the_same_constructor(strct) {
-                        return ok(false, warnings, errors);
+                        return Ok(false);
                     }
                 }
-                ok(true, warnings, errors)
+                Ok(true)
             }
-            Pattern::Wildcard => {
-                errors.push(CompileError::Internal(
-                    "expected the wildcard pattern to be filtered out here",
-                    span.clone(),
-                ));
-                err(warnings, errors)
-            }
+            Pattern::Wildcard => Err(handler.emit_err(CompileError::Internal(
+                "expected the wildcard pattern to be filtered out here",
+                span.clone(),
+            ))),
             Pattern::Or(mut elems) => {
                 elems.append(&mut rest);
-                ok(
-                    check!(
-                        self.is_complete_signature(engines, &elems, span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ),
-                    warnings,
-                    errors,
-                )
+                Ok(self.is_complete_signature(handler, engines, &elems, span)?)
             }
         }
     }
 
     fn resolve_possible_types(
         &self,
+        handler: &Handler,
         pattern: &Pattern,
         span: &Span,
         decl_engine: &DeclEngine,
-    ) -> CompileResult<&TypeInfo> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    ) -> Result<&TypeInfo, ErrorEmitted> {
         let mut type_info = None;
         for possible_type in self.possible_types.iter() {
             let matches = pattern.matches_type_info(possible_type, decl_engine);
@@ -626,32 +507,27 @@ impl ConstructorFactory {
             }
         }
         match type_info {
-            Some(type_info) => ok(type_info, warnings, errors),
-            None => {
-                errors.push(CompileError::Internal(
-                    "there is no type that matches this pattern",
-                    span.clone(),
-                ));
-                err(warnings, errors)
-            }
+            Some(type_info) => Ok(type_info),
+            None => Err(handler.emit_err(CompileError::Internal(
+                "there is no type that matches this pattern",
+                span.clone(),
+            ))),
         }
     }
 
     fn resolve_enum(
+        handler: &Handler,
         enum_name: &Ident,
         enum_variants: &[ty::TyEnumVariant],
         enum_pattern: &EnumPattern,
         rest: PatStack,
         span: &Span,
-    ) -> CompileResult<(HashSet<String>, HashSet<String>)> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    ) -> Result<(HashSet<String>, HashSet<String>), ErrorEmitted> {
         if enum_pattern.enum_name.as_str() != enum_name.as_str() {
-            errors.push(CompileError::Internal(
+            return Err(handler.emit_err(CompileError::Internal(
                 "expected matching enum names",
                 span.clone(),
-            ));
-            return err(warnings, errors);
+            )));
         }
         let mut all_variants: HashSet<String> = HashSet::new();
         for variant in enum_variants.iter() {
@@ -663,23 +539,21 @@ impl ConstructorFactory {
             match pat {
                 Pattern::Enum(enum_pattern2) => {
                     if enum_pattern2.enum_name.as_str() != enum_name.as_str() {
-                        errors.push(CompileError::Internal(
+                        return Err(handler.emit_err(CompileError::Internal(
                             "expected matching enum names",
                             span.clone(),
-                        ));
-                        return err(warnings, errors);
+                        )));
                     }
                     variant_tracker.insert(enum_pattern2.variant_name.to_string());
                 }
                 _ => {
-                    errors.push(CompileError::Internal(
+                    return Err(handler.emit_err(CompileError::Internal(
                         "expected all patterns to be of the same type",
                         span.clone(),
-                    ));
-                    return err(warnings, errors);
+                    )));
                 }
             }
         }
-        ok((all_variants, variant_tracker), warnings, errors)
+        Ok((all_variants, variant_tracker))
     }
 }

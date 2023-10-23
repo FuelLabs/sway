@@ -98,16 +98,22 @@ pub fn serialize_to_storage_slots(
                 ),
             )]
         }
+        ConstantValue::U256(b) if ty.is_uint_of(context, 256) => {
+            vec![StorageSlot::new(
+                get_storage_key(ix, indices),
+                Bytes32::new(b.to_be_bytes()),
+            )]
+        }
         ConstantValue::B256(b) if ty.is_b256(context) => {
             vec![StorageSlot::new(
                 get_storage_key(ix, indices),
-                Bytes32::new(*b),
+                Bytes32::new(b.to_be_bytes()),
             )]
         }
         ConstantValue::Array(_a) if ty.is_array(context) => {
             unimplemented!("Arrays in storage have not been implemented yet.")
         }
-        _ if ty.is_string(context) || ty.is_struct(context) || ty.is_union(context) => {
+        _ if ty.is_string_array(context) || ty.is_struct(context) || ty.is_union(context) => {
             // Serialize the constant data in words and add zero words until the number of words
             // is a multiple of 4. This is useful because each storage slot is 4 words.
             let mut packed = serialize_to_words(constant, context, ty);
@@ -157,10 +163,15 @@ pub fn serialize_to_words(constant: &Constant, context: &Context, ty: &Type) -> 
         ConstantValue::Uint(n) if ty.is_uint(context) => {
             vec![Bytes8::new(n.to_be_bytes())]
         }
-        ConstantValue::B256(b) if ty.is_b256(context) => {
+        ConstantValue::U256(b) if ty.is_uint_of(context, 256) => {
+            let b = b.to_be_bytes();
             Vec::from_iter((0..4).map(|i| Bytes8::new(b[8 * i..8 * i + 8].try_into().unwrap())))
         }
-        ConstantValue::String(s) if ty.is_string(context) => {
+        ConstantValue::B256(b) if ty.is_b256(context) => {
+            let b = b.to_be_bytes();
+            Vec::from_iter((0..4).map(|i| Bytes8::new(b[8 * i..8 * i + 8].try_into().unwrap())))
+        }
+        ConstantValue::String(s) if ty.is_string_array(context) => {
             // Turn the bytes into serialized words (Bytes8).
             let mut s = s.clone();
             s.extend(vec![0; ((s.len() + 7) / 8) * 8 - s.len()]);

@@ -70,12 +70,25 @@ The implementation of `MyAbi` for `Contract` must also implement the `ABIsupertr
 
 ABI supertraits are intended to make contract implementations compositional, allowing combining orthogonal contract features using, for instance, libraries.
 
+### SuperABIs
+
+In addition to supertraits, ABIs can have _superABI_ annotations:
+
+```sway
+{{#include ../../../../examples/abi_superabis/src/main.sw}}
+```
+
+The implementation of `MyAbi` for `Contract` must also implement the `MySuperAbi` superABI. Methods in `MySuperAbi` will be part of the `MyAbi` contract interface, i.e. will be available externally (and hence cannot be called from other `MyAbi` contract methods).
+
+SuperABIs are intended to make contract implementations compositional, allowing combining orthogonal contract features using, for instance, libraries.
+
 ## Associated Items
 
 Traits can declare different kinds of associated items in their interface surface:
 
 - [Functions](#associated-functions)
 - [Constants](#associated-constants)
+- [Types](#associated-types)
 
 ### Associated functions
 
@@ -97,7 +110,7 @@ trait Trait {
 }
 ```
 
-The initializer expression of an [associated constants](../basic/constants.md#associated-constants) in a trait definition may be omitted to indicate that each implementation of the `trait` for a given type must specify an initializer:
+The initializer expression of an [associated constants](../basics/constants.md#associated-constants) in a trait definition may be omitted to indicate that each implementation of the `trait` for a given type must specify an initializer:
 
 ```sway
 trait Trait {
@@ -105,7 +118,21 @@ trait Trait {
 }
 ```
 
-Check the `associated consts` section on [constants](../basic/constants.md) page.
+Check the `associated consts` section on [constants](../basics/constants.md) page.
+
+### Associated types
+
+Associated types in Sway allow you to define placeholder types within a trait, which can be customized by concrete
+implementations of that trait. These associated types are used to specify the return types of trait methods or to
+define type relationships within the trait.
+
+```sway
+trait MyTrait {
+    type AssociatedType;
+}
+```
+
+Check the `associated types` section on [associated types](./associated_types.md) page.
 
 ## Use Cases
 

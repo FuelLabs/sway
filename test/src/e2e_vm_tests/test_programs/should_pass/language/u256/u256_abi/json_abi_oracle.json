@@ -1,0 +1,44 @@
+{
+  "configurables": [
+    {
+      "configurableType": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      },
+      "name": "SOME_U256",
+      "offset": 108
+    }
+  ],
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "main",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [
+    {
+      "logId": 0,
+      "loggedType": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    }
+  ],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": null,
+      "type": "u256",
+      "typeId": 0,
+      "typeParameters": null
+    }
+  ]
+}

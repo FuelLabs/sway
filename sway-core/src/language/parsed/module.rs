@@ -1,10 +1,12 @@
 use crate::{
-    language::{ModName, Visibility},
+    language::{HasModule, HasSubmodules, ModName, Visibility},
     transform,
 };
 
 use super::ParseTree;
 use sway_types::Span;
+
+pub type ModuleHash = u64;
 
 /// A module and its submodules in the form of a tree.
 #[derive(Debug, Clone)]
@@ -18,6 +20,8 @@ pub struct ParseModule {
     pub module_kind_span: Span,
     /// an empty span at the beginning of the file containing the module
     pub span: Span,
+    /// an hash used for caching the module
+    pub hash: ModuleHash,
 }
 
 /// A library module that was declared as a `mod` of another module.
@@ -28,4 +32,16 @@ pub struct ParseSubmodule {
     pub module: ParseModule,
     pub mod_name_span: Span,
     pub visibility: Visibility,
+}
+
+impl HasModule<ParseModule> for ParseSubmodule {
+    fn module(&self) -> &ParseModule {
+        &self.module
+    }
+}
+
+impl HasSubmodules<ParseSubmodule> for ParseModule {
+    fn submodules(&self) -> &[(ModName, ParseSubmodule)] {
+        &self.submodules
+    }
 }

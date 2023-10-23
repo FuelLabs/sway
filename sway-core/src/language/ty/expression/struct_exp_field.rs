@@ -1,8 +1,15 @@
 use std::hash::{Hash, Hasher};
 
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Ident;
 
-use crate::{decl_engine::*, engine_threading::*, language::ty::*, type_system::*};
+use crate::{
+    decl_engine::*,
+    engine_threading::*,
+    language::ty::*,
+    semantic_analysis::{TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext},
+    type_system::*,
+};
 
 #[derive(Clone, Debug)]
 pub struct TyStructExpressionField {
@@ -31,14 +38,23 @@ impl SubstTypes for TyStructExpressionField {
     }
 }
 
-impl ReplaceSelfType for TyStructExpressionField {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.value.replace_self_type(engines, self_type);
+impl ReplaceDecls for TyStructExpressionField {
+    fn replace_decls_inner(
+        &mut self,
+        decl_mapping: &DeclMapping,
+        handler: &Handler,
+        ctx: &mut TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.value.replace_decls(decl_mapping, handler, ctx)
     }
 }
 
-impl ReplaceDecls for TyStructExpressionField {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
-        self.value.replace_decls(decl_mapping, engines);
+impl TypeCheckFinalization for TyStructExpressionField {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.value.type_check_finalize(handler, ctx)
     }
 }

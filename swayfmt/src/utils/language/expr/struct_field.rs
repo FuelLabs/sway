@@ -7,8 +7,8 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{token::Delimiter, ExprStructField};
-use sway_types::Spanned;
+use sway_ast::ExprStructField;
+use sway_types::{ast::Delimiter, Spanned};
 
 impl Format for ExprStructField {
     fn format(
@@ -34,14 +34,14 @@ impl CurlyBrace for ExprStructField {
         let brace_style = formatter.config.items.item_brace_style;
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
-                // Add openning brace to the next line.
+                // Add opening brace to the next line.
                 write!(line, "\n{}", Delimiter::Brace.as_open_char())?;
-                formatter.shape.block_indent(&formatter.config);
+                formatter.indent();
             }
             _ => {
                 // Add opening brace to the same line
                 write!(line, " {}", Delimiter::Brace.as_open_char())?;
-                formatter.shape.block_indent(&formatter.config);
+                formatter.indent();
             }
         }
 
@@ -53,13 +53,13 @@ impl CurlyBrace for ExprStructField {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         // Unindent by one block
-        formatter.shape.block_unindent(&formatter.config);
+        formatter.unindent();
         match formatter.shape.code_line.line_style {
             LineStyle::Inline => write!(line, "{}", Delimiter::Brace.as_close_char())?,
             _ => write!(
                 line,
                 "{}{}",
-                formatter.shape.indent.to_string(&formatter.config)?,
+                formatter.indent_to_str()?,
                 Delimiter::Brace.as_close_char()
             )?,
         }

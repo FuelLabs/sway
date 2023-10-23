@@ -213,6 +213,8 @@ define_op_codes!(
     (Aloc, AlocOpcode, "aloc", (size: reg)),
     (Cfei, CfeiOpcode, "cfei", (size: imm)),
     (Cfsi, CfsiOpcode, "cfsi", (size: imm)),
+    (Cfe, CfeOpcode, "cfe", (size: reg)),
+    (Cfs, CfsOpcode, "cfs", (size: reg)),
     (Lb, LbOpcode, "lb", (ret: reg, addr: reg, offset: imm)),
     (Lw, LwOpcode, "lw", (ret: reg, addr: reg, offset: imm)),
     (Mcl, MclOpcode, "mcl", (addr: reg, size: reg)),
@@ -241,7 +243,7 @@ define_op_codes!(
     (Bal, BalOpcode, "bal", (ret: reg, asset: reg, contract: reg)),
     (Bhei, BheiOpcode, "bhei", (ret: reg)),
     (Bhsh, BhshOpcode, "bhsh", (addr: reg, height: reg)),
-    (Burn, BurnOpcode, "burn", (coins: reg)),
+    (Burn, BurnOpcode, "burn", (coins: reg, sub_id: reg)),
     (
         Call,
         CallOpcode,
@@ -270,7 +272,7 @@ define_op_codes!(
         "logd",
         (reg_a: reg, reg_b: reg, addr: reg, size: reg)
     ),
-    (Mint, MintOpcode, "mint", (coins: reg)),
+    (Mint, MintOpcode, "mint", (coins: reg, sub_id: reg)),
     (Retd, RetdOpcode, "retd", (addr: reg, size: reg)),
     (Rvrt, RvrtOpcode, "rvrt", (value: reg)),
     (
@@ -313,7 +315,9 @@ define_op_codes!(
         (addr: reg, output: reg, coins: reg, asset: reg)
     ),
     /* Cryptographic Instructions */
-    (Ecr, EcrOpcode, "ecr", (addr: reg, sig: reg, hash: reg)),
+    (Eck1, Eck1Opcode, "eck1", (addr: reg, sig: reg, hash: reg)),
+    (Ecr1, Ecr1Opcode, "ecr1", (addr: reg, sig: reg, hash: reg)),
+    (Ed19, Ed19Opcode, "ed19", (addr: reg, sig: reg, hash: reg)),
     (K256, K256Opcode, "k256", (addr: reg, data: reg, size: reg)),
     (S256, S256Opcode, "s256", (addr: reg, data: reg, size: reg)),
     /* Other Instructions */

@@ -15,9 +15,9 @@ impl TestAbi for Contract {
         // effect -- therefore violation of CEI where effect should go before interaction
         let amount = 10;
         let address = 0x0000000000000000000000000000000000000000000000000000000000000001;
-        let asset = ContractId::from(address);
+        let asset = AssetId::from(address);
         let user = Address::from(address);
         // `transfer_to_address` uses `tro` asm instruction
-        transfer_to_address(amount, asset, user);
+        transfer_to_address(user, asset, amount);
     }
 }

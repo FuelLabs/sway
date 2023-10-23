@@ -11,6 +11,7 @@ pub enum AssociatedItemDeclId {
     TraitFn(DeclId<ty::TyTraitFn>),
     Function(DeclId<ty::TyFunctionDecl>),
     Constant(DeclId<ty::TyConstantDecl>),
+    Type(DeclId<ty::TyTraitType>),
 }
 
 impl From<DeclId<ty::TyFunctionDecl>> for AssociatedItemDeclId {
@@ -45,6 +46,22 @@ impl From<&mut DeclId<ty::TyTraitFn>> for AssociatedItemDeclId {
     }
 }
 
+impl From<DeclId<ty::TyTraitType>> for AssociatedItemDeclId {
+    fn from(val: DeclId<ty::TyTraitType>) -> Self {
+        Self::Type(val)
+    }
+}
+impl From<&DeclId<ty::TyTraitType>> for AssociatedItemDeclId {
+    fn from(val: &DeclId<ty::TyTraitType>) -> Self {
+        Self::Type(*val)
+    }
+}
+impl From<&mut DeclId<ty::TyTraitType>> for AssociatedItemDeclId {
+    fn from(val: &mut DeclId<ty::TyTraitType>) -> Self {
+        Self::Type(*val)
+    }
+}
+
 impl From<DeclId<ty::TyConstantDecl>> for AssociatedItemDeclId {
     fn from(val: DeclId<ty::TyConstantDecl>) -> Self {
         Self::Constant(val)
@@ -73,6 +90,9 @@ impl std::fmt::Display for AssociatedItemDeclId {
             Self::Constant(_) => {
                 write!(f, "decl(constant)",)
             }
+            Self::Type(_) => {
+                write!(f, "decl(type)",)
+            }
         }
     }
 }
@@ -91,6 +111,10 @@ impl TryFrom<DeclRefMixedFunctional> for DeclRefFunction {
                 span: value.decl_span().clone(),
             }),
             actually @ AssociatedItemDeclId::Constant(_) => Err(CompileError::DeclIsNotAFunction {
+                actually: actually.to_string(),
+                span: value.decl_span().clone(),
+            }),
+            actually @ AssociatedItemDeclId::Type(_) => Err(CompileError::DeclIsNotAFunction {
                 actually: actually.to_string(),
                 span: value.decl_span().clone(),
             }),
@@ -114,6 +138,10 @@ impl TryFrom<AssociatedItemDeclId> for DeclId<TyFunctionDecl> {
                 span: Span::dummy(), // FIXME
             }),
             actually @ AssociatedItemDeclId::Constant(_) => Err(CompileError::DeclIsNotAFunction {
+                actually: actually.to_string(),
+                span: Span::dummy(), // FIXME
+            }),
+            actually @ AssociatedItemDeclId::Type(_) => Err(CompileError::DeclIsNotAFunction {
                 actually: actually.to_string(),
                 span: Span::dummy(), // FIXME
             }),

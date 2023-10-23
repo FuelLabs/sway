@@ -1,15 +1,19 @@
 use std::{
     collections::HashSet,
+    fmt,
     hash::{Hash, Hasher},
 };
 
 use sha2::{Digest, Sha256};
+use sway_error::handler::{ErrorEmitted, Handler};
+
+use crate::{language::CallPath, semantic_analysis::type_check_context::MonomorphizeHelper};
 
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    error::*,
     language::{parsed, ty::*, Inline, Purity, Visibility},
+    semantic_analysis::TypeCheckContext,
     transform,
     type_system::*,
     types::*,
@@ -27,6 +31,7 @@ pub struct TyFunctionDecl {
     pub parameters: Vec<TyFunctionParameter>,
     pub implementing_type: Option<TyDecl>,
     pub span: Span,
+    pub call_path: CallPath,
     pub attributes: transform::AttributesMap,
     pub type_parameters: Vec<TypeParameter>,
     pub return_type: TypeArgument,
@@ -35,6 +40,13 @@ pub struct TyFunctionDecl {
     pub is_contract_call: bool,
     pub purity: Purity,
     pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
+    pub is_trait_method_dummy: bool,
+}
+
+impl DebugWithEngines for TyFunctionDecl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, _engines: &Engines) -> fmt::Result {
+        write!(f, "{:?}", self.name)
+    }
 }
 
 impl Named for TyFunctionDecl {
@@ -80,10 +92,12 @@ impl HashWithEngines for TyFunctionDecl {
             purity,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
+            call_path: _,
             span: _,
             attributes: _,
             implementing_type: _,
             where_clause: _,
+            is_trait_method_dummy: _,
         } = self;
         name.hash(state);
         body.hash(state, engines);
@@ -109,22 +123,14 @@ impl SubstTypes for TyFunctionDecl {
     }
 }
 
-impl ReplaceSelfType for TyFunctionDecl {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-        self.parameters
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-        self.return_type.replace_self_type(engines, self_type);
-        self.body.replace_self_type(engines, self_type);
-    }
-}
-
 impl ReplaceDecls for TyFunctionDecl {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
-        self.body.replace_decls(decl_mapping, engines);
+    fn replace_decls_inner(
+        &mut self,
+        decl_mapping: &DeclMapping,
+        handler: &Handler,
+        ctx: &mut TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.body.replace_decls(decl_mapping, handler, ctx)
     }
 }
 
@@ -142,6 +148,10 @@ impl MonomorphizeHelper for TyFunctionDecl {
     fn name(&self) -> &Ident {
         &self.name
     }
+
+    fn has_self_type_param(&self) -> bool {
+        false
+    }
 }
 
 impl UnconstrainedTypeParameters for TyFunctionDecl {
@@ -157,17 +167,11 @@ impl UnconstrainedTypeParameters for TyFunctionDecl {
             .map(|type_param| type_param.type_id)
             .collect();
         all_types.extend(self.parameters.iter().flat_map(|param| {
-            let mut inner = type_engine
-                .get(param.type_argument.type_id)
-                .extract_inner_types(engines);
+            let mut inner = param.type_argument.type_id.extract_inner_types(engines);
             inner.insert(param.type_argument.type_id);
             inner
         }));
-        all_types.extend(
-            type_engine
-                .get(self.return_type.type_id)
-                .extract_inner_types(engines),
-        );
+        all_types.extend(self.return_type.type_id.extract_inner_types(engines));
         all_types.insert(self.return_type.type_id);
         let type_parameter_info = type_engine.get(type_parameter.type_id);
         all_types
@@ -179,42 +183,31 @@ impl UnconstrainedTypeParameters for TyFunctionDecl {
 impl CollectTypesMetadata for TyFunctionDecl {
     fn collect_types_metadata(
         &self,
+        handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
-    ) -> CompileResult<Vec<TypeMetadata>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         let mut body = vec![];
         for content in self.body.contents.iter() {
-            body.append(&mut check!(
-                content.collect_types_metadata(ctx),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
+            body.append(&mut content.collect_types_metadata(handler, ctx)?);
         }
-        body.append(&mut check!(
-            self.return_type.type_id.collect_types_metadata(ctx),
-            return err(warnings, errors),
-            warnings,
-            errors
-        ));
+        body.append(
+            &mut self
+                .return_type
+                .type_id
+                .collect_types_metadata(handler, ctx)?,
+        );
         for type_param in self.type_parameters.iter() {
-            body.append(&mut check!(
-                type_param.type_id.collect_types_metadata(ctx),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
+            body.append(&mut type_param.type_id.collect_types_metadata(handler, ctx)?);
         }
         for param in self.parameters.iter() {
-            body.append(&mut check!(
-                param.type_argument.type_id.collect_types_metadata(ctx),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
+            body.append(
+                &mut param
+                    .type_argument
+                    .type_id
+                    .collect_types_metadata(handler, ctx)?,
+            );
         }
-        ok(body, warnings, errors)
+        Ok(body)
     }
 }
 
@@ -243,6 +236,7 @@ impl TyFunctionDecl {
             },
             implementing_type: None,
             span,
+            call_path: CallPath::from(Ident::dummy()),
             attributes: Default::default(),
             is_contract_call: false,
             parameters: Default::default(),
@@ -250,6 +244,7 @@ impl TyFunctionDecl {
             return_type,
             type_parameters: Default::default(),
             where_clause,
+            is_trait_method_dummy: false,
         }
     }
 
@@ -267,42 +262,38 @@ impl TyFunctionDecl {
         }
     }
 
-    pub fn to_fn_selector_value_untruncated(&self, engines: &Engines) -> CompileResult<Vec<u8>> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
+    pub fn to_fn_selector_value_untruncated(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<Vec<u8>, ErrorEmitted> {
         let mut hasher = Sha256::new();
-        let data = check!(
-            self.to_selector_name(engines),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let data = self.to_selector_name(handler, engines)?;
         hasher.update(data);
         let hash = hasher.finalize();
-        ok(hash.to_vec(), warnings, errors)
+        Ok(hash.to_vec())
     }
 
     /// Converts a [TyFunctionDecl] into a value that is to be used in contract function
     /// selectors.
     /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
-    pub fn to_fn_selector_value(&self, engines: &Engines) -> CompileResult<[u8; 4]> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
-        let hash = check!(
-            self.to_fn_selector_value_untruncated(engines),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+    pub fn to_fn_selector_value(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<[u8; 4], ErrorEmitted> {
+        let hash = self.to_fn_selector_value_untruncated(handler, engines)?;
         // 4 bytes truncation via copying into a 4 byte buffer
         let mut buf = [0u8; 4];
         buf.copy_from_slice(&hash[..4]);
-        ok(buf, warnings, errors)
+        Ok(buf)
     }
 
-    pub fn to_selector_name(&self, engines: &Engines) -> CompileResult<String> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
+    pub fn to_selector_name(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<String, ErrorEmitted> {
         let named_params = self
             .parameters
             .iter()
@@ -311,16 +302,16 @@ impl TyFunctionDecl {
                     .te()
                     .to_typeinfo(type_argument.type_id, &type_argument.span)
                     .expect("unreachable I think?")
-                    .to_selector_name(engines, &type_argument.span)
+                    .to_selector_name(handler, engines, &type_argument.span)
             })
-            .filter_map(|name| name.ok(&mut warnings, &mut errors))
+            .filter_map(|name| name.ok())
             .collect::<Vec<String>>();
 
-        ok(
-            format!("{}({})", self.name.as_str(), named_params.join(","),),
-            warnings,
-            errors,
-        )
+        Ok(format!(
+            "{}({})",
+            self.name.as_str(),
+            named_params.join(","),
+        ))
     }
 
     /// Whether or not this function is the default entry point.
@@ -398,14 +389,6 @@ impl HashWithEngines for TyFunctionParameter {
 impl SubstTypes for TyFunctionParameter {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.type_argument.type_id.subst(type_mapping, engines);
-    }
-}
-
-impl ReplaceSelfType for TyFunctionParameter {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.type_argument
-            .type_id
-            .replace_self_type(engines, self_type);
     }
 }
 

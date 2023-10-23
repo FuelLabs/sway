@@ -3,13 +3,16 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
-    error::*,
     language::{CallPath, Visibility},
+    semantic_analysis::type_check_context::MonomorphizeHelper,
     transform,
     type_system::*,
 };
@@ -70,17 +73,6 @@ impl SubstTypes for TyStructDecl {
     }
 }
 
-impl ReplaceSelfType for TyStructDecl {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.fields
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-    }
-}
-
 impl Spanned for TyStructDecl {
     fn span(&self) -> Span {
         self.span.clone()
@@ -95,20 +87,26 @@ impl MonomorphizeHelper for TyStructDecl {
     fn name(&self) -> &Ident {
         &self.call_path.suffix
     }
+
+    fn has_self_type_param(&self) -> bool {
+        false
+    }
 }
 
 impl TyStructDecl {
-    pub(crate) fn expect_field(&self, field_to_access: &Ident) -> CompileResult<&TyStructField> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn expect_field(
+        &self,
+        handler: &Handler,
+        field_to_access: &Ident,
+    ) -> Result<&TyStructField, ErrorEmitted> {
         match self
             .fields
             .iter()
             .find(|TyStructField { name, .. }| name.as_str() == field_to_access.as_str())
         {
-            Some(field) => ok(field, warnings, errors),
+            Some(field) => Ok(field),
             None => {
-                errors.push(CompileError::FieldNotFound {
+                return Err(handler.emit_err(CompileError::FieldNotFound {
                     available_fields: self
                         .fields
                         .iter()
@@ -118,8 +116,7 @@ impl TyStructDecl {
                     field_name: field_to_access.clone(),
                     struct_name: self.call_path.suffix.clone(),
                     span: field_to_access.span(),
-                });
-                err(warnings, errors)
+                }));
             }
         }
     }
@@ -186,11 +183,5 @@ impl OrdWithEngines for TyStructField {
 impl SubstTypes for TyStructField {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.type_argument.subst_inner(type_mapping, engines);
-    }
-}
-
-impl ReplaceSelfType for TyStructField {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.type_argument.replace_self_type(engines, self_type);
     }
 }

@@ -1,11 +1,13 @@
+use sway_error::handler::Handler;
 use sway_types::Span;
 
 use crate::{
     decl_engine::{DeclEngine, DeclRef, DeclRefFunction},
-    language::ty::*,
     language::ModName,
+    language::{ty::*, HasModule, HasSubmodules},
     semantic_analysis::namespace,
-    transform,
+    transform::{self, AllowDeprecatedState},
+    Engines,
 };
 
 #[derive(Clone, Debug)]
@@ -67,6 +69,23 @@ impl TyModule {
             None
         })
     }
+
+    pub(crate) fn check_deprecated(
+        &self,
+        engines: &Engines,
+        handler: &Handler,
+        allow_deprecated: &mut AllowDeprecatedState,
+    ) {
+        for (_, submodule) in self.submodules.iter() {
+            submodule
+                .module
+                .check_deprecated(engines, handler, allow_deprecated);
+        }
+
+        for node in self.all_nodes.iter() {
+            node.check_deprecated(engines, handler, allow_deprecated);
+        }
+    }
 }
 
 impl<'module> Iterator for SubmodulesRecursive<'module> {
@@ -89,5 +108,17 @@ impl<'module> Iterator for SubmodulesRecursive<'module> {
                 },
             }
         }
+    }
+}
+
+impl HasModule<TyModule> for TySubmodule {
+    fn module(&self) -> &TyModule {
+        &self.module
+    }
+}
+
+impl HasSubmodules<TySubmodule> for TyModule {
+    fn submodules(&self) -> &[(ModName, TySubmodule)] {
+        &self.submodules
     }
 }

@@ -4,7 +4,10 @@ The Sway compiler supports a list of attributes that perform various operations 
 
 ## Allow
 
-The `#[allow(dead_code)]` attribute overrides the check for dead code so that violations will go unreported.
+The `#[allow(...)]` attribute overrides checks so that violations will go unreported. The following checks can be disabled:
+
+- `#[allow(dead_code)]` disable checks for dead code;
+- `#[allow(deprecated)]` disables checks for usage of deprecated structs, functions and other items.
 
 ## Doc
 
@@ -50,3 +53,9 @@ The `#[test]` attribute marks a function to be executed as a test.
 The `#[test(should_revert)]` attribute marks a function to be executed as a test that should revert.
 
 More details in [Unit Testing](../testing/unit-testing.md).
+
+## Deprecated
+
+The `#[deprecated]` attribute marks a item as deprecated and makes the compiler emit a warning for every usage of the deprecated item. This warning can be disabled using `#[allow(deprecated)]`.
+
+It is possible to improve the warning message with `#[deprecated(note = "your message")]`

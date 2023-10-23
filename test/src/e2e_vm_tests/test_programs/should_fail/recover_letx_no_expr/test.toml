@@ -1,5 +1,0 @@
-category = "fail"
-
-# check: $()Expected an expression.
-# check: $()Expected `;`.
-# check: $()Mismatched types.

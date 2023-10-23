@@ -1,5 +1,7 @@
 library;
 
+use std::hash::*;
+
 pub type IdentityAlias = Identity;
 
 pub struct IdentityAliasWrapper {
@@ -13,7 +15,7 @@ impl core::ops::Eq for Array {
     }
 }
 
-pub type Tuple = (AssetId, AssetId);
+pub type Tuple = (SubId, SubId);
 impl core::ops::Eq for Tuple {
     fn eq(self, other: Self) -> bool {
         self.0 == other.0 && self.1 == other.1
@@ -23,7 +25,7 @@ impl core::ops::Eq for Tuple {
 pub type StringTy = str[9];
 impl core::ops::Eq for StringTy {
     fn eq(self, other: Self) -> bool {
-        std::hash::sha256(self) == std::hash::sha256(other)
+        sha256_str_array(self) == sha256_str_array(other)
     }
 }
 
@@ -39,5 +41,5 @@ pub struct Generic<T> {
 }
 
 abi MyContract {
-    fn foo(x: AssetId, y: [IdentityAlias; 2], z: IdentityAliasWrapperAlias, w: Generic<IdentityAliasWrapperAlias>, u: (AssetId, AssetId), s: StringTy) -> (AssetId, [IdentityAlias; 2], IdentityAliasWrapperAlias, Generic<IdentityAliasWrapperAlias>, (AssetId, AssetId), StringTy);
+    fn foo(x: SubId, y: [IdentityAlias; 2], z: IdentityAliasWrapperAlias, w: Generic<IdentityAliasWrapperAlias>, u: (SubId, SubId), s: StringTy) -> (SubId, [IdentityAlias; 2], IdentityAliasWrapperAlias, Generic<IdentityAliasWrapperAlias>, (SubId, SubId), StringTy);
 }

@@ -1,18 +1,17 @@
+use sway_error::handler::{ErrorEmitted, Handler};
+
 use crate::{
-    error::*,
     language::{parsed::*, ty, CallPath},
-    semantic_analysis::*,
+    semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
 };
 
 impl ty::TyStructDecl {
     pub(crate) fn type_check(
+        handler: &Handler,
         ctx: TypeCheckContext,
         decl: StructDeclaration,
-    ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
+    ) -> Result<Self, ErrorEmitted> {
         let StructDeclaration {
             name,
             fields,
@@ -27,24 +26,14 @@ impl ty::TyStructDecl {
         let mut decl_namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut decl_namespace);
 
-        // Type check the type parameters. This will also insert them into the
-        // current namespace.
-        let new_type_parameters = check!(
-            TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        // Type check the type parameters.
+        let new_type_parameters =
+            TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters, None)?;
 
         // type check the fields
         let mut new_fields = vec![];
         for field in fields.into_iter() {
-            new_fields.push(check!(
-                ty::TyStructField::type_check(ctx.by_ref(), field),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
+            new_fields.push(ty::TyStructField::type_check(handler, ctx.by_ref(), field)?);
         }
 
         let mut path: CallPath = name.into();
@@ -60,34 +49,54 @@ impl ty::TyStructDecl {
             attributes,
         };
 
-        ok(decl, warnings, errors)
+        Ok(decl)
     }
 }
 
 impl ty::TyStructField {
-    pub(crate) fn type_check(mut ctx: TypeCheckContext, field: StructField) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn type_check(
+        handler: &Handler,
+        mut ctx: TypeCheckContext,
+        field: StructField,
+    ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
 
         let mut type_argument = field.type_argument;
-        type_argument.type_id = check!(
-            ctx.resolve_type_with_self(
+        type_argument.type_id = ctx
+            .resolve_type(
+                handler,
                 type_argument.type_id,
                 &type_argument.span,
                 EnforceTypeArguments::Yes,
-                None
-            ),
-            type_engine.insert(ctx.engines(), TypeInfo::ErrorRecovery),
-            warnings,
-            errors,
-        );
+                None,
+            )
+            .unwrap_or_else(|err| type_engine.insert(ctx.engines(), TypeInfo::ErrorRecovery(err)));
         let field = ty::TyStructField {
             name: field.name,
             span: field.span,
             type_argument,
             attributes: field.attributes,
         };
-        ok(field, warnings, errors)
+        Ok(field)
+    }
+}
+
+impl TypeCheckAnalysis for ty::TyStructDecl {
+    fn type_check_analyze(
+        &self,
+        _handler: &Handler,
+        _ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
+    }
+}
+
+impl TypeCheckFinalization for ty::TyStructDecl {
+    fn type_check_finalize(
+        &mut self,
+        _handler: &Handler,
+        _ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
     }
 }

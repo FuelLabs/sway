@@ -188,7 +188,7 @@
     },
     {
       "components": null,
-      "type": "str[4]",
+      "type": "str",
       "typeId": 7,
       "typeParameters": null
     },

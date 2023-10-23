@@ -3,7 +3,7 @@ pub(crate) mod hover_link_contents;
 use crate::{
     core::{
         session::Session,
-        token::{get_range_from_span, to_ident_key, SymbolKind, Token, TypedAstToken},
+        token::{SymbolKind, Token, TypedAstToken},
     },
     utils::{
         attributes::doc_comment_attributes, keyword_docs::KeywordDocs, markdown, markup::Markup,
@@ -16,7 +16,7 @@ use sway_core::{
 };
 
 use lsp_types::{self, Position, Url};
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Span, Spanned};
 
 use self::hover_link_contents::HoverLinkContents;
 
@@ -27,18 +27,18 @@ pub fn hover_data(
     url: Url,
     position: Position,
 ) -> Option<lsp_types::Hover> {
-    let engines = session.engines.read();
-    let (ident, token) = session
-        .token_map()
-        .token_at_position(engines.se(), &url, position)?;
-    let range = get_range_from_span(&ident.span());
+    let (ident, token) = session.token_map().token_at_position(&url, position)?;
+    let range = ident.range;
 
     // check if our token is a keyword
     if matches!(
         token.kind,
-        SymbolKind::BoolLiteral | SymbolKind::Keyword | SymbolKind::SelfKeyword
+        SymbolKind::BoolLiteral
+            | SymbolKind::Keyword
+            | SymbolKind::SelfKeyword
+            | SymbolKind::ProgramTypeKeyword
     ) {
-        let name = ident.as_str();
+        let name = &ident.name;
         let documentation = keyword_docs.get(name).unwrap();
         let prefix = format!("\n```sway\n{name}\n```\n\n---\n\n");
         let formatted_doc = format!("{prefix}{documentation}");
@@ -55,7 +55,7 @@ pub fn hover_data(
         Some(decl_ident) => {
             let decl_token = session
                 .token_map()
-                .try_get(&to_ident_key(&decl_ident))
+                .try_get(&decl_ident)
                 .try_unwrap()
                 .map(|item| item.value().clone())?;
             (decl_ident, decl_token)
@@ -65,7 +65,7 @@ pub fn hover_data(
         None => (ident, token),
     };
 
-    let contents = hover_format(session.clone(), &engines, &decl_token, &decl_ident);
+    let contents = hover_format(session.clone(), &engines, &decl_token, &decl_ident.name);
     Some(lsp_types::Hover {
         contents,
         range: Some(range),
@@ -126,11 +126,9 @@ fn hover_format(
     session: Arc<Session>,
     engines: &Engines,
     token: &Token,
-    ident: &Ident,
+    ident_name: &str,
 ) -> lsp_types::HoverContents {
     let decl_engine = engines.de();
-
-    let token_name: String = ident.as_str().into();
     let doc_comment = format_doc_attributes(token);
 
     let format_name_with_type = |name: &str, type_id: &TypeId| -> String {
@@ -153,7 +151,7 @@ fn hover_format(
                     Some(format_variable_hover(
                         var_decl.mutability.is_mutable(),
                         &type_name,
-                        &token_name,
+                        ident_name,
                     ))
                 }
                 ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
@@ -162,7 +160,7 @@ fn hover_format(
                     Some(format_visibility_hover(
                         struct_decl.visibility,
                         decl.friendly_type_name(),
-                        &token_name,
+                        ident_name,
                     ))
                 }
                 ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. }) => {
@@ -171,7 +169,7 @@ fn hover_format(
                     Some(format_visibility_hover(
                         trait_decl.visibility,
                         decl.friendly_type_name(),
-                        &token_name,
+                        ident_name,
                     ))
                 }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
@@ -180,12 +178,12 @@ fn hover_format(
                     Some(format_visibility_hover(
                         enum_decl.visibility,
                         decl.friendly_type_name(),
-                        &token_name,
+                        ident_name,
                     ))
                 }
                 ty::TyDecl::AbiDecl(ty::AbiDecl { .. }) => {
                     hover_link_contents.add_implementations_for_decl(decl);
-                    Some(format!("{} {}", decl.friendly_type_name(), &token_name))
+                    Some(format!("{} {}", decl.friendly_type_name(), &ident_name))
                 }
                 _ => None,
             },

@@ -43,7 +43,8 @@ pub fn parse_file(
     source_id: Option<SourceId>,
 ) -> Result<Annotated<Module>, ErrorEmitted> {
     let ts = lex(handler, &src, 0, src.len(), source_id)?;
-    Parser::new(handler, &ts).parse_to_end().map(|(m, _)| m)
+    let (m, _) = Parser::new(handler, &ts).parse_to_end()?;
+    Ok(m)
 }
 
 pub fn parse_module_kind(
@@ -61,4 +62,49 @@ pub fn parse_module_kind(
         parser.parse::<DocComment>()?;
     }
     parser.parse()
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::*;
+
+    #[test]
+    fn parse_invalid() {
+        // just make sure these do not panic
+        let _res = parse_file(&Handler::default(), Arc::from("script; fn main(256߄"), None);
+        let _res = parse_file(
+            &Handler::default(),
+            Arc::from(
+                "script;
+            fn karr() {
+                let c: f828 =  0x00000000000000000000000vncifxp;
+            abi Zezybt {
+                #[mfzbezc, storage(r#
+            true }
+            }
+            cug",
+            ),
+            None,
+        );
+        let _res = parse_file(
+            &Handler::default(),
+            Arc::from(
+                "script;
+
+            corefn main() {
+                let a: b256 =  0x000>0000000scri s = \"flibrary I24;
+
+            use core::primitives::*;
+            use std::assert::assert;
+
+            ///\u{7eb}",
+            ),
+            None,
+        );
+        let _res = parse_file(
+            &Handler::default(),
+            Arc::from("script; \"\u{7eb}\u{7eb}"),
+            None,
+        );
+    }
 }

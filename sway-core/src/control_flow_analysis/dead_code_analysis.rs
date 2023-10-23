@@ -3,7 +3,7 @@ use crate::{
     decl_engine::*,
     language::{
         parsed::TreeType,
-        ty::{self, TyImplItem},
+        ty::{self, TyAstNodeContent, TyImplItem},
         CallPath, Visibility,
     },
     transform::{self, AttributesMap},
@@ -12,8 +12,11 @@ use crate::{
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
 use std::collections::{BTreeSet, HashMap};
-use sway_error::warning::{CompileWarning, Warning};
 use sway_error::{error::CompileError, type_error::TypeError};
+use sway_error::{
+    handler::Handler,
+    warning::{CompileWarning, Warning},
+};
 use sway_types::{constants::ALLOW_DEAD_CODE_NAME, span::Span, Ident, Named, Spanned};
 
 impl<'cfg> ControlFlowGraph<'cfg> {
@@ -423,6 +426,7 @@ fn connect_node<'eng: 'cfg, 'cfg>(
                 exit_node,
             )
         }
+        ty::TyAstNodeContent::Error(_, _) => (vec![], None),
     })
 }
 
@@ -561,7 +565,8 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_type_alias_declaration(engines, &type_alias, graph, entry_node)?;
             Ok(leaves.to_vec())
         }
-        ty::TyDecl::ErrorRecovery(_) | ty::TyDecl::GenericTypeForFunctionScope(_) => {
+        ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl { .. }) => Ok(leaves.to_vec()),
+        ty::TyDecl::ErrorRecovery(..) | ty::TyDecl::GenericTypeForFunctionScope(_) => {
             Ok(leaves.to_vec())
         }
     }
@@ -714,6 +719,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
                 methods_and_indexes.push((fn_decl.name.clone(), fn_decl_entry_node));
             }
             TyImplItem::Constant(_const_decl) => {}
+            TyImplItem::Type(_type_decl) => {}
         }
     }
     // we also want to add an edge from the methods back to the trait, so if a method gets called,
@@ -802,6 +808,7 @@ fn connect_abi_declaration(
                 }
             }
             ty::TyTraitInterfaceItem::Constant(_const_decl) => {}
+            ty::TyTraitInterfaceItem::Type(_type_decl) => {}
         }
     }
 
@@ -915,10 +922,10 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
     for fn_param in fn_decl.parameters.iter() {
         let fn_param_node = graph.add_node(ControlFlowGraphNode::FunctionParameter {
             param_name: fn_param.name.clone(),
-            is_self: matches!(
-                type_engine.get(fn_param.type_argument.initial_type_id),
-                TypeInfo::SelfType
-            ),
+            is_self: engines
+                .te()
+                .get(fn_param.type_argument.initial_type_id)
+                .is_self_type(),
         });
         graph.add_edge(entry_node, fn_param_node, "".into());
 
@@ -1488,8 +1495,8 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new()));
 
             let resolved_type_of_parent = match resolved_type_of_parent
-                .expect_struct(engines, field_instantiation_span)
-                .value
+                .expect_struct(&Handler::default(), engines, field_instantiation_span)
+                .ok()
             {
                 Some(struct_decl_ref) => decl_engine.get_struct(&struct_decl_ref).call_path,
                 None => {
@@ -2096,6 +2103,10 @@ fn construct_dead_code_warning_from_node(
             span: span.clone(),
             warning_content: Warning::UnreachableCode,
         },
+        ty::TyAstNode {
+            content: TyAstNodeContent::Error(_, _),
+            ..
+        } => return None,
     })
 }
 
@@ -2220,6 +2231,9 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
             ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_constant(decl_id).attributes)
             }
+            ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl { decl_id, .. }) => {
+                allow_dead_code(decl_engine.get_type(decl_id).attributes)
+            }
             ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_function(decl_id).attributes)
             }
@@ -2249,12 +2263,13 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
             ty::TyDecl::ImplTrait { .. } => false,
             ty::TyDecl::AbiDecl { .. } => false,
             ty::TyDecl::GenericTypeForFunctionScope { .. } => false,
-            ty::TyDecl::ErrorRecovery(_) => false,
+            ty::TyDecl::ErrorRecovery(..) => false,
             ty::TyDecl::StorageDecl { .. } => false,
         },
         ty::TyAstNodeContent::Expression(_) => false,
         ty::TyAstNodeContent::ImplicitReturnExpression(_) => false,
         ty::TyAstNodeContent::SideEffect(_) => false,
+        ty::TyAstNodeContent::Error(_, _) => false,
     }
 }
 

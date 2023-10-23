@@ -6,12 +6,10 @@ use crate::{
 
 impl ty::TyCodeBlock {
     pub(crate) fn type_check(
+        handler: &Handler,
         mut ctx: TypeCheckContext,
-        code_block: CodeBlock,
-    ) -> CompileResult<(Self, TypeId)> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
-
+        code_block: &CodeBlock,
+    ) -> Result<(Self, TypeId), ErrorEmitted> {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
@@ -22,7 +20,7 @@ impl ty::TyCodeBlock {
             .iter()
             .filter_map(|node| {
                 let ctx = ctx.by_ref().scoped(&mut code_block_namespace);
-                ty::TyAstNode::type_check(ctx, node.clone()).ok(&mut warnings, &mut errors)
+                ty::TyAstNode::type_check(handler, ctx, node.clone()).ok()
             })
             .collect::<Vec<ty::TyAstNode>>();
 
@@ -69,8 +67,14 @@ impl ty::TyCodeBlock {
                     let never_decl_opt = ctx
                         .namespace
                         .root()
-                        .resolve_symbol(&never_mod_path, &never_ident)
-                        .value;
+                        .resolve_symbol(
+                            &Handler::default(),
+                            engines,
+                            &never_mod_path,
+                            &never_ident,
+                            None,
+                        )
+                        .ok();
 
                     if let Some(ty::TyDecl::EnumDecl(ty::EnumDecl {
                         name,
@@ -81,7 +85,7 @@ impl ty::TyCodeBlock {
                     {
                         return ctx.engines().te().insert(
                             engines,
-                            TypeInfo::Enum(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
+                            TypeInfo::Enum(DeclRef::new(name.clone(), decl_id, decl_span.clone())),
                         );
                     }
 
@@ -93,11 +97,39 @@ impl ty::TyCodeBlock {
                 }
             });
 
-        append!(ctx.unify_with_self(block_type, &span), warnings, errors);
+        ctx.unify_with_type_annotation(handler, block_type, &span);
 
         let typed_code_block = ty::TyCodeBlock {
             contents: evaluated_contents,
         };
-        ok((typed_code_block, block_type), warnings, errors)
+        Ok((typed_code_block, block_type))
+    }
+}
+
+impl TypeCheckAnalysis for ty::TyCodeBlock {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        for node in self.contents.iter() {
+            node.type_check_analyze(handler, ctx)?;
+        }
+        Ok(())
+    }
+}
+
+impl TypeCheckFinalization for ty::TyCodeBlock {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            for node in self.contents.iter_mut() {
+                let _ = node.type_check_finalize(handler, ctx);
+            }
+            Ok(())
+        })
     }
 }

@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()Associated types are missing from this trait implementation: T

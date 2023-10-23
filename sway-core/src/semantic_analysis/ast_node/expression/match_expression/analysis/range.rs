@@ -4,11 +4,9 @@ use std::{
     ops::Sub,
 };
 
-use crate::{
-    error::{err, ok},
-    CompileError, CompileResult,
-};
+use crate::CompileError;
 use itertools::Itertools;
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
 
 pub(crate) trait MyMath<T> {
@@ -178,17 +176,19 @@ where
 
     /// Creates a `Range<T>` and ensures that it is a "valid `Range<T>`"
     /// (i.e.) that `first` is <= to `last`
-    fn from_double(first: T, last: T, span: &Span) -> CompileResult<Range<T>> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    fn from_double(
+        handler: &Handler,
+        first: T,
+        last: T,
+        span: &Span,
+    ) -> Result<Range<T>, ErrorEmitted> {
         if last < first {
-            errors.push(CompileError::Internal(
+            Err(handler.emit_err(CompileError::Internal(
                 "attempted to create an invalid range",
                 span.clone(),
-            ));
-            err(warnings, errors)
+            )))
         } else {
-            ok(Range { first, last }, warnings, errors)
+            Ok(Range { first, last })
         }
     }
 
@@ -246,15 +246,17 @@ where
     ///     last: 7
     /// }
     /// ```
-    fn join_ranges(a: &Range<T>, b: &Range<T>, span: &Span) -> CompileResult<Range<T>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    fn join_ranges(
+        handler: &Handler,
+        a: &Range<T>,
+        b: &Range<T>,
+        span: &Span,
+    ) -> Result<Range<T>, ErrorEmitted> {
         if !a.overlaps(b) && !a.within_one(b) {
-            errors.push(CompileError::Internal(
+            Err(handler.emit_err(CompileError::Internal(
                 "these two ranges cannot be joined",
                 span.clone(),
-            ));
-            err(warnings, errors)
+            )))
         } else {
             let first = if a.first < b.first {
                 a.first.clone()
@@ -266,13 +268,8 @@ where
             } else {
                 b.last.clone()
             };
-            let range = check!(
-                Range::from_double(first, last, span),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            ok(range, warnings, errors)
+            let range = Range::from_double(handler, first, last, span)?;
+            Ok(range)
         }
     }
 
@@ -290,9 +287,11 @@ where
     ///         and ending time of current interval is more than that of stack top,
     ///         update stack top with the ending time of current interval.
     /// 4. At the end stack contains the merged intervals.
-    fn condense_ranges(ranges: Vec<Range<T>>, span: &Span) -> CompileResult<Vec<Range<T>>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    fn condense_ranges(
+        handler: &Handler,
+        ranges: Vec<Range<T>>,
+        span: &Span,
+    ) -> Result<Vec<Range<T>>, ErrorEmitted> {
         let mut ranges = ranges;
         let mut stack: Vec<Range<T>> = vec![];
 
@@ -303,8 +302,9 @@ where
         let (first, rest) = match ranges.split_first() {
             Some((first, rest)) => (first.to_owned(), rest.to_owned()),
             None => {
-                errors.push(CompileError::Internal("unable to split vec", span.clone()));
-                return err(warnings, errors);
+                return Err(
+                    handler.emit_err(CompileError::Internal("unable to split vec", span.clone()))
+                );
             }
         };
         stack.push(first);
@@ -313,20 +313,16 @@ where
             let top = match stack.pop() {
                 Some(top) => top,
                 None => {
-                    errors.push(CompileError::Internal("stack empty", span.clone()));
-                    return err(warnings, errors);
+                    return Err(
+                        handler.emit_err(CompileError::Internal("stack empty", span.clone()))
+                    );
                 }
             };
             if range.overlaps(&top) || range.within_one(&top) {
                 // 3b. If the current interval overlaps with stack top (or is within ± 1)
                 //     and ending time of current interval is more than that of stack top,
                 //     update stack top with the ending time of current interval.
-                stack.push(check!(
-                    Range::join_ranges(range, &top, span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
+                stack.push(Range::join_ranges(handler, range, &top, span)?);
             } else {
                 // 3a. If the current interval does not overlap with the stack
                 //     top, push it.
@@ -335,7 +331,7 @@ where
             }
         }
         stack.reverse();
-        ok(stack, warnings, errors)
+        Ok(stack)
     }
 
     /// Given an *oracle* `Range<T>` and a vec *guides* of `Range<T>`, this
@@ -369,30 +365,22 @@ where
     /// 6. Combine the range given from step (3), the ranges given from step
     ///    (4), and the range given from step (5) for your result.
     pub(crate) fn find_exclusionary_ranges(
+        handler: &Handler,
         guides: Vec<Range<T>>,
         oracle: Range<T>,
         span: &Span,
-    ) -> CompileResult<Vec<Range<T>>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
+    ) -> Result<Vec<Range<T>>, ErrorEmitted> {
         // 1. Convert *guides* to a vec of ordered, distinct, non-overlapping
         //    ranges *guides*'
-        let condensed = check!(
-            Range::condense_ranges(guides, span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let condensed = Range::condense_ranges(handler, guides, span)?;
 
         // 2. Check to ensure that *oracle* fully encompasses all ranges in
         //    *guides*'.
         if !oracle.encompasses_all(&condensed) {
-            errors.push(CompileError::Internal(
+            return Err(handler.emit_err(CompileError::Internal(
                 "ranges OOB with the oracle",
                 span.clone(),
-            ));
-            return err(warnings, errors);
+            )));
         }
 
         // 3. Given the *oracle* range `[a, b]` and the *guides*'₀ range of
@@ -401,17 +389,18 @@ where
         let (first, last) = match (condensed.split_first(), condensed.split_last()) {
             (Some((first, _)), Some((last, _))) => (first, last),
             _ => {
-                errors.push(CompileError::Internal("could not split vec", span.clone()));
-                return err(warnings, errors);
+                return Err(
+                    handler.emit_err(CompileError::Internal("could not split vec", span.clone()))
+                );
             }
         };
         if oracle.first != first.first {
-            exclusionary.push(check!(
-                Range::from_double(oracle.first.clone(), first.first.decr(), span),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
+            exclusionary.push(Range::from_double(
+                handler,
+                oracle.first.clone(),
+                first.first.decr(),
+                span,
+            )?);
         }
 
         // 4. Given *guides*' of length *n*, for every *k* 0..*n-1*, find the
@@ -419,57 +408,50 @@ where
         //    construct a range of `[b, c]`. You can assume that `b != d` because
         //    of step (1)
         for (left, right) in condensed.iter().tuple_windows() {
-            exclusionary.push(check!(
-                Range::from_double(left.last.incr(), right.first.decr(), span),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
+            exclusionary.push(Range::from_double(
+                handler,
+                left.last.incr(),
+                right.first.decr(),
+                span,
+            )?);
         }
 
         // 5. Given the *oracle* range of `[a, b]`, *guides*' of length *n*, and
         //    the *guides*'ₙ range of `[c, d]`, and `b != d`, construct a range of
         //    `[b, d]`.
         if oracle.last != last.last {
-            exclusionary.push(check!(
-                Range::from_double(last.last.incr(), oracle.last, span),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
+            exclusionary.push(Range::from_double(
+                handler,
+                last.last.incr(),
+                oracle.last,
+                span,
+            )?);
         }
 
         // 6. Combine the range given from step (3), the ranges given from step
         //    (4), and the range given from step (5) for your result.
-        ok(exclusionary, warnings, errors)
+        Ok(exclusionary)
     }
 
     /// Condenses a vec of ranges and checks to see if the condensed ranges
     /// equal an oracle range.
     pub(crate) fn do_ranges_equal_range(
+        handler: &Handler,
         ranges: Vec<Range<T>>,
         oracle: Range<T>,
         span: &Span,
-    ) -> CompileResult<bool> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let condensed_ranges = check!(
-            Range::condense_ranges(ranges, span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+    ) -> Result<bool, ErrorEmitted> {
+        let condensed_ranges = Range::condense_ranges(handler, ranges, span)?;
         if condensed_ranges.len() > 1 {
-            ok(false, warnings, errors)
+            Ok(false)
         } else {
             let first_range = match condensed_ranges.first() {
                 Some(first_range) => first_range.clone(),
                 _ => {
-                    errors.push(CompileError::Internal("vec empty", span.clone()));
-                    return err(warnings, errors);
+                    return Err(handler.emit_err(CompileError::Internal("vec empty", span.clone())));
                 }
             };
-            ok(first_range == oracle, warnings, errors)
+            Ok(first_range == oracle)
         }
     }
 

@@ -1,12 +1,10 @@
 use std::{cmp::Ordering, fmt, slice::Iter, vec::IntoIter};
 
 use itertools::Itertools;
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
 
-use crate::{
-    error::{err, ok},
-    CompileError, CompileResult,
-};
+use crate::CompileError;
 
 use super::pattern::Pattern;
 
@@ -39,52 +37,48 @@ impl PatStack {
     }
 
     /// Returns the first element of a `PatStack`.
-    pub(crate) fn first(&self, span: &Span) -> CompileResult<Pattern> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn first(&self, handler: &Handler, span: &Span) -> Result<Pattern, ErrorEmitted> {
         match self.pats.first() {
-            Some(first) => ok(first.to_owned(), warnings, errors),
-            None => {
-                errors.push(CompileError::Internal("empty PatStack", span.clone()));
-                err(warnings, errors)
-            }
+            Some(first) => Ok(first.to_owned()),
+            None => Err(handler.emit_err(CompileError::Internal("empty PatStack", span.clone()))),
         }
     }
 
     /// Returns a tuple of the first element of a `PatStack` and the rest of the
     /// elements.
-    pub(crate) fn split_first(&self, span: &Span) -> CompileResult<(Pattern, PatStack)> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn split_first(
+        &self,
+        handler: &Handler,
+        span: &Span,
+    ) -> Result<(Pattern, PatStack), ErrorEmitted> {
         match self.pats.split_first() {
             Some((first, pat_stack_contents)) => {
                 let pat_stack = PatStack {
                     pats: pat_stack_contents.to_vec(),
                 };
-                ok((first.to_owned(), pat_stack), warnings, errors)
+                Ok((first.to_owned(), pat_stack))
             }
-            None => {
-                errors.push(CompileError::Internal("empty PatStack", span.clone()));
-                err(warnings, errors)
-            }
+            None => Err(handler.emit_err(CompileError::Internal("empty PatStack", span.clone()))),
         }
     }
 
     /// Given a usize *n*, splits the `PatStack` at *n* and returns both halves.
-    pub(crate) fn split_at(&self, n: usize, span: &Span) -> CompileResult<(PatStack, PatStack)> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn split_at(
+        &self,
+        handler: &Handler,
+        n: usize,
+        span: &Span,
+    ) -> Result<(PatStack, PatStack), ErrorEmitted> {
         if n > self.len() {
-            errors.push(CompileError::Internal(
+            return Err(handler.emit_err(CompileError::Internal(
                 "attempting to split OOB",
                 span.clone(),
-            ));
-            return err(warnings, errors);
+            )));
         }
         let (a, b) = self.pats.split_at(n);
         let x = PatStack { pats: a.to_vec() };
         let y = PatStack { pats: b.to_vec() };
-        ok((x, y), warnings, errors)
+        Ok((x, y))
     }
 
     /// Pushes a `Pattern` onto the `PatStack`
@@ -94,18 +88,18 @@ impl PatStack {
 
     /// Given a usize *n*, returns a mutable reference to the `PatStack` at
     /// index *n*.
-    fn get_mut(&mut self, n: usize, span: &Span) -> CompileResult<&mut Pattern> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    fn get_mut(
+        &mut self,
+        handler: &Handler,
+        n: usize,
+        span: &Span,
+    ) -> Result<&mut Pattern, ErrorEmitted> {
         match self.pats.get_mut(n) {
-            Some(elem) => ok(elem, warnings, errors),
-            None => {
-                errors.push(CompileError::Internal(
-                    "cant retrieve mutable reference to element",
-                    span.clone(),
-                ));
-                err(warnings, errors)
-            }
+            Some(elem) => Ok(elem),
+            None => Err(handler.emit_err(CompileError::Internal(
+                "cant retrieve mutable reference to element",
+                span.clone(),
+            ))),
         }
     }
 
@@ -260,17 +254,20 @@ impl PatStack {
     ///     ],
     /// ]
     /// ```
-    pub(crate) fn serialize_multi_patterns(self, span: &Span) -> CompileResult<Vec<PatStack>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn serialize_multi_patterns(
+        self,
+        handler: &Handler,
+        span: &Span,
+    ) -> Result<Vec<PatStack>, ErrorEmitted> {
         let mut output: Vec<PatStack> = vec![];
         let mut stack: Vec<PatStack> = vec![self];
         while !stack.is_empty() {
             let top = match stack.pop() {
                 Some(top) => top,
                 None => {
-                    errors.push(CompileError::Internal("can't pop Vec", span.clone()));
-                    return err(warnings, errors);
+                    return Err(
+                        handler.emit_err(CompileError::Internal("can't pop Vec", span.clone()))
+                    );
                 }
             };
             if !top.contains_or_pattern() {
@@ -280,12 +277,7 @@ impl PatStack {
                     if let Pattern::Or(elems) = pat {
                         for elem in elems.into_iter() {
                             let mut top = top.clone();
-                            let r = check!(
-                                top.get_mut(i, span),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            );
+                            let r = top.get_mut(handler, i, span)?;
                             let _ = std::mem::replace(r, elem);
                             stack.push(top);
                         }
@@ -294,7 +286,7 @@ impl PatStack {
             }
         }
         output.reverse();
-        ok(output, warnings, errors)
+        Ok(output)
     }
 
     /// Orders a `PatStack` into a human-readable order.

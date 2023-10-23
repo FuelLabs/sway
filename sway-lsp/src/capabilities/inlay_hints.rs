@@ -23,7 +23,7 @@ pub struct InlayHint {
     pub label: String,
 }
 
-pub(crate) fn inlay_hints(
+pub fn inlay_hints(
     session: Arc<Session>,
     uri: &Url,
     range: &Range,
@@ -43,7 +43,7 @@ pub(crate) fn inlay_hints(
 
     let hints: Vec<lsp_types::InlayHint> = session
         .token_map()
-        .tokens_for_file(engines.se(), uri)
+        .tokens_for_file(uri)
         .filter_map(|(_, token)| {
             token.typed.as_ref().and_then(|t| match t {
                 TypedAstToken::TypedDeclaration(TyDecl::VariableDecl(var_decl)) => {

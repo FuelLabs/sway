@@ -1,0 +1,133 @@
+category = "compile"
+
+#check: $()Match arm is unreachable
+
+#check: $()let _x = match e {
+#nextln: $()The expression to match on is of type "Enum".
+
+#check: $()Enum::E(_) => 0,
+#nextln: $()Preceding match arms already match all possible values of `e`.
+#nextln: $()Enum::E(1) => 0,
+#nextln: $()Match arm `Enum::E(1)` is unreachable.
+
+#check: $()Match arm is unreachable
+
+#check: $()let _x = match s1 {
+#nextln: $()The expression to match on is of type "Struct".
+
+#check: $()Struct { x: false, y, z } => y + z.0,
+#nextln: $()Preceding match arms already match all possible values of `s1`.
+#nextln: $()Struct { x: false, y: 0, z } => z.0,
+#nextln: $()Match arm `Struct { x: false, y: 0, z }` is unreachable.
+
+#check: $()Match arm is unreachable
+
+#check: $()let _x = match s2 {
+#nextln: $()The expression to match on is of type "Struct".
+
+#check: $()Struct { x: false, y, z } => y + z.0,
+#nextln: $()Preceding match arms already match all possible values of `s2`.
+#nextln: $()Struct { x: true, y: 0, z: (0, 0, 0) } => 0,
+#nextln: $()Match arm `Struct { x: true, y: 0, z: (0, 0, 0) }` is unreachable.
+
+#check: $()Match arm is unreachable
+
+#check: $()let _x = match s3 {
+#nextln: $()The expression to match on is of type "Struct".
+
+#check: $()Struct { x: false, y, z } => y + z.0,
+#nextln: $()Preceding match arms already match all possible values of `s3`.
+#nextln: $()Struct { x: false, y: 0, z: (0, _, _) } => 0,
+#nextln: $()Match arm `Struct { x: false, y: 0, z: (0, _, _) }` is unreachable.
+
+#check: $()Match arm is unreachable
+
+#check: $()let _x = match s4 {
+#nextln: $()The expression to match on is of type "Struct".
+
+#check: $()Struct { x: false, y, z } => y + z.0,
+#nextln: $()Preceding match arms already match all possible values of `s4`.
+#nextln: $()Struct { x: true, y: 0, z: _ } => 0,
+#nextln: $()Match arm `Struct { x: true, y: 0, z: _ }` is unreachable.
+
+#check: $()Match arm is unreachable
+
+#check: $()let _x = match s5 {
+#nextln: $()The expression to match on is of type "Struct".
+
+#check: $()Struct { x: false, y, z } => y + z.0,
+#nextln: $()Preceding match arms already match all possible values of `s5`.
+#nextln: $()Struct { x: false, y, z: _ } => y,
+#nextln: $()Match arm `Struct { x: false, y, z: _ }` is unreachable.
+
+#check: $()Match arm is unreachable
+
+#check: $()let _x = match s6 {
+#nextln: $()The expression to match on is of type "Struct".
+
+#check: $()Struct { x: false, y, z } => y + z.0,
+#nextln: $()Preceding match arms already match all possible values of `s6`.
+#nextln: $()Struct { x: true, y: 0, z: (0, 0, 0) } => 0,
+#nextln: $()Match arm `Struct { x: true, y: 0, z: (0, 0, 0) }` is unreachable.
+
+#check: $()Match arm is unreachable
+
+#check: $()let _x = match t1 {
+#nextln: $()The expression to match on is of type "(bool, Enum, Struct, u32)".
+
+#check: $()(false, _, s, n) => n + s.y,
+#nextln: $()Preceding match arms already match all possible values of `t1`.
+#nextln: $()(false, Enum::A, s, n) => n + s.y,
+#nextln: $()Match arm `(false, Enum::A, s, n)` is unreachable.
+
+#check: $()Match arm is unreachable
+
+#check: $()let _x = match t2 {
+#nextln: $()The expression to match on is of type "(bool, Enum, Struct, u32)".
+
+#check: $()(false, _, s, n) => n + s.y,
+#nextln: $()Preceding match arms already match all possible values of `t2`.
+#nextln: $()(false, Enum::A, Struct { x: true, y, z:_ }, 0) => y,
+#nextln: $()Match arm `(false, Enum::A, Struct { x: true, y, z:_ }, 0)` is unreachable.
+
+#check: $()Match arm is unreachable
+
+#check: $()let _x = match t3 {
+#nextln: $()The expression to match on is of type "(bool, Enum, Struct, u32)".
+
+#check: $()(false, _, s, n) => n + s.y,
+#nextln: $()Preceding match arms already match all possible values of `t3`.
+#nextln: $()(true, _, Struct { x: true, y, z: _}, 0) => y,
+#nextln: $()Match arm `(true, _, Struct { x: true, y, z: _}, 0)` is unreachable.
+
+#check: $()Match arm is unreachable
+
+#check: $()let _x = match t4 {
+#nextln: $()The expression to match on is of type "(bool, Enum, Struct, u32)".
+
+#check: $()(false, _, s, n) => n + s.y,
+#nextln: $()Preceding match arms already match all possible values of `t4`.
+#nextln: $()(true, _, _, 0) => 0,
+#nextln: $()Match arm `(true, _, _, 0)` is unreachable.
+
+#check: $()Match arm is unreachable
+
+#check: $()let _x = match t5 {
+#nextln: $()The expression to match on is of type "(bool, Enum, Struct, u32)".
+
+#check: $()(false, _, s, n) => n + s.y,
+#nextln: $()Preceding match arms already match all possible values of `t5`.
+#nextln: $()(true, _, Struct { x: _, y: _, z: (j, k, l)}, n) => {
+#nextln: $()Match arm `(true, _, Struct { x: _, y: _, z: (j, k, l)}, n)` is unreachable.
+
+#check: $()Match arm is unreachable
+
+#check: $()let _x = match t6 {
+#nextln: $()The expression to match on is of type "(bool, Enum, Struct, u32)".
+
+#check: $()(false, _, s, n) => n + s.y,
+#nextln: $()Preceding match arms already match all possible values of `t6`.
+#nextln: $()(true, _, Struct { x: _, y: _, z: (_ , k, _)}, n) => {
+#nextln: $()Match arm `(true, _, Struct { x: _, y: _, z: (_ , k, _)}, n)` is unreachable.
+
+expected_warnings = 13

@@ -1,10 +1,9 @@
 # Summary
 
-[The Sway Programming Language](./README.md)
+[The Sway Programming Language](./index.md)
 
 - [Introduction](./introduction/index.md)
-  - [Installation](./introduction/installation.md)
-  - [Sway Quickstart](./introduction/sway_quickstart.md)
+  - [Getting Started](./introduction/getting_started.md)
   - [The Fuel Toolchain](./introduction/fuel_toolchain.md)
   - [A Forc Project](./introduction/forc_project.md)
   - [Standard Library](./introduction/standard_library.md)
@@ -41,6 +40,7 @@
   - [Advanced Types](./advanced/advanced_types.md)
   - [Generic Types](./advanced/generic_types.md)
   - [Traits](./advanced/traits.md)
+  - [Associated Types](./advanced/associated_types.md)
   - [Generics and Trait Constraints](./advanced/generics_and_trait_constraints.md)
   - [Assembly](./advanced/assembly.md)
 - [Common Collections](./common-collections/index.md)
@@ -63,6 +63,7 @@
   - [Differences From Solidity](./reference/solidity_differences.md)
   - [Differences From Rust](./reference/rust_differences.md)
   - [Contributing To Sway](./reference/contributing_to_sway.md)
+  - [Keywords](./reference/keywords.md)
 - [Forc Reference](./forc/index.md)
   - [Manifest Reference](./forc/manifest_reference.md)
   - [Workspaces](./forc/workspaces.md)

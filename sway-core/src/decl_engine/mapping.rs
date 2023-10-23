@@ -1,8 +1,11 @@
 use std::fmt;
 
-use crate::language::ty::{TyTraitInterfaceItem, TyTraitItem};
+use crate::{
+    language::ty::{TyTraitInterfaceItem, TyTraitItem},
+    Engines, TypeId, UnifyCheck,
+};
 
-use super::{AssociatedItemDeclId, InterfaceItemMap, ItemMap};
+use super::{AssociatedItemDeclId, DeclEngineGet, InterfaceItemMap, ItemMap};
 
 type SourceDecl = AssociatedItemDeclId;
 type DestinationDecl = AssociatedItemDeclId;
@@ -28,6 +31,7 @@ impl fmt::Display for DeclMapping {
                             AssociatedItemDeclId::TraitFn(decl_id) => decl_id.inner(),
                             AssociatedItemDeclId::Function(decl_id) => decl_id.inner(),
                             AssociatedItemDeclId::Constant(decl_id) => decl_id.inner(),
+                            AssociatedItemDeclId::Type(decl_id) => decl_id.inner(),
                         }
                     )
                 })
@@ -52,6 +56,16 @@ impl fmt::Debug for DeclMapping {
 }
 
 impl DeclMapping {
+    pub(crate) fn new() -> Self {
+        Self {
+            mapping: Vec::new(),
+        }
+    }
+
+    pub(crate) fn insert(&mut self, k: SourceDecl, v: DestinationDecl) {
+        self.mapping.push((k, v))
+    }
+
     pub(crate) fn is_empty(&self) -> bool {
         self.mapping.is_empty()
     }
@@ -67,10 +81,12 @@ impl DeclMapping {
                 let interface_decl_ref = match interface_item {
                     TyTraitInterfaceItem::TraitFn(decl_ref) => decl_ref.id().into(),
                     TyTraitInterfaceItem::Constant(decl_ref) => decl_ref.id().into(),
+                    TyTraitInterfaceItem::Type(decl_ref) => decl_ref.id().into(),
                 };
                 let new_decl_ref = match new_item {
                     TyTraitItem::Fn(decl_ref) => decl_ref.id().into(),
                     TyTraitItem::Constant(decl_ref) => decl_ref.id().into(),
+                    TyTraitItem::Type(decl_ref) => decl_ref.id().into(),
                 };
                 mapping.push((interface_decl_ref, new_decl_ref));
             }
@@ -80,10 +96,12 @@ impl DeclMapping {
                 let interface_decl_ref = match item {
                     TyTraitItem::Fn(decl_ref) => decl_ref.id().into(),
                     TyTraitItem::Constant(decl_ref) => decl_ref.id().into(),
+                    TyTraitItem::Type(decl_ref) => decl_ref.id().into(),
                 };
                 let new_decl_ref = match new_item {
                     TyTraitItem::Fn(decl_ref) => decl_ref.id().into(),
                     TyTraitItem::Constant(decl_ref) => decl_ref.id().into(),
+                    TyTraitItem::Type(decl_ref) => decl_ref.id().into(),
                 };
                 mapping.push((interface_decl_ref, new_decl_ref));
             }
@@ -98,5 +116,32 @@ impl DeclMapping {
             }
         }
         None
+    }
+
+    /// This method returns only associated item functions that have as self type the given type.
+    pub(crate) fn filter_functions_by_self_type(
+        &self,
+        self_type: TypeId,
+        engines: &Engines,
+    ) -> DeclMapping {
+        let mut mapping: Vec<(SourceDecl, DestinationDecl)> = vec![];
+        for (source_decl_ref, dest_decl_ref) in self.mapping.iter().cloned() {
+            match dest_decl_ref {
+                AssociatedItemDeclId::TraitFn(_) => mapping.push((source_decl_ref, dest_decl_ref)),
+                AssociatedItemDeclId::Function(func_id) => {
+                    let func = engines.de().get(&func_id);
+
+                    let unify_check = UnifyCheck::non_dynamic_equality(engines);
+                    if let (left, Some(right)) = (self_type, func.parameters.get(0)) {
+                        if unify_check.check(left, right.type_argument.type_id) {
+                            mapping.push((source_decl_ref, dest_decl_ref));
+                        }
+                    }
+                }
+                AssociatedItemDeclId::Constant(_) => mapping.push((source_decl_ref, dest_decl_ref)),
+                AssociatedItemDeclId::Type(_) => mapping.push((source_decl_ref, dest_decl_ref)),
+            }
+        }
+        DeclMapping { mapping }
     }
 }

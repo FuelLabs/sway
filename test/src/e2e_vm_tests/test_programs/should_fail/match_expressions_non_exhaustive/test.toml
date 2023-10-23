@@ -1,22 +1,22 @@
 category = "fail"
 
-# check: primitive_tests.sw:10:9
-# check: $()This match arm is unreachable.
+# check: $()Match arm is unreachable
+# nextln: primitive_tests.sw:
 
-# check: primitive_tests.sw:32:9
-# check: $()This match arm is unreachable.
+# check: $()Match arm is unreachable
+# nextln: primitive_tests.sw:
 
-# check: adt_tests.sw:16:9
-# check: $()This match arm is unreachable.
+# check: $()Match arm is unreachable
+# nextln: adt_tests.sw:
 
-# check: adt_tests.sw:21:9
-# check: $()This match arm is unreachable.
+# check: $()Match arm is unreachable
+# nextln: adt_tests.sw:
 
-# check: adt_tests.sw:27:9
-# check: $()This match arm is unreachable.
+# check: $()Match arm is unreachable
+# nextln: adt_tests.sw:
 
-# check: adt_tests.sw:33:9
-# check: $()This match arm is unreachable.
+# check: $()Match arm is unreachable
+# nextln: adt_tests.sw:
 
 # check: primitive_tests.sw:6:13
 # check: $()Non-exhaustive match expression. Missing patterns `[1...4]`, `[6...9]`, `[11...MAX]`

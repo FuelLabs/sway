@@ -11,10 +11,11 @@ mod use_statement;
 pub use code_block::*;
 pub use declaration::*;
 pub use expression::*;
-pub(crate) use include_statement::IncludeStatement;
+pub use include_statement::IncludeStatement;
 pub use module::{ParseModule, ParseSubmodule};
 pub use program::{ParseProgram, TreeType};
 pub use return_statement::*;
+use sway_error::handler::ErrorEmitted;
 pub use use_statement::{ImportType, UseStatement};
 
 use sway_types::span::Span;
@@ -59,6 +60,12 @@ pub enum AstNodeContent {
     ImplicitReturnExpression(Expression),
     /// A statement of the form `mod foo::bar;` which imports/includes another source file.
     IncludeStatement(IncludeStatement),
+    /// A malformed statement.
+    ///
+    /// Used for parser recovery when we cannot form a more specific node.
+    /// The list of `Span`s are for consumption by the LSP and are,
+    /// when joined, the same as that stored in `statement.span`.
+    Error(Box<[Span]>, ErrorEmitted),
 }
 
 impl ParseTree {

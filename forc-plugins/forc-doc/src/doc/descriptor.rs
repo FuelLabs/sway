@@ -66,7 +66,7 @@ impl Descriptor {
                             item_name,
                             code_str: parse::parse_format::<sway_ast::ItemStruct>(
                                 struct_decl.span.as_str(),
-                            ),
+                            )?,
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
                                 context_opt: context,
@@ -103,7 +103,7 @@ impl Descriptor {
                             item_name,
                             code_str: parse::parse_format::<sway_ast::ItemEnum>(
                                 enum_decl.span.as_str(),
-                            ),
+                            )?,
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
                                 context_opt: context,
@@ -151,7 +151,7 @@ impl Descriptor {
                             item_name,
                             code_str: parse::parse_format::<sway_ast::ItemTrait>(
                                 trait_decl.span.as_str(),
-                            ),
+                            )?,
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
                                 context_opt: context,
@@ -193,7 +193,7 @@ impl Descriptor {
                         module_info,
                         ty_decl: ty_decl.clone(),
                         item_name,
-                        code_str: parse::parse_format::<sway_ast::ItemAbi>(abi_decl.span.as_str()),
+                        code_str: parse::parse_format::<sway_ast::ItemAbi>(abi_decl.span.as_str())?,
                         attrs_opt: attrs_opt.clone(),
                         item_context: ItemContext {
                             context_opt: context,
@@ -228,7 +228,7 @@ impl Descriptor {
                         item_name,
                         code_str: parse::parse_format::<sway_ast::ItemStorage>(
                             storage_decl.span.as_str(),
-                        ),
+                        )?,
                         attrs_opt: attrs_opt.clone(),
                         item_context: ItemContext {
                             context_opt: context,
@@ -238,34 +238,6 @@ impl Descriptor {
                     raw_attributes: attrs_opt,
                 }))
             }
-            // Uncomment this when we decide how to handle ImplTraits
-            // ImplTrait { decl_id, decl_span, .. } => {
-            // TODO: figure out how to use this, likely we don't want to document this directly.
-            //
-            // This declaration type may make more sense to document as part of another declaration
-            // much like how we document method functions for traits or fields on structs.
-            //     let impl_trait = decl_engine.get_impl_trait(&decl_ref, decl_span)?;
-            //     let item_name = impl_trait.trait_name.suffix;
-            //     Ok(Descriptor::Documentable(Document {
-            //         module_info: module_info.clone(),
-            //         item_header: ItemHeader {
-            //             module_info: module_info.clone(),
-            //             friendly_name: ty_decl.friendly_name(),
-            //             item_name: item_name.clone(),
-            //         },
-            //         item_body: ItemBody {
-            //             module_info,
-            //             ty_decl: ty_decl.clone(),
-            //             item_name,
-            //             code_str: parse::parse_format::<sway_ast::ItemImpl>(
-            //                 impl_trait.span.as_str(),
-            //             ),
-            //             attrs_opt: None, // no attributes field
-            //             item_context: ItemContext { context: None },
-            //         },
-            //         raw_attributes: None,
-            //     }))
-            // }
             ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
                 let fn_decl = decl_engine.get_function(decl_id);
                 if !document_private_items && fn_decl.visibility.is_private() {
@@ -288,7 +260,7 @@ impl Descriptor {
                             item_name,
                             code_str: trim_fn_body(parse::parse_format::<sway_ast::ItemFn>(
                                 fn_decl.span.as_str(),
-                            )),
+                            )?),
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
                                 context_opt: None,
@@ -321,7 +293,7 @@ impl Descriptor {
                             item_name,
                             code_str: parse::parse_format::<sway_ast::ItemConst>(
                                 const_decl.span.as_str(),
-                            ),
+                            )?,
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
                                 context_opt: None,

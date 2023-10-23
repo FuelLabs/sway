@@ -4,9 +4,9 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    get_symbol, get_symbols, AnalysisResults, Block, Context, EscapedSymbols, Function,
-    Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type, Value,
-    ValueDatum, ESCAPED_SYMBOLS_NAME,
+    get_symbol, get_symbols, memory_utils, AnalysisResults, Block, Context, EscapedSymbols,
+    Function, Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type,
+    Value, ValueDatum, ESCAPED_SYMBOLS_NAME,
 };
 
 pub const MEMCPYOPT_NAME: &str = "memcpyopt";
@@ -31,82 +31,6 @@ pub fn mem_copy_opt(
     modified |= local_copy_prop(context, analyses, function)?;
 
     Ok(modified)
-}
-
-// Combine a series of GEPs into one.
-fn combine_indices(context: &Context, val: Value) -> Option<Vec<Value>> {
-    match &context.values[val.0].value {
-        ValueDatum::Instruction(Instruction::GetLocal(_)) => Some(vec![]),
-        ValueDatum::Instruction(Instruction::GetElemPtr {
-            base,
-            elem_ptr_ty: _,
-            indices,
-        }) => {
-            let mut base_indices = combine_indices(context, *base)?;
-            base_indices.append(&mut indices.clone());
-            Some(base_indices)
-        }
-        ValueDatum::Argument(_) => Some(vec![]),
-        _ => None,
-    }
-}
-
-// Given a memory pointer instruction, compute the offset of indexed element,
-// for each symbol that this may alias to.
-fn get_memory_offsets(context: &Context, val: Value) -> FxHashMap<Symbol, u64> {
-    get_symbols(context, val)
-        .into_iter()
-        .filter_map(|sym| {
-            let offset = sym
-                .get_type(context)
-                .get_pointee_type(context)?
-                .get_indexed_offset(context, &combine_indices(context, val)?)?;
-            Some((sym, offset))
-        })
-        .collect()
-}
-
-// Can memory ranges [val1, val1+len1] and [val2, val2+len2] overlap?
-// Conservatively returns true if cannot statically determine.
-fn may_alias(context: &Context, val1: Value, len1: u64, val2: Value, len2: u64) -> bool {
-    let mem_offsets_1 = get_memory_offsets(context, val1);
-    let mem_offsets_2 = get_memory_offsets(context, val2);
-
-    for (sym1, off1) in mem_offsets_1 {
-        if let Some(off2) = mem_offsets_2.get(&sym1) {
-            // does off1 + len1 overlap with off2 + len2?
-            if (off1 <= *off2 && (off1 + len1 > *off2)) || (*off2 <= off1 && (*off2 + len2 > off1))
-            {
-                return true;
-            }
-        }
-    }
-    false
-}
-// Are memory ranges [val1, val1+len1] and [val2, val2+len2] exactly the same?
-// Conservatively returns false if cannot statically determine.
-fn must_alias(context: &Context, val1: Value, len1: u64, val2: Value, len2: u64) -> bool {
-    let mem_offsets_1 = get_memory_offsets(context, val1);
-    let mem_offsets_2 = get_memory_offsets(context, val2);
-
-    if mem_offsets_1.len() != 1 || mem_offsets_2.len() != 1 {
-        return false;
-    }
-
-    let (sym1, off1) = mem_offsets_1.iter().next().unwrap();
-    let (sym2, off2) = mem_offsets_2.iter().next().unwrap();
-
-    // does off1 + len1 overlap with off2 + len2?
-    sym1 == sym2 && off1 == off2 && len1 == len2
-}
-
-fn pointee_size(context: &Context, ptr_val: Value) -> u64 {
-    ptr_val
-        .get_type(context)
-        .unwrap()
-        .get_pointee_type(context)
-        .expect("Expected arg to be a pointer")
-        .size_in_bytes(context)
 }
 
 struct InstInfo {
@@ -264,7 +188,8 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
     for (value, replace_with) in replaces.into_iter() {
         match replace_with {
             ReplaceWith::InPlaceLocal(replacement_var) => {
-                let Some(Instruction::GetLocal(redundant_var)) = value.get_instruction(context) else {
+                let Some(Instruction::GetLocal(redundant_var)) = value.get_instruction(context)
+                else {
                     panic!("earlier match now fails");
                 };
                 if redundant_var.is_mutable(context) {
@@ -321,7 +246,7 @@ fn local_copy_prop(
             if let Some(copies) = src_to_copies.get_mut(&sym) {
                 for copy in &*copies {
                     let (_, src_ptr, copy_size) = deconstruct_memcpy(context, *copy);
-                    if may_alias(context, value, len, src_ptr, copy_size) {
+                    if memory_utils::may_alias(context, value, len, src_ptr, copy_size) {
                         available_copies.remove(copy);
                     }
                 }
@@ -338,10 +263,13 @@ fn local_copy_prop(
                         Instruction::MemCopyVal {
                             dst_val_ptr,
                             src_val_ptr: _,
-                        } => (*dst_val_ptr, pointee_size(context, *dst_val_ptr)),
+                        } => (
+                            *dst_val_ptr,
+                            memory_utils::pointee_size(context, *dst_val_ptr),
+                        ),
                         _ => panic!("Unexpected copy instruction"),
                     };
-                    if may_alias(context, value, len, dest_ptr, copy_size) {
+                    if memory_utils::may_alias(context, value, len, dest_ptr, copy_size) {
                         available_copies.remove(copy);
                     }
                 }
@@ -398,7 +326,7 @@ fn local_copy_prop(
             } => (
                 *dst_val_ptr,
                 *src_val_ptr,
-                pointee_size(context, *dst_val_ptr),
+                memory_utils::pointee_size(context, *dst_val_ptr),
             ),
             _ => unreachable!("Only memcpy instructions handled"),
         }
@@ -419,7 +347,7 @@ fn local_copy_prop(
         escaped_symbols: &EscapedSymbols,
         inst: Value,
         src_val_ptr: Value,
-        dest_to_copies: &mut FxHashMap<Symbol, FxHashSet<Value>>,
+        dest_to_copies: &FxHashMap<Symbol, FxHashSet<Value>>,
         replacements: &mut FxHashMap<Value, Replacement>,
     ) -> bool {
         // For every `memcpy` that src_val_ptr is a destination of,
@@ -441,10 +369,10 @@ fn local_copy_prop(
                 // matches. This isn't really needed as the copy happens and the
                 // data we want is safe to access. But we just don't know how to
                 // generate the right GEP always. So that's left for another day.
-                if must_alias(
+                if memory_utils::must_alias(
                     context,
                     src_val_ptr,
-                    pointee_size(context, src_val_ptr),
+                    memory_utils::pointee_size(context, src_val_ptr),
                     dst_ptr_memcpy,
                     copy_len,
                 ) {
@@ -459,7 +387,7 @@ fn local_copy_prop(
                     if let (Some(memcpy_src_sym), Some(memcpy_dst_sym), Some(new_indices)) = (
                         get_symbol(context, src_ptr_memcpy),
                         get_symbol(context, dst_ptr_memcpy),
-                        combine_indices(context, src_val_ptr),
+                        memory_utils::combine_indices(context, src_val_ptr),
                     ) {
                         let memcpy_src_sym_type = memcpy_src_sym
                             .get_type(context)
@@ -565,7 +493,7 @@ fn local_copy_prop(
                             escaped_symbols,
                             inst,
                             *src_val_ptr,
-                            &mut dest_to_copies,
+                            &dest_to_copies,
                             &mut replacements,
                         );
                     }
@@ -586,7 +514,7 @@ fn local_copy_prop(
                             escaped_symbols,
                             inst,
                             src_val_ptr,
-                            &mut dest_to_copies,
+                            &dest_to_copies,
                             &mut replacements,
                         ) {
                             gen_new_copy(
@@ -608,7 +536,7 @@ fn local_copy_prop(
                         kill_defined_symbol(
                             context,
                             *dst_val_ptr,
-                            pointee_size(context, *dst_val_ptr),
+                            memory_utils::pointee_size(context, *dst_val_ptr),
                             &mut available_copies,
                             &mut src_to_copies,
                             &mut dest_to_copies,

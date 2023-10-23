@@ -1,12 +1,20 @@
 use std::{fmt, hash::Hasher};
 
+use sway_error::{
+    handler::{ErrorEmitted, Handler},
+    warning::{CompileWarning, Warning},
+};
 use sway_types::{Span, Spanned};
 
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    error::*,
     language::{ty::*, Literal},
+    semantic_analysis::{
+        TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
+        TypeCheckFinalizationContext,
+    },
+    transform::{AllowDeprecatedState, AttributeKind, AttributesMap},
     type_system::*,
     types::*,
 };
@@ -51,16 +59,14 @@ impl SubstTypes for TyExpression {
     }
 }
 
-impl ReplaceSelfType for TyExpression {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.return_type.replace_self_type(engines, self_type);
-        self.expression.replace_self_type(engines, self_type);
-    }
-}
-
 impl ReplaceDecls for TyExpression {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
-        self.expression.replace_decls(decl_mapping, engines);
+    fn replace_decls_inner(
+        &mut self,
+        decl_mapping: &DeclMapping,
+        handler: &Handler,
+        ctx: &mut TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.expression.replace_decls(decl_mapping, handler, ctx)
     }
 }
 
@@ -93,21 +99,40 @@ impl DebugWithEngines for TyExpression {
     }
 }
 
+impl TypeCheckAnalysis for TyExpression {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.expression.type_check_analyze(handler, ctx)
+    }
+}
+
+impl TypeCheckFinalization for TyExpression {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        let res = self.expression.type_check_finalize(handler, ctx);
+        if let TyExpressionVariant::FunctionApplication { fn_ref, .. } = &self.expression {
+            let method = ctx.engines.de().get_function(fn_ref);
+            self.return_type = method.return_type.type_id;
+        }
+        res
+    }
+}
+
 impl CollectTypesMetadata for TyExpression {
     fn collect_types_metadata(
         &self,
+        handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
-    ) -> CompileResult<Vec<TypeMetadata>> {
+    ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         use TyExpressionVariant::*;
-        let mut warnings = vec![];
-        let mut errors = vec![];
         let decl_engine = ctx.engines.de();
-        let mut res = check!(
-            self.return_type.collect_types_metadata(ctx),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let mut res = self.return_type.collect_types_metadata(handler, ctx)?;
         match &self.expression {
             FunctionApplication {
                 arguments,
@@ -116,12 +141,7 @@ impl CollectTypesMetadata for TyExpression {
                 ..
             } => {
                 for arg in arguments.iter() {
-                    res.append(&mut check!(
-                        arg.1.collect_types_metadata(ctx),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
+                    res.append(&mut arg.1.collect_types_metadata(handler, ctx)?);
                 }
                 let function_decl = decl_engine.get_function(fn_ref);
 
@@ -131,34 +151,19 @@ impl CollectTypesMetadata for TyExpression {
                 }
 
                 for content in function_decl.body.contents.iter() {
-                    res.append(&mut check!(
-                        content.collect_types_metadata(ctx),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
+                    res.append(&mut content.collect_types_metadata(handler, ctx)?);
                 }
                 ctx.call_site_pop();
             }
             Tuple { fields } => {
                 for field in fields.iter() {
-                    res.append(&mut check!(
-                        field.collect_types_metadata(ctx),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
+                    res.append(&mut field.collect_types_metadata(handler, ctx)?);
                 }
             }
             AsmExpression { registers, .. } => {
                 for register in registers.iter() {
                     if let Some(init) = register.initializer.as_ref() {
-                        res.append(&mut check!(
-                            init.collect_types_metadata(ctx),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        ));
+                        res.append(&mut init.collect_types_metadata(handler, ctx)?);
                     }
                 }
             }
@@ -179,95 +184,42 @@ impl CollectTypesMetadata for TyExpression {
                     }
                 }
                 for field in fields.iter() {
-                    res.append(&mut check!(
-                        field.value.collect_types_metadata(ctx),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
+                    res.append(&mut field.value.collect_types_metadata(handler, ctx)?);
                 }
             }
             LazyOperator { lhs, rhs, .. } => {
-                res.append(&mut check!(
-                    lhs.collect_types_metadata(ctx),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-                res.append(&mut check!(
-                    rhs.collect_types_metadata(ctx),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
+                res.append(&mut lhs.collect_types_metadata(handler, ctx)?);
+                res.append(&mut rhs.collect_types_metadata(handler, ctx)?);
             }
             Array {
                 elem_type: _,
                 contents,
             } => {
                 for content in contents.iter() {
-                    res.append(&mut check!(
-                        content.collect_types_metadata(ctx),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
+                    res.append(&mut content.collect_types_metadata(handler, ctx)?);
                 }
             }
             ArrayIndex { prefix, index } => {
-                res.append(&mut check!(
-                    (**prefix).collect_types_metadata(ctx),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-                res.append(&mut check!(
-                    (**index).collect_types_metadata(ctx),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
+                res.append(&mut (**prefix).collect_types_metadata(handler, ctx)?);
+                res.append(&mut (**index).collect_types_metadata(handler, ctx)?);
             }
             CodeBlock(block) => {
                 for content in block.contents.iter() {
-                    res.append(&mut check!(
-                        content.collect_types_metadata(ctx),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
+                    res.append(&mut content.collect_types_metadata(handler, ctx)?);
                 }
             }
-            MatchExp { desugared, .. } => res.append(&mut check!(
-                desugared.collect_types_metadata(ctx),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )),
+            MatchExp { desugared, .. } => {
+                res.append(&mut desugared.collect_types_metadata(handler, ctx)?)
+            }
             IfExp {
                 condition,
                 then,
                 r#else,
             } => {
-                res.append(&mut check!(
-                    condition.collect_types_metadata(ctx),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-                res.append(&mut check!(
-                    then.collect_types_metadata(ctx),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
+                res.append(&mut condition.collect_types_metadata(handler, ctx)?);
+                res.append(&mut then.collect_types_metadata(handler, ctx)?);
                 if let Some(r#else) = r#else {
-                    res.append(&mut check!(
-                        r#else.collect_types_metadata(ctx),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
+                    res.append(&mut r#else.collect_types_metadata(handler, ctx)?);
                 }
             }
             StructFieldAccess {
@@ -275,36 +227,16 @@ impl CollectTypesMetadata for TyExpression {
                 resolved_type_of_parent,
                 ..
             } => {
-                res.append(&mut check!(
-                    prefix.collect_types_metadata(ctx),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-                res.append(&mut check!(
-                    resolved_type_of_parent.collect_types_metadata(ctx),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
+                res.append(&mut prefix.collect_types_metadata(handler, ctx)?);
+                res.append(&mut resolved_type_of_parent.collect_types_metadata(handler, ctx)?);
             }
             TupleElemAccess {
                 prefix,
                 resolved_type_of_parent,
                 ..
             } => {
-                res.append(&mut check!(
-                    prefix.collect_types_metadata(ctx),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-                res.append(&mut check!(
-                    resolved_type_of_parent.collect_types_metadata(ctx),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
+                res.append(&mut prefix.collect_types_metadata(handler, ctx)?);
+                res.append(&mut resolved_type_of_parent.collect_types_metadata(handler, ctx)?);
             }
             EnumInstantiation {
                 enum_ref,
@@ -317,94 +249,49 @@ impl CollectTypesMetadata for TyExpression {
                     ctx.call_site_insert(type_param.type_id, call_path_binding.inner.suffix.span())
                 }
                 if let Some(contents) = contents {
-                    res.append(&mut check!(
-                        contents.collect_types_metadata(ctx),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
+                    res.append(&mut contents.collect_types_metadata(handler, ctx)?);
                 }
                 for variant in enum_decl.variants.iter() {
-                    res.append(&mut check!(
-                        variant.type_argument.type_id.collect_types_metadata(ctx),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
+                    res.append(
+                        &mut variant
+                            .type_argument
+                            .type_id
+                            .collect_types_metadata(handler, ctx)?,
+                    );
                 }
                 for type_param in enum_decl.type_parameters.iter() {
-                    res.append(&mut check!(
-                        type_param.type_id.collect_types_metadata(ctx),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
+                    res.append(&mut type_param.type_id.collect_types_metadata(handler, ctx)?);
                 }
             }
             AbiCast { address, .. } => {
-                res.append(&mut check!(
-                    address.collect_types_metadata(ctx),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
+                res.append(&mut address.collect_types_metadata(handler, ctx)?);
             }
             IntrinsicFunction(kind) => {
-                res.append(&mut check!(
-                    kind.collect_types_metadata(ctx),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
+                res.append(&mut kind.collect_types_metadata(handler, ctx)?);
             }
             EnumTag { exp } => {
-                res.append(&mut check!(
-                    exp.collect_types_metadata(ctx),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
+                res.append(&mut exp.collect_types_metadata(handler, ctx)?);
             }
             UnsafeDowncast {
                 exp,
                 variant,
                 call_path_decl: _,
             } => {
-                res.append(&mut check!(
-                    exp.collect_types_metadata(ctx),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-                res.append(&mut check!(
-                    variant.type_argument.type_id.collect_types_metadata(ctx),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
+                res.append(&mut exp.collect_types_metadata(handler, ctx)?);
+                res.append(
+                    &mut variant
+                        .type_argument
+                        .type_id
+                        .collect_types_metadata(handler, ctx)?,
+                );
             }
             WhileLoop { condition, body } => {
-                res.append(&mut check!(
-                    condition.collect_types_metadata(ctx),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
+                res.append(&mut condition.collect_types_metadata(handler, ctx)?);
                 for content in body.contents.iter() {
-                    res.append(&mut check!(
-                        content.collect_types_metadata(ctx),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
+                    res.append(&mut content.collect_types_metadata(handler, ctx)?);
                 }
             }
-            Return(exp) => res.append(&mut check!(
-                exp.collect_types_metadata(ctx),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )),
+            Return(exp) => res.append(&mut exp.collect_types_metadata(handler, ctx)?),
             // storage access can never be generic
             // variable expressions don't ever have return types themselves, they're stored in
             // `TyExpression::return_type`. Variable expressions are just names of variables.
@@ -417,15 +304,10 @@ impl CollectTypesMetadata for TyExpression {
             | Continue
             | FunctionParameter => {}
             Reassignment(reassignment) => {
-                res.append(&mut check!(
-                    reassignment.rhs.collect_types_metadata(ctx),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
+                res.append(&mut reassignment.rhs.collect_types_metadata(handler, ctx)?);
             }
         }
-        ok(res, warnings, errors)
+        Ok(res)
     }
 }
 
@@ -528,11 +410,11 @@ impl DeterministicallyAborts for TyExpression {
 }
 
 impl TyExpression {
-    pub(crate) fn error(span: Span, engines: &Engines) -> TyExpression {
+    pub(crate) fn error(err: ErrorEmitted, span: Span, engines: &Engines) -> TyExpression {
         let type_engine = engines.te();
         TyExpression {
             expression: TyExpressionVariant::Tuple { fields: vec![] },
-            return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery),
+            return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery(err)),
             span,
         }
     }
@@ -556,5 +438,83 @@ impl TyExpression {
     /// Returns `self` as a literal, if possible.
     pub(crate) fn extract_literal_value(&self) -> Option<Literal> {
         self.expression.extract_literal_value()
+    }
+
+    // Checks if this expression references a deprecated item
+    // TODO: Change this fn for more deprecated checks.
+    pub(crate) fn check_deprecated(
+        &self,
+        engines: &Engines,
+        handler: &Handler,
+        allow_deprecated: &mut AllowDeprecatedState,
+    ) {
+        fn emit_warning_if_deprecated(
+            attributes: &AttributesMap,
+            span: &Span,
+            handler: &Handler,
+            message: &str,
+            allow_deprecated: &mut AllowDeprecatedState,
+        ) {
+            if allow_deprecated.is_allowed() {
+                return;
+            }
+
+            if let Some(v) = attributes
+                .get(&AttributeKind::Deprecated)
+                .and_then(|x| x.last())
+            {
+                let mut message = message.to_string();
+
+                if let Some(sway_ast::Literal::String(s)) = v
+                    .args
+                    .iter()
+                    .find(|x| x.name.as_str() == "note")
+                    .and_then(|x| x.value.as_ref())
+                {
+                    message.push_str(": ");
+                    message.push_str(s.parsed.as_str());
+                }
+
+                handler.emit_warn(CompileWarning {
+                    span: span.clone(),
+                    warning_content: Warning::UsingDeprecated { message },
+                })
+            }
+        }
+
+        match &self.expression {
+            TyExpressionVariant::StructExpression {
+                struct_ref,
+                instantiation_span,
+                ..
+            } => {
+                let s = engines.de().get(struct_ref.id());
+                emit_warning_if_deprecated(
+                    &s.attributes,
+                    instantiation_span,
+                    handler,
+                    "deprecated struct",
+                    allow_deprecated,
+                );
+            }
+            TyExpressionVariant::FunctionApplication {
+                call_path, fn_ref, ..
+            } => {
+                if let Some(TyDecl::ImplTrait(t)) = engines.de().get(fn_ref).implementing_type {
+                    let t = engines.de().get(&t.decl_id).implementing_for;
+                    if let TypeInfo::Struct(struct_ref) = engines.te().get(t.type_id) {
+                        let s = engines.de().get(struct_ref.id());
+                        emit_warning_if_deprecated(
+                            &s.attributes,
+                            &call_path.span(),
+                            handler,
+                            "deprecated struct",
+                            allow_deprecated,
+                        );
+                    }
+                }
+            }
+            _ => {}
+        }
     }
 }

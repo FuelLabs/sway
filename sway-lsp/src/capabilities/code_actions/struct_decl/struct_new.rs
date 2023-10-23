@@ -22,7 +22,7 @@ impl<'a> GenerateImplCodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
 }
 
 impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
-    fn new(ctx: CodeActionContext<'a>, decl: &'a TyStructDecl) -> Self {
+    fn new(ctx: &CodeActionContext<'a>, decl: &'a TyStructDecl) -> Self {
         // Before the other functions are called, we need to determine if the new function
         // should be generated in a new impl block, an existing impl block, or not at all.
         // Find the first impl block for this struct if it exists.
@@ -119,6 +119,7 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
                     fn_decl.span().as_str().contains("fn new")
                 }
                 sway_core::language::ty::TyTraitItem::Constant(_) => false,
+                sway_core::language::ty::TyTraitItem::Type(_) => false,
             })
         {
             Some(CodeActionDisabled {

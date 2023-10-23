@@ -6,8 +6,8 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{token::Delimiter, ExprArrayDescriptor, ExprTupleDescriptor};
-use sway_types::Spanned;
+use sway_ast::{ExprArrayDescriptor, ExprTupleDescriptor};
+use sway_types::{ast::Delimiter, Spanned};
 
 impl Format for ExprTupleDescriptor {
     fn format(
@@ -24,11 +24,7 @@ impl Format for ExprTupleDescriptor {
                 tail,
             } => match formatter.shape.code_line.line_style {
                 LineStyle::Multiline => {
-                    write!(
-                        formatted_code,
-                        "{}",
-                        formatter.shape.indent.to_string(&formatter.config)?
-                    )?;
+                    write!(formatted_code, "{}", formatter.indent_to_str()?)?;
                     head.format(formatted_code, formatter)?;
                     write!(formatted_code, "{}", comma_token.span().as_str())?;
                     tail.format(formatted_code, formatter)?;
@@ -53,7 +49,7 @@ impl Parenthesis for ExprTupleDescriptor {
     ) -> Result<(), FormatterError> {
         match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
-                formatter.shape.block_indent(&formatter.config);
+                formatter.indent();
                 writeln!(line, "{}", Delimiter::Parenthesis.as_open_char())?;
             }
             _ => write!(line, "{}", Delimiter::Parenthesis.as_open_char())?,
@@ -67,11 +63,11 @@ impl Parenthesis for ExprTupleDescriptor {
     ) -> Result<(), FormatterError> {
         match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
-                formatter.shape.block_unindent(&formatter.config);
+                formatter.unindent();
                 write!(
                     line,
                     "{}{}",
-                    formatter.shape.indent.to_string(&formatter.config)?,
+                    formatter.indent_to_str()?,
                     Delimiter::Parenthesis.as_close_char()
                 )?;
             }
@@ -116,7 +112,7 @@ impl SquareBracket for ExprArrayDescriptor {
     ) -> Result<(), FormatterError> {
         match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
-                formatter.shape.block_indent(&formatter.config);
+                formatter.indent();
                 write!(line, "{}", Delimiter::Bracket.as_open_char())?;
             }
             _ => write!(line, "{}", Delimiter::Bracket.as_open_char())?,
@@ -130,11 +126,11 @@ impl SquareBracket for ExprArrayDescriptor {
     ) -> Result<(), FormatterError> {
         match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
-                formatter.shape.block_unindent(&formatter.config);
+                formatter.unindent();
                 write!(
                     line,
                     "{}{}",
-                    formatter.shape.indent.to_string(&formatter.config)?,
+                    formatter.indent_to_str()?,
                     Delimiter::Bracket.as_close_char()
                 )?;
             }

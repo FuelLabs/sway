@@ -1,4 +1,4 @@
-use crate::error::ParseFileError;
+use crate::{error::ParseFileError, Formatter, FormatterError};
 use std::path::PathBuf;
 use std::sync::Arc;
 use sway_ast::{attribute::Annotated, token::CommentedTokenStream, Module};
@@ -29,16 +29,21 @@ pub fn lex(input: &Arc<str>) -> Result<CommentedTokenStream, ParseFileError> {
     with_handler(|h| sway_parse::lex_commented(h, input, 0, input.len(), &None))
 }
 
-pub fn parse_format<P: sway_parse::Parse + crate::Format>(input: &str) -> String {
+pub fn parse_format<P: sway_parse::Parse + crate::Format>(
+    input: &str,
+) -> Result<String, FormatterError> {
     let parsed = with_handler(|handler| {
         let token_stream = sway_parse::lex(handler, &input.into(), 0, input.len(), None)?;
         sway_parse::Parser::new(handler, &token_stream).parse::<P>()
-    })
-    .unwrap();
+    })?;
+
+    // Allow test cases that include comments.
+    let mut formatter = Formatter::default();
+    formatter.with_comments_context(input)?;
 
     let mut buf = <_>::default();
-    parsed.format(&mut buf, &mut <_>::default()).unwrap();
-    buf
+    parsed.format(&mut buf, &mut formatter)?;
+    Ok(buf)
 }
 
 /// Partially parses an AST node that implements sway_parse::Parse.

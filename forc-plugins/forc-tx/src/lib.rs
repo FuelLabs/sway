@@ -101,13 +101,11 @@ pub struct Script {
 #[derive(Debug, Devault, Parser, Deserialize, Serialize)]
 pub struct Gas {
     /// Gas price for the transaction.
-    #[clap(long = "gas-price", default_value_t = 0)]
-    #[devault("0")]
-    pub price: u64,
+    #[clap(long = "gas-price")]
+    pub price: Option<u64>,
     /// Gas limit for the transaction.
-    #[clap(long = "gas-limit", default_value_t = fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)]
-    #[devault("fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx")]
-    pub limit: u64,
+    #[clap(long = "gas-limit")]
+    pub limit: Option<u64>,
 }
 
 /// Block until which tx cannot be included.
@@ -153,6 +151,9 @@ pub struct InputCoin {
     /// UTXO being spent must have been created at least this many blocks ago.
     #[clap(long)]
     pub maturity: u32,
+    /// Gas used by predicates.
+    #[clap(long, default_value_t = 0)]
+    pub predicate_gas_used: u64,
     #[clap(flatten)]
     pub predicate: Predicate,
 }
@@ -199,6 +200,9 @@ pub struct InputMessage {
     /// Index of witness that authorizes the message.
     #[clap(long)]
     pub witness_ix: Option<u8>,
+    /// Gas used by predicates.
+    #[clap(long, default_value_t = 0)]
+    pub predicate_gas_used: u64,
     #[clap(flatten)]
     pub predicate: Predicate,
 }
@@ -391,7 +395,7 @@ pub enum ConvertInputError {
     WitnessPredicateMismatch,
 }
 
-const EXAMPLES: &str = r#"EXAMPLES:
+const EXAMPLES: &str = r"EXAMPLES:
     # An example constructing a `create` transaction.
     forc tx create \
         --bytecode ./my-contract/out/debug/my-contract.bin \
@@ -447,7 +451,7 @@ const EXAMPLES: &str = r#"EXAMPLES:
         output contract-created \
             --contract-id 0xCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC \
             --state-root 0x0000000000000000000000000000000000000000000000000000000000000000
-"#;
+";
 
 impl ParseError {
     /// Print the error with clap's fancy formatting.
@@ -618,8 +622,11 @@ impl TryFrom<Create> for fuel_tx::Create {
             .map(|s| fuel_tx::Witness::from(s.as_bytes()))
             .collect();
         let create = fuel_tx::Transaction::create(
-            create.gas.price,
-            create.gas.limit,
+            create.gas.price.unwrap_or_default(),
+            create
+                .gas
+                .limit
+                .unwrap_or(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx),
             create.maturity.maturity.into(),
             create.bytecode_witness_index,
             create.salt.salt.unwrap_or_default(),
@@ -662,8 +669,11 @@ impl TryFrom<Script> for fuel_tx::Script {
             .map(|s| fuel_tx::Witness::from(s.as_bytes()))
             .collect();
         let script = fuel_tx::Transaction::script(
-            script.gas.price,
-            script.gas.limit,
+            script.gas.price.unwrap_or_default(),
+            script
+                .gas
+                .limit
+                .unwrap_or(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx),
             script.maturity.maturity.into(),
             script_bytecode,
             script_data,
@@ -700,6 +710,7 @@ impl TryFrom<Input> for fuel_tx::Input {
                     asset_id,
                     tx_ptr: tx_pointer,
                     maturity,
+                    predicate_gas_used,
                     predicate,
                     witness_ix,
                 } = coin;
@@ -721,6 +732,7 @@ impl TryFrom<Input> for fuel_tx::Input {
                             asset_id,
                             tx_pointer,
                             maturity.into(),
+                            predicate_gas_used,
                             std::fs::read(&predicate).map_err(|err| {
                                 ConvertInputError::PredicateRead {
                                     path: predicate,
@@ -755,6 +767,7 @@ impl TryFrom<Input> for fuel_tx::Input {
                     nonce,
                     msg_data,
                     witness_ix,
+                    predicate_gas_used,
                     predicate,
                 } = msg;
                 let data =
@@ -803,6 +816,7 @@ impl TryFrom<Input> for fuel_tx::Input {
                                 recipient,
                                 amount,
                                 nonce,
+                                predicate_gas_used,
                                 predicate,
                                 predicate_data,
                             )
@@ -812,6 +826,7 @@ impl TryFrom<Input> for fuel_tx::Input {
                                 recipient,
                                 amount,
                                 nonce,
+                                predicate_gas_used,
                                 data,
                                 predicate,
                                 predicate_data,

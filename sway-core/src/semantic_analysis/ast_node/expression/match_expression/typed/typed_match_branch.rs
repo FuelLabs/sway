@@ -1,24 +1,22 @@
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Spanned;
 
 use crate::{
-    error::{err, ok},
     language::{parsed::MatchBranch, ty},
     semantic_analysis::*,
     types::DeterministicallyAborts,
-    CompileResult, TypeInfo,
+    TypeInfo,
 };
 
 use super::matcher::matcher;
 
 impl ty::TyMatchBranch {
     pub(crate) fn type_check(
+        handler: &Handler,
         mut ctx: TypeCheckContext,
         typed_value: &ty::TyExpression,
         branch: MatchBranch,
-    ) -> CompileResult<(ty::TyMatchBranch, ty::TyScrutinee)> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
+    ) -> Result<(ty::TyMatchBranch, ty::TyScrutinee), ErrorEmitted> {
         let MatchBranch {
             scrutinee,
             result,
@@ -30,20 +28,16 @@ impl ty::TyMatchBranch {
         let engines = ctx.engines();
 
         // type check the scrutinee
-        let typed_scrutinee = check!(
-            ty::TyScrutinee::type_check(ctx.by_ref(), scrutinee),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let typed_scrutinee = ty::TyScrutinee::type_check(handler, ctx.by_ref(), scrutinee)?;
 
         // calculate the requirements map and the declarations map
-        let (match_req_map, match_decl_map) = check!(
-            matcher(ctx.by_ref(), typed_value, typed_scrutinee.clone(),),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let (match_req_map, match_decl_map) = matcher(
+            handler,
+            ctx.by_ref(),
+            typed_value,
+            typed_value,
+            typed_scrutinee.clone(),
+        )?;
 
         // create a new namespace for this branch
         let mut namespace = ctx.namespace.clone();
@@ -63,7 +57,7 @@ impl ty::TyMatchBranch {
                 return_type,
                 type_ascription,
             }));
-            ctx.insert_symbol(left_decl, var_decl.clone());
+            let _ = ctx.insert_symbol(handler, left_decl, var_decl.clone());
             code_block_contents.push(ty::TyAstNode {
                 content: ty::TyAstNodeContent::Declaration(var_decl),
                 span,
@@ -75,21 +69,12 @@ impl ty::TyMatchBranch {
             let ctx = ctx
                 .by_ref()
                 .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
-            check!(
-                ty::TyExpression::type_check(ctx, result),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )
+            ty::TyExpression::type_check(handler, ctx, result)?
         };
 
         // unify the return type from the typed result with the type annotation
         if !typed_result.deterministically_aborts(decl_engine, true) {
-            append!(
-                ctx.unify_with_self(typed_result.return_type, &typed_result.span),
-                warnings,
-                errors
-            );
+            ctx.unify_with_type_annotation(handler, typed_result.return_type, &typed_result.span);
         }
 
         // if the typed branch result is a code block, then add the contents
@@ -133,6 +118,6 @@ impl ty::TyMatchBranch {
             result: new_result,
             span: branch_span,
         };
-        ok((typed_branch, typed_scrutinee), warnings, errors)
+        Ok((typed_branch, typed_scrutinee))
     }
 }

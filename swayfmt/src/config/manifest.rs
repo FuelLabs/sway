@@ -2,8 +2,8 @@ pub use crate::error::FormatterError;
 use crate::{
     config::{
         comments::Comments, expr::Expressions, heuristics::Heuristics, imports::Imports,
-        items::Items, lists::Lists, literals::Literals, ordering::Ordering, user_def::Structures,
-        user_opts::*, whitespace::Whitespace,
+        items::Items, literals::Literals, ordering::Ordering, user_def::Structures, user_opts::*,
+        whitespace::Whitespace,
     },
     constants::SWAY_FORMAT_FILE_NAME,
     error::ConfigError,
@@ -20,7 +20,6 @@ pub struct Config {
     pub imports: Imports,
     pub ordering: Ordering,
     pub items: Items,
-    pub lists: Lists,
     pub literals: Literals,
     pub expressions: Expressions,
     pub heuristics: Heuristics,
@@ -36,7 +35,6 @@ pub struct ConfigOptions {
     pub imports: Option<ImportsOptions>,
     pub ordering: Option<OrderingOptions>,
     pub items: Option<ItemsOptions>,
-    pub lists: Option<ListsOptions>,
     pub literals: Option<LiteralsOptions>,
     pub expressions: Option<ExpressionsOptions>,
     pub heuristics: Option<HeuristicsOptions>,
@@ -68,11 +66,6 @@ impl Config {
                 .items
                 .as_ref()
                 .map(Items::from_opts)
-                .unwrap_or_default(),
-            lists: opts
-                .lists
-                .as_ref()
-                .map(Lists::from_opts)
                 .unwrap_or_default(),
             literals: opts
                 .literals
@@ -120,7 +113,7 @@ impl ConfigOptions {
                 path: config_path,
                 err: e,
             })?;
-        let toml_de = &mut toml::de::Deserializer::new(&config_str);
+        let toml_de = toml::de::Deserializer::new(&config_str);
         let config_opts: Self = serde_ignored::deserialize(toml_de, |field| {
             let warning = format!("  WARNING! found unusable configuration: {field}");
             println_yellow_err(&warning);

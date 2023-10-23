@@ -27,8 +27,9 @@ pub(crate) fn instruct_decl(
         ty::TyDecl::AbiDecl(_) => todo!(),
         ty::TyDecl::GenericTypeForFunctionScope(_) => todo!(),
         ty::TyDecl::StorageDecl(_) => todo!(),
-        ty::TyDecl::ErrorRecovery(_) => {}
+        ty::TyDecl::ErrorRecovery(_, _) => {}
         ty::TyDecl::TypeAliasDecl(_) => todo!(),
+        ty::TyDecl::TraitTypeDecl(_) => todo!(),
     }
     Ok(())
 }

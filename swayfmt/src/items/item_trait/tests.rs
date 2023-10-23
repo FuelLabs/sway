@@ -66,3 +66,42 @@ intermediate_whitespace
      fn foo(self);
 }   "
 );
+
+fmt_test_item!(trait_contains_const
+"trait ConstantId {
+    const ID: u32 = 1;
+}",
+intermediate_whitespace
+"trait ConstantId {
+    const    ID: u32 = 1;
+}");
+
+fmt_test_item!(
+trait_normal_comment_two_fns
+"pub trait MyTrait {
+    // Before A
+    fn a(self);
+    // Before b
+    fn b(self);
+}",
+intermediate_whitespace
+"  pub   trait   MyTrait {
+    // Before A
+         fn a(self);
+    // Before b
+         fn b(self);
+    }   "
+);
+fmt_test_item!(trait_multiline_method
+"trait MyComplexTrait {
+    fn complex_function(
+        arg1: MyStruct<[b256; 3], u8>,
+        arg2: [MyStruct<u64, bool>; 4],
+        arg3: (str[5], bool),
+        arg4: MyOtherStruct,
+    ) -> str[6];
+}",
+intermediate_whitespace
+"trait MyComplexTrait {
+    fn complex_function(    arg1: MyStruct<[b256;  3], u8> , arg2: [MyStruct <u64, bool>; 4], arg3: ( str[5], bool ), arg4: MyOtherStruct)    -> str[6] ;
+}");

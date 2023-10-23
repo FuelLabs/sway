@@ -91,6 +91,36 @@ pub(crate) enum AllocatedOpcode {
     SUBI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
     XOR(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     XORI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
+    WQOP(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        VirtualImmediate06,
+    ),
+    WQML(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        VirtualImmediate06,
+    ),
+    WQDV(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        VirtualImmediate06,
+    ),
+    WQCM(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        VirtualImmediate06,
+    ),
+    WQAM(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+    ),
 
     /* Conrol Flow Instructions */
     JMP(AllocatedRegister),
@@ -108,6 +138,8 @@ pub(crate) enum AllocatedOpcode {
     ALOC(AllocatedRegister),
     CFEI(VirtualImmediate24),
     CFSI(VirtualImmediate24),
+    CFE(AllocatedRegister),
+    CFS(AllocatedRegister),
     LB(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
     LW(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
     MCL(AllocatedRegister, AllocatedRegister),
@@ -127,7 +159,7 @@ pub(crate) enum AllocatedOpcode {
     BAL(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     BHEI(AllocatedRegister),
     BHSH(AllocatedRegister, AllocatedRegister),
-    BURN(AllocatedRegister),
+    BURN(AllocatedRegister, AllocatedRegister),
     CALL(
         AllocatedRegister,
         AllocatedRegister,
@@ -156,7 +188,7 @@ pub(crate) enum AllocatedOpcode {
         AllocatedRegister,
         AllocatedRegister,
     ),
-    MINT(AllocatedRegister),
+    MINT(AllocatedRegister, AllocatedRegister),
     RETD(AllocatedRegister, AllocatedRegister),
     RVRT(AllocatedRegister),
     SMO(
@@ -190,7 +222,9 @@ pub(crate) enum AllocatedOpcode {
     ),
 
     /* Cryptographic Instructions */
-    ECR(AllocatedRegister, AllocatedRegister, AllocatedRegister),
+    ECK1(AllocatedRegister, AllocatedRegister, AllocatedRegister),
+    ECR1(AllocatedRegister, AllocatedRegister, AllocatedRegister),
+    ED19(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     K256(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     S256(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
@@ -243,6 +277,11 @@ impl AllocatedOpcode {
             SUBI(r1, _r2, _i) => vec![r1],
             XOR(r1, _r2, _r3) => vec![r1],
             XORI(r1, _r2, _i) => vec![r1],
+            WQOP(_, _, _, _) => vec![],
+            WQML(_, _, _, _) => vec![],
+            WQDV(_, _, _, _) => vec![],
+            WQCM(r1, _, _, _) => vec![r1],
+            WQAM(_, _, _, _) => vec![],
 
             /* Control Flow Instructions */
             JMP(_r1) => vec![],
@@ -260,6 +299,8 @@ impl AllocatedOpcode {
             ALOC(_r1) => vec![],
             CFEI(_imm) => vec![],
             CFSI(_imm) => vec![],
+            CFE(_r1) => vec![],
+            CFS(_r1) => vec![],
             LB(r1, _r2, _i) => vec![r1],
             LW(r1, _r2, _i) => vec![r1],
             MCL(_r1, _r2) => vec![],
@@ -274,7 +315,7 @@ impl AllocatedOpcode {
             BAL(r1, _r2, _r3) => vec![r1],
             BHEI(r1) => vec![r1],
             BHSH(_r1, _r2) => vec![],
-            BURN(_r1) => vec![],
+            BURN(_r1, _r2) => vec![],
             CALL(_r1, _r2, _r3, _r4) => vec![],
             CB(_r1) => vec![],
             CCP(_r1, _r2, _r3, _r4) => vec![],
@@ -283,7 +324,7 @@ impl AllocatedOpcode {
             LDC(_r1, _r2, _r3) => vec![],
             LOG(_r1, _r2, _r3, _r4) => vec![],
             LOGD(_r1, _r2, _r3, _r4) => vec![],
-            MINT(_r1) => vec![],
+            MINT(_r1, _r2) => vec![],
             RETD(_r1, _r2) => vec![],
             RVRT(_r1) => vec![],
             SMO(_r1, _r2, _r3, _r4) => vec![],
@@ -297,7 +338,9 @@ impl AllocatedOpcode {
             TRO(_r1, _r2, _r3, _r4) => vec![],
 
             /* Cryptographic Instructions */
-            ECR(_r1, _r2, _r3) => vec![],
+            ECK1(_r1, _r2, _r3) => vec![],
+            ECR1(_r1, _r2, _r3) => vec![],
+            ED19(_r1, _r2, _r3) => vec![],
             K256(_r1, _r2, _r3) => vec![],
             S256(_r1, _r2, _r3) => vec![],
 
@@ -356,6 +399,11 @@ impl fmt::Display for AllocatedOpcode {
             SUBI(a, b, c) => write!(fmtr, "subi {a} {b} {c}"),
             XOR(a, b, c) => write!(fmtr, "xor  {a} {b} {c}"),
             XORI(a, b, c) => write!(fmtr, "xori {a} {b} {c}"),
+            WQOP(a, b, c, d) => write!(fmtr, "wqop {a} {b} {c} {d}"),
+            WQML(a, b, c, d) => write!(fmtr, "wqml {a} {b} {c} {d}"),
+            WQDV(a, b, c, d) => write!(fmtr, "wqdv {a} {b} {c} {d}"),
+            WQCM(a, b, c, d) => write!(fmtr, "wqcm {a} {b} {c} {d}"),
+            WQAM(a, b, c, d) => write!(fmtr, "wqam {a} {b} {c} {d}"),
 
             /* Control Flow Instructions */
             JMP(a) => write!(fmtr, "jmp {a}"),
@@ -373,6 +421,8 @@ impl fmt::Display for AllocatedOpcode {
             ALOC(a) => write!(fmtr, "aloc {a}"),
             CFEI(a) => write!(fmtr, "cfei {a}"),
             CFSI(a) => write!(fmtr, "cfsi {a}"),
+            CFE(a) => write!(fmtr, "cfe {a}"),
+            CFS(a) => write!(fmtr, "cfs {a}"),
             LB(a, b, c) => write!(fmtr, "lb   {a} {b} {c}"),
             LW(a, b, c) => write!(fmtr, "lw   {a} {b} {c}"),
             MCL(a, b) => write!(fmtr, "mcl  {a} {b}"),
@@ -387,7 +437,7 @@ impl fmt::Display for AllocatedOpcode {
             BAL(a, b, c) => write!(fmtr, "bal  {a} {b} {c}"),
             BHEI(a) => write!(fmtr, "bhei {a}"),
             BHSH(a, b) => write!(fmtr, "bhsh {a} {b}"),
-            BURN(a) => write!(fmtr, "burn {a}"),
+            BURN(a, b) => write!(fmtr, "burn {a} {b}"),
             CALL(a, b, c, d) => write!(fmtr, "call {a} {b} {c} {d}"),
             CB(a) => write!(fmtr, "cb   {a}"),
             CCP(a, b, c, d) => write!(fmtr, "ccp  {a} {b} {c} {d}"),
@@ -396,7 +446,7 @@ impl fmt::Display for AllocatedOpcode {
             LDC(a, b, c) => write!(fmtr, "ldc  {a} {b} {c}"),
             LOG(a, b, c, d) => write!(fmtr, "log  {a} {b} {c} {d}"),
             LOGD(a, b, c, d) => write!(fmtr, "logd {a} {b} {c} {d}"),
-            MINT(a) => write!(fmtr, "mint {a}"),
+            MINT(a, b) => write!(fmtr, "mint {a} {b}"),
             RETD(a, b) => write!(fmtr, "retd  {a} {b}"),
             RVRT(a) => write!(fmtr, "rvrt {a}"),
             SMO(a, b, c, d) => write!(fmtr, "smo  {a} {b} {c} {d}"),
@@ -410,7 +460,9 @@ impl fmt::Display for AllocatedOpcode {
             TRO(a, b, c, d) => write!(fmtr, "tro  {a} {b} {c} {d}"),
 
             /* Cryptographic Instructions */
-            ECR(a, b, c) => write!(fmtr, "ecr  {a} {b} {c}"),
+            ECK1(a, b, c) => write!(fmtr, "eck1  {a} {b} {c}"),
+            ECR1(a, b, c) => write!(fmtr, "ecr1  {a} {b} {c}"),
+            ED19(a, b, c) => write!(fmtr, "ed19  {a} {b} {c}"),
             K256(a, b, c) => write!(fmtr, "k256 {a} {b} {c}"),
             S256(a, b, c) => write!(fmtr, "s256 {a} {b} {c}"),
 
@@ -500,6 +552,21 @@ impl AllocatedOp {
             SUBI(a, b, c) => op::SUBI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
             XOR(a, b, c) => op::XOR::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             XORI(a, b, c) => op::XORI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            WQOP(a, b, c, d) => {
+                op::WQOP::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
+            }
+            WQML(a, b, c, d) => {
+                op::WQML::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
+            }
+            WQDV(a, b, c, d) => {
+                op::WQDV::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
+            }
+            WQCM(a, b, c, d) => {
+                op::WQCM::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
+            }
+            WQAM(a, b, c, d) => {
+                op::WQAM::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
+            }
 
             /* Control Flow Instructions */
             JMP(a) => op::JMP::new(a.to_reg_id()).into(),
@@ -517,6 +584,8 @@ impl AllocatedOp {
             ALOC(a) => op::ALOC::new(a.to_reg_id()).into(),
             CFEI(a) => op::CFEI::new(a.value.into()).into(),
             CFSI(a) => op::CFSI::new(a.value.into()).into(),
+            CFE(a) => op::CFE::new(a.to_reg_id()).into(),
+            CFS(a) => op::CFS::new(a.to_reg_id()).into(),
             LB(a, b, c) => op::LB::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
             LW(a, b, c) => op::LW::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
             MCL(a, b) => op::MCL::new(a.to_reg_id(), b.to_reg_id()).into(),
@@ -533,7 +602,7 @@ impl AllocatedOp {
             BAL(a, b, c) => op::BAL::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             BHEI(a) => op::BHEI::new(a.to_reg_id()).into(),
             BHSH(a, b) => op::BHSH::new(a.to_reg_id(), b.to_reg_id()).into(),
-            BURN(a) => op::BURN::new(a.to_reg_id()).into(),
+            BURN(a, b) => op::BURN::new(a.to_reg_id(), b.to_reg_id()).into(),
             CALL(a, b, c, d) => {
                 op::CALL::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
@@ -550,7 +619,7 @@ impl AllocatedOp {
             LOGD(a, b, c, d) => {
                 op::LOGD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
-            MINT(a) => op::MINT::new(a.to_reg_id()).into(),
+            MINT(a, b) => op::MINT::new(a.to_reg_id(), b.to_reg_id()).into(),
             RETD(a, b) => op::RETD::new(a.to_reg_id(), b.to_reg_id()).into(),
             RVRT(a) => op::RVRT::new(a.to_reg_id()).into(),
             SMO(a, b, c, d) => {
@@ -572,7 +641,9 @@ impl AllocatedOp {
             }
 
             /* Cryptographic Instructions */
-            ECR(a, b, c) => op::ECR::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            ECK1(a, b, c) => op::ECK1::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            ECR1(a, b, c) => op::ECR1::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            ED19(a, b, c) => op::ED19::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             K256(a, b, c) => op::K256::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             S256(a, b, c) => op::S256::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
 

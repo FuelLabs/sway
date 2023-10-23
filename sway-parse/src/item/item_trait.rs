@@ -1,7 +1,7 @@
 use crate::{Parse, ParseBracket, ParseResult, Parser};
 
 use sway_ast::attribute::Annotated;
-use sway_ast::keywords::{ConstToken, FnToken, OpenAngleBracketToken, WhereToken};
+use sway_ast::keywords::{ConstToken, FnToken, OpenAngleBracketToken, TypeToken, WhereToken};
 use sway_ast::{Braces, ItemFn, ItemTrait, ItemTraitItem, PubToken, Traits};
 use sway_error::parser_error::ParseErrorKind;
 
@@ -9,13 +9,29 @@ impl Parse for ItemTraitItem {
     fn parse(parser: &mut Parser) -> ParseResult<ItemTraitItem> {
         if parser.peek::<PubToken>().is_some() || parser.peek::<FnToken>().is_some() {
             let fn_decl = parser.parse()?;
-            Ok(ItemTraitItem::Fn(fn_decl))
+            let semicolon = parser.parse().ok();
+            Ok(ItemTraitItem::Fn(fn_decl, semicolon))
         } else if let Some(_const_keyword) = parser.peek::<ConstToken>() {
             let const_decl = parser.parse()?;
-            Ok(ItemTraitItem::Const(const_decl))
+            let semicolon = parser.parse().ok();
+            Ok(ItemTraitItem::Const(const_decl, semicolon))
+        } else if let Some(_type_keyword) = parser.peek::<TypeToken>() {
+            let type_decl = parser.parse()?;
+            let semicolon = parser.parse().ok();
+            Ok(ItemTraitItem::Type(type_decl, semicolon))
         } else {
             Err(parser.emit_error(ParseErrorKind::ExpectedAnItem))
         }
+    }
+
+    fn error(
+        spans: Box<[sway_types::Span]>,
+        error: sway_error::handler::ErrorEmitted,
+    ) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        Some(ItemTraitItem::Error(spans, error))
     }
 }
 
@@ -34,9 +50,9 @@ impl Parse for ItemTrait {
         };
         let where_clause_opt = parser.guarded_parse::<WhereToken, _>()?;
 
-        let trait_items: Braces<Vec<(Annotated<ItemTraitItem>, _)>> = parser.parse()?;
-        for (annotated, _) in trait_items.get().iter() {
-            if let ItemTraitItem::Fn(fn_sig) = &annotated.value {
+        let trait_items: Braces<Vec<Annotated<ItemTraitItem>>> = parser.parse()?;
+        for item in trait_items.get().iter() {
+            if let ItemTraitItem::Fn(fn_sig, _) = &item.value {
                 parser.ban_visibility_qualifier(&fn_sig.visibility)?;
             }
         }
