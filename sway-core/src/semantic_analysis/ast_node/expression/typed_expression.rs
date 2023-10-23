@@ -570,7 +570,7 @@ impl ty::TyExpression {
         let engines = ctx.engines();
 
         let (typed_block, block_return_type) =
-            ty::TyCodeBlock::type_check(handler, ctx.by_ref(), contents).unwrap_or_else(|_| {
+            ty::TyCodeBlock::type_check(handler, ctx.by_ref(), &contents).unwrap_or_else(|_| {
                 (
                     ty::TyCodeBlock { contents: vec![] },
                     type_engine.insert(engines, TypeInfo::Tuple(Vec::new())),
@@ -1875,7 +1875,8 @@ impl ty::TyExpression {
                  assigning it to a mutable variable declared outside of the loop \
                  instead.",
         );
-        let (typed_body, _block_implicit_return) = ty::TyCodeBlock::type_check(handler, ctx, body)?;
+        let (typed_body, _block_implicit_return) =
+            ty::TyCodeBlock::type_check(handler, ctx, &body)?;
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::WhileLoop {
                 condition: Box::new(typed_condition),

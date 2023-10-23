@@ -50,11 +50,6 @@ enum Inline {
     Always,
     Never,
 }
-/// This is a copy of sway_core::asm_generation::compiler_constants.
-/// TODO: Once we have a target specific IR generator / legalizer,
-///       use that to mark related functions as ALWAYS_INLINE.
-///       Then we no longer depend on this const value below.
-const NUM_ARG_REGISTERS: u8 = 6;
 
 fn metadata_to_inline(context: &Context, md_idx: Option<MetadataIndex>) -> Option<Inline> {
     fn for_each_md_idx<T, F: FnMut(MetadataIndex) -> Option<T>>(
@@ -124,24 +119,6 @@ pub fn inline_in_module(
                 return false;
             }
             None => {}
-        }
-
-        let ret_type = func.get_return_type(ctx);
-        let num_args = {
-            func.args_iter(ctx).count()
-                + if super::target_fuel::is_demotable_type(ctx, &ret_type) {
-                    // The return type will be demoted to memory,
-                    // which means that there'll be an additional return arg.
-                    1
-                } else {
-                    0
-                }
-        };
-
-        // For now, pending improvements to ASMgen for calls, we must inline any function which has
-        // too many args.
-        if num_args as u8 > NUM_ARG_REGISTERS {
-            return true;
         }
 
         // If the function is called only once then definitely inline it.

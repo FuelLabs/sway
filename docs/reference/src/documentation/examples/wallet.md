@@ -12,7 +12,7 @@ The [`interface`](../language/program-types/contract.md) contains a function whi
 
 ## Implementation
 
-When receiving funds we assert that the wallet accepts the base asset and we track the amount sent. When transfering funds out of the wallet we assert that only the owner can perform the transfer.
+When receiving funds we assert that the wallet accepts the base asset and we track the amount sent. When transferring funds out of the wallet we assert that only the owner can perform the transfer.
 
 ```sway
 {{#include ../../code/examples/wallet_example/src/main.sw:implementation}}

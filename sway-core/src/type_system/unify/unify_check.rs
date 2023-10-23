@@ -348,7 +348,9 @@ impl<'a> UnifyCheck<'a> {
                     ) => ln == rn && rtc.eq(&ltc, self.engines),
                     // any type can be coerced into a generic,
                     // except if the type already contains the generic
-                    (e, g @ UnknownGeneric { .. }) => !OccursCheck::new(self.engines).check(g, &e),
+                    (_e, _g @ UnknownGeneric { .. }) => {
+                        !OccursCheck::new(self.engines).check(right, left)
+                    }
 
                     // Let empty enums to coerce to any other type. This is useful for Never enum.
                     (Enum(r_decl_ref), _)
@@ -443,7 +445,9 @@ impl<'a> UnifyCheck<'a> {
                     ) => rtc.eq(&ltc, self.engines),
                     // any type can be coerced into a generic,
                     // except if the type already contains the generic
-                    (e, g @ UnknownGeneric { .. }) => !OccursCheck::new(self.engines).check(g, &e),
+                    (_e, _g @ UnknownGeneric { .. }) => {
+                        !OccursCheck::new(self.engines).check(right, left)
+                    }
 
                     (Enum(l_decl_ref), Enum(r_decl_ref)) => {
                         let l_decl = self.engines.de().get_enum(&l_decl_ref);

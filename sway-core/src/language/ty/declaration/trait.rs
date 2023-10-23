@@ -9,9 +9,11 @@ use crate::{
         DeclRefTraitType, ReplaceFunctionImplementingType,
     },
     engine_threading::*,
-    language::{parsed, Visibility},
-    semantic_analysis::type_check_context::MonomorphizeHelper,
-    semantic_analysis::{TypeCheckFinalization, TypeCheckFinalizationContext},
+    language::{parsed, CallPath, Visibility},
+    semantic_analysis::{
+        type_check_context::MonomorphizeHelper, TypeCheckAnalysis, TypeCheckAnalysisContext,
+        TypeCheckFinalization, TypeCheckFinalizationContext,
+    },
     transform,
     type_system::*,
 };
@@ -28,6 +30,7 @@ pub struct TyTraitDecl {
     pub supertraits: Vec<parsed::Supertrait>,
     pub visibility: Visibility,
     pub attributes: transform::AttributesMap,
+    pub call_path: CallPath,
     pub span: Span,
 }
 
@@ -83,6 +86,7 @@ impl HashWithEngines for TyTraitDecl {
             // reliable source of obj v. obj distinction
             attributes: _,
             span: _,
+            call_path: _,
         } = self;
         name.hash(state);
         type_parameters.hash(state, engines);
@@ -139,6 +143,33 @@ impl HashWithEngines for TyTraitItem {
             TyTraitItem::Constant(const_decl) => const_decl.hash(state, engines),
             TyTraitItem::Type(type_decl) => type_decl.hash(state, engines),
         }
+    }
+}
+
+impl TypeCheckAnalysis for TyTraitItem {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        let decl_engine = ctx.engines.de();
+
+        match self {
+            TyTraitItem::Fn(node) => {
+                let item_fn = decl_engine.get_function(node);
+                item_fn.type_check_analyze(handler, ctx)?;
+            }
+            TyTraitItem::Constant(node) => {
+                let item_const = decl_engine.get_constant(node);
+                item_const.type_check_analyze(handler, ctx)?;
+            }
+            TyTraitItem::Type(node) => {
+                let item_type = decl_engine.get_type(node);
+                item_type.type_check_analyze(handler, ctx)?;
+            }
+        }
+
+        Ok(())
     }
 }
 

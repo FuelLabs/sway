@@ -1,0 +1,13 @@
+[[package]]
+name = "completion"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "core"
+source = "path+from-root-A8024ACE89756498"
+
+[[package]]
+name = "std"
+source = "path+from-root-A8024ACE89756498"
+dependencies = ["core"]

@@ -30,11 +30,6 @@ impl ty::TyStructDecl {
         let new_type_parameters =
             TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters, None)?;
 
-        // Insert them into the current namespace.
-        for p in &new_type_parameters {
-            p.insert_into_namespace(handler, ctx.by_ref())?;
-        }
-
         // type check the fields
         let mut new_fields = vec![];
         for field in fields.into_iter() {
@@ -83,6 +78,16 @@ impl ty::TyStructField {
             attributes: field.attributes,
         };
         Ok(field)
+    }
+}
+
+impl TypeCheckAnalysis for ty::TyStructDecl {
+    fn type_check_analyze(
+        &self,
+        _handler: &Handler,
+        _ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
     }
 }
 

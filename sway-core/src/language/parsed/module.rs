@@ -1,5 +1,5 @@
 use crate::{
-    language::{ModName, Visibility},
+    language::{HasModule, HasSubmodules, ModName, Visibility},
     transform,
 };
 
@@ -32,4 +32,16 @@ pub struct ParseSubmodule {
     pub module: ParseModule,
     pub mod_name_span: Span,
     pub visibility: Visibility,
+}
+
+impl HasModule<ParseModule> for ParseSubmodule {
+    fn module(&self) -> &ParseModule {
+        &self.module
+    }
+}
+
+impl HasSubmodules<ParseSubmodule> for ParseModule {
+    fn submodules(&self) -> &[(ModName, ParseSubmodule)] {
+        &self.submodules
+    }
 }
