@@ -65,7 +65,7 @@ impl Power for u256 {
             return one;
         }
 
-        let mut exp = exponentgi;
+        let mut exp = exponent;
         let mut base = self;
         let mut acc = one;
 
