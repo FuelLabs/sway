@@ -206,7 +206,7 @@ impl TyTraitDecl {
         }
 
         let typed_trait_decl = ty::TyTraitDecl {
-            name,
+            name: name.clone(),
             type_parameters: new_type_parameters,
             self_type: self_type_param,
             interface_surface: new_interface_surface,
@@ -214,6 +214,7 @@ impl TyTraitDecl {
             supertraits,
             visibility,
             attributes,
+            call_path: CallPath::from(name).to_fullpath(ctx.namespace),
             span,
         };
         Ok(typed_trait_decl)

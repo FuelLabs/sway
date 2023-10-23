@@ -1,5 +1,6 @@
 use std::{
     cmp::Ordering,
+    fmt,
     hash::{Hash, Hasher},
 };
 
@@ -53,6 +54,26 @@ impl OrdWithEngines for TraitConstraint {
             type_arguments: rta,
         } = other;
         ltn.cmp(rtn).then_with(|| lta.cmp(rta, engines))
+    }
+}
+
+impl DisplayWithEngines for TraitConstraint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(f, "{:?}", engines.help_out(self))
+    }
+}
+
+impl DebugWithEngines for TraitConstraint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        let mut res = write!(f, "{}", self.trait_name);
+        if !self.type_arguments.is_empty() {
+            write!(f, "<")?;
+            for ty_arg in self.type_arguments.clone() {
+                write!(f, "{:?}", engines.help_out(ty_arg))?;
+            }
+            res = write!(f, ">");
+        }
+        res
     }
 }
 

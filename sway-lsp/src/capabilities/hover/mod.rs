@@ -33,7 +33,10 @@ pub fn hover_data(
     // check if our token is a keyword
     if matches!(
         token.kind,
-        SymbolKind::BoolLiteral | SymbolKind::Keyword | SymbolKind::SelfKeyword
+        SymbolKind::BoolLiteral
+            | SymbolKind::Keyword
+            | SymbolKind::SelfKeyword
+            | SymbolKind::ProgramTypeKeyword
     ) {
         let name = &ident.name;
         let documentation = keyword_docs.get(name).unwrap();

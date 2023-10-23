@@ -17,7 +17,7 @@ impl<'a> GenerateImplCodeAction<'a, TyEnumDecl> for EnumImplCodeAction<'a> {
 }
 
 impl<'a> CodeAction<'a, TyEnumDecl> for EnumImplCodeAction<'a> {
-    fn new(ctx: CodeActionContext<'a>, decl: &'a TyEnumDecl) -> Self {
+    fn new(ctx: &CodeActionContext<'a>, decl: &'a TyEnumDecl) -> Self {
         Self { decl, uri: ctx.uri }
     }
 

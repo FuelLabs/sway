@@ -22,7 +22,7 @@ impl<'a> GenerateImplCodeAction<'a, TyAbiDecl> for AbiImplCodeAction<'a> {
 }
 
 impl<'a> CodeAction<'a, TyAbiDecl> for AbiImplCodeAction<'a> {
-    fn new(ctx: CodeActionContext<'a>, decl: &'a TyAbiDecl) -> Self {
+    fn new(ctx: &CodeActionContext<'a>, decl: &'a TyAbiDecl) -> Self {
         Self {
             engines: ctx.engines,
             decl,
