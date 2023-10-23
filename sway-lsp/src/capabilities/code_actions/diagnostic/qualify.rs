@@ -10,12 +10,12 @@ use lsp_types::{
 use serde_json::Value;
 use std::collections::HashMap;
 
-/// Returns a list of [CodeActionOrCommand] suggestions for inserting a missing import.
+/// Returns a list of [CodeActionOrCommand] suggestions for qualifying an unknown symbol with a path.
 pub(crate) fn qualify_code_action(
     ctx: &CodeActionContext,
     diagnostics: &mut impl Iterator<Item = (Range, DiagnosticData)>,
 ) -> Option<Vec<CodeActionOrCommand>> {
-    // Find a diagnostic that has the attached metadata indicating we should try to suggest an auto-import.
+    // Find a diagnostic that has the attached metadata indicating we should try to qualify the path.
     let (symbol_name, range) = diagnostics.find_map(|(range, diag)| {
         let name = diag.unknown_symbol_name?;
         Some((name, range))
