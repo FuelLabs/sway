@@ -2129,3 +2129,27 @@ fn main() {
 "#,
     );
 }
+
+#[test]
+fn test_match_as_arg() {
+    check(
+        r#"
+    library;
+
+    fn main() {
+         assert(match color { Color::Blue => true,
+    _ => false,
+    });
+}
+"#,
+        r#"library;
+
+fn main() {
+    assert(match color {
+        Color::Blue => true,
+        _ => false,
+    });
+}
+"#,
+    );
+}

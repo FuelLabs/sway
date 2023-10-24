@@ -705,10 +705,23 @@ where
             matches!(
                 args.value_separator_pairs[0].0,
                 Expr::Struct { path: _, fields: _ }
+                    | Expr::Match {
+                        match_token: _,
+                        value: _,
+                        branches: _
+                    }
             )
         } else if args.value_separator_pairs.is_empty() {
             if let Some(final_value) = &args.final_value_opt {
-                matches!(**final_value, Expr::Struct { path: _, fields: _ })
+                matches!(
+                    **final_value,
+                    Expr::Struct { path: _, fields: _ }
+                        | Expr::Match {
+                            match_token: _,
+                            value: _,
+                            branches: _
+                        }
+                )
             } else {
                 true
             }
