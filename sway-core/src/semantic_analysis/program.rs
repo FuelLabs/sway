@@ -13,7 +13,10 @@ use crate::{
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{Context, Module};
 
-use super::{TypeCheckFinalization, TypeCheckFinalizationContext};
+use super::{
+    TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
+    TypeCheckFinalizationContext,
+};
 
 impl TyProgram {
     /// Type-check the given parsed program to produce a typed program.
@@ -91,6 +94,19 @@ impl TyProgram {
                 ..self
             }),
         }
+    }
+}
+
+impl TypeCheckAnalysis for TyProgram {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        for node in self.root.all_nodes.iter() {
+            node.type_check_analyze(handler, ctx)?;
+        }
+        Ok(())
     }
 }
 

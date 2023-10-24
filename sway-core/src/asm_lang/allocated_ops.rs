@@ -227,6 +227,8 @@ pub(crate) enum AllocatedOpcode {
 
     /* Cryptographic Instructions */
     ECK1(AllocatedRegister, AllocatedRegister, AllocatedRegister),
+    ECR1(AllocatedRegister, AllocatedRegister, AllocatedRegister),
+    ED19(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     K256(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     S256(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
@@ -344,6 +346,8 @@ impl AllocatedOpcode {
 
             /* Cryptographic Instructions */
             ECK1(_r1, _r2, _r3) => vec![],
+            ECR1(_r1, _r2, _r3) => vec![],
+            ED19(_r1, _r2, _r3) => vec![],
             K256(_r1, _r2, _r3) => vec![],
             S256(_r1, _r2, _r3) => vec![],
 
@@ -468,6 +472,8 @@ impl fmt::Display for AllocatedOpcode {
 
             /* Cryptographic Instructions */
             ECK1(a, b, c) => write!(fmtr, "eck1  {a} {b} {c}"),
+            ECR1(a, b, c) => write!(fmtr, "ecr1  {a} {b} {c}"),
+            ED19(a, b, c) => write!(fmtr, "ed19  {a} {b} {c}"),
             K256(a, b, c) => write!(fmtr, "k256 {a} {b} {c}"),
             S256(a, b, c) => write!(fmtr, "s256 {a} {b} {c}"),
 
@@ -652,6 +658,8 @@ impl AllocatedOp {
 
             /* Cryptographic Instructions */
             ECK1(a, b, c) => op::ECK1::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            ECR1(a, b, c) => op::ECR1::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            ED19(a, b, c) => op::ED19::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             K256(a, b, c) => op::K256::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             S256(a, b, c) => op::S256::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
 

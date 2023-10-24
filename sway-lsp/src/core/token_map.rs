@@ -45,6 +45,20 @@ impl TokenMap {
         })
     }
 
+    /// Return an Iterator of tokens matching the given name.
+    pub fn tokens_for_name<'s>(
+        &'s self,
+        name: &'s String,
+    ) -> impl 's + Iterator<Item = (TokenIdent, Token)> {
+        self.iter().flat_map(|(ident, token)| {
+            if ident.name == *name {
+                Some((ident.clone(), token.clone()))
+            } else {
+                None
+            }
+        })
+    }
+
     /// Given a cursor [Position], return the [TokenIdent] of a token in the
     /// Iterator if one exists at that position.
     pub fn idents_at_position<I>(&self, cursor_position: Position, tokens: I) -> Vec<TokenIdent>

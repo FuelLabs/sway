@@ -11,6 +11,7 @@ use super::TypeCheckContext;
 // A simple context that is used to finish type checking.
 pub struct TypeCheckFinalizationContext<'eng, 'ctx> {
     pub(crate) engines: &'eng Engines,
+    #[allow(dead_code)]
     pub(crate) type_check_ctx: TypeCheckContext<'ctx>,
 }
 

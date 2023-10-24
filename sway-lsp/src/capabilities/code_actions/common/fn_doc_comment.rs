@@ -19,7 +19,7 @@ impl<'a, T: Spanned + Named + FunctionSignature> GenerateDocCodeAction<'a, T>
 impl<'a, T: Spanned + Named + FunctionSignature> CodeAction<'a, T>
     for FnDocCommentCodeAction<'a, T>
 {
-    fn new(ctx: CodeActionContext<'a>, decl: &'a T) -> Self {
+    fn new(ctx: &CodeActionContext<'a>, decl: &'a T) -> Self {
         Self {
             engines: ctx.engines,
             decl,

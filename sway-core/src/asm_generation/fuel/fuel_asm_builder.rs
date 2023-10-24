@@ -58,8 +58,8 @@ pub struct FuelAsmBuilder<'ir, 'eng> {
     // will usually have 0 or 1 entry.
     pub(super) return_ctxs: Vec<(Label, VirtualRegister)>,
 
-    // Stack size and base register for locals.
-    pub(super) locals_ctxs: Vec<(u64, VirtualRegister)>,
+    // Stack size and base register for locals and num_extra_args in any call in the function.
+    pub(super) locals_ctxs: Vec<(u64, VirtualRegister, u64)>,
 
     // IR context we're compiling.
     pub(super) context: &'ir Context<'eng>,
@@ -1662,7 +1662,12 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
     // XXX reassess all the places we use this
     pub(crate) fn is_copy_type(&self, ty: &Type) -> bool {
-        ty.is_unit(self.context) || ty.is_bool(self.context) || ty.is_uint(self.context)
+        ty.is_unit(self.context)
+            || ty.is_bool(self.context)
+            || ty
+                .get_uint_width(self.context)
+                .map(|x| x < 256)
+                .unwrap_or(false)
     }
 
     fn initialise_constant(

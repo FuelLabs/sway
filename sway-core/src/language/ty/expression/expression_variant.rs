@@ -12,8 +12,8 @@ use crate::{
     engine_threading::*,
     language::{ty::*, *},
     semantic_analysis::{
-        typed_expression::replace_decls_method_application, TypeCheckContext,
-        TypeCheckFinalization, TypeCheckFinalizationContext,
+        TyNodeDepGraphEdge, TyNodeDepGraphEdgeInfo, TypeCheckAnalysis, TypeCheckAnalysisContext,
+        TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext,
     },
     type_system::*,
 };
@@ -898,6 +898,112 @@ impl ReplaceDecls for TyExpressionVariant {
     }
 }
 
+impl TypeCheckAnalysis for TyExpressionVariant {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        match self {
+            TyExpressionVariant::Literal(_) => {}
+            TyExpressionVariant::FunctionApplication { fn_ref, .. } => {
+                let fn_node = ctx.get_node_from_impl_trait_fn_ref_app(fn_ref);
+                if let Some(fn_node) = fn_node {
+                    ctx.add_edge_from_current(
+                        fn_node,
+                        TyNodeDepGraphEdge(TyNodeDepGraphEdgeInfo::FnApp),
+                    );
+                }
+            }
+            TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
+                lhs.type_check_analyze(handler, ctx)?;
+                rhs.type_check_analyze(handler, ctx)?
+            }
+            TyExpressionVariant::ConstantExpression { const_decl, .. } => {
+                const_decl.type_check_analyze(handler, ctx)?
+            }
+            TyExpressionVariant::VariableExpression { .. } => {}
+            TyExpressionVariant::Tuple { fields } => {
+                for field in fields.iter() {
+                    field.type_check_analyze(handler, ctx)?
+                }
+            }
+            TyExpressionVariant::Array { contents, .. } => {
+                for elem in contents.iter() {
+                    elem.type_check_analyze(handler, ctx)?
+                }
+            }
+            TyExpressionVariant::ArrayIndex { prefix, index } => {
+                prefix.type_check_analyze(handler, ctx)?;
+                index.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::StructExpression { fields: _, .. } => {}
+            TyExpressionVariant::CodeBlock(block) => {
+                block.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::FunctionParameter => {}
+            TyExpressionVariant::MatchExp {
+                desugared,
+                scrutinees: _,
+            } => {
+                desugared.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
+                condition.type_check_analyze(handler, ctx)?;
+                then.type_check_analyze(handler, ctx)?;
+                if let Some(r#else) = r#else {
+                    r#else.type_check_analyze(handler, ctx)?;
+                }
+            }
+            TyExpressionVariant::AsmExpression { .. } => {}
+            TyExpressionVariant::StructFieldAccess { prefix, .. } => {
+                prefix.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::TupleElemAccess { prefix, .. } => {
+                prefix.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::EnumInstantiation { contents, .. } => {
+                for expr in contents.iter() {
+                    expr.type_check_analyze(handler, ctx)?
+                }
+            }
+            TyExpressionVariant::AbiCast { address, .. } => {
+                address.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::StorageAccess(_node) => {}
+            TyExpressionVariant::IntrinsicFunction(node) => {
+                for arg in node.arguments.iter() {
+                    arg.type_check_analyze(handler, ctx)?
+                }
+            }
+            TyExpressionVariant::AbiName(_node) => {}
+            TyExpressionVariant::EnumTag { exp } => {
+                exp.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::UnsafeDowncast { exp, .. } => {
+                exp.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::WhileLoop { condition, body } => {
+                condition.type_check_analyze(handler, ctx)?;
+                body.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::Break => {}
+            TyExpressionVariant::Continue => {}
+            TyExpressionVariant::Reassignment(node) => {
+                node.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::Return(node) => {
+                node.type_check_analyze(handler, ctx)?;
+            }
+        }
+        Ok(())
+    }
+}
+
 impl TypeCheckFinalization for TyExpressionVariant {
     fn type_check_finalize(
         &mut self,
@@ -912,20 +1018,12 @@ impl TypeCheckFinalization for TyExpressionVariant {
                     deferred_monomorphization,
                     ..
                 } => {
+                    // If the function application was deferred we need to monomorphize it here.
+                    // But at the moment monomorphization is fully resolved before type check finalization.
+                    assert!(!(*deferred_monomorphization));
+
                     for (_, arg) in arguments.iter_mut() {
                         let _ = arg.type_check_finalize(handler, ctx);
-                    }
-                    // If the function application was deferred we need to monomorphize it.
-                    // This is because sometimes we don't know the correct order to evaluate
-                    // the items. So we create an initial "stub" typed function application node,
-                    // run an analysis pass to compute a dependency graph, and then finalize type
-                    // checking in the correct ordering.
-                    if *deferred_monomorphization {
-                        replace_decls_method_application(
-                            self,
-                            handler,
-                            ctx.type_check_ctx.by_ref(),
-                        )?;
                     }
                 }
                 TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {

@@ -17,7 +17,8 @@ use crate::{
     namespace::{IsExtendingExistingImpl, IsImplSelf},
     semantic_analysis::{
         declaration::{insert_supertraits_into_namespace, SupertraitOf},
-        AbiMode, TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext,
+        AbiMode, TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext,
+        TypeCheckFinalization, TypeCheckFinalizationContext,
     },
     type_system::*,
 };
@@ -66,11 +67,6 @@ impl TyTraitDecl {
             type_parameters,
             Some(self_type_param.clone()),
         )?;
-
-        // Insert them into the current namespace.
-        for p in &new_type_parameters {
-            p.insert_into_namespace(handler, ctx.by_ref())?;
-        }
 
         // Recursively make the interface surfaces and methods of the
         // supertraits available to this trait.
@@ -210,7 +206,7 @@ impl TyTraitDecl {
         }
 
         let typed_trait_decl = ty::TyTraitDecl {
-            name,
+            name: name.clone(),
             type_parameters: new_type_parameters,
             self_type: self_type_param,
             interface_surface: new_interface_surface,
@@ -218,6 +214,7 @@ impl TyTraitDecl {
             supertraits,
             visibility,
             attributes,
+            call_path: CallPath::from(name).to_fullpath(ctx.namespace),
             span,
         };
         Ok(typed_trait_decl)
@@ -489,6 +486,19 @@ impl TyTraitDecl {
             IsImplSelf::No,
             IsExtendingExistingImpl::No,
         );
+    }
+}
+
+impl TypeCheckAnalysis for TyTraitDecl {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        for item in self.items.iter() {
+            item.type_check_analyze(handler, ctx)?;
+        }
+        Ok(())
     }
 }
 

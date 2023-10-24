@@ -38,7 +38,8 @@ use sway_core::{
     language::{
         lexed::LexedProgram,
         parsed::{AstNode, ParseProgram},
-        ty::{self, TyProgram},
+        ty::{self},
+        HasSubmodules,
     },
     BuildTarget, Engines, Namespace, Programs,
 };
@@ -443,7 +444,7 @@ pub fn compile(
 
 pub struct TraversalResult {
     pub diagnostics: (Vec<CompileError>, Vec<CompileWarning>),
-    pub programs: Option<(LexedProgram, ParseProgram, TyProgram)>,
+    pub programs: Option<(LexedProgram, ParseProgram, ty::TyProgram)>,
     pub token_map: TokenMap,
 }
 
@@ -545,8 +546,7 @@ fn parse_ast_to_tokens(
     let root_nodes = parse_program.root.tree.root_nodes.iter();
     let sub_nodes = parse_program
         .root
-        .submodules
-        .iter()
+        .submodules_recursive()
         .flat_map(|(_, submodule)| &submodule.module.tree.root_nodes);
 
     root_nodes
@@ -564,8 +564,7 @@ fn parse_ast_to_typed_tokens(
     let root_nodes = typed_program.root.all_nodes.iter();
     let sub_nodes = typed_program
         .root
-        .submodules
-        .iter()
+        .submodules_recursive()
         .flat_map(|(_, submodule)| submodule.module.all_nodes.iter());
 
     root_nodes.chain(sub_nodes).for_each(|n| f(n, ctx));

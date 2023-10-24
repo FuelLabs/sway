@@ -12,7 +12,7 @@ pub trait Named {
     fn name(&self) -> &BaseIdent;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct BaseIdent {
     name_override_opt: Option<String>,
     span: Span,
@@ -75,6 +75,14 @@ impl BaseIdent {
             is_raw_ident: false,
         }
     }
+
+    pub fn dummy() -> Ident {
+        Ident {
+            name_override_opt: Some("foo".into()),
+            span: Span::dummy(),
+            is_raw_ident: false,
+        }
+    }
 }
 
 /// An [Ident] is an _identifier_ with a corresponding `span` from which it was derived.
@@ -128,6 +136,12 @@ impl Spanned for Ident {
 }
 
 impl fmt::Display for Ident {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(formatter, "{}", self.as_str())
+    }
+}
+
+impl fmt::Debug for Ident {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "{}", self.as_str())
     }

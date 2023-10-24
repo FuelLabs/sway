@@ -30,11 +30,6 @@ impl ty::TyEnumDecl {
         let new_type_parameters =
             TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters, None)?;
 
-        // Insert them into the current namespace.
-        for p in &new_type_parameters {
-            p.insert_into_namespace(handler, ctx.by_ref())?;
-        }
-
         // type check the variants
         let mut variants_buf = vec![];
         for variant in variants {
@@ -87,6 +82,16 @@ impl ty::TyEnumVariant {
             span: variant.span,
             attributes: variant.attributes,
         })
+    }
+}
+
+impl TypeCheckAnalysis for ty::TyEnumDecl {
+    fn type_check_analyze(
+        &self,
+        _handler: &Handler,
+        _ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
     }
 }
 
