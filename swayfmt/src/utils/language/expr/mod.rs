@@ -190,11 +190,19 @@ impl Format for Expr {
                 condition,
                 block,
             } => {
-                write!(formatted_code, "{} ", while_token.span().as_str())?;
-                condition.format(formatted_code, formatter)?;
-                IfExpr::open_curly_brace(formatted_code, formatter)?;
-                block.get().format(formatted_code, formatter)?;
-                IfExpr::close_curly_brace(formatted_code, formatter)?;
+                formatter.with_shape(
+                    formatter
+                        .shape
+                        .with_code_line_from(LineStyle::Normal, ExprKind::Function),
+                    |formatter| -> Result<(), FormatterError> {
+                        write!(formatted_code, "{} ", while_token.span().as_str())?;
+                        condition.format(formatted_code, formatter)?;
+                        IfExpr::open_curly_brace(formatted_code, formatter)?;
+                        block.get().format(formatted_code, formatter)?;
+                        IfExpr::close_curly_brace(formatted_code, formatter)?;
+                        Ok(())
+                    },
+                )?;
             }
             Self::FuncApp { func, args } => {
                 formatter.with_shape(

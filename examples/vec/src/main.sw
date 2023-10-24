@@ -25,8 +25,7 @@ fn main() {
     // ANCHOR_END: vec_get_oob
     // ANCHOR: vec_iterate
     let mut i = 0;
-    while i < v
-        .len() {
+    while i < v.len() {
         log(v.get(i).unwrap());
         i += 1;
     }

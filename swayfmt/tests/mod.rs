@@ -2076,3 +2076,56 @@ fn access_control_with_identity() {
 "#,
     )
 }
+
+#[test]
+fn while_too_long_expr() {
+    check(
+        r#"
+    library;
+
+    fn main() {
+    // ANCHOR_END: vec_get
+    // ANCHOR: vec_get_oob
+    let does_not_exist = v.get(100);
+    // ...decide here how to handle an out-of-bounds access
+    // ANCHOR_END: vec_get_oob
+    // ANCHOR: vec_iterate
+    let mut i = 0;
+    while i < v.len() {
+        log(v.get(i).unwrap());
+        i += 1;
+    }
+    // ANCHOR_END: vec_iterate
+    // ANCHOR: vec_multiple_data_types
+    enum TableCell {
+        Int: u64,
+        B256: b256,
+        Boolean: bool,
+    }
+}
+"#,
+        r#"library;
+
+fn main() {
+    // ANCHOR_END: vec_get
+    // ANCHOR: vec_get_oob
+    let does_not_exist = v.get(100);
+    // ...decide here how to handle an out-of-bounds access
+    // ANCHOR_END: vec_get_oob
+    // ANCHOR: vec_iterate
+    let mut i = 0;
+    while i < v.len() {
+        log(v.get(i).unwrap());
+        i += 1;
+    }
+    // ANCHOR_END: vec_iterate
+    // ANCHOR: vec_multiple_data_types
+    enum TableCell {
+        Int: u64,
+        B256: b256,
+        Boolean: bool,
+    }
+}
+"#,
+    );
+}
