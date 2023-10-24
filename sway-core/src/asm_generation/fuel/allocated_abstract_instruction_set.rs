@@ -348,7 +348,7 @@ impl AllocatedAbstractInstructionSet {
                         let data_id =
                             data_section.insert_data_value(Entry::new_word(offset, None, None));
                         realized_ops.push(RealizedOp {
-                            opcode: AllocatedOpcode::LWDataId(r1, data_id),
+                            opcode: AllocatedOpcode::LoadDataId(r1, data_id),
                             owning_span,
                             comment,
                         });
@@ -414,7 +414,7 @@ impl AllocatedAbstractInstructionSet {
             Either::Right(Label(_)) => 0,
 
             // A special case for LWDataId which may be 1 or 2 ops, depending on the source size.
-            Either::Left(AllocatedOpcode::LWDataId(_, ref data_id)) => {
+            Either::Left(AllocatedOpcode::LoadDataId(_, ref data_id)) => {
                 let has_copy_type = data_section.has_copy_type(data_id).expect(
                     "Internal miscalculation in data section -- \
                         data id did not match up to any actual data",

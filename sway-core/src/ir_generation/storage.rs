@@ -72,16 +72,49 @@ pub fn serialize_to_storage_slots(
         ConstantValue::Bool(b) if ty.is_bool(context) => {
             vec![StorageSlot::new(
                 get_storage_key(ix, indices),
-                Bytes32::new(
-                    [0; 7]
-                        .iter()
-                        .cloned()
-                        .chain([u8::from(*b)].iter().cloned())
-                        .chain([0; 24].iter().cloned())
-                        .collect::<Vec<u8>>()
-                        .try_into()
-                        .unwrap(),
-                ),
+                Bytes32::new([
+                    if *b { 1 } else { 0 },
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                ]),
+            )]
+        }
+        ConstantValue::Uint(b) if ty.is_uint8(context) => {
+            vec![StorageSlot::new(
+                get_storage_key(ix, indices),
+                Bytes32::new([
+                    *b as u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0,
+                ]),
             )]
         }
         ConstantValue::Uint(n) if ty.is_uint(context) => {
@@ -150,15 +183,10 @@ pub fn serialize_to_words(constant: &Constant, context: &Context, ty: &Type) -> 
         ConstantValue::Undef => vec![],
         ConstantValue::Unit if ty.is_unit(context) => vec![Bytes8::new([0; 8])],
         ConstantValue::Bool(b) if ty.is_bool(context) => {
-            vec![Bytes8::new(
-                [0; 7]
-                    .iter()
-                    .cloned()
-                    .chain([u8::from(*b)].iter().cloned())
-                    .collect::<Vec<u8>>()
-                    .try_into()
-                    .unwrap(),
-            )]
+            vec![Bytes8::new([if *b { 1 } else { 0 }, 0, 0, 0, 0, 0, 0, 0])]
+        }
+        ConstantValue::Uint(n) if ty.is_uint8(context) => {
+            vec![Bytes8::new([*n as u8, 0, 0, 0, 0, 0, 0, 0])]
         }
         ConstantValue::Uint(n) if ty.is_uint(context) => {
             vec![Bytes8::new(n.to_be_bytes())]

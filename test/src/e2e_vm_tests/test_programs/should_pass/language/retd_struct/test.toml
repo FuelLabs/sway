@@ -1,4 +1,4 @@
 category = "run"
-expected_result = { action = "return_data", value = "000000000001869fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" }
+expected_result = { action = "return_data", value = "000000000001869fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0102000000000000" }
 validate_abi = true
-expected_warnings = 2
+expected_warnings = 3

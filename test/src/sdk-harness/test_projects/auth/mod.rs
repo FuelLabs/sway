@@ -48,7 +48,7 @@ async fn msg_sender_from_contract() {
     let result = caller_instance
         .methods()
         .call_auth_contract(auth_id, caller_id)
-        .set_contracts(&[&auth_instance])
+        .with_contracts(&[&auth_instance])
         .call()
         .await
         .unwrap();

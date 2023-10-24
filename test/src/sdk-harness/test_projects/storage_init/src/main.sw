@@ -125,6 +125,7 @@ impl ExperimentalStorageInitTest for Contract {
         assert(storage.s.read() == s);
         assert(storage.boolean.read() == boolean);
         assert(storage.int8.read() == int8);
+        
         assert(storage.int16.read() == int16);
         assert(storage.int32.read() == int32);
         assert(storage.s.x.read() == s.x);
@@ -138,8 +139,10 @@ impl ExperimentalStorageInitTest for Contract {
         assert(storage.s.t.int8.read() == s.t.int8);
         assert(storage.s.t.int16.read() == s.t.int16);
         assert(storage.s.t.int32.read() == s.t.int32);
+
         assert(storage.e.read() == e);
         assert(storage.e2.read() == e2);
+        
         assert(sha256_str_array(storage.string.read()) == sha256_str_array(string));
         true
     }

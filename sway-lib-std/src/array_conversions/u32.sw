@@ -27,19 +27,19 @@ impl u32 {
 
         asm(input: self, off: 0xFF, i: 0x8, j: 0x10, k: 0x18, output: output, r1) {
             and  r1 input off;
-            sw   output r1 i0;
+            sb   output r1 i0;
 
             srl  r1 input i;
             and  r1 r1 off;
-            sw   output r1 i1;
+            sb   output r1 i1;
 
             srl  r1 input j;
             and  r1 r1 off;
-            sw   output r1 i2;
+            sb   output r1 i2;
 
             srl  r1 input k;
             and  r1 r1 off;
-            sw   output r1 i3;
+            sb   output r1 i3;
 
             output: [u8; 4]
         }
@@ -102,18 +102,18 @@ impl u32 {
         asm(input: self, off: 0xFF, i: 0x8, j: 0x10, k: 0x18, output: output, r1) {
             srl  r1 input k;
             and  r1 r1 off;
-            sw   output r1 i0;
+            sb   output r1 i0;
 
             srl  r1 input j;
             and  r1 r1 off;
-            sw   output r1 i1;
+            sb   output r1 i1;
 
             srl  r1 input i;
             and  r1 r1 off;
-            sw   output r1 i2;
+            sb   output r1 i2;
 
             and  r1 input off;
-            sw   output r1 i3;
+            sb   output r1 i3;
 
             output: [u8; 4]
         }

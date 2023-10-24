@@ -924,6 +924,7 @@ mod to_u64_map {
             .call()
             .await
             .unwrap();
+
         instance
             .methods()
             .insert_into_bool_to_u64_map(key2, val2)
@@ -1574,7 +1575,7 @@ mod to_u64_map {
         assert_eq!(
             instance
                 .methods()
-                .get_from_str_to_u64_map(SizedAsciiString::try_from(key1).unwrap())
+                .get_from_str_to_u64_map(SizedAsciiString::<33>::try_from(key1).unwrap())
                 .call()
                 .await
                 .unwrap()
@@ -1584,19 +1585,19 @@ mod to_u64_map {
 
         instance
             .methods()
-            .insert_into_str_to_u64_map(SizedAsciiString::try_from(key1).unwrap(), val1)
+            .insert_into_str_to_u64_map(SizedAsciiString::<33>::try_from(key1).unwrap(), val1)
             .call()
             .await
             .unwrap();
         instance
             .methods()
-            .insert_into_str_to_u64_map(SizedAsciiString::try_from(key2).unwrap(), val2)
+            .insert_into_str_to_u64_map(SizedAsciiString::<33>::try_from(key2).unwrap(), val2)
             .call()
             .await
             .unwrap();
         instance
             .methods()
-            .insert_into_str_to_u64_map(SizedAsciiString::try_from(key3).unwrap(), val3)
+            .insert_into_str_to_u64_map(SizedAsciiString::<33>::try_from(key3).unwrap(), val3)
             .call()
             .await
             .unwrap();
@@ -1604,7 +1605,7 @@ mod to_u64_map {
         assert_eq!(
             instance
                 .methods()
-                .get_from_str_to_u64_map(SizedAsciiString::try_from(key1).unwrap())
+                .get_from_str_to_u64_map(SizedAsciiString::<33>::try_from(key1).unwrap())
                 .call()
                 .await
                 .unwrap()
@@ -1614,7 +1615,7 @@ mod to_u64_map {
         assert_eq!(
             instance
                 .methods()
-                .get_from_str_to_u64_map(SizedAsciiString::try_from(key2).unwrap())
+                .get_from_str_to_u64_map(SizedAsciiString::<33>::try_from(key2).unwrap())
                 .call()
                 .await
                 .unwrap()
@@ -1624,7 +1625,7 @@ mod to_u64_map {
         assert_eq!(
             instance
                 .methods()
-                .get_from_str_to_u64_map(SizedAsciiString::try_from(key3).unwrap())
+                .get_from_str_to_u64_map(SizedAsciiString::<33>::try_from(key3).unwrap())
                 .call()
                 .await
                 .unwrap()
@@ -1636,7 +1637,7 @@ mod to_u64_map {
         assert_eq!(
             instance
                 .methods()
-                .remove_from_str_to_u64_map(SizedAsciiString::try_from(key1).unwrap())
+                .remove_from_str_to_u64_map(SizedAsciiString::<33>::try_from(key1).unwrap())
                 .call()
                 .await
                 .unwrap()
@@ -1647,7 +1648,7 @@ mod to_u64_map {
         assert_eq!(
             instance
                 .methods()
-                .get_from_str_to_u64_map(SizedAsciiString::try_from(key1).unwrap())
+                .get_from_str_to_u64_map(SizedAsciiString::<33>::try_from(key1).unwrap())
                 .call()
                 .await
                 .unwrap()
