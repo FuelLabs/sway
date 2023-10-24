@@ -1,5 +1,62 @@
 library;
 
+impl u256 {
+    /// The smallest value that can be represented by this integer type.
+    ///
+    /// # Returns 
+    ///
+    /// * [u256] - The smallest `u256` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val = u256::min();
+    ///     assert(val == 0x0000000000000000000000000000000000000000000000000000000000000000u256);
+    // }
+    /// ```
+    pub fn min() -> Self {
+        0x0000000000000000000000000000000000000000000000000000000000000000u256
+    }
+
+    /// The largest value that can be represented by this integer type,
+    /// 2<sup>256</sup> - 1.
+    ///
+    /// # Returns
+    ///
+    /// * [u256] - The largest `u256` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val = u256::max();
+    ///     assert(val == 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFu256);
+    /// }
+    /// ```
+    pub fn max() -> Self {
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFu256
+    }
+
+    /// The size of this integer type in bits.
+    ///
+    /// # Returns
+    ///
+    /// * [u32] - The number of bits for a `u256`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let bits = u256::bits();
+    ///     assert(bits == 256);
+    /// }
+    /// ```
+    pub fn bits() -> u64 {
+        256
+    }
+}
+
 impl u64 {
     /// The smallest value that can be represented by this integer type.
     ///

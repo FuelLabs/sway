@@ -51,6 +51,36 @@ pub trait Power {
     fn pow(self, exponent: u32) -> Self;
 }
 
+
+impl Power for u256 {
+    /// Raises self to the power of `exponent`, using exponentiation by squaring.
+	///
+	/// # Panics
+	///
+	/// Panics if the result overflows the type.
+    fn pow(self, exponent: u32) -> Self {
+        let one = 0x0000000000000000000000000000000000000000000000000000000000000001u256;
+
+        if exponent == 0 {
+            return one;
+        }
+
+        let mut exp = exponent;
+        let mut base = self;
+        let mut acc = one;
+
+        while exp > 1 {
+            if (exp & 1) == 1 {
+                acc = acc * base;
+            }
+            exp = exp >> 1;
+            base = base * base;
+        }
+
+        acc * base
+    }
+}
+
 impl Power for u64 {
     fn pow(self, exponent: u32) -> Self {
         asm(r1: self, r2: exponent, r3) {
@@ -162,4 +192,17 @@ impl BinaryLogarithm for u8 {
     fn log2(self) -> Self {
         self.log(2u8)
     }
+}
+
+#[test]
+fn u256_pow_tests() {
+    let five = 0x0000000000000000000000000000000000000000000000000000000000000005u256;
+
+    use ::assert::*;
+    
+    // 5^2 = 25 = 0x19
+    assert_eq(five.pow(2), 0x0000000000000000000000000000000000000000000000000000000000000019u256);
+
+    // 5^28 = 0x204FCE5E3E2502611 (see https://www.wolframalpha.com/input?i=convert+5%5E28+in+hex)
+    assert_eq(five.pow(28), 0x0000000000000000204FCE5E3E2502611u256);
 }
