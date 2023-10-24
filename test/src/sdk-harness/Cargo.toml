@@ -17,9 +17,12 @@ fuel-core-client = { version = "0.20", default-features = false }
 fuel-vm = "0.35"
 
 # Dependencies from the `fuels-rs` repository:
-fuels = { version = "0.45", features = ["fuel-core-lib"] }
+fuels = { git = "https://github.com/FuelLabs/fuels-rs.git", branch = "IGI-111/int-mem-repr", features = [
+    "fuel-core-lib",
+] }
 
 hex = "0.4.3"
+pretty_assertions = "1.4.0"
 rand = "0.8"
 sha2 = "0.10"
 sha3 = "0.10.1"
@@ -32,3 +35,6 @@ name = "integration_tests"
 path = "test_projects/harness.rs"
 
 [workspace]
+
+#[patch."https://github.com/FuelLabs/fuels-rs.git"]
+#fuels = { path = "/home/xunilrj/github/fuels-rs/packages/fuels" }

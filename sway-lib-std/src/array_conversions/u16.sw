@@ -25,11 +25,11 @@ impl u16 {
 
         asm(input: self, off: 0xFF, i: 0x8, output: output, r1) {
             and  r1 input off;
-            sw   output r1 i0;
+            sb   output r1 i0;
 
             srl  r1 input i;
             and  r1 r1 off;
-            sw   output r1 i1;
+            sb   output r1 i1;
 
             output: [u8; 2]
         }
@@ -85,10 +85,10 @@ impl u16 {
 
         asm(input: self, off: 0xFF, i: 0x8, output: output, r1) {
             srl r1 input i;
-            sw output r1 i0;
+            sb output r1 i0;
 
             and r1 input off;
-            sw output r1 i1;
+            sb output r1 i1;
 
             output: [u8; 2]
         }
@@ -102,7 +102,7 @@ impl u16 {
     ///
     /// # Returns
     /// 
-    /// * [u32] - The resulting `u16` value.
+    /// * [u16] - The resulting `u16` value.
     ///
     /// # Examples
     ///

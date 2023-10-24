@@ -25,6 +25,7 @@ use sway_ir::{Context, *};
 use sway_types::{
     constants,
     ident::Ident,
+    integer_bits::IntegerBits,
     span::{Span, Spanned},
     state::StateIndex,
     Named,
@@ -362,6 +363,14 @@ impl<'eng> FnCompiler<'eng> {
                 let string_len = s.as_str().len() as u64;
                 self.compile_string_slice(context, span_md_idx, string_data, string_len)
             }
+            ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
+                let implied_lit = match self.engines.te().get(ast_expr.return_type) {
+                    TypeInfo::UnsignedInteger(IntegerBits::Eight) => Literal::U8(*n as u8),
+                    _ => Literal::U64(*n),
+                };
+                Ok(convert_literal_to_value(context, &implied_lit)
+                    .add_metadatum(context, span_md_idx))
+            }
             ty::TyExpressionVariant::Literal(l) => {
                 Ok(convert_literal_to_value(context, l).add_metadatum(context, span_md_idx))
             }
@@ -616,11 +625,8 @@ impl<'eng> FnCompiler<'eng> {
                     &exp.span,
                 )?;
                 self.compile_expression_to_value(context, md_mgr, exp)?;
-                Ok(Constant::get_uint(
-                    context,
-                    64,
-                    ir_type_size_in_bytes(context, &ir_type),
-                ))
+                let size = ir_type_size_in_bytes(context, &ir_type);
+                Ok(Constant::get_uint(context, 64, size))
             }
             Intrinsic::SizeOfType => {
                 let targ = type_arguments[0].clone();
@@ -758,7 +764,11 @@ impl<'eng> FnCompiler<'eng> {
                     .get_unaliased(target_type.type_id)
                     .is_copy_type()
                 {
-                    Ok(gtf_reg)
+                    Ok(self
+                        .current_block
+                        .ins(context)
+                        .bitcast(gtf_reg, target_ir_type)
+                        .add_metadatum(context, span_md_idx))
                 } else {
                     let ptr_ty = Type::new_ptr(context, target_ir_type);
                     Ok(self
@@ -1213,34 +1223,33 @@ impl<'eng> FnCompiler<'eng> {
             1 => {
                 // The single arg doesn't need to be put into a struct.
                 let arg0 = compiled_args[0];
-                if self
-                    .engines
-                    .te()
-                    .get_unaliased(ast_args[0].1.return_type)
-                    .is_copy_type()
-                {
-                    self.current_block
+                let arg0_type = self.engines.te().get_unaliased(ast_args[0].1.return_type);
+
+                match arg0_type {
+                    _ if arg0_type.is_copy_type() => self
+                        .current_block
                         .ins(context)
                         .bitcast(arg0, u64_ty)
-                        .add_metadatum(context, span_md_idx)
-                } else {
-                    // Use a temporary to pass a reference to the arg.
-                    let arg0_type = arg0.get_type(context).unwrap();
-                    let temp_arg_name = self
-                        .lexical_map
-                        .insert(format!("{}{}", "arg_for_", ast_name));
-                    let temp_var = self
-                        .function
-                        .new_local_var(context, temp_arg_name, arg0_type, None, false)
-                        .map_err(|ir_error| {
-                            CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
-                        })?;
+                        .add_metadatum(context, span_md_idx),
+                    _ => {
+                        // Use a temporary to pass a reference to the arg.
+                        let arg0_type = arg0.get_type(context).unwrap();
+                        let temp_arg_name = self
+                            .lexical_map
+                            .insert(format!("{}{}", "arg_for_", ast_name));
+                        let temp_var = self
+                            .function
+                            .new_local_var(context, temp_arg_name, arg0_type, None, false)
+                            .map_err(|ir_error| {
+                                CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                            })?;
 
-                    let temp_val = self.current_block.ins(context).get_local(temp_var);
-                    self.current_block.ins(context).store(temp_val, arg0);
+                        let temp_val = self.current_block.ins(context).get_local(temp_var);
+                        self.current_block.ins(context).store(temp_val, arg0);
 
-                    // NOTE: Here we're casting the temp pointer to an integer.
-                    self.current_block.ins(context).ptr_to_int(temp_val, u64_ty)
+                        // NOTE: Here we're casting the temp pointer to an integer.
+                        self.current_block.ins(context).ptr_to_int(temp_val, u64_ty)
+                    }
                 }
             }
             _ => {
@@ -1891,7 +1900,7 @@ impl<'eng> FnCompiler<'eng> {
         let local_name = self.lexical_map.insert(name.as_str().to_owned());
         let local_var = self
             .function
-            .new_local_var(context, local_name, return_type, None, mutable)
+            .new_local_var(context, local_name.clone(), return_type, None, mutable)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
         // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
@@ -2138,6 +2147,7 @@ impl<'eng> FnCompiler<'eng> {
             .function
             .new_local_var(context, temp_name, array_type, None, false)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+
         let array_value = self
             .current_block
             .ins(context)
@@ -2359,12 +2369,13 @@ impl<'eng> FnCompiler<'eng> {
             }
             insert_values.push(insert_val);
 
-            field_types.push(convert_resolved_typeid_no_span(
+            let field_type = convert_resolved_typeid_no_span(
                 self.engines.te(),
                 self.engines.de(),
                 context,
                 &struct_field.value.return_type,
-            )?);
+            )?;
+            field_types.push(field_type);
         }
 
         // Create the struct.
@@ -2762,7 +2773,10 @@ impl<'eng> FnCompiler<'eng> {
                     ty_at_idx = field_type;
                     break;
                 }
-                offset += ir_type_size_in_bytes(context, &field_type);
+                offset += size_bytes_round_up_to_word_alignment!(ir_type_size_in_bytes(
+                    context,
+                    &field_type
+                ));
             }
         }
         Ok(offset / 8)

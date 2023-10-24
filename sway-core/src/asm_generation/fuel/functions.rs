@@ -489,11 +489,36 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                                 comment: format!("get offset for arg {name}"),
                                 owning_span: None,
                             });
+
+                            if arg_type.size_in_bytes(self.context) == 1 {
+                                self.cur_bytecode.push(Op {
+                                    opcode: Either::Left(VirtualOp::LB(
+                                        current_arg_reg.clone(),
+                                        offs_reg,
+                                        VirtualImmediate12 { value: 0 },
+                                    )),
+                                    comment: format!("get arg {name}"),
+                                    owning_span: None,
+                                });
+                            } else {
+                                self.cur_bytecode.push(Op {
+                                    opcode: Either::Left(VirtualOp::LW(
+                                        current_arg_reg.clone(),
+                                        offs_reg,
+                                        VirtualImmediate12 { value: 0 },
+                                    )),
+                                    comment: format!("get arg {name}"),
+                                    owning_span: None,
+                                });
+                            }
+                        } else if arg_type.size_in_bytes(self.context) == 1 {
                             self.cur_bytecode.push(Op {
-                                opcode: Either::Left(VirtualOp::LW(
+                                opcode: Either::Left(VirtualOp::LB(
                                     current_arg_reg.clone(),
-                                    offs_reg,
-                                    VirtualImmediate12 { value: 0 },
+                                    args_base_reg.clone(),
+                                    VirtualImmediate12 {
+                                        value: arg_word_offset as u16 * 8,
+                                    },
                                 )),
                                 comment: format!("get arg {name}"),
                                 owning_span: None,
@@ -708,7 +733,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     ) -> (
         u64,
         virtual_register::VirtualRegister,
-        Vec<(u64, u64, DataId)>,
+        Vec<(u64, u64, u64, DataId)>,
         u64,
     ) {
         // Scan the function to see if there are any calls to functions with more than
@@ -753,6 +778,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         self.context,
                         constant,
                         None,
+                        None,
                     ));
                     self.ptr_map.insert(*ptr, Storage::Data(data_id));
                     (stack_base_words, init_mut_vars)
@@ -760,7 +786,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     self.ptr_map.insert(*ptr, Storage::Stack(stack_base_words));
 
                     let ptr_ty = ptr.get_inner_type(self.context);
-                    let var_size_words = match ptr_ty.get_content(self.context) {
+                    let var_byte_size = ir_type_size_in_bytes(self.context, &ptr_ty);
+                    let var_word_size = match ptr_ty.get_content(self.context) {
                         TypeContent::Uint(256) => 4,
                         TypeContent::Unit
                         | TypeContent::Bool
@@ -780,12 +807,13 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             self.context,
                             constant,
                             None,
+                            None,
                         ));
 
-                        init_mut_vars.push((stack_base_words, var_size_words, data_id));
+                        init_mut_vars.push((stack_base_words, var_word_size, var_byte_size, data_id));
                     }
 
-                    (stack_base_words + var_size_words, init_mut_vars)
+                    (stack_base_words + var_word_size, init_mut_vars)
                 }
             },
         );
@@ -824,15 +852,21 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         (locals_size_bytes, locals_base_reg, init_mut_vars, max_num_extra_args): (
             u64,
             virtual_register::VirtualRegister,
-            Vec<(u64, u64, DataId)>,
+            Vec<(u64, u64, u64, DataId)>,
             u64,
         ),
     ) {
-        // Initialise that stack variables which require it.
-        for (var_stack_offs, var_word_size, var_data_id) in init_mut_vars {
+        // Initialise that stack variables which requires it.
+        for (
+            var_stack_offs,
+            var_word_size,
+            var_byte_size,
+            var_data_id,
+        ) in init_mut_vars
+        {
             // Load our initialiser from the data section.
             self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::LWDataId(
+                opcode: Either::Left(VirtualOp::LoadDataId(
                     VirtualRegister::Constant(ConstantRegister::Scratch),
                     var_data_id,
                 )),
@@ -883,15 +917,27 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
             if var_word_size == 1 {
                 // Initialise by value.
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::SW(
-                        dst_reg,
-                        VirtualRegister::Constant(ConstantRegister::Scratch),
-                        VirtualImmediate12 { value: 0 },
-                    )),
-                    comment: "store initializer to local variable".to_owned(),
-                    owning_span: None,
-                });
+                if var_byte_size == 1 {
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::SB(
+                            dst_reg,
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
+                            VirtualImmediate12 { value: 0 },
+                        )),
+                        comment: "store initializer to local variable".to_owned(),
+                        owning_span: None,
+                    });
+                } else {
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::SW(
+                            dst_reg,
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
+                            VirtualImmediate12 { value: 0 },
+                        )),
+                        comment: "store initializer to local variable".to_owned(),
+                        owning_span: None,
+                    });
+                }
             } else {
                 // Initialise by reference.
                 let var_byte_size = var_word_size * 8;
@@ -940,4 +986,11 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     pub(super) fn max_num_extra_args(&self) -> u64 {
         self.locals_ctxs.last().expect("No locals").2
     }
+}
+
+struct InitMutVars {
+    stack_base: u64,
+    var_word_size: u64,
+    var_byte_size: u64,
+    data_id: DataId,
 }

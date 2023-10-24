@@ -7,27 +7,38 @@ use fuels::{
 
 async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>> {
     let wallet = launch_provider_and_get_wallet().await;
+    let provider = wallet.provider().unwrap();
 
     let wallet_coins = wallet
         .get_asset_inputs_for_amount(
             AssetId::default(),
             wallet.get_asset_balance(&AssetId::default()).await.unwrap(),
-            None,
         )
         .await
         .unwrap();
 
-    let mut tx =
-        ScriptTransactionBuilder::prepare_transfer(wallet_coins, vec![], TxParameters::default())
-            .set_script(std::fs::read(
-                "test_projects/script_data/out/debug/script_data.bin",
-            )?)
-            .set_script_data(script_data)
-            .build()?;
+    let mut tx = ScriptTransactionBuilder::prepare_transfer(
+        wallet_coins,
+        vec![],
+        TxParameters::default(),
+        provider.network_info().await.unwrap(),
+    )
+    .with_script(std::fs::read(
+        "test_projects/script_data/out/debug/script_data.bin",
+    )?)
+    .with_script_data(script_data);
 
-    wallet.sign_transaction(&mut tx)?;
+    wallet.sign_transaction(&mut tx);
 
-    wallet.provider().unwrap().send_transaction(&tx).await
+    let mut tx = tx.build()?;
+
+    let provider = wallet.provider().unwrap();
+    let tx_id = provider.send_transaction(tx).await.unwrap();
+    provider
+        .tx_status(&tx_id)
+        .await
+        .unwrap()
+        .take_receipts_checked(None)
 }
 
 #[tokio::test]

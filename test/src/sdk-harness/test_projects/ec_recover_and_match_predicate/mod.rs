@@ -42,7 +42,7 @@ async fn ec_recover_and_match_predicate_test() -> Result<()> {
         })
         .collect::<Vec<_>>();
 
-    let (provider, _) = setup_test_provider(
+    let provider = setup_test_provider(
         all_coins,
         vec![],
         Some(Config {

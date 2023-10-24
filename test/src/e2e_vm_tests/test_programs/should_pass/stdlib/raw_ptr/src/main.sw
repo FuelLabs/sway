@@ -45,17 +45,17 @@ fn main() -> bool {
     assert(foo.uwu == 42);
 
     // Read fields of the struct
-    let uwu_ptr = buf_ptr.add::<bool>(1);
+    let uwu_ptr = buf_ptr.add_uint_offset(8); // struct fields are aligned to words
     let uwu: u64 = uwu_ptr.read();
     assert(uwu == 42);
-    let boo_ptr = uwu_ptr.sub::<bool>(1);
+    let boo_ptr = uwu_ptr.sub_uint_offset(8);
     let boo: bool = boo_ptr.read();
     assert(boo == true);
 
     // Write values into a buffer
     let buf_ptr = alloc::<u64>(2);
     buf_ptr.write(true);
-    buf_ptr.add::<bool>(1).write(42);
+    buf_ptr.add_uint_offset(8).write(42);
     let foo: TestStruct = buf_ptr.read();
     assert(foo.boo == true);
     assert(foo.uwu == 42);
