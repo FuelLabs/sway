@@ -12,10 +12,11 @@ use crate::{
     block::BlockArgument,
     constant::Constant,
     context::Context,
-    instruction::{FuelVmInstruction, Instruction},
+    instruction::{FuelVmInstruction, InstOp},
     irtype::Type,
     metadata::{combine, MetadataIndex},
     pretty::DebugWithContext,
+    Block, Instruction,
 };
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
@@ -68,9 +69,12 @@ impl Value {
     }
 
     /// Return a new instruction [`Value`].
-    pub fn new_instruction(context: &mut Context, instruction: Instruction) -> Value {
+    pub fn new_instruction(context: &mut Context, block: Block, instruction: InstOp) -> Value {
         let content = ValueContent {
-            value: ValueDatum::Instruction(instruction),
+            value: ValueDatum::Instruction(Instruction {
+                op: instruction,
+                parent: block,
+            }),
             metadata: None,
         };
         Value(context.values.insert(content))
@@ -113,12 +117,12 @@ impl Value {
     /// and is either a branch or return.
     pub fn is_terminator(&self, context: &Context) -> bool {
         match &context.values[self.0].value {
-            ValueDatum::Instruction(ins) => matches!(
-                ins,
-                Instruction::Branch(_)
-                    | Instruction::ConditionalBranch { .. }
-                    | Instruction::Ret(_, _)
-                    | Instruction::FuelVm(FuelVmInstruction::Revert(_))
+            ValueDatum::Instruction(Instruction { op, .. }) => matches!(
+                op,
+                InstOp::Branch(_)
+                    | InstOp::ConditionalBranch { .. }
+                    | InstOp::Ret(_, _)
+                    | InstOp::FuelVm(FuelVmInstruction::Revert(_))
             ),
             _ => false,
         }
@@ -126,12 +130,12 @@ impl Value {
 
     pub fn is_diverging(&self, context: &Context) -> bool {
         match &context.values[self.0].value {
-            ValueDatum::Instruction(ins) => matches!(
-                ins,
-                Instruction::Branch(..)
-                    | Instruction::ConditionalBranch { .. }
-                    | Instruction::Ret(..)
-                    | Instruction::FuelVm(FuelVmInstruction::Revert(..))
+            ValueDatum::Instruction(Instruction { op, .. }) => matches!(
+                op,
+                InstOp::Branch(..)
+                    | InstOp::ConditionalBranch { .. }
+                    | InstOp::Ret(..)
+                    | InstOp::FuelVm(FuelVmInstruction::Revert(..))
             ),
             ValueDatum::Argument(..) | ValueDatum::Configurable(..) | ValueDatum::Constant(..) => {
                 false
@@ -153,7 +157,7 @@ impl Value {
         if let ValueDatum::Instruction(instruction) =
             &mut context.values.get_mut(self.0).unwrap().value
         {
-            instruction.replace_values(replace_map);
+            instruction.op.replace_values(replace_map);
         }
     }
 

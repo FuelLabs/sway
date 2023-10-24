@@ -644,13 +644,13 @@ mod ir_builder {
         context::Context,
         error::IrError,
         function::Function,
-        instruction::{Instruction, Predicate, Register},
+        instruction::{InstOp, Predicate, Register},
         irtype::Type,
         local_var::LocalVar,
         metadata::{MetadataIndex, Metadatum},
         module::{Kind, Module},
         value::Value,
-        BinaryOpKind, BlockArgument, UnaryOpKind, B256,
+        BinaryOpKind, BlockArgument, Instruction, UnaryOpKind, B256,
     };
 
     #[derive(Debug)]
@@ -1406,8 +1406,10 @@ mod ir_builder {
                     })
                     .unwrap();
 
-                if let Some(Instruction::Call(dummy_func, _args)) =
-                    pending_call.call_val.get_instruction_mut(context)
+                if let Some(Instruction {
+                    op: InstOp::Call(dummy_func, _args),
+                    ..
+                }) = pending_call.call_val.get_instruction_mut(context)
                 {
                     *dummy_func = call_func;
                 }

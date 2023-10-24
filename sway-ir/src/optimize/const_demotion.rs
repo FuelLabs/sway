@@ -8,8 +8,8 @@ use std::collections::hash_map::Entry;
 /// Storage for constant values is created on the stack in variables which are initialized with the
 /// original values.
 use crate::{
-    AnalysisResults, Block, Constant, Context, Function, Instruction, IrError, Pass,
-    PassMutability, ScopedPass, Value,
+    AnalysisResults, Block, Constant, Context, Function, InstOp, IrError, Pass, PassMutability,
+    ScopedPass, Value,
 };
 
 use rustc_hash::FxHashMap;
@@ -34,7 +34,7 @@ pub fn const_demotion(
     let mut candidate_values: FxHashMap<Block, Vec<(Value, Constant)>> = FxHashMap::default();
 
     for (block, inst) in function.instruction_iter(context) {
-        let operands = inst.get_instruction(context).unwrap().get_operands();
+        let operands = inst.get_instruction(context).unwrap().op.get_operands();
         for val in operands.iter() {
             if let Some(c) = val.get_constant(context) {
                 if super::target_fuel::is_demotable_type(context, &c.ty) {
@@ -69,8 +69,8 @@ pub fn const_demotion(
                 Some(c.clone()),
                 false,
             );
-            let var_val = Value::new_instruction(context, Instruction::GetLocal(var));
-            let load_val = Value::new_instruction(context, Instruction::Load(var_val));
+            let var_val = Value::new_instruction(context, block, InstOp::GetLocal(var));
+            let load_val = Value::new_instruction(context, block, InstOp::Load(var_val));
             replace_map.insert(c_val, load_val);
             this_block_new.push(var_val);
             this_block_new.push(load_val);
