@@ -61,12 +61,15 @@ impl ServerState {
             // and instead show the either the parsed or typed tokens as warnings.
             // This is useful for debugging the lsp parser.
             Warnings::Parsed => {
+                dbg!();
                 diagnostics_to_publish = debug::generate_warnings_for_parsed_tokens(tokens)
             }
             Warnings::Typed => {
+                dbg!();
                 diagnostics_to_publish = debug::generate_warnings_for_typed_tokens(tokens)
             }
             Warnings::Default => {
+                dbg!();
                 let diagnostics_map = session.wait_for_parsing();
                 if let Some(diagnostics) = diagnostics_map.get(&PathBuf::from(uri.path())) {
                     if config.diagnostic.show_warnings {
@@ -78,6 +81,7 @@ impl ServerState {
                 }
             }
         }
+        eprintln!("diagnostics_to_publish: {:#?}", diagnostics_to_publish);
         diagnostics_to_publish
     }
 

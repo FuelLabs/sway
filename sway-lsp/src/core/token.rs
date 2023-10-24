@@ -52,6 +52,8 @@ pub enum AstToken {
     TypeArgument(TypeArgument),
     TypeParameter(TypeParameter),
     UseStatement(UseStatement),
+
+    TypedFunctionApplicationArgument((Ident, ty::TyExpression)),
 }
 
 /// The `TypedAstToken` holds the types produced by the [sway_core::language::ty::TyProgram].
@@ -80,8 +82,6 @@ pub enum TypedAstToken {
     TypedIncludeStatement,
     TypedUseStatement(ty::TyUseStatement),
     Ident(Ident),
-
-    TypedFunctionApplicationArgument((Ident, ty::TyExpression)),
 }
 
 /// These variants are used to represent the semantic type of the [Token].

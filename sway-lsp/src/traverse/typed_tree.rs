@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use crate::{
     core::token::{
-        type_info_to_symbol_kind, SymbolKind, Token, TokenIdent, TypeDefinition, TypedAstToken,
+        type_info_to_symbol_kind, SymbolKind, Token, TokenIdent, TypeDefinition, TypedAstToken, AstToken,
     },
     traverse::{Parse, ParseContext},
 };
@@ -249,16 +249,46 @@ impl Parse for ty::TyExpression {
                 }
                 contract_call_params.values().for_each(|exp| exp.parse(ctx));
                 for (ident, exp) in arguments {
+                    // if the exp is another function application, then
+                    // insert a TypedFunctionApplicationArgument into the token_map
+                    // with the fullpath of the function application callpath as the ident
+                    //
+                    // eg. for func(u32::max()); the ident would be "u32::max()"
+                    if call_path.suffix.name_override_opt().is_none() {
+                    if let ty::TyExpressionVariant::FunctionApplication { call_path, .. } = &exp.expression {
+                        ctx.tokens.insert(
+                            ctx.ident(&Ident::new(call_path.span())),
+                            Token::from_parsed(
+                                AstToken::TypedFunctionApplicationArgument((ident.clone(), exp.clone())),
+                                SymbolKind::Function,
+                            ),
+                        );
+                    }
+                    }
+
                     if let Some(mut token) = ctx.tokens.try_get_mut(&ctx.ident(&Ident::new(exp.span.clone()))).try_unwrap()
                     {
                         eprintln!("expressions!!!  = {:#?}", exp);
                         eprintln!("token_ident = {:#?}", token.key());
                         eprintln!("token_value = {:#?}", token.value());
+
+                        // check if the call_path suffix or prefix has an ident
+                        // with name_override_opt.is_some(). this most likely
+                        // indicates something like + or - being desuggered to add() subtract etc.
+                        // In this case, just regist the token as an ident.
+                        if call_path.suffix.name_override_opt().is_some() {
+                            token.typed = Some(TypedAstToken::Ident(ident.clone()));
+                        } else {
+                            token.parsed = AstToken::TypedFunctionApplicationArgument((ident.clone(), exp.clone()));
+                        }
+
                         // option 2 is to capture something more meaningful here instead of the base ident
                         // token.typed = Some(TypedAstToken::Ident(ident.clone()));
-                        token.typed = Some(TypedAstToken::TypedFunctionApplicationArgument((ident.clone(), exp.clone())));
+                        
+                        // token.typed = Some(TypedAstToken::TypedFunctionApplicationArgument((ident.clone(), exp.clone())));
+                        // token.type_def = Some(TypeDefinition::Ident(ident.clone()));
                     }
-                    // exp.parse(ctx);
+                    exp.parse(ctx);
                 }
                 let function_decl = ctx.engines.de().get_function(fn_ref);
                 function_decl

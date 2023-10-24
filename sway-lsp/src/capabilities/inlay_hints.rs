@@ -2,7 +2,7 @@ use crate::{
     config::InlayHintsConfig,
     core::{
         session::Session,
-        token::TypedAstToken,
+        token::{TypedAstToken, AstToken},
     },
 };
 use lsp_types::{self, Range, Url};
@@ -48,17 +48,23 @@ pub fn inlay_hints(
         // Filter out all tokens that have a span that fall outside of the provided range
         .filter_map(|(ident, token)| (ident.range.start >= range.start && ident.range.end <= range.end).then(|| (ident, token)))
         .filter_map(|(ident, token)| {
-            token.typed.as_ref().and_then(|t| match t {
-                TypedAstToken::TypedDeclaration(TyDecl::VariableDecl(var_decl)) => {
-                    var_decl::hints(var_decl, ident.range, &config, &engines)
-                }
-                TypedAstToken::TypedFunctionApplicationArgument((base_ident, exp)) => {
-                    eprintln!("inlay_hints: TypedFunctionApplicationArgument: {:#?}", exp);
-                    eprintln!("range: {:#?}", ident.range);
-                    params::hints(base_ident, ident.range, &config, &engines)
-                }
-                _ => None,
-            })
+            if let AstToken::TypedFunctionApplicationArgument((base_ident, exp)) = token.parsed {
+                eprintln!("inlay_hints: TypedFunctionApplicationArgument: {:#?}", exp);
+                eprintln!("range: {:#?}", ident.range);
+                params::hints(&base_ident, ident.range, &config)
+            } else {
+                token.typed.as_ref().and_then(|t| match t {
+                    TypedAstToken::TypedDeclaration(TyDecl::VariableDecl(var_decl)) => {
+                        var_decl::hints(var_decl, ident.range, &config, &engines)
+                    }
+                    // TypedAstToken::TypedFunctionApplicationArgument((base_ident, exp)) => {
+                    //     eprintln!("inlay_hints: TypedFunctionApplicationArgument: {:#?}", exp);
+                    //     eprintln!("range: {:#?}", ident.range);
+                    //     params::hints(base_ident, ident.range, &config)
+                    // }
+                    _ => None,
+                })
+            }
         })
         .collect();
 
@@ -142,7 +148,6 @@ mod params {
         name: &Ident,
         range: Range,
         config: &InlayHintsConfig,
-        engines: &Engines,
     ) -> Option<lsp_types::InlayHint> {
         let label = name.as_str().to_string();
         let inlay_hint = InlayHint {
