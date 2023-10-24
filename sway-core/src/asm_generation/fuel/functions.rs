@@ -733,7 +733,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     ) -> (
         u64,
         virtual_register::VirtualRegister,
-        Vec<(u64, u64, u64, DataId)>,
+        Vec<InitMutVars>,
         u64,
     ) {
         // Scan the function to see if there are any calls to functions with more than
@@ -810,7 +810,12 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             None,
                         ));
 
-                        init_mut_vars.push((stack_base_words, var_word_size, var_byte_size, data_id));
+                        init_mut_vars.push(InitMutVars {
+                            stack_base_words,
+                            var_word_size,
+                            var_byte_size,
+                            data_id,
+                        });
                     }
 
                     (stack_base_words + var_word_size, init_mut_vars)
@@ -852,30 +857,30 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         (locals_size_bytes, locals_base_reg, init_mut_vars, max_num_extra_args): (
             u64,
             virtual_register::VirtualRegister,
-            Vec<(u64, u64, u64, DataId)>,
+            Vec<InitMutVars>,
             u64,
         ),
     ) {
         // Initialise that stack variables which requires it.
-        for (
-            var_stack_offs,
+        for InitMutVars {
+            stack_base_words,
             var_word_size,
             var_byte_size,
-            var_data_id,
-        ) in init_mut_vars
+            data_id,
+        } in init_mut_vars
         {
             // Load our initialiser from the data section.
             self.cur_bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::LoadDataId(
                     VirtualRegister::Constant(ConstantRegister::Scratch),
-                    var_data_id,
+                    data_id,
                 )),
                 comment: "load initializer from data section".to_owned(),
                 owning_span: None,
             });
 
             // Get the stack offset in bytes rather than words.
-            let var_stack_off_bytes = var_stack_offs * 8;
+            let var_stack_off_bytes = stack_base_words * 8;
             let dst_reg = self.reg_seqr.next();
             // Check if we can use the `ADDi` opcode.
             if var_stack_off_bytes <= compiler_constants::TWELVE_BITS {
@@ -989,7 +994,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 }
 
 struct InitMutVars {
-    stack_base: u64,
+    stack_base_words: u64,
     var_word_size: u64,
     var_byte_size: u64,
     data_id: DataId,
