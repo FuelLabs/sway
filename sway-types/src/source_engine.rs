@@ -1,6 +1,5 @@
-use std::{collections::HashMap, path::PathBuf, sync::RwLock};
-
-use crate::SourceId;
+use crate::{ModuleId, SourceId};
+use std::{collections::{HashMap, BTreeSet}, path::PathBuf, sync::RwLock};
 
 /// The Source Engine manages a relationship between file paths and their corresponding
 /// integer-based source IDs. Additionally, it maintains a reserve - a map that traces
@@ -11,11 +10,28 @@ use crate::SourceId;
 /// The Source Engine is designed to be thread-safe. Its internal structures are
 /// secured by the RwLock mechanism. This allows its functions to be invoked using
 /// a straightforward non-mutable reference, ensuring safe concurrent access.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SourceEngine {
-    next_id: RwLock<u32>,
-    source_map: RwLock<HashMap<PathBuf, SourceId>>,
-    path_map: RwLock<HashMap<SourceId, PathBuf>>,
+    next_source_id: RwLock<u32>,
+    path_to_source_map: RwLock<HashMap<PathBuf, SourceId>>,
+    source_to_path_map: RwLock<HashMap<SourceId, PathBuf>>,
+    
+    next_module_id: RwLock<u16>,
+    path_to_module_map: RwLock<HashMap<PathBuf, ModuleId>>,
+    module_to_sources_map: RwLock<HashMap<ModuleId, BTreeSet<SourceId>>>,
+}
+
+impl Default for SourceEngine {
+    fn default() -> Self {
+        SourceEngine { 
+            next_source_id: RwLock::new(0),
+            path_to_source_map: RwLock::new(HashMap::new()),
+            source_to_path_map: RwLock::new(HashMap::new()),
+            next_module_id: RwLock::new(ModuleId::RESERVED + 1),
+            path_to_module_map: RwLock::new(HashMap::new()),
+            module_to_sources_map: RwLock::new(HashMap::new()),
+        }
+    }
 }
 
 impl SourceEngine {
@@ -24,32 +40,43 @@ impl SourceEngine {
     /// existing ID. If not, a new ID will be created.
     pub fn get_source_id(&self, path: &PathBuf) -> SourceId {
         {
-            let source_map = self.source_map.read().unwrap();
+            let source_map = self.path_to_source_map.read().unwrap();
             if source_map.contains_key(path) {
                 return source_map.get(path).cloned().unwrap();
             }
         }
 
-        let source_id = SourceId {
-            id: *self.next_id.read().unwrap(),
+        let manifest_path = sway_utils::find_parent_manifest_dir(path).unwrap();
+        let module_id = {
+            let mut module_map = self.path_to_module_map.write().unwrap();
+            module_map.entry(manifest_path.clone()).or_insert_with(|| {
+                let mut next_id = self.next_module_id.write().unwrap();
+                *next_id += 1;
+                ModuleId::new(*next_id)
+            }).clone()
         };
+
+        let source_id = SourceId::new(module_id.id, *self.next_source_id.read().unwrap());
         {
-            let mut next_id = self.next_id.write().unwrap();
+            let mut next_id = self.next_source_id.write().unwrap();
             *next_id += 1;
 
-            let mut source_map = self.source_map.write().unwrap();
+            let mut source_map = self.path_to_source_map.write().unwrap();
             source_map.insert(path.clone(), source_id);
 
-            let mut path_map = self.path_map.write().unwrap();
+            let mut path_map = self.source_to_path_map.write().unwrap();
             path_map.insert(source_id, path.clone());
         }
+        
+        let mut module_map = self.module_to_sources_map.write().unwrap();
+        module_map.entry(module_id).or_insert_with(BTreeSet::new).insert(source_id);
 
         source_id
     }
 
     /// This function provides the file path corresponding to a specified source ID.
     pub fn get_path(&self, source_id: &SourceId) -> PathBuf {
-        self.path_map
+        self.source_to_path_map
             .read()
             .unwrap()
             .get(source_id)

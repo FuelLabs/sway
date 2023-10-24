@@ -139,6 +139,7 @@ impl TypeParameter {
                 name: name.clone(),
                 trait_constraints: VecSet(vec![]),
             },
+            span.source_id(),
         );
         TypeParameter {
             type_id,
@@ -279,6 +280,7 @@ impl TypeParameter {
                 name: name_ident.clone(),
                 trait_constraints: VecSet(trait_constraints_with_supertraits.clone()),
             },
+            name_ident.span().source_id(),
         );
 
         let type_parameter = TypeParameter {
@@ -323,9 +325,12 @@ impl TypeParameter {
         type_engine.replace(
             type_parameter.type_id,
             engines,
-            TypeInfo::UnknownGeneric {
-                name: type_parameter.name_ident.clone(),
-                trait_constraints: VecSet(trait_constraints_with_supertraits.clone()),
+            TypeData {
+                type_info: TypeInfo::UnknownGeneric {
+                    name: type_parameter.name_ident.clone(),
+                    trait_constraints: VecSet(trait_constraints_with_supertraits.clone()),
+                },
+                source_id: type_parameter.name_ident.span().source_id().cloned(),
             },
         );
 

@@ -1,5 +1,5 @@
 use std::{collections::BTreeMap, fmt};
-
+use sway_types::Spanned;
 use crate::{
     decl_engine::{DeclEngine, DeclEngineInsert},
     engine_threading::*,
@@ -77,7 +77,7 @@ impl TypeSubstMap {
             .map(|x| {
                 (
                     x.type_id,
-                    type_engine.insert(engines, TypeInfo::Placeholder(x.clone())),
+                    type_engine.insert(engines, TypeInfo::Placeholder(x.clone()), x.name_ident.span().source_id()),
                 )
             })
             .collect();
@@ -348,7 +348,7 @@ impl TypeSubstMap {
                 }
                 if need_to_create_new {
                     let new_decl_ref = decl_engine.insert(decl);
-                    Some(type_engine.insert(engines, TypeInfo::Struct(new_decl_ref)))
+                    Some(type_engine.insert(engines, TypeInfo::Struct(new_decl_ref.clone()), new_decl_ref.decl_span().source_id()))
                 } else {
                     None
                 }
@@ -372,7 +372,7 @@ impl TypeSubstMap {
                 }
                 if need_to_create_new {
                     let new_decl_ref = decl_engine.insert(decl);
-                    Some(type_engine.insert(engines, TypeInfo::Enum(new_decl_ref)))
+                    Some(type_engine.insert(engines, TypeInfo::Enum(new_decl_ref.clone()), new_decl_ref.decl_span().source_id()))
                 } else {
                     None
                 }
@@ -380,42 +380,46 @@ impl TypeSubstMap {
             TypeInfo::Array(mut elem_ty, count) => {
                 self.find_match(elem_ty.type_id, engines).map(|type_id| {
                     elem_ty.type_id = type_id;
-                    type_engine.insert(engines, TypeInfo::Array(elem_ty, count))
+                    type_engine.insert(engines, TypeInfo::Array(elem_ty.clone(), count), elem_ty.span.source_id())
                 })
             }
             TypeInfo::Tuple(fields) => {
                 let mut need_to_create_new = false;
+                let mut source_id = None;
                 let fields = fields
                     .into_iter()
                     .map(|mut field| {
                         if let Some(type_id) = self.find_match(field.type_id, engines) {
                             need_to_create_new = true;
+                            source_id = field.span.source_id().cloned();
                             field.type_id = type_id;
                         }
                         field
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert(engines, TypeInfo::Tuple(fields)))
+                    Some(type_engine.insert(engines, TypeInfo::Tuple(fields), source_id.as_ref()))
                 } else {
                     None
                 }
             }
             TypeInfo::Storage { fields } => {
                 let mut need_to_create_new = false;
+                let mut source_id = None;
                 let fields = fields
                     .into_iter()
                     .map(|mut field| {
                         if let Some(type_id) = self.find_match(field.type_argument.type_id, engines)
                         {
                             need_to_create_new = true;
+                            source_id = field.span.source_id().cloned();
                             field.type_argument.type_id = type_id;
                         }
                         field
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert(engines, TypeInfo::Storage { fields }))
+                    Some(type_engine.insert(engines, TypeInfo::Storage { fields }, source_id.as_ref()))
                 } else {
                     None
                 }
@@ -423,16 +427,16 @@ impl TypeSubstMap {
             TypeInfo::Alias { name, mut ty } => {
                 self.find_match(ty.type_id, engines).map(|type_id| {
                     ty.type_id = type_id;
-                    type_engine.insert(engines, TypeInfo::Alias { name, ty })
+                    type_engine.insert(engines, TypeInfo::Alias { name, ty: ty.clone() }, ty.span.source_id())
                 })
             }
             TypeInfo::Ptr(mut ty) => self.find_match(ty.type_id, engines).map(|type_id| {
                 ty.type_id = type_id;
-                type_engine.insert(engines, TypeInfo::Ptr(ty))
+                type_engine.insert(engines, TypeInfo::Ptr(ty.clone()), ty.span.source_id())
             }),
             TypeInfo::Slice(mut ty) => self.find_match(ty.type_id, engines).map(|type_id| {
                 ty.type_id = type_id;
-                type_engine.insert(engines, TypeInfo::Slice(ty))
+                type_engine.insert(engines, TypeInfo::Slice(ty.clone()), ty.span.source_id())
             }),
             TypeInfo::TraitType { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::Unknown

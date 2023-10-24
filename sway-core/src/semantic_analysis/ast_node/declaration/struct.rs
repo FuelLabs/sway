@@ -1,5 +1,5 @@
 use sway_error::handler::{ErrorEmitted, Handler};
-
+use sway_types::SourceId;
 use crate::{
     language::{parsed::*, ty, CallPath},
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
@@ -70,7 +70,7 @@ impl ty::TyStructField {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(ctx.engines(), TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(ctx.engines(), TypeInfo::ErrorRecovery(err), Some(&SourceId::error())));
         let field = ty::TyStructField {
             name: field.name,
             span: field.span,

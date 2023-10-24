@@ -56,7 +56,7 @@ pub(crate) fn instantiate_enum(
         type_engine.get(enum_variant.type_argument.type_id),
     ) {
         ([], ty) if ty.is_unit() => Ok(ty::TyExpression {
-            return_type: type_engine.insert(engines, TypeInfo::Enum(enum_ref.clone())),
+            return_type: type_engine.insert(engines, TypeInfo::Enum(enum_ref.clone()), enum_ref.span().source_id()),
             expression: ty::TyExpressionVariant::EnumInstantiation {
                 tag: enum_variant.tag,
                 contents: None,
@@ -92,7 +92,7 @@ pub(crate) fn instantiate_enum(
             // we now know that the instantiator type matches the declared type, via the above tpe
             // check
 
-            let type_id = type_engine.insert(engines, TypeInfo::Enum(enum_ref.clone()));
+            let type_id = type_engine.insert(engines, TypeInfo::Enum(enum_ref.clone()), enum_ref.span().source_id());
 
             type_id.check_type_parameter_bounds(
                 handler,

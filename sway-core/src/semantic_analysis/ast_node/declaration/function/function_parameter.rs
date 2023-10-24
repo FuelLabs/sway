@@ -8,7 +8,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::Spanned;
+use sway_types::{Spanned, SourceId};
 
 impl ty::TyFunctionParameter {
     pub(crate) fn type_check(
@@ -35,7 +35,7 @@ impl ty::TyFunctionParameter {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error())));
 
         type_argument.type_id.check_type_parameter_bounds(
             handler,
@@ -89,7 +89,7 @@ impl ty::TyFunctionParameter {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error())));
 
         let typed_parameter = ty::TyFunctionParameter {
             name,

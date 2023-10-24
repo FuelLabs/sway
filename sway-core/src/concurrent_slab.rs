@@ -1,8 +1,6 @@
-use std::{fmt, sync::RwLock};
-
-use sway_types::{Named, Spanned};
-
 use crate::{decl_engine::*, engine_threading::*, type_system::*};
+use std::{fmt, sync::RwLock};
+use sway_types::{Named, Spanned};
 
 #[derive(Debug)]
 pub(crate) struct ConcurrentSlab<T> {
@@ -70,16 +68,21 @@ where
         let inner = self.inner.read().unwrap();
         inner[index].clone()
     }
+
+    pub fn retain(&self, predicate: impl Fn(&T) -> bool) {
+        let mut inner = self.inner.write().unwrap();
+        inner.retain(predicate);
+    }
 }
 
-impl ConcurrentSlab<TypeInfo> {
+impl ConcurrentSlab<TypeData> {
     pub fn replace(
         &self,
         index: TypeId,
-        prev_value: &TypeInfo,
-        new_value: TypeInfo,
+        prev_value: &TypeData,
+        new_value: TypeData,
         engines: &Engines,
-    ) -> Option<TypeInfo> {
+    ) -> Option<TypeData> {
         let index = index.index();
         // The comparison below ends up calling functions in the slab, which
         // can lead to deadlocks if we used a single read/write lock.
@@ -89,7 +92,7 @@ impl ConcurrentSlab<TypeInfo> {
         {
             let inner = self.inner.read().unwrap();
             let actual_prev_value = &inner[index];
-            if !actual_prev_value.eq(prev_value, engines) {
+            if !actual_prev_value.type_info.eq(&prev_value.type_info, engines) {
                 return Some(actual_prev_value.clone());
             }
         }
@@ -111,3 +114,4 @@ where
         None
     }
 }
+

@@ -107,7 +107,7 @@ impl ty::TyMatchBranch {
         let typed_result = {
             let ctx = branch_ctx
                 .by_ref()
-                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())));
             ty::TyExpression::type_check(handler, ctx, result)?
         };
 

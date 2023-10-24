@@ -18,7 +18,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
     warning::{CompileWarning, Warning},
 };
-use sway_types::{span::Span, Spanned};
+use sway_types::{span::Span, Spanned, SourceId};
 
 impl ty::TyAstNode {
     pub(crate) fn type_check(
@@ -143,7 +143,7 @@ impl ty::TyAstNode {
                 }
                 AstNodeContent::Expression(expr) => {
                     let ctx = ctx
-                        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown))
+                        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())))
                         .with_help_text("");
                     let inner = ty::TyExpression::type_check(handler, ctx, expr.clone())
                         .unwrap_or_else(|err| ty::TyExpression::error(err, expr.span(), engines));

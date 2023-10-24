@@ -212,7 +212,7 @@ impl Root {
             handler,
             engines,
             symbol,
-            engines.te().insert(engines, type_info),
+            engines.te().insert(engines, type_info, symbol.span().source_id()),
             as_trait,
             self_type,
         )
@@ -233,7 +233,7 @@ impl Root {
             handler,
             engines,
             symbol,
-            engines.te().insert(engines, type_info),
+            engines.te().insert(engines, type_info, symbol.span().source_id()),
             as_trait,
             self_type,
         )

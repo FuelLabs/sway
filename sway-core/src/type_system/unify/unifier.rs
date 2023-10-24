@@ -60,12 +60,19 @@ impl<'a> Unifier<'a> {
         span: &Span,
     ) {
         let type_engine = self.engines.te();
+        let source_id = span.source_id().cloned();
         if type_engine
             .slab
             .replace(
                 received,
-                received_type_info,
-                expected_type_info,
+                &TypeData {
+                    type_info: received_type_info.clone(),
+                    source_id: source_id.clone(),
+                },
+                TypeData {
+                    type_info: expected_type_info.clone(),
+                    source_id,
+                },
                 self.engines,
             )
             .is_some()
@@ -85,12 +92,19 @@ impl<'a> Unifier<'a> {
         span: &Span,
     ) {
         let type_engine = self.engines.te();
+        let source_id = span.source_id().cloned();
         if type_engine
             .slab
             .replace(
                 expected,
-                expected_type_info,
-                received_type_info,
+                &TypeData {
+                    type_info: expected_type_info.clone(),
+                    source_id: source_id.clone(),
+                },
+                TypeData {
+                    type_info: received_type_info.clone(),
+                    source_id,
+                },
                 self.engines,
             )
             .is_some()
@@ -108,8 +122,8 @@ impl<'a> Unifier<'a> {
         }
 
         match (
-            self.engines.te().slab.get(received.index()),
-            self.engines.te().slab.get(expected.index()),
+            self.engines.te().slab.get(received.index()).type_info,
+            self.engines.te().slab.get(expected.index()).type_info,
         ) {
             // If they have the same `TypeInfo`, then we either compare them for
             // correctness or perform further unification.
@@ -260,7 +274,7 @@ impl<'a> Unifier<'a> {
                     received,
                     expected,
                     r,
-                    self.engines.te().slab.get(expected.index()),
+                    self.engines.te().slab.get(expected.index()).type_info,
                     span,
                 )
             }
@@ -278,7 +292,7 @@ impl<'a> Unifier<'a> {
                     handler,
                     received,
                     expected,
-                    self.engines.te().slab.get(received.index()),
+                    self.engines.te().slab.get(received.index()).type_info,
                     e,
                     span,
                 )

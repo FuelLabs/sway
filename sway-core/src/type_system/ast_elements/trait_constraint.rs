@@ -8,7 +8,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::Spanned;
+use sway_types::{Spanned, SourceId};
 
 use crate::{
     engine_threading::*,
@@ -151,7 +151,7 @@ impl TraitConstraint {
                 .unwrap_or_else(|err| {
                     ctx.engines
                         .te()
-                        .insert(ctx.engines(), TypeInfo::ErrorRecovery(err))
+                        .insert(ctx.engines(), TypeInfo::ErrorRecovery(err), Some(&SourceId::error()))
                 });
         }
 

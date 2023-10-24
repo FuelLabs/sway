@@ -1,4 +1,4 @@
-use sway_types::{Span, Spanned};
+use sway_types::{Span, Spanned, SourceId};
 
 use crate::{
     decl_engine::DeclId,
@@ -60,7 +60,7 @@ impl ty::TyTraitFn {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error())));
 
         let trait_fn = ty::TyTraitFn {
             name,

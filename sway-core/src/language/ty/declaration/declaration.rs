@@ -784,6 +784,7 @@ impl TyDecl {
             }) => type_engine.insert(
                 engines,
                 TypeInfo::Struct(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
+                name.span().source_id(),
             ),
             TyDecl::EnumDecl(EnumDecl {
                 name,
@@ -793,6 +794,7 @@ impl TyDecl {
             }) => type_engine.insert(
                 engines,
                 TypeInfo::Enum(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
+                name.span().source_id(),
             ),
             TyDecl::StorageDecl(StorageDecl { decl_id, .. }) => {
                 let storage_decl = decl_engine.get_storage(decl_id);
@@ -801,6 +803,7 @@ impl TyDecl {
                     TypeInfo::Storage {
                         fields: storage_decl.fields_as_typed_struct_fields(),
                     },
+                    storage_decl.span().source_id(),
                 )
             }
             TyDecl::TypeAliasDecl(TypeAliasDecl { decl_id, .. }) => {

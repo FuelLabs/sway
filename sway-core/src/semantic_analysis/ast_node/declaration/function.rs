@@ -16,7 +16,7 @@ use crate::{
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
 };
-use sway_types::{style::is_snake_case, Spanned};
+use sway_types::{style::is_snake_case, Spanned, SourceId};
 
 impl ty::TyFunctionDecl {
     pub fn type_check(
@@ -115,7 +115,7 @@ impl ty::TyFunctionDecl {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error())));
 
         let (visibility, is_contract_call) = if is_method {
             if is_in_impl_self {
@@ -345,6 +345,7 @@ fn test_function_selector_behavior() {
                     .insert(
                         &engines,
                         TypeInfo::StringArray(Length::new(5, Span::dummy())),
+                        None
                     )
                     .into(),
             },
@@ -356,10 +357,11 @@ fn test_function_selector_behavior() {
                 type_argument: TypeArgument {
                     type_id: engines
                         .te()
-                        .insert(&engines, TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
+                        .insert(&engines, TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo), None),
                     initial_type_id: engines.te().insert(
                         &engines,
                         TypeInfo::StringArray(Length::new(5, Span::dummy())),
+                        None
                     ),
                     span: Span::dummy(),
                     call_path_tree: None,

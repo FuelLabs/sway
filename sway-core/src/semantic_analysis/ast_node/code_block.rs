@@ -100,14 +100,15 @@ impl ty::TyCodeBlock {
                         return ctx.engines().te().insert(
                             engines,
                             TypeInfo::Enum(DeclRef::new(name.clone(), decl_id, decl_span.clone())),
+                            name.span().source_id(),
                         );
                     }
 
-                    ctx.engines.te().insert(engines, TypeInfo::Unknown)
+                    ctx.engines.te().insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown()))
                 } else {
                     ctx.engines
                         .te()
-                        .insert(engines, TypeInfo::Tuple(Vec::new()))
+                        .insert(engines, TypeInfo::Tuple(Vec::new()), span.source_id())
                 }
             });
         (block_type, span)

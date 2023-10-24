@@ -1,31 +1,36 @@
-use core::fmt::Write;
-use hashbrown::hash_map::RawEntryMut;
-use hashbrown::HashMap;
-use std::sync::RwLock;
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::integer_bits::IntegerBits;
-
-use crate::concurrent_slab::ListDisplay;
 use crate::{
-    concurrent_slab::ConcurrentSlab, decl_engine::*, engine_threading::*,
+    concurrent_slab::{ConcurrentSlab, ListDisplay}, decl_engine::*, engine_threading::*,
     type_system::priv_prelude::*,
 };
-
-use sway_error::{error::CompileError, type_error::TypeError};
-use sway_types::span::Span;
+use core::fmt::Write;
+use hashbrown::{HashMap, hash_map::RawEntryMut};
+use std::sync::RwLock;
+use sway_error::{
+    error::CompileError, type_error::TypeError,
+    handler::{ErrorEmitted, Handler},
+};
+use sway_types::{
+    integer_bits::IntegerBits,
+    span::Span,
+    SourceId, ModuleId,
+};
 
 use super::unify::unifier::UnifyKind;
 
 #[derive(Debug, Default)]
 pub struct TypeEngine {
-    pub(super) slab: ConcurrentSlab<TypeInfo>,
-    id_map: RwLock<HashMap<TypeInfo, TypeId>>,
+    pub(super) slab: ConcurrentSlab<TypeData>,
+    id_map: RwLock<HashMap<TypeData, TypeId>>,
 }
 
 impl TypeEngine {
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
-    pub(crate) fn insert(&self, engines: &Engines, ty: TypeInfo) -> TypeId {
+    pub(crate) fn insert(&self, engines: &Engines, ty: TypeInfo, source_id: Option<&SourceId>) -> TypeId {
+        let ty = TypeData {
+            type_info: ty,
+            source_id: source_id.cloned(),
+        };
         let mut id_map = self.id_map.write().unwrap();
 
         let hash_builder = id_map.hasher().clone();
@@ -36,7 +41,7 @@ impl TypeEngine {
             .from_hash(ty_hash, |x| x.eq(&ty, engines));
         match raw_entry {
             RawEntryMut::Occupied(o) => return *o.get(),
-            RawEntryMut::Vacant(_) if ty.can_change(engines.de()) => {
+            RawEntryMut::Vacant(_) if ty.type_info.can_change(engines.de()) => {
                 TypeId::new(self.slab.insert(ty))
             }
             RawEntryMut::Vacant(v) => {
@@ -47,14 +52,18 @@ impl TypeEngine {
         }
     }
 
-    pub fn replace(&self, id: TypeId, engines: &Engines, new_value: TypeInfo) {
+    pub fn clear_module(&mut self, module_id: ModuleId) {
+        self.slab.retain(|ty| ty.source_id.unwrap().module_id() != module_id);
+    }
+
+    pub fn replace(&self, id: TypeId, engines: &Engines, new_value: TypeData) {
         let prev_value = self.slab.get(id.index());
         self.slab.replace(id, &prev_value, new_value, engines);
     }
 
     /// Performs a lookup of `id` into the [TypeEngine].
     pub fn get(&self, id: TypeId) -> TypeInfo {
-        self.slab.get(id.index())
+        self.slab.get(id.index()).type_info
     }
 
     /// Performs a lookup of `id` into the [TypeEngine] recursing when finding a
@@ -62,7 +71,7 @@ impl TypeEngine {
     pub fn get_unaliased(&self, id: TypeId) -> TypeInfo {
         // A slight infinite loop concern if we somehow have self-referential aliases, but that
         // shouldn't be possible.
-        match self.slab.get(id.index()) {
+        match self.slab.get(id.index()).type_info {
             TypeInfo::Alias { ty, .. } => self.get_unaliased(ty.type_id),
             ty_info => ty_info,
         }
@@ -311,7 +320,7 @@ impl TypeEngine {
                     handler,
                     engines,
                     type_id,
-                    self.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+                    self.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour), span.source_id()),
                     span,
                     "",
                     None,
@@ -329,7 +338,7 @@ impl TypeEngine {
         self.slab.with_slice(|elems| {
             let list = elems
                 .iter()
-                .map(|type_info| format!("{:?}", engines.help_out(type_info)));
+                .map(|ty| format!("{:?}", engines.help_out(&ty.type_info)));
             let list = ListDisplay { list };
             write!(builder, "TypeEngine {{\n{list}\n}}").unwrap();
         });

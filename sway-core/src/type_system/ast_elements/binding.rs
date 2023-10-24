@@ -1,5 +1,5 @@
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Span, Spanned};
+use sway_types::{Span, Spanned, SourceId};
 
 use crate::{
     decl_engine::*,
@@ -186,12 +186,12 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
         let type_id = ctx
             .resolve_type(
                 handler,
-                type_engine.insert(engines, type_info),
+                type_engine.insert(engines, type_info, type_info_span.source_id()),
                 &type_info_span,
                 EnforceTypeArguments::No,
                 Some(&type_info_prefix),
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error())));
 
         Ok(type_id)
     }
@@ -258,7 +258,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
                         None,
                     )
                     .unwrap_or_else(|err| {
-                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err))
+                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error()))
                     });
                 }
             }
@@ -305,7 +305,7 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
         )?;
         // Insert the new copy into the declaration engine.
         let new_struct_ref = ctx.engines.de().insert(new_copy);
-        let type_id = type_engine.insert(engines, TypeInfo::Struct(new_struct_ref.clone()));
+        let type_id = type_engine.insert(engines, TypeInfo::Struct(new_struct_ref.clone()), new_struct_ref.span().source_id());
         Ok((new_struct_ref, Some(type_id), None))
     }
 }
@@ -352,7 +352,7 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         )?;
         // Insert the new copy into the declaration engine.
         let new_enum_ref = ctx.engines.de().insert(new_copy);
-        let type_id = type_engine.insert(engines, TypeInfo::Enum(new_enum_ref.clone()));
+        let type_id = type_engine.insert(engines, TypeInfo::Enum(new_enum_ref.clone()), new_enum_ref.span().source_id());
         Ok((new_enum_ref, Some(type_id), Some(unknown_decl)))
     }
 }

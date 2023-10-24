@@ -4,7 +4,7 @@ use std::{
     sync::RwLock,
 };
 
-use sway_types::{Named, Spanned};
+use sway_types::{Named, Spanned, ModuleId};
 
 use crate::{
     concurrent_slab::{ConcurrentSlab, ListDisplay},
@@ -146,6 +146,35 @@ decl_engine_index!(abi_slab, ty::TyAbiDecl);
 decl_engine_index!(constant_slab, ty::TyConstantDecl);
 decl_engine_index!(enum_slab, ty::TyEnumDecl);
 decl_engine_index!(type_alias_slab, ty::TyTypeAliasDecl);
+
+macro_rules! decl_engine_clear_module {
+    ($($slab:ident, $decl:ty);* $(;)?) => {
+        impl DeclEngine {
+            pub fn clear_module(&mut self, module_id: ModuleId) {
+                $(
+                    self.$slab.retain(|ty| {
+                        ty.span().source_id().unwrap().module_id() != module_id
+                    });
+                )*
+            }
+        }
+    };
+}
+
+decl_engine_clear_module!(
+    function_slab, ty::TyFunctionDecl;
+    trait_slab, ty::TyTraitDecl;
+    trait_fn_slab, ty::TyTraitFn;
+    trait_type_slab, ty::TyTraitType;
+    impl_trait_slab, ty::TyImplTrait;
+    struct_slab, ty::TyStructDecl;
+    storage_slab, ty::TyStorageDecl;
+    abi_slab, ty::TyAbiDecl;
+    constant_slab, ty::TyConstantDecl;
+    enum_slab, ty::TyEnumDecl;
+    type_alias_slab, ty::TyTypeAliasDecl;
+);
+
 
 impl DeclEngine {
     /// Given a [DeclRef] `index`, finds all the parents of `index` and all the

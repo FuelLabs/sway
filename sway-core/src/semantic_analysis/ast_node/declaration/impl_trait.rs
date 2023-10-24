@@ -4,7 +4,7 @@ use sway_error::{
     error::{CompileError, InterfaceName},
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Span, Spanned, SourceId};
 
 use crate::{
     decl_engine::*,
@@ -115,7 +115,7 @@ impl TyImplTrait {
         // Update the context
         let mut ctx = ctx
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown))
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())))
             .with_self_type(Some(implementing_for.type_id));
 
         let impl_trait = match ctx
@@ -362,7 +362,7 @@ impl TyImplTrait {
 
         let mut ctx = ctx
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())));
 
         // type check the items inside of the impl block
         let mut new_items = vec![];
@@ -778,14 +778,15 @@ fn type_check_trait_implementation(
                             name: Ident::new_with_override("Self".into(), Span::dummy()),
                             trait_constraints: VecSet(vec![]),
                         },
+                        None
                     ),
                 };
                 trait_type_mapping.extend(TypeSubstMap::from_type_parameters_and_type_arguments(
-                    vec![type_engine.insert(engines, old_type_decl_info1)],
+                    vec![type_engine.insert(engines, old_type_decl_info1, type_decl.name.span().source_id())],
                     vec![type_decl.ty.clone().unwrap().type_id],
                 ));
                 trait_type_mapping.extend(TypeSubstMap::from_type_parameters_and_type_arguments(
-                    vec![type_engine.insert(engines, old_type_decl_info2)],
+                    vec![type_engine.insert(engines, old_type_decl_info2, type_decl.name.span().source_id())],
                     vec![type_decl.ty.clone().unwrap().type_id],
                 ));
             }
@@ -965,7 +966,7 @@ fn type_check_impl_method(
     let mut ctx = ctx
         .by_ref()
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())));
 
     let interface_name = || -> InterfaceName {
         if is_contract {
@@ -1188,7 +1189,7 @@ fn type_check_const_decl(
     let mut ctx = ctx
         .by_ref()
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())));
 
     let interface_name = || -> InterfaceName {
         if is_contract {
@@ -1270,7 +1271,7 @@ fn type_check_type_decl(
     let mut ctx = ctx
         .by_ref()
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())));
 
     let interface_name = || -> InterfaceName {
         if is_contract {
