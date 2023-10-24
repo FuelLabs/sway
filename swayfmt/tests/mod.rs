@@ -2131,7 +2131,7 @@ fn main() {
 }
 
 #[test]
-fn test_match_as_arg() {
+fn match_as_arg() {
     check(
         r#"
     library;
@@ -2149,6 +2149,34 @@ fn main() {
         Color::Blue => true,
         _ => false,
     });
+}
+"#,
+    );
+}
+
+#[test]
+fn single_long_arg() {
+    check(
+        r#"library;
+    
+    fn main() {
+        if foo {
+            // ANCHOR: storage_map_insert
+                let addr1 = Address::from(0x0101010101010101010101010101010101010101010101010101010101010101);
+            }
+    }
+    
+    
+    "#,
+        r#"library;
+
+fn main() {
+    if foo {
+        // ANCHOR: storage_map_insert
+        let addr1 = Address::from(
+            0x0101010101010101010101010101010101010101010101010101010101010101,
+        );
+    }
 }
 "#,
     );

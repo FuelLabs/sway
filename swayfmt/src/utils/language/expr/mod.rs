@@ -690,6 +690,18 @@ pub fn should_write_multiline(code: &str, formatter: &Formatter) -> bool {
     }
 }
 
+fn same_line_if_only_argument(expr: &Expr) -> bool {
+    matches!(
+        expr,
+        Expr::Struct { path: _, fields: _ }
+            | Expr::Match {
+                match_token: _,
+                value: _,
+                branches: _
+            }
+    )
+}
+
 /// Writes the `(args)` of a function call. This is a common abstraction for
 /// methods and functions and how to organize their arguments.
 #[inline]
@@ -698,36 +710,32 @@ pub fn write_function_call_arguments<P>(
     formatter: &mut Formatter,
 ) -> Result<String, FormatterError>
 where
-    P: Format,
+    P: Format + std::fmt::Debug,
 {
-    let has_single_argument_and_can_be_inlined =
-        if args.value_separator_pairs.len() == 1 && args.final_value_opt.is_none() {
-            matches!(
-                args.value_separator_pairs[0].0,
-                Expr::Struct { path: _, fields: _ }
-                    | Expr::Match {
-                        match_token: _,
-                        value: _,
-                        branches: _
+    let has_single_argument_and_can_be_inlined = formatter.with_shape(
+        formatter.shape.with_default_code_line(),
+        |formatter| -> Result<bool, FormatterError> {
+            let mut buf = FormattedCode::new();
+            if args.value_separator_pairs.len() == 1 && args.final_value_opt.is_none() {
+                if same_line_if_only_argument(&args.value_separator_pairs[0].0) {
+                    return Ok(true);
+                }
+                args.value_separator_pairs[0]
+                    .0
+                    .format(&mut buf, formatter)?;
+            } else if args.value_separator_pairs.is_empty() && args.final_value_opt.is_some() {
+                if let Some(final_value) = &args.final_value_opt {
+                    if same_line_if_only_argument(final_value) {
+                        return Ok(true);
                     }
-            )
-        } else if args.value_separator_pairs.is_empty() {
-            if let Some(final_value) = &args.final_value_opt {
-                matches!(
-                    **final_value,
-                    Expr::Struct { path: _, fields: _ }
-                        | Expr::Match {
-                            match_token: _,
-                            value: _,
-                            branches: _
-                        }
-                )
+                    (**final_value).format(&mut buf, formatter)?;
+                }
             } else {
-                true
+                return Ok(false);
             }
-        } else {
-            false
-        };
+            Ok(buf.len() < formatter.shape.width_heuristics.collection_width)
+        },
+    )?;
 
     let mut buf = FormattedCode::new();
     args.format(&mut buf, formatter)?;
@@ -742,6 +750,9 @@ where
             .shape
             .get_line_style(None, Some(expr_width), &formatter.config);
 
+        if expr_width == 0 {
+            return Ok("".to_owned());
+        }
         match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
                 // force each param to be a new line

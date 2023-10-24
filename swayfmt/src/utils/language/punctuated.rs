@@ -49,7 +49,7 @@ where
                     if !formatted_code.ends_with('\n') {
                         writeln!(formatted_code)?;
                     }
-                    if !self.value_separator_pairs.is_empty() {
+                    if !self.value_separator_pairs.is_empty() || self.final_value_opt.is_some() {
                         formatter.write_indent_into_buffer(formatted_code)?;
                     }
 
