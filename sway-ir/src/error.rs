@@ -14,6 +14,7 @@ pub enum IrError {
     ParseFailure(String, String),
     RemoveMissingBlock(String),
     ValueNotFound(String),
+    InconsistentParent(String, String, String),
 
     VerifyArgumentValueIsNotArgument(String),
     VerifyUnaryOpIncorrectArgType,
@@ -103,6 +104,13 @@ impl fmt::Display for IrError {
             }
             IrError::ValueNotFound(reason) => {
                 write!(f, "Invalid value: {reason}.")
+            }
+            IrError::InconsistentParent(entity, expected_parent, found_parent) => {
+                write!(
+                    f,
+                    "For IR Entity (module/function/block) {entity}, expected parent to be {expected_parent}, \
+                    but found {found_parent}."
+                )
             }
             IrError::VerifyArgumentValueIsNotArgument(callee) => write!(
                 f,

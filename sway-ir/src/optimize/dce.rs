@@ -8,9 +8,9 @@
 use rustc_hash::FxHashSet;
 
 use crate::{
-    get_symbols, memory_utils, AnalysisResults, Context, EscapedSymbols, Function, Instruction,
-    IrError, LocalVar, Module, Pass, PassMutability, ScopedPass, Symbol, Value, ValueDatum,
-    ESCAPED_SYMBOLS_NAME,
+    get_symbols, memory_utils, AnalysisResults, Context, EscapedSymbols, Function, InstOp,
+    Instruction, IrError, LocalVar, Module, Pass, PassMutability, ScopedPass, Symbol, Value,
+    ValueDatum, ESCAPED_SYMBOLS_NAME,
 };
 
 use std::collections::{HashMap, HashSet};
@@ -44,7 +44,7 @@ fn can_eliminate_instruction(
     escaped_symbols: &EscapedSymbols,
 ) -> bool {
     let inst = val.get_instruction(context).unwrap();
-    (!inst.is_terminator() && !inst.may_have_side_effect())
+    (!inst.op.is_terminator() && !inst.op.may_have_side_effect())
         || is_removable_store(context, val, num_symbol_uses, escaped_symbols)
 }
 
@@ -54,11 +54,11 @@ fn is_removable_store(
     num_symbol_uses: &HashMap<Symbol, u32>,
     escaped_symbols: &EscapedSymbols,
 ) -> bool {
-    match val.get_instruction(context).unwrap() {
-        Instruction::MemCopyBytes { dst_val_ptr, .. }
-        | Instruction::MemCopyVal { dst_val_ptr, .. }
-        | Instruction::Store { dst_val_ptr, .. } => {
-            let syms = get_symbols(context, *dst_val_ptr);
+    match val.get_instruction(context).unwrap().op {
+        InstOp::MemCopyBytes { dst_val_ptr, .. }
+        | InstOp::MemCopyVal { dst_val_ptr, .. }
+        | InstOp::Store { dst_val_ptr, .. } => {
+            let syms = get_symbols(context, dst_val_ptr);
             syms.iter().all(|sym| {
                 !escaped_symbols.contains(sym)
                     && num_symbol_uses.get(sym).map_or(0, |uses| *uses) == 0
@@ -111,13 +111,13 @@ pub fn dce(
         }
 
         let inst = inst.get_instruction(context).unwrap();
-        if let Instruction::GetLocal(local) = inst {
+        if let InstOp::GetLocal(local) = inst.op {
             num_local_uses
-                .entry(*local)
+                .entry(local)
                 .and_modify(|count| *count += 1)
                 .or_insert(1);
         }
-        let opds = inst.get_operands();
+        let opds = inst.op.get_operands();
         for v in opds {
             match context.values[v.0].value {
                 ValueDatum::Instruction(_) => {
@@ -150,7 +150,7 @@ pub fn dce(
             continue;
         }
         // Process dead's operands.
-        let opds = dead.get_instruction(context).unwrap().get_operands();
+        let opds = dead.get_instruction(context).unwrap().op.get_operands();
         for v in opds {
             // Reduce the use count of v. If it reaches 0, add it to the worklist.
             match context.values[v.0].value {
@@ -176,7 +176,10 @@ pub fn dce(
         }
         cemetery.insert(dead);
 
-        if let ValueDatum::Instruction(Instruction::GetLocal(local)) = context.values[dead.0].value
+        if let ValueDatum::Instruction(Instruction {
+            op: InstOp::GetLocal(local),
+            ..
+        }) = context.values[dead.0].value
         {
             let count = num_local_uses.get_mut(&local).unwrap();
             *count -= 1;
@@ -230,8 +233,8 @@ pub fn func_dce(
                 .filter_map(|(_block, ins_value)| {
                     ins_value
                         .get_instruction(context)
-                        .and_then(|ins| match ins {
-                            Instruction::Call(f, _args) => Some(f),
+                        .and_then(|ins| match &ins.op {
+                            InstOp::Call(f, _args) => Some(f),
                             _otherwise => None,
                         })
                 })

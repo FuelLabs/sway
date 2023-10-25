@@ -16,10 +16,10 @@ use crate::{
     context::Context,
     error::IrError,
     function::Function,
-    instruction::{FuelVmInstruction, Instruction, InstructionInserter, InstructionIterator},
+    instruction::{FuelVmInstruction, InstOp, InstructionInserter, InstructionIterator},
     pretty::DebugWithContext,
     value::{Value, ValueDatum},
-    BranchToWithArgs, Type,
+    BranchToWithArgs, Instruction, Type,
 };
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
@@ -225,13 +225,20 @@ impl Block {
     /// Get the CFG successors (and the parameters passed to them) of this block.
     pub(super) fn successors<'a>(&'a self, context: &'a Context) -> Vec<BranchToWithArgs> {
         match self.get_terminator(context) {
-            Some(Instruction::ConditionalBranch {
-                true_block,
-                false_block,
+            Some(Instruction {
+                op:
+                    InstOp::ConditionalBranch {
+                        true_block,
+                        false_block,
+                        ..
+                    },
                 ..
             }) => vec![true_block.clone(), false_block.clone()],
 
-            Some(Instruction::Branch(block)) => vec![block.clone()],
+            Some(Instruction {
+                op: InstOp::Branch(block),
+                ..
+            }) => vec![block.clone()],
 
             _otherwise => Vec::new(),
         }
@@ -252,9 +259,13 @@ impl Block {
         succ: &Block,
     ) -> Option<&'a mut Vec<Value>> {
         match self.get_terminator_mut(context) {
-            Some(Instruction::ConditionalBranch {
-                true_block,
-                false_block,
+            Some(Instruction {
+                op:
+                    InstOp::ConditionalBranch {
+                        true_block,
+                        false_block,
+                        ..
+                    },
                 ..
             }) => {
                 if true_block.block == *succ {
@@ -265,7 +276,10 @@ impl Block {
                     None
                 }
             }
-            Some(Instruction::Branch(block)) if block.block == *succ => Some(&mut block.args),
+            Some(Instruction {
+                op: InstOp::Branch(block),
+                ..
+            }) if block.block == *succ => Some(&mut block.args),
             _ => None,
         }
     }
@@ -282,18 +296,22 @@ impl Block {
         let mut modified = false;
         if let Some(term) = self.get_terminator_mut(context) {
             match term {
-                Instruction::ConditionalBranch {
-                    true_block:
-                        BranchToWithArgs {
-                            block: true_block,
-                            args: true_opds,
+                Instruction {
+                    op:
+                        InstOp::ConditionalBranch {
+                            true_block:
+                                BranchToWithArgs {
+                                    block: true_block,
+                                    args: true_opds,
+                                },
+                            false_block:
+                                BranchToWithArgs {
+                                    block: false_block,
+                                    args: false_opds,
+                                },
+                            cond_value: _,
                         },
-                    false_block:
-                        BranchToWithArgs {
-                            block: false_block,
-                            args: false_opds,
-                        },
-                    cond_value: _,
+                    ..
                 } => {
                     if old_succ == *true_block {
                         modified = true;
@@ -307,7 +325,10 @@ impl Block {
                     }
                 }
 
-                Instruction::Branch(BranchToWithArgs { block, args }) if *block == old_succ => {
+                Instruction {
+                    op: InstOp::Branch(BranchToWithArgs { block, args }),
+                    ..
+                } if *block == old_succ => {
                     *block = new_succ;
                     *args = new_params;
                     modified = true;
@@ -335,7 +356,10 @@ impl Block {
         self.get_terminator(context).map_or(false, |i| {
             matches!(
                 i,
-                Instruction::Ret(..) | Instruction::FuelVm(FuelVmInstruction::Revert(..))
+                Instruction {
+                    op: InstOp::Ret(..) | InstOp::FuelVm(FuelVmInstruction::Revert(..)),
+                    ..
+                }
             )
         })
     }
@@ -455,6 +479,10 @@ impl Block {
 
             // Split the instructions at the index and append them to the new block.
             let mut tail_instructions = context.blocks[self.0].instructions.split_off(split_idx);
+            // Update the parent of tail_instructions.
+            for instr in &tail_instructions {
+                instr.get_instruction_mut(context).unwrap().parent = new_block;
+            }
             context.blocks[new_block.0]
                 .instructions
                 .append(&mut tail_instructions);
@@ -465,12 +493,19 @@ impl Block {
             // Copying the candidate blocks and putting them in a vector to avoid borrowing context
             // as immutable and then mutable in the loop body.
             for to_block in match new_block.get_terminator(context) {
-                Some(Instruction::Branch(to_block)) => {
+                Some(Instruction {
+                    op: InstOp::Branch(to_block),
+                    ..
+                }) => {
                     vec![to_block.block]
                 }
-                Some(Instruction::ConditionalBranch {
-                    true_block,
-                    false_block,
+                Some(Instruction {
+                    op:
+                        InstOp::ConditionalBranch {
+                            true_block,
+                            false_block,
+                            ..
+                        },
                     ..
                 }) => {
                     vec![true_block.block, false_block.block]

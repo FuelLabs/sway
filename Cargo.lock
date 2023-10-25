@@ -5879,6 +5879,7 @@ dependencies = [
  "downcast-rs",
  "filecheck",
  "generational-arena",
+ "itertools",
  "peg",
  "prettydiff 0.6.4",
  "rustc-hash",
