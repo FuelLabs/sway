@@ -1165,30 +1165,17 @@ fn main() {
         // This is a comment
         storage
             .pledge_history
-            .insert(
-                (user, pledge_history_index),
-                pledge,
-            );
+            .insert((user, pledge_history_index), pledge);
     }
     // This is also a comment,
     // but multiline
     else if true {
         // This is yet another comment
-        storage
-            .pledge_count
-            .insert(
-                user,
-                pledge_count + 1,
-            );
+        storage.pledge_count.insert(user, pledge_count + 1);
     }
     // This is the last comment
     else {
-        storage
-            .pledge_count
-            .insert(
-                user,
-                pledge_count + 1,
-            );
+        storage.pledge_count.insert(user, pledge_count + 1);
     }
 }
 "#,
@@ -2180,4 +2167,40 @@ fn main() {
 }
 "#,
     );
+}
+
+#[test]
+fn method_call_2() {
+    check(
+        r#"
+    library;
+
+fn main() {
+    let contract_address = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
+    let caller = abi(Wallet, contract_address);
+    let amount_to_send = 200;
+    let recipient_address = Address::from(contract_address);
+    caller.send_funds { gas: 10000, coins: 0, asset_id: ZERO_B256 }(
+            amount_to_send,
+            recipient_address,
+        );
+}
+
+    "#,
+        r#"library;
+
+fn main() {
+    let contract_address = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
+    let caller = abi(Wallet, contract_address);
+    let amount_to_send = 200;
+    let recipient_address = Address::from(contract_address);
+    caller
+        .send_funds {
+            gas: 10000,
+            coins: 0,
+            asset_id: ZERO_B256,
+        }(amount_to_send, recipient_address);
+}
+"#,
+    )
 }

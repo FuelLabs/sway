@@ -737,39 +737,48 @@ where
         },
     )?;
 
-    let mut buf = FormattedCode::new();
-    args.format(&mut buf, formatter)?;
-
-    Ok(if has_single_argument_and_can_be_inlined {
-        buf.trim().to_owned()
-    } else {
-        // Check if the arguments can fit on a single line
-        let expr_width = buf.chars().count();
-        formatter.shape.code_line.add_width(expr_width);
+    formatter.with_shape(
         formatter
             .shape
-            .get_line_style(None, Some(expr_width), &formatter.config);
+            .with_code_line_from(LineStyle::Normal, ExprKind::Function),
+        |formatter| -> Result<String, FormatterError> {
+            let mut buf = FormattedCode::new();
+            args.format(&mut buf, formatter)?;
 
-        if expr_width == 0 {
-            return Ok("".to_owned());
-        }
-        match formatter.shape.code_line.line_style {
-            LineStyle::Multiline => {
-                // force each param to be a new line
-                formatter.shape.code_line.update_expr_new_line(true);
-                formatter.indent();
-                // should be rewritten to a multi-line
-                let mut formatted_code = FormattedCode::new();
-                let mut buf = FormattedCode::new();
-                args.format(&mut buf, formatter)?;
-                formatter.unindent();
-                writeln!(formatted_code, "{}", buf.trim_end())?;
-                formatter.write_indent_into_buffer(&mut formatted_code)?;
-                formatted_code
-            }
-            _ => buf.trim().to_owned(),
-        }
-    })
+            Ok(if has_single_argument_and_can_be_inlined {
+                buf.trim().to_owned()
+            } else {
+                // Check if the arguments can fit on a single line
+                let expr_width = buf.chars().count();
+                formatter.shape.code_line.add_width(expr_width);
+                formatter.shape.get_line_style(
+                    Some(expr_width),
+                    Some(expr_width),
+                    &formatter.config,
+                );
+
+                if expr_width == 0 {
+                    return Ok("".to_owned());
+                }
+                match formatter.shape.code_line.line_style {
+                    LineStyle::Multiline => {
+                        // force each param to be a new line
+                        formatter.shape.code_line.update_expr_new_line(true);
+                        formatter.indent();
+                        // should be rewritten to a multi-line
+                        let mut formatted_code = FormattedCode::new();
+                        let mut buf = FormattedCode::new();
+                        args.format(&mut buf, formatter)?;
+                        formatter.unindent();
+                        writeln!(formatted_code, "{}", buf.trim_end())?;
+                        formatter.write_indent_into_buffer(&mut formatted_code)?;
+                        formatted_code
+                    }
+                    _ => buf.trim().to_owned(),
+                }
+            })
+        },
+    )
 }
 
 fn format_method_call(

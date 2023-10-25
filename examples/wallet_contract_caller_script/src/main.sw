@@ -15,8 +15,5 @@ fn main() {
             gas: 10000,
             coins: 0,
             asset_id: ZERO_B256,
-        }(
-            amount_to_send,
-            recipient_address,
-        );
+        }(amount_to_send, recipient_address);
 }

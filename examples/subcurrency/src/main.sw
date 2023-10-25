@@ -89,12 +89,7 @@ impl Token for Contract {
         // Reduce the balance of sender
         let sender_amount = storage.balances.get(sender).try_read().unwrap_or(0);
         assert(sender_amount > amount);
-        storage
-            .balances
-            .insert(
-                sender,
-                sender_amount - amount,
-            );
+        storage.balances.insert(sender, sender_amount - amount);
 
         // Increase the balance of receiver
         storage
