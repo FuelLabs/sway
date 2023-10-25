@@ -1,5 +1,4 @@
-use ast_node::expression::match_expression::typed::matcher::ReqDeclNode;
-use either::Either;
+use ast_node::expression::match_expression::typed::matcher::{ReqDeclNode, ReqOrVarDecl};
 use itertools::{multiunzip, Itertools};
 use sway_error::{
     error::CompileError,
@@ -272,13 +271,13 @@ fn instantiate_branch_condition_result_var_declarations_and_matched_or_variant_i
         ErrorEmitted,
     > {
         return match req_decl_node {
-            ReqDeclNode::ReqOrVarDecl(Some(Either::Left(req))) => {
+            ReqDeclNode::ReqOrVarDecl(ReqOrVarDecl::Req(req)) => {
                 let condition = instantiate
                     .eq_result(handler, ctx.by_ref(), req.0.clone(), req.1.clone())
                     .map(Some)?;
                 Ok((condition, vec![], vec![]))
             }
-            ReqDeclNode::ReqOrVarDecl(Some(Either::Right(decl))) => {
+            ReqDeclNode::ReqOrVarDecl(ReqOrVarDecl::VarDecl(decl)) => {
                 if parent_node.is_none() {
                     // I am the root/only node. Add my declaration to the result var declarations and pass no requirements and no carry over vars.
                     result_var_declarations.push(decl.clone());
@@ -288,7 +287,7 @@ fn instantiate_branch_condition_result_var_declarations_and_matched_or_variant_i
                     Ok((None, vec![decl.clone()], vec![]))
                 }
             }
-            ReqDeclNode::ReqOrVarDecl(None) => Ok((None, vec![], vec![])),
+            ReqDeclNode::ReqOrVarDecl(ReqOrVarDecl::Neither) => Ok((None, vec![], vec![])),
             ReqDeclNode::And(nodes) | ReqDeclNode::Or(nodes) => {
                 instantiate_child_nodes_conditions_and_declarations(
                     handler,

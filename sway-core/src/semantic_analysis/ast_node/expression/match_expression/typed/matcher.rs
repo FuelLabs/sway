@@ -1,4 +1,3 @@
-use either::Either;
 use indexmap::IndexMap;
 
 use crate::{
@@ -35,7 +34,13 @@ pub(super) type MatchVarDecl = (Ident, ty::TyExpression);
 /// variable declaration but not both at the same time.
 /// In the case of the catch-all `_` we will have neither a requirement nor
 /// a variable declaration.
-pub(super) type ReqOrVarDecl = Option<Either<MatchReq, MatchVarDecl>>;
+pub(super) enum ReqOrVarDecl {
+    /// Neither a requirement, nor a variable declaration.
+    /// Means a catch-all pattern.
+    Neither,
+    Req(MatchReq),
+    VarDecl(MatchVarDecl),
+}
 
 /// A tree structure that describes:
 /// - the overall requirement that needs to be satisfied in order for the match arm to match
@@ -55,7 +60,7 @@ impl ReqDeclTree {
     /// [MatchReq] of the form `<lhs> == <rhs>`.
     fn req(req: MatchReq) -> Self {
         Self {
-            root: ReqDeclNode::ReqOrVarDecl(Some(Either::Left(req))),
+            root: ReqDeclNode::ReqOrVarDecl(ReqOrVarDecl::Req(req)),
         }
     }
 
@@ -63,7 +68,7 @@ impl ReqDeclTree {
     /// [MatchVarDecl] `decl`.
     fn decl(decl: MatchVarDecl) -> Self {
         Self {
-            root: ReqDeclNode::ReqOrVarDecl(Some(Either::Right(decl))),
+            root: ReqDeclNode::ReqOrVarDecl(ReqOrVarDecl::VarDecl(decl)),
         }
     }
 
@@ -71,7 +76,7 @@ impl ReqDeclTree {
     /// neither a requirement nor a variable declaration.
     fn none() -> Self {
         Self {
-            root: ReqDeclNode::ReqOrVarDecl(None),
+            root: ReqDeclNode::ReqOrVarDecl(ReqOrVarDecl::Neither),
         }
     }
 
@@ -124,12 +129,12 @@ pub(super) enum ReqDeclNode {
 impl ReqDeclNode {
     /// Creates a new leaf node with the [MatchReq] of the form `<lhs> == <rhs>`.
     fn req(req: MatchReq) -> Self {
-        ReqDeclNode::ReqOrVarDecl(Some(Either::Left(req)))
+        ReqDeclNode::ReqOrVarDecl(ReqOrVarDecl::Req(req))
     }
 
     /// Creates a new leaf node with the [MatchVarDecl] `decl`.
     fn decl(decl: MatchVarDecl) -> Self {
-        ReqDeclNode::ReqOrVarDecl(Some(Either::Right(decl)))
+        ReqDeclNode::ReqOrVarDecl(ReqOrVarDecl::VarDecl(decl))
     }
 }
 
@@ -356,7 +361,7 @@ fn match_or(
         ) {
             // Traverse the tree depth-first, left to right.
             match node {
-                ReqDeclNode::ReqOrVarDecl(Some(Either::Right((ident, exp)))) => {
+                ReqDeclNode::ReqOrVarDecl(ReqOrVarDecl::VarDecl((ident, exp))) => {
                     declarations.push((ident.clone(), exp.return_type));
                 }
                 ReqDeclNode::ReqOrVarDecl(_) => (),
