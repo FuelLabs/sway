@@ -170,7 +170,11 @@ impl AssetId {
     /// }
     /// ```
     pub fn new(contract_id: ContractId, sub_id: SubId) -> Self {
-        let value = sha256((contract_id, sub_id));
+        let value = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        asm(token_id: value, ptr: (contract_id, sub_id), bytes: 64) {
+            s256 token_id ptr bytes;
+        };
+        
         Self { value }
     }
 
@@ -199,7 +203,11 @@ impl AssetId {
     /// }
     /// ```
     pub fn default(contract_id: ContractId) -> Self {
-        let value = sha256((contract_id, 0x0000000000000000000000000000000000000000000000000000000000000000));
+        let value = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        asm(token_id: value, ptr: (contract_id, 0x0000000000000000000000000000000000000000000000000000000000000000), bytes: 64) {
+            s256 token_id ptr bytes;
+        };
+        
         Self { value }
     }
 
