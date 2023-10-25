@@ -165,9 +165,6 @@ impl ty::TyFunctionDecl {
             ..
         } = ty_fn_decl;
 
-        let type_engine = ctx.engines.te();
-        let engines = ctx.engines();
-
         // create a namespace for the function
         let mut fn_namespace = ctx.namespace.clone();
         let mut ctx = ctx
@@ -191,18 +188,21 @@ impl ty::TyFunctionDecl {
         //
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
-        let (body, _implicit_block_return) = {
-            let ctx = ctx
+        let body = {
+            let mut ctx = ctx
                 .by_ref()
                 .with_purity(*purity)
                 .with_help_text("Function body's return type does not match up with its return type annotation.")
                 .with_type_annotation(return_type.type_id);
-            ty::TyCodeBlock::type_check(handler, ctx, body).unwrap_or_else(|err| {
-                (
-                    ty::TyCodeBlock::default(),
-                    type_engine.insert(engines, TypeInfo::ErrorRecovery(err)),
-                )
-            })
+            match ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body) {
+                Ok(body) => {
+                    let (implicit_block_return, span) =
+                        TyCodeBlock::compute_return_type_and_span(&ctx, &body);
+                    ctx.unify_with_type_annotation(handler, implicit_block_return, &span);
+                    body
+                }
+                Err(_err) => ty::TyCodeBlock::default(),
+            }
         };
 
         ty_fn_decl.body = body;

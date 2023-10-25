@@ -12,7 +12,7 @@ impl ty::TyCodeBlock {
         handler: &Handler,
         mut ctx: TypeCheckContext,
         code_block: &CodeBlock,
-    ) -> Result<(Self, TypeId), ErrorEmitted> {
+    ) -> Result<Self, ErrorEmitted> {
         // Create a temp namespace for checking within the code block scope.
         let mut code_block_namespace = ctx.namespace.clone();
         let evaluated_contents = code_block
@@ -24,16 +24,10 @@ impl ty::TyCodeBlock {
             })
             .collect::<Vec<ty::TyAstNode>>();
 
-        let typed_code_block = ty::TyCodeBlock {
+        Ok(ty::TyCodeBlock {
             contents: evaluated_contents,
             whole_block_span: code_block.whole_block_span.clone(),
-        };
-
-        let (block_type, span) = Self::compute_return_type_and_span(&ctx, &typed_code_block);
-
-        ctx.unify_with_type_annotation(handler, block_type, &span);
-
-        Ok((typed_code_block, block_type))
+        })
     }
 
     pub fn compute_return_type_and_span(
