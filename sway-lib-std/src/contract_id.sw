@@ -170,12 +170,12 @@ impl AssetId {
     /// }
     /// ```
     pub fn new(contract_id: ContractId, sub_id: SubId) -> Self {
-        let value = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        asm(token_id: value, ptr: (contract_id, sub_id), bytes: 64) {
-            s256 token_id ptr bytes;
+        let result_buffer = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        asm(asset_id: result_buffer, ptr: (contract_id, sub_id), bytes: 64) {
+            s256 asset_id ptr bytes;
         };
         
-        Self { value }
+        Self { value: result_buffer }
     }
 
     /// Creates a new AssetId from a ContractId and the zero SubId.
@@ -203,12 +203,12 @@ impl AssetId {
     /// }
     /// ```
     pub fn default(contract_id: ContractId) -> Self {
-        let value = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        asm(token_id: value, ptr: (contract_id, 0x0000000000000000000000000000000000000000000000000000000000000000), bytes: 64) {
-            s256 token_id ptr bytes;
+        let result_buffer = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        asm(asset_id: result_buffer, ptr: (contract_id, 0x0000000000000000000000000000000000000000000000000000000000000000), bytes: 64) {
+            s256 asset_id ptr bytes;
         };
-        
-        Self { value }
+
+        Self { value: result_buffer }
     }
 
     /// The base_asset_id represents the base asset of a chain.
