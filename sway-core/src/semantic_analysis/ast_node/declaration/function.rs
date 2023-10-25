@@ -188,60 +188,24 @@ impl ty::TyFunctionDecl {
         //
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
-        let body = {
-            let mut ctx = ctx
-                .by_ref()
-                .with_purity(*purity)
-                .with_help_text("Function body's return type does not match up with its return type annotation.")
-                .with_type_annotation(return_type.type_id);
-            match ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body) {
-                Ok(body) => {
-                    let (implicit_block_return, span) =
-                        TyCodeBlock::compute_return_type_and_span(&ctx, &body);
-                    ctx.unify_with_type_annotation(handler, implicit_block_return, &span);
-                    body
-                }
-                Err(_err) => ty::TyCodeBlock::default(),
-            }
-        };
+
+        let mut ctx = ctx
+            .by_ref()
+            .with_purity(*purity)
+            .with_help_text(
+                "Function body's return type does not match up with its return type annotation.",
+            )
+            .with_type_annotation(return_type.type_id);
+
+        let body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body)
+            .unwrap_or_else(|_err| ty::TyCodeBlock::default());
 
         ty_fn_decl.body = body;
 
-        Self::type_check_body_monomorphized(handler, ctx, ty_fn_decl)?;
+        let mut unification_ctx = TypeCheckUnificationContext::new(ctx.engines, ctx);
+        ty_fn_decl.type_check_unify(handler, &mut unification_ctx)?;
 
         Ok(ty_fn_decl.clone())
-    }
-
-    pub fn type_check_body_monomorphized(
-        handler: &Handler,
-        mut ctx: TypeCheckContext,
-        fn_decl: &Self,
-    ) -> Result<(), ErrorEmitted> {
-        let return_type = &fn_decl.return_type;
-
-        // gather the return statements
-        let return_statements: Vec<&ty::TyExpression> = fn_decl
-            .body
-            .contents
-            .iter()
-            .flat_map(|node| node.gather_return_statements())
-            .collect();
-
-        unify_return_statements(
-            handler,
-            ctx.by_ref(),
-            &return_statements,
-            return_type.type_id,
-        )?;
-
-        return_type.type_id.check_type_parameter_bounds(
-            handler,
-            &ctx,
-            &return_type.span,
-            vec![],
-        )?;
-
-        Ok(())
     }
 }
 
@@ -278,6 +242,46 @@ impl TypeCheckAnalysis for ty::TyFunctionDecl {
         ctx: &mut TypeCheckAnalysisContext,
     ) -> Result<(), ErrorEmitted> {
         self.body.type_check_analyze(handler, ctx)
+    }
+}
+
+impl TypeCheckUnification for ty::TyFunctionDecl {
+    fn type_check_unify(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckUnificationContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            self.body.type_check_unify(handler, ctx)?;
+
+            let type_check_ctx = &mut ctx.type_check_ctx;
+
+            let return_type = &self.return_type;
+
+            // gather the return statements
+            let return_statements: Vec<&ty::TyExpression> = self
+                .body
+                .contents
+                .iter()
+                .flat_map(|node| node.gather_return_statements())
+                .collect();
+
+            unify_return_statements(
+                handler,
+                type_check_ctx.by_ref(),
+                &return_statements,
+                return_type.type_id,
+            )?;
+
+            return_type.type_id.check_type_parameter_bounds(
+                handler,
+                type_check_ctx,
+                &return_type.span,
+                vec![],
+            )?;
+
+            Ok(())
+        })
     }
 }
 

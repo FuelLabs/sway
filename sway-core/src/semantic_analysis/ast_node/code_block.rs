@@ -141,3 +141,23 @@ impl TypeCheckFinalization for ty::TyCodeBlock {
         })
     }
 }
+
+impl TypeCheckUnification for ty::TyCodeBlock {
+    fn type_check_unify(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckUnificationContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            let type_check_ctx = &ctx.type_check_ctx;
+            let (block_implicit_return, span) =
+                TyCodeBlock::compute_return_type_and_span(type_check_ctx, self);
+            let return_type_id = match ctx.type_id {
+                Some(type_id) => type_id,
+                None => block_implicit_return,
+            };
+            type_check_ctx.unify_with_type_annotation(handler, return_type_id, &span);
+            Ok(())
+        })
+    }
+}

@@ -589,7 +589,7 @@ impl ty::TyExpression {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
-        let (typed_block, block_return_type) =
+        let (mut typed_block, block_return_type) =
             match ty::TyCodeBlock::type_check(handler, ctx.by_ref(), &contents) {
                 Ok(res) => {
                     let (block_type, _span) = TyCodeBlock::compute_return_type_and_span(&ctx, &res);
@@ -601,7 +601,9 @@ impl ty::TyExpression {
                 ),
             };
 
-        ctx.unify_with_type_annotation(handler, block_return_type, &span);
+        let mut unification_ctx = TypeCheckUnificationContext::new(ctx.engines, ctx);
+        unification_ctx.type_id = Some(block_return_type);
+        typed_block.type_check_unify(handler, &mut unification_ctx)?;
 
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::CodeBlock(typed_block),
@@ -1884,11 +1886,10 @@ impl ty::TyExpression {
                  assigning it to a mutable variable declared outside of the loop \
                  instead.",
         );
-        let typed_body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), &body)?;
+        let mut typed_body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), &body)?;
 
-        let (block_implicit_return, _span) =
-            TyCodeBlock::compute_return_type_and_span(&ctx, &typed_body);
-        ctx.unify_with_type_annotation(handler, block_implicit_return, &span);
+        let mut unification_ctx = TypeCheckUnificationContext::new(engines, ctx);
+        typed_body.type_check_unify(handler, &mut unification_ctx)?;
 
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::WhileLoop {
