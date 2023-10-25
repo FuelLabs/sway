@@ -85,6 +85,16 @@ impl ty::TyEnumVariant {
     }
 }
 
+impl TypeCheckAnalysis for ty::TyEnumDecl {
+    fn type_check_analyze(
+        &self,
+        _handler: &Handler,
+        _ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
+    }
+}
+
 impl TypeCheckFinalization for ty::TyEnumDecl {
     fn type_check_finalize(
         &mut self,

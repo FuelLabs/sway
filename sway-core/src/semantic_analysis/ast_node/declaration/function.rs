@@ -11,7 +11,7 @@ use crate::{
     language::{
         parsed::*,
         ty::{self, TyCodeBlock},
-        Visibility,
+        CallPath, Visibility,
     },
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
@@ -33,7 +33,7 @@ impl ty::TyFunctionDecl {
             is_method,
             is_in_impl_self,
         )?;
-        Self::type_check_body(handler, ctx, fn_decl, &mut ty_fn_decl)
+        Self::type_check_body(handler, ctx, &fn_decl, &mut ty_fn_decl)
     }
 
     pub fn type_check_signature(
@@ -127,12 +127,15 @@ impl ty::TyFunctionDecl {
             (visibility, matches!(ctx.abi_mode(), AbiMode::ImplAbiFn(..)))
         };
 
+        let call_path = CallPath::from(name.clone()).to_fullpath(ctx.namespace);
+
         let function_decl = ty::TyFunctionDecl {
             name,
             body: TyCodeBlock::default(),
             parameters: new_parameters,
             implementing_type: None,
             span,
+            call_path,
             attributes,
             return_type,
             type_parameters: new_type_parameters,
@@ -149,7 +152,7 @@ impl ty::TyFunctionDecl {
     pub fn type_check_body(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        fn_decl: FunctionDeclaration,
+        fn_decl: &FunctionDeclaration,
         ty_fn_decl: &mut Self,
     ) -> Result<Self, ErrorEmitted> {
         let FunctionDeclaration { body, .. } = fn_decl;
@@ -268,6 +271,16 @@ fn unify_return_statements(
     })
 }
 
+impl TypeCheckAnalysis for ty::TyFunctionDecl {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.body.type_check_analyze(handler, ctx)
+    }
+}
+
 impl TypeCheckFinalization for ty::TyFunctionDecl {
     fn type_check_finalize(
         &mut self,
@@ -291,11 +304,12 @@ fn test_function_selector_behavior() {
     let handler = Handler::default();
     let decl = ty::TyFunctionDecl {
         purity: Default::default(),
-        name: Ident::new_no_span("foo".into()),
+        name: Ident::dummy(),
         implementing_type: None,
         body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![],
         span: Span::dummy(),
+        call_path: CallPath::from(Ident::dummy()),
         attributes: Default::default(),
         return_type: TypeId::from(0).into(),
         type_parameters: vec![],
@@ -318,7 +332,7 @@ fn test_function_selector_behavior() {
         body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![
             ty::TyFunctionParameter {
-                name: Ident::new_no_span("foo".into()),
+                name: Ident::dummy(),
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
@@ -349,6 +363,7 @@ fn test_function_selector_behavior() {
             },
         ],
         span: Span::dummy(),
+        call_path: CallPath::from(Ident::dummy()),
         attributes: Default::default(),
         return_type: TypeId::from(0).into(),
         type_parameters: vec![],

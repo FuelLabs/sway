@@ -9,7 +9,10 @@ use crate::{
         parsed,
         ty::{self, TyTraitType},
     },
-    semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
+    semantic_analysis::{
+        type_check_context::EnforceTypeArguments, TypeCheckAnalysis, TypeCheckAnalysisContext,
+        TypeCheckContext,
+    },
     type_system::*,
     Engines,
 };
@@ -76,5 +79,15 @@ impl ty::TyTraitType {
                 .insert(engines, TypeInfo::new_self_type(Span::dummy())),
             span,
         }
+    }
+}
+
+impl TypeCheckAnalysis for ty::TyTraitType {
+    fn type_check_analyze(
+        &self,
+        _handler: &Handler,
+        _ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
     }
 }

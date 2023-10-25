@@ -19,13 +19,45 @@ impl MyAdd<u64> for u64 {
     }
 }
 
-fn main() -> bool {
-    let s = Struct {data: 1_u64 };
-    assert_eq(s.data.my_add(1,2),3);
+pub trait MyFrom<T> {
+    fn from(b: T) -> Self;
+}
 
-    let s = Struct2 {data_a: 1_u64, data_b: 1_u64 };
-    assert_eq(s.data_a.my_add(1,2),3);
-    assert_eq(s.data_b.my_add(1,2),3);
+
+pub trait MyInto<T> {
+    fn into(self) -> T;
+}
+
+
+impl<T, U> MyInto<U> for T
+where
+    U: MyFrom<T>,
+{
+    fn into(self) -> U {
+        U::from(self)
+    }
+}
+
+struct Struct3 {
+    data: u64,
+}
+
+impl MyFrom<u64> for Struct3 {
+    fn from(i: u64) -> Struct3 {
+        Struct3 {data: i}
+    }
+}
+
+fn main() -> bool {
+    let s1 = Struct {data: 1_u64 };
+    assert_eq(s1.data.my_add(1,2),3);
+
+    let s2 = Struct2 {data_a: 1_u64, data_b: 1_u64 };
+    assert_eq(s2.data_a.my_add(1,2),3);
+    assert_eq(s2.data_b.my_add(1,2),3);
+
+    // TODO Uncomment this after #5208 is fixed
+    //let _i: Struct3 = 1_u64.into();
 
     true
 }

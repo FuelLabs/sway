@@ -10,3 +10,4 @@ repository.workspace = true
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
+walkdir = "2.3.3"

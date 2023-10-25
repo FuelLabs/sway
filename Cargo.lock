@@ -1346,6 +1346,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "diff"
+version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56254986775e3233ffa9c4d7d3faaf6d36a2c09d30b20687e9f88bc8bafc16c8"
+
+[[package]]
 name = "digest"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1426,6 +1432,12 @@ dependencies = [
  "redox_users 0.4.3",
  "winapi",
 ]
+
+[[package]]
+name = "dissimilar"
+version = "1.0.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86e3bdc80eee6e16b2b6b0f87fbc98c04bee3455e35174c0de1a125d0688c632"
 
 [[package]]
 name = "doc-comment"
@@ -1661,6 +1673,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "expect-test"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "30d9eafeadd538e68fb28016364c9732d78e420b9ff8853fa5e4058861e9f8d3"
+dependencies = [
+ "dissimilar",
+ "once_cell",
+]
+
+[[package]]
 name = "extension-trait"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1857,6 +1879,7 @@ dependencies = [
  "clap 4.4.3",
  "colored",
  "comrak",
+ "expect-test",
  "forc-pkg",
  "forc-util",
  "horrorshow",
@@ -1992,7 +2015,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "unicode-xid",
- "walkdir",
 ]
 
 [[package]]
@@ -4510,6 +4532,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
 
 [[package]]
+name = "pretty_assertions"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af7cee1a6c8a5b9208b3cb1061f10c0cb689087b3d8ce85fb9d2dd7a29b6ba66"
+dependencies = [
+ "diff",
+ "yansi",
+]
+
+[[package]]
 name = "prettydiff"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5846,6 +5878,7 @@ dependencies = [
  "downcast-rs",
  "filecheck",
  "generational-arena",
+ "itertools",
  "peg",
  "prettydiff 0.6.4",
  "rustc-hash",
@@ -5882,6 +5915,7 @@ dependencies = [
  "notify",
  "notify-debouncer-mini",
  "parking_lot 0.12.1",
+ "pretty_assertions",
  "proc-macro2",
  "quote",
  "rayon",
@@ -5958,6 +5992,7 @@ name = "sway-utils"
 version = "0.46.1"
 dependencies = [
  "serde",
+ "walkdir",
 ]
 
 [[package]]
@@ -5966,7 +6001,6 @@ version = "0.46.1"
 dependencies = [
  "anyhow",
  "forc-tracing",
- "forc-util",
  "paste",
  "prettydiff 0.6.4",
  "ropey",
@@ -5977,6 +6011,7 @@ dependencies = [
  "sway-error",
  "sway-parse",
  "sway-types",
+ "sway-utils",
  "test-macros",
  "thiserror",
  "toml 0.7.8",
@@ -7289,6 +7324,12 @@ checksum = "56c1936c4cc7a1c9ab21a1ebb602eb942ba868cbd44a99cb7cdc5892335e1c85"
 dependencies = [
  "linked-hash-map",
 ]
+
+[[package]]
+name = "yansi"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09041cd90cf85f7f8b2df60c646f853b7f535ce68f85244eb6731cf89fa498ec"
 
 [[package]]
 name = "yansi-term"

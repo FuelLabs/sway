@@ -10,7 +10,10 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::ty::*,
-    semantic_analysis::{TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext},
+    semantic_analysis::{
+        TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
+        TypeCheckFinalizationContext,
+    },
     type_system::*,
 };
 
@@ -68,6 +71,16 @@ impl ReplaceDecls for TyReassignment {
         ctx: &mut TypeCheckContext,
     ) -> Result<(), ErrorEmitted> {
         self.rhs.replace_decls(decl_mapping, handler, ctx)
+    }
+}
+
+impl TypeCheckAnalysis for TyReassignment {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.rhs.type_check_analyze(handler, ctx)
     }
 }
 

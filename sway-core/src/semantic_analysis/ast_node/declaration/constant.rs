@@ -131,6 +131,19 @@ impl ty::TyConstantDecl {
     }
 }
 
+impl TypeCheckAnalysis for TyConstantDecl {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        if let Some(value) = self.value.as_ref() {
+            value.type_check_analyze(handler, ctx)?;
+        }
+        Ok(())
+    }
+}
+
 impl TypeCheckFinalization for TyConstantDecl {
     fn type_check_finalize(
         &mut self,

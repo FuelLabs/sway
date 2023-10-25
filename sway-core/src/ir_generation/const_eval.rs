@@ -26,7 +26,7 @@ use sway_ir::{
     metadata::combine as md_combine,
     module::Module,
     value::Value,
-    Instruction, Type, TypeContent,
+    InstOp, Instruction, Type, TypeContent,
 };
 use sway_types::{ident::Ident, span::Spanned, Span};
 use sway_utils::mapped_stack::MappedStack;
@@ -76,13 +76,19 @@ pub(crate) fn compile_const_decl(
             // Check if a constant was stored to a local variable in the current block.
             let mut stored_const_opt: Option<&Constant> = None;
             for ins in fn_compiler.current_block.instruction_iter(env.context) {
-                if let Some(Instruction::Store {
-                    dst_val_ptr: dst_val,
-                    stored_val,
+                if let Some(Instruction {
+                    op:
+                        InstOp::Store {
+                            dst_val_ptr: dst_val,
+                            stored_val,
+                        },
+                    ..
                 }) = ins.get_instruction(env.context)
                 {
-                    if let Some(Instruction::GetLocal(store_dst_var)) =
-                        dst_val.get_instruction(env.context)
+                    if let Some(Instruction {
+                        op: InstOp::GetLocal(store_dst_var),
+                        ..
+                    }) = dst_val.get_instruction(env.context)
                     {
                         if &local_var == store_dst_var {
                             stored_const_opt = stored_val.get_constant(env.context);

@@ -1,0 +1,13 @@
+[[package]]
+name = "args_on_stack"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "core"
+source = "path+from-root-47CCA6D65ACBF445"
+
+[[package]]
+name = "std"
+source = "path+from-root-47CCA6D65ACBF445"
+dependencies = ["core"]

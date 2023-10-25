@@ -106,12 +106,19 @@ impl Spanned for TypeParameter {
 
 impl DebugWithEngines for TypeParameter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        write!(
-            f,
-            "{}: {:?}",
-            self.name_ident,
-            engines.help_out(self.type_id)
-        )
+        write!(f, "{}", self.name_ident)?;
+        if !self.trait_constraints.is_empty() {
+            write!(
+                f,
+                ":{}",
+                self.trait_constraints
+                    .iter()
+                    .map(|c| format!("{:?}", engines.help_out(c)))
+                    .collect::<Vec<_>>()
+                    .join("+")
+            )?;
+        }
+        Ok(())
     }
 }
 

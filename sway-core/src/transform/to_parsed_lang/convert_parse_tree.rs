@@ -249,11 +249,14 @@ fn item_use_to_use_statements(
     }
     let mut ret = Vec::new();
     let mut prefix = Vec::new();
+    let item_span = item_use.span();
+
     use_tree_to_use_statements(
         item_use.tree,
         item_use.root_import.is_some(),
         &mut prefix,
         &mut ret,
+        item_span,
     );
     debug_assert!(prefix.is_empty());
     Ok(ret)
@@ -264,11 +267,12 @@ fn use_tree_to_use_statements(
     is_absolute: bool,
     path: &mut Vec<Ident>,
     ret: &mut Vec<UseStatement>,
+    item_span: Span,
 ) {
     match use_tree {
         UseTree::Group { imports } => {
             for use_tree in imports.into_inner() {
-                use_tree_to_use_statements(use_tree, is_absolute, path, ret);
+                use_tree_to_use_statements(use_tree, is_absolute, path, ret, item_span.clone());
             }
         }
         UseTree::Name { name } => {
@@ -279,6 +283,7 @@ fn use_tree_to_use_statements(
             };
             ret.push(UseStatement {
                 call_path: path.clone(),
+                span: item_span,
                 import_type,
                 is_absolute,
                 alias: None,
@@ -292,6 +297,7 @@ fn use_tree_to_use_statements(
             };
             ret.push(UseStatement {
                 call_path: path.clone(),
+                span: item_span,
                 import_type,
                 is_absolute,
                 alias: Some(alias),
@@ -300,6 +306,7 @@ fn use_tree_to_use_statements(
         UseTree::Glob { .. } => {
             ret.push(UseStatement {
                 call_path: path.clone(),
+                span: item_span,
                 import_type: ImportType::Star,
                 is_absolute,
                 alias: None,
@@ -307,7 +314,7 @@ fn use_tree_to_use_statements(
         }
         UseTree::Path { prefix, suffix, .. } => {
             path.push(prefix);
-            use_tree_to_use_statements(*suffix, is_absolute, path, ret);
+            use_tree_to_use_statements(*suffix, is_absolute, path, ret, item_span);
             path.pop().unwrap();
         }
         UseTree::Error { .. } => {
@@ -1940,22 +1947,6 @@ fn expr_to_expression(
         Expr::Match {
             value, branches, ..
         } => {
-            let value = expr_to_expression(context, handler, engines, *value)?;
-            let var_decl_span = value.span();
-
-            // Generate a deterministic name for the variable returned by the match expression.
-            let match_return_var_name = format!(
-                "{}{}",
-                MATCH_RETURN_VAR_NAME_PREFIX,
-                context.next_match_expression_return_var_unique_suffix(),
-            );
-            let var_decl_name =
-                Ident::new_with_override(match_return_var_name, var_decl_span.clone());
-
-            let var_decl_exp = Expression {
-                kind: ExpressionKind::Variable(var_decl_name.clone()),
-                span: var_decl_span,
-            };
             let branches = {
                 branches
                     .into_inner()
@@ -1965,44 +1956,8 @@ fn expr_to_expression(
                     })
                     .collect::<Result<_, _>>()?
             };
-            Expression {
-                kind: ExpressionKind::CodeBlock(CodeBlock {
-                    contents: vec![
-                        AstNode {
-                            content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
-                                VariableDeclaration {
-                                    type_ascription: {
-                                        let type_id =
-                                            engines.te().insert(engines, TypeInfo::Unknown);
-                                        TypeArgument {
-                                            type_id,
-                                            initial_type_id: type_id,
-                                            span: var_decl_name.span(),
-                                            call_path_tree: None,
-                                        }
-                                    },
-                                    name: var_decl_name,
-                                    is_mutable: false,
-                                    body: value,
-                                },
-                            )),
-                            span: span.clone(),
-                        },
-                        AstNode {
-                            content: AstNodeContent::ImplicitReturnExpression(Expression {
-                                kind: ExpressionKind::Match(MatchExpression {
-                                    value: Box::new(var_decl_exp),
-                                    branches,
-                                }),
-                                span: span.clone(),
-                            }),
-                            span: span.clone(),
-                        },
-                    ],
-                    whole_block_span: span.clone(),
-                }),
-                span,
-            }
+
+            match_expr_to_expression(context, handler, engines, *value, branches, span)?
         }
         Expr::While {
             condition, block, ..
@@ -2780,16 +2735,74 @@ fn if_expr_to_expression(
                     }
                 }
             });
-            Expression {
-                kind: ExpressionKind::Match(MatchExpression {
-                    value: Box::new(expr_to_expression(context, handler, engines, *rhs)?),
-                    branches,
-                }),
-                span,
-            }
+
+            match_expr_to_expression(context, handler, engines, *rhs, branches, span)?
         }
     };
     Ok(expression)
+}
+
+fn match_expr_to_expression(
+    context: &mut Context,
+    handler: &Handler,
+    engines: &Engines,
+    value: Expr,
+    branches: Vec<MatchBranch>,
+    span: Span,
+) -> Result<Expression, ErrorEmitted> {
+    let value = expr_to_expression(context, handler, engines, value)?;
+    let var_decl_span = value.span();
+
+    // Generate a deterministic name for the variable returned by the match expression.
+    let match_return_var_name = format!(
+        "{}{}",
+        MATCH_RETURN_VAR_NAME_PREFIX,
+        context.next_match_expression_return_var_unique_suffix(),
+    );
+    let var_decl_name = Ident::new_with_override(match_return_var_name, var_decl_span.clone());
+
+    let var_decl_exp = Expression {
+        kind: ExpressionKind::Variable(var_decl_name.clone()),
+        span: var_decl_span,
+    };
+
+    Ok(Expression {
+        kind: ExpressionKind::CodeBlock(CodeBlock {
+            contents: vec![
+                AstNode {
+                    content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
+                        VariableDeclaration {
+                            type_ascription: {
+                                let type_id = engines.te().insert(engines, TypeInfo::Unknown);
+                                TypeArgument {
+                                    type_id,
+                                    initial_type_id: type_id,
+                                    span: var_decl_name.span(),
+                                    call_path_tree: None,
+                                }
+                            },
+                            name: var_decl_name,
+                            is_mutable: false,
+                            body: value,
+                        },
+                    )),
+                    span: span.clone(),
+                },
+                AstNode {
+                    content: AstNodeContent::ImplicitReturnExpression(Expression {
+                        kind: ExpressionKind::Match(MatchExpression {
+                            value: Box::new(var_decl_exp),
+                            branches,
+                        }),
+                        span: span.clone(),
+                    }),
+                    span: span.clone(),
+                },
+            ],
+            whole_block_span: span.clone(),
+        }),
+        span,
+    })
 }
 
 /// Determine if the path is in absolute form, e.g., `::foo::bar`.
@@ -3570,8 +3583,9 @@ fn statement_let_to_ast_nodes(
 
 fn submodule_to_include_statement(dependency: &Submodule) -> IncludeStatement {
     IncludeStatement {
-        _span: dependency.span(),
-        _mod_name_span: dependency.name.span(),
+        span: dependency.span(),
+        mod_name: dependency.name.clone(),
+        visibility: pub_token_opt_to_visibility(dependency.visibility.clone()),
     }
 }
 
