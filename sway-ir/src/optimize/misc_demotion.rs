@@ -13,7 +13,7 @@ use std::ops::Not;
 /// - Fuel WIde binary operators: Demote binary operands bigger than 64 bits.
 use crate::{
     asm::AsmArg, AnalysisResults, BinaryOpKind, Constant, Context, FuelVmInstruction, Function,
-    Instruction, IrError, Pass, PassMutability, Predicate, ScopedPass, Type, UnaryOpKind, Value,
+    InstOp, IrError, Pass, PassMutability, Predicate, ScopedPass, Type, UnaryOpKind, Value,
 };
 
 use rustc_hash::FxHashMap;
@@ -61,14 +61,14 @@ fn log_demotion(context: &mut Context, function: Function) -> Result<bool, IrErr
         .filter_map(|(block, instr_val)| {
             instr_val.get_instruction(context).and_then(|instr| {
                 // Is the instruction a Log?
-                if let Instruction::FuelVm(FuelVmInstruction::Log {
+                if let InstOp::FuelVm(FuelVmInstruction::Log {
                     log_val,
                     log_ty,
                     log_id,
-                }) = instr
+                }) = instr.op
                 {
-                    super::target_fuel::is_demotable_type(context, log_ty)
-                        .then_some((block, instr_val, *log_val, *log_ty, *log_id))
+                    super::target_fuel::is_demotable_type(context, &log_ty)
+                        .then_some((block, instr_val, log_val, log_ty, log_id))
                 } else {
                     None
                 }
@@ -86,10 +86,11 @@ fn log_demotion(context: &mut Context, function: Function) -> Result<bool, IrErr
         // Create a variable for the arg, a get_local for it and a store.
         let loc_var =
             function.new_unique_local_var(context, "__log_arg".to_owned(), logged_ty, None, false);
-        let get_loc_val = Value::new_instruction(context, Instruction::GetLocal(loc_var));
+        let get_loc_val = Value::new_instruction(context, block, InstOp::GetLocal(loc_var));
         let store_val = Value::new_instruction(
             context,
-            Instruction::Store {
+            block,
+            InstOp::Store {
                 dst_val_ptr: get_loc_val,
                 stored_val: logged_val,
             },
@@ -99,7 +100,8 @@ fn log_demotion(context: &mut Context, function: Function) -> Result<bool, IrErr
         let ptr_ty = Type::new_ptr(context, logged_ty);
         let new_log_instr_val = Value::new_instruction(
             context,
-            Instruction::FuelVm(FuelVmInstruction::Log {
+            block,
+            InstOp::FuelVm(FuelVmInstruction::Log {
                 log_val: get_loc_val,
                 log_ty: ptr_ty,
                 log_id: log_id_val,
@@ -133,7 +135,7 @@ fn asm_block_arg_demotion(context: &mut Context, function: Function) -> Result<b
         .filter_map(|(block, instr_val)| {
             instr_val.get_instruction(context).and_then(|instr| {
                 // Is the instruction an ASM block?
-                if let Instruction::AsmBlock(_asm_block, args) = instr {
+                if let InstOp::AsmBlock(_asm_block, args) = &instr.op {
                     let ref_args = args
                         .iter()
                         .filter_map(
@@ -177,10 +179,11 @@ fn asm_block_arg_demotion(context: &mut Context, function: Function) -> Result<b
                 );
 
                 // Create `get_local`s and `store`s for each one.
-                let get_loc_val = Value::new_instruction(context, Instruction::GetLocal(loc_var));
+                let get_loc_val = Value::new_instruction(context, block, InstOp::GetLocal(loc_var));
                 let store_val = Value::new_instruction(
                     context,
-                    Instruction::Store {
+                    block,
+                    InstOp::Store {
                         dst_val_ptr: get_loc_val,
                         stored_val: *ref_arg_val,
                     },
@@ -223,7 +226,7 @@ fn asm_block_ret_demotion(context: &mut Context, function: Function) -> Result<b
         .filter_map(|(block, instr_val)| {
             instr_val.get_instruction(context).and_then(|instr| {
                 // Is the instruction an ASM block?
-                if let Instruction::AsmBlock(asm_block, args) = instr {
+                if let InstOp::AsmBlock(asm_block, args) = &instr.op {
                     let ret_ty = asm_block.return_type;
                     super::target_fuel::is_demotable_type(context, &ret_ty).then_some((
                         block,
@@ -249,10 +252,10 @@ fn asm_block_ret_demotion(context: &mut Context, function: Function) -> Result<b
         let ret_ptr_ty = Type::new_ptr(context, ret_ty);
         asm_block.return_type = ret_ptr_ty;
         let new_asm_block =
-            Value::new_instruction(context, Instruction::AsmBlock(asm_block, asm_args));
+            Value::new_instruction(context, block, InstOp::AsmBlock(asm_block, asm_args));
 
         // Insert a load after the block.  Still no instruction inserter...
-        let load_val = Value::new_instruction(context, Instruction::Load(new_asm_block));
+        let load_val = Value::new_instruction(context, block, InstOp::Load(new_asm_block));
         let block_instrs = &mut context.blocks[block.0].instructions;
         let asm_inst_idx = block_instrs
             .iter()
@@ -277,10 +280,10 @@ fn ptr_to_int_demotion(context: &mut Context, function: Function) -> Result<bool
         .filter_map(|(block, instr_val)| {
             instr_val.get_instruction(context).and_then(|instr| {
                 // Is the instruction a PtrToInt?
-                if let Instruction::PtrToInt(ptr_val, _int_ty) = instr {
+                if let InstOp::PtrToInt(ptr_val, _int_ty) = instr.op {
                     ptr_val.get_type(context).and_then(|ptr_ty| {
                         super::target_fuel::is_demotable_type(context, &ptr_ty)
-                            .then_some((block, instr_val, *ptr_val, ptr_ty))
+                            .then_some((block, instr_val, ptr_val, ptr_ty))
                     })
                 } else {
                     None
@@ -304,10 +307,11 @@ fn ptr_to_int_demotion(context: &mut Context, function: Function) -> Result<bool
             None,
             false,
         );
-        let get_loc_val = Value::new_instruction(context, Instruction::GetLocal(loc_var));
+        let get_loc_val = Value::new_instruction(context, block, InstOp::GetLocal(loc_var));
         let store_val = Value::new_instruction(
             context,
-            Instruction::Store {
+            block,
+            InstOp::Store {
                 dst_val_ptr: get_loc_val,
                 stored_val: ptr_val,
             },
@@ -341,11 +345,11 @@ fn wide_binary_op_demotion(context: &mut Context, function: Function) -> Result<
         .instruction_iter(context)
         .filter_map(|(block, instr_val)| {
             use BinaryOpKind as B;
-            let Instruction::BinaryOp {
+            let InstOp::BinaryOp {
                 op: B::Add | B::Sub | B::Mul | B::Div | B::Mod | B::And | B::Or | B::Xor,
                 arg1,
                 arg2,
-            } = instr_val.get_instruction(context)?
+            } = instr_val.get_instruction(context)?.op
             else {
                 return None;
             };
@@ -377,10 +381,11 @@ fn wide_binary_op_demotion(context: &mut Context, function: Function) -> Result<
     // get ptr to each arg
     // and store the result after
     for (block, binary_op_instr_val) in candidates {
-        let Instruction::BinaryOp { op, arg1, arg2 } = binary_op_instr_val
+        let InstOp::BinaryOp { op, arg1, arg2 } = binary_op_instr_val
             .get_instruction(context)
             .cloned()
             .unwrap()
+            .op
         else {
             continue;
         };
@@ -401,10 +406,11 @@ fn wide_binary_op_demotion(context: &mut Context, function: Function) -> Result<
             None,
             true,
         );
-        let get_result_local = Value::new_instruction(context, Instruction::GetLocal(result_local))
-            .add_metadatum(context, binary_op_metadata);
+        let get_result_local =
+            Value::new_instruction(context, block, InstOp::GetLocal(result_local))
+                .add_metadatum(context, binary_op_metadata);
         let load_result_local =
-            Value::new_instruction(context, Instruction::Load(get_result_local))
+            Value::new_instruction(context, block, InstOp::Load(get_result_local))
                 .add_metadatum(context, binary_op_metadata);
 
         // If arg1 is not a pointer, store it to a local
@@ -416,11 +422,12 @@ fn wide_binary_op_demotion(context: &mut Context, function: Function) -> Result<
                 None,
                 false,
             );
-            let get_lhs_local = Value::new_instruction(context, Instruction::GetLocal(lhs_local))
+            let get_lhs_local = Value::new_instruction(context, block, InstOp::GetLocal(lhs_local))
                 .add_metadatum(context, arg1_metadata);
             let store_lhs_local = Value::new_instruction(
                 context,
-                Instruction::Store {
+                block,
+                InstOp::Store {
                     dst_val_ptr: get_lhs_local,
                     stored_val: arg1,
                 },
@@ -446,11 +453,12 @@ fn wide_binary_op_demotion(context: &mut Context, function: Function) -> Result<
                 None,
                 false,
             );
-            let get_rhs_local = Value::new_instruction(context, Instruction::GetLocal(rhs_local))
+            let get_rhs_local = Value::new_instruction(context, block, InstOp::GetLocal(rhs_local))
                 .add_metadatum(context, arg2_metadata);
             let store_lhs_local = Value::new_instruction(
                 context,
-                Instruction::Store {
+                block,
+                InstOp::Store {
                     dst_val_ptr: get_rhs_local,
                     stored_val: arg2,
                 },
@@ -479,13 +487,14 @@ fn wide_binary_op_demotion(context: &mut Context, function: Function) -> Result<
                     true,
                 );
                 let get_local_zero =
-                    Value::new_instruction(context, Instruction::GetLocal(local_zero))
+                    Value::new_instruction(context, block, InstOp::GetLocal(local_zero))
                         .add_metadatum(context, binary_op_metadata);
 
                 (
                     Value::new_instruction(
                         context,
-                        Instruction::FuelVm(FuelVmInstruction::WideModularOp {
+                        block,
+                        InstOp::FuelVm(FuelVmInstruction::WideModularOp {
                             op,
                             result: get_result_local,
                             arg1: get_arg1,
@@ -500,7 +509,8 @@ fn wide_binary_op_demotion(context: &mut Context, function: Function) -> Result<
             _ => (
                 Value::new_instruction(
                     context,
-                    Instruction::FuelVm(FuelVmInstruction::WideBinaryOp {
+                    block,
+                    InstOp::FuelVm(FuelVmInstruction::WideBinaryOp {
                         op,
                         arg1: get_arg1,
                         arg2: get_arg2,
@@ -574,11 +584,11 @@ fn wide_cmp_demotion(context: &mut Context, function: Function) -> Result<bool, 
     let candidates = function
         .instruction_iter(context)
         .filter_map(|(block, instr_val)| {
-            let Instruction::Cmp(
+            let InstOp::Cmp(
                 Predicate::Equal | Predicate::LessThan | Predicate::GreaterThan,
                 arg1,
                 arg2,
-            ) = instr_val.get_instruction(context)?
+            ) = instr_val.get_instruction(context)?.op
             else {
                 return None;
             };
@@ -608,8 +618,8 @@ fn wide_cmp_demotion(context: &mut Context, function: Function) -> Result<bool, 
 
     // Get ptr to each arg
     for (block, cmp_instr_val) in candidates {
-        let Instruction::Cmp(op, arg1, arg2) =
-            cmp_instr_val.get_instruction(context).cloned().unwrap()
+        let InstOp::Cmp(op, arg1, arg2) =
+            cmp_instr_val.get_instruction(context).cloned().unwrap().op
         else {
             continue;
         };
@@ -630,11 +640,12 @@ fn wide_cmp_demotion(context: &mut Context, function: Function) -> Result<bool, 
                 None,
                 false,
             );
-            let get_lhs_local = Value::new_instruction(context, Instruction::GetLocal(lhs_local))
+            let get_lhs_local = Value::new_instruction(context, block, InstOp::GetLocal(lhs_local))
                 .add_metadatum(context, arg1_metadata);
             let store_lhs_local = Value::new_instruction(
                 context,
-                Instruction::Store {
+                block,
+                InstOp::Store {
                     dst_val_ptr: get_lhs_local,
                     stored_val: arg1,
                 },
@@ -658,11 +669,12 @@ fn wide_cmp_demotion(context: &mut Context, function: Function) -> Result<bool, 
                 None,
                 false,
             );
-            let get_rhs_local = Value::new_instruction(context, Instruction::GetLocal(rhs_local))
+            let get_rhs_local = Value::new_instruction(context, block, InstOp::GetLocal(rhs_local))
                 .add_metadatum(context, arg2_metadata);
             let store_lhs_local = Value::new_instruction(
                 context,
-                Instruction::Store {
+                block,
+                InstOp::Store {
                     dst_val_ptr: get_rhs_local,
                     stored_val: arg2,
                 },
@@ -683,7 +695,8 @@ fn wide_cmp_demotion(context: &mut Context, function: Function) -> Result<bool, 
 
         let wide_op = Value::new_instruction(
             context,
-            Instruction::FuelVm(FuelVmInstruction::WideCmpOp {
+            block,
+            InstOp::FuelVm(FuelVmInstruction::WideCmpOp {
                 op,
                 arg1: get_arg1,
                 arg2: get_arg2,
@@ -735,10 +748,10 @@ fn wide_unary_op_demotion(context: &mut Context, function: Function) -> Result<b
     let candidates = function
         .instruction_iter(context)
         .filter_map(|(block, instr_val)| {
-            let Instruction::UnaryOp {
+            let InstOp::UnaryOp {
                 op: UnaryOpKind::Not,
                 arg,
-            } = instr_val.get_instruction(context)?
+            } = instr_val.get_instruction(context)?.op
             else {
                 return None;
             };
@@ -760,10 +773,11 @@ fn wide_unary_op_demotion(context: &mut Context, function: Function) -> Result<b
     // get ptr to each arg
     // and store the result after
     for (block, binary_op_instr_val) in candidates {
-        let Instruction::UnaryOp { arg, .. } = binary_op_instr_val
+        let InstOp::UnaryOp { arg, .. } = binary_op_instr_val
             .get_instruction(context)
             .cloned()
             .unwrap()
+            .op
         else {
             continue;
         };
@@ -775,10 +789,11 @@ fn wide_unary_op_demotion(context: &mut Context, function: Function) -> Result<b
 
         let result_local =
             function.new_unique_local_var(context, "__wide_result".to_owned(), arg_ty, None, true);
-        let get_result_local = Value::new_instruction(context, Instruction::GetLocal(result_local))
-            .add_metadatum(context, unary_op_metadata);
+        let get_result_local =
+            Value::new_instruction(context, block, InstOp::GetLocal(result_local))
+                .add_metadatum(context, unary_op_metadata);
         let load_result_local =
-            Value::new_instruction(context, Instruction::Load(get_result_local))
+            Value::new_instruction(context, block, InstOp::Load(get_result_local))
                 .add_metadatum(context, unary_op_metadata);
 
         // If arg1 is not a pointer, store it to a local
@@ -790,11 +805,12 @@ fn wide_unary_op_demotion(context: &mut Context, function: Function) -> Result<b
                 None,
                 false,
             );
-            let get_lhs_local = Value::new_instruction(context, Instruction::GetLocal(lhs_local))
+            let get_lhs_local = Value::new_instruction(context, block, InstOp::GetLocal(lhs_local))
                 .add_metadatum(context, arg_metadata);
             let store_lhs_local = Value::new_instruction(
                 context,
-                Instruction::Store {
+                block,
+                InstOp::Store {
                     dst_val_ptr: get_lhs_local,
                     stored_val: arg,
                 },
@@ -815,7 +831,8 @@ fn wide_unary_op_demotion(context: &mut Context, function: Function) -> Result<b
 
         let wide_op = Value::new_instruction(
             context,
-            Instruction::FuelVm(FuelVmInstruction::WideUnaryOp {
+            block,
+            InstOp::FuelVm(FuelVmInstruction::WideUnaryOp {
                 op: UnaryOpKind::Not,
                 arg: get_arg,
                 result: get_result_local,
@@ -863,11 +880,11 @@ fn wide_shift_op_demotion(context: &mut Context, function: Function) -> Result<b
         .instruction_iter(context)
         .filter_map(|(block, instr_val)| {
             let instr = instr_val.get_instruction(context)?;
-            let Instruction::BinaryOp {
+            let InstOp::BinaryOp {
                 op: BinaryOpKind::Lsh | BinaryOpKind::Rsh,
                 arg1,
                 arg2,
-            } = instr
+            } = instr.op
             else {
                 return None;
             };
@@ -899,10 +916,11 @@ fn wide_shift_op_demotion(context: &mut Context, function: Function) -> Result<b
     // get ptr to each arg
     // and store the result after
     for (block, binary_op_instr_val) in candidates {
-        let Instruction::BinaryOp { op, arg1, arg2 } = binary_op_instr_val
+        let InstOp::BinaryOp { op, arg1, arg2 } = binary_op_instr_val
             .get_instruction(context)
             .cloned()
             .unwrap()
+            .op
         else {
             continue;
         };
@@ -923,10 +941,11 @@ fn wide_shift_op_demotion(context: &mut Context, function: Function) -> Result<b
             None,
             true,
         );
-        let get_result_local = Value::new_instruction(context, Instruction::GetLocal(result_local))
-            .add_metadatum(context, binary_op_metadata);
+        let get_result_local =
+            Value::new_instruction(context, block, InstOp::GetLocal(result_local))
+                .add_metadatum(context, binary_op_metadata);
         let load_result_local =
-            Value::new_instruction(context, Instruction::Load(get_result_local))
+            Value::new_instruction(context, block, InstOp::Load(get_result_local))
                 .add_metadatum(context, binary_op_metadata);
 
         // If arg1 is not a pointer, store it to a local
@@ -938,11 +957,12 @@ fn wide_shift_op_demotion(context: &mut Context, function: Function) -> Result<b
                 None,
                 false,
             );
-            let get_lhs_local = Value::new_instruction(context, Instruction::GetLocal(lhs_local))
+            let get_lhs_local = Value::new_instruction(context, block, InstOp::GetLocal(lhs_local))
                 .add_metadatum(context, arg1_metadata);
             let store_lhs_local = Value::new_instruction(
                 context,
-                Instruction::Store {
+                block,
+                InstOp::Store {
                     dst_val_ptr: get_lhs_local,
                     stored_val: arg1,
                 },
@@ -967,7 +987,8 @@ fn wide_shift_op_demotion(context: &mut Context, function: Function) -> Result<b
 
         let wide_op = Value::new_instruction(
             context,
-            Instruction::FuelVm(FuelVmInstruction::WideBinaryOp {
+            block,
+            InstOp::FuelVm(FuelVmInstruction::WideBinaryOp {
                 op,
                 arg1: get_arg1,
                 arg2,

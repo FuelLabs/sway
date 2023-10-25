@@ -1434,6 +1434,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "dissimilar"
+version = "1.0.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86e3bdc80eee6e16b2b6b0f87fbc98c04bee3455e35174c0de1a125d0688c632"
+
+[[package]]
 name = "doc-comment"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1667,6 +1673,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "expect-test"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "30d9eafeadd538e68fb28016364c9732d78e420b9ff8853fa5e4058861e9f8d3"
+dependencies = [
+ "dissimilar",
+ "once_cell",
+]
+
+[[package]]
 name = "extension-trait"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1863,6 +1879,7 @@ dependencies = [
  "clap 4.4.3",
  "colored",
  "comrak",
+ "expect-test",
  "forc-pkg",
  "forc-util",
  "horrorshow",
@@ -1998,7 +2015,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "unicode-xid",
- "walkdir",
 ]
 
 [[package]]
@@ -5862,6 +5878,7 @@ dependencies = [
  "downcast-rs",
  "filecheck",
  "generational-arena",
+ "itertools",
  "peg",
  "prettydiff 0.6.4",
  "rustc-hash",
@@ -5975,6 +5992,7 @@ name = "sway-utils"
 version = "0.46.1"
 dependencies = [
  "serde",
+ "walkdir",
 ]
 
 [[package]]
@@ -5983,7 +6001,6 @@ version = "0.46.1"
 dependencies = [
  "anyhow",
  "forc-tracing",
- "forc-util",
  "paste",
  "prettydiff 0.6.4",
  "ropey",
@@ -5994,6 +6011,7 @@ dependencies = [
  "sway-error",
  "sway-parse",
  "sway-types",
+ "sway-utils",
  "test-macros",
  "thiserror",
  "toml 0.7.8",

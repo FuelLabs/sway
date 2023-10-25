@@ -2,7 +2,7 @@
 use clap::Parser;
 use forc_pkg::source::IPFSNode;
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, Default)]
 #[clap(
     name = "forc-doc",
     about = "Forc plugin for building a Sway package's documentation",
@@ -38,4 +38,7 @@ pub struct Command {
     /// Possible values: PUBLIC, LOCAL, <GATEWAY_URL>
     #[clap(long)]
     pub ipfs_node: Option<IPFSNode>,
+
+    #[cfg(test)]
+    pub(crate) doc_path: Option<String>,
 }

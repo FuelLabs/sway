@@ -35,6 +35,7 @@ pub struct FunctionContent {
     pub arguments: Vec<(String, Value)>,
     pub return_type: Type,
     pub blocks: Vec<Block>,
+    pub module: Module,
     pub is_public: bool,
     pub is_entry: bool,
     pub selector: Option<[u8; 4]>,
@@ -72,6 +73,7 @@ impl Function {
             arguments: Vec::new(),
             return_type,
             blocks: Vec::new(),
+            module,
             is_public,
             is_entry,
             selector,
@@ -242,6 +244,11 @@ impl Function {
     /// Return the function name.
     pub fn get_name<'a>(&self, context: &'a Context) -> &'a str {
         &context.functions[self.0].name
+    }
+
+    /// Return the module that this function belongs to.
+    pub fn get_module(&self, context: &Context) -> Module {
+        context.functions[self.0].module
     }
 
     /// Return the function entry (i.e., the first) block.

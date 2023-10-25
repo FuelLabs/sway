@@ -1,7 +1,7 @@
 /// Build call graphs for the program being compiled.
 /// If a function F1 calls function F2, then the call
 /// graph has an edge F1->F2.
-use crate::{Context, Function, Instruction, ValueDatum};
+use crate::{Context, Function, InstOp, Instruction, ValueDatum};
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -14,7 +14,10 @@ pub fn build_call_graph(ctx: &Context, functions: &[Function]) -> CallGraph {
         let entry = res.entry(*function);
         let entry = entry.or_insert_with(FxHashSet::default);
         for (_, inst) in function.instruction_iter(ctx) {
-            if let ValueDatum::Instruction(Instruction::Call(callee, _)) = ctx.values[inst.0].value
+            if let ValueDatum::Instruction(Instruction {
+                op: InstOp::Call(callee, _),
+                ..
+            }) = ctx.values[inst.0].value
             {
                 entry.insert(callee);
             }
