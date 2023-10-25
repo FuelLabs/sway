@@ -6001,7 +6001,6 @@ version = "0.46.1"
 dependencies = [
  "anyhow",
  "forc-tracing",
- "forc-util",
  "paste",
  "prettydiff 0.6.4",
  "ropey",

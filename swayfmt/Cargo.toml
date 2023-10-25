@@ -24,7 +24,6 @@ thiserror = "1.0.30"
 toml = { version = "0.7", features = ["parse"] }
 
 [dev-dependencies]
-forc-util = { path = "../forc-util" }
 paste = "1.0"
 prettydiff = "0.6"
 test-macros = { path = "test_macros" }
