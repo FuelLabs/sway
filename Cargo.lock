@@ -2015,7 +2015,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "unicode-xid",
- "walkdir",
 ]
 
 [[package]]
@@ -5993,6 +5992,7 @@ name = "sway-utils"
 version = "0.46.1"
 dependencies = [
  "serde",
+ "walkdir",
 ]
 
 [[package]]
@@ -6001,7 +6001,6 @@ version = "0.46.1"
 dependencies = [
  "anyhow",
  "forc-tracing",
- "forc-util",
  "paste",
  "prettydiff 0.6.4",
  "ropey",
@@ -6012,6 +6011,7 @@ dependencies = [
  "sway-error",
  "sway-parse",
  "sway-types",
+ "sway-utils",
  "test-macros",
  "thiserror",
  "toml 0.7.8",
