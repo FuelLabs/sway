@@ -592,7 +592,7 @@ impl ty::TyExpression {
         let (typed_block, block_return_type) =
             ty::TyCodeBlock::type_check(handler, ctx.by_ref(), &contents).unwrap_or_else(|_| {
                 (
-                    ty::TyCodeBlock { contents: vec![] },
+                    ty::TyCodeBlock::default(),
                     type_engine.insert(engines, TypeInfo::Tuple(Vec::new())),
                 )
             });
@@ -600,9 +600,7 @@ impl ty::TyExpression {
         ctx.unify_with_type_annotation(handler, block_return_type, &span);
 
         let exp = ty::TyExpression {
-            expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
-                contents: typed_block.contents,
-            }),
+            expression: ty::TyExpressionVariant::CodeBlock(typed_block),
             return_type: block_return_type,
             span,
         };

@@ -1,7 +1,10 @@
 use super::*;
 use crate::{
     decl_engine::DeclRef,
-    language::{parsed::CodeBlock, ty},
+    language::{
+        parsed::CodeBlock,
+        ty::{self, TyAstNodeContent, TyCodeBlock},
+    },
 };
 
 impl ty::TyCodeBlock {
@@ -10,9 +13,6 @@ impl ty::TyCodeBlock {
         mut ctx: TypeCheckContext,
         code_block: &CodeBlock,
     ) -> Result<(Self, TypeId), ErrorEmitted> {
-        let decl_engine = ctx.engines.de();
-        let engines = ctx.engines();
-
         // Create a temp namespace for checking within the code block scope.
         let mut code_block_namespace = ctx.namespace.clone();
         let evaluated_contents = code_block
@@ -24,11 +24,30 @@ impl ty::TyCodeBlock {
             })
             .collect::<Vec<ty::TyAstNode>>();
 
+        let typed_code_block = ty::TyCodeBlock {
+            contents: evaluated_contents,
+            whole_block_span: code_block.whole_block_span.clone(),
+        };
+
+        let (block_type, span) = Self::compute_return_type_and_span(&ctx, &typed_code_block);
+
+        ctx.unify_with_type_annotation(handler, block_type, &span);
+
+        Ok((typed_code_block, block_type))
+    }
+
+    pub fn compute_return_type_and_span(
+        ctx: &TypeCheckContext,
+        code_block: &TyCodeBlock,
+    ) -> (TypeId, Span) {
+        let engines = ctx.engines();
+        let decl_engine = engines.de();
+
         let implicit_return_span = code_block
             .contents
             .iter()
             .find_map(|x| match &x.content {
-                AstNodeContent::ImplicitReturnExpression(expr) => Some(Some(expr.span())),
+                TyAstNodeContent::ImplicitReturnExpression(expr) => Some(Some(expr.span.clone())),
                 _ => None,
             })
             .flatten();
@@ -38,7 +57,8 @@ impl ty::TyCodeBlock {
         // The fact that there is at most one implicit return is an invariant held by the parser.
         // If any node diverges then the entire block has unknown type.
         let mut node_deterministically_aborts = false;
-        let block_type = evaluated_contents
+        let block_type = code_block
+            .contents
             .iter()
             .find_map(|node| {
                 if node.deterministically_aborts(decl_engine, true) {
@@ -96,13 +116,7 @@ impl ty::TyCodeBlock {
                         .insert(engines, TypeInfo::Tuple(Vec::new()))
                 }
             });
-
-        ctx.unify_with_type_annotation(handler, block_type, &span);
-
-        let typed_code_block = ty::TyCodeBlock {
-            contents: evaluated_contents,
-        };
-        Ok((typed_code_block, block_type))
+        (block_type, span)
     }
 }
 

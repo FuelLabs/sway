@@ -199,7 +199,7 @@ impl ty::TyFunctionDecl {
                 .with_type_annotation(return_type.type_id);
             ty::TyCodeBlock::type_check(handler, ctx, body).unwrap_or_else(|err| {
                 (
-                    ty::TyCodeBlock { contents: vec![] },
+                    ty::TyCodeBlock::default(),
                     type_engine.insert(engines, TypeInfo::ErrorRecovery(err)),
                 )
             })
@@ -306,7 +306,7 @@ fn test_function_selector_behavior() {
         purity: Default::default(),
         name: Ident::dummy(),
         implementing_type: None,
-        body: ty::TyCodeBlock { contents: vec![] },
+        body: ty::TyCodeBlock::default(),
         parameters: vec![],
         span: Span::dummy(),
         call_path: CallPath::from(Ident::dummy()),
@@ -329,7 +329,7 @@ fn test_function_selector_behavior() {
         purity: Default::default(),
         name: Ident::new_with_override("bar".into(), Span::dummy()),
         implementing_type: None,
-        body: ty::TyCodeBlock { contents: vec![] },
+        body: ty::TyCodeBlock::default(),
         parameters: vec![
             ty::TyFunctionParameter {
                 name: Ident::dummy(),
