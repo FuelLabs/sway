@@ -1,6 +1,7 @@
 library;
 
 use ::foo::{Foo, Baz};
+use core::ops::Add;
 
 pub struct Bar {}
 
@@ -12,5 +13,17 @@ impl Baz for Bar {}
 impl Bar {
     fn foo_bar() {
         Self::foo()
+    }
+}
+
+// test dependency impls
+impl Add for Bar {
+    fn add(self, other: Self) -> Self {
+        Bar {}
+    }
+}
+impl core::ops::Subtract for Bar {
+    fn subtract(self, other: Self) -> Self {
+        Bar {}
     }
 }
