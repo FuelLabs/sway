@@ -1,9 +1,9 @@
 use crate::cli::CleanCommand;
 use anyhow::{anyhow, bail, Result};
 use forc_pkg::manifest::ManifestFile;
-use forc_util::{default_output_directory, find_parent_manifest_dir};
+use forc_util::default_output_directory;
 use std::path::PathBuf;
-use sway_utils::MANIFEST_FILE_NAME;
+use sway_utils::{find_parent_manifest_dir, MANIFEST_FILE_NAME};
 
 pub fn clean(command: CleanCommand) -> Result<()> {
     let CleanCommand { path } = command;

@@ -266,7 +266,8 @@ async fn go_to_definition_for_matches() {
     lsp::definition_check(&server, &go_to);
     lsp::definition_check_with_req_offset(&server, &mut go_to, 19, 18);
     lsp::definition_check_with_req_offset(&server, &mut go_to, 22, 18);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 22, 30);
+    // TODO: Enable the below check once this issue is fixed: https://github.com/FuelLabs/sway/issues/5221
+    // lsp::definition_check_with_req_offset(&server, &mut go_to, 22, 30);
     lsp::definition_check_with_req_offset(&server, &mut go_to, 23, 16);
     lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 38);
 

@@ -4,8 +4,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     combine_indices, compute_escaped_symbols, get_loaded_ptr_values, get_stored_ptr_values,
-    get_symbols, pointee_size, AnalysisResults, Constant, ConstantValue, Context, Function,
-    Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type, Value,
+    get_symbols, pointee_size, AnalysisResults, Constant, ConstantValue, Context, Function, InstOp,
+    IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type, Value,
 };
 
 pub const SROA_NAME: &str = "sroa";
@@ -120,10 +120,10 @@ pub fn sroa(
     for block in function.block_iter(context) {
         let mut new_insts = Vec::new();
         for inst in block.instruction_iter(context) {
-            if let Instruction::MemCopyVal {
+            if let InstOp::MemCopyVal {
                 dst_val_ptr,
                 src_val_ptr,
-            } = *inst.get_instruction(context).unwrap()
+            } = inst.get_instruction(context).unwrap().op
             {
                 let src_syms = get_symbols(context, src_val_ptr);
                 let dst_syms = get_symbols(context, dst_val_ptr);
@@ -215,9 +215,9 @@ pub fn sroa(
                             .get(&actual_offset)
                             .unwrap();
                         let scalarized_local =
-                            Value::new_instruction(context, Instruction::GetLocal(*remapped_var));
+                            Value::new_instruction(context, block, InstOp::GetLocal(*remapped_var));
                         let load =
-                            Value::new_instruction(context, Instruction::Load(scalarized_local));
+                            Value::new_instruction(context, block, InstOp::Load(scalarized_local));
                         elm_local_map.insert(elm_offset, load);
                         new_insts.push(scalarized_local);
                         new_insts.push(load);
@@ -241,13 +241,14 @@ pub fn sroa(
                         let elem_ptr_ty = Type::new_ptr(context, *r#type);
                         let elm_addr = Value::new_instruction(
                             context,
-                            Instruction::GetElemPtr {
+                            block,
+                            InstOp::GetElemPtr {
                                 base: src_val_ptr,
                                 elem_ptr_ty,
                                 indices: elm_index_values,
                             },
                         );
-                        let load = Value::new_instruction(context, Instruction::Load(elm_addr));
+                        let load = Value::new_instruction(context, block, InstOp::Load(elm_addr));
                         elm_local_map.insert(*offset, load);
                         new_insts.push(elm_addr);
                         new_insts.push(load);
@@ -275,13 +276,14 @@ pub fn sroa(
                             .get(&actual_offset)
                             .unwrap();
                         let scalarized_local =
-                            Value::new_instruction(context, Instruction::GetLocal(*remapped_var));
+                            Value::new_instruction(context, block, InstOp::GetLocal(*remapped_var));
                         let loaded_source = elm_local_map
                             .get(&elm_offset)
                             .expect("memcpy source not loaded");
                         let store = Value::new_instruction(
                             context,
-                            Instruction::Store {
+                            block,
+                            InstOp::Store {
                                 dst_val_ptr: scalarized_local,
                                 stored_val: *loaded_source,
                             },
@@ -308,7 +310,8 @@ pub fn sroa(
                         let elem_ptr_ty = Type::new_ptr(context, r#type);
                         let elm_addr = Value::new_instruction(
                             context,
-                            Instruction::GetElemPtr {
+                            block,
+                            InstOp::GetElemPtr {
                                 base: dst_val_ptr,
                                 elem_ptr_ty,
                                 indices: elm_index_values,
@@ -319,7 +322,8 @@ pub fn sroa(
                             .expect("memcpy source not loaded");
                         let store = Value::new_instruction(
                             context,
-                            Instruction::Store {
+                            block,
+                            InstOp::Store {
                                 dst_val_ptr: elm_addr,
                                 stored_val: *loaded_source,
                             },
@@ -357,7 +361,7 @@ pub fn sroa(
                         .get(&(offset as u32))
                         .unwrap();
                     let scalarized_local =
-                        Value::new_instruction(context, Instruction::GetLocal(*remapped_var));
+                        Value::new_instruction(context, block, InstOp::GetLocal(*remapped_var));
                     new_insts.push(scalarized_local);
                     scalar_replacements.insert(*ptr, scalarized_local);
                 }
@@ -400,14 +404,14 @@ fn profitability(context: &Context, function: Function, candidates: &mut FxHashS
     // If a candidate is sufficiently big and there's at least one memcpy
     // accessing a big part of it, it may not be wise to scalarise it.
     for (_, inst) in function.instruction_iter(context) {
-        if let Instruction::MemCopyVal {
+        if let InstOp::MemCopyVal {
             dst_val_ptr,
             src_val_ptr,
-        } = inst.get_instruction(context).unwrap()
+        } = inst.get_instruction(context).unwrap().op
         {
-            if pointee_size(context, *dst_val_ptr) > 200 {
+            if pointee_size(context, dst_val_ptr) > 200 {
                 for sym in
-                    get_symbols(context, *dst_val_ptr).union(&get_symbols(context, *src_val_ptr))
+                    get_symbols(context, dst_val_ptr).union(&get_symbols(context, src_val_ptr))
                 {
                     candidates.remove(sym);
                 }
@@ -459,7 +463,7 @@ fn candidate_symbols(context: &Context, function: Function) -> FxHashSet<Symbol>
                 indices.iter().any(|idx| !idx.is_constant(context))
             }) || ptr.match_ptr_type(context).is_some_and(|pointee_ty| {
                 super::target_fuel::is_demotable_type(context, &pointee_ty)
-                    && !matches!(inst, Instruction::MemCopyVal { .. })
+                    && !matches!(inst.op, InstOp::MemCopyVal { .. })
             }) {
                 candidates.remove(syms.iter().next().unwrap());
             }

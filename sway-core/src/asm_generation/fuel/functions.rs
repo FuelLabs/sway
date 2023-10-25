@@ -715,7 +715,11 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         // NUM_ARG_REGISTERS. The extra args will need stack allocation too.
         let mut max_num_extra_args = 0u64;
         for (_block, inst) in function.instruction_iter(self.context) {
-            if let Some(Instruction::Call(_, args)) = inst.get_instruction(self.context) {
+            if let Some(Instruction {
+                op: InstOp::Call(_, args),
+                ..
+            }) = inst.get_instruction(self.context)
+            {
                 if args.len() > NUM_ARG_REGISTERS as usize {
                     // When we have more than NUM_ARG_REGISTERS, the last arg register
                     // is used to point to the stack location of extra args. So we'll

@@ -1,10 +1,11 @@
 //! A 256-bit unsigned integer type.
 library;
 
-use ::assert::assert;
+use ::assert::*;
 use ::convert::From;
 use ::result::Result::{self, *};
 use ::u128::U128;
+use ::math::Power;
 
 /// Left shift a `u64` and preserve the overflow amount if any.
 fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
@@ -98,6 +99,45 @@ impl U256 {
             c: 0,
             d: 0,
         }
+    }
+
+    /// Initializes a new `U256` with a value of 1.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::u256::U256;
+    ///
+    /// let init_one = U256::one();
+    /// let one_u256 = U256 { a: 0, b: 0, c: 0, d: 1 };
+    ///
+    /// assert(init_one == one_u256);
+    /// ```
+    pub fn one() -> Self {
+        Self {
+            a: 0,
+            b: 0,
+            c: 0,
+            d: 1,
+        }
+    }
+
+    /// Returns true if value is zero.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::u256::U256
+    ///
+    /// let zero_u256 = U256::new();
+    /// assert(zero_u256.is_zero());
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self.a == 0 && self.b == 0 && self.c == 0 && self.d == 0
+    }
+
+    pub fn low_u64(self) -> u64 {
+        self.a
     }
 
     /// Safely downcast to `u64` without loss of precision.
@@ -637,4 +677,78 @@ impl core::ops::Divide for U256 {
 
         quotient
     }
+}
+
+impl Power for U256 {
+    /// Raises self to the power of `exponent`, using exponentiation by squaring.
+	///
+	/// # Panics
+	///
+	/// Panics if the result overflows the type.
+    fn pow(self, exponent: u32) -> Self {
+        let one = U256::from((0, 0, 0, 1));
+        let two = U256::from((0, 0, 0, 2));
+
+        if exponent == 0 {
+            return one;
+        }
+
+        let mut exp = exponent;
+        let mut base = self;
+        let mut acc = one;
+
+        while exp > 1 {
+            if (exp & 1) == 1 {
+                acc = acc * base;
+            }
+            exp = exp >> 1;
+            base = base * base;
+        }
+
+        acc * base
+    }
+}
+
+
+fn is_even(x: U256) -> bool {
+    x.low_u64() & 1 == 0
+}
+
+#[test]
+fn test_five_pow_two_u256() {
+    let five = U256::from((0, 0, 0, 5));
+  
+    let five_pow_two = five.pow(2);
+    assert(five_pow_two.a == 0);
+    assert(five_pow_two.b == 0);
+    assert(five_pow_two.c == 0);
+    assert(five_pow_two.d == 25);
+}
+
+#[test]
+fn test_five_pow_three_u256() {
+    let five = U256::from((0, 0, 0, 5));
+
+    let five_pow_three = five.pow(3);
+    assert_eq(five_pow_three.a, 0);
+    assert_eq(five_pow_three.b, 0);
+    assert_eq(five_pow_three.c, 0);
+    assert_eq(five_pow_three.d, 125);
+}
+
+#[test]
+fn test_five_pow_28_u256() {
+    let five = U256::from((0, 0, 0, 5));
+
+    let five_pow_28 = five.pow(28);
+    assert_eq(five_pow_28.a, 0);
+    assert_eq(five_pow_28.b, 0);
+    assert_eq(five_pow_28.c, 2);
+    assert_eq(five_pow_28.d, 359414837200037393);
+}
+
+#[test]
+fn test_is_zero() {
+    let zero_u256 = U256::new();
+    assert(zero_u256.is_zero());
 }

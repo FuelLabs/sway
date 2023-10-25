@@ -201,36 +201,36 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         // The only instruction whose compilation returns a Result itself is AsmBlock, which
         // we special-case here.  Ideally, the ASM block verification would happen much sooner,
         // perhaps during parsing.  https://github.com/FuelLabs/sway/issues/801
-        if let Instruction::AsmBlock(asm, args) = instruction {
+        if let InstOp::AsmBlock(asm, args) = &instruction.op {
             self.compile_asm_block(handler, instr_val, asm, args)
         } else {
             // These matches all return `Result<(), CompileError>`.
-            match instruction {
-                Instruction::AsmBlock(..) => unreachable!("Handled immediately above."),
-                Instruction::BitCast(val, ty) => self.compile_bitcast(instr_val, val, ty),
-                Instruction::UnaryOp { op, arg } => self.compile_unary_op(instr_val, op, arg),
-                Instruction::BinaryOp { op, arg1, arg2 } => {
+            match &instruction.op {
+                InstOp::AsmBlock(..) => unreachable!("Handled immediately above."),
+                InstOp::BitCast(val, ty) => self.compile_bitcast(instr_val, val, ty),
+                InstOp::UnaryOp { op, arg } => self.compile_unary_op(instr_val, op, arg),
+                InstOp::BinaryOp { op, arg1, arg2 } => {
                     self.compile_binary_op(instr_val, op, arg1, arg2)
                 }
-                Instruction::Branch(to_block) => self.compile_branch(to_block),
-                Instruction::Call(func, args) => self.compile_call(instr_val, func, args),
-                Instruction::CastPtr(val, _ty) => self.compile_no_op_move(instr_val, val),
-                Instruction::Cmp(pred, lhs_value, rhs_value) => {
+                InstOp::Branch(to_block) => self.compile_branch(to_block),
+                InstOp::Call(func, args) => self.compile_call(instr_val, func, args),
+                InstOp::CastPtr(val, _ty) => self.compile_no_op_move(instr_val, val),
+                InstOp::Cmp(pred, lhs_value, rhs_value) => {
                     self.compile_cmp(instr_val, pred, lhs_value, rhs_value)
                 }
-                Instruction::ConditionalBranch {
+                InstOp::ConditionalBranch {
                     cond_value,
                     true_block,
                     false_block,
                 } => self.compile_conditional_branch(cond_value, true_block, false_block),
-                Instruction::ContractCall {
+                InstOp::ContractCall {
                     params,
                     coins,
                     asset_id,
                     gas,
                     ..
                 } => self.compile_contract_call(instr_val, params, coins, asset_id, gas),
-                Instruction::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
+                InstOp::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
                     FuelVmInstruction::Gtf { index, tx_field_id } => {
                         self.compile_gtf(instr_val, index, *tx_field_id)
                     }
@@ -306,35 +306,33 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         arg3,
                     } => self.compile_wide_modular_op(instr_val, op, result, arg1, arg2, arg3),
                 },
-                Instruction::GetElemPtr {
+                InstOp::GetElemPtr {
                     base,
                     elem_ptr_ty,
                     indices,
                 } => self.compile_get_elem_ptr(instr_val, base, elem_ptr_ty, indices),
-                Instruction::GetLocal(local_var) => self.compile_get_local(instr_val, local_var),
-                Instruction::IntToPtr(val, _) => self.compile_no_op_move(instr_val, val),
-                Instruction::Load(src_val) => self.compile_load(instr_val, src_val),
-                Instruction::MemCopyBytes {
+                InstOp::GetLocal(local_var) => self.compile_get_local(instr_val, local_var),
+                InstOp::IntToPtr(val, _) => self.compile_no_op_move(instr_val, val),
+                InstOp::Load(src_val) => self.compile_load(instr_val, src_val),
+                InstOp::MemCopyBytes {
                     dst_val_ptr,
                     src_val_ptr,
                     byte_len,
                 } => self.compile_mem_copy_bytes(instr_val, dst_val_ptr, src_val_ptr, *byte_len),
-                Instruction::MemCopyVal {
+                InstOp::MemCopyVal {
                     dst_val_ptr,
                     src_val_ptr,
                 } => self.compile_mem_copy_val(instr_val, dst_val_ptr, src_val_ptr),
-                Instruction::Nop => Ok(()),
-                Instruction::PtrToInt(ptr_val, _int_ty) => {
-                    self.compile_no_op_move(instr_val, ptr_val)
-                }
-                Instruction::Ret(ret_val, ty) => {
+                InstOp::Nop => Ok(()),
+                InstOp::PtrToInt(ptr_val, _int_ty) => self.compile_no_op_move(instr_val, ptr_val),
+                InstOp::Ret(ret_val, ty) => {
                     if func_is_entry {
                         self.compile_ret_from_entry(instr_val, ret_val, ty)
                     } else {
                         self.compile_ret_from_call(instr_val, ret_val)
                     }
                 }
-                Instruction::Store {
+                InstOp::Store {
                     dst_val_ptr,
                     stored_val,
                 } => self.compile_store(instr_val, dst_val_ptr, stored_val),
