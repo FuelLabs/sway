@@ -1,11 +1,11 @@
 use crate::{
     decl_engine::{
-        engine::DeclEngineReplace, DeclEngineInsert, DeclRefFunction, ReplaceDecls,
-        UpdateConstantExpression,
+        engine::{DeclEngineGet, DeclEngineReplace},
+        DeclEngineInsert, DeclRefFunction, ReplaceDecls, UpdateConstantExpression,
     },
     language::{
         parsed::*,
-        ty::{self},
+        ty::{self, TyDecl},
         *,
     },
     namespace::TryInsertingTraitImplOnFailure,
@@ -552,10 +552,14 @@ pub(crate) fn monomorphize_method_application(
         ref call_path,
         ref mut arguments,
         ref mut type_binding,
+        call_path_typeid,
         ..
     } = expr
     {
         let decl_engine = ctx.engines.de();
+        let type_engine = ctx.engines.te();
+        let engines = ctx.engines();
+
         *fn_ref = monomorphize_method(
             handler,
             ctx.by_ref(),
@@ -567,6 +571,41 @@ pub(crate) fn monomorphize_method_application(
         // unify the types of the arguments with the types of the parameters from the function declaration
         *arguments =
             unify_arguments_and_parameters(handler, ctx.by_ref(), arguments, &method.parameters)?;
+
+        // unify method return type with current ctx.type_annotation().
+        handler.scope(|handler| {
+            type_engine.unify(
+                handler,
+                engines,
+                method.return_type.type_id,
+                ctx.type_annotation(),
+                &method.return_type.span(),
+                "Function return type does not match up with local type annotation.",
+                None,
+            );
+            Ok(())
+        })?;
+
+        // This handles the case of substituting the generic blanket type by call_path_typeid.
+        if let Some(TyDecl::ImplTrait(t)) = method.clone().implementing_type {
+            let t = engines.de().get(&t.decl_id).implementing_for;
+            if let TypeInfo::Custom {
+                qualified_call_path,
+                type_arguments: _,
+                root_type_id: _,
+            } = type_engine.get(t.initial_type_id)
+            {
+                for p in method.type_parameters.clone() {
+                    if p.name_ident.as_str() == qualified_call_path.call_path.suffix.as_str() {
+                        let type_subst = TypeSubstMap::from_type_parameters_and_type_arguments(
+                            vec![t.initial_type_id],
+                            vec![call_path_typeid.unwrap()],
+                        );
+                        method.subst(&type_subst, engines);
+                    }
+                }
+            }
+        }
 
         // Handle the trait constraints. This includes checking to see if the trait
         // constraints are satisfied and replacing old decl ids based on the
