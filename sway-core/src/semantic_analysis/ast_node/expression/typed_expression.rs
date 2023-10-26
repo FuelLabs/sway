@@ -2369,46 +2369,48 @@ fn check_asm_block_validity(
         handler.emit_err(err);
     }
 
-    // Check #3: Check uninitialized register are read before being written
+    // Check #3: Check if there are uninitialized registers that are read before being written
     let mut uninitialized_registers = asm
         .registers
         .iter()
         .filter(|reg| reg.initializer.is_none())
         .map(|reg| {
+            let span = reg.name.span();
+
+            // Emit warning if this register shadows a variable
+            let temp_handler = Handler::default();
+            let decl = ctx.namespace.resolve_call_path(
+                &temp_handler,
+                ctx.engines,
+                &CallPath {
+                    prefixes: vec![],
+                    suffix: sway_types::BaseIdent::new(span.clone()),
+                    is_absolute: true,
+                },
+                None,
+            );
+    
+            if let Ok(ty::TyDecl::VariableDecl(decl)) = decl {
+                handler.emit_warn(CompileWarning {
+                    span: span.clone(),
+                    warning_content: Warning::UninitializedAsmRegShadowsVariable {
+                        name: decl.name.clone(),
+                    },
+                });
+            }
+
             (
                 VirtualRegister::Virtual(reg.name.to_string()),
-                reg.name.span(),
+                span,
             )
         })
         .collect::<HashMap<_, _>>();
 
-    for (_, span) in uninitialized_registers.iter() {
-        let temp_handler = Handler::default();
-        let decl = ctx.namespace.resolve_call_path(
-            &temp_handler,
-            ctx.engines,
-            &CallPath {
-                prefixes: vec![],
-                suffix: sway_types::BaseIdent::new(span.clone()),
-                is_absolute: true,
-            },
-            None,
-        );
-
-        if let Ok(ty::TyDecl::VariableDecl(decl)) = decl {
-            handler.emit_warn(CompileWarning {
-                span: span.clone(),
-                warning_content: Warning::UninitializedAsmRegShadowsVariable {
-                    name: decl.name.clone(),
-                },
-            });
-        }
-    }
-
-    let mut errors = vec![];
     for (op, _, _) in opcodes.iter() {
         for being_read in op.use_registers() {
-            errors.extend(uninitialized_registers.remove(being_read));
+            if let Some(span) = uninitialized_registers.remove(being_read) { 
+                handler.emit_err(CompileError::UninitRegisterInAsmBlockBeingRead { span });
+            }
         }
 
         for being_written in op.def_registers() {
@@ -2418,11 +2420,9 @@ fn check_asm_block_validity(
 
     if let Some((reg, _)) = asm.returns.as_ref() {
         let reg = VirtualRegister::Virtual(reg.name.to_string());
-        errors.extend(uninitialized_registers.remove(&reg));
-    }
-
-    for span in errors {
-        handler.emit_err(CompileError::UninitRegisterInAsmBlockBeingRead { span });
+        if let Some(span) = uninitialized_registers.remove(&reg) { 
+            handler.emit_err(CompileError::UninitRegisterInAsmBlockBeingRead { span });
+        }
     }
 
     Ok(())
