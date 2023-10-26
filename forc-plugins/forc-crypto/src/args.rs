@@ -28,7 +28,7 @@ fn checked_read_file<P: AsRef<Path>>(path: &Option<P>) -> Option<Vec<u8>> {
 
 fn checked_read_stdin<R: BufRead>(content: &Option<String>, mut stdin: R) -> Option<Vec<u8>> {
     match content.as_ref().map(|x| x.as_str()) {
-        Some("-") | Some("") | None => {
+        Some("-") | None => {
             let mut buffer = Vec::new();
             if stdin.read_to_end(&mut buffer).is_ok() {
                 Some(buffer)
