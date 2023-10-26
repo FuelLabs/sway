@@ -101,21 +101,16 @@ fn do_pure_stuff_e() -> bool {
 const KEY: b256 = 0xfefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefe;
 
 fn read_storage_word() -> u64 {
-    asm (key: KEY, is_set, res, a, b, c) {
-        move a b;
+    asm (key: KEY, is_set, res) {
         srw res is_set key;
-        addi b c i1;
         res: u64
     }
 }
 
 fn read_storage_b256() -> b256 {
     let res = ZERO_B256;
-    asm (key: KEY, is_set, buf: res, count: 1, a, b, c) {
-        modi a b i10;
-        lt a b c;
+    asm (key: KEY, is_set, buf: res, count: 1) {
         srwq buf is_set key count;
-        and a b c;
     }
     res
 }
