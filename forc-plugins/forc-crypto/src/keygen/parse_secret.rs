@@ -1,6 +1,6 @@
 //! This file will be hosted here until
 //! https://github.com/FuelLabs/sway/issues/5170 is fixed
-use super::{KeyType, BLOCK_PRODUCTION, P2P};
+use super::{KeyType};
 use anyhow::Result;
 use fuel_core_types::{fuel_crypto::SecretKey, fuel_tx::Input};
 use libp2p_identity::{secp256k1, Keypair, PeerId};
@@ -20,7 +20,7 @@ pub struct Arg {
         long = "key-type",
         short = 'k',
         value_enum,
-        default_value = BLOCK_PRODUCTION
+        default_value = KeyType::BlockProduction.into(),
     )]
     key_type: KeyType,
 }
@@ -32,7 +32,7 @@ pub fn handler(arg: Arg) -> Result<serde_json::Value> {
             let address = Input::owner(&secret.public_key());
             let output = json!({
                 "address": address.to_string(),
-                "type": BLOCK_PRODUCTION
+                "type": <KeyType as std::convert::Into<&'static str>>::into(KeyType::BlockProduction),
             });
             output
         }
@@ -45,7 +45,7 @@ pub fn handler(arg: Arg) -> Result<serde_json::Value> {
             let peer_id = PeerId::from_public_key(&libp2p_keypair.public());
             let output = json!({
                 "peer_id": peer_id.to_string(),
-                "type": P2P
+                "type": <KeyType as std::convert::Into<&'static str>>::into(KeyType::Peering),
             });
             output
         }

@@ -5,5 +5,5 @@ use serde_json::json;
 pub fn hash<T: Into<Vec<u8>>>(data: T) -> anyhow::Result<serde_json::Value> {
     let mut hasher = Hasher::default();
     hasher.input(data.into());
-    Ok(json!(hex::encode(hasher.finalize().to_vec())))
+    Ok(json!(hex::encode(hasher.finalize())))
 }

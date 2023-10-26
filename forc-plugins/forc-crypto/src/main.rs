@@ -49,7 +49,7 @@ fn run() -> Result<()> {
         Command::ParseSecret(arg) => keygen::parse_secret::handler(arg)?,
     };
 
-    display_output(&content)
+    display_output(content)
 }
 
 fn wait_for_keypress() {

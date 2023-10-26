@@ -1,6 +1,6 @@
 //! This file will be hosted here until
 //! https://github.com/FuelLabs/sway/issues/5170 is fixed
-use super::{KeyType, BLOCK_PRODUCTION, P2P};
+use super::{KeyType};
 use anyhow::Result;
 use fuel_core_types::{
     fuel_crypto::{
@@ -21,7 +21,7 @@ pub struct Arg {
         long = "key-type",
         short = 'k',
         value_enum,
-        default_value = BLOCK_PRODUCTION
+        default_value = KeyType::BlockProduction.into(),
     )]
     key_type: KeyType,
 }
@@ -38,7 +38,7 @@ pub fn handler(arg: Arg) -> Result<serde_json::Value> {
             json!({
                 "secret": secret_str,
                 "address": address,
-                "type": BLOCK_PRODUCTION,
+                "type": <KeyType as std::convert::Into<&'static str>>::into(KeyType::BlockProduction),
             })
         }
         KeyType::Peering => {
@@ -51,7 +51,7 @@ pub fn handler(arg: Arg) -> Result<serde_json::Value> {
             json!({
                 "secret": secret_str,
                 "peer_id": peer_id.to_string(),
-                "type": P2P
+                "type": <KeyType as std::convert::Into<&'static str>>::into(KeyType::Peering),
             })
         }
     };
