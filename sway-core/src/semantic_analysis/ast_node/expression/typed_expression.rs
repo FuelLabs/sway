@@ -2365,5 +2365,38 @@ fn check_asm_block_validity(handler: &Handler, asm: &AsmExpression) -> Result<()
         handler.emit_err(err);
     }
 
+    // Check #3: Check uninitialized register are read before being written
+    let mut uninitialized_registers = asm
+        .registers
+        .iter()
+        .filter(|reg| reg.initializer.is_none())
+        .map(|reg| {
+            (
+                VirtualRegister::Virtual(reg.name.to_string()),
+                reg.name.span(),
+            )
+        })
+        .collect::<HashMap<_, _>>();
+
+    let mut errors = vec![];
+    for (op, _, _) in opcodes.iter() {
+        for being_read in op.use_registers() {
+            errors.extend(uninitialized_registers.remove(being_read));
+        }
+
+        for being_written in op.def_registers() {
+            uninitialized_registers.remove(being_written);
+        }
+    }
+
+    if let Some((reg, _)) = asm.returns.as_ref() {
+        let reg = VirtualRegister::Virtual(reg.name.to_string());
+        errors.extend(uninitialized_registers.remove(&reg));
+    }
+
+    for span in errors {
+        handler.emit_err(CompileError::UninitRegisterInAsmBlockBeingRead { span });
+    }
+
     Ok(())
 }
