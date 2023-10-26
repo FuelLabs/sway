@@ -1,6 +1,6 @@
 //! This file will be hosted here until
 //! https://github.com/FuelLabs/sway/issues/5170 is fixed
-use super::{display_string_discreetly, KeyType, BLOCK_PRODUCTION, P2P};
+use super::{KeyType, BLOCK_PRODUCTION, P2P};
 use anyhow::Result;
 use fuel_core_types::{fuel_crypto::SecretKey, fuel_tx::Input};
 use libp2p_identity::{secp256k1, Keypair, PeerId};
@@ -16,8 +16,6 @@ use std::{ops::Deref, str::FromStr};
 )]
 pub struct Arg {
     secret: String,
-    #[clap(long = "pretty", short = 'p')]
-    pretty: bool,
     #[clap(
         long = "key-type",
         short = 'k',
@@ -27,7 +25,7 @@ pub struct Arg {
     key_type: KeyType,
 }
 
-pub fn handler(arg: Arg) -> Result<String> {
+pub fn handler(arg: Arg) -> Result<serde_json::Value> {
     let secret = SecretKey::from_str(&arg.secret)?;
     let output = match arg.key_type {
         KeyType::BlockProduction => {
@@ -52,14 +50,5 @@ pub fn handler(arg: Arg) -> Result<String> {
             output
         }
     };
-    display_string_discreetly(
-        &(if arg.pretty {
-            serde_json::to_string_pretty(&output)
-        } else {
-            serde_json::to_string(&output)
-        })?,
-        "### Do not share or lose this private key! Press any key to complete. ###",
-    )?;
-
-    Ok("".to_owned())
+    Ok(output)
 }

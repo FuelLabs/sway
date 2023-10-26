@@ -1,6 +1,7 @@
 use anyhow::anyhow;
 use fuel_crypto::fuel_types::Address;
 use fuels_core::types::bech32::Bech32Address;
+use serde_json::json;
 use std::str::{from_utf8, FromStr};
 
 #[derive(Debug, clap::Args)]
@@ -16,7 +17,7 @@ pub struct Args {
 /// Takes a valid address in any supported format and returns them in all
 /// supported format. This is meant to be a tool that can be used to convert any
 /// address format to all other formats
-pub fn dump_address<T: AsRef<[u8]>>(data: T) -> anyhow::Result<String> {
+pub fn dump_address<T: AsRef<[u8]>>(data: T) -> anyhow::Result<serde_json::Value> {
     let bytes_32: Result<[u8; 32], _> = data.as_ref().try_into();
     let (bech32, addr) = match bytes_32 {
         Ok(bytes) => (
@@ -26,7 +27,10 @@ pub fn dump_address<T: AsRef<[u8]>>(data: T) -> anyhow::Result<String> {
         Err(_) => handle_string_conversion(data)?,
     };
 
-    Ok(format!("Bench32: {}\nAddress: 0x{}\n", bech32, addr))
+    Ok(json!({
+        "Bench32": bech32.to_string(),
+        "Address": addr.to_string(),
+    }))
 }
 
 fn handle_string_conversion<T: AsRef<[u8]>>(data: T) -> anyhow::Result<(Bech32Address, Address)> {

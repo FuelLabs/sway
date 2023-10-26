@@ -1,6 +1,6 @@
 //! This file will be hosted here until
 //! https://github.com/FuelLabs/sway/issues/5170 is fixed
-use super::{display_string_discreetly, KeyType, BLOCK_PRODUCTION, P2P};
+use super::{KeyType, BLOCK_PRODUCTION, P2P};
 use anyhow::Result;
 use fuel_core_types::{
     fuel_crypto::{
@@ -17,8 +17,6 @@ use std::ops::Deref;
 #[derive(Debug, clap::Args)]
 #[clap(author, version, about = "Creates a new key for use with fuel-core")]
 pub struct Arg {
-    #[clap(long = "pretty", short = 'p')]
-    pretty: bool,
     #[clap(
         long = "key-type",
         short = 'k',
@@ -28,7 +26,7 @@ pub struct Arg {
     key_type: KeyType,
 }
 
-pub fn handler(arg: Arg) -> Result<String> {
+pub fn handler(arg: Arg) -> Result<serde_json::Value> {
     let mut rng = StdRng::from_entropy();
     let secret = SecretKey::random(&mut rng);
     let public_key = secret.public_key();
@@ -57,14 +55,5 @@ pub fn handler(arg: Arg) -> Result<String> {
             })
         }
     };
-    display_string_discreetly(
-        &(if arg.pretty {
-            serde_json::to_string_pretty(&output)
-        } else {
-            serde_json::to_string(&output)
-        })?,
-        "### Do not share or lose this private key! Press any key to exit. ###",
-    )?;
-
-    Ok("".to_owned())
+    Ok(output)
 }
