@@ -11,6 +11,8 @@ use super::occurs_check::OccursCheck;
 pub(crate) struct Unifier<'a> {
     engines: &'a Engines,
     help_text: String,
+    unify_self: bool,
+    unify_generic: bool,
 }
 
 impl<'a> Unifier<'a> {
@@ -19,6 +21,26 @@ impl<'a> Unifier<'a> {
         Unifier {
             engines,
             help_text: help_text.to_string(),
+            unify_self: false,
+            unify_generic: false,
+        }
+    }
+
+    pub(crate) fn new_with_unify_self(engines: &'a Engines, help_text: &str) -> Unifier<'a> {
+        Unifier {
+            engines,
+            help_text: help_text.to_string(),
+            unify_self: true,
+            unify_generic: false,
+        }
+    }
+
+    pub(crate) fn new_with_unify_generic(engines: &'a Engines, help_text: &str) -> Unifier<'a> {
+        Unifier {
+            engines,
+            help_text: help_text.to_string(),
+            unify_self: false,
+            unify_generic: true,
         }
     }
 
@@ -159,13 +181,23 @@ impl<'a> Unifier<'a> {
                 },
             ) if rn.as_str() == en.as_str() && rtc.eq(&etc, self.engines) => (),
 
-            (r @ UnknownGeneric { .. }, e) if !self.occurs_check(received, expected) => {
+            (r @ UnknownGeneric { .. }, e)
+                if !self.occurs_check(received, expected)
+                    && (self.unify_generic
+                        || !matches!(
+                            self.engines.te().get(expected),
+                            TypeInfo::UnknownGeneric { .. }
+                        )) =>
+            {
                 self.replace_received_with_expected(handler, received, expected, &r, e, span)
             }
-            (r, e @ UnknownGeneric { .. }) if !self.occurs_check(expected, received) => {
+            (r, e @ UnknownGeneric { .. })
+                if !self.occurs_check(expected, received)
+                    && e.is_self_type()
+                    && self.unify_self =>
+            {
                 self.replace_expected_with_received(handler, received, expected, r, &e, span)
             }
-
             // Type aliases and the types they encapsulate coerce to each other.
             (Alias { ty, .. }, _) => self.unify(handler, ty.type_id, expected, span),
             (_, Alias { ty, .. }) => self.unify(handler, received, ty.type_id, span),

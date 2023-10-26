@@ -386,7 +386,7 @@ fn unify_arguments_and_parameters(
         for ((_, arg), param) in arguments.iter().zip(parameters.iter()) {
             // unify the type of the argument with the type of the param
             let unify_res = handler.scope(|handler| {
-                type_engine.unify(
+                type_engine.unify_with_generic(
                     handler,
                     engines,
                     arg.return_type,
@@ -574,7 +574,7 @@ pub(crate) fn monomorphize_method_application(
 
         // unify method return type with current ctx.type_annotation().
         handler.scope(|handler| {
-            type_engine.unify(
+            type_engine.unify_with_generic(
                 handler,
                 engines,
                 method.return_type.type_id,

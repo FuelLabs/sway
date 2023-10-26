@@ -100,7 +100,7 @@ impl TyImplTrait {
 
         // Unify the "self" type param and the type that we are implementing for
         handler.scope(|h| {
-            type_engine.unify(
+            type_engine.unify_with_self(
                 h,
                 engines,
                 implementing_for.type_id,
@@ -208,7 +208,7 @@ impl TyImplTrait {
                 // Unify the "self" type param from the abi declaration with
                 // the type that we are implementing for.
                 handler.scope(|h| {
-                    type_engine.unify(
+                    type_engine.unify_with_self(
                         h,
                         engines,
                         implementing_for.type_id,
@@ -348,7 +348,7 @@ impl TyImplTrait {
 
         // Unify the "self" type param and the type that we are implementing for
         handler.scope(|h| {
-            type_engine.unify(
+            type_engine.unify_with_self(
                 h,
                 engines,
                 implementing_for.type_id,
