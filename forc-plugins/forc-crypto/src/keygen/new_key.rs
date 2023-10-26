@@ -63,7 +63,7 @@ pub fn handler(arg: Arg) -> Result<String> {
         } else {
             serde_json::to_string(&output)
         })?,
-        "### Do not share or lose this private key! Press any key to complete. ###",
+        "### Do not share or lose this private key! Press any key to exit. ###",
     )?;
 
     Ok("".to_owned())
