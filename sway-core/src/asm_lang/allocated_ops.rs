@@ -242,7 +242,7 @@ pub(crate) enum AllocatedOpcode {
 }
 
 impl AllocatedOpcode {
-    /// Returns a list of all registers *written* by instruction `self`. 
+    /// Returns a list of all registers *written* by instruction `self`.
     pub(crate) fn def_registers(&self) -> BTreeSet<&AllocatedRegister> {
         use AllocatedOpcode::*;
         (match self {

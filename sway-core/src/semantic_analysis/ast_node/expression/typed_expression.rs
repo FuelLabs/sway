@@ -2389,7 +2389,7 @@ fn check_asm_block_validity(
                 },
                 None,
             );
-    
+
             if let Ok(ty::TyDecl::VariableDecl(decl)) = decl {
                 handler.emit_warn(CompileWarning {
                     span: span.clone(),
@@ -2399,16 +2399,13 @@ fn check_asm_block_validity(
                 });
             }
 
-            (
-                VirtualRegister::Virtual(reg.name.to_string()),
-                span,
-            )
+            (VirtualRegister::Virtual(reg.name.to_string()), span)
         })
         .collect::<HashMap<_, _>>();
 
     for (op, _, _) in opcodes.iter() {
         for being_read in op.use_registers() {
-            if let Some(span) = uninitialized_registers.remove(being_read) { 
+            if let Some(span) = uninitialized_registers.remove(being_read) {
                 handler.emit_err(CompileError::UninitRegisterInAsmBlockBeingRead { span });
             }
         }
@@ -2420,7 +2417,7 @@ fn check_asm_block_validity(
 
     if let Some((reg, _)) = asm.returns.as_ref() {
         let reg = VirtualRegister::Virtual(reg.name.to_string());
-        if let Some(span) = uninitialized_registers.remove(&reg) { 
+        if let Some(span) = uninitialized_registers.remove(&reg) {
             handler.emit_err(CompileError::UninitRegisterInAsmBlockBeingRead { span });
         }
     }
