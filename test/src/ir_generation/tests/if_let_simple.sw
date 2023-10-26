@@ -21,8 +21,8 @@ fn main() -> u64 {
 // check: get_local ptr { u64, ( bool | u64 ) }, thing
 // check: $(thing_var=$VAL) = get_local ptr { u64, ( bool | u64 ) }, thing
 
-// check: get_local ptr { u64, ( bool | u64 ) }, __match_return_var_name_1
-// check: $(match_var=$VAL) = get_local ptr { u64, ( bool | u64 ) }, __match_return_var_name_1
+// check: get_local ptr { u64, ( bool | u64 ) }, __matched_value_1
+// check: $(match_var=$VAL) = get_local ptr { u64, ( bool | u64 ) }, __matched_value_1
 
 // check: $(idx_val=$VAL) = const u64 0
 // check: $(tag_ptr=$VAL) = get_elem_ptr $match_var, ptr u64, $idx_val
@@ -33,7 +33,7 @@ fn main() -> u64 {
 // check: cbr $tags_match, $(block0=$ID)(), $(block1=$ID)()
 
 // check: $block0():
-// check: $(match_var=$VAL) = get_local ptr { u64, ( bool | u64 ) }, __match_return_var_name_1
+// check: $(match_var=$VAL) = get_local ptr { u64, ( bool | u64 ) }, __matched_value_1
 
 // check: $(idx_1_a=$VAL) = const u64 1
 // check: $(idx_1_b=$VAL) = const u64 1
