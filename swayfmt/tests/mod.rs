@@ -1720,6 +1720,32 @@ impl OrdEq for u256 {}
 }
 
 #[test]
+fn chained_methods_0() {
+    check(
+        r#"
+library;
+
+fn test() {
+    fuel.really_long_field.other_really_long_field.foo().bar().baz.quux().yet_another_call().to_go_above_max_line_length();
+}
+        "#,
+        r#"library;
+
+fn test() {
+    fuel.really_long_field
+        .other_really_long_field
+        .foo()
+        .bar()
+        .baz
+        .quux()
+        .yet_another_call()
+        .to_go_above_max_line_length();
+}
+"#,
+    );
+}
+
+#[test]
 fn chained_methods_1() {
     check(
         r#"

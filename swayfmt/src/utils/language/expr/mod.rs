@@ -298,8 +298,15 @@ impl Format for Expr {
                 dot_token,
                 name,
             } => {
+                let prev_length = formatted_code.len();
                 target.format(formatted_code, formatter)?;
-                if formatter.shape.code_line.expr_new_line {
+                let diff = formatted_code.len() - prev_length;
+                if diff > 5 && formatter.shape.code_line.expr_new_line {
+                    // The next next expression should be added onto a new line.
+                    // The only exception is the previous element has fewer than
+                    // 5 characters, in which case we can add the dot onto the
+                    // same line (for example self.x will be rendered in the
+                    // same line)
                     formatter.indent();
                     write!(
                         formatted_code,
