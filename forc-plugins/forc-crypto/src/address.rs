@@ -3,6 +3,16 @@ use fuel_crypto::fuel_types::Address;
 use fuels_core::types::bech32::Bech32Address;
 use std::str::{from_utf8, FromStr};
 
+#[derive(Debug, clap::Args)]
+#[clap(
+    author,
+    version,
+    about = "Converts any valid address to all supported formats"
+)]
+pub struct Args {
+    pub content: String,
+}
+
 /// Takes a valid address in any supported format and returns them in all
 /// supported format. This is meant to be a tool that can be used to convert any
 /// address format to all other formats

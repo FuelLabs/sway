@@ -6,16 +6,6 @@ use std::{
     path::Path,
 };
 
-#[derive(Debug, clap::Args)]
-#[clap(
-    author,
-    version,
-    about = "Converts any valid address to all supported formats"
-)]
-pub struct AddressArgs {
-    pub content: String,
-}
-
 #[derive(Debug, Clone, clap::Args)]
 #[clap(author, version, about = "Hashes the argument or file with this hash")]
 pub struct HashArgs {

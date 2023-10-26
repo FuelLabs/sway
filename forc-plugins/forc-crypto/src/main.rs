@@ -22,7 +22,7 @@ mod sha256;
 pub enum Command {
     Keccak256(args::HashArgs),
     Sha256(args::HashArgs),
-    Address(args::AddressArgs),
+    Address(address::Args),
     NewKey(keygen::new_key::Arg),
     ParseSecret(keygen::parse_secret::Arg),
 }
