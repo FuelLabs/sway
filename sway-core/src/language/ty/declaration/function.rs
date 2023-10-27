@@ -252,6 +252,7 @@ impl TyFunctionDecl {
     pub(crate) fn parameters_span(&self) -> Span {
         if !self.parameters.is_empty() {
             self.parameters.iter().fold(
+                // TODO: Use Span::join_all().
                 self.parameters[0].name.span(),
                 |acc, TyFunctionParameter { type_argument, .. }| {
                     Span::join(acc, type_argument.span.clone())

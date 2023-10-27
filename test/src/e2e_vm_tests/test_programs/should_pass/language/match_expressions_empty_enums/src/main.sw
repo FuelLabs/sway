@@ -6,6 +6,11 @@ impl MyNever {
     fn into_any<T>(self) -> T {
         match self {}
     }
+
+    fn match_me(self) -> Self {
+        let e = self;
+        match e { }
+    }
 }
 
 fn result_into_ok<T>(res: Result<T, MyNever>) -> T {
