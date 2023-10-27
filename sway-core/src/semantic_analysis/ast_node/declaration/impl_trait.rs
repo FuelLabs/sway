@@ -875,6 +875,29 @@ fn type_check_trait_implementation(
         match item {
             TyImplItem::Fn(decl_ref) => {
                 let mut method = decl_engine.get_function(decl_ref);
+
+                // We need to add impl type parameters to the  method's type parameters
+                // so that in-line monomorphization can complete.
+                //
+                // We also need to add impl type parameters to the method's type
+                // parameters so the type constraints are correctly applied to the method.
+                //
+                // NOTE: this is a semi-hack that is used to force monomorphization of
+                // trait methods that contain a generic defined in the parent impl...
+                // without stuffing the generic into the method's type parameters, its
+                // not currently possible to monomorphize on that generic at function
+                // application time.
+                method.type_parameters.append(
+                    &mut impl_type_parameters
+                        .iter()
+                        .cloned()
+                        .map(|mut t| {
+                            t.is_from_parent = true;
+                            t
+                        })
+                        .collect::<Vec<_>>(),
+                );
+
                 method.replace_decls(&decl_mapping, handler, &mut ctx)?;
                 method.subst(&type_mapping, engines);
                 all_items_refs.push(TyImplItem::Fn(
