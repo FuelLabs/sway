@@ -615,7 +615,7 @@ impl PackageManifest {
     /// Note: If only `core` is specified, we are unable to implicitly add `std` as we cannot
     /// guarantee that the user's `core` is compatible with the implicit `std`.
     fn implicitly_include_std_if_missing(&mut self) {
-        use crate::{CORE, STD};
+        use sway_types::constants::{CORE, STD};
         // Don't include `std` if:
         // - this *is* `core` or `std`.
         // - either `core` or `std` packages are already specified.
