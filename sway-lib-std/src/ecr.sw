@@ -316,7 +316,7 @@ fn test_ed_verify() {
     let hi = 0xf38cef9361894be6c6e0eddec28a663d099d7ddff17c8077a1447d7ecb4e6545;
     let lo = 0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00;
     let signature: B512 = B512::from((hi, lo));
-    // A verify public key with signature 
+    // A verfied public key with signature 
     let verfied = ed_verify(pub_key, signature, msg_hash).unwrap();
     assert(verfied);
 }
@@ -333,6 +333,5 @@ fn test_revert_ed_verify() {
     let hi = ZERO_B256;
     let lo = 0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00;
     let signature: B512 = B512::from((hi, lo));
-    // A verify public key with signature 
     let verfied = ed_verify(pub_key, signature, msg_hash).unwrap();
 }
