@@ -114,10 +114,7 @@ mod test {
             Some(b"I'm a test from stdin".to_vec()),
             checked_read_stdin(&Some("-".to_owned()), &stdin[..])
         );
-        assert_eq!(
-            Some(b"I'm a test from stdin".to_vec()),
-            checked_read_stdin(&Some("".to_owned()), &stdin[..])
-        );
+        assert_eq!(None, checked_read_stdin(&Some("".to_owned()), &stdin[..]));
     }
 
     #[test]
