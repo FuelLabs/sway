@@ -52,7 +52,26 @@ use std::collections::{HashMap, VecDeque};
 impl ty::TyExpression {
     pub(crate) fn core_ops_eq(
         handler: &Handler,
+        ctx: TypeCheckContext,
+        arguments: Vec<ty::TyExpression>,
+        span: Span,
+    ) -> Result<ty::TyExpression, ErrorEmitted> {
+        Self::core_ops(handler, ctx, OpVariant::Equals, arguments, span)
+    }
+
+    pub(crate) fn core_ops_neq(
+        handler: &Handler,
+        ctx: TypeCheckContext,
+        arguments: Vec<ty::TyExpression>,
+        span: Span,
+    ) -> Result<ty::TyExpression, ErrorEmitted> {
+        Self::core_ops(handler, ctx, OpVariant::NotEquals, arguments, span)
+    }
+
+    fn core_ops(
+        handler: &Handler,
         mut ctx: TypeCheckContext,
+        op_variant: OpVariant,
         arguments: Vec<ty::TyExpression>,
         span: Span,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
@@ -64,7 +83,7 @@ impl ty::TyExpression {
                 Ident::new_with_override("ops".into(), span.clone()),
             ],
             suffix: Op {
-                op_variant: OpVariant::Equals,
+                op_variant,
                 span: span.clone(),
             }
             .to_var_name(),
@@ -190,8 +209,9 @@ impl ty::TyExpression {
             ExpressionKind::CodeBlock(contents) => {
                 Self::type_check_code_block(handler, ctx.by_ref(), contents, span)
             }
-            // TODO if _condition_ is constant, evaluate it and compile this to an
-            // expression with only one branch
+            // TODO: If _condition_ is constant, evaluate it and compile this to an
+            // expression with only one branch. Think at which stage to do it because
+            // the same optimization should be done on desugared match expressions.
             ExpressionKind::If(IfExpression {
                 condition,
                 then,
@@ -656,10 +676,13 @@ impl ty::TyExpression {
             .expect_is_supported_in_match_expressions(handler, &typed_value.span)?;
 
         // type check the match expression and create a ty::TyMatchExpression object
-        let (typed_match_expression, typed_scrutinees) = {
-            let ctx = ctx.by_ref().with_help_text("");
-            ty::TyMatchExpression::type_check(handler, ctx, typed_value, branches, span.clone())?
-        };
+        let (typed_match_expression, typed_scrutinees) = ty::TyMatchExpression::type_check(
+            handler,
+            ctx.by_ref().with_help_text(""),
+            typed_value,
+            branches,
+            span.clone(),
+        )?;
 
         // check to see if the match expression is exhaustive and if all match arms are reachable
         let (witness_report, arms_reachability) = check_match_expression_usefulness(
@@ -735,22 +758,6 @@ impl ty::TyExpression {
                         is_last_arm: true,
                         is_catch_all_arm: last_arm_report.scrutinee.is_catch_all(),
                     },
-                });
-            }
-        }
-
-        // Emit errors for eventual multiple definitions of variables.
-        // These errors can be carried on. The desugared version will treat
-        // the duplicates as shadowing, which is fine for the rest of compilation.
-        for scrutinee in typed_scrutinees.iter() {
-            for duplicate in collect_duplicate_match_pattern_variables(scrutinee) {
-                handler.emit_err(CompileError::MultipleDefinitionsOfMatchArmVariable {
-                    match_value: value.span(),
-                    match_type: engines.help_out(type_id).to_string(),
-                    first_definition: duplicate.first_definition.1,
-                    first_definition_is_struct_field: duplicate.first_definition.0,
-                    duplicate: duplicate.duplicate.1,
-                    duplicate_is_struct_field: duplicate.duplicate.0,
                 });
             }
         }

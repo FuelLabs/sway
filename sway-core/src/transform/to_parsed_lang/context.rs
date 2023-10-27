@@ -2,27 +2,28 @@ use crate::{language::parsed::TreeType, BuildTarget};
 
 #[derive(Default)]
 pub struct Context {
-    /// Indicates whether the module being parsed has a `configurable` block
+    /// Indicates whether the module being parsed has a `configurable` block.
     module_has_configurable_block: bool,
 
-    /// Unique suffix used to generate unique names for destructured structs
+    /// Unique suffix used to generate unique names for destructured structs.
     destructured_struct_unique_suffix: usize,
 
-    /// Unique suffix used to generate unique names for destructured tuples
+    /// Unique suffix used to generate unique names for destructured tuples.
     destructured_tuple_unique_suffix: usize,
 
-    /// Unique suffix used to generate unique names for vars returned from `match` expressions
-    match_expression_return_var_unique_suffix: usize,
+    /// Unique suffix used to generate unique names for variables
+    /// that store values matched in match expressions.
+    match_expression_matched_value_unique_suffix: usize,
 
-    /// The build target
+    /// The build target.
     build_target: BuildTarget,
 
-    /// The build target
+    /// The program type.
     program_type: Option<TreeType>,
 }
 
 impl Context {
-    /// Create a new context
+    /// Create a new context.
     pub fn new(build_target: BuildTarget) -> Self {
         Self {
             build_target,
@@ -30,17 +31,17 @@ impl Context {
         }
     }
 
-    /// Update the value of `module_has_configurable_block`
+    /// Updates the value of `module_has_configurable_block`.
     pub fn set_module_has_configurable_block(&mut self, val: bool) {
         self.module_has_configurable_block = val;
     }
 
-    /// Returns whether the module being parsed has a `configurable` block
+    /// Returns whether the module being parsed has a `configurable` block.
     pub fn module_has_configurable_block(&self) -> bool {
         self.module_has_configurable_block
     }
 
-    /// Returns a suffix used to generate a unique name for a destructured struct
+    /// Returns a unique suffix used to generate a unique name for a destructured struct.
     pub fn next_destructured_struct_unique_suffix(&mut self) -> usize {
         self.destructured_struct_unique_suffix += 1;
         self.destructured_struct_unique_suffix
@@ -52,24 +53,24 @@ impl Context {
         self.destructured_tuple_unique_suffix
     }
 
-    /// Returns a unique suffix used to generate a unique name for a var returned from a `match`
-    /// expressions
-    pub fn next_match_expression_return_var_unique_suffix(&mut self) -> usize {
-        self.match_expression_return_var_unique_suffix += 1;
-        self.match_expression_return_var_unique_suffix
+    /// Returns a unique suffix used to generate a unique name for a variable
+    /// that stores the value matched in a match expression.
+    pub fn next_match_expression_matched_value_unique_suffix(&mut self) -> usize {
+        self.match_expression_matched_value_unique_suffix += 1;
+        self.match_expression_matched_value_unique_suffix
     }
 
-    /// Returns the build target
+    /// Returns the build target.
     pub fn build_target(&self) -> BuildTarget {
         self.build_target
     }
 
-    /// Returns the build target
+    /// Returns the program type.
     pub fn program_type(&self) -> Option<TreeType> {
         self.program_type.clone()
     }
 
-    /// Update the value of `program_type`
+    /// Updates the value of `program_type`.
     pub fn set_program_type(&mut self, program_type: TreeType) {
         self.program_type = Some(program_type);
     }

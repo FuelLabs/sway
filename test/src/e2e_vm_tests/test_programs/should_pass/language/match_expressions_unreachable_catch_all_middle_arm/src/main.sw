@@ -370,7 +370,7 @@ fn main() -> () {
         _ => 0,
     };
 
-    let or1 = 0;
+    let or1 = 0u64;
 
     let _x = match or1 {
         1 | 2 | _ => 0,
@@ -379,7 +379,7 @@ fn main() -> () {
         _ => 0,
     };
 
-    let or2 = 0;
+    let or2 = 0u64;
 
     let _x = match or2 {
         4 => 0,
