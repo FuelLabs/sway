@@ -4,7 +4,7 @@
 use crate::{
     core::document,
     handlers::{notification, request},
-    lsp_ext::{OnEnterParams, ShowAstParams},
+    lsp_ext::{OnEnterParams, ShowAstParams, VisualizeParams},
     server_state::ServerState,
 };
 use lsp_types::{
@@ -135,5 +135,9 @@ impl ServerState {
 
     pub async fn on_enter(&self, params: OnEnterParams) -> Result<Option<WorkspaceEdit>> {
         request::on_enter(self, params)
+    }
+
+    pub async fn visualize(&self, params: VisualizeParams) -> Result<Option<WorkspaceEdit>> {
+        request::visualize(self, params)
     }
 }
