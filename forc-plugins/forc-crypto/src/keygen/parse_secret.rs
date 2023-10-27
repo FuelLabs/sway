@@ -1,6 +1,6 @@
 //! This file will be hosted here until
 //! https://github.com/FuelLabs/sway/issues/5170 is fixed
-use super::{KeyType};
+use super::KeyType;
 use anyhow::Result;
 use fuel_core_types::{fuel_crypto::SecretKey, fuel_tx::Input};
 use libp2p_identity::{secp256k1, Keypair, PeerId};
@@ -15,7 +15,9 @@ use std::{ops::Deref, str::FromStr};
     about = "Parses a private key to view the associated public key"
 )]
 pub struct Arg {
+    /// A private key in hex format
     secret: String,
+    /// Key type to generate. It can either be `block-production` or `p2p`.
     #[clap(
         long = "key-type",
         short = 'k',

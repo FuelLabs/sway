@@ -1,6 +1,6 @@
 //! This file will be hosted here until
 //! https://github.com/FuelLabs/sway/issues/5170 is fixed
-use super::{KeyType};
+use super::KeyType;
 use anyhow::Result;
 use fuel_core_types::{
     fuel_crypto::{
@@ -17,6 +17,7 @@ use std::ops::Deref;
 #[derive(Debug, clap::Args)]
 #[clap(author, version, about = "Creates a new key for use with fuel-core")]
 pub struct Arg {
+    /// Key type to generate. It can either be `block-production` or `p2p`.
     #[clap(
         long = "key-type",
         short = 'k',

@@ -44,7 +44,7 @@ fn run() -> Result<()> {
     let content = match app {
         Command::Keccak256(arg) => keccak256::hash(arg)?,
         Command::Sha256(arg) => sha256::hash(arg)?,
-        Command::Address(arg) => address::dump_address(arg.content)?,
+        Command::Address(arg) => address::dump_address(arg.address)?,
         Command::NewKey(arg) => keygen::new_key::handler(arg)?,
         Command::ParseSecret(arg) => keygen::parse_secret::handler(arg)?,
     };

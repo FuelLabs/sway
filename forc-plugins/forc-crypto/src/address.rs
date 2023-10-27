@@ -11,7 +11,9 @@ use std::str::{from_utf8, FromStr};
     about = "Converts any valid address to all supported formats"
 )]
 pub struct Args {
-    pub content: String,
+    /// The address to convert. It can be either a valid address in any format
+    /// (Bech32 or hex)
+    pub address: String,
 }
 
 /// Takes a valid address in any supported format and returns them in all
