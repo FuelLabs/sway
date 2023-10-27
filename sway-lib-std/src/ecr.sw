@@ -266,7 +266,7 @@ fn test_ec_recover_r1() {
     assert(public_key.bytes[1] == pub_lo);
 }
 
-#[test(should_revert)]
+#[test(should_revert = "0")]
 fn test_revert_ec_recover_r1() {
     use ::assert::assert;
     use ::constants::ZERO_B256;
@@ -292,7 +292,7 @@ fn test_ec_recover_address_r1() {
     assert(result_address == address);
 }
 
-#[test(should_revert)]
+#[test(should_revert = "0")]
 fn test_revert_ec_recover_address_r1() {
     use ::assert::assert;
     use ::constants::ZERO_B256;
@@ -321,7 +321,7 @@ fn test_ed_verify() {
     assert(verfied);
 }
 
-#[test(should_revert)]
+#[test(should_revert = "0")]
 fn test_revert_ed_verify() {
     use ::assert::assert;
     use ::constants::ZERO_B256;
