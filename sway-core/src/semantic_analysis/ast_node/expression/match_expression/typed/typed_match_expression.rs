@@ -156,6 +156,7 @@ impl ty::TyMatchExpression {
 
                     Some(ty::TyExpression {
                         expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
+                            whole_block_span: Span::dummy(),
                             contents: code_block_contents,
                         }),
                         return_type: self.return_type_id,

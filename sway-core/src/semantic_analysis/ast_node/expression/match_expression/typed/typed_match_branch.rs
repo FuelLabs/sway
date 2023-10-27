@@ -651,6 +651,7 @@ fn instantiate_branch_condition_result_var_declarations_and_matched_or_variant_i
                         condition: Box::new(condition),
                         then: Box::new(ty::TyExpression {
                             expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
+                                whole_block_span: instantiate.dummy_span(),
                                 contents: code_block_contents,
                             }),
                             return_type: tuple_type,
