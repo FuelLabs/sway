@@ -51,6 +51,8 @@ impl Format for ItemStruct {
                     write_comments(formatted_code, self.span().into(), formatter)?;
                 }
 
+                formatter.shape.code_line.update_expr_new_line(true);
+
                 // Determine alignment tactic
                 match formatter.config.structures.field_alignment {
                     FieldAlignment::AlignFields(enum_variant_align_threshold) => {
