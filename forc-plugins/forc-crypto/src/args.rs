@@ -15,7 +15,7 @@ pub struct HashArgs {
     ///        loaded.
     ///
     ///     2. A binary string encoded as a hex string. If that is the case, the
-    ///        hex is decoded a Vec<u8> is passed
+    ///        hex is decoded and passed as a Vec<u8>
     ///
     ///     3. A string. This is the last option, if the string is "-", `stdin`
     ///        is read instead. Otherwise the raw string is converted to a Vec<u8>

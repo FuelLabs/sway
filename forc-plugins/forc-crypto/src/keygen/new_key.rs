@@ -17,7 +17,7 @@ use std::ops::Deref;
 #[derive(Debug, clap::Args)]
 #[clap(author, version, about = "Creates a new key for use with fuel-core")]
 pub struct Arg {
-    /// Key type to generate. It can either be `block-production` or `p2p`.
+    /// Key type to generate. It can either be `block-production` or `peering`.
     #[clap(
         long = "key-type",
         short = 'k',

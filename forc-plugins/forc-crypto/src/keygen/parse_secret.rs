@@ -17,7 +17,7 @@ use std::{ops::Deref, str::FromStr};
 pub struct Arg {
     /// A private key in hex format
     secret: String,
-    /// Key type to generate. It can either be `block-production` or `p2p`.
+    /// Key type to generate. It can either be `block-production` or `peering`.
     #[clap(
         long = "key-type",
         short = 'k',

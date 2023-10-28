@@ -12,7 +12,6 @@ use termion::screen::IntoAlternateScreen;
 
 mod address;
 mod args;
-mod content;
 mod keccak256;
 mod keygen;
 mod sha256;
