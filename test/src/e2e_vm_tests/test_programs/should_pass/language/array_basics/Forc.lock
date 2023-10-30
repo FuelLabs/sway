@@ -1,8 +1,16 @@
 [[package]]
-name = 'array_basics'
-source = 'member'
-dependencies = ['core']
+name = "array_basics"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
-name = 'core'
-source = 'path+from-root-E87F696D35D6ACBA'
+name = "core"
+source = "path+from-root-E87F696D35D6ACBA"
+
+[[package]]
+name = "std"
+source = "path+from-root-E87F696D35D6ACBA"
+dependencies = ["core"]
