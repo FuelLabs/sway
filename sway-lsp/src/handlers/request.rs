@@ -409,7 +409,7 @@ pub fn handle_show_ast(
 }
 
 /// This method is triggered when the use hits enter or pastes a newline in the editor.
-pub(crate) fn on_enter(
+pub(crate) fn handle_on_enter(
     state: &ServerState,
     params: lsp_ext::OnEnterParams,
 ) -> Result<Option<WorkspaceEdit>> {
@@ -430,7 +430,7 @@ pub(crate) fn on_enter(
 }
 
 /// Returns a [String] of the GraphViz DOT representation of a graph.
-pub(crate) fn visualize(
+pub fn handle_visualize(
     _state: &ServerState,
     params: lsp_ext::VisualizeParams,
 ) -> Result<Option<String>> {

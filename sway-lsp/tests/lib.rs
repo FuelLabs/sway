@@ -123,6 +123,14 @@ async fn show_ast() {
     let _ = server.shutdown_server();
 }
 
+#[tokio::test]
+async fn visualize() {
+    let server = ServerState::default();
+    let uri = open(&server, e2e_test_dir().join("src/main.sw")).await;
+    lsp::visualize_request(&server, &uri, "build_plan").await;
+    let _ = server.shutdown_server();
+}
+
 //------------------- GO TO DEFINITION -------------------//
 
 #[tokio::test]

@@ -134,10 +134,10 @@ impl ServerState {
     }
 
     pub async fn on_enter(&self, params: OnEnterParams) -> Result<Option<WorkspaceEdit>> {
-        request::on_enter(self, params)
+        request::handle_on_enter(self, params)
     }
 
     pub async fn visualize(&self, params: VisualizeParams) -> Result<Option<String>> {
-        request::visualize(self, params)
+        request::handle_visualize(self, params)
     }
 }
