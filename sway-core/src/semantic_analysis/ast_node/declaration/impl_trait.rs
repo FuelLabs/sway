@@ -876,7 +876,7 @@ fn type_check_trait_implementation(
             TyImplItem::Fn(decl_ref) => {
                 let mut method = decl_engine.get_function(decl_ref);
 
-                // We need to add impl type parameters to the  method's type parameters
+                // We need to add impl type parameters to the method's type parameters
                 // so that in-line monomorphization can complete.
                 //
                 // We also need to add impl type parameters to the method's type
@@ -1142,7 +1142,7 @@ fn type_check_impl_method(
             );
         }
 
-        // We need to add impl type parameters to the  method's type parameters
+        // We need to add impl type parameters to the method's type parameters
         // so that in-line monomorphization can complete.
         //
         // We also need to add impl type parameters to the method's type
