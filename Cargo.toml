@@ -4,6 +4,7 @@ members = [
     "forc",
     "forc-pkg",
     "forc-plugins/forc-client",
+    "forc-plugins/forc-crypto",
     "forc-plugins/forc-doc",
     "forc-plugins/forc-fmt",
     "forc-plugins/forc-lsp",
