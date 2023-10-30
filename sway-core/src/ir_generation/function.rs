@@ -12,7 +12,7 @@ use crate::{
         compile_constant_expression, compile_constant_expression_to_constant,
     },
     language::{
-        ty::{self, ProjectionKind, TyConstantDecl},
+        ty::{self, ProjectionKind, TyConstantDecl, TyExpressionVariant},
         *,
     },
     metadata::MetadataManager,
@@ -2143,6 +2143,108 @@ impl<'eng> FnCompiler<'eng> {
             .ins(context)
             .get_local(array_var)
             .add_metadatum(context, span_md_idx);
+
+        // If all elements are the same constant, then we can initialize the array
+        // in a loop, reducing code size. But to check for that we've to compile
+        // the expressions first, to compare. If it turns out that they're not all
+        // constants, then we end up with all expressions compiled first, and then
+        // all of them stored to the array. This could potentially be bad for register
+        // pressure. So we do this in steps, at the cost of some compile time.
+        let all_consts = contents
+            .iter()
+            .all(|elm| matches!(elm.expression, TyExpressionVariant::Literal(..)));
+
+        // We only do the optimization for suffiently large arrays, so that
+        // overhead due to the loop doesn't make it worse than the unrolled version.
+        if all_consts && contents.len() > 5 {
+            // We can compile all elements ahead of time without affecting register pressure.
+            let compiled_elems = contents
+                .iter()
+                .map(|e| self.compile_expression_to_value(context, md_mgr, e))
+                .collect::<Result<Vec<_>, _>>()?;
+            let mut compiled_elems_iter = compiled_elems.iter();
+            let first = compiled_elems_iter.next();
+            let const_initialiser_opt = first.filter(|c| {
+                compiled_elems_iter.all(|elem| {
+                    elem.get_constant(context)
+                        .expect("Constant expression must evaluate to a constant IR value")
+                        .eq(
+                            context,
+                            c.get_constant(context)
+                                .expect("Constant expression must evaluate to a constant IR value"),
+                        )
+                })
+            });
+            if let Some(const_initializer) = const_initialiser_opt {
+                // Create a loop to insert const_initializer to all array elements.
+                let loop_block = self
+                    .function
+                    .create_block(context, Some("array_init_loop".into()));
+                // The loop begins with 0.
+                let zero = Constant::new_uint(context, 64, 0);
+                let zero = Value::new_constant(context, zero);
+                // Branch to the loop block, passing the initial iteration value.
+                self.current_block
+                    .ins(context)
+                    .branch(loop_block, vec![zero]);
+                // Add a block argument (for the IV) to the loop block.
+                let index_var_index = loop_block.new_arg(context, Type::get_uint64(context));
+                let index = loop_block.get_arg(context, index_var_index).unwrap();
+                // Create an exit block.
+                let exit_block = self
+                    .function
+                    .create_block(context, Some("array_init_exit".into()));
+                // Start building the loop block.
+                self.current_block = loop_block;
+                let gep_val = self.current_block.ins(context).get_elem_ptr(
+                    array_value,
+                    elem_type,
+                    vec![index],
+                );
+                self.current_block
+                    .ins(context)
+                    .store(gep_val, *const_initializer)
+                    .add_metadatum(context, span_md_idx);
+                // Increment index by one.
+                let one = Constant::new_uint(context, 64, 1);
+                let one = Value::new_constant(context, one);
+                let index_inc =
+                    self.current_block
+                        .ins(context)
+                        .binary_op(BinaryOpKind::Add, index, one);
+                // continue = index_inc < contents.len()
+                let len = Constant::new_uint(context, 64, contents.len() as u64);
+                let len = Value::new_constant(context, len);
+                let r#continue =
+                    self.current_block
+                        .ins(context)
+                        .cmp(Predicate::LessThan, index_inc, len);
+                // if continue then loop_block else exit_block.
+                self.current_block.ins(context).conditional_branch(
+                    r#continue,
+                    loop_block,
+                    exit_block,
+                    vec![index_inc],
+                    vec![],
+                );
+                // Continue compilation in the exit block.
+                self.current_block = exit_block;
+            } else {
+                // Insert each element separately.
+                for (idx, elem_value) in compiled_elems.iter().enumerate() {
+                    let gep_val = self.current_block.ins(context).get_elem_ptr_with_idx(
+                        array_value,
+                        elem_type,
+                        idx as u64,
+                    );
+                    self.current_block
+                        .ins(context)
+                        .store(gep_val, *elem_value)
+                        .add_metadatum(context, span_md_idx);
+                }
+            }
+            return Ok(array_value);
+        }
 
         // Compile each element and insert it immediately.
         for (idx, elem_expr) in contents.iter().enumerate() {
