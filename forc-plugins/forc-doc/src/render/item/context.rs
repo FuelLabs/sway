@@ -259,13 +259,19 @@ impl Renderable for Context {
         })
     }
 }
+#[derive(Debug, Clone)]
+pub(crate) struct DocImplTrait {
+    pub(crate) impl_for_module: ModuleInfo,
+    pub(crate) impl_trait: TyImplTrait,
+    pub(crate) module_info_override: Option<Vec<String>>,
+}
 #[derive(Clone, Debug)]
 /// The context section of an item that appears in the page [ItemBody].
 pub(crate) struct ItemContext {
     /// [Context] can be fields on a struct, variants of an enum, etc.
     pub(crate) context_opt: Option<Context>,
     /// The traits implemented for this type.
-    pub(crate) impl_traits: Option<Vec<TyImplTrait>>,
+    pub(crate) impl_traits: Option<Vec<DocImplTrait>>,
     // TODO: All other Implementation types, eg
     // implementations on foreign types, method implementations, etc.
 }
@@ -368,7 +374,7 @@ impl Renderable for ItemContext {
 
         let impl_traits = match self.impl_traits {
             Some(impl_traits) => {
-                let mut impl_vec: Vec<_> = Vec::new();
+                let mut impl_vec: Vec<_> = Vec::with_capacity(impl_traits.len());
                 for impl_trait in impl_traits {
                     impl_vec.push(impl_trait.render(render_plan.clone())?)
                 }
@@ -395,19 +401,37 @@ impl Renderable for ItemContext {
         })
     }
 }
-impl Renderable for TyImplTrait {
+impl Renderable for DocImplTrait {
     fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let TyImplTrait {
             trait_name,
-            impl_type_parameters: _,
-            trait_type_arguments: _,
             items,
-            trait_decl_ref: _,
             implementing_for,
             ..
-        } = self;
+        } = self.impl_trait;
+        let impl_for_module = self.impl_for_module;
+        let no_deps = render_plan.no_deps;
+        let is_external_item = if let Some(project_root) = trait_name.prefixes.first() {
+            project_root.as_str() != impl_for_module.project_name()
+        } else {
+            false
+        };
 
-        let mut rendered_items = Vec::new();
+        let trait_link = if let Some(module_prefixes) = self.module_info_override {
+            ModuleInfo::from_vec_str(&module_prefixes).file_path_from_location(
+                &format!("trait.{}.html", trait_name.suffix.as_str()),
+                &impl_for_module,
+                is_external_item,
+            )?
+        } else {
+            ModuleInfo::from_call_path(&trait_name).file_path_from_location(
+                &format!("trait.{}.html", trait_name.suffix.as_str()),
+                &impl_for_module,
+                is_external_item,
+            )?
+        };
+
+        let mut rendered_items = Vec::with_capacity(items.len());
         for item in items {
             rendered_items.push(item.render(render_plan.clone())?)
         }
@@ -417,7 +441,13 @@ impl Renderable for TyImplTrait {
                 a(href=format!("{IDENTITY}impl-{}", trait_name.suffix.as_str()), class="anchor");
                 h3(class="code-header in-band") {
                     : "impl ";
-                    : trait_name.suffix.as_str(); // TODO: add links
+                    @ if no_deps && is_external_item {
+                        : trait_name.suffix.as_str();
+                    } else {
+                        a(class="trait", href=format!("{trait_link}")) {
+                            : trait_name.suffix.as_str();
+                        }
+                    }
                     : " for ";
                     : implementing_for.span.as_str();
                 }

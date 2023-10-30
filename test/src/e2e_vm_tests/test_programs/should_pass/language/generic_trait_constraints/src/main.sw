@@ -56,8 +56,7 @@ fn main() -> bool {
     assert_eq(s2.data_a.my_add(1,2),3);
     assert_eq(s2.data_b.my_add(1,2),3);
 
-    // TODO Uncomment this after #5208 is fixed
-    //let _i: Struct3 = 1_u64.into();
+    let _i: Struct3 = 1_u64.into();
 
     true
 }

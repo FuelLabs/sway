@@ -20,7 +20,7 @@ pub const DEFAULT_STRUCTURE_LIT_WIDTH: usize = 18;
 pub const DEFAULT_STRUCTURE_VAR_WIDTH: usize = 35;
 /// Default Maximum width of an array literal before falling back to vertical formatting.
 pub const DEFAULT_COLLECTION_WIDTH: usize = 60;
-/// Defalt width threshold for an array element to be considered short.
+/// Default width threshold for an array element to be considered short.
 pub const DEFAULT_SHORT_ARRAY_ELEM_WIDTH_THRESHOLD: usize = 10;
 /// Default max length of a chain to fit on a single line.
 pub const DEFAULT_CHAIN_WIDTH: usize = 60;

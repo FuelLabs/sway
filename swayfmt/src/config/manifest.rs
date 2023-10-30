@@ -9,9 +9,9 @@ use crate::{
     error::ConfigError,
 };
 use forc_tracing::println_yellow_err;
-use forc_util::find_parent_dir_with_file;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use sway_utils::find_parent_dir_with_file;
 
 /// A finalized `swayfmt` config.
 #[derive(Debug, Default, Clone)]

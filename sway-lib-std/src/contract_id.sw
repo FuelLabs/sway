@@ -170,8 +170,12 @@ impl AssetId {
     /// }
     /// ```
     pub fn new(contract_id: ContractId, sub_id: SubId) -> Self {
-        let value = sha256((contract_id, sub_id));
-        Self { value }
+        let result_buffer = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        asm(asset_id: result_buffer, ptr: (contract_id, sub_id), bytes: 64) {
+            s256 asset_id ptr bytes;
+        };
+        
+        Self { value: result_buffer }
     }
 
     /// Creates a new AssetId from a ContractId and the zero SubId.
@@ -199,8 +203,12 @@ impl AssetId {
     /// }
     /// ```
     pub fn default(contract_id: ContractId) -> Self {
-        let value = sha256((contract_id, 0x0000000000000000000000000000000000000000000000000000000000000000));
-        Self { value }
+        let result_buffer = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        asm(asset_id: result_buffer, ptr: (contract_id, 0x0000000000000000000000000000000000000000000000000000000000000000), bytes: 64) {
+            s256 asset_id ptr bytes;
+        };
+
+        Self { value: result_buffer }
     }
 
     /// The base_asset_id represents the base asset of a chain.
