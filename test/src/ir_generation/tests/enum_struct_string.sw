@@ -29,8 +29,8 @@ fn main() -> u64 {
 // check: get_local ptr { u64, ( { { string<17>, u64 }, u64, bool } ) }, b_val
 // check: $(b_val_var=$VAL) = get_local ptr { u64, ( { { string<17>, u64 }, u64, bool } ) }, b_val
 
-// check: get_local ptr { u64, ( { { string<17>, u64 }, u64, bool } ) }, __match_return_var_name_1
-// check: $(match_val_var=$VAL) = get_local ptr { u64, ( { { string<17>, u64 }, u64, bool } ) }, __match_return_var_name_1
+// check: get_local ptr { u64, ( { { string<17>, u64 }, u64, bool } ) }, __matched_value_1
+// check: $(match_val_var=$VAL) = get_local ptr { u64, ( { { string<17>, u64 }, u64, bool } ) }, __matched_value_1
 
 // check: $(idx_val=$VAL) = const u64 0
 // check: $(tag_ptr=$VAL) = get_elem_ptr $match_val_var, ptr u64, $idx_val

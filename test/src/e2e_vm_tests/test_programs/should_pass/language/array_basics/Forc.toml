@@ -6,3 +6,4 @@ name = "array_basics"
 
 [dependencies]
 core = { path = "../../../../../../../sway-lib-core" }
+std = { path = "../../../../../../../sway-lib-std" }

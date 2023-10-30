@@ -112,6 +112,8 @@ pub(crate) struct CodeLine {
     pub(crate) expr_kind: ExprKind,
     /// Used in determining `SameLineWhere` formatting.
     pub(crate) has_where_clause: bool,
+    /// Expression is too long to fit in a single line
+    pub(crate) expr_new_line: bool,
 }
 
 impl CodeLine {
@@ -121,6 +123,7 @@ impl CodeLine {
             line_style,
             expr_kind,
             has_where_clause: Default::default(),
+            expr_new_line: false,
         }
     }
     pub(crate) fn reset_width(&mut self) {
@@ -146,6 +149,10 @@ impl CodeLine {
     /// Update the value of `has_where_clause`.
     pub(crate) fn update_where_clause(&mut self, has_where_clause: bool) {
         self.has_where_clause = has_where_clause;
+    }
+
+    pub(crate) fn update_expr_new_line(&mut self, expr_new_line: bool) {
+        self.expr_new_line = expr_new_line;
     }
 }
 
@@ -300,10 +307,9 @@ impl Shape {
     }
     /// Create a new `Shape` with default `CodeLine`.
     pub(crate) fn with_default_code_line(self) -> Self {
-        Self {
-            code_line: CodeLine::default(),
-            ..self
-        }
+        let mut code_line = CodeLine::default();
+        code_line.update_expr_new_line(self.code_line.expr_new_line);
+        Self { code_line, ..self }
     }
 }
 
