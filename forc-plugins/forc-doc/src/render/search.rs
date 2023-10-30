@@ -19,19 +19,19 @@ pub(crate) fn generate_searchbar() -> Box<dyn RenderBox> {
                         placeholder="Click or press ‘S’ to search, ‘?’ for more options…",
                         type="search"
                     );
-                    div(id="help-button", title="help", tabindex="-1") {
-                        a(href="../help.html") { : "?" }
-                    }
-                    div(id="settings-menu", tabindex="-1") {
-                        a(href="../settings.html", title="settings") {
-                            img(
-                                width="22",
-                                height="22",
-                                alt="change settings",
-                                src="../static.files/wheel.svg"
-                            )
-                        }
-                    }
+                    // div(id="help-button", title="help", tabindex="-1") {
+                    //     a(href="../help.html") { : "?" }
+                    // }
+                    // div(id="settings-menu", tabindex="-1") {
+                    //     a(href="../settings.html", title="settings") {
+                    //         img(
+                    //             width="22",
+                    //             height="22",
+                    //             alt="change settings",
+                    //             src="../static.files/wheel.svg"
+                    //         )
+                    //     }
+                    // }
                 }
             }
         }
