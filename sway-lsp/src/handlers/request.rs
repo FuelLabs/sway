@@ -431,12 +431,14 @@ pub(crate) fn on_enter(
 
 /// Returns a [String] of the GraphViz DOT representation of a graph.
 pub(crate) fn visualize(
-    state: &ServerState,
+    _state: &ServerState,
     params: lsp_ext::VisualizeParams,
 ) -> Result<Option<String>> {
     match params.graph_kind.as_str() {
         "build_plan" => match build_plan(&params.text_document.uri) {
-            Ok(build_plan) => Ok(Some(build_plan.visualize())),
+            Ok(build_plan) => Ok(Some(
+                build_plan.visualize(Some("vscode://file".to_string())),
+            )),
             Err(err) => {
                 tracing::error!("{}", err.to_string());
                 Ok(None)

@@ -11,10 +11,9 @@ use forc_util::{
 };
 use fuel_abi_types::program_abi;
 use petgraph::{
-    self,
+    self, dot,
     visit::{Bfs, Dfs, EdgeRef, Walker},
     Directed, Direction,
-    dot,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -829,40 +828,25 @@ impl BuildPlan {
     }
 
     /// Returns a [String] representing the build dependency graph in GraphViz DOT format.
-    pub fn visualize(&self) -> String {
-        eprintln!("Generating dot graph");
-        let string_graph = self.graph.filter_map(
-            |_, node| Some(node.name.clone()),
-            |_, edge| Some(edge.name.clone()),
-        );
-    
-        let output = format!(
+    pub fn visualize(&self, url_file_prefix: Option<String>) -> String {
+        format!(
             "{:?}",
             dot::Dot::with_attr_getters(
-                &string_graph,
+                &self.graph,
                 &[dot::Config::NodeNoLabel, dot::Config::EdgeNoLabel],
-                &|_, er| format!("label = {:?}", er.weight()),
+                &|_, _| "".to_string(),
                 &|_, nr| {
-                    // let node = &graph[nr.0];
-                    let shape = ""; // TODO
-                    let url = format!(
-                        "URL = {}",
-                        "vscode://file/Users/sophiedankel/Development/sway/sway-lib-core/Forc.toml"
-                    ); // TODO
-                    format!("{shape} label = {} {url}", nr.1)
+                    let url = url_file_prefix.clone().map_or("".to_string(), |prefix| {
+                        self.manifest_map
+                            .get(&nr.1.id())
+                            .map_or("".to_string(), |manifest| {
+                                format!("URL = \"{}{}\"", prefix, manifest.path().to_string_lossy())
+                            })
+                    });
+                    format!("label = \"{}\" shape = box {url}", nr.1.name)
                 },
             )
-        );
-    
-        let graph_path = "graph.dot";
-        let result = fs::write(graph_path.clone(), output.clone());
-        if let Some(error) = result.err() {
-            tracing::error!(
-                "There was an issue while outputing build graph to path {graph_path:?}\n{error}"
-            );
-        }
-    
-        output
+        )
     }
 }
 
