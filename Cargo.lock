@@ -1926,6 +1926,8 @@ dependencies = [
  "horrorshow",
  "include_dir",
  "opener 0.5.2",
+ "serde",
+ "serde_json",
  "sway-ast",
  "sway-core",
  "sway-lsp",

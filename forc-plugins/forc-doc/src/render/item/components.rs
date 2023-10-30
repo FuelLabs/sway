@@ -2,8 +2,8 @@
 use crate::{
     doc::module::ModuleInfo,
     render::{
-        constant::IDENTITY, item::context::ItemContext, sidebar::*, title::DocBlockTitle, DocStyle,
-        Renderable,
+        constant::IDENTITY, item::context::ItemContext, search::generate_searchbar, sidebar::*,
+        title::DocBlockTitle, DocStyle, Renderable,
     },
     RenderPlan, ASSETS_DIR_NAME,
 };
@@ -122,7 +122,7 @@ impl Renderable for ItemBody {
                 // this is the main code block
                 main {
                     div(class="width-limiter") {
-                        // : generate_searchbar();
+                        : generate_searchbar();
                         section(id="main-content", class="content") {
                             div(class="main-heading") {
                                 h1(class="fqn") {

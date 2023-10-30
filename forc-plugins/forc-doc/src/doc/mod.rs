@@ -18,7 +18,7 @@ use sway_types::{BaseIdent, Spanned};
 mod descriptor;
 pub mod module;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub(crate) struct Documentation(pub(crate) Vec<Document>);
 impl Documentation {
     /// Gather [Documentation] from the [TyProgram].

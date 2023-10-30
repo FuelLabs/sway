@@ -5,7 +5,7 @@ use horrorshow::{box_html, RenderBox};
 // - Add search functionality to search bar
 // - Add help.html support
 // - Add settings.html support
-pub(crate) fn _generate_searchbar() -> Box<dyn RenderBox> {
+pub(crate) fn generate_searchbar() -> Box<dyn RenderBox> {
     box_html! {
         nav(class="sub") {
             form(class="search-form") {
