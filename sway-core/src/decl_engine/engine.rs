@@ -152,8 +152,9 @@ macro_rules! decl_engine_clear_module {
         impl DeclEngine {
             pub fn clear_module(&mut self, module_id: &ModuleId) {
                 $(
-                    self.$slab.retain(|ty| {
-                        &ty.span().source_id().unwrap().module_id() != module_id
+                    self.$slab.retain(|ty| match ty.span().source_id() {
+                        Some(source_id) => &source_id.module_id() != module_id,
+                        None => false,
                     });
                 )*
             }
