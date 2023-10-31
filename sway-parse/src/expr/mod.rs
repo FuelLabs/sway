@@ -201,9 +201,7 @@ fn parse_stmt<'a>(parser: &mut Parser<'a, '_>) -> ParseResult<StmtOrTail<'a>> {
     }
 
     // Try an `expr;` statement.
-    // dbg!(parser.debug_tokens());
     let expr = parse_statement_expr(parser)?;
-    // dbg!(parser.debug_tokens());
     if let Some(semicolon_token) = parser.take() {
         return stmt(Statement::Expr {
             expr,
@@ -627,7 +625,6 @@ fn parse_func_app(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
     }
     while let Some(args) = Parens::try_parse(parser)? {
         let func = Box::new(expr);
-        // dbg!(parser.debug_tokens());
         expr = Expr::FuncApp { func, args };
     }
     Ok(expr)
