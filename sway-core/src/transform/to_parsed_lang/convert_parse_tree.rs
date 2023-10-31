@@ -3614,13 +3614,6 @@ fn asm_register_declaration_to_asm_register_declaration(
         .value_opt
         .map(|(_colon_token, expr)| expr_to_expression(context, handler, engines, *expr))
         .transpose()?;
-    //     .unwrap_or_else(|| {
-    //         Expression {
-    //             kind: ExpressionKind::AmbiguousVariableExpression(asm_register_declaration.register.clone()),
-    //             span: asm_register_declaration.register.span(),
-    //         }
-    //     });
-    // dbg!(&initializer);
 
     Ok(AsmRegisterDeclaration {
         name: asm_register_declaration.register,
