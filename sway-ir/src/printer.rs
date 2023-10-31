@@ -975,7 +975,7 @@ fn asm_block_to_doc(
             Doc::Empty,
             |doc, AsmArg { initializer, .. }| match initializer {
                 Some(init_val) if init_val.is_constant(context) => {
-                    doc.append(constant_to_doc(context, md_namer, namer, init_val))
+                    doc.append(maybe_constant_to_doc(context, md_namer, namer, init_val))
                 }
                 _otherwise => doc,
             },

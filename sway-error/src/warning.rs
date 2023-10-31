@@ -67,6 +67,9 @@ pub enum Warning {
     ShadowsOtherSymbol {
         name: Ident,
     },
+    UninitializedAsmRegShadowsVariable {
+        name: Ident,
+    },
     OverridingTraitImplementation,
     DeadDeclaration,
     DeadEnumDeclaration,
@@ -201,6 +204,10 @@ impl fmt::Display for Warning {
             ShadowsOtherSymbol { name } => write!(
                 f,
                 "This shadows another symbol in this scope with the same name \"{name}\"."
+            ),
+            UninitializedAsmRegShadowsVariable { name } => write!(
+                f,
+                "This unitialized register is shadowing a variable, you probably meant to also initialize it like \"{name}: {name}\"."
             ),
             OverridingTraitImplementation => write!(
                 f,
