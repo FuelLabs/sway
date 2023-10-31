@@ -7,7 +7,6 @@ use assert_json_diff::assert_json_eq;
 use serde_json::json;
 use std::{borrow::Cow, path::Path};
 use sway_lsp::{handlers::request, lsp_ext::ShowAstParams, server_state::ServerState};
-use sway_lsp_test_utils::extract_result_array;
 use sway_utils::PerformanceData;
 use tower::{Service, ServiceExt};
 use tower_lsp::{
