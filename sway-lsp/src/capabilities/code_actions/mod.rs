@@ -29,6 +29,7 @@ pub(crate) const CODE_ACTION_IMPL_TITLE: &str = "Generate impl for";
 pub(crate) const CODE_ACTION_NEW_TITLE: &str = "Generate `new`";
 pub(crate) const CODE_ACTION_DOC_TITLE: &str = "Generate a documentation template";
 pub(crate) const CODE_ACTION_IMPORT_TITLE: &str = "Import";
+pub(crate) const CODE_ACTION_QUALIFY_TITLE: &str = "Qualify as";
 
 #[derive(Clone)]
 pub(crate) struct CodeActionContext<'a> {
