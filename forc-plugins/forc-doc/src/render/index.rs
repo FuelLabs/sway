@@ -68,6 +68,7 @@ impl Renderable for AllDocIndex {
                             }
                             : doc_links;
                         }
+                        // TODO: make JS search function populate this
                         section(id="search", class="content hidden");
                     }
                 }
@@ -196,6 +197,7 @@ impl Renderable for ModuleIndex {
                             }
                             : doc_links;
                         }
+                        // TODO: make JS search function populate this
                         section(id="search", class="content hidden");
                     }
                 }
