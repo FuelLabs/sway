@@ -24,7 +24,7 @@ impl Parse for ItemConst {
         // a semicolon, that allows us to re-use the same parsing code
         // between associated consts and module-level consts.
         let semicolon_token = parser.peek().unwrap_or_default();
-        
+
         Ok(ItemConst {
             visibility,
             const_token,
