@@ -52,8 +52,8 @@ impl TypeEngine {
         }
     }
 
-    pub fn clear_module(&mut self, module_id: ModuleId) {
-        self.slab.retain(|ty| ty.source_id.unwrap().module_id() != module_id);
+    pub fn clear_module(&mut self, module_id: &ModuleId) {
+        self.slab.retain(|ty| &ty.source_id.unwrap().module_id() != module_id);
     }
 
     pub fn replace(&self, id: TypeId, engines: &Engines, new_value: TypeData) {

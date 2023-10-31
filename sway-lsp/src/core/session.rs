@@ -65,7 +65,6 @@ pub struct CompiledProgram {
 pub struct ParseResult {
     pub(crate) diagnostics: (Vec<CompileError>, Vec<CompileWarning>),
     pub(crate) token_map: TokenMap,
-    pub(crate) engines: Engines,
     pub(crate) lexed: LexedProgram,
     pub(crate) parsed: ParseProgram,
     pub(crate) typed: ty::TyProgram,
@@ -148,6 +147,13 @@ impl Session {
         self.diagnostics.read().clone()
     }
 
+    /// Clean up memory in the [TypeEngine] and [DeclEngine] for the user's workspace.
+    pub fn garbage_collect(&self) {
+        let path = self.sync.temp_dir().unwrap();
+        let module_id = self.engines.read().se().get_module_id(&path);
+        self.engines.write().clear_module(&module_id);
+    }
+
     /// Write the result of parsing to the session.
     /// This function should only be called after successfully parsing.
     pub fn write_parse_result(&self, res: ParseResult) {
@@ -155,7 +161,6 @@ impl Session {
         self.runnables.clear();
         self.metrics.clear();
 
-        *self.engines.write() = res.engines;
         res.token_map.deref().iter().for_each(|item| {
             let (s, t) = item.pair();
             self.token_map.insert(s.clone(), t.clone());
@@ -522,8 +527,7 @@ pub fn traverse(
 }
 
 /// Parses the project and returns true if the compiler diagnostics are new and should be published.
-pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
-    let engines = Engines::default();
+pub fn parse_project(uri: &Url, engines: &Engines) -> Result<ParseResult, LanguageServerError> {
     let results = compile(uri, &engines)?;
     let TraversalResult {
         diagnostics,
@@ -534,7 +538,6 @@ pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
     Ok(ParseResult {
         diagnostics,
         token_map,
-        engines,
         lexed,
         parsed,
         typed,
@@ -604,7 +607,8 @@ mod tests {
     fn parse_project_returns_manifest_file_not_found() {
         let dir = get_absolute_path("sway-lsp/tests/fixtures");
         let uri = get_url(&dir);
-        let result = parse_project(&uri).expect_err("expected ManifestFileNotFound");
+        let engines = Engines::default();
+        let result = parse_project(&uri, &engines).expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(

@@ -118,7 +118,12 @@ async fn run_blocking_parse_project(
     tokio::task::spawn_blocking(move || {
         // Lock the diagnostics result to prevent multiple threads from parsing the project at the same time.
         let mut diagnostics = session.diagnostics.write();
-        let parse_result = session::parse_project(&uri)?;
+        // If there are no items in the token_map then we have nothing to clear 
+        // as the project hasn't been parsed yet.
+        if !session.token_map().is_empty() {
+            session.garbage_collect();
+        }
+        let parse_result = session::parse_project(&uri, &session.engines.read())?;
         let (errors, warnings) = parse_result.diagnostics.clone();
         session.write_parse_result(parse_result);
         *diagnostics = get_diagnostics(&warnings, &errors, session.engines.read().se());

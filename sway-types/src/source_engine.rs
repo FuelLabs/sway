@@ -83,4 +83,17 @@ impl SourceEngine {
             .unwrap()
             .clone()
     }
+
+    /// This function provides the module ID corresponding to a specified file path.
+    pub fn get_module_id(&self, path: &PathBuf) -> ModuleId {
+        eprintln!("get_module_id: path = {:?}", path);
+        eprintln!("----");
+        eprintln!("{:#?}", self.path_to_module_map.read().unwrap());
+        self.path_to_module_map
+            .read()
+            .unwrap()
+            .get(path)
+            .unwrap()
+            .clone()
+    }
 }

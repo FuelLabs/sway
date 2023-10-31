@@ -150,10 +150,10 @@ decl_engine_index!(type_alias_slab, ty::TyTypeAliasDecl);
 macro_rules! decl_engine_clear_module {
     ($($slab:ident, $decl:ty);* $(;)?) => {
         impl DeclEngine {
-            pub fn clear_module(&mut self, module_id: ModuleId) {
+            pub fn clear_module(&mut self, module_id: &ModuleId) {
                 $(
                     self.$slab.retain(|ty| {
-                        ty.span().source_id().unwrap().module_id() != module_id
+                        &ty.span().source_id().unwrap().module_id() != module_id
                     });
                 )*
             }

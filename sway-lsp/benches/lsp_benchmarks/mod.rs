@@ -3,6 +3,7 @@ pub mod requests;
 pub mod token_map;
 
 use lsp_types::Url;
+use sway_core::Engines;
 use std::{path::PathBuf, sync::Arc};
 use sway_lsp::core::session::{self, Session};
 
@@ -12,7 +13,8 @@ pub fn compile_test_project() -> (Url, Arc<Session>) {
     let uri = Url::from_file_path(benchmark_dir().join("src/main.sw")).unwrap();
     session.handle_open_file(&uri);
     // Compile the project and write the parse result to the session
-    let parse_result = session::parse_project(&uri).unwrap();
+    let engines = Engines::default();
+    let parse_result = session::parse_project(&uri, &engines).unwrap();
     session.write_parse_result(parse_result);
     (uri, Arc::new(session))
 }
