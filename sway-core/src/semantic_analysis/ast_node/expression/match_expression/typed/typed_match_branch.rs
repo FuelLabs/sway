@@ -4,7 +4,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Span, Spanned, SourceId};
 
 use crate::{
     compiler_generated::{
@@ -594,7 +594,7 @@ fn instantiate_branch_condition_result_var_declarations_and_matched_or_variant_i
                     call_path_tree: None,
                 })
                 .collect();
-            let tuple_type = type_engine.insert(ctx.engines, TypeInfo::Tuple(tuple_field_types));
+            let tuple_type = type_engine.insert(ctx.engines, TypeInfo::Tuple(tuple_field_types), instantiate.dummy_span().source_id());
             let variable_names = carry_over_vars[0]
                 .iter()
                 .map(|(ident, _)| ident.clone())

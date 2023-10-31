@@ -44,7 +44,7 @@ use sway_core::{
     BuildTarget, Engines, Namespace, Programs,
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
-use sway_types::{SourceEngine, SourceId, Span, Spanned};
+use sway_types::{SourceEngine, SourceId, Spanned};
 use sway_utils::{helpers::get_sway_files, PerformanceData};
 use tokio::sync::Semaphore;
 
