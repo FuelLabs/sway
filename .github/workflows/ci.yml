@@ -115,6 +115,7 @@ jobs:
           cargo install --locked --debug --path ./forc-plugins/forc-client
           cargo install --locked --debug --path ./forc-plugins/forc-doc
           cargo install --locked --debug --path ./forc-plugins/forc-tx
+          cargo install --locked --debug --path ./forc-plugins/forc-crypto
           cargo install --locked --debug forc-explore
       - name: Install mdbook-forc-documenter
         run: cargo install --locked --debug --path ./scripts/mdbook-forc-documenter
@@ -125,7 +126,7 @@ jobs:
           mdbook-version: '0.4.25'
       - name: Emit book logs to tmp.txt, fail if build logs contain 'ERROR'
         run: |
-          MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/book &> tmp.txt
+          MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/book 2>&1 | tee tmp.txt
           if cat tmp.txt | grep 'ERROR'
           then
             cat tmp.txt

@@ -733,6 +733,9 @@ pub enum CompileError {
     AbiSupertraitMethodCallAsContractCall { fn_name: Ident, span: Span },
     #[error("\"Self\" is not valid in the self type of an impl block")]
     SelfIsNotValidAsImplementingFor { span: Span },
+
+    #[error("Unitialized register is being read before being written")]
+    UninitRegisterInAsmBlockBeingRead { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -918,6 +921,7 @@ impl Spanned for CompileError {
             TypeNotAllowed { span, .. } => span.clone(),
             ExpectedStringLiteral { span } => span.clone(),
             SelfIsNotValidAsImplementingFor { span } => span.clone(),
+            UninitRegisterInAsmBlockBeingRead { span } => span.clone(),
         }
     }
 }

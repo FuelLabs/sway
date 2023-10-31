@@ -22,7 +22,7 @@ use crate::{
     decl_engine::*,
     language::{
         parsed::*,
-        ty::{self, TyImplItem},
+        ty::{self, TyCodeBlock, TyImplItem},
         *,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
@@ -589,20 +589,24 @@ impl ty::TyExpression {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
-        let (typed_block, block_return_type) =
-            ty::TyCodeBlock::type_check(handler, ctx.by_ref(), &contents).unwrap_or_else(|_| {
-                (
-                    ty::TyCodeBlock { contents: vec![] },
+        let (mut typed_block, block_return_type) =
+            match ty::TyCodeBlock::type_check(handler, ctx.by_ref(), &contents) {
+                Ok(res) => {
+                    let (block_type, _span) = TyCodeBlock::compute_return_type_and_span(&ctx, &res);
+                    (res, block_type)
+                }
+                Err(_err) => (
+                    ty::TyCodeBlock::default(),
                     type_engine.insert(engines, TypeInfo::Tuple(Vec::new())),
-                )
-            });
+                ),
+            };
 
-        ctx.unify_with_type_annotation(handler, block_return_type, &span);
+        let mut unification_ctx = TypeCheckUnificationContext::new(ctx.engines, ctx);
+        unification_ctx.type_id = Some(block_return_type);
+        typed_block.type_check_unify(handler, &mut unification_ctx)?;
 
         let exp = ty::TyExpression {
-            expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
-                contents: typed_block.contents,
-            }),
+            expression: ty::TyExpressionVariant::CodeBlock(typed_block),
             return_type: block_return_type,
             span,
         };
@@ -842,7 +846,7 @@ impl ty::TyExpression {
         // this includes two checks:
         // 1. Check that no control flow opcodes are used.
         // 2. Check that initialized registers are not reassigned in the `asm` block.
-        check_asm_block_validity(handler, &asm)?;
+        check_asm_block_validity(handler, &asm, &ctx)?;
 
         let asm_span = asm
             .returns
@@ -1877,13 +1881,16 @@ impl ty::TyExpression {
         };
 
         let unit_ty = type_engine.insert(engines, TypeInfo::Tuple(Vec::new()));
-        let ctx = ctx.with_type_annotation(unit_ty).with_help_text(
+        let mut ctx = ctx.with_type_annotation(unit_ty).with_help_text(
             "A while loop's loop body cannot implicitly return a value. Try \
                  assigning it to a mutable variable declared outside of the loop \
                  instead.",
         );
-        let (typed_body, _block_implicit_return) =
-            ty::TyCodeBlock::type_check(handler, ctx, &body)?;
+        let mut typed_body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), &body)?;
+
+        let mut unification_ctx = TypeCheckUnificationContext::new(engines, ctx);
+        typed_body.type_check_unify(handler, &mut unification_ctx)?;
+
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::WhileLoop {
                 condition: Box::new(typed_condition),
@@ -2276,7 +2283,11 @@ mod tests {
     }
 }
 
-fn check_asm_block_validity(handler: &Handler, asm: &AsmExpression) -> Result<(), ErrorEmitted> {
+fn check_asm_block_validity(
+    handler: &Handler,
+    asm: &AsmExpression,
+    ctx: &TypeCheckContext,
+) -> Result<(), ErrorEmitted> {
     // Collect all asm block instructions in the form of `VirtualOp`s
     let mut opcodes = vec![];
     for op in &asm.body {
@@ -2363,6 +2374,59 @@ fn check_asm_block_validity(handler: &Handler, asm: &AsmExpression) -> Result<()
         })
     {
         handler.emit_err(err);
+    }
+
+    // Check #3: Check if there are uninitialized registers that are read before being written
+    let mut uninitialized_registers = asm
+        .registers
+        .iter()
+        .filter(|reg| reg.initializer.is_none())
+        .map(|reg| {
+            let span = reg.name.span();
+
+            // Emit warning if this register shadows a variable
+            let temp_handler = Handler::default();
+            let decl = ctx.namespace.resolve_call_path(
+                &temp_handler,
+                ctx.engines,
+                &CallPath {
+                    prefixes: vec![],
+                    suffix: sway_types::BaseIdent::new(span.clone()),
+                    is_absolute: true,
+                },
+                None,
+            );
+
+            if let Ok(ty::TyDecl::VariableDecl(decl)) = decl {
+                handler.emit_warn(CompileWarning {
+                    span: span.clone(),
+                    warning_content: Warning::UninitializedAsmRegShadowsVariable {
+                        name: decl.name.clone(),
+                    },
+                });
+            }
+
+            (VirtualRegister::Virtual(reg.name.to_string()), span)
+        })
+        .collect::<HashMap<_, _>>();
+
+    for (op, _, _) in opcodes.iter() {
+        for being_read in op.use_registers() {
+            if let Some(span) = uninitialized_registers.remove(being_read) {
+                handler.emit_err(CompileError::UninitRegisterInAsmBlockBeingRead { span });
+            }
+        }
+
+        for being_written in op.def_registers() {
+            uninitialized_registers.remove(being_written);
+        }
+    }
+
+    if let Some((reg, _)) = asm.returns.as_ref() {
+        let reg = VirtualRegister::Virtual(reg.name.to_string());
+        if let Some(span) = uninitialized_registers.remove(&reg) {
+            handler.emit_err(CompileError::UninitRegisterInAsmBlockBeingRead { span });
+        }
     }
 
     Ok(())
