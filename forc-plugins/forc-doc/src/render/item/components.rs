@@ -158,6 +158,7 @@ impl Renderable for ItemBody {
                                 : item_context.unwrap();
                             }
                         }
+                        section(id="search", class="content hidden");
                     }
                 }
                 script(src=sway_hjs);

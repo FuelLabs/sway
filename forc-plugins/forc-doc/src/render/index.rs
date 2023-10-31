@@ -68,6 +68,7 @@ impl Renderable for AllDocIndex {
                             }
                             : doc_links;
                         }
+                        section(id="search", class="content hidden");
                     }
                 }
                 script(src=format!("../{ASSETS_DIR_NAME}/highlight.js"));
@@ -195,6 +196,7 @@ impl Renderable for ModuleIndex {
                             }
                             : doc_links;
                         }
+                        section(id="search", class="content hidden");
                     }
                 }
                 script(src=sway_hjs);
