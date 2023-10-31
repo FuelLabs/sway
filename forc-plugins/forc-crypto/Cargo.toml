@@ -1,0 +1,31 @@
+[package]
+name = "forc-crypto"
+version = "0.46.1"
+description = "A `forc` plugin for handling various cryptographic operations and conversions."
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+
+
+[dependencies]
+anyhow = "1.0.75"
+async-trait = "0.1.58"
+atty = "0.2.14"
+clap = { version = "3", features = ["derive", "env"] }
+forc-tracing = { version = "0.46.1", path = "../../forc-tracing" }
+fuel-core-types = { version = "0.20.5" }
+fuel-crypto = { workspace = true }
+fuels-core = { workspace = true }
+futures = "0.3"
+hex = "0.4.3"
+libp2p-identity = { version = "0.2.4", features = ["secp256k1", "peerid"] }
+rand = "0.8"
+serde = "1.0"
+serde_json = "1"
+serde_yaml = "0.9.27"
+sha3 = "0.10.8"
+termion = "2.0.1"
+tokio = { version = "1.8", features = ["macros", "rt-multi-thread", "process"] }
+tracing = "0.1"

@@ -1,7 +1,11 @@
 use crate::{
     config::items::ItemBraceStyle,
-    formatter::{shape::LineStyle, *},
+    formatter::{
+        shape::{ExprKind, LineStyle},
+        *,
+    },
     utils::{
+        language::expr::should_write_multiline,
         map::byte_span::{ByteSpan, LeafSpans},
         CurlyBrace,
     },
@@ -18,8 +22,31 @@ impl Format for ExprStructField {
     ) -> Result<(), FormatterError> {
         write!(formatted_code, "{}", self.field_name.span().as_str())?;
         if let Some((colon_token, expr)) = &self.expr_opt {
-            write!(formatted_code, "{} ", colon_token.span().as_str())?;
-            expr.format(formatted_code, formatter)?;
+            formatter.with_shape(
+                formatter
+                    .shape
+                    .with_code_line_from(LineStyle::Inline, ExprKind::Struct),
+                |formatter| -> Result<(), FormatterError> {
+                    let mut expr_str = FormattedCode::new();
+                    expr.format(&mut expr_str, formatter)?;
+
+                    let expr_str = if should_write_multiline(&expr_str, formatter) {
+                        let mut expr_str = FormattedCode::new();
+                        formatter.shape.code_line.update_expr_new_line(true);
+                        expr.format(&mut expr_str, formatter)?;
+                        expr_str
+                    } else {
+                        expr_str
+                    };
+                    write!(
+                        formatted_code,
+                        "{} {}",
+                        colon_token.span().as_str(),
+                        expr_str
+                    )?;
+                    Ok(())
+                },
+            )?;
         }
 
         Ok(())

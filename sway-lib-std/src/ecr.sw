@@ -266,6 +266,18 @@ fn test_ec_recover_r1() {
     assert(public_key.bytes[1] == pub_lo);
 }
 
+#[test(should_revert = "0")]
+fn test_revert_ec_recover_r1() {
+    use ::assert::assert;
+    use ::constants::ZERO_B256;
+    
+    let hi = ZERO_B256;
+    let lo = 0x44ac566bd156b4fc71a4a4cb2655d3da360c695edb27dc3b64d621e122fea23d;
+    let msg_hash = 0x1e45523606c96c98ba970ff7cf9511fab8b25e1bcd52ced30b81df1e4a9c4323;
+    let signature: B512 = B512::from((hi, lo));
+    let public_key = ec_recover_r1(signature, msg_hash).unwrap();
+}
+
 #[test]
 fn test_ec_recover_address_r1() {
     use ::assert::assert;
@@ -280,6 +292,18 @@ fn test_ec_recover_address_r1() {
     assert(result_address == address);
 }
 
+#[test(should_revert = "0")]
+fn test_revert_ec_recover_address_r1() {
+    use ::assert::assert;
+    use ::constants::ZERO_B256;
+    
+    let hi = ZERO_B256;
+    let lo = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
+    let msg_hash = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
+    let signature: B512 = B512::from((hi, lo));
+    let result_address = ec_recover_address_r1(signature, msg_hash).unwrap();
+}
+
 #[test]
 fn test_ed_verify() {
     use ::assert::assert;
@@ -292,7 +316,22 @@ fn test_ed_verify() {
     let hi = 0xf38cef9361894be6c6e0eddec28a663d099d7ddff17c8077a1447d7ecb4e6545;
     let lo = 0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00;
     let signature: B512 = B512::from((hi, lo));
-    // A verify public key with signature 
+    // A verfied public key with signature 
     let verfied = ed_verify(pub_key, signature, msg_hash).unwrap();
     assert(verfied);
+}
+
+#[test(should_revert = "0")]
+fn test_revert_ed_verify() {
+    use ::assert::assert;
+    use ::constants::ZERO_B256;
+
+    let pub_key = 0x314fa58689bbe1da2430517de2d772b384a1c1d2e9cb87e73c6afcf246045b10;
+    let msg = ZERO_B256;
+    let msg_hash = sha256(msg);
+
+    let hi = ZERO_B256;
+    let lo = 0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00;
+    let signature: B512 = B512::from((hi, lo));
+    let verfied = ed_verify(pub_key, signature, msg_hash).unwrap();
 }

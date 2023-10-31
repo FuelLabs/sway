@@ -846,7 +846,7 @@ impl ty::TyExpression {
         // this includes two checks:
         // 1. Check that no control flow opcodes are used.
         // 2. Check that initialized registers are not reassigned in the `asm` block.
-        check_asm_block_validity(handler, &asm)?;
+        check_asm_block_validity(handler, &asm, &ctx)?;
 
         let asm_span = asm
             .returns
@@ -2283,7 +2283,11 @@ mod tests {
     }
 }
 
-fn check_asm_block_validity(handler: &Handler, asm: &AsmExpression) -> Result<(), ErrorEmitted> {
+fn check_asm_block_validity(
+    handler: &Handler,
+    asm: &AsmExpression,
+    ctx: &TypeCheckContext,
+) -> Result<(), ErrorEmitted> {
     // Collect all asm block instructions in the form of `VirtualOp`s
     let mut opcodes = vec![];
     for op in &asm.body {
@@ -2370,6 +2374,59 @@ fn check_asm_block_validity(handler: &Handler, asm: &AsmExpression) -> Result<()
         })
     {
         handler.emit_err(err);
+    }
+
+    // Check #3: Check if there are uninitialized registers that are read before being written
+    let mut uninitialized_registers = asm
+        .registers
+        .iter()
+        .filter(|reg| reg.initializer.is_none())
+        .map(|reg| {
+            let span = reg.name.span();
+
+            // Emit warning if this register shadows a variable
+            let temp_handler = Handler::default();
+            let decl = ctx.namespace.resolve_call_path(
+                &temp_handler,
+                ctx.engines,
+                &CallPath {
+                    prefixes: vec![],
+                    suffix: sway_types::BaseIdent::new(span.clone()),
+                    is_absolute: true,
+                },
+                None,
+            );
+
+            if let Ok(ty::TyDecl::VariableDecl(decl)) = decl {
+                handler.emit_warn(CompileWarning {
+                    span: span.clone(),
+                    warning_content: Warning::UninitializedAsmRegShadowsVariable {
+                        name: decl.name.clone(),
+                    },
+                });
+            }
+
+            (VirtualRegister::Virtual(reg.name.to_string()), span)
+        })
+        .collect::<HashMap<_, _>>();
+
+    for (op, _, _) in opcodes.iter() {
+        for being_read in op.use_registers() {
+            if let Some(span) = uninitialized_registers.remove(being_read) {
+                handler.emit_err(CompileError::UninitRegisterInAsmBlockBeingRead { span });
+            }
+        }
+
+        for being_written in op.def_registers() {
+            uninitialized_registers.remove(being_written);
+        }
+    }
+
+    if let Some((reg, _)) = asm.returns.as_ref() {
+        let reg = VirtualRegister::Virtual(reg.name.to_string());
+        if let Some(span) = uninitialized_registers.remove(&reg) {
+            handler.emit_err(CompileError::UninitRegisterInAsmBlockBeingRead { span });
+        }
     }
 
     Ok(())
