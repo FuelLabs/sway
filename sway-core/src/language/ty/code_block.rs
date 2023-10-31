@@ -1,15 +1,26 @@
 use std::hash::Hasher;
 
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::Span;
 
 use crate::{
     decl_engine::*, engine_threading::*, language::ty::*, semantic_analysis::TypeCheckContext,
     type_system::*, types::DeterministicallyAborts,
 };
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct TyCodeBlock {
     pub contents: Vec<TyAstNode>,
+    pub(crate) whole_block_span: Span,
+}
+
+impl Default for TyCodeBlock {
+    fn default() -> Self {
+        Self {
+            contents: Default::default(),
+            whole_block_span: Span::dummy(),
+        }
+    }
 }
 
 impl EqWithEngines for TyCodeBlock {}
@@ -21,7 +32,7 @@ impl PartialEqWithEngines for TyCodeBlock {
 
 impl HashWithEngines for TyCodeBlock {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
-        let TyCodeBlock { contents } = self;
+        let TyCodeBlock { contents, .. } = self;
         contents.hash(state, engines);
     }
 }

@@ -22,7 +22,7 @@ use crate::{
     decl_engine::*,
     language::{
         parsed::*,
-        ty::{self, TyImplItem},
+        ty::{self, TyCodeBlock, TyImplItem},
         *,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
@@ -589,20 +589,24 @@ impl ty::TyExpression {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
-        let (typed_block, block_return_type) =
-            ty::TyCodeBlock::type_check(handler, ctx.by_ref(), &contents).unwrap_or_else(|_| {
-                (
-                    ty::TyCodeBlock { contents: vec![] },
+        let (mut typed_block, block_return_type) =
+            match ty::TyCodeBlock::type_check(handler, ctx.by_ref(), &contents) {
+                Ok(res) => {
+                    let (block_type, _span) = TyCodeBlock::compute_return_type_and_span(&ctx, &res);
+                    (res, block_type)
+                }
+                Err(_err) => (
+                    ty::TyCodeBlock::default(),
                     type_engine.insert(engines, TypeInfo::Tuple(Vec::new())),
-                )
-            });
+                ),
+            };
 
-        ctx.unify_with_type_annotation(handler, block_return_type, &span);
+        let mut unification_ctx = TypeCheckUnificationContext::new(ctx.engines, ctx);
+        unification_ctx.type_id = Some(block_return_type);
+        typed_block.type_check_unify(handler, &mut unification_ctx)?;
 
         let exp = ty::TyExpression {
-            expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
-                contents: typed_block.contents,
-            }),
+            expression: ty::TyExpressionVariant::CodeBlock(typed_block),
             return_type: block_return_type,
             span,
         };
@@ -1877,13 +1881,16 @@ impl ty::TyExpression {
         };
 
         let unit_ty = type_engine.insert(engines, TypeInfo::Tuple(Vec::new()));
-        let ctx = ctx.with_type_annotation(unit_ty).with_help_text(
+        let mut ctx = ctx.with_type_annotation(unit_ty).with_help_text(
             "A while loop's loop body cannot implicitly return a value. Try \
                  assigning it to a mutable variable declared outside of the loop \
                  instead.",
         );
-        let (typed_body, _block_implicit_return) =
-            ty::TyCodeBlock::type_check(handler, ctx, &body)?;
+        let mut typed_body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), &body)?;
+
+        let mut unification_ctx = TypeCheckUnificationContext::new(engines, ctx);
+        typed_body.type_check_unify(handler, &mut unification_ctx)?;
+
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::WhileLoop {
                 condition: Box::new(typed_condition),
