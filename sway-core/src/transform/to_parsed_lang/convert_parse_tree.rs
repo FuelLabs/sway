@@ -3610,12 +3610,14 @@ fn asm_register_declaration_to_asm_register_declaration(
     engines: &Engines,
     asm_register_declaration: sway_ast::AsmRegisterDeclaration,
 ) -> Result<AsmRegisterDeclaration, ErrorEmitted> {
+    let initializer = asm_register_declaration
+        .value_opt
+        .map(|(_colon_token, expr)| expr_to_expression(context, handler, engines, *expr))
+        .transpose()?;
+
     Ok(AsmRegisterDeclaration {
         name: asm_register_declaration.register,
-        initializer: asm_register_declaration
-            .value_opt
-            .map(|(_colon_token, expr)| expr_to_expression(context, handler, engines, *expr))
-            .transpose()?,
+        initializer,
     })
 }
 
