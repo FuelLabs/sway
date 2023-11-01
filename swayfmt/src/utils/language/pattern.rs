@@ -1,5 +1,4 @@
 use crate::{
-    config::items::ItemBraceStyle,
     formatter::{
         shape::{ExprKind, LineStyle},
         *,
@@ -156,19 +155,9 @@ impl CurlyBrace for Pattern {
         line: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let brace_style = formatter.config.items.item_brace_style;
-        match brace_style {
-            ItemBraceStyle::AlwaysNextLine => {
-                // Add opening brace to the next line.
-                write!(line, "\n{}", Delimiter::Brace.as_open_char())?;
-                formatter.indent();
-            }
-            _ => {
-                // Add opening brace to the same line
-                write!(line, " {}", Delimiter::Brace.as_open_char())?;
-                formatter.indent();
-            }
-        }
+        // Add opening brace to the same line
+        write!(line, " {}", Delimiter::Brace.as_open_char())?;
+        formatter.indent();
 
         Ok(())
     }
