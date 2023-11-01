@@ -178,11 +178,11 @@ impl AssetId {
         Self { value: result_buffer }
     }
 
-    /// Creates a new AssetId with the zero SubId for the current contract.
+    /// Creates a new AssetId with the default SubId for the current contract.
     ///
     /// # Returns
     ///
-    /// * [AssetId] - The AssetId of the asset. Computed by hashing the ContractId and the zero SubId.
+    /// * [AssetId] - The AssetId of the asset. Computed by hashing the ContractId and the default SubId.
     ///
     /// # Examples
     ///
