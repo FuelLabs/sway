@@ -27,9 +27,11 @@ impl TypeEngine {
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
     pub(crate) fn insert(&self, engines: &Engines, ty: TypeInfo, source_id: Option<&SourceId>) -> TypeId {
+        // Create a reserved source ID if none is provided and the type is either a primitive or unknown.
+        let source_id = source_id.map(Clone::clone).or_else(|| info_to_source_id(&ty));
         let ty = TypeData {
             type_info: ty,
-            source_id: source_id.cloned(),
+            source_id,
         };
         let mut id_map = self.id_map.write().unwrap();
 
@@ -346,5 +348,22 @@ impl TypeEngine {
             write!(builder, "TypeEngine {{\n{list}\n}}").unwrap();
         });
         builder
+    }
+}
+
+fn info_to_source_id(ty: &TypeInfo) -> Option<SourceId> {
+    match ty {
+        TypeInfo::Unknown => Some(SourceId::unknown()),
+        | TypeInfo::UnsignedInteger(_)
+        | TypeInfo::Numeric
+        | TypeInfo::Boolean
+        | TypeInfo::B256
+        | TypeInfo::RawUntypedPtr
+        | TypeInfo::RawUntypedSlice
+        | TypeInfo::StringSlice
+        | TypeInfo::Contract
+        | TypeInfo::StringArray(_) => Some(SourceId::primitive()),
+        TypeInfo::Tuple(v) if v.is_empty() => Some(SourceId::primitive()),
+        _ => None,
     }
 }

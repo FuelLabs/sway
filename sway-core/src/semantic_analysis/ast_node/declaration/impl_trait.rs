@@ -4,7 +4,7 @@ use sway_error::{
     error::{CompileError, InterfaceName},
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Ident, Span, Spanned, SourceId};
+use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     decl_engine::*,
@@ -115,7 +115,7 @@ impl TyImplTrait {
         // Update the context
         let mut ctx = ctx
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())))
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
             .with_self_type(Some(implementing_for.type_id));
 
         let impl_trait = match ctx
@@ -362,7 +362,7 @@ impl TyImplTrait {
 
         let mut ctx = ctx
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())));
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
 
         // type check the items inside of the impl block
         let mut new_items = vec![];
@@ -966,7 +966,7 @@ fn type_check_impl_method(
     let mut ctx = ctx
         .by_ref()
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())));
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
 
     let interface_name = || -> InterfaceName {
         if is_contract {
@@ -1189,7 +1189,7 @@ fn type_check_const_decl(
     let mut ctx = ctx
         .by_ref()
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())));
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
 
     let interface_name = || -> InterfaceName {
         if is_contract {
@@ -1271,7 +1271,7 @@ fn type_check_type_decl(
     let mut ctx = ctx
         .by_ref()
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())));
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
 
     let interface_name = || -> InterfaceName {
         if is_contract {

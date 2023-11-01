@@ -34,7 +34,7 @@ use sway_types::{
         STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME,
         VALID_ATTRIBUTE_NAMES,
     },
-    integer_bits::IntegerBits, SourceId,
+    integer_bits::IntegerBits,
 };
 use sway_types::{Ident, Span, Spanned};
 
@@ -896,7 +896,7 @@ pub(crate) fn item_const_to_constant_declaration(
                     return Err(errors);
                 }
             }
-            engines.te().insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())).into()
+            engines.te().insert(engines, TypeInfo::Unknown, None).into()
         }
     };
 
@@ -2777,7 +2777,7 @@ fn match_expr_to_expression(
                     content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
                         VariableDeclaration {
                             type_ascription: {
-                                let type_id = engines.te().insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown()));
+                                let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
                                 TypeArgument {
                                     type_id,
                                     initial_type_id: type_id,
@@ -3297,7 +3297,7 @@ fn statement_let_to_ast_nodes(
                 let type_ascription = match ty_opt {
                     Some(ty) => ty_to_type_argument(context, handler, engines, ty)?,
                     None => {
-                        let type_id = engines.te().insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown()));
+                        let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
                         TypeArgument {
                             type_id,
                             initial_type_id: type_id,
@@ -3348,7 +3348,7 @@ fn statement_let_to_ast_nodes(
                 let type_ascription = match &ty_opt {
                     Some(ty) => ty_to_type_argument(context, handler, engines, ty.clone())?,
                     None => {
-                        let type_id = engines.te().insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown()));
+                        let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
                         TypeArgument {
                             type_id,
                             initial_type_id: type_id,
@@ -3440,7 +3440,7 @@ fn statement_let_to_ast_nodes(
                 let type_ascription = match &ty_opt {
                     Some(ty) => ty_to_type_argument(context, handler, engines, ty.clone())?,
                     None => {
-                        let type_id = engines.te().insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown()));
+                        let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
                         TypeArgument {
                             type_id,
                             initial_type_id: type_id,
@@ -3476,7 +3476,7 @@ fn statement_let_to_ast_nodes(
                                 .into_iter()
                                 .map(|_| {
                                     let initial_type_id =
-                                        engines.te().insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown()));
+                                        engines.te().insert(engines, TypeInfo::Unknown, None);
                                     let dummy_type_param = TypeParameter {
                                         type_id: initial_type_id,
                                         initial_type_id,
@@ -3773,7 +3773,7 @@ fn ty_to_type_parameter(
     let name_ident = match ty {
         Ty::Path(path_type) => path_type_to_ident(context, handler, path_type)?,
         Ty::Infer { underscore_token } => {
-            let unknown_type = type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown()));
+            let unknown_type = type_engine.insert(engines, TypeInfo::Unknown, None);
             return Ok(TypeParameter {
                 type_id: unknown_type,
                 initial_type_id: unknown_type,

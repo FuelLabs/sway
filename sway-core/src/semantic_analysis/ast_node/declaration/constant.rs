@@ -2,7 +2,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
     warning::{CompileWarning, Warning},
 };
-use sway_types::{style::is_screaming_snake_case, Spanned, SourceId};
+use sway_types::{style::is_screaming_snake_case, Spanned};
 
 use crate::{
     language::{
@@ -41,7 +41,7 @@ impl ty::TyConstantDecl {
                 EnforceTypeArguments::No,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error())));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         // this subst is required to replace associated types, namely TypeInfo::TraitType.
         type_ascription.type_id.subst(&ctx.type_subst(), engines);
@@ -121,7 +121,7 @@ impl ty::TyConstantDecl {
             call_path,
             span,
             attributes: Default::default(),
-            return_type: type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())),
+            return_type: type_engine.insert(engines, TypeInfo::Unknown, None),
             type_ascription,
             is_configurable: false,
             value: None,

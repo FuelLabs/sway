@@ -121,7 +121,10 @@ async fn run_blocking_parse_project(
         // If there are no items in the token_map then we have nothing to clear 
         // as the project hasn't been parsed yet.
         if !session.token_map().is_empty() {
+            let now = std::time::Instant::now();
+            // This operation is fairly expensive. Perhaps we should call it less often than every keystroke?
             session.garbage_collect();
+            eprintln!("Garbage collection took {:?}", now.elapsed());
         }
         let parse_result = session::parse_project(&uri, &session.engines.read())?;
         let (errors, warnings) = parse_result.diagnostics.clone();

@@ -16,7 +16,7 @@ use crate::{
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
 };
-use sway_types::{style::is_snake_case, Spanned, SourceId};
+use sway_types::{style::is_snake_case, Spanned};
 
 impl ty::TyFunctionDecl {
     pub fn type_check(
@@ -115,7 +115,7 @@ impl ty::TyFunctionDecl {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error())));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         let (visibility, is_contract_call) = if is_method {
             if is_in_impl_self {

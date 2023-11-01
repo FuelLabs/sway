@@ -10,28 +10,14 @@ use std::{collections::{HashMap, BTreeSet}, path::PathBuf, sync::RwLock};
 /// The Source Engine is designed to be thread-safe. Its internal structures are
 /// secured by the RwLock mechanism. This allows its functions to be invoked using
 /// a straightforward non-mutable reference, ensuring safe concurrent access.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SourceEngine {
     next_source_id: RwLock<u32>,
     path_to_source_map: RwLock<HashMap<PathBuf, SourceId>>,
     source_to_path_map: RwLock<HashMap<SourceId, PathBuf>>,
-    
     next_module_id: RwLock<u16>,
     path_to_module_map: RwLock<HashMap<PathBuf, ModuleId>>,
     module_to_sources_map: RwLock<HashMap<ModuleId, BTreeSet<SourceId>>>,
-}
-
-impl Default for SourceEngine {
-    fn default() -> Self {
-        SourceEngine { 
-            next_source_id: RwLock::new(0),
-            path_to_source_map: RwLock::new(HashMap::new()),
-            source_to_path_map: RwLock::new(HashMap::new()),
-            next_module_id: RwLock::new(ModuleId::RESERVED + 1),
-            path_to_module_map: RwLock::new(HashMap::new()),
-            module_to_sources_map: RwLock::new(HashMap::new()),
-        }
-    }
 }
 
 impl SourceEngine {
@@ -86,9 +72,6 @@ impl SourceEngine {
 
     /// This function provides the module ID corresponding to a specified file path.
     pub fn get_module_id(&self, path: &PathBuf) -> ModuleId {
-        eprintln!("get_module_id: path = {:?}", path);
-        eprintln!("----");
-        eprintln!("{:#?}", self.path_to_module_map.read().unwrap());
         self.path_to_module_map
             .read()
             .unwrap()

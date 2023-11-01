@@ -1,12 +1,10 @@
+use crate::{decl_engine::DeclEngine, query_engine::QueryEngine, type_system::TypeEngine};
 use std::{
     cmp::Ordering,
     fmt,
     hash::{BuildHasher, Hash, Hasher},
 };
-
 use sway_types::SourceEngine;
-
-use crate::{decl_engine::DeclEngine, query_engine::QueryEngine, type_system::TypeEngine};
 
 #[derive(Debug, Default)]
 pub struct Engines {

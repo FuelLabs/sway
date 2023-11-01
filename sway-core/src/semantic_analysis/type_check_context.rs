@@ -20,7 +20,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{span::Span, Ident, Spanned, SourceId};
+use sway_types::{span::Span, Ident, Spanned};
 use sway_utils::iter_prefixes;
 
 /// Contextual state tracked and accumulated throughout type-checking.
@@ -450,7 +450,7 @@ impl<'a> TypeCheckContext<'a> {
                     .unwrap_or_else(|err| {
                         self.engines
                             .te()
-                            .insert(self.engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error()))
+                            .insert(self.engines, TypeInfo::ErrorRecovery(err), None)
                     });
 
                 let type_id = self
@@ -477,7 +477,7 @@ impl<'a> TypeCheckContext<'a> {
                         .unwrap_or_else(|err| {
                             self.engines
                                 .te()
-                                .insert(self.engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error()))
+                                .insert(self.engines, TypeInfo::ErrorRecovery(err), None)
                         });
                 }
 
@@ -826,7 +826,7 @@ impl<'a> TypeCheckContext<'a> {
                     name: call_path.call_path.to_string(),
                     span: call_path.call_path.span(),
                 });
-                type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error()))
+                type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err), None)
             }
         })
     }
@@ -869,7 +869,7 @@ impl<'a> TypeCheckContext<'a> {
                 None,
                 item_prefix,
             )
-            .unwrap_or_else(|err| type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error())));
+            .unwrap_or_else(|err| type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err), None));
 
         // grab the module where the type itself is declared
         let type_module = self
@@ -1450,7 +1450,7 @@ impl<'a> TypeCheckContext<'a> {
                         .unwrap_or_else(|err| {
                             self.engines
                                 .te()
-                                .insert(self.engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error()))
+                                .insert(self.engines, TypeInfo::ErrorRecovery(err), None)
                         });
                 }
                 let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(

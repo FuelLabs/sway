@@ -1,5 +1,5 @@
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Named, Spanned, SourceId};
+use sway_types::{Named, Spanned};
 
 use crate::{
     decl_engine::{DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType},
@@ -42,7 +42,7 @@ impl TyDecl {
                         None,
                     )
                     .unwrap_or_else(|err| {
-                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error()))
+                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
                     });
                 let mut ctx = ctx
                     .with_type_annotation(type_ascription.type_id)
@@ -106,7 +106,7 @@ impl TyDecl {
             parsed::Declaration::FunctionDeclaration(fn_decl) => {
                 let span = fn_decl.span.clone();
                 let mut ctx =
-                    ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())));
+                    ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
                 let fn_decl = match ty::TyFunctionDecl::type_check(
                     handler,
                     ctx.by_ref(),
@@ -350,7 +350,7 @@ impl TyDecl {
                 let new_ty = ctx
                     .resolve_type(handler, ty.type_id, &span, EnforceTypeArguments::Yes, None)
                     .unwrap_or_else(|err| {
-                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error()))
+                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
                     });
 
                 // create the type alias decl using the resolved type above

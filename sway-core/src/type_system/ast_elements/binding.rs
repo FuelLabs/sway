@@ -1,5 +1,5 @@
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Span, Spanned, SourceId};
+use sway_types::{Span, Spanned};
 
 use crate::{
     decl_engine::*,
@@ -191,7 +191,7 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
                 EnforceTypeArguments::No,
                 Some(&type_info_prefix),
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error())));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         Ok(type_id)
     }
@@ -258,7 +258,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
                         None,
                     )
                     .unwrap_or_else(|err| {
-                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error()))
+                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
                     });
                 }
             }

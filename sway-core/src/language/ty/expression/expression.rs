@@ -4,7 +4,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
     warning::{CompileWarning, Warning},
 };
-use sway_types::{Span, Spanned, SourceId};
+use sway_types::{Span, Spanned};
 
 use crate::{
     decl_engine::*,
@@ -414,7 +414,7 @@ impl TyExpression {
         let type_engine = engines.te();
         TyExpression {
             expression: TyExpressionVariant::Tuple { fields: vec![] },
-            return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error())),
+            return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None),
             span,
         }
     }

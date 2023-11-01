@@ -4,7 +4,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Ident, Span, Spanned, SourceId};
+use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     compiler_generated::{
@@ -107,7 +107,7 @@ impl ty::TyMatchBranch {
         let typed_result = {
             let ctx = branch_ctx
                 .by_ref()
-                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())));
+                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
             ty::TyExpression::type_check(handler, ctx, result)?
         };
 

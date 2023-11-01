@@ -2,7 +2,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{BaseIdent, Ident, Span, Spanned, SourceId};
+use sway_types::{BaseIdent, Ident, Span, Spanned};
 
 use crate::{
     decl_engine::DeclEngineInsert,
@@ -28,7 +28,7 @@ impl TyScrutinee {
         let engines = ctx.engines();
         match scrutinee {
             Scrutinee::Or { elems, span } => {
-                let type_id = type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown()));
+                let type_id = type_engine.insert(engines, TypeInfo::Unknown, None);
 
                 let mut typed_elems = Vec::with_capacity(elems.len());
                 for scrutinee in elems {
@@ -46,7 +46,7 @@ impl TyScrutinee {
                 Ok(typed_scrutinee)
             }
             Scrutinee::CatchAll { span } => {
-                let type_id = type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown()));
+                let type_id = type_engine.insert(engines, TypeInfo::Unknown, None);
                 let dummy_type_param = TypeParameter {
                     type_id,
                     initial_type_id: type_id,

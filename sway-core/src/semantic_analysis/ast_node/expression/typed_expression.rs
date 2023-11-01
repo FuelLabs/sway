@@ -40,7 +40,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
     warning::{CompileWarning, Warning},
 };
-use sway_types::{integer_bits::IntegerBits, u256::U256, Ident, Named, Span, Spanned, SourceId};
+use sway_types::{integer_bits::IntegerBits, u256::U256, Ident, Named, Span, Spanned};
 
 use rustc_hash::FxHashSet;
 
@@ -203,7 +203,7 @@ impl ty::TyExpression {
             ExpressionKind::LazyOperator(LazyOperatorExpression { op, lhs, rhs }) => {
                 let ctx = ctx
                     .by_ref()
-                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Boolean, Some(&SourceId::primitive())));
+                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Boolean, None));
                 Self::type_check_lazy_operator(handler, ctx, op, *lhs, *rhs, span)
             }
             ExpressionKind::CodeBlock(contents) => {
@@ -321,7 +321,7 @@ impl ty::TyExpression {
             ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index }) => {
                 let ctx = ctx
                     .by_ref()
-                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())))
+                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
                     .with_help_text("");
                 Self::type_check_array_index(handler, ctx, *prefix, *index, span)
             }
@@ -331,7 +331,7 @@ impl ty::TyExpression {
             }) => {
                 let ctx = ctx
                     .by_ref()
-                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())))
+                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
                     .with_help_text("");
                 Self::type_check_storage_access(
                     handler,
@@ -358,7 +358,7 @@ impl ty::TyExpression {
             ExpressionKind::Break => {
                 let expr = ty::TyExpression {
                     expression: ty::TyExpressionVariant::Break,
-                    return_type: type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())),
+                    return_type: type_engine.insert(engines, TypeInfo::Unknown, None),
                     span,
                 };
                 Ok(expr)
@@ -366,7 +366,7 @@ impl ty::TyExpression {
             ExpressionKind::Continue => {
                 let expr = ty::TyExpression {
                     expression: ty::TyExpressionVariant::Continue,
-                    return_type: type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())),
+                    return_type: type_engine.insert(engines, TypeInfo::Unknown, None),
                     span,
                 };
                 Ok(expr)
@@ -385,7 +385,7 @@ impl ty::TyExpression {
                     // is the responsibility of the function declaration to type check
                     // all return statements contained within it.
                     .by_ref()
-                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())))
+                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
                     .with_help_text(
                         "Returned value must match up with the function return type \
                         annotation.",
@@ -395,7 +395,7 @@ impl ty::TyExpression {
                     .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span, engines));
                 let typed_expr = ty::TyExpression {
                     expression: ty::TyExpressionVariant::Return(Box::new(expr)),
-                    return_type: type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())),
+                    return_type: type_engine.insert(engines, TypeInfo::Unknown, None),
                     // FIXME: This should be Yes?
                     span,
                 };
@@ -419,7 +419,7 @@ impl ty::TyExpression {
                 EnforceTypeArguments::No,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error())));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         // Literals of type Numeric can now be resolved if typed_expression.return_type is
         // an UnsignedInteger or a Numeric
@@ -629,7 +629,7 @@ impl ty::TyExpression {
             let ctx = ctx
                 .by_ref()
                 .with_help_text("The condition of an if expression must be a boolean expression.")
-                .with_type_annotation(type_engine.insert(engines, TypeInfo::Boolean, Some(&SourceId::primitive())));
+                .with_type_annotation(type_engine.insert(engines, TypeInfo::Boolean, None));
             ty::TyExpression::type_check(handler, ctx, condition.clone())
                 .unwrap_or_else(|err| ty::TyExpression::error(err, condition.span(), engines))
         };
@@ -668,7 +668,7 @@ impl ty::TyExpression {
             let ctx = ctx
                 .by_ref()
                 .with_help_text("")
-                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())));
+                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
             ty::TyExpression::type_check(handler, ctx, value.clone())
                 .unwrap_or_else(|err| ty::TyExpression::error(err, value.span(), engines))
         };
@@ -861,7 +861,7 @@ impl ty::TyExpression {
                 EnforceTypeArguments::No,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error())));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         // type check the initializers
         let typed_registers =
@@ -873,7 +873,7 @@ impl ty::TyExpression {
                         name,
                         initializer: initializer.map(|initializer| {
                             let ctx = ctx.by_ref().with_help_text("").with_type_annotation(
-                                type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())),
+                                type_engine.insert(engines, TypeInfo::Unknown, None),
                             );
 
                             ty::TyExpression::type_check(handler, ctx, initializer.clone())
@@ -910,7 +910,7 @@ impl ty::TyExpression {
 
         let ctx = ctx
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())));
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
         let parent = ty::TyExpression::type_check(handler, ctx, prefix)?;
         let exp = instantiate_struct_field_access(handler, engines, parent, field_to_access, span)?;
         Ok(exp)
@@ -938,7 +938,7 @@ impl ty::TyExpression {
                 .as_ref()
                 .map(|field_type_ids| field_type_ids[i].clone())
                 .unwrap_or_else(|| {
-                    let initial_type_id = type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown()));
+                    let initial_type_id = type_engine.insert(engines, TypeInfo::Unknown, None);
                     TypeArgument {
                         type_id: initial_type_id,
                         initial_type_id,
@@ -1072,7 +1072,7 @@ impl ty::TyExpression {
 
         let ctx = ctx
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())));
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
         let parent = ty::TyExpression::type_check(handler, ctx, prefix)?;
         let exp =
             instantiate_tuple_index_access(handler, engines, parent, index, index_span, span)?;
@@ -1539,7 +1539,7 @@ impl ty::TyExpression {
             let ctx = ctx
                 .by_ref()
                 .with_help_text("An address that is being ABI cast must be of type b256")
-                .with_type_annotation(type_engine.insert(engines, TypeInfo::B256, Some(&SourceId::primitive())));
+                .with_type_annotation(type_engine.insert(engines, TypeInfo::B256, None));
             ty::TyExpression::type_check(handler, ctx, address)
                 .unwrap_or_else(|err| ty::TyExpression::error(err, err_span, engines))
         };
@@ -1692,7 +1692,7 @@ impl ty::TyExpression {
         let engines = ctx.engines();
 
         if contents.is_empty() {
-            let unknown_type = type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown()));
+            let unknown_type = type_engine.insert(engines, TypeInfo::Unknown, None);
             return Ok(ty::TyExpression {
                 expression: ty::TyExpressionVariant::Array {
                     elem_type: unknown_type,
@@ -1773,7 +1773,7 @@ impl ty::TyExpression {
             let ctx = ctx
                 .by_ref()
                 .with_help_text("")
-                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())));
+                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
             ty::TyExpression::type_check(handler, ctx, prefix.clone())?
         };
 
@@ -1792,7 +1792,7 @@ impl ty::TyExpression {
             let type_info_u64 = TypeInfo::UnsignedInteger(IntegerBits::SixtyFour);
             let ctx = ctx
                 .with_help_text("")
-                .with_type_annotation(type_engine.insert(engines, type_info_u64, Some(&SourceId::primitive())));
+                .with_type_annotation(type_engine.insert(engines, type_info_u64, None));
             let index_te = ty::TyExpression::type_check(handler, ctx, index)?;
 
             Ok(ty::TyExpression {
@@ -1865,7 +1865,7 @@ impl ty::TyExpression {
         let typed_condition = {
             let ctx = ctx
                 .by_ref()
-                .with_type_annotation(type_engine.insert(engines, TypeInfo::Boolean, Some(&SourceId::primitive())))
+                .with_type_annotation(type_engine.insert(engines, TypeInfo::Boolean, None))
                 .with_help_text("A while loop's loop condition must be a boolean expression.");
             ty::TyExpression::type_check(handler, ctx, condition)?
         };
@@ -1903,7 +1903,7 @@ impl ty::TyExpression {
         let engines = ctx.engines();
 
         let mut ctx = ctx
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown())))
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
             .with_help_text("");
         // ensure that the lhs is a supported expression kind
         match lhs {
@@ -1989,7 +1989,7 @@ impl ty::TyExpression {
                             rhs,
                         },
                     )),
-                    return_type: type_engine.insert(engines, TypeInfo::Tuple(Vec::new()), Some(&SourceId::primitive())),
+                    return_type: type_engine.insert(engines, TypeInfo::Tuple(Vec::new()), None),
                     span,
                 })
             }
@@ -2061,7 +2061,7 @@ impl ty::TyExpression {
                     num.to_string().parse().map(Literal::Numeric).map_err(|e| {
                         Literal::handle_parse_int_error(engines, e, TypeInfo::Numeric, span.clone())
                     }),
-                    type_engine.insert(engines, TypeInfo::Numeric, Some(&SourceId::primitive())),
+                    type_engine.insert(engines, TypeInfo::Numeric, None),
                 ),
                 _ => unreachable!("Unexpected type for integer literals"),
             },
@@ -2118,10 +2118,10 @@ mod tests {
                 &engines,
                 TypeInfo::Array(
                     TypeArgument {
-                        type_id: engines.te().insert(&engines, TypeInfo::Boolean, Some(&SourceId::primitive())),
+                        type_id: engines.te().insert(&engines, TypeInfo::Boolean, None),
                         span: Span::dummy(),
                         call_path_tree: None,
-                        initial_type_id: engines.te().insert(&engines, TypeInfo::Boolean, Some(&SourceId::primitive())),
+                        initial_type_id: engines.te().insert(&engines, TypeInfo::Boolean, None),
                     },
                     Length::new(2, Span::dummy()),
                 ),
@@ -2262,10 +2262,10 @@ mod tests {
                 &engines,
                 TypeInfo::Array(
                     TypeArgument {
-                        type_id: engines.te().insert(&engines, TypeInfo::Boolean, Some(&SourceId::primitive())),
+                        type_id: engines.te().insert(&engines, TypeInfo::Boolean, None),
                         span: Span::dummy(),
                         call_path_tree: None,
-                        initial_type_id: engines.te().insert(&engines, TypeInfo::Boolean, Some(&SourceId::primitive())),
+                        initial_type_id: engines.te().insert(&engines, TypeInfo::Boolean, None),
                     },
                     Length::new(0, Span::dummy()),
                 ),

@@ -20,7 +20,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
 };
 
-use sway_types::{integer_bits::IntegerBits, span::Span, Named, Spanned, SourceId};
+use sway_types::{integer_bits::IntegerBits, span::Span, Named, Spanned};
 
 /// A single requirement in the form `<lhs> == <rhs>` that has to be
 /// fulfilled for the match arm to match.
@@ -494,7 +494,7 @@ fn match_enum(
             return_type: type_engine.insert(
                 ctx.engines,
                 TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                Some(&SourceId::primitive()),
+                None,
             ),
             span: exp.span.clone(),
         },
@@ -503,7 +503,7 @@ fn match_enum(
             return_type: type_engine.insert(
                 ctx.engines,
                 TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                Some(&SourceId::primitive()),
+                None,
             ),
             span: exp.span.clone(),
         },

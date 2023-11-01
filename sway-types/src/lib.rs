@@ -96,19 +96,12 @@ pub struct ModuleId {
 
 impl ModuleId {
     pub const RESERVED: u16 = 0;
-
     pub fn new(id: u16) -> Self { Self { id } }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 pub struct SourceId {
     id: u32,
-}
-
-enum SourceType {
-    Unknown = 0,
-    Primitive = 1,
-    Error = 2,
 }
 
 impl SourceId {
@@ -123,15 +116,11 @@ impl SourceId {
     }
 
     pub fn primitive() -> Self {
-        Self::new(ModuleId::RESERVED, SourceType::Primitive as u32)
+        Self::new(ModuleId::RESERVED, 0)
     }
 
     pub fn unknown() -> Self {
-        Self::new(ModuleId::RESERVED, SourceType::Unknown as u32)
-    }
-
-    pub fn error() -> Self {
-        Self::new(ModuleId::RESERVED, SourceType::Error as u32)
+        Self::new(ModuleId::RESERVED, 1)
     }
 
     /// The module_id that this source_id was created from.

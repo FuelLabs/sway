@@ -2,7 +2,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Ident, Span, Spanned, SourceId};
+use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     decl_engine::DeclRefStruct,
@@ -84,7 +84,7 @@ pub(crate) fn struct_instantiation(
             EnforceTypeArguments::No,
             Some(&type_info_prefix),
         )
-        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error())));
+        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
     // extract the struct name and fields from the type info
     let type_info = type_engine.get(type_id);
@@ -186,7 +186,7 @@ fn type_check_field_arguments(
                     name: struct_field.name.clone(),
                     value: ty::TyExpression {
                         expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
-                        return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error())),
+                        return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None),
                         span: span.clone(),
                     },
                 });

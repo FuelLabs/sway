@@ -2,7 +2,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Span, SourceId};
+use sway_types::Span;
 
 use crate::{
     language::{
@@ -42,7 +42,7 @@ impl ty::TyTraitType {
                     EnforceTypeArguments::No,
                     None,
                 )
-                .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), Some(&SourceId::error())));
+                .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
             Some(ty)
         } else {
             None

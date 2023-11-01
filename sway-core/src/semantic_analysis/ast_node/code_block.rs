@@ -104,7 +104,7 @@ impl ty::TyCodeBlock {
                         );
                     }
 
-                    ctx.engines.te().insert(engines, TypeInfo::Unknown, Some(&SourceId::unknown()))
+                    ctx.engines.te().insert(engines, TypeInfo::Unknown, None)
                 } else {
                     ctx.engines
                         .te()
