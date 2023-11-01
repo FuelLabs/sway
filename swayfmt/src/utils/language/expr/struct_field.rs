@@ -1,5 +1,4 @@
 use crate::{
-    config::items::ItemBraceStyle,
     formatter::{
         shape::{ExprKind, LineStyle},
         *,
