@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-BD9159206068AEC6"
+
+[[package]]
+name = "ptr_issue_reverted"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "git+https://github.com/fuellabs/sway?tag=v0.46.1#512a3386f8961185188302f391ccc96553d23a7a"
+dependencies = ["core"]

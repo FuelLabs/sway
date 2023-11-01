@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-AD80769CAE44474A"
+
+[[package]]
+name = "ptr_expected_behavior"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "git+https://github.com/fuellabs/sway?tag=v0.46.0#e75f14b03636bc96751a6760304a1a6d3eb5937d"
+dependencies = ["core"]
