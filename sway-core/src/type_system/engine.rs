@@ -14,16 +14,12 @@ use crate::{
 use sway_error::{error::CompileError, type_error::TypeError};
 use sway_types::span::Span;
 
+use super::unify::unifier::UnifyKind;
+
 #[derive(Debug, Default)]
 pub struct TypeEngine {
     pub(super) slab: ConcurrentSlab<TypeInfo>,
     id_map: RwLock<HashMap<TypeInfo, TypeId>>,
-}
-
-enum UnifyKind {
-    Default,
-    WithSelf,
-    WithGeneric,
 }
 
 impl TypeEngine {
@@ -191,11 +187,8 @@ impl TypeEngine {
             return;
         }
         let h = Handler::default();
-        let unifier = match unify_kind {
-            UnifyKind::WithSelf => Unifier::new_with_unify_self(engines, help_text),
-            UnifyKind::WithGeneric => Unifier::new_with_unify_generic(engines, help_text),
-            UnifyKind::Default => Unifier::new(engines, help_text),
-        };
+        let unifier = Unifier::new(engines, help_text, unify_kind);
+
         unifier.unify(handler, received, expected, span);
         match err_override {
             Some(err_override) if h.has_errors() => {
