@@ -56,7 +56,6 @@ pub struct CompiledProgram {
     pub lexed: Option<LexedProgram>,
     pub parsed: Option<ParseProgram>,
     pub typed: Option<ty::TyProgram>,
-    pub metrics: Option<PerformanceData>,
 }
 
 /// Used to write the result of compiling into so we can update
@@ -68,6 +67,7 @@ pub struct ParseResult {
     pub(crate) lexed: LexedProgram,
     pub(crate) parsed: ParseProgram,
     pub(crate) typed: ty::TyProgram,
+    pub(crate) metrics: DashMap<SourceId, PerformanceData>,
 }
 
 /// A `Session` is used to store information about a single member in a workspace.
@@ -164,6 +164,11 @@ impl Session {
         res.token_map.deref().iter().for_each(|item| {
             let (s, t) = item.pair();
             self.token_map.insert(s.clone(), t.clone());
+        });
+
+        res.metrics.iter().for_each(|item| {
+            let (s, t) = item.pair();
+            self.metrics.insert(s.clone(), t.clone());
         });
 
         self.create_runnables(
@@ -455,6 +460,7 @@ pub struct TraversalResult {
     pub diagnostics: (Vec<CompileError>, Vec<CompileWarning>),
     pub programs: Option<(LexedProgram, ParseProgram, ty::TyProgram)>,
     pub token_map: TokenMap,
+    pub metrics: DashMap<SourceId, PerformanceData>,
 }
 
 pub fn traverse(
@@ -462,6 +468,7 @@ pub fn traverse(
     engines: &Engines,
 ) -> Result<TraversalResult, LanguageServerError> {
     let token_map = TokenMap::new();
+    let metrics_map = DashMap::new();
     let mut diagnostics = (Vec::<CompileError>::new(), Vec::<CompileWarning>::new());
     let mut programs = None;
     let results_len = results.len();
@@ -477,8 +484,13 @@ pub fn traverse(
             lexed,
             parsed,
             typed,
-            metrics: _,
+            metrics,
         } = value.unwrap();
+
+        let source_id = lexed.root.tree.span().source_id().cloned();
+        if let Some(source_id) = source_id {
+            metrics_map.insert(source_id, metrics.clone());
+        }
 
         // Get a reference to the typed program AST.
         let typed_program = typed
@@ -523,6 +535,7 @@ pub fn traverse(
         diagnostics,
         programs,
         token_map,
+        metrics: metrics_map,
     })
 }
 
@@ -533,6 +546,7 @@ pub fn parse_project(uri: &Url, engines: &Engines) -> Result<ParseResult, Langua
         diagnostics,
         programs,
         token_map,
+        metrics,
     } = traverse(results, &engines)?;
     let (lexed, parsed, typed) = programs.expect("Programs should be populated at this point.");
     Ok(ParseResult {
@@ -541,6 +555,7 @@ pub fn parse_project(uri: &Url, engines: &Engines) -> Result<ParseResult, Langua
         lexed,
         parsed,
         typed,
+        metrics
     })
 }
 
