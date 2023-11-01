@@ -47,7 +47,7 @@ impl Hasher {
         self.write(bytes);
     }
 
-    #![inline(never)]
+    #[inline(never)]
     pub fn write_str_array<S>(ref mut self, s: S) {
         __assert_is_str_array::<S>();
         let str_size = __size_of_str_array::<S>();
@@ -159,7 +159,7 @@ impl Hash for str {
 }
 
 impl<A, B> Hash for (A, B) where A: Hash, B: Hash  {
-    #![inline(never)]
+    #[inline(never)]
     fn hash(self, ref mut state: Hasher) {
         self.0.hash(state);
         self.1.hash(state);
@@ -318,7 +318,7 @@ impl<T> Hash for [T; 10] where T: Hash {
 ///     assert(result = 0xa80f942f4112036dfc2da86daf6d2ef6ede3164dd56d1000eb82fa87c992450f);
 /// }
 /// ```
-#![inline(never)]
+#[inline(never)]
 pub fn sha256<T>(s: T) -> b256 where T: Hash {
     let mut hasher = Hasher::new();
     s.hash(hasher);
@@ -338,7 +338,7 @@ pub fn sha256<T>(s: T) -> b256 where T: Hash {
 ///     assert(result = 0xa80f942f4112036dfc2da86daf6d2ef6ede3164dd56d1000eb82fa87c992450f);
 /// }
 /// ```
-#![inline(never)]
+#[inline(never)]
 pub fn sha256_str_array<S>(param: S) -> b256 {
      __assert_is_str_array::<S>();
     let str_size = __size_of_str_array::<S>();
@@ -374,7 +374,7 @@ pub fn sha256_str_array<S>(param: S) -> b256 {
 ///     assert(result = 0x4375c8bcdc904e5f51752581202ae9ae2bb6eddf8de05d5567d9a6b0ae4789ad);
 /// }
 /// ```
-#![inline(never)]
+#[inline(never)]
 pub fn keccak256<T>(s: T) -> b256 where T: Hash {
     let mut hasher = Hasher::new();
     s.hash(hasher);
