@@ -5,10 +5,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Copy, Clone, Default)]
 pub struct Literals {
     /// Format string literals where necessary.
-    /// Defaults to `false`.
     pub format_strings: bool,
     /// Format hexadecimal integer literals.
-    /// Defaults to [`HexLiteralCase::Preserve`].
     pub hex_literal_case: HexLiteralCase,
 }
 

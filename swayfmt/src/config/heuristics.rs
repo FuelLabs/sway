@@ -12,10 +12,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Copy, Clone)]
 pub struct Heuristics {
     /// Determines heuristics level of involvement.
-    /// Defaults to [`HeuristicsPreferences::Scaled`].
     pub heuristics_pref: HeuristicsPreferences,
     /// Whether to use different formatting for items and expressions if they satisfy a heuristic notion of 'small'
-    /// Defaults to `true`.
     pub use_small_heuristics: bool,
 }
 

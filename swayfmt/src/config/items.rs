@@ -9,16 +9,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Copy, Clone)]
 pub struct Items {
     /// Brace style for items.
-    /// Defaults to [`ItemBraceStyle::SameLineWhere`].
     pub item_brace_style: ItemBraceStyle,
     /// Maximum number of blank lines which can be put between items.
-    /// Defaults to `1`.
     pub blank_lines_upper_bound: usize,
     /// Minimum number of blank lines which must be put between items.
-    /// Defaults to `0`.
     pub blank_lines_lower_bound: usize,
     /// Put empty-body functions and impls on a single line.
-    /// Defaults to `true`.
     pub empty_item_single_line: bool,
 }
 

@@ -14,15 +14,6 @@ use std::path::{Path, PathBuf};
 use sway_utils::find_parent_dir_with_file;
 
 /// A finalized `swayfmt` config.
-///
-/// **Note:** Not all `Config` options are guaranteed to work
-/// and most are not implemented. Configuration options are
-/// subject to change between versions without notice.
-/// If you would like to see a feature implemented, or
-/// implement a feature please refer to the [CONTRIBUTING guide](../CONTRIBUTING.md).
-///
-/// Default settings of a `Config` can be found in each
-/// subcategory's corresponding documentation, eg [`Whitespace`].
 #[derive(Debug, Default, Clone)]
 pub struct Config {
     pub whitespace: Whitespace,

@@ -4,13 +4,10 @@ use crate::{config::user_opts::CommentsOptions, constants::DEFAULT_MAX_COMMENT_W
 #[derive(Debug, Clone)]
 pub struct Comments {
     /// Break comments to fit on the line.
-    /// Defaults to `false`.
     pub wrap_comments: bool,
     /// Maximum length of comments. No effect unless wrap_comments = true.
-    /// Defaults to `80`.
     pub comment_width: usize,
     /// Convert /* */ comments to // comments where possible
-    /// Defaults to `false`.
     pub normalize_comments: bool,
 }
 

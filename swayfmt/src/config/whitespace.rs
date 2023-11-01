@@ -12,22 +12,16 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Copy, Clone)]
 pub struct Whitespace {
     /// Maximum width of each line.
-    /// Defaults to `100`.
     pub max_width: usize,
     /// Use tab characters for indentation, spaces for alignment.
-    /// Defaults to `false`.
     pub hard_tabs: bool,
     /// Number of spaces per tab.
-    /// Defaults to `4`.
     pub tab_spaces: usize,
     /// Unix or Windows line endings.
-    /// Defaults to [`NewlineStyle::Auto`].
     pub newline_style: NewlineStyle,
     /// How we indent expressions or items.
-    /// Defaults to [`IndentStyle::Block`].
     pub indent_style: IndentStyle,
     /// Max number of newlines allowed between statements before collapsing them to threshold
-    /// Defaults to `1`.
     pub newline_threshold: usize,
 }
 

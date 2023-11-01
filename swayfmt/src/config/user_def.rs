@@ -6,10 +6,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone)]
 pub struct Structures {
     /// Align fields of user-defined structures if their diffs fit within threshold.
-    /// Defaults to [`FieldAlignment::Off`].
     pub field_alignment: FieldAlignment,
     /// Put small user-defined structure literals on a single line.
-    /// Defaults to `true`.
     pub small_structures_single_line: bool,
 }
 
