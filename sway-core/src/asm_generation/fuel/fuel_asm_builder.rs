@@ -1167,12 +1167,6 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         let instr_reg = self.reg_seqr.next();
 
         match byte_len {
-            0 | 2..=7 => {
-                return Err(CompileError::Internal(
-                    "Attempt to load {byte_len} bytes sized value.",
-                    owning_span.unwrap_or_else(Span::dummy),
-                ));
-            }
             1 => {
                 self.cur_bytecode.push(Op {
                     opcode: Either::Left(VirtualOp::LB(
@@ -1194,6 +1188,12 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     comment: "load value".into(),
                     owning_span,
                 });
+            }
+            _ => {
+                return Err(CompileError::Internal(
+                    "Attempt to load {byte_len} bytes sized value.",
+                    owning_span.unwrap_or_else(Span::dummy),
+                ));
             }
         }
 
@@ -1661,12 +1661,6 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             let val_reg = self.value_to_register(stored_val)?;
 
             match byte_len {
-                0 | 2..=7 => {
-                    return Err(CompileError::Internal(
-                        "Attempt to load {byte_len} bytes sized value.",
-                        owning_span.unwrap_or_else(Span::dummy),
-                    ));
-                }
                 1 => {
                     self.cur_bytecode.push(Op {
                         opcode: Either::Left(VirtualOp::SB(
@@ -1688,6 +1682,12 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         comment: "store value".into(),
                         owning_span,
                     });
+                }
+                _ => {
+                    return Err(CompileError::Internal(
+                        "Attempt to load {byte_len} bytes sized value.",
+                        owning_span.unwrap_or_else(Span::dummy),
+                    ));
                 }
             }
 
