@@ -31,8 +31,8 @@ impl Default for Whitespace {
             max_width: DEFAULT_MAX_LINE_WIDTH,
             hard_tabs: false,
             tab_spaces: DEFAULT_TAB_SPACES,
-            newline_style: NewlineStyle::Auto,
-            indent_style: IndentStyle::Block,
+            newline_style: Default::default(),
+            indent_style: Default::default(),
             newline_threshold: DEFAULT_NEWLINE_THRESHOLD,
         }
     }
@@ -53,19 +53,21 @@ impl Whitespace {
 }
 
 /// Handling of line indentation for expressions or items.
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
 pub enum IndentStyle {
     /// First line on the same line as the opening brace, all lines aligned with
     /// the first line.
     Visual,
     /// First line is on a new line and all lines align with **block** indent.
+    #[default]
     Block,
 }
 
 /// Handling of which OS new-line style should be applied.
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
 pub enum NewlineStyle {
     /// Auto-detect based on the raw source input.
+    #[default]
     Auto,
     /// Force CRLF (`\r\n`).
     Windows,
