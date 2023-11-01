@@ -130,4 +130,14 @@ category = "compile"
 #nextln: $()(true, _, Struct { x: _, y: _, z: (_ , k, _)}, 0) => {
 #nextln: $()Match arm `(true, _, Struct { x: _, y: _, z: (_ , k, _)}, 0)` is unreachable.
 
-expected_warnings = 13
+#check: $()warning
+
+#check: $()Struct { x: false, y, z } => y,
+#nextln: $()This declaration is never used.
+
+#check: $()warning
+
+#check: $()Struct { x: false, y, z } => z.0,
+#nextln: $()This declaration is never used.
+
+expected_warnings = 15

@@ -139,6 +139,18 @@ impl<T: DisplayWithEngines> DisplayWithEngines for Box<T> {
     }
 }
 
+impl<T: DisplayWithEngines> DisplayWithEngines for Vec<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        let text = self
+            .iter()
+            .map(|e| format!("{}", engines.help_out(e)))
+            .collect::<Vec<_>>()
+            .join(", ")
+            .to_string();
+        f.write_str(&text)
+    }
+}
+
 pub(crate) trait DebugWithEngines {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result;
 }
@@ -161,6 +173,18 @@ impl<T: DebugWithEngines> DebugWithEngines for Option<T> {
 impl<T: DebugWithEngines> DebugWithEngines for Box<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         (**self).fmt(f, engines)
+    }
+}
+
+impl<T: DebugWithEngines> DebugWithEngines for Vec<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        let text = self
+            .iter()
+            .map(|e| format!("{:?}", engines.help_out(e)))
+            .collect::<Vec<_>>()
+            .join(", ")
+            .to_string();
+        f.write_str(&text)
     }
 }
 

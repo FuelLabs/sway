@@ -47,6 +47,8 @@ impl Format for ItemEnum {
 
                 let fields = self.fields.get();
 
+                formatter.shape.code_line.update_expr_new_line(true);
+
                 // Handle opening brace
                 Self::open_curly_brace(formatted_code, formatter)?;
                 // Determine alignment tactic
