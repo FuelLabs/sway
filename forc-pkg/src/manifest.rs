@@ -754,7 +754,7 @@ impl Default for BuildProfile {
 }
 
 /// The definition for the implicit `std` dependency.
-/// 
+///
 /// This can be configured using environment variables:
 /// - use `FORC_IMPLICIT_STD_PATH` for the path for the std-lib;
 /// - use `FORC_IMPLICIT_STD_GIT`, `FORC_IMPLICIT_STD_GIT_TAG` and/or `FORC_IMPLICIT_STD_GIT_BRANCH` to configure
@@ -790,8 +790,7 @@ fn implicit_std_dep() -> Dependency {
             .ok()
             .or_else(|| Some(SWAY_GIT_REPO_URL.to_string())),
         tag: Some(tag),
-        branch: std::env::var("FORC_IMPLICIT_STD_GIT_BRANCH")
-            .ok(),
+        branch: std::env::var("FORC_IMPLICIT_STD_GIT_BRANCH").ok(),
         ..Default::default()
     };
 
