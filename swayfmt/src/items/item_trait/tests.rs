@@ -105,3 +105,13 @@ intermediate_whitespace
 "trait MyComplexTrait {
     fn complex_function(    arg1: MyStruct<[b256;  3], u8> , arg2: [MyStruct <u64, bool>; 4], arg3: ( str[5], bool ), arg4: MyOtherStruct)    -> str[6] ;
 }");
+fmt_test_item!(trait_with_where_clause
+"trait TraitWithWhere<T, A>
+where
+    T: Something,
+    A: Something,
+{
+    fn my_fn();
+}",
+intermediate_whitespace
+"trait TraitWithWhere<T, A> where T: Something, A: Something { fn my_fn(); }");

@@ -21,7 +21,7 @@ pub struct Heuristics {
 impl Default for Heuristics {
     fn default() -> Self {
         Self {
-            heuristics_pref: HeuristicsPreferences::Scaled,
+            heuristics_pref: Default::default(),
             use_small_heuristics: true,
         }
     }
@@ -42,13 +42,14 @@ impl Heuristics {
 /// Heuristic settings that can be used to simplify
 /// the configuration of the granular width configurations
 /// like `struct_lit_width`, `array_width`, etc.
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
 pub enum HeuristicsPreferences {
     /// Turn off any heuristics
     Off,
     /// Turn on max heuristics
     Max,
     /// Use scaled values based on the value of `max_width`
+    #[default]
     Scaled,
 }
 

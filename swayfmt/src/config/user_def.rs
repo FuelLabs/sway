@@ -14,7 +14,7 @@ pub struct Structures {
 impl Default for Structures {
     fn default() -> Self {
         Self {
-            field_alignment: FieldAlignment::Off,
+            field_alignment: Default::default(),
             small_structures_single_line: true,
         }
     }
@@ -33,8 +33,9 @@ impl Structures {
 }
 
 /// Align fields if they fit within a provided threshold.
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize, Default)]
 pub enum FieldAlignment {
     AlignFields(usize),
+    #[default]
     Off,
 }

@@ -1,6 +1,5 @@
 use crate::{
     comments::{rewrite_with_comments, write_comments},
-    config::items::ItemBraceStyle,
     formatter::*,
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
@@ -116,18 +115,9 @@ impl CurlyBrace for ItemTrait {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let brace_style = formatter.config.items.item_brace_style;
         formatter.indent();
         let open_brace = Delimiter::Brace.as_open_char();
-        match brace_style {
-            ItemBraceStyle::AlwaysNextLine => {
-                // Add opening brace to the next line.
-                writeln!(line, "\n{open_brace}")?;
-            }
-            _ => {
-                writeln!(line, "{open_brace}")?;
-            }
-        }
+        writeln!(line, "{open_brace}")?;
 
         Ok(())
     }

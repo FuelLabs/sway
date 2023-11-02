@@ -1,0 +1,9 @@
+category = "fail"
+
+# check: $()Returning an unitialized register is not ok
+# nextln: $()let _ = asm(r1)
+# nextln: $()Unitialized register is being read before being written
+
+# check: $()Reading unitialized register is not ok
+# nextln: $()asm(r2)
+# nextln: $()Unitialized register is being read before being written
