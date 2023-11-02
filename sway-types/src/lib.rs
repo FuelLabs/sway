@@ -95,7 +95,6 @@ pub struct ModuleId {
 }
 
 impl ModuleId {
-    pub const RESERVED: u16 = 0;
     pub fn new(id: u16) -> Self { Self { id } }
 }
 
@@ -105,6 +104,7 @@ pub struct SourceId {
 }
 
 impl SourceId {
+    const RESERVED: u16 = 0;
     const SOURCE_ID_BITS: u32 = 20;
     const SOURCE_ID_MASK: u32 = (1 << Self::SOURCE_ID_BITS) - 1;
     
@@ -115,12 +115,10 @@ impl SourceId {
         }
     }
 
-    pub fn primitive() -> Self {
-        Self::new(ModuleId::RESERVED, 0)
-    }
-
-    pub fn unknown() -> Self {
-        Self::new(ModuleId::RESERVED, 1)
+    /// Create a reserved source_id. This is assigned to internal types
+    /// that should not be cleared during garbage collection.
+    pub fn reserved() -> Self {
+        Self::new(Self::RESERVED, Self::RESERVED as u32)
     }
 
     /// The module_id that this source_id was created from.

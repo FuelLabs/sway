@@ -353,7 +353,7 @@ impl TypeEngine {
 
 fn info_to_source_id(ty: &TypeInfo) -> Option<SourceId> {
     match ty {
-        TypeInfo::Unknown => Some(SourceId::unknown()),
+        TypeInfo::Unknown
         | TypeInfo::UnsignedInteger(_)
         | TypeInfo::Numeric
         | TypeInfo::Boolean
@@ -362,8 +362,9 @@ fn info_to_source_id(ty: &TypeInfo) -> Option<SourceId> {
         | TypeInfo::RawUntypedSlice
         | TypeInfo::StringSlice
         | TypeInfo::Contract
-        | TypeInfo::StringArray(_) => Some(SourceId::primitive()),
-        TypeInfo::Tuple(v) if v.is_empty() => Some(SourceId::primitive()),
+        | TypeInfo::StringArray(_) 
+        | TypeInfo::Array(_, _) => Some(SourceId::reserved()),
+        TypeInfo::Tuple(v) if v.is_empty() => Some(SourceId::reserved()),
         _ => None,
     }
 }
