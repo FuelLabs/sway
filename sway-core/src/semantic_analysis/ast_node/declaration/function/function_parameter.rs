@@ -8,7 +8,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Spanned};
+use sway_types::Spanned;
 
 impl ty::TyFunctionParameter {
     pub(crate) fn type_check(

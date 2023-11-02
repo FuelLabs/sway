@@ -186,7 +186,11 @@ fn type_check_field_arguments(
                     name: struct_field.name.clone(),
                     value: ty::TyExpression {
                         expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
-                        return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None),
+                        return_type: type_engine.insert(
+                            engines,
+                            TypeInfo::ErrorRecovery(err),
+                            None,
+                        ),
                         span: span.clone(),
                     },
                 });

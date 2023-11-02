@@ -63,10 +63,9 @@ pub(crate) fn instantiate_if_expression(
         Box::new(r#else)
     });
 
-    let r#else_ret_ty = r#else
-        .as_ref()
-        .map(|x| x.return_type)
-        .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Tuple(Vec::new()), span.source_id()));
+    let r#else_ret_ty = r#else.as_ref().map(|x| x.return_type).unwrap_or_else(|| {
+        type_engine.insert(engines, TypeInfo::Tuple(Vec::new()), span.source_id())
+    });
     // if there is a type annotation, then the else branch must exist
     if !else_deterministically_aborts && !then_deterministically_aborts {
         // delay emitting the errors until we decide if this is a missing else branch or some other set of errors

@@ -92,7 +92,10 @@ impl ConcurrentSlab<TypeData> {
         {
             let inner = self.inner.read().unwrap();
             let actual_prev_value = &inner[index];
-            if !actual_prev_value.type_info.eq(&prev_value.type_info, engines) {
+            if !actual_prev_value
+                .type_info
+                .eq(&prev_value.type_info, engines)
+            {
                 return Some(actual_prev_value.clone());
             }
         }
@@ -114,4 +117,3 @@ where
         None
     }
 }
-

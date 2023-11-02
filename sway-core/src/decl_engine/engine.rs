@@ -4,7 +4,7 @@ use std::{
     sync::RwLock,
 };
 
-use sway_types::{Named, Spanned, ModuleId};
+use sway_types::{ModuleId, Named, Spanned};
 
 use crate::{
     concurrent_slab::{ConcurrentSlab, ListDisplay},
@@ -175,7 +175,6 @@ decl_engine_clear_module!(
     enum_slab, ty::TyEnumDecl;
     type_alias_slab, ty::TyTypeAliasDecl;
 );
-
 
 impl DeclEngine {
     /// Given a [DeclRef] `index`, finds all the parents of `index` and all the

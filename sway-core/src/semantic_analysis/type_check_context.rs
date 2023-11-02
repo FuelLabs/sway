@@ -453,10 +453,11 @@ impl<'a> TypeCheckContext<'a> {
                             .insert(self.engines, TypeInfo::ErrorRecovery(err), None)
                     });
 
-                let type_id = self
-                    .engines
-                    .te()
-                    .insert(self.engines, TypeInfo::Array(elem_ty.clone(), n), elem_ty.span.source_id());
+                let type_id = self.engines.te().insert(
+                    self.engines,
+                    TypeInfo::Array(elem_ty.clone(), n),
+                    elem_ty.span.source_id(),
+                );
 
                 // take any trait methods that apply to this type and copy them to the new type
                 self.insert_trait_implementation_for_type(type_id);
@@ -475,16 +476,19 @@ impl<'a> TypeCheckContext<'a> {
                             mod_path,
                         )
                         .unwrap_or_else(|err| {
-                            self.engines
-                                .te()
-                                .insert(self.engines, TypeInfo::ErrorRecovery(err), None)
+                            self.engines.te().insert(
+                                self.engines,
+                                TypeInfo::ErrorRecovery(err),
+                                None,
+                            )
                         });
                 }
 
-                let type_id = self
-                    .engines
-                    .te()
-                    .insert(self.engines, TypeInfo::Tuple(type_arguments), span.source_id());
+                let type_id = self.engines.te().insert(
+                    self.engines,
+                    TypeInfo::Tuple(type_arguments),
+                    span.source_id(),
+                );
 
                 // take any trait methods that apply to this type and copy them to the new type
                 self.insert_trait_implementation_for_type(type_id);
@@ -741,7 +745,11 @@ impl<'a> TypeCheckContext<'a> {
                 let new_decl_ref = decl_engine.insert(new_copy);
 
                 // create the type id from the copy
-                let type_id = type_engine.insert(self.engines, TypeInfo::Struct(new_decl_ref.clone()), new_decl_ref.span().source_id());
+                let type_id = type_engine.insert(
+                    self.engines,
+                    TypeInfo::Struct(new_decl_ref.clone()),
+                    new_decl_ref.span().source_id(),
+                );
 
                 // take any trait methods that apply to this type and copy them to the new type
                 self.insert_trait_implementation_for_type(type_id);
@@ -770,7 +778,11 @@ impl<'a> TypeCheckContext<'a> {
                 let new_decl_ref = decl_engine.insert(new_copy);
 
                 // create the type id from the copy
-                let type_id = type_engine.insert(self.engines, TypeInfo::Enum(new_decl_ref.clone()), new_decl_ref.span().source_id());
+                let type_id = type_engine.insert(
+                    self.engines,
+                    TypeInfo::Enum(new_decl_ref.clone()),
+                    new_decl_ref.span().source_id(),
+                );
 
                 // take any trait methods that apply to this type and copy them to the new type
                 self.insert_trait_implementation_for_type(type_id);
@@ -812,7 +824,7 @@ impl<'a> TypeCheckContext<'a> {
                             name: name.clone(),
                             trait_type_id: implementing_type,
                         },
-                        name.span().source_id()
+                        name.span().source_id(),
                     )
                 } else {
                     return Err(handler.emit_err(CompileError::Internal(
@@ -869,7 +881,9 @@ impl<'a> TypeCheckContext<'a> {
                 None,
                 item_prefix,
             )
-            .unwrap_or_else(|err| type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err), None));
+            .unwrap_or_else(|err| {
+                type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err), None)
+            });
 
         // grab the module where the type itself is declared
         let type_module = self
@@ -1448,9 +1462,11 @@ impl<'a> TypeCheckContext<'a> {
                             mod_path,
                         )
                         .unwrap_or_else(|err| {
-                            self.engines
-                                .te()
-                                .insert(self.engines, TypeInfo::ErrorRecovery(err), None)
+                            self.engines.te().insert(
+                                self.engines,
+                                TypeInfo::ErrorRecovery(err),
+                                None,
+                            )
                         });
                 }
                 let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(

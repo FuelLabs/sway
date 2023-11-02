@@ -57,7 +57,11 @@ impl TyScrutinee {
                 };
                 let typed_scrutinee = ty::TyScrutinee {
                     variant: ty::TyScrutineeVariant::CatchAll,
-                    type_id: type_engine.insert(engines, TypeInfo::Placeholder(dummy_type_param), span.source_id()),
+                    type_id: type_engine.insert(
+                        engines,
+                        TypeInfo::Placeholder(dummy_type_param),
+                        span.source_id(),
+                    ),
                     span,
                 };
                 Ok(typed_scrutinee)
@@ -280,7 +284,11 @@ fn type_check_struct(
 
     let struct_ref = decl_engine.insert(struct_decl);
     let typed_scrutinee = ty::TyScrutinee {
-        type_id: type_engine.insert(ctx.engines(), TypeInfo::Struct(struct_ref.clone()), struct_ref.span().source_id()),
+        type_id: type_engine.insert(
+            ctx.engines(),
+            TypeInfo::Struct(struct_ref.clone()),
+            struct_ref.span().source_id(),
+        ),
         span,
         variant: ty::TyScrutineeVariant::StructScrutinee {
             struct_ref,
@@ -386,7 +394,11 @@ fn type_check_enum(
             value: Box::new(typed_value),
             instantiation_call_path: call_path,
         },
-        type_id: type_engine.insert(engines, TypeInfo::Enum(enum_ref.clone()), enum_ref.span().source_id()),
+        type_id: type_engine.insert(
+            engines,
+            TypeInfo::Enum(enum_ref.clone()),
+            enum_ref.span().source_id(),
+        ),
         span,
     };
 
@@ -424,7 +436,7 @@ fn type_check_tuple(
                 })
                 .collect(),
         ),
-        span.source_id()
+        span.source_id(),
     );
     let typed_scrutinee = ty::TyScrutinee {
         variant: ty::TyScrutineeVariant::Tuple(typed_elems),

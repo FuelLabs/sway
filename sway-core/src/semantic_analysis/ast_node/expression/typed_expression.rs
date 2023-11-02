@@ -201,9 +201,11 @@ impl ty::TyExpression {
                 )
             }
             ExpressionKind::LazyOperator(LazyOperatorExpression { op, lhs, rhs }) => {
-                let ctx = ctx
-                    .by_ref()
-                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Boolean, None));
+                let ctx = ctx.by_ref().with_type_annotation(type_engine.insert(
+                    engines,
+                    TypeInfo::Boolean,
+                    None,
+                ));
                 Self::type_check_lazy_operator(handler, ctx, op, *lhs, *rhs, span)
             }
             ExpressionKind::CodeBlock(contents) => {
@@ -637,7 +639,11 @@ impl ty::TyExpression {
             let ctx = ctx
                 .by_ref()
                 .with_help_text("")
-                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, then.span().source_id()));
+                .with_type_annotation(type_engine.insert(
+                    engines,
+                    TypeInfo::Unknown,
+                    then.span().source_id(),
+                ));
             ty::TyExpression::type_check(handler, ctx, then.clone())
                 .unwrap_or_else(|err| ty::TyExpression::error(err, then.span(), engines))
         };
@@ -645,7 +651,11 @@ impl ty::TyExpression {
             let ctx = ctx
                 .by_ref()
                 .with_help_text("")
-                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, expr.span().source_id()));
+                .with_type_annotation(type_engine.insert(
+                    engines,
+                    TypeInfo::Unknown,
+                    expr.span().source_id(),
+                ));
             ty::TyExpression::type_check(handler, ctx, expr.clone())
                 .unwrap_or_else(|err| ty::TyExpression::error(err, expr.span(), engines))
         });
@@ -864,26 +874,26 @@ impl ty::TyExpression {
             .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         // type check the initializers
-        let typed_registers =
-            asm.registers
-                .clone()
-                .into_iter()
-                .map(
-                    |AsmRegisterDeclaration { name, initializer }| ty::TyAsmRegisterDeclaration {
-                        name,
-                        initializer: initializer.map(|initializer| {
-                            let ctx = ctx.by_ref().with_help_text("").with_type_annotation(
-                                type_engine.insert(engines, TypeInfo::Unknown, None),
-                            );
+        let typed_registers = asm
+            .registers
+            .clone()
+            .into_iter()
+            .map(
+                |AsmRegisterDeclaration { name, initializer }| ty::TyAsmRegisterDeclaration {
+                    name,
+                    initializer: initializer.map(|initializer| {
+                        let ctx = ctx.by_ref().with_help_text("").with_type_annotation(
+                            type_engine.insert(engines, TypeInfo::Unknown, None),
+                        );
 
-                            ty::TyExpression::type_check(handler, ctx, initializer.clone())
-                                .unwrap_or_else(|err| {
-                                    ty::TyExpression::error(err, initializer.span(), engines)
-                                })
-                        }),
-                    },
-                )
-                .collect();
+                        ty::TyExpression::type_check(handler, ctx, initializer.clone())
+                            .unwrap_or_else(|err| {
+                                ty::TyExpression::error(err, initializer.span(), engines)
+                            })
+                    }),
+                },
+            )
+            .collect();
 
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::AsmExpression {
@@ -965,10 +975,11 @@ impl ty::TyExpression {
             expression: ty::TyExpressionVariant::Tuple {
                 fields: typed_fields,
             },
-            return_type: ctx
-                .engines
-                .te()
-                .insert(engines, TypeInfo::Tuple(typed_field_types), span.source_id()),
+            return_type: ctx.engines.te().insert(
+                engines,
+                TypeInfo::Tuple(typed_field_types),
+                span.source_id(),
+            ),
             span,
         };
         Ok(exp)
@@ -1046,7 +1057,11 @@ impl ty::TyExpression {
         // Update `access_type` to be the type of the monomorphized struct after inserting it
         // into the type engine
         let storage_key_struct_decl_ref = ctx.engines().de().insert(storage_key_struct_decl);
-        access_type = type_engine.insert(engines, TypeInfo::Struct(storage_key_struct_decl_ref.clone()), storage_key_struct_decl_ref.span().source_id());
+        access_type = type_engine.insert(
+            engines,
+            TypeInfo::Struct(storage_key_struct_decl_ref.clone()),
+            storage_key_struct_decl_ref.span().source_id(),
+        );
 
         // take any trait items that apply to `StorageKey<T>` and copy them to the
         // monomorphized type
@@ -1585,7 +1600,7 @@ impl ty::TyExpression {
                                     abi_name: AbiName::Deferred,
                                     address: None,
                                 },
-                                span.source_id()
+                                span.source_id(),
                             ),
                             expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
                             span,
@@ -1614,7 +1629,7 @@ impl ty::TyExpression {
                 abi_name: AbiName::Known(abi_name.clone()),
                 address: Some(Box::new(address_expr.clone())),
             },
-            abi_name.span().source_id()
+            abi_name.span().source_id(),
         );
 
         // Retrieve the interface surface for this abi.
@@ -2269,7 +2284,7 @@ mod tests {
                     },
                     Length::new(0, Span::dummy()),
                 ),
-                None
+                None,
             ),
         );
         let (errors, warnings) = handler.consume();

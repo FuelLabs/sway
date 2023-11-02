@@ -4,7 +4,7 @@
 use crate::{
     core::document,
     handlers::{notification, request},
-    lsp_ext::{OnEnterParams, ShowAstParams, VisualizeParams, MetricsParams},
+    lsp_ext::{MetricsParams, OnEnterParams, ShowAstParams, VisualizeParams},
     server_state::ServerState,
 };
 use lsp_types::{

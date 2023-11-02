@@ -1,5 +1,9 @@
 use crate::{ModuleId, SourceId};
-use std::{collections::{HashMap, BTreeSet}, path::PathBuf, sync::RwLock};
+use std::{
+    collections::{BTreeSet, HashMap},
+    path::PathBuf,
+    sync::RwLock,
+};
 
 /// The Source Engine manages a relationship between file paths and their corresponding
 /// integer-based source IDs. Additionally, it maintains a reserve - a map that traces
@@ -35,11 +39,14 @@ impl SourceEngine {
         let manifest_path = sway_utils::find_parent_manifest_dir(path).unwrap();
         let module_id = {
             let mut module_map = self.path_to_module_map.write().unwrap();
-            module_map.entry(manifest_path.clone()).or_insert_with(|| {
-                let mut next_id = self.next_module_id.write().unwrap();
-                *next_id += 1;
-                ModuleId::new(*next_id)
-            }).clone()
+            module_map
+                .entry(manifest_path.clone())
+                .or_insert_with(|| {
+                    let mut next_id = self.next_module_id.write().unwrap();
+                    *next_id += 1;
+                    ModuleId::new(*next_id)
+                })
+                .clone()
         };
 
         let source_id = SourceId::new(module_id.id, *self.next_source_id.read().unwrap());
@@ -53,9 +60,12 @@ impl SourceEngine {
             let mut path_map = self.source_to_path_map.write().unwrap();
             path_map.insert(source_id, path.clone());
         }
-        
+
         let mut module_map = self.module_to_sources_map.write().unwrap();
-        module_map.entry(module_id).or_insert_with(BTreeSet::new).insert(source_id);
+        module_map
+            .entry(module_id)
+            .or_insert_with(BTreeSet::new)
+            .insert(source_id);
 
         source_id
     }
@@ -72,10 +82,6 @@ impl SourceEngine {
 
     /// This function provides the module ID corresponding to a specified file path.
     pub fn get_module_id(&self, path: &PathBuf) -> Option<ModuleId> {
-        self.path_to_module_map
-            .read()
-            .unwrap()
-            .get(path)
-            .cloned()
+        self.path_to_module_map.read().unwrap().get(path).cloned()
     }
 }

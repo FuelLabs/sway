@@ -83,7 +83,9 @@ fn generic_enum_resolution() {
         visibility: crate::language::Visibility::Public,
         attributes: AttributesMap::default(),
     });
-    let ty_1 = engines.te().insert(&engines, TypeInfo::Enum(decl_ref_1), None);
+    let ty_1 = engines
+        .te()
+        .insert(&engines, TypeInfo::Enum(decl_ref_1), None);
 
     /*
     Result<bool> {
@@ -119,7 +121,9 @@ fn generic_enum_resolution() {
         visibility: crate::language::Visibility::Public,
         attributes: AttributesMap::default(),
     });
-    let ty_2 = engines.te().insert(&engines, TypeInfo::Enum(decl_ref_2), None);
+    let ty_2 = engines
+        .te()
+        .insert(&engines, TypeInfo::Enum(decl_ref_2), None);
 
     // Unify them together...
     let h = Handler::default();
@@ -147,9 +151,11 @@ fn basic_numeric_unknown() {
     let sp = Span::dummy();
     // numerics
     let id = engines.te().insert(&engines, TypeInfo::Numeric, None);
-    let id2 = engines
-        .te()
-        .insert(&engines, TypeInfo::UnsignedInteger(IntegerBits::Eight), None);
+    let id2 = engines.te().insert(
+        &engines,
+        TypeInfo::UnsignedInteger(IntegerBits::Eight),
+        None,
+    );
 
     // Unify them together...
     let h = Handler::default();
@@ -171,9 +177,11 @@ fn unify_numerics() {
 
     // numerics
     let id = engines.te().insert(&engines, TypeInfo::Numeric, None);
-    let id2 = engines
-        .te()
-        .insert(&engines, TypeInfo::UnsignedInteger(IntegerBits::Eight), None);
+    let id2 = engines.te().insert(
+        &engines,
+        TypeInfo::UnsignedInteger(IntegerBits::Eight),
+        None,
+    );
 
     // Unify them together...
     let h = Handler::default();
@@ -196,7 +204,11 @@ fn unify_numerics_2() {
 
     // numerics
     let id = type_engine.insert(&engines, TypeInfo::Numeric, None);
-    let id2 = type_engine.insert(&engines, TypeInfo::UnsignedInteger(IntegerBits::Eight), None);
+    let id2 = type_engine.insert(
+        &engines,
+        TypeInfo::UnsignedInteger(IntegerBits::Eight),
+        None,
+    );
 
     // Unify them together...
     let h = Handler::default();

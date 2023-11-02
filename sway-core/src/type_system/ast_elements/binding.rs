@@ -305,7 +305,11 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
         )?;
         // Insert the new copy into the declaration engine.
         let new_struct_ref = ctx.engines.de().insert(new_copy);
-        let type_id = type_engine.insert(engines, TypeInfo::Struct(new_struct_ref.clone()), new_struct_ref.span().source_id());
+        let type_id = type_engine.insert(
+            engines,
+            TypeInfo::Struct(new_struct_ref.clone()),
+            new_struct_ref.span().source_id(),
+        );
         Ok((new_struct_ref, Some(type_id), None))
     }
 }
@@ -352,7 +356,11 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         )?;
         // Insert the new copy into the declaration engine.
         let new_enum_ref = ctx.engines.de().insert(new_copy);
-        let type_id = type_engine.insert(engines, TypeInfo::Enum(new_enum_ref.clone()), new_enum_ref.span().source_id());
+        let type_id = type_engine.insert(
+            engines,
+            TypeInfo::Enum(new_enum_ref.clone()),
+            new_enum_ref.span().source_id(),
+        );
         Ok((new_enum_ref, Some(type_id), Some(unknown_decl)))
     }
 }

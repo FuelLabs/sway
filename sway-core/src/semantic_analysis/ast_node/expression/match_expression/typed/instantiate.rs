@@ -23,8 +23,11 @@ pub(super) struct Instantiate {
 impl Instantiate {
     pub(super) fn new(engines: &Engines, span: Span) -> Self {
         let type_engine = engines.te();
-        let u64_type =
-            type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour), None);
+        let u64_type = type_engine.insert(
+            engines,
+            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+            None,
+        );
         let boolean_type = type_engine.insert(engines, TypeInfo::Boolean, None);
         let revert_type = type_engine.insert(engines, TypeInfo::Unknown, None); // TODO: Change this to the `Never` type once available.
 

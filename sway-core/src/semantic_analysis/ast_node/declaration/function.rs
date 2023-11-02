@@ -345,7 +345,7 @@ fn test_function_selector_behavior() {
                     .insert(
                         &engines,
                         TypeInfo::StringArray(Length::new(5, Span::dummy())),
-                        None
+                        None,
                     )
                     .into(),
             },
@@ -355,13 +355,15 @@ fn test_function_selector_behavior() {
                 is_mutable: false,
                 mutability_span: Span::dummy(),
                 type_argument: TypeArgument {
-                    type_id: engines
-                        .te()
-                        .insert(&engines, TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo), None),
+                    type_id: engines.te().insert(
+                        &engines,
+                        TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
+                        None,
+                    ),
                     initial_type_id: engines.te().insert(
                         &engines,
                         TypeInfo::StringArray(Length::new(5, Span::dummy())),
-                        None
+                        None,
                     ),
                     span: Span::dummy(),
                     call_path_tree: None,

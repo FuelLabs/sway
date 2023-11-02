@@ -169,8 +169,11 @@ fn type_check_size_of_val(
         type_arguments: vec![],
         span: span.clone(),
     };
-    let return_type =
-        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour), span.source_id());
+    let return_type = type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        span.source_id(),
+    );
     Ok((intrinsic_function, return_type))
 }
 
@@ -228,8 +231,11 @@ fn type_check_size_of_type(
         }],
         span,
     };
-    let return_type =
-        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour), None);
+    let return_type = type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    );
     Ok((intrinsic_function, return_type))
 }
 
@@ -366,9 +372,11 @@ fn type_check_to_str_array(
 
             let span = arg.span.clone();
 
-            let mut ctx = ctx
-                .by_ref()
-                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
+            let mut ctx = ctx.by_ref().with_type_annotation(type_engine.insert(
+                engines,
+                TypeInfo::Unknown,
+                None,
+            ));
             let new_type = ty::TyExpression::type_check(handler, ctx.by_ref(), arg)?;
 
             Ok((
@@ -413,9 +421,9 @@ fn type_check_cmp(
             span,
         }));
     }
-    let mut ctx = ctx
-        .by_ref()
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
+    let mut ctx =
+        ctx.by_ref()
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
 
     let lhs = arguments[0].clone();
     let lhs = ty::TyExpression::type_check(handler, ctx.by_ref(), lhs)?;
@@ -488,15 +496,19 @@ fn type_check_gtf(
     }
 
     // Type check the first argument which is the index
-    let mut ctx = ctx.by_ref().with_type_annotation(
-        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour), None),
-    );
+    let mut ctx = ctx.by_ref().with_type_annotation(type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    ));
     let index = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[0].clone())?;
 
     // Type check the second argument which is the tx field ID
-    let mut ctx = ctx.by_ref().with_type_annotation(
-        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour), None),
-    );
+    let mut ctx = ctx.by_ref().with_type_annotation(type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    ));
     let tx_field_id = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[1].clone())?;
 
     let targ = type_arguments[0].clone();
@@ -617,9 +629,11 @@ fn type_check_state_clear(
     }
 
     // `slots` argument
-    let mut ctx = ctx.with_type_annotation(
-        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour), None),
-    );
+    let mut ctx = ctx.with_type_annotation(type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    ));
     let number_of_slots_exp =
         ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[1].clone())?;
 
@@ -675,8 +689,11 @@ fn type_check_state_load_word(
         type_arguments: vec![],
         span,
     };
-    let return_type =
-        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour), None);
+    let return_type = type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    );
     Ok((intrinsic_function, return_type))
 }
 
@@ -726,11 +743,14 @@ fn type_check_state_store_word(
     }
     let mut ctx = ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
     let val_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[1].clone())?;
-    let ctx = ctx.with_type_annotation(
-        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour), None),
-    );
+    let ctx = ctx.with_type_annotation(type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    ));
     let type_argument = type_arguments.get(0).map(|targ| {
-        let mut ctx = ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
+        let mut ctx =
+            ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
         let initial_type_info = type_engine
             .to_typeinfo(targ.type_id, &targ.span)
             .map_err(|e| handler.emit_err(e.into()))
@@ -815,13 +835,16 @@ fn type_check_state_quad(
     }
     let mut ctx = ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
     let val_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[1].clone())?;
-    let mut ctx = ctx.with_type_annotation(
-        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour), None),
-    );
+    let mut ctx = ctx.with_type_annotation(type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    ));
     let number_of_slots_exp =
         ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[2].clone())?;
     let type_argument = type_arguments.get(0).map(|targ| {
-        let mut ctx = ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
+        let mut ctx =
+            ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
         let initial_type_info = type_engine
             .to_typeinfo(targ.type_id, &targ.span)
             .map_err(|e| handler.emit_err(e.into()))
@@ -1126,9 +1149,11 @@ fn type_check_revert(
     }
 
     // Type check the argument which is the revert code
-    let mut ctx = ctx.by_ref().with_type_annotation(
-        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour), None),
-    );
+    let mut ctx = ctx.by_ref().with_type_annotation(type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    ));
     let revert_code = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[0].clone())?;
 
     Ok((
@@ -1139,7 +1164,7 @@ fn type_check_revert(
             span,
         },
         type_engine.insert(engines, TypeInfo::Unknown, None), // TODO: change this to the `Never` type when
-                                                        // available
+                                                              // available
     ))
 }
 
@@ -1191,9 +1216,9 @@ fn type_check_ptr_ops(
         )
         .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
-    let mut ctx = ctx
-        .by_ref()
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
+    let mut ctx =
+        ctx.by_ref()
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
 
     let lhs = arguments[0].clone();
     let lhs = ty::TyExpression::type_check(handler, ctx.by_ref(), lhs)?;
@@ -1215,9 +1240,11 @@ fn type_check_ptr_ops(
     let ctx = ctx
         .by_ref()
         .with_help_text("Incorrect argument type")
-        .with_type_annotation(
-            type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour), None),
-        );
+        .with_type_annotation(type_engine.insert(
+            engines,
+            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+            None,
+        ));
     let rhs = ty::TyExpression::type_check(handler, ctx, rhs)?;
 
     Ok((
@@ -1296,9 +1323,9 @@ fn type_check_smo(
     });
 
     // Type check the first argument which is the recipient address, so it has to be a `b256`.
-    let mut ctx = ctx
-        .by_ref()
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::B256, None));
+    let mut ctx =
+        ctx.by_ref()
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::B256, None));
     let recipient = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[0].clone())?;
 
     // Type check the second argument which is the data, which can be anything. If a type
@@ -1313,14 +1340,18 @@ fn type_check_smo(
     let data = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[1].clone())?;
 
     // Type check the third argument which is the output index, so it has to be a `u64`.
-    let mut ctx = ctx.by_ref().with_type_annotation(
-        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour), None),
-    );
+    let mut ctx = ctx.by_ref().with_type_annotation(type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    ));
 
     // Type check the fourth argument which is the amount of coins to send, so it has to be a `u64`.
-    let mut ctx = ctx.by_ref().with_type_annotation(
-        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour), None),
-    );
+    let mut ctx = ctx.by_ref().with_type_annotation(type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    ));
     let coins = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[2].clone())?;
 
     Ok((

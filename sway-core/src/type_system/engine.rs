@@ -1,19 +1,18 @@
 use crate::{
-    concurrent_slab::{ConcurrentSlab, ListDisplay}, decl_engine::*, engine_threading::*,
+    concurrent_slab::{ConcurrentSlab, ListDisplay},
+    decl_engine::*,
+    engine_threading::*,
     type_system::priv_prelude::*,
 };
 use core::fmt::Write;
-use hashbrown::{HashMap, hash_map::RawEntryMut};
+use hashbrown::{hash_map::RawEntryMut, HashMap};
 use std::sync::RwLock;
 use sway_error::{
-    error::CompileError, type_error::TypeError,
+    error::CompileError,
     handler::{ErrorEmitted, Handler},
+    type_error::TypeError,
 };
-use sway_types::{
-    integer_bits::IntegerBits,
-    span::Span,
-    SourceId, ModuleId,
-};
+use sway_types::{integer_bits::IntegerBits, span::Span, ModuleId, SourceId};
 
 use super::unify::unifier::UnifyKind;
 
@@ -26,8 +25,15 @@ pub struct TypeEngine {
 impl TypeEngine {
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
-    pub(crate) fn insert(&self, engines: &Engines, ty: TypeInfo, source_id: Option<&SourceId>) -> TypeId {
-        let source_id = source_id.map(Clone::clone).or_else(|| info_to_source_id(&ty));
+    pub(crate) fn insert(
+        &self,
+        engines: &Engines,
+        ty: TypeInfo,
+        source_id: Option<&SourceId>,
+    ) -> TypeId {
+        let source_id = source_id
+            .map(Clone::clone)
+            .or_else(|| info_to_source_id(&ty));
         let ty = TypeData {
             type_info: ty,
             source_id,
@@ -325,7 +331,11 @@ impl TypeEngine {
                     handler,
                     engines,
                     type_id,
-                    self.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour), span.source_id()),
+                    self.insert(
+                        engines,
+                        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                        span.source_id(),
+                    ),
                     span,
                     "",
                     None,
@@ -363,7 +373,7 @@ fn info_to_source_id(ty: &TypeInfo) -> Option<SourceId> {
         | TypeInfo::RawUntypedSlice
         | TypeInfo::StringSlice
         | TypeInfo::Contract
-        | TypeInfo::StringArray(_) 
+        | TypeInfo::StringArray(_)
         | TypeInfo::Array(_, _) => Some(SourceId::reserved()),
         TypeInfo::Tuple(v) if v.is_empty() => Some(SourceId::reserved()),
         _ => None,

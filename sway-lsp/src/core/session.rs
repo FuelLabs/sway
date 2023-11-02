@@ -556,7 +556,7 @@ pub fn parse_project(uri: &Url, engines: &Engines) -> Result<ParseResult, Langua
         lexed,
         parsed,
         typed,
-        metrics
+        metrics,
     })
 }
 

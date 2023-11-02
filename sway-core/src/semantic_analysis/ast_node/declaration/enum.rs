@@ -1,9 +1,9 @@
-use sway_error::handler::{ErrorEmitted, Handler};
 use crate::{
     language::{parsed::*, ty, CallPath},
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
 };
+use sway_error::handler::{ErrorEmitted, Handler};
 
 impl ty::TyEnumDecl {
     pub fn type_check(

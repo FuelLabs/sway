@@ -1,10 +1,10 @@
-use std::{collections::BTreeMap, fmt};
-use sway_types::Spanned;
 use crate::{
     decl_engine::{DeclEngine, DeclEngineInsert},
     engine_threading::*,
     type_system::priv_prelude::*,
 };
+use std::{collections::BTreeMap, fmt};
+use sway_types::Spanned;
 
 type SourceType = TypeId;
 type DestinationType = TypeId;
@@ -77,7 +77,11 @@ impl TypeSubstMap {
             .map(|x| {
                 (
                     x.type_id,
-                    type_engine.insert(engines, TypeInfo::Placeholder(x.clone()), x.name_ident.span().source_id()),
+                    type_engine.insert(
+                        engines,
+                        TypeInfo::Placeholder(x.clone()),
+                        x.name_ident.span().source_id(),
+                    ),
                 )
             })
             .collect();
@@ -348,7 +352,11 @@ impl TypeSubstMap {
                 }
                 if need_to_create_new {
                     let new_decl_ref = decl_engine.insert(decl);
-                    Some(type_engine.insert(engines, TypeInfo::Struct(new_decl_ref.clone()), new_decl_ref.decl_span().source_id()))
+                    Some(type_engine.insert(
+                        engines,
+                        TypeInfo::Struct(new_decl_ref.clone()),
+                        new_decl_ref.decl_span().source_id(),
+                    ))
                 } else {
                     None
                 }
@@ -372,7 +380,11 @@ impl TypeSubstMap {
                 }
                 if need_to_create_new {
                     let new_decl_ref = decl_engine.insert(decl);
-                    Some(type_engine.insert(engines, TypeInfo::Enum(new_decl_ref.clone()), new_decl_ref.decl_span().source_id()))
+                    Some(type_engine.insert(
+                        engines,
+                        TypeInfo::Enum(new_decl_ref.clone()),
+                        new_decl_ref.decl_span().source_id(),
+                    ))
                 } else {
                     None
                 }
@@ -380,7 +392,11 @@ impl TypeSubstMap {
             TypeInfo::Array(mut elem_ty, count) => {
                 self.find_match(elem_ty.type_id, engines).map(|type_id| {
                     elem_ty.type_id = type_id;
-                    type_engine.insert(engines, TypeInfo::Array(elem_ty.clone(), count), elem_ty.span.source_id())
+                    type_engine.insert(
+                        engines,
+                        TypeInfo::Array(elem_ty.clone(), count),
+                        elem_ty.span.source_id(),
+                    )
                 })
             }
             TypeInfo::Tuple(fields) => {
@@ -419,7 +435,11 @@ impl TypeSubstMap {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert(engines, TypeInfo::Storage { fields }, source_id.as_ref()))
+                    Some(type_engine.insert(
+                        engines,
+                        TypeInfo::Storage { fields },
+                        source_id.as_ref(),
+                    ))
                 } else {
                     None
                 }
@@ -427,7 +447,14 @@ impl TypeSubstMap {
             TypeInfo::Alias { name, mut ty } => {
                 self.find_match(ty.type_id, engines).map(|type_id| {
                     ty.type_id = type_id;
-                    type_engine.insert(engines, TypeInfo::Alias { name, ty: ty.clone() }, ty.span.source_id())
+                    type_engine.insert(
+                        engines,
+                        TypeInfo::Alias {
+                            name,
+                            ty: ty.clone(),
+                        },
+                        ty.span.source_id(),
+                    )
                 })
             }
             TypeInfo::Ptr(mut ty) => self.find_match(ty.type_id, engines).map(|type_id| {

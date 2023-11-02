@@ -1058,7 +1058,7 @@ impl TraitMap {
                         },
                         root_type_id: None,
                     },
-                    constraint_trait_name.span().source_id()
+                    constraint_trait_name.span().source_id(),
                 );
                 (c.trait_name.suffix.clone(), constraint_type_id)
             })

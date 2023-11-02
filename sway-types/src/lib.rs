@@ -95,7 +95,9 @@ pub struct ModuleId {
 }
 
 impl ModuleId {
-    pub fn new(id: u16) -> Self { Self { id } }
+    pub fn new(id: u16) -> Self {
+        Self { id }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
@@ -107,7 +109,7 @@ impl SourceId {
     const RESERVED: u16 = 0;
     const SOURCE_ID_BITS: u32 = 20;
     const SOURCE_ID_MASK: u32 = (1 << Self::SOURCE_ID_BITS) - 1;
-    
+
     /// Create a combined ID from module and source IDs.
     pub fn new(module_id: u16, source_id: u32) -> Self {
         SourceId {

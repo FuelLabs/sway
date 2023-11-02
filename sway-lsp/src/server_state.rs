@@ -118,7 +118,7 @@ async fn run_blocking_parse_project(
     tokio::task::spawn_blocking(move || {
         // Lock the diagnostics result to prevent multiple threads from parsing the project at the same time.
         let mut diagnostics = session.diagnostics.write();
-        // If there are no items in the token_map then we have nothing to clear 
+        // If there are no items in the token_map then we have nothing to clear
         // as the project hasn't been parsed yet.
         if !session.token_map().is_empty() {
             // This operation is fairly expensive. Perhaps we should call it less often than every keystroke?

@@ -117,7 +117,7 @@ pub(crate) fn type_check_method_application(
                         } else {
                             TypeInfo::B256
                         },
-                        param.name.span().source_id()
+                        param.name.span().source_id(),
                     );
                     let ctx = ctx
                         .by_ref()
@@ -430,7 +430,9 @@ pub(crate) fn resolve_method_name(
             // type check the call path
             let type_id = call_path_binding
                 .type_check_with_type_info(handler, &mut ctx)
-                .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
+                .unwrap_or_else(|err| {
+                    type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
+                });
 
             // find the module that the symbol is in
             let type_info_prefix = ctx

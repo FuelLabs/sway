@@ -9,7 +9,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{integer_bits::IntegerBits, span::Span, Spanned, SourceId};
+use sway_types::{integer_bits::IntegerBits, span::Span, SourceId, Spanned};
 
 use std::{
     cmp::Ordering,
@@ -66,7 +66,6 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for VecSet<T> {
         self.eq(other, engines) && other.eq(self, engines)
     }
 }
-
 
 /// Encapsulates type information and its optional source identifier.
 #[derive(Debug, Default, Clone)]

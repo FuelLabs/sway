@@ -187,7 +187,6 @@ pub(crate) async fn metrics_request(
     res
 }
 
-
 pub(crate) fn semantic_tokens_request(server: &ServerState, uri: &Url) {
     let params = SemanticTokensParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
