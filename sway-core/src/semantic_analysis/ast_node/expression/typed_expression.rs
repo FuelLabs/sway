@@ -2106,7 +2106,6 @@ mod tests {
     use super::*;
     use crate::Engines;
     use sway_error::type_error::TypeError;
-    use sway_types::SourceId;
 
     fn do_type_check(
         handler: &Handler,
