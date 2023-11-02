@@ -36,7 +36,7 @@ impl SourceEngine {
             }
         }
 
-        let manifest_path = sway_utils::find_parent_manifest_dir(path).unwrap();
+        let manifest_path = sway_utils::find_parent_manifest_dir(path).unwrap_or(path.clone());
         let module_id = {
             let mut module_map = self.path_to_module_map.write().unwrap();
             *module_map.entry(manifest_path.clone()).or_insert_with(|| {
