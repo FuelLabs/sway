@@ -1269,7 +1269,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 graph.add_edge(leaf, fn_exit_point, "".into());
             }
 
-            // check for std::revert and connect to the exit node if thats the case.
+            // check for std::revert and connect to the exit node if that's the case.
             // we are guaranteed a full call path here since the type checker calls to_fullpath.
             if let Some(prefix) = fn_decl.call_path.prefixes.first() {
                 if prefix.as_str() == STD && fn_decl.call_path.suffix.as_str() == "revert" {
