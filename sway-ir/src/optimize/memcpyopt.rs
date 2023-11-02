@@ -44,7 +44,7 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
     let mut loads_map = FxHashMap::<Symbol, Vec<Value>>::default();
     let mut stores_map = FxHashMap::<Symbol, Vec<Value>>::default();
     let mut instr_info_map = FxHashMap::<Value, InstInfo>::default();
-    let mut asm_uses = FxHashSet::<Symbol>::default();
+    let mut escaping_uses = FxHashSet::<Symbol>::default();
 
     for (pos, (block, inst)) in function.instruction_iter(context).enumerate() {
         let info = || InstInfo { block, pos };
@@ -81,8 +81,18 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
                 for arg in args {
                     if let Some(arg) = arg.initializer {
                         if let Some(local) = get_symbol(context, arg) {
-                            asm_uses.insert(local);
+                            escaping_uses.insert(local);
                         }
+                    }
+                }
+            }
+            Instruction {
+                op: InstOp::Call(_, args),
+                ..
+            } => {
+                for arg in args {
+                    if let Some(local) = get_symbol(context, *arg) {
+                        escaping_uses.insert(local);
                     }
                 }
             }
@@ -151,7 +161,7 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
                             instr_info.block == block && instr_info.pos > pos
                         })
                         // We don't deal with ASM blocks.
-                        || asm_uses.contains(&dst_local)
+                        || escaping_uses.contains(&dst_local)
                         // We don't deal part copies.
                         || dst_local.get_type(context) != src_local.get_type(context)
                         // We don't replace the destination when it's an arg.

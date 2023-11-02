@@ -2,21 +2,12 @@
 use crate::config::user_opts::LiteralsOptions;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub struct Literals {
     /// Format string literals where necessary.
     pub format_strings: bool,
     /// Format hexadecimal integer literals.
     pub hex_literal_case: HexLiteralCase,
-}
-
-impl Default for Literals {
-    fn default() -> Self {
-        Self {
-            format_strings: false,
-            hex_literal_case: HexLiteralCase::Preserve,
-        }
-    }
 }
 
 impl Literals {
@@ -30,9 +21,10 @@ impl Literals {
 }
 
 /// Controls how swayfmt should handle case in hexadecimal literals.
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
 pub enum HexLiteralCase {
     /// Leave the literal as-is
+    #[default]
     Preserve,
     /// Ensure all literals use uppercase lettering
     Upper,
