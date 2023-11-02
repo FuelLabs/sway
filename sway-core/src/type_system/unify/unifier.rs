@@ -67,7 +67,7 @@ impl<'a> Unifier<'a> {
                 received,
                 &TypeData {
                     type_info: received_type_info.clone(),
-                    source_id: source_id.clone(),
+                    source_id,
                 },
                 TypeData {
                     type_info: expected_type_info.clone(),
@@ -99,7 +99,7 @@ impl<'a> Unifier<'a> {
                 expected,
                 &TypeData {
                     type_info: expected_type_info.clone(),
-                    source_id: source_id.clone(),
+                    source_id,
                 },
                 TypeData {
                     type_info: received_type_info.clone(),

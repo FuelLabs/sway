@@ -39,14 +39,11 @@ impl SourceEngine {
         let manifest_path = sway_utils::find_parent_manifest_dir(path).unwrap();
         let module_id = {
             let mut module_map = self.path_to_module_map.write().unwrap();
-            module_map
-                .entry(manifest_path.clone())
-                .or_insert_with(|| {
-                    let mut next_id = self.next_module_id.write().unwrap();
-                    *next_id += 1;
-                    ModuleId::new(*next_id)
-                })
-                .clone()
+            *module_map.entry(manifest_path.clone()).or_insert_with(|| {
+                let mut next_id = self.next_module_id.write().unwrap();
+                *next_id += 1;
+                ModuleId::new(*next_id)
+            })
         };
 
         let source_id = SourceId::new(module_id.id, *self.next_source_id.read().unwrap());

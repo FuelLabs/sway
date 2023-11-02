@@ -163,13 +163,13 @@ impl Session {
         self.metrics.clear();
 
         res.token_map.deref().iter().for_each(|item| {
-            let (s, t) = item.pair();
-            self.token_map.insert(s.clone(), t.clone());
+            let (i, t) = item.pair();
+            self.token_map.insert(i.clone(), t.clone());
         });
 
         res.metrics.iter().for_each(|item| {
             let (s, t) = item.pair();
-            self.metrics.insert(s.clone(), t.clone());
+            self.metrics.insert(*s, t.clone());
         });
 
         self.create_runnables(
@@ -542,13 +542,13 @@ pub fn traverse(
 
 /// Parses the project and returns true if the compiler diagnostics are new and should be published.
 pub fn parse_project(uri: &Url, engines: &Engines) -> Result<ParseResult, LanguageServerError> {
-    let results = compile(uri, &engines)?;
+    let results = compile(uri, engines)?;
     let TraversalResult {
         diagnostics,
         programs,
         token_map,
         metrics,
-    } = traverse(results, &engines)?;
+    } = traverse(results, engines)?;
     let (lexed, parsed, typed) = programs.expect("Programs should be populated at this point.");
     Ok(ParseResult {
         diagnostics,
