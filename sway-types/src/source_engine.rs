@@ -71,12 +71,11 @@ impl SourceEngine {
     }
 
     /// This function provides the module ID corresponding to a specified file path.
-    pub fn get_module_id(&self, path: &PathBuf) -> ModuleId {
+    pub fn get_module_id(&self, path: &PathBuf) -> Option<ModuleId> {
         self.path_to_module_map
             .read()
             .unwrap()
             .get(path)
-            .unwrap()
-            .clone()
+            .cloned()
     }
 }

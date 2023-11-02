@@ -27,7 +27,6 @@ impl TypeEngine {
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
     pub(crate) fn insert(&self, engines: &Engines, ty: TypeInfo, source_id: Option<&SourceId>) -> TypeId {
-        // Create a reserved source ID if none is provided and the type is either a primitive or unknown.
         let source_id = source_id.map(Clone::clone).or_else(|| info_to_source_id(&ty));
         let ty = TypeData {
             type_info: ty,
@@ -54,6 +53,7 @@ impl TypeEngine {
         }
     }
 
+    /// Removes all data associated with `module_id` from the type engine.
     pub fn clear_module(&mut self, module_id: &ModuleId) {
         self.slab.retain(|ty| match &ty.source_id {
             Some(source_id) => &source_id.module_id() != module_id,
@@ -351,6 +351,7 @@ impl TypeEngine {
     }
 }
 
+/// Maps specific `TypeInfo` variants to a reserved `SourceId`, returning `None` for non-mapped types.
 fn info_to_source_id(ty: &TypeInfo) -> Option<SourceId> {
     match ty {
         TypeInfo::Unknown

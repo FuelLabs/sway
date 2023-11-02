@@ -68,6 +68,7 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for VecSet<T> {
 }
 
 
+/// Encapsulates type information and its optional source identifier.
 #[derive(Debug, Default, Clone)]
 pub struct TypeData {
     pub(crate) type_info: TypeInfo,
