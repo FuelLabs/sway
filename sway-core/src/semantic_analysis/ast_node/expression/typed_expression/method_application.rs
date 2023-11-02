@@ -579,7 +579,7 @@ pub(crate) fn monomorphize_method_application(
                 engines,
                 method.return_type.type_id,
                 ctx.type_annotation(),
-                &method.return_type.span(),
+                &call_path.span(),
                 "Function return type does not match up with local type annotation.",
                 None,
             );
