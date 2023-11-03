@@ -2,7 +2,6 @@ use crate::{
     lock::Lock,
     manifest::{BuildProfile, Dependency, ManifestFile, MemberManifestFiles, PackageManifestFile},
     source::{self, IPFSNode, Source},
-    CORE, PRELUDE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
@@ -46,6 +45,7 @@ use sway_core::{
     BuildTarget, Engines, FinalizedEntry,
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
+use sway_types::constants::{CORE, PRELUDE, STD};
 use sway_types::{Ident, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
 use tracing::{info, warn};

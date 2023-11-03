@@ -15,7 +15,3 @@ pub use manifest::{
 };
 #[doc(inline)]
 pub use pkg::*;
-
-const CORE: &str = "core";
-const STD: &str = "std";
-const PRELUDE: &str = "prelude";
