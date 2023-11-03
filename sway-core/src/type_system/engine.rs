@@ -14,6 +14,8 @@ use crate::{
 use sway_error::{error::CompileError, type_error::TypeError};
 use sway_types::span::Span;
 
+use super::unify::unifier::UnifyKind;
+
 #[derive(Debug, Default)]
 pub struct TypeEngine {
     pub(super) slab: ConcurrentSlab<TypeInfo>,
@@ -70,9 +72,7 @@ impl TypeEngine {
     /// error if there is a conflict between them).
     ///
     /// More specifically, this function tries to make `received` equivalent to
-    /// `expected`, except in cases where `received` has more type information
-    /// than `expected` (e.g. when `expected` is a generic type and `received`
-    /// is not).
+    /// `expected`.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn unify(
         &self,
@@ -83,6 +83,90 @@ impl TypeEngine {
         span: &Span,
         help_text: &str,
         err_override: Option<CompileError>,
+    ) {
+        self.unify_helper(
+            handler,
+            engines,
+            received,
+            expected,
+            span,
+            help_text,
+            err_override,
+            UnifyKind::Default,
+        );
+    }
+
+    /// Make the types of `received` and `expected` equivalent (or produce an
+    /// error if there is a conflict between them).
+    ///
+    /// More specifically, this function tries to make `received` equivalent to
+    /// `expected`, except in cases where `received` has more type information
+    /// than `expected` (e.g. when `expected` is a self type and `received`
+    /// is not).
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn unify_with_self(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        received: TypeId,
+        expected: TypeId,
+        span: &Span,
+        help_text: &str,
+        err_override: Option<CompileError>,
+    ) {
+        self.unify_helper(
+            handler,
+            engines,
+            received,
+            expected,
+            span,
+            help_text,
+            err_override,
+            UnifyKind::WithSelf,
+        );
+    }
+
+    /// Make the types of `received` and `expected` equivalent (or produce an
+    /// error if there is a conflict between them).
+    ///
+    /// More specifically, this function tries to make `received` equivalent to
+    /// `expected`, except in cases where `received` has more type information
+    /// than `expected` (e.g. when `expected` is a generic type and `received`
+    /// is not).
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn unify_with_generic(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        received: TypeId,
+        expected: TypeId,
+        span: &Span,
+        help_text: &str,
+        err_override: Option<CompileError>,
+    ) {
+        self.unify_helper(
+            handler,
+            engines,
+            received,
+            expected,
+            span,
+            help_text,
+            err_override,
+            UnifyKind::WithGeneric,
+        );
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn unify_helper(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        received: TypeId,
+        expected: TypeId,
+        span: &Span,
+        help_text: &str,
+        err_override: Option<CompileError>,
+        unify_kind: UnifyKind,
     ) {
         if !UnifyCheck::coercion(engines).check(received, expected) {
             // create a "mismatched type" error unless the `err_override`
@@ -103,7 +187,9 @@ impl TypeEngine {
             return;
         }
         let h = Handler::default();
-        Unifier::new(engines, help_text).unify(handler, received, expected, span);
+        let unifier = Unifier::new(engines, help_text, unify_kind);
+
+        unifier.unify(handler, received, expected, span);
         match err_override {
             Some(err_override) if h.has_errors() => {
                 handler.emit_err(err_override);

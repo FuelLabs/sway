@@ -1,0 +1,3 @@
+[[package]]
+name = "generic_and_associated_type"
+source = "member"
