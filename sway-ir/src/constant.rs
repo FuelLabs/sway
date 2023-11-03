@@ -1,6 +1,6 @@
 //! [`Constant`] is a typed constant value.
 
-use crate::{context::Context, irtype::Type, pretty::DebugWithContext, value::Value};
+use crate::{context::Context, irtype::Type, pretty::DebugWithContext, value::Value, Padding, size_bytes_round_up_to_word_alignment};
 use sway_types::u256::U256;
 
 /// A [`Type`] and constant value, including [`ConstantValue::Undef`] for uninitialized constants.
@@ -138,7 +138,7 @@ impl Constant {
 
     /// Returns the tag and the value of an enum constant if `self` is an enum constant,
     /// otherwise `None`.
-    pub fn extract_enum_tag_and_value(&self, context: &Context) -> Option<(&Constant, &Constant)> {
+    fn extract_enum_tag_and_value(&self, context: &Context) -> Option<(&Constant, &Constant)> {
         if !self.ty.is_enum(context) {
             return None;
         }
@@ -149,6 +149,49 @@ impl Constant {
         };
 
         Some((&elems[0], &elems[1]))
+    }
+
+    /// Returns elements of an aggregate constant with the expected padding for each element
+    /// if `self` is an aggregate (struct, enum, or array), otherwise `None`.
+    /// If the returned [Padding] is `None` the default [Padding] for the type
+    /// is expected.
+    /// If the aggregate constant is an enum, the returned [Vec] has exactly two elements,
+    /// the first being the tag and the second the value of the enum variant.
+    pub fn elements_of_aggregate_with_padding(&self, context: &Context) -> Option<Vec<(&Constant, Option<Padding>)>> {
+        // We need a special handling in case of enums.
+        if let Some((tag, value)) = self.extract_enum_tag_and_value(context) {
+            let tag_with_padding = (tag, None);
+
+            // Enum variants are left padded to the word boundary, and the size
+            // of each variant is the size of the union.
+            let target_size = size_bytes_round_up_to_word_alignment!(
+                // We know we have an enum here, means exactly two fields in the struct
+                // second of which is the union.
+                self.ty.get_field_types(context)[1].size_in_bytes(context) as usize
+            );
+
+            let value_with_padding = (value, Some(Padding::Left { target_size }));
+
+            return Some(vec![tag_with_padding, value_with_padding]);
+        }
+
+        match &self.value {
+            // Individual array elements do not have additional padding.
+            ConstantValue::Array(elems) => Some(elems.iter()
+                    .map(|el| (el, None))
+                    .collect()),
+            // Each struct field is right padded to the word boundary.
+            ConstantValue::Struct(elems) => Some(elems.iter()
+                    .map(|el| {
+                        let target_size = size_bytes_round_up_to_word_alignment!(
+                            el.ty.size_in_bytes(context) as usize
+                        );
+
+                        (el, Some(Padding::Right { target_size }))
+                    })
+                    .collect()),
+            _ => None,
+        }
     }
 
     /// Compare two Constant values. Can't impl PartialOrder because of context.

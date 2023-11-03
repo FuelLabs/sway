@@ -1,8 +1,6 @@
-use crate::{
-    asm_generation::from_ir::ir_type_size_in_bytes, size_bytes_round_up_to_word_alignment,
-};
+use crate::size_bytes_round_up_to_word_alignment;
 
-use sway_ir::{Constant, ConstantValue, Context};
+use sway_ir::{Constant, ConstantValue, Context, Padding};
 
 use std::{
     collections::BTreeMap,
@@ -29,26 +27,11 @@ pub enum Datum {
     Collection(Vec<Entry>),
 }
 
-#[derive(Clone, Debug)]
-pub(crate) enum Padding {
-    Left { target_size: usize },
-    Right { target_size: usize },
-}
-
-impl Padding {
-    pub fn target_size(&self) -> usize {
-        use Padding::*;
-        match self {
-            Left { target_size } | Right { target_size } => *target_size,
-        }
-    }
-}
-
 impl Entry {
     pub(crate) fn new_byte(value: u8, name: Option<String>, padding: Option<Padding>) -> Entry {
         Entry {
             value: Datum::Byte(value),
-            padding: padding.unwrap_or(Padding::Right { target_size: 1 }),
+            padding: padding.unwrap_or(Padding::default_for_u8(value)),
             name,
         }
     }
@@ -56,7 +39,7 @@ impl Entry {
     pub(crate) fn new_word(value: u64, name: Option<String>, padding: Option<Padding>) -> Entry {
         Entry {
             value: Datum::Word(value),
-            padding: padding.unwrap_or(Padding::Right { target_size: 8 }),
+            padding: padding.unwrap_or(Padding::default_for_u64(value)),
             name,
         }
     }
@@ -67,9 +50,7 @@ impl Entry {
         padding: Option<Padding>,
     ) -> Entry {
         Entry {
-            padding: padding.unwrap_or(Padding::Right {
-                target_size: bytes.len(),
-            }),
+            padding: padding.unwrap_or(Padding::default_for_byte_array(&bytes)),
             value: Datum::ByteArray(bytes),
             name,
         }
@@ -81,9 +62,9 @@ impl Entry {
         padding: Option<Padding>,
     ) -> Entry {
         Entry {
-            padding: padding.unwrap_or(Padding::Right {
-                target_size: elements.iter().map(|el| el.padding.target_size()).sum(),
-            }),
+            padding: padding.unwrap_or(Padding::default_for_aggregate(
+                elements.iter().map(|el| el.padding.target_size()).sum(),
+            )),
             value: Datum::Collection(elements),
             name,
         }
@@ -96,27 +77,23 @@ impl Entry {
         padding: Option<Padding>,
     ) -> Entry {
         // We need a special handling in case of enums.
-        if let Some((tag, value)) = constant.extract_enum_tag_and_value(context) {
-            let tag_entry = Entry::from_constant(context, tag, None, None);
+        if constant.ty.is_enum(context) {
+            let tag_and_value_with_paddings = constant
+                .elements_of_aggregate_with_padding(context)
+                .expect("Enums are aggregates.");
 
-            // Here's the special case for enums. We need to get the size of the union and
-            // attach it to this constant entry which will be one of the variants.
-            let val_entry = {
-                let target_size = size_bytes_round_up_to_word_alignment!(
-                    ir_type_size_in_bytes(context, &constant.ty.get_field_types(context)[1]) as usize
-                );
-                Entry::from_constant(
-                    context,
-                    value,
-                    None,
-                    Some(Padding::Left { target_size }),
-                )
-            };
+            debug_assert!(tag_and_value_with_paddings.len() == 2, "In case of enums, `elements_of_aggregate_with_padding` must return exactly two elements, the tag and the value.");
 
-            return Entry::new_collection(vec![tag_entry, val_entry], name, padding);
+            let tag = &tag_and_value_with_paddings[0];
+            let value = &tag_and_value_with_paddings[1];
+
+            let tag_entry = Entry::from_constant(context, tag.0, None, tag.1.clone());
+            let value_entry = Entry::from_constant(context, value.0, None, value.1.clone());
+
+            return Entry::new_collection(vec![tag_entry, value_entry], name, padding);
         }
 
-        // Not an enum, no more trickiness required.
+        // Not an enum, no more special handling required.
         match &constant.value {
             ConstantValue::Undef | ConstantValue::Unit => Entry::new_byte(0, name, padding),
             ConstantValue::Bool(b) => Entry::new_byte(u8::from(*b), name, padding),
@@ -134,26 +111,11 @@ impl Entry {
                 Entry::new_byte_array(bs.to_be_bytes().to_vec(), name, padding)
             }
             ConstantValue::String(bs) => Entry::new_byte_array(bs.clone(), name, padding),
-            ConstantValue::Array(els) => Entry::new_collection(
-                els.iter()
-                    .map(|el| Entry::from_constant(context, el, None, None))
-                    .collect(),
-                name,
-                padding,
-            ),
-            ConstantValue::Struct(els) => Entry::new_collection(
-                els.iter()
-                    .map(|el| {
-                        let target_size = size_bytes_round_up_to_word_alignment!(
-                            ir_type_size_in_bytes(context, &el.ty) as usize
-                        );
-                        Entry::from_constant(
-                            context,
-                            el,
-                            None,
-                            Some(Padding::Right { target_size }),
-                        )
-                    })
+            ConstantValue::Array(_) | ConstantValue::Struct(_) => Entry::new_collection(
+                constant.elements_of_aggregate_with_padding(context)
+                    .expect("Arrays and structs are aggregates.")
+                    .into_iter()
+                    .map(|(elem, padding)| Entry::from_constant(context, elem, None, padding))
                     .collect(),
                 name,
                 padding,
@@ -177,17 +139,11 @@ impl Entry {
             Datum::Collection(els) => els.iter().flat_map(|el| el.to_bytes()).collect(),
         };
 
+        let target_size = size_bytes_round_up_to_word_alignment!(self.padding.target_size());
+        let final_padding = target_size.saturating_sub(bytes.len());
         match self.padding {
-            Padding::Left { target_size } => {
-                let target_size = size_bytes_round_up_to_word_alignment!(target_size);
-                let left_pad = target_size.saturating_sub(bytes.len());
-                [repeat(0u8).take(left_pad).collect(), bytes].concat()
-            }
-            Padding::Right { target_size } => {
-                let target_size = size_bytes_round_up_to_word_alignment!(target_size);
-                let right_pad = target_size.saturating_sub(bytes.len());
-                [bytes, repeat(0u8).take(right_pad).collect()].concat()
-            }
+            Padding::Left { .. } => [repeat(0u8).take(final_padding).collect(), bytes].concat(),
+            Padding::Right { .. } => [bytes, repeat(0u8).take(final_padding).collect()].concat(),
         }
     }
 
