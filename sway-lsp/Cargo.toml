@@ -58,6 +58,7 @@ futures = { version = "0.3", default-features = false, features = [
     "async-await",
 ] }
 pretty_assertions = "1.4.0"
+regex = "^1.10.2"
 sway-lsp-test-utils = { path = "tests/utils" }
 tower = { version = "0.4.12", default-features = false, features = ["util"] }
 
