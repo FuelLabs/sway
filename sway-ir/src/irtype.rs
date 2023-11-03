@@ -326,14 +326,16 @@ impl Type {
         })
     }
 
-    /// What's the offset of the indexed element?
-    /// Returns None on invalid indices.
+    /// What's the offset, in bytes, of the indexed element?
+    /// Returns `None` on invalid indices.
+    /// Panics if `self` is not an aggregate (struct, enum, union, or array).
     pub fn get_indexed_offset(&self, context: &Context, indices: &[u64]) -> Option<u64> {
         indices
             .iter()
             .try_fold((*self, 0), |(ty, accum_offset), idx| {
                 if ty.is_struct(context) {
                     // Sum up all sizes of all previous fields.
+                    // Every struct field is aligned to word boundary.
                     let prev_idxs_offset = (0..(*idx)).try_fold(0, |accum, pre_idx| {
                         ty.get_field_type(context, pre_idx).map(|field_ty| {
                             crate::size_bytes_round_up_to_word_alignment!(
@@ -349,7 +351,7 @@ impl Type {
                 } else {
                     assert!(
                         ty.is_array(context),
-                        "Expected aggregate type when indexing using GEP. Got {}",
+                        "Expected aggregate type. Got {}.",
                         ty.as_string(context)
                     );
                     // size_of_element * idx will be the offset of idx.
@@ -366,7 +368,7 @@ impl Type {
             .map(|pair| pair.1)
     }
 
-    /// What's the offset of the value indexed element?
+    /// What's the offset, in bytes, of the value indexed element?
     /// It may not always be possible to determine statically.
     pub fn get_value_indexed_offset(&self, context: &Context, indices: &[Value]) -> Option<u64> {
         let const_indices: Vec<_> = indices

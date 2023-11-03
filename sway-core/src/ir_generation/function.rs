@@ -6,7 +6,6 @@ use super::{
     types::*,
 };
 use crate::{
-    asm_generation::from_ir::ir_type_size_in_bytes,
     engine_threading::*,
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
@@ -2760,31 +2759,6 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, whole_block_span_md_idx))
     }
 
-    /// Get the offset, in words, to a particular field in an aggregate type.
-    fn get_offset(
-        &mut self,
-        context: &mut Context,
-        ty: &Type,
-        indices: &[u64],
-    ) -> Result<u64, CompileError> {
-        let mut offset = 0;
-        let mut ty_at_idx = *ty;
-        for index in indices.iter() {
-            let fields = ty_at_idx.get_field_types(context);
-            for (field_idx, field_type) in fields.into_iter().enumerate() {
-                if (field_idx as u64) >= *index {
-                    ty_at_idx = field_type;
-                    break;
-                }
-                offset += size_bytes_round_up_to_word_alignment!(ir_type_size_in_bytes(
-                    context,
-                    &field_type
-                ));
-            }
-        }
-        Ok(offset / 8)
-    }
-
     fn compile_storage_read(
         &mut self,
         context: &mut Context,
@@ -2797,7 +2771,22 @@ impl<'eng> FnCompiler<'eng> {
         // within the slot. The offset depends on what field of the top level storage
         // variable is being accessed.
         let (storage_key, offset_within_slot) = {
-            let offset_in_words = self.get_offset(context, base_type, indices)?;
+            let offset_in_words = match base_type.get_indexed_offset(context, indices) {
+                Some(offset_in_bytes) => {
+                    // TODO: Warning! Here we make an assumption about the memory layout of structs.
+                    //       The memory layout of structs can be changed in the future.
+                    //       We will not refactor the Storage API at the moment to remove this
+                    //       assumption. It is a high and questionable effort because we anyhow
+                    //       want to improve and refactor Storage API in the future.
+                    assert!(
+                        offset_in_bytes % 8 == 0,
+                        "Expected struct fields to be aligned to word boundary. The field offset in bytes was {}.",
+                        offset_in_bytes
+                    );
+                    offset_in_bytes / 8
+                },
+                None => return Err(CompileError::Internal("Cannot get the offset within the slot while compiling storage read.", Span::dummy())),
+            };
             let offset_in_slots = offset_in_words / 4;
             let offset_remaining = offset_in_words % 4;
 
