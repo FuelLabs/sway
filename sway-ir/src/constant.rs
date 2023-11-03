@@ -136,6 +136,21 @@ impl Constant {
         Value::new_constant(context, value)
     }
 
+    /// Returns the tag and the value of an enum constant if `self` is an enum constant,
+    /// otherwise `None`.
+    pub fn extract_enum_tag_and_value(&self, context: &Context) -> Option<(&Constant, &Constant)> {
+        if !self.ty.is_enum(context) {
+            return None;
+        }
+
+        let elems = match &self.value {
+            ConstantValue::Struct(elems) if elems.len() == 2 => elems,
+            _ => return None, // This should never be the case. If we have an enum, it is a struct with exactly two elements.
+        };
+
+        Some((&elems[0], &elems[1]))
+    }
+
     /// Compare two Constant values. Can't impl PartialOrder because of context.
     pub fn eq(&self, context: &Context, other: &Self) -> bool {
         self.ty.eq(context, &other.ty)

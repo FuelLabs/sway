@@ -257,8 +257,29 @@ impl Type {
         matches!(*self.get_content(context), TypeContent::Struct(_))
     }
 
-    /// Is aggregate type: struct, union or array.
+    /// Is enum type
+    pub fn is_enum(&self, context: &Context) -> bool {
+        // We have to do some painful special handling here for enums, which are tagged unions.
+        // This really should be handled by the IR more explicitly and is something that will
+        // hopefully be addressed by https://github.com/FuelLabs/sway/issues/2819#issuecomment-1256930392
+
+        // Enums are at the moment represented as structs with two fields, first one being
+        // the tag and second the union of variants. Enums are the only place we currently use unions
+        // which makes the below heuristics valid.
+        if !self.is_struct(context) {
+            return false;
+        }
+
+        let field_tys = self.get_field_types(context);
+
+        field_tys.len() == 2
+            && field_tys[0].is_uint(context)
+            && field_tys[1].is_union(context)
+    }
+
+    /// Is aggregate type: struct, union, enum or array.
     pub fn is_aggregate(&self, context: &Context) -> bool {
+        // Notice that enums are structs of tags and unions.
         self.is_struct(context) || self.is_union(context) || self.is_array(context)
     }
 

@@ -95,45 +95,28 @@ impl Entry {
         name: Option<String>,
         padding: Option<Padding>,
     ) -> Entry {
-        // We have to do some painful special handling here for enums, which are tagged unions.
-        // This really should be handled by the IR more explicitly and is something that will
-        // hopefully be addressed by https://github.com/FuelLabs/sway/issues/2819#issuecomment-1256930392
+        // We need a special handling in case of enums.
+        if let Some((tag, value)) = constant.extract_enum_tag_and_value(context) {
+            let tag_entry = Entry::from_constant(context, tag, None, None);
 
-        // Is this constant a tagged union?
-        if constant.ty.is_struct(context) {
-            let field_tys = constant.ty.get_field_types(context);
-            if field_tys.len() == 2
-                && field_tys[0].is_uint(context)
-                && field_tys[1].is_union(context)
-            {
-                // OK, this looks very much like a tagged union enum, which is the only place
-                // we use unions (otherwise we should be generalising this a bit more).
-                if let ConstantValue::Struct(els) = &constant.value {
-                    if els.len() == 2 {
-                        let tag_entry = Entry::from_constant(context, &els[0], None, None);
+            // Here's the special case for enums. We need to get the size of the union and
+            // attach it to this constant entry which will be one of the variants.
+            let val_entry = {
+                let target_size = size_bytes_round_up_to_word_alignment!(
+                    ir_type_size_in_bytes(context, &constant.ty.get_field_types(context)[1]) as usize
+                );
+                Entry::from_constant(
+                    context,
+                    value,
+                    None,
+                    Some(Padding::Left { target_size }),
+                )
+            };
 
-                        // Here's the special case.  We need to get the size of the union and
-                        // attach it to this constant entry which will be one of the variants.
-                        let val_entry = {
-                            let target_size = size_bytes_round_up_to_word_alignment!(
-                                ir_type_size_in_bytes(context, &field_tys[1]) as usize
-                            );
-                            Entry::from_constant(
-                                context,
-                                &els[1],
-                                None,
-                                Some(Padding::Left { target_size }),
-                            )
-                        };
+            return Entry::new_collection(vec![tag_entry, val_entry], name, padding);
+        }
 
-                        // Return here from our special case.
-                        return Entry::new_collection(vec![tag_entry, val_entry], name, padding);
-                    }
-                }
-            }
-        };
-
-        // Not a tagged union, no trickiness required.
+        // Not an enum, no more trickiness required.
         match &constant.value {
             ConstantValue::Undef | ConstantValue::Unit => Entry::new_byte(0, name, padding),
             ConstantValue::Bool(b) => Entry::new_byte(u8::from(*b), name, padding),
@@ -151,7 +134,6 @@ impl Entry {
                 Entry::new_byte_array(bs.to_be_bytes().to_vec(), name, padding)
             }
             ConstantValue::String(bs) => Entry::new_byte_array(bs.clone(), name, padding),
-
             ConstantValue::Array(els) => Entry::new_collection(
                 els.iter()
                     .map(|el| Entry::from_constant(context, el, None, None))
