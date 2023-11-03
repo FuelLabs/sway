@@ -122,7 +122,9 @@ async fn run_blocking_parse_project(
         // as the project hasn't been parsed yet.
         if !session.token_map().is_empty() {
             // This operation is fairly expensive. Perhaps we should call it less often than every keystroke?
-            session.garbage_collect();
+            if let Err(err) = session.garbage_collect() {
+                tracing::error!("Unable to perform garbage collection: {}", err.to_string());
+            }
         }
         let parse_result = session::parse_project(&uri, &session.engines.read())?;
         let (errors, warnings) = parse_result.diagnostics.clone();
