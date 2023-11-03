@@ -1,7 +1,6 @@
 use std::ops::{BitAnd, BitOr, BitXor, Not, Rem};
 
 use crate::{
-    asm_generation::from_ir::{ir_type_size_in_bytes, ir_type_str_size_in_bytes},
     engine_threading::*,
     language::{
         ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
@@ -9,7 +8,7 @@ use crate::{
     },
     metadata::MetadataManager,
     semantic_analysis::*,
-    TypeInfo, UnifyCheck,
+    TypeInfo, UnifyCheck, type_size::TypeSize,
 };
 
 use super::{
@@ -942,7 +941,7 @@ fn const_eval_intrinsic(
             .map_err(ConstEvalError::CompileError)?;
             Ok(Some(Constant {
                 ty: Type::get_uint64(lookup.context),
-                value: ConstantValue::Uint(ir_type_size_in_bytes(lookup.context, &ir_type)),
+                value: ConstantValue::Uint(TypeSize::for_type(&ir_type, lookup.context).in_bytes()),
             }))
         }
         Intrinsic::SizeOfVal => {
@@ -958,7 +957,7 @@ fn const_eval_intrinsic(
             .map_err(ConstEvalError::CompileError)?;
             Ok(Some(Constant {
                 ty: Type::get_uint64(lookup.context),
-                value: ConstantValue::Uint(ir_type_size_in_bytes(lookup.context, &ir_type)),
+                value: ConstantValue::Uint(TypeSize::for_type(&ir_type, lookup.context).in_bytes()),
             }))
         }
         Intrinsic::SizeOfStr => {
@@ -973,7 +972,7 @@ fn const_eval_intrinsic(
             .map_err(ConstEvalError::CompileError)?;
             Ok(Some(Constant {
                 ty: Type::get_uint64(lookup.context),
-                value: ConstantValue::Uint(ir_type_str_size_in_bytes(lookup.context, &ir_type)),
+                value: ConstantValue::Uint(TypeSize::str_array_len(&ir_type, lookup.context)),
             }))
         }
         Intrinsic::AssertIsStrArray => {

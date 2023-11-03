@@ -10,7 +10,7 @@ use crate::{
         VirtualOp,
     },
     decl_engine::DeclRef,
-    fuel_prelude::fuel_asm::GTFArgs,
+    fuel_prelude::fuel_asm::GTFArgs, type_size::TypeSize,
 };
 
 use sway_ir::*;

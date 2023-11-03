@@ -6,7 +6,7 @@ use super::{
     types::*,
 };
 use crate::{
-    asm_generation::from_ir::{ir_type_size_in_bytes, ir_type_str_size_in_bytes},
+    asm_generation::from_ir::ir_type_size_in_bytes,
     engine_threading::*,
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
@@ -17,7 +17,7 @@ use crate::{
     },
     metadata::MetadataManager,
     type_system::*,
-    types::*,
+    types::*, type_size::TypeSize,
 };
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::CompileError;
@@ -625,8 +625,11 @@ impl<'eng> FnCompiler<'eng> {
                     &exp.span,
                 )?;
                 self.compile_expression_to_value(context, md_mgr, exp)?;
-                let size = ir_type_size_in_bytes(context, &ir_type);
-                Ok(Constant::get_uint(context, 64, size))
+                Ok(Constant::get_uint(
+                    context,
+                    64,
+                    TypeSize::for_type(&ir_type, context).in_bytes()
+                ))
             }
             Intrinsic::SizeOfType => {
                 let targ = type_arguments[0].clone();
@@ -640,7 +643,7 @@ impl<'eng> FnCompiler<'eng> {
                 Ok(Constant::get_uint(
                     context,
                     64,
-                    ir_type_size_in_bytes(context, &ir_type),
+                    TypeSize::for_type(&ir_type, context).in_bytes(),
                 ))
             }
             Intrinsic::SizeOfStr => {
@@ -655,7 +658,7 @@ impl<'eng> FnCompiler<'eng> {
                 Ok(Constant::get_uint(
                     context,
                     64,
-                    ir_type_str_size_in_bytes(context, &ir_type),
+                    TypeSize::str_array_len(&ir_type, context)
                 ))
             }
             Intrinsic::IsReferenceType => {
@@ -978,7 +981,7 @@ impl<'eng> FnCompiler<'eng> {
                     &len.span,
                 )?;
                 let len_value =
-                    Constant::get_uint(context, 64, ir_type_size_in_bytes(context, &ir_type));
+                    Constant::get_uint(context, 64, TypeSize::for_type(&ir_type, context).in_bytes());
 
                 let lhs = &arguments[0];
                 let count = &arguments[1];
@@ -1071,7 +1074,7 @@ impl<'eng> FnCompiler<'eng> {
                     user_message_type,
                     1,
                 );
-                let user_message_size = 8 + ir_type_size_in_bytes(context, &user_message_type);
+                let user_message_size = 8 + TypeSize::for_type(&user_message_type, context).in_bytes();
                 self.current_block
                     .ins(context)
                     .store(gep_val, user_message)
@@ -1903,10 +1906,10 @@ impl<'eng> FnCompiler<'eng> {
             .new_local_var(context, local_name.clone(), return_type, None, mutable)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
-        // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
+        // We can have empty aggregates, especially arrays, which shouldn't be initialized, but
         // otherwise use a store.
         let var_ty = local_var.get_type(context);
-        if ir_type_size_in_bytes(context, &var_ty) > 0 {
+        if TypeSize::for_type(&var_ty, context).in_bytes() > 0 {
             let local_ptr = self
                 .current_block
                 .ins(context)
@@ -1980,7 +1983,7 @@ impl<'eng> FnCompiler<'eng> {
                 // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
                 // otherwise use a store.
                 let var_ty = local_var.get_type(context);
-                Ok(if ir_type_size_in_bytes(context, &var_ty) > 0 {
+                Ok(if TypeSize::for_type(&var_ty, context).in_bytes() > 0 {
                     let local_val = self
                         .current_block
                         .ins(context)
