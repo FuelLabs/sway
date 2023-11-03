@@ -7,18 +7,45 @@ use crate::{engine_threading::*, language::ty, type_system::priv_prelude::*};
 
 use super::occurs_check::OccursCheck;
 
+pub(crate) enum UnifyKind {
+    /// Make the types of `received` and `expected` equivalent (or produce an
+    /// error if there is a conflict between them).
+    ///
+    /// More specifically, this function tries to make `received` equivalent to
+    /// `expected`.
+    Default,
+    /// Make the types of `received` and `expected` equivalent (or produce an
+    /// error if there is a conflict between them).
+    ///
+    /// More specifically, this function tries to make `received` equivalent to
+    /// `expected`, except in cases where `received` has more type information
+    /// than `expected` (e.g. when `expected` is a self type and `received`
+    /// is not).
+    WithSelf,
+    /// Make the types of `received` and `expected` equivalent (or produce an
+    /// error if there is a conflict between them).
+    ///
+    /// More specifically, this function tries to make `received` equivalent to
+    /// `expected`, except in cases where `received` has more type information
+    /// than `expected` (e.g. when `expected` is a generic type and `received`
+    /// is not).
+    WithGeneric,
+}
+
 /// Helper struct to aid in type unification.
 pub(crate) struct Unifier<'a> {
     engines: &'a Engines,
     help_text: String,
+    unify_kind: UnifyKind,
 }
 
 impl<'a> Unifier<'a> {
     /// Creates a new [Unifier].
-    pub(crate) fn new(engines: &'a Engines, help_text: &str) -> Unifier<'a> {
+    pub(crate) fn new(engines: &'a Engines, help_text: &str, unify_kind: UnifyKind) -> Unifier<'a> {
         Unifier {
             engines,
             help_text: help_text.to_string(),
+            unify_kind,
         }
     }
 
@@ -159,13 +186,23 @@ impl<'a> Unifier<'a> {
                 },
             ) if rn.as_str() == en.as_str() && rtc.eq(&etc, self.engines) => (),
 
-            (r @ UnknownGeneric { .. }, e) if !self.occurs_check(received, expected) => {
+            (r @ UnknownGeneric { .. }, e)
+                if !self.occurs_check(received, expected)
+                    && (matches!(self.unify_kind, UnifyKind::WithGeneric)
+                        || !matches!(
+                            self.engines.te().get(expected),
+                            TypeInfo::UnknownGeneric { .. }
+                        )) =>
+            {
                 self.replace_received_with_expected(handler, received, expected, &r, e, span)
             }
-            (r, e @ UnknownGeneric { .. }) if !self.occurs_check(expected, received) => {
+            (r, e @ UnknownGeneric { .. })
+                if !self.occurs_check(expected, received)
+                    && e.is_self_type()
+                    && matches!(self.unify_kind, UnifyKind::WithSelf) =>
+            {
                 self.replace_expected_with_received(handler, received, expected, r, &e, span)
             }
-
             // Type aliases and the types they encapsulate coerce to each other.
             (Alias { ty, .. }, _) => self.unify(handler, ty.type_id, expected, span),
             (_, Alias { ty, .. }) => self.unify(handler, received, ty.type_id, span),
