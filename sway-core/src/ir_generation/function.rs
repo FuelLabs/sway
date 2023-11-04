@@ -2776,7 +2776,7 @@ impl<'eng> FnCompiler<'eng> {
                     // TODO: Warning! Here we make an assumption about the memory layout of structs.
                     //       The memory layout of structs can be changed in the future.
                     //       We will not refactor the Storage API at the moment to remove this
-                    //       assumption. It is a high and questionable effort because we anyhow
+                    //       assumption. It is a questionable effort because we anyhow
                     //       want to improve and refactor Storage API in the future.
                     assert!(
                         offset_in_bytes % 8 == 0,

@@ -1,11 +1,9 @@
 use crate::{
-    asm_generation::from_ir::ir_type_size_in_bytes,
     fuel_prelude::{
         fuel_crypto::Hasher,
         fuel_tx::StorageSlot,
         fuel_types::{Bytes32, Bytes8},
-    },
-    size_bytes_round_up_to_word_alignment,
+    }, type_size::TypeSize,
 };
 use sway_ir::{
     constant::{Constant, ConstantValue},
@@ -172,7 +170,21 @@ pub fn serialize_to_storage_slots(
 
             // Return a list of `StorageSlot`s
             // First get the keys then get the values
-            (0..(ir_type_size_in_bytes(context, ty) + 31) / 32)
+            // TODO: Warning! Here we make an assumption about the memory layout of
+            //       string arrays, structs, and enum.
+            //       The assumption is that they are rounded to word boundaries
+            //       which will very likely always be the case.
+            //       We will not refactor the Storage API at the moment to remove this
+            //       assumption. It is a questionable effort because we anyhow
+            //       want to improve and refactor Storage API in the future.
+            let type_size_in_bytes = TypeSize::for_type(ty, context).in_bytes();
+            assert!(
+                type_size_in_bytes % 8 == 0,
+                "Expected string arrays, structs, and enums to be aligned to word boundary. The type size in bytes was {} and the type was {}.",
+                type_size_in_bytes,
+                ty.as_string(context)
+            );
+            (0..(type_size_in_bytes + 31) / 32)
                 .map(|i| add_to_b256(get_storage_key(ix, indices), i))
                 .zip((0..packed.len() / 4).map(|i| {
                     Bytes32::new(
@@ -249,15 +261,17 @@ fn serialize_to_words(
                 .collect()
         }
         _ if ty.is_union(context) => {
-            let value_size_in_words =
-                size_bytes_round_up_to_word_alignment!(ir_type_size_in_bytes(context, ty)) / 8;
-            let constant_size_in_words = size_bytes_round_up_to_word_alignment!(
-                ir_type_size_in_bytes(context, &constant.ty)
-            ) / 8;
-
+            let value_size_in_words = TypeSize::for_type(ty, context).in_words();
+            let constant_size_in_words = TypeSize::for_type(&constant.ty, context).in_words();
             assert!(value_size_in_words >= constant_size_in_words);
 
             // Add enough left padding to satisfy the actual size of the union
+            // TODO: Warning! Here we make an assumption about the memory layout of enums,
+            //       that they are left padded.
+            //       The memory layout of enums can be changed in the future.
+            //       We will not refactor the Storage API at the moment to remove this
+            //       assumption. It is a questionable effort because we anyhow
+            //       want to improve and refactor Storage API in the future.
             let padding_size_in_words = value_size_in_words - constant_size_in_words;
             vec![Bytes8::new([0; 8]); padding_size_in_words as usize]
                 .iter()
