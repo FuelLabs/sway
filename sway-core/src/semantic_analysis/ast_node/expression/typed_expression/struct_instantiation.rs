@@ -164,7 +164,8 @@ fn type_check_field_arguments(
                 let ctx = ctx
                     .by_ref()
                     .with_help_text(UNIFY_STRUCT_FIELD_HELP_TEXT)
-                    .with_type_annotation(struct_field.type_argument.type_id);
+                    .with_type_annotation(struct_field.type_argument.type_id)
+                    .with_unify_generic(true);
                 let value = match ty::TyExpression::type_check(handler, ctx, field.value.clone()) {
                     Ok(res) => res,
                     Err(_) => continue,
@@ -210,7 +211,7 @@ fn unify_field_arguments_and_struct_fields(
     handler.scope(|handler| {
         for struct_field in struct_fields.iter() {
             if let Some(typed_field) = typed_fields.iter().find(|x| x.name == struct_field.name) {
-                type_engine.unify(
+                type_engine.unify_with_generic(
                     handler,
                     engines,
                     typed_field.value.return_type,

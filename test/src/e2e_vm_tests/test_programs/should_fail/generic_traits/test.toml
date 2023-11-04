@@ -25,5 +25,19 @@ category = "fail"
 # check: $()impl<T> Returner<T> for Self {
 # check: $()"Self" is not valid in the self type of an impl block
 
+# check: $()my_trait_method() -> Self {
+# check: $()1u64
+# check: $()Mismatched types.
+# check: $()expected: U
+# check: $()found:    u64.
+# check: $()help: Function body's return type does not match up with its return type annotation.
+
+# check: $()my_trait_method(t: T) -> Self {
+# check: $()t
+# check: $()Mismatched types.
+# check: $()expected: U
+# check: $()found:    T.
+# check: $()help: Function body's return type does not match up with its return type annotation.
+
 # check: $()let b = a.set(42);
 # check: $()No method named "set" found for type "FooBarData<u8>".
