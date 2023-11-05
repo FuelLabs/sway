@@ -1,7 +1,9 @@
 //! This module is responsible for implementing handlers for Language Server
 //! Protocol. This module specifically handles requests.
 
-use crate::{capabilities, lsp_ext, server_state::ServerState, utils::debug};
+use crate::{
+    capabilities, core::session::build_plan, lsp_ext, server_state::ServerState, utils::debug,
+};
 use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions, TracingWriterMode};
 use lsp_types::{
     CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse,
@@ -407,7 +409,7 @@ pub fn handle_show_ast(
 }
 
 /// This method is triggered when the use hits enter or pastes a newline in the editor.
-pub(crate) fn on_enter(
+pub(crate) fn handle_on_enter(
     state: &ServerState,
     params: lsp_ext::OnEnterParams,
 ) -> Result<Option<WorkspaceEdit>> {
@@ -424,5 +426,24 @@ pub(crate) fn on_enter(
             tracing::error!("{}", err.to_string());
             Ok(None)
         }
+    }
+}
+
+/// Returns a [String] of the GraphViz DOT representation of a graph.
+pub fn handle_visualize(
+    _state: &ServerState,
+    params: lsp_ext::VisualizeParams,
+) -> Result<Option<String>> {
+    match params.graph_kind.as_str() {
+        "build_plan" => match build_plan(&params.text_document.uri) {
+            Ok(build_plan) => Ok(Some(
+                build_plan.visualize(Some("vscode://file".to_string())),
+            )),
+            Err(err) => {
+                tracing::error!("{}", err.to_string());
+                Ok(None)
+            }
+        },
+        _ => Ok(None),
     }
 }

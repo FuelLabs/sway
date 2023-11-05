@@ -2,7 +2,6 @@ use crate::{
     lock::Lock,
     manifest::{BuildProfile, Dependency, ManifestFile, MemberManifestFiles, PackageManifestFile},
     source::{self, IPFSNode, Source},
-    CORE, PRELUDE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
@@ -11,7 +10,7 @@ use forc_util::{
 };
 use fuel_abi_types::program_abi;
 use petgraph::{
-    self,
+    self, dot,
     visit::{Bfs, Dfs, EdgeRef, Walker},
     Directed, Direction,
 };
@@ -46,6 +45,7 @@ use sway_core::{
     BuildTarget, Engines, FinalizedEntry,
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
+use sway_types::constants::{CORE, PRELUDE, STD};
 use sway_types::{Ident, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
 use tracing::{info, warn};
@@ -825,6 +825,28 @@ impl BuildPlan {
                 .next()
                 .flatten()
         })
+    }
+
+    /// Returns a [String] representing the build dependency graph in GraphViz DOT format.
+    pub fn visualize(&self, url_file_prefix: Option<String>) -> String {
+        format!(
+            "{:?}",
+            dot::Dot::with_attr_getters(
+                &self.graph,
+                &[dot::Config::NodeNoLabel, dot::Config::EdgeNoLabel],
+                &|_, _| "".to_string(),
+                &|_, nr| {
+                    let url = url_file_prefix.clone().map_or("".to_string(), |prefix| {
+                        self.manifest_map
+                            .get(&nr.1.id())
+                            .map_or("".to_string(), |manifest| {
+                                format!("URL = \"{}{}\"", prefix, manifest.path().to_string_lossy())
+                            })
+                    });
+                    format!("label = \"{}\" shape = box {url}", nr.1.name)
+                },
+            )
+        )
     }
 }
 
@@ -2698,28 +2720,70 @@ pub fn fuel_core_not_running(node_url: &str) -> anyhow::Error {
     Error::msg(message)
 }
 
-#[test]
-fn test_root_pkg_order() {
-    let current_dir = env!("CARGO_MANIFEST_DIR");
-    let manifest_dir = PathBuf::from(current_dir)
-        .parent()
+#[cfg(test)]
+mod test {
+    use super::*;
+    use regex::Regex;
+
+    fn setup_build_plan() -> BuildPlan {
+        let current_dir = env!("CARGO_MANIFEST_DIR");
+        let manifest_dir = PathBuf::from(current_dir)
+            .parent()
+            .unwrap()
+            .join("test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building/");
+        let manifest_file = ManifestFile::from_dir(&manifest_dir).unwrap();
+        let member_manifests = manifest_file.member_manifests().unwrap();
+        let lock_path = manifest_file.lock_path().unwrap();
+        BuildPlan::from_lock_and_manifests(
+            &lock_path,
+            &member_manifests,
+            false,
+            false,
+            Default::default(),
+        )
         .unwrap()
-        .join("test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building/");
-    let manifest_file = ManifestFile::from_dir(&manifest_dir).unwrap();
-    let member_manifests = manifest_file.member_manifests().unwrap();
-    let lock_path = manifest_file.lock_path().unwrap();
-    let build_plan = BuildPlan::from_lock_and_manifests(
-        &lock_path,
-        &member_manifests,
-        false,
-        false,
-        Default::default(),
-    )
-    .unwrap();
-    let graph = build_plan.graph();
-    let order: Vec<String> = build_plan
-        .member_nodes()
-        .map(|order| graph[order].name.clone())
-        .collect();
-    assert_eq!(order, vec!["test_lib", "test_contract", "test_script"])
+    }
+
+    #[test]
+    fn test_root_pkg_order() {
+        let build_plan = setup_build_plan();
+        let graph = build_plan.graph();
+        let order: Vec<String> = build_plan
+            .member_nodes()
+            .map(|order| graph[order].name.clone())
+            .collect();
+        assert_eq!(order, vec!["test_lib", "test_contract", "test_script"])
+    }
+
+    #[test]
+    fn test_visualize_with_url_prefix() {
+        let build_plan = setup_build_plan();
+        let result = build_plan.visualize(Some("some-prefix::".to_string()));
+        let re = Regex::new(r#"digraph \{
+    0 \[ label = "test_contract" shape = box URL = "some-prefix::/[[:ascii:]]+/test_contract/Forc.toml"\]
+    1 \[ label = "test_lib" shape = box URL = "some-prefix::/[[:ascii:]]+/test_lib/Forc.toml"\]
+    2 \[ label = "test_script" shape = box URL = "some-prefix::/[[:ascii:]]+/test_script/Forc.toml"\]
+    2 -> 1 \[ \]
+    2 -> 0 \[ \]
+    0 -> 1 \[ \]
+\}
+"#).unwrap();
+        assert!(!re.find(result.as_str()).unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_visualize_without_prefix() {
+        let build_plan = setup_build_plan();
+        let result = build_plan.visualize(None);
+        let expected = r#"digraph {
+    0 [ label = "test_contract" shape = box ]
+    1 [ label = "test_lib" shape = box ]
+    2 [ label = "test_script" shape = box ]
+    2 -> 1 [ ]
+    2 -> 0 [ ]
+    0 -> 1 [ ]
+}
+"#;
+        assert_eq!(expected, result);
+    }
 }

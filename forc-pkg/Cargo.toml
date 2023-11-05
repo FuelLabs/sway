@@ -41,5 +41,8 @@ url = { version = "2.2", features = ["serde"] }
 vec1 = "1.8.0"
 walkdir = "2"
 
+[dev-dependencies]
+regex = "^1.10.2"
+
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 sysinfo = "0.29.0"

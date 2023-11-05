@@ -58,7 +58,11 @@ impl Parse for ItemKind {
             ItemKind::Abi(item)
         } else if let Some(mut item) = parser.guarded_parse::<ConstToken, ItemConst>()? {
             item.visibility = visibility.take();
-            parser.take::<SemicolonToken>();
+            parser.take::<SemicolonToken>().ok_or_else(|| {
+                parser.emit_error(ParseErrorKind::ExpectedPunct {
+                    kinds: vec![sway_types::ast::PunctKind::Semicolon],
+                })
+            })?;
             ItemKind::Const(item)
         } else if let Some(item) = parser.guarded_parse::<StorageToken, _>()? {
             ItemKind::Storage(item)

@@ -105,6 +105,7 @@ impl Instantiate {
     pub(super) fn code_block_with_implicit_return_u64(&self, value: u64) -> ty::TyExpression {
         ty::TyExpression {
             expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
+                whole_block_span: self.dummy_span(),
                 contents: vec![ty::TyAstNode {
                     content: ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
                         expression: ty::TyExpressionVariant::Literal(Literal::U64(value)),
@@ -127,6 +128,7 @@ impl Instantiate {
     ) -> ty::TyExpression {
         ty::TyExpression {
             expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
+                whole_block_span: self.dummy_span(),
                 contents: vec![ty::TyAstNode {
                     content: ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
                         expression: ty::TyExpressionVariant::IntrinsicFunction(

@@ -36,7 +36,7 @@ fn main() {
 // ANCHOR: trait_constraint
 fn into_rectangle<T>(t: T) -> Rectangle
 where
-    Rectangle: Convert<T>
+    Rectangle: Convert<T>,
 {
     Rectangle::from(t)
 }

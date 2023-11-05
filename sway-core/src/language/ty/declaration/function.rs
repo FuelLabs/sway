@@ -231,9 +231,7 @@ impl TyFunctionDecl {
         TyFunctionDecl {
             purity,
             name,
-            body: TyCodeBlock {
-                contents: Default::default(),
-            },
+            body: TyCodeBlock::default(),
             implementing_type: None,
             span,
             call_path: CallPath::from(Ident::dummy()),

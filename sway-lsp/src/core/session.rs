@@ -399,7 +399,7 @@ impl Session {
 }
 
 /// Create a [BuildPlan] from the given [Url] appropriate for the language server.
-fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
+pub(crate) fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
     let manifest_dir = PathBuf::from(uri.path());
     let manifest =
         ManifestFile::from_dir(&manifest_dir).map_err(|_| DocumentError::ManifestFileNotFound {

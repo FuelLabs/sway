@@ -150,6 +150,7 @@ impl ty::TyMatchBranch {
         let new_result = ty::TyExpression {
             expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
                 contents: code_block_contents,
+                whole_block_span: sway_types::Span::dummy(),
             }),
             return_type: typed_result.return_type,
             span: typed_result_span,
@@ -650,6 +651,7 @@ fn instantiate_branch_condition_result_var_declarations_and_matched_or_variant_i
                         condition: Box::new(condition),
                         then: Box::new(ty::TyExpression {
                             expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
+                                whole_block_span: instantiate.dummy_span(),
                                 contents: code_block_contents,
                             }),
                             return_type: tuple_type,
