@@ -5,6 +5,7 @@ use crate::{
         fuel_tx::StorageSlot,
         fuel_types::{Bytes32, Bytes8},
     },
+    size_bytes_round_up_to_word_alignment,
 };
 use sway_ir::{
     constant::{Constant, ConstantValue},
@@ -72,15 +73,17 @@ pub fn serialize_to_storage_slots(
         ConstantValue::Bool(b) if ty.is_bool(context) => {
             vec![StorageSlot::new(
                 get_storage_key(ix, indices),
+                // In BE representation, the boolean true or false (0 or 1) will be the
+                // least significant digit of the first eight bytes of the storage slot.
                 Bytes32::new([
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
                     if *b { 1 } else { 0 },
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
                     0,
                     0,
                     0,
@@ -111,8 +114,10 @@ pub fn serialize_to_storage_slots(
         ConstantValue::Uint(b) if ty.is_uint8(context) => {
             vec![StorageSlot::new(
                 get_storage_key(ix, indices),
+                // In BE representation, a single byte will be the
+                // least significant digit of the first eight bytes of the storage slot.
                 Bytes32::new([
-                    *b as u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, *b as u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, 0, 0, 0, 0, 0, 0, 0,
                 ]),
             )]
@@ -183,10 +188,10 @@ pub fn serialize_to_words(constant: &Constant, context: &Context, ty: &Type) -> 
         ConstantValue::Undef => vec![],
         ConstantValue::Unit if ty.is_unit(context) => vec![Bytes8::new([0; 8])],
         ConstantValue::Bool(b) if ty.is_bool(context) => {
-            vec![Bytes8::new([if *b { 1 } else { 0 }, 0, 0, 0, 0, 0, 0, 0])]
+            vec![Bytes8::new([0, 0, 0, 0, 0, 0, 0, if *b { 1 } else { 0 }])]
         }
         ConstantValue::Uint(n) if ty.is_uint8(context) => {
-            vec![Bytes8::new([*n as u8, 0, 0, 0, 0, 0, 0, 0])]
+            vec![Bytes8::new([0, 0, 0, 0, 0, 0, 0, *n as u8])]
         }
         ConstantValue::Uint(n) if ty.is_uint(context) => {
             vec![Bytes8::new(n.to_be_bytes())]
@@ -226,8 +231,11 @@ pub fn serialize_to_words(constant: &Constant, context: &Context, ty: &Type) -> 
                 .collect()
         }
         _ if ty.is_union(context) => {
-            let value_size_in_words = ir_type_size_in_bytes(context, ty) / 8;
-            let constant_size_in_words = ir_type_size_in_bytes(context, &constant.ty) / 8;
+            let value_size_in_words =
+                size_bytes_round_up_to_word_alignment!(ir_type_size_in_bytes(context, ty)) / 8;
+            let constant_size_in_words = size_bytes_round_up_to_word_alignment!(
+                ir_type_size_in_bytes(context, &constant.ty)
+            ) / 8;
             assert!(value_size_in_words >= constant_size_in_words);
 
             // Add enough left padding to satisfy the actual size of the union
