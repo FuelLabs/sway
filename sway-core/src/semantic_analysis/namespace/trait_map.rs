@@ -1018,19 +1018,19 @@ impl TraitMap {
             .filter_map(|e| {
                 let key = &e.key;
                 let suffix = &key.name.suffix;
-                let map_trait_type_id = type_engine.insert(
-                    engines,
-                    TypeInfo::Custom {
-                        qualified_call_path: suffix.name.clone().into(),
-                        type_arguments: if suffix.args.is_empty() {
-                            None
-                        } else {
-                            Some(suffix.args.to_vec())
-                        },
-                        root_type_id: None,
-                    },
-                );
                 if unify_check.check(type_id, key.type_id) {
+                    let map_trait_type_id = type_engine.insert(
+                        engines,
+                        TypeInfo::Custom {
+                            qualified_call_path: suffix.name.clone().into(),
+                            type_arguments: if suffix.args.is_empty() {
+                                None
+                            } else {
+                                Some(suffix.args.to_vec())
+                            },
+                            root_type_id: None,
+                        },
+                    );
                     Some((suffix.name.clone(), map_trait_type_id))
                 } else {
                     None
