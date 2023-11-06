@@ -2,7 +2,7 @@
 library;
 
 use ::assert::*;
-use ::convert::From;
+use ::convert::{From, Into, *};
 use ::result::Result::{self, *};
 use ::u128::U128;
 use ::math::Power;
@@ -56,11 +56,13 @@ impl From<(u64, u64, u64, u64)> for U256 {
             d: components.3,
         }
     }
+}
 
+impl From<U256> for (u64, u64, u64, u64) {
     /// Function for extracting 4 `u64`s from a `U256`.
     #[allow(deprecated)]
-    fn into(self) -> (u64, u64, u64, u64) {
-        (self.a, self.b, self.c, self.d)
+    fn from(val: U256) -> (u64, u64, u64, u64) {
+        (val.a, val.b, val.c, val.d)
     }
 }
 

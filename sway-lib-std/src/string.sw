@@ -224,9 +224,11 @@ impl From<Bytes> for String {
         string.bytes = b;
         string
     }
+}
 
-    fn into(self) -> Bytes {
-        self.bytes
+impl From<String> for Bytes {
+    fn from(s: String) -> Bytes {
+        s.bytes
     }
 }
 
@@ -245,11 +247,11 @@ impl From<raw_slice> for String {
             bytes: Bytes::from(slice),
         }
     }
+}
 
-    fn into(self) -> raw_slice {
-        asm(ptr: (self.bytes.buf.ptr(), self.bytes.len)) {
-            ptr: raw_slice
-        }
+impl From<String> for raw_slice {
+    fn from(s: String) -> raw_slice {
+        asm(ptr: (s.bytes.buf.ptr(), s.bytes.len)) { ptr: raw_slice }
     }
 }
 
