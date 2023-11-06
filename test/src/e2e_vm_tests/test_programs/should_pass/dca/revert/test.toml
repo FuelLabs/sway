@@ -1,0 +1,17 @@
+category = "compile"
+expected_warnings = 5
+
+# check: $()422
+# nextln: $()This code is unreachable.
+
+# check: $()return 2;
+# nextln: $()This code is unreachable.
+
+# check: $()return 1;
+# nextln: $()This code is unreachable.
+
+# check: $()return 3;
+# nextln: $()This code is unreachable.
+
+# check: $()return 4;
+# nextln: $()This code is unreachable.

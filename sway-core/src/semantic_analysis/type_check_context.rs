@@ -45,6 +45,9 @@ pub struct TypeCheckContext<'a> {
     ///
     /// Assists type inference.
     type_annotation: TypeId,
+    /// When true unify_with_type_annotation will use unify_with_generic instead of the default unify.
+    /// This ensures that expected generic types are unified to more specific received types.
+    unify_generic: bool,
     /// While type-checking an `impl` (whether inherent or for a `trait`/`abi`) this represents the
     /// type for which we are implementing. For example in `impl Foo {}` or `impl Trait for Foo
     /// {}`, this represents the type ID of `Foo`.
@@ -102,6 +105,7 @@ impl<'a> TypeCheckContext<'a> {
             namespace,
             engines,
             type_annotation: engines.te().insert(engines, TypeInfo::Unknown),
+            unify_generic: false,
             self_type: None,
             type_subst: TypeSubstMap::new(),
             help_text: "",
@@ -126,6 +130,7 @@ impl<'a> TypeCheckContext<'a> {
         TypeCheckContext {
             namespace: self.namespace,
             type_annotation: self.type_annotation,
+            unify_generic: self.unify_generic,
             self_type: self.self_type,
             type_subst: self.type_subst.clone(),
             abi_mode: self.abi_mode.clone(),
@@ -144,6 +149,7 @@ impl<'a> TypeCheckContext<'a> {
         TypeCheckContext {
             namespace,
             type_annotation: self.type_annotation,
+            unify_generic: self.unify_generic,
             self_type: self.self_type,
             type_subst: self.type_subst,
             abi_mode: self.abi_mode,
@@ -186,6 +192,14 @@ impl<'a> TypeCheckContext<'a> {
     pub(crate) fn with_type_annotation(self, type_annotation: TypeId) -> Self {
         Self {
             type_annotation,
+            ..self
+        }
+    }
+
+    /// Map this `TypeCheckContext` instance to a new one with the given type annotation.
+    pub(crate) fn with_unify_generic(self, unify_generic: bool) -> Self {
+        Self {
+            unify_generic,
             ..self
         }
     }
@@ -267,6 +281,10 @@ impl<'a> TypeCheckContext<'a> {
         self.type_annotation
     }
 
+    pub(crate) fn unify_generic(&self) -> bool {
+        self.unify_generic
+    }
+
     pub(crate) fn self_type(&self) -> Option<TypeId> {
         self.self_type
     }
@@ -328,15 +346,27 @@ impl<'a> TypeCheckContext<'a> {
     /// Short-hand around `type_system::unify_`, where the `TypeCheckContext`
     /// provides the type annotation and help text.
     pub(crate) fn unify_with_type_annotation(&self, handler: &Handler, ty: TypeId, span: &Span) {
-        self.engines.te().unify(
-            handler,
-            self.engines(),
-            ty,
-            self.type_annotation(),
-            span,
-            self.help_text(),
-            None,
-        )
+        if self.unify_generic() {
+            self.engines.te().unify_with_generic(
+                handler,
+                self.engines(),
+                ty,
+                self.type_annotation(),
+                span,
+                self.help_text(),
+                None,
+            )
+        } else {
+            self.engines.te().unify(
+                handler,
+                self.engines(),
+                ty,
+                self.type_annotation(),
+                span,
+                self.help_text(),
+                None,
+            )
+        }
     }
 
     /// Short-hand for calling [Namespace::insert_symbol] with the `const_shadowing_mode` provided by

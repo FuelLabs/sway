@@ -64,3 +64,7 @@ pub const VALID_ATTRIBUTE_NAMES: &[&str] = &[
     CFG_ATTRIBUTE_NAME,
     DEPRECATED_ATTRIBUTE_NAME,
 ];
+
+pub const CORE: &str = "core";
+pub const STD: &str = "std";
+pub const PRELUDE: &str = "prelude";

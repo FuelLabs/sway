@@ -341,7 +341,7 @@ impl VirtualOp {
             LT(_r1, r2, r3) => vec![r2, r3],
             MLOG(_r1, r2, r3) => vec![r2, r3],
             MOD(_r1, r2, r3) => vec![r2, r3],
-            MODI(r1, r2, _i) => vec![r1, r2],
+            MODI(_r1, r2, _i) => vec![r2],
             MOVE(_r1, r2) => vec![r2],
             MOVI(_r1, _i) => vec![],
             MROO(_r1, r2, r3) => vec![r2, r3],
