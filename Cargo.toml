@@ -42,11 +42,11 @@ fuel-tx = "0.35.3"
 fuel-vm = "0.35.3"
 
 # Dependencies from the `fuels-rs` repository:
-fuels-core = "0.45"
-fuels-accounts = "0.45"
+fuels-core = "0.49"
+fuels-accounts = "0.49"
 
 # Dependencies from the `forc-wallet` repository:
-forc-wallet = "0.2.5"
+forc-wallet = "0.3.0"
 
 [workspace.package]
 edition = "2021"
@@ -65,5 +65,5 @@ fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "upgra
 
 # Keep it until release of the `forc-wallet`.
 forc-wallet = { git = "https://github.com/FuelLabs/forc-wallet", branch = "upgrade/fuel-core-master" }
-fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "upgrade/fuel-core-master" }
+fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "upgrade/fuel-core-master-draft" }
 
