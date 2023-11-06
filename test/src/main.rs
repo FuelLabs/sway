@@ -92,7 +92,7 @@ async fn main() -> Result<()> {
     };
 
     // Run E2E tests
-    e2e_vm_tests::run(&filter_config, &run_config)
+    e2e_vm_tests::run(filter_config.clone(), run_config.clone())
         .instrument(tracing::trace_span!("E2E"))
         .await?;
 

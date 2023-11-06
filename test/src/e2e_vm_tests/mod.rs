@@ -375,7 +375,7 @@ impl TestContext {
     }
 }
 
-pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result<()> {
+pub async fn run(filter_config: FilterConfig, run_config: RunConfig) -> Result<()> {
     // Discover tests
     let mut tests = discover_test_configs()?;
     let total_number_of_tests = tests.len();
@@ -419,52 +419,26 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     }
 
     // Run tests
-    let context = TestContext {
-        run_config: run_config.clone(),
-        deployed_contracts: Default::default(),
-    };
     let mut number_of_tests_executed = 0;
     let mut number_of_tests_failed = 0;
-    let mut failed_tests = vec![];
+    let mut failed_tests: Vec<RunTestResult> = vec![];
 
-    for (i, test) in tests.into_iter().enumerate() {
-        let name = test.name.clone();
-        print!("Testing {} ...", name.clone().bold());
-        stdout().flush().unwrap();
-
-        let mut output = String::new();
-
-        // Skip the test if its not compatible with the current build target.
-        if !test.supported_targets.contains(&run_config.build_target) {
-            continue;
-        }
-
-        let result = if !filter_config.first_only {
-            context
-                .run(test, &mut output, run_config.verbose)
-                .instrument(tracing::trace_span!("E2E", i))
-                .await
-        } else {
-            context.run(test, &mut output, run_config.verbose).await
+    let tests_descs = tests.into_iter().enumerate().collect::<Vec<_>>();
+    let tasks: Vec<_> = tests_descs.into_iter().map(|(i, test)| {
+        let context = TestContext {
+            run_config: run_config.clone(),
+            deployed_contracts: Default::default(),
         };
+        tokio::spawn(run_test(test, filter_config.clone(), context, i))
+    }).collect();
 
-        if let Err(err) = result {
-            println!(" {}", "failed".red().bold());
-            println!("{}", textwrap::indent(err.to_string().as_str(), "     "));
-            println!("{}", textwrap::indent(&output, "          "));
-            number_of_tests_failed += 1;
-            failed_tests.push(name);
-        } else {
-            println!(" {}", "ok".green().bold());
+    let tests_results = futures::future::join_all(tasks).await;
 
-            // If verbosity is requested then print it out.
-            if run_config.verbose {
-                println!("{}", textwrap::indent(&output, "     "));
-            }
-        }
+    // for (i, test) in {
 
-        number_of_tests_executed += 1;
-    }
+
+    //     number_of_tests_executed += 1;
+    // }
 
     if number_of_tests_executed == 0 {
         if let Some(skip_until) = &filter_config.skip_until {
@@ -515,7 +489,7 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
                 "    {}",
                 failed_tests
                     .into_iter()
-                    .map(|test_name| format!("{} ... {}", test_name.bold(), "failed".red().bold()))
+                    .map(|res| format!("{} ... {}", res.test_name.bold(), "failed".red().bold()))
                     .collect::<Vec<_>>()
                     .join("\n    ")
             );
@@ -525,6 +499,65 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
         Err(anyhow::Error::msg("Failed tests"))
     } else {
         Ok(())
+    }
+}
+
+struct RunTestResult {
+    test_name: String,
+    failed: bool,
+}
+
+async fn run_test(
+    test: TestDescription,
+    filter_config: FilterConfig,
+    context: TestContext,
+    i: usize,
+    // number_of_tests_failed: &mut i32,
+    // failed_tests: &mut Vec<String>,
+) -> RunTestResult {
+    let name = test.name.clone();
+    print!("Testing {} ...", name.clone().bold());
+    stdout().flush().unwrap();
+    let mut output = String::new();
+    if !test.supported_targets.contains(&context.run_config.build_target) {
+        return RunTestResult {
+            test_name: name,
+            failed: true,
+        };
+    }
+    let verbose = context.run_config.verbose;
+    let result = if !filter_config.first_only {
+        context
+            .run(test, &mut output, verbose)
+            .instrument(tracing::trace_span!("E2E", i))
+            .await
+    } else {
+        context.run(test, &mut output, verbose).await
+    };
+
+    // Skip the test if its not compatible with the current build target.
+
+    if let Err(err) = result {
+        println!(" {}", "failed".red().bold());
+        println!("{}", textwrap::indent(err.to_string().as_str(), "     "));
+        println!("{}", textwrap::indent(&output, "          "));
+        // *number_of_tests_failed += 1;
+        // failed_tests.push(name);
+        RunTestResult {
+            test_name: name,
+            failed: true,
+        }
+    } else {
+        println!(" {}", "ok".green().bold());
+
+        // If verbosity is requested then print it out.
+        if verbose {
+            println!("{}", textwrap::indent(&output, "     "));
+        }
+        RunTestResult {
+            test_name: name,
+            failed: false,
+        }
     }
 }
 

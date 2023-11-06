@@ -17,6 +17,7 @@ use rand::{Rng, SeedableRng};
 use regex::{Captures, Regex};
 use std::{fs, io::Read, path::PathBuf, str::FromStr};
 use sway_core::{asm_generation::ProgramABI, BuildTarget};
+use fork::{fork, Fork};
 
 use super::RunConfig;
 
@@ -29,6 +30,14 @@ where
     Fut: Future<Output = T>,
 {
     let mut output = String::new();
+
+    match fork() {
+        Ok(Fork::Parent(child)) => {
+            println!("Continuing execution in parent process, new child has pid: {}", child);
+        }
+        Ok(Fork::Child) => println!("I'm a new child process"),
+        Err(_) => println!("Fork failed"),
+     }
 
     // Capture both stdout and stderr to buffers, run the code and save to a string.
     let mut buf_stdout = gag::BufferRedirect::stdout().unwrap();
