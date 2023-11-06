@@ -190,22 +190,27 @@ pub fn serialize_to_storage_slots(
 
 /// Given a constant value `constant` and a type `ty`, serialize the constant into a vector of
 /// words and apply the requested padding if needed.
-fn serialize_to_words(constant: &Constant, context: &Context, ty: &Type, padding: InByte8Padding) -> Vec<Bytes8> {
+fn serialize_to_words(
+    constant: &Constant,
+    context: &Context,
+    ty: &Type,
+    padding: InByte8Padding,
+) -> Vec<Bytes8> {
     match &constant.value {
         ConstantValue::Undef => vec![],
         ConstantValue::Unit if ty.is_unit(context) => vec![Bytes8::new([0; 8])],
-        ConstantValue::Bool(b) if ty.is_bool(context) => {
-            match padding {
-                InByte8Padding::Right => vec![Bytes8::new([if *b { 1 } else { 0 }, 0, 0, 0, 0, 0, 0, 0])],
-                InByte8Padding::Left => vec![Bytes8::new([0, 0, 0, 0, 0, 0, 0, if *b { 1 } else { 0 }])],
+        ConstantValue::Bool(b) if ty.is_bool(context) => match padding {
+            InByte8Padding::Right => {
+                vec![Bytes8::new([if *b { 1 } else { 0 }, 0, 0, 0, 0, 0, 0, 0])]
             }
-        }
-        ConstantValue::Uint(n) if ty.is_uint8(context) => {
-            match padding {
-                InByte8Padding::Right => vec![Bytes8::new([*n as u8, 0, 0, 0, 0, 0, 0, 0])],
-                InByte8Padding::Left => vec![Bytes8::new([0, 0, 0, 0, 0, 0, 0, *n as u8])],
+            InByte8Padding::Left => {
+                vec![Bytes8::new([0, 0, 0, 0, 0, 0, 0, if *b { 1 } else { 0 }])]
             }
-        }
+        },
+        ConstantValue::Uint(n) if ty.is_uint8(context) => match padding {
+            InByte8Padding::Right => vec![Bytes8::new([*n as u8, 0, 0, 0, 0, 0, 0, 0])],
+            InByte8Padding::Left => vec![Bytes8::new([0, 0, 0, 0, 0, 0, 0, *n as u8])],
+        },
         ConstantValue::Uint(n) if ty.is_uint(context) => {
             vec![Bytes8::new(n.to_be_bytes())]
         }
