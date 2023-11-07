@@ -465,7 +465,8 @@ pub(crate) fn metrics(
                 let path = engines
                     .se()
                     .get_path(kv.key())
-                    .to_string_lossy();
+                    .to_string_lossy()
+                    .to_string();
                 metrics.push((path, kv.value().clone()));
             }
             Ok(Some(metrics))

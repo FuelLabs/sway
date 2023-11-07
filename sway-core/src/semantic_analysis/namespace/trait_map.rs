@@ -1032,6 +1032,7 @@ impl TraitMap {
                             },
                             root_type_id: None,
                         },
+                        suffix.name.span().source_id(),
                     );
                     Some((suffix.name.clone(), map_trait_type_id))
                 } else {
