@@ -18,8 +18,8 @@ use super::unify::unifier::UnifyKind;
 
 #[derive(Debug, Default)]
 pub struct TypeEngine {
-    pub(super) slab: ConcurrentSlab<TypeData>,
-    id_map: RwLock<HashMap<TypeData, TypeId>>,
+    pub(super) slab: ConcurrentSlab<TypeSourceInfo>,
+    id_map: RwLock<HashMap<TypeSourceInfo, TypeId>>,
 }
 
 impl TypeEngine {
@@ -34,7 +34,7 @@ impl TypeEngine {
         let source_id = source_id
             .map(Clone::clone)
             .or_else(|| info_to_source_id(&ty));
-        let ty = TypeData {
+        let ty = TypeSourceInfo {
             type_info: ty,
             source_id,
         };
@@ -67,7 +67,7 @@ impl TypeEngine {
         });
     }
 
-    pub fn replace(&self, id: TypeId, engines: &Engines, new_value: TypeData) {
+    pub fn replace(&self, id: TypeId, engines: &Engines, new_value: TypeSourceInfo) {
         let prev_value = self.slab.get(id.index());
         self.slab.replace(id, &prev_value, new_value, engines);
     }

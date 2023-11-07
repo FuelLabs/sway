@@ -75,14 +75,14 @@ where
     }
 }
 
-impl ConcurrentSlab<TypeData> {
+impl ConcurrentSlab<TypeSourceInfo> {
     pub fn replace(
         &self,
         index: TypeId,
-        prev_value: &TypeData,
-        new_value: TypeData,
+        prev_value: &TypeSourceInfo,
+        new_value: TypeSourceInfo,
         engines: &Engines,
-    ) -> Option<TypeData> {
+    ) -> Option<TypeSourceInfo> {
         let index = index.index();
         // The comparison below ends up calling functions in the slab, which
         // can lead to deadlocks if we used a single read/write lock.

@@ -65,11 +65,11 @@ impl<'a> Unifier<'a> {
             .slab
             .replace(
                 received,
-                &TypeData {
+                &TypeSourceInfo {
                     type_info: received_type_info.clone(),
                     source_id,
                 },
-                TypeData {
+                TypeSourceInfo {
                     type_info: expected_type_info.clone(),
                     source_id,
                 },
@@ -97,11 +97,11 @@ impl<'a> Unifier<'a> {
             .slab
             .replace(
                 expected,
-                &TypeData {
+                &TypeSourceInfo {
                     type_info: expected_type_info.clone(),
                     source_id,
                 },
-                TypeData {
+                TypeSourceInfo {
                     type_info: received_type_info.clone(),
                     source_id,
                 },

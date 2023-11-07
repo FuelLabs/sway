@@ -69,21 +69,21 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for VecSet<T> {
 
 /// Encapsulates type information and its optional source identifier.
 #[derive(Debug, Default, Clone)]
-pub struct TypeData {
+pub struct TypeSourceInfo {
     pub(crate) type_info: TypeInfo,
     /// The source id that created this type.
     pub(crate) source_id: Option<SourceId>,
 }
 
-impl HashWithEngines for TypeData {
+impl HashWithEngines for TypeSourceInfo {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         self.type_info.hash(state, engines);
         self.source_id.hash(state);
     }
 }
 
-impl EqWithEngines for TypeData {}
-impl PartialEqWithEngines for TypeData {
+impl EqWithEngines for TypeSourceInfo {}
+impl PartialEqWithEngines for TypeSourceInfo {
     fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.type_info.eq(&other.type_info, engines) && self.source_id == other.source_id
     }

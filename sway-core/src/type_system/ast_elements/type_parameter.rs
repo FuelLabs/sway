@@ -325,7 +325,7 @@ impl TypeParameter {
         type_engine.replace(
             type_parameter.type_id,
             engines,
-            TypeData {
+            TypeSourceInfo {
                 type_info: TypeInfo::UnknownGeneric {
                     name: type_parameter.name_ident.clone(),
                     trait_constraints: VecSet(trait_constraints_with_supertraits.clone()),

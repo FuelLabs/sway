@@ -17,5 +17,5 @@ pub use super::{
     },
     engine::TypeEngine,
     id::TypeId,
-    info::{AbiName, TypeData, TypeInfo},
+    info::{AbiName, TypeSourceInfo, TypeInfo},
 };

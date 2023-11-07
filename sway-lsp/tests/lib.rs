@@ -104,7 +104,6 @@ async fn did_cache_test() {
     let _ = lsp::did_change_request(&mut service, &uri).await;
     let metrics = lsp::metrics_request(&mut service, &uri).await;
     assert!(metrics.len() >= 2);
-    println!("metrics req: {:?}", metrics);
     for (path, metrics) in metrics {
         if path.contains("sway-lib-core") || path.contains("sway-lib-std") {
             assert!(metrics.reused_modules >= 1);
