@@ -178,31 +178,24 @@ impl AssetId {
         Self { value: result_buffer }
     }
 
-    /// Creates a new AssetId from a ContractId and the zero SubId.
-    ///
-    /// # Arguments
-    ///
-    /// * `contract_id`: [ContractId] - The ContractId of the contract that created the asset.
+    /// Creates a new AssetId with the default SubId for the current contract.
     ///
     /// # Returns
     ///
-    /// * [AssetId] - The AssetId of the asset. Computed by hashing the ContractId and the zero SubId.
+    /// * [AssetId] - The AssetId of the asset. Computed by hashing the ContractId and the default SubId.
     ///
     /// # Examples
     ///
     /// ```sway
-    /// use std::{callframes::contract_id, constants::ZERO_B256};
+    /// use std::{callframes::contract_id, constants::DEFAULT_SUB_ID};
     ///
     /// fn foo() {
-    ///     let contract_id = contract_id();
-    ///     let sub_id = ZERO_B256;
-    ///
-    ///     let asset_id = AssetId::default(contract_id);
-    ///
-    ///     assert(asset_id == AssetId::new(contract_id, sub_id));
+    ///     let asset_id = AssetId::default();
+    ///     assert(asset_id == AssetId::new(contract_id(), DEFAULT_SUB_ID));
     /// }
     /// ```
-    pub fn default(contract_id: ContractId) -> Self {
+    pub fn default() -> Self {
+        let contract_id = asm() { fp: b256 };
         let result_buffer = 0x0000000000000000000000000000000000000000000000000000000000000000;
         asm(asset_id: result_buffer, ptr: (contract_id, 0x0000000000000000000000000000000000000000000000000000000000000000), bytes: 64) {
             s256 asset_id ptr bytes;
