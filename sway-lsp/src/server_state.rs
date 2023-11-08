@@ -88,7 +88,7 @@ impl ServerState {
         version: Option<i32>,
         session: Arc<Session>,
     ) {
-        match run_blocking_parse_project(uri.clone(), version.clone(), session.clone()).await {
+        match run_blocking_parse_project(uri.clone(), version, session.clone()).await {
             Ok(_) => {
                 // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
                 // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
