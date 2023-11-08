@@ -2,15 +2,16 @@ use crate::{
     config::InlayHintsConfig,
     core::{
         session::Session,
-        token::{TypedAstToken, AstToken},
+        token::{TypedAstToken, AstToken, get_range_from_span},
     },
 };
 use lsp_types::{self, Range, Url};
 use std::sync::Arc;
 use sway_core::{
-    language::ty::{TyDecl, TyVariableDecl},
-    type_system::TypeInfo,
+    language::ty::{TyDecl, TyVariableDecl, self},
+    type_system::TypeInfo, fuel_prelude::fuel_vm::call,
 };
+use sway_types::Spanned;
 
 // Future PR's will add more kinds
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -42,17 +43,17 @@ pub fn inlay_hints(
     }
 
     let engines = session.engines.read();
-    let hints: Vec<lsp_types::InlayHint> = session
+    let mut hints: Vec<lsp_types::InlayHint> = session
         .token_map()
         .tokens_for_file(uri)
         // Filter out all tokens that have a span that fall outside of the provided range
         .filter_map(|(ident, token)| (ident.range.start >= range.start && ident.range.end <= range.end).then(|| (ident, token)))
         .filter_map(|(ident, token)| {
-            if let AstToken::TypedFunctionApplicationArgument((base_ident, exp)) = token.parsed {
-                eprintln!("inlay_hints: TypedFunctionApplicationArgument: {:#?}", exp);
-                eprintln!("range: {:#?}", ident.range);
-                params::hints(&base_ident, ident.range, &config)
-            } else {
+            // if let AstToken::TypedFunctionApplicationArgument((base_ident, exp)) = token.parsed {
+            //     eprintln!("inlay_hints: TypedFunctionApplicationArgument: {:#?}", exp);
+            //     eprintln!("range: {:#?}", ident.range);
+            //     params::hints(&base_ident, ident.range, &config)
+            // } else {
                 token.typed.as_ref().and_then(|t| match t {
                     TypedAstToken::TypedDeclaration(TyDecl::VariableDecl(var_decl)) => {
                         var_decl::hints(var_decl, ident.range, &config, &engines)
@@ -64,9 +65,13 @@ pub fn inlay_hints(
                     // }
                     _ => None,
                 })
-            }
+            //}
         })
         .collect();
+
+    if let Some(ty_program) = &session.compiled_program.read().typed {
+        hints.extend(parse(&ty_program, config));
+    }
 
     Some(hints)
 }
@@ -157,4 +162,100 @@ mod params {
         };
         Some(self::inlay_hint(config.render_colons, inlay_hint))
     }
+}
+
+
+
+
+
+
+
+
+
+// fn parse(ty_program: &ty::TyProgram, config: &InlayHintsConfig) -> Vec<lsp_types::InlayHint> {
+//     let root_nodes = ty_program.root.all_nodes.iter();
+//     let sub_nodes = ty_program
+//         .root
+//         .submodules
+//         .iter()
+//         .flat_map(|(_, submodule)| submodule.module.all_nodes.iter());
+
+//     root_nodes.chain(sub_nodes).map(|n| {
+//         if let ty::TyAstNodeContent::Expression(exp) = &n.content {
+//             if let ty::TyExpressionVariant::FunctionApplication {
+//                 call_path,
+//                 contract_call_params,
+//                 arguments,
+//                 fn_ref,
+//                 type_binding,
+//                 call_path_typeid,
+//                 ..
+//             } = &exp.expression
+//             {
+//                 eprintln!("call_path: {:#?}", call_path);
+//                 eprintln!("contract_call_params: {:#?}", contract_call_params);
+//                 eprintln!("arguments: {:#?}", arguments);
+//                 eprintln!("fn_ref: {:#?}", fn_ref);
+//                 eprintln!("type_binding: {:#?}", type_binding);
+//                 eprintln!("call_path_typeid: {:#?}", call_path_typeid);
+
+//                 for (ident, exp) in arguments {
+//                     if call_path.suffix.name_override_opt().is_none() {
+//                         if let ty::TyExpressionVariant::FunctionApplication { call_path, .. } = &exp.expression {
+//                             params::hints(ident.as_str().to_string(), get_range_from_span(call_path.span()), config)
+//                         }
+//                     }
+//                 }
+//             }
+//         }
+//     }).collect()
+// }
+
+fn parse(ty_program: &ty::TyProgram, config: &InlayHintsConfig) -> Vec<lsp_types::InlayHint> {
+    let root_nodes = ty_program.root.all_nodes.iter();
+    let sub_nodes = ty_program
+        .root
+        .submodules
+        .iter()
+        .flat_map(|(_, submodule)| submodule.module.all_nodes.iter());
+
+    root_nodes.chain(sub_nodes)
+        .filter_map(|n| {
+            if let ty::TyAstNodeContent::Expression(exp) = &n.content {
+                if let ty::TyExpressionVariant::FunctionApplication {
+                    call_path,
+                    contract_call_params,
+                    arguments,
+                    fn_ref,
+                    type_binding,
+                    call_path_typeid,
+                    ..
+                } = &exp.expression
+                {
+                    // Here you might want to debug-print information
+                    // eprintln!("call_path: {:#?}", call_path);
+                    // ...
+
+                    // Process the arguments and collect hints
+                    Some(arguments.iter().filter_map(|(ident, exp)| {
+                        if call_path.suffix.name_override_opt().is_none() {
+                            if let ty::TyExpressionVariant::FunctionApplication { call_path, .. } = &exp.expression {
+                                Some(params::hints(ident, get_range_from_span(&call_path.suffix.span()), config))
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    }).collect::<Vec<_>>())
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .flatten() // Flatten the Vec<Option<Vec<InlayHint>>> into an Iterator<Item = Vec<InlayHint>>
+        .flatten() // Flatten the Vec<InlayHint> into an Iterator<Item = InlayHint>
+        .collect() // Collect the InlayHint items into a Vec<InlayHint>
 }
