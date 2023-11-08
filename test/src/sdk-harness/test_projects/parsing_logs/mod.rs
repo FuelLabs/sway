@@ -176,7 +176,7 @@ async fn test_get_logs() -> Result<()> {
         format!("{:?}", expected_generic_struct),
     ];
 
-    assert_eq!(logs.filter_succeeded(), expected_logs);
+    pretty_assertions::assert_eq!(expected_logs, logs.filter_succeeded());
 
     Ok(())
 }
