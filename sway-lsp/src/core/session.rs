@@ -150,7 +150,8 @@ impl Session {
     /// Clean up memory in the [TypeEngine] and [DeclEngine] for the user's workspace.
     pub fn garbage_collect(&self) -> Result<(), LanguageServerError> {
         let path = self.sync.temp_dir()?;
-        if let Some(module_id) = self.engines.read().se().get_module_id(&path) {
+        let module_id = { self.engines.read().se().get_module_id(&path) };
+        if let Some(module_id) = module_id {
             self.engines.write().clear_module(&module_id);
         }
         Ok(())
