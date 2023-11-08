@@ -14,9 +14,8 @@ use taplo::formatter as taplo_fmt;
 use tracing::{debug, error, info};
 
 use forc_tracing::{init_tracing_subscriber, println_error, println_green, println_red};
-use forc_util::{find_parent_manifest_dir, is_sway_file};
 use sway_core::{BuildConfig, BuildTarget};
-use sway_utils::{constants, get_sway_files};
+use sway_utils::{constants, find_parent_manifest_dir, get_sway_files, is_sway_file};
 use swayfmt::Formatter;
 
 #[derive(Debug, Parser)]
@@ -170,7 +169,11 @@ fn format_file(
                 // TODO: Support formatting for incomplete/invalid sway code.
                 // https://github.com/FuelLabs/sway/issues/5012
                 debug!("{}", err);
-                bail!("Failed to compile: {:?}", file);
+                if let Some(file) = file.to_str() {
+                    bail!("Failed to compile {}\n{}", file, err);
+                } else {
+                    bail!("Failed to compile.\n{}", err);
+                }
             }
         }
     }

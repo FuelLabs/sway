@@ -1,6 +1,6 @@
 use crate::{
     comments::{rewrite_with_comments, write_comments},
-    config::{items::ItemBraceStyle, user_def::FieldAlignment},
+    config::user_def::FieldAlignment,
     formatter::{
         shape::{ExprKind, LineStyle},
         *,
@@ -41,6 +41,11 @@ impl Format for ItemStruct {
                 if let Some(generics) = &self.generics {
                     generics.format(formatted_code, formatter)?;
                 }
+                if let Some(where_clause) = &self.where_clause_opt {
+                    writeln!(formatted_code)?;
+                    where_clause.format(formatted_code, formatter)?;
+                    formatter.shape.code_line.update_where_clause(true);
+                }
 
                 let fields = self.fields.get();
 
@@ -50,6 +55,8 @@ impl Format for ItemStruct {
                 if fields.final_value_opt.is_none() && fields.value_separator_pairs.is_empty() {
                     write_comments(formatted_code, self.span().into(), formatter)?;
                 }
+
+                formatter.shape.code_line.update_expr_new_line(true);
 
                 // Determine alignment tactic
                 match formatter.config.structures.field_alignment {
@@ -137,15 +144,14 @@ impl CurlyBrace for ItemStruct {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         formatter.indent();
-        let brace_style = formatter.config.items.item_brace_style;
-        match brace_style {
-            ItemBraceStyle::AlwaysNextLine => {
-                // Add opening brace to the next line.
-                write!(line, "\n{}", Delimiter::Brace.as_open_char())?;
+        let open_brace = Delimiter::Brace.as_open_char();
+        match formatter.shape.code_line.has_where_clause {
+            true => {
+                write!(line, "{open_brace}")?;
+                formatter.shape.code_line.update_where_clause(false);
             }
-            _ => {
-                // Add opening brace to the same line
-                write!(line, " {}", Delimiter::Brace.as_open_char())?;
+            false => {
+                write!(line, " {open_brace}")?;
             }
         }
 

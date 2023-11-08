@@ -341,7 +341,7 @@ impl TypeParameter {
                         type_id: sy_type_id,
                         ..
                     }) => {
-                        ctx.engines().te().unify(
+                        ctx.engines().te().unify_with_generic(
                             handler,
                             ctx.engines(),
                             type_parameter.type_id,

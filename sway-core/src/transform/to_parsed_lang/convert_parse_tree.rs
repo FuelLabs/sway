@@ -1,4 +1,8 @@
 use crate::{
+    compiler_generated::{
+        generate_destructured_struct_var_name, generate_matched_value_var_name,
+        generate_tuple_var_name,
+    },
     language::{parsed::*, *},
     transform::{attribute::*, to_parsed_lang::context::Context},
     type_system::*,
@@ -25,10 +29,10 @@ use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{
     constants::{
         ALLOW_ATTRIBUTE_NAME, CFG_ATTRIBUTE_NAME, CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME,
-        DEPRECATED_ATTRIBUTE_NAME, DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME,
-        DOC_COMMENT_ATTRIBUTE_NAME, INLINE_ATTRIBUTE_NAME, MATCH_RETURN_VAR_NAME_PREFIX,
-        PAYABLE_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME,
-        STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME, TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
+        DEPRECATED_ATTRIBUTE_NAME, DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME,
+        INLINE_ATTRIBUTE_NAME, PAYABLE_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME,
+        STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME,
+        VALID_ATTRIBUTE_NAMES,
     },
     integer_bits::IntegerBits,
 };
@@ -1947,22 +1951,6 @@ fn expr_to_expression(
         Expr::Match {
             value, branches, ..
         } => {
-            let value = expr_to_expression(context, handler, engines, *value)?;
-            let var_decl_span = value.span();
-
-            // Generate a deterministic name for the variable returned by the match expression.
-            let match_return_var_name = format!(
-                "{}{}",
-                MATCH_RETURN_VAR_NAME_PREFIX,
-                context.next_match_expression_return_var_unique_suffix(),
-            );
-            let var_decl_name =
-                Ident::new_with_override(match_return_var_name, var_decl_span.clone());
-
-            let var_decl_exp = Expression {
-                kind: ExpressionKind::Variable(var_decl_name.clone()),
-                span: var_decl_span,
-            };
             let branches = {
                 branches
                     .into_inner()
@@ -1972,44 +1960,8 @@ fn expr_to_expression(
                     })
                     .collect::<Result<_, _>>()?
             };
-            Expression {
-                kind: ExpressionKind::CodeBlock(CodeBlock {
-                    contents: vec![
-                        AstNode {
-                            content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
-                                VariableDeclaration {
-                                    type_ascription: {
-                                        let type_id =
-                                            engines.te().insert(engines, TypeInfo::Unknown);
-                                        TypeArgument {
-                                            type_id,
-                                            initial_type_id: type_id,
-                                            span: var_decl_name.span(),
-                                            call_path_tree: None,
-                                        }
-                                    },
-                                    name: var_decl_name,
-                                    is_mutable: false,
-                                    body: value,
-                                },
-                            )),
-                            span: span.clone(),
-                        },
-                        AstNode {
-                            content: AstNodeContent::ImplicitReturnExpression(Expression {
-                                kind: ExpressionKind::Match(MatchExpression {
-                                    value: Box::new(var_decl_exp),
-                                    branches,
-                                }),
-                                span: span.clone(),
-                            }),
-                            span: span.clone(),
-                        },
-                    ],
-                    whole_block_span: span.clone(),
-                }),
-                span,
-            }
+
+            match_expr_to_expression(context, handler, engines, *value, branches, span)?
         }
         Expr::While {
             condition, block, ..
@@ -2787,16 +2739,73 @@ fn if_expr_to_expression(
                     }
                 }
             });
-            Expression {
-                kind: ExpressionKind::Match(MatchExpression {
-                    value: Box::new(expr_to_expression(context, handler, engines, *rhs)?),
-                    branches,
-                }),
-                span,
-            }
+
+            match_expr_to_expression(context, handler, engines, *rhs, branches, span)?
         }
     };
     Ok(expression)
+}
+
+fn match_expr_to_expression(
+    context: &mut Context,
+    handler: &Handler,
+    engines: &Engines,
+    value: Expr,
+    branches: Vec<MatchBranch>,
+    span: Span,
+) -> Result<Expression, ErrorEmitted> {
+    let value = expr_to_expression(context, handler, engines, value)?;
+    let var_decl_span = value.span();
+
+    // Generate a deterministic name for the variable matched by the match expression.
+    let matched_value_var_name = generate_matched_value_var_name(
+        context.next_match_expression_matched_value_unique_suffix(),
+    );
+
+    let var_decl_name = Ident::new_with_override(matched_value_var_name, var_decl_span.clone());
+
+    let var_decl_exp = Expression {
+        kind: ExpressionKind::Variable(var_decl_name.clone()),
+        span: var_decl_span,
+    };
+
+    Ok(Expression {
+        kind: ExpressionKind::CodeBlock(CodeBlock {
+            contents: vec![
+                AstNode {
+                    content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
+                        VariableDeclaration {
+                            type_ascription: {
+                                let type_id = engines.te().insert(engines, TypeInfo::Unknown);
+                                TypeArgument {
+                                    type_id,
+                                    initial_type_id: type_id,
+                                    span: var_decl_name.span(),
+                                    call_path_tree: None,
+                                }
+                            },
+                            name: var_decl_name,
+                            is_mutable: false,
+                            body: value,
+                        },
+                    )),
+                    span: span.clone(),
+                },
+                AstNode {
+                    content: AstNodeContent::ImplicitReturnExpression(Expression {
+                        kind: ExpressionKind::Match(MatchExpression {
+                            value: Box::new(var_decl_exp),
+                            branches,
+                        }),
+                        span: span.clone(),
+                    }),
+                    span: span.clone(),
+                },
+            ],
+            whole_block_span: span.clone(),
+        }),
+        span,
+    })
 }
 
 /// Determine if the path is in absolute form, e.g., `::foo::bar`.
@@ -3323,14 +3332,13 @@ fn statement_let_to_ast_nodes(
             Pattern::Struct { path, fields, .. } => {
                 let mut ast_nodes = Vec::new();
 
-                // Generate a deterministic name for the destructured field
-                let destructured_name = format!(
-                    "{}{}",
-                    DESTRUCTURE_PREFIX,
-                    context.next_destructured_struct_unique_suffix()
+                // Generate a deterministic name for the destructured struct variable.
+                let destructured_struct_name = generate_destructured_struct_var_name(
+                    context.next_destructured_struct_unique_suffix(),
                 );
-                let destructure_name =
-                    Ident::new_with_override(destructured_name, path.prefix.name.span());
+
+                let destructured_struct_name =
+                    Ident::new_with_override(destructured_struct_name, path.prefix.name.span());
 
                 // Parse the type ascription and the type ascription span.
                 // In the event that the user did not provide a type ascription,
@@ -3342,7 +3350,7 @@ fn statement_let_to_ast_nodes(
                         TypeArgument {
                             type_id,
                             initial_type_id: type_id,
-                            span: destructure_name.span(),
+                            span: destructured_struct_name.span(),
                             call_path_tree: None,
                         }
                     }
@@ -3350,7 +3358,7 @@ fn statement_let_to_ast_nodes(
 
                 // Save the destructure to the new name as a new variable declaration
                 let save_body_first = VariableDeclaration {
-                    name: destructure_name.clone(),
+                    name: destructured_struct_name.clone(),
                     type_ascription,
                     body: expression,
                     is_mutable: false,
@@ -3364,7 +3372,7 @@ fn statement_let_to_ast_nodes(
 
                 // create a new variable expression that points to the new destructured struct name that we just created
                 let new_expr = Expression {
-                    kind: ExpressionKind::Variable(destructure_name),
+                    kind: ExpressionKind::Variable(destructured_struct_name),
                     span: span.clone(),
                 };
 
@@ -3419,11 +3427,9 @@ fn statement_let_to_ast_nodes(
                 let mut ast_nodes = Vec::new();
 
                 // Generate a deterministic name for the tuple.
-                let tuple_name = format!(
-                    "{}{}",
-                    TUPLE_NAME_PREFIX,
-                    context.next_destructured_tuple_unique_suffix()
-                );
+                let tuple_name =
+                    generate_tuple_var_name(context.next_destructured_tuple_unique_suffix());
+
                 let tuple_name = Ident::new_with_override(tuple_name, span.clone());
 
                 // Parse the type ascription and the type ascription span.
@@ -3604,12 +3610,14 @@ fn asm_register_declaration_to_asm_register_declaration(
     engines: &Engines,
     asm_register_declaration: sway_ast::AsmRegisterDeclaration,
 ) -> Result<AsmRegisterDeclaration, ErrorEmitted> {
+    let initializer = asm_register_declaration
+        .value_opt
+        .map(|(_colon_token, expr)| expr_to_expression(context, handler, engines, *expr))
+        .transpose()?;
+
     Ok(AsmRegisterDeclaration {
         name: asm_register_declaration.register,
-        initializer: asm_register_declaration
-            .value_opt
-            .map(|(_colon_token, expr)| expr_to_expression(context, handler, engines, *expr))
-            .transpose()?,
+        initializer,
     })
 }
 

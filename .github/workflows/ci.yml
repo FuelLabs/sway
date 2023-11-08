@@ -115,6 +115,7 @@ jobs:
           cargo install --locked --debug --path ./forc-plugins/forc-client
           cargo install --locked --debug --path ./forc-plugins/forc-doc
           cargo install --locked --debug --path ./forc-plugins/forc-tx
+          cargo install --locked --debug --path ./forc-plugins/forc-crypto
           cargo install --locked --debug forc-explore
       - name: Install mdbook-forc-documenter
         run: cargo install --locked --debug --path ./scripts/mdbook-forc-documenter
@@ -125,7 +126,7 @@ jobs:
           mdbook-version: '0.4.25'
       - name: Emit book logs to tmp.txt, fail if build logs contain 'ERROR'
         run: |
-          MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/book &> tmp.txt
+          MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/book 2>&1 | tee tmp.txt
           if cat tmp.txt | grep 'ERROR'
           then
             cat tmp.txt
@@ -193,7 +194,7 @@ jobs:
 
           [workspace]" >> test-proj/Cargo.toml
       - name: Build and Run Default Integration Test
-        run: (cd test-proj && cargo test)
+        run: (cd test-proj && cargo test --release)
 
   cargo-build-workspace:
     runs-on: ubuntu-latest
@@ -304,7 +305,7 @@ jobs:
       - name: Build All Tests
         run: cargo run --locked -p forc -- build --locked --path ./test/src/sdk-harness
       - name: Cargo Test sway-lib-std
-        run: cargo test --locked --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
+        run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 
   forc-run-benchmarks:
     runs-on: ubuntu-latest
@@ -402,7 +403,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
-        run: cargo test --locked
+        run: cargo test --locked --release
 
   cargo-unused-deps-check:
     runs-on: ubuntu-latest
@@ -474,6 +475,7 @@ jobs:
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-fmt/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-lsp/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-tx/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-crypto/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-test/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-tracing/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-util/Cargo.toml
@@ -737,13 +739,13 @@ jobs:
       - name: Strip release binaries x86_64-linux-gnu
         if: matrix.job.target == 'x86_64-unknown-linux-gnu'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc forc-tx forc-submit; do
+          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit; do
             strip "target/${{ matrix.job.target }}/release/$BINARY"
           done
       - name: Strip release binaries aarch64-linux-gnu
         if: matrix.job.target == 'aarch64-unknown-linux-gnu'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc forc-tx forc-submit; do
+          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit; do
             docker run --rm -v \
             "$PWD/target:/target:Z" \
             ghcr.io/cross-rs/${{ matrix.job.target }}:main \
@@ -753,7 +755,7 @@ jobs:
       - name: Strip release binaries mac
         if: matrix.job.os == 'macos-latest'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc forc-tx forc-submit; do
+          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit; do
             strip -x "target/${{ matrix.job.target }}/release/$BINARY"
           done
 
@@ -767,7 +769,7 @@ jobs:
           ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc forc-tx forc-submit; do
+          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit; do
             cp "target/${{ matrix.job.target }}/release/$BINARY" ./forc-binaries
           done
           tar -czvf $ZIP_FILE_NAME ./forc-binaries

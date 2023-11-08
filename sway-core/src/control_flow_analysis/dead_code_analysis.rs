@@ -12,12 +12,17 @@ use crate::{
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
 use std::collections::{BTreeSet, HashMap};
+use sway_ast::Intrinsic;
 use sway_error::{error::CompileError, type_error::TypeError};
 use sway_error::{
     handler::Handler,
     warning::{CompileWarning, Warning},
 };
-use sway_types::{constants::ALLOW_DEAD_CODE_NAME, span::Span, Ident, Named, Spanned};
+use sway_types::{
+    constants::{ALLOW_DEAD_CODE_NAME, STD},
+    span::Span,
+    Ident, Named, Spanned,
+};
 
 impl<'cfg> ControlFlowGraph<'cfg> {
     pub(crate) fn find_dead_code(&self, decl_engine: &DeclEngine) -> Vec<CompileWarning> {
@@ -1263,6 +1268,17 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             for leaf in current_leaf {
                 graph.add_edge(leaf, fn_exit_point, "".into());
             }
+
+            // check for std::revert and connect to the exit node if that's the case.
+            // we are guaranteed a full call path here since the type checker calls to_fullpath.
+            if let Some(prefix) = fn_decl.call_path.prefixes.first() {
+                if prefix.as_str() == STD && fn_decl.call_path.suffix.as_str() == "revert" {
+                    if let Some(exit_node) = exit_node {
+                        graph.add_edge(fn_exit_point, exit_node, "revert".into());
+                        return Ok(vec![]);
+                    }
+                }
+            }
             // the exit points get connected to an exit node for the application
             if !is_external {
                 if let Some(exit_node) = exit_node {
@@ -1876,6 +1892,12 @@ fn connect_intrinsic_function<'eng: 'cfg, 'cfg>(
         accum.append(&mut res);
         Ok::<_, CompileError>(accum)
     })?;
+    if let Some(exit_node) = exit_node {
+        if kind == &Intrinsic::Revert {
+            graph.add_edge(node, exit_node, "revert".into());
+            result = vec![];
+        }
+    }
     Ok(result)
 }
 

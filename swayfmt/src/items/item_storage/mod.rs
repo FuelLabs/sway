@@ -1,6 +1,6 @@
 use crate::{
     comments::rewrite_with_comments,
-    config::{items::ItemBraceStyle, user_def::FieldAlignment},
+    config::user_def::FieldAlignment,
     formatter::{
         shape::{ExprKind, LineStyle},
         *,
@@ -37,6 +37,8 @@ impl Format for ItemStorage {
 
                 // Handle opening brace
                 Self::open_curly_brace(formatted_code, formatter)?;
+
+                formatter.shape.code_line.update_expr_new_line(true);
 
                 // Determine alignment tactic
                 match formatter.config.structures.field_alignment {
@@ -134,19 +136,10 @@ impl CurlyBrace for ItemStorage {
         line: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let brace_style = formatter.config.items.item_brace_style;
         formatter.indent();
         let open_brace = Delimiter::Brace.as_open_char();
-        match brace_style {
-            ItemBraceStyle::AlwaysNextLine => {
-                // Add opening brace to the next line.
-                write!(line, "\n{open_brace}")?;
-            }
-            _ => {
-                // Add opening brace to the same line
-                write!(line, " {open_brace}")?;
-            }
-        }
+        // Add opening brace to the same line
+        write!(line, " {open_brace}")?;
 
         Ok(())
     }

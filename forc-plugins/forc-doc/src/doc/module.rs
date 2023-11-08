@@ -136,28 +136,38 @@ impl ModuleInfo {
         &self,
         file_name: &str,
         current_module_info: &ModuleInfo,
+        is_external_item: bool,
     ) -> Result<String> {
-        let mut mid = 0; // the index to split the module_info from call_path at
-        let mut offset = 0; // the number of directories to go back
-        let mut next_location_iter = self.module_prefixes.iter().rev().enumerate().peekable();
-        while let Some((index, prefix)) = next_location_iter.peek() {
-            for (count, module) in current_module_info.module_prefixes.iter().rev().enumerate() {
-                if module == *prefix {
-                    offset = count;
-                    mid = self.module_prefixes.len() - index;
-                    break;
+        if is_external_item {
+            let mut new_path = (0..current_module_info.module_prefixes.len())
+                .map(|_| "../")
+                .collect::<String>();
+            write!(new_path, "{}/{}", self.module_prefixes.join("/"), file_name)?;
+            Ok(new_path)
+        } else {
+            let mut mid = 0; // the index to split the module_info from call_path at
+            let mut offset = 0; // the number of directories to go back
+            let mut next_location_iter = self.module_prefixes.iter().rev().enumerate().peekable();
+            while let Some((index, prefix)) = next_location_iter.peek() {
+                for (count, module) in current_module_info.module_prefixes.iter().rev().enumerate()
+                {
+                    if module == *prefix {
+                        offset = count;
+                        mid = self.module_prefixes.len() - index;
+                        break;
+                    }
                 }
+                next_location_iter.next();
             }
-            next_location_iter.next();
+            let mut new_path = (0..offset).map(|_| "../").collect::<String>();
+            write!(
+                new_path,
+                "{}/{}",
+                self.module_prefixes.split_at(mid).1.join("/"),
+                file_name
+            )?;
+            Ok(new_path)
         }
-        let mut new_path = (0..offset).map(|_| "../").collect::<String>();
-        write!(
-            new_path,
-            "{}/{}",
-            self.module_prefixes.split_at(mid).1.join("/"),
-            file_name
-        )?;
-        Ok(new_path)
     }
     /// Create a path `&str` for navigation from the `module.depth()` & `file_name`.
     ///
@@ -181,7 +191,7 @@ impl ModuleInfo {
         }
     }
     /// Create a new [ModuleInfo] from a `CallPath`.
-    pub(crate) fn from_call_path(call_path: CallPath) -> Self {
+    pub(crate) fn from_call_path(call_path: &CallPath) -> Self {
         let module_prefixes = call_path
             .prefixes
             .iter()
@@ -189,6 +199,13 @@ impl ModuleInfo {
             .collect::<Vec<String>>();
         Self {
             module_prefixes,
+            attributes: None,
+        }
+    }
+    /// Create a new [ModuleInfo] from a `&[String]`.
+    pub(crate) fn from_vec_str(module_prefixes: &[String]) -> Self {
+        Self {
+            module_prefixes: module_prefixes.to_owned(),
             attributes: None,
         }
     }

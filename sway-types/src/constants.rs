@@ -1,4 +1,4 @@
-//! Configurable yet nonchanging constants for the compiler.
+//! Configurable yet non-changing constants for the compiler.
 
 /// The default extension of [LANGUAGE_NAME] files, e.g. `main.sw`.
 pub const DEFAULT_FILE_EXTENSION: &str = "sw";
@@ -17,15 +17,6 @@ pub const CONTRACT_CALL_ASSET_ID_PARAMETER_DEFAULT_VALUE: [u8; 32] = [0; 32];
 
 /// The default entry point for scripts and predicates.
 pub const DEFAULT_ENTRY_POINT_FN_NAME: &str = "main";
-
-/// The default prefix for the compiler generated names of tuples
-pub const TUPLE_NAME_PREFIX: &str = "__tuple_";
-
-// The default prefix for the compiler generated names of struct fields
-pub const DESTRUCTURE_PREFIX: &str = "__destructure_";
-
-/// The default prefix for the compiler generated names of match
-pub const MATCH_RETURN_VAR_NAME_PREFIX: &str = "__match_return_var_name_";
 
 /// The valid attribute strings related to storage and purity.
 pub const STORAGE_PURITY_ATTRIBUTE_NAME: &str = "storage";
@@ -73,3 +64,7 @@ pub const VALID_ATTRIBUTE_NAMES: &[&str] = &[
     CFG_ATTRIBUTE_NAME,
     DEPRECATED_ATTRIBUTE_NAME,
 ];
+
+pub const CORE: &str = "core";
+pub const STD: &str = "std";
+pub const PRELUDE: &str = "prelude";

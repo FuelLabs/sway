@@ -100,7 +100,7 @@ impl TyImplTrait {
 
         // Unify the "self" type param and the type that we are implementing for
         handler.scope(|h| {
-            type_engine.unify(
+            type_engine.unify_with_self(
                 h,
                 engines,
                 implementing_for.type_id,
@@ -208,7 +208,7 @@ impl TyImplTrait {
                 // Unify the "self" type param from the abi declaration with
                 // the type that we are implementing for.
                 handler.scope(|h| {
-                    type_engine.unify(
+                    type_engine.unify_with_self(
                         h,
                         engines,
                         implementing_for.type_id,
@@ -348,7 +348,7 @@ impl TyImplTrait {
 
         // Unify the "self" type param and the type that we are implementing for
         handler.scope(|h| {
-            type_engine.unify(
+            type_engine.unify_with_self(
                 h,
                 engines,
                 implementing_for.type_id,
@@ -429,6 +429,21 @@ impl TyImplTrait {
                 items: new_items,
                 implementing_for,
             };
+
+            ctx.insert_trait_implementation(
+                handler,
+                impl_trait.trait_name.clone(),
+                impl_trait.trait_type_arguments.clone(),
+                impl_trait.implementing_for.type_id,
+                &impl_trait.items,
+                &impl_trait.span,
+                impl_trait
+                    .trait_decl_ref
+                    .as_ref()
+                    .map(|decl_ref| decl_ref.decl_span().clone()),
+                IsImplSelf::Yes,
+                IsExtendingExistingImpl::No,
+            )?;
 
             // Now lets do a partial type check of the body of the functions (while deferring full
             // monomorphization of function applications). We will use this tree to perform type check
@@ -860,6 +875,29 @@ fn type_check_trait_implementation(
         match item {
             TyImplItem::Fn(decl_ref) => {
                 let mut method = decl_engine.get_function(decl_ref);
+
+                // We need to add impl type parameters to the method's type parameters
+                // so that in-line monomorphization can complete.
+                //
+                // We also need to add impl type parameters to the method's type
+                // parameters so the type constraints are correctly applied to the method.
+                //
+                // NOTE: this is a semi-hack that is used to force monomorphization of
+                // trait methods that contain a generic defined in the parent impl...
+                // without stuffing the generic into the method's type parameters, its
+                // not currently possible to monomorphize on that generic at function
+                // application time.
+                method.type_parameters.append(
+                    &mut impl_type_parameters
+                        .iter()
+                        .cloned()
+                        .map(|mut t| {
+                            t.is_from_parent = true;
+                            t
+                        })
+                        .collect::<Vec<_>>(),
+                );
+
                 method.replace_decls(&decl_mapping, handler, &mut ctx)?;
                 method.subst(&type_mapping, engines);
                 all_items_refs.push(TyImplItem::Fn(
@@ -1104,7 +1142,7 @@ fn type_check_impl_method(
             );
         }
 
-        // We need to add impl type parameters to the  method's type parameters
+        // We need to add impl type parameters to the method's type parameters
         // so that in-line monomorphization can complete.
         //
         // We also need to add impl type parameters to the method's type

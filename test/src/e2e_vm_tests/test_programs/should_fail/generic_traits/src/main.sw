@@ -111,6 +111,26 @@ fn set_it<T, F>(mut data: T, new_value: F) where T: Setter<F> {
     data.set(new_value);
 }
 
+pub trait MyTrait {
+    fn my_trait_method() -> Self;
+}
+
+impl<U> MyTrait for U {
+    fn my_trait_method() -> Self {
+        1u64
+    }
+}
+
+pub trait MyTrait2<T> {
+    fn my_trait_method(t: T) -> Self;
+}
+
+impl<T, U> MyTrait2<T> for U {
+    fn my_trait_method(t: T) -> Self {
+        t
+    }
+}
+
 fn main() -> u64 {
     let a = FooBarData {
         value: 1u8

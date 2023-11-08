@@ -11,6 +11,10 @@ use crate::{
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use sway_core::{
+    compiler_generated::{
+        is_generated_any_match_expression_var_name, is_generated_destructured_struct_var_name,
+        is_generated_tuple_var_name,
+    },
     language::{
         parsed::{
             AbiCastExpression, AbiDeclaration, AmbiguousPathExpression, ArrayExpression,
@@ -33,7 +37,6 @@ use sway_core::{
     type_system::{TypeArgument, TypeParameter},
     TraitConstraint, TypeInfo,
 };
-use sway_types::constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX};
 use sway_types::{Ident, Span, Spanned};
 
 pub struct ParsedTree<'a> {
@@ -205,10 +208,10 @@ impl Parse for Expression {
                 rhs.parse(ctx);
             }
             ExpressionKind::Variable(name) => {
-                if !name.as_str().contains(TUPLE_NAME_PREFIX)
-                    && !name.as_str().contains(MATCH_RETURN_VAR_NAME_PREFIX)
+                if !(is_generated_tuple_var_name(name.as_str())
+                    || is_generated_any_match_expression_var_name(name.as_str()))
                 {
-                    let symbol_kind = if name.as_str().contains(DESTRUCTURE_PREFIX) {
+                    let symbol_kind = if is_generated_destructured_struct_var_name(name.as_str()) {
                         SymbolKind::Struct
                     } else if name.as_str() == "self" {
                         SymbolKind::SelfKeyword
@@ -685,12 +688,12 @@ impl Parse for FunctionApplicationExpression {
 
 impl Parse for VariableDeclaration {
     fn parse(&self, ctx: &ParseContext) {
-        // Don't collect tokens if the ident's name contains __tuple_ || __match_return_var_name_
-        // The individual elements are handled in the subsequent VariableDeclaration's
-        if !self.name.as_str().contains(TUPLE_NAME_PREFIX)
-            && !self.name.as_str().contains(MATCH_RETURN_VAR_NAME_PREFIX)
+        // Don't collect tokens if the idents are generated tuple or match desugaring names.
+        // The individual elements are handled in the subsequent VariableDeclaration's.
+        if !(is_generated_tuple_var_name(self.name.as_str())
+            || is_generated_any_match_expression_var_name(self.name.as_str()))
         {
-            let symbol_kind = if self.name.as_str().contains(DESTRUCTURE_PREFIX) {
+            let symbol_kind = if is_generated_destructured_struct_var_name(self.name.as_str()) {
                 SymbolKind::Struct
             } else {
                 SymbolKind::Variable
