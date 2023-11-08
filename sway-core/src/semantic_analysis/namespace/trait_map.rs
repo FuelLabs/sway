@@ -235,7 +235,7 @@ impl TraitMap {
                     },
                 );
 
-                let unify_checker = UnifyCheck::constraint_subset(engines);
+                let unify_checker = UnifyCheck::non_generic_constraint_subset(engines);
                 let types_are_subset = unify_checker.check(type_id, *map_type_id);
                 let traits_are_subset = unify_checker.check(trait_type_id, map_trait_type_id);
 
