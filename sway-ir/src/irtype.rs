@@ -418,7 +418,7 @@ impl Type {
         }
     }
 
-    /// Get the length of a string
+    /// Get the length of a string.
     pub fn get_string_len(&self, context: &Context) -> Option<u64> {
         if let TypeContent::StringArray(n) = *self.get_content(context) {
             Some(n)

@@ -145,13 +145,6 @@ fn compile_module_to_asm(
 
 // -------------------------------------------------------------------------------------------------
 
-#[macro_export]
-macro_rules! size_bytes_in_words {
-    ($bytes_expr: expr) => {
-        ($bytes_expr + 7) / 8
-    };
-}
-
 // This is a mouthful...
 #[macro_export]
 macro_rules! size_bytes_round_up_to_word_alignment {

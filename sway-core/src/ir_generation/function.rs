@@ -657,7 +657,7 @@ impl<'eng> FnCompiler<'eng> {
                 Ok(Constant::get_uint(
                     context,
                     64,
-                    TypeSize::str_array_len(&ir_type, context)
+                    ir_type.get_string_len(context).unwrap_or_default()
                 ))
             }
             Intrinsic::IsReferenceType => {

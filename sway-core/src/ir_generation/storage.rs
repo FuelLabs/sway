@@ -257,6 +257,8 @@ fn serialize_to_words(
             let field_tys = ty.get_field_types(context);
             vec.iter()
                 .zip(field_tys.iter())
+                // TODO: Warning! Again, making an assumption about the memory layout
+                //       of struct fields.
                 .flat_map(|(f, ty)| serialize_to_words(f, context, ty, InByte8Padding::Right))
                 .collect()
         }
