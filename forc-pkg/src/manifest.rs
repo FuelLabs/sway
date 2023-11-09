@@ -803,8 +803,6 @@ fn implicit_std_dep() -> Dependency {
         det.rev = rev;
     };
 
-    println!("{:?}", &det);
-
     Dependency::Detailed(det)
 }
 
