@@ -25,7 +25,6 @@ use sway_types::{
     constants,
     ident::Ident,
     integer_bits::IntegerBits,
-    integer_bits::IntegerBits,
     span::{Span, Spanned},
     state::StateIndex,
     Named,

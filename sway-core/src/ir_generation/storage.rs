@@ -21,15 +21,6 @@ enum InByte8Padding {
     Left,
 }
 
-/// Determines how values that are less then a word in length
-/// has to be padded to word boundary when in structs or enums.
-#[derive(Default)]
-enum InByte8Padding {
-    #[default]
-    Right,
-    Left,
-}
-
 /// Hands out storage keys using a state index and a list of subfield indices.
 /// Basically returns sha256("storage_<state_index>_<idx1>_<idx2>_..")
 pub(super) fn get_storage_key<T>(ix: &StateIndex, indices: &[T]) -> Bytes32
@@ -286,7 +277,6 @@ fn serialize_to_words(
                 .iter()
                 .cloned()
                 .chain(
-                    serialize_to_words(constant, context, &constant.ty, InByte8Padding::Left)
                     serialize_to_words(constant, context, &constant.ty, InByte8Padding::Left)
                         .iter()
                         .cloned(),

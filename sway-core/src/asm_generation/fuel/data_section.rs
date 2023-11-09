@@ -6,7 +6,6 @@ use std::{
     collections::BTreeMap,
     fmt::{self, Write},
     iter::repeat,
-    iter::repeat,
 };
 
 // An entry in the data section.  It's important for the size to be correct, especially for unions
@@ -14,7 +13,6 @@ use std::{
 #[derive(Clone, Debug)]
 pub struct Entry {
     value: Datum,
-    padding: Padding,
     padding: Padding,
     // It is assumed, for now, that only configuration-time constants have a name. Otherwise, this
     // is `None`.
@@ -24,25 +22,9 @@ pub struct Entry {
 #[derive(Clone, Debug)]
 pub enum Datum {
     Byte(u8),
-    Byte(u8),
     Word(u64),
     ByteArray(Vec<u8>),
     Collection(Vec<Entry>),
-}
-
-#[derive(Clone, Debug)]
-pub(crate) enum Padding {
-    Left { target_size: usize },
-    Right { target_size: usize },
-}
-
-impl Padding {
-    pub fn target_size(&self) -> usize {
-        use Padding::*;
-        match self {
-            Left { target_size } | Right { target_size } => *target_size,
-        }
-    }
 }
 
 impl Entry {
@@ -66,7 +48,6 @@ impl Entry {
         bytes: Vec<u8>,
         name: Option<String>,
         padding: Option<Padding>,
-        padding: Option<Padding>,
     ) -> Entry {
         Entry {
             padding: padding.unwrap_or(Padding::default_for_byte_array(&bytes)),
@@ -78,7 +59,6 @@ impl Entry {
     pub(crate) fn new_collection(
         elements: Vec<Entry>,
         name: Option<String>,
-        padding: Option<Padding>,
         padding: Option<Padding>,
     ) -> Entry {
         Entry {
@@ -94,7 +74,6 @@ impl Entry {
         context: &Context,
         constant: &Constant,
         name: Option<String>,
-        padding: Option<Padding>,
         padding: Option<Padding>,
     ) -> Entry {
         // We need a special handling in case of enums.
@@ -140,7 +119,6 @@ impl Entry {
                     .collect(),
                 name,
                 padding,
-                padding,
             ),
         }
     }
@@ -148,8 +126,6 @@ impl Entry {
     /// Converts a literal to a big-endian representation. This is padded to words.
     pub(crate) fn to_bytes(&self) -> Vec<u8> {
         // Get the big-endian byte representation of the basic value.
-        let bytes = match &self.value {
-            Datum::Byte(b) => vec![*b],
         let bytes = match &self.value {
             Datum::Byte(b) => vec![*b],
             Datum::Word(w) => w.to_be_bytes().to_vec(),
@@ -177,28 +153,20 @@ impl Entry {
 
     pub(crate) fn is_byte(&self) -> bool {
         matches!(self.value, Datum::Byte(_))
-        matches!(self.value, Datum::Word(_) | Datum::Byte(_))
-    }
-
-    pub(crate) fn is_byte(&self) -> bool {
-        matches!(self.value, Datum::Byte(_))
     }
 
     pub(crate) fn equiv(&self, entry: &Entry) -> bool {
         fn equiv_data(lhs: &Datum, rhs: &Datum) -> bool {
             match (lhs, rhs) {
                 (Datum::Byte(l), Datum::Byte(r)) => l == r,
-                (Datum::Byte(l), Datum::Byte(r)) => l == r,
                 (Datum::Word(l), Datum::Word(r)) => l == r,
                 (Datum::ByteArray(l), Datum::ByteArray(r)) => l == r,
-
                 (Datum::Collection(l), Datum::Collection(r)) => {
                     l.len() == r.len()
                         && l.iter()
                             .zip(r.iter())
                             .all(|(l, r)| equiv_data(&l.value, &r.value))
                 }
-
                 _ => false,
             }
         }
@@ -268,13 +236,6 @@ impl DataSection {
             .map(|entry| entry.is_byte())
     }
 
-    /// Returns whether a specific [DataId] value is a byte entry.
-    pub(crate) fn is_byte(&self, id: &DataId) -> Option<bool> {
-        self.value_pairs
-            .get(id.0 as usize)
-            .map(|entry| entry.is_byte())
-    }
-
     /// When generating code, sometimes a hard-coded data pointer is needed to reference
     /// static values that have a length longer than one word.
     /// This method appends pointers to the end of the data section (thus, not altering the data
@@ -310,7 +271,6 @@ impl fmt::Display for DataSection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fn display_entry(datum: &Datum) -> String {
             match datum {
-                Datum::Byte(w) => format!(".byte {w}"),
                 Datum::Byte(w) => format!(".byte {w}"),
                 Datum::Word(w) => format!(".word {w}"),
                 Datum::ByteArray(bs) => {

@@ -793,7 +793,6 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             constant,
                             None,
                             None,
-                            None,
                         ));
 
                         init_mut_vars.push(InitMutVars {
@@ -843,7 +842,6 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             u64,
             virtual_register::VirtualRegister,
             Vec<InitMutVars>,
-            Vec<InitMutVars>,
             u64,
         ),
     ) {
@@ -857,9 +855,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             // Load our initialiser from the data section.
             self.cur_bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::LoadDataId(
-                opcode: Either::Left(VirtualOp::LoadDataId(
                     VirtualRegister::Constant(ConstantRegister::Scratch),
-                    data_id,
                     data_id,
                 )),
                 comment: "load initializer from data section".to_owned(),
