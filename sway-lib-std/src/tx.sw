@@ -303,7 +303,7 @@ pub fn tx_witness_data_length(index: u64) -> u64 {
 /// ```
 pub fn tx_witness_data<T>(index: u64) -> T {
     if __size_of::<T>() == 1 {
-        __gtf::<raw_ptr>(index, GTF_WITNESS_DATA).add::<u8>(3).read::<T>()
+        __gtf::<raw_ptr>(index, GTF_WITNESS_DATA).add::<u8>(7).read::<T>()
     } else {
         __gtf::<raw_ptr>(index, GTF_WITNESS_DATA).read::<T>()
     }
