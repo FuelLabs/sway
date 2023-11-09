@@ -780,28 +780,30 @@ fn implicit_std_dep() -> Dependency {
         .unwrap_or_else(|| format!("v{}", env!("CARGO_PKG_VERSION")));
     const SWAY_GIT_REPO_URL: &str = "https://github.com/fuellabs/sway";
 
-    fn rev_from_build_metadata(build_metadata: &str) -> Option<String> {
-        // Nightlies are in the format v<version>+nightly.<date>.<hash>
-        build_metadata.split('.').last().map(|r| r.to_string())
-    }
+    // only use tag/rev if the branch is None
+    let branch = std::env::var("FORC_IMPLICIT_STD_GIT_BRANCH").ok();
+    let tag = branch.as_ref().map_or_else(|| Some(tag), |_| None);
 
     let mut det = DependencyDetails {
         git: std::env::var("FORC_IMPLICIT_STD_GIT")
             .ok()
             .or_else(|| Some(SWAY_GIT_REPO_URL.to_string())),
-        tag: Some(tag),
-        branch: std::env::var("FORC_IMPLICIT_STD_GIT_BRANCH").ok(),
+        tag,
+        branch,
         ..Default::default()
     };
 
-    if let Some((_, build_metadata)) = det.tag.as_ref().unwrap().split_once('+') {
-        let rev = rev_from_build_metadata(build_metadata);
+    if let Some((_, build_metadata)) = det.tag.as_ref().and_then(|tag| tag.split_once('+')) {
+        // Nightlies are in the format v<version>+nightly.<date>.<hash>
+        let rev = build_metadata.split('.').last().map(|r| r.to_string());
 
         // If some revision is available and parsed from the 'nightly' build metadata,
         // we always prefer the revision over the tag.
         det.tag = None;
         det.rev = rev;
     };
+
+    println!("{:?}", &det);
 
     Dependency::Detailed(det)
 }
