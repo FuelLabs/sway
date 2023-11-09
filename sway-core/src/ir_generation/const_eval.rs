@@ -5,6 +5,7 @@ use crate::{
     language::{
         ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
         CallPath, Literal,
+        CallPath, Literal,
     },
     metadata::MetadataManager,
     semantic_analysis::*,
