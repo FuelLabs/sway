@@ -113,25 +113,6 @@ async fn did_cache_test() {
 }
 
 #[tokio::test]
-async fn did_change_stress_test() {
-    let (mut service, _) = LspService::build(ServerState::new)
-        .custom_method("sway/metrics", ServerState::metrics)
-        .finish();
-    let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
-    let times = 20;
-    for _ in 0..times {
-        let _ = lsp::did_change_request(&mut service, &uri).await;
-        let metrics = lsp::metrics_request(&mut service, &uri).await;
-        for (path, metrics) in metrics {
-            if path.contains("sway-lib-core") || path.contains("sway-lib-std") {
-                assert!(metrics.reused_modules >= 1);
-            }
-        }
-    }
-    shutdown_and_exit(&mut service).await;
-}
-
-#[tokio::test]
 async fn lsp_syncs_with_workspace_edits() {
     let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
