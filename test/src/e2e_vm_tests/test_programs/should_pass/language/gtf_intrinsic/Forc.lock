@@ -1,3 +1,13 @@
 [[package]]
-name = 'gtf_intrinsic'
-source = 'member'
+name = "core"
+source = "path+from-root-AC247AEA3D39B916"
+
+[[package]]
+name = "gtf_intrinsic"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "git+https://github.com/fuellabs/sway?tag=v0.47.0#34265301c6037d51444899a99df1cfc563df6016"
+dependencies = ["core"]
