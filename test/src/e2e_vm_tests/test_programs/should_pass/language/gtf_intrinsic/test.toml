@@ -1,3 +1,4 @@
 category = "run"
-expected_result = { action = "revert", value = 0 }
+expected_result = { action = "return", value = 0 }
 validate_abi = true
+witness_data = [ "0000000000000001", "00000000000004D2" ]
