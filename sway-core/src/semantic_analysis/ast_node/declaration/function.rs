@@ -275,7 +275,7 @@ impl TypeCheckUnification for ty::TyFunctionDecl {
 
             return_type.type_id.check_type_parameter_bounds(
                 handler,
-                type_check_ctx,
+                type_check_ctx.by_ref(),
                 &return_type.span,
                 vec![],
             )?;
