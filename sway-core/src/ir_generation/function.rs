@@ -2057,26 +2057,16 @@ impl<'eng> FnCompiler<'eng> {
                             ProjectionKind::StructField { name: idx_name },
                             TypeInfo::Struct(decl_ref),
                         ) => {
-                            // Get the struct type info, with field names.
-                            let ty::TyStructDecl {
-                                call_path: struct_call_path,
-                                fields: struct_fields,
-                                ..
-                            } = self.engines.de().get_struct(&decl_ref);
+                            let struct_decl = self.engines.de().get_struct(&decl_ref);
 
-                            // Search for the index to the field name we're after, and its type
-                            // id.
-                            struct_fields
-                                .iter()
-                                .enumerate()
-                                .find(|(_, field)| field.name == *idx_name)
-                                .map(|(idx, field)| (idx as u64, field.type_argument.type_id))
+                            struct_decl
+                                .get_field_index_and_type(idx_name)
                                 .ok_or_else(|| {
                                     CompileError::InternalOwned(
                                         format!(
                                             "Unknown field name '{idx_name}' for struct '{}' \
                                                 in reassignment.",
-                                            struct_call_path.suffix.as_str(),
+                                            struct_decl.call_path.suffix.as_str(),
                                         ),
                                         ast_reassignment.lhs_base_name.span(),
                                     )
@@ -2433,23 +2423,16 @@ impl<'eng> FnCompiler<'eng> {
                 ast_field.span.clone(),
             ));
         };
-        let crate::language::ty::TyStructDecl {
-            call_path: struct_call_path,
-            fields: struct_fields,
-            ..
-        } = self.engines.de().get_struct(&decl_ref);
 
-        // Search for the index to the field name we're after, and its type id.
-        let (field_idx, field_type_id) = struct_fields
-            .iter()
-            .enumerate()
-            .find(|(_, field)| field.name == ast_field.name)
-            .map(|(idx, field)| (idx as u64, field.type_argument.type_id))
+        let struct_decl = self.engines.de().get_struct(&decl_ref);
+
+        let (field_idx, field_type_id) = struct_decl
+            .get_field_index_and_type(&ast_field.name)
             .ok_or_else(|| {
                 CompileError::InternalOwned(
                     format!(
                         "Unknown field name '{}' for struct '{}' in field expression.",
-                        struct_call_path.suffix.as_str(),
+                        struct_decl.call_path.suffix.as_str(),
                         ast_field.name
                     ),
                     ast_field.span.clone(),
