@@ -2756,7 +2756,7 @@ impl<'eng> FnCompiler<'eng> {
         let (storage_key, offset_within_slot) = {
             let offset_in_words = match base_type.get_indexed_offset(context, indices) {
                 Some(offset_in_bytes) => {
-                    // TODO: Warning! Here we make an assumption about the memory layout of structs.
+                    // TODO-MEMLAY: Warning! Here we make an assumption about the memory layout of structs.
                     //       The memory layout of structs can be changed in the future.
                     //       We will not refactor the Storage API at the moment to remove this
                     //       assumption. It is a questionable effort because we anyhow

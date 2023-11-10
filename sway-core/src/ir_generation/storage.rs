@@ -170,7 +170,7 @@ pub fn serialize_to_storage_slots(
 
             // Return a list of `StorageSlot`s
             // First get the keys then get the values
-            // TODO: Warning! Here we make an assumption about the memory layout of
+            // TODO-MEMLAY: Warning! Here we make an assumption about the memory layout of
             //       string arrays, structs, and enum.
             //       The assumption is that they are rounded to word boundaries
             //       which will very likely always be the case.
@@ -257,7 +257,7 @@ fn serialize_to_words(
             let field_tys = ty.get_field_types(context);
             vec.iter()
                 .zip(field_tys.iter())
-                // TODO: Warning! Again, making an assumption about the memory layout
+                // TODO-MEMLAY: Warning! Again, making an assumption about the memory layout
                 //       of struct fields.
                 .flat_map(|(f, ty)| serialize_to_words(f, context, ty, InByte8Padding::Right))
                 .collect()
@@ -268,7 +268,7 @@ fn serialize_to_words(
             assert!(value_size_in_words >= constant_size_in_words);
 
             // Add enough left padding to satisfy the actual size of the union
-            // TODO: Warning! Here we make an assumption about the memory layout of enums,
+            // TODO-MEMLAY: Warning! Here we make an assumption about the memory layout of enums,
             //       that they are left padded.
             //       The memory layout of enums can be changed in the future.
             //       We will not refactor the Storage API at the moment to remove this
