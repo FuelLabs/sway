@@ -8,7 +8,7 @@ use crate::{
     },
     metadata::MetadataManager,
     semantic_analysis::*,
-    TypeInfo, UnifyCheck, type_size::TypeSize,
+    TypeInfo, UnifyCheck,
 };
 
 use super::{
@@ -941,7 +941,7 @@ fn const_eval_intrinsic(
             .map_err(ConstEvalError::CompileError)?;
             Ok(Some(Constant {
                 ty: Type::get_uint64(lookup.context),
-                value: ConstantValue::Uint(TypeSize::for_type(&ir_type, lookup.context).in_bytes()),
+                value: ConstantValue::Uint(ir_type.size(lookup.context).in_bytes()),
             }))
         }
         Intrinsic::SizeOfVal => {
@@ -957,7 +957,7 @@ fn const_eval_intrinsic(
             .map_err(ConstEvalError::CompileError)?;
             Ok(Some(Constant {
                 ty: Type::get_uint64(lookup.context),
-                value: ConstantValue::Uint(TypeSize::for_type(&ir_type, lookup.context).in_bytes()),
+                value: ConstantValue::Uint(ir_type.size(lookup.context).in_bytes()),
             }))
         }
         Intrinsic::SizeOfStr => {

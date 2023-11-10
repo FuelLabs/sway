@@ -1,6 +1,6 @@
 //! [`Constant`] is a typed constant value.
 
-use crate::{context::Context, irtype::Type, pretty::DebugWithContext, value::Value, Padding, size_bytes_round_up_to_word_alignment};
+use crate::{context::Context, irtype::Type, pretty::DebugWithContext, value::Value, Padding};
 use sway_types::u256::U256;
 
 /// A [`Type`] and constant value, including [`ConstantValue::Undef`] for uninitialized constants.
@@ -164,11 +164,9 @@ impl Constant {
 
             // Enum variants are left padded to the word boundary, and the size
             // of each variant is the size of the union.
-            let target_size = size_bytes_round_up_to_word_alignment!(
-                // We know we have an enum here, means exactly two fields in the struct
-                // second of which is the union.
-                self.ty.get_field_types(context)[1].size_in_bytes(context) as usize
-            );
+            // We know we have an enum here, means exactly two fields in the struct
+            // second of which is the union.
+            let target_size = self.ty.get_field_types(context)[1].size(context).in_bytes_aligned() as usize;
 
             let value_with_padding = (value, Some(Padding::Left { target_size }));
 
@@ -183,10 +181,7 @@ impl Constant {
             // Each struct field is right padded to the word boundary.
             ConstantValue::Struct(elems) => Some(elems.iter()
                     .map(|el| {
-                        let target_size = size_bytes_round_up_to_word_alignment!(
-                            el.ty.size_in_bytes(context) as usize
-                        );
-
+                        let target_size = el.ty.size(context).in_bytes_aligned() as usize;
                         (el, Some(Padding::Right { target_size }))
                     })
                     .collect()),

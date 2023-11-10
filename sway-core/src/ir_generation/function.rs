@@ -16,7 +16,7 @@ use crate::{
     },
     metadata::MetadataManager,
     type_system::*,
-    types::*, type_size::TypeSize,
+    types::*,
 };
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::CompileError;
@@ -627,7 +627,7 @@ impl<'eng> FnCompiler<'eng> {
                 Ok(Constant::get_uint(
                     context,
                     64,
-                    TypeSize::for_type(&ir_type, context).in_bytes()
+                    ir_type.size(context).in_bytes()
                 ))
             }
             Intrinsic::SizeOfType => {
@@ -642,7 +642,7 @@ impl<'eng> FnCompiler<'eng> {
                 Ok(Constant::get_uint(
                     context,
                     64,
-                    TypeSize::for_type(&ir_type, context).in_bytes(),
+                    ir_type.size(context).in_bytes(),
                 ))
             }
             Intrinsic::SizeOfStr => {
@@ -980,7 +980,7 @@ impl<'eng> FnCompiler<'eng> {
                     &len.span,
                 )?;
                 let len_value =
-                    Constant::get_uint(context, 64, TypeSize::for_type(&ir_type, context).in_bytes());
+                    Constant::get_uint(context, 64, ir_type.size(context).in_bytes());
 
                 let lhs = &arguments[0];
                 let count = &arguments[1];
@@ -1073,7 +1073,7 @@ impl<'eng> FnCompiler<'eng> {
                     user_message_type,
                     1,
                 );
-                let user_message_size = 8 + TypeSize::for_type(&user_message_type, context).in_bytes();
+                let user_message_size = 8 + user_message_type.size(context).in_bytes();
                 self.current_block
                     .ins(context)
                     .store(gep_val, user_message)
@@ -1908,7 +1908,7 @@ impl<'eng> FnCompiler<'eng> {
         // We can have empty aggregates, especially arrays, which shouldn't be initialized, but
         // otherwise use a store.
         let var_ty = local_var.get_type(context);
-        if TypeSize::for_type(&var_ty, context).in_bytes() > 0 {
+        if var_ty.size(context).in_bytes() > 0 {
             let local_ptr = self
                 .current_block
                 .ins(context)
@@ -1982,7 +1982,7 @@ impl<'eng> FnCompiler<'eng> {
                 // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
                 // otherwise use a store.
                 let var_ty = local_var.get_type(context);
-                Ok(if TypeSize::for_type(&var_ty, context).in_bytes() > 0 {
+                Ok(if var_ty.size(context).in_bytes() > 0 {
                     let local_val = self
                         .current_block
                         .ins(context)

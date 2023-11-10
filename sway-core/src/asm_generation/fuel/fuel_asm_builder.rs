@@ -15,7 +15,7 @@ use crate::{
         VirtualOp, WideCmp, WideOperations,
     },
     decl_engine::DeclRefFunction,
-    metadata::MetadataManager, type_size::TypeSize,
+    metadata::MetadataManager,
 };
 
 use sway_error::{
@@ -959,7 +959,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                                 owning_span.clone().unwrap_or_else(Span::dummy),
                             )
                         })?;
-                    let array_elem_size = array_elem_ty.size_in_bytes(self.context);
+                    let array_elem_size = array_elem_ty.size(self.context).in_bytes();
                     let size_reg = self.reg_seqr.next();
                     self.immediate_to_reg(
                         array_elem_size,
@@ -1135,7 +1135,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     owning_span.clone().unwrap_or_else(Span::dummy),
                 )
             })?;
-        let byte_len = TypeSize::for_type(&src_ty, self.context).in_bytes();
+        let byte_len = src_ty.size(self.context).in_bytes();
 
         let src_reg = self.value_to_register(src_val)?;
         let instr_reg = self.reg_seqr.next();
@@ -1230,7 +1230,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         .unwrap_or_else(Span::dummy),
                 )
             })?;
-        let byte_len = TypeSize::for_type(&dst_ty, self.context).in_bytes();
+        let byte_len = dst_ty.size(self.context).in_bytes();
         self.compile_mem_copy_bytes(instr_val, dst_val_ptr, src_val_ptr, byte_len)
     }
 
@@ -1260,7 +1260,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             // If the type is a pointer then we use LOGD to log the data. First put the size into
             // the data section, then add a LW to get it, then add a LOGD which uses it.
             let log_ty = log_ty.get_pointee_type(self.context).unwrap();
-            let size_in_bytes = TypeSize::for_type(&log_ty, self.context).in_bytes();
+            let size_in_bytes = log_ty.size(self.context).in_bytes();
 
             let size_reg = self.reg_seqr.next();
             self.immediate_to_reg(
@@ -1369,7 +1369,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         comment: "load ptr of returned slice".into(),
                     });
                 } else {
-                    let size_in_bytes = TypeSize::for_type(&ret_type.get_pointee_type(self.context).unwrap_or(ret_type), self.context).in_bytes();
+                    let size_in_bytes = ret_type.get_pointee_type(self.context).unwrap_or(ret_type).size(self.context).in_bytes();
                     self.immediate_to_reg(
                         size_in_bytes,
                         size_reg.clone(),
@@ -1626,7 +1626,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             }
         } else {
             let stored_ty = stored_val.get_type(self.context).unwrap();
-            let byte_len = TypeSize::for_type(&stored_ty, self.context).in_bytes();
+            let byte_len = stored_ty.size(self.context).in_bytes();
 
             let dst_reg = self.value_to_register(dst_val)?;
             let val_reg = self.value_to_register(stored_val)?;

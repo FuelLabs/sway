@@ -16,7 +16,6 @@ pub mod ir_generation;
 pub mod language;
 mod metadata;
 mod monomorphize;
-mod type_size;
 pub mod query_engine;
 pub mod semantic_analysis;
 pub mod source_map;

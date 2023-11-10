@@ -1,9 +1,7 @@
-use crate::{
-    fuel_prelude::{
-        fuel_crypto::Hasher,
-        fuel_tx::StorageSlot,
-        fuel_types::{Bytes32, Bytes8},
-    }, type_size::TypeSize,
+use crate::fuel_prelude::{
+    fuel_crypto::Hasher,
+    fuel_tx::StorageSlot,
+    fuel_types::{Bytes32, Bytes8},
 };
 use sway_ir::{
     constant::{Constant, ConstantValue},
@@ -177,7 +175,7 @@ pub fn serialize_to_storage_slots(
             //       We will not refactor the Storage API at the moment to remove this
             //       assumption. It is a questionable effort because we anyhow
             //       want to improve and refactor Storage API in the future.
-            let type_size_in_bytes = TypeSize::for_type(ty, context).in_bytes();
+            let type_size_in_bytes = ty.size(context).in_bytes();
             assert!(
                 type_size_in_bytes % 8 == 0,
                 "Expected string arrays, structs, and enums to be aligned to word boundary. The type size in bytes was {} and the type was {}.",
@@ -263,8 +261,8 @@ fn serialize_to_words(
                 .collect()
         }
         _ if ty.is_union(context) => {
-            let value_size_in_words = TypeSize::for_type(ty, context).in_words();
-            let constant_size_in_words = TypeSize::for_type(&constant.ty, context).in_words();
+            let value_size_in_words = ty.size(context).in_words();
+            let constant_size_in_words = constant.ty.size(context).in_words();
             assert!(value_size_in_words >= constant_size_in_words);
 
             // Add enough left padding to satisfy the actual size of the union

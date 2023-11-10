@@ -338,9 +338,7 @@ impl Type {
                     // Every struct field is aligned to word boundary.
                     let prev_idxs_offset = (0..(*idx)).try_fold(0, |accum, pre_idx| {
                         ty.get_field_type(context, pre_idx).map(|field_ty| {
-                            crate::size_bytes_round_up_to_word_alignment!(
-                                field_ty.size_in_bytes(context) + accum
-                            )
+                            accum + field_ty.size(context).in_bytes_aligned()
                         })
                     })?;
                     ty.get_field_type(context, *idx)
@@ -359,7 +357,7 @@ impl Type {
                         let prev_idxs_offset = ty
                             .get_array_elem_type(context)
                             .unwrap()
-                            .size_in_bytes(context)
+                            .size(context).in_bytes()
                             * idx;
                         (elm_ty, accum_offset + prev_idxs_offset)
                     })
@@ -450,7 +448,7 @@ impl Type {
             .take(field_idx)
             .map(|field_ty| {
                 // Struct fields are aligned to word boundary.
-                super::size_bytes_round_up_to_word_alignment!(field_ty.size_in_bytes(context))
+                field_ty.size(context).in_bytes_aligned()
             })
             .sum::<u64>();
 
@@ -467,50 +465,48 @@ impl Type {
 
         let field_idx = field_idx as usize;
         let field_type = self.get_field_types(context)[field_idx];
-        let union_size_in_bytes = self.size_in_bytes(context);
-        let field_size_in_bytes = field_type.size_in_bytes(context);
+        let union_size_in_bytes = self.size(context).in_bytes();
+        let field_size_in_bytes = field_type.size(context).in_bytes();
 
         // The union fields are at offset (union_size - field_size) due to left padding.
         Some((union_size_in_bytes - field_size_in_bytes, field_type))
     }
 
-    pub fn size_in_bytes(&self, context: &Context) -> u64 {
+    pub fn size(&self, context: &Context) -> TypeSize {
         match self.get_content(context) {
-            TypeContent::Uint(8) | TypeContent::Bool | TypeContent::Unit => 1,
-            // All integers larger than a byte are words since FuelVM only has memory operations on those two units
+            TypeContent::Uint(8) | TypeContent::Bool | TypeContent::Unit => TypeSize::new(1),
+            // All integers larger than a byte are words since FuelVM only has memory operations on those two units.
             TypeContent::Uint(16)
             | TypeContent::Uint(32)
             | TypeContent::Uint(64)
-            | TypeContent::Pointer(_) => 8,
-            TypeContent::Uint(256) => 32,
+            | TypeContent::Pointer(_) => TypeSize::new(8),
+            TypeContent::Uint(256) => TypeSize::new(32),
             TypeContent::Uint(_) => unreachable!(),
-            TypeContent::Slice => 16,
-            TypeContent::B256 => 32,
-            TypeContent::StringSlice => 16,
-            TypeContent::StringArray(n) => super::size_bytes_round_up_to_word_alignment!(*n),
-            TypeContent::Array(el_ty, cnt) => cnt * el_ty.size_in_bytes(context),
+            TypeContent::Slice => TypeSize::new(16),
+            TypeContent::B256 => TypeSize::new(32),
+            TypeContent::StringSlice => TypeSize::new(16),
+            TypeContent::StringArray(n) => TypeSize::new(super::size_bytes_round_up_to_word_alignment!(*n)),
+            TypeContent::Array(el_ty, cnt) => TypeSize::new(cnt * el_ty.size(context).in_bytes()),
             TypeContent::Struct(field_tys) => {
-                // Sum up all the field sizes, aligned to 8 bytes.
-                field_tys
+                // Sum up all the field sizes, aligned to words.
+                TypeSize::new(field_tys
                     .iter()
                     .map(|field_ty| {
-                        super::size_bytes_round_up_to_word_alignment!(
-                            field_ty.size_in_bytes(context)
-                        )
+                        field_ty.size(context).in_bytes_aligned()
                     })
                     .sum()
+                )
             }
             TypeContent::Union(field_tys) => {
                 // Find the max size for field sizes.
-                field_tys
+                TypeSize::new(field_tys
                     .iter()
                     .map(|field_ty| {
-                        super::size_bytes_round_up_to_word_alignment!(
-                            field_ty.size_in_bytes(context)
-                        )
+                        field_ty.size(context).in_bytes_aligned()
                     })
                     .max()
                     .unwrap_or(0)
+                )
             }
         }
     }
@@ -532,6 +528,35 @@ pub trait TypeOption {
 impl TypeOption for Option<Type> {
     fn is(&self, pred: fn(&Type, &Context) -> bool, context: &Context) -> bool {
         self.filter(|ty| pred(ty, context)).is_some()
+    }
+}
+
+/// Provides information about a size of a type, raw and aligned to word boundaries.
+#[derive(Clone, Debug)]
+pub struct TypeSize {
+    size_in_bytes: u64,
+}
+
+impl TypeSize {
+    pub(crate) fn new(size_in_bytes: u64) -> Self {
+        Self {
+            size_in_bytes,
+        }
+    }
+
+    /// Returns the actual (unaligned) size of the type in bytes.
+    pub fn in_bytes(&self) -> u64 {
+       self.size_in_bytes 
+    }
+
+    /// Returns the size of the type in bytes, aligned to word boundary.
+    pub fn in_bytes_aligned(&self) -> u64 {
+        (self.size_in_bytes + 7) - ((self.size_in_bytes + 7) % 8)
+    }
+
+    /// Returns the size of the type in words (aligned to word boundary).
+    pub fn in_words(&self) -> u64 {
+        (self.size_in_bytes + 7) / 8
     }
 }
 

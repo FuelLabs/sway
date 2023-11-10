@@ -10,7 +10,7 @@ use crate::{
         VirtualOp,
     },
     decl_engine::DeclRef,
-    fuel_prelude::fuel_asm::GTFArgs, type_size::TypeSize,
+    fuel_prelude::fuel_asm::GTFArgs,
 };
 
 use sway_ir::*;
@@ -475,7 +475,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         .get_type(self.context)
                         .map(|ty| ty.get_pointee_type(self.context).unwrap_or(ty))
                         .unwrap();
-                    let arg_type_size = TypeSize::for_type(&arg_type, self.context);
+                    let arg_type_size = arg_type.size(self.context);
                     if self.is_copy_type(&arg_type) {
                         if arg_word_offset > compiler_constants::TWELVE_BITS {
                             let offs_reg = self.reg_seqr.next();
@@ -754,10 +754,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     );
                 }
                 // All arguments must fit in the register (thanks to the demotion passes).
-                assert!(args.iter().all(|arg| TypeSize::for_type(
-                    &arg.get_type(self.context).unwrap(),
-                    self.context
-                ).in_words() == 1));
+                assert!(args.iter().all(|arg| arg.get_type(self.context).unwrap().size(self.context).in_words() == 1));
             }
         }
 
@@ -785,7 +782,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     self.ptr_map.insert(*ptr, Storage::Stack(stack_base_words));
 
                     let ptr_ty = ptr.get_inner_type(self.context);
-                    let var_size = TypeSize::for_type(&ptr_ty, self.context);
+                    let var_size = ptr_ty.size(self.context);
 
                     if let Some(constant) = ptr.get_initializer(self.context) {
                         let data_id = self.data_section.insert_data_value(Entry::from_constant(
