@@ -864,7 +864,7 @@ impl TraitMap {
     }
 
     /// Find the entries in `self` that are equivalent to `type_id` with trait
-    /// name `trait_name`.
+    /// name `trait_name` and with trait type arguments.
     ///
     /// Notes:
     /// - equivalency is defined (1) based on whether the types contains types
@@ -873,11 +873,12 @@ impl TraitMap {
     /// - this method does not translate types from the found entries to the
     ///     `type_id` (like in `filter_by_type()`). This is because the only
     ///     entries that qualify as hits are equivalents of `type_id`
-    pub(crate) fn get_items_for_type_and_trait_name(
+    pub(crate) fn get_items_for_type_and_trait_name_and_trait_type_arguments(
         &self,
         engines: &Engines,
         type_id: TypeId,
         trait_name: &CallPath,
+        trait_type_args: Vec<TypeArgument>,
     ) -> Vec<ty::TyTraitItem> {
         let type_engine = engines.te();
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
@@ -892,7 +893,14 @@ impl TraitMap {
                 suffix: e.key.name.suffix.name.clone(),
                 is_absolute: e.key.name.is_absolute,
             };
-            if &map_trait_name == trait_name && unify_check.check(type_id, e.key.type_id) {
+            if &map_trait_name == trait_name
+                && unify_check.check(type_id, e.key.type_id)
+                && trait_type_args.len() == e.key.name.suffix.args.len()
+                && trait_type_args
+                    .iter()
+                    .zip(e.key.name.suffix.args.iter())
+                    .all(|(t1, t2)| unify_check.check(t1.type_id, t2.type_id))
+            {
                 let mut trait_items = e.value.trait_items.values().cloned().collect::<Vec<_>>();
                 items.append(&mut trait_items);
             }
@@ -1014,7 +1022,7 @@ impl TraitMap {
         // resolving trait constraits require a concrete type, we need to default numeric to u64
         type_engine.decay_numeric(handler, engines, type_id, access_span)?;
 
-        let all_impld_traits: BTreeMap<Ident, TypeId> = self
+        let all_impld_traits: BTreeSet<(Ident, TypeId)> = self
             .trait_impls
             .iter()
             .filter_map(|e| {
@@ -1065,7 +1073,7 @@ impl TraitMap {
             })
             .collect();
 
-        let relevant_impld_traits: BTreeMap<Ident, TypeId> = all_impld_traits
+        let relevant_impld_traits: BTreeSet<(Ident, TypeId)> = all_impld_traits
             .into_iter()
             .filter(|(impld_trait_name, impld_trait_type_id)| {
                 match required_traits.get(impld_trait_name) {
@@ -1078,8 +1086,11 @@ impl TraitMap {
             .collect();
 
         let required_traits_names: BTreeSet<Ident> = required_traits.keys().cloned().collect();
-        let relevant_impld_traits_names: BTreeSet<Ident> =
-            relevant_impld_traits.keys().cloned().collect();
+        let relevant_impld_traits_names: BTreeSet<Ident> = relevant_impld_traits
+            .iter()
+            .map(|(ident, _type_id)| ident)
+            .cloned()
+            .collect();
 
         handler.scope(|handler| {
             for trait_name in required_traits_names.difference(&relevant_impld_traits_names) {

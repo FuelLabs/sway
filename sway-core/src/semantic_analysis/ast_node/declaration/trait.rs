@@ -341,7 +341,11 @@ impl TyTraitDecl {
                 .collect(),
         );
         for item in ctx
-            .get_items_for_type_and_trait_name(type_id, call_path)
+            .get_items_for_type_and_trait_name_and_trait_type_arguments(
+                type_id,
+                call_path,
+                type_arguments.to_vec(),
+            )
             .into_iter()
         {
             match item {

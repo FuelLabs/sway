@@ -1276,13 +1276,27 @@ impl<'a> TypeCheckContext<'a> {
         type_id: TypeId,
         trait_name: &CallPath,
     ) -> Vec<ty::TyTraitItem> {
+        self.get_items_for_type_and_trait_name_and_trait_type_arguments(type_id, trait_name, vec![])
+    }
+
+    pub(crate) fn get_items_for_type_and_trait_name_and_trait_type_arguments(
+        &self,
+        type_id: TypeId,
+        trait_name: &CallPath,
+        trait_type_args: Vec<TypeArgument>,
+    ) -> Vec<ty::TyTraitItem> {
         // Use trait name with full path, improves consistency between
         // this get and inserting in `insert_trait_implementation`.
         let trait_name = trait_name.to_fullpath(self.namespace);
 
         self.namespace
             .implemented_traits
-            .get_items_for_type_and_trait_name(self.engines, type_id, &trait_name)
+            .get_items_for_type_and_trait_name_and_trait_type_arguments(
+                self.engines,
+                type_id,
+                &trait_name,
+                trait_type_args,
+            )
     }
 
     /// Given a `value` of type `T` that is able to be monomorphized and a set
