@@ -35,7 +35,7 @@ impl ty::TyFunctionParameter {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         type_argument.type_id.check_type_parameter_bounds(
             handler,
@@ -89,7 +89,7 @@ impl ty::TyFunctionParameter {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         let typed_parameter = ty::TyFunctionParameter {
             name,

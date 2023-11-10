@@ -81,8 +81,14 @@ impl ServerState {
         diagnostics_to_publish
     }
 
-    pub(crate) async fn parse_project(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
-        match run_blocking_parse_project(uri.clone(), session.clone()).await {
+    pub(crate) async fn parse_project(
+        &self,
+        uri: Url,
+        workspace_uri: Url,
+        version: Option<i32>,
+        session: Arc<Session>,
+    ) {
+        match run_blocking_parse_project(uri.clone(), version, session.clone()).await {
             Ok(_) => {
                 // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
                 // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
@@ -108,6 +114,7 @@ impl ServerState {
 /// Runs parse_project in a blocking thread, because parsing is not async.
 async fn run_blocking_parse_project(
     uri: Url,
+    version: Option<i32>,
     session: Arc<Session>,
 ) -> Result<(), LanguageServerError> {
     // Acquire a permit to parse the project. If there are none available, return false. This way,
@@ -118,7 +125,16 @@ async fn run_blocking_parse_project(
     tokio::task::spawn_blocking(move || {
         // Lock the diagnostics result to prevent multiple threads from parsing the project at the same time.
         let mut diagnostics = session.diagnostics.write();
-        let parse_result = session::parse_project(&uri)?;
+
+        if let Some(version) = version {
+            // Garbage collection is fairly expsensive so we only clear on every 10th keystroke.
+            if version % 10 == 0 {
+                if let Err(err) = session.garbage_collect() {
+                    tracing::error!("Unable to perform garbage collection: {}", err.to_string());
+                }
+            }
+        }
+        let parse_result = session::parse_project(&uri, &session.engines.read())?;
         let (errors, warnings) = parse_result.diagnostics.clone();
         session.write_parse_result(parse_result);
         *diagnostics = get_diagnostics(&warnings, &errors, session.engines.read().se());

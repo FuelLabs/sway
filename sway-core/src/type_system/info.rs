@@ -9,7 +9,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{integer_bits::IntegerBits, span::Span, Spanned};
+use sway_types::{integer_bits::IntegerBits, span::Span, SourceId, Spanned};
 
 use std::{
     cmp::Ordering,
@@ -64,6 +64,28 @@ impl<T: PartialEqWithEngines> VecSet<T> {
 impl<T: PartialEqWithEngines> PartialEqWithEngines for VecSet<T> {
     fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.eq(other, engines) && other.eq(self, engines)
+    }
+}
+
+/// Encapsulates type information and its optional source identifier.
+#[derive(Debug, Default, Clone)]
+pub struct TypeSourceInfo {
+    pub(crate) type_info: TypeInfo,
+    /// The source id that created this type.
+    pub(crate) source_id: Option<SourceId>,
+}
+
+impl HashWithEngines for TypeSourceInfo {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+        self.type_info.hash(state, engines);
+        self.source_id.hash(state);
+    }
+}
+
+impl EqWithEngines for TypeSourceInfo {}
+impl PartialEqWithEngines for TypeSourceInfo {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+        self.type_info.eq(&other.type_info, engines) && self.source_id == other.source_id
     }
 }
 

@@ -42,7 +42,9 @@ impl ty::TyTraitType {
                     EnforceTypeArguments::No,
                     None,
                 )
-                .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+                .unwrap_or_else(|err| {
+                    type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
+                });
             Some(ty)
         } else {
             None
@@ -74,9 +76,11 @@ impl ty::TyTraitType {
             name,
             attributes,
             ty: ty_opt,
-            implementing_type: engines
-                .te()
-                .insert(engines, TypeInfo::new_self_type(Span::dummy())),
+            implementing_type: engines.te().insert(
+                engines,
+                TypeInfo::new_self_type(Span::dummy()),
+                None,
+            ),
             span,
         }
     }

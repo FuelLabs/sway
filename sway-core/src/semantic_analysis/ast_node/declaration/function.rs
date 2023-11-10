@@ -115,7 +115,7 @@ impl ty::TyFunctionDecl {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         let (visibility, is_contract_call) = if is_method {
             if is_in_impl_self {
@@ -345,6 +345,7 @@ fn test_function_selector_behavior() {
                     .insert(
                         &engines,
                         TypeInfo::StringArray(Length::new(5, Span::dummy())),
+                        None,
                     )
                     .into(),
             },
@@ -354,12 +355,15 @@ fn test_function_selector_behavior() {
                 is_mutable: false,
                 mutability_span: Span::dummy(),
                 type_argument: TypeArgument {
-                    type_id: engines
-                        .te()
-                        .insert(&engines, TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
+                    type_id: engines.te().insert(
+                        &engines,
+                        TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
+                        None,
+                    ),
                     initial_type_id: engines.te().insert(
                         &engines,
                         TypeInfo::StringArray(Length::new(5, Span::dummy())),
+                        None,
                     ),
                     span: Span::dummy(),
                     call_path_tree: None,

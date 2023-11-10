@@ -58,12 +58,12 @@ pub(crate) fn struct_instantiation(
             }));
         }
         (_, true) => TypeInfo::Custom {
-            qualified_call_path: suffix.into(),
+            qualified_call_path: suffix.clone().into(),
             type_arguments: None,
             root_type_id: None,
         },
         (_, false) => TypeInfo::Custom {
-            qualified_call_path: suffix.into(),
+            qualified_call_path: suffix.clone().into(),
             type_arguments: Some(type_arguments),
             root_type_id: None,
         },
@@ -79,12 +79,12 @@ pub(crate) fn struct_instantiation(
     let type_id = ctx
         .resolve_type(
             handler,
-            type_engine.insert(engines, type_info),
+            type_engine.insert(engines, type_info, suffix.span().source_id()),
             &inner_span,
             EnforceTypeArguments::No,
             Some(&type_info_prefix),
         )
-        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
     // extract the struct name and fields from the type info
     let type_info = type_engine.get(type_id);
@@ -186,7 +186,11 @@ fn type_check_field_arguments(
                     name: struct_field.name.clone(),
                     value: ty::TyExpression {
                         expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
-                        return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery(err)),
+                        return_type: type_engine.insert(
+                            engines,
+                            TypeInfo::ErrorRecovery(err),
+                            None,
+                        ),
                         span: span.clone(),
                     },
                 });
