@@ -422,6 +422,16 @@ impl Parse for DelineatedPathExpression {
 impl Parse for AmbiguousPathExpression {
     fn parse(&self, ctx: &ParseContext) {
         eprintln!("AmbiguousPathExpression::parse {:#?}", self);
+        eprintln!("INSERTING span: {:#?}", self.span);
+
+        ctx.tokens.insert(
+            ctx.ident(&self.span),
+            Token::from_parsed(
+                AstToken::AmbiguousPathExpression(self.clone()),
+                SymbolKind::Variant,
+            ),
+        );
+
         let AmbiguousPathExpression {
             call_path_binding,
             args,
@@ -443,7 +453,7 @@ impl Parse for AmbiguousPathExpression {
         ctx.tokens.insert(
             ctx.ident(&call_path_binding.inner.suffix.suffix),
             Token::from_parsed(
-                AstToken::AmbiguousPathExpression(self.clone()),
+                AstToken::Ident(call_path_binding.inner.suffix.suffix.clone()),
                 SymbolKind::Variant,
             ),
         );

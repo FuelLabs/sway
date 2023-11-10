@@ -204,6 +204,16 @@ impl Parse for ty::TyExpression {
                 call_path_typeid,
                 ..
             } => {
+                eprintln!("function application###: span = {:#?}", self.span);
+                if let Some(mut token) = ctx
+                    .tokens
+                    .try_get_mut(&ctx.ident(&Ident::new(self.span.clone())))
+                    .try_unwrap()
+                {
+                    eprintln!("function application!!!!!!!! = {:#?}", self);
+                    token.typed = Some(TypedAstToken::TypedExpression(self.clone()));
+                }
+
                 if let Some(type_binding) = type_binding {
                     type_binding
                         .type_arguments

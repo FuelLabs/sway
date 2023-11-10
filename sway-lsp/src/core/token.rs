@@ -25,7 +25,6 @@ use sway_types::{Ident, SourceEngine, Span, Spanned};
 #[derive(Debug, Clone)]
 pub enum AstToken {
     AbiCastExpression(AbiCastExpression),
-    AmbiguousPathExpression(AmbiguousPathExpression),
     Attribute(Attribute),
     Declaration(Declaration),
     DelineatedPathExpression(DelineatedPathExpression),
@@ -54,6 +53,10 @@ pub enum AstToken {
     UseStatement(UseStatement),
 
     TypedFunctionApplicationArgument((Ident, ty::TyExpression)),
+}
+
+pub enum AstItem {
+    AmbiguousPathExpression(AmbiguousPathExpression),
 }
 
 /// The `TypedAstToken` holds the types produced by the [sway_core::language::ty::TyProgram].
