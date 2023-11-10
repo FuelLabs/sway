@@ -4,13 +4,13 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::{collections::HashMap, path::Path};
 
-const JSON_SEARCH_POOL_FILE_NAME: &str = "search_pool.json";
-/// Creates the item pool the search bar pulls from.
-pub(crate) fn write_search_pool_json(doc_path: &Path, docs: Documentation) -> Result<()> {
-    Ok(serde_json::to_writer_pretty(
-        fs::File::create(doc_path.join(JSON_SEARCH_POOL_FILE_NAME))?,
-        &docs.to_json_value()?,
-    )?)
+const JS_SEARCH_FILE_NAME: &str = "search.js";
+
+/// Creates the search index javascript file for the search bar.
+pub(crate) fn write_search_index(doc_path: &Path, docs: Documentation) -> Result<()> {
+    let json_data = docs.to_json_value()?;
+    let js_data = format!("var SEARCH_INDEX={};\n\"object\"==typeof exports&&\"undefined\"!=typeof module&&(module.exports=SEARCH_INDEX);", json_data.to_string());
+    Ok(fs::write(doc_path.join(JS_SEARCH_FILE_NAME), js_data)?)
 }
 
 impl Documentation {

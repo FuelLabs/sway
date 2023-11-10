@@ -8,10 +8,11 @@ use horrorshow::{box_html, RenderBox};
 pub(crate) fn generate_searchbar() -> Box<dyn RenderBox> {
     box_html! {
         nav(class="sub") {
-            form(class="search-form") {
+            form(class="search-form", onsubmit="handleSearch(event)") {
                 div(class="search-container") {
                     span;
                     input(
+                        id="search-input",
                         class="search-input",
                         name="search",
                         autocomplete="off",

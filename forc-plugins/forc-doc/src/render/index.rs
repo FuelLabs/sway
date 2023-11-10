@@ -165,6 +165,20 @@ impl Renderable for ModuleIndex {
                 link(rel="stylesheet", type="text/css", href=swaydoc, id="mainThemeStyle");
                 link(rel="stylesheet", type="text/css", href=ayu);
                 link(rel="stylesheet", href=ayu_hjs);
+                script(src="../search.js", type="text/javascript");
+                script {
+                    : Raw(r#"function handleSearch(event) {
+                        event.preventDefault(); // Prevent the default form submit action
+                        var query = document.getElementById('search-input').value;
+                        if(query) {
+                            console.log("Searching for:", query);
+                            const results = Object.values(SEARCH_INDEX).flat().filter(item => item.name.toLowerCase().includes(query.toLowerCase()))
+                            console.log("Search results:", results);
+                        } else {
+                            alert("Please enter a search term.");
+                        }
+                    }"#)
+                }
             }
             body(class="swaydoc mod") {
                 : sidebar;

@@ -1,7 +1,7 @@
 use crate::{
     doc::Documentation,
     render::{constant::INDEX_FILENAME, RenderedDocumentation},
-    search::write_search_pool_json,
+    search::write_search_index,
 };
 use anyhow::{bail, Result};
 use clap::Parser;
@@ -271,7 +271,7 @@ pub fn compile_html(
         };
         build_docs(program_info, &doc_path, build_instructions)?
     };
-    write_search_pool_json(&doc_path, raw_docs)?;
+    write_search_index(&doc_path, raw_docs)?;
 
     Ok((doc_path, pkg_manifest.to_owned()))
 }
