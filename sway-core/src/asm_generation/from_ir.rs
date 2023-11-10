@@ -167,7 +167,3 @@ pub enum StateAccessType {
     Read,
     Write,
 }
-
-pub(crate) fn ir_type_size_in_bytes(context: &Context, ty: &Type) -> u64 {
-    ty.size_in_bytes(context)
-}

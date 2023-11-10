@@ -435,6 +435,45 @@ impl Type {
         }
     }
 
+    /// Get the offset, in bytes, and the [Type] of the struct field at the index `field_idx`, if `self` is a struct,
+    /// otherwise `None`.
+    /// Panics if the `field_idx` is out of bounds.
+    pub fn get_struct_field_offset_and_type(&self, context: &Context, field_idx: u64) -> Option<(u64, Type)> {
+        if !self.is_struct(context) {
+            return None;
+        }
+
+        let field_idx = field_idx as usize;
+        let field_types = self.get_field_types(context);
+        let field_offs_in_bytes = field_types
+            .iter()
+            .take(field_idx)
+            .map(|field_ty| {
+                // Struct fields are aligned to word boundary.
+                super::size_bytes_round_up_to_word_alignment!(field_ty.size_in_bytes(context))
+            })
+            .sum::<u64>();
+
+        Some((field_offs_in_bytes, field_types[field_idx]))
+    }
+
+    /// Get the offset, in bytes, and the [Type] of the union field at the index `field_idx`, if `self` is a union,
+    /// otherwise `None`.
+    /// Panics if the `field_idx` is out of bounds.
+    pub fn get_union_field_offset_and_type(&self, context: &Context, field_idx: u64) -> Option<(u64, Type)> {
+        if !self.is_union(context) {
+            return None;
+        }
+
+        let field_idx = field_idx as usize;
+        let field_type = self.get_field_types(context)[field_idx];
+        let union_size_in_bytes = self.size_in_bytes(context);
+        let field_size_in_bytes = field_type.size_in_bytes(context);
+
+        // The union fields are at offset (union_size - field_size) due to left padding.
+        Some((union_size_in_bytes - field_size_in_bytes, field_type))
+    }
+
     pub fn size_in_bytes(&self, context: &Context) -> u64 {
         match self.get_content(context) {
             TypeContent::Uint(8) | TypeContent::Bool | TypeContent::Unit => 1,
