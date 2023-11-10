@@ -620,10 +620,6 @@ pub(crate) fn monomorphize_method_application(
             &call_path.span(),
         )?;
 
-        // Retrieve the implemented traits for the type of the return type and
-        // insert them in the broader namespace.
-        ctx.insert_trait_implementation_for_type(method.return_type.type_id);
-
         if !ctx.defer_monomorphization() {
             method.replace_decls(&decl_mapping, handler, &mut ctx)?;
         }
