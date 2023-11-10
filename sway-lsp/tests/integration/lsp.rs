@@ -12,6 +12,7 @@ use sway_lsp::{
     lsp_ext::{ShowAstParams, VisualizeParams},
     server_state::ServerState,
 };
+use sway_utils::PerformanceData;
 use tower::{Service, ServiceExt};
 use tower_lsp::{
     jsonrpc::{Id, Request, Response},
@@ -160,6 +161,30 @@ pub(crate) async fn visualize_request(server: &ServerState, uri: &Url, graph_kin
 \}
 "#).unwrap();
     assert!(!re.find(response.as_str()).unwrap().is_empty());
+}
+
+pub(crate) async fn metrics_request(
+    service: &mut LspService<ServerState>,
+    uri: &Url,
+) -> Vec<(String, PerformanceData)> {
+    let params = json!({
+        "textDocument": {
+            "uri": uri,
+        },
+    });
+    let request = build_request_with_id("sway/metrics", params, 1);
+    let result = call_request(service, request.clone())
+        .await
+        .unwrap()
+        .unwrap();
+    let value = result.result().unwrap().as_array();
+    let mut res = vec![];
+    for v in value.unwrap().iter() {
+        let path = v.get(0).unwrap().as_str().unwrap();
+        let metric = serde_json::from_value(v.get(1).unwrap().clone()).unwrap();
+        res.push((path.to_string(), metric));
+    }
+    res
 }
 
 pub(crate) fn semantic_tokens_request(server: &ServerState, uri: &Url) {

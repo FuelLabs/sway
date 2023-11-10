@@ -151,7 +151,7 @@ impl TraitConstraint {
                 .unwrap_or_else(|err| {
                     ctx.engines
                         .te()
-                        .insert(ctx.engines(), TypeInfo::ErrorRecovery(err))
+                        .insert(ctx.engines(), TypeInfo::ErrorRecovery(err), None)
                 });
         }
 

@@ -41,7 +41,7 @@ pub(crate) fn type_check_method_application(
         let ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
         args_buf.push_back(
             ty::TyExpression::type_check(handler, ctx, arg.clone())
                 .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines)),
@@ -117,6 +117,7 @@ pub(crate) fn type_check_method_application(
                         } else {
                             TypeInfo::B256
                         },
+                        param.name.span().source_id(),
                     );
                     let ctx = ctx
                         .by_ref()
@@ -429,7 +430,9 @@ pub(crate) fn resolve_method_name(
             // type check the call path
             let type_id = call_path_binding
                 .type_check_with_type_info(handler, &mut ctx)
-                .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+                .unwrap_or_else(|err| {
+                    type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
+                });
 
             // find the module that the symbol is in
             let type_info_prefix = ctx
@@ -474,7 +477,7 @@ pub(crate) fn resolve_method_name(
             let type_id = arguments
                 .get(0)
                 .map(|x| x.return_type)
-                .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown));
+                .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown, None));
 
             // find the method
             let decl_ref = ctx.find_method_for_type(
@@ -498,7 +501,7 @@ pub(crate) fn resolve_method_name(
             let type_id = arguments
                 .get(0)
                 .map(|x| x.return_type)
-                .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown));
+                .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown, None));
 
             // find the method
             let decl_ref = ctx.find_method_for_type(

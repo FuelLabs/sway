@@ -6173,6 +6173,7 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "serde",
+ "sway-utils",
  "thiserror",
 ]
 

@@ -199,6 +199,7 @@ impl TraitMap {
                     },
                     root_type_id: None,
                 },
+                trait_name.suffix.span().source_id(),
             );
             for TraitEntry {
                 key:
@@ -233,6 +234,7 @@ impl TraitMap {
                         },
                         root_type_id: None,
                     },
+                    map_trait_name_suffix.span().source_id(),
                 );
 
                 let unify_checker = UnifyCheck::non_generic_constraint_subset(engines);
@@ -1030,6 +1032,7 @@ impl TraitMap {
                             },
                             root_type_id: None,
                         },
+                        suffix.name.span().source_id(),
                     );
                     Some((suffix.name.clone(), map_trait_type_id))
                 } else {
@@ -1056,6 +1059,7 @@ impl TraitMap {
                         },
                         root_type_id: None,
                     },
+                    constraint_trait_name.span().source_id(),
                 );
                 (c.trait_name.suffix.clone(), constraint_type_id)
             })

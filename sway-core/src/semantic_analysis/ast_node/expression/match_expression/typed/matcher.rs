@@ -494,6 +494,7 @@ fn match_enum(
             return_type: type_engine.insert(
                 ctx.engines,
                 TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                None,
             ),
             span: exp.span.clone(),
         },
@@ -502,6 +503,7 @@ fn match_enum(
             return_type: type_engine.insert(
                 ctx.engines,
                 TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                None,
             ),
             span: exp.span.clone(),
         },

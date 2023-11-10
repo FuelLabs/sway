@@ -105,9 +105,11 @@ impl ty::TyMatchBranch {
 
         // type check the branch result
         let typed_result = {
-            let ctx = branch_ctx
-                .by_ref()
-                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+            let ctx = branch_ctx.by_ref().with_type_annotation(type_engine.insert(
+                engines,
+                TypeInfo::Unknown,
+                None,
+            ));
             ty::TyExpression::type_check(handler, ctx, result)?
         };
 
@@ -594,7 +596,11 @@ fn instantiate_branch_condition_result_var_declarations_and_matched_or_variant_i
                     call_path_tree: None,
                 })
                 .collect();
-            let tuple_type = type_engine.insert(ctx.engines, TypeInfo::Tuple(tuple_field_types));
+            let tuple_type = type_engine.insert(
+                ctx.engines,
+                TypeInfo::Tuple(tuple_field_types),
+                instantiate.dummy_span().source_id(),
+            );
             let variable_names = carry_over_vars[0]
                 .iter()
                 .map(|(ident, _)| ident.clone())

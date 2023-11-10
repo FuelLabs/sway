@@ -28,6 +28,7 @@ pub async fn start() {
         .custom_method("sway/show_ast", ServerState::show_ast)
         .custom_method("sway/visualize", ServerState::visualize)
         .custom_method("sway/on_enter", ServerState::on_enter)
+        .custom_method("sway/metrics", ServerState::metrics)
         .finish();
     Server::new(tokio::io::stdin(), tokio::io::stdout(), socket)
         .serve(service)

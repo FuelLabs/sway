@@ -67,6 +67,7 @@ impl CreateTypeId for TyTypeAliasDecl {
                 name: self.name.clone(),
                 ty: self.ty.clone(),
             },
+            self.name.span().source_id(),
         )
     }
 }
