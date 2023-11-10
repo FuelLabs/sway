@@ -1,4 +1,4 @@
-use sway_ir::{Constant, ConstantValue, Context, Padding, size_bytes_round_up_to_word_alignment};
+use sway_ir::{size_bytes_round_up_to_word_alignment, Constant, ConstantValue, Context, Padding};
 
 use std::{
     collections::BTreeMap,
@@ -110,7 +110,8 @@ impl Entry {
             }
             ConstantValue::String(bs) => Entry::new_byte_array(bs.clone(), name, padding),
             ConstantValue::Array(_) | ConstantValue::Struct(_) => Entry::new_collection(
-                constant.elements_of_aggregate_with_padding(context)
+                constant
+                    .elements_of_aggregate_with_padding(context)
                     .expect("Arrays and structs are aggregates.")
                     .into_iter()
                     .map(|(elem, padding)| Entry::from_constant(context, elem, None, padding))

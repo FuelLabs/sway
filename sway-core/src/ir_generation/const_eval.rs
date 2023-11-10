@@ -972,7 +972,9 @@ fn const_eval_intrinsic(
             .map_err(ConstEvalError::CompileError)?;
             Ok(Some(Constant {
                 ty: Type::get_uint64(lookup.context),
-                value: ConstantValue::Uint(ir_type.get_string_len(lookup.context).unwrap_or_default()),
+                value: ConstantValue::Uint(
+                    ir_type.get_string_len(lookup.context).unwrap_or_default(),
+                ),
             }))
         }
         Intrinsic::AssertIsStrArray => {

@@ -940,13 +940,17 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 if elem_ty.is_struct(self.context) {
                     // For structs the index must be a const uint.
                     unwrap_constant_uint(idx_val).map(|idx| {
-                        let (field_offs_in_bytes, field_type) = elem_ty.get_struct_field_offset_and_type(self.context, idx as u64).expect("Element is a struct.");
+                        let (field_offs_in_bytes, field_type) = elem_ty
+                            .get_struct_field_offset_and_type(self.context, idx as u64)
+                            .expect("Element is a struct.");
                         (reg, offs + field_offs_in_bytes, field_type)
                     })
                 } else if elem_ty.is_union(self.context) {
                     // For unions the index must also be a const uint.
                     unwrap_constant_uint(idx_val).map(|idx| {
-                        let (field_offs_in_bytes, field_type) = elem_ty.get_union_field_offset_and_type(self.context, idx as u64).expect("Element is a union.");
+                        let (field_offs_in_bytes, field_type) = elem_ty
+                            .get_union_field_offset_and_type(self.context, idx as u64)
+                            .expect("Element is a union.");
                         (reg, offs + field_offs_in_bytes, field_type)
                     })
                 } else if elem_ty.is_array(self.context) {
@@ -1369,7 +1373,11 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         comment: "load ptr of returned slice".into(),
                     });
                 } else {
-                    let size_in_bytes = ret_type.get_pointee_type(self.context).unwrap_or(ret_type).size(self.context).in_bytes();
+                    let size_in_bytes = ret_type
+                        .get_pointee_type(self.context)
+                        .unwrap_or(ret_type)
+                        .size(self.context)
+                        .in_bytes();
                     self.immediate_to_reg(
                         size_in_bytes,
                         size_reg.clone(),

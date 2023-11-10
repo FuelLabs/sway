@@ -157,7 +157,10 @@ impl Constant {
     /// is expected.
     /// If the aggregate constant is an enum, the returned [Vec] has exactly two elements,
     /// the first being the tag and the second the value of the enum variant.
-    pub fn elements_of_aggregate_with_padding(&self, context: &Context) -> Option<Vec<(&Constant, Option<Padding>)>> {
+    pub fn elements_of_aggregate_with_padding(
+        &self,
+        context: &Context,
+    ) -> Option<Vec<(&Constant, Option<Padding>)>> {
         // We need a special handling in case of enums.
         if let Some((tag, value)) = self.extract_enum_tag_and_value(context) {
             let tag_with_padding = (tag, None);
@@ -166,7 +169,9 @@ impl Constant {
             // of each variant is the size of the union.
             // We know we have an enum here, means exactly two fields in the struct
             // second of which is the union.
-            let target_size = self.ty.get_field_types(context)[1].size(context).in_bytes_aligned() as usize;
+            let target_size = self.ty.get_field_types(context)[1]
+                .size(context)
+                .in_bytes_aligned() as usize;
 
             let value_with_padding = (value, Some(Padding::Left { target_size }));
 
@@ -175,16 +180,17 @@ impl Constant {
 
         match &self.value {
             // Individual array elements do not have additional padding.
-            ConstantValue::Array(elems) => Some(elems.iter()
-                    .map(|el| (el, None))
-                    .collect()),
+            ConstantValue::Array(elems) => Some(elems.iter().map(|el| (el, None)).collect()),
             // Each struct field is right padded to the word boundary.
-            ConstantValue::Struct(elems) => Some(elems.iter()
+            ConstantValue::Struct(elems) => Some(
+                elems
+                    .iter()
                     .map(|el| {
                         let target_size = el.ty.size(context).in_bytes_aligned() as usize;
                         (el, Some(Padding::Right { target_size }))
                     })
-                    .collect()),
+                    .collect(),
+            ),
             _ => None,
         }
     }

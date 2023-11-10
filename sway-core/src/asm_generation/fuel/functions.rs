@@ -754,7 +754,12 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     );
                 }
                 // All arguments must fit in the register (thanks to the demotion passes).
-                assert!(args.iter().all(|arg| arg.get_type(self.context).unwrap().size(self.context).in_words() == 1));
+                assert!(args.iter().all(|arg| arg
+                    .get_type(self.context)
+                    .unwrap()
+                    .size(self.context)
+                    .in_words()
+                    == 1));
             }
         }
 
@@ -763,46 +768,44 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         // Otherwise they go in runtime allocated space, either a register or on the stack.
         //
         // Stack offsets are in words to both enforce alignment and simplify use with LW/SW.
-        let (stack_base_words, init_mut_vars) = function.locals_iter(self.context).fold(
-            (0, Vec::new()),
-            |(stack_base_words, mut init_mut_vars), (_name, ptr)| {
-                if let (false, Some(constant)) = (
-                    ptr.is_mutable(self.context),
-                    ptr.get_initializer(self.context),
-                ) {
-                    let data_id = self.data_section.insert_data_value(Entry::from_constant(
-                        self.context,
-                        constant,
-                        None,
-                        None,
-                    ));
-                    self.ptr_map.insert(*ptr, Storage::Data(data_id));
-                    (stack_base_words, init_mut_vars)
-                } else {
-                    self.ptr_map.insert(*ptr, Storage::Stack(stack_base_words));
-
-                    let ptr_ty = ptr.get_inner_type(self.context);
-                    let var_size = ptr_ty.size(self.context);
-
-                    if let Some(constant) = ptr.get_initializer(self.context) {
+        let (stack_base_words, init_mut_vars) =
+            function.locals_iter(self.context).fold(
+                (0, Vec::new()),
+                |(stack_base_words, mut init_mut_vars), (_name, ptr)| {
+                    if let (false, Some(constant)) = (
+                        ptr.is_mutable(self.context),
+                        ptr.get_initializer(self.context),
+                    ) {
                         let data_id = self.data_section.insert_data_value(Entry::from_constant(
                             self.context,
                             constant,
                             None,
                             None,
                         ));
+                        self.ptr_map.insert(*ptr, Storage::Data(data_id));
+                        (stack_base_words, init_mut_vars)
+                    } else {
+                        self.ptr_map.insert(*ptr, Storage::Stack(stack_base_words));
 
-                        init_mut_vars.push(InitMutVars {
-                            stack_base_words,
-                            var_size: var_size.clone(),
-                            data_id,
-                        });
+                        let ptr_ty = ptr.get_inner_type(self.context);
+                        let var_size = ptr_ty.size(self.context);
+
+                        if let Some(constant) = ptr.get_initializer(self.context) {
+                            let data_id = self.data_section.insert_data_value(
+                                Entry::from_constant(self.context, constant, None, None),
+                            );
+
+                            init_mut_vars.push(InitMutVars {
+                                stack_base_words,
+                                var_size: var_size.clone(),
+                                data_id,
+                            });
+                        }
+
+                        (stack_base_words + var_size.in_words(), init_mut_vars)
                     }
-
-                    (stack_base_words + var_size.in_words(), init_mut_vars)
-                }
-            },
-        );
+                },
+            );
 
         // Reserve space on the stack (in bytes) for all our locals which require it.  Firstly save
         // the current $sp.

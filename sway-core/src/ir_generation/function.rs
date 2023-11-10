@@ -627,7 +627,7 @@ impl<'eng> FnCompiler<'eng> {
                 Ok(Constant::get_uint(
                     context,
                     64,
-                    ir_type.size(context).in_bytes()
+                    ir_type.size(context).in_bytes(),
                 ))
             }
             Intrinsic::SizeOfType => {
@@ -657,7 +657,7 @@ impl<'eng> FnCompiler<'eng> {
                 Ok(Constant::get_uint(
                     context,
                     64,
-                    ir_type.get_string_len(context).unwrap_or_default()
+                    ir_type.get_string_len(context).unwrap_or_default(),
                 ))
             }
             Intrinsic::IsReferenceType => {
@@ -979,8 +979,7 @@ impl<'eng> FnCompiler<'eng> {
                     &len.type_id,
                     &len.span,
                 )?;
-                let len_value =
-                    Constant::get_uint(context, 64, ir_type.size(context).in_bytes());
+                let len_value = Constant::get_uint(context, 64, ir_type.size(context).in_bytes());
 
                 let lhs = &arguments[0];
                 let count = &arguments[1];
@@ -2767,8 +2766,13 @@ impl<'eng> FnCompiler<'eng> {
                         offset_in_bytes
                     );
                     offset_in_bytes / 8
-                },
-                None => return Err(CompileError::Internal("Cannot get the offset within the slot while compiling storage read.", Span::dummy())),
+                }
+                None => {
+                    return Err(CompileError::Internal(
+                        "Cannot get the offset within the slot while compiling storage read.",
+                        Span::dummy(),
+                    ))
+                }
             };
             let offset_in_slots = offset_in_words / 4;
             let offset_remaining = offset_in_words % 4;

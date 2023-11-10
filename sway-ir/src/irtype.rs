@@ -272,9 +272,7 @@ impl Type {
 
         let field_tys = self.get_field_types(context);
 
-        field_tys.len() == 2
-            && field_tys[0].is_uint(context)
-            && field_tys[1].is_union(context)
+        field_tys.len() == 2 && field_tys[0].is_uint(context) && field_tys[1].is_union(context)
     }
 
     /// Is aggregate type: struct, union, enum or array.
@@ -337,9 +335,8 @@ impl Type {
                     // Sum up all sizes of all previous fields.
                     // Every struct field is aligned to word boundary.
                     let prev_idxs_offset = (0..(*idx)).try_fold(0, |accum, pre_idx| {
-                        ty.get_field_type(context, pre_idx).map(|field_ty| {
-                            accum + field_ty.size(context).in_bytes_aligned()
-                        })
+                        ty.get_field_type(context, pre_idx)
+                            .map(|field_ty| accum + field_ty.size(context).in_bytes_aligned())
                     })?;
                     ty.get_field_type(context, *idx)
                         .map(|field_ty| (field_ty, accum_offset + prev_idxs_offset))
@@ -357,7 +354,8 @@ impl Type {
                         let prev_idxs_offset = ty
                             .get_array_elem_type(context)
                             .unwrap()
-                            .size(context).in_bytes()
+                            .size(context)
+                            .in_bytes()
                             * idx;
                         (elm_ty, accum_offset + prev_idxs_offset)
                     })
@@ -436,7 +434,11 @@ impl Type {
     /// Get the offset, in bytes, and the [Type] of the struct field at the index `field_idx`, if `self` is a struct,
     /// otherwise `None`.
     /// Panics if the `field_idx` is out of bounds.
-    pub fn get_struct_field_offset_and_type(&self, context: &Context, field_idx: u64) -> Option<(u64, Type)> {
+    pub fn get_struct_field_offset_and_type(
+        &self,
+        context: &Context,
+        field_idx: u64,
+    ) -> Option<(u64, Type)> {
         if !self.is_struct(context) {
             return None;
         }
@@ -458,7 +460,11 @@ impl Type {
     /// Get the offset, in bytes, and the [Type] of the union field at the index `field_idx`, if `self` is a union,
     /// otherwise `None`.
     /// Panics if the `field_idx` is out of bounds.
-    pub fn get_union_field_offset_and_type(&self, context: &Context, field_idx: u64) -> Option<(u64, Type)> {
+    pub fn get_union_field_offset_and_type(
+        &self,
+        context: &Context,
+        field_idx: u64,
+    ) -> Option<(u64, Type)> {
         if !self.is_union(context) {
             return None;
         }
@@ -485,27 +491,27 @@ impl Type {
             TypeContent::Slice => TypeSize::new(16),
             TypeContent::B256 => TypeSize::new(32),
             TypeContent::StringSlice => TypeSize::new(16),
-            TypeContent::StringArray(n) => TypeSize::new(super::size_bytes_round_up_to_word_alignment!(*n)),
+            TypeContent::StringArray(n) => {
+                TypeSize::new(super::size_bytes_round_up_to_word_alignment!(*n))
+            }
             TypeContent::Array(el_ty, cnt) => TypeSize::new(cnt * el_ty.size(context).in_bytes()),
             TypeContent::Struct(field_tys) => {
                 // Sum up all the field sizes, aligned to words.
-                TypeSize::new(field_tys
-                    .iter()
-                    .map(|field_ty| {
-                        field_ty.size(context).in_bytes_aligned()
-                    })
-                    .sum()
+                TypeSize::new(
+                    field_tys
+                        .iter()
+                        .map(|field_ty| field_ty.size(context).in_bytes_aligned())
+                        .sum(),
                 )
             }
             TypeContent::Union(field_tys) => {
                 // Find the max size for field sizes.
-                TypeSize::new(field_tys
-                    .iter()
-                    .map(|field_ty| {
-                        field_ty.size(context).in_bytes_aligned()
-                    })
-                    .max()
-                    .unwrap_or(0)
+                TypeSize::new(
+                    field_tys
+                        .iter()
+                        .map(|field_ty| field_ty.size(context).in_bytes_aligned())
+                        .max()
+                        .unwrap_or(0),
                 )
             }
         }
@@ -539,14 +545,12 @@ pub struct TypeSize {
 
 impl TypeSize {
     pub(crate) fn new(size_in_bytes: u64) -> Self {
-        Self {
-            size_in_bytes,
-        }
+        Self { size_in_bytes }
     }
 
     /// Returns the actual (unaligned) size of the type in bytes.
     pub fn in_bytes(&self) -> u64 {
-       self.size_in_bytes 
+        self.size_in_bytes
     }
 
     /// Returns the size of the type in bytes, aligned to word boundary.
@@ -586,13 +590,17 @@ impl Padding {
 
     /// Returns the default [Padding] for a byte array.
     pub fn default_for_byte_array(value: &[u8]) -> Self {
-        Self::Right { target_size: value.len() }
+        Self::Right {
+            target_size: value.len(),
+        }
     }
 
     /// Returns the default [Padding] for an aggregate.
     /// `aggregate_size` is the overall size of the aggregate in bytes.
     pub fn default_for_aggregate(aggregate_size: usize) -> Self {
-        Self::Right { target_size: aggregate_size }
+        Self::Right {
+            target_size: aggregate_size,
+        }
     }
 
     /// The target size in bytes.
