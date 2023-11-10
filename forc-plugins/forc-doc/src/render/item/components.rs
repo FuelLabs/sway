@@ -122,7 +122,7 @@ impl Renderable for ItemBody {
                 // this is the main code block
                 main {
                     div(class="width-limiter") {
-                        : generate_searchbar();
+                        : generate_searchbar(module_info.clone());
                         section(id="main-content", class="content") {
                             div(class="main-heading") {
                                 h1(class="fqn") {
@@ -159,7 +159,7 @@ impl Renderable for ItemBody {
                             }
                         }
                         // TODO: make JS search function populate this
-                        section(id="search", class="content hidden");
+                        section(id="search", class="content");
                     }
                 }
                 script(src=sway_hjs);

@@ -214,7 +214,7 @@ impl Document {
             preview_opt: self.preview_opt(),
         }
     }
-    fn preview_opt(&self) -> Option<String> {
+    pub(crate) fn preview_opt(&self) -> Option<String> {
         create_preview(self.raw_attributes.clone())
     }
 }

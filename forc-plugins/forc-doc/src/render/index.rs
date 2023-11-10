@@ -61,7 +61,7 @@ impl Renderable for AllDocIndex {
                 : sidebar;
                 main {
                     div(class="width-limiter") {
-                        : generate_searchbar();
+                        : generate_searchbar(self.project_name.clone());
                         section(id="main-content", class="content") {
                             h1(class="fqn") {
                                 span(class="in-band") { : "List of all items" }
@@ -69,7 +69,7 @@ impl Renderable for AllDocIndex {
                             : doc_links;
                         }
                         // TODO: make JS search function populate this
-                        section(id="search", class="content hidden");
+                        section(id="search", class="content");
                     }
                 }
                 script(src=format!("../{ASSETS_DIR_NAME}/highlight.js"));
@@ -165,26 +165,12 @@ impl Renderable for ModuleIndex {
                 link(rel="stylesheet", type="text/css", href=swaydoc, id="mainThemeStyle");
                 link(rel="stylesheet", type="text/css", href=ayu);
                 link(rel="stylesheet", href=ayu_hjs);
-                script(src="../search.js", type="text/javascript");
-                script {
-                    : Raw(r#"function handleSearch(event) {
-                        event.preventDefault(); // Prevent the default form submit action
-                        var query = document.getElementById('search-input').value;
-                        if(query) {
-                            console.log("Searching for:", query);
-                            const results = Object.values(SEARCH_INDEX).flat().filter(item => item.name.toLowerCase().includes(query.toLowerCase()))
-                            console.log("Search results:", results);
-                        } else {
-                            alert("Please enter a search term.");
-                        }
-                    }"#)
-                }
             }
             body(class="swaydoc mod") {
                 : sidebar;
                 main {
                     div(class="width-limiter") {
-                        : generate_searchbar();
+                        : generate_searchbar(self.module_info.clone());
                         section(id="main-content", class="content") {
                             div(class="main-heading") {
                                 h1(class="fqn") {
@@ -212,7 +198,7 @@ impl Renderable for ModuleIndex {
                             : doc_links;
                         }
                         // TODO: make JS search function populate this
-                        section(id="search", class="content hidden");
+                        section(id="search", class="content");
                     }
                 }
                 script(src=sway_hjs);

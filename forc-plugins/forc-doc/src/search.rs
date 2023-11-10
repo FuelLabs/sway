@@ -44,6 +44,7 @@ struct JsonSearchItem {
     name: String,
     html_filename: String,
     module_info: Vec<String>,
+    preview: Option<String>,
 }
 impl<'a> From<&'a Document> for JsonSearchItem {
     fn from(value: &'a Document) -> Self {
@@ -51,6 +52,7 @@ impl<'a> From<&'a Document> for JsonSearchItem {
             name: value.item_body.item_name.to_string(),
             html_filename: value.html_filename(),
             module_info: value.module_info.module_prefixes.clone(),
+            preview: value.preview_opt(),
         }
     }
 }
