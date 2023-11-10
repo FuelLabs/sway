@@ -145,14 +145,6 @@ fn compile_module_to_asm(
 
 // -------------------------------------------------------------------------------------------------
 
-// This is a mouthful...
-#[macro_export]
-macro_rules! size_bytes_round_up_to_word_alignment {
-    ($bytes_expr: expr) => {
-        ($bytes_expr + 7) - (($bytes_expr + 7) % 8)
-    };
-}
-
 // NOTE: For stack storage we need to be aware:
 // - sizes are in bytes; CFEI reserves in bytes.
 // - offsets are in 64-bit words; LW/SW reads/writes to word offsets. XXX Wrap in a WordOffset struct.

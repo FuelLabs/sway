@@ -1,6 +1,4 @@
-use crate::size_bytes_round_up_to_word_alignment;
-
-use sway_ir::{Constant, ConstantValue, Context, Padding};
+use sway_ir::{Constant, ConstantValue, Context, Padding, size_bytes_round_up_to_word_alignment};
 
 use std::{
     collections::BTreeMap,
