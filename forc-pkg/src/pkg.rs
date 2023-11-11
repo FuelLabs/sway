@@ -36,7 +36,6 @@ use sway_core::{
     fuel_prelude::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
-        fuel_types::ChainId,
     },
     language::{parsed::TreeType, Visibility},
     semantic_analysis::namespace,
@@ -509,7 +508,7 @@ impl BuiltPackage {
                 // TODO: Pass the user specified `ChainId` into `predicate_owner`
                 let root = format!(
                     "0x{}",
-                    fuel_tx::Input::predicate_owner(&self.bytecode.bytes, &ChainId::default(),)
+                    fuel_tx::Input::predicate_owner(&self.bytecode.bytes)
                 );
                 let root_file_name = format!("{}{}", &pkg_name, SWAY_BIN_ROOT_SUFFIX);
                 let root_path = output_dir.join(root_file_name);

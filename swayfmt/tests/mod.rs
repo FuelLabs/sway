@@ -1568,7 +1568,7 @@ fn temporarily_commented_out_fn_with_doc_comments() {
 
 abi MyContract {
     /// Doc comment
-    /* 
+    /*
         Some comment
     */
     fn test_function() -> bool;
@@ -1587,7 +1587,7 @@ impl MyContract for Contract {
 
 abi MyContract {
     /// Doc comment
-    /* 
+    /*
         Some comment
     */
     fn test_function() -> bool;
@@ -1605,6 +1605,11 @@ impl MyContract for Contract {
 "#,
     );
 }
+<<<<<<< Updated upstream
+=======
+<<<<<<< Updated upstream
+=======
+>>>>>>> Stashed changes
 
 #[test]
 fn empty_fn() {
@@ -1676,6 +1681,7 @@ pub enum Input {
         r#"library;
 // GTF Opcode const selectors
 //
+<<<<<<< Updated upstream
 pub const GTF_OUTPUT_TYPE = 0x201;
 pub const GTF_OUTPUT_COIN_TO = 0x202;
 pub const GTF_OUTPUT_COIN_AMOUNT = 0x203;
@@ -1685,6 +1691,17 @@ pub const GTF_OUTPUT_COIN_ASSET_ID = 0x204;
 // pub const GTF_OUTPUT_CONTRACT_STATE_ROOT = 0x207;
 // pub const GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID = 0x208;
 // pub const GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT = 0x209;
+=======
+pub const GTF_OUTPUT_TYPE = 0x300;
+pub const GTF_OUTPUT_COIN_TO = 0x301;
+pub const GTF_OUTPUT_COIN_AMOUNT = 0x302;
+pub const GTF_OUTPUT_COIN_ASSET_ID = 0x303;
+// pub const GTF_OUTPUT_CONTRACT_INPUT_INDEX = 0x304;
+// pub const GTF_OUTPUT_CONTRACT_BALANCE_ROOT = 0x305;
+// pub const GTF_OUTPUT_CONTRACT_STATE_ROOT = 0x306;
+// pub const GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID = 0x307;
+// pub const GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT = 0x308;
+>>>>>>> Stashed changes
 
 /// The output type for a transaction.
 pub enum Output {
@@ -1902,7 +1919,11 @@ trait MyComplexTrait {
 #[test]
 fn long_array() {
     check(
+<<<<<<< Updated upstream
         r#"library; 
+=======
+        r#"library;
+>>>>>>> Stashed changes
 
         fn main() {
             let x = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22];
@@ -2172,15 +2193,24 @@ fn main() {
 fn single_long_arg() {
     check(
         r#"library;
+<<<<<<< Updated upstream
     
+=======
+
+>>>>>>> Stashed changes
     fn main() {
         if foo {
             // ANCHOR: storage_map_insert
                 let addr1 = Address::from(0x0101010101010101010101010101010101010101010101010101010101010101);
             }
     }
+<<<<<<< Updated upstream
     
     
+=======
+
+
+>>>>>>> Stashed changes
     "#,
         r#"library;
 
@@ -2231,3 +2261,7 @@ fn main() {
 "#,
     )
 }
+<<<<<<< Updated upstream
+=======
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes

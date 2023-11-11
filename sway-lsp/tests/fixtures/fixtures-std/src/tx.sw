@@ -3,10 +3,15 @@ library;
 
 use ::constants::ZERO_B256;
 use ::revert::revert;
+<<<<<<< Updated upstream
+=======
+use ::option::Option::{self, *};
+>>>>>>> Stashed changes
 
 // GTF Opcode const selectors
 //
 pub const GTF_TYPE = 0x001;
+<<<<<<< Updated upstream
 pub const GTF_SCRIPT_GAS_PRICE = 0x002;
 pub const GTF_SCRIPT_GAS_LIMIT = 0x003;
 pub const GTF_SCRIPT_MATURITY = 0x004;
@@ -39,6 +44,41 @@ pub const GTF_CREATE_WITNESS_AT_INDEX = 0x01D;
 
 pub const GTF_WITNESS_DATA_LENGTH = 0x301;
 pub const GTF_WITNESS_DATA = 0x302;
+=======
+pub const GTF_SCRIPT_GAS_LIMIT = 0x002;
+pub const GTF_SCRIPT_SCRIPT_LENGTH = 0x003;
+pub const GTF_SCRIPT_SCRIPT_DATA_LENGTH = 0x004;
+pub const GTF_SCRIPT_INPUTS_COUNT = 0x005;
+pub const GTF_SCRIPT_OUTPUTS_COUNT = 0x006;
+pub const GTF_SCRIPT_WITNESSES_COUNT = 0x007;
+pub const GTF_SCRIPT_RECEIPTS_ROOT = 0x008;
+pub const GTF_SCRIPT_SCRIPT = 0x009;
+pub const GTF_SCRIPT_SCRIPT_DATA = 0x00A;
+pub const GTF_SCRIPT_INPUT_AT_INDEX = 0x00B;
+pub const GTF_SCRIPT_OUTPUT_AT_INDEX = 0x00C;
+pub const GTF_SCRIPT_WITNESS_AT_INDEX = 0x00D;
+
+// pub const GTF_CREATE_BYTECODE_LENGTH = 0x100;
+// pub const GTF_CREATE_BYTECODE_WITNESS_INDEX = 0x101;
+// pub const GTF_CREATE_STORAGE_SLOTS_COUNT = 0x102;
+pub const GTF_CREATE_INPUTS_COUNT = 0x103;
+pub const GTF_CREATE_OUTPUTS_COUNT = 0x104;
+pub const GTF_CREATE_WITNESSES_COUNT = 0x105;
+// pub const GTF_CREATE_SALT = 0x106;
+// pub const GTF_CREATE_STORAGE_SLOT_AT_INDEX = 0x107;
+pub const GTF_CREATE_INPUT_AT_INDEX = 0x108;
+pub const GTF_CREATE_OUTPUT_AT_INDEX = 0x109;
+pub const GTF_CREATE_WITNESS_AT_INDEX = 0x10A;
+
+pub const GTF_WITNESS_DATA_LENGTH = 0x400;
+pub const GTF_WITNESS_DATA = 0x401;
+
+pub const GTF_POLICY_TYPES = 0x500;
+pub const GTF_POLICY_GAS_PRICE = 0x501;
+pub const GTF_POLICY_WITNESS_LIMIT = 0x502;
+pub const GTF_POLICY_MATURITY = 0x503;
+pub const GTF_POLICY_MAX_FEE = 0x504;
+>>>>>>> Stashed changes
 
 /// A transaction type.
 pub enum Transaction {
@@ -84,11 +124,29 @@ pub fn tx_type() -> Transaction {
     }
 }
 
+<<<<<<< Updated upstream
 /// Get the transaction gas price for the transaction.
 ///
 /// # Returns
 ///
 /// * [u64] - The gas price for the transaction.
+=======
+const GAS_PRICE_POLICY: u32 = 1u32 << 0;
+const MATURITY_POLICY: u32 = 1u32 << 1;
+const WITNESS_LIMIT_POLICY: u32 = 1u32 << 2;
+const MAX_FEE_POLICY: u32 = 1u32 << 3;
+
+/// Returns policies bits. It can be used to identify which policies are set.
+fn policies() -> u32 {
+    __gtf::<u32>(0, GTF_POLICY_TYPES)
+}
+
+/// Get the gas price for the transaction, if it is set.
+///
+/// # Returns
+///
+/// * [Option<u64>] - The gas price for the transaction.
+>>>>>>> Stashed changes
 ///
 /// # Examples
 ///
@@ -100,6 +158,7 @@ pub fn tx_type() -> Transaction {
 ///     log(gas_price);
 /// }
 /// ```
+<<<<<<< Updated upstream
 pub fn tx_gas_price() -> u64 {
     match tx_type() {
         Transaction::Script => __gtf::<u64>(0, GTF_SCRIPT_GAS_PRICE),
@@ -112,10 +171,27 @@ pub fn tx_gas_price() -> u64 {
 /// # Returns
 ///
 /// * [u64] - The gas limit for the transaction.
+=======
+pub fn tx_gas_price() -> Option<u64> {
+    let bits = policies();
+    if bits & GAS_PRICE_POLICY > 0 {
+        Some(__gtf::<u64>(0, GTF_POLICY_GAS_PRICE))
+    } else {
+        None
+    }
+}
+
+/// Get the script gas limit for the transaction.
+///
+/// # Returns
+///
+/// * [u64] - The script gas limit for the transaction.
+>>>>>>> Stashed changes
 ///
 /// # Examples
 ///
 /// ```sway
+<<<<<<< Updated upstream
 /// use std::tx::tx_gas_limit;
 ///
 /// fn foo() {
@@ -135,6 +211,24 @@ pub fn tx_gas_limit() -> u64 {
 /// # Returns
 ///
 /// * [u32] - The maturity for the transaction.
+=======
+/// use std::tx::script_gas_limit;
+///
+/// fn foo() {
+///     let gas_limit = script_gas_limit();
+///     log(gas_limit);
+/// }
+/// ```
+pub fn script_gas_limit() -> u64 {
+    __gtf::<u64>(0, GTF_SCRIPT_GAS_LIMIT)
+}
+
+/// Get the maturity for the transaction, if it is set.
+///
+/// # Returns
+///
+/// * [Option<u32>] - The maturity for the transaction.
+>>>>>>> Stashed changes
 ///
 /// # Examples
 ///
@@ -146,10 +240,69 @@ pub fn tx_gas_limit() -> u64 {
 ///     log(maturity);
 /// }
 /// ```
+<<<<<<< Updated upstream
 pub fn tx_maturity() -> u32 {
     match tx_type() {
         Transaction::Script => __gtf::<u32>(0, GTF_SCRIPT_MATURITY),
         Transaction::Create => __gtf::<u32>(0, GTF_CREATE_MATURITY),
+=======
+pub fn tx_maturity() -> Option<u32> {
+    let bits = policies();
+    if bits & MATURITY_POLICY > 0 {
+        Some(__gtf::<u32>(0, GTF_POLICY_GAS_PRICE))
+    } else {
+        None
+    }
+}
+
+/// Get the witness limit for the transaction, if it is set.
+///
+/// # Returns
+///
+/// * [Option<u64>] - The witness limit for the transaction.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::tx::tx_witness_limit;
+///
+/// fn foo() {
+///     let witness_limit = tx_witness_limit();
+///     log(witness_limit);
+/// }
+/// ```
+pub fn tx_witness_limit() -> Option<u64> {
+    let bits = policies();
+    if bits & WITNESS_LIMIT_POLICY > 0 {
+        Some(__gtf::<u64>(0, GTF_POLICY_WITNESS_LIMIT))
+    } else {
+        None
+    }
+}
+
+/// Get the max fee for the transaction, if it is set.
+///
+/// # Returns
+///
+/// * [Option<u64>] - The max fee for the transaction.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::tx::tx_max_fee;
+///
+/// fn foo() {
+///     let max_fee = tx_max_fee();
+///     log(max_fee);
+/// }
+/// ```
+pub fn tx_max_fee() -> Option<u64> {
+    let bits = policies();
+    if bits & MAX_FEE_POLICY > 0 {
+        Some(__gtf::<u64>(0, GTF_POLICY_MAX_FEE))
+    } else {
+        None
+>>>>>>> Stashed changes
     }
 }
 
@@ -169,7 +322,11 @@ pub fn tx_maturity() -> u32 {
 /// use std::tx::tx_script_length;
 ///
 /// fn foo() {
+<<<<<<< Updated upstream
 ///     let script_length = tx_script_length(); 
+=======
+///     let script_length = tx_script_length();
+>>>>>>> Stashed changes
 ///     assert(script_length > 0);
 /// }
 /// ```
@@ -389,10 +546,17 @@ pub fn tx_script_data_start_pointer() -> raw_ptr {
     }
 }
 
+<<<<<<< Updated upstream
 /// Get the script data, typed. 
 ///
 /// # Additional Information
 /// 
+=======
+/// Get the script data, typed.
+///
+/// # Additional Information
+///
+>>>>>>> Stashed changes
 /// **Unsafe.**
 /// **Assumes the type is correct.**
 ///
@@ -421,7 +585,11 @@ pub fn tx_script_data<T>() -> T {
 }
 
 /// Get the script bytecode.
+<<<<<<< Updated upstream
 /// 
+=======
+///
+>>>>>>> Stashed changes
 /// # Additional Information
 ///
 /// Must be cast to a `u64` array, with sufficient length to contain the bytecode.

@@ -16,6 +16,7 @@ use ::option::Option::{self, *};
 
 // GTF Opcode const selectors
 //
+<<<<<<< Updated upstream
 pub const GTF_OUTPUT_TYPE = 0x201;
 pub const GTF_OUTPUT_COIN_TO = 0x202;
 pub const GTF_OUTPUT_COIN_AMOUNT = 0x203;
@@ -25,6 +26,17 @@ pub const GTF_OUTPUT_COIN_ASSET_ID = 0x204;
 // pub const GTF_OUTPUT_CONTRACT_STATE_ROOT = 0x207;
 // pub const GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID = 0x208;
 // pub const GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT = 0x209;
+=======
+pub const GTF_OUTPUT_TYPE = 0x300;
+pub const GTF_OUTPUT_COIN_TO = 0x301;
+pub const GTF_OUTPUT_COIN_AMOUNT = 0x302;
+pub const GTF_OUTPUT_COIN_ASSET_ID = 0x303;
+// pub const GTF_OUTPUT_CONTRACT_INPUT_INDEX = 0x304;
+// pub const GTF_OUTPUT_CONTRACT_BALANCE_ROOT = 0x305;
+// pub const GTF_OUTPUT_CONTRACT_STATE_ROOT = 0x306;
+// pub const GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID = 0x307;
+// pub const GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT = 0x308;
+>>>>>>> Stashed changes
 
 /// The output type for a transaction.
 pub enum Output {
@@ -51,7 +63,11 @@ pub enum Output {
 /// # Reverts
 ///
 /// * When the output type is unrecognized. This should never happen.
+<<<<<<< Updated upstream
 /// 
+=======
+///
+>>>>>>> Stashed changes
 /// # Examples
 ///
 /// ```sway

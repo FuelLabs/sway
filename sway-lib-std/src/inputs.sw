@@ -19,44 +19,44 @@ use ::tx::{
 };
 use core::ops::Eq;
 
-const GTF_INPUT_TYPE = 0x101;
+const GTF_INPUT_TYPE = 0x200;
 
 // GTF Opcode const selectors
 //
-// pub const GTF_INPUT_COIN_TX_ID = 0x102;
-// pub const GTF_INPUT_COIN_OUTPUT_INDEX = 0x103;
-pub const GTF_INPUT_COIN_OWNER = 0x104;
-pub const GTF_INPUT_COIN_AMOUNT = 0x105;
-pub const GTF_INPUT_COIN_ASSET_ID = 0x106;
-// pub const GTF_INPUT_COIN_TX_POINTER = 0x107;
-pub const GTF_INPUT_COIN_WITNESS_INDEX = 0x108;
-pub const GTF_INPUT_COIN_MATURITY = 0x109;
-pub const GTF_INPUT_COIN_PREDICATE_LENGTH = 0x10A;
-pub const GTF_INPUT_COIN_PREDICATE_DATA_LENGTH = 0x10B;
-pub const GTF_INPUT_COIN_PREDICATE = 0x10C;
-pub const GTF_INPUT_COIN_PREDICATE_DATA = 0x10D;
+// pub const GTF_INPUT_COIN_TX_ID = 0x201;
+// pub const GTF_INPUT_COIN_OUTPUT_INDEX = 0x202;
+pub const GTF_INPUT_COIN_OWNER = 0x203;
+pub const GTF_INPUT_COIN_AMOUNT = 0x204;
+pub const GTF_INPUT_COIN_ASSET_ID = 0x205;
+// pub const GTF_INPUT_COIN_TX_POINTER = 0x206;
+pub const GTF_INPUT_COIN_WITNESS_INDEX = 0x207;
+pub const GTF_INPUT_COIN_MATURITY = 0x208;
+pub const GTF_INPUT_COIN_PREDICATE_LENGTH = 0x209;
+pub const GTF_INPUT_COIN_PREDICATE_DATA_LENGTH = 0x20A;
+pub const GTF_INPUT_COIN_PREDICATE = 0x20B;
+pub const GTF_INPUT_COIN_PREDICATE_DATA = 0x20C;
 
-// pub const GTF_INPUT_CONTRACT_TX_ID = 0x10E;
-// pub const GTF_INPUT_CONTRACT_OUTPUT_INDEX = 0x10F;
-// pub const GTF_INPUT_CONTRACT_BALANCE_ROOT = 0x110;
-// pub const GTF_INPUT_CONTRACT_STATE_ROOT = 0x111;
-// pub const GTF_INPUT_CONTRACT_TX_POINTER = 0x112;
-// pub const GTF_INPUT_CONTRACT_CONTRACT_ID = 0x113;
-pub const GTF_INPUT_MESSAGE_SENDER = 0x115;
-pub const GTF_INPUT_MESSAGE_RECIPIENT = 0x116;
-pub const GTF_INPUT_MESSAGE_AMOUNT = 0x117;
-pub const GTF_INPUT_MESSAGE_NONCE = 0x118;
+// pub const GTF_INPUT_CONTRACT_TX_ID = 0x220;
+// pub const GTF_INPUT_CONTRACT_OUTPUT_INDEX = 0x221;
+// pub const GTF_INPUT_CONTRACT_BALANCE_ROOT = 0x222;
+// pub const GTF_INPUT_CONTRACT_STATE_ROOT = 0x223;
+// pub const GTF_INPUT_CONTRACT_TX_POINTER = 0x224;
+// pub const GTF_INPUT_CONTRACT_CONTRACT_ID = 0x225;
+pub const GTF_INPUT_MESSAGE_SENDER = 0x240;
+pub const GTF_INPUT_MESSAGE_RECIPIENT = 0x241;
+pub const GTF_INPUT_MESSAGE_AMOUNT = 0x242;
+pub const GTF_INPUT_MESSAGE_NONCE = 0x243;
 // These are based on the old spec (before
 // https://github.com/FuelLabs/fuel-specs/pull/400) because that's what's
 // currently implemented in `fuel-core`, `fuel-asm`, and `fuel-tx. They should
 // eventually be updated.
-pub const GTF_INPUT_MESSAGE_WITNESS_INDEX = 0x119;
-pub const GTF_INPUT_MESSAGE_DATA_LENGTH = 0x11A;
-pub const GTF_INPUT_MESSAGE_PREDICATE_LENGTH = 0x11B;
-pub const GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH = 0x11C;
-pub const GTF_INPUT_MESSAGE_DATA = 0x11D;
-pub const GTF_INPUT_MESSAGE_PREDICATE = 0x11E;
-pub const GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x11F;
+pub const GTF_INPUT_MESSAGE_WITNESS_INDEX = 0x244;
+pub const GTF_INPUT_MESSAGE_DATA_LENGTH = 0x245;
+pub const GTF_INPUT_MESSAGE_PREDICATE_LENGTH = 0x246;
+pub const GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH = 0x247;
+pub const GTF_INPUT_MESSAGE_DATA = 0x248;
+pub const GTF_INPUT_MESSAGE_PREDICATE = 0x249;
+pub const GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x24A;
 
 /// The input type for a transaction.
 pub enum Input {
@@ -115,7 +115,7 @@ pub fn input_type(index: u64) -> Input {
 }
 
 /// Gets the transaction inputs count.
-/// 
+///
 /// # Returns
 ///
 /// * [u8] - The number of inputs in the transaction.
@@ -170,7 +170,7 @@ pub fn input_pointer(index: u64) -> u64 {
 /// * `index`: [u64] - The index of the input to check.
 ///
 /// # Returns
-/// 
+///
 /// * [Option<u64>] - The amount of the input at `index`, if the input's type is `Input::Coin` or `Input::Message`, else `None`.
 ///
 /// # Examples

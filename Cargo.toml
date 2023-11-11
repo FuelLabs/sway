@@ -36,11 +36,17 @@ exclude = [
 fuel-core-client = { version = "0.20.3", default-features = false }
 
 # Dependencies from the `fuel-vm` repository:
-fuel-asm = "0.35.3"
-fuel-crypto = "0.35.3"
-fuel-types = "0.35.3"
-fuel-tx = "0.35.3"
-fuel-vm = "0.35.3"
+# fuel-asm = "0.35.3"
+# fuel-crypto = "0.35.3"
+# fuel-types = "0.35.3"
+# fuel-tx = "0.35.3"
+# fuel-vm = "0.35.3"
+
+fuel-asm = { git = "https://github.com/FuelLabs/fuel-vm/", branch = "master" }
+fuel-crypto = { git = "https://github.com/FuelLabs/fuel-vm/", branch = "master" }
+fuel-types = { git = "https://github.com/FuelLabs/fuel-vm/", branch = "master" }
+fuel-tx = { git = "https://github.com/FuelLabs/fuel-vm/", branch = "master" }
+fuel-vm = { git = "https://github.com/FuelLabs/fuel-vm/", branch = "master" }
 
 # Dependencies from the `fuels-rs` repository:
 fuels-core = "0.45"
@@ -55,4 +61,16 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
+
+[patch.crates-io]
+# Keep it until release of the `fuel-core`.
+fuel-core-client = { git = "https://github.com/FuelLabs/fuel-core", branch = "master" }
+
+# Keep it until release of the `fuels-rs`.
+fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/transaction-policies" }
+fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/transaction-policies" }
+
+# Keep it until release of the `forc-wallet`.
+forc-wallet = { git = "https://github.com/FuelLabs/forc-wallet", branch = "upgrade/fuel-core-master" }
+fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/transaction-policies" }
 
