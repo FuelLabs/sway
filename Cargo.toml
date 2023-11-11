@@ -33,22 +33,22 @@ exclude = [
 
 [workspace.dependencies]
 # Dependencies from the `fuel-core` repository:
-fuel-core-client = { version = "0.20.3", default-features = false }
+fuel-core-client = { version = "0.20.8", default-features = false }
 
 # Dependencies from the `fuel-vm` repository:
-fuel-asm = { git = "https://github.com/FuelLabs/fuel-vm/", branch = "master" }
-fuel-crypto = { git = "https://github.com/FuelLabs/fuel-vm/", branch = "master" }
-fuel-types = { git = "https://github.com/FuelLabs/fuel-vm/", branch = "master" }
-fuel-tx = { git = "https://github.com/FuelLabs/fuel-vm/", branch = "master" }
-fuel-vm = { git = "https://github.com/FuelLabs/fuel-vm/", branch = "master" }
+fuel-asm = { version = "0.41.0"}
+fuel-crypto = { version = "0.41.0"}
+fuel-tx = { version = "0.41.0"}
+fuel-types = { version = "0.41.0"}
+fuel-vm = { version = "0.41.0"}
 
 
 # Dependencies from the `fuels-rs` repository:
-fuels-core = "0.45"
-fuels-accounts = "0.45"
+fuels-core = "0.50.1"
+fuels-accounts = "0.50.1"
 
 # Dependencies from the `forc-wallet` repository:
-forc-wallet = "0.2.5"
+forc-wallet = "0.3.0"
 
 [workspace.package]
 edition = "2021"
