@@ -21,15 +21,18 @@ pub(crate) fn generate_searchbar(module_info: ModuleInfo) -> Box<dyn RenderBox> 
                     const searchSection = document.getElementById('search');
                     const mainSection = document.getElementById('main-content');
                     if (query) {{
-                        const results = Object.values(SEARCH_INDEX).flat().filter(item => item.name.toLowerCase().includes(query.toLowerCase()))
+                        const results = Object.values(SEARCH_INDEX).flat().filter(item => {{
+                            const lowerQuery = query.toLowerCase();
+                            return item.name.toLowerCase().includes(lowerQuery) || item.preview?.toLowerCase().includes(lowerQuery);
+                        }});
                         console.log("Search results:", results);
                         const header = `<h1>Results for ${{query}}</h1>`;
                         if (results.length > 0) {{
                             const resultList = results.map(item => {{
                                 const name = [...item.module_info, item.name].join("::");
                                 const path = ["{}", ...item.module_info, item.html_filename].join("/");
-                                const left = `<td style="padding-right:15px;"><code>${{name}}</code></a></td>`;
-                                const right = `<td><a href="${{path}}">${{item.preview ?? ""}}</a></td>`;
+                                const left = `<td style="padding-right:15px;"><a href="${{path}}"><code>${{name}}</code></a></td>`;
+                                const right = `<td><a href="${{path}}">${{item.preview?.replace('<p>', '<p style="margin:0">') ?? ""}}</a></td>`;
                                 return `<tr style="height:30px; white-space:nowrap; overflow:hidden;" onmouseover="this.style.background='darkgreen';" onmouseout="this.style.background='';">${{left}}${{right}}</tr>`;
                             }}).join('');
                             searchSection.innerHTML = `${{header}}<table>${{resultList}}</table>`;
