@@ -102,12 +102,7 @@ pub(crate) fn instantiate_enum(
                 enum_ref.span().source_id(),
             );
 
-            type_id.check_type_parameter_bounds(
-                handler,
-                &ctx,
-                &enum_variant_name.span(),
-                vec![],
-            )?;
+            type_id.check_type_parameter_bounds(handler, ctx, &enum_variant_name.span(), vec![])?;
 
             Ok(ty::TyExpression {
                 return_type: type_id,
