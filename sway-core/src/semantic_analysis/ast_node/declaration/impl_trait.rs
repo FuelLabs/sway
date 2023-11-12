@@ -341,7 +341,7 @@ impl TyImplTrait {
 
         implementing_for.type_id.check_type_parameter_bounds(
             handler,
-            &ctx,
+            ctx.by_ref(),
             &implementing_for.span,
             vec![],
         )?;
@@ -625,7 +625,7 @@ fn type_check_trait_implementation(
     for (type_arg, type_param) in trait_type_arguments.iter().zip(trait_type_parameters) {
         type_arg.type_id.check_type_parameter_bounds(
             handler,
-            &ctx,
+            ctx.by_ref(),
             &type_arg.span(),
             type_param.trait_constraints.clone(),
         )?;

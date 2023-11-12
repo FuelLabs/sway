@@ -39,7 +39,7 @@ impl ty::TyFunctionParameter {
 
         type_argument.type_id.check_type_parameter_bounds(
             handler,
-            &ctx,
+            ctx,
             &type_argument.span,
             vec![],
         )?;

@@ -432,7 +432,7 @@ impl TypeId {
     pub(crate) fn check_type_parameter_bounds(
         &self,
         handler: &Handler,
-        ctx: &TypeCheckContext,
+        mut ctx: TypeCheckContext,
         span: &Span,
         trait_constraints: Vec<TraitConstraint>,
     ) -> Result<(), ErrorEmitted> {
@@ -483,6 +483,7 @@ impl TypeId {
                         }
                     }
                 } else {
+                    let mut found_error = false;
                     let generic_trait_constraints_trait_names = ctx
                         .namespace
                         .implemented_traits
@@ -493,14 +494,32 @@ impl TypeId {
                                 .trait_name
                                 .to_fullpath(ctx.namespace),
                         ) {
-                            handler.emit_err(CompileError::TraitConstraintNotSatisfied {
-                                ty: structure_type_info_with_engines.to_string(),
-                                trait_name: structure_trait_constraint
+                            found_error = true;
+                        }
+                    }
+                    if found_error {
+                        // Retrieve the implemented traits for the type and insert them in the namespace.
+                        // insert_trait_implementation_for_type is done lazily only when required because of a failure.
+                        ctx.insert_trait_implementation_for_type(*structure_type_id);
+                        let generic_trait_constraints_trait_names = ctx
+                            .namespace
+                            .implemented_traits
+                            .get_trait_names_for_type(engines, *structure_type_id);
+                        for structure_trait_constraint in structure_trait_constraints {
+                            if !generic_trait_constraints_trait_names.contains(
+                                &structure_trait_constraint
                                     .trait_name
-                                    .suffix
-                                    .to_string(),
-                                span: span.clone(),
-                            });
+                                    .to_fullpath(ctx.namespace),
+                            ) {
+                                handler.emit_err(CompileError::TraitConstraintNotSatisfied {
+                                    ty: structure_type_info_with_engines.to_string(),
+                                    trait_name: structure_trait_constraint
+                                        .trait_name
+                                        .suffix
+                                        .to_string(),
+                                    span: span.clone(),
+                                });
+                            }
                         }
                     }
                 }
