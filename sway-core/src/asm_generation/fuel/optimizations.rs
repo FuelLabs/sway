@@ -125,7 +125,7 @@ impl AbstractInstructionSet {
                             }
                         }
                     }
-                    VirtualOp::LWDataId(dest, data_id) => {
+                    VirtualOp::LoadDataId(dest, data_id) => {
                         if let Some(c) = data_section.get_data_word(data_id) {
                             reg_contents.insert(dest.clone(), RegContents::Constant(c));
                         } else {

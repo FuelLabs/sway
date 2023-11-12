@@ -413,7 +413,7 @@ impl AllocatedAbstractInstructionSet {
         match op.opcode {
             Either::Right(Label(_)) => 0,
 
-            // A special case for LWDataId which may be 1 or 2 ops, depending on the source size.
+            // A special case for LoadDataId which may be 1 or 2 ops, depending on the source size.
             Either::Left(AllocatedOpcode::LoadDataId(_, ref data_id)) => {
                 let has_copy_type = data_section.has_copy_type(data_id).expect(
                     "Internal miscalculation in data section -- \
