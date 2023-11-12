@@ -128,7 +128,7 @@ pub(crate) fn struct_instantiation(
         }
     }
 
-    type_id.check_type_parameter_bounds(handler, &ctx, &span, vec![])?;
+    type_id.check_type_parameter_bounds(handler, ctx, &span, vec![])?;
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::StructExpression {

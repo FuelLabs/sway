@@ -453,16 +453,11 @@ impl<'a> TypeCheckContext<'a> {
                             .insert(self.engines, TypeInfo::ErrorRecovery(err), None)
                     });
 
-                let type_id = self.engines.te().insert(
+                self.engines.te().insert(
                     self.engines,
                     TypeInfo::Array(elem_ty.clone(), n),
                     elem_ty.span.source_id(),
-                );
-
-                // take any trait methods that apply to this type and copy them to the new type
-                self.insert_trait_implementation_for_type(type_id);
-
-                type_id
+                )
             }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
@@ -484,16 +479,11 @@ impl<'a> TypeCheckContext<'a> {
                         });
                 }
 
-                let type_id = self.engines.te().insert(
+                self.engines.te().insert(
                     self.engines,
                     TypeInfo::Tuple(type_arguments),
                     span.source_id(),
-                );
-
-                // take any trait methods that apply to this type and copy them to the new type
-                self.insert_trait_implementation_for_type(type_id);
-
-                type_id
+                )
             }
             TypeInfo::TraitType {
                 name,
@@ -745,17 +735,11 @@ impl<'a> TypeCheckContext<'a> {
                 let new_decl_ref = decl_engine.insert(new_copy);
 
                 // create the type id from the copy
-                let type_id = type_engine.insert(
+                type_engine.insert(
                     self.engines,
                     TypeInfo::Struct(new_decl_ref.clone()),
                     new_decl_ref.span().source_id(),
-                );
-
-                // take any trait methods that apply to this type and copy them to the new type
-                self.insert_trait_implementation_for_type(type_id);
-
-                // return the id
-                type_id
+                )
             }
             Some(ty::TyDecl::EnumDecl(ty::EnumDecl {
                 decl_id: original_id,
@@ -778,17 +762,11 @@ impl<'a> TypeCheckContext<'a> {
                 let new_decl_ref = decl_engine.insert(new_copy);
 
                 // create the type id from the copy
-                let type_id = type_engine.insert(
+                type_engine.insert(
                     self.engines,
                     TypeInfo::Enum(new_decl_ref.clone()),
                     new_decl_ref.span().source_id(),
-                );
-
-                // take any trait methods that apply to this type and copy them to the new type
-                self.insert_trait_implementation_for_type(type_id);
-
-                // return the id
-                type_id
+                )
             }
             Some(ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl {
                 decl_id: original_id,
@@ -799,10 +777,7 @@ impl<'a> TypeCheckContext<'a> {
                 // TODO: monomorphize the copy, in place, when generic type aliases are
                 // supported
 
-                let type_id = new_copy.create_type_id(self.engines);
-                self.insert_trait_implementation_for_type(type_id);
-
-                type_id
+                new_copy.create_type_id(self.engines)
             }
             Some(ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
                 type_id,
@@ -1139,9 +1114,7 @@ impl<'a> TypeCheckContext<'a> {
                 TryInsertingTraitImplOnFailure::Yes
             ) {
                 // Retrieve the implemented traits for the type and insert them in the namespace.
-                // insert_trait_implementation_for_type is already called when we do type check of structs, enums, arrays and tuples.
-                // In cases such as blanket trait implementation and usage of builtin types a method may not be found because
-                // insert_trait_implementation_for_type has yet to be called for that type.
+                // insert_trait_implementation_for_type is done lazily only when required because of a failure.
                 self.insert_trait_implementation_for_type(type_id);
 
                 return self.find_method_for_type(
