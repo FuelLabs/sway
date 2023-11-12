@@ -329,6 +329,17 @@ impl DataSection {
             }
         }
     }
+
+    // If the stored data is Datum::Word, return the inner value.
+    pub(crate) fn get_data_word(&self, data_id: &DataId) -> Option<u64> {
+        self.value_pairs.get(data_id.0 as usize).and_then(|entry| {
+            if let Datum::Word(w) = entry.value {
+                Some(w)
+            } else {
+                None
+            }
+        })
+    }
 }
 
 impl fmt::Display for DataSection {

@@ -9,3 +9,4 @@ pub(super) mod fuel_asm_builder;
 pub(super) mod register_sequencer;
 
 mod functions;
+mod optimizations;
