@@ -218,7 +218,7 @@ pub struct BuildPlan {
 #[derive(Clone, Debug)]
 pub struct PinnedIdParseError;
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct PkgOpts {
     /// Path to the project, if not specified, current working directory will be used.
     pub path: Option<String>,
@@ -240,7 +240,7 @@ pub struct PkgOpts {
     pub ipfs_node: IPFSNode,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct PrintOpts {
     /// Print the generated Sway AST (Abstract Syntax Tree).
     pub ast: bool,
@@ -266,7 +266,7 @@ pub struct PrintOpts {
     pub reverse_order: bool,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct MinifyOpts {
     /// By default the JSON for ABIs is formatted for human readability. By using this option JSON
     /// output will be "minified", i.e. all on one line without whitespace.
@@ -280,7 +280,7 @@ pub struct MinifyOpts {
 type ContractIdConst = String;
 
 /// The set of options provided to the `build` functions.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct BuildOpts {
     pub pkg: PkgOpts,
     pub print: PrintOpts,
@@ -311,6 +311,7 @@ pub struct BuildOpts {
 }
 
 /// The set of options to filter type of projects to build in a workspace.
+#[derive(Debug)]
 pub struct MemberFilter {
     pub build_contracts: bool,
     pub build_scripts: bool,
@@ -2124,6 +2125,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         .unwrap_or_else(|| current_dir);
 
     let build_plan = BuildPlan::from_build_opts(&build_options)?;
+    eprintln!("Build options: {build_options:?}");
     eprintln!("Build plan: {build_plan:?}");
     let graph = build_plan.graph();
     let manifest_map = build_plan.manifest_map();
