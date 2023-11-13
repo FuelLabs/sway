@@ -15,7 +15,7 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
-  RUST_VERSION: 1.72.0
+  RUST_VERSION: 1.73
   NIGHTLY_RUST_VERSION: nightly-2023-08-27
 
 jobs:
