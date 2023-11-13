@@ -1,8 +1,8 @@
-use fuel_core_client::client::types::primitives::ChainId;
 use fuel_vm::fuel_crypto::Hasher;
 use fuel_vm::fuel_tx::{
-    field::*, Bytes32, ConsensusParameters, ContractId, Input as TxInput, TxPointer, UtxoId,
+    Bytes32, ConsensusParameters, ContractId, Input as TxInput, TxPointer, UtxoId,
 };
+use fuels::types::transaction_builders::TransactionBuilder;
 use fuels::{
     accounts::{predicate::Predicate, wallet::WalletUnlocked, Account},
     prelude::*,
@@ -59,7 +59,9 @@ async fn get_contracts() -> (
         MESSAGE_DATA.to_vec(),
     );
 
-    let provider = setup_test_provider(coins.clone(), vec![messages], None, None).await;
+    let provider = setup_test_provider(coins.clone(), vec![messages], None, None)
+        .await
+        .unwrap();
 
     wallet.set_provider(provider.clone());
     deployment_wallet.set_provider(provider);
@@ -137,21 +139,6 @@ async fn generate_predicate_inputs(
     (predicate_code, predicate_coin, predicate_message)
 }
 
-async fn add_message_input(tx: &mut ScriptTransaction, wallet: WalletUnlocked) {
-    let message = &wallet.get_messages().await.unwrap()[0];
-
-    let message_input = TxInput::message_data_signed(
-        message.sender.clone().into(),
-        message.recipient.clone().into(),
-        message.amount,
-        message.nonce,
-        0,
-        message.data.clone(),
-    );
-
-    tx.tx.inputs_mut().push(message_input);
-}
-
 async fn setup_output_predicate() -> (WalletUnlocked, WalletUnlocked, Predicate, AssetId, AssetId) {
     let asset_id1 = AssetId::default();
     let asset_id2 = AssetId::new([2u8; 32]);
@@ -171,7 +158,9 @@ async fn setup_output_predicate() -> (WalletUnlocked, WalletUnlocked, Predicate,
         ],
     );
 
-    let mut wallets = launch_custom_provider_and_get_wallets(wallets_config, None, None).await;
+    let mut wallets = launch_custom_provider_and_get_wallets(wallets_config, None, None)
+        .await
+        .unwrap();
     let wallet1 = wallets.pop().unwrap();
     let wallet2 = wallets.pop().unwrap();
 
@@ -202,8 +191,6 @@ async fn setup_output_predicate() -> (WalletUnlocked, WalletUnlocked, Predicate,
 }
 
 mod tx {
-    use fuel_vm::prelude::Cacheable;
-
     use super::*;
 
     #[tokio::test]
@@ -302,10 +289,22 @@ mod tx {
         let (contract_instance, _, wallet, _) = get_contracts().await;
 
         let handler = contract_instance.methods().get_tx_inputs_count();
-        let mut tx = handler.build_tx().await.unwrap();
 
-        add_message_input(&mut tx, wallet.clone()).await;
-        tx.tx.precompute(&ChainId::default()).unwrap();
+        let message = &wallet.get_messages().await.unwrap()[0];
+        let tx = handler
+            .config_and_build_tx(|builder| {
+                let message_input = TxInput::message_data_signed(
+                    message.sender.clone().into(),
+                    message.recipient.clone().into(),
+                    message.amount,
+                    message.nonce,
+                    0,
+                    message.data.clone(),
+                );
+                builder.inputs_mut().push(message_input.into());
+            })
+            .await
+            .unwrap();
 
         let inputs = tx.inputs().clone();
 
@@ -472,9 +471,6 @@ mod tx {
         let handler = contract_instance.methods().get_tx_id();
         let tx = handler.build_tx().await.unwrap();
 
-        let params = wallet.provider().unwrap().consensus_parameters();
-        let tx_id = tx.id(params.chain_id);
-
         let provider = wallet.provider().unwrap();
         let tx_id = provider.send_transaction(tx).await.unwrap();
         let receipts = provider
@@ -529,8 +525,6 @@ mod inputs {
     }
 
     mod success {
-        use fuel_vm::{checked_transaction::EstimatePredicates, prelude::Cacheable};
-
         use super::*;
 
         #[tokio::test]
@@ -593,18 +587,14 @@ mod inputs {
             let handler = contract_instance
                 .methods()
                 .get_input_predicate(2, predicate_bytes.clone());
-            let mut tx = handler.build_tx().await.unwrap();
-
-            tx.tx.inputs_mut().push(predicate_coin);
-            tx.tx.precompute(&ChainId::default()).unwrap();
+            let tx = handler
+                .config_and_build_tx(|builder| {
+                    builder.inputs_mut().push(predicate_coin.into());
+                })
+                .await
+                .unwrap();
 
             let provider = wallet.provider().unwrap();
-            tx.tx
-                .estimate_predicates(
-                    &wallet.provider().unwrap().consensus_parameters(),
-                    &provider.network_info().await.unwrap().gas_costs,
-                )
-                .unwrap();
 
             let tx_id = provider.send_transaction(tx).await.unwrap();
             let receipts = provider
@@ -618,7 +608,7 @@ mod inputs {
         }
 
         mod message {
-            use fuel_vm::{checked_transaction::EstimatePredicates, prelude::Cacheable};
+            use fuels::types::transaction_builders::TransactionBuilder;
 
             use super::*;
 
@@ -626,9 +616,22 @@ mod inputs {
             async fn can_get_input_message_sender() -> Result<()> {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
                 let handler = contract_instance.methods().get_input_message_sender(2);
-                let mut tx = handler.build_tx().await.unwrap();
-                add_message_input(&mut tx, wallet.clone()).await; // let result = contract_instance
-                tx.tx.precompute(&ChainId::default())?;
+
+                let message = &wallet.get_messages().await.unwrap()[0];
+                let tx = handler
+                    .config_and_build_tx(|builder| {
+                        let message_input = TxInput::message_data_signed(
+                            message.sender.clone().into(),
+                            message.recipient.clone().into(),
+                            message.amount,
+                            message.nonce,
+                            0,
+                            message.data.clone(),
+                        );
+                        builder.inputs_mut().push(message_input.into());
+                    })
+                    .await
+                    .unwrap();
 
                 let messages = wallet.get_messages().await?;
 
@@ -649,9 +652,22 @@ mod inputs {
             async fn can_get_input_message_recipient() -> Result<()> {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
                 let handler = contract_instance.methods().get_input_message_recipient(2);
-                let mut tx = handler.build_tx().await.unwrap();
-                add_message_input(&mut tx, wallet.clone()).await;
-                tx.tx.precompute(&ChainId::default())?;
+
+                let message = &wallet.get_messages().await.unwrap()[0];
+                let tx = handler
+                    .config_and_build_tx(|builder| {
+                        let message_input = TxInput::message_data_signed(
+                            message.sender.clone().into(),
+                            message.recipient.clone().into(),
+                            message.amount,
+                            message.nonce,
+                            0,
+                            message.data.clone(),
+                        );
+                        builder.inputs_mut().push(message_input.into());
+                    })
+                    .await
+                    .unwrap();
 
                 let messages = wallet.get_messages().await?;
 
@@ -672,9 +688,22 @@ mod inputs {
             async fn can_get_input_message_nonce() -> Result<()> {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
                 let handler = contract_instance.methods().get_input_message_nonce(2);
-                let mut tx = handler.build_tx().await.unwrap();
-                add_message_input(&mut tx, wallet.clone()).await;
-                tx.tx.precompute(&ChainId::default())?;
+
+                let message = &wallet.get_messages().await.unwrap()[0];
+                let tx = handler
+                    .config_and_build_tx(|builder| {
+                        let message_input = TxInput::message_data_signed(
+                            message.sender.clone().into(),
+                            message.recipient.clone().into(),
+                            message.amount,
+                            message.nonce,
+                            0,
+                            message.data.clone(),
+                        );
+                        builder.inputs_mut().push(message_input.into());
+                    })
+                    .await
+                    .unwrap();
 
                 let messages = wallet.get_messages().await?;
 
@@ -710,9 +739,22 @@ mod inputs {
             async fn can_get_input_message_data_length() {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
                 let handler = contract_instance.methods().get_input_message_data_length(2);
-                let mut tx = handler.build_tx().await.unwrap();
-                add_message_input(&mut tx, wallet.clone()).await;
-                tx.tx.precompute(&ChainId::default()).unwrap();
+
+                let message = &wallet.get_messages().await.unwrap()[0];
+                let tx = handler
+                    .config_and_build_tx(|builder| {
+                        let message_input = TxInput::message_data_signed(
+                            message.sender.clone().into(),
+                            message.recipient.clone().into(),
+                            message.amount,
+                            message.nonce,
+                            0,
+                            message.data.clone(),
+                        );
+                        builder.inputs_mut().push(message_input.into());
+                    })
+                    .await
+                    .unwrap();
 
                 let provider = wallet.provider().unwrap();
                 let tx_id = provider.send_transaction(tx).await.unwrap();
@@ -732,17 +774,15 @@ mod inputs {
                 let (predicate_bytecode, _, predicate_message) =
                     generate_predicate_inputs(100, &wallet).await;
                 let handler = contract_instance.methods().get_input_predicate_length(2);
-                let mut tx = handler.build_tx().await.unwrap();
-                tx.tx.inputs_mut().push(predicate_message);
-                tx.tx.precompute(&ChainId::default()).unwrap();
+
+                let tx = handler
+                    .config_and_build_tx(|builder| {
+                        builder.inputs_mut().push(predicate_message.into());
+                    })
+                    .await
+                    .unwrap();
 
                 let provider = wallet.provider().unwrap();
-                tx.tx
-                    .estimate_predicates(
-                        &wallet.provider().unwrap().consensus_parameters(),
-                        &provider.network_info().await.unwrap().gas_costs,
-                    )
-                    .unwrap();
 
                 let tx_id = provider.send_transaction(tx).await.unwrap();
                 let receipts = provider
@@ -762,17 +802,15 @@ mod inputs {
                 let handler = contract_instance
                     .methods()
                     .get_input_predicate_data_length(1);
-                let mut tx = handler.build_tx().await.unwrap();
-                tx.tx.inputs_mut().push(predicate_message);
-                tx.tx.precompute(&ChainId::default()).unwrap();
+
+                let tx = handler
+                    .config_and_build_tx(|builder| {
+                        builder.inputs_mut().push(predicate_message.into());
+                    })
+                    .await
+                    .unwrap();
 
                 let provider = wallet.provider().unwrap();
-                tx.tx
-                    .estimate_predicates(
-                        &wallet.provider().unwrap().consensus_parameters(),
-                        &provider.network_info().await.unwrap().gas_costs,
-                    )
-                    .unwrap();
 
                 let tx_id = provider.send_transaction(tx).await.unwrap();
                 let receipts = provider
@@ -793,17 +831,26 @@ mod inputs {
                     contract_instance
                         .methods()
                         .get_input_message_data(2, 0, MESSAGE_DATA);
-                let mut tx = handler.build_tx().await.unwrap();
-                add_message_input(&mut tx, wallet.clone()).await;
-                tx.tx.precompute(&ChainId::default()).unwrap();
+
+                let message = &wallet.get_messages().await.unwrap()[0];
+                let tx = handler
+                    .config_and_build_tx(|builder| {
+                        let message_input = TxInput::message_data_signed(
+                            message.sender.clone().into(),
+                            message.recipient.clone().into(),
+                            message.amount,
+                            message.nonce,
+                            0,
+                            message.data.clone(),
+                        );
+                        builder.inputs_mut().push(message_input.into());
+                    })
+                    .await
+                    .unwrap();
 
                 let provider = wallet.provider().unwrap();
                 let tx_id = provider.send_transaction(tx).await.unwrap();
-                let tx = provider
-                    .get_transaction_by_id(&tx_id)
-                    .await
-                    .unwrap()
-                    .unwrap();
+
                 let receipts = provider
                     .tx_status(&tx_id)
                     .await
@@ -824,21 +871,11 @@ mod inputs {
                     .methods()
                     .get_input_predicate(2, predicate_bytes.clone());
 
-                let mut tx = handler.build_tx().await.unwrap();
-
-                tx.tx.inputs_mut().push(predicate_message);
-                tx.tx.precompute(&ChainId::default()).unwrap();
-                tx.tx
-                    .estimate_predicates(
-                        &wallet.provider().unwrap().consensus_parameters(),
-                        &wallet
-                            .provider()
-                            .unwrap()
-                            .network_info()
-                            .await
-                            .unwrap()
-                            .gas_costs,
-                    )
+                let tx = handler
+                    .config_and_build_tx(move |builder| {
+                        builder.inputs_mut().push(predicate_message.into());
+                    })
+                    .await
                     .unwrap();
 
                 let provider = wallet.provider().unwrap();

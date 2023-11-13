@@ -8,7 +8,7 @@ async fn contract_uses_default_configurables() -> Result<()> {
             "test_projects/configurables_in_contract/out/debug/configurables_in_contract-abi.json"
     ));
 
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
 
     let contract_id = Contract::load_from(
         "test_projects/configurables_in_contract/out/debug/configurables_in_contract.bin",
@@ -51,7 +51,7 @@ async fn contract_configurables() -> Result<()> {
             "test_projects/configurables_in_contract/out/debug/configurables_in_contract-abi.json"
     ));
 
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
 
     let new_str: SizedAsciiString<4> = "FUEL".try_into()?;
     let new_struct = StructWithGeneric {

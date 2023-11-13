@@ -10,7 +10,7 @@ abigen!(Contract(
 ));
 
 async fn get_type_aliases_instance() -> (TypeAliasesTestContract<WalletUnlocked>, ContractId) {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/type_aliases/out/debug/type_aliases.bin",
         LoadConfiguration::default(),
@@ -31,7 +31,10 @@ async fn test_foo() -> Result<()> {
 
     let x = Bits256([1u8; 32]);
 
-    let y = [Identity::ContractId(ContractId::new([1u8; 32])), Identity::ContractId(ContractId::new([1u8; 32]))];
+    let y = [
+        Identity::ContractId(ContractId::new([1u8; 32])),
+        Identity::ContractId(ContractId::new([1u8; 32])),
+    ];
 
     let z = IdentityAliasWrapper { i: y[0].clone() };
 

@@ -7,7 +7,7 @@ abigen!(Contract(
 
 #[tokio::test]
 async fn run_methods_test() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let instance = get_methods_instance(wallet).await;
 
     let result = instance.methods().test_function().call().await.unwrap();
