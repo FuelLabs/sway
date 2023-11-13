@@ -2124,6 +2124,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         .unwrap_or_else(|| current_dir);
 
     let build_plan = BuildPlan::from_build_opts(&build_options)?;
+    eprintln!("Build plan: {build_plan:?}");
     let graph = build_plan.graph();
     let manifest_map = build_plan.manifest_map();
 
