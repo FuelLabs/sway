@@ -7,7 +7,7 @@ abigen!(Contract(
 ));
 
 async fn test_storage_init_instance() -> TestStorageInitContract<WalletUnlocked> {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/storage_init/out/debug/storage_init.bin",
         LoadConfiguration::default().with_storage_configuration(
