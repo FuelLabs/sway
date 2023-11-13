@@ -17,7 +17,7 @@ fuel-core-client = { version = "0.20.8", default-features = false }
 fuel-vm = "0.35"
 
 # Dependencies from the `fuels-rs` repository:
-fuels = { git = "https://github.com/FuelLabs/fuels-rs.git", branch = "xunilrj/downgrade-sha2-version", features = [
+fuels = { git = "https://github.com/FuelLabs/fuels-rs.git", branch = "xunilrj/allow-tx-builder-config", features = [
     "fuel-core-lib",
 ]}
 
