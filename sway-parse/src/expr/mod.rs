@@ -507,11 +507,11 @@ fn parse_mul(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
 }
 
 fn parse_unary_op(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
-    if let Some((ref_token, expr)) = parse_op_rhs(parser, ctx, parse_unary_op)? {
-        return Ok(Expr::Ref { ref_token, expr });
+    if let Some((ampersand_token, expr)) = parse_op_rhs(parser, ctx, parse_unary_op)? {
+        return Ok(Expr::Ref { ampersand_token, expr });
     }
-    if let Some((deref_token, expr)) = parse_op_rhs(parser, ctx, parse_unary_op)? {
-        return Ok(Expr::Deref { deref_token, expr });
+    if let Some((star_token, expr)) = parse_op_rhs(parser, ctx, parse_unary_op)? {
+        return Ok(Expr::Deref { star_token, expr });
     }
     if let Some((bang_token, expr)) = parse_op_rhs(parser, ctx, parse_unary_op)? {
         return Ok(Expr::Not { bang_token, expr });

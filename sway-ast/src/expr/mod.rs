@@ -68,11 +68,11 @@ pub enum Expr {
         field_span: Span,
     },
     Ref {
-        ref_token: RefToken,
+        ampersand_token: AmpersandToken,
         expr: Box<Expr>,
     },
     Deref {
-        deref_token: DerefToken,
+        star_token: StarToken,
         expr: Box<Expr>,
     },
     Not {
@@ -227,8 +227,8 @@ impl Spanned for Expr {
             Expr::TupleFieldProjection {
                 target, field_span, ..
             } => Span::join(target.span(), field_span.clone()),
-            Expr::Ref { ref_token, expr } => Span::join(ref_token.span(), expr.span()),
-            Expr::Deref { deref_token, expr } => Span::join(deref_token.span(), expr.span()),
+            Expr::Ref { ampersand_token, expr } => Span::join(ampersand_token.span(), expr.span()),
+            Expr::Deref { star_token, expr } => Span::join(star_token.span(), expr.span()),
             Expr::Not { bang_token, expr } => Span::join(bang_token.span(), expr.span()),
             Expr::Pow { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
             Expr::Mul { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
