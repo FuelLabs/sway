@@ -1,10 +1,9 @@
-use sway_error::handler::{ErrorEmitted, Handler};
-
 use crate::{
     language::{parsed::*, ty, CallPath},
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
 };
+use sway_error::handler::{ErrorEmitted, Handler};
 
 impl ty::TyStructDecl {
     pub(crate) fn type_check(
@@ -70,7 +69,9 @@ impl ty::TyStructField {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(ctx.engines(), TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| {
+                type_engine.insert(ctx.engines(), TypeInfo::ErrorRecovery(err), None)
+            });
         let field = ty::TyStructField {
             name: field.name,
             span: field.span,

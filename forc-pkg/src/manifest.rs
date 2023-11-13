@@ -615,7 +615,7 @@ impl PackageManifest {
     /// Note: If only `core` is specified, we are unable to implicitly add `std` as we cannot
     /// guarantee that the user's `core` is compatible with the implicit `std`.
     fn implicitly_include_std_if_missing(&mut self) {
-        use crate::{CORE, STD};
+        use sway_types::constants::{CORE, STD};
         // Don't include `std` if:
         // - this *is* `core` or `std`.
         // - either `core` or `std` packages are already specified.
@@ -754,7 +754,19 @@ impl Default for BuildProfile {
 }
 
 /// The definition for the implicit `std` dependency.
+///
+/// This can be configured using environment variables:
+/// - use `FORC_IMPLICIT_STD_PATH` for the path for the std-lib;
+/// - use `FORC_IMPLICIT_STD_GIT`, `FORC_IMPLICIT_STD_GIT_TAG` and/or `FORC_IMPLICIT_STD_GIT_BRANCH` to configure
+/// the git repo of the std-lib.
 fn implicit_std_dep() -> Dependency {
+    if let Ok(path) = std::env::var("FORC_IMPLICIT_STD_PATH") {
+        return Dependency::Detailed(DependencyDetails {
+            path: Some(path),
+            ..Default::default()
+        });
+    }
+
     // Here, we use the `forc-pkg` crate version formatted with the `v` prefix (e.g. "v1.2.3"),
     // or the revision commit hash (e.g. "abcdefg").
     //
@@ -763,7 +775,9 @@ fn implicit_std_dep() -> Dependency {
     //
     // This is important to ensure that the version of `sway-core` that is baked into `forc-pkg` is
     // compatible with the version of the `std` lib.
-    const VERSION: &str = env!("CARGO_PKG_VERSION");
+    let tag = std::env::var("FORC_IMPLICIT_STD_GIT_TAG")
+        .ok()
+        .unwrap_or_else(|| format!("v{}", env!("CARGO_PKG_VERSION")));
     const SWAY_GIT_REPO_URL: &str = "https://github.com/fuellabs/sway";
 
     fn rev_from_build_metadata(build_metadata: &str) -> Option<String> {
@@ -771,15 +785,16 @@ fn implicit_std_dep() -> Dependency {
         build_metadata.split('.').last().map(|r| r.to_string())
     }
 
-    let sway_git_tag: String = "v".to_string() + VERSION;
-
     let mut det = DependencyDetails {
-        git: Some(SWAY_GIT_REPO_URL.to_string()),
-        tag: Some(sway_git_tag),
+        git: std::env::var("FORC_IMPLICIT_STD_GIT")
+            .ok()
+            .or_else(|| Some(SWAY_GIT_REPO_URL.to_string())),
+        tag: Some(tag),
+        branch: std::env::var("FORC_IMPLICIT_STD_GIT_BRANCH").ok(),
         ..Default::default()
     };
 
-    if let Some((_tag, build_metadata)) = VERSION.split_once('+') {
+    if let Some((_, build_metadata)) = det.tag.as_ref().unwrap().split_once('+') {
         let rev = rev_from_build_metadata(build_metadata);
 
         // If some revision is available and parsed from the 'nightly' build metadata,

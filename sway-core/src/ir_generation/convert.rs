@@ -21,12 +21,13 @@ pub(super) fn convert_literal_to_value(context: &mut Context, ast_literal: &Lite
         // concerned.
         //
         // XXX The above isn't true for other targets.  We need to improved this.
-        Literal::U8(n) => Constant::get_uint(context, 64, *n as u64),
+        // FIXME
+        Literal::U8(n) => Constant::get_uint(context, 8, *n as u64),
         Literal::U16(n) => Constant::get_uint(context, 64, *n as u64),
         Literal::U32(n) => Constant::get_uint(context, 64, *n as u64),
         Literal::U64(n) => Constant::get_uint(context, 64, *n),
         Literal::U256(n) => Constant::get_uint256(context, n.clone()),
-        Literal::Numeric(n) => Constant::get_uint(context, 64, *n),
+        Literal::Numeric(_) => unreachable!(),
         Literal::String(s) => Constant::get_string(context, s.as_str().as_bytes().to_vec()),
         Literal::Boolean(b) => Constant::get_bool(context, *b),
         Literal::B256(bs) => Constant::get_b256(context, *bs),
@@ -39,12 +40,12 @@ pub(super) fn convert_literal_to_constant(
 ) -> Constant {
     match ast_literal {
         // All integers are `u64`.  See comment above.
-        Literal::U8(n) => Constant::new_uint(context, 64, *n as u64),
+        Literal::U8(n) => Constant::new_uint(context, 8, *n as u64),
         Literal::U16(n) => Constant::new_uint(context, 64, *n as u64),
         Literal::U32(n) => Constant::new_uint(context, 64, *n as u64),
         Literal::U64(n) => Constant::new_uint(context, 64, *n),
         Literal::U256(n) => Constant::new_uint256(context, n.clone()),
-        Literal::Numeric(n) => Constant::new_uint(context, 64, *n),
+        Literal::Numeric(_) => unreachable!(),
         Literal::String(s) => Constant::new_string(context, s.as_str().as_bytes().to_vec()),
         Literal::Boolean(b) => Constant::new_bool(context, *b),
         Literal::B256(bs) => Constant::new_b256(context, *bs),
@@ -100,10 +101,13 @@ fn convert_resolved_type(
     }
 
     Ok(match ast_type {
-        // All integers are `u64`, see comment in convert_literal_to_value() above.
+        // See comment in convert_literal_to_value() above.
         TypeInfo::UnsignedInteger(IntegerBits::V256) => Type::get_uint256(context),
-        TypeInfo::UnsignedInteger(_) => Type::get_uint64(context),
-        TypeInfo::Numeric => Type::get_uint64(context),
+        TypeInfo::UnsignedInteger(IntegerBits::Eight) => Type::get_uint8(context),
+        TypeInfo::UnsignedInteger(IntegerBits::Sixteen)
+        | TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)
+        | TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
+        | TypeInfo::Numeric => Type::get_uint64(context),
         TypeInfo::Boolean => Type::get_bool(context),
         TypeInfo::B256 => Type::get_b256(context),
         TypeInfo::StringSlice => Type::get_slice(context),

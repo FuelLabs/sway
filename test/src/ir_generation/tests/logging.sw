@@ -43,8 +43,8 @@ fn main() {
 // check: log u64 $VAL, $VAL
 // check: log u64 $VAL, $VAL
 // check: log u64 $VAL, $VAL
-// check: log u64 $VAL, $VAL
+// check: log u8 $VAL, $VAL
 // check: log string<4> $VAL, $VAL
-// check: log [u64; 3] $VAL, $VAL
+// check: log [u8; 3] $VAL, $VAL
 // check: log { bool, b256, u64 } $VAL, $VAL
 // check: log { u64 } $VAL, $VAL

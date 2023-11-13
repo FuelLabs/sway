@@ -147,6 +147,13 @@ pub fn first_param() -> u64 {
 /// }
 /// ```
 pub fn second_param<T>() -> T {
+    if __size_of::<T>() == 1 {
+        let v = frame_ptr().add::<u64>(SECOND_PARAMETER_OFFSET).read::<u64>();
+        return asm(v: v) {
+            v: T
+        };
+    }
+
     if !is_reference_type::<T>() {
         frame_ptr().add::<u64>(SECOND_PARAMETER_OFFSET).read::<T>()
     } else {

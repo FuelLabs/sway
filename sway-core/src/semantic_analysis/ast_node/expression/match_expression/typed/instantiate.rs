@@ -23,10 +23,13 @@ pub(super) struct Instantiate {
 impl Instantiate {
     pub(super) fn new(engines: &Engines, span: Span) -> Self {
         let type_engine = engines.te();
-        let u64_type =
-            type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour));
-        let boolean_type = type_engine.insert(engines, TypeInfo::Boolean);
-        let revert_type = type_engine.insert(engines, TypeInfo::Unknown); // TODO: Change this to the `Never` type once available.
+        let u64_type = type_engine.insert(
+            engines,
+            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+            None,
+        );
+        let boolean_type = type_engine.insert(engines, TypeInfo::Boolean, None);
+        let revert_type = type_engine.insert(engines, TypeInfo::Unknown, None); // TODO: Change this to the `Never` type once available.
 
         Self {
             span,
@@ -105,6 +108,7 @@ impl Instantiate {
     pub(super) fn code_block_with_implicit_return_u64(&self, value: u64) -> ty::TyExpression {
         ty::TyExpression {
             expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
+                whole_block_span: self.dummy_span(),
                 contents: vec![ty::TyAstNode {
                     content: ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
                         expression: ty::TyExpressionVariant::Literal(Literal::U64(value)),
@@ -127,6 +131,7 @@ impl Instantiate {
     ) -> ty::TyExpression {
         ty::TyExpression {
             expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
+                whole_block_span: self.dummy_span(),
                 contents: vec![ty::TyAstNode {
                     content: ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
                         expression: ty::TyExpressionVariant::IntrinsicFunction(

@@ -1,7 +1,9 @@
 //! This module is responsible for implementing handlers for Language Server
 //! Protocol. This module specifically handles requests.
 
-use crate::{capabilities, lsp_ext, server_state::ServerState, utils::debug};
+use crate::{
+    capabilities, core::session::build_plan, lsp_ext, server_state::ServerState, utils::debug,
+};
 use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions, TracingWriterMode};
 use lsp_types::{
     CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse,
@@ -14,6 +16,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use sway_types::{Ident, Spanned};
+use sway_utils::PerformanceData;
 use tower_lsp::jsonrpc::Result;
 use tracing::metadata::LevelFilter;
 
@@ -407,7 +410,7 @@ pub fn handle_show_ast(
 }
 
 /// This method is triggered when the use hits enter or pastes a newline in the editor.
-pub(crate) fn on_enter(
+pub(crate) fn handle_on_enter(
     state: &ServerState,
     params: lsp_ext::OnEnterParams,
 ) -> Result<Option<WorkspaceEdit>> {
@@ -419,6 +422,54 @@ pub(crate) fn on_enter(
         Ok((uri, session)) => {
             // handle on_enter capabilities if they are enabled
             Ok(capabilities::on_enter(config, &session, &uri, &params))
+        }
+        Err(err) => {
+            tracing::error!("{}", err.to_string());
+            Ok(None)
+        }
+    }
+}
+
+/// Returns a [String] of the GraphViz DOT representation of a graph.
+pub fn handle_visualize(
+    _state: &ServerState,
+    params: lsp_ext::VisualizeParams,
+) -> Result<Option<String>> {
+    match params.graph_kind.as_str() {
+        "build_plan" => match build_plan(&params.text_document.uri) {
+            Ok(build_plan) => Ok(Some(
+                build_plan.visualize(Some("vscode://file".to_string())),
+            )),
+            Err(err) => {
+                tracing::error!("{}", err.to_string());
+                Ok(None)
+            }
+        },
+        _ => Ok(None),
+    }
+}
+
+/// This method is triggered by the test suite to request the latest compilation metrics.
+pub(crate) fn metrics(
+    state: &ServerState,
+    params: lsp_ext::MetricsParams,
+) -> Result<Option<Vec<(String, PerformanceData)>>> {
+    match state
+        .sessions
+        .uri_and_session_from_workspace(&params.text_document.uri)
+    {
+        Ok((_, session)) => {
+            let engines = session.engines.read();
+            let mut metrics = vec![];
+            for kv in session.metrics.iter() {
+                let path = engines
+                    .se()
+                    .get_path(kv.key())
+                    .to_string_lossy()
+                    .to_string();
+                metrics.push((path, kv.value().clone()));
+            }
+            Ok(Some(metrics))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());

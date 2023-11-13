@@ -1,29 +1,43 @@
-use core::fmt::Write;
-use hashbrown::hash_map::RawEntryMut;
-use hashbrown::HashMap;
-use std::sync::RwLock;
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::integer_bits::IntegerBits;
-
-use crate::concurrent_slab::ListDisplay;
 use crate::{
-    concurrent_slab::ConcurrentSlab, decl_engine::*, engine_threading::*,
+    concurrent_slab::{ConcurrentSlab, ListDisplay},
+    decl_engine::*,
+    engine_threading::*,
     type_system::priv_prelude::*,
 };
+use core::fmt::Write;
+use hashbrown::{hash_map::RawEntryMut, HashMap};
+use std::sync::RwLock;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+    type_error::TypeError,
+};
+use sway_types::{integer_bits::IntegerBits, span::Span, ModuleId, SourceId};
 
-use sway_error::{error::CompileError, type_error::TypeError};
-use sway_types::span::Span;
+use super::unify::unifier::UnifyKind;
 
 #[derive(Debug, Default)]
 pub struct TypeEngine {
-    pub(super) slab: ConcurrentSlab<TypeInfo>,
-    id_map: RwLock<HashMap<TypeInfo, TypeId>>,
+    pub(super) slab: ConcurrentSlab<TypeSourceInfo>,
+    id_map: RwLock<HashMap<TypeSourceInfo, TypeId>>,
 }
 
 impl TypeEngine {
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
-    pub(crate) fn insert(&self, engines: &Engines, ty: TypeInfo) -> TypeId {
+    pub(crate) fn insert(
+        &self,
+        engines: &Engines,
+        ty: TypeInfo,
+        source_id: Option<&SourceId>,
+    ) -> TypeId {
+        let source_id = source_id
+            .map(Clone::clone)
+            .or_else(|| info_to_source_id(&ty));
+        let ty = TypeSourceInfo {
+            type_info: ty,
+            source_id,
+        };
         let mut id_map = self.id_map.write().unwrap();
 
         let hash_builder = id_map.hasher().clone();
@@ -34,7 +48,7 @@ impl TypeEngine {
             .from_hash(ty_hash, |x| x.eq(&ty, engines));
         match raw_entry {
             RawEntryMut::Occupied(o) => return *o.get(),
-            RawEntryMut::Vacant(_) if ty.can_change(engines.de()) => {
+            RawEntryMut::Vacant(_) if ty.type_info.can_change(engines.de()) => {
                 TypeId::new(self.slab.insert(ty))
             }
             RawEntryMut::Vacant(v) => {
@@ -45,14 +59,22 @@ impl TypeEngine {
         }
     }
 
-    pub fn replace(&self, id: TypeId, engines: &Engines, new_value: TypeInfo) {
+    /// Removes all data associated with `module_id` from the type engine.
+    pub fn clear_module(&mut self, module_id: &ModuleId) {
+        self.slab.retain(|ty| match &ty.source_id {
+            Some(source_id) => &source_id.module_id() != module_id,
+            None => false,
+        });
+    }
+
+    pub fn replace(&self, id: TypeId, engines: &Engines, new_value: TypeSourceInfo) {
         let prev_value = self.slab.get(id.index());
         self.slab.replace(id, &prev_value, new_value, engines);
     }
 
     /// Performs a lookup of `id` into the [TypeEngine].
     pub fn get(&self, id: TypeId) -> TypeInfo {
-        self.slab.get(id.index())
+        self.slab.get(id.index()).type_info
     }
 
     /// Performs a lookup of `id` into the [TypeEngine] recursing when finding a
@@ -60,7 +82,7 @@ impl TypeEngine {
     pub fn get_unaliased(&self, id: TypeId) -> TypeInfo {
         // A slight infinite loop concern if we somehow have self-referential aliases, but that
         // shouldn't be possible.
-        match self.slab.get(id.index()) {
+        match self.slab.get(id.index()).type_info {
             TypeInfo::Alias { ty, .. } => self.get_unaliased(ty.type_id),
             ty_info => ty_info,
         }
@@ -70,9 +92,7 @@ impl TypeEngine {
     /// error if there is a conflict between them).
     ///
     /// More specifically, this function tries to make `received` equivalent to
-    /// `expected`, except in cases where `received` has more type information
-    /// than `expected` (e.g. when `expected` is a generic type and `received`
-    /// is not).
+    /// `expected`.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn unify(
         &self,
@@ -83,6 +103,90 @@ impl TypeEngine {
         span: &Span,
         help_text: &str,
         err_override: Option<CompileError>,
+    ) {
+        self.unify_helper(
+            handler,
+            engines,
+            received,
+            expected,
+            span,
+            help_text,
+            err_override,
+            UnifyKind::Default,
+        );
+    }
+
+    /// Make the types of `received` and `expected` equivalent (or produce an
+    /// error if there is a conflict between them).
+    ///
+    /// More specifically, this function tries to make `received` equivalent to
+    /// `expected`, except in cases where `received` has more type information
+    /// than `expected` (e.g. when `expected` is a self type and `received`
+    /// is not).
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn unify_with_self(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        received: TypeId,
+        expected: TypeId,
+        span: &Span,
+        help_text: &str,
+        err_override: Option<CompileError>,
+    ) {
+        self.unify_helper(
+            handler,
+            engines,
+            received,
+            expected,
+            span,
+            help_text,
+            err_override,
+            UnifyKind::WithSelf,
+        );
+    }
+
+    /// Make the types of `received` and `expected` equivalent (or produce an
+    /// error if there is a conflict between them).
+    ///
+    /// More specifically, this function tries to make `received` equivalent to
+    /// `expected`, except in cases where `received` has more type information
+    /// than `expected` (e.g. when `expected` is a generic type and `received`
+    /// is not).
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn unify_with_generic(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        received: TypeId,
+        expected: TypeId,
+        span: &Span,
+        help_text: &str,
+        err_override: Option<CompileError>,
+    ) {
+        self.unify_helper(
+            handler,
+            engines,
+            received,
+            expected,
+            span,
+            help_text,
+            err_override,
+            UnifyKind::WithGeneric,
+        );
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn unify_helper(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        received: TypeId,
+        expected: TypeId,
+        span: &Span,
+        help_text: &str,
+        err_override: Option<CompileError>,
+        unify_kind: UnifyKind,
     ) {
         if !UnifyCheck::coercion(engines).check(received, expected) {
             // create a "mismatched type" error unless the `err_override`
@@ -103,7 +207,9 @@ impl TypeEngine {
             return;
         }
         let h = Handler::default();
-        Unifier::new(engines, help_text).unify(handler, received, expected, span);
+        let unifier = Unifier::new(engines, help_text, unify_kind);
+
+        unifier.unify(handler, received, expected, span);
         match err_override {
             Some(err_override) if h.has_errors() => {
                 handler.emit_err(err_override);
@@ -225,7 +331,11 @@ impl TypeEngine {
                     handler,
                     engines,
                     type_id,
-                    self.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+                    self.insert(
+                        engines,
+                        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                        span.source_id(),
+                    ),
                     span,
                     "",
                     None,
@@ -243,10 +353,29 @@ impl TypeEngine {
         self.slab.with_slice(|elems| {
             let list = elems
                 .iter()
-                .map(|type_info| format!("{:?}", engines.help_out(type_info)));
+                .map(|ty| format!("{:?}", engines.help_out(&ty.type_info)));
             let list = ListDisplay { list };
             write!(builder, "TypeEngine {{\n{list}\n}}").unwrap();
         });
         builder
+    }
+}
+
+/// Maps specific `TypeInfo` variants to a reserved `SourceId`, returning `None` for non-mapped types.
+fn info_to_source_id(ty: &TypeInfo) -> Option<SourceId> {
+    match ty {
+        TypeInfo::Unknown
+        | TypeInfo::UnsignedInteger(_)
+        | TypeInfo::Numeric
+        | TypeInfo::Boolean
+        | TypeInfo::B256
+        | TypeInfo::RawUntypedPtr
+        | TypeInfo::RawUntypedSlice
+        | TypeInfo::StringSlice
+        | TypeInfo::Contract
+        | TypeInfo::StringArray(_)
+        | TypeInfo::Array(_, _) => Some(SourceId::reserved()),
+        TypeInfo::Tuple(v) if v.is_empty() => Some(SourceId::reserved()),
+        _ => None,
     }
 }

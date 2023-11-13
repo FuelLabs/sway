@@ -54,7 +54,7 @@ fn main() -> u64 {
 // check: move $REG $$$$arg0
 // check: move $REG $$$$arg1
 //
-// check: sw   $$$$locbase $$zero i0
+// check: sb   $$$$locbase $$zero i0
 // ...
 // check: cfsi i8
 // check: jmp $$$$reta

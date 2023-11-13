@@ -4,9 +4,15 @@
 
 use crate::{GotoDefinition, HoverDocumentation, Rename};
 use assert_json_diff::assert_json_eq;
+use regex::Regex;
 use serde_json::json;
 use std::{borrow::Cow, path::Path};
-use sway_lsp::{handlers::request, lsp_ext::ShowAstParams, server_state::ServerState};
+use sway_lsp::{
+    handlers::request,
+    lsp_ext::{ShowAstParams, VisualizeParams},
+    server_state::ServerState,
+};
+use sway_utils::PerformanceData;
 use tower::{Service, ServiceExt};
 use tower_lsp::{
     jsonrpc::{Id, Request, Response},
@@ -139,6 +145,46 @@ pub(crate) async fn show_ast_request(
         uri: Url::parse(&format!("{save_path}/{ast_kind}.rs")).unwrap(),
     };
     assert_eq!(expected, response.unwrap().unwrap());
+}
+
+pub(crate) async fn visualize_request(server: &ServerState, uri: &Url, graph_kind: &str) {
+    let params = VisualizeParams {
+        text_document: TextDocumentIdentifier { uri: uri.clone() },
+        graph_kind: graph_kind.to_string(),
+    };
+
+    let response = request::handle_visualize(server, params).unwrap().unwrap();
+    let re = Regex::new(r#"digraph \{
+    0 \[ label = "core" shape = box URL = "vscode://file/[[:ascii:]]+/sway-lib-core/Forc.toml"\]
+    1 \[ label = "struct_field_access" shape = box URL = "vscode://file/[[:ascii:]]+/struct_field_access/Forc.toml"\]
+    1 -> 0 \[ \]
+\}
+"#).unwrap();
+    assert!(!re.find(response.as_str()).unwrap().is_empty());
+}
+
+pub(crate) async fn metrics_request(
+    service: &mut LspService<ServerState>,
+    uri: &Url,
+) -> Vec<(String, PerformanceData)> {
+    let params = json!({
+        "textDocument": {
+            "uri": uri,
+        },
+    });
+    let request = build_request_with_id("sway/metrics", params, 1);
+    let result = call_request(service, request.clone())
+        .await
+        .unwrap()
+        .unwrap();
+    let value = result.result().unwrap().as_array();
+    let mut res = vec![];
+    for v in value.unwrap().iter() {
+        let path = v.get(0).unwrap().as_str().unwrap();
+        let metric = serde_json::from_value(v.get(1).unwrap().clone()).unwrap();
+        res.push((path.to_string(), metric));
+    }
+    res
 }
 
 pub(crate) fn semantic_tokens_request(server: &ServerState, uri: &Url) {

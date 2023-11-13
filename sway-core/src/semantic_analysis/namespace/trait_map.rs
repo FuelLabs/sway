@@ -199,6 +199,7 @@ impl TraitMap {
                     },
                     root_type_id: None,
                 },
+                trait_name.suffix.span().source_id(),
             );
             for TraitEntry {
                 key:
@@ -233,9 +234,10 @@ impl TraitMap {
                         },
                         root_type_id: None,
                     },
+                    map_trait_name_suffix.span().source_id(),
                 );
 
-                let unify_checker = UnifyCheck::constraint_subset(engines);
+                let unify_checker = UnifyCheck::non_generic_constraint_subset(engines);
                 let types_are_subset = unify_checker.check(type_id, *map_type_id);
                 let traits_are_subset = unify_checker.check(trait_type_id, map_trait_type_id);
 
@@ -1018,19 +1020,20 @@ impl TraitMap {
             .filter_map(|e| {
                 let key = &e.key;
                 let suffix = &key.name.suffix;
-                let map_trait_type_id = type_engine.insert(
-                    engines,
-                    TypeInfo::Custom {
-                        qualified_call_path: suffix.name.clone().into(),
-                        type_arguments: if suffix.args.is_empty() {
-                            None
-                        } else {
-                            Some(suffix.args.to_vec())
-                        },
-                        root_type_id: None,
-                    },
-                );
                 if unify_check.check(type_id, key.type_id) {
+                    let map_trait_type_id = type_engine.insert(
+                        engines,
+                        TypeInfo::Custom {
+                            qualified_call_path: suffix.name.clone().into(),
+                            type_arguments: if suffix.args.is_empty() {
+                                None
+                            } else {
+                                Some(suffix.args.to_vec())
+                            },
+                            root_type_id: None,
+                        },
+                        suffix.name.span().source_id(),
+                    );
                     Some((suffix.name.clone(), map_trait_type_id))
                 } else {
                     None
@@ -1056,6 +1059,7 @@ impl TraitMap {
                         },
                         root_type_id: None,
                     },
+                    constraint_trait_name.span().source_id(),
                 );
                 (c.trait_name.suffix.clone(), constraint_type_id)
             })

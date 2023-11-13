@@ -48,6 +48,7 @@ impl StorageAccess for Contract {
         storage.s.write(s);
     }
     #[storage(write)]fn set_boolean(boolean: bool) {
+        log(boolean);
         storage.boolean.write(boolean);
     }
     #[storage(write)]fn set_int8(int8: u8) {

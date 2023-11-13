@@ -161,7 +161,7 @@ async fn stores_long_string_as_bytes() {
 
     assert_eq!(instance.methods().len().call().await.unwrap().value, 0);
 
-    let tx_params = TxParameters::default().set_gas_limit(GAS_LIMIT);
+    let tx_params = TxParameters::default().with_gas_limit(GAS_LIMIT);
     instance
         .methods()
         .store_bytes(input.clone().as_bytes().into())
@@ -175,7 +175,7 @@ async fn stores_long_string_as_bytes() {
         input.clone().as_bytes().len() as u64
     );
 
-    let tx_params = TxParameters::default().set_gas_limit(GAS_LIMIT);
+    let tx_params = TxParameters::default().with_gas_limit(GAS_LIMIT);
     instance
         .methods()
         .assert_stored_bytes(input.as_bytes().into())

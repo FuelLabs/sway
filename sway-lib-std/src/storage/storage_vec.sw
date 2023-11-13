@@ -909,6 +909,9 @@ impl<V> StorageKey<StorageVec<V>> {
     }
 }
 
+// Add padding to type so it can correctly use the storage api
 fn offset_calculator<T>(offset: u64) -> u64 {
-    (offset * __size_of::<T>()) / 8
+    let size_in_bytes = __size_of::<T>();
+    let size_in_bytes = (size_in_bytes + (8 - 1)) - ((size_in_bytes + (8 - 1)) % 8);
+    (offset * size_in_bytes) / 8
 }

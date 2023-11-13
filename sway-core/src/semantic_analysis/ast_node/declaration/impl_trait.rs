@@ -100,7 +100,7 @@ impl TyImplTrait {
 
         // Unify the "self" type param and the type that we are implementing for
         handler.scope(|h| {
-            type_engine.unify(
+            type_engine.unify_with_self(
                 h,
                 engines,
                 implementing_for.type_id,
@@ -115,7 +115,7 @@ impl TyImplTrait {
         // Update the context
         let mut ctx = ctx
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown))
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
             .with_self_type(Some(implementing_for.type_id));
 
         let impl_trait = match ctx
@@ -208,7 +208,7 @@ impl TyImplTrait {
                 // Unify the "self" type param from the abi declaration with
                 // the type that we are implementing for.
                 handler.scope(|h| {
-                    type_engine.unify(
+                    type_engine.unify_with_self(
                         h,
                         engines,
                         implementing_for.type_id,
@@ -341,14 +341,14 @@ impl TyImplTrait {
 
         implementing_for.type_id.check_type_parameter_bounds(
             handler,
-            &ctx,
+            ctx.by_ref(),
             &implementing_for.span,
             vec![],
         )?;
 
         // Unify the "self" type param and the type that we are implementing for
         handler.scope(|h| {
-            type_engine.unify(
+            type_engine.unify_with_self(
                 h,
                 engines,
                 implementing_for.type_id,
@@ -362,7 +362,7 @@ impl TyImplTrait {
 
         let mut ctx = ctx
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
 
         // type check the items inside of the impl block
         let mut new_items = vec![];
@@ -625,7 +625,7 @@ fn type_check_trait_implementation(
     for (type_arg, type_param) in trait_type_arguments.iter().zip(trait_type_parameters) {
         type_arg.type_id.check_type_parameter_bounds(
             handler,
-            &ctx,
+            ctx.by_ref(),
             &type_arg.span(),
             type_param.trait_constraints.clone(),
         )?;
@@ -778,14 +778,23 @@ fn type_check_trait_implementation(
                             name: Ident::new_with_override("Self".into(), Span::dummy()),
                             trait_constraints: VecSet(vec![]),
                         },
+                        None,
                     ),
                 };
                 trait_type_mapping.extend(TypeSubstMap::from_type_parameters_and_type_arguments(
-                    vec![type_engine.insert(engines, old_type_decl_info1)],
+                    vec![type_engine.insert(
+                        engines,
+                        old_type_decl_info1,
+                        type_decl.name.span().source_id(),
+                    )],
                     vec![type_decl.ty.clone().unwrap().type_id],
                 ));
                 trait_type_mapping.extend(TypeSubstMap::from_type_parameters_and_type_arguments(
-                    vec![type_engine.insert(engines, old_type_decl_info2)],
+                    vec![type_engine.insert(
+                        engines,
+                        old_type_decl_info2,
+                        type_decl.name.span().source_id(),
+                    )],
                     vec![type_decl.ty.clone().unwrap().type_id],
                 ));
             }
@@ -965,7 +974,7 @@ fn type_check_impl_method(
     let mut ctx = ctx
         .by_ref()
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
 
     let interface_name = || -> InterfaceName {
         if is_contract {
@@ -1188,7 +1197,7 @@ fn type_check_const_decl(
     let mut ctx = ctx
         .by_ref()
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
 
     let interface_name = || -> InterfaceName {
         if is_contract {
@@ -1270,7 +1279,7 @@ fn type_check_type_decl(
     let mut ctx = ctx
         .by_ref()
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
 
     let interface_name = || -> InterfaceName {
         if is_contract {

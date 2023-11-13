@@ -49,9 +49,9 @@ async fn script_configurables() -> Result<()> {
     let new_enum = EnumWithGeneric::VariantTwo;
 
     let configurables = MyScriptConfigurables::new()
-        .set_STR_4(new_str.clone())
-        .set_STRUCT(new_struct.clone())
-        .set_ENUM(new_enum.clone());
+        .with_STR_4(new_str.clone())
+        .with_STRUCT(new_struct.clone())
+        .with_ENUM(new_enum.clone());
 
     let response = instance
         .with_configurables(configurables)
@@ -68,7 +68,7 @@ async fn script_configurables() -> Result<()> {
         new_enum,
     );
 
-    assert_eq!(response.value, expected_value);
+    pretty_assertions::assert_eq!(response.value, expected_value);
 
     Ok(())
 }

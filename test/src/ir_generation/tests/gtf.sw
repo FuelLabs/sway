@@ -19,8 +19,9 @@ fn main() -> (u64, b256) {
 
 // check: $(gtf1_index=$VAL) = const u64 1
 // check: $(gtf1=$VAL) = gtf $gtf1_index, 66
+// check: $(gtf2=$VAL) = bitcast $gtf1 to u64
 // check: $(field1_var=$VAL) = get_local ptr u64, field1
-// check:  store $gtf1 to $field1_var
+// check:  store $gtf2 to $field1_var
 
 // check: $(gtf2_index=$VAL) = const u64 2
 // check: $(gtf2=$VAL) = gtf $gtf2_index, 119
@@ -34,7 +35,7 @@ fn main() -> (u64, b256) {
 
 // check: gtf  $REG $$one i66
 
-// check: lw   $(two=$REG) data_0
+// check: load $(two=$REG) data_0
 // check: gtf  $(b256_ptr=$REG) $two i119
 // check: movi $(len_reg=$REG) i32
 // check: mcp  $REG $b256_ptr $len_reg

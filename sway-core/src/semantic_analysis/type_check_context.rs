@@ -45,6 +45,9 @@ pub struct TypeCheckContext<'a> {
     ///
     /// Assists type inference.
     type_annotation: TypeId,
+    /// When true unify_with_type_annotation will use unify_with_generic instead of the default unify.
+    /// This ensures that expected generic types are unified to more specific received types.
+    unify_generic: bool,
     /// While type-checking an `impl` (whether inherent or for a `trait`/`abi`) this represents the
     /// type for which we are implementing. For example in `impl Foo {}` or `impl Trait for Foo
     /// {}`, this represents the type ID of `Foo`.
@@ -101,7 +104,8 @@ impl<'a> TypeCheckContext<'a> {
         Self {
             namespace,
             engines,
-            type_annotation: engines.te().insert(engines, TypeInfo::Unknown),
+            type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
+            unify_generic: false,
             self_type: None,
             type_subst: TypeSubstMap::new(),
             help_text: "",
@@ -126,6 +130,7 @@ impl<'a> TypeCheckContext<'a> {
         TypeCheckContext {
             namespace: self.namespace,
             type_annotation: self.type_annotation,
+            unify_generic: self.unify_generic,
             self_type: self.self_type,
             type_subst: self.type_subst.clone(),
             abi_mode: self.abi_mode.clone(),
@@ -144,6 +149,7 @@ impl<'a> TypeCheckContext<'a> {
         TypeCheckContext {
             namespace,
             type_annotation: self.type_annotation,
+            unify_generic: self.unify_generic,
             self_type: self.self_type,
             type_subst: self.type_subst,
             abi_mode: self.abi_mode,
@@ -186,6 +192,14 @@ impl<'a> TypeCheckContext<'a> {
     pub(crate) fn with_type_annotation(self, type_annotation: TypeId) -> Self {
         Self {
             type_annotation,
+            ..self
+        }
+    }
+
+    /// Map this `TypeCheckContext` instance to a new one with the given type annotation.
+    pub(crate) fn with_unify_generic(self, unify_generic: bool) -> Self {
+        Self {
+            unify_generic,
             ..self
         }
     }
@@ -267,6 +281,10 @@ impl<'a> TypeCheckContext<'a> {
         self.type_annotation
     }
 
+    pub(crate) fn unify_generic(&self) -> bool {
+        self.unify_generic
+    }
+
     pub(crate) fn self_type(&self) -> Option<TypeId> {
         self.self_type
     }
@@ -328,15 +346,27 @@ impl<'a> TypeCheckContext<'a> {
     /// Short-hand around `type_system::unify_`, where the `TypeCheckContext`
     /// provides the type annotation and help text.
     pub(crate) fn unify_with_type_annotation(&self, handler: &Handler, ty: TypeId, span: &Span) {
-        self.engines.te().unify(
-            handler,
-            self.engines(),
-            ty,
-            self.type_annotation(),
-            span,
-            self.help_text(),
-            None,
-        )
+        if self.unify_generic() {
+            self.engines.te().unify_with_generic(
+                handler,
+                self.engines(),
+                ty,
+                self.type_annotation(),
+                span,
+                self.help_text(),
+                None,
+            )
+        } else {
+            self.engines.te().unify(
+                handler,
+                self.engines(),
+                ty,
+                self.type_annotation(),
+                span,
+                self.help_text(),
+                None,
+            )
+        }
     }
 
     /// Short-hand for calling [Namespace::insert_symbol] with the `const_shadowing_mode` provided by
@@ -420,18 +450,14 @@ impl<'a> TypeCheckContext<'a> {
                     .unwrap_or_else(|err| {
                         self.engines
                             .te()
-                            .insert(self.engines, TypeInfo::ErrorRecovery(err))
+                            .insert(self.engines, TypeInfo::ErrorRecovery(err), None)
                     });
 
-                let type_id = self
-                    .engines
-                    .te()
-                    .insert(self.engines, TypeInfo::Array(elem_ty, n));
-
-                // take any trait methods that apply to this type and copy them to the new type
-                self.insert_trait_implementation_for_type(type_id);
-
-                type_id
+                self.engines.te().insert(
+                    self.engines,
+                    TypeInfo::Array(elem_ty.clone(), n),
+                    elem_ty.span.source_id(),
+                )
             }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
@@ -445,21 +471,19 @@ impl<'a> TypeCheckContext<'a> {
                             mod_path,
                         )
                         .unwrap_or_else(|err| {
-                            self.engines
-                                .te()
-                                .insert(self.engines, TypeInfo::ErrorRecovery(err))
+                            self.engines.te().insert(
+                                self.engines,
+                                TypeInfo::ErrorRecovery(err),
+                                None,
+                            )
                         });
                 }
 
-                let type_id = self
-                    .engines
-                    .te()
-                    .insert(self.engines, TypeInfo::Tuple(type_arguments));
-
-                // take any trait methods that apply to this type and copy them to the new type
-                self.insert_trait_implementation_for_type(type_id);
-
-                type_id
+                self.engines.te().insert(
+                    self.engines,
+                    TypeInfo::Tuple(type_arguments),
+                    span.source_id(),
+                )
             }
             TypeInfo::TraitType {
                 name,
@@ -711,13 +735,11 @@ impl<'a> TypeCheckContext<'a> {
                 let new_decl_ref = decl_engine.insert(new_copy);
 
                 // create the type id from the copy
-                let type_id = type_engine.insert(self.engines, TypeInfo::Struct(new_decl_ref));
-
-                // take any trait methods that apply to this type and copy them to the new type
-                self.insert_trait_implementation_for_type(type_id);
-
-                // return the id
-                type_id
+                type_engine.insert(
+                    self.engines,
+                    TypeInfo::Struct(new_decl_ref.clone()),
+                    new_decl_ref.span().source_id(),
+                )
             }
             Some(ty::TyDecl::EnumDecl(ty::EnumDecl {
                 decl_id: original_id,
@@ -740,13 +762,11 @@ impl<'a> TypeCheckContext<'a> {
                 let new_decl_ref = decl_engine.insert(new_copy);
 
                 // create the type id from the copy
-                let type_id = type_engine.insert(self.engines, TypeInfo::Enum(new_decl_ref));
-
-                // take any trait methods that apply to this type and copy them to the new type
-                self.insert_trait_implementation_for_type(type_id);
-
-                // return the id
-                type_id
+                type_engine.insert(
+                    self.engines,
+                    TypeInfo::Enum(new_decl_ref.clone()),
+                    new_decl_ref.span().source_id(),
+                )
             }
             Some(ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl {
                 decl_id: original_id,
@@ -757,10 +777,7 @@ impl<'a> TypeCheckContext<'a> {
                 // TODO: monomorphize the copy, in place, when generic type aliases are
                 // supported
 
-                let type_id = new_copy.create_type_id(self.engines);
-                self.insert_trait_implementation_for_type(type_id);
-
-                type_id
+                new_copy.create_type_id(self.engines)
             }
             Some(ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
                 type_id,
@@ -779,9 +796,10 @@ impl<'a> TypeCheckContext<'a> {
                     type_engine.insert(
                         self.engines,
                         TypeInfo::TraitType {
-                            name,
+                            name: name.clone(),
                             trait_type_id: implementing_type,
                         },
+                        name.span().source_id(),
                     )
                 } else {
                     return Err(handler.emit_err(CompileError::Internal(
@@ -795,7 +813,7 @@ impl<'a> TypeCheckContext<'a> {
                     name: call_path.call_path.to_string(),
                     span: call_path.call_path.span(),
                 });
-                type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err))
+                type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err), None)
             }
         })
     }
@@ -838,7 +856,9 @@ impl<'a> TypeCheckContext<'a> {
                 None,
                 item_prefix,
             )
-            .unwrap_or_else(|err| type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| {
+                type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err), None)
+            });
 
         // grab the module where the type itself is declared
         let type_module = self
@@ -1094,9 +1114,7 @@ impl<'a> TypeCheckContext<'a> {
                 TryInsertingTraitImplOnFailure::Yes
             ) {
                 // Retrieve the implemented traits for the type and insert them in the namespace.
-                // insert_trait_implementation_for_type is already called when we do type check of structs, enums, arrays and tuples.
-                // In cases such as blanket trait implementation and usage of builtin types a method may not be found because
-                // insert_trait_implementation_for_type has yet to be called for that type.
+                // insert_trait_implementation_for_type is done lazily only when required because of a failure.
                 self.insert_trait_implementation_for_type(type_id);
 
                 return self.find_method_for_type(
@@ -1417,9 +1435,11 @@ impl<'a> TypeCheckContext<'a> {
                             mod_path,
                         )
                         .unwrap_or_else(|err| {
-                            self.engines
-                                .te()
-                                .insert(self.engines, TypeInfo::ErrorRecovery(err))
+                            self.engines.te().insert(
+                                self.engines,
+                                TypeInfo::ErrorRecovery(err),
+                                None,
+                            )
                         });
                 }
                 let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(

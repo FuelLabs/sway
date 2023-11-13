@@ -41,7 +41,7 @@ pub(crate) fn type_check_method_application(
         let ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
         args_buf.push_back(
             ty::TyExpression::type_check(handler, ctx, arg.clone())
                 .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines)),
@@ -117,6 +117,7 @@ pub(crate) fn type_check_method_application(
                         } else {
                             TypeInfo::B256
                         },
+                        param.name.span().source_id(),
                     );
                     let ctx = ctx
                         .by_ref()
@@ -386,7 +387,7 @@ fn unify_arguments_and_parameters(
         for ((_, arg), param) in arguments.iter().zip(parameters.iter()) {
             // unify the type of the argument with the type of the param
             let unify_res = handler.scope(|handler| {
-                type_engine.unify(
+                type_engine.unify_with_generic(
                     handler,
                     engines,
                     arg.return_type,
@@ -429,7 +430,9 @@ pub(crate) fn resolve_method_name(
             // type check the call path
             let type_id = call_path_binding
                 .type_check_with_type_info(handler, &mut ctx)
-                .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+                .unwrap_or_else(|err| {
+                    type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
+                });
 
             // find the module that the symbol is in
             let type_info_prefix = ctx
@@ -474,7 +477,7 @@ pub(crate) fn resolve_method_name(
             let type_id = arguments
                 .get(0)
                 .map(|x| x.return_type)
-                .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown));
+                .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown, None));
 
             // find the method
             let decl_ref = ctx.find_method_for_type(
@@ -498,7 +501,7 @@ pub(crate) fn resolve_method_name(
             let type_id = arguments
                 .get(0)
                 .map(|x| x.return_type)
-                .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown));
+                .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown, None));
 
             // find the method
             let decl_ref = ctx.find_method_for_type(
@@ -574,12 +577,12 @@ pub(crate) fn monomorphize_method_application(
 
         // unify method return type with current ctx.type_annotation().
         handler.scope(|handler| {
-            type_engine.unify(
+            type_engine.unify_with_generic(
                 handler,
                 engines,
                 method.return_type.type_id,
                 ctx.type_annotation(),
-                &method.return_type.span(),
+                &call_path.span(),
                 "Function return type does not match up with local type annotation.",
                 None,
             );
@@ -616,10 +619,6 @@ pub(crate) fn monomorphize_method_application(
             &method.type_parameters,
             &call_path.span(),
         )?;
-
-        // Retrieve the implemented traits for the type of the return type and
-        // insert them in the broader namespace.
-        ctx.insert_trait_implementation_for_type(method.return_type.type_id);
 
         if !ctx.defer_monomorphization() {
             method.replace_decls(&decl_mapping, handler, &mut ctx)?;

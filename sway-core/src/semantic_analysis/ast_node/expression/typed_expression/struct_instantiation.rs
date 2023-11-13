@@ -58,12 +58,12 @@ pub(crate) fn struct_instantiation(
             }));
         }
         (_, true) => TypeInfo::Custom {
-            qualified_call_path: suffix.into(),
+            qualified_call_path: suffix.clone().into(),
             type_arguments: None,
             root_type_id: None,
         },
         (_, false) => TypeInfo::Custom {
-            qualified_call_path: suffix.into(),
+            qualified_call_path: suffix.clone().into(),
             type_arguments: Some(type_arguments),
             root_type_id: None,
         },
@@ -79,12 +79,12 @@ pub(crate) fn struct_instantiation(
     let type_id = ctx
         .resolve_type(
             handler,
-            type_engine.insert(engines, type_info),
+            type_engine.insert(engines, type_info, suffix.span().source_id()),
             &inner_span,
             EnforceTypeArguments::No,
             Some(&type_info_prefix),
         )
-        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
     // extract the struct name and fields from the type info
     let type_info = type_engine.get(type_id);
@@ -128,7 +128,7 @@ pub(crate) fn struct_instantiation(
         }
     }
 
-    type_id.check_type_parameter_bounds(handler, &ctx, &span, vec![])?;
+    type_id.check_type_parameter_bounds(handler, ctx, &span, vec![])?;
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::StructExpression {
@@ -164,7 +164,8 @@ fn type_check_field_arguments(
                 let ctx = ctx
                     .by_ref()
                     .with_help_text(UNIFY_STRUCT_FIELD_HELP_TEXT)
-                    .with_type_annotation(struct_field.type_argument.type_id);
+                    .with_type_annotation(struct_field.type_argument.type_id)
+                    .with_unify_generic(true);
                 let value = match ty::TyExpression::type_check(handler, ctx, field.value.clone()) {
                     Ok(res) => res,
                     Err(_) => continue,
@@ -185,7 +186,11 @@ fn type_check_field_arguments(
                     name: struct_field.name.clone(),
                     value: ty::TyExpression {
                         expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
-                        return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery(err)),
+                        return_type: type_engine.insert(
+                            engines,
+                            TypeInfo::ErrorRecovery(err),
+                            None,
+                        ),
                         span: span.clone(),
                     },
                 });
@@ -210,7 +215,7 @@ fn unify_field_arguments_and_struct_fields(
     handler.scope(|handler| {
         for struct_field in struct_fields.iter() {
             if let Some(typed_field) = typed_fields.iter().find(|x| x.name == struct_field.name) {
-                type_engine.unify(
+                type_engine.unify_with_generic(
                     handler,
                     engines,
                     typed_field.value.return_type,
