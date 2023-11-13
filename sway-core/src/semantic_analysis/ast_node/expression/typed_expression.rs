@@ -402,7 +402,8 @@ impl ty::TyExpression {
                     span,
                 };
                 Ok(typed_expr)
-            }
+            },
+            ExpressionKind::Ref(_) => todo!("Type checking ref expressions is not implemented."),
         };
         let mut typed_expression = match res {
             Ok(r) => r,

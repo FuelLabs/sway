@@ -308,6 +308,7 @@ pub enum ExpressionKind {
     Continue,
     Reassignment(ReassignmentExpression),
     Return(Box<Expression>),
+    Ref(Box<Expression>),
 }
 
 #[derive(Debug, Clone)]

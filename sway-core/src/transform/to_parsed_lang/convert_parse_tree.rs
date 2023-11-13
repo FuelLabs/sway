@@ -2081,12 +2081,10 @@ fn expr_to_expression(
             }),
             span,
         },
-        Expr::Ref { ampersand_token, .. } => {
-            let error = ConvertParseTreeError::RefExprNotYetSupported {
-                span: ampersand_token.span(),
-            };
-            return Err(handler.emit_err(error.into()));
-        }
+        Expr::Ref { expr, .. } => Expression {
+            kind: ExpressionKind::Ref(Box::new(expr_to_expression(context, handler, engines, *expr)?)),
+            span
+        },
         Expr::Deref { star_token, .. } => {
             let error = ConvertParseTreeError::DerefExprNotYetSupported {
                 span: star_token.span(),
