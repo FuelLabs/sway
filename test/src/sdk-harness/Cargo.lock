@@ -1547,7 +1547,7 @@ dependencies = [
 [[package]]
 name = "fuels"
 version = "0.50.1"
-source = "git+https://github.com/FuelLabs/fuels-rs.git?branch=xunilrj/allow-tx-builder-config#9c04f880ad97e0d9a27932e8518da9d3a6683ada"
+source = "git+https://github.com/FuelLabs/fuels-rs.git?branch=xunilrj/allow-tx-builder-config#b7913edad57a21ca1a4443d9fb317251695f7524"
 dependencies = [
  "fuel-core",
  "fuel-core-client",
@@ -1562,7 +1562,7 @@ dependencies = [
 [[package]]
 name = "fuels-accounts"
 version = "0.50.1"
-source = "git+https://github.com/FuelLabs/fuels-rs.git?branch=xunilrj/allow-tx-builder-config#9c04f880ad97e0d9a27932e8518da9d3a6683ada"
+source = "git+https://github.com/FuelLabs/fuels-rs.git?branch=xunilrj/allow-tx-builder-config#b7913edad57a21ca1a4443d9fb317251695f7524"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1587,7 +1587,7 @@ dependencies = [
 [[package]]
 name = "fuels-code-gen"
 version = "0.50.1"
-source = "git+https://github.com/FuelLabs/fuels-rs.git?branch=xunilrj/allow-tx-builder-config#9c04f880ad97e0d9a27932e8518da9d3a6683ada"
+source = "git+https://github.com/FuelLabs/fuels-rs.git?branch=xunilrj/allow-tx-builder-config#b7913edad57a21ca1a4443d9fb317251695f7524"
 dependencies = [
  "Inflector",
  "fuel-abi-types",
@@ -1602,7 +1602,7 @@ dependencies = [
 [[package]]
 name = "fuels-core"
 version = "0.50.1"
-source = "git+https://github.com/FuelLabs/fuels-rs.git?branch=xunilrj/allow-tx-builder-config#9c04f880ad97e0d9a27932e8518da9d3a6683ada"
+source = "git+https://github.com/FuelLabs/fuels-rs.git?branch=xunilrj/allow-tx-builder-config#b7913edad57a21ca1a4443d9fb317251695f7524"
 dependencies = [
  "bech32",
  "chrono",
@@ -1628,7 +1628,7 @@ dependencies = [
 [[package]]
 name = "fuels-macros"
 version = "0.50.1"
-source = "git+https://github.com/FuelLabs/fuels-rs.git?branch=xunilrj/allow-tx-builder-config#9c04f880ad97e0d9a27932e8518da9d3a6683ada"
+source = "git+https://github.com/FuelLabs/fuels-rs.git?branch=xunilrj/allow-tx-builder-config#b7913edad57a21ca1a4443d9fb317251695f7524"
 dependencies = [
  "fuels-code-gen",
  "itertools 0.11.0",
@@ -1641,7 +1641,7 @@ dependencies = [
 [[package]]
 name = "fuels-programs"
 version = "0.50.1"
-source = "git+https://github.com/FuelLabs/fuels-rs.git?branch=xunilrj/allow-tx-builder-config#9c04f880ad97e0d9a27932e8518da9d3a6683ada"
+source = "git+https://github.com/FuelLabs/fuels-rs.git?branch=xunilrj/allow-tx-builder-config#b7913edad57a21ca1a4443d9fb317251695f7524"
 dependencies = [
  "async-trait",
  "bytes",
@@ -1660,7 +1660,7 @@ dependencies = [
 [[package]]
 name = "fuels-test-helpers"
 version = "0.50.1"
-source = "git+https://github.com/FuelLabs/fuels-rs.git?branch=xunilrj/allow-tx-builder-config#9c04f880ad97e0d9a27932e8518da9d3a6683ada"
+source = "git+https://github.com/FuelLabs/fuels-rs.git?branch=xunilrj/allow-tx-builder-config#b7913edad57a21ca1a4443d9fb317251695f7524"
 dependencies = [
  "fuel-core",
  "fuel-core-chain-config",

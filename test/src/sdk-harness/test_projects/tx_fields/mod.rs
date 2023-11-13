@@ -584,10 +584,9 @@ mod inputs {
             let predicate_bytes: Vec<u8> = predicate_bytecode.try_into().unwrap();
 
             // Add predicate coin to inputs and call contract
-            let handler = contract_instance
+            let tx = contract_instance
                 .methods()
-                .get_input_predicate(2, predicate_bytes.clone());
-            let tx = handler
+                .get_input_predicate(2, predicate_bytes.clone())
                 .config_and_build_tx(|builder| {
                     builder.inputs_mut().push(predicate_coin.into());
                 })
