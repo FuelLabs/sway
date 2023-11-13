@@ -33,7 +33,7 @@ pub enum BuildTarget {
 }
 
 /// Configuration for the overall build and compilation process.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BuildConfig {
     // Build target for code generation.
     pub(crate) build_target: BuildTarget,

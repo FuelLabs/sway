@@ -595,6 +595,9 @@ pub fn compile_to_ast(
     build_config: Option<&BuildConfig>,
     package_name: &str,
 ) -> Result<Programs, ErrorEmitted> {
+    eprintln!(
+        "compile_to_ast(handler, engines, input,initial_namespace,{build_config:?},package_name)"
+    );
     let query_engine = engines.qe();
     let mut metrics = PerformanceData::default();
 

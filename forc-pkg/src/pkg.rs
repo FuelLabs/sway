@@ -1545,6 +1545,9 @@ pub fn sway_build_config(
     build_target: BuildTarget,
     build_profile: &BuildProfile,
 ) -> Result<sway_core::BuildConfig> {
+    eprintln!(
+        "sway_build_config({manifest_dir:?},{entry_path:?},{build_target:?},{build_profile:?})"
+    );
     // Prepare the build config to pass through to the compiler.
     let file_name = find_file_name(manifest_dir, entry_path)?;
     let build_config = sway_core::BuildConfig::root_from_file_name_and_manifest_path(
@@ -1654,7 +1657,9 @@ pub fn dependency_namespace(
         true,
     );
 
+    eprintln!("EVO ME NAD PROVALIJOM 4");
     if has_std_dep(graph, node) {
+        eprintln!("OJHA");
         let _ = namespace.star_import_with_reexports(
             &Handler::default(),
             &[STD, PRELUDE].map(|s| Ident::new_no_span(s.into())),
@@ -1662,6 +1667,8 @@ pub fn dependency_namespace(
             engines,
             true,
         );
+    } else {
+        eprintln!("E nije OJHA");
     }
 
     Ok(namespace)
@@ -1751,7 +1758,8 @@ pub fn compile(
         sway_build_config(pkg.manifest_file.dir(), &entry_path, pkg.target, profile)?;
     let terse_mode = profile.terse;
     let reverse_results = profile.reverse_results;
-    let fail = |handler: Handler| {
+    let fail = |handler: Handler, desc: usize| {
+        eprintln!("POZVAN fail handler {desc}");
         let (errors, warnings) = handler.consume();
         print_on_failure(
             engines.se(),
@@ -1783,11 +1791,11 @@ pub fn compile(
     );
 
     let programs = match ast_res {
-        Err(_) => return fail(handler),
+        Err(_) => return fail(handler, 0),
         Ok(programs) => programs,
     };
     let typed_program = match programs.typed.as_ref() {
-        Err(_) => return fail(handler),
+        Err(_) => return fail(handler, 1),
         Ok(typed_program) => typed_program,
     };
 
@@ -1801,7 +1809,7 @@ pub fn compile(
     let namespace = typed_program.root.namespace.clone().into();
 
     if handler.has_errors() {
-        return fail(handler);
+        return fail(handler, 2);
     }
 
     let asm_res = time_expr!(
@@ -1868,7 +1876,7 @@ pub fn compile(
         .collect::<anyhow::Result<_>>()?;
 
     let asm = match asm_res {
-        Err(_) => return fail(handler),
+        Err(_) => return fail(handler, 3),
         Ok(asm) => asm,
     };
 
@@ -1884,7 +1892,7 @@ pub fn compile(
 
     let compiled = match bc_res {
         Ok(compiled) if !errored => compiled,
-        _ => return fail(handler),
+        _ => return fail(handler, 4),
     };
 
     let (_, warnings) = handler.consume();
@@ -2300,6 +2308,7 @@ pub fn build(
             && matches!(manifest.program_type(), Ok(TreeType::Contract)))
             || is_contract_dependency
         {
+            eprintln!("ISKLJUCUJEM BYTECODE TESTS");
             // We will build a contract with tests enabled, we will also need the same contract with tests
             // disabled for:
             //
