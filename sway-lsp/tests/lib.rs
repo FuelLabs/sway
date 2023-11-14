@@ -507,7 +507,7 @@ async fn go_to_definition_for_paths() {
     };
     // vm
     lsp::definition_check(&server, &go_to);
-    
+
     let go_to = GotoDefinition {
         req_uri: &uri,
         req_line: 12,
@@ -519,7 +519,7 @@ async fn go_to_definition_for_paths() {
     };
     // evm
     lsp::definition_check(&server, &go_to);
-    
+
     let go_to = GotoDefinition {
         req_uri: &uri,
         req_line: 12,
@@ -531,7 +531,7 @@ async fn go_to_definition_for_paths() {
     };
     // evm_address
     lsp::definition_check(&server, &go_to);
-    
+
     let go_to = GotoDefinition {
         req_uri: &uri,
         req_line: 12,
@@ -543,7 +543,7 @@ async fn go_to_definition_for_paths() {
     };
     // EvmAddress
     lsp::definition_check(&server, &go_to);
-    
+
     let mut go_to = GotoDefinition {
         req_uri: &uri,
         req_line: 16,
@@ -557,7 +557,7 @@ async fn go_to_definition_for_paths() {
     lsp::definition_check(&server, &go_to);
     lsp::definition_check_with_req_offset(&server, &mut go_to, 22, 7);
     lsp::definition_check_with_req_offset(&server, &mut go_to, 5, 5);
-    
+
     let go_to = GotoDefinition {
         req_uri: &uri,
         req_line: 16,
@@ -648,7 +648,7 @@ async fn go_to_definition_for_paths() {
     // DeepEnum::Variant
     lsp::definition_check(&server, &go_to);
     lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 48);
-    
+
     let mut go_to = GotoDefinition {
         req_uri: &uri,
         req_line: 29,
@@ -763,7 +763,7 @@ async fn go_to_definition_for_paths() {
     lsp::definition_check(&server, &go_to);
     lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 11);
     lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 23);
-    
+
     let mut go_to = GotoDefinition {
         req_uri: &uri,
         req_line: 24,
@@ -776,7 +776,7 @@ async fn go_to_definition_for_paths() {
     // ZERO_B256
     lsp::definition_check(&server, &go_to);
     lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 31);
-    
+
     let go_to = GotoDefinition {
         req_uri: &uri,
         req_line: 19,
@@ -788,7 +788,7 @@ async fn go_to_definition_for_paths() {
     };
     // u64::min()
     lsp::definition_check(&server, &go_to);
-    
+
     let mut go_to = GotoDefinition {
         req_uri: &uri,
         req_line: 13,
@@ -801,7 +801,7 @@ async fn go_to_definition_for_paths() {
     // b256::min()
     lsp::definition_check(&server, &go_to);
     lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 38);
-    
+
     // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/4211 is fixed.
     // let go_to = GotoDefinition {
     //     req_uri: &uri,
