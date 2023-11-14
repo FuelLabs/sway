@@ -1,7 +1,6 @@
 //! Generates the searchbar.
-use horrorshow::{box_html, Raw, RenderBox};
-
 use crate::doc::module::ModuleInfo;
+use horrorshow::{box_html, Raw, RenderBox};
 
 pub(crate) fn generate_searchbar(module_info: ModuleInfo) -> Box<dyn RenderBox> {
     let path_to_root = module_info.path_to_root();
@@ -13,7 +12,11 @@ function onSearchFormSubmit(event) {{
     event.preventDefault();
     const searchQuery = document.getElementById("search-input").value;
     const url = new URL(window.location.href);
-    url.searchParams.set('search', searchQuery);
+    if (searchQuery) {{
+        url.searchParams.set('search', searchQuery);
+    }} else {{
+        url.searchParams.delete('search');
+    }}
     history.pushState({{ search: searchQuery }}, "", url);
     window.dispatchEvent(new HashChangeEvent("hashchange"));
 }}
@@ -22,6 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {{
     const searchbar = document.getElementById("search-input");
     const searchForm = document.getElementById("search-form");
     searchbar.addEventListener("keyup", function(event) {{
+        searchForm.dispatchEvent(new Event('submit'));
+    }});
+    searchbar.addEventListener("search", function(event) {{
         searchForm.dispatchEvent(new Event('submit'));
     }});
 
@@ -35,26 +41,27 @@ document.addEventListener('DOMContentLoaded', () => {{
             searchInput.value = query;
             const results = Object.values(SEARCH_INDEX).flat().filter(item => {{
                 const lowerQuery = query.toLowerCase();
-                return item.name.toLowerCase().includes(lowerQuery) || item.preview?.toLowerCase().includes(lowerQuery);
+                return item.name.toLowerCase().includes(lowerQuery);
             }});
             const header = `<h1>Results for ${{query}}</h1>`;
             if (results.length > 0) {{
                 const resultList = results.map(item => {{
-                    const name = [...item.module_info, item.name].join("::");
+                    const formattedName = `<span class="type ${{item.type_name}}">${{item.name}}</span>`;
+                    const name = [...item.module_info, formattedName].join("::");
                     const path = ["{}", ...item.module_info, item.html_filename].join("/");
-                    const left = `<td style="padding-right:15px;"><a href="${{path}}"><code>${{name}}</code></a></td>`;
-                    const right = `<td><a href="${{path}}">${{item.preview?.replace('<p>', '<p style="margin:0">') ?? ""}}</a></td>`;
-                    return `<tr style="height:30px; white-space:nowrap; overflow:hidden;" onmouseover="this.style.background='darkgreen';" onmouseout="this.style.background='';">${{left}}${{right}}</tr>`;
+                    const left = `<td><span>${{name}}</span></td>`;
+                    const right = `<td><p>${{item.preview}}</p></td>`;
+                    return `<tr onclick="window.location='${{path}}';">${{left}}${{right}}</tr>`;
                 }}).join('');
                 searchSection.innerHTML = `${{header}}<table>${{resultList}}</table>`;
             }} else {{
                 searchSection.innerHTML = `${{header}}<p>No results found.</p>`;
             }}
-            searchSection.removeAttribute("class", "hidden");
+            searchSection.setAttribute("class", "search-results");
             mainSection.setAttribute("class", "content hidden");
         }} else {{
-            searchSection.setAttribute("class", "content hidden");
-            mainSection.removeAttribute("class", "hidden");
+            searchSection.setAttribute("class", "search-results hidden");
+            mainSection.setAttribute("class", "content");
         }}
     }}
     window.addEventListener('hashchange', onQueryParamsChange);

@@ -158,8 +158,7 @@ impl Renderable for ItemBody {
                                 : item_context.unwrap();
                             }
                         }
-                        // TODO: make JS search function populate this
-                        section(id="search", class="content");
+                        section(id="search", class="search-results");
                     }
                 }
                 script(src=sway_hjs);

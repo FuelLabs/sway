@@ -68,8 +68,7 @@ impl Renderable for AllDocIndex {
                             }
                             : doc_links;
                         }
-                        // TODO: make JS search function populate this
-                        section(id="search", class="content");
+                        section(id="search", class="search-results");
                     }
                 }
                 script(src=format!("../{ASSETS_DIR_NAME}/highlight.js"));
@@ -197,8 +196,7 @@ impl Renderable for ModuleIndex {
                             }
                             : doc_links;
                         }
-                        // TODO: make JS search function populate this
-                        section(id="search", class="content");
+                        section(id="search", class="search-results");
                     }
                 }
                 script(src=sway_hjs);
