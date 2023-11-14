@@ -5,4 +5,4 @@ license = "Apache-2.0"
 name = "structs"
 
 [dependencies]
-std = { path = "../../fixtures-std" }
+std = { git = "https://github.com/FuelLabs/sway", tag = "v0.47.0" }
