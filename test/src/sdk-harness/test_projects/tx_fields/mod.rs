@@ -651,79 +651,75 @@ mod inputs {
                 assert_eq!(receipts[1].data().unwrap(), *messages[0].sender.hash());
             }
 
-            // #[tokio::test]
-            // async fn can_get_input_message_recipient() -> Result<()> {
-            //     let (contract_instance, _, wallet, _) = get_contracts().await;
-            //     let handler = contract_instance.methods().get_input_message_recipient(2);
+            #[tokio::test]
+            async fn can_get_input_message_recipient() {
+                let (contract_instance, _, wallet, _) = get_contracts().await;
 
-            //     let message = &wallet.get_messages().await.unwrap()[0];
-            //     let tx = handler
-            //         .config_and_build_tx(|builder| {
-            //             let message_input = TxInput::message_data_signed(
-            //                 message.sender.clone().into(),
-            //                 message.recipient.clone().into(),
-            //                 message.amount,
-            //                 message.nonce,
-            //                 0,
-            //                 message.data.clone(),
-            //             );
-            //             builder.inputs_mut().push(message_input.into());
-            //         })
-            //         .await
-            //         .unwrap();
+                let message = &wallet.get_messages().await.unwrap()[0];
+                let recipient = message.recipient.hash.clone();
+                let mut builder = contract_instance.methods()
+                    .get_input_message_recipient(3)
+                    .transaction_builder()
+                    .await
+                    .unwrap();
 
-            //     let messages = wallet.get_messages().await?;
+                wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
+                
+                builder.inputs_mut().push(fuels::types::input::Input::ResourceSigned { 
+                    resource: fuels::types::coin_type::CoinType::Message(message.clone()) 
+                });
 
-            //     let provider = wallet.provider().unwrap();
-            //     let tx_id = provider.send_transaction(tx).await.unwrap();
-            //     let receipts = provider
-            //         .tx_status(&tx_id)
-            //         .await
-            //         .unwrap()
-            //         .take_receipts_checked(None)
-            //         .unwrap();
+                wallet.sign_transaction(&mut builder);
+                
+                let tx = builder.build().unwrap();
+                dbg!(tx.inputs());
+                
+                let provider = wallet.provider().unwrap();
+                let tx_id = provider.send_transaction(tx).await.unwrap();
+                let receipts = provider
+                    .tx_status(&tx_id)
+                    .await
+                    .unwrap()
+                    .take_receipts_checked(None)
+                    .unwrap();
+            
+                assert_eq!(receipts[1].data().unwrap(), recipient.as_slice());
+            }
 
-            //     assert_eq!(receipts[1].data().unwrap(), *messages[0].recipient.hash());
-            //     Ok(())
-            // }
+            #[tokio::test]
+            async fn can_get_input_message_nonce() {
+                let (contract_instance, _, wallet, _) = get_contracts().await;
+                
+                let message = &wallet.get_messages().await.unwrap()[0];
+                let nonce = message.nonce.clone();
 
-            // #[tokio::test]
-            // async fn can_get_input_message_nonce() -> Result<()> {
-            //     let (contract_instance, _, wallet, _) = get_contracts().await;
-            //     let handler = contract_instance.methods().get_input_message_nonce(2);
+                let mut builder = contract_instance.methods()
+                    .get_input_message_nonce(3)
+                    .transaction_builder()
+                    .await
+                    .unwrap();
 
-            //     let message = &wallet.get_messages().await.unwrap()[0];
-            //     let tx = handler
-            //         .config_and_build_tx(|builder| {
-            //             let message_input = TxInput::message_data_signed(
-            //                 message.sender.clone().into(),
-            //                 message.recipient.clone().into(),
-            //                 message.amount,
-            //                 message.nonce,
-            //                 0,
-            //                 message.data.clone(),
-            //             );
-            //             builder.inputs_mut().push(message_input.into());
-            //         })
-            //         .await
-            //         .unwrap();
+                wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
 
-            //     let messages = wallet.get_messages().await?;
+                builder.inputs_mut().push(fuels::types::input::Input::ResourceSigned { 
+                    resource: fuels::types::coin_type::CoinType::Message(message.clone()) 
+                });
 
-            //     let provider = wallet.provider().unwrap();
-            //     let tx_id = provider.send_transaction(tx).await.unwrap();
-            //     let receipts = provider
-            //         .tx_status(&tx_id)
-            //         .await
-            //         .unwrap()
-            //         .take_receipts_checked(None)
-            //         .unwrap();
+                wallet.sign_transaction(&mut builder);
 
-            //     let nonce = *messages[0].nonce.clone();
-            //     let val = receipts[1].data().unwrap();
-            //     assert_eq!(val, &nonce);
-            //     Ok(())
-            // }
+                let tx = builder.build().unwrap();
+
+                let provider = wallet.provider().unwrap();
+                let tx_id = provider.send_transaction(tx).await.unwrap();
+                let receipts = provider
+                    .tx_status(&tx_id)
+                    .await
+                    .unwrap()
+                    .take_receipts_checked(None)
+                    .unwrap();
+
+                assert_eq!(receipts[1].data().unwrap(), nonce.as_slice());
+            }
 
             #[tokio::test]
             async fn can_get_input_message_witness_index() {
