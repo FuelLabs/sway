@@ -7,7 +7,7 @@ pub(crate) fn generate_searchbar(module_info: ModuleInfo) -> Box<dyn RenderBox> 
     let path_to_root = module_info.path_to_root();
     // Since this searchbar is rendered on all pages, we need to inject the path the the root into the script.
     // Therefore, we can't simply import this script from a javascript file.
-    let minified_script = minify(&format!(r##"
+    let minified_script = minify(&format!(r#"
         function onSearchFormSubmit(event) {{
             event.preventDefault();
             const searchQuery = document.getElementById("search-input").value;
@@ -69,7 +69,7 @@ pub(crate) fn generate_searchbar(module_info: ModuleInfo) -> Box<dyn RenderBox> 
             // Check for any query parameters initially
             onQueryParamsChange();
         }}
-    );"##, path_to_root)).to_string();
+    );"#, path_to_root)).to_string();
     box_html! {
         script(src=format!("{}/search.js", path_to_root), type="text/javascript");
         script {
