@@ -181,9 +181,6 @@ async fn setup_output_predicate() -> (WalletUnlocked, WalletUnlocked, Predicate,
 }
 
 mod tx {
-    use fuel_core::types::entities::message::Message;
-    use fuel_vm::fuel_tx::Witness;
-
     use super::*;
 
     #[tokio::test]
@@ -734,160 +731,165 @@ mod inputs {
                 assert_eq!(result.value, 0);
             }
 
-            // #[tokio::test]
-            // async fn can_get_input_message_data_length() {
-            //     let (contract_instance, _, wallet, _) = get_contracts().await;
-            //     let handler = contract_instance.methods().get_input_message_data_length(2);
+            #[tokio::test]
+            async fn can_get_input_message_data_length() {
+                let (contract_instance, _, wallet, _) = get_contracts().await;
 
-            //     let message = &wallet.get_messages().await.unwrap()[0];
-            //     let tx = handler
-            //         .config_and_build_tx(|builder| {
-            //             let message_input = TxInput::message_data_signed(
-            //                 message.sender.clone().into(),
-            //                 message.recipient.clone().into(),
-            //                 message.amount,
-            //                 message.nonce,
-            //                 0,
-            //                 message.data.clone(),
-            //             );
-            //             builder.inputs_mut().push(message_input.into());
-            //         })
-            //         .await
-            //         .unwrap();
+                let message = &wallet.get_messages().await.unwrap()[0];
+                let mut builder = contract_instance.methods()
+                    .get_input_message_data_length(3)
+                    .transaction_builder()
+                    .await
+                    .unwrap();
+                   
+                wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
 
-            //     let provider = wallet.provider().unwrap();
-            //     let tx_id = provider.send_transaction(tx).await.unwrap();
-            //     let receipts = provider
-            //         .tx_status(&tx_id)
-            //         .await
-            //         .unwrap()
-            //         .take_receipts_checked(None)
-            //         .unwrap();
+                builder.inputs_mut().push(fuels::types::input::Input::ResourceSigned { 
+                    resource: fuels::types::coin_type::CoinType::Message(message.clone()) 
+                });
 
-            //     assert_eq!(receipts[1].val().unwrap(), 3);
-            // }
+                wallet.sign_transaction(&mut builder);
+                    
+                let tx = builder.build()
+                    .unwrap();
 
-            // #[tokio::test]
-            // async fn can_get_input_message_predicate_length() {
-            //     let (contract_instance, _, wallet, _) = get_contracts().await;
-            //     let (predicate_bytecode, _, predicate_message) =
-            //         generate_predicate_inputs(100, &wallet).await;
-            //     let handler = contract_instance.methods().get_input_predicate_length(2);
+                let provider = wallet.provider().unwrap();
+                let tx_id = provider.send_transaction(tx).await.unwrap();
+                let receipts = provider
+                    .tx_status(&tx_id)
+                    .await
+                    .unwrap()
+                    .take_receipts_checked(None)
+                    .unwrap();
 
-            //     let tx = handler
-            //         .config_and_build_tx(|builder| {
-            //             builder.inputs_mut().push(predicate_message.into());
-            //         })
-            //         .await
-            //         .unwrap();
+                assert_eq!(receipts[1].val().unwrap(), 3);
+            }
 
-            //     let provider = wallet.provider().unwrap();
+            #[tokio::test]
+            async fn can_get_input_message_predicate_length() {
+                let (contract_instance, _, wallet, _) = get_contracts().await;
+                let (predicate_bytecode, message, _) =
+                    generate_predicate_inputs(100, &wallet).await;
 
-            //     let tx_id = provider.send_transaction(tx).await.unwrap();
-            //     let receipts = provider
-            //         .tx_status(&tx_id)
-            //         .await
-            //         .unwrap()
-            //         .take_receipts_checked(None)
-            //         .unwrap();
+                let mut builder = contract_instance.methods()
+                    .get_input_predicate_length(3)
+                    .transaction_builder()
+                    .await
+                    .unwrap();
 
-            //     assert_eq!(receipts[1].val().unwrap(), predicate_bytecode.len() as u64);
-            // }
+                wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
 
-            // #[tokio::test]
-            // async fn can_get_input_message_predicate_data_length() {
-            //     let (contract_instance, _, wallet, _) = get_contracts().await;
-            //     let (_, _, predicate_message) = generate_predicate_inputs(100, &wallet).await;
-            //     let handler = contract_instance
-            //         .methods()
-            //         .get_input_predicate_data_length(1);
+                builder.inputs_mut().push(message);
+                
+                wallet.sign_transaction(&mut builder);
 
-            //     let tx = handler
-            //         .config_and_build_tx(|builder| {
-            //             builder.inputs_mut().push(predicate_message.into());
-            //         })
-            //         .await
-            //         .unwrap();
+                let tx = builder.build().unwrap();
 
-            //     let provider = wallet.provider().unwrap();
+                let provider = wallet.provider().unwrap();
 
-            //     let tx_id = provider.send_transaction(tx).await.unwrap();
-            //     let receipts = provider
-            //         .tx_status(&tx_id)
-            //         .await
-            //         .unwrap()
-            //         .take_receipts_checked(None)
-            //         .unwrap();
+                let tx_id = provider.send_transaction(tx).await.unwrap();
+                let receipts = provider
+                    .tx_status(&tx_id)
+                    .await
+                    .unwrap()
+                    .take_receipts_checked(None)
+                    .unwrap();
 
-            //     assert_eq!(receipts[1].val().unwrap(), 0);
-            // }
+                assert_eq!(receipts[1].val().unwrap(), predicate_bytecode.len() as u64);
+            }
 
-            // #[tokio::test]
-            // async fn can_get_input_message_data() {
-            //     let (contract_instance, _, wallet, _) = get_contracts().await;
+            #[tokio::test]
+            async fn can_get_input_message_predicate_data_length() {
+                let (contract_instance, _, wallet, _) = get_contracts().await;
+                let (_, message, _) = generate_predicate_inputs(100, &wallet).await;
 
-            //     let handler =
-            //         contract_instance
-            //             .methods()
-            //             .get_input_message_data(2, 0, MESSAGE_DATA);
+                let mut builder = contract_instance
+                    .methods()
+                    .get_input_predicate_data_length(1)
+                    .transaction_builder()
+                    .await
+                    .unwrap();
 
-            //     let message = &wallet.get_messages().await.unwrap()[0];
-            //     let tx = handler
-            //         .config_and_build_tx(|builder| {
-            //             let message_input = TxInput::message_data_signed(
-            //                 message.sender.clone().into(),
-            //                 message.recipient.clone().into(),
-            //                 message.amount,
-            //                 message.nonce,
-            //                 0,
-            //                 message.data.clone(),
-            //             );
-            //             builder.inputs_mut().push(message_input.into());
-            //         })
-            //         .await
-            //         .unwrap();
+                wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
 
-            //     let provider = wallet.provider().unwrap();
-            //     let tx_id = provider.send_transaction(tx).await.unwrap();
+                builder.inputs_mut().push(message);
+                
+                wallet.sign_transaction(&mut builder);
 
-            //     let receipts = provider
-            //         .tx_status(&tx_id)
-            //         .await
-            //         .unwrap()
-            //         .take_receipts_checked(None)
-            //         .unwrap();
+                let tx = builder.build().unwrap();
 
-            //     assert_eq!(receipts[1].val().unwrap(), 1);
-            // }
+                let provider = wallet.provider().unwrap();
 
-            // #[tokio::test]
-            // async fn can_get_input_message_predicate() {
-            //     let (contract_instance, _, wallet, _) = get_contracts().await;
-            //     let (predicate_bytecode, _, predicate_message) =
-            //         generate_predicate_inputs(100, &wallet).await;
-            //     let predicate_bytes: Vec<u8> = predicate_bytecode.try_into().unwrap();
-            //     let handler = contract_instance
-            //         .methods()
-            //         .get_input_predicate(2, predicate_bytes.clone());
+                let tx_id = provider.send_transaction(tx).await.unwrap();
+                let receipts = provider
+                    .tx_status(&tx_id)
+                    .await
+                    .unwrap()
+                    .take_receipts_checked(None)
+                    .unwrap();
 
-            //     let tx = handler
-            //         .config_and_build_tx(move |builder| {
-            //             builder.inputs_mut().push(predicate_message.into());
-            //         })
-            //         .await
-            //         .unwrap();
+                assert_eq!(receipts[1].val().unwrap(), 0);
+            }
 
-            //     let provider = wallet.provider().unwrap();
-            //     let tx_id = provider.send_transaction(tx).await.unwrap();
-            //     let receipts = provider
-            //         .tx_status(&tx_id)
-            //         .await
-            //         .unwrap()
-            //         .take_receipts_checked(None)
-            //         .unwrap();
+            #[tokio::test]
+            async fn can_get_input_message_data() {
+                let (contract_instance, _, wallet, _) = get_contracts().await;
 
-            //     assert_eq!(receipts[1].val().unwrap(), 1);
-            // }
+                let builder =  contract_instance
+                    .methods()
+                    .get_input_message_data(2, 0, MESSAGE_DATA)
+                    .transaction_builder()
+                    .await
+                    .unwrap();
+                let tx = builder.build().unwrap();
+
+                let provider = wallet.provider().unwrap();
+                let tx_id = provider.send_transaction(tx).await.unwrap();
+
+                let receipts = provider
+                    .tx_status(&tx_id)
+                    .await
+                    .unwrap()
+                    .take_receipts_checked(None)
+                    .unwrap();
+
+                assert_eq!(receipts[1].val().unwrap(), 1);
+            }
+
+            #[tokio::test]
+            async fn can_get_input_message_predicate() {
+                let (contract_instance, _, wallet, _) = get_contracts().await;
+                let (predicate_bytecode, message, _) =
+                    generate_predicate_inputs(100, &wallet).await;
+                let predicate_bytes: Vec<u8> = predicate_bytecode.try_into().unwrap();
+                let handler = contract_instance
+                    .methods()
+                    .get_input_predicate(3, predicate_bytes.clone());
+
+                let mut builder = handler
+                    .transaction_builder()
+                    .await
+                    .unwrap();
+                
+                wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
+
+                builder.inputs_mut().push(message);
+                
+                wallet.sign_transaction(&mut builder);
+
+                let tx = builder.build().unwrap();
+
+                let provider = wallet.provider().unwrap();
+                let tx_id = provider.send_transaction(tx).await.unwrap();
+                let receipts = provider
+                    .tx_status(&tx_id)
+                    .await
+                    .unwrap()
+                    .take_receipts_checked(None)
+                    .unwrap();
+
+                assert_eq!(receipts[1].val().unwrap(), 1);
+            }
         }
     }
 }
