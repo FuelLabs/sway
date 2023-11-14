@@ -28,4 +28,5 @@ sway-types = { version = "0.47.0", path = "../../sway-types" }
 swayfmt = { version = "0.47.0", path = "../../swayfmt" }
 
 [dev-dependencies]
+dir_indexer = "0.0.2"
 expect-test = "1.4.1"

@@ -1399,6 +1399,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "dir_indexer"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "363641827cb8d8387a69364aa2f85433db83b8b00270ed2c786235d83bf0aa0a"
+
+[[package]]
 name = "dirs"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1925,6 +1931,7 @@ dependencies = [
  "clap 4.4.7",
  "colored",
  "comrak",
+ "dir_indexer",
  "expect-test",
  "forc-pkg",
  "forc-util",
