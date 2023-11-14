@@ -135,7 +135,6 @@ fn assert_file_tree(doc_dir_name: &str, project_name: &str, expected_files: Vec<
         .iter()
         .map(|path| PathBuf::from(path))
         .collect::<HashSet<PathBuf>>();
-    eprintln!("getting from: {:?}", doc_root);
     let files = get_relative_file_paths_set(doc_root);
     assert_eq!(files, expected);
 }
