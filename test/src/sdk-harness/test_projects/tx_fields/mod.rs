@@ -834,13 +834,23 @@ mod inputs {
             #[tokio::test]
             async fn can_get_input_message_data() {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
+                let message = &wallet.get_messages().await.unwrap()[0];
 
-                let builder =  contract_instance
+                let mut builder =  contract_instance
                     .methods()
-                    .get_input_message_data(2, 0, MESSAGE_DATA)
+                    .get_input_message_data(3, 0, MESSAGE_DATA)
                     .transaction_builder()
                     .await
                     .unwrap();
+
+                wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
+
+                builder.inputs_mut().push(fuels::types::input::Input::ResourceSigned { 
+                    resource: fuels::types::coin_type::CoinType::Message(message.clone()) 
+                });
+
+                wallet.sign_transaction(&mut builder);
+                
                 let tx = builder.build().unwrap();
 
                 let provider = wallet.provider().unwrap();
