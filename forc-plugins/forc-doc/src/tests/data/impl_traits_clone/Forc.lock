@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-09A5B00ACCB1BF9C"
+
+[[package]]
+name = "impl_traits_clone"
+source = "member"
+dependencies = ["core"]

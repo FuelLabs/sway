@@ -1,16 +1,17 @@
 #![cfg(test)]
-use crate::{cli::Command, compile_html};
+use crate::cli::Command;
 use expect_test::Expect;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 mod impl_trait;
 
-pub(crate) fn check(command: Command, path_to_file: PathBuf, expect: &Expect) {
-    let (doc_path, _) = compile_html(&command, &get_doc_dir).unwrap();
-    let actual = std::fs::read_to_string(doc_path.join(path_to_file)).unwrap();
+pub(crate) fn check_file(doc_path: &Path, path_to_file: &PathBuf, expect: &Expect) {
+    let path = doc_path.join(path_to_file);
+    let actual = std::fs::read_to_string(path.clone())
+        .unwrap_or_else(|_| panic!("failed to read file: {:?}", path));
     expect.assert_eq(&actual)
 }
 
-fn get_doc_dir(build_instructions: &Command) -> String {
+pub(crate) fn get_doc_dir(build_instructions: &Command) -> String {
     build_instructions.doc_path.to_owned().unwrap()
 }

@@ -1,6 +1,7 @@
 use crate::{
     doc::Documentation,
     render::{constant::INDEX_FILENAME, RenderedDocumentation},
+    search::write_search_index,
 };
 use anyhow::{bail, Result};
 use clap::Parser;
@@ -20,6 +21,7 @@ use sway_core::{language::ty::TyProgram, BuildTarget, Engines};
 mod cli;
 mod doc;
 mod render;
+mod search;
 mod tests;
 
 pub(crate) const ASSETS_DIR_NAME: &str = "static.files";
@@ -99,7 +101,7 @@ fn build_docs(
     program_info: ProgramInfo,
     doc_path: &Path,
     build_instructions: &Command,
-) -> Result<()> {
+) -> Result<Documentation> {
     let Command {
         document_private_items,
         no_deps,
@@ -134,7 +136,7 @@ fn build_docs(
         .map(|ver| format!("Forc v{}.{}.{}", ver.major, ver.minor, ver.patch));
     // render docs to HTML
     let rendered_docs = RenderedDocumentation::from_raw_docs(
-        raw_docs,
+        raw_docs.clone(),
         RenderPlan::new(no_deps, document_private_items, engines),
         root_attributes,
         ty_program.kind,
@@ -145,7 +147,7 @@ fn build_docs(
     write_content(rendered_docs, doc_path)?;
     println!("    {}", "Finished".bold().yellow());
 
-    Ok(())
+    Ok(raw_docs)
 }
 
 fn write_content(rendered_docs: RenderedDocumentation, doc_path: &Path) -> Result<()> {
@@ -218,10 +220,11 @@ pub fn compile_html(
         &engines,
     )?;
 
-    if !build_instructions.no_deps {
+    let raw_docs = if !build_instructions.no_deps {
         let order = plan.compilation_order();
         let graph = plan.graph();
         let manifest_map = plan.manifest_map();
+        let mut raw_docs = Documentation(Vec::new());
 
         for (node, (compile_result, _handler)) in order.iter().zip(compile_results) {
             let id = &graph[*node].id();
@@ -242,9 +245,12 @@ pub fn compile_html(
                     pkg_manifest: pkg_manifest_file,
                 };
 
-                build_docs(program_info, &doc_path, build_instructions)?;
+                raw_docs
+                    .0
+                    .extend(build_docs(program_info, &doc_path, build_instructions)?.0);
             }
         }
+        raw_docs
     } else {
         let ty_program = match compile_results
             .pop()
@@ -263,8 +269,10 @@ pub fn compile_html(
             manifest: &manifest,
             pkg_manifest,
         };
-        build_docs(program_info, &doc_path, build_instructions)?;
-    }
+        build_docs(program_info, &doc_path, build_instructions)?
+    };
+    write_search_index(&doc_path, raw_docs)?;
+
     Ok((doc_path, pkg_manifest.to_owned()))
 }
 
