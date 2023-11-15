@@ -288,7 +288,7 @@ impl PackageWithDeploymentToTest {
         let contract_dependency_ids = contract_dependency_setups
             .map(|(contract_id, tx)| {
                 // Transact the deployment transaction constructed for this contract dependency.
-                interpreter.transact(tx).unwrap(); //TODO: How to convert the error ?
+                interpreter.transact(tx).map_err(anyhow::Error::msg)?;
                 Ok(contract_id)
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
@@ -303,7 +303,9 @@ impl PackageWithDeploymentToTest {
                 params,
             );
             // Deploy the root contract.
-            interpreter.transact(root_contract_tx).unwrap(); //TODO: How to convert the error ?
+            interpreter
+                .transact(root_contract_tx)
+                .map_err(anyhow::Error::msg)?;
             let storage = interpreter.as_ref().clone();
             DeploymentSetup::Contract(ContractTestSetup {
                 storage,
@@ -676,10 +678,10 @@ fn deployment_transaction(
     let contract_id = contract.id(&salt, &root, &state_root);
 
     // Create the deployment transaction.
-    let mut rng = rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
+    let rng = &mut rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
 
     // Prepare the transaction metadata.
-    let secret_key = SecretKey::random(&mut rng);
+    let secret_key = SecretKey::random(rng);
     let utxo_id = rng.gen();
     let amount = 1;
     let maturity = 1u32.into();
@@ -773,10 +775,10 @@ fn exec_test(
 
     // Create a transaction to execute the test function.
     let script_input_data = vec![];
-    let mut rng = rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
+    let rng = &mut rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
 
     // Prepare the transaction metadata.
-    let secret_key = SecretKey::random(&mut rng);
+    let secret_key = SecretKey::random(rng);
     let utxo_id = rng.gen();
     let amount = 1;
     let maturity = 1.into();

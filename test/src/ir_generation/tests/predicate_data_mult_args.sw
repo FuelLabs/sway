@@ -12,8 +12,8 @@ fn main(x: u64, y: u64) -> bool {
 // regex: IMM=i\d+
 // regex: REG=\$r\d+
 
-// check: gm   $(r2=$REG) i3
-// check: gtf  $(r1=$REG) $r2 i257
+// check: gm   $(r1=$REG) i3
+// check: gtf  $(r2=$REG) $r2 i257
 // nextln: jnzf $r1 $$zero $IMM
 // nextln: gtf  $(r3=$REG) $r2 i269
 // nextln: jmpf $$zero $IMM

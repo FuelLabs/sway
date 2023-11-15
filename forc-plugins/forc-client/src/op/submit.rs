@@ -36,9 +36,7 @@ pub fn read_tx(path: &std::path::Path) -> anyhow::Result<fuel_tx::Transaction> {
         serde_json::from_reader(reader)?
     } else if has_extension(path, "bin") {
         let tx_bytes = std::fs::read(path)?;
-        fuel_tx::Transaction::from_bytes(&tx_bytes).unwrap() // TODO: make
-                                                             // error
-                                                             // conversion
+        fuel_tx::Transaction::from_bytes(&tx_bytes).map_err(anyhow::Error::msg)?
     } else {
         anyhow::bail!(r#"Unsupported transaction file extension, expected ".json" or ".bin""#);
     };

@@ -217,8 +217,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     .get_selector(self.context)
                     .unwrap()
                     .into_iter()
-                    .map(|b| format!("{b:02x}"))
-                    .collect::<String>()
+                    .fold("".to_string(), |output, b| { format!("{output}{b:02x}") })
             )));
         }
 

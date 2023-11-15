@@ -297,7 +297,8 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
 
         let witness = Witness::from(signature.as_ref());
         tx.replace_witness(signature_witness_index, witness);
-        tx.precompute(&params.chain_id).unwrap(); // TODO: make error conversion
+        tx.precompute(&params.chain_id)
+            .map_err(anyhow::Error::msg)?;
 
         Ok(tx)
     }
@@ -313,4 +314,3 @@ impl<T: field::Witnesses> TransactionExt for T {
         self
     }
 }
-

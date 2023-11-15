@@ -176,7 +176,7 @@ pub(crate) fn runs_in_vm(
 
             let mut i: Interpreter<_, _, NotSupportedEcal> =
                 Interpreter::with_storage(storage, Default::default());
-            let transition = i.transact(tx).unwrap(); //TODO: add error conversion
+            let transition = i.transact(tx).map_err(anyhow::Error::msg)?;
             Ok(VMExecutionResult::Fuel(
                 *transition.state(),
                 transition.receipts().to_vec(),

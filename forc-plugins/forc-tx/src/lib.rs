@@ -67,7 +67,7 @@ pub struct Create {
 pub struct Mint {
     /// The location of the `Mint` transaction in the block.
     #[clap(long)]
-    pub tx_ptr: fuel_tx::TxPointer, // TODO: check if the `clap` settings are ok
+    pub tx_ptr: fuel_tx::TxPointer, // TODO: @hal3e check if the `clap` settings are ok
     /// The `Input::Contract` that assets are minted to.
     #[clap(skip)]
     pub(crate) input_contract: input::contract::Contract,
@@ -545,7 +545,7 @@ impl Command {
             match cmd {
                 Transaction::Create(ref mut create) => create.outputs.push(output),
                 Transaction::Script(ref mut script) => script.outputs.push(output),
-                Transaction::Mint(_) => {} // TODO: check if this is correct
+                Transaction::Mint(_) => {} // TODO: @hal3e check if this is correct
             }
         }
 
@@ -708,7 +708,7 @@ impl From<Mint> for fuel_tx::Mint {
             mint.tx_ptr,
             mint.input_contract,
             mint.output_contract,
-            mint.mint_amount.into(),
+            mint.mint_amount,
             mint.mint_asset_id,
         )
     }
