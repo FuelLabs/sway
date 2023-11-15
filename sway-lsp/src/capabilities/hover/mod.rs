@@ -88,13 +88,10 @@ fn extract_fn_signature(span: &Span) -> String {
 fn format_doc_attributes(token: &Token) -> String {
     let mut doc_comment = String::new();
     if let Some(attributes) = doc_comment_attributes(token) {
-        doc_comment = attributes
-            .iter()
-            .map(|attribute| {
-                let comment = attribute.args.first().unwrap().name.as_str();
-                format!("{comment}\n")
-            })
-            .collect()
+        doc_comment = attributes.iter().fold("".to_string(), |output, attribute| {
+            let comment = attribute.args.first().unwrap().name.as_str();
+            format!("{output}{comment}\n")
+        })
     }
     doc_comment
 }
