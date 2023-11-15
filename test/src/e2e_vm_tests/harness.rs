@@ -7,10 +7,10 @@ use forc_client::{
 };
 use forc_pkg::{Built, BuiltPackage};
 use fuel_tx::TransactionBuilder;
-use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::fuel_tx;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
+use fuel_vm::{checked_transaction::builder::TransactionBuilderExt, interpreter::NotSupportedEcal};
 use futures::Future;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
@@ -148,26 +148,35 @@ pub(crate) fn runs_in_vm(
             let block_height = (u32::MAX >> 1).into();
             let params = ConsensusParameters {
                 // The default max length is 1MB which isn't enough for the bigger tests.
-                max_script_length: 64 * 1024 * 1024,
-                ..ConsensusParameters::DEFAULT
+                script_params: ScriptParameters {
+                    max_script_length: 64 * 1024 * 1024,
+                    ..Default::default()
+                },
+                ..Default::default()
             };
 
             let tx = TransactionBuilder::script(script.bytecode.bytes, script_data)
                 .with_params(params)
                 .add_unsigned_coin_input(
-                    rng.gen(),
+                    SecretKey::random(rng),
                     rng.gen(),
                     1,
                     Default::default(),
                     rng.gen(),
                     0u32.into(),
                 )
-                .gas_limit(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
+                .script_gas_limit(
+                    fuel_tx::ConsensusParameters::default()
+                        .tx_params()
+                        .max_gas_per_tx
+                        / 2,
+                )
                 .maturity(maturity)
-                .finalize_checked(block_height, &GasCosts::default());
+                .finalize_checked(block_height);
 
-            let mut i = Interpreter::with_storage(storage, Default::default(), GasCosts::default());
-            let transition = i.transact(tx)?;
+            let mut i: Interpreter<_, _, NotSupportedEcal> =
+                Interpreter::with_storage(storage, Default::default());
+            let transition = i.transact(tx).unwrap(); //TODO: add error conversion
             Ok(VMExecutionResult::Fuel(
                 *transition.state(),
                 transition.receipts().to_vec(),

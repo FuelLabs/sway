@@ -3,6 +3,11 @@
 use clap::{Args, Parser};
 use devault::Devault;
 use forc_util::tx_utils::Salt;
+use fuel_tx::{
+    input, output,
+    policies::{Policies, PolicyType},
+};
+use fuel_types::AssetId;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use thiserror::Error;
@@ -62,10 +67,19 @@ pub struct Create {
 pub struct Mint {
     /// The location of the `Mint` transaction in the block.
     #[clap(long)]
-    pub tx_ptr: fuel_tx::TxPointer,
-    // Outputs must follow all other arguments and are parsed separately.
+    pub tx_ptr: fuel_tx::TxPointer, // TODO: check if the `clap` settings are ok
+    /// The `Input::Contract` that assets are minted to.
     #[clap(skip)]
-    pub outputs: Vec<Output>,
+    pub(crate) input_contract: input::contract::Contract,
+    /// The `Output::Contract` that assets are being minted to.
+    #[clap(skip)]
+    pub(crate) output_contract: output::contract::Contract,
+    /// The amount of funds minted.
+    #[clap(skip)]
+    pub(crate) mint_amount: u64,
+    /// The asset IDs corresponding to the minted amount.
+    #[clap(skip)]
+    pub(crate) mint_asset_id: AssetId,
 }
 
 /// Construct a `Script` transaction for running a script.
@@ -531,7 +545,7 @@ impl Command {
             match cmd {
                 Transaction::Create(ref mut create) => create.outputs.push(output),
                 Transaction::Script(ref mut script) => script.outputs.push(output),
-                Transaction::Mint(ref mut mint) => mint.outputs.push(output),
+                Transaction::Mint(_) => {} // TODO: check if this is correct
             }
         }
 
@@ -621,20 +635,19 @@ impl TryFrom<Create> for fuel_tx::Create {
             .into_iter()
             .map(|s| fuel_tx::Witness::from(s.as_bytes()))
             .collect();
+
+        let mut policies = Policies::default().with_maturity(create.maturity.maturity.into());
+        policies.set(PolicyType::GasPrice, create.gas.price);
         let create = fuel_tx::Transaction::create(
-            create.gas.price.unwrap_or_default(),
-            create
-                .gas
-                .limit
-                .unwrap_or(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx),
-            create.maturity.maturity.into(),
             create.bytecode_witness_index,
+            policies,
             create.salt.salt.unwrap_or_default(),
             storage_slots,
             inputs,
             outputs,
             witnesses,
         );
+
         Ok(create)
     }
 }
@@ -668,15 +681,19 @@ impl TryFrom<Script> for fuel_tx::Script {
             .into_iter()
             .map(|s| fuel_tx::Witness::from(s.as_bytes()))
             .collect();
+
+        let mut policies = Policies::default().with_maturity(script.maturity.maturity.into());
+        policies.set(PolicyType::GasPrice, script.gas.price);
         let script = fuel_tx::Transaction::script(
-            script.gas.price.unwrap_or_default(),
-            script
-                .gas
-                .limit
-                .unwrap_or(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx),
-            script.maturity.maturity.into(),
+            script.gas.limit.unwrap_or(
+                fuel_tx::ConsensusParameters::default()
+                    .tx_params()
+                    .max_gas_per_tx
+                    / 2,
+            ),
             script_bytecode,
             script_data,
+            policies,
             inputs,
             outputs,
             witnesses,
@@ -687,12 +704,13 @@ impl TryFrom<Script> for fuel_tx::Script {
 
 impl From<Mint> for fuel_tx::Mint {
     fn from(mint: Mint) -> Self {
-        let outputs = mint
-            .outputs
-            .into_iter()
-            .map(fuel_tx::Output::from)
-            .collect();
-        fuel_tx::Transaction::mint(mint.tx_ptr, outputs)
+        fuel_tx::Transaction::mint(
+            mint.tx_ptr,
+            mint.input_contract,
+            mint.output_contract,
+            mint.mint_amount.into(),
+            mint.mint_asset_id,
+        )
     }
 }
 
@@ -849,11 +867,11 @@ impl From<Output> for fuel_tx::Output {
                 amount: coin.amount,
                 asset_id: coin.asset_id,
             },
-            Output::Contract(contract) => fuel_tx::Output::Contract {
+            Output::Contract(contract) => fuel_tx::Output::Contract(output::contract::Contract {
                 input_index: contract.input_ix,
                 balance_root: contract.balance_root,
                 state_root: contract.state_root,
-            },
+            }),
             Output::Change(change) => fuel_tx::Output::Change {
                 to: change.to,
                 amount: change.amount,

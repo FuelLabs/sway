@@ -101,7 +101,7 @@ mod tests {
             .unwrap()
             .resolve(test_data_offset);
         let expected_bytes = vec![
-            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 2u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8,
+            2u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
         ];
         assert_eq!(encoded_bytes, expected_bytes);
     }
