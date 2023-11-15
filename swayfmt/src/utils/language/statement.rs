@@ -24,7 +24,7 @@ impl Format for Statement {
 /// method calls of two parts they are never broke into multiple lines.
 /// Arguments however can be be broken into multiple lines, and that is handled
 /// by `write_function_call_arguments`
-fn remove_arguments_from_expr(expr: Expr, formatter: &mut Formatter) -> Expr {
+fn remove_arguments_from_expr(expr: Expr) -> Expr {
     match expr {
         Expr::MethodCall {
             target,
@@ -33,12 +33,8 @@ fn remove_arguments_from_expr(expr: Expr, formatter: &mut Formatter) -> Expr {
             contract_args_opt,
             args,
         } => {
-            let is_simple_call = match *target {
-                Expr::Path(_) => true,
-                _ => false,
-            };
-
-            let target = remove_arguments_from_expr(*target, formatter);
+            let is_simple_call = matches!(*target, Expr::Path(_));
+            let target = remove_arguments_from_expr(*target);
             Expr::MethodCall {
                 target: Box::new(target),
                 dot_token,
@@ -62,7 +58,7 @@ fn remove_arguments_from_expr(expr: Expr, formatter: &mut Formatter) -> Expr {
             dot_token,
             name,
         } => {
-            let target = remove_arguments_from_expr(*target, formatter);
+            let target = remove_arguments_from_expr(*target);
             Expr::FieldProjection {
                 target: Box::new(target),
                 dot_token,
@@ -87,8 +83,7 @@ fn format_statement(
         } => {
             let mut temp_expr = FormattedCode::new();
 
-            remove_arguments_from_expr(expr.clone(), formatter)
-                .format(&mut temp_expr, formatter)?;
+            remove_arguments_from_expr(expr.clone()).format(&mut temp_expr, formatter)?;
             if temp_expr.len() > formatter.shape.width_heuristics.chain_width {
                 formatter.shape.code_line.expr_new_line = true;
                 // reformat the expression adding a break
