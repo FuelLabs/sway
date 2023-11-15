@@ -90,8 +90,48 @@ impl Instruction {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
+pub struct ModuleId {
+    id: u16,
+}
+
+impl ModuleId {
+    pub fn new(id: u16) -> Self {
+        Self { id }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 pub struct SourceId {
     id: u32,
+}
+
+impl SourceId {
+    const RESERVED: u16 = 0;
+    const SOURCE_ID_BITS: u32 = 20;
+    const SOURCE_ID_MASK: u32 = (1 << Self::SOURCE_ID_BITS) - 1;
+
+    /// Create a combined ID from module and source IDs.
+    pub fn new(module_id: u16, source_id: u32) -> Self {
+        SourceId {
+            id: ((module_id as u32) << Self::SOURCE_ID_BITS) | source_id,
+        }
+    }
+
+    /// Create a reserved source_id. This is assigned to internal types
+    /// that should not be cleared during garbage collection.
+    pub fn reserved() -> Self {
+        Self::new(Self::RESERVED, Self::RESERVED as u32)
+    }
+
+    /// The module_id that this source_id was created from.
+    pub fn module_id(&self) -> ModuleId {
+        ModuleId::new((self.id >> Self::SOURCE_ID_BITS) as u16)
+    }
+
+    /// Id of the source file without the module_id component.
+    pub fn source_id(&self) -> u32 {
+        self.id & Self::SOURCE_ID_MASK
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]

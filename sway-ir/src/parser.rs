@@ -516,6 +516,7 @@ mod ir_builder {
             rule ast_ty() -> IrAstTy
                 = ("unit" / "()") _ { IrAstTy::Unit }
                 / "bool" _ { IrAstTy::Bool }
+                / "u8" _ { IrAstTy::U8 }
                 / "u64" _ { IrAstTy::U64 }
                 / "u256" _ { IrAstTy::U256 }
                 / "b256" _ { IrAstTy::B256 }
@@ -829,7 +830,11 @@ mod ir_builder {
                     IrAstTy::B256 => Constant::get_b256(context, *bs),
                     _ => unreachable!("invalid type for hex number"),
                 },
-                IrAstConstValue::Number(n) => Constant::get_uint(context, 64, *n),
+                IrAstConstValue::Number(n) => match val_ty {
+                    IrAstTy::U8 => Constant::get_uint(context, 8, *n),
+                    IrAstTy::U64 => Constant::get_uint(context, 64, *n),
+                    _ => unreachable!(),
+                },
                 IrAstConstValue::String(s) => Constant::get_string(context, s.clone()),
                 IrAstConstValue::Array(..) => {
                     let array_const = self.as_constant(context, val_ty);
@@ -847,6 +852,7 @@ mod ir_builder {
     enum IrAstTy {
         Unit,
         Bool,
+        U8,
         U64,
         U256,
         B256,
@@ -863,6 +869,7 @@ mod ir_builder {
             match self {
                 IrAstTy::Unit => Type::get_unit(context),
                 IrAstTy::Bool => Type::get_bool(context),
+                IrAstTy::U8 => Type::get_uint8(context),
                 IrAstTy::U64 => Type::get_uint64(context),
                 IrAstTy::U256 => Type::get_uint256(context),
                 IrAstTy::B256 => Type::get_b256(context),
@@ -1375,13 +1382,15 @@ mod ir_builder {
                         .ins(context)
                         .state_store_word(*val_map.get(&src).unwrap(), *val_map.get(&key).unwrap())
                         .add_metadatum(context, opt_metadata),
-                    IrAstOperation::Store(stored_val_name, dst_val_name) => block
-                        .ins(context)
-                        .store(
-                            *val_map.get(&dst_val_name).unwrap(),
-                            *val_map.get(&stored_val_name).unwrap(),
-                        )
-                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::Store(stored_val_name, dst_val_name) => {
+                        let dst_val_ptr = *val_map.get(&dst_val_name).unwrap();
+                        let stored_val = *val_map.get(&stored_val_name).unwrap();
+
+                        block
+                            .ins(context)
+                            .store(dst_val_ptr, stored_val)
+                            .add_metadatum(context, opt_metadata)
+                    }
                 };
                 ins.value_name.map(|vn| val_map.insert(vn, ins_val));
             }

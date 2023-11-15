@@ -20,7 +20,7 @@ pub async fn handle_did_open_text_document(
     // as the workspace is already compiled.
     if session.token_map().is_empty() {
         state
-            .parse_project(uri, params.text_document.uri, session.clone())
+            .parse_project(uri, params.text_document.uri, None, session.clone())
             .await;
     }
     Ok(())
@@ -36,7 +36,12 @@ pub async fn handle_did_change_text_document(
         .uri_and_session_from_workspace(&params.text_document.uri)?;
     session.write_changes_to_file(&uri, params.content_changes)?;
     state
-        .parse_project(uri, params.text_document.uri, session.clone())
+        .parse_project(
+            uri,
+            params.text_document.uri,
+            Some(params.text_document.version),
+            session.clone(),
+        )
         .await;
     Ok(())
 }
@@ -51,7 +56,7 @@ pub(crate) async fn handle_did_save_text_document(
         .uri_and_session_from_workspace(&params.text_document.uri)?;
     session.sync.resync()?;
     state
-        .parse_project(uri, params.text_document.uri, session.clone())
+        .parse_project(uri, params.text_document.uri, None, session.clone())
         .await;
     Ok(())
 }

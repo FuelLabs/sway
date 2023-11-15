@@ -61,6 +61,7 @@ fn split_aggregate(
             let scalarised_local =
                 function.new_unique_local_var(context, name, ty, initializer, false);
             map.insert(*base_off, scalarised_local);
+
             *base_off += ty_size;
         } else {
             let mut i = 0;
@@ -74,6 +75,11 @@ fn split_aggregate(
                     initializer.as_ref().map(|c| constant_index(c, i as usize)),
                     base_off,
                 );
+
+                if ty.is_struct(context) {
+                    *base_off = crate::size_bytes_round_up_to_word_alignment!(*base_off);
+                }
+
                 i += 1;
             }
         }
@@ -172,6 +178,11 @@ pub fn sroa(
                             calc_elm_details(context, details, member_ty, base_off, base_index);
                             i += 1;
                             *base_index.last_mut().unwrap() += 1;
+
+                            if ty.is_struct(context) {
+                                *base_off =
+                                    crate::size_bytes_round_up_to_word_alignment!(*base_off);
+                            }
                         }
                         base_index.pop();
                     }
@@ -207,7 +218,8 @@ pub fn sroa(
                         })
                         .expect("Source of memcpy was incorrectly identified as a candidate.")
                         as u32;
-                    for elm_offset in elm_details.iter().map(|detail| detail.offset) {
+                    for detail in elm_details.iter() {
+                        let elm_offset = detail.offset;
                         let actual_offset = elm_offset + base_offset;
                         let remapped_var = offset_scalar_map
                             .get(src_sym)
@@ -268,7 +280,8 @@ pub fn sroa(
                         })
                         .expect("Source of memcpy was incorrectly identified as a candidate.")
                         as u32;
-                    for elm_offset in elm_details.iter().map(|detail| detail.offset) {
+                    for detail in elm_details.iter() {
+                        let elm_offset = detail.offset;
                         let actual_offset = elm_offset + base_offset;
                         let remapped_var = offset_scalar_map
                             .get(dst_sym)

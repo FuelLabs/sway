@@ -5,11 +5,11 @@ use crate::{
     engine_threading::*,
     language::{
         ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
-        CallPath,
+        CallPath, Literal,
     },
     metadata::MetadataManager,
     semantic_analysis::*,
-    UnifyCheck,
+    TypeInfo, UnifyCheck,
 };
 
 use super::{
@@ -28,7 +28,7 @@ use sway_ir::{
     value::Value,
     InstOp, Instruction, Type, TypeContent,
 };
-use sway_types::{ident::Ident, span::Spanned, Span};
+use sway_types::{ident::Ident, integer_bits::IntegerBits, span::Spanned, Span};
 use sway_utils::mapped_stack::MappedStack;
 
 enum ConstEvalError {
@@ -267,6 +267,13 @@ fn const_eval_typed_expr(
     expr: &ty::TyExpression,
 ) -> Result<Option<Constant>, ConstEvalError> {
     Ok(match &expr.expression {
+        ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
+            let implied_lit = match lookup.engines.te().get(expr.return_type) {
+                TypeInfo::UnsignedInteger(IntegerBits::Eight) => Literal::U8(*n as u8),
+                _ => Literal::U64(*n),
+            };
+            Some(convert_literal_to_constant(lookup.context, &implied_lit))
+        }
         ty::TyExpressionVariant::Literal(l) => Some(convert_literal_to_constant(lookup.context, l)),
         ty::TyExpressionVariant::FunctionApplication {
             arguments,

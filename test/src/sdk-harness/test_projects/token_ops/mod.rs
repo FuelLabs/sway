@@ -177,7 +177,7 @@ async fn can_force_transfer() {
     balance_result = fuelcontract_instance
         .methods()
         .get_balance(Bits256(*asset_id), target.clone())
-        .set_contract_ids(&[balance_id.into()])
+        .with_contract_ids(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -188,7 +188,7 @@ async fn can_force_transfer() {
     fuelcontract_instance
         .methods()
         .force_transfer_coins(coins, Bits256(*asset_id), target.clone())
-        .set_contract_ids(&[balance_id.into()])
+        .with_contract_ids(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -206,7 +206,7 @@ async fn can_force_transfer() {
     balance_result = fuelcontract_instance
         .methods()
         .get_balance(Bits256(*asset_id), target.clone())
-        .set_contract_ids(&[balance_id.into()])
+        .with_contract_ids(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -227,7 +227,7 @@ async fn can_mint_and_send_to_contract() {
     fuelcontract_instance
         .methods()
         .mint_and_send_to_contract(amount, target.clone(), Bits256(*sub_id))
-        .set_contract_ids(&[balance_id.into()])
+        .with_contract_ids(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -235,7 +235,7 @@ async fn can_mint_and_send_to_contract() {
     let result = fuelcontract_instance
         .methods()
         .get_balance(Bits256(*asset_id), target)
-        .set_contract_ids(&[balance_id.into()])
+        .with_contract_ids(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -325,7 +325,7 @@ async fn can_perform_generic_mint_to_with_contract_id() {
     fuelcontract_instance
         .methods()
         .generic_mint_to(amount, Identity::ContractId(target), Bits256(*sub_id))
-        .set_contract_ids(&[balance_id.into()])
+        .with_contract_ids(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -333,7 +333,7 @@ async fn can_perform_generic_mint_to_with_contract_id() {
     let result = fuelcontract_instance
         .methods()
         .get_balance(Bits256(*asset_id), target)
-        .set_contract_ids(&[balance_id.into()])
+        .with_contract_ids(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -410,7 +410,7 @@ async fn can_perform_generic_transfer_to_contract() {
     fuelcontract_instance
         .methods()
         .generic_transfer(amount, Bits256(*asset_id), Identity::ContractId(to))
-        .set_contract_ids(&[balance_id.into()])
+        .with_contract_ids(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -418,7 +418,7 @@ async fn can_perform_generic_transfer_to_contract() {
     let result = fuelcontract_instance
         .methods()
         .get_balance(Bits256(*asset_id), to)
-        .set_contract_ids(&[balance_id.into()])
+        .with_contract_ids(&[balance_id.into()])
         .call()
         .await
         .unwrap();

@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "call_storage_enum"
+
+[dependencies]
+std = { path = "../../../../../../../sway-lib-std" }
+storage_enum_abi = { path = "../../test_abis/storage_enum_abi" }

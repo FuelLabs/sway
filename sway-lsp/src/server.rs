@@ -4,7 +4,7 @@
 use crate::{
     core::document,
     handlers::{notification, request},
-    lsp_ext::{OnEnterParams, ShowAstParams, VisualizeParams},
+    lsp_ext::{MetricsParams, OnEnterParams, ShowAstParams, VisualizeParams},
     server_state::ServerState,
 };
 use lsp_types::{
@@ -17,6 +17,7 @@ use lsp_types::{
     PrepareRenameResponse, RenameParams, SemanticTokensParams, SemanticTokensResult,
     TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, WorkspaceEdit,
 };
+use sway_utils::PerformanceData;
 use tower_lsp::{jsonrpc::Result, LanguageServer};
 
 #[tower_lsp::async_trait]
@@ -139,5 +140,12 @@ impl ServerState {
 
     pub async fn visualize(&self, params: VisualizeParams) -> Result<Option<String>> {
         request::handle_visualize(self, params)
+    }
+
+    pub async fn metrics(
+        &self,
+        params: MetricsParams,
+    ) -> Result<Option<Vec<(String, PerformanceData)>>> {
+        request::metrics(self, params)
     }
 }

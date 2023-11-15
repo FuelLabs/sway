@@ -93,6 +93,11 @@ impl raw_ptr {
     pub fn read<T>(self) -> T {
         if __is_reference_type::<T>() {
             asm(ptr: self) { ptr: T }
+        } else if __eq(__size_of::<T>(), 1) {
+            asm(ptr: self, val) {
+                lb val ptr i0;
+                val: T
+            }
         } else {
             asm(ptr: self, val) {
                 lw val ptr i0;
@@ -147,6 +152,10 @@ impl raw_ptr {
         if __is_reference_type::<T>() {
             asm(dst: self, src: val, count: __size_of_val(val)) {
                 mcp dst src count;
+            };
+        } else if __eq(__size_of::<T>(), 1) {
+            asm(ptr: self, val: val) {
+                sb ptr val i0;
             };
         } else {
             asm(ptr: self, val: val) {

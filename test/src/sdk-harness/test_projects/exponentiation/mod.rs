@@ -80,12 +80,7 @@ async fn overflowing_pow_u16_panics_max() {
 async fn overflowing_pow_u8_panics() {
     let wallet = launch_provider_and_get_wallet().await;
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
-    pow_instance
-        .methods()
-        .u8_overflow(10u8, 3u32)
-        .call()
-        .await
-        .unwrap();
+    pow_instance.methods().u8_overflow(10u8, 3u32).call().await.unwrap();
 }
 
 #[tokio::test]

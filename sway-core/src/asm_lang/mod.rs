@@ -67,35 +67,6 @@ pub(crate) struct RealizedOp {
 }
 
 impl Op {
-    /// Write value in given [VirtualRegister] `value_to_write` to given memory address that is held within the
-    /// [VirtualRegister] `destination_address`
-    pub(crate) fn write_register_to_memory(
-        destination_address: VirtualRegister,
-        value_to_write: VirtualRegister,
-        offset: VirtualImmediate12,
-        span: Span,
-    ) -> Self {
-        Op {
-            opcode: Either::Left(VirtualOp::SW(destination_address, value_to_write, offset)),
-            comment: String::new(),
-            owning_span: Some(span),
-        }
-    }
-    /// Write value in given [VirtualRegister] `value_to_write` to given memory address that is held within the
-    /// [VirtualRegister] `destination_address`, with the provided comment.
-    pub(crate) fn write_register_to_memory_comment(
-        destination_address: VirtualRegister,
-        value_to_write: VirtualRegister,
-        offset: VirtualImmediate12,
-        span: Span,
-        comment: impl Into<String>,
-    ) -> Self {
-        Op {
-            opcode: Either::Left(VirtualOp::SW(destination_address, value_to_write, offset)),
-            comment: comment.into(),
-            owning_span: Some(span),
-        }
-    }
     /// Moves the stack pointer by the given amount (i.e. allocates stack memory)
     pub(crate) fn unowned_stack_allocate_memory(
         size_to_allocate_in_bytes: VirtualImmediate24,
@@ -148,7 +119,7 @@ impl Op {
         comment: impl Into<String>,
     ) -> Self {
         Op {
-            opcode: Either::Left(VirtualOp::LWDataId(reg, data)),
+            opcode: Either::Left(VirtualOp::LoadDataId(reg, data)),
             comment: comment.into(),
             owning_span: None,
         }
@@ -1128,7 +1099,7 @@ impl fmt::Display for VirtualOp {
             DataSectionRegisterLoadPlaceholder => {
                 write!(fmtr, "data section register load placeholder")
             }
-            LWDataId(a, b) => write!(fmtr, "lw {a} {b}"),
+            LoadDataId(a, b) => write!(fmtr, "load {a} {b}"),
             Undefined => write!(fmtr, "undefined op"),
         }
     }

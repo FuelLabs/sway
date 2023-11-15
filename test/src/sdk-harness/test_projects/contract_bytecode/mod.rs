@@ -15,7 +15,7 @@ async fn can_get_bytecode_root() {
     let bytecode_root = contract_instance
         .methods()
         .get_contract_bytecode_root(ContractId::from(id.clone()))
-        .set_contracts(&[&contract_instance])
+        .with_contracts(&[&contract_instance])
         .call()
         .await
         .unwrap()

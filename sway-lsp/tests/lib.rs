@@ -96,6 +96,43 @@ async fn did_change() {
 }
 
 #[tokio::test]
+async fn did_cache_test() {
+    let (mut service, _) = LspService::build(ServerState::new)
+        .custom_method("sway/metrics", ServerState::metrics)
+        .finish();
+    let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
+    let _ = lsp::did_change_request(&mut service, &uri).await;
+    let metrics = lsp::metrics_request(&mut service, &uri).await;
+    assert!(metrics.len() >= 2);
+    for (path, metrics) in metrics {
+        if path.contains("sway-lib-core") || path.contains("sway-lib-std") {
+            assert!(metrics.reused_modules >= 1);
+        }
+    }
+    shutdown_and_exit(&mut service).await;
+}
+
+// #[tokio::test]
+#[allow(dead_code)]
+async fn did_change_stress_test() {
+    let (mut service, _) = LspService::build(ServerState::new)
+        .custom_method("sway/metrics", ServerState::metrics)
+        .finish();
+    let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
+    let times = 20;
+    for _ in 0..times {
+        let _ = lsp::did_change_request(&mut service, &uri).await;
+        let metrics = lsp::metrics_request(&mut service, &uri).await;
+        for (path, metrics) in metrics {
+            if path.contains("sway-lib-core") || path.contains("sway-lib-std") {
+                assert!(metrics.reused_modules >= 1);
+            }
+        }
+    }
+    shutdown_and_exit(&mut service).await;
+}
+
+#[tokio::test]
 async fn lsp_syncs_with_workspace_edits() {
     let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
@@ -165,7 +202,7 @@ async fn go_to_definition_for_fields() {
         def_line: 81,
         def_start_char: 9,
         def_end_char: 15,
-        def_path: "fixtures-std/src/option.sw",
+        def_path: "sway-lib-std/src/option.sw",
     };
     // Option
     lsp::definition_check(&server, &opt_go_to);
@@ -220,7 +257,7 @@ async fn go_to_definition_inside_turbofish() {
         def_line: 81,
         def_start_char: 9,
         def_end_char: 15,
-        def_path: "fixtures-std/src/option.sw",
+        def_path: "sway-lib-std/src/option.sw",
     };
     // option.sw
     lsp::definition_check(&server, &opt_go_to);
@@ -240,7 +277,7 @@ async fn go_to_definition_inside_turbofish() {
         def_line: 61,
         def_start_char: 9,
         def_end_char: 15,
-        def_path: "fixtures-std/src/result.sw",
+        def_path: "sway-lib-std/src/result.sw",
     };
     // result.sw
     lsp::definition_check(&server, &res_go_to);
@@ -298,7 +335,7 @@ async fn go_to_definition_for_matches() {
         def_line: 81,
         def_start_char: 9,
         def_end_char: 15,
-        def_path: "fixtures-std/src/option.sw",
+        def_path: "sway-lib-std/src/option.sw",
     };
     // Option
     lsp::definition_check(&server, &go_to);
@@ -316,7 +353,7 @@ async fn go_to_definition_for_matches() {
         def_line: 85,
         def_start_char: 4,
         def_end_char: 8,
-        def_path: "fixtures-std/src/option.sw",
+        def_path: "sway-lib-std/src/option.sw",
     };
     // Some
     lsp::definition_check(&server, &go_to);
@@ -331,7 +368,7 @@ async fn go_to_definition_for_matches() {
         def_line: 83,
         def_start_char: 4,
         def_end_char: 8,
-        def_path: "fixtures-std/src/option.sw",
+        def_path: "sway-lib-std/src/option.sw",
     };
     // None
     lsp::definition_check(&server, &go_to);
@@ -425,7 +462,7 @@ async fn go_to_definition_for_paths() {
         def_line: 0,
         def_start_char: 0,
         def_end_char: 0,
-        def_path: "fixtures-std/src/lib.sw",
+        def_path: "sway-lib-std/src/lib.sw",
     };
     // std
     lsp::definition_check(&server, &go_to);
@@ -441,7 +478,7 @@ async fn go_to_definition_for_paths() {
         def_line: 0,
         def_start_char: 0,
         def_end_char: 0,
-        def_path: "fixtures-std/src/option.sw",
+        def_path: "sway-lib-std/src/option.sw",
     };
     // option
     lsp::definition_check(&server, &go_to);
@@ -453,7 +490,7 @@ async fn go_to_definition_for_paths() {
         def_line: 81,
         def_start_char: 9,
         def_end_char: 15,
-        def_path: "fixtures-std/src/option.sw",
+        def_path: "sway-lib-std/src/option.sw",
     };
     // Option
     lsp::definition_check(&server, &go_to);
@@ -466,7 +503,7 @@ async fn go_to_definition_for_paths() {
         def_line: 0,
         def_start_char: 0,
         def_end_char: 0,
-        def_path: "fixtures-std/src/vm.sw",
+        def_path: "sway-lib-std/src/vm.sw",
     };
     // vm
     lsp::definition_check(&server, &go_to);
@@ -478,7 +515,7 @@ async fn go_to_definition_for_paths() {
         def_line: 0,
         def_start_char: 0,
         def_end_char: 0,
-        def_path: "fixtures-std/src/vm/evm.sw",
+        def_path: "sway-lib-std/src/vm/evm.sw",
     };
     // evm
     lsp::definition_check(&server, &go_to);
@@ -490,7 +527,7 @@ async fn go_to_definition_for_paths() {
         def_line: 0,
         def_start_char: 0,
         def_end_char: 0,
-        def_path: "fixtures-std/src/vm/evm/evm_address.sw",
+        def_path: "sway-lib-std/src/vm/evm/evm_address.sw",
     };
     // evm_address
     lsp::definition_check(&server, &go_to);
@@ -502,7 +539,7 @@ async fn go_to_definition_for_paths() {
         def_line: 7,
         def_start_char: 11,
         def_end_char: 21,
-        def_path: "fixtures-std/src/vm/evm/evm_address.sw",
+        def_path: "sway-lib-std/src/vm/evm/evm_address.sw",
     };
     // EvmAddress
     lsp::definition_check(&server, &go_to);
@@ -645,7 +682,7 @@ async fn go_to_definition_for_paths() {
         def_line: 0,
         def_start_char: 0,
         def_end_char: 0,
-        def_path: "fixtures-std/src/assert.sw",
+        def_path: "sway-lib-std/src/assert.sw",
     };
     // assert
     lsp::definition_check(&server, &go_to);
@@ -657,7 +694,7 @@ async fn go_to_definition_for_paths() {
         def_line: 0,
         def_start_char: 0,
         def_end_char: 0,
-        def_path: "fixtures-core/src/lib.sw",
+        def_path: "sway-lib-core/src/lib.sw",
     };
     // core
     lsp::definition_check(&server, &go_to);
@@ -669,7 +706,7 @@ async fn go_to_definition_for_paths() {
         def_line: 0,
         def_start_char: 0,
         def_end_char: 0,
-        def_path: "fixtures-core/src/primitives.sw",
+        def_path: "sway-lib-core/src/primitives.sw",
     };
     // primitives
     lsp::definition_check(&server, &go_to);
@@ -720,7 +757,7 @@ async fn go_to_definition_for_paths() {
         def_line: 0,
         def_start_char: 0,
         def_end_char: 0,
-        def_path: "fixtures-std/src/constants.sw",
+        def_path: "sway-lib-std/src/constants.sw",
     };
     // constants
     lsp::definition_check(&server, &go_to);
@@ -734,7 +771,7 @@ async fn go_to_definition_for_paths() {
         def_line: 33,
         def_start_char: 10,
         def_end_char: 19,
-        def_path: "fixtures-std/src/constants.sw",
+        def_path: "sway-lib-std/src/constants.sw",
     };
     // ZERO_B256
     lsp::definition_check(&server, &go_to);
@@ -744,10 +781,10 @@ async fn go_to_definition_for_paths() {
         req_uri: &uri,
         req_line: 19,
         req_char: 37,
-        def_line: 17,
+        def_line: 74,
         def_start_char: 11,
         def_end_char: 14,
-        def_path: "fixtures-core/src/primitives.sw",
+        def_path: "sway-lib-core/src/primitives.sw",
     };
     // u64::min()
     lsp::definition_check(&server, &go_to);
@@ -756,10 +793,10 @@ async fn go_to_definition_for_paths() {
         req_uri: &uri,
         req_line: 13,
         req_char: 22,
-        def_line: 247,
+        def_line: 304,
         def_start_char: 11,
         def_end_char: 14,
-        def_path: "fixtures-core/src/primitives.sw",
+        def_path: "sway-lib-core/src/primitives.sw",
     };
     // b256::min()
     lsp::definition_check(&server, &go_to);
@@ -879,12 +916,12 @@ async fn go_to_definition_for_variables() {
     go_to.def_line = 61;
     go_to.def_start_char = 9;
     go_to.def_end_char = 15;
-    go_to.def_path = "fixtures-std/src/result.sw";
+    go_to.def_path = "sway-lib-std/src/result.sw";
     lsp::definition_check_with_req_offset(&server, &mut go_to, 56, 22);
     lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 31);
     lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 60);
     go_to.def_line = 81;
-    go_to.def_path = "fixtures-std/src/option.sw";
+    go_to.def_path = "sway-lib-std/src/option.sw";
     lsp::definition_check_with_req_offset(&server, &mut go_to, 56, 28);
     lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 39);
     lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 68);
@@ -918,7 +955,7 @@ async fn go_to_definition_for_consts() {
         def_line: 8,
         def_start_char: 11,
         def_end_char: 21,
-        def_path: "fixtures-std/src/contract_id.sw",
+        def_path: "sway-lib-std/src/contract_id.sw",
     };
     lsp::definition_check(&server, &contract_go_to);
 
@@ -970,7 +1007,7 @@ async fn go_to_definition_for_consts() {
     go_to.def_line = 81;
     go_to.def_start_char = 9;
     go_to.def_end_char = 15;
-    go_to.def_path = "fixtures-std/src/option.sw";
+    go_to.def_path = "sway-lib-std/src/option.sw";
     lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 17);
     lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 24);
     lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 38);
@@ -1061,7 +1098,7 @@ async fn go_to_definition_for_structs() {
         def_line: 81,
         def_start_char: 9,
         def_end_char: 15,
-        def_path: "fixtures-std/src/option.sw",
+        def_path: "sway-lib-std/src/option.sw",
     };
     // Type Params
     lsp::definition_check(&server, &go_to);

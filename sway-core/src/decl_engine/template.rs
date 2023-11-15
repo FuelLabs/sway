@@ -20,6 +20,7 @@ where
         Template(value)
     }
 
+    #[allow(dead_code)]
     pub(crate) fn inner(&self) -> &T {
         &self.0
     }

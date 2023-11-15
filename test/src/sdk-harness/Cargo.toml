@@ -10,16 +10,17 @@ publish = false
 assert_matches = "1.5.0"
 
 # Dependencies from the `fuel-core` repository:
-fuel-core = { version = "0.20.1", default-features = false }
-fuel-core-client = { version = "0.20.1", default-features = false }
+fuel-core = { version = "0.20.6", default-features = false }
+fuel-core-client = { version = "0.20.6", default-features = false }
 
 # Dependencies from the `fuel-vm` repository:
 fuel-vm = "0.35.0"
 
 # Dependencies from the `fuels-rs` repository:
-fuels = { version = "0.45", features = ["fuel-core-lib"] }
+fuels = "0.50.1"
 
 hex = "0.4.3"
+pretty_assertions = "1.4.0"
 rand = "0.8"
 sha2 = "0.10"
 sha3 = "0.10.1"

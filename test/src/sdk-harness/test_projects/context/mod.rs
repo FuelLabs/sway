@@ -67,8 +67,8 @@ async fn can_get_this_balance() {
     caller_instance
         .methods()
         .call_receive_coins(send_amount, context_id)
-        .set_contracts(&[&context_instance])
-        .tx_params(TxParameters::default().set_gas_limit(1_000_000))
+        .with_contracts(&[&context_instance])
+        .tx_params(TxParameters::default().with_gas_limit(1_000_000))
         .call()
         .await
         .unwrap();
@@ -101,7 +101,7 @@ async fn can_get_balance_of_contract() {
             Bits256(*caller_id.asset_id(&Bytes32::zeroed())),
             caller_id.clone(),
         )
-        .set_contracts(&[&caller_instance])
+        .with_contracts(&[&caller_instance])
         .call()
         .await
         .unwrap();
@@ -124,7 +124,7 @@ async fn can_get_msg_value() {
     let result = caller_instance
         .methods()
         .call_get_amount_with_coins(send_amount, context_id)
-        .set_contracts(&[&context_instance])
+        .with_contracts(&[&context_instance])
         .call()
         .await
         .unwrap();
@@ -147,8 +147,8 @@ async fn can_get_msg_id() {
     let result = caller_instance
         .methods()
         .call_get_asset_id_with_coins(send_amount, context_id)
-        .set_contracts(&[&context_instance])
-        .tx_params(TxParameters::default().set_gas_limit(1_000_000))
+        .with_contracts(&[&context_instance])
+        .tx_params(TxParameters::default().with_gas_limit(1_000_000))
         .call()
         .await
         .unwrap();
@@ -174,8 +174,8 @@ async fn can_get_msg_gas() {
     let result = caller_instance
         .methods()
         .call_get_gas_with_coins(send_amount, context_id)
-        .set_contracts(&[&context_instance])
-        .tx_params(TxParameters::default().set_gas_limit(1_000_000))
+        .with_contracts(&[&context_instance])
+        .tx_params(TxParameters::default().with_gas_limit(1_000_000))
         .call()
         .await
         .unwrap();
@@ -191,7 +191,7 @@ async fn can_get_global_gas() {
     caller_instance
         .methods()
         .mint_coins(send_amount)
-        .tx_params(TxParameters::default().set_gas_limit(1_000_000))
+        .tx_params(TxParameters::default().with_gas_limit(1_000_000))
         .call()
         .await
         .unwrap();
@@ -199,8 +199,8 @@ async fn can_get_global_gas() {
     let result = caller_instance
         .methods()
         .call_get_global_gas_with_coins(send_amount, context_id)
-        .set_contracts(&[&context_instance])
-        .tx_params(TxParameters::default().set_gas_limit(1_000_000))
+        .with_contracts(&[&context_instance])
+        .tx_params(TxParameters::default().with_gas_limit(1_000_000))
         .call()
         .await
         .unwrap();

@@ -118,7 +118,7 @@ fn to_bytecode_mut(
     // Some LWs are expanded into two ops to allow for data larger than one word, so we calculate
     // exactly how many ops will be generated to calculate the offset.
     let offset_to_data_section_in_bytes = ops.iter().fold(0, |acc, item| match &item.opcode {
-        AllocatedOpcode::LWDataId(_reg, data_label)
+        AllocatedOpcode::LoadDataId(_reg, data_label)
             if !data_section
                 .has_copy_type(data_label)
                 .expect("data label references non existent data -- internal error") =>
