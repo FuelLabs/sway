@@ -1,6 +1,6 @@
 use std::{
     cmp::Ordering,
-    collections::{BTreeMap, BTreeSet, HashMap},
+    collections::{BTreeSet, HashMap},
     fmt,
 };
 
@@ -8,7 +8,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{BaseIdent, Ident, Span, Spanned};
 
 use crate::{
     decl_engine::{DeclEngineGet, DeclEngineInsert},
@@ -908,11 +908,11 @@ impl TraitMap {
         items
     }
 
-    pub(crate) fn get_trait_names_for_type(
+    pub(crate) fn get_trait_names_and_type_arguments_for_type(
         &self,
         engines: &Engines,
         type_id: TypeId,
-    ) -> Vec<CallPath> {
+    ) -> Vec<(CallPath, Vec<TypeArgument>)> {
         let type_engine = engines.te();
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
         let mut trait_names = vec![];
@@ -927,7 +927,7 @@ impl TraitMap {
                     suffix: entry.key.name.suffix.name.clone(),
                     is_absolute: entry.key.name.is_absolute,
                 };
-                trait_names.push(trait_call_path);
+                trait_names.push((trait_call_path, entry.key.name.suffix.args.clone()));
             }
         }
         trait_names
@@ -1019,7 +1019,7 @@ impl TraitMap {
         let _decl_engine = engines.de();
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
 
-        // resolving trait constraits require a concrete type, we need to default numeric to u64
+        // resolving trait constraints require a concrete type, we need to default numeric to u64
         type_engine.decay_numeric(handler, engines, type_id, access_span)?;
 
         let all_impld_traits: BTreeSet<(Ident, TypeId)> = self
@@ -1049,7 +1049,7 @@ impl TraitMap {
             })
             .collect();
 
-        let required_traits: BTreeMap<Ident, TypeId> = constraints
+        let required_traits: BTreeSet<(Ident, TypeId)> = constraints
             .iter()
             .map(|c| {
                 let TraitConstraint {
@@ -1073,27 +1073,20 @@ impl TraitMap {
             })
             .collect();
 
-        let relevant_impld_traits: BTreeSet<(Ident, TypeId)> = all_impld_traits
+        let traits_not_found: BTreeSet<(BaseIdent, TypeId)> = required_traits
             .into_iter()
-            .filter(|(impld_trait_name, impld_trait_type_id)| {
-                match required_traits.get(impld_trait_name) {
-                    Some(constraint_type_id) => {
-                        unify_check.check(*constraint_type_id, *impld_trait_type_id)
-                    }
-                    _ => false,
-                }
+            .filter(|(required_trait_name, required_trait_type_id)| {
+                !all_impld_traits
+                    .iter()
+                    .any(|(trait_name, constraint_type_id)| {
+                        trait_name == required_trait_name
+                            && unify_check.check(*constraint_type_id, *required_trait_type_id)
+                    })
             })
             .collect();
 
-        let required_traits_names: BTreeSet<Ident> = required_traits.keys().cloned().collect();
-        let relevant_impld_traits_names: BTreeSet<Ident> = relevant_impld_traits
-            .iter()
-            .map(|(ident, _type_id)| ident)
-            .cloned()
-            .collect();
-
         handler.scope(|handler| {
-            for trait_name in required_traits_names.difference(&relevant_impld_traits_names) {
+            for (trait_name, constraint_type_id) in traits_not_found.iter() {
                 if matches!(
                     try_inserting_trait_impl_on_failure,
                     TryInsertingTraitImplOnFailure::Yes
@@ -1108,10 +1101,19 @@ impl TraitMap {
                         TryInsertingTraitImplOnFailure::No,
                     );
                 } else {
+                    let mut type_arguments_string = "".to_string();
+                    if let TypeInfo::Custom {
+                        qualified_call_path: _,
+                        type_arguments: Some(type_arguments),
+                        root_type_id: _,
+                    } = type_engine.get(*constraint_type_id)
+                    {
+                        type_arguments_string = format!("<{}>", engines.help_out(type_arguments));
+                    }
                     // TODO: use a better span
                     handler.emit_err(CompileError::TraitConstraintNotSatisfied {
                         ty: engines.help_out(type_id).to_string(),
-                        trait_name: trait_name.to_string(),
+                        trait_name: format!("{}{}", trait_name, type_arguments_string),
                         span: access_span.clone(),
                     });
                 }
