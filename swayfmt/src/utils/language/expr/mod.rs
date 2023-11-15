@@ -696,7 +696,7 @@ pub fn should_write_multiline(code: &str, formatter: &Formatter) -> bool {
     }
 }
 
-/// Weather this expression can be inlined if it is the sole argument of a
+/// Whether this expression can be inlined if it is the sole argument of a
 /// function/method call
 #[inline]
 fn same_line_if_only_argument(expr: &Expr) -> bool {
