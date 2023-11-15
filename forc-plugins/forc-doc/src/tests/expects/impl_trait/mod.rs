@@ -6,7 +6,10 @@ use crate::{
 };
 use dir_indexer::get_relative_file_paths_set;
 use expect_test::{expect, Expect};
-use std::{collections::HashSet, path::PathBuf};
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+};
 
 /// The path to the generated HTML of the type the traits are implemented on.
 const IMPL_FOR: &str = "bar/struct.Bar.html";
@@ -34,8 +37,8 @@ fn test_impl_traits_default() {
     assert_search_js(
         &doc_path,
         &expect![[
-            r##"var SEARCH_INDEX={"core":[{"html_filename":"trait.AsRawSlice.html","module_info":["core","raw_slice"],"name":"AsRawSlice","preview":"Trait to return a type as a <code>raw_slice</code>.\n","type_name":"trait"},{"html_filename":"fn.from_str_array.html","module_info":["core","str"],"name":"from_str_array","preview":"","type_name":"function"},{"html_filename":"trait.Add.html","module_info":["core","ops"],"name":"Add","preview":"Trait for the addition of two values.\n","type_name":"trait"},{"html_filename":"trait.Subtract.html","module_info":["core","ops"],"name":"Subtract","preview":"Trait for the subtraction of two values.\n","type_name":"trait"},{"html_filename":"trait.Multiply.html","module_info":["core","ops"],"name":"Multiply","preview":"Trait for the multiplication of two values.\n","type_name":"trait"},{"html_filename":"trait.Divide.html","module_info":["core","ops"],"name":"Divide","preview":"Trait for the division of two values.\n","type_name":"trait"},{"html_filename":"trait.Mod.html","module_info":["core","ops"],"name":"Mod","preview":"Trait for the modulo of two values.\n","type_name":"trait"},{"html_filename":"trait.Not.html","module_info":["core","ops"],"name":"Not","preview":"Trait to invert a type.\n","type_name":"trait"},{"html_filename":"trait.Eq.html","module_info":["core","ops"],"name":"Eq","preview":"Trait to evaluate if two types are equal.\n","type_name":"trait"},{"html_filename":"trait.Ord.html","module_info":["core","ops"],"name":"Ord","preview":"Trait to evaluate if one value is greater or less than another of the same type.\n","type_name":"trait"},{"html_filename":"trait.BitwiseAnd.html","module_info":["core","ops"],"name":"BitwiseAnd","preview":"Trait to bitwise AND two values of the same type.\n","type_name":"trait"},{"html_filename":"trait.BitwiseOr.html","module_info":["core","ops"],"name":"BitwiseOr","preview":"Trait to bitwise OR two values of the same type.\n","type_name":"trait"},{"html_filename":"trait.BitwiseXor.html","module_info":["core","ops"],"name":"BitwiseXor","preview":"Trait to bitwise XOR two values of the same type.\n","type_name":"trait"},{"html_filename":"trait.Shift.html","module_info":["core","ops"],"name":"Shift","preview":"Trait to bit shift a value.\n","type_name":"trait"},{"html_filename":"enum.Never.html","module_info":["core","never"],"name":"Never","preview":"<code>Never</code> represents the type of computations which never resolve to any value at all.","type_name":"enum"},{"html_filename":"struct.StorageKey.html","module_info":["core","storage"],"name":"StorageKey","preview":"Describes a location in storage.\n","type_name":"struct"}],"impl_traits":[{"html_filename":"trait.Foo.html","module_info":["impl_traits","foo"],"name":"Foo","preview":"","type_name":"trait"},{"html_filename":"trait.Baz.html","module_info":["impl_traits","foo"],"name":"Baz","preview":"","type_name":"trait"},{"html_filename":"struct.Bar.html","module_info":["impl_traits","bar"],"name":"Bar","preview":"","type_name":"struct"}]};
-"object"==typeof exports&&"undefined"!=typeof module&&(module.exports=SEARCH_INDEX);"##
+            r#"var SEARCH_INDEX={"core":[{"html_filename":"trait.AsRawSlice.html","module_info":["core","raw_slice"],"name":"AsRawSlice","preview":"Trait to return a type as a <code>raw_slice</code>.\n","type_name":"trait"},{"html_filename":"fn.from_str_array.html","module_info":["core","str"],"name":"from_str_array","preview":"","type_name":"function"},{"html_filename":"trait.Add.html","module_info":["core","ops"],"name":"Add","preview":"Trait for the addition of two values.\n","type_name":"trait"},{"html_filename":"trait.Subtract.html","module_info":["core","ops"],"name":"Subtract","preview":"Trait for the subtraction of two values.\n","type_name":"trait"},{"html_filename":"trait.Multiply.html","module_info":["core","ops"],"name":"Multiply","preview":"Trait for the multiplication of two values.\n","type_name":"trait"},{"html_filename":"trait.Divide.html","module_info":["core","ops"],"name":"Divide","preview":"Trait for the division of two values.\n","type_name":"trait"},{"html_filename":"trait.Mod.html","module_info":["core","ops"],"name":"Mod","preview":"Trait for the modulo of two values.\n","type_name":"trait"},{"html_filename":"trait.Not.html","module_info":["core","ops"],"name":"Not","preview":"Trait to invert a type.\n","type_name":"trait"},{"html_filename":"trait.Eq.html","module_info":["core","ops"],"name":"Eq","preview":"Trait to evaluate if two types are equal.\n","type_name":"trait"},{"html_filename":"trait.Ord.html","module_info":["core","ops"],"name":"Ord","preview":"Trait to evaluate if one value is greater or less than another of the same type.\n","type_name":"trait"},{"html_filename":"trait.BitwiseAnd.html","module_info":["core","ops"],"name":"BitwiseAnd","preview":"Trait to bitwise AND two values of the same type.\n","type_name":"trait"},{"html_filename":"trait.BitwiseOr.html","module_info":["core","ops"],"name":"BitwiseOr","preview":"Trait to bitwise OR two values of the same type.\n","type_name":"trait"},{"html_filename":"trait.BitwiseXor.html","module_info":["core","ops"],"name":"BitwiseXor","preview":"Trait to bitwise XOR two values of the same type.\n","type_name":"trait"},{"html_filename":"trait.Shift.html","module_info":["core","ops"],"name":"Shift","preview":"Trait to bit shift a value.\n","type_name":"trait"},{"html_filename":"enum.Never.html","module_info":["core","never"],"name":"Never","preview":"<code>Never</code> represents the type of computations which never resolve to any value at all.","type_name":"enum"},{"html_filename":"struct.StorageKey.html","module_info":["core","storage"],"name":"StorageKey","preview":"Describes a location in storage.\n","type_name":"struct"}],"impl_traits":[{"html_filename":"trait.Foo.html","module_info":["impl_traits","foo"],"name":"Foo","preview":"","type_name":"trait"},{"html_filename":"trait.Baz.html","module_info":["impl_traits","foo"],"name":"Baz","preview":"","type_name":"trait"},{"html_filename":"struct.Bar.html","module_info":["impl_traits","bar"],"name":"Bar","preview":"","type_name":"struct"}]};
+"object"==typeof exports&&"undefined"!=typeof module&&(module.exports=SEARCH_INDEX);"#
         ]],
     );
     assert_file_tree(
@@ -99,8 +102,8 @@ fn test_impl_traits_no_deps() {
     assert_search_js(
         &doc_path,
         &expect![[
-            r##"var SEARCH_INDEX={"impl_traits_clone":[{"html_filename":"trait.Foo.html","module_info":["impl_traits_clone","foo"],"name":"Foo","preview":"","type_name":"trait"},{"html_filename":"trait.Baz.html","module_info":["impl_traits_clone","foo"],"name":"Baz","preview":"","type_name":"trait"},{"html_filename":"struct.Bar.html","module_info":["impl_traits_clone","bar"],"name":"Bar","preview":"","type_name":"struct"}]};
-"object"==typeof exports&&"undefined"!=typeof module&&(module.exports=SEARCH_INDEX);"##
+            r#"var SEARCH_INDEX={"impl_traits_clone":[{"html_filename":"trait.Foo.html","module_info":["impl_traits_clone","foo"],"name":"Foo","preview":"","type_name":"trait"},{"html_filename":"trait.Baz.html","module_info":["impl_traits_clone","foo"],"name":"Baz","preview":"","type_name":"trait"},{"html_filename":"struct.Bar.html","module_info":["impl_traits_clone","bar"],"name":"Bar","preview":"","type_name":"struct"}]};
+"object"==typeof exports&&"undefined"!=typeof module&&(module.exports=SEARCH_INDEX);"#
         ]],
     );
     assert_file_tree(
@@ -119,12 +122,12 @@ fn test_impl_traits_no_deps() {
     );
 }
 
-fn assert_index_html(doc_path: &PathBuf, project_name: &str, expect: &Expect) {
+fn assert_index_html(doc_path: &Path, project_name: &str, expect: &Expect) {
     let path_to_file = PathBuf::from(format!("{}/{}", project_name, IMPL_FOR));
     check_file(doc_path, &path_to_file, expect);
 }
 
-fn assert_search_js(doc_path: &PathBuf, expect: &Expect) {
+fn assert_search_js(doc_path: &Path, expect: &Expect) {
     let path_to_file = PathBuf::from(JS_SEARCH_FILE_PATH);
     check_file(doc_path, &path_to_file, expect);
 }
@@ -133,7 +136,7 @@ fn assert_file_tree(doc_dir_name: &str, project_name: &str, expected_files: Vec<
     let doc_root = format!("{}/{}/out/{}", DATA_DIR, project_name, doc_dir_name).into();
     let expected = expected_files
         .iter()
-        .map(|path| PathBuf::from(path))
+        .map(PathBuf::from)
         .collect::<HashSet<PathBuf>>();
     let files = get_relative_file_paths_set(doc_root);
     assert_eq!(files, expected);
