@@ -1,6 +1,6 @@
-script;
+library; 
 
-struct Buffer {
+pub struct Buffer {
     buffer: raw_ptr,
     cap: u64,
     size: u64
@@ -41,8 +41,8 @@ impl Buffer {
     }
 }
 
-trait AbiEncoder {
-    fn abi_encode(self, ref mut buffer: Buffer); 
+pub trait AbiEncoder {
+    fn abi_encode(self, ref mut buffer: Buffer);
 }
 
 impl AbiEncoder for u64 {
@@ -51,38 +51,7 @@ impl AbiEncoder for u64 {
     }
 }
 
-//fn encode<T>(item: T) where T: AbiEncoder {
-//    let mut buffer = Buffer::new();
-//    item.abi_encode(buffer);
-//}
-
-struct ShouldBeAbiEncoder {
-    a: u64
+pub fn encode<T>(item: T) where T: AbiEncoder {
+    let mut buffer = Buffer::new();
+    item.abi_encode(buffer);
 }
-
-fn main() {
-    __log(1u64);
-    __log(ShouldBeAbiEncoder {
-        a: 1
-    })
-}
-
-// ::check-ir::
-
-<<<<<<< Updated upstream
-// check: script {
-// check: fn main() -> ()
-// check: entry():
-
-// check: log b256 $VAL, $VAL
-// check: log u64 $VAL, $VAL
-// check: log u64 $VAL, $VAL
-// check: log u64 $VAL, $VAL
-// check: log u8 $VAL, $VAL
-// check: log string<4> $VAL, $VAL
-// check: log [u8; 3] $VAL, $VAL
-// check: log { bool, b256, u64 } $VAL, $VAL
-// check: log { u64 } $VAL, $VAL
-=======
-// check: fn main() -> ()
->>>>>>> Stashed changes

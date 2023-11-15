@@ -1758,6 +1758,7 @@ fn expr_func_app_to_expression_kind(
         }
     };
 
+
     let arguments = args
         .into_inner()
         .into_iter()
@@ -1773,6 +1774,18 @@ fn expr_func_app_to_expression_kind(
 
     // Route intrinsic calls to different AST node.
     match Intrinsic::try_from_str(call_seg.name.as_str()) {
+        Some(Intrinsic::Log) => {
+            let call_path_binding = TypeBinding {
+                inner: Ident::new_with_override("encode".into(), span.clone()).into(),
+                type_arguments: TypeArgs::Regular(vec![]),
+                span: span,
+            };
+            return Ok(ExpressionKind::FunctionApplication(Box::new(FunctionApplicationExpression { 
+                    call_path_binding, 
+                    arguments,
+                }))
+            )
+        }
         Some(intrinsic) if last.is_none() && !is_absolute => {
             return Ok(ExpressionKind::IntrinsicFunction(
                 IntrinsicFunctionExpression {

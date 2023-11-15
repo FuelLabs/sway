@@ -1,8 +1,8 @@
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    language::{ty, CallPath},
-    namespace::TryInsertingTraitImplOnFailure,
+    language::{ty::{self, KnownTrait}, CallPath},
+    namespace::{TryInsertingTraitImplOnFailure, TraitConstraintCheckResult},
     semantic_analysis::*,
     type_system::priv_prelude::*,
 };
@@ -429,7 +429,7 @@ impl TypeParameter {
     /// Creates a [DeclMapping] from a list of [TypeParameter]s.
     pub(crate) fn gather_decl_mapping_from_trait_constraints(
         handler: &Handler,
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         type_parameters: &[TypeParameter],
         access_span: &Span,
     ) -> Result<DeclMapping, ErrorEmitted> {
@@ -447,7 +447,7 @@ impl TypeParameter {
                 } = type_param;
 
                 // Check to see if the trait constraints are satisfied.
-                match ctx
+                let result = ctx
                     .namespace
                     .implemented_traits
                     .check_if_trait_constraints_are_satisfied_for_type(
@@ -457,10 +457,16 @@ impl TypeParameter {
                         access_span,
                         engines,
                         TryInsertingTraitImplOnFailure::Yes,
-                    ) {
-                    Ok(res) => res,
+                    );
+                match result {
+                    Ok(TraitConstraintCheckResult::NeedsAutoImpl(needs_auto_impl)) => {
+                        ctx.needs_auto_impl(needs_auto_impl)
+                    },
+                    Ok(TraitConstraintCheckResult::Satisfied) => {},
                     Err(_) => continue,
                 }
+
+                dbg!(&ctx.needs_auto_impl);
 
                 for trait_constraint in trait_constraints.iter() {
                     let TraitConstraint {
@@ -527,7 +533,15 @@ fn handle_trait(
                     );
                 interface_item_refs.extend(trait_interface_item_refs);
                 item_refs.extend(trait_item_refs);
-                impld_item_refs.extend(trait_impld_item_refs);
+                
+                match (trait_decl.known.as_ref(), trait_impld_item_refs.len()) {
+                    (Some(KnownTrait::AbiEncoder), 0) => {
+                        eprintln!("auto impl here")
+                    }
+                    _ => {
+                        impld_item_refs.extend(trait_impld_item_refs);
+                    }
+                }
 
                 for supertrait in trait_decl.supertraits.iter() {
                     let (

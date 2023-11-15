@@ -58,8 +58,8 @@ pub fn assert(condition: bool) {
 /// ```
 pub fn assert_eq<T>(v1: T, v2: T) where T: Eq {
     if (v1 != v2) {
-        log(v1);
-        log(v2);
+        //log(v1);
+        //log(v2);
         revert(FAILED_ASSERT_EQ_SIGNAL);
     }
 }

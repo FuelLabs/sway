@@ -21,6 +21,11 @@ use crate::{
 use super::TyDecl;
 
 #[derive(Clone, Debug)]
+pub enum KnownTrait {
+    AbiEncoder
+}
+
+#[derive(Clone, Debug)]
 pub struct TyTraitDecl {
     pub name: Ident,
     pub type_parameters: Vec<TypeParameter>,
@@ -32,6 +37,7 @@ pub struct TyTraitDecl {
     pub attributes: transform::AttributesMap,
     pub call_path: CallPath,
     pub span: Span,
+    pub known: Option<KnownTrait>
 }
 
 #[derive(Clone, Debug)]
@@ -46,6 +52,7 @@ pub enum TyTraitItem {
     Fn(DeclRefFunction),
     Constant(DeclRefConstant),
     Type(DeclRefTraitType),
+    // AutoImplFn(DeclRefFunction)
 }
 
 impl Named for TyTraitDecl {
@@ -87,6 +94,7 @@ impl HashWithEngines for TyTraitDecl {
             attributes: _,
             span: _,
             call_path: _,
+            ..
         } = self;
         name.hash(state);
         type_parameters.hash(state, engines);

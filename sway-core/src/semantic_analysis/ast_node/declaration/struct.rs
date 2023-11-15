@@ -98,6 +98,7 @@ impl TypeCheckFinalization for ty::TyStructDecl {
         _handler: &Handler,
         _ctx: &mut TypeCheckFinalizationContext,
     ) -> Result<(), ErrorEmitted> {
+        todo!();
         Ok(())
     }
 }

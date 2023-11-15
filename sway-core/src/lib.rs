@@ -470,6 +470,7 @@ pub fn parsed_to_ast(
     package_name: &str,
 ) -> Result<ty::TyProgram, ErrorEmitted> {
     // Type check the program.
+    dbg!(1);
     let typed_program_opt = ty::TyProgram::type_check(
         handler,
         engines,
@@ -477,17 +478,24 @@ pub fn parsed_to_ast(
         initial_namespace,
         package_name,
     );
+    dbg!(2);
 
     let mut typed_program = match typed_program_opt {
         Ok(typed_program) => typed_program,
         Err(e) => return Err(e),
     };
 
+    dbg!(3);
+
     typed_program.check_deprecated(engines, handler);
+
+    dbg!(4);
 
     // Analyze the AST for dependency information.
     let mut ctx = TypeCheckAnalysisContext::new(engines);
     typed_program.type_check_analyze(handler, &mut ctx)?;
+
+    dbg!(5);
 
     // Collect information about the types used in this program
     let types_metadata_result = typed_program
@@ -500,12 +508,16 @@ pub fn parsed_to_ast(
         }
     };
 
+    dbg!(6);
+
     typed_program
         .logged_types
         .extend(types_metadata.iter().filter_map(|m| match m {
             TypeMetadata::LoggedType(log_id, type_id) => Some((*log_id, *type_id)),
             _ => None,
         }));
+
+    dbg!(7);
 
     typed_program
         .messages_types
@@ -514,6 +526,8 @@ pub fn parsed_to_ast(
             _ => None,
         }));
 
+    dbg!(8);
+
     let (print_graph, print_graph_url_format) = match build_config {
         Some(cfg) => (
             cfg.print_dca_graph.clone(),
@@ -521,6 +535,9 @@ pub fn parsed_to_ast(
         ),
         None => (None, None),
     };
+
+    dbg!(9);
+
     // Perform control flow analysis and extend with any errors.
     let _ = perform_control_flow_analysis(
         handler,
@@ -529,6 +546,8 @@ pub fn parsed_to_ast(
         print_graph,
         print_graph_url_format,
     );
+
+    dbg!(10);
 
     // Evaluate const declarations, to allow storage slots initialization with consts.
     let mut ctx = Context::new(engines.se());
@@ -544,12 +563,16 @@ pub fn parsed_to_ast(
         handler.emit_err(e);
     }
 
+    dbg!(11);
+
     // CEI pattern analysis
     let cei_analysis_warnings =
         semantic_analysis::cei_pattern_analysis::analyze_program(engines, &typed_program);
     for warn in cei_analysis_warnings {
         handler.emit_warn(warn);
     }
+
+    dbg!(12);
 
     // Check that all storage initializers can be evaluated at compile time.
     let typed_wiss_res = typed_program.get_typed_program_with_initialized_storage_slots(
@@ -567,6 +590,8 @@ pub fn parsed_to_ast(
         }
     };
 
+    dbg!(13);
+
     // All unresolved types lead to compile errors.
     for err in types_metadata.iter().filter_map(|m| match m {
         TypeMetadata::UnresolvedType(name, call_site_span_opt) => {
@@ -579,6 +604,8 @@ pub fn parsed_to_ast(
     }) {
         handler.emit_err(err);
     }
+
+    dbg!(14);
 
     // Check if a non-test function calls `#[test]` function.
 

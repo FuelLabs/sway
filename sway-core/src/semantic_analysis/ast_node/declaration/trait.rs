@@ -216,6 +216,7 @@ impl TyTraitDecl {
             attributes,
             call_path: CallPath::from(name).to_fullpath(ctx.namespace),
             span,
+            known: None
         };
         Ok(typed_trait_decl)
     }

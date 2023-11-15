@@ -55,7 +55,7 @@ pub fn revert(code: u64) {
 /// ```
 pub fn require<T>(condition: bool, value: T) {
     if !condition {
-        log(value);
+        // log(value);
         revert(FAILED_REQUIRE_SIGNAL)
     }
 }

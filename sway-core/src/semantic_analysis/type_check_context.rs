@@ -85,6 +85,9 @@ pub struct TypeCheckContext<'a> {
     /// case of impl trait methods after the initial type checked AST is constructed, and
     /// after we perform a dependency analysis on the tree.
     defer_monomorphization: bool,
+
+    /// Tuple of types and traits that need auto impl
+    pub needs_auto_impl: Vec<(TypeId, TypeId)> // Struct, Trait
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -115,6 +118,7 @@ impl<'a> TypeCheckContext<'a> {
             kind: TreeType::Contract,
             disallow_functions: false,
             defer_monomorphization: false,
+            needs_auto_impl: vec![]
         }
     }
 
@@ -141,6 +145,7 @@ impl<'a> TypeCheckContext<'a> {
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             defer_monomorphization: self.defer_monomorphization,
+            needs_auto_impl: vec![]
         }
     }
 
@@ -160,6 +165,7 @@ impl<'a> TypeCheckContext<'a> {
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             defer_monomorphization: self.defer_monomorphization,
+            needs_auto_impl: vec![]
         }
     }
 
@@ -1462,6 +1468,10 @@ impl<'a> TypeCheckContext<'a> {
         self.namespace
             .implemented_traits
             .insert_for_type(self.engines, type_id);
+    }
+
+    pub(crate) fn needs_auto_impl(&mut self, mut needs_auto_impl: Vec<(TypeId, TypeId)>) {
+        self.needs_auto_impl.append(&mut needs_auto_impl);
     }
 }
 

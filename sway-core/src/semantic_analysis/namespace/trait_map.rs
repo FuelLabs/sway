@@ -137,6 +137,11 @@ pub(crate) enum IsExtendingExistingImpl {
     No,
 }
 
+pub enum TraitConstraintCheckResult {
+    Satisfied,
+    NeedsAutoImpl(Vec<(TypeId, TypeId)>) // Struct, Trait
+}
+
 impl TraitMap {
     /// Given a [TraitName] `trait_name`, [TypeId] `type_id`, and list of
     /// [TyImplItem](ty::TyImplItem) `items`, inserts
@@ -886,16 +891,37 @@ impl TraitMap {
         if matches!(type_engine.get(type_id), TypeInfo::ErrorRecovery(_)) {
             return items;
         }
+
+        let mut count = 0;
+        let mut entry = None;
         for e in self.trait_impls.iter() {
             let map_trait_name = CallPath {
                 prefixes: e.key.name.prefixes.clone(),
                 suffix: e.key.name.suffix.name.clone(),
                 is_absolute: e.key.name.is_absolute,
             };
-            if &map_trait_name == trait_name && unify_check.check(type_id, e.key.type_id) {
+
+            // has_auto_impl()
+            //let impls =  || trait_name.to_string() == "core::codec::AbiEncoder";
+
+            if &map_trait_name == trait_name && unify_check.check(type_id, e.key.type_id)  {
+                count += 1;
+                if trait_name.to_string() == "core::codec::AbiEncoder" {
+                    entry = Some(e);
+                }
+
                 let mut trait_items = e.value.trait_items.values().cloned().collect::<Vec<_>>();
                 items.append(&mut trait_items);
             }
+
+            if count == 0 {
+                eprintln!("not impl");
+                if let Some(e) = entry {
+                    eprintln!("get_items_for_type_and_trait_name: {} {} {}", engines.help_out(type_id), trait_name, count);
+                }
+            }
+            
+
         }
         items
     }
@@ -1006,7 +1032,7 @@ impl TraitMap {
         access_span: &Span,
         engines: &Engines,
         try_inserting_trait_impl_on_failure: TryInsertingTraitImplOnFailure,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<TraitConstraintCheckResult, ErrorEmitted> {
         let type_engine = engines.te();
         let _decl_engine = engines.de();
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
@@ -1082,7 +1108,37 @@ impl TraitMap {
             relevant_impld_traits.keys().cloned().collect();
 
         handler.scope(|handler| {
+            let mut needs_auto_impl = vec![];
+
             for trait_name in required_traits_names.difference(&relevant_impld_traits_names) {
+                if trait_name.as_str() == "AbiEncoder" {
+                    let mut all_fields_abi_encoder = true;
+                    if let Ok(decl) = engines.te().get(type_id).expect_struct(handler, engines, access_span) {
+                        for field in engines.de().get(decl.id()).fields {
+                            let r = self.check_if_trait_constraints_are_satisfied_for_type(
+                                handler,
+                                field.type_argument.type_id,
+                                &[
+                                    TraitConstraint {
+                                        trait_name: Ident::new_with_override("AbiEncoder".into(), access_span.clone()).into(),
+                                        type_arguments: vec![],
+                                    }
+                                ],
+                                access_span,
+                                engines,
+                                TryInsertingTraitImplOnFailure::No
+                            );
+
+                            all_fields_abi_encoder &= r.is_ok();
+                        } 
+                    }
+                    
+                    if all_fields_abi_encoder {
+                        needs_auto_impl.push((type_id, required_traits[trait_name]));
+                        continue;
+                    }
+                }
+
                 if matches!(
                     try_inserting_trait_impl_on_failure,
                     TryInsertingTraitImplOnFailure::Yes
@@ -1105,7 +1161,12 @@ impl TraitMap {
                     });
                 }
             }
-            Ok(())
+
+            if needs_auto_impl.is_empty() {
+                Ok(TraitConstraintCheckResult::Satisfied)
+            } else {
+                Ok(TraitConstraintCheckResult::NeedsAutoImpl(needs_auto_impl))
+            }
         })
     }
 }

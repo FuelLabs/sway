@@ -1,0 +1,61 @@
+   Compiling sway-core v0.47.0 (/home/xunilrj/github/sway/sway-core)
+warning: unreachable expression
+   --> sway-core/src/semantic_analysis/ast_node/declaration/struct.rs:101:9
+    |
+100 |         todo!();
+    |         ------- any code following this expression is unreachable
+101 |         Ok(())
+    |         ^^^^^^ unreachable expression
+    |
+    = note: `#[warn(unreachable_code)]` on by default
+
+warning: unreachable expression
+   --> sway-core/src/semantic_analysis/program.rs:124:9
+    |
+123 |           todo!();
+    |           ------- any code following this expression is unreachable
+124 | /         handler.scope(|handler| {
+125 | |             for node in self.root.all_nodes.iter_mut() {
+126 | |                 let _ = node.type_check_finalize(handler, ctx);
+127 | |             }
+128 | |             Ok(())
+129 | |         })
+    | |__________^ unreachable expression
+
+warning: unused variable: `handler`
+   --> sway-core/src/semantic_analysis/program.rs:120:9
+    |
+120 |         handler: &Handler,
+    |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_handler`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `ctx`
+   --> sway-core/src/semantic_analysis/program.rs:121:9
+    |
+121 |         ctx: &mut TypeCheckFinalizationContext,
+    |         ^^^ help: if this is intentional, prefix it with an underscore: `_ctx`
+
+warning: variant `NeedsAutoImpl` is never constructed
+  --> sway-core/src/types/collect_types_metadata.rs:60:5
+   |
+52 | pub enum TypeMetadata {
+   |          ------------ variant in this enum
+...
+60 |     NeedsAutoImpl {
+   |     ^^^^^^^^^^^^^
+   |
+   = note: `TypeMetadata` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` on by default
+
+   Compiling forc-util v0.47.0 (/home/xunilrj/github/sway/forc-util)
+   Compiling forc-pkg v0.47.0 (/home/xunilrj/github/sway/forc-pkg)
+   Compiling forc-tx v0.47.0 (/home/xunilrj/github/sway/forc-plugins/forc-tx)
+   Compiling forc-test v0.47.0 (/home/xunilrj/github/sway/forc-test)
+   Compiling forc v0.47.0 (/home/xunilrj/github/sway/forc)
+   Compiling forc-client v0.47.0 (/home/xunilrj/github/sway/forc-plugins/forc-client)
+warning: `sway-core` (lib) generated 5 warnings (run `cargo fix --lib -p sway-core` to apply 2 suggestions)
+   Compiling test v0.0.0 (/home/xunilrj/github/sway/test)
+    Finished release [optimized] target(s) in 53.68s
+     Running `target/release/test should_pass/language/logging --verbose`
+Error: Failed tests

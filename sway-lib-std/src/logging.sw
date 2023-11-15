@@ -1,6 +1,8 @@
 //! Allows logging of arbitrary stack types, emitted as either `Log` or `Logd` receipts.
 library;
 
+use core::codec::*;
+
 /// Log any stack type.
 ///
 /// # Additional Information
@@ -19,6 +21,6 @@ library;
 ///     log("Fuel is blazingly fast");
 /// }
 /// ```
-pub fn log<T>(value: T) {
+pub fn log<T>(value: T) where T: AbiEncoder {
     __log::<T>(value);
 }

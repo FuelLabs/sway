@@ -34,7 +34,7 @@ impl TyProgram {
         let ctx =
             TypeCheckContext::from_root(&mut namespace, engines).with_kind(parsed.kind.clone());
         let ParseProgram { root, kind } = parsed;
-        ty::TyModule::type_check(handler, ctx, root).and_then(|root| {
+        let r = ty::TyModule::type_check(handler, ctx, root).and_then(|root| {
             let res = Self::validate_root(handler, engines, &root, kind.clone(), package_name);
             res.map(|(kind, declarations, configurables)| Self {
                 kind,
@@ -45,7 +45,11 @@ impl TyProgram {
                 logged_types: vec![],
                 messages_types: vec![],
             })
-        })
+        });
+
+        dbg!(1);
+
+        r
     }
 
     pub(crate) fn get_typed_program_with_initialized_storage_slots(
@@ -116,6 +120,7 @@ impl TypeCheckFinalization for TyProgram {
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
     ) -> Result<(), ErrorEmitted> {
+        todo!();
         handler.scope(|handler| {
             for node in self.root.all_nodes.iter_mut() {
                 let _ = node.type_check_finalize(handler, ctx);

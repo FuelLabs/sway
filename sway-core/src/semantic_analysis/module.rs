@@ -44,7 +44,7 @@ impl ty::TyModule {
         let typed_nodes_res = ordered_nodes_res
             .and_then(|ordered_nodes| Self::type_check_nodes(handler, ctx.by_ref(), ordered_nodes));
 
-        submodules_res.and_then(|submodules| {
+        let r = submodules_res.and_then(|submodules| {
             typed_nodes_res.map(|all_nodes| Self {
                 span: span.clone(),
                 submodules,
@@ -52,7 +52,11 @@ impl ty::TyModule {
                 all_nodes,
                 attributes: attributes.clone(),
             })
-        })
+        });
+
+        dbg!(ctx.needs_auto_impl);
+
+        r
     }
 
     fn type_check_nodes(
