@@ -81,7 +81,7 @@ pub(crate) fn instantiate_enum(
                         .expect_variant_from_name(handler, &enum_variant_name)
                         .cloned()?;
                     expected_enum_variant.type_argument.type_id
-                },
+                }
                 _ => enum_variant.type_argument.type_id,
             };
 
