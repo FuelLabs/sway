@@ -479,6 +479,7 @@ impl VirtualOp {
             | ECR1(_, _, _)
             | ED19(_, _, _)
              => vec![&VirtualRegister::Constant(Overflow), &VirtualRegister::Constant(Error)],
+            FLAG(_) => vec![&VirtualRegister::Constant(Flags)],
             JMP(_)
             | JI(_)
             | JNE(_, _, _)
@@ -525,7 +526,6 @@ impl VirtualOp {
             | TRO(_, _, _, _)
             | K256(_, _, _)
             | S256(_, _, _)
-            | FLAG(_)
             | GM(_, _)
             | GTF(_, _, _)
             | BLOB(_)

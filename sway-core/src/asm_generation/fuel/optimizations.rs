@@ -200,6 +200,7 @@ impl AbstractInstructionSet {
     }
 
     pub(crate) fn dce(mut self) -> AbstractInstructionSet {
+        return self;
         let liveness = liveness_analysis(&self.ops, false);
         let ops = &self.ops;
 
