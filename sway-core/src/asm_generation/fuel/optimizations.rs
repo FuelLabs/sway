@@ -224,7 +224,7 @@ impl AbstractInstructionSet {
                 continue;
             }
 
-            let dead = op_def.iter().all(|def| !cur_live.contains(&def))
+            let dead = op_def.iter().all(|def| !cur_live.contains(def))
                 && match &op.opcode {
                     Either::Left(op) => !op.has_side_effect(),
                     Either::Right(_) => false,

@@ -1,8 +1,8 @@
 use crate::{
     asm_generation::fuel::{analyses::liveness_analysis, compiler_constants},
     asm_lang::{
-        allocated_ops::AllocatedRegister, virtual_register::*, AllocatedAbstractOp, ControlFlowOp,
-        Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
+        allocated_ops::AllocatedRegister, virtual_register::*, AllocatedAbstractOp, Op,
+        VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
     },
     size_bytes_round_up_to_word_alignment,
 };
