@@ -27,9 +27,7 @@ pub struct AbstractInstructionSet {
 impl AbstractInstructionSet {
     pub(crate) fn optimize(mut self, data_section: &DataSection) -> AbstractInstructionSet {
         self.const_indexing_aggregates_function(data_section);
-        self.remove_sequential_jumps()
-            .remove_redundant_moves()
-            .remove_unused_ops()
+        self.dce().remove_sequential_jumps().remove_unused_ops()
     }
 
     /// Removes any jumps to the subsequent line.
@@ -54,60 +52,6 @@ impl AbstractInstructionSet {
                 comment: "removed redundant JUMP".into(),
                 owning_span: None,
             };
-        }
-
-        self
-    }
-
-    fn remove_redundant_moves(mut self) -> AbstractInstructionSet {
-        // This has a lot of room for improvement.
-        //
-        // For now it is just removing MOVEs to registers which are _never_ used.  It doesn't
-        // analyse control flow or other redundancies.  Some obvious improvements are:
-        //
-        // - Perform a control flow analysis to remove MOVEs to registers which are not used
-        // _after_ the MOVE.
-        //
-        // - Remove the redundant use of temporaries.  E.g.:
-        //     MOVE t, a        MOVE b, a
-        //     MOVE b, t   =>   USE  b
-        //     USE  b
-        loop {
-            // Gather all the uses for each register.
-            let uses: HashSet<&VirtualRegister> =
-                self.ops.iter().fold(HashSet::new(), |mut acc, op| {
-                    for u in &op.use_registers() {
-                        acc.insert(u);
-                    }
-                    acc
-                });
-
-            // Loop again and find MOVEs which have a non-constant destination which is never used.
-            let mut dead_moves = Vec::new();
-            for (idx, op) in self.ops.iter().enumerate() {
-                if let Either::Left(VirtualOp::MOVE(
-                    dst_reg @ VirtualRegister::Virtual(_),
-                    _src_reg,
-                )) = &op.opcode
-                {
-                    if !uses.contains(dst_reg) {
-                        dead_moves.push(idx);
-                    }
-                }
-            }
-
-            if dead_moves.is_empty() {
-                break;
-            }
-
-            // Replace the dead moves with NOPs, as it's cheaper.
-            for idx in dead_moves {
-                self.ops[idx] = Op {
-                    opcode: Either::Left(VirtualOp::NOOP),
-                    comment: "removed redundant MOVE".into(),
-                    owning_span: None,
-                };
-            }
         }
 
         self

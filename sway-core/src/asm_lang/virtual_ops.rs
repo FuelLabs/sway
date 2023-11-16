@@ -323,6 +323,115 @@ impl VirtualOp {
         .collect()
     }
 
+    /// Does this op do anything other than just compute something?
+    /// (and hence if the result is dead, the OP can safely be deleted).
+    pub(crate) fn has_side_effect(&self) -> bool {
+        use VirtualOp::*;
+        match self {
+            // Arithmetic and logical
+            ADD(_, _, _)
+            |ADDI(_, _, _)
+            |AND(_, _, _)
+            |ANDI(_, _, _)
+            |DIV(_, _, _)
+            |DIVI(_, _, _)
+            |EQ(_, _, _)
+            |EXP(_, _, _)
+            |EXPI(_, _, _)
+            |GT(_, _, _)
+            |LT(_, _, _)
+            |MLOG(_, _, _)
+            |MOD(_, _, _)
+            |MODI(_, _, _)
+            |MOVE(_, _)
+            |MOVI(_, _)
+            |MROO(_, _, _)
+            |MUL(_, _, _)
+            |MULI(_, _, _)
+            |NOOP
+            |NOT(_, _)
+            |OR(_, _, _)
+            |ORI(_, _, _)
+            |SLL(_, _, _)
+            |SLLI(_, _, _)
+            |SRL(_, _, _)
+            |SRLI(_, _, _)
+            |SUB(_, _, _)
+            |SUBI(_, _, _)
+            |XOR(_, _, _)
+            |XORI(_, _, _)
+            // Memory load
+            |LB(_, _, _)
+            |LW(_, _, _)
+            // Blockchain read
+            | BAL(_, _, _)
+            | BHEI(_)
+            |CSIZ(_, _)
+            |SRW(_, _, _)
+            |TIME(_, _)
+            | GM(_, _)
+            |GTF(_, _, _)
+            // Virtual OPs
+            |LoadDataId(_, _)
+             => self.def_registers().iter().any(|vreg| matches!(vreg, VirtualRegister::Constant(_))),
+            // Memory write and jump
+            WQOP(_, _, _, _)
+            |WQML(_, _, _, _)
+            |WQDV(_, _, _, _)
+            |WQCM(_, _, _, _)
+            |WQAM(_, _, _, _)
+            |JMP(_)
+            |JI(_)
+            |JNE(_, _, _)
+            |JNEI(_, _, _)
+            |JNZI(_, _)
+            |RET(_)
+            |ALOC(_)
+            |CFEI(_)
+            |CFSI(_)
+            |CFE(_)
+            |CFS(_)
+            |MCL(_, _)
+            |MCLI(_, _)
+            |MCP(_, _, _)
+            |MCPI(_, _, _)
+            |MEQ(_, _, _, _)
+            |SB(_, _, _)
+            |SW(_, _, _)
+            // Other blockchain etc ...
+            |BHSH(_, _)
+            |BURN(_, _)
+            |CALL(_, _, _, _)
+            |CB(_)
+            |CCP(_, _, _, _)
+            |CROO(_, _)
+            |LDC(_, _, _)
+            |LOG(_, _, _, _)
+            |LOGD(_, _, _, _)
+            |MINT(_, _)
+            |RETD(_, _)
+            |RVRT(_)
+            |SMO(_, _, _, _)
+            |SCWQ(_, _, _)
+            |SRWQ(_, _, _, _)
+            |SWW(_, _, _)
+            |SWWQ(_, _, _, _)
+            |TR(_, _, _)
+            |TRO(_, _, _, _)
+            |ECK1(_, _, _)
+            |ECR1(_, _, _)
+            |ED19(_, _, _)
+            |K256(_, _, _)
+            |S256(_, _, _)
+            |FLAG(_)
+            // Virtual OPs
+            |BLOB(_)
+            |DataSectionOffsetPlaceholder
+            |DataSectionRegisterLoadPlaceholder
+            |Undefined => true
+        }
+    }
+
     /// Returns a list of all registers *read* by instruction `self`.
     pub(crate) fn use_registers(&self) -> BTreeSet<&VirtualRegister> {
         use VirtualOp::*;

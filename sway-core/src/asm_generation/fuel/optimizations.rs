@@ -1,11 +1,17 @@
-use rustc_hash::FxHashMap;
+use std::collections::BTreeSet;
+
+use either::Either;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     asm_generation::fuel::compiler_constants,
-    asm_lang::{VirtualImmediate12, VirtualOp, VirtualRegister},
+    asm_lang::{ControlFlowOp, VirtualImmediate12, VirtualOp, VirtualRegister},
 };
 
-use super::{abstract_instruction_set::AbstractInstructionSet, data_section::DataSection};
+use super::{
+    abstract_instruction_set::AbstractInstructionSet, data_section::DataSection,
+    register_allocator::liveness_analysis,
+};
 
 impl AbstractInstructionSet {
     // Aggregates that are const index accessed from a base address
@@ -191,5 +197,64 @@ impl AbstractInstructionSet {
                 }
             }
         }
+    }
+
+    pub(crate) fn dce(mut self) -> AbstractInstructionSet {
+        let liveness = liveness_analysis(&self.ops);
+        let ops = &self.ops;
+
+        let mut cur_live = BTreeSet::default();
+        let mut dead_indices = FxHashSet::default();
+        for (rev_ix, op) in ops.iter().rev().enumerate() {
+            let ix = ops.len() - rev_ix - 1;
+
+            // Get use and def vectors without any of the Constant registers
+            // (from liveness_analysis).
+            let mut op_use = op.use_registers();
+            let mut op_def = op.def_registers();
+            op_use.retain(|&reg| reg.is_virtual());
+            op_def.retain(|&reg| reg.is_virtual());
+
+            if let Either::Right(ControlFlowOp::Jump(_) | ControlFlowOp::JumpIfNotZero(..)) =
+                op.opcode
+            {
+                // Block boundary. Start afresh.
+                cur_live = liveness.get(ix).expect("Incorrect liveness info").clone();
+                // Add use(op) to cur_live.
+                for u in op_use {
+                    cur_live.insert(u.clone());
+                }
+                continue;
+            }
+
+            let dead = op_def.iter().all(|def| !cur_live.contains(&def))
+                && match &op.opcode {
+                    Either::Left(op) => !op.has_side_effect(),
+                    Either::Right(_) => false,
+                };
+            // Remove def(op) from cur_live.
+            for def in &op_def {
+                cur_live.remove(def);
+            }
+            if dead {
+                dead_indices.insert(ix);
+            } else {
+                // Add use(op) to cur_live
+                for u in op_use {
+                    cur_live.insert(u.clone());
+                }
+            }
+        }
+
+        // Actually delete the instructions.
+        let mut new_ops: Vec<_> = std::mem::take(&mut self.ops)
+            .into_iter()
+            .enumerate()
+            .filter(|(idx, _)| !dead_indices.contains(idx))
+            .map(|(_, op)| op)
+            .collect();
+        std::mem::swap(&mut self.ops, &mut new_ops);
+
+        self
     }
 }
