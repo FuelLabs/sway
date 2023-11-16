@@ -98,6 +98,32 @@ impl<T> StorageKey<T> {
         write(self.slot, self.offset, value);
     }
 
+    /// Clear the value at `self`. 
+    ///
+    /// # Number of Storage Accesses
+    ///
+    /// * Clears: `1`
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let r: StorageKey<u64> = StorageKey {
+    ///         slot: 0x0000000000000000000000000000000000000000000000000000000000000000,
+    ///         offset: 2,
+    ///         field_id: 0x0000000000000000000000000000000000000000000000000000000000000000,
+    ///     };
+    ///     r.write(42);
+    ///
+    ///     let cleared = r.clear();
+    ///     assert(cleared);
+    /// }
+    /// ```
+    #[storage(write)]
+    pub fn clear(self) -> bool {
+        clear(self.slot, self.offset)
+    }
+
     /// Create a new `StorageKey`.
     ///
     /// # Arguments
@@ -136,4 +162,18 @@ fn test_storage_key_new() {
     assert(key.slot == ZERO_B256);
     assert(key.offset == 0);
     assert(key.field_id == ZERO_B256);
+}
+
+#[test]
+fn test_storage_key_clear() {
+    use ::constants::ZERO_B256;
+    use ::assert::assert;
+
+    let key = StorageKey::<u64>::new(ZERO_B256, 0, ZERO_B256);
+    key.write(42);
+    
+    assert(key.read() == 42);
+    let cleared = key.clear();
+    assert(cleared);
+    assert(key.try_read() == None);
 }
