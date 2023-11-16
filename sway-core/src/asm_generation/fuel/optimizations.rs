@@ -9,8 +9,8 @@ use crate::{
 };
 
 use super::{
-    abstract_instruction_set::AbstractInstructionSet, data_section::DataSection,
-    register_allocator::liveness_analysis,
+    abstract_instruction_set::AbstractInstructionSet, analyses::liveness_analysis,
+    data_section::DataSection,
 };
 
 impl AbstractInstructionSet {
@@ -200,7 +200,7 @@ impl AbstractInstructionSet {
     }
 
     pub(crate) fn dce(mut self) -> AbstractInstructionSet {
-        let liveness = liveness_analysis(&self.ops);
+        let liveness = liveness_analysis(&self.ops, false);
         let ops = &self.ops;
 
         let mut cur_live = BTreeSet::default();
@@ -208,12 +208,9 @@ impl AbstractInstructionSet {
         for (rev_ix, op) in ops.iter().rev().enumerate() {
             let ix = ops.len() - rev_ix - 1;
 
-            // Get use and def vectors without any of the Constant registers
-            // (from liveness_analysis).
-            let mut op_use = op.use_registers();
+            let op_use = op.use_registers();
             let mut op_def = op.def_registers();
-            op_use.retain(|&reg| reg.is_virtual());
-            op_def.retain(|&reg| reg.is_virtual());
+            op_def.append(&mut op.def_const_registers());
 
             if let Either::Right(ControlFlowOp::Jump(_) | ControlFlowOp::JumpIfNotZero(..)) =
                 op.opcode

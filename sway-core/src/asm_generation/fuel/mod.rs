@@ -8,5 +8,6 @@ pub(super) mod checks;
 pub(super) mod fuel_asm_builder;
 pub(super) mod register_sequencer;
 
+mod analyses;
 mod functions;
 mod optimizations;
