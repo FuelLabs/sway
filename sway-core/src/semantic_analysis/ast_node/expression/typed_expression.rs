@@ -1063,10 +1063,6 @@ impl ty::TyExpression {
             storage_key_struct_decl_ref.span().source_id(),
         );
 
-        // take any trait items that apply to `StorageKey<T>` and copy them to the
-        // monomorphized type
-        ctx.insert_trait_implementation_for_type(access_type);
-
         Ok(ty::TyExpression {
             expression: ty::TyExpressionVariant::StorageAccess(storage_access),
             return_type: access_type,

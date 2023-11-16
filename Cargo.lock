@@ -1399,6 +1399,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "dir_indexer"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "363641827cb8d8387a69364aa2f85433db83b8b00270ed2c786235d83bf0aa0a"
+
+[[package]]
 name = "dirs"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1925,12 +1931,16 @@ dependencies = [
  "clap 4.4.7",
  "colored",
  "comrak",
+ "dir_indexer",
  "expect-test",
  "forc-pkg",
  "forc-util",
  "horrorshow",
  "include_dir",
+ "minifier",
  "opener 0.5.2",
+ "serde",
+ "serde_json",
  "sway-ast",
  "sway-core",
  "sway-lsp",
@@ -3879,6 +3889,12 @@ dependencies = [
  "mime",
  "unicase",
 ]
+
+[[package]]
+name = "minifier"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95bbbf96b9ac3482c2a25450b67a15ed851319bc5fabf3b40742ea9066e84282"
 
 [[package]]
 name = "miniz_oxide"
