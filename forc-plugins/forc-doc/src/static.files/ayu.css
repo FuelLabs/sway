@@ -77,19 +77,6 @@ pre,
 .docblock table th {
   border-color: #5c6773;
 }
-.search-results a:hover {
-  background-color: #777;
-}
-.search-results a:focus {
-  color: #000 !important;
-  background-color: #c6afb3;
-}
-.search-results a {
-  color: #0096cf;
-}
-.search-results a div.desc {
-  color: #c5c5c5;
-}
 .content .item-info::before {
   color: #ccc;
 }
@@ -193,9 +180,8 @@ a {
 .sidebar h3 a {
   color: white;
 }
-.search-results a {
-  color: #0096cf;
-}
+
+
 body.source .example-wrap pre.sway a {
   background: #333;
 }
@@ -426,12 +412,6 @@ kbd {
 #theme-choices > button:hover,
 #theme-choices > button:focus {
   background-color: rgba(110, 110, 110, 0.33);
-}
-.search-results .result-name span.alias {
-  color: #c5c5c5;
-}
-.search-results .result-name span.grey {
-  color: #999;
 }
 #source-sidebar > .title {
   color: #fff;
