@@ -18,7 +18,7 @@ use sway_types::{BaseIdent, Spanned};
 mod descriptor;
 pub mod module;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub(crate) struct Documentation(pub(crate) Vec<Document>);
 impl Documentation {
     /// Gather [Documentation] from the [TyProgram].
@@ -214,7 +214,7 @@ impl Document {
             preview_opt: self.preview_opt(),
         }
     }
-    fn preview_opt(&self) -> Option<String> {
+    pub(crate) fn preview_opt(&self) -> Option<String> {
         create_preview(self.raw_attributes.clone())
     }
 }
