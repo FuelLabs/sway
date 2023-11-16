@@ -3,8 +3,8 @@ use crate::{
     utils::map::byte_span::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
-use sway_ast::{Statement, StatementLet};
-use sway_types::Spanned;
+use sway_ast::{Expr, Parens, Punctuated, Statement, StatementLet};
+use sway_types::{Span, Spanned};
 
 impl Format for Statement {
     fn format(
@@ -16,6 +16,56 @@ impl Format for Statement {
         format_statement(self, formatted_code, formatter)?;
 
         Ok(())
+    }
+}
+
+/// Remove arguments from the expression if the expression is a method call if
+/// the method is a simple two path call (foo.bar()). This needed because in
+/// method calls of two parts they are never broke into multiple lines.
+/// Arguments however can be be broken into multiple lines, and that is handled
+/// by `write_function_call_arguments`
+fn remove_arguments_from_expr(expr: Expr) -> Expr {
+    match expr {
+        Expr::MethodCall {
+            target,
+            dot_token,
+            path_seg,
+            contract_args_opt,
+            args,
+        } => {
+            let is_simple_call = matches!(*target, Expr::Path(_));
+            let target = remove_arguments_from_expr(*target);
+            Expr::MethodCall {
+                target: Box::new(target),
+                dot_token,
+                path_seg,
+                contract_args_opt,
+                args: if is_simple_call {
+                    Parens::new(
+                        Punctuated {
+                            value_separator_pairs: vec![],
+                            final_value_opt: None,
+                        },
+                        Span::dummy(),
+                    )
+                } else {
+                    args
+                },
+            }
+        }
+        Expr::FieldProjection {
+            target,
+            dot_token,
+            name,
+        } => {
+            let target = remove_arguments_from_expr(*target);
+            Expr::FieldProjection {
+                target: Box::new(target),
+                dot_token,
+                name,
+            }
+        }
+        _ => expr,
     }
 }
 
@@ -32,14 +82,15 @@ fn format_statement(
             semicolon_token_opt,
         } => {
             let mut temp_expr = FormattedCode::new();
-            expr.format(&mut temp_expr, formatter)?;
+
+            remove_arguments_from_expr(expr.clone()).format(&mut temp_expr, formatter)?;
             if temp_expr.len() > formatter.shape.width_heuristics.chain_width {
                 formatter.shape.code_line.expr_new_line = true;
                 // reformat the expression adding a break
                 expr.format(formatted_code, formatter)?;
                 formatter.shape.code_line.expr_new_line = false;
             } else {
-                write!(formatted_code, "{}", temp_expr)?;
+                expr.format(formatted_code, formatter)?;
             }
             if let Some(semicolon) = semicolon_token_opt {
                 if formatter.shape.code_line.line_style == LineStyle::Inline {
