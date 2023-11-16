@@ -98,7 +98,7 @@ impl<T> StorageKey<T> {
         write(self.slot, self.offset, value);
     }
 
-    /// Clear the value at `self`. 
+    /// Clears the value at `self`. 
     ///
     /// # Number of Storage Accesses
     ///
