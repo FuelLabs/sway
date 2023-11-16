@@ -421,7 +421,6 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                                         println!("{}", "::check-asm::".bold());
                                         pretty_print_error_report(&error);
                                     }
-                                    println!("{}", asm_output);
                                     if !success {
                                         panic!("check-asm filecheck for {test_file_name} failed. See above.");
                                     }
