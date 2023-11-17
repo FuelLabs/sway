@@ -10,14 +10,16 @@ publish = false
 assert_matches = "1.5.0"
 
 # Dependencies from the `fuel-core` repository:
-fuel-core = { version = "0.21.0-rc.1", default-features = false }
-fuel-core-client = { version = "0.21.0-rc.1", default-features = false }
+fuel-core = { version = "0.20.8", default-features = false }
+fuel-core-client = { version = "0.20.8", default-features = false }
 
 # Dependencies from the `fuel-vm` repository:
-fuel-vm = "0.42.0"
+fuel-vm = "0.35.4"
 
 # Dependencies from the `fuels-rs` repository:
-fuels = "0.50.1"
+fuels = { git = "https://github.com/FuelLabs/fuels-rs.git", branch = "hal3e/tx-status-log-and-response", features = [
+    "fuel-core-lib",
+]}
 
 hex = "0.4.3"
 pretty_assertions = "1.4.0"
@@ -33,6 +35,3 @@ name = "integration_tests"
 path = "test_projects/harness.rs"
 
 [workspace]
-
-[patch.crates-io]
-fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/transaction-policies" }

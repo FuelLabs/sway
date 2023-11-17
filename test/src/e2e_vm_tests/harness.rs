@@ -137,6 +137,7 @@ pub(crate) enum VMExecutionResult {
 pub(crate) fn runs_in_vm(
     script: BuiltPackage,
     script_data: Option<Vec<u8>>,
+    witness_data: Option<Vec<Vec<u8>>>,
 ) -> Result<VMExecutionResult> {
     match script.descriptor.target {
         BuildTarget::Fuel => {
@@ -155,8 +156,9 @@ pub(crate) fn runs_in_vm(
                 ..Default::default()
             };
 
-            let tx = TransactionBuilder::script(script.bytecode.bytes, script_data)
-                .with_params(params)
+            let mut tx = TransactionBuilder::script(script.bytecode.bytes, script_data);
+
+            tx.with_params(params)
                 .add_unsigned_coin_input(
                     SecretKey::random(rng),
                     rng.gen(),
@@ -165,6 +167,7 @@ pub(crate) fn runs_in_vm(
                     rng.gen(),
                     0u32.into(),
                 )
+<<<<<<< HEAD
                 .script_gas_limit(
                     fuel_tx::ConsensusParameters::default()
                         .tx_params()
@@ -173,6 +176,18 @@ pub(crate) fn runs_in_vm(
                 )
                 .maturity(maturity)
                 .finalize_checked(block_height);
+=======
+                .gas_limit(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
+                .maturity(maturity);
+
+            if let Some(witnesses) = witness_data {
+                for witness in witnesses {
+                    tx.add_witness(witness.into());
+                }
+            }
+
+            let tx = tx.finalize_checked(block_height, &GasCosts::default());
+>>>>>>> master
 
             let mut i: Interpreter<_, _, NotSupportedEcal> =
                 Interpreter::with_storage(storage, Default::default());

@@ -7,7 +7,7 @@ abigen!(Contract(
 ));
 
 async fn get_superabi_instance() -> SuperAbiTestContract<WalletUnlocked> {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/superabi/out/debug/superabi.bin",
         LoadConfiguration::default(),

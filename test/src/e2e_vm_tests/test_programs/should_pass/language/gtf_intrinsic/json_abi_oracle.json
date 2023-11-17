@@ -16,32 +16,9 @@
   "messagesTypes": [],
   "types": [
     {
-      "components": [
-        {
-          "name": "__tuple_element",
-          "type": 2,
-          "typeArguments": null
-        },
-        {
-          "name": "__tuple_element",
-          "type": 1,
-          "typeArguments": null
-        }
-      ],
-      "type": "(_, _)",
-      "typeId": 0,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "b256",
-      "typeId": 1,
-      "typeParameters": null
-    },
-    {
       "components": null,
       "type": "u64",
-      "typeId": 2,
+      "typeId": 0,
       "typeParameters": null
     }
   ]

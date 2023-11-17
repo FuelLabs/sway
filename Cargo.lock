@@ -2550,7 +2550,7 @@ dependencies = [
 [[package]]
 name = "fuels"
 version = "0.50.1"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/transaction-policies#41727c3c7cecf3ce5975c7eced6cf9463eedd011"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/transaction-policies#2742c5c9df473d34d18939ed924d69ce47162c76"
 dependencies = [
  "fuel-core-client",
  "fuel-tx",
@@ -2564,7 +2564,7 @@ dependencies = [
 [[package]]
 name = "fuels-accounts"
 version = "0.50.1"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/transaction-policies#41727c3c7cecf3ce5975c7eced6cf9463eedd011"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/transaction-policies#2742c5c9df473d34d18939ed924d69ce47162c76"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2589,7 +2589,7 @@ dependencies = [
 [[package]]
 name = "fuels-code-gen"
 version = "0.50.1"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/transaction-policies#41727c3c7cecf3ce5975c7eced6cf9463eedd011"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/transaction-policies#2742c5c9df473d34d18939ed924d69ce47162c76"
 dependencies = [
  "Inflector",
  "fuel-abi-types 0.3.0",
@@ -2604,7 +2604,7 @@ dependencies = [
 [[package]]
 name = "fuels-core"
 version = "0.50.1"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/transaction-policies#41727c3c7cecf3ce5975c7eced6cf9463eedd011"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/transaction-policies#2742c5c9df473d34d18939ed924d69ce47162c76"
 dependencies = [
  "async-trait",
  "bech32",
@@ -2631,7 +2631,7 @@ dependencies = [
 [[package]]
 name = "fuels-macros"
 version = "0.50.1"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/transaction-policies#41727c3c7cecf3ce5975c7eced6cf9463eedd011"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/transaction-policies#2742c5c9df473d34d18939ed924d69ce47162c76"
 dependencies = [
  "fuels-code-gen",
  "itertools 0.11.0",
@@ -2644,7 +2644,7 @@ dependencies = [
 [[package]]
 name = "fuels-programs"
 version = "0.50.1"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/transaction-policies#41727c3c7cecf3ce5975c7eced6cf9463eedd011"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/transaction-policies#2742c5c9df473d34d18939ed924d69ce47162c76"
 dependencies = [
  "async-trait",
  "bytes",
@@ -2663,7 +2663,7 @@ dependencies = [
 [[package]]
 name = "fuels-test-helpers"
 version = "0.50.1"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/transaction-policies#41727c3c7cecf3ce5975c7eced6cf9463eedd011"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/transaction-policies#2742c5c9df473d34d18939ed924d69ce47162c76"
 dependencies = [
  "fuel-core-chain-config",
  "fuel-core-client",
