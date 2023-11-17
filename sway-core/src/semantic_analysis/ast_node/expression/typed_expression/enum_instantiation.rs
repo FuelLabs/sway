@@ -73,10 +73,23 @@ pub(crate) fn instantiate_enum(
             span: enum_variant_name.span(),
         }),
         ([single_expr], _) => {
+            // If type context is an enum, force `single_expr` to be the enum variant type
+            let start_type = match type_engine.get(ctx.type_annotation()) {
+                TypeInfo::Enum(e) => {
+                    let expected_enum_decl = decl_engine.get_enum(e.id());
+                    let expected_enum_variant = expected_enum_decl
+                        .expect_variant_from_name(handler, &enum_variant_name)
+                        .cloned()?;
+                    expected_enum_variant.type_argument.type_id
+                }
+                _ => enum_variant.type_argument.type_id,
+            };
+
             let enum_ctx = ctx
                 .by_ref()
                 .with_help_text("Enum instantiator must match its declared variant type.")
-                .with_type_annotation(enum_variant.type_argument.type_id);
+                .with_type_annotation(start_type);
+
             let typed_expr = ty::TyExpression::type_check(handler, enum_ctx, single_expr.clone())?;
 
             // unify the value of the argument with the variant

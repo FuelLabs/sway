@@ -81,6 +81,7 @@ fn main() {
     let x3: u8 = 4u32.try_as_u8().unwrap();
     let x4: u8 = 4u64.try_as_u8().unwrap();
     let x5: u8 = 4;
+    let x6: Option<u8> = Option::Some(1);
 
     let y1: u16 = 4u8.as_u16();
     let y2: u16 = 4u16;
