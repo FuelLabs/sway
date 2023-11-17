@@ -75,11 +75,9 @@ impl StorageVecContract for Contract {
         storage.row.push(TableCell::Int(3));
         storage
             .row
-            .push(
-                TableCell::B256(
-                    0x0101010101010101010101010101010101010101010101010101010101010101,
-                ),
-            );
+            .push(TableCell::B256(
+                0x0101010101010101010101010101010101010101010101010101010101010101,
+            ));
         storage.row.push(TableCell::Boolean(true));
     }
     // ANCHOR_END: storage_vec_multiple_types_fn
