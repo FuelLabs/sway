@@ -121,7 +121,7 @@ impl<T> StorageKey<T> {
     /// ```
     #[storage(write)]
     pub fn clear(self) -> bool {
-        clear(self.slot, self.offset)
+        clear::<T>(self.slot, self.offset)
     }
 
     /// Create a new `StorageKey`.
@@ -165,6 +165,7 @@ fn test_storage_key_new() {
 }
 
 #[test]
+#[storage(read, write)]
 fn test_storage_key_clear() {
     use ::constants::ZERO_B256;
     use ::assert::assert;
@@ -175,5 +176,5 @@ fn test_storage_key_clear() {
     assert(key.read() == 42);
     let cleared = key.clear();
     assert(cleared);
-    assert(key.try_read() == None);
+    assert(key.try_read().is_none());
 }
