@@ -12,7 +12,7 @@ async fn default_is_none() {
 }
 
 async fn setup() -> MyContract<WalletUnlocked> {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
 
     let id = Contract::load_from(
         "test_projects/option_field_order/out/debug/option_field_order.bin",

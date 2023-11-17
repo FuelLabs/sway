@@ -20,8 +20,9 @@ async fn get_messages_contract_instance() -> (
         Some(amount_per_coin),
     );
 
-    let wallets = launch_custom_provider_and_get_wallets(config, None, None).await;
-
+    let wallets = launch_custom_provider_and_get_wallets(config, None, None)
+        .await
+        .unwrap();
     let messages_contract_id = Contract::load_from(
         "test_projects/messages/out/debug/messages.bin",
         LoadConfiguration::default(),

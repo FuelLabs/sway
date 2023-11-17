@@ -28,7 +28,7 @@ async fn get_contracts() -> (
     TestContextCallerContract<WalletUnlocked>,
     ContractId,
 ) {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id_1 = Contract::load_from(
         "test_projects/context/out/debug/context.bin",
         LoadConfiguration::default(),

@@ -6,7 +6,7 @@ use fuels::{
 };
 
 async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>> {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let provider = wallet.provider().unwrap();
 
     let wallet_coins = wallet
@@ -30,7 +30,7 @@ async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>> {
 
     wallet.sign_transaction(&mut tx);
 
-    let mut tx = tx.build()?;
+    let tx = tx.build()?;
 
     let provider = wallet.provider().unwrap();
     let tx_id = provider.send_transaction(tx).await.unwrap();
