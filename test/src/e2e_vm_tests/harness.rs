@@ -167,17 +167,12 @@ pub(crate) fn runs_in_vm(
                     rng.gen(),
                     0u32.into(),
                 )
-<<<<<<< HEAD
                 .script_gas_limit(
                     fuel_tx::ConsensusParameters::default()
                         .tx_params()
                         .max_gas_per_tx
                         / 2,
                 )
-                .maturity(maturity)
-                .finalize_checked(block_height);
-=======
-                .gas_limit(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
                 .maturity(maturity);
 
             if let Some(witnesses) = witness_data {
@@ -186,8 +181,7 @@ pub(crate) fn runs_in_vm(
                 }
             }
 
-            let tx = tx.finalize_checked(block_height, &GasCosts::default());
->>>>>>> master
+            let tx = tx.finalize_checked(block_height);
 
             let mut i: Interpreter<_, _, NotSupportedEcal> =
                 Interpreter::with_storage(storage, Default::default());

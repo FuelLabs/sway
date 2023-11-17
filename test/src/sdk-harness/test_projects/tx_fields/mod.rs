@@ -26,7 +26,9 @@ abigen!(
     )
 );
 
-async fn get_contracts(msg_has_data: bool) -> (
+async fn get_contracts(
+    msg_has_data: bool,
+) -> (
     TxContractTest<WalletUnlocked>,
     ContractId,
     WalletUnlocked,
@@ -220,13 +222,13 @@ mod tx {
     }
 
     #[tokio::test]
-    async fn can_get_gas_limit() {
+    async fn can_get_script_gas_limit() {
         let (contract_instance, _, _, _) = get_contracts(true).await;
         let gas_limit = 1792384;
 
         let result = contract_instance
             .methods()
-            .get_tx_gas_limit()
+            .get_script_gas_limit()
             .tx_params(TxParameters::default().with_gas_limit(gas_limit))
             .call()
             .await
@@ -285,20 +287,20 @@ mod tx {
         let (contract_instance, _, wallet, _) = get_contracts(false).await;
         let message = &wallet.get_messages().await.unwrap()[0];
 
-        let mut builder = contract_instance.methods()
+        let mut builder = contract_instance
+            .methods()
             .get_tx_inputs_count()
             .transaction_builder()
             .await
             .unwrap();
-        
-        builder.inputs_mut().push(SdkInput::ResourceSigned { 
-            resource: CoinType::Message(message.clone()) 
+
+        builder.inputs_mut().push(SdkInput::ResourceSigned {
+            resource: CoinType::Message(message.clone()),
         });
-        
+
         wallet.sign_transaction(&mut builder);
 
-        let tx = builder.build()
-            .unwrap();
+        let tx = builder.build().unwrap();
 
         let tx_inputs = tx.inputs().clone();
 
@@ -353,7 +355,8 @@ mod tx {
     async fn can_get_witness_pointer() {
         let (contract_instance, _, _, _) = get_contracts(true).await;
 
-        let response = contract_instance.methods()
+        let response = contract_instance
+            .methods()
             .get_tx_witness_pointer(0)
             .call()
             .await
@@ -599,7 +602,7 @@ mod inputs {
         }
 
         mod message {
-            use fuels::types::{transaction_builders::TransactionBuilder, coin_type::CoinType};
+            use fuels::types::{coin_type::CoinType, transaction_builders::TransactionBuilder};
 
             use super::*;
 
@@ -608,16 +611,17 @@ mod inputs {
                 let (contract_instance, _, wallet, _) = get_contracts(false).await;
 
                 let message = &wallet.get_messages().await.unwrap()[0];
-                let mut builder = contract_instance.methods()
+                let mut builder = contract_instance
+                    .methods()
                     .get_input_message_sender(1)
                     .transaction_builder()
                     .await
                     .unwrap();
 
-                builder.inputs_mut().push(SdkInput::ResourceSigned { 
-                    resource: CoinType::Message(message.clone())
+                builder.inputs_mut().push(SdkInput::ResourceSigned {
+                    resource: CoinType::Message(message.clone()),
                 });
-                
+
                 wallet.sign_transaction(&mut builder);
 
                 let tx = builder.build().unwrap();
@@ -643,23 +647,24 @@ mod inputs {
 
                 let message = &wallet.get_messages().await.unwrap()[0];
                 let recipient = message.recipient.hash.clone();
-                let mut builder = contract_instance.methods()
+                let mut builder = contract_instance
+                    .methods()
                     .get_input_message_recipient(3)
                     .transaction_builder()
                     .await
                     .unwrap();
 
                 wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
-                
-                builder.inputs_mut().push(SdkInput::ResourceSigned { 
-                    resource: CoinType::Message(message.clone()) 
+
+                builder.inputs_mut().push(SdkInput::ResourceSigned {
+                    resource: CoinType::Message(message.clone()),
                 });
 
                 wallet.sign_transaction(&mut builder);
-                
+
                 let tx = builder.build().unwrap();
                 dbg!(tx.inputs());
-                
+
                 let provider = wallet.provider().unwrap();
                 let tx_id = provider.send_transaction(tx).await.unwrap();
                 let receipts = provider
@@ -668,18 +673,19 @@ mod inputs {
                     .unwrap()
                     .take_receipts_checked(None)
                     .unwrap();
-            
+
                 assert_eq!(receipts[1].data().unwrap(), recipient.as_slice());
             }
 
             #[tokio::test]
             async fn can_get_input_message_nonce() {
                 let (contract_instance, _, wallet, _) = get_contracts(true).await;
-                
+
                 let message = &wallet.get_messages().await.unwrap()[0];
                 let nonce = message.nonce.clone();
 
-                let mut builder = contract_instance.methods()
+                let mut builder = contract_instance
+                    .methods()
                     .get_input_message_nonce(3)
                     .transaction_builder()
                     .await
@@ -687,8 +693,8 @@ mod inputs {
 
                 wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
 
-                builder.inputs_mut().push(SdkInput::ResourceSigned { 
-                    resource: CoinType::Message(message.clone()) 
+                builder.inputs_mut().push(SdkInput::ResourceSigned {
+                    resource: CoinType::Message(message.clone()),
                 });
 
                 wallet.sign_transaction(&mut builder);
@@ -725,22 +731,22 @@ mod inputs {
                 let (contract_instance, _, wallet, _) = get_contracts(true).await;
 
                 let message = &wallet.get_messages().await.unwrap()[0];
-                let mut builder = contract_instance.methods()
+                let mut builder = contract_instance
+                    .methods()
                     .get_input_message_data_length(3)
                     .transaction_builder()
                     .await
                     .unwrap();
-                   
+
                 wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
 
-                builder.inputs_mut().push(SdkInput::ResourceSigned { 
-                    resource: CoinType::Message(message.clone()) 
+                builder.inputs_mut().push(SdkInput::ResourceSigned {
+                    resource: CoinType::Message(message.clone()),
                 });
 
                 wallet.sign_transaction(&mut builder);
-                    
-                let tx = builder.build()
-                    .unwrap();
+
+                let tx = builder.build().unwrap();
 
                 let provider = wallet.provider().unwrap();
                 let tx_id = provider.send_transaction(tx).await.unwrap();
@@ -760,7 +766,8 @@ mod inputs {
                 let (predicate_bytecode, message, _) =
                     generate_predicate_inputs(100, &wallet).await;
 
-                let mut builder = contract_instance.methods()
+                let mut builder = contract_instance
+                    .methods()
                     .get_input_predicate_length(3)
                     .transaction_builder()
                     .await
@@ -769,7 +776,7 @@ mod inputs {
                 wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
 
                 builder.inputs_mut().push(message);
-                
+
                 wallet.sign_transaction(&mut builder);
 
                 let tx = builder.build().unwrap();
@@ -802,7 +809,7 @@ mod inputs {
                 wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
 
                 builder.inputs_mut().push(message);
-                
+
                 wallet.sign_transaction(&mut builder);
 
                 let tx = builder.build().unwrap();
@@ -825,7 +832,7 @@ mod inputs {
                 let (contract_instance, _, wallet, _) = get_contracts(true).await;
                 let message = &wallet.get_messages().await.unwrap()[0];
 
-                let mut builder =  contract_instance
+                let mut builder = contract_instance
                     .methods()
                     .get_input_message_data(3, 0, MESSAGE_DATA)
                     .transaction_builder()
@@ -834,12 +841,12 @@ mod inputs {
 
                 wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
 
-                builder.inputs_mut().push(SdkInput::ResourceSigned { 
-                    resource: CoinType::Message(message.clone()) 
+                builder.inputs_mut().push(SdkInput::ResourceSigned {
+                    resource: CoinType::Message(message.clone()),
                 });
 
                 wallet.sign_transaction(&mut builder);
-                
+
                 let tx = builder.build().unwrap();
 
                 let provider = wallet.provider().unwrap();
@@ -865,15 +872,12 @@ mod inputs {
                     .methods()
                     .get_input_predicate(3, predicate_bytes.clone());
 
-                let mut builder = handler
-                    .transaction_builder()
-                    .await
-                    .unwrap();
-                
+                let mut builder = handler.transaction_builder().await.unwrap();
+
                 wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
 
                 builder.inputs_mut().push(message);
-                
+
                 wallet.sign_transaction(&mut builder);
 
                 let tx = builder.build().unwrap();
