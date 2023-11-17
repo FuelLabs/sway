@@ -10,11 +10,11 @@ publish = false
 assert_matches = "1.5.0"
 
 # Dependencies from the `fuel-core` repository:
-fuel-core = { version = "0.20.6", default-features = false }
-fuel-core-client = { version = "0.20.6", default-features = false }
+fuel-core = { version = "v0.21.0-rc.1", default-features = false }
+fuel-core-client = { version = "v0.21.0-rc.1", default-features = false }
 
 # Dependencies from the `fuel-vm` repository:
-fuel-vm = "0.35.0"
+fuel-vm = "0.42.0"
 
 # Dependencies from the `fuels-rs` repository:
 fuels = "0.50.1"
@@ -35,7 +35,4 @@ path = "test_projects/harness.rs"
 [workspace]
 
 [patch.crates-io]
-fuel-core = { git = "https://github.com/FuelLabs/fuel-core", branch = "master" }
-fuel-core-client = { git = "https://github.com/FuelLabs/fuel-core", branch = "master" }
-
-fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "upgrade/fuel-core-master" }
+fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/transaction-policies" }

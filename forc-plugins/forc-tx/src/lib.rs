@@ -636,8 +636,11 @@ impl TryFrom<Create> for fuel_tx::Create {
             .map(|s| fuel_tx::Witness::from(s.as_bytes()))
             .collect();
 
-        let mut policies = Policies::default().with_maturity(create.maturity.maturity.into());
+        let maturity = (create.maturity.maturity != 0).then_some(create.maturity.maturity.into());
+        let mut policies = Policies::default();
         policies.set(PolicyType::GasPrice, create.gas.price);
+        policies.set(PolicyType::Maturity, maturity);
+
         let create = fuel_tx::Transaction::create(
             create.bytecode_witness_index,
             policies,
