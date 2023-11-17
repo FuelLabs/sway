@@ -76,17 +76,10 @@ impl Entry {
     ) -> Entry {
         // We need a special handling in case of enums.
         if constant.ty.is_enum(context) {
-            let tag_and_value_with_paddings = constant
-                .elements_of_aggregate_with_padding(context)
-                .expect("Enums are aggregates.");
+            let (tag, value) = constant.enum_tag_and_value_with_paddings(context).expect("Constant is an enum.");
 
-            debug_assert!(tag_and_value_with_paddings.len() == 2, "In case of enums, `elements_of_aggregate_with_padding` must return exactly two elements, the tag and the value.");
-
-            let tag = &tag_and_value_with_paddings[0];
-            let value = &tag_and_value_with_paddings[1];
-
-            let tag_entry = Entry::from_constant(context, tag.0, None, tag.1.clone());
-            let value_entry = Entry::from_constant(context, value.0, None, value.1.clone());
+            let tag_entry = Entry::from_constant(context, tag.0, None, tag.1);
+            let value_entry = Entry::from_constant(context, value.0, None, value.1);
 
             return Entry::new_collection(vec![tag_entry, value_entry], name, padding);
         }
@@ -109,10 +102,20 @@ impl Entry {
                 Entry::new_byte_array(bs.to_be_bytes().to_vec(), name, padding)
             }
             ConstantValue::String(bs) => Entry::new_byte_array(bs.clone(), name, padding),
-            ConstantValue::Array(_) | ConstantValue::Struct(_) => Entry::new_collection(
+            ConstantValue::Array(_) => Entry::new_collection(
                 constant
-                    .elements_of_aggregate_with_padding(context)
-                    .expect("Arrays and structs are aggregates.")
+                    .array_elements_with_padding(context)
+                    .expect("Constant is an array.")
+                    .into_iter()
+                    .map(|(elem, padding)| Entry::from_constant(context, elem, None, padding))
+                    .collect(),
+                name,
+                padding,
+            ),
+            ConstantValue::Struct(_) => Entry::new_collection(
+                constant
+                    .struct_fields_with_padding(context)
+                    .expect("Constant is a struct.")
                     .into_iter()
                     .map(|(elem, padding)| Entry::from_constant(context, elem, None, padding))
                     .collect(),

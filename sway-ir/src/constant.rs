@@ -151,13 +151,64 @@ impl Constant {
         Some((&elems[0], &elems[1]))
     }
 
+    /// Returns enum tag and value as [Constant]s, together with their [Padding]s,
+    /// if `self` is an enum [Constant], otherwise `None`.
+    /// If the returned [Padding] is `None` the default [Padding] for the type
+    /// is expected.
+    pub fn enum_tag_and_value_with_paddings(&self, context: &Context) -> Option<((&Constant, Option<Padding>), (&Constant, Option<Padding>))> {
+        if !self.ty.is_enum(context) {
+            return None;
+        }
+
+        let tag_and_value_with_paddings = self
+            .elements_of_aggregate_with_padding(context)
+            .expect("Enums are aggregates.");
+
+        debug_assert!(tag_and_value_with_paddings.len() == 2, "In case of enums, `elements_of_aggregate_with_padding` must return exactly two elements, the tag and the value.");
+
+        let tag = tag_and_value_with_paddings[0].clone();
+        let value = tag_and_value_with_paddings[1].clone();
+
+        Some((tag, value))
+    }
+
+    /// Returns elements of an array with the expected padding for each array element
+    /// if `self` is an array [Constant], otherwise `None`.
+    /// If the returned [Padding] is `None` the default [Padding] for the type
+    /// is expected.
+    pub fn array_elements_with_padding(
+        &self,
+        context: &Context,
+    ) -> Option<Vec<(&Constant, Option<Padding>)>> {
+        if !self.ty.is_array(context) {
+            return None;
+        }
+
+        self.elements_of_aggregate_with_padding(context)
+    }
+
+    /// Returns fields of a struct with the expected padding for each field
+    /// if `self` is a struct [Constant], otherwise `None`.
+    /// If the returned [Padding] is `None` the default [Padding] for the type
+    /// is expected.
+    pub fn struct_fields_with_padding(
+        &self,
+        context: &Context,
+    ) -> Option<Vec<(&Constant, Option<Padding>)>> {
+        if !self.ty.is_struct(context) {
+            return None;
+        }
+
+        self.elements_of_aggregate_with_padding(context)
+    }
+
     /// Returns elements of an aggregate constant with the expected padding for each element
     /// if `self` is an aggregate (struct, enum, or array), otherwise `None`.
     /// If the returned [Padding] is `None` the default [Padding] for the type
     /// is expected.
     /// If the aggregate constant is an enum, the returned [Vec] has exactly two elements,
     /// the first being the tag and the second the value of the enum variant.
-    pub fn elements_of_aggregate_with_padding(
+    fn elements_of_aggregate_with_padding(
         &self,
         context: &Context,
     ) -> Option<Vec<(&Constant, Option<Padding>)>> {
