@@ -51,7 +51,8 @@ async fn ec_recover_and_match_predicate_test() -> Result<()> {
         }),
         None,
     )
-    .await;
+    .await
+    .unwrap();
 
     [&mut wallet, &mut wallet2, &mut wallet3, &mut receiver]
         .iter_mut()

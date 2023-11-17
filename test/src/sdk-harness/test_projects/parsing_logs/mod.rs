@@ -10,7 +10,7 @@ abigen!(Contract(
 ));
 
 async fn get_parsing_logs_instance() -> (ParsingLogsTestContract<WalletUnlocked>, ContractId) {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/parsing_logs/out/debug/parsing_logs.bin",
         LoadConfiguration::default(),
