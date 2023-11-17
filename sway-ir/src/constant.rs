@@ -26,6 +26,11 @@ pub enum ConstantValue {
     Struct(Vec<Constant>),
 }
 
+/// A [Constant] with its required [Padding].
+/// If the [Padding] is `None` the default [Padding] for the
+/// [Constant] type is expected.
+type ConstantWithPadding<'a> = (&'a Constant, Option<Padding>);
+
 impl Constant {
     pub fn new_unit(context: &Context) -> Self {
         Constant {
@@ -153,9 +158,10 @@ impl Constant {
 
     /// Returns enum tag and value as [Constant]s, together with their [Padding]s,
     /// if `self` is an enum [Constant], otherwise `None`.
-    /// If the returned [Padding] is `None` the default [Padding] for the type
-    /// is expected.
-    pub fn enum_tag_and_value_with_paddings(&self, context: &Context) -> Option<((&Constant, Option<Padding>), (&Constant, Option<Padding>))> {
+    pub fn enum_tag_and_value_with_paddings(
+        &self,
+        context: &Context,
+    ) -> Option<(ConstantWithPadding, ConstantWithPadding)> {
         if !self.ty.is_enum(context) {
             return None;
         }
@@ -174,12 +180,10 @@ impl Constant {
 
     /// Returns elements of an array with the expected padding for each array element
     /// if `self` is an array [Constant], otherwise `None`.
-    /// If the returned [Padding] is `None` the default [Padding] for the type
-    /// is expected.
     pub fn array_elements_with_padding(
         &self,
         context: &Context,
-    ) -> Option<Vec<(&Constant, Option<Padding>)>> {
+    ) -> Option<Vec<ConstantWithPadding>> {
         if !self.ty.is_array(context) {
             return None;
         }
@@ -189,12 +193,10 @@ impl Constant {
 
     /// Returns fields of a struct with the expected padding for each field
     /// if `self` is a struct [Constant], otherwise `None`.
-    /// If the returned [Padding] is `None` the default [Padding] for the type
-    /// is expected.
     pub fn struct_fields_with_padding(
         &self,
         context: &Context,
-    ) -> Option<Vec<(&Constant, Option<Padding>)>> {
+    ) -> Option<Vec<ConstantWithPadding>> {
         if !self.ty.is_struct(context) {
             return None;
         }

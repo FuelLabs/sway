@@ -76,7 +76,9 @@ impl Entry {
     ) -> Entry {
         // We need a special handling in case of enums.
         if constant.ty.is_enum(context) {
-            let (tag, value) = constant.enum_tag_and_value_with_paddings(context).expect("Constant is an enum.");
+            let (tag, value) = constant
+                .enum_tag_and_value_with_paddings(context)
+                .expect("Constant is an enum.");
 
             let tag_entry = Entry::from_constant(context, tag.0, None, tag.1);
             let value_entry = Entry::from_constant(context, value.0, None, value.1);

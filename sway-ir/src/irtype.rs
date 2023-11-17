@@ -356,8 +356,13 @@ impl Type {
                     // Union variants have their raw size in bytes and are
                     // left padded within the union.
                     let union_size_in_bytes = ty.size(context).in_bytes();
-                    ty.get_field_type(context, *idx)
-                        .map(|field_ty| (field_ty, accum_offset + (union_size_in_bytes - field_ty.size(context).in_bytes())))
+                    ty.get_field_type(context, *idx).map(|field_ty| {
+                        (
+                            field_ty,
+                            accum_offset
+                                + (union_size_in_bytes - field_ty.size(context).in_bytes()),
+                        )
+                    })
                 } else {
                     assert!(
                         ty.is_array(context),
@@ -637,10 +642,10 @@ mod tests {
     pub use super::*;
     /// Unit tests in this module document and assert decisions on memory layout.
     mod memory_layout {
+        use super::*;
+        use crate::Context;
         use once_cell::sync::Lazy;
         use sway_types::SourceEngine;
-        use crate::Context;
-        use super::*;
 
         #[test]
         /// Bool, when not embedded in aggregates, has a size of 1 byte.
@@ -746,7 +751,8 @@ mod tests {
         fn string_slice() {
             let mut context = create_context();
 
-            let s_slice = Type::get_or_create_unique_type(&mut context, TypeContent::StringSlice).size(&context);
+            let s_slice = Type::get_or_create_unique_type(&mut context, TypeContent::StringSlice)
+                .size(&context);
 
             assert_eq!(s_slice.in_bytes(), 16);
             assert_eq!(s_slice.in_bytes(), s_slice.in_bytes_aligned());
@@ -774,7 +780,10 @@ mod tests {
 
                 assert_eq!(str_array_ty.get_string_len(&context).unwrap(), len);
 
-                assert_eq!(s_str_array.in_bytes(), size_bytes_round_up_to_word_alignment!(len));
+                assert_eq!(
+                    s_str_array.in_bytes(),
+                    size_bytes_round_up_to_word_alignment!(len)
+                );
                 assert_eq!(s_str_array.in_bytes(), s_str_array.in_bytes_aligned());
             }
         }
@@ -796,7 +805,9 @@ mod tests {
                 assert_eq!(s_array.in_bytes(), len * elem_size);
 
                 for elem_index in 0..len {
-                    let elem_offset = array_ty.get_indexed_offset(&context, &[elem_index]).unwrap();
+                    let elem_offset = array_ty
+                        .get_indexed_offset(&context, &[elem_index])
+                        .unwrap();
 
                     // The offset of the element is its index multiplied by the element size.
                     assert_eq!(elem_offset, elem_index * elem_size);
@@ -820,18 +831,32 @@ mod tests {
                 let s_struct = struct_ty.size(&context);
 
                 // The size of the struct is the sum of the aligned field sizes.
-                assert_eq!(s_struct.in_bytes(), fields.iter().map(|(_, raw_size)| size_bytes_round_up_to_word_alignment!(raw_size)).sum::<u64>());
+                assert_eq!(
+                    s_struct.in_bytes(),
+                    fields
+                        .iter()
+                        .map(|(_, raw_size)| size_bytes_round_up_to_word_alignment!(raw_size))
+                        .sum::<u64>()
+                );
                 // Structs are always aligned to the word boundary.
                 assert_eq!(s_struct.in_bytes(), s_struct.in_bytes_aligned());
 
                 for field_index in 0..fields.len() {
                     // The offset of the field is the size of previous fields.
-                    let expected_offset = fields.iter().take(field_index).map(|(_, raw_size)| size_bytes_round_up_to_word_alignment!(raw_size)).sum::<u64>();
+                    let expected_offset = fields
+                        .iter()
+                        .take(field_index)
+                        .map(|(_, raw_size)| size_bytes_round_up_to_word_alignment!(raw_size))
+                        .sum::<u64>();
 
-                    let field_offset = struct_ty.get_indexed_offset(&context, &[field_index as u64]).unwrap();
+                    let field_offset = struct_ty
+                        .get_indexed_offset(&context, &[field_index as u64])
+                        .unwrap();
                     assert_eq!(field_offset, expected_offset);
 
-                    let (field_offset, field_type) = struct_ty.get_struct_field_offset_and_type(&context, field_index as u64).unwrap();
+                    let (field_offset, field_type) = struct_ty
+                        .get_struct_field_offset_and_type(&context, field_index as u64)
+                        .unwrap();
                     assert_eq!(field_offset, expected_offset);
                     assert_eq!(field_type, fields[field_index].0);
                 }
@@ -854,21 +879,32 @@ mod tests {
                 let s_union = union_ty.size(&context);
 
                 // The size of the union is the size of the largest variant, aligned to the word boundary.
-                assert_eq!(s_union.in_bytes(), variants.iter().map(|(_, raw_size)| size_bytes_round_up_to_word_alignment!(raw_size)).max().unwrap_or_default());
+                assert_eq!(
+                    s_union.in_bytes(),
+                    variants
+                        .iter()
+                        .map(|(_, raw_size)| size_bytes_round_up_to_word_alignment!(raw_size))
+                        .max()
+                        .unwrap_or_default()
+                );
                 // Unions are always aligned to the word boundary.
                 assert_eq!(s_union.in_bytes(), s_union.in_bytes_aligned());
 
-                for variant_index in 0..variants.len() {
+                for (variant_index, variant) in variants.iter().enumerate() {
                     // Variants are left-padded.
                     // Means the offset of a variant is the union size minus the raw variant size.
-                    let expected_offset = s_union.in_bytes() - variants[variant_index].1;
+                    let expected_offset = s_union.in_bytes() - variant.1;
 
-                    let variant_offset = union_ty.get_indexed_offset(&context, &[variant_index as u64]).unwrap();
+                    let variant_offset = union_ty
+                        .get_indexed_offset(&context, &[variant_index as u64])
+                        .unwrap();
                     assert_eq!(variant_offset, expected_offset);
 
-                    let (variant_offset, field_type) = union_ty.get_union_field_offset_and_type(&context, variant_index as u64).unwrap();
+                    let (variant_offset, field_type) = union_ty
+                        .get_union_field_offset_and_type(&context, variant_index as u64)
+                        .unwrap();
                     assert_eq!(variant_offset, expected_offset);
-                    assert_eq!(field_type, variants[variant_index].0);
+                    assert_eq!(field_type, variant.0);
                 }
             }
         }
@@ -877,7 +913,7 @@ mod tests {
         // instantiation in every test.
         // Not that we can't do the same with the `Context` because it must be isolated and
         // unique in every test.
-        static SOURCE_ENGINE: Lazy<SourceEngine> = Lazy::new(|| SourceEngine::default());
+        static SOURCE_ENGINE: Lazy<SourceEngine> = Lazy::new(SourceEngine::default);
 
         fn create_context() -> Context<'static> {
             Context::new(&SOURCE_ENGINE)
@@ -887,24 +923,24 @@ mod tests {
         /// other types. Where applicable, several typical representatives of
         /// a type are created, e.g., string arrays of different sizes.
         fn sample_non_aggregate_types(context: &mut Context) -> Vec<Type> {
-            let mut types = vec![];
+            let mut types = vec![
+                Type::get_bool(context),
+                Type::get_unit(context),
+                Type::get_uint(context, 8).unwrap(),
+                Type::get_uint(context, 16).unwrap(),
+                Type::get_uint(context, 32).unwrap(),
+                Type::get_uint(context, 64).unwrap(),
+                Type::get_uint(context, 256).unwrap(),
+                Type::get_b256(context),
+                Type::get_slice(context),
+                Type::get_or_create_unique_type(context, TypeContent::StringSlice),
+            ];
 
-            types.push(Type::get_bool(context));
-
-            types.push(Type::get_unit(context));
-
-            types.push(Type::get_uint(context, 8).unwrap());
-            types.push(Type::get_uint(context, 16).unwrap());
-            types.push(Type::get_uint(context, 32).unwrap());
-            types.push(Type::get_uint(context, 64).unwrap());
-            types.push(Type::get_uint(context, 256).unwrap());
-
-            types.push(Type::get_b256(context));
-
-            types.push(Type::get_slice(context));
-            types.push(Type::get_or_create_unique_type(context, TypeContent::StringSlice));
-
-            types.extend(sample_string_arrays(context).into_iter().map(|(string_array, _)| string_array));
+            types.extend(
+                sample_string_arrays(context)
+                    .into_iter()
+                    .map(|(string_array, _)| string_array),
+            );
 
             types
         }
@@ -931,14 +967,22 @@ mod tests {
                 for ty in sample_non_aggregate_types(context) {
                     // As commented in other places, we trust the result of the
                     // `size` method for non-aggregate types.
-                    types.push((Type::new_array(context, ty, len), len, ty.size(context).in_bytes()));
+                    types.push((
+                        Type::new_array(context, ty, len),
+                        len,
+                        ty.size(context).in_bytes(),
+                    ));
                 }
 
                 for (array_ty, array_len, elem_size) in sample_arrays_to_embed(context) {
                     // We cannot use the `size` methods on arrays here because we use this
                     // samples to actually test it. We calculate the expected size manually
                     // according to the definition of the layout for the arrays.
-                    types.push((Type::new_array(context, array_ty, len), len, array_len * elem_size));
+                    types.push((
+                        Type::new_array(context, array_ty, len),
+                        len,
+                        array_len * elem_size,
+                    ));
                 }
 
                 for (struct_ty, struct_size) in sample_structs_to_embed(context) {
@@ -963,35 +1007,48 @@ mod tests {
             // Structs with only one 1-word long field.
             add_structs_with_non_aggregate_types_of_length_in_bytes(&mut types, context, 8);
 
-            // Complex struct with fields of all non aggregate types, arrays, and structs. 
+            // Complex struct with fields of all non aggregate types, arrays, and structs.
             let mut fields = vec![];
             for ty in sample_non_aggregate_types(context) {
                 // We can trust the result of the `size` method here,
                 // because it is tested in tests for individual non-aggregate types.
-                fields.push((ty, ty.size(context).in_bytes())); 
+                fields.push((ty, ty.size(context).in_bytes()));
             }
             for (array_ty, len, elem_size) in sample_arrays(context) {
                 // We can't trust the result of the `size` method here,
                 // because tests for arrays test embedded structs and vice versa.
                 // So we will manually calculate the expected raw size in bytes,
                 // as per the definition of the memory layout for the arrays.
-                fields.push((array_ty, len * elem_size)); 
+                fields.push((array_ty, len * elem_size));
             }
             for (struct_ty, struct_size) in sample_structs_to_embed(context) {
-                fields.push((struct_ty, struct_size)); 
+                fields.push((struct_ty, struct_size));
             }
 
-            types.push((Type::new_struct(context, fields.iter().map(|(field_ty, _)| field_ty.clone()).collect()), fields));
+            types.push((
+                Type::new_struct(
+                    context,
+                    fields.iter().map(|(field_ty, _)| *field_ty).collect(),
+                ),
+                fields,
+            ));
 
             return types;
 
-            fn add_structs_with_non_aggregate_types_of_length_in_bytes(types: &mut Vec<(Type, Vec<(Type, u64)>)>, context: &mut Context, field_type_size_in_bytes: u64) {
+            fn add_structs_with_non_aggregate_types_of_length_in_bytes(
+                types: &mut Vec<(Type, Vec<(Type, u64)>)>,
+                context: &mut Context,
+                field_type_size_in_bytes: u64,
+            ) {
                 for ty in sample_non_aggregate_types(context) {
                     if ty.size(context).in_bytes() != field_type_size_in_bytes {
                         continue;
                     }
 
-                    types.push((Type::new_struct(context, vec![ty.clone()]), vec![(ty, field_type_size_in_bytes)]));
+                    types.push((
+                        Type::new_struct(context, vec![ty]),
+                        vec![(ty, field_type_size_in_bytes)],
+                    ));
                 }
             }
         }
@@ -1010,32 +1067,45 @@ mod tests {
             // Unions with only one 1-word long variant.
             add_unions_with_non_aggregate_types_of_length_in_bytes(&mut types, context, 8);
 
-            // Complex union with variants of all non aggregate types, arrays, and structs. 
+            // Complex union with variants of all non aggregate types, arrays, and structs.
             // For the reasons for using the `size` method for non-aggregates vs
             // calculating sizes for non aggregates, see the comment in the
             // `sample_structs` function.
             let mut variants = vec![];
             for ty in sample_non_aggregate_types(context) {
-                variants.push((ty, ty.size(context).in_bytes())); 
+                variants.push((ty, ty.size(context).in_bytes()));
             }
             for (array_ty, len, elem_size) in sample_arrays(context) {
-                variants.push((array_ty, len * elem_size)); 
+                variants.push((array_ty, len * elem_size));
             }
             for (struct_ty, struct_size) in sample_structs_to_embed(context) {
-                variants.push((struct_ty, struct_size)); 
+                variants.push((struct_ty, struct_size));
             }
 
-            types.push((Type::new_union(context, variants.iter().map(|(field_ty, _)| field_ty.clone()).collect()), variants));
+            types.push((
+                Type::new_union(
+                    context,
+                    variants.iter().map(|(field_ty, _)| *field_ty).collect(),
+                ),
+                variants,
+            ));
 
             return types;
 
-            fn add_unions_with_non_aggregate_types_of_length_in_bytes(types: &mut Vec<(Type, Vec<(Type, u64)>)>, context: &mut Context, variant_type_size_in_bytes: u64) {
+            fn add_unions_with_non_aggregate_types_of_length_in_bytes(
+                types: &mut Vec<(Type, Vec<(Type, u64)>)>,
+                context: &mut Context,
+                variant_type_size_in_bytes: u64,
+            ) {
                 for ty in sample_non_aggregate_types(context) {
                     if ty.size(context).in_bytes() != variant_type_size_in_bytes {
                         continue;
                     }
 
-                    types.push((Type::new_union(context, vec![ty.clone()]), vec![(ty, variant_type_size_in_bytes)]));
+                    types.push((
+                        Type::new_union(context, vec![ty]),
+                        vec![(ty, variant_type_size_in_bytes)],
+                    ));
                 }
             }
         }
@@ -1048,7 +1118,11 @@ mod tests {
 
             for len in [0, 1, 7, 8, 15] {
                 for elem_ty in sample_non_aggregate_types(context) {
-                    types.push((Type::new_array(context, elem_ty, len), len, elem_ty.size(context).in_bytes()));
+                    types.push((
+                        Type::new_array(context, elem_ty, len),
+                        len,
+                        elem_ty.size(context).in_bytes(),
+                    ));
                 }
             }
 
@@ -1065,7 +1139,10 @@ mod tests {
                 // We can trust the result of the `size` method here,
                 // because it is tested in tests for individual non-aggregate types.
                 // We align it to the word boundary to satisfy the layout of structs.
-                types.push((Type::new_struct(context, vec![field_ty]), field_ty.size(context).in_bytes_aligned()));
+                types.push((
+                    Type::new_struct(context, vec![field_ty]),
+                    field_ty.size(context).in_bytes_aligned(),
+                ));
             }
 
             // Create structs for pairwise combinations of field types.
@@ -1074,14 +1151,21 @@ mod tests {
                 for second_field_type in field_types.iter().skip(index) {
                     // Again, we trust the `size` method called on non-aggregate types
                     // and calculate the struct size on our own.
-                    let struct_size = first_field_ty.size(context).in_bytes_aligned() + second_field_type.size(context).in_bytes_aligned();
-                    types.push((Type::new_struct(context, vec![first_field_ty.clone(), second_field_type.clone()]), struct_size));
+                    let struct_size = first_field_ty.size(context).in_bytes_aligned()
+                        + second_field_type.size(context).in_bytes_aligned();
+                    types.push((
+                        Type::new_struct(context, vec![*first_field_ty, *second_field_type]),
+                        struct_size,
+                    ));
                 }
             }
 
             // Create a struct with a field for each aggregate type.
             let field_types = sample_non_aggregate_types(context);
-            let struct_size = field_types.iter().map(|ty| ty.size(context).in_bytes_aligned()).sum();
+            let struct_size = field_types
+                .iter()
+                .map(|ty| ty.size(context).in_bytes_aligned())
+                .sum();
             types.push((Type::new_struct(context, field_types), struct_size));
 
             types
@@ -1093,8 +1177,16 @@ mod tests {
             let mut types = vec![];
 
             types.extend(sample_non_aggregate_types(context));
-            types.extend(sample_arrays(context).into_iter().map(|(array_ty, _, _)| array_ty));
-            types.extend(sample_structs(context).into_iter().map(|(array_ty, __)| array_ty));
+            types.extend(
+                sample_arrays(context)
+                    .into_iter()
+                    .map(|(array_ty, _, _)| array_ty),
+            );
+            types.extend(
+                sample_structs(context)
+                    .into_iter()
+                    .map(|(array_ty, __)| array_ty),
+            );
 
             types
         }
