@@ -4,6 +4,7 @@ use anyhow::Result;
 use atty::Stream;
 use clap::Parser;
 use forc_tracing::{init_tracing_subscriber, println_error};
+use fuel_core_keygen::{new_key, parse_secret};
 use std::{
     default::Default,
     io::{stdin, stdout, Read, Write},
@@ -26,8 +27,8 @@ pub enum Command {
     Keccak256(args::HashArgs),
     Sha256(args::HashArgs),
     Address(address::Args),
-    NewKey(keygen::new_key::Arg),
-    ParseSecret(keygen::parse_secret::Arg),
+    NewKey(keygen::NewKey),
+    ParseSecret(keygen::ParseSecret),
 }
 
 fn main() {
@@ -44,8 +45,10 @@ fn run() -> Result<()> {
         Command::Keccak256(arg) => keccak256::hash(arg)?,
         Command::Sha256(arg) => sha256::hash(arg)?,
         Command::Address(arg) => address::dump_address(arg.address)?,
-        Command::NewKey(arg) => keygen::new_key::handler(arg)?,
-        Command::ParseSecret(arg) => keygen::parse_secret::handler(arg)?,
+        Command::NewKey(arg) => serde_json::to_value(new_key(arg.key_type.into())?)?,
+        Command::ParseSecret(arg) => {
+            serde_json::to_value(parse_secret(arg.key_type.into(), &arg.secret)?)?
+        }
     };
 
     display_output(content)

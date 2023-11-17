@@ -1956,12 +1956,12 @@ dependencies = [
  "atty",
  "clap 3.2.25",
  "forc-tracing",
+ "fuel-core-keygen",
  "fuel-core-types",
  "fuel-crypto",
  "fuels-core",
  "futures",
  "hex",
- "libp2p-identity",
  "rand",
  "serde",
  "serde_json",
@@ -2279,6 +2279,19 @@ dependencies = [
  "tai64",
  "thiserror",
  "tracing",
+]
+
+[[package]]
+name = "fuel-core-keygen"
+version = "0.21.0-rc.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d86c3f33b528697a26c11dfae93453aa44763fb1fd9ee80cee1f2f86a6ca952c"
+dependencies = [
+ "anyhow",
+ "clap 4.4.8",
+ "fuel-core-types",
+ "libp2p-identity",
+ "serde",
 ]
 
 [[package]]

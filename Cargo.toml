@@ -25,15 +25,12 @@ members = [
     "swayfmt",
     "test",
 ]
-exclude = [
-    "examples/*",
-    "swayfmt/test_macros",
-    "forc-test/test_data"
-]
+exclude = ["examples/*", "forc-test/test_data", "swayfmt/test_macros"]
 
 [workspace.dependencies]
 # Dependencies from the `fuel-core` repository:
 fuel-core-client = { version = "0.21.0-rc.1", default-features = false }
+fuel-core-keygen = { version = "0.21.0-rc.1", default-features = false }
 fuel-core-types = { version = "0.21.0-rc.1", default-features = false }
 
 # Dependencies from the `fuel-vm` repository:
