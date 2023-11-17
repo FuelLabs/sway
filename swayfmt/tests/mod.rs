@@ -1609,6 +1609,37 @@ impl MyContract for Contract {
 }
 
 #[test]
+fn comment_inside_configurable_block() {
+    check(
+        r#"
+script;
+
+use std::{constants::ZERO_B256, vm::evm::evm_address::EvmAddress};
+//test
+configurable {
+    // SIGNER: EvmAddress = EvmAddress::from(ZERO_B256),
+    SIGNER: EvmAddress = EvmAddress {
+        value: ZERO_B256,
+    },
+}
+
+fn main() {}"#,
+        r#"script;
+
+use std::{constants::ZERO_B256, vm::evm::evm_address::EvmAddress};
+//test
+configurable {
+    SIGNER: EvmAddress = EvmAddress {
+        value: ZERO_B256,
+    },
+}
+
+fn main() {}
+"#,
+    );
+}
+
+#[test]
 fn empty_fn() {
     check(
         r#"
