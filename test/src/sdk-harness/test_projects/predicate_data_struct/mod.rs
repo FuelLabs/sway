@@ -1,4 +1,3 @@
-use fuel_vm::checked_transaction::EstimatePredicates;
 use fuel_vm::fuel_asm::{op, RegId};
 use fuel_vm::fuel_tx;
 use fuel_vm::fuel_tx::{Address, AssetId, Output};
@@ -30,8 +29,9 @@ async fn setup() -> (Vec<u8>, Address, WalletUnlocked, u64, AssetId) {
     );
 
     let wallets =
-        launch_custom_provider_and_get_wallets(WalletsConfig::default(), Some(config), None).await;
-
+        launch_custom_provider_and_get_wallets(WalletsConfig::default(), Some(config), None)
+            .await
+            .unwrap();
     (
         predicate_code,
         predicate_address,
@@ -66,8 +66,7 @@ async fn create_predicate(
 
     wallet.sign_transaction(&mut tx);
 
-    let mut tx = tx.build().unwrap();
-
+    let tx = tx.build().unwrap();
     wallet
         .provider()
         .unwrap()
@@ -114,8 +113,7 @@ async fn submit_to_predicate(
     let output_coin = Output::coin(receiver_address, total_amount_in_predicate, asset_id);
     let output_change = Output::change(predicate_address, 0, asset_id);
 
-    let params = wallet.provider().unwrap().consensus_parameters();
-    let mut new_tx = ScriptTransactionBuilder::prepare_transfer(
+    let new_tx = ScriptTransactionBuilder::prepare_transfer(
         inputs,
         vec![output_coin, output_change],
         TxParameters::default().with_gas_limit(1_000_000),
@@ -123,19 +121,6 @@ async fn submit_to_predicate(
     )
     .build()
     .unwrap();
-    new_tx
-        .tx
-        .estimate_predicates(
-            &params,
-            &wallet
-                .provider()
-                .unwrap()
-                .network_info()
-                .await
-                .unwrap()
-                .gas_costs,
-        )
-        .unwrap();
 
     let _call_result = wallet.provider().unwrap().send_transaction(new_tx).await;
 }

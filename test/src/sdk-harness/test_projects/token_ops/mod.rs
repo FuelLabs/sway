@@ -15,7 +15,7 @@ abigen!(Contract(
 
 #[tokio::test]
 async fn can_mint() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet).await;
     let sub_id = Bytes32::zeroed();
     let asset_id = get_asset_id(sub_id, fuelcontract_id).await;
@@ -47,7 +47,7 @@ async fn can_mint() {
 
 #[tokio::test]
 async fn can_mint_multiple() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet).await;
     let sub_id_1 = Bytes32::zeroed();
     let sub_id_2 = Bytes32::from([1u8; 32]);
@@ -104,7 +104,7 @@ async fn can_mint_multiple() {
 
 #[tokio::test]
 async fn can_burn() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet).await;
     let sub_id = Bytes32::zeroed();
     let asset_id = get_asset_id(sub_id, fuelcontract_id).await;
@@ -142,7 +142,7 @@ async fn can_burn() {
 
 #[tokio::test]
 async fn can_force_transfer() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet.clone()).await;
     let balance_id = get_balance_contract_id(wallet).await;
     let sub_id = Bytes32::zeroed();
@@ -215,7 +215,7 @@ async fn can_force_transfer() {
 
 #[tokio::test]
 async fn can_mint_and_send_to_contract() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet.clone()).await;
     let balance_id = get_balance_contract_id(wallet).await;
     let amount = 55u64;
@@ -245,7 +245,7 @@ async fn can_mint_and_send_to_contract() {
 
 #[tokio::test]
 async fn can_mint_and_send_to_address() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet.clone()).await;
     let amount = 55u64;
     let sub_id = Bytes32::zeroed();
@@ -275,7 +275,7 @@ async fn can_mint_and_send_to_address() {
 
 #[tokio::test]
 async fn can_perform_generic_mint_to_with_address() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet.clone()).await;
     let sub_id = Bytes32::zeroed();
     let asset_id = get_asset_id(sub_id, fuelcontract_id).await;
@@ -313,7 +313,9 @@ async fn can_perform_generic_mint_to_with_contract_id() {
         Some(amount_per_coin),
     );
 
-    let wallets = launch_custom_provider_and_get_wallets(config, None, None).await;
+    let wallets = launch_custom_provider_and_get_wallets(config, None, None)
+        .await
+        .unwrap();
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallets[0].clone()).await;
     let balance_id = get_balance_contract_id(wallets[0].clone()).await;
     let amount = 55u64;
@@ -343,7 +345,7 @@ async fn can_perform_generic_mint_to_with_contract_id() {
 
 #[tokio::test]
 async fn can_perform_generic_transfer_to_address() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet.clone()).await;
     let sub_id = Bytes32::zeroed();
     let asset_id = get_asset_id(sub_id, fuelcontract_id).await;
@@ -391,7 +393,9 @@ async fn can_perform_generic_transfer_to_contract() {
         Some(coins_per_wallet),
         Some(amount_per_coin),
     );
-    let wallets = launch_custom_provider_and_get_wallets(config, None, None).await;
+    let wallets = launch_custom_provider_and_get_wallets(config, None, None)
+        .await
+        .unwrap();
 
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallets[0].clone()).await;
     let balance_id = get_balance_contract_id(wallets[0].clone()).await;
@@ -438,7 +442,9 @@ async fn can_send_message_output_with_data() {
         Some(amount_per_coin),
     );
 
-    let wallets = launch_custom_provider_and_get_wallets(config, None, None).await;
+    let wallets = launch_custom_provider_and_get_wallets(config, None, None)
+        .await
+        .unwrap();
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallets[0].clone()).await;
 
     let amount = 33u64;
@@ -476,7 +482,9 @@ async fn can_send_message_output_without_data() {
         Some(amount_per_coin),
     );
 
-    let wallets = launch_custom_provider_and_get_wallets(config, None, None).await;
+    let wallets = launch_custom_provider_and_get_wallets(config, None, None)
+        .await
+        .unwrap();
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallets[0].clone()).await;
 
     let amount = 33u64;
@@ -544,7 +552,7 @@ async fn get_balance_contract_id(wallet: WalletUnlocked) -> ContractId {
 
 #[tokio::test]
 async fn test_address_mint_to() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet.clone()).await;
     let sub_id = Bytes32::zeroed();
     let asset_id = get_asset_id(sub_id, fuelcontract_id).await;
@@ -568,7 +576,7 @@ async fn test_address_mint_to() {
 
 #[tokio::test]
 async fn test_address_transfer_new_mint() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet.clone()).await;
     let sub_id = Bytes32::zeroed();
     let asset_id = get_asset_id(sub_id, fuelcontract_id).await;
@@ -600,8 +608,8 @@ async fn test_address_transfer_new_mint() {
 
 #[tokio::test]
 async fn test_address_transfer_base_asset() {
-    let wallet = launch_provider_and_get_wallet().await;
-    let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet.clone()).await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
+    let (fuelcontract_instance, _) = get_fuelcoin_instance(wallet.clone()).await;
 
     let amount = 44u64;
     let to = wallet.address();
@@ -623,7 +631,7 @@ async fn test_address_transfer_base_asset() {
 
 #[tokio::test]
 async fn test_contract_mint_to() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet.clone()).await;
     let sub_id = Bytes32::zeroed();
     let asset_id = get_asset_id(sub_id, fuelcontract_id).await;
@@ -651,7 +659,7 @@ async fn test_contract_mint_to() {
 
 #[tokio::test]
 async fn test_contract_transfer_new_mint() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet.clone()).await;
     let sub_id = Bytes32::zeroed();
     let asset_id = get_asset_id(sub_id, fuelcontract_id).await;
@@ -687,8 +695,8 @@ async fn test_contract_transfer_new_mint() {
 
 #[tokio::test]
 async fn test_contract_transfer_base_asset() {
-    let wallet = launch_provider_and_get_wallet().await;
-    let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet.clone()).await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
+    let (fuelcontract_instance, _) = get_fuelcoin_instance(wallet.clone()).await;
 
     let amount = 44u64;
     let to = get_balance_contract_id(wallet.clone()).await;
@@ -715,7 +723,7 @@ async fn test_contract_transfer_base_asset() {
 
 #[tokio::test]
 async fn test_identity_address_mint_to() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet.clone()).await;
     let sub_id = Bytes32::zeroed();
     let asset_id = get_asset_id(sub_id, fuelcontract_id).await;
@@ -740,7 +748,7 @@ async fn test_identity_address_mint_to() {
 
 #[tokio::test]
 async fn test_identity_address_transfer_new_mint() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet.clone()).await;
     let sub_id = Bytes32::zeroed();
     let asset_id = get_asset_id(sub_id, fuelcontract_id).await;
@@ -773,8 +781,8 @@ async fn test_identity_address_transfer_new_mint() {
 
 #[tokio::test]
 async fn test_identity_address_transfer_base_asset() {
-    let wallet = launch_provider_and_get_wallet().await;
-    let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet.clone()).await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
+    let (fuelcontract_instance, _) = get_fuelcoin_instance(wallet.clone()).await;
 
     let amount = 44u64;
     let to = wallet.address().into();
@@ -797,7 +805,7 @@ async fn test_identity_address_transfer_base_asset() {
 
 #[tokio::test]
 async fn test_identity_contract_mint_to() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet.clone()).await;
     let balance_contract_id = get_balance_contract_id(wallet.clone()).await;
     let sub_id = Bytes32::zeroed();
@@ -826,7 +834,7 @@ async fn test_identity_contract_mint_to() {
 
 #[tokio::test]
 async fn test_identity_contract_transfer_new_mint() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet.clone()).await;
     let balance_contract_id = get_balance_contract_id(wallet.clone()).await;
     let sub_id = Bytes32::zeroed();
@@ -863,8 +871,8 @@ async fn test_identity_contract_transfer_new_mint() {
 
 #[tokio::test]
 async fn test_identity_contract_transfer_base_asset() {
-    let wallet = launch_provider_and_get_wallet().await;
-    let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet.clone()).await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
+    let (fuelcontract_instance, _) = get_fuelcoin_instance(wallet.clone()).await;
     let balance_contract_id = get_balance_contract_id(wallet.clone()).await;
 
     let amount = 44u64;

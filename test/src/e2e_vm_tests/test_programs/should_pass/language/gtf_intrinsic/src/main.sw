@@ -1,11 +1,10 @@
 script;
 
-const SOME_TX_FIELD = 0x42;
-const SOME_OTHER_TX_FIELD = 0x77;
+use std::tx::*;
 
-fn main() -> (u64, b256) {
-    // Test expected to compile but revert because `fuel-core` does not support `gtf` yet.
-    let u64_field = __gtf::<u64>(1, SOME_TX_FIELD);
-    let b256_field = __gtf::<b256>(2, SOME_OTHER_TX_FIELD);
-    (u64_field, b256_field)
+fn main() -> u64 {
+    assert(tx_witnesses_count() == 3);
+    assert(tx_witness_data::<u8>(1) == 1);
+    assert(tx_witness_data::<u64>(2) == 1234);
+    0
 }
