@@ -441,14 +441,16 @@ impl TypeId {
         handler: &Handler,
         mut ctx: TypeCheckContext,
         span: &Span,
-        trait_constraints: Vec<TraitConstraint>,
+        type_param: Option<TypeParameter>,
     ) -> Result<(), ErrorEmitted> {
         let engines = ctx.engines();
 
         let mut structure_generics = self.extract_inner_types_with_trait_constraints(engines);
 
-        if !trait_constraints.is_empty() {
-            structure_generics.insert(*self, trait_constraints);
+        if let Some(type_param) = type_param {
+            if !type_param.trait_constraints.is_empty() {
+                structure_generics.insert(*self, type_param.trait_constraints);
+            }
         }
 
         handler.scope(|handler| {
@@ -562,34 +564,18 @@ impl TypeId {
                             .zip(structure_trait_constraint.type_arguments.iter())
                             .all(|(t1, t2)| {
                                 unify_check.check(
-                                    ctx.resolve_type(
+                                    self.check_trait_constraints_errors_resolve(
                                         handler,
+                                        ctx.by_ref(),
                                         t1.type_id,
-                                        &t1.span,
-                                        EnforceTypeArguments::No,
-                                        None,
-                                    )
-                                    .unwrap_or_else(|err| {
-                                        engines.te().insert(
-                                            engines,
-                                            TypeInfo::ErrorRecovery(err),
-                                            None,
-                                        )
-                                    }),
-                                    ctx.resolve_type(
+                                        t1.span.clone(),
+                                    ),
+                                    self.check_trait_constraints_errors_resolve(
                                         handler,
+                                        ctx.by_ref(),
                                         t2.type_id,
-                                        &t2.span,
-                                        EnforceTypeArguments::No,
-                                        None,
-                                    )
-                                    .unwrap_or_else(|err| {
-                                        engines.te().insert(
-                                            engines,
-                                            TypeInfo::ErrorRecovery(err),
-                                            None,
-                                        )
-                                    }),
+                                        t2.span.clone(),
+                                    ),
                                 )
                             })
                 },
@@ -599,5 +585,22 @@ impl TypeId {
             }
         }
         found_error
+    }
+
+    fn check_trait_constraints_errors_resolve(
+        &self,
+        handler: &Handler,
+        mut ctx: TypeCheckContext,
+        type_id: TypeId,
+        span: Span,
+    ) -> TypeId {
+        let engines = ctx.engines();
+
+        ctx.resolve_type(handler, type_id, &span, EnforceTypeArguments::No, None)
+            .unwrap_or_else(|err| {
+                engines
+                    .te()
+                    .insert(engines, TypeInfo::ErrorRecovery(err), None)
+            })
     }
 }

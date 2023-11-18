@@ -434,6 +434,7 @@ impl TyTraitDecl {
                     let const_name = const_decl.call_path.suffix.clone();
                     all_items.push(TyImplItem::Constant(decl_ref.clone()));
                     let const_shadowing_mode = ctx.const_shadowing_mode();
+                    let generic_shadowing_mode = ctx.generic_shadowing_mode();
                     let _ = ctx.namespace.insert_symbol(
                         handler,
                         const_name.clone(),
@@ -443,6 +444,7 @@ impl TyTraitDecl {
                             decl_span: const_decl.span.clone(),
                         }),
                         const_shadowing_mode,
+                        generic_shadowing_mode,
                     );
                 }
                 ty::TyTraitInterfaceItem::Type(decl_ref) => {

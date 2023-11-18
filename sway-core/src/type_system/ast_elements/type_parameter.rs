@@ -160,15 +160,21 @@ impl TypeParameter {
         let name_a = Ident::new_with_override("self".into(), self.name_ident.span());
         let name_b = Ident::new_with_override("Self".into(), self.name_ident.span());
         let const_shadowing_mode = ctx.const_shadowing_mode();
+        let generic_shadowing_mode = ctx.generic_shadowing_mode();
         let _ = ctx.namespace.insert_symbol(
             handler,
             name_a,
             type_parameter_decl.clone(),
             const_shadowing_mode,
+            generic_shadowing_mode,
         );
-        let _ =
-            ctx.namespace
-                .insert_symbol(handler, name_b, type_parameter_decl, const_shadowing_mode);
+        let _ = ctx.namespace.insert_symbol(
+            handler,
+            name_b,
+            type_parameter_decl,
+            const_shadowing_mode,
+            generic_shadowing_mode,
+        );
     }
 
     /// Type check a list of [TypeParameter] and return a new list of
@@ -399,7 +405,7 @@ impl TypeParameter {
         Ok(())
     }
 
-    fn insert_into_namespace_self(
+    pub(crate) fn insert_into_namespace_self(
         &self,
         handler: &Handler,
         mut ctx: TypeCheckContext,
