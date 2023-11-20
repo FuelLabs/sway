@@ -1,7 +1,7 @@
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    language::{ty, CallPath},
+    language::{ty::{self}, CallPath},
     namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::*,
     type_system::priv_prelude::*,
@@ -427,10 +427,12 @@ impl TypeParameter {
     }
 
     /// Creates a [DeclMapping] from a list of [TypeParameter]s.
+    /// `function_name` and `access_span` are used only for error reporting.
     pub(crate) fn gather_decl_mapping_from_trait_constraints(
         handler: &Handler,
         ctx: TypeCheckContext,
         type_parameters: &[TypeParameter],
+        function_name: &str,
         access_span: &Span,
     ) -> Result<DeclMapping, ErrorEmitted> {
         let mut interface_item_refs: InterfaceItemMap = BTreeMap::new();
@@ -475,6 +477,8 @@ impl TypeParameter {
                             *type_id,
                             trait_name,
                             trait_type_arguments,
+                            function_name,
+                            access_span.clone(),
                         ) {
                             Ok(res) => res,
                             Err(_) => continue,
@@ -501,6 +505,8 @@ fn handle_trait(
     type_id: TypeId,
     trait_name: &CallPath,
     type_arguments: &[TypeArgument],
+    function_name: &str,
+    access_span: Span
 ) -> Result<(InterfaceItemMap, ItemMap, ItemMap), ErrorEmitted> {
     let engines = ctx.engines;
     let decl_engine = engines.de();
@@ -512,7 +518,8 @@ fn handle_trait(
     handler.scope(|handler| {
         match ctx
             .namespace
-            .resolve_call_path(handler, engines, trait_name, ctx.self_type())
+            // Use the default Handler to avoid emitting the redundant symbol not found error. 
+            .resolve_call_path(&Handler::default(), engines, trait_name, ctx.self_type())
             .ok()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
@@ -534,7 +541,7 @@ fn handle_trait(
                         supertrait_interface_item_refs,
                         supertrait_item_refs,
                         supertrait_impld_item_refs,
-                    ) = match handle_trait(handler, ctx, type_id, &supertrait.name, &[]) {
+                    ) = match handle_trait(handler, ctx, type_id, &supertrait.name, &[], function_name, access_span.clone()) {
                         Ok(res) => res,
                         Err(_) => continue,
                     };
@@ -544,9 +551,12 @@ fn handle_trait(
                 }
             }
             _ => {
-                handler.emit_err(CompileError::TraitNotFound {
-                    name: trait_name.to_string(),
-                    span: trait_name.span(),
+                handler.emit_err(CompileError::TraitNotImportedAtFunctionApplication {
+                    trait_name: trait_name.suffix.to_string(),
+                    function_name: function_name.to_string(),
+                    function_call_site_span: access_span.clone(),
+                    trait_constraint_span: trait_name.suffix.span(),
+                    trait_candidates: vec![],
                 });
             }
         }

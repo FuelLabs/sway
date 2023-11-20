@@ -6,7 +6,7 @@ use crate::type_error::TypeError;
 
 use core::fmt;
 use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
-use sway_types::{BaseIdent, Ident, SourceEngine, Span, Spanned};
+use sway_types::{BaseIdent, Ident, SourceEngine, Span, Spanned, SourceId};
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
@@ -386,6 +386,14 @@ pub enum CompileError {
     UnitVariantWithParenthesesEnumInstantiator { span: Span, ty: String },
     #[error("Cannot find trait \"{name}\" in this scope.")]
     TraitNotFound { name: String, span: Span },
+    #[error("Trait \"{trait_name}\" is not imported when calling \"{function_name}\".\nThe import is needed because \"{function_name}\" uses \"{trait_name}\" in one of its trait constraints.")]
+    TraitNotImportedAtFunctionApplication {
+        trait_name: String,
+        function_name: String,
+        function_call_site_span: Span,
+        trait_constraint_span: Span,
+        trait_candidates: Vec<String>,
+    },
     #[error("This expression is not valid on the left hand side of a reassignment.")]
     InvalidExpressionOnLhs { span: Span },
     #[error("This code cannot be evaluated to a constant")]
@@ -825,6 +833,7 @@ impl Spanned for CompileError {
             UnnecessaryEnumInstantiator { span, .. } => span.clone(),
             UnitVariantWithParenthesesEnumInstantiator { span, .. } => span.clone(),
             TraitNotFound { span, .. } => span.clone(),
+            TraitNotImportedAtFunctionApplication { function_call_site_span, .. } => function_call_site_span.clone(),
             InvalidExpressionOnLhs { span, .. } => span.clone(),
             TooManyArgumentsForFunction { span, .. } => span.clone(),
             TooFewArgumentsForFunction { span, .. } => span.clone(),
@@ -1114,6 +1123,35 @@ impl ToDiagnostic for CompileError {
                     format!("Consider removing the variable \"{variable}\" altogether, or adding it to all alternatives."),
                 ],
             },
+            TraitNotImportedAtFunctionApplication { trait_name, function_name, function_call_site_span, trait_constraint_span, trait_candidates }=> Diagnostic {
+                reason: Some(Reason::new(code(1), "Trait is not imported".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    function_call_site_span.clone(),
+                    format!(
+                        "Trait \"{trait_name}\" is not imported {}when calling \"{function_name}\".",
+                        get_file_name(source_engine, function_call_site_span.source_id())
+                            .map_or("".to_string(), |file_name| format!("into \"{file_name}\" "))
+                    )
+                ),
+                hints: {
+                    let hints = vec![
+                        Hint::help(
+                            source_engine,
+                            function_call_site_span.clone(),
+                            format!("The import is needed because \"{function_name}\" requires \"{trait_name}\" in one of its trait constraints.")
+                        ),
+                        Hint::info(
+                            source_engine,
+                            trait_constraint_span.clone(),
+                            format!("In the definition of \"{function_name}\", \"{trait_name}\" is used in this trait constraint.")
+                        ),
+                    ];
+
+                    hints
+                },
+                help: vec![],
+            },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we
@@ -1148,4 +1186,17 @@ pub enum TypeNotAllowedReason {
 
     #[error("`str` or a type containing `str` on `const` is not allowed.")]
     StringSliceInConst,
+}
+
+/// Returns the file name (with extension) for the provided `source_id`,
+/// or `None` if the `source_id` is `None` or the file name cannot be
+/// obtained.
+fn get_file_name(source_engine: &SourceEngine, source_id: Option<&SourceId>) -> Option<String> {
+    match source_id {
+        Some(source_id) => match source_engine.get_file_name(source_id) {
+            Some(file_name) => Some(file_name),
+            None => None,
+        }
+        None => None,
+    }
 }
