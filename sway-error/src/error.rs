@@ -1139,7 +1139,7 @@ impl ToDiagnostic for CompileError {
                         Hint::help(
                             source_engine,
                             function_call_site_span.clone(),
-                            format!("The import is needed because \"{function_name}\" requires \"{trait_name}\" in one of its trait constraints.")
+                            format!("This import is needed because \"{function_name}\" requires \"{trait_name}\" in one of its trait constraints.")
                         ),
                         Hint::info(
                             source_engine,
@@ -1159,7 +1159,7 @@ impl ToDiagnostic for CompileError {
                                 source_engine,
                                 function_call_site_span.clone(),
                                 format!(
-                                    "To import \"{trait_name}\" {}use: `use {};`.",
+                                    "Import the \"{trait_name}\" trait {}by using: `use {};`.",
                                     get_file_name(source_engine, function_call_site_span.source_id())
                                         .map_or("".to_string(), |file_name| format!("into \"{file_name}\" ")),
                                     trait_candidates[0]
