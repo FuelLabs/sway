@@ -551,12 +551,18 @@ fn handle_trait(
                 }
             }
             _ => {
+                let trait_candidates = decl_engine
+                    .get_traits_by_name(&trait_name.suffix)
+                    .iter()
+                    .map(|trait_decl| trait_decl.call_path.to_string())
+                    .collect();
+
                 handler.emit_err(CompileError::TraitNotImportedAtFunctionApplication {
                     trait_name: trait_name.suffix.to_string(),
                     function_name: function_name.to_string(),
                     function_call_site_span: access_span.clone(),
                     trait_constraint_span: trait_name.suffix.span(),
-                    trait_candidates: vec![],
+                    trait_candidates,
                 });
             }
         }

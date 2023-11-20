@@ -1135,7 +1135,7 @@ impl ToDiagnostic for CompileError {
                     )
                 ),
                 hints: {
-                    let hints = vec![
+                    let mut hints = vec![
                         Hint::help(
                             source_engine,
                             function_call_site_span.clone(),
@@ -1148,9 +1148,64 @@ impl ToDiagnostic for CompileError {
                         ),
                     ];
 
+                    match trait_candidates.len() {
+                        // If no candidates are found, that means that an alias was used in the trait constraint definition.
+                        // The way how constraint checking works now, the trait will not be found when we try to check if
+                        // the trait constraints are satisfied for type, and we will never end up in this case here.
+                        // So we will simply ignore it.
+                        0 => (),
+                        // The most common case. Exactly one known trait with the given name.
+                        1 => hints.push(Hint::help(
+                                source_engine,
+                                function_call_site_span.clone(),
+                                format!(
+                                    "To import \"{trait_name}\" {}use: `use {};`.",
+                                    get_file_name(source_engine, function_call_site_span.source_id())
+                                        .map_or("".to_string(), |file_name| format!("into \"{file_name}\" ")),
+                                    trait_candidates[0]
+                                )
+                            )),
+                        // Unlikely (for now) case of having several traits with the same name.
+                        _ => hints.push(Hint::help(
+                                source_engine,
+                                function_call_site_span.clone(),
+                                format!(
+                                    "To import the proper \"{trait_name}\" {}follow the detailed instructions given below.",
+                                    get_file_name(source_engine, function_call_site_span.source_id())
+                                        .map_or("".to_string(), |file_name| format!("into \"{file_name}\" "))
+                                )
+                            )),
+                    }
+
                     hints
                 },
-                help: vec![],
+                help: {
+                    let mut help = vec![];
+
+                    if trait_candidates.len() > 1 {
+                        help.push(format!("There are these {} traits with the name \"{trait_name}\" available in the modules:", trait_candidates.len()));
+                        for trait_candidate in trait_candidates.iter() {
+                            help.push(format!("  - {trait_candidate}"));
+                        }
+                        help.push("To import the proper one follow these steps:".to_string());
+                        help.push(format!(
+                            "  1. Look at the definition of the \"{function_name}\"{}.",
+                                get_file_name(source_engine, trait_constraint_span.source_id())
+                                    .map_or("".to_string(), |file_name| format!(" in the \"{file_name}\""))
+                        ));
+                        help.push(format!(
+                            "  2. Detect which exact \"{trait_name}\" is used in the trait constraint in the \"{function_name}\"."
+                        ));
+                        help.push(format!(
+                            "  3. Import the same \"{trait_name}\"{}.",
+                            get_file_name(source_engine, function_call_site_span.source_id())
+                                .map_or("".to_string(), |file_name| format!(" into \"{file_name}\""))
+                        ));
+                        help.push(format!("     E.g., assuming it is the first one on the list, use: `use {};`", trait_candidates[0]));
+                    }
+
+                    help
+                },
             },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
