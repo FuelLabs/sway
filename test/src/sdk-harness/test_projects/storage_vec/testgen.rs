@@ -31,7 +31,7 @@ macro_rules! testgen {
                 use super::*;
 
                 pub async fn get_contract_instance() -> MyContract<WalletUnlocked> {
-                    let wallet = launch_provider_and_get_wallet().await;
+                    let wallet = launch_provider_and_get_wallet().await.unwrap();
                     let id = Contract::load_from(
                         &format!(
                             "test_artifacts/storage_vec/svec_{}/out/debug/svec_{}.bin",

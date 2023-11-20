@@ -113,6 +113,7 @@ impl U256 {
     ///
     /// assert(init_one == one_u256);
     /// ```
+    #[allow(deprecated)]
     pub fn one() -> Self {
         Self {
             a: 0,
@@ -685,9 +686,9 @@ impl Power for U256 {
 	/// # Panics
 	///
 	/// Panics if the result overflows the type.
+    #[allow(deprecated)]
     fn pow(self, exponent: u32) -> Self {
         let one = U256::from((0, 0, 0, 1));
-        let two = U256::from((0, 0, 0, 2));
 
         if exponent == 0 {
             return one;
@@ -709,12 +710,8 @@ impl Power for U256 {
     }
 }
 
-
-fn is_even(x: U256) -> bool {
-    x.low_u64() & 1 == 0
-}
-
 #[test]
+#[allow(deprecated)]
 fn test_five_pow_two_u256() {
     let five = U256::from((0, 0, 0, 5));
   
@@ -726,6 +723,7 @@ fn test_five_pow_two_u256() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_five_pow_three_u256() {
     let five = U256::from((0, 0, 0, 5));
 
@@ -737,6 +735,7 @@ fn test_five_pow_three_u256() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_five_pow_28_u256() {
     let five = U256::from((0, 0, 0, 5));
 
@@ -748,6 +747,7 @@ fn test_five_pow_28_u256() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_is_zero() {
     let zero_u256 = U256::new();
     assert(zero_u256.is_zero());
