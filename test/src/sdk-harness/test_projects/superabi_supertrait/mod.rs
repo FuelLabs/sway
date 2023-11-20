@@ -13,7 +13,7 @@ async fn get_superabi_supertrait_instance() -> SuperAbiSuperTraitTestContract<Wa
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
     SuperAbiSuperTraitTestContract::new(id.clone(), wallet)

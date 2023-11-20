@@ -12,7 +12,7 @@ async fn get_generics_in_abi_instance() -> (GenericsInAbiTestContract<WalletUnlo
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
     let instance = GenericsInAbiTestContract::new(id.clone(), wallet);

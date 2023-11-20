@@ -34,7 +34,7 @@ async fn get_contracts() -> (
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
     let id_2 = Contract::load_from(
@@ -42,7 +42,7 @@ async fn get_contracts() -> (
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 
@@ -68,7 +68,6 @@ async fn can_get_this_balance() {
         .methods()
         .call_receive_coins(send_amount, context_id)
         .with_contracts(&[&context_instance])
-        .tx_params(TxParameters::default().with_gas_limit(1_000_000))
         .call()
         .await
         .unwrap();
@@ -97,10 +96,7 @@ async fn can_get_balance_of_contract() {
 
     let result = context_instance
         .methods()
-        .get_balance_of_contract(
-            Bits256(*caller_id.asset_id(&Bytes32::zeroed())),
-            caller_id.clone(),
-        )
+        .get_balance_of_contract(Bits256(*caller_id.asset_id(&Bytes32::zeroed())), caller_id)
         .with_contracts(&[&caller_instance])
         .call()
         .await
@@ -148,7 +144,6 @@ async fn can_get_msg_id() {
         .methods()
         .call_get_asset_id_with_coins(send_amount, context_id)
         .with_contracts(&[&context_instance])
-        .tx_params(TxParameters::default().with_gas_limit(1_000_000))
         .call()
         .await
         .unwrap();
@@ -175,7 +170,6 @@ async fn can_get_msg_gas() {
         .methods()
         .call_get_gas_with_coins(send_amount, context_id)
         .with_contracts(&[&context_instance])
-        .tx_params(TxParameters::default().with_gas_limit(1_000_000))
         .call()
         .await
         .unwrap();
@@ -191,7 +185,6 @@ async fn can_get_global_gas() {
     caller_instance
         .methods()
         .mint_coins(send_amount)
-        .tx_params(TxParameters::default().with_gas_limit(1_000_000))
         .call()
         .await
         .unwrap();
@@ -200,7 +193,6 @@ async fn can_get_global_gas() {
         .methods()
         .call_get_global_gas_with_coins(send_amount, context_id)
         .with_contracts(&[&context_instance])
-        .tx_params(TxParameters::default().with_gas_limit(1_000_000))
         .call()
         .await
         .unwrap();
@@ -209,9 +201,5 @@ async fn can_get_global_gas() {
 }
 
 fn is_within_range(n: u64) -> bool {
-    if n <= 0 || n > VM_MAX_RAM {
-        false
-    } else {
-        true
-    }
+    n > 0 && n <= VM_MAX_RAM
 }

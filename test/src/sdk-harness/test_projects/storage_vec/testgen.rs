@@ -50,7 +50,7 @@ macro_rules! testgen {
                         .unwrap()),
                     )
                     .unwrap()
-                    .deploy(&wallet, TxParameters::default().with_gas_limit(100_000_000))
+                    .deploy(&wallet, TxPolicies::default())
                     .await
                     .unwrap();
 
@@ -66,7 +66,7 @@ macro_rules! testgen {
                 pub async fn push(instance: &MyContract<WalletUnlocked>, value: $type_declaration) {
                     instance.methods()
                         .push(value)
-                        .tx_params(TxParameters::default().with_gas_limit(100_000_000))
+                        .with_tx_policies(TxPolicies::default())
                         .call()
                         .await
                         .unwrap();
@@ -75,7 +75,7 @@ macro_rules! testgen {
                 pub async fn pop(instance: &MyContract<WalletUnlocked>) -> $type_declaration {
                     instance.methods()
                         .pop()
-                        .tx_params(TxParameters::default().with_gas_limit(100_000_000))
+                        .with_tx_policies(TxPolicies::default())
                         .call()
                         .await
                         .unwrap()
@@ -85,7 +85,7 @@ macro_rules! testgen {
                 pub async fn get(instance: &MyContract<WalletUnlocked>, index: u64) -> $type_declaration {
                     instance.methods()
                         .get(index)
-                        .tx_params(TxParameters::default().with_gas_limit(100_000_000))
+                        .with_tx_policies(TxPolicies::default())
                         .call()
                         .await
                         .unwrap()
@@ -95,7 +95,7 @@ macro_rules! testgen {
                 pub async fn remove(instance: &MyContract<WalletUnlocked>, index: u64) -> $type_declaration {
                     instance.methods()
                         .remove(index)
-                        .tx_params(TxParameters::default().with_gas_limit(100_000_000))
+                        .with_tx_policies(TxPolicies::default())
                         .call()
                         .await
                         .unwrap()
@@ -105,7 +105,7 @@ macro_rules! testgen {
                 pub async fn swap_remove(instance: &MyContract<WalletUnlocked>, index: u64) -> $type_declaration {
                     instance.methods()
                         .swap_remove(index)
-                        .tx_params(TxParameters::default().with_gas_limit(100_000_000))
+                        .with_tx_policies(TxPolicies::default())
                         .call()
                         .await
                         .unwrap()
@@ -115,7 +115,7 @@ macro_rules! testgen {
                 pub async fn set(instance: &MyContract<WalletUnlocked>, index: u64, value: $type_declaration) {
                     instance.methods()
                         .set(index, value)
-                        .tx_params(TxParameters::default().with_gas_limit(100_000_000))
+                        .with_tx_policies(TxPolicies::default())
                         .call()
                         .await
                         .unwrap();
@@ -124,7 +124,7 @@ macro_rules! testgen {
                 pub async fn insert(instance: &MyContract<WalletUnlocked>, index: u64, value: $type_declaration) {
                     instance.methods()
                         .insert(index, value)
-                        .tx_params(TxParameters::default().with_gas_limit(100_000_000))
+                        .with_tx_policies(TxPolicies::default())
                         .call()
                         .await
                         .unwrap();
@@ -133,7 +133,7 @@ macro_rules! testgen {
                 pub async fn len(instance: &MyContract<WalletUnlocked>) -> u64 {
                     instance.methods()
                         .len()
-                        .tx_params(TxParameters::default().with_gas_limit(100_000_000))
+                        .with_tx_policies(TxPolicies::default())
                         .call()
                         .await
                         .unwrap()
@@ -143,7 +143,7 @@ macro_rules! testgen {
                 pub async fn is_empty(instance: &MyContract<WalletUnlocked>) -> bool {
                     instance.methods()
                         .is_empty()
-                        .tx_params(TxParameters::default().with_gas_limit(100_000_000))
+                        .with_tx_policies(TxPolicies::default())
                         .call()
                         .await
                         .unwrap()
@@ -153,7 +153,7 @@ macro_rules! testgen {
                 pub async fn clear(instance: &MyContract<WalletUnlocked>) {
                     instance.methods()
                         .clear()
-                        .tx_params(TxParameters::default().with_gas_limit(100_000_000))
+                        .with_tx_policies(TxPolicies::default())
                         .call()
                         .await
                         .unwrap();
@@ -162,7 +162,7 @@ macro_rules! testgen {
                 pub async fn swap(instance: &MyContract<WalletUnlocked>, index_0: u64, index_1: u64) {
                     instance.methods()
                         .swap(index_0, index_1)
-                        .tx_params(TxParameters::default().with_gas_limit(100_000_000))
+                        .with_tx_policies(TxPolicies::default())
                         .call()
                         .await
                         .unwrap();
@@ -171,7 +171,7 @@ macro_rules! testgen {
                 pub async fn first(instance: &MyContract<WalletUnlocked>) -> $type_declaration {
                     instance.methods()
                         .first()
-                        .tx_params(TxParameters::default().with_gas_limit(100_000_000))
+                        .with_tx_policies(TxPolicies::default())
                         .call()
                         .await
                         .unwrap()
@@ -181,7 +181,7 @@ macro_rules! testgen {
                 pub async fn last(instance: &MyContract<WalletUnlocked>) -> $type_declaration {
                     instance.methods()
                         .last()
-                        .tx_params(TxParameters::default().with_gas_limit(100_000_000))
+                        .with_tx_policies(TxPolicies::default())
                         .call()
                         .await
                         .unwrap()
@@ -191,7 +191,7 @@ macro_rules! testgen {
                 pub async fn reverse(instance: &MyContract<WalletUnlocked>) {
                     instance.methods()
                         .reverse()
-                        .tx_params(TxParameters::default().with_gas_limit(100_000_000))
+                        .with_tx_policies(TxPolicies::default())
                         .call()
                         .await
                         .unwrap();
@@ -200,7 +200,7 @@ macro_rules! testgen {
                 pub async fn fill(instance: &MyContract<WalletUnlocked>, value: $type_declaration) {
                     instance.methods()
                         .fill(value)
-                        .tx_params(TxParameters::default().with_gas_limit(100_000_000))
+                        .with_tx_policies(TxPolicies::default())
                         .call()
                         .await
                         .unwrap();
@@ -209,7 +209,7 @@ macro_rules! testgen {
                 pub async fn resize(instance: &MyContract<WalletUnlocked>, new_len: u64, value: $type_declaration) {
                     instance.methods()
                         .resize(new_len, value)
-                        .tx_params(TxParameters::default().with_gas_limit(100_000_000))
+                        .with_tx_policies(TxPolicies::default())
                         .call()
                         .await
                         .unwrap();
