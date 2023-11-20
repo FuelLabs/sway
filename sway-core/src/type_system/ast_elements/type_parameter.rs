@@ -554,7 +554,16 @@ fn handle_trait(
                 let trait_candidates = decl_engine
                     .get_traits_by_name(&trait_name.suffix)
                     .iter()
-                    .map(|trait_decl| trait_decl.call_path.to_string())
+                    .map(|trait_decl| {
+                        // In the case of an internal library, always add :: to the candidate call path.
+                        let import_path = trait_decl.call_path.to_import_path(ctx.namespace);
+                        if import_path == trait_decl.call_path { // If external library.
+                            import_path.to_string()
+                        }
+                        else {
+                            format!("::{import_path}")
+                        }
+                    })
                     .collect();
 
                 handler.emit_err(CompileError::TraitNotImportedAtFunctionApplication {

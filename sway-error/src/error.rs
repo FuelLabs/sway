@@ -1197,7 +1197,7 @@ impl ToDiagnostic for CompileError {
                             "  2. Detect which exact \"{trait_name}\" is used in the trait constraint in the \"{function_name}\"."
                         ));
                         help.push(format!(
-                            "  3. Import the same \"{trait_name}\"{}.",
+                            "  3. Import that \"{trait_name}\"{}.",
                             get_file_name(source_engine, function_call_site_span.source_id())
                                 .map_or("".to_string(), |file_name| format!(" into \"{file_name}\""))
                         ));
