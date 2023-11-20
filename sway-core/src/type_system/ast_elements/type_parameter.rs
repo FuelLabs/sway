@@ -518,7 +518,7 @@ fn handle_trait(
     handler.scope(|handler| {
         match ctx
             .namespace
-            // Use the default Handler to avoid emitting the redundant symbol not found error. 
+            // Use the default Handler to avoid emitting the redundant SymbolNotFound error. 
             .resolve_call_path(&Handler::default(), engines, trait_name, ctx.self_type())
             .ok()
         {
