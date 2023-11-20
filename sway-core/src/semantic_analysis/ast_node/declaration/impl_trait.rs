@@ -1425,8 +1425,13 @@ fn handle_supertraits(
 
             match ctx
                 .namespace
-                // Use the default Handler to avoid emitting the redundant SymbolNotFound error. 
-                .resolve_call_path(&Handler::default(), engines, &supertrait.name, ctx.self_type())
+                // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
+                .resolve_call_path(
+                    &Handler::default(),
+                    engines,
+                    &supertrait.name,
+                    ctx.self_type(),
+                )
                 .ok()
             {
                 Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {

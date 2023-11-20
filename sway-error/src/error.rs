@@ -6,7 +6,7 @@ use crate::type_error::TypeError;
 
 use core::fmt;
 use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
-use sway_types::{BaseIdent, Ident, SourceEngine, Span, Spanned, SourceId};
+use sway_types::{BaseIdent, Ident, SourceEngine, SourceId, Span, Spanned};
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
@@ -833,7 +833,10 @@ impl Spanned for CompileError {
             UnnecessaryEnumInstantiator { span, .. } => span.clone(),
             UnitVariantWithParenthesesEnumInstantiator { span, .. } => span.clone(),
             TraitNotFound { span, .. } => span.clone(),
-            TraitNotImportedAtFunctionApplication { function_call_site_span, .. } => function_call_site_span.clone(),
+            TraitNotImportedAtFunctionApplication {
+                function_call_site_span,
+                ..
+            } => function_call_site_span.clone(),
             InvalidExpressionOnLhs { span, .. } => span.clone(),
             TooManyArgumentsForFunction { span, .. } => span.clone(),
             TooFewArgumentsForFunction { span, .. } => span.clone(),
@@ -1248,10 +1251,7 @@ pub enum TypeNotAllowedReason {
 /// obtained.
 fn get_file_name(source_engine: &SourceEngine, source_id: Option<&SourceId>) -> Option<String> {
     match source_id {
-        Some(source_id) => match source_engine.get_file_name(source_id) {
-            Some(file_name) => Some(file_name),
-            None => None,
-        }
+        Some(source_id) => source_engine.get_file_name(source_id),
         None => None,
     }
 }

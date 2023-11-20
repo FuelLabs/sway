@@ -1,7 +1,10 @@
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    language::{ty::{self}, CallPath},
+    language::{
+        ty::{self},
+        CallPath,
+    },
     namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::*,
     type_system::priv_prelude::*,
@@ -506,7 +509,7 @@ fn handle_trait(
     trait_name: &CallPath,
     type_arguments: &[TypeArgument],
     function_name: &str,
-    access_span: Span
+    access_span: Span,
 ) -> Result<(InterfaceItemMap, ItemMap, ItemMap), ErrorEmitted> {
     let engines = ctx.engines;
     let decl_engine = engines.de();
@@ -518,7 +521,7 @@ fn handle_trait(
     handler.scope(|handler| {
         match ctx
             .namespace
-            // Use the default Handler to avoid emitting the redundant SymbolNotFound error. 
+            // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
             .resolve_call_path(&Handler::default(), engines, trait_name, ctx.self_type())
             .ok()
         {
@@ -541,7 +544,15 @@ fn handle_trait(
                         supertrait_interface_item_refs,
                         supertrait_item_refs,
                         supertrait_impld_item_refs,
-                    ) = match handle_trait(handler, ctx, type_id, &supertrait.name, &[], function_name, access_span.clone()) {
+                    ) = match handle_trait(
+                        handler,
+                        ctx,
+                        type_id,
+                        &supertrait.name,
+                        &[],
+                        function_name,
+                        access_span.clone(),
+                    ) {
                         Ok(res) => res,
                         Err(_) => continue,
                     };
@@ -557,10 +568,10 @@ fn handle_trait(
                     .map(|trait_decl| {
                         // In the case of an internal library, always add :: to the candidate call path.
                         let import_path = trait_decl.call_path.to_import_path(ctx.namespace);
-                        if import_path == trait_decl.call_path { // If external library.
+                        if import_path == trait_decl.call_path {
+                            // If external library.
                             import_path.to_string()
-                        }
-                        else {
+                        } else {
                             format!("::{import_path}")
                         }
                     })
