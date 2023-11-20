@@ -8,7 +8,7 @@ abigen!(Contract(
 ));
 
 async fn get_block_instance() -> (BlockTestContract<WalletUnlocked>, ContractId, Provider) {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let provider = wallet.provider().unwrap();
     let id = Contract::load_from(
         "test_projects/block/out/debug/block.bin",

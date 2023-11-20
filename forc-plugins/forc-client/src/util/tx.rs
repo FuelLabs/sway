@@ -313,4 +313,3 @@ impl<T: field::Witnesses> TransactionExt for T {
         self
     }
 }
-
