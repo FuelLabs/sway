@@ -26,7 +26,7 @@ async fn get_contract_instance() -> (MyContract<WalletUnlocked>, ContractId) {
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 
