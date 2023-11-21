@@ -40,7 +40,6 @@ impl Format for ItemAbi {
         }
 
         if abi_items.is_empty() {
-
             write_comments(
                 formatted_code,
                 self.abi_items.span().start()..self.abi_items.span().end(),
