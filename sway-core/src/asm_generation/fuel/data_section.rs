@@ -143,8 +143,7 @@ impl Entry {
             Datum::Collection(els) => els.iter().flat_map(|el| el.to_bytes()).collect(),
         };
 
-        let target_size = size_bytes_round_up_to_word_alignment!(self.padding.target_size());
-        let final_padding = target_size.saturating_sub(bytes.len());
+        let final_padding = self.padding.target_size().saturating_sub(bytes.len());
         match self.padding {
             Padding::Left { .. } => [repeat(0u8).take(final_padding).collect(), bytes].concat(),
             Padding::Right { .. } => [bytes, repeat(0u8).take(final_padding).collect()].concat(),
