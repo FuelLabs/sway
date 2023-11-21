@@ -4,7 +4,7 @@
     msg_hash: b256,
 ) -&gt; Result&lt;bool, EcRecoverError&gt; </code></pre></div><details class="swaydoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Verifies that a public key derived from the private key was used to sign a message.<br />
 Returns a <code>Result</code> to let the caller choose an error handling strategy.</p>
-<h1>Additional Informaiton</h1>
+<h1>Additional Information</h1>
 <p>Follows the edDSA curve25519 verification.</p>
 <h1>Arguments</h1>
 <ul>
@@ -14,7 +14,7 @@ Returns a <code>Result</code> to let the caller choose an error handling strateg
 </ul>
 <h1>Returns</h1>
 <ul>
-<li>[Result&lt;bool, EcRecoverError&gt;] - A verfied result or an error.</li>
+<li>[Result&lt;bool, EcRecoverError&gt;] - A verified result or an error.</li>
 </ul>
 <h1>Examples</h1>
 <pre><code class="language-sway">use std::{ecr::ed_verify, b512::B512, constants::ZERO_B256};
@@ -26,9 +26,9 @@ fn foo() {
     let hi = 0xf38cef9361894be6c6e0eddec28a663d099d7ddff17c8077a1447d7ecb4e6545;
     let lo = 0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00;
     let signature: B512 = B512::from((hi, lo));
-    // A verify public key with signature 
-    let verfied = ed_verify(pub_key, signature, msg_hash).unwrap();
-    assert(verfied);
+    // A verified public key with signature 
+    let verified = ed_verify(pub_key, signature, msg_hash).unwrap();
+    assert(verified);
 }
 </code></pre>
 </div></details></section><section id="search" class="search-results"></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
