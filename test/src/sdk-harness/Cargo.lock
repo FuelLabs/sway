@@ -1563,8 +1563,8 @@ dependencies = [
 
 [[package]]
 name = "fuels"
-version = "0.50.1"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/transaction-policies#2742c5c9df473d34d18939ed924d69ce47162c76"
+version = "0.51.0"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/tx-status-log-and-response#22d8fd58f15262c19e33814a4dc8df73ada855a2"
 dependencies = [
  "fuel-core",
  "fuel-core-client",
@@ -1578,8 +1578,8 @@ dependencies = [
 
 [[package]]
 name = "fuels-accounts"
-version = "0.50.1"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/transaction-policies#2742c5c9df473d34d18939ed924d69ce47162c76"
+version = "0.51.0"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/tx-status-log-and-response#22d8fd58f15262c19e33814a4dc8df73ada855a2"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1603,8 +1603,8 @@ dependencies = [
 
 [[package]]
 name = "fuels-code-gen"
-version = "0.50.1"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/transaction-policies#2742c5c9df473d34d18939ed924d69ce47162c76"
+version = "0.51.0"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/tx-status-log-and-response#22d8fd58f15262c19e33814a4dc8df73ada855a2"
 dependencies = [
  "Inflector",
  "fuel-abi-types",
@@ -1618,8 +1618,8 @@ dependencies = [
 
 [[package]]
 name = "fuels-core"
-version = "0.50.1"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/transaction-policies#2742c5c9df473d34d18939ed924d69ce47162c76"
+version = "0.51.0"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/tx-status-log-and-response#22d8fd58f15262c19e33814a4dc8df73ada855a2"
 dependencies = [
  "async-trait",
  "bech32",
@@ -1645,8 +1645,8 @@ dependencies = [
 
 [[package]]
 name = "fuels-macros"
-version = "0.50.1"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/transaction-policies#2742c5c9df473d34d18939ed924d69ce47162c76"
+version = "0.51.0"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/tx-status-log-and-response#22d8fd58f15262c19e33814a4dc8df73ada855a2"
 dependencies = [
  "fuels-code-gen",
  "itertools 0.11.0",
@@ -1658,8 +1658,8 @@ dependencies = [
 
 [[package]]
 name = "fuels-programs"
-version = "0.50.1"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/transaction-policies#2742c5c9df473d34d18939ed924d69ce47162c76"
+version = "0.51.0"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/tx-status-log-and-response#22d8fd58f15262c19e33814a4dc8df73ada855a2"
 dependencies = [
  "async-trait",
  "bytes",
@@ -1677,8 +1677,8 @@ dependencies = [
 
 [[package]]
 name = "fuels-test-helpers"
-version = "0.50.1"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/transaction-policies#2742c5c9df473d34d18939ed924d69ce47162c76"
+version = "0.51.0"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/tx-status-log-and-response#22d8fd58f15262c19e33814a4dc8df73ada855a2"
 dependencies = [
  "fuel-core",
  "fuel-core-chain-config",

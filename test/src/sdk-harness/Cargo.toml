@@ -35,4 +35,4 @@ path = "test_projects/harness.rs"
 [workspace]
 
 [patch.crates-io]
-fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/transaction-policies" }
+fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/tx-status-log-and-response" }

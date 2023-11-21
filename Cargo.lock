@@ -2126,7 +2126,7 @@ dependencies = [
 [[package]]
 name = "forc-wallet"
 version = "0.3.0"
-source = "git+https://github.com/FuelLabs/forc-wallet?branch=hal3e/fuel-core-master2#7eb803caf20c5d7ecc129afee078383fd5c143ec"
+source = "git+https://github.com/FuelLabs/forc-wallet?branch=master#e17af15fee0455e869ea78e13d9dfa650a8df3b4"
 dependencies = [
  "anyhow",
  "clap 4.4.8",
@@ -2550,14 +2550,13 @@ dependencies = [
 [[package]]
 name = "fuels"
 version = "0.51.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98b2b5087b6061f3549cf5ef81b6fc85c2b23d98a8db5aa28f82180e2cbc8ea9"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/tx-status-log-and-response#22d8fd58f15262c19e33814a4dc8df73ada855a2"
 dependencies = [
  "fuel-core-client",
  "fuel-tx",
  "fuels-accounts",
  "fuels-core",
- "fuels-macros 0.51.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuels-macros",
  "fuels-programs",
  "fuels-test-helpers",
 ]
@@ -2565,7 +2564,7 @@ dependencies = [
 [[package]]
 name = "fuels-accounts"
 version = "0.51.0"
-source = "git+https://github.com/FuelLabs/fuels-rs.git?branch=hal3e/tx-status-log-and-response#989f43fdbdce777e1d8a646236fba431b4990465"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/tx-status-log-and-response#22d8fd58f15262c19e33814a4dc8df73ada855a2"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2590,23 +2589,7 @@ dependencies = [
 [[package]]
 name = "fuels-code-gen"
 version = "0.51.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fda59e56571ae3e6fef57d2843d905808e80a650deac24384b8789c9bab619f0"
-dependencies = [
- "Inflector",
- "fuel-abi-types 0.3.0",
- "itertools 0.11.0",
- "proc-macro2",
- "quote",
- "regex",
- "serde_json",
- "syn 2.0.39",
-]
-
-[[package]]
-name = "fuels-code-gen"
-version = "0.51.0"
-source = "git+https://github.com/FuelLabs/fuels-rs.git?branch=hal3e/tx-status-log-and-response#989f43fdbdce777e1d8a646236fba431b4990465"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/tx-status-log-and-response#22d8fd58f15262c19e33814a4dc8df73ada855a2"
 dependencies = [
  "Inflector",
  "fuel-abi-types 0.3.0",
@@ -2621,7 +2604,7 @@ dependencies = [
 [[package]]
 name = "fuels-core"
 version = "0.51.0"
-source = "git+https://github.com/FuelLabs/fuels-rs.git?branch=hal3e/tx-status-log-and-response#989f43fdbdce777e1d8a646236fba431b4990465"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/tx-status-log-and-response#22d8fd58f15262c19e33814a4dc8df73ada855a2"
 dependencies = [
  "async-trait",
  "bech32",
@@ -2634,7 +2617,7 @@ dependencies = [
  "fuel-tx",
  "fuel-types",
  "fuel-vm",
- "fuels-macros 0.51.0 (git+https://github.com/FuelLabs/fuels-rs.git?branch=hal3e/tx-status-log-and-response)",
+ "fuels-macros",
  "hex",
  "itertools 0.11.0",
  "serde",
@@ -2648,23 +2631,9 @@ dependencies = [
 [[package]]
 name = "fuels-macros"
 version = "0.51.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f20c28609f34e6d4d4974dc07f768347793ac1bfb37a2112976a72221607153b"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/tx-status-log-and-response#22d8fd58f15262c19e33814a4dc8df73ada855a2"
 dependencies = [
- "fuels-code-gen 0.51.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "itertools 0.11.0",
- "proc-macro2",
- "quote",
- "rand",
- "syn 2.0.39",
-]
-
-[[package]]
-name = "fuels-macros"
-version = "0.51.0"
-source = "git+https://github.com/FuelLabs/fuels-rs.git?branch=hal3e/tx-status-log-and-response#989f43fdbdce777e1d8a646236fba431b4990465"
-dependencies = [
- "fuels-code-gen 0.51.0 (git+https://github.com/FuelLabs/fuels-rs.git?branch=hal3e/tx-status-log-and-response)",
+ "fuels-code-gen",
  "itertools 0.11.0",
  "proc-macro2",
  "quote",
@@ -2675,8 +2644,7 @@ dependencies = [
 [[package]]
 name = "fuels-programs"
 version = "0.51.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a53c06d601a174949d68c009930dc7dbacc7f41d12caa94c8cf52418d190f19e"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/tx-status-log-and-response#22d8fd58f15262c19e33814a4dc8df73ada855a2"
 dependencies = [
  "async-trait",
  "bytes",
@@ -2695,8 +2663,7 @@ dependencies = [
 [[package]]
 name = "fuels-test-helpers"
 version = "0.51.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f7176789a9a85595aa84f7d39ec62df8e2acf9c086f5ab50af58b5166f9ada6"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/tx-status-log-and-response#22d8fd58f15262c19e33814a4dc8df73ada855a2"
 dependencies = [
  "fuel-core-chain-config",
  "fuel-core-client",
@@ -7888,8 +7855,3 @@ dependencies = [
  "quote",
  "syn 2.0.39",
 ]
-
-[[patch.unused]]
-name = "fuels"
-version = "0.50.1"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/transaction-policies#2742c5c9df473d34d18939ed924d69ce47162c76"

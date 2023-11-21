@@ -63,5 +63,5 @@ fuels-core = { git = "https://github.com/FuelLabs/fuels-rs.git", branch = "hal3e
 fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs.git", branch = "hal3e/tx-status-log-and-response" }
 
 # Keep it until release of the `forc-wallet`.
-forc-wallet = { git = "https://github.com/FuelLabs/forc-wallet", branch = "hal3e/fuel-core-master2" }
-fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/transaction-policies" }
+forc-wallet = { git = "https://github.com/FuelLabs/forc-wallet", branch = "master" }
+fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/tx-status-log-and-response" }
