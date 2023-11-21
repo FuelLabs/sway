@@ -691,7 +691,7 @@ impl TryFrom<Script> for fuel_tx::Script {
             script.gas.limit.unwrap_or(
                 fuel_tx::ConsensusParameters::default()
                     .tx_params()
-                    .max_gas_per_tx
+                    .max_gas_per_tx //TODO: @hal3e estimate real `gas_used`
                     / 2,
             ),
             script_bytecode,

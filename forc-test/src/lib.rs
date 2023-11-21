@@ -799,7 +799,7 @@ fn exec_test(
         .script_gas_limit(
             tx::ConsensusParameters::default()
                 .tx_params()
-                .max_gas_per_tx
+                .max_gas_per_tx //TODO: @hal3e estimate real `gas_used`
                 / 2,
         )
         .maturity(maturity)

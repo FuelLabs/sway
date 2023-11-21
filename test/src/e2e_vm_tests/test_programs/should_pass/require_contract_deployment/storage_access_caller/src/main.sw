@@ -9,9 +9,6 @@ fn main() -> bool {
 
     caller.set_boolean(true);
     assert(caller.get_boolean() == true);
-    
-
-    
 
     true
 }
