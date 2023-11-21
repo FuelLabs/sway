@@ -796,10 +796,11 @@ fn exec_test(
             tx_pointer,
             0u32.into(),
         )
+        //TODO: @hal3e estimate real `gas_used`
         .script_gas_limit(
             tx::ConsensusParameters::default()
                 .tx_params()
-                .max_gas_per_tx //TODO: @hal3e estimate real `gas_used`
+                .max_gas_per_tx
                 / 2,
         )
         .maturity(maturity)
