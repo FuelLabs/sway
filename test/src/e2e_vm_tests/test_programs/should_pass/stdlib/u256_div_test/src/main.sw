@@ -18,10 +18,9 @@ fn main() -> bool {
     let res = dividend / max_u64;
     assert(res == U256::from((0, 0, 1, 0)));
 
-    //TODO: @hal3e figure out why this is failing now
-    //let dividend = U256::from((u64::max(), 0, 0, 0));
-    //let res = dividend / max_u64;
-    //assert(res == U256::from((1, 0, 0, 0)));
+    let dividend = U256::from((u64::max(), 0, 0, 0));
+    let res = dividend / max_u64;
+    assert(res == U256::from((1, 0, 0, 0)));
 
     let base_u256 = U256 {
         a: 0,
