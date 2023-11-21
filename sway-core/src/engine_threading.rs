@@ -1,10 +1,10 @@
-use crate::{decl_engine::DeclEngine, query_engine::QueryEngine, type_system::TypeEngine};
+use crate::{decl_engine::{DeclEngine, DeclEngineGet, DeclRef}, query_engine::QueryEngine, type_system::TypeEngine, language::{ty::{TyImplTrait, KnownTrait}, CallPath}};
 use std::{
     cmp::Ordering,
     fmt,
     hash::{BuildHasher, Hash, Hasher},
 };
-use sway_types::SourceEngine;
+use sway_types::{SourceEngine, Ident};
 
 #[derive(Debug, Default)]
 pub struct Engines {
@@ -58,6 +58,34 @@ impl Engines {
             thing,
             engines: self,
         }
+    }
+
+    pub fn auto_impl_abi_encode(&self) {
+        let trait_decl_ref = self.decl_engine.get_known_trait(KnownTrait::AbiEncoder).unwrap();
+
+        let auto_impm = TyImplTrait {
+            trait_name: CallPath { 
+                prefixes: vec![
+                    Ident::new_no_span("core".to_string()),
+                    Ident::new_no_span("codec".to_string()),
+                ], 
+                suffix: Ident::new_no_span("AbiEncode".to_string()),
+                is_absolute: true
+            },
+            impl_type_parameters: vec![],
+            trait_type_arguments: vec![],
+            items: vec![
+
+            ],
+            trait_decl_ref: Some(trait_decl_ref),
+            implementing_for: TypeArgument {
+                type_id,
+                initial_type_id: type_id,
+                span: Span::dummy(),
+                call_path_tree: None,
+            },
+            span: Span::dummy(),
+        };
     }
 }
 

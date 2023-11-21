@@ -11,10 +11,10 @@ use sway_error::{
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineGet, DeclEngineInsert},
+    decl_engine::{DeclEngineGet, DeclEngineInsert, DeclRef, InterfaceDeclId, DeclId},
     engine_threading::*,
     language::{
-        ty::{self, TyImplItem, TyTraitItem},
+        ty::{self, TyImplItem, TyTraitItem, TyImplTrait},
         CallPath,
     },
     type_system::{SubstTypes, TypeId},
@@ -1111,9 +1111,14 @@ impl TraitMap {
             let mut needs_auto_impl = vec![];
 
             for trait_name in required_traits_names.difference(&relevant_impld_traits_names) {
+                let trait_id = &required_traits[trait_name];
+
                 if trait_name.as_str() == "AbiEncoder" {
                     let mut all_fields_abi_encoder = true;
-                    if let Ok(decl) = engines.te().get(type_id).expect_struct(handler, engines, access_span) {
+
+                    if let Ok(decl) = engines.te()
+                        .get(type_id)
+                        .expect_struct(handler, engines, access_span) {
                         for field in engines.de().get(decl.id()).fields {
                             let r = self.check_if_trait_constraints_are_satisfied_for_type(
                                 handler,
@@ -1134,6 +1139,8 @@ impl TraitMap {
                     }
                     
                     if all_fields_abi_encoder {
+                        engines.auto_impl_abi_encode();
+                        
                         needs_auto_impl.push((type_id, required_traits[trait_name]));
                         continue;
                     }

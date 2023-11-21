@@ -383,4 +383,13 @@ impl DeclEngine {
         });
         builder
     }
+
+    pub fn get_known_trait(&self, t: ty::KnownTrait) -> Option<DeclRef<DeclId<TyTraitDecl>>> {
+        let (id, t) = self.trait_slab.with_slice(|traits| {
+            let id = traits.iter().position(|t| matches!(t.known, Some(t)))?;
+            Some((id, &traits[id]))
+        })?;
+
+        Some(DeclRef::new(t.name.clone(), DeclId::new(id), t.span.clone()))
+    }
 }
