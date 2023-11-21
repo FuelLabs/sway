@@ -459,7 +459,7 @@ pub fn input_predicate_data_length(index: u64) -> Option<u16> {
 ///
 /// # Additional Information
 ///
-/// The matury of an input refers to the number of blocks that must pass before the input can be spent.
+/// The maturity of an input refers to the number of blocks that must pass before the input can be spent.
 ///
 /// # Arguments
 ///
