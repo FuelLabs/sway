@@ -18,7 +18,8 @@ async fn setup() -> TestStorageBytesContract<WalletUnlocked> {
         None,
         Some(chain_config),
     )
-    .await;
+    .await
+    .unwrap();
 
     let wallet = wallets.pop().unwrap();
     let id = Contract::load_from(
