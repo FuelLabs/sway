@@ -1,7 +1,7 @@
 library;
 
 impl str {
-    /// Return a `raw_ptr` to the begining of the string slice on the heap
+    /// Return a `raw_ptr` to the beginning of the string slice on the heap
     pub fn as_ptr(self) -> raw_ptr {
         let (ptr, _) = asm(s: self) { s: (raw_ptr, u64) };
         ptr

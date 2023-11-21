@@ -7,7 +7,7 @@ abigen!(Contract(
 ));
 
 async fn get_abi_impl_methods_callable_instance() -> AbiImplMethodsCallable<WalletUnlocked> {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/abi_impl_methods_callable/out/debug/abi_impl_methods_callable.bin",
         LoadConfiguration::default(),

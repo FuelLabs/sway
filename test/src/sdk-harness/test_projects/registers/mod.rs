@@ -11,7 +11,7 @@ abigen!(Contract(
 //    -  Ability to return any type of Contract.
 //    -  Return a result
 async fn deploy_test_registers_instance() -> TestRegistersContract<WalletUnlocked> {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/registers/out/debug/registers.bin",
         LoadConfiguration::default(),

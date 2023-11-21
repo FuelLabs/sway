@@ -8,7 +8,7 @@ use ::storage::storage_api::*;
 use ::storage::storage_key::*;
 use ::vec::Vec;
 
-/// A persistant vector struct.
+/// A persistent vector struct.
 pub struct StorageVec<V> {}
 
 impl<V> StorageKey<StorageVec<V>> {
@@ -141,7 +141,7 @@ impl<V> StorageKey<StorageVec<V>> {
         let offset = offset_calculator::<V>(index);
         // This StorageKey can be read by the standard storage api.
         // Field Id must be unique such that nested storage vecs work as they have a 
-        // __size_of() zero and will there forefore always have an offset of zero.
+        // __size_of() zero and will therefore always have an offset of zero.
         Some(StorageKey::<V>::new(
             key, 
             offset, 
@@ -587,7 +587,7 @@ impl<V> StorageKey<StorageVec<V>> {
     ///
     ///     storage.vec.push(5);
     ///
-    ///     assert(5 == storage.vec.first().unwrwap());
+    ///     assert(5 == storage.vec.first().unwrap());
     /// }
     /// ```
     #[storage(read)]

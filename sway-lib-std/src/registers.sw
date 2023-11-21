@@ -4,7 +4,7 @@ library;
 
 /// Contains overflow & underflow of addition, subtraction, and multiplication.
 ///
-/// # Addtional Information
+/// # Additional Information
 ///
 /// In order to use this function, panic on overflow must be disabled.
 ///

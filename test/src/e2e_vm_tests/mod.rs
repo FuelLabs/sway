@@ -61,6 +61,7 @@ struct TestDescription {
     name: String,
     category: TestCategory,
     script_data: Option<Vec<u8>>,
+    witness_data: Option<Vec<Vec<u8>>>,
     expected_result: Option<TestResult>,
     expected_warnings: u32,
     contract_paths: Vec<String>,
@@ -105,6 +106,7 @@ impl TestContext {
             name,
             category,
             script_data,
+            witness_data,
             expected_result,
             expected_warnings,
             contract_paths,
@@ -149,7 +151,7 @@ impl TestContext {
                     )));
                 }
 
-                let result = harness::runs_in_vm(compiled.clone(), script_data)?;
+                let result = harness::runs_in_vm(compiled.clone(), script_data, witness_data)?;
                 let result = match result {
                     harness::VMExecutionResult::Fuel(state, receipts) => {
                         if verbose {
@@ -640,6 +642,38 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
         | TestCategory::Disabled => None,
     };
 
+    let witness_data = match &category {
+        TestCategory::Runs | TestCategory::RunsWithContract => {
+            match toml_content.get("witness_data") {
+                Some(toml::Value::Array(items)) => {
+                    let mut data = vec![];
+
+                    for item in items {
+                        let decoded = item
+                            .as_str()
+                            .ok_or_else(|| anyhow!("witness data should be a hex string"))
+                            .and_then(|x| {
+                                hex::decode(x).map_err(|e| {
+                                    anyhow!("Invalid hex value for 'script_data': {}", e)
+                                })
+                            })?;
+                        data.push(decoded);
+                    }
+
+                    Some(data)
+                }
+                Some(_) => {
+                    bail!("Expected 'script_data' to be a hex string.");
+                }
+                _ => None,
+            }
+        }
+        TestCategory::Compiles
+        | TestCategory::FailsToCompile
+        | TestCategory::UnitTestsPass
+        | TestCategory::Disabled => None,
+    };
+
     let expected_result = match &category {
         TestCategory::Runs | TestCategory::RunsWithContract => {
             Some(get_expected_result(&toml_content)?)
@@ -720,6 +754,7 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
         name,
         category,
         script_data,
+        witness_data,
         expected_result,
         expected_warnings,
         contract_paths,
