@@ -37,12 +37,6 @@ impl CommentsContext {
 
 #[inline]
 pub fn has_comments_in_formatter(formatter: &Formatter, range: &Range<usize>) -> bool {
-
-    // let test = formatter.comments_context.map.comments_between(range).peekable().peek().is_some();
-
-    // println!("printin the has_comments_in_formatter() output");
-    // println!("{}", test);
-
     formatter
         .comments_context
         .map
@@ -54,9 +48,6 @@ pub fn has_comments_in_formatter(formatter: &Formatter, range: &Range<usize>) ->
 
 #[inline]
 pub fn has_comments<I: Iterator>(comments: I) -> bool {
-
-    //println!("inside of has_comments()");
-
     comments.peekable().peek().is_some()
 }
 
@@ -99,12 +90,6 @@ pub fn write_comments(
     range: Range<usize>,
     formatter: &mut Formatter,
 ) -> Result<bool, FormatterError> {
-
-    println!();
-    println!("inside of write_comments");
-    println!("range is {:?}", range);
-    print_comment_map(&formatter.comments_context.map);
-
     {
         let mut comments_iter = formatter
             .comments_context
@@ -123,10 +108,6 @@ pub fn write_comments(
         }
 
         for comment in comments_iter {
-
-            println!("line 127: printing the comment: ");
-            println!("{}", comment.span().as_str());
-
             let newlines = collect_newlines_after_comment(&formatter.comments_context, comment);
 
             match comment.comment_kind {
@@ -176,12 +157,6 @@ pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
     formatted_code: &mut FormattedCode,
     last_formatted: usize,
 ) -> Result<(), FormatterError> {
-
-    println!();
-    println!("inside of rewrite_with_comments()");
-    println!("last_formatted is {:?}", last_formatted);
-    print_comment_map(&formatter.comments_context.map);
-
     // Since we are adding comments into formatted code, in the next iteration the spans we find for the formatted code needs to be offsetted
     // as the total length of comments we added in previous iterations.
     let mut offset = 0;
@@ -204,9 +179,6 @@ pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
             start: previous_unformatted_leaf_span.end,
             end: unformatted_leaf_span.start,
         };
-
-        println!("range is {:?}", range);
-
         let iter = formatter.comments_context.map.comments_between(&range);
 
         let mut comments_found = vec![];
@@ -224,10 +196,6 @@ pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
                 &mut to_rewrite,
                 extra_newlines,
             )?;
-
-            println!("line 225: printing something: ");
-            //println!("{}", comments_found.clone().as_str());
-
 
             formatter
                 .comments_context
@@ -404,12 +372,6 @@ fn insert_after_span(
     // In order to handle special characters, we return the number of characters rather than
     // the size of the string.
     Ok(comment_str.chars().count())
-}
-
-pub fn print_comment_map(comment_map: &CommentMap) {
-    for (byte_span, comment) in comment_map.iter() {
-        println!("ByteSpan: {:?}, Comment: {:?}", byte_span, comment);
-    }
 }
 
 #[cfg(test)]

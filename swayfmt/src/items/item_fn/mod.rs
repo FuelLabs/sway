@@ -41,11 +41,6 @@ impl Format for ItemFn {
                     body.format(formatted_code, formatter)?;
 
                     if let Some(final_expr_opt) = body.final_expr_opt.as_ref() {
-
-                        println!();
-                        println!("inside of item_fn/mod.rs");
-                        println!("{:?}", final_expr_opt.span().end()..self.span().end());
-
                         write_comments(
                             formatted_code,
                             final_expr_opt.span().end()..self.span().end(),
@@ -59,11 +54,6 @@ impl Format for ItemFn {
                     Self::open_curly_brace(formatted_code, formatter)?;
                     if has_comments_in_formatter(formatter, &range) {
                         formatter.indent();
-
-                        println!();
-                        println!("inside of item_fn/mod.rs");
-                        println!("{:?}", 0..self.span().start());
-
                         write_comments(formatted_code, range, formatter)?;
                     }
                     Self::close_curly_brace(formatted_code, formatter)?;
@@ -299,10 +289,6 @@ impl Format for FnArg {
         self.pattern.format(formatted_code, formatter)?;
         // `: `
         write!(formatted_code, "{} ", self.colon_token.span().as_str())?;
-
-        println!();
-        println!("inside of item_fn/mod.rs");
-        println!("{:?}", self.colon_token.span().end()..self.ty.span().start());
 
         write_comments(
             formatted_code,

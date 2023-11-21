@@ -45,11 +45,6 @@ impl Format for CodeBlockContents {
                 }
             }
         } else {
-
-            println!();
-            println!("inside of expr/code_blocks.rs");
-            println!("{:?}", self.span().start()..self.span().end());
-
             let comments: bool = write_comments(
                 formatted_code,
                 self.span().start()..self.span().end(),

@@ -31,10 +31,6 @@ impl Format for ItemConfigurable {
 
                 // Required for comment formatting
                 let start_len = formatted_code.len();
-                // If there is a visibility token add it to the formatted_code with a ` ` after it.
-                // if let Some(visibility) = &self.visibility {
-                //     write!(formatted_code, "{} ", visibility.span().as_str())?;
-                // }
 
                 // Add configurable token
                 write!(
