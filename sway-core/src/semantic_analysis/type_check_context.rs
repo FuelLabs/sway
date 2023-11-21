@@ -1094,9 +1094,7 @@ impl<'a> TypeCheckContext<'a> {
                     maybe_method_decl_refs.get(0).cloned()
                 }
             } else {
-                // When we can't match any method with parameter types we still return the first method found
-                // This was the behavior before introducing the parameter type matching
-                matching_method_decl_refs.get(0).cloned()
+                None
             }
         };
 
