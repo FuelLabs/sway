@@ -17,7 +17,8 @@ async fn get_contract_instance() -> (MyContract<WalletUnlocked>, ContractId) {
         None,
         None,
     )
-    .await;
+    .await
+    .unwrap();
     let wallet = wallets.pop().unwrap();
 
     let id = Contract::load_from(

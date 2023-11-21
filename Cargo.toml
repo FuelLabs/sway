@@ -44,8 +44,8 @@ fuel-tx = "0.42.0"
 fuel-vm = "0.42.0"
 
 # Dependencies from the `fuels-rs` repository:
-fuels-core = "0.50.1"
-fuels-accounts = "0.50.1"
+fuels-core = "0.51.0"
+fuels-accounts = "0.51.0"
 
 # Dependencies from the `forc-wallet` repository:
 forc-wallet = "0.3.0"
@@ -59,8 +59,8 @@ repository = "https://github.com/FuelLabs/sway"
 
 [patch.crates-io]
 # Keep it until release of the `fuels-rs`.
-fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/transaction-policies" }
-fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/transaction-policies" }
+fuels-core = { git = "https://github.com/FuelLabs/fuels-rs.git", branch = "hal3e/tx-status-log-and-response" }
+fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs.git", branch = "hal3e/tx-status-log-and-response" }
 
 # Keep it until release of the `forc-wallet`.
 forc-wallet = { git = "https://github.com/FuelLabs/forc-wallet", branch = "hal3e/fuel-core-master2" }
