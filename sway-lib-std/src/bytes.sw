@@ -539,7 +539,7 @@ impl Bytes {
     }
 }
 
-// Need to use seperate impl blocks for now: https://github.com/FuelLabs/sway/issues/1548
+// Need to use separate impl blocks for now: https://github.com/FuelLabs/sway/issues/1548
 impl Bytes {
     /// Divides one Bytes into two at an index.
     ///

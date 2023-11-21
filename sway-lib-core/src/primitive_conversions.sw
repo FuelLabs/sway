@@ -47,7 +47,7 @@ impl u32 {
     }
 }
 
-// TODO: This must be in a seperate impl block until https://github.com/FuelLabs/sway/issues/1548 is resolved
+// TODO: This must be in a separate impl block until https://github.com/FuelLabs/sway/issues/1548 is resolved
 impl u32 {
     /// Extends a `u32` to a `u256`.
     ///
@@ -116,7 +116,7 @@ impl u16 {
     }
 }
 
-// TODO: This must be in a seperate impl block until https://github.com/FuelLabs/sway/issues/1548 is resolved
+// TODO: This must be in a separate impl block until https://github.com/FuelLabs/sway/issues/1548 is resolved
 impl u16 {
     /// Extends a `u16` to a `u256`.
     ///
@@ -206,7 +206,7 @@ impl u8 {
     }
 }
 
-// TODO: This must be in a seperate impl block until https://github.com/FuelLabs/sway/issues/1548 is resolved
+// TODO: This must be in a separate impl block until https://github.com/FuelLabs/sway/issues/1548 is resolved
 impl u8 {
     /// Extends a `u8` to a `u256`.
     ///
