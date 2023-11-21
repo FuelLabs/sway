@@ -44,6 +44,11 @@ impl Format for ItemImpl {
             Self::open_curly_brace(formatted_code, formatter)?;
             if has_comments_in_formatter(formatter, &range) {
                 formatter.indent();
+
+                println!();
+                println!("inside of itme_impl/mod.rs");
+                println!("{:?}", range);
+
                 write_comments(formatted_code, range, formatter)?;
             }
             Self::close_curly_brace(formatted_code, formatter)?;

@@ -52,6 +52,11 @@ impl Format for ItemTrait {
         let trait_items = self.trait_items.get();
 
         if trait_items.is_empty() {
+
+            println!();
+            println!("inside of item_trait/mod.rs");
+            println!("{:?}", formatter);
+
             write_comments(formatted_code, self.trait_items.span().into(), formatter)?;
         } else {
             for item in trait_items {

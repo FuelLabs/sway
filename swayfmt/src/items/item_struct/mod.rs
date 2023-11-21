@@ -53,6 +53,11 @@ impl Format for ItemStruct {
                 Self::open_curly_brace(formatted_code, formatter)?;
 
                 if fields.final_value_opt.is_none() && fields.value_separator_pairs.is_empty() {
+
+                    println!();
+                    println!("inside of item_struct/mod.rs");
+                    println!("{:?}", 0..self.span().start());
+
                     write_comments(formatted_code, self.span().into(), formatter)?;
                 }
 

@@ -77,6 +77,10 @@ impl Formatter {
         let comments_context =
             CommentsContext::new(CommentMap::from_src(Arc::from(src))?, src.to_string());
         self.comments_context = comments_context;
+
+        // println!("inside of with_comments_context()");
+        // println!("{:?}", self.comments_context);
+
         Ok(self)
     }
 
@@ -107,6 +111,14 @@ impl Formatter {
         annotated_module.format(&mut raw_formatted_code, self)?;
 
         let mut formatted_code = String::from(&raw_formatted_code);
+        
+        println!();
+        println!("printing the range before it gets passed to write_comments()");
+        println!("{:?}",  annotated_module.value.span().end()..src.len() + 1);
+
+        println!();
+        println!("inside of formatter/mod.rs");
+        println!("{:?}", annotated_module.value.span().end()..src.len() + 1);
 
         // Write post-module comments
         write_comments(

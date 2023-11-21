@@ -149,6 +149,11 @@ fn format_then_block(
     {
         if_expr.then_block.get().format(formatted_code, formatter)?;
     } else {
+
+        println!();
+        println!("inside of expr/conditional.rs");
+        println!("{:?}", if_expr.then_block.span().start()..if_expr.then_block.span().end());
+
         let comments = write_comments(
             formatted_code,
             if_expr.then_block.span().start()..if_expr.then_block.span().end(),
@@ -174,6 +179,11 @@ fn format_else_opt(
         let mut else_if_str = FormattedCode::new();
 
         IfExpr::close_curly_brace(&mut else_if_str, formatter)?;
+
+        println!();
+        println!("inside of expr/conditional.rs");
+        println!("{:?}", if_expr.then_block.span().end()..else_token.span().start());
+
         let comments_written = write_comments(
             &mut else_if_str,
             if_expr.then_block.span().end()..else_token.span().start(),

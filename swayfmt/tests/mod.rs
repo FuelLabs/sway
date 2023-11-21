@@ -1617,7 +1617,75 @@ script;
 use std::{constants::ZERO_B256, vm::evm::evm_address::EvmAddress};
 //test
 configurable {
-    // SIGNER: EvmAddress = EvmAddress::from(ZERO_B256),
+    // config test
+    /// config test triple
+    SIGNER: EvmAddress = EvmAddress {
+        value: ZERO_B256,
+    },
+}
+
+pub enum Input {
+    // enum test
+    Variable: (),
+}
+
+fn from(t: Square) -> Self {
+    Self {
+        // self test
+        width: t.width,
+        length: t.width,
+    }
+}
+
+fn main() {
+    if true {
+        // scope test
+    }
+}"#,
+        r#"script;
+
+use std::{constants::ZERO_B256, vm::evm::evm_address::EvmAddress};
+//test
+configurable {
+    /// config test triple
+    SIGNER: EvmAddress = EvmAddress {
+        value: ZERO_B256,
+    },
+}
+
+pub enum Input {
+    // enum test
+    Variable: (),
+}
+
+fn from(t: Square) -> Self {
+    Self {
+        // self test
+        width: t.width,
+        length: t.width,
+    }
+}
+
+fn main() {
+    if true {
+        // scope test
+    }
+}
+"#,
+    );
+}
+
+#[test]
+fn brandon_check() {
+    check(
+        r#"
+script;
+
+use std::{constants::ZERO_B256, vm::evm::evm_address::EvmAddress};
+
+configurable {
+    // config test
+    /// config test triple
     SIGNER: EvmAddress = EvmAddress {
         value: ZERO_B256,
     },
@@ -1627,8 +1695,10 @@ fn main() {}"#,
         r#"script;
 
 use std::{constants::ZERO_B256, vm::evm::evm_address::EvmAddress};
-//test
+
 configurable {
+    // config test
+    /// config test triple
     SIGNER: EvmAddress = EvmAddress {
         value: ZERO_B256,
     },

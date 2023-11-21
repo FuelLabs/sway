@@ -16,12 +16,22 @@ impl Format for Module {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+
+        println!();
+        println!("inside of module/mod.rs, line 21");
+        println!("{:?}", 0..self.span().start());
+
         write_comments(formatted_code, 0..self.span().start(), formatter)?;
         self.kind.format(formatted_code, formatter)?;
         writeln!(formatted_code, "{}", self.semicolon_token.span().as_str())?;
 
         // Format comments between module kind declaration and rest of items
         if !self.items.is_empty() {
+
+            println!();
+            println!("inside of module/mod.rs, line 32");
+            println!("{:?}", 0..self.items.first().unwrap().span().start());
+
             write_comments(
                 formatted_code,
                 0..self.items.first().unwrap().span().start(),
@@ -33,6 +43,11 @@ impl Format for Module {
         let mut prev_item: Option<&Item> = None;
         for item in iter.clone() {
             if let Some(prev_item) = prev_item {
+
+                println!();
+                println!("inside of module/mod.rs, line 48");
+                println!("{:?}", prev_item.span().end()..item.span().start());
+
                 write_comments(
                     formatted_code,
                     prev_item.span().end()..item.span().start(),
@@ -51,6 +66,11 @@ impl Format for Module {
         }
 
         if let Some(prev_item) = prev_item {
+
+            println!();
+            println!("inside of module/mod.rs, line 71");
+            println!("{:?}", prev_item.span().end()..self.span().end());
+
             write_comments(
                 formatted_code,
                 prev_item.span().end()..self.span().end(),

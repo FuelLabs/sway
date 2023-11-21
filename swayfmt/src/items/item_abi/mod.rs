@@ -40,6 +40,11 @@ impl Format for ItemAbi {
         }
 
         if abi_items.is_empty() {
+
+            println!();
+            println!("inside of item_abi/mod.rs");
+            println!("{:?}", 0..self.span().start());
+
             write_comments(
                 formatted_code,
                 self.abi_items.span().start()..self.abi_items.span().end(),
