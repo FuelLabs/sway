@@ -34,7 +34,12 @@ impl TyProgram {
         let ctx =
             TypeCheckContext::from_root(&mut namespace, engines).with_kind(parsed.kind.clone());
         let ParseProgram { root, kind } = parsed;
-        ty::TyModule::type_check(handler, ctx, root).and_then(|root| {
+
+        // Analyze the dependency order for the submodules.
+        let modules_dep_graph = ty::TyModule::analyze(handler, root)?;
+        let module_eval_order = modules_dep_graph.compute_order(handler)?;
+
+        ty::TyModule::type_check(handler, ctx, root, module_eval_order).and_then(|root| {
             let res = Self::validate_root(handler, engines, &root, kind.clone(), package_name);
             res.map(|(kind, declarations, configurables)| Self {
                 kind,
