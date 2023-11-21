@@ -28,10 +28,8 @@ impl Format for ItemConfigurable {
                 .shape
                 .with_code_line_from(LineStyle::Multiline, ExprKind::default()),
             |formatter| -> Result<(), FormatterError> {
-
                 // Required for comment formatting
                 let start_len = formatted_code.len();
-
                 // Add configurable token
                 write!(
                     formatted_code,
