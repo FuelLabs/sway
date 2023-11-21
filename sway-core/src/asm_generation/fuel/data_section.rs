@@ -213,8 +213,10 @@ impl DataSection {
         self.value_pairs
             .iter()
             .take(id as usize)
-            .map(|x| x.to_bytes().len())
-            .sum()
+            .fold(0, |offset, entry| {
+                //entries must be word aligned
+                size_bytes_round_up_to_word_alignment!(offset + entry.to_bytes().len())
+            })
     }
 
     pub(crate) fn serialize_to_bytes(&self) -> Vec<u8> {
@@ -222,6 +224,10 @@ impl DataSection {
         let mut buf = Vec::with_capacity(self.value_pairs.len());
         for entry in &self.value_pairs {
             buf.append(&mut entry.to_bytes());
+
+            //entries must be word aligned
+            let aligned_len = size_bytes_round_up_to_word_alignment!(buf.len());
+            buf.extend(vec![0u8; aligned_len - buf.len()]);
         }
         buf
     }

@@ -23,7 +23,7 @@ use ::outputs::{Output, output_amount, output_count, output_type};
 /// # Arguments
 ///
 /// * `to`: [Identity] - The recipient identity.
-/// * `sub_id`: [SubId] - The sub identfier of the asset which to mint.
+/// * `sub_id`: [SubId] - The sub identifier of the asset which to mint.
 /// * `amount`: [u64] - The amount of tokens to mint.
 ///
 /// # Examples
@@ -55,7 +55,7 @@ pub fn mint_to(to: Identity, sub_id: SubId, amount: u64) {
 /// # Arguments
 ///
 /// * `to`: [ContractId] - The recipient contract.
-/// * `sub_id`: [SubId] - The sub identfier of the asset which to mint.
+/// * `sub_id`: [SubId] - The sub identifier of the asset which to mint.
 /// * `amount`: [u64] - The amount of tokens to mint.
 ///
 /// # Examples
@@ -79,7 +79,7 @@ pub fn mint_to_contract(to: ContractId, sub_id: SubId, amount: u64) {
 /// # Arguments
 ///
 /// * `to`: [Address] - The recipient address.
-/// * `sub_id`: [SubId] - The sub identfier of the asset which to mint.
+/// * `sub_id`: [SubId] - The sub identifier of the asset which to mint.
 /// * `amount`: [u64] - The amount of tokens to mint.
 ///
 /// # Examples
@@ -101,7 +101,7 @@ pub fn mint_to_address(to: Address, sub_id: SubId, amount: u64) {
 ///
 /// # Arguments
 ///
-/// * `sub_id`: [SubId] - The sub identfier of the asset which to mint.
+/// * `sub_id`: [SubId] - The sub identifier of the asset which to mint.
 /// * `amount`: [u64] - The amount of tokens to mint.
 ///
 /// # Examples
@@ -123,7 +123,7 @@ pub fn mint(sub_id: SubId, amount: u64) {
 ///
 /// # Arguments
 ///
-/// * `sub_id`: [SubId] - The sub identfier of the asset which to burn.
+/// * `sub_id`: [SubId] - The sub identifier of the asset which to burn.
 /// * `amount`: [u64] - The amount of tokens to burn.
 ///
 /// # Reverts
