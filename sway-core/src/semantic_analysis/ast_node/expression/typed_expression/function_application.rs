@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::{DeclEngineInsert, DeclRefFunction, ReplaceDecls},
+    decl_engine::{DeclEngineInsert, DeclRefFunction, ReplaceDecls, engine::DeclEngineGet},
     language::{ty, *},
     semantic_analysis::{ast_node::*, TypeCheckContext},
 };
@@ -71,6 +71,27 @@ pub(crate) fn instantiate_function_application(
         &function_decl.type_parameters,
         &call_path_binding.span(),
     )?;
+
+    if function_decl.name.as_str().contains("encode") {
+        dbg!(&function_decl.name);
+        dbg!(&decl_mapping);
+        for (k, v) in decl_mapping.mapping.iter() {
+            match k {
+                crate::decl_engine::associated_item_decl_id::AssociatedItemDeclId::TraitFn(f) => {
+                    dbg!(ctx.engines.de().get(f));
+                },
+                _ => {}
+            }
+
+            match v {
+                crate::decl_engine::associated_item_decl_id::AssociatedItemDeclId::Function(f) => {
+                    dbg!(ctx.engines.de().get(f));
+                },
+                _ => {}
+            }
+        }
+    }
+
     function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
     let return_type = function_decl.return_type.clone();
     let new_decl_ref = decl_engine

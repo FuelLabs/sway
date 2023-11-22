@@ -120,6 +120,7 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
                 }
                 sway_core::language::ty::TyTraitItem::Constant(_) => false,
                 sway_core::language::ty::TyTraitItem::Type(_) => false,
+                sway_core::language::ty::TyTraitItem::AutoImplFn(_) => todo!(),
             })
         {
             Some(CodeActionDisabled {

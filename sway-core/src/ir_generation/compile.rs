@@ -484,22 +484,11 @@ fn compile_fn(
         metadata,
     );
 
-    if *is_trait_method_dummy {
-        let mut body = ty::TyCodeBlock::default();
-        let mut compiler = FnCompiler::new(
-            engines,
-            context,
-            module,
-            func,
-            logged_types_map,
-            messages_types_map,
-        );
-        compiler.compile_code_block(context, md_mgr, &body)?;
-        return Ok(func);
-        // return Err(vec![CompileError::InternalOwned(
-        //     format!("Method {name} is a trait method dummy and was not properly replaced."),
-        //     span.clone(),
-        // )]);
+    if is_trait_method_dummy.is_some() {
+        return Err(vec![CompileError::InternalOwned(
+            format!("Method {name} is a trait method dummy and was not properly replaced."),
+            span.clone(),
+        )]);
     }
 
     let mut compiler = FnCompiler::new(

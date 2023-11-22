@@ -87,7 +87,7 @@ pub struct TypeCheckContext<'a> {
     defer_monomorphization: bool,
 
     /// Tuple of types and traits that need auto impl
-    pub needs_auto_impl: Vec<(TypeId, TypeId)> // Struct, Trait
+    pub needs_auto_impl: Vec<(TypeId, TypeId)>, // Struct, Trait
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -118,7 +118,7 @@ impl<'a> TypeCheckContext<'a> {
             kind: TreeType::Contract,
             disallow_functions: false,
             defer_monomorphization: false,
-            needs_auto_impl: vec![]
+            needs_auto_impl: vec![],
         }
     }
 
@@ -145,7 +145,7 @@ impl<'a> TypeCheckContext<'a> {
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             defer_monomorphization: self.defer_monomorphization,
-            needs_auto_impl: vec![]
+            needs_auto_impl: vec![],
         }
     }
 
@@ -165,7 +165,7 @@ impl<'a> TypeCheckContext<'a> {
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             defer_monomorphization: self.defer_monomorphization,
-            needs_auto_impl: vec![]
+            needs_auto_impl: vec![],
         }
     }
 
@@ -897,6 +897,11 @@ impl<'a> TypeCheckContext<'a> {
                         matching_item_decl_refs.push(item.clone());
                     }
                 }
+                ty::TyTraitItem::AutoImplFn(auto) => {
+                    if auto.name.as_str() == item_name.as_str() {
+                        matching_item_decl_refs.push(item.clone());
+                    }
+                }
             }
         }
 
@@ -942,6 +947,8 @@ impl<'a> TypeCheckContext<'a> {
                 ty::TyTraitItem::Fn(decl_ref) => Some(decl_ref),
                 ty::TyTraitItem::Constant(_) => None,
                 ty::TyTraitItem::Type(_) => None,
+                ty::TyTraitItem::AutoImplFn(_) => todo!(),
+                
             })
             .collect::<Vec<_>>();
 

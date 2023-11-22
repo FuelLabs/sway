@@ -276,7 +276,7 @@ impl ty::TyAbiDecl {
                         all_items.push(TyImplItem::Fn(
                             ctx.engines
                                 .de()
-                                .insert(method.to_dummy_func(AbiMode::ImplAbiFn(
+                                .insert(method.to_dummy_func(*decl_ref.id(), AbiMode::ImplAbiFn(
                                     self.name.clone(),
                                     Some(self_decl_id),
                                 )))
@@ -352,6 +352,7 @@ impl ty::TyAbiDecl {
                         let type_decl = decl_engine.get_type(decl_ref);
                         all_items.push(TyImplItem::Type(ctx.engines.de().insert(type_decl)));
                     }
+                    ty::TyTraitItem::AutoImplFn(_) => todo!(),
                 }
             }
             // Insert the methods of the ABI into the namespace.

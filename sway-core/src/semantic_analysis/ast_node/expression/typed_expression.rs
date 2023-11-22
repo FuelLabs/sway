@@ -1637,7 +1637,7 @@ impl ty::TyExpression {
                     let method = decl_engine.get_trait_fn(&decl_ref);
                     abi_items.push(TyImplItem::Fn(
                         decl_engine
-                            .insert(method.to_dummy_func(AbiMode::ImplAbiFn(
+                            .insert(method.to_dummy_func(*decl_ref.id(), AbiMode::ImplAbiFn(
                                 abi_name.suffix.clone(),
                                 Some(*abi_ref.id()),
                             )))

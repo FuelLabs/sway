@@ -377,6 +377,7 @@ impl TyAstNode {
                                 }
                             }
                             TyTraitItem::Type(_) => {}
+                            TyTraitItem::AutoImplFn(_) => todo!()
                         }
                     }
                 }

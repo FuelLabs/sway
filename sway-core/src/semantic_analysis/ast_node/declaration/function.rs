@@ -143,7 +143,7 @@ impl ty::TyFunctionDecl {
             is_contract_call,
             purity,
             where_clause,
-            is_trait_method_dummy: false,
+            is_trait_method_dummy: None,
         };
 
         Ok(function_decl)

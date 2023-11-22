@@ -206,6 +206,7 @@ impl DebugWithEngines for TyNodeDepGraphNode {
                     ty::TyTraitItem::Fn(node) => node.name().as_str(),
                     ty::TyTraitItem::Constant(node) => node.name().as_str(),
                     ty::TyTraitItem::Type(node) => node.name().as_str(),
+                    ty::TyTraitItem::AutoImplFn(_) => todo!()
                 };
                 format!("{:?}", str)
             }

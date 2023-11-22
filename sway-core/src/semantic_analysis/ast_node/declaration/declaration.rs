@@ -247,6 +247,9 @@ impl TyDecl {
                 let decl: ty::TyDecl = decl_engine.insert(decl).into();
                 // insert the struct decl into namespace
                 ctx.insert_symbol(handler, call_path.suffix, decl.clone())?;
+
+                //TODO check struct is auto AbiEncode
+
                 decl
             }
             parsed::Declaration::AbiDeclaration(abi_decl) => {

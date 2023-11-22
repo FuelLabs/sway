@@ -385,11 +385,41 @@ impl DeclEngine {
     }
 
     pub fn get_known_trait(&self, t: ty::KnownTrait) -> Option<DeclRef<DeclId<TyTraitDecl>>> {
-        let (id, t) = self.trait_slab.with_slice(|traits| {
-            let id = traits.iter().position(|t| matches!(t.known, Some(t)))?;
-            Some((id, &traits[id]))
+        let id = self.trait_slab.with_slice(|traits| {
+            let id = traits
+                .iter()
+                .position(|decl| matches!(&decl.known, Some(x) if *x == t))?;
+            Some(id)
         })?;
 
-        Some(DeclRef::new(t.name.clone(), DeclId::new(id), t.span.clone()))
+        let item = &self.trait_slab.get(id);
+        Some(DeclRef::new(
+            item.name.clone(),
+            DeclId::new(id),
+            item.span.clone(),
+        ))
+    }
+
+    pub fn get_impl_for(
+        &self,
+        trait_decl_ref: &DeclRef<InterfaceDeclId>,
+        implementing_for: TypeId,
+    ) -> Option<DeclRef<DeclId<TyImplTrait>>> {
+        let id = self.impl_trait_slab.with_slice(|impls| {
+            let id = impls.iter().position(|x| {
+                let trait_check =
+                    matches!(&x.trait_decl_ref, Some(x) if x.id() == trait_decl_ref.id());
+                let type_for_check = x.implementing_for.type_id == implementing_for;
+                trait_check && type_for_check
+            })?;
+            Some(id)
+        })?;
+
+        let item = &self.impl_trait_slab.get(id);
+        Some(DeclRef::new(
+            item.name().clone(),
+            DeclId::new(id),
+            item.span.clone(),
+        ))
     }
 }

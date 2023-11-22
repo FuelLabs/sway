@@ -1758,7 +1758,6 @@ fn expr_func_app_to_expression_kind(
         }
     };
 
-
     let arguments = args
         .into_inner()
         .into_iter()
@@ -1780,11 +1779,12 @@ fn expr_func_app_to_expression_kind(
                 type_arguments: TypeArgs::Regular(vec![]),
                 span: span,
             };
-            return Ok(ExpressionKind::FunctionApplication(Box::new(FunctionApplicationExpression { 
-                    call_path_binding, 
+            return Ok(ExpressionKind::FunctionApplication(Box::new(
+                FunctionApplicationExpression {
+                    call_path_binding,
                     arguments,
-                }))
-            )
+                },
+            )));
         }
         Some(intrinsic) if last.is_none() && !is_absolute => {
             return Ok(ExpressionKind::IntrinsicFunction(

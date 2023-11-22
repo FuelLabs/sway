@@ -54,7 +54,7 @@ pub fn compile_program<'eng>(
         ty::TyProgramKind::Library { .. } => Kind::Library,
     };
 
-    dbg!(1);
+    // dbg!(1);
 
     match kind {
         // predicates and scripts have the same codegen, their only difference is static

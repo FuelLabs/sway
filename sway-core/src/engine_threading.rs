@@ -1,10 +1,19 @@
-use crate::{decl_engine::{DeclEngine, DeclEngineGet, DeclRef}, query_engine::QueryEngine, type_system::TypeEngine, language::{ty::{TyImplTrait, KnownTrait}, CallPath}};
+use crate::{
+    decl_engine::{DeclEngine, DeclEngineGet, DeclEngineInsert, DeclRef},
+    language::{
+        ty::{KnownTrait, TyImplTrait, TyTraitItem, TyFunctionDecl, TyCodeBlock, TyDecl, AutoImplTraitType, AutoImplFnItem},
+        CallPath,
+    },
+    query_engine::QueryEngine,
+    type_system::TypeEngine,
+    TypeArgument, TypeId, transform::AttributesMap,
+};
 use std::{
     cmp::Ordering,
     fmt,
     hash::{BuildHasher, Hash, Hasher},
 };
-use sway_types::{SourceEngine, Ident};
+use sway_types::{Ident, SourceEngine, Span};
 
 #[derive(Debug, Default)]
 pub struct Engines {
@@ -60,32 +69,47 @@ impl Engines {
         }
     }
 
-    pub fn auto_impl_abi_encode(&self) {
-        let trait_decl_ref = self.decl_engine.get_known_trait(KnownTrait::AbiEncoder).unwrap();
+    pub fn auto_impl_abi_encode_for(
+        &self,
+        type_id: crate::TypeId,
+    ) -> DeclRef<crate::decl_engine::DeclId<TyImplTrait>> {
+        let trait_decl_ref = self
+            .decl_engine
+            .get_known_trait(KnownTrait::AbiEncoder)
+            .unwrap();
+        let trait_decl_ref = trait_decl_ref.as_interface();
 
-        let auto_impm = TyImplTrait {
-            trait_name: CallPath { 
-                prefixes: vec![
-                    Ident::new_no_span("core".to_string()),
-                    Ident::new_no_span("codec".to_string()),
-                ], 
-                suffix: Ident::new_no_span("AbiEncode".to_string()),
-                is_absolute: true
-            },
-            impl_type_parameters: vec![],
-            trait_type_arguments: vec![],
-            items: vec![
-
-            ],
-            trait_decl_ref: Some(trait_decl_ref),
-            implementing_for: TypeArgument {
-                type_id,
-                initial_type_id: type_id,
+        if let Some(t) = self.decl_engine.get_impl_for(&trait_decl_ref, type_id) {
+            t
+        } else {
+            let auto_impl = TyImplTrait {
+                trait_name: CallPath {
+                    prefixes: vec![
+                        Ident::new_no_span("core".to_string()),
+                        Ident::new_no_span("codec".to_string()),
+                    ],
+                    suffix: Ident::new_no_span("AbiEncoder".to_string()),
+                    is_absolute: true,
+                },
+                impl_type_parameters: vec![],
+                trait_type_arguments: vec![],
+                items: vec![
+                    TyTraitItem::AutoImplFn(AutoImplFnItem {
+                        name: "abi_encode".into(),
+                        item: AutoImplTraitType::AbiEncoderEncode
+                    } ),
+                ],
+                trait_decl_ref: Some(trait_decl_ref),
+                implementing_for: TypeArgument {
+                    type_id,
+                    initial_type_id: type_id,
+                    span: Span::dummy(),
+                    call_path_tree: None,
+                },
                 span: Span::dummy(),
-                call_path_tree: None,
-            },
-            span: Span::dummy(),
-        };
+            };
+            self.decl_engine.insert(auto_impl)
+        }
     }
 }
 

@@ -176,6 +176,12 @@ where
     }
 }
 
+impl DeclRef<DeclId<TyTraitDecl>> {
+    pub fn as_interface(self) -> DeclRef<InterfaceDeclId> {
+        DeclRef::new(self.name, InterfaceDeclId::Trait(self.id), self.decl_span)
+    }
+}
+
 impl<T> EqWithEngines for DeclRef<DeclId<T>>
 where
     DeclEngine: DeclEngineIndex<T>,
@@ -299,12 +305,35 @@ impl ReplaceDecls for DeclRefFunction {
     ) -> Result<(), ErrorEmitted> {
         let engines = ctx.engines();
         let decl_engine = engines.de();
+
+        if self.name.as_str() == "abi_encode" {
+            dbg!(decl_mapping);
+            dbg!(&self);
+            dbg!(ctx.engines.de().get(self.id()));
+            dbg!(decl_mapping.find_match(self.id.into()));
+        }
+
         if let Some(new_decl_ref) = decl_mapping.find_match(self.id.into()) {
             if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
                 self.id = new_decl_ref;
             }
             return Ok(());
         }
+
+        let real_fn = ctx.engines.de().get(self.id());
+        if let Some(real_fn) = real_fn.is_trait_method_dummy.as_ref() {
+            dbg!(real_fn);
+            dbg!(decl_mapping);
+            if let Some(new_decl_ref) = decl_mapping.find_match(real_fn.into()) {
+                if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
+                    dbg!(self.id, new_decl_ref);
+                    self.id = new_decl_ref;
+                }
+                return Ok(());
+            }
+        }
+
+
         let all_parents = decl_engine.find_all_parents(engines, &self.id);
         for parent in all_parents.iter() {
             if let Some(new_decl_ref) = decl_mapping.find_match(parent.clone()) {

@@ -13,7 +13,7 @@ type DestinationDecl = AssociatedItemDeclId;
 /// The [DeclMapping] is used to create a mapping between a [SourceDecl] (LHS)
 /// and a [DestinationDecl] (RHS).
 pub struct DeclMapping {
-    mapping: Vec<(SourceDecl, DestinationDecl)>,
+    pub mapping: Vec<(SourceDecl, DestinationDecl)>,
 }
 
 impl fmt::Display for DeclMapping {
@@ -87,6 +87,7 @@ impl DeclMapping {
                     TyTraitItem::Fn(decl_ref) => decl_ref.id().into(),
                     TyTraitItem::Constant(decl_ref) => decl_ref.id().into(),
                     TyTraitItem::Type(decl_ref) => decl_ref.id().into(),
+                    TyTraitItem::AutoImplFn(_) => todo!()
                 };
                 mapping.push((interface_decl_ref, new_decl_ref));
             }
@@ -97,11 +98,13 @@ impl DeclMapping {
                     TyTraitItem::Fn(decl_ref) => decl_ref.id().into(),
                     TyTraitItem::Constant(decl_ref) => decl_ref.id().into(),
                     TyTraitItem::Type(decl_ref) => decl_ref.id().into(),
+                    TyTraitItem::AutoImplFn(_) => todo!()
                 };
                 let new_decl_ref = match new_item {
                     TyTraitItem::Fn(decl_ref) => decl_ref.id().into(),
                     TyTraitItem::Constant(decl_ref) => decl_ref.id().into(),
                     TyTraitItem::Type(decl_ref) => decl_ref.id().into(),
+                    TyTraitItem::AutoImplFn(_) => todo!()
                 };
                 mapping.push((interface_decl_ref, new_decl_ref));
             }

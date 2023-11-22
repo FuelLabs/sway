@@ -11,10 +11,10 @@ use sway_error::{
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineGet, DeclEngineInsert, DeclRef, InterfaceDeclId, DeclId},
+    decl_engine::{DeclEngineGet, DeclEngineInsert, DeclId, DeclRef, InterfaceDeclId},
     engine_threading::*,
     language::{
-        ty::{self, TyImplItem, TyTraitItem, TyImplTrait},
+        ty::{self, TyImplItem, TyImplTrait, TyTraitItem},
         CallPath,
     },
     type_system::{SubstTypes, TypeId},
@@ -139,7 +139,7 @@ pub(crate) enum IsExtendingExistingImpl {
 
 pub enum TraitConstraintCheckResult {
     Satisfied,
-    NeedsAutoImpl(Vec<(TypeId, TypeId)>) // Struct, Trait
+    NeedsAutoImpl(Vec<(TypeId, TypeId)>), // Struct, Trait
 }
 
 impl TraitMap {
@@ -188,6 +188,9 @@ impl TraitMap {
                     }
                     TyImplItem::Type(decl_ref) => {
                         trait_items.insert(decl_ref.name().to_string(), item.clone());
+                    }
+                    TyTraitItem::AutoImplFn(_) => {
+                        todo!()
                     }
                 }
             }
@@ -312,6 +315,9 @@ impl TraitMap {
                                         span: decl_ref.name().span(),
                                     });
                                 }
+                            }
+                            ty::TyTraitItem::AutoImplFn(_) => {
+                                todo!()
                             }
                         }
                     }
@@ -759,6 +765,9 @@ impl TraitMap {
                                 let new_ref = decl_engine.insert(decl);
                                 (name, TyImplItem::Type(new_ref))
                             }
+                            ty::TyTraitItem::AutoImplFn(_) => {
+                                todo!()
+                            }
                         })
                         .collect();
                     trait_map.insert_inner(
@@ -808,6 +817,7 @@ impl TraitMap {
         if matches!(type_engine.get(type_id), TypeInfo::ErrorRecovery(_)) {
             return items;
         }
+
         for entry in self.trait_impls.iter() {
             if unify_check.check(type_id, entry.key.type_id) {
                 let mut trait_items = entry
@@ -820,6 +830,34 @@ impl TraitMap {
                 items.append(&mut trait_items);
             }
         }
+
+        // Auto impl AbiEncode
+        match type_engine.get(type_id) {
+            TypeInfo::Struct(_) => {
+                let impl_trait_id = engines.auto_impl_abi_encode_for(type_id);
+                let impl_trait = engines.de().get(impl_trait_id.id());
+
+                for a in impl_trait.items.iter() {
+                    items.push((a.clone(), TraitKey {
+                        name: CallPath {
+                            prefixes: vec![
+                                Ident::new_no_span("core".into()),
+                                Ident::new_no_span("codec".into()),
+                            ],
+                            suffix: TraitSuffix {
+                                name: Ident::new_no_span("AbiEncoder".into()),
+                                args: vec![],
+                            },
+                            is_absolute: true,
+                        },
+                        type_id,
+                        trait_decl_span: None,
+                    }));
+                }
+            },
+            _ => {}
+        }
+
         items
     }
 
@@ -904,7 +942,7 @@ impl TraitMap {
             // has_auto_impl()
             //let impls =  || trait_name.to_string() == "core::codec::AbiEncoder";
 
-            if &map_trait_name == trait_name && unify_check.check(type_id, e.key.type_id)  {
+            if &map_trait_name == trait_name && unify_check.check(type_id, e.key.type_id) {
                 count += 1;
                 if trait_name.to_string() == "core::codec::AbiEncoder" {
                     entry = Some(e);
@@ -915,13 +953,10 @@ impl TraitMap {
             }
 
             if count == 0 {
-                eprintln!("not impl");
                 if let Some(e) = entry {
-                    eprintln!("get_items_for_type_and_trait_name: {} {} {}", engines.help_out(type_id), trait_name, count);
+                    todo!("auto impl")
                 }
             }
-            
-
         }
         items
     }
@@ -991,6 +1026,9 @@ impl TraitMap {
                     {
                         candidates.insert(trait_call_path_string, TyTraitItem::Type(type_ref));
                     }
+                }
+                ty::TyTraitItem::AutoImplFn(_) => {
+                    todo!()
                 }
             }
         }
@@ -1111,36 +1149,37 @@ impl TraitMap {
             let mut needs_auto_impl = vec![];
 
             for trait_name in required_traits_names.difference(&relevant_impld_traits_names) {
-                let trait_id = &required_traits[trait_name];
-
                 if trait_name.as_str() == "AbiEncoder" {
                     let mut all_fields_abi_encoder = true;
 
-                    if let Ok(decl) = engines.te()
-                        .get(type_id)
-                        .expect_struct(handler, engines, access_span) {
+                    if let Ok(decl) =
+                        engines
+                            .te()
+                            .get(type_id)
+                            .expect_struct(handler, engines, access_span)
+                    {
                         for field in engines.de().get(decl.id()).fields {
                             let r = self.check_if_trait_constraints_are_satisfied_for_type(
                                 handler,
                                 field.type_argument.type_id,
-                                &[
-                                    TraitConstraint {
-                                        trait_name: Ident::new_with_override("AbiEncoder".into(), access_span.clone()).into(),
-                                        type_arguments: vec![],
-                                    }
-                                ],
+                                &[TraitConstraint {
+                                    trait_name: Ident::new_with_override(
+                                        "AbiEncoder".into(),
+                                        access_span.clone(),
+                                    )
+                                    .into(),
+                                    type_arguments: vec![],
+                                }],
                                 access_span,
                                 engines,
-                                TryInsertingTraitImplOnFailure::No
+                                TryInsertingTraitImplOnFailure::No,
                             );
 
                             all_fields_abi_encoder &= r.is_ok();
-                        } 
+                        }
                     }
-                    
+
                     if all_fields_abi_encoder {
-                        engines.auto_impl_abi_encode();
-                        
                         needs_auto_impl.push((type_id, required_traits[trait_name]));
                         continue;
                     }

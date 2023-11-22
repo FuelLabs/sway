@@ -926,6 +926,7 @@ fn type_check_trait_implementation(
                 type_decl.subst(&type_mapping, engines);
                 all_items_refs.push(TyImplItem::Type(decl_engine.insert(type_decl.clone())));
             }
+            TyImplItem::AutoImplFn(_) => todo!(),
         }
     }
 

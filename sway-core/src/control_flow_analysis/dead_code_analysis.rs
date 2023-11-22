@@ -725,6 +725,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
             }
             TyImplItem::Constant(_const_decl) => {}
             TyImplItem::Type(_type_decl) => {}
+            TyImplItem::AutoImplFn(_) => todo!()
         }
     }
     // we also want to add an edge from the methods back to the trait, so if a method gets called,

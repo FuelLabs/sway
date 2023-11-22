@@ -154,6 +154,7 @@ impl TyProgram {
                                                 },
                                             ));
                                         }
+                                        TyImplItem::AutoImplFn(_) => todo!(),
                                     }
                                 }
                             }

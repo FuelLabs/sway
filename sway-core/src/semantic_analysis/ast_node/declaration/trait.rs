@@ -47,6 +47,12 @@ impl TyTraitDecl {
             });
         }
 
+        let known = if name.as_str() == "AbiEncoder" {
+            Some(ty::KnownTrait::AbiEncoder)
+        } else {
+            None
+        };
+
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
@@ -136,7 +142,7 @@ impl TyTraitDecl {
                     let decl_ref = decl_engine.insert(method.clone());
                     dummy_interface_surface.push(ty::TyImplItem::Fn(
                         decl_engine
-                            .insert(method.to_dummy_func(AbiMode::NonAbi))
+                            .insert(method.to_dummy_func(*decl_ref.id(), AbiMode::NonAbi))
                             .with_parent(decl_engine, (*decl_ref.id()).into()),
                     ));
                     new_interface_surface.push(ty::TyTraitInterfaceItem::TraitFn(decl_ref));
@@ -216,7 +222,7 @@ impl TyTraitDecl {
             attributes,
             call_path: CallPath::from(name).to_fullpath(ctx.namespace),
             span,
-            known: None
+            known,
         };
         Ok(typed_trait_decl)
     }
@@ -268,6 +274,7 @@ impl TyTraitDecl {
                 ty::TyTraitItem::Type(decl_ref) => {
                     impld_item_refs.insert((decl_ref.name().clone(), type_id), item.clone());
                 }
+                ty::TyTraitItem::AutoImplFn(_) => todo!()
             };
         }
 
@@ -327,6 +334,7 @@ impl TyTraitDecl {
                 ty::TyTraitItem::Type(decl_ref) => {
                     item_refs.insert((decl_ref.name().clone(), type_id), item.clone());
                 }
+                ty::TyTraitItem::AutoImplFn(_) => todo!()
             }
         }
 
@@ -341,6 +349,7 @@ impl TyTraitDecl {
                 .map(|type_arg| type_arg.type_id)
                 .collect(),
         );
+        
         for item in ctx
             .get_items_for_type_and_trait_name(type_id, call_path)
             .into_iter()
@@ -374,6 +383,7 @@ impl TyTraitDecl {
                         TyTraitItem::Type(decl_engine.insert(type_decl)),
                     );
                 }
+                ty::TyTraitItem::AutoImplFn(_) => todo!(),
             }
         }
 
@@ -422,7 +432,7 @@ impl TyTraitDecl {
                     all_items.push(TyImplItem::Fn(
                         ctx.engines
                             .de()
-                            .insert(method.to_dummy_func(AbiMode::NonAbi))
+                            .insert(method.to_dummy_func(*decl_ref.id(), AbiMode::NonAbi))
                             .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
                     ));
                 }
@@ -469,6 +479,7 @@ impl TyTraitDecl {
                     type_decl.subst(&type_mapping, engines);
                     all_items.push(TyImplItem::Type(ctx.engines.de().insert(type_decl)));
                 }
+                ty::TyTraitItem::AutoImplFn(_) => todo!()
             }
         }
 

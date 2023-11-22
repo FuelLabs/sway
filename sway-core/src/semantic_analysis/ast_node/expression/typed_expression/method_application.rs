@@ -620,6 +620,11 @@ pub(crate) fn monomorphize_method_application(
             &call_path.span(),
         )?;
 
+        if method.name.as_str().contains("encode") {
+            dbg!(&method.name);
+            dbg!(&decl_mapping);
+        }
+
         if !ctx.defer_monomorphization() {
             method.replace_decls(&decl_mapping, handler, &mut ctx)?;
         }

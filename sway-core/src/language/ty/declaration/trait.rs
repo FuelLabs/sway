@@ -20,9 +20,14 @@ use crate::{
 
 use super::TyDecl;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum KnownTrait {
-    AbiEncoder
+    AbiEncoder,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AutoImplTraitType {
+    AbiEncoderEncode,
 }
 
 #[derive(Clone, Debug)]
@@ -37,7 +42,7 @@ pub struct TyTraitDecl {
     pub attributes: transform::AttributesMap,
     pub call_path: CallPath,
     pub span: Span,
-    pub known: Option<KnownTrait>
+    pub known: Option<KnownTrait>,
 }
 
 #[derive(Clone, Debug)]
@@ -52,7 +57,13 @@ pub enum TyTraitItem {
     Fn(DeclRefFunction),
     Constant(DeclRefConstant),
     Type(DeclRefTraitType),
-    // AutoImplFn(DeclRefFunction)
+    AutoImplFn(AutoImplFnItem),
+}
+
+#[derive(Clone, Debug)]
+pub struct AutoImplFnItem {
+    pub name: String,
+    pub item: AutoImplTraitType
 }
 
 impl Named for TyTraitDecl {
@@ -150,6 +161,7 @@ impl HashWithEngines for TyTraitItem {
             TyTraitItem::Fn(fn_decl) => fn_decl.hash(state, engines),
             TyTraitItem::Constant(const_decl) => const_decl.hash(state, engines),
             TyTraitItem::Type(type_decl) => type_decl.hash(state, engines),
+            TyTraitItem::AutoImplFn(_) => todo!()
         }
     }
 }
@@ -175,6 +187,7 @@ impl TypeCheckAnalysis for TyTraitItem {
                 let item_type = decl_engine.get_type(node);
                 item_type.type_check_analyze(handler, ctx)?;
             }
+            TyTraitItem::AutoImplFn(_) => todo!()
         }
 
         Ok(())
@@ -202,6 +215,7 @@ impl TypeCheckFinalization for TyTraitItem {
             TyTraitItem::Type(_node) => {
                 // Nothing to finalize
             }
+            TyTraitItem::AutoImplFn(_) => todo!()
         }
         Ok(())
     }
@@ -213,6 +227,7 @@ impl Spanned for TyTraitItem {
             TyTraitItem::Fn(fn_decl) => fn_decl.span(),
             TyTraitItem::Constant(const_decl) => const_decl.span(),
             TyTraitItem::Type(type_decl) => type_decl.span(),
+            TyTraitItem::AutoImplFn(_) => todo!()
         }
     }
 }
@@ -266,6 +281,7 @@ impl SubstTypes for TyTraitDecl {
                     .subst_types_and_insert_new_with_parent(type_mapping, engines);
                 item_ref.replace_id(*new_decl_ref.id());
             }
+            TyTraitItem::AutoImplFn(_) => todo!()
         });
     }
 }
@@ -276,6 +292,7 @@ impl SubstTypes for TyTraitItem {
             TyTraitItem::Fn(fn_decl) => fn_decl.subst(type_mapping, engines),
             TyTraitItem::Constant(const_decl) => const_decl.subst(type_mapping, engines),
             TyTraitItem::Type(type_decl) => type_decl.subst(type_mapping, engines),
+            TyTraitItem::AutoImplFn(_) => todo!()
         }
     }
 }
@@ -292,6 +309,7 @@ impl ReplaceFunctionImplementingType for TyTraitItem {
             TyTraitItem::Type(_decl_ref) => {
                 // ignore, only needed for functions
             }
+            TyTraitItem::AutoImplFn(_) => todo!(),
         }
     }
 }

@@ -2,7 +2,7 @@ use sway_types::{Span, Spanned};
 
 use crate::{
     decl_engine::DeclId,
-    language::{parsed, ty, CallPath, Visibility},
+    language::{parsed, ty::{self, TyTraitFn}, CallPath, Visibility},
     semantic_analysis::type_check_context::EnforceTypeArguments,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -77,7 +77,7 @@ impl ty::TyTraitFn {
     /// This function is used in trait declarations to insert "placeholder"
     /// functions in the methods. This allows the methods to use functions
     /// declared in the interface surface.
-    pub(crate) fn to_dummy_func(&self, abi_mode: AbiMode) -> ty::TyFunctionDecl {
+    pub(crate) fn to_dummy_func(&self, id: DeclId<TyTraitFn>, abi_mode: AbiMode) -> ty::TyFunctionDecl {
         ty::TyFunctionDecl {
             purity: self.purity,
             name: self.name.clone(),
@@ -105,7 +105,7 @@ impl ty::TyTraitFn {
             type_parameters: vec![],
             is_contract_call: matches!(abi_mode, AbiMode::ImplAbiFn(..)),
             where_clause: vec![],
-            is_trait_method_dummy: true,
+            is_trait_method_dummy: Some(id),
         }
     }
 }

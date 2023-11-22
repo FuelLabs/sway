@@ -54,7 +54,7 @@ impl ty::TyModule {
             })
         });
 
-        dbg!(ctx.needs_auto_impl);
+        // dbg!(ctx.needs_auto_impl);
 
         r
     }

@@ -812,6 +812,7 @@ impl Parse for ty::ImplTrait {
                 let trait_type = ctx.engines.de().get_type(type_ref);
                 collect_trait_type_decl(ctx, &trait_type, &type_ref.span());
             }
+            ty::TyTraitItem::AutoImplFn(_) => todo!()
         });
         collect_type_argument(ctx, &implementing_for);
 

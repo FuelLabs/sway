@@ -323,6 +323,7 @@ impl Root {
             TyTraitItem::Fn(fn_ref) => Ok(fn_ref.into()),
             TyTraitItem::Constant(const_ref) => Ok(const_ref.into()),
             TyTraitItem::Type(type_ref) => Ok(type_ref.into()),
+            TyTraitItem::AutoImplFn(_) => todo!()
         }
     }
 

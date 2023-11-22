@@ -284,6 +284,7 @@ impl Items {
                 ty::TyTraitItem::Fn(decl_ref) => Some(decl_ref),
                 ty::TyTraitItem::Constant(_decl_ref) => None,
                 ty::TyTraitItem::Type(_decl_ref) => None,
+                ty::TyTraitItem::AutoImplFn(_) => todo!()
             })
             .collect::<Vec<_>>()
     }

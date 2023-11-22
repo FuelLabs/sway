@@ -40,7 +40,7 @@ pub struct TyFunctionDecl {
     pub is_contract_call: bool,
     pub purity: Purity,
     pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
-    pub is_trait_method_dummy: bool,
+    pub is_trait_method_dummy: Option<DeclId<TyTraitFn>>,
 }
 
 impl DebugWithEngines for TyFunctionDecl {
@@ -242,7 +242,7 @@ impl TyFunctionDecl {
             return_type,
             type_parameters: Default::default(),
             where_clause,
-            is_trait_method_dummy: false,
+            is_trait_method_dummy: None,
         }
     }
 

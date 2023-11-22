@@ -59,8 +59,8 @@ pub enum TypeMetadata {
     // A type that needs auto impl for a trait
     NeedsAutoImpl {
         impl_for: TypeId,
-        trait_being_impl: TypeId
-    }
+        trait_being_impl: TypeId,
+    },
 }
 
 // A simple context that only contains a single counter for now but may expand in the future.
