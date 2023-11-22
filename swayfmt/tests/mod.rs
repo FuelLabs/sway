@@ -1616,47 +1616,9 @@ script;
 
 use std::{constants::ZERO_B256, vm::evm::evm_address::EvmAddress};
 
-abi MyContract {
+configurable { /* inline comment */
     // double slash comment
     /// triple slash comment
-    /* inline comment */
-    /*
-        multiline comment
-    */
-    fn test_function() -> bool;
-}
-
-impl MyContract for Contract {
-    // double slash comment
-    /// triple slash comment
-    /* inline comment */
-    /*
-        multiline comment
-    */
-
-    fn test_function() -> bool {
-        true
-    }
-}
-
-enum Color {
-    // double slash comment
-    /// triple slash comment
-    /* inline comment */
-    /*
-        multiline comment
-    */
-    blue: (),
-    red: ()
-}
-
-configurable {
-    // double slash comment
-    /// triple slash comment
-    /* inline comment */
-    /*
-        multiline comment
-    */
     SIGNER: EvmAddress = EvmAddress {
         value: ZERO_B256,
     },
@@ -1667,47 +1629,9 @@ fn main() {}"#,
 
 use std::{constants::ZERO_B256, vm::evm::evm_address::EvmAddress};
 
-abi MyContract {
+configurable { /* inline comment */
     // double slash comment
     /// triple slash comment
-    /* inline comment */
-    /*
-        multiline comment
-    */
-    fn test_function() -> bool;
-}
-
-impl MyContract for Contract {
-    // double slash comment
-    /// triple slash comment
-    /* inline comment */
-    /*
-        multiline comment
-    */
-
-    fn test_function() -> bool {
-        true
-    }
-}
-
-enum Color {
-    // double slash comment
-    /// triple slash comment
-    /* inline comment */
-    /*
-        multiline comment
-    */
-    blue: (),
-    red: ()
-}
-
-configurable {
-    // double slash comment
-    /// triple slash comment
-    /* inline comment */
-    /*
-        multiline comment
-    */
     SIGNER: EvmAddress = EvmAddress {
         value: ZERO_B256,
     },
