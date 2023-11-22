@@ -175,6 +175,6 @@ async fn clears_storage_key() {
             .await
             .unwrap()
             .value,
-        input
+        true
     );
 }
