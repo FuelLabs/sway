@@ -49,7 +49,7 @@ pub fn get_diagnostics(
             let path = source_engine.get_path(source_id);
             diagnostics
                 .entry(path)
-                .or_insert_with(Diagnostics::default)
+                .or_default()
                 .warnings
                 .push(diagnostic);
         }
@@ -60,7 +60,7 @@ pub fn get_diagnostics(
             let path = source_engine.get_path(source_id);
             diagnostics
                 .entry(path)
-                .or_insert_with(Diagnostics::default)
+                .or_default()
                 .errors
                 .push(diagnostic);
         }

@@ -52,6 +52,7 @@ macro_rules! impl_tuple (
             $($name: Parse,)*
         {
             fn parse(parser: &mut Parser) -> ParseResult<($($name,)*)> {
+                #[allow(clippy::redundant_locals)]
                 #[allow(unused)]
                 let parser = parser;
                 $(

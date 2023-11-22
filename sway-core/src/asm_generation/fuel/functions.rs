@@ -17,6 +17,7 @@ use crate::{
 use sway_ir::*;
 
 use either::Either;
+use std::fmt::Write;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -217,8 +218,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     .get_selector(self.context)
                     .unwrap()
                     .into_iter()
-                    .map(|b| format!("{b:02x}"))
-                    .collect::<String>()
+                    .fold(String::new(), |mut acc, b| {
+                        let _ = write!(acc, "{b:02x}");
+                        acc
+                    })
             )));
         }
 

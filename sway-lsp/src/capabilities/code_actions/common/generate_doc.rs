@@ -1,4 +1,5 @@
 use crate::capabilities::code_actions::CodeAction;
+use std::fmt::Write;
 use sway_core::{Engines, TypeId};
 use sway_types::Spanned;
 
@@ -28,10 +29,10 @@ pub(crate) trait GenerateDocCodeAction<'a, T: Spanned>: CodeAction<'a, T> {
 
     /// Formats a vector of lines into a doc comment [String].
     fn format_lines(&self, lines: Vec<String>) -> String {
-        lines
-            .iter()
-            .map(|line| format!("{}/// {}\n", self.indentation(), line))
-            .collect()
+        lines.iter().fold(String::new(), |mut acc, line| {
+            let _ = writeln!(acc, "{}/// {}", self.indentation(), line);
+            acc
+        })
     }
 
     /// Formats a list item with a name and type into a [String].

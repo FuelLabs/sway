@@ -9,6 +9,7 @@ use crate::{
         attributes::doc_comment_attributes, keyword_docs::KeywordDocs, markdown, markup::Markup,
     },
 };
+use std::fmt::Write;
 use std::sync::Arc;
 use sway_core::{
     language::{ty, Visibility},
@@ -88,13 +89,11 @@ fn extract_fn_signature(span: &Span) -> String {
 fn format_doc_attributes(token: &Token) -> String {
     let mut doc_comment = String::new();
     if let Some(attributes) = doc_comment_attributes(token) {
-        doc_comment = attributes
-            .iter()
-            .map(|attribute| {
-                let comment = attribute.args.first().unwrap().name.as_str();
-                format!("{comment}\n")
-            })
-            .collect()
+        doc_comment = attributes.iter().fold(String::new(), |mut acc, attribute| {
+            let comment = attribute.args.first().unwrap().name.as_str();
+            let _ = writeln!(acc, "{comment}");
+            acc
+        })
     }
     doc_comment
 }

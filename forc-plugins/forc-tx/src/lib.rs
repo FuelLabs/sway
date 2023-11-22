@@ -708,7 +708,7 @@ impl From<Mint> for fuel_tx::Mint {
             mint.tx_ptr,
             mint.input_contract,
             mint.output_contract,
-            mint.mint_amount.into(),
+            mint.mint_amount,
             mint.mint_asset_id,
         )
     }
