@@ -69,6 +69,7 @@ pub(crate) fn instantiate_function_application(
         handler,
         ctx.by_ref(),
         &function_decl.type_parameters,
+        function_decl.name.as_str(),
         &call_path_binding.span(),
     )?;
     function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
