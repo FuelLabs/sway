@@ -59,10 +59,7 @@ impl SourceEngine {
         }
 
         let mut module_map = self.module_to_sources_map.write().unwrap();
-        module_map
-            .entry(module_id)
-            .or_insert_with(BTreeSet::new)
-            .insert(source_id);
+        module_map.entry(module_id).or_default().insert(source_id);
 
         source_id
     }

@@ -35,3 +35,7 @@ name = "integration_tests"
 path = "test_projects/harness.rs"
 
 [workspace]
+
+[patch.crates-io]
+fuel-core = { git = "https://github.com/FuelLabs/fuel-core", branch = "master" }
+fuel-core-client = { git = "https://github.com/FuelLabs/fuel-core", branch = "master" }

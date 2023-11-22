@@ -14,6 +14,7 @@ use forc_tracing::println_warning;
 use forc_util::tx_utils::format_log_receipts;
 use fuel_core_client::client::FuelClient;
 use fuel_tx::{ContractId, Transaction, TransactionBuilder};
+use fuels_accounts::provider::Provider;
 use pkg::BuiltPackage;
 use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};
@@ -109,12 +110,12 @@ pub async fn run_pkg(
     };
 
     let tx = TransactionBuilder::script(compiled.bytecode.bytes.clone(), script_data)
-        .gas_limit(get_gas_limit(&command.gas, client.chain_info().await?))
+        .script_gas_limit(get_gas_limit(&command.gas, client.chain_info().await?))
         .gas_price(get_gas_price(&command.gas, client.node_info().await?))
         .maturity(command.maturity.maturity.into())
         .add_contracts(contract_ids)
         .finalize_signed(
-            client.clone(),
+            Provider::connect(node_url.clone()).await?,
             command.default_signer,
             command.signing_key,
             wallet_mode,
@@ -160,7 +161,6 @@ async fn send_tx(
     pretty_print: bool,
     simulate: bool,
 ) -> Result<Vec<fuel_tx::Receipt>> {
-    use fuels_accounts::provider::ClientExt;
     let outputs = {
         if !simulate {
             let (_, receipts) = client.submit_and_await_commit_with_receipts(tx).await?;

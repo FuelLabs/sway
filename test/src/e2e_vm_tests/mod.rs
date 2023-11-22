@@ -173,6 +173,8 @@ impl TestContext {
                                 TestResult::ReturnData(data)
                             }
                             ProgramState::Revert(v) => TestResult::Revert(v),
+                            ProgramState::RunProgram(_) => todo!(), // TODO: fix TestResult
+                            ProgramState::VerifyPredicate(_) => todo!(), // TODO: fix TestResult
                         }
                     }
                     harness::VMExecutionResult::Evm(state) => match state.exit_reason {

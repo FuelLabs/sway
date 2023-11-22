@@ -17,6 +17,6 @@ pub fn get_gas_limit(gas: &Gas, chain_info: ChainInfo) -> u64 {
     if let Some(gas_limit) = gas.limit {
         gas_limit
     } else {
-        chain_info.consensus_parameters.max_gas_per_tx
+        chain_info.consensus_parameters.tx_params().max_gas_per_tx
     }
 }

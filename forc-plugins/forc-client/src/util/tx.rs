@@ -3,12 +3,10 @@ use std::{io::Write, str::FromStr};
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 use forc_tracing::println_warning;
-use fuel_core_client::client::FuelClient;
 use fuel_crypto::{Message, PublicKey, SecretKey, Signature};
 use fuel_tx::{
     field, Address, AssetId, Buildable, ContractId, Input, Output, TransactionBuilder, Witness,
 };
-use fuel_vm::prelude::SerializableVec;
 use fuels_accounts::{provider::Provider, wallet::Wallet, ViewOnlyAccount};
 use fuels_core::types::{
     bech32::{Bech32Address, FUEL_BECH32_HRP},
@@ -97,7 +95,7 @@ pub trait TransactionBuilderExt<Tx> {
     ) -> Result<&mut Self>;
     async fn finalize_signed(
         &mut self,
-        client: FuelClient,
+        client: Provider,
         unsigned: bool,
         signing_key: Option<SecretKey>,
         wallet_mode: WalletSelectionMode,
@@ -105,9 +103,7 @@ pub trait TransactionBuilderExt<Tx> {
 }
 
 #[async_trait]
-impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuilderExt<Tx>
-    for TransactionBuilder<Tx>
-{
+impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for TransactionBuilder<Tx> {
     fn add_contract(&mut self, contract_id: ContractId) -> &mut Self {
         let input_index = self
             .inputs()
@@ -121,11 +117,13 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
             fuel_tx::TxPointer::new(0u32.into(), 0),
             contract_id,
         ))
-        .add_output(fuel_tx::Output::Contract {
-            input_index,
-            balance_root: fuel_tx::Bytes32::zeroed(),
-            state_root: fuel_tx::Bytes32::zeroed(),
-        })
+        .add_output(fuel_tx::Output::Contract(
+            fuel_tx::output::contract::Contract {
+                input_index,
+                balance_root: fuel_tx::Bytes32::zeroed(),
+                state_root: fuel_tx::Bytes32::zeroed(),
+            },
+        ))
     }
     fn add_contracts(&mut self, contract_ids: Vec<ContractId>) -> &mut Self {
         for contract_id in contract_ids {
@@ -168,12 +166,12 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
     }
     async fn finalize_signed(
         &mut self,
-        client: FuelClient,
+        provider: Provider,
         default_sign: bool,
         signing_key: Option<SecretKey>,
         wallet_mode: WalletSelectionMode,
     ) -> Result<Tx> {
-        let params = client.chain_info().await?.consensus_parameters.into();
+        let params = provider.chain_info().await?.consensus_parameters;
         let signing_key = match (wallet_mode, signing_key, default_sign) {
             (WalletSelectionMode::ForcWallet, None, false) => {
                 // TODO: This is a very simple TUI, we should consider adding a nice TUI
@@ -198,7 +196,6 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                 let password = rpassword::prompt_password(prompt)?;
                 let verification = AccountVerification::Yes(password.clone());
                 let accounts = collect_accounts_with_verification(&wallet_path, verification)?;
-                let provider = Provider::new(client.clone(), params);
                 let account_balances = collect_account_balances(&accounts, &provider).await?;
 
                 let total_balance = account_balances
@@ -280,7 +277,7 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
         // Add input coin and output change
         self.fund(
                 address,
-                Provider::new(client, params),
+                provider,
                 signature_witness_index,
             )
             .await.map_err(|e| if e.to_string().contains("not enough coins to fit the target") {
@@ -300,7 +297,7 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
 
         let witness = Witness::from(signature.as_ref());
         tx.replace_witness(signature_witness_index, witness);
-        tx.precompute(&params.chain_id)?;
+        tx.precompute(&params.chain_id).unwrap(); // TODO: make error conversion
 
         Ok(tx)
     }

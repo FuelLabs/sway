@@ -378,7 +378,7 @@ impl Session {
                 });
                 self.runnables
                     .entry(path)
-                    .or_insert(Vec::new())
+                    .or_default()
                     .push(runnable);
             }
         }
@@ -398,7 +398,7 @@ impl Session {
                 });
                 self.runnables
                     .entry(path)
-                    .or_insert(Vec::new())
+                    .or_default()
                     .push(runnable);
             }
         }
