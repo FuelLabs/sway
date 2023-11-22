@@ -564,18 +564,34 @@ impl TypeId {
                             .zip(structure_trait_constraint.type_arguments.iter())
                             .all(|(t1, t2)| {
                                 unify_check.check(
-                                    self.check_trait_constraints_errors_resolve(
+                                    ctx.resolve_type(
                                         handler,
-                                        ctx.by_ref(),
                                         t1.type_id,
-                                        t1.span.clone(),
-                                    ),
-                                    self.check_trait_constraints_errors_resolve(
+                                        &t1.span,
+                                        EnforceTypeArguments::No,
+                                        None,
+                                    )
+                                    .unwrap_or_else(|err| {
+                                        engines.te().insert(
+                                            engines,
+                                            TypeInfo::ErrorRecovery(err),
+                                            None,
+                                        )
+                                    }),
+                                    ctx.resolve_type(
                                         handler,
-                                        ctx.by_ref(),
                                         t2.type_id,
-                                        t2.span.clone(),
-                                    ),
+                                        &t2.span,
+                                        EnforceTypeArguments::No,
+                                        None,
+                                    )
+                                    .unwrap_or_else(|err| {
+                                        engines.te().insert(
+                                            engines,
+                                            TypeInfo::ErrorRecovery(err),
+                                            None,
+                                        )
+                                    }),
                                 )
                             })
                 },
@@ -585,22 +601,5 @@ impl TypeId {
             }
         }
         found_error
-    }
-
-    fn check_trait_constraints_errors_resolve(
-        &self,
-        handler: &Handler,
-        mut ctx: TypeCheckContext,
-        type_id: TypeId,
-        span: Span,
-    ) -> TypeId {
-        let engines = ctx.engines();
-
-        ctx.resolve_type(handler, type_id, &span, EnforceTypeArguments::No, None)
-            .unwrap_or_else(|err| {
-                engines
-                    .te()
-                    .insert(engines, TypeInfo::ErrorRecovery(err), None)
-            })
     }
 }
