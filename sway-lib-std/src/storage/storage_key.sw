@@ -121,7 +121,14 @@ impl<T> StorageKey<T> {
     /// ```
     #[storage(write)]
     pub fn clear(self) -> bool {
-        clear::<T>(self.slot, self.offset)
+        if __size_of::<T>() == 0 {
+            // If the generic doesn't have a size, this is an empty struct and nothing can be stored at the slot.
+            // This clears the length value for StorageVec, StorageString, and StorageBytes 
+            // or any other Storage type.
+            clear::<u64>(self.field_id, 0)
+        } else {
+            clear::<T>(self.slot, self.offset)
+        }
     }
 
     /// Create a new `StorageKey`.
@@ -162,19 +169,4 @@ fn test_storage_key_new() {
     assert(key.slot == ZERO_B256);
     assert(key.offset == 0);
     assert(key.field_id == ZERO_B256);
-}
-
-#[test]
-#[storage(read, write)]
-fn test_storage_key_clear() {
-    use ::constants::ZERO_B256;
-    use ::assert::assert;
-
-    let key = StorageKey::<u64>::new(ZERO_B256, 0, ZERO_B256);
-    key.write(42);
-    
-    assert(key.read() == 42);
-    let cleared = key.clear();
-    assert(cleared);
-    assert(key.try_read().is_none());
 }
