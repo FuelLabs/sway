@@ -177,7 +177,7 @@ impl Identity {
     ///
     /// # Arguments
     ///
-    /// * `sub_id`: [SubId] - The  sub identfier of the asset which to mint.
+    /// * `sub_id`: [SubId] - The  sub identifier of the asset which to mint.
     /// * `amount`: [u64] - The amount of tokens to mint.
     ///
     /// # Examples
