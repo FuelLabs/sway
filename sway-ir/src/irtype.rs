@@ -816,12 +816,14 @@ mod tests {
         }
 
         #[test]
-        /// Struct has a size in bytes of the sum of all of its fields where the each
-        /// individual field is aligned to the word boundary.
+        /// Struct has a size in bytes of the sum of all of its fields.
+        /// The size of each individual field is a multiple of the word size. Thus,
+        /// if needed, fields are right-padded to the multiple of the word size.
+        /// Each individual field is aligned to the word boundary.
         /// Struct fields are ordered in the order of their appearance in the struct definition.
         /// The offset of each field is the sum of the sizes of the preceding fields.
-        /// Since each individual field is aligned to the word boundary, the struct itself
-        /// is also always aligned to the word boundary.
+        /// Since the size of the each individual field is a multiple of the word size,
+        /// the size of the struct is also always a multiple of the word size.
         fn r#struct() {
             let mut context = create_context();
 
@@ -830,7 +832,9 @@ mod tests {
 
                 let s_struct = struct_ty.size(&context);
 
-                // The size of the struct is the sum of the aligned field sizes.
+                // The size of the struct is the sum of the field sizes,
+                // where each field is, if needed, right-padded to the multiple of the
+                // word size.
                 assert_eq!(
                     s_struct.in_bytes(),
                     fields
@@ -838,11 +842,11 @@ mod tests {
                         .map(|(_, raw_size)| size_bytes_round_up_to_word_alignment!(raw_size))
                         .sum::<u64>()
                 );
-                // Structs are always aligned to the word boundary.
+                // Structs' sizes are always multiples of the word size.
                 assert_eq!(s_struct.in_bytes(), s_struct.in_bytes_aligned());
 
                 for field_index in 0..fields.len() {
-                    // The offset of the field is the size of previous fields.
+                    // The offset of a field is the sum of the sizes of the previous fields.
                     let expected_offset = fields
                         .iter()
                         .take(field_index)
@@ -864,12 +868,17 @@ mod tests {
         }
 
         #[test]
-        /// Union has a size in bytes of the largest of all of its variants, aligned to the word boundary.
+        /// Union has a size in bytes of the largest of all of its variants,
+        /// where the largest variant is, if needed, left-padded to the multiple of the word size.
         /// Variants overlap in memory and are left-padded (aligned to the right) to the size of the
-        /// largest variant aligned to the word boundary.
-        /// The offset of a variant is `__size_of<UnionType>() - __size_of<VariantType>()`.
-        /// Since each individual variant is aligned to the word boundary, the union itself
-        /// is also always aligned to the word boundary.
+        /// largest variant (already _right_ aligned/left-padded to the word boundary).
+        /// Thus, a variant, in a general case, needs not to be aligned to the word boundary.
+        /// The offset of a variant, relative to the union address is:
+        /// 
+        ///  `__size_of<UnionType>() - __size_of<VariantType>()`.
+        /// 
+        /// Since the size of the largest variant is a multiple of the word size,
+        /// the size of the union is also always a multiple of the word size.
         fn union() {
             let mut context = create_context();
 
@@ -878,7 +887,9 @@ mod tests {
 
                 let s_union = union_ty.size(&context);
 
-                // The size of the union is the size of the largest variant, aligned to the word boundary.
+                // The size of the union is the size of the largest variant,
+                // where the largest variant is, if needed, left-padded to the multiple
+                // of the word size.
                 assert_eq!(
                     s_union.in_bytes(),
                     variants
@@ -887,12 +898,12 @@ mod tests {
                         .max()
                         .unwrap_or_default()
                 );
-                // Unions are always aligned to the word boundary.
+                // Unions' sizes are always multiples of the word size.
                 assert_eq!(s_union.in_bytes(), s_union.in_bytes_aligned());
 
                 for (variant_index, variant) in variants.iter().enumerate() {
                     // Variants are left-padded.
-                    // Means the offset of a variant is the union size minus the raw variant size.
+                    // The offset of a variant is the union size minus the raw variant size.
                     let expected_offset = s_union.in_bytes() - variant.1;
 
                     let variant_offset = union_ty
