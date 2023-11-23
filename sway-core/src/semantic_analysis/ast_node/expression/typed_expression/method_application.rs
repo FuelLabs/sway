@@ -617,6 +617,7 @@ pub(crate) fn monomorphize_method_application(
             handler,
             ctx.by_ref(),
             &method.type_parameters,
+            method.name.as_str(),
             &call_path.span(),
         )?;
 
