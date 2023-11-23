@@ -87,6 +87,12 @@ pub enum Option<T> {
 }
 // ANCHOR_END: docs_option
 
+impl<T> core::ops::Eq for Option<T> where T: Eq {
+    fn eq(...) -> bool {
+        // implement here
+    }
+}
+
 // Type implementation
 //
 impl<T> Option<T> {
