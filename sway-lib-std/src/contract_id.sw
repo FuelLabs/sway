@@ -264,7 +264,7 @@ impl ContractId {
     /// UNCONDITIONAL transfer of `amount` coins of type `asset_id` to
     /// the ContractId.
     ///
-    /// # Additional Informations
+    /// # Additional Information
     ///
     /// **_WARNING:_**
     /// This will transfer coins to a contract even with no way to retrieve them
@@ -310,7 +310,7 @@ impl ContractId {
     ///
     /// # Arguments
     ///
-    /// * `sub_id`: [SubId] - The  sub identfier of the asset which to mint.
+    /// * `sub_id`: [SubId] - The  sub identifier of the asset which to mint.
     /// * `amount`: [u64] - The amount of tokens to mint.
     ///
     /// # Examples
