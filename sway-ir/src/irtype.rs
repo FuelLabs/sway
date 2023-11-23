@@ -874,9 +874,9 @@ mod tests {
         /// largest variant (already _right_ aligned/left-padded to the word boundary).
         /// Thus, a variant, in a general case, needs not to be aligned to the word boundary.
         /// The offset of a variant, relative to the union address is:
-        /// 
+        ///
         ///  `__size_of<UnionType>() - __size_of<VariantType>()`.
-        /// 
+        ///
         /// Since the size of the largest variant is a multiple of the word size,
         /// the size of the union is also always a multiple of the word size.
         fn union() {
