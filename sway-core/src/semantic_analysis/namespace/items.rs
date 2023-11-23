@@ -6,7 +6,7 @@ use crate::{
         CallPath,
     },
     namespace::*,
-    semantic_analysis::ast_node::ConstShadowingMode,
+    semantic_analysis::{ast_node::ConstShadowingMode, GenericShadowingMode},
     type_system::*,
 };
 
@@ -109,6 +109,7 @@ impl Items {
         name: Ident,
         item: ty::TyDecl,
         const_shadowing_mode: ConstShadowingMode,
+        generic_shadowing_mode: GenericShadowingMode,
     ) -> Result<(), ErrorEmitted> {
         let append_shadowing_error =
             |ident: &Ident,
@@ -118,7 +119,15 @@ impl Items {
              item: &ty::TyDecl,
              const_shadowing_mode: ConstShadowingMode| {
                 use ty::TyDecl::*;
-                match (ident, decl, is_use, is_alias, &item, const_shadowing_mode) {
+                match (
+                    ident,
+                    decl,
+                    is_use,
+                    is_alias,
+                    &item,
+                    const_shadowing_mode,
+                    generic_shadowing_mode,
+                ) {
                     // variable shadowing a constant
                     (
                         constant_ident,
@@ -126,6 +135,7 @@ impl Items {
                         is_imported_constant,
                         is_alias,
                         VariableDecl { .. },
+                        _,
                         _,
                     ) => {
                         handler.emit_err(CompileError::ConstantsCannotBeShadowed {
@@ -148,6 +158,7 @@ impl Items {
                         is_alias,
                         ConstantDecl { .. },
                         ConstShadowingMode::Sequential,
+                        _,
                     ) => {
                         handler.emit_err(CompileError::ConstantsCannotBeShadowed {
                             variable_or_constant: "Constant".to_string(),
@@ -162,7 +173,7 @@ impl Items {
                         });
                     }
                     // constant shadowing a variable
-                    (_, VariableDecl(variable_decl), _, _, ConstantDecl { .. }, _) => {
+                    (_, VariableDecl(variable_decl), _, _, ConstantDecl { .. }, _, _) => {
                         handler.emit_err(CompileError::ConstantShadowsVariable {
                             name: name.clone(),
                             variable_span: variable_decl.name.span(),
@@ -176,6 +187,7 @@ impl Items {
                         _,
                         ConstantDecl { .. },
                         ConstShadowingMode::ItemStyle,
+                        _,
                     ) => {
                         handler.emit_err(CompileError::MultipleDefinitionsOfConstant {
                             name: name.clone(),
@@ -200,6 +212,7 @@ impl Items {
                         | TraitDecl { .. }
                         | AbiDecl { .. },
                         _,
+                        _,
                     ) => {
                         handler.emit_err(CompileError::MultipleDefinitionsOfName {
                             name: name.clone(),
@@ -214,6 +227,7 @@ impl Items {
                         _,
                         GenericTypeForFunctionScope { .. },
                         _,
+                        GenericShadowingMode::Disallow,
                     ) => {
                         handler
                             .emit_err(CompileError::GenericShadowsGeneric { name: name.clone() });
