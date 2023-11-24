@@ -403,7 +403,22 @@ impl ty::TyExpression {
                 };
                 Ok(typed_expr)
             },
-            ExpressionKind::Ref(_) => todo!("Type checking ref expressions is not implemented."),
+            ExpressionKind::Ref(expr) => {
+                let ctx = ctx
+                    .by_ref()
+                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
+                    .with_help_text("");
+                let expr_span = expr.span();
+                let expr = ty::TyExpression::type_check(handler, ctx, *expr)
+                    .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span.clone(), engines));
+                let expr_type_argument: TypeArgument = expr.return_type.into();
+                let typed_expr = ty::TyExpression {
+                    expression: ty::TyExpressionVariant::Ref(Box::new(expr)),
+                    return_type: type_engine.insert(engines, TypeInfo::Ref(expr_type_argument), None),
+                    span,
+                };
+                Ok(typed_expr)
+            }
         };
         let mut typed_expression = match res {
             Ok(r) => r,

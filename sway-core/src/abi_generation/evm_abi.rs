@@ -144,6 +144,9 @@ pub fn abi_str(type_info: &TypeInfo, type_engine: &TypeEngine, decl_engine: &Dec
             name,
             trait_type_id: _,
         } => format!("trait type {}", name),
+        Ref(ty) => {
+            format!("__ref {}", abi_str_type_arg(ty, type_engine, decl_engine)) // TODO-IG: No references in ABIs.
+        }
     }
 }
 

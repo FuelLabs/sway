@@ -364,6 +364,13 @@ impl TypeId {
                         .extract_any_including_self(engines, filter_fn, vec![]),
                 );
             }
+            TypeInfo::Ref(ty) => {
+                extend(
+                    &mut found,
+                    ty.type_id
+                        .extract_any_including_self(engines, filter_fn, vec![]),
+                );
+            }
         }
         found
     }

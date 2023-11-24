@@ -105,4 +105,6 @@ mod tests {
         );
         assert_matches!(item.ty, Ty::Slice { .. });
     }
+
+    // TODO-IG: Add tests for Ty::Ref.
 }

@@ -328,6 +328,7 @@ impl<'a> UnifyCheck<'a> {
             _ => {}
         }
 
+        // TODO-IG: Implement for all modes. Is it common recursive? Very likely yes.
         match self.mode {
             Coercion => {
                 match (&*left_info, &*right_info) {
@@ -428,6 +429,10 @@ impl<'a> UnifyCheck<'a> {
                     (ErrorRecovery(_), _) => true,
                     (_, ErrorRecovery(_)) => true,
 
+                    (Ref(l_ty), Ref(r_ty)) => {
+                        self.check_inner(l_ty.type_id, r_ty.type_id)
+                    }
+
                     (a, b) => a.eq(b, self.engines),
                 }
             }
@@ -486,7 +491,7 @@ impl<'a> UnifyCheck<'a> {
                 }
             }
             NonDynamicEquality => match (&*left_info, &*right_info) {
-                // when a type alias is encoutered, defer the decision to the type it contains (i.e. the
+                // when a type alias is encountered, defer the decision to the type it contains (i.e. the
                 // type it aliases with)
                 (Alias { ty, .. }, _) => self.check_inner(ty.type_id, right),
                 (_, Alias { ty, .. }) => self.check_inner(left, ty.type_id),

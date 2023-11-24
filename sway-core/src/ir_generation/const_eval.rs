@@ -622,6 +622,13 @@ fn const_eval_typed_expr(
                 }
             }
         }
+        ty::TyExpressionVariant::Ref(exp) => {
+            let expr = const_eval_typed_expr(lookup, known_consts, exp)?;
+            expr.map(|constant| Constant { 
+                ty: Type::new_ptr(lookup.context, constant.ty), // TODO-IG: Check this. Should it be ::new_ref()? Do we want to have Reference on the IR level?
+                value: ConstantValue::Reference(Box::new(constant)) // TODO-IG: Check this. Reference.
+            })
+        }
         ty::TyExpressionVariant::Reassignment(_)
         | ty::TyExpressionVariant::FunctionParameter
         | ty::TyExpressionVariant::AsmExpression { .. }

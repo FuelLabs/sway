@@ -124,6 +124,7 @@ impl Entry {
                 name,
                 padding,
             ),
+            ConstantValue::Reference(_) => todo!("Referencing constants is not implemented."), // TODO-IG: Implement.
         }
     }
 

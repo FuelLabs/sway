@@ -183,8 +183,10 @@ pub enum TypeInfo {
         name: Ident,
         trait_type_id: TypeId,
     },
+    Ref(TypeArgument),
 }
 
+// TODO-IG: Check all impls of the TypeInfo.
 impl HashWithEngines for TypeInfo {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         self.discriminant_value().hash(state);
@@ -260,6 +262,9 @@ impl HashWithEngines for TypeInfo {
             } => {
                 name.hash(state);
                 trait_type_id.hash(state);
+            }
+            TypeInfo::Ref(ty) => {
+                ty.hash(state, engines);
             }
             TypeInfo::StringSlice
             | TypeInfo::Numeric
@@ -388,6 +393,11 @@ impl PartialEqWithEngines for TypeInfo {
                     && type_engine
                         .get(*l_trait_type_id)
                         .eq(&type_engine.get(*r_trait_type_id), engines)
+            }
+            (Self::Ref(l_ty), Self::Ref(r_ty)) => {
+                type_engine
+                    .get(l_ty.type_id)
+                    .eq(&type_engine.get(r_ty.type_id), engines)
             }
             (l, r) => l.discriminant_value() == r.discriminant_value(),
         }
@@ -574,6 +584,9 @@ impl DisplayWithEngines for TypeInfo {
                 name,
                 trait_type_id,
             } => format!("trait type {}::{}", engines.help_out(trait_type_id), name),
+            Ref(ty) => {
+                format!("&{}", engines.help_out(ty))
+            }
         };
         write!(f, "{s}")
     }
@@ -674,6 +687,9 @@ impl DebugWithEngines for TypeInfo {
                 name,
                 trait_type_id,
             } => format!("trait type {}::{}", engines.help_out(trait_type_id), name),
+            Ref(ty) => {
+                format!("&{:?}", engines.help_out(ty))
+            }
         };
         write!(f, "{s}")
     }
@@ -711,6 +727,7 @@ impl TypeInfo {
             TypeInfo::Slice(..) => 22,
             TypeInfo::StringSlice => 23,
             TypeInfo::TraitType { .. } => 24,
+            TypeInfo::Ref { .. } => 25,
         }
     }
 
@@ -1044,6 +1061,7 @@ impl TypeInfo {
                 | TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
                 | TypeInfo::RawUntypedPtr
                 | TypeInfo::Numeric
+                // TODO-IG: Should Ptr and Ref also be a copy type?
         ) || self.is_unit()
     }
 
@@ -1053,6 +1071,10 @@ impl TypeInfo {
             TypeInfo::Tuple { .. } => !self.is_unit(),
             _ => false,
         }
+    }
+
+    pub fn is_reference_type(&self) -> bool {
+        matches!(self, TypeInfo::Ref(_))
     }
 
     pub(crate) fn apply_type_arguments(
@@ -1100,8 +1122,8 @@ impl TypeInfo {
             | TypeInfo::Numeric
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
-            | TypeInfo::Ptr(..)
-            | TypeInfo::Slice(..)
+            | TypeInfo::Ptr(_)
+            | TypeInfo::Slice(_)
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery(_)
             | TypeInfo::Array(_, _)
@@ -1109,7 +1131,8 @@ impl TypeInfo {
             | TypeInfo::Placeholder(_)
             | TypeInfo::TypeParam(_)
             | TypeInfo::Alias { .. }
-            | TypeInfo::TraitType { .. } => {
+            | TypeInfo::TraitType { .. }
+            | TypeInfo::Ref(_) => {
                 Err(handler.emit_err(CompileError::TypeArgumentsNotAllowed { span: span.clone() }))
             }
         }
@@ -1150,6 +1173,10 @@ impl TypeInfo {
                 "matching on this type is unsupported right now",
                 span.clone(),
             ))),
+            TypeInfo::Ref(_) => Err(handler.emit_err(CompileError::Unimplemented( // TODO-IG: Implement.
+                "Using references in match expressions is currently not implemented.",
+                span.clone(),
+            ))),
             TypeInfo::ErrorRecovery(err) => Err(*err),
         }
     }
@@ -1184,7 +1211,8 @@ impl TypeInfo {
             | TypeInfo::Numeric
             | TypeInfo::Alias { .. }
             | TypeInfo::UnknownGeneric { .. }
-            | TypeInfo::TraitType { .. } => Ok(()),
+            | TypeInfo::TraitType { .. }
+            | TypeInfo::Ref(_) => Ok(()),
             TypeInfo::Unknown
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Storage { .. }
@@ -1289,10 +1317,11 @@ impl TypeInfo {
             | TypeInfo::B256
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
-            | TypeInfo::Ptr(..)
-            | TypeInfo::Slice(..)
+            | TypeInfo::Ptr(_)
+            | TypeInfo::Slice(_)
             | TypeInfo::ErrorRecovery(_)
-            | TypeInfo::TraitType { .. } => false,
+            | TypeInfo::TraitType { .. }
+            | TypeInfo::Ref(_) => false, // TODO-IG: Check this.
             TypeInfo::Unknown
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::ContractCaller { .. }

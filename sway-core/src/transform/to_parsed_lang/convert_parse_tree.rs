@@ -1382,6 +1382,10 @@ fn ty_to_type_info(
             let type_argument = ty_to_type_argument(context, handler, engines, *ty.into_inner())?;
             TypeInfo::Slice(type_argument)
         }
+        Ty::Ref { ty, .. } => {
+            let type_argument = ty_to_type_argument(context, handler, engines, *ty)?;
+            TypeInfo::Ref(type_argument)
+        }
     };
     Ok(type_info)
 }
@@ -3802,6 +3806,7 @@ fn ty_to_type_parameter(
         Ty::StringArray { .. } => panic!("str types are not allowed in this position"),
         Ty::Ptr { .. } => panic!("__ptr types are not allowed in this position"),
         Ty::Slice { .. } => panic!("__slice types are not allowed in this position"),
+        Ty::Ref { .. } => panic!("ref types are not allowed in this position"),
     };
     let custom_type = type_engine.insert(
         engines,

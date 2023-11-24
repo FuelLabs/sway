@@ -6,7 +6,7 @@ use std::fmt::Write;
 use sway_ast::{
     brackets::SquareBrackets,
     expr::Expr,
-    keywords::{PtrToken, SliceToken, StrToken, Token, UnderscoreToken},
+    keywords::{PtrToken, SliceToken, StrToken, Token, UnderscoreToken, AmpersandToken},
     ty::{Ty, TyArrayDescriptor, TyTupleDescriptor},
 };
 use sway_types::{ast::Delimiter, Spanned};
@@ -44,6 +44,9 @@ impl Format for Ty {
             }
             Self::Slice { slice_token, ty } => {
                 format_slice(formatted_code, slice_token.clone(), ty.clone())
+            }
+            Self::Ref { ampersand_token, ty } => {
+                format_ref(formatted_code, ampersand_token.clone(), ty.clone())
             }
         }
     }
@@ -115,6 +118,20 @@ fn format_slice(
     Ok(())
 }
 
+fn format_ref(
+    formatted_code: &mut FormattedCode,
+    ampersand_token: AmpersandToken,
+    ty: Ty,
+) -> Result<(), FormatterError> {
+    write!(
+        formatted_code,
+        "{}{}",
+        ampersand_token.span().as_str(),
+        ty.span().as_str()
+    )?;
+    Ok(())
+}
+
 impl Format for TyTupleDescriptor {
     fn format(
         &self,
@@ -169,6 +186,11 @@ impl LeafSpans for Ty {
             }
             Ty::Slice { slice_token, ty } => {
                 let mut collected_spans = vec![ByteSpan::from(slice_token.span())];
+                collected_spans.append(&mut ty.leaf_spans());
+                collected_spans
+            }
+            Ty::Ref { ampersand_token, ty } => {
+                let mut collected_spans = vec![ByteSpan::from(ampersand_token.span())];
                 collected_spans.append(&mut ty.leaf_spans());
                 collected_spans
             }
