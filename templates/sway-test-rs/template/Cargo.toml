@@ -14,3 +14,7 @@ tokio = { version = "1.12", features = ["rt", "macros"] }
 harness = true
 name = "integration_tests"
 path = "tests/harness.rs"
+
+# TODO: @hal3e remove after new `fuels` release
+[patch.crates-io]
+fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/tx-status-log-and-response" }
