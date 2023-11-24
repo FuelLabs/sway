@@ -71,6 +71,9 @@ impl OrdWithEngines for TypeArgument {
             span: _,
             call_path_tree: _,
         } = other;
+        if lti == rti {
+            return Ordering::Equal;
+        }
         engines.te().get(*lti).cmp(&engines.te().get(*rti), engines)
     }
 }

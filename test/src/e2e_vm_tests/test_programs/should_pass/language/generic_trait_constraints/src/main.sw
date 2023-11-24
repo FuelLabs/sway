@@ -48,6 +48,16 @@ impl MyFrom<u64> for Struct3 {
     }
 }
 
+struct Struct4 {
+    data: u64,
+}
+
+impl MyFrom<Struct4> for Struct3 {
+    fn from(i: Struct4) -> Struct3 {
+        Struct3 {data: i.data}
+    }
+}
+
 fn main() -> bool {
     let s1 = Struct {data: 1_u64 };
     assert_eq(s1.data.my_add(1,2),3);
@@ -56,7 +66,11 @@ fn main() -> bool {
     assert_eq(s2.data_a.my_add(1,2),3);
     assert_eq(s2.data_b.my_add(1,2),3);
 
-    let _i: Struct3 = 1_u64.into();
+    let s3: Struct3 = 42_u64.into();
+    assert_eq(s3.data,42);
+
+    let s4: Struct3 = Struct4{data:42}.into();
+    assert_eq(s4.data,42);
 
     true
 }

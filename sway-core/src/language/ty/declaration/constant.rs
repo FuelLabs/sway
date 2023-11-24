@@ -1,4 +1,7 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Span, Spanned};
@@ -23,6 +26,12 @@ pub struct TyConstantDecl {
     pub type_ascription: TypeArgument,
     pub span: Span,
     pub implementing_type: Option<TyDecl>,
+}
+
+impl DebugWithEngines for TyConstantDecl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, _engines: &Engines) -> fmt::Result {
+        write!(f, "{}", self.call_path)
+    }
 }
 
 impl EqWithEngines for TyConstantDecl {}
