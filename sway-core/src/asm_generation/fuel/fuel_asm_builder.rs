@@ -1,7 +1,7 @@
 use crate::{
     asm_generation::{
         asm_builder::{AsmBuilder, AsmBuilderResult},
-        from_ir::{ir_type_size_in_bytes, StateAccessType, Storage},
+        from_ir::{StateAccessType, Storage},
         fuel::{
             abstract_instruction_set::AbstractInstructionSet,
             compiler_constants,
@@ -912,7 +912,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 })
                 .ok_or_else(|| {
                     CompileError::Internal(
-                        "Failed to convert struct index from constant to integer.",
+                        "Failed to convert struct or union index from constant to integer.",
                         owning_span.as_ref().cloned().unwrap_or_else(Span::dummy),
                     )
                 })
@@ -940,33 +940,18 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 if elem_ty.is_struct(self.context) {
                     // For structs the index must be a const uint.
                     unwrap_constant_uint(idx_val).map(|idx| {
-                        let field_types = elem_ty.get_field_types(self.context);
-                        let field_type = field_types[idx];
-                        let field_offs_in_bytes = field_types
-                            .iter()
-                            .take(idx)
-                            .map(|field_ty| {
-                                size_bytes_round_up_to_word_alignment!(ir_type_size_in_bytes(
-                                    self.context,
-                                    field_ty
-                                ))
-                            })
-                            .sum::<u64>();
+                        let (field_offs_in_bytes, field_type) = elem_ty
+                            .get_struct_field_offset_and_type(self.context, idx as u64)
+                            .expect("Element is a struct.");
                         (reg, offs + field_offs_in_bytes, field_type)
                     })
                 } else if elem_ty.is_union(self.context) {
                     // For unions the index must also be a const uint.
                     unwrap_constant_uint(idx_val).map(|idx| {
-                        let field_type = elem_ty.get_field_types(self.context)[idx];
-                        let union_size_in_bytes = ir_type_size_in_bytes(self.context, &elem_ty);
-                        let field_size_in_bytes = ir_type_size_in_bytes(self.context, &field_type);
-
-                        // The union fields are at offset (union_size - variant_size) due to left padding.
-                        (
-                            reg,
-                            offs + union_size_in_bytes - field_size_in_bytes,
-                            field_type,
-                        )
+                        let (field_offs_in_bytes, field_type) = elem_ty
+                            .get_union_field_offset_and_type(self.context, idx as u64)
+                            .expect("Element is a union.");
+                        (reg, offs + field_offs_in_bytes, field_type)
                     })
                 } else if elem_ty.is_array(self.context) {
                     // For arrays the index is a value.  We need to fetch it and add it to
@@ -974,11 +959,11 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     let array_elem_ty =
                         elem_ty.get_array_elem_type(self.context).ok_or_else(|| {
                             CompileError::Internal(
-                                "Failed to get elem type for known array",
+                                "Failed to get elem type for known array.",
                                 owning_span.clone().unwrap_or_else(Span::dummy),
                             )
                         })?;
-                    let array_elem_size = ir_type_size_in_bytes(self.context, &array_elem_ty);
+                    let array_elem_size = array_elem_ty.size(self.context).in_bytes();
                     let size_reg = self.reg_seqr.next();
                     self.immediate_to_reg(
                         array_elem_size,
@@ -1009,15 +994,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         comment: "add to array base".into(),
                         owning_span: owning_span.clone(),
                     });
-                    let member_type =
-                        elem_ty.get_array_elem_type(self.context).ok_or_else(|| {
-                            CompileError::Internal(
-                                "Can't get array elem type for GEP.",
-                                sway_types::span::Span::dummy(),
-                            )
-                        })?;
 
-                    Ok((offset_reg, offs, member_type))
+                    Ok((offset_reg, offs, array_elem_ty))
                 } else {
                     Err(CompileError::Internal(
                         "Cannot get element offset in non-aggregate.",
@@ -1161,7 +1139,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     owning_span.clone().unwrap_or_else(Span::dummy),
                 )
             })?;
-        let byte_len = ir_type_size_in_bytes(self.context, &src_ty);
+        let byte_len = src_ty.size(self.context).in_bytes();
 
         let src_reg = self.value_to_register(src_val)?;
         let instr_reg = self.reg_seqr.next();
@@ -1256,7 +1234,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         .unwrap_or_else(Span::dummy),
                 )
             })?;
-        let byte_len = ir_type_size_in_bytes(self.context, &dst_ty);
+        let byte_len = dst_ty.size(self.context).in_bytes();
         self.compile_mem_copy_bytes(instr_val, dst_val_ptr, src_val_ptr, byte_len)
     }
 
@@ -1286,7 +1264,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             // If the type is a pointer then we use LOGD to log the data. First put the size into
             // the data section, then add a LW to get it, then add a LOGD which uses it.
             let log_ty = log_ty.get_pointee_type(self.context).unwrap();
-            let size_in_bytes = ir_type_size_in_bytes(self.context, &log_ty);
+            let size_in_bytes = log_ty.size(self.context).in_bytes();
 
             let size_reg = self.reg_seqr.next();
             self.immediate_to_reg(
@@ -1395,10 +1373,11 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         comment: "load ptr of returned slice".into(),
                     });
                 } else {
-                    let size_in_bytes = ir_type_size_in_bytes(
-                        self.context,
-                        &ret_type.get_pointee_type(self.context).unwrap_or(ret_type),
-                    );
+                    let size_in_bytes = ret_type
+                        .get_pointee_type(self.context)
+                        .unwrap_or(ret_type)
+                        .size(self.context)
+                        .in_bytes();
                     self.immediate_to_reg(
                         size_in_bytes,
                         size_reg.clone(),
@@ -1655,7 +1634,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             }
         } else {
             let stored_ty = stored_val.get_type(self.context).unwrap();
-            let byte_len = ir_type_size_in_bytes(self.context, &stored_ty);
+            let byte_len = stored_ty.size(self.context).in_bytes();
 
             let dst_reg = self.value_to_register(dst_val)?;
             let val_reg = self.value_to_register(stored_val)?;
