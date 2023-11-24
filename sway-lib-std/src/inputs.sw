@@ -191,7 +191,7 @@ pub fn input_amount(index: u64) -> Option<u64> {
     }
 }
 
-/// Gets owner field from input at `index`.
+/// Gets owner field from input at `index` if it's a coin.
 ///
 /// # Arguments
 ///
@@ -204,14 +204,14 @@ pub fn input_amount(index: u64) -> Option<u64> {
 /// # Examples
 ///
 /// ```sway
-/// use std::inputs::input_owner;
+/// use std::inputs::input_coin_owner;
 ///
 /// fn foo() {
-///     let input_owner = input_owner(0);
-///     assert(input_owner.is_some()); // Ensure the input is a coin input.
+///     let input_coin_owner = input_coin_owner(0);
+///     assert(input_coin_owner.is_some()); // Ensure the input is a coin input.
 /// }
 /// ```
-pub fn input_owner(index: u64) -> Option<Address> {
+pub fn input_coin_owner(index: u64) -> Option<Address> {
     match input_type(index) {
         Input::Coin => Some(Address::from(__gtf::<b256>(index, GTF_INPUT_COIN_OWNER))),
         _ => None,
