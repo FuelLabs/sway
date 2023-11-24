@@ -6,7 +6,7 @@ use crate::type_error::TypeError;
 
 use core::fmt;
 use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
-use sway_types::{BaseIdent, Ident, SourceEngine, Span, Spanned};
+use sway_types::{BaseIdent, Ident, SourceEngine, SourceId, Span, Spanned};
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
@@ -386,6 +386,14 @@ pub enum CompileError {
     UnitVariantWithParenthesesEnumInstantiator { span: Span, ty: String },
     #[error("Cannot find trait \"{name}\" in this scope.")]
     TraitNotFound { name: String, span: Span },
+    #[error("Trait \"{trait_name}\" is not imported when calling \"{function_name}\".\nThe import is needed because \"{function_name}\" uses \"{trait_name}\" in one of its trait constraints.")]
+    TraitNotImportedAtFunctionApplication {
+        trait_name: String,
+        function_name: String,
+        function_call_site_span: Span,
+        trait_constraint_span: Span,
+        trait_candidates: Vec<String>,
+    },
     #[error("This expression is not valid on the left hand side of a reassignment.")]
     InvalidExpressionOnLhs { span: Span },
     #[error("This code cannot be evaluated to a constant")]
@@ -825,6 +833,10 @@ impl Spanned for CompileError {
             UnnecessaryEnumInstantiator { span, .. } => span.clone(),
             UnitVariantWithParenthesesEnumInstantiator { span, .. } => span.clone(),
             TraitNotFound { span, .. } => span.clone(),
+            TraitNotImportedAtFunctionApplication {
+                function_call_site_span,
+                ..
+            } => function_call_site_span.clone(),
             InvalidExpressionOnLhs { span, .. } => span.clone(),
             TooManyArgumentsForFunction { span, .. } => span.clone(),
             TooFewArgumentsForFunction { span, .. } => span.clone(),
@@ -1114,6 +1126,90 @@ impl ToDiagnostic for CompileError {
                     format!("Consider removing the variable \"{variable}\" altogether, or adding it to all alternatives."),
                 ],
             },
+            TraitNotImportedAtFunctionApplication { trait_name, function_name, function_call_site_span, trait_constraint_span, trait_candidates }=> Diagnostic {
+                reason: Some(Reason::new(code(1), "Trait is not imported".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    function_call_site_span.clone(),
+                    format!(
+                        "Trait \"{trait_name}\" is not imported {}when calling \"{function_name}\".",
+                        get_file_name(source_engine, function_call_site_span.source_id())
+                            .map_or("".to_string(), |file_name| format!("into \"{file_name}\" "))
+                    )
+                ),
+                hints: {
+                    let mut hints = vec![
+                        Hint::help(
+                            source_engine,
+                            function_call_site_span.clone(),
+                            format!("This import is needed because \"{function_name}\" requires \"{trait_name}\" in one of its trait constraints.")
+                        ),
+                        Hint::info(
+                            source_engine,
+                            trait_constraint_span.clone(),
+                            format!("In the definition of \"{function_name}\", \"{trait_name}\" is used in this trait constraint.")
+                        ),
+                    ];
+
+                    match trait_candidates.len() {
+                        // If no candidates are found, that means that an alias was used in the trait constraint definition.
+                        // The way how constraint checking works now, the trait will not be found when we try to check if
+                        // the trait constraints are satisfied for type, and we will never end up in this case here.
+                        // So we will simply ignore it.
+                        0 => (),
+                        // The most common case. Exactly one known trait with the given name.
+                        1 => hints.push(Hint::help(
+                                source_engine,
+                                function_call_site_span.clone(),
+                                format!(
+                                    "Import the \"{trait_name}\" trait {}by using: `use {};`.",
+                                    get_file_name(source_engine, function_call_site_span.source_id())
+                                        .map_or("".to_string(), |file_name| format!("into \"{file_name}\" ")),
+                                    trait_candidates[0]
+                                )
+                            )),
+                        // Unlikely (for now) case of having several traits with the same name.
+                        _ => hints.push(Hint::help(
+                                source_engine,
+                                function_call_site_span.clone(),
+                                format!(
+                                    "To import the proper \"{trait_name}\" {}follow the detailed instructions given below.",
+                                    get_file_name(source_engine, function_call_site_span.source_id())
+                                        .map_or("".to_string(), |file_name| format!("into \"{file_name}\" "))
+                                )
+                            )),
+                    }
+
+                    hints
+                },
+                help: {
+                    let mut help = vec![];
+
+                    if trait_candidates.len() > 1 {
+                        help.push(format!("There are these {} traits with the name \"{trait_name}\" available in the modules:", trait_candidates.len()));
+                        for trait_candidate in trait_candidates.iter() {
+                            help.push(format!("  - {trait_candidate}"));
+                        }
+                        help.push("To import the proper one follow these steps:".to_string());
+                        help.push(format!(
+                            "  1. Look at the definition of the \"{function_name}\"{}.",
+                                get_file_name(source_engine, trait_constraint_span.source_id())
+                                    .map_or("".to_string(), |file_name| format!(" in the \"{file_name}\""))
+                        ));
+                        help.push(format!(
+                            "  2. Detect which exact \"{trait_name}\" is used in the trait constraint in the \"{function_name}\"."
+                        ));
+                        help.push(format!(
+                            "  3. Import that \"{trait_name}\"{}.",
+                            get_file_name(source_engine, function_call_site_span.source_id())
+                                .map_or("".to_string(), |file_name| format!(" into \"{file_name}\""))
+                        ));
+                        help.push(format!("     E.g., assuming it is the first one on the list, use: `use {};`", trait_candidates[0]));
+                    }
+
+                    help
+                },
+            },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we
@@ -1148,4 +1244,14 @@ pub enum TypeNotAllowedReason {
 
     #[error("`str` or a type containing `str` on `const` is not allowed.")]
     StringSliceInConst,
+}
+
+/// Returns the file name (with extension) for the provided `source_id`,
+/// or `None` if the `source_id` is `None` or the file name cannot be
+/// obtained.
+fn get_file_name(source_engine: &SourceEngine, source_id: Option<&SourceId>) -> Option<String> {
+    match source_id {
+        Some(source_id) => source_engine.get_file_name(source_id),
+        None => None,
+    }
 }

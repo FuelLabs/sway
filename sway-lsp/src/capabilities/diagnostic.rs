@@ -117,6 +117,9 @@ impl TryFrom<CompileError> for DiagnosticData {
             CompileError::SymbolNotFound { name, .. } => Ok(DiagnosticData {
                 unknown_symbol_name: Some(name.to_string()),
             }),
+            CompileError::TraitNotFound { name, .. } => Ok(DiagnosticData {
+                unknown_symbol_name: Some(name),
+            }),
             CompileError::UnknownVariable { var_name, .. } => Ok(DiagnosticData {
                 unknown_symbol_name: Some(var_name.to_string()),
             }),

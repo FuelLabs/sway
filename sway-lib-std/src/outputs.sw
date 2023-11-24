@@ -226,15 +226,15 @@ pub fn output_asset_id(index: u64) -> Option<AssetId> {
 }
 
 // TODO: Update to `Identity` when https://github.com/FuelLabs/sway/issues/4569 is resolved
-/// Returns the reciever of the output if it is a `Output::Coin`. Represents the reciever as a `b256`.
+/// Returns the receiver of the output if it is a `Output::Coin`. Represents the receiver as a `b256`.
 ///
 /// # Arguments
 ///
-/// * `index`: [u64] - The index of the output to get the reciever of.
+/// * `index`: [u64] - The index of the output to get the receiver of.
 ///
 /// # Returns
 ///
-/// * [Option<b256>] - The reciever of the output if it is a `Output::Coin`. None otherwise.
+/// * [Option<b256>] - The receiver of the output if it is a `Output::Coin`. None otherwise.
 ///
 /// # Reverts
 ///
@@ -246,8 +246,8 @@ pub fn output_asset_id(index: u64) -> Option<AssetId> {
 /// use std::outputs::output_asset_to;
 ///
 /// fn foo() {
-///     let output_reciever = output_asset_to(0);
-///     log(output_reciever);
+///     let output_receiver = output_asset_to(0);
+///     log(output_receiver);
 /// }
 /// ```
 pub fn output_asset_to(index: u64) -> Option<b256> {

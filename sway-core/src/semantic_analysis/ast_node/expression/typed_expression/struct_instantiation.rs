@@ -7,7 +7,9 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     decl_engine::DeclRefStruct,
     language::{parsed::*, ty, CallPath},
-    semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
+    semantic_analysis::{
+        type_check_context::EnforceTypeArguments, GenericShadowingMode, TypeCheckContext,
+    },
     type_system::*,
 };
 
@@ -128,7 +130,18 @@ pub(crate) fn struct_instantiation(
         }
     }
 
-    type_id.check_type_parameter_bounds(handler, ctx, &span, vec![])?;
+    let mut struct_namespace = ctx.namespace.clone();
+    let mut struct_ctx = ctx
+        .scoped(&mut struct_namespace)
+        .with_generic_shadowing_mode(GenericShadowingMode::Allow);
+
+    // Insert struct type parameter into namespace.
+    // This is required so check_type_parameter_bounds can resolve generic trait type parameters.
+    for type_parameter in struct_decl.type_parameters {
+        type_parameter.insert_into_namespace_self(handler, struct_ctx.by_ref())?;
+    }
+
+    type_id.check_type_parameter_bounds(handler, struct_ctx, &span, None)?;
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::StructExpression {

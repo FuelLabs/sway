@@ -800,6 +800,7 @@ impl ReplaceDecls for TyExpressionVariant {
                             handler,
                             ctx.by_ref(),
                             &method.type_parameters,
+                            method.name.as_str(),
                             &method.name.span(),
                         )?;
                     method.replace_decls(&inner_decl_mapping, handler, ctx)?;

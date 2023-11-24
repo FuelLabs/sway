@@ -6096,6 +6096,7 @@ dependencies = [
  "filecheck",
  "generational-arena",
  "itertools",
+ "once_cell",
  "peg",
  "prettydiff 0.6.4",
  "rustc-hash",
