@@ -98,6 +98,39 @@ impl<T> StorageKey<T> {
         write(self.slot, self.offset, value);
     }
 
+    /// Clears the value at `self`. 
+    ///
+    /// # Number of Storage Accesses
+    ///
+    /// * Clears: `1`
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let r: StorageKey<u64> = StorageKey {
+    ///         slot: 0x0000000000000000000000000000000000000000000000000000000000000000,
+    ///         offset: 2,
+    ///         field_id: 0x0000000000000000000000000000000000000000000000000000000000000000,
+    ///     };
+    ///     r.write(42);
+    ///
+    ///     let cleared = r.clear();
+    ///     assert(cleared);
+    /// }
+    /// ```
+    #[storage(write)]
+    pub fn clear(self) -> bool {
+        if __size_of::<T>() == 0 {
+            // If the generic doesn't have a size, this is an empty struct and nothing can be stored at the slot.
+            // This clears the length value for StorageVec, StorageString, and StorageBytes 
+            // or any other Storage type.
+            clear::<u64>(self.field_id, 0)
+        } else {
+            clear::<T>(self.slot, self.offset)
+        }
+    }
+
     /// Create a new `StorageKey`.
     ///
     /// # Arguments

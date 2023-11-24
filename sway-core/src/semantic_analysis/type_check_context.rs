@@ -23,6 +23,8 @@ use sway_error::{
 use sway_types::{span::Span, Ident, Spanned};
 use sway_utils::iter_prefixes;
 
+use super::GenericShadowingMode;
+
 /// Contextual state tracked and accumulated throughout type-checking.
 pub struct TypeCheckContext<'a> {
     /// The namespace context accumulated throughout type-checking.
@@ -64,6 +66,10 @@ pub struct TypeCheckContext<'a> {
     ///
     /// This is `Sequential` while checking const declarations in functions, otherwise `ItemStyle`.
     const_shadowing_mode: ConstShadowingMode,
+    /// Whether or not a generic type parameters shadows previous generic type parameters.
+    ///
+    /// This is `Disallow` everywhere except while checking type parameters bounds in struct instantiation.
+    generic_shadowing_mode: GenericShadowingMode,
     /// Provides "help text" to `TypeError`s during unification.
     // TODO: We probably shouldn't carry this through the `Context`, but instead pass it directly
     // to `unify` as necessary?
@@ -111,6 +117,7 @@ impl<'a> TypeCheckContext<'a> {
             help_text: "",
             abi_mode: AbiMode::NonAbi,
             const_shadowing_mode: ConstShadowingMode::ItemStyle,
+            generic_shadowing_mode: GenericShadowingMode::Disallow,
             purity: Purity::default(),
             kind: TreeType::Contract,
             disallow_functions: false,
@@ -135,6 +142,7 @@ impl<'a> TypeCheckContext<'a> {
             type_subst: self.type_subst.clone(),
             abi_mode: self.abi_mode.clone(),
             const_shadowing_mode: self.const_shadowing_mode,
+            generic_shadowing_mode: self.generic_shadowing_mode,
             help_text: self.help_text,
             purity: self.purity,
             kind: self.kind.clone(),
@@ -154,6 +162,7 @@ impl<'a> TypeCheckContext<'a> {
             type_subst: self.type_subst,
             abi_mode: self.abi_mode,
             const_shadowing_mode: self.const_shadowing_mode,
+            generic_shadowing_mode: self.generic_shadowing_mode,
             help_text: self.help_text,
             purity: self.purity,
             kind: self.kind,
@@ -224,6 +233,17 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Self {
         Self {
             const_shadowing_mode,
+            ..self
+        }
+    }
+
+    /// Map this `TypeCheckContext` instance to a new one with the given generic shadowing `mode`.
+    pub(crate) fn with_generic_shadowing_mode(
+        self,
+        generic_shadowing_mode: GenericShadowingMode,
+    ) -> Self {
+        Self {
+            generic_shadowing_mode,
             ..self
         }
     }
@@ -299,6 +319,10 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn const_shadowing_mode(&self) -> ConstShadowingMode {
         self.const_shadowing_mode
+    }
+
+    pub(crate) fn generic_shadowing_mode(&self) -> GenericShadowingMode {
+        self.generic_shadowing_mode
     }
 
     pub(crate) fn purity(&self) -> Purity {
@@ -377,8 +401,13 @@ impl<'a> TypeCheckContext<'a> {
         name: Ident,
         item: TyDecl,
     ) -> Result<(), ErrorEmitted> {
-        self.namespace
-            .insert_symbol(handler, name, item, self.const_shadowing_mode)
+        self.namespace.insert_symbol(
+            handler,
+            name,
+            item,
+            self.const_shadowing_mode,
+            self.generic_shadowing_mode,
+        )
     }
 
     /// Get the engines needed for engine threading.
@@ -1276,13 +1305,27 @@ impl<'a> TypeCheckContext<'a> {
         type_id: TypeId,
         trait_name: &CallPath,
     ) -> Vec<ty::TyTraitItem> {
+        self.get_items_for_type_and_trait_name_and_trait_type_arguments(type_id, trait_name, vec![])
+    }
+
+    pub(crate) fn get_items_for_type_and_trait_name_and_trait_type_arguments(
+        &self,
+        type_id: TypeId,
+        trait_name: &CallPath,
+        trait_type_args: Vec<TypeArgument>,
+    ) -> Vec<ty::TyTraitItem> {
         // Use trait name with full path, improves consistency between
         // this get and inserting in `insert_trait_implementation`.
         let trait_name = trait_name.to_fullpath(self.namespace);
 
         self.namespace
             .implemented_traits
-            .get_items_for_type_and_trait_name(self.engines, type_id, &trait_name)
+            .get_items_for_type_and_trait_name_and_trait_type_arguments(
+                self.engines,
+                type_id,
+                &trait_name,
+                trait_type_args,
+            )
     }
 
     /// Given a `value` of type `T` that is able to be monomorphized and a set

@@ -78,4 +78,13 @@ impl SourceEngine {
     pub fn get_module_id(&self, path: &PathBuf) -> Option<ModuleId> {
         self.path_to_module_map.read().unwrap().get(path).cloned()
     }
+
+    /// This function provides the file name (with extension) corresponding to a specified source ID.
+    pub fn get_file_name(&self, source_id: &SourceId) -> Option<String> {
+        self.get_path(source_id)
+            .as_path()
+            .file_name()
+            .map(|file_name| file_name.to_string_lossy())
+            .map(|file_name| file_name.to_string())
+    }
 }
