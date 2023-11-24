@@ -33,15 +33,15 @@ exclude = [
 
 [workspace.dependencies]
 # Dependencies from the `fuel-core` repository:
-fuel-core-client = { version = "0.21.0-rc.1", default-features = false }
-fuel-core-types = { version = "0.21.0-rc.1", default-features = false }
+fuel-core-client = { version = "0.21.0", default-features = false }
+fuel-core-types = { version = "0.21.0", default-features = false }
 
 # Dependencies from the `fuel-vm` repository:
-fuel-asm = "0.42.0"
-fuel-crypto = "0.42.0"
-fuel-types = "0.42.0"
-fuel-tx = "0.42.0"
-fuel-vm = "0.42.0"
+fuel-asm = "0.43.0"
+fuel-crypto = "0.43.0"
+fuel-types = "0.43.0"
+fuel-tx = "0.43.0"
+fuel-vm = "0.43.0"
 
 # Dependencies from the `fuels-rs` repository:
 fuels-core = "0.51.0"
@@ -63,5 +63,5 @@ fuels-core = { git = "https://github.com/FuelLabs/fuels-rs.git", branch = "hal3e
 fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs.git", branch = "hal3e/tx-status-log-and-response" }
 
 # Keep it until release of the `forc-wallet`.
-forc-wallet = { git = "https://github.com/FuelLabs/forc-wallet", branch = "master" }
+forc-wallet = { git = "https://github.com/FuelLabs/forc-wallet", branch = "chore/bump-fuels-rs-fuel-core" }
 fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/tx-status-log-and-response" }
