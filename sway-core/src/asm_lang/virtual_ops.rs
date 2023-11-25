@@ -373,7 +373,7 @@ impl VirtualOp {
             | GTF(_, _, _)
             // Virtual OPs
             | LoadDataId(_, _)
-             => self.def_registers().iter().any(| vreg|  matches!(vreg, VirtualRegister::Constant(_))),
+             => self.def_registers().iter().any(|vreg| matches!(vreg, VirtualRegister::Constant(_))),
             // Memory write and jump
             WQOP(_, _, _, _)
             | WQML(_, _, _, _)
