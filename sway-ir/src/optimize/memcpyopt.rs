@@ -448,7 +448,7 @@ fn local_copy_prop(
                             .get_pointee_type(context)
                             .unwrap();
                         if memcpy_src_sym_type == memcpy_dst_sym_type
-                            && memcpy_dst_sym_type.size_in_bytes(context) == copy_len
+                            && memcpy_dst_sym_type.size(context).in_bytes() == copy_len
                         {
                             replacements.insert(
                                 inst,
@@ -497,7 +497,7 @@ fn local_copy_prop(
                         .filter_map(|sym| {
                             sym.get_type(context)
                                 .get_pointee_type(context)
-                                .map(|pt| pt.size_in_bytes(context))
+                                .map(|pt| pt.size(context).in_bytes())
                         })
                         .max()
                         .unwrap_or(0);
