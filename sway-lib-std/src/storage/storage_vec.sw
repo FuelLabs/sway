@@ -481,34 +481,6 @@ impl<V> StorageKey<StorageVec<V>> {
         read::<u64>(self.field_id, 0).unwrap_or(0) == 0
     }
 
-    /// Sets the len to zero.
-    ///
-    /// # Number of Storage Accesses
-    ///
-    /// * Clears: `1`
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// use std::storage::storage_vec::*;
-    ///
-    /// storage {
-    ///     vec: StorageVec<u64> = StorageVec {}
-    /// }
-    ///
-    /// fn foo() {
-    ///     assert(0 == storage.vec.len());
-    ///     storage.vec.push(5);
-    ///     assert(1 == storage.vec.len());
-    ///     storage.vec.clear();
-    ///     assert(0 == storage.vec.len());
-    /// }
-    /// ```
-    #[storage(write)]
-    pub fn clear(self) {
-        let _ = clear::<u64>(self.field_id, 0);
-    }
-
     /// Swaps two elements.
     ///
     /// # Arguments
