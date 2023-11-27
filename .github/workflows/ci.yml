@@ -311,7 +311,6 @@ jobs:
     name: Compare benchmarks against master
     runs-on: ubuntu-latest
     steps:
-      - uses: actions-rs/toolchain@v1
       - uses: Swatinem/rust-cache@v2
       - uses: actions/checkout@v3
       - uses: boa-dev/criterion-compare-action@v3.2.4
