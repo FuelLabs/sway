@@ -312,7 +312,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: boa-dev/criterion-compare-action@v3
+      - uses: boa-dev/criterion-compare-action@v3.2.4
         with:
           # cwd: "subDirectory (optional)"
           # # Optional. Compare only this package
