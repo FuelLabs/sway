@@ -12,7 +12,7 @@ use dashmap::DashMap;
 use forc_pkg::PackageManifestFile;
 use lsp_types::{Diagnostic, Url};
 use parking_lot::RwLock;
-use std::{path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::{Arc, atomic::{AtomicBool, Ordering}}};
 use tower_lsp::{jsonrpc, Client};
 
 /// `ServerState` is the primary mutable state of the language server
@@ -21,6 +21,8 @@ pub struct ServerState {
     pub(crate) config: Arc<RwLock<Config>>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
     pub(crate) sessions: Arc<Sessions>,
+    pub(crate) retrigger_compilation: Arc<AtomicBool>,
+    pub(crate) is_compiling: RwLock<bool>,
 }
 
 impl Default for ServerState {
@@ -30,6 +32,8 @@ impl Default for ServerState {
             config: Arc::new(RwLock::new(Default::default())),
             keyword_docs: Arc::new(KeywordDocs::new()),
             sessions: Arc::new(Sessions(DashMap::new())),
+            retrigger_compilation: Arc::new(AtomicBool::new(false)),
+            is_compiling: RwLock::new(false),
         }
     }
 }
@@ -88,7 +92,15 @@ impl ServerState {
         version: Option<i32>,
         session: Arc<Session>,
     ) {
-        match run_blocking_parse_project(uri.clone(), version, session.clone()).await {
+        eprintln!("parse_project called from LSP");
+        *self.is_compiling.write() = true;
+
+        match run_blocking_parse_project(
+            uri.clone(), 
+            version, 
+            session.clone(),
+            Some(self.retrigger_compilation.clone())
+        ).await {
             Ok(_) => {
                 // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
                 // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
@@ -108,6 +120,9 @@ impl ServerState {
                 }
             }
         }
+
+        *self.is_compiling.write() = false;
+        self.retrigger_compilation.store(false, Ordering::Relaxed);
     }
 }
 
@@ -116,6 +131,7 @@ async fn run_blocking_parse_project(
     uri: Url,
     version: Option<i32>,
     session: Arc<Session>,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<(), LanguageServerError> {
     // Acquire a permit to parse the project. If there are none available, return false. This way,
     // we avoid publishing the same diagnostics multiple times.
@@ -134,7 +150,7 @@ async fn run_blocking_parse_project(
                 }
             }
         }
-        let parse_result = session::parse_project(&uri, &session.engines.read())?;
+        let parse_result = session::parse_project(&uri, &session.engines.read(), retrigger_compilation)?;
         let (errors, warnings) = parse_result.diagnostics.clone();
         session.write_parse_result(parse_result);
         *diagnostics = get_diagnostics(&warnings, &errors, session.engines.read().se());

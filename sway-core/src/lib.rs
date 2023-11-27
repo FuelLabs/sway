@@ -36,6 +36,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use sway_ast::AttributeDecl;
@@ -470,6 +471,7 @@ pub fn parsed_to_ast(
     build_config: Option<&BuildConfig>,
     package_name: &str,
 ) -> Result<ty::TyProgram, ErrorEmitted> {
+    let time = std::time::Instant::now();
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
         handler,
@@ -478,19 +480,27 @@ pub fn parsed_to_ast(
         initial_namespace,
         package_name,
     );
+    eprintln!("ty::TyProgram::type_check took {:?} seconds", time.elapsed());
 
     let mut typed_program = match typed_program_opt {
         Ok(typed_program) => typed_program,
         Err(e) => return Err(e),
     };
 
+    let time = std::time::Instant::now();
+
     typed_program.check_deprecated(engines, handler);
+    eprintln!("typed_program.check_deprecated {:?} seconds", time.elapsed());
 
     // Analyze the AST for dependency information.
+    let time = std::time::Instant::now();
     let mut ctx = TypeCheckAnalysisContext::new(engines);
     typed_program.type_check_analyze(handler, &mut ctx)?;
+    eprintln!("typed_program.type_check_analyze {:?} seconds", time.elapsed());
 
     // Collect information about the types used in this program
+    let time = std::time::Instant::now();
+
     let types_metadata_result = typed_program
         .collect_types_metadata(handler, &mut CollectTypesMetadataContext::new(engines));
     let types_metadata = match types_metadata_result {
@@ -500,6 +510,10 @@ pub fn parsed_to_ast(
             return Err(e);
         }
     };
+    eprintln!("metadata {:?} seconds", time.elapsed());
+
+
+    let time = std::time::Instant::now();
 
     typed_program
         .logged_types
@@ -522,16 +536,23 @@ pub fn parsed_to_ast(
         ),
         None => (None, None),
     };
+    eprintln!("logging and graph {:?} seconds", time.elapsed());
+
     // Perform control flow analysis and extend with any errors.
-    let _ = perform_control_flow_analysis(
-        handler,
-        engines,
-        &typed_program,
-        print_graph,
-        print_graph_url_format,
-    );
+    // let time = std::time::Instant::now();
+    // let _ = perform_control_flow_analysis(
+    //     handler,
+    //     engines,
+    //     &typed_program,
+    //     print_graph,
+    //     print_graph_url_format,
+    // );
+    // eprintln!("CFG {:?} seconds", time.elapsed());
+
 
     // Evaluate const declarations, to allow storage slots initialization with consts.
+    let time = std::time::Instant::now();
+
     let mut ctx = Context::new(engines.se());
     let mut md_mgr = MetadataManager::default();
     let module = Module::new(&mut ctx, Kind::Contract);
@@ -544,15 +565,23 @@ pub fn parsed_to_ast(
     ) {
         handler.emit_err(e);
     }
+    eprintln!("Const eval {:?} seconds", time.elapsed());
+
 
     // CEI pattern analysis
+    let time = std::time::Instant::now();
+
     let cei_analysis_warnings =
         semantic_analysis::cei_pattern_analysis::analyze_program(engines, &typed_program);
     for warn in cei_analysis_warnings {
         handler.emit_warn(warn);
     }
+    eprintln!("CEI {:?} seconds", time.elapsed());
+
 
     // Check that all storage initializers can be evaluated at compile time.
+    let time = std::time::Instant::now();
+
     let typed_wiss_res = typed_program.get_typed_program_with_initialized_storage_slots(
         handler,
         engines,
@@ -567,6 +596,8 @@ pub fn parsed_to_ast(
             return Err(e);
         }
     };
+    eprintln!("Storage slots {:?} seconds", time.elapsed());
+
 
     // All unresolved types lead to compile errors.
     for err in types_metadata.iter().filter_map(|m| match m {
@@ -594,7 +625,7 @@ pub fn compile_to_ast(
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
     package_name: &str,
-    cancel_rx: Option<Receiver<()>>,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<Programs, ErrorEmitted> {
     let query_engine = engines.qe();
     let mut metrics = PerformanceData::default();
@@ -625,11 +656,12 @@ pub fn compile_to_ast(
         metrics
     );
 
-    if let Some(ref cancel_rx) = cancel_rx {
-        if cancel_rx.try_recv().is_ok() {
-            return Err(handler.cancel());
-        }
-    }
+    // if let Some(ref retrigger_compilation) = retrigger_compilation {
+    //     if retrigger_compilation.load(Ordering::Relaxed) {
+    //         eprintln!("retrigger_compilation 631 !!!!!!!!");
+    //         return Err(handler.cancel());
+    //     }
+    // }
 
     let (lexed_program, mut parsed_program) = match parse_program_opt {
         Ok(modules) => modules,
@@ -639,11 +671,12 @@ pub fn compile_to_ast(
         }
     };
 
-    if let Some(ref cancel_rx) = cancel_rx {
-        if cancel_rx.try_recv().is_ok() {
-            return Err(handler.cancel());
-        }
-    }
+    // if let Some(ref retrigger_compilation) = retrigger_compilation {
+    //     if retrigger_compilation.load(Ordering::Relaxed) {
+    //         eprintln!("retrigger_compilation 652 !!!!!!!!");
+    //         return Err(handler.cancel());
+    //     }
+    // }
 
     // If tests are not enabled, exclude them from `parsed_program`.
     if build_config
@@ -653,6 +686,7 @@ pub fn compile_to_ast(
         parsed_program.exclude_tests();
     }
 
+    let now = std::time::Instant::now();
     // Type check (+ other static analysis) the CST to a typed AST.
     let typed_res = time_expr!(
         "parse the concrete syntax tree (CST) to a typed AST",
@@ -668,12 +702,14 @@ pub fn compile_to_ast(
         build_config,
         metrics
     );
+    eprintln!("parsed_to_ast took {:?} seconds", now.elapsed());
 
-    if let Some(cancel_rx) = cancel_rx {
-        if cancel_rx.try_recv().is_ok() {
-            return Err(handler.cancel());
-        }
-    }
+    // if let Some(retrigger_compilation) = retrigger_compilation {
+    //     if retrigger_compilation.load(Ordering::Relaxed) {
+    //         eprintln!("retrigger_compilation 688 !!!!!!!!");
+    //         return Err(handler.cancel());
+    //     }
+    // }
 
     handler.dedup();
 
@@ -702,7 +738,6 @@ pub fn compile_to_asm(
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
     package_name: &str,
-    cancel_rx: Option<Receiver<()>>,
 ) -> Result<CompiledAsm, ErrorEmitted> {
     let ast_res = compile_to_ast(
         handler,
@@ -711,7 +746,7 @@ pub fn compile_to_asm(
         initial_namespace,
         Some(&build_config),
         package_name,
-        cancel_rx,
+        None,
     )?;
     ast_to_asm(handler, engines, &ast_res, &build_config)
 }
@@ -841,7 +876,6 @@ pub fn compile_to_bytecode(
     build_config: BuildConfig,
     source_map: &mut SourceMap,
     package_name: &str,
-    cancel_rx: Option<Receiver<()>>,
 ) -> Result<CompiledBytecode, ErrorEmitted> {
     let asm_res = compile_to_asm(
         handler,
@@ -850,7 +884,6 @@ pub fn compile_to_bytecode(
         initial_namespace,
         build_config,
         package_name,
-        cancel_rx,
     )?;
     asm_to_bytecode(handler, asm_res, source_map, engines.se())
 }

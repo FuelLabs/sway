@@ -30,7 +30,7 @@ use std::{
     io::Write,
     ops::Deref,
     path::PathBuf,
-    sync::{atomic::Ordering, Arc},
+    sync::{atomic::{Ordering, AtomicBool}, Arc},
     vec,
 };
 use sway_core::{
@@ -446,17 +446,23 @@ pub(crate) fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
 pub fn compile(
     uri: &Url,
     engines: &Engines,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
     let build_plan = build_plan(uri)?;
     let tests_enabled = true;
-    pkg::check(
+    let now = std::time::Instant::now();
+    let res = pkg::check(
         &build_plan,
         BuildTarget::default(),
         true,
         tests_enabled,
         engines,
+        retrigger_compilation,
     )
-    .map_err(LanguageServerError::FailedToCompile)
+    .map_err(LanguageServerError::FailedToCompile);
+
+    eprintln!("Forc check took: {:?} seconds", now.elapsed());
+    res
 }
 
 pub struct TraversalResult {
@@ -543,8 +549,12 @@ pub fn traverse(
 }
 
 /// Parses the project and returns true if the compiler diagnostics are new and should be published.
-pub fn parse_project(uri: &Url, engines: &Engines) -> Result<ParseResult, LanguageServerError> {
-    let results = compile(uri, engines)?;
+pub fn parse_project(
+    uri: &Url, 
+    engines: &Engines,
+    retrigger_compilation: Option<Arc<AtomicBool>>
+) -> Result<ParseResult, LanguageServerError> {
+    let results = compile(uri, engines, retrigger_compilation)?;
     let TraversalResult {
         diagnostics,
         programs,

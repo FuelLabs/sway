@@ -23,7 +23,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
     str::FromStr,
-    sync::Arc,
+    sync::{Arc, mpsc::Receiver, atomic::AtomicBool},
 };
 pub use sway_core::Programs;
 use sway_core::{
@@ -2584,7 +2584,10 @@ pub fn check(
     terse_mode: bool,
     include_tests: bool,
     engines: &Engines,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> anyhow::Result<Vec<(Option<Programs>, Handler)>> {
+    eprintln!("Forc Package Check triggered.");
+
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     // During `check`, we don't compile so this stays empty.
@@ -2639,7 +2642,7 @@ pub fn check(
             dep_namespace,
             Some(&build_config),
             &pkg.name,
-            None,
+            retrigger_compilation.clone(),
         );
 
         let programs = match programs_res.as_ref() {
@@ -2681,6 +2684,8 @@ pub fn check(
     if results.is_empty() {
         bail!("unable to check sway program: build plan contains no packages")
     }
+
+    eprintln!("Forc Package Check Got to the end with no cancellation.");
 
     Ok(results)
 }
