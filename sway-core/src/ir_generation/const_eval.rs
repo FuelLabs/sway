@@ -1133,6 +1133,7 @@ mod tests {
             core_lib,
             None,
             "test",
+            None,
         );
 
         let (errors, _warnings) = handler.consume();

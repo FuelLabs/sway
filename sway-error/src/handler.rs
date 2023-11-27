@@ -34,6 +34,11 @@ impl Handler {
         ErrorEmitted { _priv: () }
     }
 
+    // TODO
+    pub fn cancel(&self) -> ErrorEmitted {
+        ErrorEmitted { _priv: () }
+    }
+
     /// Emit the warning `warn`.
     pub fn emit_warn(&self, warn: CompileWarning) {
         self.inner.borrow_mut().warnings.push(warn);

@@ -1778,6 +1778,7 @@ pub fn compile(
             namespace,
             Some(&sway_build_config),
             &pkg.name,
+            None,
         ),
         Some(sway_build_config.clone()),
         metrics
@@ -2638,6 +2639,7 @@ pub fn check(
             dep_namespace,
             Some(&build_config),
             &pkg.name,
+            None,
         );
 
         let programs = match programs_res.as_ref() {

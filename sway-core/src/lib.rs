@@ -36,6 +36,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use sway_ast::AttributeDecl;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -593,6 +594,7 @@ pub fn compile_to_ast(
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
     package_name: &str,
+    cancel_rx: Option<Receiver<()>>,
 ) -> Result<Programs, ErrorEmitted> {
     let query_engine = engines.qe();
     let mut metrics = PerformanceData::default();
@@ -623,6 +625,12 @@ pub fn compile_to_ast(
         metrics
     );
 
+    if let Some(ref cancel_rx) = cancel_rx {
+        if cancel_rx.try_recv().is_ok() {
+            return Err(handler.cancel());
+        }
+    }
+
     let (lexed_program, mut parsed_program) = match parse_program_opt {
         Ok(modules) => modules,
         Err(e) => {
@@ -630,6 +638,12 @@ pub fn compile_to_ast(
             return Err(e);
         }
     };
+
+    if let Some(ref cancel_rx) = cancel_rx {
+        if cancel_rx.try_recv().is_ok() {
+            return Err(handler.cancel());
+        }
+    }
 
     // If tests are not enabled, exclude them from `parsed_program`.
     if build_config
@@ -654,6 +668,12 @@ pub fn compile_to_ast(
         build_config,
         metrics
     );
+
+    if let Some(cancel_rx) = cancel_rx {
+        if cancel_rx.try_recv().is_ok() {
+            return Err(handler.cancel());
+        }
+    }
 
     handler.dedup();
 
@@ -682,6 +702,7 @@ pub fn compile_to_asm(
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
     package_name: &str,
+    cancel_rx: Option<Receiver<()>>,
 ) -> Result<CompiledAsm, ErrorEmitted> {
     let ast_res = compile_to_ast(
         handler,
@@ -690,6 +711,7 @@ pub fn compile_to_asm(
         initial_namespace,
         Some(&build_config),
         package_name,
+        cancel_rx,
     )?;
     ast_to_asm(handler, engines, &ast_res, &build_config)
 }
@@ -819,6 +841,7 @@ pub fn compile_to_bytecode(
     build_config: BuildConfig,
     source_map: &mut SourceMap,
     package_name: &str,
+    cancel_rx: Option<Receiver<()>>,
 ) -> Result<CompiledBytecode, ErrorEmitted> {
     let asm_res = compile_to_asm(
         handler,
@@ -827,6 +850,7 @@ pub fn compile_to_bytecode(
         initial_namespace,
         build_config,
         package_name,
+        cancel_rx,
     )?;
     asm_to_bytecode(handler, asm_res, source_map, engines.se())
 }
