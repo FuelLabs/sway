@@ -11,7 +11,6 @@ use crate::{
     },
     decl_engine::DeclRef,
     fuel_prelude::fuel_asm::GTFArgs,
-    size_bytes_in_words, size_bytes_round_up_to_word_alignment,
 };
 
 use sway_ir::*;
@@ -475,7 +474,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         .get_type(self.context)
                         .map(|ty| ty.get_pointee_type(self.context).unwrap_or(ty))
                         .unwrap();
-                    let arg_type_size_bytes = ir_type_size_in_bytes(self.context, &arg_type);
+                    let arg_type_size = arg_type.size(self.context);
                     if self.is_copy_type(&arg_type) {
                         if arg_word_offset > compiler_constants::TWELVE_BITS {
                             let offs_reg = self.reg_seqr.next();
@@ -489,7 +488,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                                 owning_span: None,
                             });
 
-                            if arg_type.size_in_bytes(self.context) == 1 {
+                            if arg_type_size.in_bytes() == 1 {
                                 self.cur_bytecode.push(Op {
                                     opcode: Either::Left(VirtualOp::LB(
                                         current_arg_reg.clone(),
@@ -510,7 +509,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                                     owning_span: None,
                                 });
                             }
-                        } else if arg_type.size_in_bytes(self.context) == 1 {
+                        } else if arg_type_size.in_bytes() == 1 {
                             self.cur_bytecode.push(Op {
                                 opcode: Either::Left(VirtualOp::LB(
                                     current_arg_reg.clone(),
@@ -545,7 +544,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         );
                     }
 
-                    arg_word_offset += size_bytes_in_words!(arg_type_size_bytes);
+                    arg_word_offset += arg_type_size.in_words();
                     self.reg_map.insert(*val, current_arg_reg);
                 }
 
@@ -754,10 +753,12 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     );
                 }
                 // All arguments must fit in the register (thanks to the demotion passes).
-                assert!(args.iter().all(|arg| ir_type_size_in_bytes(
-                    self.context,
-                    &arg.get_type(self.context).unwrap()
-                ) <= 8));
+                assert!(args.iter().all(|arg| arg
+                    .get_type(self.context)
+                    .unwrap()
+                    .size(self.context)
+                    .in_words()
+                    == 1));
             }
         }
 
@@ -766,61 +767,44 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         // Otherwise they go in runtime allocated space, either a register or on the stack.
         //
         // Stack offsets are in words to both enforce alignment and simplify use with LW/SW.
-        let (stack_base_words, init_mut_vars) = function.locals_iter(self.context).fold(
-            (0, Vec::new()),
-            |(stack_base_words, mut init_mut_vars), (_name, ptr)| {
-                if let (false, Some(constant)) = (
-                    ptr.is_mutable(self.context),
-                    ptr.get_initializer(self.context),
-                ) {
-                    let data_id = self.data_section.insert_data_value(Entry::from_constant(
-                        self.context,
-                        constant,
-                        None,
-                        None,
-                    ));
-                    self.ptr_map.insert(*ptr, Storage::Data(data_id));
-                    (stack_base_words, init_mut_vars)
-                } else {
-                    self.ptr_map.insert(*ptr, Storage::Stack(stack_base_words));
-
-                    let ptr_ty = ptr.get_inner_type(self.context);
-                    let var_byte_size = ir_type_size_in_bytes(self.context, &ptr_ty);
-                    let var_word_size = match ptr_ty.get_content(self.context) {
-                        TypeContent::Uint(256) => 4,
-                        TypeContent::Unit
-                        | TypeContent::Bool
-                        | TypeContent::Uint(_)
-                        | TypeContent::Pointer(_) => 1,
-                        TypeContent::Slice => 2,
-                        TypeContent::B256 => 4,
-                        TypeContent::StringSlice => 2,
-                        TypeContent::StringArray(n) => size_bytes_round_up_to_word_alignment!(n),
-                        TypeContent::Array(..) | TypeContent::Struct(_) | TypeContent::Union(_) => {
-                            size_bytes_in_words!(ir_type_size_in_bytes(self.context, &ptr_ty))
-                        }
-                    };
-
-                    if let Some(constant) = ptr.get_initializer(self.context) {
+        let (stack_base_words, init_mut_vars) =
+            function.locals_iter(self.context).fold(
+                (0, Vec::new()),
+                |(stack_base_words, mut init_mut_vars), (_name, ptr)| {
+                    if let (false, Some(constant)) = (
+                        ptr.is_mutable(self.context),
+                        ptr.get_initializer(self.context),
+                    ) {
                         let data_id = self.data_section.insert_data_value(Entry::from_constant(
                             self.context,
                             constant,
                             None,
                             None,
                         ));
+                        self.ptr_map.insert(*ptr, Storage::Data(data_id));
+                        (stack_base_words, init_mut_vars)
+                    } else {
+                        self.ptr_map.insert(*ptr, Storage::Stack(stack_base_words));
 
-                        init_mut_vars.push(InitMutVars {
-                            stack_base_words,
-                            var_word_size,
-                            var_byte_size,
-                            data_id,
-                        });
+                        let ptr_ty = ptr.get_inner_type(self.context);
+                        let var_size = ptr_ty.size(self.context);
+
+                        if let Some(constant) = ptr.get_initializer(self.context) {
+                            let data_id = self.data_section.insert_data_value(
+                                Entry::from_constant(self.context, constant, None, None),
+                            );
+
+                            init_mut_vars.push(InitMutVars {
+                                stack_base_words,
+                                var_size: var_size.clone(),
+                                data_id,
+                            });
+                        }
+
+                        (stack_base_words + var_size.in_words(), init_mut_vars)
                     }
-
-                    (stack_base_words + var_word_size, init_mut_vars)
-                }
-            },
-        );
+                },
+            );
 
         // Reserve space on the stack (in bytes) for all our locals which require it.  Firstly save
         // the current $sp.
@@ -863,8 +847,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         // Initialise that stack variables which requires it.
         for InitMutVars {
             stack_base_words,
-            var_word_size,
-            var_byte_size,
+            var_size,
             data_id,
         } in init_mut_vars
         {
@@ -919,9 +902,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 });
             }
 
-            if var_word_size == 1 {
+            if var_size.in_words() == 1 {
                 // Initialise by value.
-                if var_byte_size == 1 {
+                if var_size.in_bytes() == 1 {
                     self.cur_bytecode.push(Op {
                         opcode: Either::Left(VirtualOp::SB(
                             dst_reg,
@@ -944,14 +927,13 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 }
             } else {
                 // Initialise by reference.
-                let var_byte_size = var_word_size * 8;
-                assert!(var_byte_size <= compiler_constants::TWELVE_BITS);
+                assert!(var_size.in_bytes_aligned() <= compiler_constants::TWELVE_BITS);
                 self.cur_bytecode.push(Op {
                     opcode: Either::Left(VirtualOp::MCPI(
                         dst_reg,
                         VirtualRegister::Constant(ConstantRegister::Scratch),
                         VirtualImmediate12 {
-                            value: var_byte_size as u16,
+                            value: var_size.in_bytes_aligned() as u16,
                         },
                     )),
                     comment: "copy initializer from data section to local variable".to_owned(),
@@ -994,7 +976,6 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
 struct InitMutVars {
     stack_base_words: u64,
-    var_word_size: u64,
-    var_byte_size: u64,
+    var_size: TypeSize,
     data_id: DataId,
 }

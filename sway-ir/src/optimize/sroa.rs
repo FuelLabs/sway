@@ -56,7 +56,7 @@ fn split_aggregate(
             }
         }
         if !super::target_fuel::is_demotable_type(context, &ty) {
-            let ty_size: u32 = ty.size_in_bytes(context).try_into().unwrap();
+            let ty_size: u32 = ty.size(context).in_bytes().try_into().unwrap();
             let name = aggr_base_name.clone() + &base_off.to_string();
             let scalarised_local =
                 function.new_unique_local_var(context, name, ty, initializer, false);
@@ -163,7 +163,7 @@ pub fn sroa(
                     base_index: &mut Vec<u32>,
                 ) {
                     if !super::target_fuel::is_demotable_type(context, &ty) {
-                        let ty_size: u32 = ty.size_in_bytes(context).try_into().unwrap();
+                        let ty_size: u32 = ty.size(context).in_bytes().try_into().unwrap();
                         details.push(ElmDetail {
                             offset: *base_off,
                             r#type: ty,
