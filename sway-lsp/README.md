@@ -1,9 +1,3 @@
-<picture>
-   <source media="(prefers-color-scheme: light)" srcset="./images/light/sway.png">
-   <source media="(prefers-color-scheme: dark)" srcset="./images/dark/sway.png">
-   <img alt="Sway VSCode Plugin" src="./images/dark/sway.png">
-</picture>
-
 [![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/FuelLabs.sway-vscode-plugin)](https://marketplace.visualstudio.com/items?itemName=FuelLabs.sway-vscode-plugin)
 [![discord](https://img.shields.io/badge/chat%20on-discord-orange?&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/xfpK4Pe)
 
