@@ -1,6 +1,6 @@
 //! [`Constant`] is a typed constant value.
 
-use crate::{context::Context, irtype::Type, pretty::DebugWithContext, value::Value};
+use crate::{context::Context, irtype::Type, pretty::DebugWithContext, value::Value, Padding};
 use sway_types::u256::U256;
 
 /// A [`Type`] and constant value, including [`ConstantValue::Undef`] for uninitialized constants.
@@ -25,6 +25,11 @@ pub enum ConstantValue {
     Array(Vec<Constant>),
     Struct(Vec<Constant>),
 }
+
+/// A [Constant] with its required [Padding].
+/// If the [Padding] is `None` the default [Padding] for the
+/// [Constant] type is expected.
+type ConstantWithPadding<'a> = (&'a Constant, Option<Padding>);
 
 impl Constant {
     pub fn new_unit(context: &Context) -> Self {
@@ -134,6 +139,113 @@ impl Constant {
     pub fn get_struct(context: &mut Context, value: Constant) -> Value {
         assert!(value.ty.is_struct(context));
         Value::new_constant(context, value)
+    }
+
+    /// Returns the tag and the value of an enum constant if `self` is an enum constant,
+    /// otherwise `None`.
+    fn extract_enum_tag_and_value(&self, context: &Context) -> Option<(&Constant, &Constant)> {
+        if !self.ty.is_enum(context) {
+            return None;
+        }
+
+        let elems = match &self.value {
+            ConstantValue::Struct(elems) if elems.len() == 2 => elems,
+            _ => return None, // This should never be the case. If we have an enum, it is a struct with exactly two elements.
+        };
+
+        Some((&elems[0], &elems[1]))
+    }
+
+    /// Returns enum tag and value as [Constant]s, together with their [Padding]s,
+    /// if `self` is an enum [Constant], otherwise `None`.
+    pub fn enum_tag_and_value_with_paddings(
+        &self,
+        context: &Context,
+    ) -> Option<(ConstantWithPadding, ConstantWithPadding)> {
+        if !self.ty.is_enum(context) {
+            return None;
+        }
+
+        let tag_and_value_with_paddings = self
+            .elements_of_aggregate_with_padding(context)
+            .expect("Enums are aggregates.");
+
+        debug_assert!(tag_and_value_with_paddings.len() == 2, "In case of enums, `elements_of_aggregate_with_padding` must return exactly two elements, the tag and the value.");
+
+        let tag = tag_and_value_with_paddings[0].clone();
+        let value = tag_and_value_with_paddings[1].clone();
+
+        Some((tag, value))
+    }
+
+    /// Returns elements of an array with the expected padding for each array element
+    /// if `self` is an array [Constant], otherwise `None`.
+    pub fn array_elements_with_padding(
+        &self,
+        context: &Context,
+    ) -> Option<Vec<ConstantWithPadding>> {
+        if !self.ty.is_array(context) {
+            return None;
+        }
+
+        self.elements_of_aggregate_with_padding(context)
+    }
+
+    /// Returns fields of a struct with the expected padding for each field
+    /// if `self` is a struct [Constant], otherwise `None`.
+    pub fn struct_fields_with_padding(
+        &self,
+        context: &Context,
+    ) -> Option<Vec<ConstantWithPadding>> {
+        if !self.ty.is_struct(context) {
+            return None;
+        }
+
+        self.elements_of_aggregate_with_padding(context)
+    }
+
+    /// Returns elements of an aggregate constant with the expected padding for each element
+    /// if `self` is an aggregate (struct, enum, or array), otherwise `None`.
+    /// If the returned [Padding] is `None` the default [Padding] for the type
+    /// is expected.
+    /// If the aggregate constant is an enum, the returned [Vec] has exactly two elements,
+    /// the first being the tag and the second the value of the enum variant.
+    fn elements_of_aggregate_with_padding(
+        &self,
+        context: &Context,
+    ) -> Option<Vec<(&Constant, Option<Padding>)>> {
+        // We need a special handling in case of enums.
+        if let Some((tag, value)) = self.extract_enum_tag_and_value(context) {
+            let tag_with_padding = (tag, None);
+
+            // Enum variants are left padded to the word boundary, and the size
+            // of each variant is the size of the union.
+            // We know we have an enum here, means exactly two fields in the struct
+            // second of which is the union.
+            let target_size = self.ty.get_field_types(context)[1]
+                .size(context)
+                .in_bytes_aligned() as usize;
+
+            let value_with_padding = (value, Some(Padding::Left { target_size }));
+
+            return Some(vec![tag_with_padding, value_with_padding]);
+        }
+
+        match &self.value {
+            // Individual array elements do not have additional padding.
+            ConstantValue::Array(elems) => Some(elems.iter().map(|el| (el, None)).collect()),
+            // Each struct field is right padded to the word boundary.
+            ConstantValue::Struct(elems) => Some(
+                elems
+                    .iter()
+                    .map(|el| {
+                        let target_size = el.ty.size(context).in_bytes_aligned() as usize;
+                        (el, Some(Padding::Right { target_size }))
+                    })
+                    .collect(),
+            ),
+            _ => None,
+        }
     }
 
     /// Compare two Constant values. Can't impl PartialOrder because of context.

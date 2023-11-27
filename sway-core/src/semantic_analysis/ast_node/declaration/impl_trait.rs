@@ -343,7 +343,7 @@ impl TyImplTrait {
             handler,
             ctx.by_ref(),
             &implementing_for.span,
-            vec![],
+            None,
         )?;
 
         // Unify the "self" type param and the type that we are implementing for
@@ -627,7 +627,7 @@ fn type_check_trait_implementation(
             handler,
             ctx.by_ref(),
             &type_arg.span(),
-            type_param.trait_constraints.clone(),
+            Some(type_param.clone()),
         )?;
     }
 
@@ -1425,7 +1425,13 @@ fn handle_supertraits(
 
             match ctx
                 .namespace
-                .resolve_call_path(handler, engines, &supertrait.name, ctx.self_type())
+                // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
+                .resolve_call_path(
+                    &Handler::default(),
+                    engines,
+                    &supertrait.name,
+                    ctx.self_type(),
+                )
                 .ok()
             {
                 Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {

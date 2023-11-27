@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-1B1FFF53812F7D31"
+
+[[package]]
+name = "std"
+source = "path+from-root-1B1FFF53812F7D31"
+dependencies = ["core"]
+
+[[package]]
+name = "where_clause_generic_traits"
+source = "member"
+dependencies = ["std"]

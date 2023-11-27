@@ -44,8 +44,39 @@ pub struct TyFunctionDecl {
 }
 
 impl DebugWithEngines for TyFunctionDecl {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, _engines: &Engines) -> fmt::Result {
-        write!(f, "{:?}", self.name)
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(
+            f,
+            "{}{:?}{}({}):{}",
+            if self.is_trait_method_dummy {
+                "dummy ".to_string()
+            } else {
+                "".to_string()
+            },
+            self.name,
+            if !self.type_parameters.is_empty() {
+                format!(
+                    "<{}>",
+                    self.type_parameters
+                        .iter()
+                        .map(|p| format!("{:?}", engines.help_out(p.initial_type_id)))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            } else {
+                "".to_string()
+            },
+            self.parameters
+                .iter()
+                .map(|p| format!(
+                    "{}:{}",
+                    p.name.as_str(),
+                    engines.help_out(p.type_argument.initial_type_id)
+                ))
+                .collect::<Vec<_>>()
+                .join(", "),
+            engines.help_out(self.return_type.initial_type_id),
+        )
     }
 }
 

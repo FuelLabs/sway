@@ -145,21 +145,6 @@ fn compile_module_to_asm(
 
 // -------------------------------------------------------------------------------------------------
 
-#[macro_export]
-macro_rules! size_bytes_in_words {
-    ($bytes_expr: expr) => {
-        ($bytes_expr + 7) / 8
-    };
-}
-
-// This is a mouthful...
-#[macro_export]
-macro_rules! size_bytes_round_up_to_word_alignment {
-    ($bytes_expr: expr) => {
-        ($bytes_expr + 7) - (($bytes_expr + 7) % 8)
-    };
-}
-
 // NOTE: For stack storage we need to be aware:
 // - sizes are in bytes; CFEI reserves in bytes.
 // - offsets are in 64-bit words; LW/SW reads/writes to word offsets. XXX Wrap in a WordOffset struct.
@@ -173,15 +158,4 @@ pub(super) enum Storage {
 pub enum StateAccessType {
     Read,
     Write,
-}
-
-pub(crate) fn ir_type_size_in_bytes(context: &Context, ty: &Type) -> u64 {
-    ty.size_in_bytes(context)
-}
-
-pub(crate) fn ir_type_str_size_in_bytes(context: &Context, ty: &Type) -> u64 {
-    match ty.get_content(context) {
-        TypeContent::StringArray(n) => *n,
-        _ => 0,
-    }
 }
