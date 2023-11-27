@@ -2126,7 +2126,7 @@ dependencies = [
 [[package]]
 name = "forc-wallet"
 version = "0.3.0"
-source = "git+https://github.com/FuelLabs/forc-wallet?branch=chore/bump-fuels-rs-fuel-core#df93eff819b846d271c0ecfe2902efaa70cc9095"
+source = "git+https://github.com/FuelLabs/forc-wallet?branch=chore/bump-fuels-rs-fuel-core#52e246adbe83affa9205ca51c169febb0d238076"
 dependencies = [
  "anyhow",
  "clap 4.4.8",
