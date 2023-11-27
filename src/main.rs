@@ -152,7 +152,7 @@ async fn cmd_step(state: &mut State, mut args: Vec<String>) -> Result<(), Box<dy
         .client
         .set_single_stepping(
             &state.session_id,
-            args.get(0)
+            args.first()
                 .map(|v| !["off", "no", "disable"].contains(&v.as_str()))
                 .unwrap_or(true),
         )
@@ -198,21 +198,24 @@ async fn cmd_registers(state: &mut State, mut args: Vec<String>) -> Result<(), B
 
     if args.is_empty() {
         for r in 0..VM_REGISTER_COUNT {
-            let value = state.client.register(&state.session_id, r).await?;
+            let value = state.client.register(&state.session_id, r as u32).await?;
             println!("reg[{:#x}] = {:<8} # {}", r, value, register_name(r));
         }
     } else {
         for arg in &args {
             if let Some(v) = parse_int(arg) {
                 if v < VM_REGISTER_COUNT {
-                    let value = state.client.register(&state.session_id, v).await?;
+                    let value = state.client.register(&state.session_id, v as u32).await?;
                     println!("reg[{:#02x}] = {:<8} # {}", v, value, register_name(v));
                 } else {
                     println!("Register index too large {}", v);
                     return Ok(());
                 }
             } else if let Some(index) = names::register_index(arg) {
-                let value = state.client.register(&state.session_id, index).await?;
+                let value = state
+                    .client
+                    .register(&state.session_id, index as u32)
+                    .await?;
                 println!("reg[{:#02x}] = {:<8} # {}", index, value, arg);
             } else {
                 println!("Unknown register name {}", arg);
@@ -245,7 +248,7 @@ async fn cmd_memory(state: &mut State, mut args: Vec<String>) -> Result<(), Box<
 
     let mem = state
         .client
-        .memory(&state.session_id, offset, limit)
+        .memory(&state.session_id, offset as u32, limit as u32)
         .await?;
 
     for (i, chunk) in mem.chunks(WORD_SIZE).enumerate() {

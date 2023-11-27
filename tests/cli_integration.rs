@@ -9,6 +9,8 @@ fn test_cli() {
     let port = portpicker::pick_unused_port().expect("No ports free");
 
     let mut fuel_core = Command::new("fuel-core")
+        .arg("run")
+        .arg("--debug")
         .arg("--db-type")
         .arg("in-memory")
         .arg("--port")
@@ -43,7 +45,7 @@ fn test_cli() {
     cmd.send_line("step on").unwrap();
     cmd.exp_regex(r">> ").unwrap();
     cmd.send_line("continue").unwrap();
-    cmd.exp_regex(r"Stopped on breakpoint at address 4 of contract 0x0{64}")
+    cmd.exp_regex(r"Stopped on breakpoint at address 16 of contract 0x0{64}")
         .unwrap();
     cmd.send_line("step off").unwrap();
     cmd.exp_regex(r">> ").unwrap();

@@ -58,10 +58,10 @@ jobs:
         args: --verbose --all-targets
 
     - name: Install fuel-core for tests
-      uses: baptiste0928/cargo-install@v1
+      uses: baptiste0928/cargo-install@v2
       with:
-        crate: fuel-core
-        version: "0.8"
+        crate: fuel-core-bin
+        version: "0.21"
 
     - name: Run tests
       uses: actions-rs/cargo@v1
