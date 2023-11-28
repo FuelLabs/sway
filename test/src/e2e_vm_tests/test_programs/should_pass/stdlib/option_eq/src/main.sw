@@ -1,87 +1,131 @@
 script;
 
 fn main() -> bool {
-    // Test with integers
-    let option1 = Option::Some(10);
-    let option2 = Option::Some(10);
-    let option3 = Option::Some(20);
-    let none_option: Option<u64> = Option::None;
+    // Test with u8
+    let u8_option1 = Option::<u8>::Some(10);
+    let u8_option2 = Option::<u8>::Some(10);
+    let u8_option3 = Option::<u8>::Some(20);
+    let u8_none_option: Option<u8> = Option::None;
 
-    // Eq is True
-    assert(option1 == option2);
-    assert(option2 == option1);
+    // Eq tests
+    assert(u8_option1 == u8_option1);
+    assert(u8_option1 == u8_option2);
 
-    assert(none_option == Option::None);
-    assert(Option::<u64>::None == none_option);
+    // Neq tests
+    assert(u8_option1 != u8_option3);
+    assert(u8_option1 != u8_none_option);
 
-    // Eq is False
-    assert(!(option1 == option3));
-    assert(!(option3 == option1));
+    // None tests
+    assert(u8_none_option == Option::None);
+    assert(Option::<u8>::None == u8_none_option);
 
-    assert(!(option1 == Option::<u64>::None));
-    assert(!(Option::<u64>::None == option1));
+    // Test with u16
+    let u16_option1 = Option::<u16>::Some(10);
+    let u16_option2 = Option::<u16>::Some(10);
+    let u16_option3 = Option::<u16>::Some(20);
+    let u16_none_option: Option<u16> = Option::None;
 
-    assert(!(none_option == option1));
-    assert(!(option1 == none_option));
+    // Eq tests
+    assert(u16_option1 == u16_option1);
+    assert(u16_option1 == u16_option2);
 
-    // Neq is True
-    assert(option1 != option3);
-    assert(option3 != option1);
+    // Neq tests
+    assert(u16_option1 != u16_option3);
+    assert(u16_option1 != u16_none_option);
 
-    assert(option1 != Option::<u64>::None);
-    assert(Option::<u64>::None != option1);
+    // None tests
+    assert(u16_none_option == Option::None);
+    assert(Option::<u16>::None == u16_none_option);
 
-    assert(none_option != option1);
-    assert(option1 != none_option);
+    // Test with u32
+    let u32_option1 = Option::<u32>::Some(10);
+    let u32_option2 = Option::<u32>::Some(10);
+    let u32_option3 = Option::<u32>::Some(20);
+    let u32_none_option: Option<u32> = Option::None;
 
-    // Neq is False
-    assert(!(option1 != option2));
-    assert(!(option2 != option1));
+    // Eq tests
+    assert(u32_option1 == u32_option1);
+    assert(u32_option1 == u32_option2);
 
-    assert(!(none_option != Option::<u64>::None));
-    assert(!(Option::<u64>::None != none_option));
+    // Neq tests
+    assert(u32_option1 != u32_option3);
+    assert(u32_option1 != u32_none_option);
 
-    // Test with booleans
+    // None tests
+    assert(u32_none_option == Option::None);
+    assert(Option::<u32>::None == u32_none_option);
+
+    // Test with u64
+    let u64_option1 = Option::<u64>::Some(10);
+    let u64_option2 = Option::<u64>::Some(10);
+    let u64_option3 = Option::<u64>::Some(20);
+    let u64_none_option: Option<u64> = Option::None;
+
+    // Eq tests
+    assert(u64_option1 == u64_option1);
+    assert(u64_option1 == u64_option2);
+
+    // Neq tests
+    assert(u64_option1 != u64_option3);
+    assert(u64_option1 != u64_none_option);
+
+    // None tests
+    assert(u64_none_option == Option::None);
+    assert(Option::<u64>::None == u64_none_option);
+
+    // Test with bool
     let bool_option1 = Option::Some(true);
     let bool_option2 = Option::Some(true);
     let bool_option3 = Option::Some(false);
-    let none_bool_option: Option<bool> = Option::None;
+    let bool_none_option: Option<bool> = Option::None;
 
-    // Bool equality tests
+    // Eq tests
+    assert(bool_option1 == bool_option1);
     assert(bool_option1 == bool_option2);
-    assert(bool_option2 == bool_option1);
 
-    assert(bool_option1 == Option::Some(true));
-    assert(Option::Some(true) == bool_option1);
-
-    assert(bool_option2 == Option::Some(true));
-    assert(Option::Some(true) == bool_option2);
-
-    assert(!(bool_option3 == Option::Some(true)));
-    assert(!(Option::Some(true) == bool_option3));
-
-    // Bool None tests
-    assert(none_bool_option == Option::<bool>::None);
-    assert(Option::<bool>::None == none_bool_option);
-
-    assert(!(bool_option1 == none_bool_option));
-    assert(!(none_bool_option == bool_option1));
-
-    assert(!(bool_option3 == none_bool_option));
-    assert(!(none_bool_option == bool_option3));
-
-    // Bool inequality tests
+    // Neq tests
     assert(bool_option1 != bool_option3);
-    assert(bool_option3 != bool_option1);
+    assert(bool_option1 != bool_none_option);
 
-    assert(bool_option1 != none_bool_option);
-    assert(none_bool_option != bool_option1);
+    // None tests
+    assert(bool_none_option == Option::None);
+    assert(Option::<bool>::None == bool_none_option);
 
-    assert(!(bool_option1 != bool_option2));
-    assert(!(bool_option2 != bool_option1));
+    // Test with str
+    let str_option1 = Option::<str>::Some("fuel");
+    let str_option2 = Option::<str>::Some("fuel");
+    let str_option3 = Option::<str>::Some("sway");
+    let str_none_option: Option<str> = Option::None;
 
-    assert(!(none_bool_option != Option::<bool>::None));
-    assert(!(Option::<bool>::None != none_bool_option));
-    
+    // Eq tests
+    assert(str_option1 == str_option1);
+    assert(str_option1 == str_option2);
+
+    // Neq tests
+    assert(str_option1 != str_option3);
+    assert(str_option1 != str_none_option);
+
+    // None tests
+    assert(str_none_option == Option::None);
+    assert(Option::<str>::None == str_none_option);
+
+    // Test with b256
+    let b256_option1 = Option::<b256>::Some(0x0000000000000000000000000000000000000000000000000000000000000001);
+    let b256_option2 = Option::<b256>::Some(0x0000000000000000000000000000000000000000000000000000000000000001);
+    let b256_option3 = Option::<b256>::Some(0x0000000000000000000000000000000000000000000000000000000000000002);
+    let b256_none_option: Option<b256> = Option::None;
+
+    // Eq tests
+    assert(b256_option1 == b256_option1);
+    assert(b256_option1 == b256_option2);
+
+    // Neq tests
+    assert(b256_option1 != b256_option3);
+    assert(b256_option1 != b256_none_option);
+
+    // None tests
+    assert(b256_none_option == Option::None);
+    assert(Option::<b256>::None == b256_none_option);
+
     true
 }
