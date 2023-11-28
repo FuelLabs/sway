@@ -4,7 +4,6 @@ use crate::{
         allocated_ops::AllocatedRegister, virtual_register::*, AllocatedAbstractOp, Op,
         VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
     },
-    size_bytes_round_up_to_word_alignment,
 };
 
 use either::Either;
@@ -16,6 +15,7 @@ use petgraph::{
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::collections::{hash_map, BTreeSet, HashMap};
 use sway_error::error::CompileError;
+use sway_ir::size_bytes_round_up_to_word_alignment;
 use sway_types::Span;
 
 use super::allocated_abstract_instruction_set::AllocatedAbstractInstructionSet;

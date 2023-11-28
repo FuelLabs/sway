@@ -261,6 +261,20 @@ impl DeclEngine {
         self.get(index)
     }
 
+    /// Returns all the [ty::TyTraitDecl]s whose name is the same as `trait_name`.
+    ///
+    /// The method does a linear search over all the declared traits and is meant
+    /// to be used only for diagnostic purposes.
+    pub fn get_traits_by_name(&self, trait_name: &Ident) -> Vec<ty::TyTraitDecl> {
+        self.trait_slab.with_slice(|elems| {
+            elems
+                .iter()
+                .filter(|trait_decl| trait_decl.name == *trait_name)
+                .cloned()
+                .collect()
+        })
+    }
+
     /// Friendly helper method for calling the `get` method from the
     /// implementation of [DeclEngineGet] for [DeclEngine]
     ///

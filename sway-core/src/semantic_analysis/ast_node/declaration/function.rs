@@ -277,7 +277,7 @@ impl TypeCheckUnification for ty::TyFunctionDecl {
                 handler,
                 type_check_ctx.by_ref(),
                 &return_type.span,
-                vec![],
+                None,
             )?;
 
             Ok(())
