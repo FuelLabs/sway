@@ -1,11 +1,11 @@
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Named, Spanned};
+use sway_types::{Named, Spanned, Ident, Span};
 
 use crate::{
     decl_engine::{DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType},
     language::{
         parsed,
-        ty::{self, TyDecl},
+        ty::{self, TyDecl, TyImplItem, TyFunctionDecl, TyCodeBlock, TyFunctionParameter, TyAstNode, TyAstNodeContent, TyExpression, TyIntrinsicFunctionKind},
         CallPath,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
@@ -13,7 +13,7 @@ use crate::{
         type_check_context::EnforceTypeArguments, TypeCheckAnalysis, TypeCheckAnalysisContext,
         TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext,
     },
-    type_system::*,
+    type_system::*, transform::AttributesMap,
 };
 
 impl TyDecl {
@@ -245,6 +245,103 @@ impl TyDecl {
                 };
                 let call_path = decl.call_path.clone();
                 let decl: ty::TyDecl = decl_engine.insert(decl).into();
+
+                let decl_ref = decl.get_struct_decl_ref().unwrap();
+                let type_id = ctx.engines.te().insert(engines, TypeInfo::Struct(decl_ref), None);
+                let unit = ctx.engines.te().insert(&ctx.engines, TypeInfo::Tuple(vec![]), None);
+
+                let u64_type_id =  ctx.engines.te().insert(&ctx.engines, TypeInfo::UnsignedInteger(sway_types::integer_bits::IntegerBits::SixtyFour), None);
+
+                let abi_encode_impl = ctx.engines.de().insert(TyFunctionDecl {
+                    name: Ident::new_no_span("abi_encode".into()),
+                    body: TyCodeBlock {
+                        contents: vec![
+                            TyAstNode { 
+                                content: ty::TyAstNodeContent::Expression(
+                                    TyExpression { 
+                                        expression: ty::TyExpressionVariant::IntrinsicFunction(
+                                            TyIntrinsicFunctionKind { 
+                                                kind: sway_ast::Intrinsic::Log, 
+                                                arguments: vec![
+                                                    TyExpression { 
+                                                        expression: ty::TyExpressionVariant::Literal(
+                                                            crate::language::Literal::U64(12)
+                                                        ), 
+                                                        return_type: u64_type_id, 
+                                                        span: Span::dummy()
+                                                    }
+                                                ], 
+                                                type_arguments: vec![], 
+                                                span: Span::dummy()
+                                            }
+                                        ), 
+                                        return_type: unit.clone(), 
+                                        span: Span::dummy()
+                                    }
+                                ), 
+                                span
+                            }
+                        ],
+                        whole_block_span: Span::dummy(),
+                    },
+                    parameters: vec![
+                        TyFunctionParameter { 
+                            name: Ident::new_no_span("self".into()), 
+                            is_reference: false, 
+                            is_mutable: false, 
+                            mutability_span: Span::dummy(), 
+                            type_argument: TypeArgument { 
+                                type_id: type_id, 
+                                initial_type_id: type_id, 
+                                span: Span::dummy(), 
+                                call_path_tree: None
+                            }
+                        }
+                    ],
+                    implementing_type: None,
+                    span: Span::dummy(),
+                    call_path: CallPath {
+                        prefixes: vec![],
+                        suffix: Ident::new_no_span("abi_encode".into()),
+                        is_absolute: true,
+                    },
+                    attributes: AttributesMap::default(),
+                    type_parameters: vec![],
+                    return_type: TypeArgument {
+                        type_id: unit,
+                        initial_type_id: unit,
+                        span: Span::dummy(),
+                        call_path_tree: None,
+                    },
+                    visibility: crate::language::Visibility::Public,
+                    is_contract_call: false,
+                    purity: crate::language::Purity::Pure,
+                    where_clause: vec![],
+                    is_trait_method_dummy: false,
+                });
+
+                
+                
+                ctx.namespace
+                    .implemented_traits
+                    .insert(handler, 
+                        CallPath {
+                            prefixes: vec![],
+                            suffix: Ident::new_no_span("AbiEncode".into()),
+                            is_absolute: true,
+                        }, 
+                        vec![], 
+                        type_id, 
+                        &[
+                            TyImplItem::Fn(abi_encode_impl)
+                        ], 
+                        &Span::dummy(), 
+                        None, 
+                        IsImplSelf::No, 
+                        IsExtendingExistingImpl::No, 
+                        &ctx.engines
+                    );
+
                 // insert the struct decl into namespace
                 ctx.insert_symbol(handler, call_path.suffix, decl.clone())?;
                 decl

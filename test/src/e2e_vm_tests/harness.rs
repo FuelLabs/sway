@@ -191,7 +191,7 @@ pub(crate) fn runs_in_vm(
             let transition = i.transact(tx).map_err(anyhow::Error::msg)?;
             Ok(VMExecutionResult::Fuel(
                 *transition.state(),
-                transition.receipts().to_vec(),
+                dbg!(transition.receipts().to_vec()),
             ))
         }
         BuildTarget::EVM => {

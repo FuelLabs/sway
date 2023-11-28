@@ -350,6 +350,20 @@ impl SubstTypes for TyDecl {
 }
 
 impl TyDecl {
+    pub fn get_struct_decl_ref(&self) -> Option<DeclRefStruct> {
+        if let TyDecl::StructDecl(StructDecl {
+            name,
+            decl_id,
+            decl_span,
+            ..
+        }) = self
+        {
+            Some(DeclRef::new(name.clone(), *decl_id, decl_span.clone()))
+        } else {
+            None
+        }
+    }
+
     pub fn get_fun_decl_ref(&self) -> Option<DeclRefFunction> {
         if let TyDecl::FunctionDecl(FunctionDecl {
             name,
