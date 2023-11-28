@@ -163,6 +163,5 @@ fn main() -> bool {
     assert(b256_none_option == Option::None);
     assert(Option::<b256>::None == b256_none_option);
 
-
     true
 }
