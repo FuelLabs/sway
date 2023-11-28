@@ -73,23 +73,23 @@ fn main() -> bool {
     assert(u64_none_option == Option::None);
     assert(Option::<u64>::None == u64_none_option);
 
-    // Test with bool
-    let bool_option1 = Option::Some(true);
-    let bool_option2 = Option::Some(true);
-    let bool_option3 = Option::Some(false);
-    let bool_none_option: Option<bool> = Option::None;
+    // Test with u256
+    let u256_option1 = Option::<u256>::Some(10);
+    let u256_option2 = Option::<u256>::Some(10);
+    let u256_option3 = Option::<u256>::Some(20);
+    let u256_none_option: Option<u256> = Option::None;
 
     // Eq tests
-    assert(bool_option1 == bool_option1);
-    assert(bool_option1 == bool_option2);
+    assert(u256_option1 == u256_option1);
+    assert(u256_option1 == u256_option2);
 
     // Neq tests
-    assert(bool_option1 != bool_option3);
-    assert(bool_option1 != bool_none_option);
+    assert(u256_option1 != u256_option3);
+    assert(u256_option1 != u256_none_option);
 
     // None tests
-    assert(bool_none_option == Option::None);
-    assert(Option::<bool>::None == bool_none_option);
+    assert(u256_none_option == Option::None);
+    assert(Option::<u256>::None == u256_none_option);
 
     // Test with str
     let str_option1 = Option::<str>::Some("fuel");
@@ -109,6 +109,42 @@ fn main() -> bool {
     assert(str_none_option == Option::None);
     assert(Option::<str>::None == str_none_option);
 
+    // Test with str[]
+    let str_option1 = Option::<str[4]>::Some(__to_str_array("fuel"));
+    let str_option2 = Option::<str[4]>::Some(__to_str_array("fuel"));
+    let str_option3 = Option::<str[4]>::Some(__to_str_array("sway"));
+    let str_none_option: Option<str[4]> = Option::None;
+
+    // Eq tests
+    assert(str_option1 == str_option1);
+    assert(str_option1 == str_option2);
+
+    // Neq tests
+    assert(str_option1 != str_option3);
+    assert(str_option1 != str_none_option);
+
+    // None tests
+    assert(str_none_option == Option::None);
+    assert(Option::<str[4]>::None == str_none_option);
+
+    // Test with bool
+    let bool_option1 = Option::Some(true);
+    let bool_option2 = Option::Some(true);
+    let bool_option3 = Option::Some(false);
+    let bool_none_option: Option<bool> = Option::None;
+
+    // Eq tests
+    assert(bool_option1 == bool_option1);
+    assert(bool_option1 == bool_option2);
+
+    // Neq tests
+    assert(bool_option1 != bool_option3);
+    assert(bool_option1 != bool_none_option);
+
+    // None tests
+    assert(bool_none_option == Option::None);
+    assert(Option::<bool>::None == bool_none_option);
+
     // Test with b256
     let b256_option1 = Option::<b256>::Some(0x0000000000000000000000000000000000000000000000000000000000000001);
     let b256_option2 = Option::<b256>::Some(0x0000000000000000000000000000000000000000000000000000000000000001);
@@ -126,6 +162,7 @@ fn main() -> bool {
     // None tests
     assert(b256_none_option == Option::None);
     assert(Option::<b256>::None == b256_none_option);
+
 
     true
 }
