@@ -326,7 +326,10 @@ impl TyDecl {
                     .implemented_traits
                     .insert(handler, 
                         CallPath {
-                            prefixes: vec![],
+                            prefixes: vec![
+                                Ident::new_no_span("core".into()),
+                                Ident::new_no_span("codec".into()),
+                            ],
                             suffix: Ident::new_no_span("AbiEncode".into()),
                             is_absolute: true,
                         }, 
