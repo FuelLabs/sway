@@ -15,6 +15,11 @@ struct Struct1 {
 
 /// I am a random doc comment.
 fn func_struct1(s: Struct1) -> u16 {
+    let x = 0;
+    let y = 1;
+    let z = 2;
+    let a = 3;
+    let q = s.field1;
     s.field2
 }
 

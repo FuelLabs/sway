@@ -637,7 +637,7 @@ mod tests {
         let dir = get_absolute_path("sway-lsp/tests/fixtures");
         let uri = get_url(&dir);
         let engines = Engines::default();
-        let result = parse_project(&uri, &engines).expect_err("expected ManifestFileNotFound");
+        let result = parse_project(&uri, &engines, None).expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(
