@@ -4,10 +4,9 @@ use clap::{Args, Parser};
 use devault::Devault;
 use forc_util::tx_utils::Salt;
 use fuel_tx::{
-    input, output,
+    output,
     policies::{Policies, PolicyType},
 };
-use fuel_types::AssetId;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use thiserror::Error;
@@ -28,7 +27,6 @@ pub struct Command {
 pub enum Transaction {
     Create(Create),
     Script(Script),
-    Mint(Mint),
 }
 
 /// Construct a `Create` transaction for deploying a contract.
@@ -60,26 +58,6 @@ pub struct Create {
     // Inputs and outputs must follow all other arguments and are parsed separately.
     #[clap(skip)]
     pub outputs: Vec<Output>,
-}
-
-/// Construct a `Mint` transaction for emulating a block producer.
-#[derive(Debug, Parser, Deserialize, Serialize)]
-pub struct Mint {
-    /// The location of the `Mint` transaction in the block.
-    #[clap(long)]
-    pub tx_ptr: fuel_tx::TxPointer, // TODO: @hal3e check if the `clap` settings are ok
-    /// The `Input::Contract` that assets are minted to.
-    #[clap(skip)]
-    pub(crate) input_contract: input::contract::Contract,
-    /// The `Output::Contract` that assets are being minted to.
-    #[clap(skip)]
-    pub(crate) output_contract: output::contract::Contract,
-    /// The amount of funds minted.
-    #[clap(skip)]
-    pub(crate) mint_amount: u64,
-    /// The asset IDs corresponding to the minted amount.
-    #[clap(skip)]
-    pub(crate) mint_asset_id: AssetId,
 }
 
 /// Construct a `Script` transaction for running a script.
@@ -536,7 +514,6 @@ impl Command {
             match cmd {
                 Transaction::Create(ref mut create) => create.inputs.push(input),
                 Transaction::Script(ref mut script) => script.inputs.push(input),
-                Transaction::Mint(_) => return Err(ParseError::MintTxHasInput),
             }
             Ok(())
         }
@@ -545,7 +522,6 @@ impl Command {
             match cmd {
                 Transaction::Create(ref mut create) => create.outputs.push(output),
                 Transaction::Script(ref mut script) => script.outputs.push(output),
-                Transaction::Mint(_) => {} // TODO: @hal3e check if this is correct
             }
         }
 
@@ -600,7 +576,6 @@ impl TryFrom<Transaction> for fuel_tx::Transaction {
         let tx = match tx {
             Transaction::Create(create) => Self::Create(<_>::try_from(create)?),
             Transaction::Script(script) => Self::Script(<_>::try_from(script)?),
-            Transaction::Mint(mint) => Self::Mint(mint.into()),
         };
         Ok(tx)
     }
@@ -702,18 +677,6 @@ impl TryFrom<Script> for fuel_tx::Script {
             witnesses,
         );
         Ok(script)
-    }
-}
-
-impl From<Mint> for fuel_tx::Mint {
-    fn from(mint: Mint) -> Self {
-        fuel_tx::Transaction::mint(
-            mint.tx_ptr,
-            mint.input_contract,
-            mint.output_contract,
-            mint.mint_amount,
-            mint.mint_asset_id,
-        )
     }
 }
 
@@ -922,19 +885,6 @@ fn test_parse_script() {
             --receipts-root {receipts_root}
             --witness ADFD
             --witness DFDA
-    "#
-    );
-    dbg!(Command::try_parse_from_args(cmd.split_whitespace().map(|s| s.to_string())).unwrap());
-}
-
-#[test]
-fn test_parse_mint_coin() {
-    let tx_ptr = fuel_tx::TxPointer::default();
-    let address = fuel_tx::Address::default();
-    let asset_id = fuel_tx::AssetId::default();
-    let cmd = format!(
-        r#"
-        forc-tx mint --tx-ptr {tx_ptr:X} output coin --to {address} --amount 100 --asset-id {asset_id}
     "#
     );
     dbg!(Command::try_parse_from_args(cmd.split_whitespace().map(|s| s.to_string())).unwrap());

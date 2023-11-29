@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-B794D05E35B5EF50"
+
+[[package]]
+name = "std"
+source = "git+https://github.com/FuelLabs/sway?default-branch#cd096e0bddcc3f9aee4dcd9c2b4c13d46c3d9126"
+dependencies = ["core"]
+
+[[package]]
+name = "sway_project"
+source = "member"
+dependencies = ["std"]

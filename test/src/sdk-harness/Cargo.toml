@@ -17,7 +17,7 @@ fuel-core-client = { version = "0.21.0", default-features = false }
 fuel-vm = "0.43.0"
 
 # Dependencies from the `fuels-rs` repository:
-fuels = { workspace = "0.51.0", features = ["fuel-core-lib"] }
+fuels = { workspace = "0.52.0", features = ["fuel-core-lib"] }
 
 hex = "0.4.3"
 pretty_assertions = "1.4.0"
