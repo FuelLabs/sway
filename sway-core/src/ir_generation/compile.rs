@@ -18,7 +18,7 @@ use sway_error::{error::CompileError, handler::Handler};
 use sway_ir::{metadata::combine as md_combine, *};
 use sway_types::Spanned;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Deref, sync::Arc};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_script(
@@ -29,7 +29,7 @@ pub(super) fn compile_script(
     declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
+    test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
@@ -76,7 +76,7 @@ pub(super) fn compile_predicate(
     declarations: &[ty::TyDecl],
     logged_types: &HashMap<TypeId, LogId>,
     messages_types: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
+    test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Predicate);
     let mut md_mgr = MetadataManager::default();
@@ -122,7 +122,7 @@ pub(super) fn compile_contract(
     declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
+    test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     engines: &Engines,
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Contract);
@@ -170,7 +170,7 @@ pub(super) fn compile_library(
     declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
+    test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Library);
     let mut md_mgr = MetadataManager::default();
@@ -222,7 +222,7 @@ pub(crate) fn compile_constants(
                     lookup: compile_const_decl,
                 },
                 &call_path,
-                &Some(const_decl),
+                &Some(const_decl.deref().clone()),
             )?;
         }
     }
@@ -267,7 +267,7 @@ fn compile_declarations(
                         lookup: compile_const_decl,
                     },
                     &call_path,
-                    &Some(decl),
+                    &Some(decl.deref().clone()),
                 )?;
             }
 
@@ -373,7 +373,7 @@ pub(super) fn compile_tests(
     module: Module,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
+    test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
 ) -> Result<Vec<Function>, Vec<CompileError>> {
     test_fns
         .iter()

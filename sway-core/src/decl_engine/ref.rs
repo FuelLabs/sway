@@ -20,7 +20,10 @@
 //! `fn my_function() { .. }`, and to use [DeclRef] for cases like function
 //! application `my_function()`.
 
-use std::hash::{Hash, Hasher};
+use std::{
+    hash::{Hash, Hasher},
+    ops::Deref,
+};
 
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Span, Spanned};
@@ -106,7 +109,7 @@ impl<T> DeclRef<DeclId<T>> {
 impl<T> DeclRef<DeclId<T>>
 where
     DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + SubstTypes,
+    T: Named + Spanned + SubstTypes + Clone,
 {
     pub(crate) fn subst_types_and_insert_new(
         &self,
@@ -114,7 +117,7 @@ where
         engines: &Engines,
     ) -> Self {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(&self.id);
+        let mut decl = decl_engine.get(&self.id).deref().clone();
         decl.subst(type_mapping, engines);
         decl_engine.insert(decl)
     }
@@ -139,7 +142,7 @@ impl<T> DeclRef<DeclId<T>>
 where
     AssociatedItemDeclId: From<DeclId<T>>,
     DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + SubstTypes,
+    T: Named + Spanned + SubstTypes + Clone,
 {
     pub(crate) fn subst_types_and_insert_new_with_parent(
         &self,
@@ -147,7 +150,7 @@ where
         engines: &Engines,
     ) -> Self {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(&self.id);
+        let mut decl = decl_engine.get(&self.id).deref().clone();
         decl.subst(type_mapping, engines);
         decl_engine
             .insert(decl)
@@ -159,7 +162,7 @@ impl<T> DeclRef<DeclId<T>>
 where
     AssociatedItemDeclId: From<DeclId<T>>,
     DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + ReplaceDecls + std::fmt::Debug,
+    T: Named + Spanned + ReplaceDecls + std::fmt::Debug + Clone,
 {
     pub(crate) fn replace_decls_and_insert_new_with_parent(
         &self,
@@ -168,7 +171,7 @@ where
         ctx: &mut TypeCheckContext,
     ) -> Result<Self, ErrorEmitted> {
         let decl_engine = ctx.engines().de();
-        let mut decl = decl_engine.get(&self.id);
+        let mut decl = decl_engine.get(&self.id).deref().clone();
         decl.replace_decls(decl_mapping, handler, ctx)?;
         Ok(decl_engine
             .insert(decl)
@@ -280,11 +283,11 @@ impl<I> Spanned for DeclRef<I> {
 impl<T> SubstTypes for DeclRef<DeclId<T>>
 where
     DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + SubstTypes,
+    T: Named + Spanned + SubstTypes + Clone,
 {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(&self.id);
+        let mut decl = decl_engine.get(&self.id).deref().clone();
         decl.subst(type_mapping, engines);
         decl_engine.replace(self.id, decl);
     }
@@ -321,7 +324,7 @@ impl ReplaceDecls for DeclRefFunction {
 impl ReplaceFunctionImplementingType for DeclRefFunction {
     fn replace_implementing_type(&mut self, engines: &Engines, implementing_type: ty::TyDecl) {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(&self.id);
+        let mut decl = decl_engine.get(&self.id).deref().clone();
         decl.set_implementing_type(implementing_type);
         decl_engine.replace(self.id, decl);
     }

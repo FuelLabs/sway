@@ -13,7 +13,10 @@ use crate::{
     type_system::*,
 };
 use ast_node::typed_expression::check_function_arguments_arity;
-use std::collections::{HashMap, VecDeque};
+use std::{
+    collections::{HashMap, VecDeque},
+    ops::Deref,
+};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -154,7 +157,7 @@ pub(crate) fn type_check_method_application(
             {
                 return Err(
                     handler.emit_err(CompileError::CoinsPassedToNonPayableMethod {
-                        fn_name: method.name,
+                        fn_name: method.name.clone(),
                         span,
                     }),
                 );
@@ -569,7 +572,7 @@ pub(crate) fn monomorphize_method_application(
             fn_ref.clone(),
             type_binding.as_mut().unwrap().type_arguments.to_vec_mut(),
         )?;
-        let mut method = decl_engine.get_function(fn_ref);
+        let mut method = decl_engine.get_function(fn_ref).deref().clone();
 
         // unify the types of the arguments with the types of the parameters from the function declaration
         *arguments =
@@ -591,7 +594,7 @@ pub(crate) fn monomorphize_method_application(
 
         // This handles the case of substituting the generic blanket type by call_path_typeid.
         if let Some(TyDecl::ImplTrait(t)) = method.clone().implementing_type {
-            let t = engines.de().get(&t.decl_id).implementing_for;
+            let t = &engines.de().get(&t.decl_id).implementing_for;
             if let TypeInfo::Custom {
                 qualified_call_path,
                 type_arguments: _,
@@ -644,7 +647,7 @@ pub(crate) fn monomorphize_method(
 ) -> Result<DeclRefFunction, ErrorEmitted> {
     let engines = ctx.engines();
     let decl_engine = engines.de();
-    let mut func_decl = decl_engine.get_function(&decl_ref);
+    let mut func_decl = decl_engine.get_function(&decl_ref).deref().clone();
 
     // monomorphize the function declaration
     ctx.monomorphize(

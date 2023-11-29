@@ -2,6 +2,7 @@ use std::{
     cmp::Ordering,
     fmt,
     hash::{Hash, Hasher},
+    ops::Deref,
 };
 
 use sway_error::{
@@ -181,7 +182,7 @@ impl TraitConstraint {
             .ok()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
-                let mut trait_decl = decl_engine.get_trait(&decl_id);
+                let mut trait_decl = decl_engine.get_trait(&decl_id).deref().clone();
 
                 // the following essentially is needed to map `Self` to the right type
                 // during trait decl monomorphization

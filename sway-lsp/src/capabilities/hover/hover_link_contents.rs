@@ -46,14 +46,22 @@ impl<'a> HoverLinkContents<'a> {
         match type_info {
             TypeInfo::Enum(decl_ref) => {
                 let decl = self.engines.de().get_enum(&decl_ref);
-                self.add_related_type(decl_ref.name().to_string(), &decl.span(), decl.call_path);
+                self.add_related_type(
+                    decl_ref.name().to_string(),
+                    &decl.span(),
+                    decl.call_path.clone(),
+                );
                 decl.type_parameters
                     .iter()
                     .for_each(|type_param| self.add_related_types(&type_param.type_id));
             }
             TypeInfo::Struct(decl_ref) => {
                 let decl = self.engines.de().get_struct(&decl_ref);
-                self.add_related_type(decl_ref.name().to_string(), &decl.span(), decl.call_path);
+                self.add_related_type(
+                    decl_ref.name().to_string(),
+                    &decl.span(),
+                    decl.call_path.clone(),
+                );
                 decl.type_parameters
                     .iter()
                     .for_each(|type_param| self.add_related_types(&type_param.type_id));

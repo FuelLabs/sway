@@ -1,4 +1,6 @@
 #![allow(dead_code)]
+use std::ops::Deref;
+
 use crate::{
     core::token::{
         type_info_to_symbol_kind, SymbolKind, Token, TokenIdent, TypeDefinition, TypedAstToken,
@@ -237,6 +239,8 @@ impl Parse for ty::TyExpression {
                     .engines
                     .de()
                     .get_function(fn_ref)
+                    .deref()
+                    .clone()
                     .implementing_type
                     .and_then(|impl_type| impl_type.get_decl_ident());
                 let prefixes = if let Some(impl_type_name) = implementing_type_name {
@@ -265,7 +269,7 @@ impl Parse for ty::TyExpression {
                 {
                     token.typed = Some(TypedAstToken::TypedExpression(self.clone()));
                     let function_decl = ctx.engines.de().get_function(fn_ref);
-                    token.type_def = Some(TypeDefinition::Ident(function_decl.name));
+                    token.type_def = Some(TypeDefinition::Ident(function_decl.name.clone()));
                 }
                 contract_call_params.values().for_each(|exp| exp.parse(ctx));
                 for (ident, exp) in arguments {
@@ -500,7 +504,8 @@ impl Parse for ty::TyExpression {
                 {
                     token.typed = Some(TypedAstToken::TypedStorageAccess(storage_access.clone()));
                     if let Some(storage) = ctx.namespace.get_declared_storage(ctx.engines.de()) {
-                        token.type_def = Some(TypeDefinition::Ident(storage.storage_keyword));
+                        token.type_def =
+                            Some(TypeDefinition::Ident(storage.storage_keyword.clone()));
                     }
                 }
                 if let Some((head_field, tail_fields)) = storage_access.fields.split_first() {
@@ -523,7 +528,8 @@ impl Parse for ty::TyExpression {
                                     .find(|f| f.name.as_str() == head_field.name.as_str())
                             })
                         {
-                            token.type_def = Some(TypeDefinition::Ident(storage_field.name));
+                            token.type_def =
+                                Some(TypeDefinition::Ident(storage_field.name.clone()));
                         }
                     }
                     // collect the rest of the idents as fields of their respective types
@@ -629,7 +635,7 @@ impl Parse for ty::TraitTypeDecl {
 impl Parse for ty::FunctionDecl {
     fn parse(&self, ctx: &ParseContext) {
         let func_decl = ctx.engines.de().get_function(&self.decl_id);
-        let typed_token = TypedAstToken::TypedFunctionDeclaration(func_decl.clone());
+        let typed_token = TypedAstToken::TypedFunctionDeclaration(func_decl.deref().clone());
         if let Some(mut token) = ctx
             .tokens
             .try_get_mut(&ctx.ident(&func_decl.name))
@@ -722,7 +728,7 @@ impl Parse for ty::StructDecl {
             token.typed = Some(TypedAstToken::TypedDeclaration(ty::TyDecl::StructDecl(
                 self.clone(),
             )));
-            token.type_def = Some(TypeDefinition::Ident(struct_decl.call_path.suffix));
+            token.type_def = Some(TypeDefinition::Ident(struct_decl.call_path.suffix.clone()));
         }
         struct_decl.fields.iter().for_each(|field| {
             field.parse(ctx);
@@ -742,6 +748,7 @@ impl Parse for ty::StructDecl {
 
 impl Parse for ty::ImplTrait {
     fn parse(&self, ctx: &ParseContext) {
+        let impl_trait_decl = ctx.engines.de().get_impl_trait(&self.decl_id);
         let ty::TyImplTrait {
             impl_type_parameters,
             trait_name,
@@ -750,7 +757,7 @@ impl Parse for ty::ImplTrait {
             items,
             implementing_for,
             ..
-        } = ctx.engines.de().get_impl_trait(&self.decl_id);
+        } = impl_trait_decl.deref();
         impl_type_parameters.iter().for_each(|param| {
             collect_type_id(
                 ctx,
@@ -784,11 +791,11 @@ impl Parse for ty::ImplTrait {
                 match &decl_ref.id().clone() {
                     InterfaceDeclId::Abi(decl_id) => {
                         let abi_decl = ctx.engines.de().get_abi(decl_id);
-                        Some(TypeDefinition::Ident(abi_decl.name))
+                        Some(TypeDefinition::Ident(abi_decl.name.clone()))
                     }
                     InterfaceDeclId::Trait(decl_id) => {
                         let trait_decl = ctx.engines.de().get_trait(decl_id);
-                        Some(TypeDefinition::Ident(trait_decl.name))
+                        Some(TypeDefinition::Ident(trait_decl.name.clone()))
                     }
                 }
             } else {
@@ -813,7 +820,7 @@ impl Parse for ty::ImplTrait {
                 collect_trait_type_decl(ctx, &trait_type, &type_ref.span());
             }
         });
-        collect_type_argument(ctx, &implementing_for);
+        collect_type_argument(ctx, implementing_for);
 
         // collect the root type argument again with declaration info this time so the
         // impl is registered
@@ -1394,7 +1401,7 @@ fn collect_supertrait(ctx: &ParseContext, supertrait: &Supertrait) {
         token.typed = Some(TypedAstToken::TypedSupertrait(supertrait.clone()));
         token.type_def = if let Some(decl_ref) = &supertrait.decl_ref {
             let trait_decl = ctx.engines.de().get_trait(decl_ref);
-            Some(TypeDefinition::Ident(trait_decl.name))
+            Some(TypeDefinition::Ident(trait_decl.name.clone()))
         } else {
             Some(TypeDefinition::Ident(supertrait.name.suffix.clone()))
         }

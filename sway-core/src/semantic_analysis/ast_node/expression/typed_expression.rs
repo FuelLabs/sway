@@ -46,7 +46,10 @@ use rustc_hash::FxHashSet;
 
 use either::Either;
 
-use std::collections::{HashMap, VecDeque};
+use std::{
+    collections::{HashMap, VecDeque},
+    ops::Deref,
+};
 
 #[allow(clippy::too_many_arguments)]
 impl ty::TyExpression {
@@ -112,12 +115,12 @@ impl ty::TyExpression {
         let method = decl_engine.get_function(&decl_ref);
         // check that the number of parameters and the number of the arguments is the same
         check_function_arguments_arity(handler, arguments.len(), &method, &call_path, false)?;
-        let return_type = method.return_type;
+        let return_type = &method.return_type;
         let args_and_names = method
             .parameters
-            .into_iter()
+            .iter()
             .zip(arguments)
-            .map(|(param, arg)| (param.name, arg))
+            .map(|(param, arg)| (param.name.clone(), arg))
             .collect::<Vec<(_, _)>>();
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::FunctionApplication {
@@ -501,7 +504,7 @@ impl ty::TyExpression {
                 }
             }
             Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) => {
-                let const_decl = decl_engine.get_constant(&decl_id);
+                let const_decl = decl_engine.get_constant(&decl_id).deref().clone();
                 let decl_name = const_decl.name().clone();
                 ty::TyExpression {
                     return_type: const_decl.return_type,
@@ -517,7 +520,9 @@ impl ty::TyExpression {
                 let decl = decl_engine.get_abi(&decl_id);
                 ty::TyExpression {
                     return_type: decl.create_type_id(engines),
-                    expression: ty::TyExpressionVariant::AbiName(AbiName::Known(decl.name.into())),
+                    expression: ty::TyExpressionVariant::AbiName(AbiName::Known(
+                        decl.name.clone().into(),
+                    )),
                     span,
                 }
             }
@@ -1033,7 +1038,10 @@ impl ty::TyExpression {
             None,
         )?;
         let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_ref(handler, engines)?;
-        let mut storage_key_struct_decl = decl_engine.get_struct(&storage_key_struct_decl_ref);
+        let mut storage_key_struct_decl = decl_engine
+            .get_struct(&storage_key_struct_decl_ref)
+            .deref()
+            .clone();
 
         // Set the type arguments to `StorageKey` to the `access_type`, which is represents the
         // type of the data that the `StorageKey` "points" to.
@@ -1611,13 +1619,14 @@ impl ty::TyExpression {
                 }));
             }
         };
+        let abi_decl = decl_engine.get_abi(abi_ref.id());
         let ty::TyAbiDecl {
             interface_surface,
             items,
             supertraits,
             span,
             ..
-        } = decl_engine.get_abi(abi_ref.id());
+        } = abi_decl.deref();
 
         let return_type = type_engine.insert(
             engines,
@@ -1631,10 +1640,10 @@ impl ty::TyExpression {
         // Retrieve the interface surface for this abi.
         let mut abi_items = vec![];
 
-        for item in interface_surface.into_iter() {
+        for item in interface_surface.iter() {
             match item {
                 ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
-                    let method = decl_engine.get_trait_fn(&decl_ref);
+                    let method = decl_engine.get_trait_fn(decl_ref);
                     abi_items.push(TyImplItem::Fn(
                         decl_engine
                             .insert(method.to_dummy_func(AbiMode::ImplAbiFn(
@@ -1645,18 +1654,18 @@ impl ty::TyExpression {
                     ));
                 }
                 ty::TyTraitInterfaceItem::Constant(decl_ref) => {
-                    let const_decl = decl_engine.get_constant(&decl_ref);
-                    abi_items.push(TyImplItem::Constant(decl_engine.insert(const_decl)));
+                    let const_decl = decl_engine.get_constant(decl_ref);
+                    abi_items.push(TyImplItem::Constant(decl_engine.insert_arc(const_decl)));
                 }
                 ty::TyTraitInterfaceItem::Type(decl_ref) => {
-                    let type_decl = decl_engine.get_type(&decl_ref);
-                    abi_items.push(TyImplItem::Type(decl_engine.insert(type_decl)));
+                    let type_decl = decl_engine.get_type(decl_ref);
+                    abi_items.push(TyImplItem::Type(decl_engine.insert_arc(type_decl)));
                 }
             }
         }
 
         // Retrieve the items for this abi.
-        abi_items.append(&mut items.into_iter().collect::<Vec<_>>());
+        abi_items.append(&mut items.to_vec());
 
         // Recursively make the interface surfaces and methods of the
         // supertraits available to this abi cast.
@@ -1664,7 +1673,7 @@ impl ty::TyExpression {
             handler,
             ctx.by_ref(),
             return_type,
-            &supertraits,
+            supertraits,
             &SupertraitOf::Abi(span.clone()),
         )?;
 
@@ -1675,7 +1684,7 @@ impl ty::TyExpression {
             vec![],
             return_type,
             &abi_items,
-            &span,
+            span,
             Some(span.clone()),
             IsImplSelf::No,
             IsExtendingExistingImpl::No,
@@ -1688,7 +1697,7 @@ impl ty::TyExpression {
                 span: span.clone(),
             },
             return_type,
-            span,
+            span: span.clone(),
         };
         Ok(exp)
     }

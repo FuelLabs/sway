@@ -2,6 +2,7 @@ use std::{
     cmp::Ordering,
     collections::{BTreeSet, HashMap},
     fmt,
+    ops::Deref,
 };
 
 use sway_error::{
@@ -735,7 +736,7 @@ impl TraitMap {
                         .into_iter()
                         .map(|(name, item)| match &item {
                             ty::TyTraitItem::Fn(decl_ref) => {
-                                let mut decl = decl_engine.get(decl_ref.id());
+                                let mut decl = decl_engine.get(decl_ref.id()).deref().clone();
                                 decl.subst(&type_mapping, engines);
                                 let new_ref = decl_engine
                                     .insert(decl)
@@ -743,13 +744,13 @@ impl TraitMap {
                                 (name, TyImplItem::Fn(new_ref))
                             }
                             ty::TyTraitItem::Constant(decl_ref) => {
-                                let mut decl = decl_engine.get(decl_ref.id());
+                                let mut decl = decl_engine.get(decl_ref.id()).deref().clone();
                                 decl.subst(&type_mapping, engines);
                                 let new_ref = decl_engine.insert(decl);
                                 (name, TyImplItem::Constant(new_ref))
                             }
                             ty::TyTraitItem::Type(decl_ref) => {
-                                let mut decl = decl_engine.get(decl_ref.id());
+                                let mut decl = decl_engine.get(decl_ref.id()).deref().clone();
                                 decl.subst(&type_mapping, engines);
                                 let new_ref = decl_engine.insert(decl);
                                 (name, TyImplItem::Type(new_ref))

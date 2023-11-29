@@ -74,7 +74,7 @@ impl TypeEngine {
 
     /// Performs a lookup of `id` into the [TypeEngine].
     pub fn get(&self, id: TypeId) -> TypeInfo {
-        self.slab.get(id.index()).type_info
+        self.slab.get(id.index()).type_info.clone()
     }
 
     /// Performs a lookup of `id` into the [TypeEngine] recursing when finding a
@@ -82,7 +82,7 @@ impl TypeEngine {
     pub fn get_unaliased(&self, id: TypeId) -> TypeInfo {
         // A slight infinite loop concern if we somehow have self-referential aliases, but that
         // shouldn't be possible.
-        match self.slab.get(id.index()).type_info {
+        match self.slab.get(id.index()).type_info.clone() {
             TypeInfo::Alias { ty, .. } => self.get_unaliased(ty.type_id),
             ty_info => ty_info,
         }
@@ -350,13 +350,15 @@ impl TypeEngine {
     /// [DisplayWithEngines].
     pub fn pretty_print(&self, _decl_engine: &DeclEngine, engines: &Engines) -> String {
         let mut builder = String::new();
-        self.slab.with_slice(|elems| {
-            let list = elems
-                .iter()
-                .map(|ty| format!("{:?}", engines.help_out(&ty.type_info)));
-            let list = ListDisplay { list };
-            write!(builder, "TypeEngine {{\n{list}\n}}").unwrap();
-        });
+        let mut list = vec![];
+        for i in 0..self.slab.len() {
+            list.push(format!(
+                "{:?}",
+                engines.help_out(self.slab.get(i).type_info.clone())
+            ));
+        }
+        let list = ListDisplay { list };
+        write!(builder, "TypeEngine {{\n{list}\n}}").unwrap();
         builder
     }
 }

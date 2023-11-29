@@ -1,4 +1,7 @@
-use std::collections::{BTreeMap, HashSet};
+use std::{
+    collections::{BTreeMap, HashSet},
+    ops::Deref,
+};
 
 use sway_error::{
     error::CompileError,
@@ -350,7 +353,7 @@ impl TyTraitDecl {
         {
             match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
-                    let mut method = decl_engine.get_function(&decl_ref);
+                    let mut method = decl_engine.get_function(&decl_ref).deref().clone();
                     method.subst(&type_mapping, engines);
                     impld_item_refs.insert(
                         (method.name.clone(), type_id),
@@ -362,7 +365,7 @@ impl TyTraitDecl {
                     );
                 }
                 ty::TyTraitItem::Constant(decl_ref) => {
-                    let mut const_decl = decl_engine.get_constant(&decl_ref);
+                    let mut const_decl = decl_engine.get_constant(&decl_ref).deref().clone();
                     const_decl.subst(&type_mapping, engines);
                     impld_item_refs.insert(
                         (const_decl.call_path.suffix.clone(), type_id),
@@ -370,7 +373,7 @@ impl TyTraitDecl {
                     );
                 }
                 ty::TyTraitItem::Type(decl_ref) => {
-                    let mut type_decl = decl_engine.get_type(&decl_ref);
+                    let mut type_decl = decl_engine.get_type(&decl_ref).deref().clone();
                     type_decl.subst(&type_mapping, engines);
                     impld_item_refs.insert(
                         (type_decl.name.clone(), type_id),
@@ -420,7 +423,7 @@ impl TyTraitDecl {
         for item in interface_surface.iter() {
             match item {
                 ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
-                    let mut method = decl_engine.get_trait_fn(decl_ref);
+                    let mut method = decl_engine.get_trait_fn(decl_ref).deref().clone();
                     method.subst(&type_mapping, engines);
                     all_items.push(TyImplItem::Fn(
                         ctx.engines
@@ -455,7 +458,7 @@ impl TyTraitDecl {
         for item in items.iter() {
             match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
-                    let mut method = decl_engine.get_function(decl_ref);
+                    let mut method = decl_engine.get_function(decl_ref).deref().clone();
                     method.subst(&type_mapping, engines);
                     all_items.push(TyImplItem::Fn(
                         ctx.engines
@@ -465,12 +468,12 @@ impl TyTraitDecl {
                     ));
                 }
                 ty::TyTraitItem::Constant(decl_ref) => {
-                    let mut const_decl = decl_engine.get_constant(decl_ref);
+                    let mut const_decl = decl_engine.get_constant(decl_ref).deref().clone();
                     const_decl.subst(&type_mapping, engines);
                     all_items.push(TyImplItem::Constant(ctx.engines.de().insert(const_decl)));
                 }
                 ty::TyTraitItem::Type(decl_ref) => {
-                    let mut type_decl = decl_engine.get_type(decl_ref);
+                    let mut type_decl = decl_engine.get_type(decl_ref).deref().clone();
                     type_decl.subst(&type_mapping, engines);
                     all_items.push(TyImplItem::Type(ctx.engines.de().insert(type_decl)));
                 }

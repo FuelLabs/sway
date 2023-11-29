@@ -1,4 +1,4 @@
-use std::ops::{BitAnd, BitOr, BitXor, Not, Rem};
+use std::ops::{BitAnd, BitOr, BitXor, Deref, Not, Rem};
 
 use crate::{
     engine_threading::*,
@@ -132,7 +132,7 @@ pub(crate) fn compile_const_decl(
             let const_decl = match decl {
                 Ok(decl) => match decl {
                     ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
-                        Some(env.engines.de().get_constant(decl_id))
+                        Some(env.engines.de().get_constant(decl_id).deref().clone())
                     }
                     _otherwise => const_decl.cloned(),
                 },
@@ -158,7 +158,7 @@ pub(crate) fn compile_const_decl(
                         env.module_ns,
                         env.function_compiler,
                         &call_path,
-                        &value.unwrap(),
+                        &value.clone().unwrap(),
                         is_configurable,
                     )?;
 
@@ -671,6 +671,7 @@ fn const_eval_codeblock(
                 let ty_const_decl = lookup.engines.de().get_constant(&const_decl.decl_id);
                 if let Some(constant) = ty_const_decl
                     .value
+                    .clone()
                     .and_then(|expr| const_eval_typed_expr(lookup, known_consts, &expr).ok())
                     .flatten()
                 {
@@ -1160,7 +1161,7 @@ mod tests {
             ty::TyAstNodeContent::Expression(expr_under_test) => expr_under_test.clone(),
             ty::TyAstNodeContent::Declaration(crate::language::ty::TyDecl::ConstantDecl(decl)) => {
                 let decl = engines.de().get_constant(&decl.decl_id);
-                decl.value.unwrap()
+                decl.value.clone().unwrap()
             }
             x => todo!("{x:?}"),
         };

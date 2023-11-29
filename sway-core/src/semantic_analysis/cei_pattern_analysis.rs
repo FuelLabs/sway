@@ -16,8 +16,8 @@ use crate::{
     },
     Engines,
 };
-use std::collections::HashSet;
 use std::fmt;
+use std::{collections::HashSet, sync::Arc};
 use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{Ident, Span, Spanned};
 
@@ -93,7 +93,7 @@ fn analyze_contract(engines: &Engines, ast_nodes: &[ty::TyAstNode]) -> Vec<Compi
 fn contract_entry_points(
     decl_engine: &DeclEngine,
     ast_nodes: &[ty::TyAstNode],
-) -> Vec<ty::TyFunctionDecl> {
+) -> Vec<Arc<ty::TyFunctionDecl>> {
     use crate::ty::TyAstNodeContent::Declaration;
     ast_nodes
         .iter()
@@ -112,14 +112,14 @@ fn contract_entry_points(
 fn decl_id_to_fn_decls(
     decl_engine: &DeclEngine,
     decl_id: &DeclId<TyFunctionDecl>,
-) -> Vec<TyFunctionDecl> {
+) -> Vec<Arc<TyFunctionDecl>> {
     vec![decl_engine.get_function(decl_id)]
 }
 
 fn impl_trait_methods(
     decl_engine: &DeclEngine,
     impl_trait_decl_id: &DeclId<TyImplTrait>,
-) -> Vec<ty::TyFunctionDecl> {
+) -> Vec<Arc<ty::TyFunctionDecl>> {
     let impl_trait = decl_engine.get_impl_trait(impl_trait_decl_id);
     impl_trait
         .items
@@ -576,8 +576,8 @@ fn effects_of_expression(engines: &Engines, expr: &ty::TyExpression) -> HashSet<
             selector,
             ..
         } => {
-            let fn_body = decl_engine.get_function(fn_ref).body;
-            let mut effs = effects_of_codeblock(engines, &fn_body);
+            let fn_body = &decl_engine.get_function(fn_ref).body;
+            let mut effs = effects_of_codeblock(engines, fn_body);
             let args_effs = map_hashsets_union(arguments, |e| effects_of_expression(engines, &e.1));
             effs.extend(args_effs);
             if selector.is_some() {

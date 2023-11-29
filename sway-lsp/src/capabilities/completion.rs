@@ -32,12 +32,12 @@ fn completion_items_for_type_id(
     let type_info = engines.te().get(type_id);
     if let TypeInfo::Struct(decl_ref) = type_info {
         let struct_decl = engines.de().get_struct(&decl_ref.id().clone());
-        for field in struct_decl.fields {
+        for field in struct_decl.fields.iter() {
             let item = CompletionItem {
                 kind: Some(CompletionItemKind::FIELD),
                 label: field.name.as_str().to_string(),
                 label_details: Some(CompletionItemLabelDetails {
-                    description: Some(field.type_argument.span.str()),
+                    description: Some(field.type_argument.span.clone().str()),
                     detail: None,
                 }),
                 ..Default::default()
@@ -48,7 +48,7 @@ fn completion_items_for_type_id(
 
     for method in namespace.get_methods_for_type(engines, type_id) {
         let fn_decl = engines.de().get_function(&method.id().clone());
-        let params = fn_decl.clone().parameters;
+        let params = &fn_decl.parameters;
 
         // Only show methods that take `self` as the first parameter.
         if params.first().map(|p| p.is_self()).unwrap_or(false) {

@@ -3,7 +3,7 @@ use crate::{
     language::{ty, *},
     semantic_analysis::{ast_node::*, TypeCheckContext},
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Deref};
 use sway_error::error::CompileError;
 use sway_types::Spanned;
 
@@ -23,7 +23,7 @@ pub(crate) fn instantiate_function_application(
 ) -> Result<ty::TyExpression, ErrorEmitted> {
     let decl_engine = ctx.engines.de();
 
-    let mut function_decl = decl_engine.get_function(&function_decl_ref);
+    let mut function_decl = decl_engine.get_function(&function_decl_ref).deref().clone();
 
     if arguments.is_none() {
         return Err(

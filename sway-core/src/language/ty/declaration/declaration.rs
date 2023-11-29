@@ -1,6 +1,7 @@
 use std::{
     fmt,
     hash::{Hash, Hasher},
+    ops::Deref,
 };
 
 use sway_error::{
@@ -504,7 +505,8 @@ impl CollectTypesMetadata for TyDecl {
                 decl.collect_types_metadata(handler, ctx)?
             }
             TyDecl::ConstantDecl(ConstantDecl { decl_id, .. }) => {
-                let TyConstantDecl { value, .. } = decl_engine.get_constant(decl_id);
+                let const_decl = decl_engine.get_constant(decl_id);
+                let TyConstantDecl { value, .. } = const_decl.deref();
                 if let Some(value) = value {
                     value.collect_types_metadata(handler, ctx)?
                 } else {
@@ -567,11 +569,12 @@ impl TyDecl {
                 decl_span,
             }) => Ok(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
             TyDecl::TypeAliasDecl(TypeAliasDecl { decl_id, .. }) => {
-                let TyTypeAliasDecl { ty, span, .. } = engines.de().get_type_alias(decl_id);
+                let alias_decl = engines.de().get_type_alias(decl_id);
+                let TyTypeAliasDecl { ty, span, .. } = alias_decl.deref();
                 engines
                     .te()
                     .get(ty.type_id)
-                    .expect_enum(handler, engines, "", &span)
+                    .expect_enum(handler, engines, "", span)
             }
             // `Self` type parameter might resolve to an Enum
             TyDecl::GenericTypeForFunctionScope(GenericTypeForFunctionScope {
@@ -607,11 +610,12 @@ impl TyDecl {
                 decl_span,
             }) => Ok(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
             TyDecl::TypeAliasDecl(TypeAliasDecl { decl_id, .. }) => {
-                let TyTypeAliasDecl { ty, span, .. } = engines.de().get_type_alias(decl_id);
+                let alias_decl = engines.de().get_type_alias(decl_id);
+                let TyTypeAliasDecl { ty, span, .. } = alias_decl.deref();
                 engines
                     .te()
                     .get(ty.type_id)
-                    .expect_struct(handler, engines, &span)
+                    .expect_struct(handler, engines, span)
             }
             TyDecl::ErrorRecovery(_, err) => Err(*err),
             decl => Err(handler.emit_err(CompileError::DeclIsNotAStruct {
@@ -827,32 +831,23 @@ impl TyDecl {
     pub(crate) fn visibility(&self, decl_engine: &DeclEngine) -> Visibility {
         match self {
             TyDecl::TraitDecl(TraitDecl { decl_id, .. }) => {
-                let TyTraitDecl { visibility, .. } = decl_engine.get_trait(decl_id);
-                visibility
+                decl_engine.get_trait(decl_id).deref().visibility
             }
             TyDecl::ConstantDecl(ConstantDecl { decl_id, .. }) => {
-                let TyConstantDecl { visibility, .. } = decl_engine.get_constant(decl_id);
-                visibility
+                decl_engine.get_constant(decl_id).deref().visibility
             }
             TyDecl::StructDecl(StructDecl { decl_id, .. }) => {
-                let TyStructDecl { visibility, .. } = decl_engine.get_struct(decl_id);
-                visibility
+                decl_engine.get_struct(decl_id).deref().visibility
             }
-            TyDecl::EnumDecl(EnumDecl { decl_id, .. }) => {
-                let TyEnumDecl { visibility, .. } = decl_engine.get_enum(decl_id);
-                visibility
-            }
+            TyDecl::EnumDecl(EnumDecl { decl_id, .. }) => decl_engine.get_enum(decl_id).visibility,
             TyDecl::EnumVariantDecl(EnumVariantDecl { enum_ref, .. }) => {
-                let TyEnumDecl { visibility, .. } = decl_engine.get_enum(enum_ref.id());
-                visibility
+                decl_engine.get_enum(enum_ref.id()).deref().visibility
             }
             TyDecl::FunctionDecl(FunctionDecl { decl_id, .. }) => {
-                let TyFunctionDecl { visibility, .. } = decl_engine.get_function(decl_id);
-                visibility
+                decl_engine.get_function(decl_id).deref().visibility
             }
             TyDecl::TypeAliasDecl(TypeAliasDecl { decl_id, .. }) => {
-                let TyTypeAliasDecl { visibility, .. } = decl_engine.get_type_alias(decl_id);
-                visibility
+                decl_engine.get_type_alias(decl_id).deref().visibility
             }
             TyDecl::GenericTypeForFunctionScope(_)
             | TyDecl::ImplTrait(_)

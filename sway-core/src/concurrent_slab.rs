@@ -1,10 +1,13 @@
 use crate::{decl_engine::*, engine_threading::*, type_system::*};
-use std::{fmt, sync::RwLock};
+use std::{
+    fmt,
+    sync::{Arc, RwLock},
+};
 use sway_types::{Named, Spanned};
 
 #[derive(Debug)]
 pub(crate) struct ConcurrentSlab<T> {
-    inner: RwLock<Vec<T>>,
+    inner: RwLock<Vec<Arc<T>>>,
 }
 
 impl<T> Clone for ConcurrentSlab<T>
@@ -24,12 +27,6 @@ impl<T> Default for ConcurrentSlab<T> {
         Self {
             inner: Default::default(),
         }
-    }
-}
-
-impl<T> ConcurrentSlab<T> {
-    pub fn with_slice<R>(&self, run: impl FnOnce(&[T]) -> R) -> R {
-        run(&self.inner.read().unwrap())
     }
 }
 
@@ -57,19 +54,31 @@ impl<T> ConcurrentSlab<T>
 where
     T: Clone,
 {
+    pub fn len(&self) -> usize {
+        let lock = self.inner.read().unwrap();
+        lock.len()
+    }
+
     pub fn insert(&self, value: T) -> usize {
+        let mut inner = self.inner.write().unwrap();
+        let ret = inner.len();
+        inner.push(Arc::new(value));
+        ret
+    }
+
+    pub fn insert_arc(&self, value: Arc<T>) -> usize {
         let mut inner = self.inner.write().unwrap();
         let ret = inner.len();
         inner.push(value);
         ret
     }
 
-    pub fn get(&self, index: usize) -> T {
+    pub fn get(&self, index: usize) -> Arc<T> {
         let inner = self.inner.read().unwrap();
         inner[index].clone()
     }
 
-    pub fn retain(&self, predicate: impl Fn(&T) -> bool) {
+    pub fn retain(&self, predicate: impl Fn(&Arc<T>) -> bool) {
         let mut inner = self.inner.write().unwrap();
         inner.retain(predicate);
     }
@@ -82,7 +91,7 @@ impl ConcurrentSlab<TypeSourceInfo> {
         prev_value: &TypeSourceInfo,
         new_value: TypeSourceInfo,
         engines: &Engines,
-    ) -> Option<TypeSourceInfo> {
+    ) -> Option<Arc<TypeSourceInfo>> {
         let index = index.index();
         // The comparison below ends up calling functions in the slab, which
         // can lead to deadlocks if we used a single read/write lock.
@@ -101,7 +110,7 @@ impl ConcurrentSlab<TypeSourceInfo> {
         }
 
         let mut inner = self.inner.write().unwrap();
-        inner[index] = new_value;
+        inner[index] = Arc::new(new_value);
         None
     }
 }
@@ -113,7 +122,7 @@ where
 {
     pub fn replace(&self, index: DeclId<T>, new_value: T) -> Option<T> {
         let mut inner = self.inner.write().unwrap();
-        inner[index.inner()] = new_value;
+        inner[index.inner()] = Arc::new(new_value);
         None
     }
 }

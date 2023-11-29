@@ -596,8 +596,8 @@ impl Module {
                         enum_decl.span(),
                     );
 
-                    for variant_decl in enum_decl.variants {
-                        let variant_name = variant_decl.name;
+                    for variant_decl in enum_decl.variants.iter() {
+                        let variant_name = &variant_decl.name;
 
                         // import it this way.
                         let dst_ns = &mut self[dst];
@@ -608,7 +608,7 @@ impl Module {
                                 GlobImport::Yes,
                                 TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
                                     enum_ref: enum_ref.clone(),
-                                    variant_name,
+                                    variant_name: variant_name.clone(),
                                     variant_decl_span: variant_decl.span.clone(),
                                 }),
                                 is_src_absolute,

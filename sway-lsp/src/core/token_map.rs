@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crate::core::token::{self, Token, TokenIdent, TypedAstToken};
 use dashmap::DashMap;
 use lsp_types::{Position, Url};
@@ -186,7 +188,7 @@ impl TokenMap {
         self.declaration_of_type_id(engines, type_id)
             .and_then(|decl| match decl {
                 ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
-                    Some(engines.de().get_struct(&decl_id))
+                    Some(engines.de().get_struct(&decl_id).deref().clone())
                 }
                 _ => None,
             })

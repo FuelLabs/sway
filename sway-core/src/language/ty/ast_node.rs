@@ -1,6 +1,7 @@
 use std::{
     fmt::{self, Debug},
     hash::{Hash, Hasher},
+    ops::Deref,
 };
 
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -205,9 +206,10 @@ impl TyAstNode {
                     })),
                 ..
             } => {
+                let fn_decl = decl_engine.get_function(decl_id);
                 let TyFunctionDecl {
                     type_parameters, ..
-                } = decl_engine.get_function(decl_id);
+                } = fn_decl.deref();
                 !type_parameters.is_empty()
             }
             _ => false,
@@ -225,7 +227,8 @@ impl TyAstNode {
                     })),
                 ..
             } => {
-                let TyFunctionDecl { attributes, .. } = decl_engine.get_function(decl_id);
+                let fn_decl = decl_engine.get_function(decl_id);
+                let TyFunctionDecl { attributes, .. } = fn_decl.deref();
                 attributes.contains_key(&AttributeKind::Test)
             }
             _ => false,
@@ -345,14 +348,14 @@ impl TyAstNode {
                 }
                 TyDecl::ConstantDecl(decl) => {
                     let decl = engines.de().get(&decl.decl_id);
-                    if let Some(value) = decl.value {
+                    if let Some(value) = &decl.value {
                         value.check_deprecated(engines, handler, allow_deprecated);
                     }
                 }
                 TyDecl::TraitTypeDecl(_) => {}
                 TyDecl::FunctionDecl(decl) => {
                     let decl = engines.de().get(&decl.decl_id);
-                    let token = allow_deprecated.enter(decl.attributes);
+                    let token = allow_deprecated.enter(decl.attributes.clone());
                     for node in decl.body.contents.iter() {
                         node.check_deprecated(engines, handler, allow_deprecated);
                     }
@@ -364,7 +367,7 @@ impl TyAstNode {
                         match item {
                             TyTraitItem::Fn(item) => {
                                 let decl = engines.de().get(item.id());
-                                let token = allow_deprecated.enter(decl.attributes);
+                                let token = allow_deprecated.enter(decl.attributes.clone());
                                 for node in decl.body.contents.iter() {
                                     node.check_deprecated(engines, handler, allow_deprecated);
                                 }

@@ -1,4 +1,7 @@
-use std::collections::{HashMap, VecDeque};
+use std::{
+    collections::{HashMap, VecDeque},
+    ops::Deref,
+};
 
 use crate::{
     decl_engine::{DeclEngineInsert, DeclRefFunction},
@@ -525,7 +528,7 @@ impl<'a> TypeCheckContext<'a> {
                     .get_trait_item_for_type(handler, self.engines, &name, trait_type_id, None)?;
                 if let TyTraitItem::Type(type_ref) = item_ref {
                     let type_decl = self.engines.de().get_type(type_ref.id());
-                    if let Some(ty) = type_decl.ty {
+                    if let Some(ty) = &type_decl.ty {
                         ty.type_id
                     } else {
                         type_id
@@ -748,7 +751,7 @@ impl<'a> TypeCheckContext<'a> {
                 ..
             })) => {
                 // get the copy from the declaration engine
-                let mut new_copy = decl_engine.get_struct(&original_id);
+                let mut new_copy = decl_engine.get_struct(&original_id).deref().clone();
 
                 // monomorphize the copy, in place
                 self.monomorphize_with_modpath(
@@ -775,7 +778,7 @@ impl<'a> TypeCheckContext<'a> {
                 ..
             })) => {
                 // get the copy from the declaration engine
-                let mut new_copy = decl_engine.get_enum(&original_id);
+                let mut new_copy = decl_engine.get_enum(&original_id).deref().clone();
 
                 // monomorphize the copy, in place
                 self.monomorphize_with_modpath(
@@ -819,7 +822,7 @@ impl<'a> TypeCheckContext<'a> {
             })) => {
                 let decl_type = decl_engine.get_type(&decl_id);
 
-                if let Some(ty) = decl_type.ty {
+                if let Some(ty) = &decl_type.ty {
                     ty.type_id
                 } else if let Some(implementing_type) = self.self_type() {
                     type_engine.insert(
@@ -1055,7 +1058,7 @@ impl<'a> TypeCheckContext<'a> {
                         if !skip_insert {
                             trait_methods.insert(
                                 (
-                                    trait_decl.trait_name,
+                                    trait_decl.trait_name.clone(),
                                     trait_decl
                                         .trait_type_arguments
                                         .iter()

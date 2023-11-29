@@ -18,7 +18,7 @@ use sway_error::{
 };
 use sway_types::{span::Span, Spanned};
 
-use std::sync::Arc;
+use std::{ops::Deref, sync::Arc};
 
 /// Is this a glob (`use foo::*;`) import?
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -309,7 +309,7 @@ impl Items {
     pub fn get_declared_storage(&self, decl_engine: &DeclEngine) -> Option<TyStorageDecl> {
         self.declared_storage
             .as_ref()
-            .map(|decl_ref| decl_engine.get_storage(decl_ref))
+            .map(|decl_ref| decl_engine.get_storage(decl_ref).deref().clone())
     }
 
     pub(crate) fn get_storage_field_descriptors(
@@ -318,7 +318,7 @@ impl Items {
         decl_engine: &DeclEngine,
     ) -> Result<Vec<ty::TyStorageField>, ErrorEmitted> {
         match self.get_declared_storage(decl_engine) {
-            Some(storage) => Ok(storage.fields),
+            Some(storage) => Ok(storage.fields.clone()),
             None => {
                 let msg = "unknown source location";
                 let span = Span::new(Arc::from(msg), 0, msg.len(), None).unwrap();
@@ -393,7 +393,7 @@ impl Items {
 
                             return Err(handler.emit_err(CompileError::FieldNotFound {
                                 field_name: field_name.clone(),
-                                struct_name: struct_decl.call_path.suffix,
+                                struct_name: struct_decl.call_path.suffix.clone(),
                                 available_fields: available_fields.join(", "),
                                 span: field_name.span(),
                             }));

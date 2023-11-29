@@ -3,7 +3,7 @@ use crate::{
     engine_threading::*,
     type_system::priv_prelude::*,
 };
-use std::{collections::BTreeMap, fmt};
+use std::{collections::BTreeMap, fmt, ops::Deref};
 use sway_types::Spanned;
 
 type SourceType = TypeId;
@@ -336,7 +336,7 @@ impl TypeSubstMap {
             TypeInfo::Placeholder(_) => iter_for_match(engines, self, &type_info),
             TypeInfo::TypeParam(_) => None,
             TypeInfo::Struct(decl_ref) => {
-                let mut decl = decl_engine.get_struct(&decl_ref);
+                let mut decl = decl_engine.get_struct(&decl_ref).deref().clone();
                 let mut need_to_create_new = false;
                 for field in decl.fields.iter_mut() {
                     if let Some(type_id) = self.find_match(field.type_argument.type_id, engines) {
@@ -362,7 +362,7 @@ impl TypeSubstMap {
                 }
             }
             TypeInfo::Enum(decl_ref) => {
-                let mut decl = decl_engine.get_enum(&decl_ref);
+                let mut decl = decl_engine.get_enum(&decl_ref).deref().clone();
                 let mut need_to_create_new = false;
 
                 for variant in decl.variants.iter_mut() {

@@ -121,9 +121,12 @@ impl<'a> Unifier<'a> {
             return;
         }
 
+        let r_type_source_info = self.engines.te().slab.get(received.index());
+        let l_type_source_info = self.engines.te().slab.get(expected.index());
+
         match (
-            self.engines.te().slab.get(received.index()).type_info,
-            self.engines.te().slab.get(expected.index()).type_info,
+            r_type_source_info.type_info.clone(),
+            l_type_source_info.type_info.clone(),
         ) {
             // If they have the same `TypeInfo`, then we either compare them for
             // correctness or perform further unification.
@@ -153,14 +156,14 @@ impl<'a> Unifier<'a> {
                     expected,
                     span,
                     (
-                        r_decl.call_path.suffix,
-                        r_decl.type_parameters,
-                        r_decl.fields,
+                        r_decl.call_path.suffix.clone(),
+                        r_decl.type_parameters.clone(),
+                        r_decl.fields.clone(),
                     ),
                     (
-                        e_decl.call_path.suffix,
-                        e_decl.type_parameters,
-                        e_decl.fields,
+                        e_decl.call_path.suffix.clone(),
+                        e_decl.type_parameters.clone(),
+                        e_decl.fields.clone(),
                     ),
                 )
             }
@@ -235,14 +238,14 @@ impl<'a> Unifier<'a> {
                     expected,
                     span,
                     (
-                        r_decl.call_path.suffix,
-                        r_decl.type_parameters,
-                        r_decl.variants,
+                        r_decl.call_path.suffix.clone(),
+                        r_decl.type_parameters.clone(),
+                        r_decl.variants.clone(),
                     ),
                     (
-                        e_decl.call_path.suffix,
-                        e_decl.type_parameters,
-                        e_decl.variants,
+                        e_decl.call_path.suffix.clone(),
+                        e_decl.type_parameters.clone(),
+                        e_decl.variants.clone(),
                     ),
                 )
             }
@@ -274,7 +277,12 @@ impl<'a> Unifier<'a> {
                     received,
                     expected,
                     r,
-                    self.engines.te().slab.get(expected.index()).type_info,
+                    self.engines
+                        .te()
+                        .slab
+                        .get(expected.index())
+                        .type_info
+                        .clone(),
                     span,
                 )
             }
@@ -292,7 +300,12 @@ impl<'a> Unifier<'a> {
                     handler,
                     received,
                     expected,
-                    self.engines.te().slab.get(received.index()).type_info,
+                    self.engines
+                        .te()
+                        .slab
+                        .get(received.index())
+                        .type_info
+                        .clone(),
                     e,
                     span,
                 )

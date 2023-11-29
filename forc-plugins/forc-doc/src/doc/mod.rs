@@ -8,7 +8,7 @@ use crate::{
     },
 };
 use anyhow::Result;
-use std::{collections::HashMap, option::Option};
+use std::{collections::HashMap, ops::Deref, option::Option};
 use sway_core::{
     decl_engine::DeclEngine,
     language::ty::{TyAstNodeContent, TyDecl, TyImplTrait, TyModule, TyProgram, TySubmodule},
@@ -122,7 +122,10 @@ impl Documentation {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
                 if let TyDecl::ImplTrait(impl_trait) = decl {
                     impl_traits.push((
-                        decl_engine.get_impl_trait(&impl_trait.decl_id),
+                        decl_engine
+                            .get_impl_trait(&impl_trait.decl_id)
+                            .deref()
+                            .clone(),
                         module_info.clone(),
                     ))
                 } else {

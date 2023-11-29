@@ -1,6 +1,7 @@
 use std::{
     fmt,
     hash::{Hash, Hasher},
+    ops::Deref,
 };
 
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -65,15 +66,15 @@ impl DebugWithEngines for TyTraitItem {
             match self {
                 TyTraitItem::Fn(fn_ref) => format!(
                     "fn {:?}",
-                    engines.help_out(engines.de().get_function(fn_ref))
+                    engines.help_out(engines.de().get_function(fn_ref).deref())
                 ),
                 TyTraitItem::Constant(const_ref) => format!(
                     "const {:?}",
-                    engines.help_out(engines.de().get_constant(const_ref))
+                    engines.help_out(engines.de().get_constant(const_ref).deref())
                 ),
                 TyTraitItem::Type(type_ref) => format!(
                     "type {:?}",
-                    engines.help_out(engines.de().get_type(type_ref))
+                    engines.help_out(engines.de().get_type(type_ref).deref())
                 ),
             }
         )
@@ -213,12 +214,12 @@ impl TypeCheckFinalization for TyTraitItem {
         let decl_engine = ctx.engines.de();
         match self {
             TyTraitItem::Fn(node) => {
-                let mut item_fn = decl_engine.get_function(node);
+                let mut item_fn = decl_engine.get_function(node).deref().clone();
                 item_fn.type_check_finalize(handler, ctx)?;
                 decl_engine.replace(*node.id(), item_fn);
             }
             TyTraitItem::Constant(node) => {
-                let mut item_const = decl_engine.get_constant(node);
+                let mut item_const = decl_engine.get_constant(node).deref().clone();
                 item_const.type_check_finalize(handler, ctx)?;
                 decl_engine.replace(*node.id(), item_const);
             }
