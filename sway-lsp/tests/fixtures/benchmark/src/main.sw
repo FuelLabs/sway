@@ -15,7 +15,6 @@ struct Struct1 {
 
 /// I am a random doc comment.
 fn func_struct1(s: Struct1) -> u16 {
-    let x = 0;
     s.field2
 }
 
