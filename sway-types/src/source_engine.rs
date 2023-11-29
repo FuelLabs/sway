@@ -46,6 +46,12 @@ impl SourceEngine {
             })
         };
 
+        if module_id.id == 3 && !path.to_string_lossy().starts_with("/private") {
+            eprintln!("INCORRECT module_id: {:?}", module_id);
+        } else if path.to_string_lossy().starts_with("/private") {
+            eprintln!("path starts_with /private: {:?}", path);
+        }
+
         let source_id = SourceId::new(module_id.id, *self.next_source_id.read().unwrap());
         {
             let mut next_id = self.next_source_id.write().unwrap();

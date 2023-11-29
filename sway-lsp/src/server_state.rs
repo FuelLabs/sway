@@ -122,17 +122,20 @@ async fn run_blocking_parse_project(
     if session.parse_permits.try_acquire().is_err() {
         return Err(LanguageServerError::UnableToAcquirePermit);
     }
+
+    eprintln!("calling run_blocking_parse_project");
     tokio::task::spawn_blocking(move || {
         // Lock the diagnostics result to prevent multiple threads from parsing the project at the same time.
         let mut diagnostics = session.diagnostics.write();
 
         if let Some(version) = version {
             // Garbage collection is fairly expsensive so we only clear on every 10th keystroke.
-            if version % 10 == 0 {
+            //if version % 10 == 0 {
+                eprintln!("garbage collecting");
                 if let Err(err) = session.garbage_collect() {
                     tracing::error!("Unable to perform garbage collection: {}", err.to_string());
                 }
-            }
+            //}
         }
         let parse_result = session::parse_project(&uri, &session.engines.read())?;
         let (errors, warnings) = parse_result.diagnostics.clone();

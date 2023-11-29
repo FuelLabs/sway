@@ -851,7 +851,7 @@ fn perform_control_flow_analysis(
     print_graph: Option<String>,
     print_graph_url_format: Option<String>,
 ) -> Result<(), ErrorEmitted> {
-    let dca_res = dead_code_analysis(handler, engines, program);
+    //let dca_res = dead_code_analysis(handler, engines, program);
     let rpa_errors = return_path_analysis(engines, program);
     let rpa_res = handler.scope(|handler| {
         for err in rpa_errors {
@@ -860,10 +860,10 @@ fn perform_control_flow_analysis(
         Ok(())
     });
 
-    if let Ok(graph) = dca_res.clone() {
-        graph.visualize(engines, print_graph, print_graph_url_format);
-    }
-    dca_res?;
+    // if let Ok(graph) = dca_res.clone() {
+    //     graph.visualize(engines, print_graph, print_graph_url_format);
+    // }
+    // dca_res?;
     rpa_res
 }
 

@@ -112,15 +112,28 @@ async fn did_cache_test() {
     shutdown_and_exit(&mut service).await;
 }
 
-// #[tokio::test]
+use std::thread;
+use std::time::Duration;
+use rand::Rng; // Import the Rng trait to use random number generation methods
+
+
+#[tokio::test]
 #[allow(dead_code)]
 async fn did_change_stress_test() {
     let (mut service, _) = LspService::build(ServerState::new)
         .custom_method("sway/metrics", ServerState::metrics)
         .finish();
     let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
-    let times = 20;
-    for _ in 0..times {
+    let times = 200;
+    for i in 0..times {
+        eprintln!("executing test {} of {}", i + 1, times);
+
+        let mut rng = rand::thread_rng(); // Create a random number generator
+        let random_seconds = rng.gen_range(0.0..0.5); // Generate a float between 0.0 and 1.0
+        let sleep_duration = Duration::from_secs_f64(random_seconds); // Convert to a Duration
+        thread::sleep(sleep_duration); // Sleep for the random duration
+        println!("Slept for {:?} seconds", sleep_duration);
+        
         let _ = lsp::did_change_request(&mut service, &uri).await;
         let metrics = lsp::metrics_request(&mut service, &uri).await;
         for (path, metrics) in metrics {

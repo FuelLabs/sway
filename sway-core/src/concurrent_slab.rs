@@ -66,12 +66,24 @@ where
 
     pub fn get(&self, index: usize) -> T {
         let inner = self.inner.read().unwrap();
-        inner[index].clone()
+        // inner[index].clone()
+
+        match inner.get(index) {
+            Some(value) => value.clone(),
+            None => {
+                panic!("Index out of bounds: {}", index);
+            },
+        }
     }
 
     pub fn retain(&self, predicate: impl Fn(&T) -> bool) {
-        let mut inner = self.inner.write().unwrap();
-        inner.retain(predicate);
+        {eprintln!("retain length original: {}", self.inner.read().unwrap().len());}
+        {
+            let mut inner = self.inner.write().unwrap();
+            inner.retain(predicate);
+        }
+        {eprintln!("retain length afterwards: {}", self.inner.read().unwrap().len());}
+
     }
 }
 

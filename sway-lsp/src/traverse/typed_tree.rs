@@ -341,6 +341,7 @@ impl Parse for ty::TyExpression {
                     token.typed = Some(TypedAstToken::TypedExpression(self.clone()));
                     token.type_def = Some(TypeDefinition::TypeId(self.return_type));
                 }
+
                 call_path_binding
                     .type_arguments
                     .to_vec()
@@ -348,18 +349,30 @@ impl Parse for ty::TyExpression {
                     .for_each(|type_arg| {
                         collect_type_argument(ctx, type_arg);
                     });
+
                 collect_call_path_prefixes(ctx, &call_path_binding.inner.prefixes);
+
                 fields.iter().for_each(|field| {
+                    dbg!();
+
                     if let Some(mut token) =
                         ctx.tokens.try_get_mut(&ctx.ident(&field.name)).try_unwrap()
                     {
+                        dbg!();
+
                         token.typed = Some(TypedAstToken::TypedExpression(field.value.clone()));
+
+                        dbg!();
 
                         if let Some(struct_decl) = &ctx
                             .tokens
                             .struct_declaration_of_type_id(ctx.engines, &self.return_type)
                         {
+                            dbg!();
+
                             struct_decl.fields.iter().for_each(|decl_field| {
+                                dbg!();
+
                                 if decl_field.name == field.name {
                                     token.type_def =
                                         Some(TypeDefinition::Ident(decl_field.name.clone()));
@@ -367,6 +380,8 @@ impl Parse for ty::TyExpression {
                             });
                         }
                     }
+                    dbg!();
+
                     field.value.parse(ctx);
                 });
             }

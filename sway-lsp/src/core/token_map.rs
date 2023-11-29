@@ -167,13 +167,21 @@ impl TokenMap {
         type_id: &TypeId,
     ) -> Option<ty::TyDecl> {
         token::ident_of_type_id(engines, type_id)
-            .and_then(|decl_ident| self.try_get(&decl_ident).try_unwrap())
-            .map(|item| item.value().clone())
+            .and_then(|decl_ident| {
+                dbg!();
+                self.try_get(&decl_ident).try_unwrap()
+            })
+            .map(|item| {
+                dbg!();
+                item.value().clone()
+            })
             .and_then(|token| token.typed)
-            .and_then(|typed_token| match typed_token {
+            .and_then(|typed_token| {
+                dbg!();
+                match typed_token {
                 TypedAstToken::TypedDeclaration(dec) => Some(dec),
                 _ => None,
-            })
+            }})
     }
 
     /// Returns the [ty::TyStructDecl] associated with the TypeId if it exists
@@ -184,12 +192,16 @@ impl TokenMap {
         type_id: &TypeId,
     ) -> Option<ty::TyStructDecl> {
         self.declaration_of_type_id(engines, type_id)
-            .and_then(|decl| match decl {
-                ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
-                    Some(engines.de().get_struct(&decl_id))
+            .and_then(|decl| {
+                eprintln!("decl: {:?}", decl);
+                match decl {
+                    ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
+                        eprintln!("decl_id: {:?}", decl_id);
+                        Some(engines.de().get_struct(&decl_id))
+                    }
+                    _ => None,
                 }
-                _ => None,
-            })
+        })
     }
 }
 

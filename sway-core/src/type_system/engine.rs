@@ -61,9 +61,22 @@ impl TypeEngine {
 
     /// Removes all data associated with `module_id` from the type engine.
     pub fn clear_module(&mut self, module_id: &ModuleId) {
-        self.slab.retain(|ty| match &ty.source_id {
-            Some(source_id) => &source_id.module_id() != module_id,
-            None => false,
+        self.slab.retain(|ty| {
+            match &ty.source_id {
+                Some(source_id) => {
+//                    eprintln!("src.module_id: {:?} | module_id {:?}, ty {:?}", source_id.module_id(), module_id, ty.type_info);
+                    //eprintln!("src.id: {:?} ty {:?}", source_id.source_id(), ty.type_info);
+                    &source_id.module_id() != module_id
+                },
+                None => {
+                    eprintln!("clearing ty: {:?}", ty);
+                    false
+                },
+            }
+        });
+
+        self.id_map.write().unwrap().retain(|ty, id| {
+            ty.source_id.map_or(false, |source_id| source_id.module_id() != *module_id)
         });
     }
 
@@ -363,19 +376,21 @@ impl TypeEngine {
 
 /// Maps specific `TypeInfo` variants to a reserved `SourceId`, returning `None` for non-mapped types.
 fn info_to_source_id(ty: &TypeInfo) -> Option<SourceId> {
-    match ty {
-        TypeInfo::Unknown
-        | TypeInfo::UnsignedInteger(_)
-        | TypeInfo::Numeric
-        | TypeInfo::Boolean
-        | TypeInfo::B256
-        | TypeInfo::RawUntypedPtr
-        | TypeInfo::RawUntypedSlice
-        | TypeInfo::StringSlice
-        | TypeInfo::Contract
-        | TypeInfo::StringArray(_)
-        | TypeInfo::Array(_, _) => Some(SourceId::reserved()),
-        TypeInfo::Tuple(v) if v.is_empty() => Some(SourceId::reserved()),
-        _ => None,
-    }
+    // match ty {
+    //     TypeInfo::Unknown
+    //     | TypeInfo::UnsignedInteger(_)
+    //     | TypeInfo::Numeric
+    //     | TypeInfo::Boolean
+    //     | TypeInfo::B256
+    //     | TypeInfo::RawUntypedPtr
+    //     | TypeInfo::RawUntypedSlice
+    //     | TypeInfo::StringSlice
+    //     | TypeInfo::Contract
+    //     | TypeInfo::StringArray(_)
+    //     | TypeInfo::Array(_, _) => Some(SourceId::reserved()),
+    //     TypeInfo::Tuple(v) if v.is_empty() => Some(SourceId::reserved()),
+    //     _ => None,
+    // }
+
+    Some(SourceId::reserved())
 }
