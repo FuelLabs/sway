@@ -216,7 +216,14 @@ pub async fn deploy_pkg(
 
     let bytecode = &compiled.bytecode.bytes;
 
-    let mut storage_slots = compiled.storage_slots.clone();
+    let mut storage_slots =
+        if let Some(storage_slot_override_file) = &command.override_storage_slots {
+            let storage_slots_file = std::fs::read_to_string(storage_slot_override_file)?;
+            let storage_slots: Vec<StorageSlot> = serde_json::from_str(&storage_slots_file)?;
+            storage_slots
+        } else {
+            compiled.storage_slots.clone()
+        };
     storage_slots.sort();
 
     let contract = Contract::from(bytecode.clone());
