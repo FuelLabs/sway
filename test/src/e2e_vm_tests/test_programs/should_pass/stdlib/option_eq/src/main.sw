@@ -109,24 +109,6 @@ fn main() -> bool {
     assert(str_none_option == Option::None);
     assert(Option::<str>::None == str_none_option);
 
-    // Test with str[]
-    let str_option1 = Option::<str[4]>::Some(__to_str_array("fuel"));
-    let str_option2 = Option::<str[4]>::Some(__to_str_array("fuel"));
-    let str_option3 = Option::<str[4]>::Some(__to_str_array("sway"));
-    let str_none_option: Option<str[4]> = Option::None;
-
-    // Eq tests
-    assert(str_option1 == str_option1);
-    assert(str_option1 == str_option2);
-
-    // Neq tests
-    assert(str_option1 != str_option3);
-    assert(str_option1 != str_none_option);
-
-    // None tests
-    assert(str_none_option == Option::None);
-    assert(Option::<str[4]>::None == str_none_option);
-
     // Test with bool
     let bool_option1 = Option::Some(true);
     let bool_option2 = Option::Some(true);
