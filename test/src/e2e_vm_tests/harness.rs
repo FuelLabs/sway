@@ -167,8 +167,7 @@ pub(crate) fn runs_in_vm(
                     rng.gen(),
                     0u32.into(),
                 )
-                //TODO: @hal3e estimate real `gas_used`
-                .script_gas_limit(ConsensusParameters::default().tx_params().max_gas_per_tx / 2)
+                .script_gas_limit(ConsensusParameters::default().tx_params().max_gas_per_tx / 4)
                 .maturity(maturity);
 
             if let Some(witnesses) = witness_data {

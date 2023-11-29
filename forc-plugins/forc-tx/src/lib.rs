@@ -96,8 +96,8 @@ pub struct Gas {
     #[clap(long = "gas-price")]
     pub price: Option<u64>,
     /// Gas limit for the transaction.
-    #[clap(long = "gas-limit")]
-    pub limit: Option<u64>,
+    #[clap(long = "script-gas-limit")]
+    pub script_gas_limit: Option<u64>,
 }
 
 /// Block until which tx cannot be included.
@@ -392,7 +392,7 @@ const EXAMPLES: &str = r"EXAMPLES:
     forc tx create \
         --bytecode ./my-contract/out/debug/my-contract.bin \
         --storage-slots ./my-contract/out/debug/my-contract-storage_slots.json \
-        --gas-limit 100 \
+        --script-gas-limit 100 \
         --gas-price 0 \
         --maturity 0 \
         --witness ADFD \
@@ -663,11 +663,11 @@ impl TryFrom<Script> for fuel_tx::Script {
         let mut policies = Policies::default().with_maturity(script.maturity.maturity.into());
         policies.set(PolicyType::GasPrice, script.gas.price);
         let script = fuel_tx::Transaction::script(
-            script.gas.limit.unwrap_or(
+            script.gas.script_gas_limit.unwrap_or(
                 fuel_tx::ConsensusParameters::default()
                     .tx_params()
-                    .max_gas_per_tx //TODO: @hal3e estimate real `gas_used`
-                    / 2,
+                    .max_gas_per_tx
+                    / 4,
             ),
             script_bytecode,
             script_data,
@@ -862,7 +862,7 @@ fn test_parse_create() {
         forc-tx create
             --bytecode ./my-contract/out/debug/my-contract.bin
             --storage-slots ./my-contract/out/debug/my-contract-storage_slots.json
-            --gas-limit 100
+            --script-gas-limit 100
             --gas-price 0
             --maturity 0
             --witness ADFD
@@ -879,7 +879,7 @@ fn test_parse_script() {
         forc-tx script
             --bytecode ./my-script/out/debug/my-script.bin
             --data ./my-script.dat
-            --gas-limit 100
+            --script-gas-limit 100
             --gas-price 0
             --maturity 0
             --receipts-root {receipts_root}
@@ -906,7 +906,7 @@ fn test_parse_create_inputs_outputs() {
         forc-tx create
             --bytecode ./my-contract/out/debug/my-contract.bin
             --storage-slots ./my-contract/out/debug/my-contract-storage_slots.json
-            --gas-limit 100
+            --script-gas-limit 100
             --gas-price 0
             --maturity 0
             --witness ADFD
