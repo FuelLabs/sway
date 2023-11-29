@@ -174,14 +174,10 @@ impl TestContext {
                             }
                             ProgramState::Revert(v) => TestResult::Revert(v),
                             ProgramState::RunProgram(_) => {
-                                return Err(anyhow::Error::msg(
-                                    "Execution is in a suspended state: RunProgram",
-                                ));
+                                panic!("Execution is in a suspended state: RunProgram");
                             }
                             ProgramState::VerifyPredicate(_) => {
-                                return Err(anyhow::Error::msg(
-                                    "Execution is in a suspended state: VerifyPredicate",
-                                ));
+                                panic!("Execution is in a suspended state: VerifyPredicate");
                             }
                         }
                     }

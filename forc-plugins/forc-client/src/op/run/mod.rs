@@ -2,7 +2,7 @@ mod encode;
 use crate::{
     cmd,
     util::{
-        gas::get_gas_price,
+        gas::{get_gas_price, get_gas_used},
         node_url::get_node_url,
         pkg::built_pkgs,
         tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
@@ -15,7 +15,6 @@ use forc_util::tx_utils::format_log_receipts;
 use fuel_core_client::client::FuelClient;
 use fuel_tx::{ContractId, Transaction, TransactionBuilder};
 use fuels_accounts::provider::Provider;
-use fuels_core::types::transaction_builders::DryRunner;
 use pkg::BuiltPackage;
 use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};
@@ -116,19 +115,15 @@ pub async fn run_pkg(
         .maturity(command.maturity.maturity.into())
         .add_contracts(contract_ids);
 
+    let provider = Provider::connect(node_url.clone()).await?;
+
     let script_gas_limit = if compiled.bytecode.bytes.is_empty() {
         0
     } else if let Some(script_gas_limit) = command.gas.script_gas_limit {
         script_gas_limit
+    // Dry run tx and get `gas_used`
     } else {
-        let dry_run_tx = tb.finalize_without_signature_inner();
-
-        let provider = Provider::connect(node_url.clone()).await?;
-
-        let estimation_tolerance = 0.1;
-        provider
-            .dry_run_and_get_used_gas(dry_run_tx.into(), estimation_tolerance)
-            .await?
+        get_gas_used(tb.finalize_without_signature_inner(), &provider).await?
     };
     let tb = tb.script_gas_limit(script_gas_limit);
 
