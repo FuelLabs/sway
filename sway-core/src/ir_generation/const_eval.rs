@@ -1134,6 +1134,7 @@ mod tests {
             None,
             "test",
             None,
+            false,
         );
 
         let (errors, _warnings) = handler.consume();

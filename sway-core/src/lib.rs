@@ -37,7 +37,6 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use sway_ast::AttributeDecl;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -470,6 +469,7 @@ pub fn parsed_to_ast(
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
     package_name: &str,
+    bypass_dca: bool,
 ) -> Result<ty::TyProgram, ErrorEmitted> {
     let time = std::time::Instant::now();
     // Type check the program.
@@ -538,16 +538,17 @@ pub fn parsed_to_ast(
     };
     eprintln!("logging and graph {:?} seconds", time.elapsed());
 
-    // Perform control flow analysis and extend with any errors.
-    // let time = std::time::Instant::now();
-    // let _ = perform_control_flow_analysis(
-    //     handler,
-    //     engines,
-    //     &typed_program,
-    //     print_graph,
-    //     print_graph_url_format,
-    // );
-    // eprintln!("CFG {:?} seconds", time.elapsed());
+    //Perform control flow analysis and extend with any errors.
+    let time = std::time::Instant::now();
+    let _ = perform_control_flow_analysis(
+        handler,
+        engines,
+        &typed_program,
+        print_graph,
+        print_graph_url_format,
+        bypass_dca,
+    );
+    eprintln!("CFG {:?} seconds", time.elapsed());
 
 
     // Evaluate const declarations, to allow storage slots initialization with consts.
@@ -618,6 +619,15 @@ pub fn parsed_to_ast(
     Ok(typed_program_with_storage_slots)
 }
 
+fn check_should_abort(handler: &Handler, retrigger_compilation: Option<Arc<AtomicBool>>) -> Result<(), ErrorEmitted> {
+    if let Some(ref retrigger_compilation) = retrigger_compilation {
+        if retrigger_compilation.load(Ordering::Relaxed) {
+            return Err(handler.cancel());
+        }
+    }
+    Ok(())
+}
+
 pub fn compile_to_ast(
     handler: &Handler,
     engines: &Engines,
@@ -626,6 +636,7 @@ pub fn compile_to_ast(
     build_config: Option<&BuildConfig>,
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
+    bypass_dca: bool,
 ) -> Result<Programs, ErrorEmitted> {
     let query_engine = engines.qe();
     let mut metrics = PerformanceData::default();
@@ -656,12 +667,7 @@ pub fn compile_to_ast(
         metrics
     );
 
-    // if let Some(ref retrigger_compilation) = retrigger_compilation {
-    //     if retrigger_compilation.load(Ordering::Relaxed) {
-    //         eprintln!("retrigger_compilation 631 !!!!!!!!");
-    //         return Err(handler.cancel());
-    //     }
-    // }
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     let (lexed_program, mut parsed_program) = match parse_program_opt {
         Ok(modules) => modules,
@@ -671,12 +677,7 @@ pub fn compile_to_ast(
         }
     };
 
-    // if let Some(ref retrigger_compilation) = retrigger_compilation {
-    //     if retrigger_compilation.load(Ordering::Relaxed) {
-    //         eprintln!("retrigger_compilation 652 !!!!!!!!");
-    //         return Err(handler.cancel());
-    //     }
-    // }
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     // If tests are not enabled, exclude them from `parsed_program`.
     if build_config
@@ -698,26 +699,20 @@ pub fn compile_to_ast(
             initial_namespace,
             build_config,
             package_name,
+            bypass_dca,
         ),
         build_config,
         metrics
     );
     eprintln!("parsed_to_ast took {:?} seconds", now.elapsed());
 
-    // if let Some(retrigger_compilation) = retrigger_compilation {
-    //     if retrigger_compilation.load(Ordering::Relaxed) {
-    //         eprintln!("retrigger_compilation 688 !!!!!!!!");
-    //         return Err(handler.cancel());
-    //     }
-    // }
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     handler.dedup();
-
     let programs = Programs::new(lexed_program, parsed_program, typed_res, metrics);
 
     if let Some(config) = build_config {
         let path = config.canonical_root_module();
-
         let cache_entry = ProgramsCacheEntry {
             path,
             programs: programs.clone(),
@@ -747,6 +742,7 @@ pub fn compile_to_asm(
         Some(&build_config),
         package_name,
         None,
+        false,
     )?;
     ast_to_asm(handler, engines, &ast_res, &build_config)
 }
@@ -907,8 +903,17 @@ fn perform_control_flow_analysis(
     program: &ty::TyProgram,
     print_graph: Option<String>,
     print_graph_url_format: Option<String>,
+    bypass_dca: bool,
 ) -> Result<(), ErrorEmitted> {
-    let dca_res = dead_code_analysis(handler, engines, program);
+    // If compile was triggered by LSP, then we skip DCA
+    // to increase the speed of the compilation.
+    if !bypass_dca {
+        let dca_res = dead_code_analysis(handler, engines, program);
+        if let Ok(graph) = dca_res.clone() {
+            graph.visualize(engines, print_graph, print_graph_url_format);
+        }
+        dca_res?;
+    }
     let rpa_errors = return_path_analysis(engines, program);
     let rpa_res = handler.scope(|handler| {
         for err in rpa_errors {
@@ -916,11 +921,6 @@ fn perform_control_flow_analysis(
         }
         Ok(())
     });
-
-    if let Ok(graph) = dca_res.clone() {
-        graph.visualize(engines, print_graph, print_graph_url_format);
-    }
-    dca_res?;
     rpa_res
 }
 

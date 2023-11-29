@@ -458,6 +458,7 @@ pub fn compile(
         tests_enabled,
         engines,
         retrigger_compilation,
+        true,
     )
     .map_err(LanguageServerError::FailedToCompile);
 

@@ -218,7 +218,8 @@ pub fn compile_html(
         build_instructions.silent,
         tests_enabled,
         &engines,
-        None
+        None,
+        false,
     )?;
 
     let raw_docs = if !build_instructions.no_deps {

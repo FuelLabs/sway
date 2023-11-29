@@ -23,7 +23,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
     str::FromStr,
-    sync::{Arc, mpsc::Receiver, atomic::AtomicBool},
+    sync::{Arc, atomic::AtomicBool},
 };
 pub use sway_core::Programs;
 use sway_core::{
@@ -1779,6 +1779,7 @@ pub fn compile(
             Some(&sway_build_config),
             &pkg.name,
             None,
+            false,
         ),
         Some(sway_build_config.clone()),
         metrics
@@ -2585,6 +2586,7 @@ pub fn check(
     include_tests: bool,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
+    bypass_dca: bool,
 ) -> anyhow::Result<Vec<(Option<Programs>, Handler)>> {
     eprintln!("Forc Package Check triggered.");
 
@@ -2643,6 +2645,7 @@ pub fn check(
             Some(&build_config),
             &pkg.name,
             retrigger_compilation.clone(),
+            bypass_dca,
         );
 
         let programs = match programs_res.as_ref() {

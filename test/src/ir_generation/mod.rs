@@ -227,6 +227,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                     Some(&bld_cfg),
                     "test_lib",
                     None,
+                    false,
                 );
                 let (errors, _warnings) = handler.consume();
                 if !errors.is_empty() {
