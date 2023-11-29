@@ -110,8 +110,7 @@ pub async fn run_pkg(
     };
 
     let mut tb = TransactionBuilder::script(compiled.bytecode.bytes.clone(), script_data);
-    let tb = tb
-        .gas_price(get_gas_price(&command.gas, client.node_info().await?))
+    tb.gas_price(get_gas_price(&command.gas, client.node_info().await?))
         .maturity(command.maturity.maturity.into())
         .add_contracts(contract_ids);
 
@@ -123,9 +122,9 @@ pub async fn run_pkg(
         script_gas_limit
     // Dry run tx and get `gas_used`
     } else {
-        get_gas_used(tb.finalize_without_signature_inner(), &provider).await?
+        get_gas_used(tb.clone().finalize_without_signature_inner(), &provider).await?
     };
-    let tb = tb.script_gas_limit(script_gas_limit);
+    tb.script_gas_limit(script_gas_limit);
 
     let tx = tb
         .finalize_signed(
