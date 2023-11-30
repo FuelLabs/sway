@@ -1,5 +1,51 @@
 script;
 
+struct MyStruct {
+    x: u64,
+}
+
+enum MyEnum {
+    A: u64,
+    B: bool,
+}
+
+pub type StringArray = str[4];
+impl core::ops::Eq for StringArray {
+    fn eq(self, other: Self) -> bool {
+        from_str_array(self) == from_str_array(other)
+    }
+}
+
+pub type Array = [u32; 2];
+impl core::ops::Eq for Array {
+    fn eq(self, other: Self) -> bool {
+        self[0] == other[0] && self[1] == other[1]
+    }
+}
+
+impl core::ops::Eq for MyStruct {
+    fn eq(self, other: Self) -> bool {
+        self.x == other.x
+    }
+}
+
+pub type Tuple = (u32, u32);
+impl core::ops::Eq for Tuple {
+    fn eq(self, other: Self) -> bool {
+        self.0 == other.0 && self.1 == other.1
+    }
+}
+
+impl core::ops::Eq for MyEnum {
+    fn eq(self, other: MyEnum) -> bool {
+        match (self, other) {
+            (MyEnum::A(inner1), MyEnum::A(inner2)) => inner1 == inner2,
+            (MyEnum::B(inner1), MyEnum::B(inner2)) => inner1 == inner2,
+            _ => false,
+        }
+    }
+}
+
 fn main() -> bool {
     // Test with u8
     let u8_option1 = Option::<u8>::Some(10);
@@ -144,6 +190,105 @@ fn main() -> bool {
     // None tests
     assert(b256_none_option == Option::None);
     assert(Option::<b256>::None == b256_none_option);
+
+    // Test with string array
+    let string1: StringArray = __to_str_array("fuel");
+    let string2: StringArray = __to_str_array("sway");
+
+    let string_option1 = Option::Some(string1);
+    let string_option2 = Option::Some(string1);
+    let string_option3 = Option::Some(string2);
+    let string_none_option: Option<StringArray> = Option::None;
+
+    // Eq tests
+    assert(string_option1 == string_option1);
+    assert(string_option1 == string_option2);
+
+    // Neq tests
+    assert(string_option1 != string_option3);
+    assert(string_option1 != string_none_option);
+
+    // None tests
+    assert(string_none_option == Option::None);
+    assert(Option::<StringArray>::None == string_none_option);
+
+    // Test with array
+    let array1: Array = [10, 20];
+    let array2: Array = [10, 30];
+
+    let array_option1 = Option::Some(array1);
+    let array_option2 = Option::Some(array1);
+    let array_option3 = Option::Some(array2);
+    let array_none_option: Option<Array> = Option::None;
+
+    // Eq tests
+    assert(array_option1 == array_option1);
+    assert(array_option1 == array_option2);
+
+    // Neq tests
+    assert(array_option1 != array_option3);
+    assert(array_option1 != array_none_option);
+
+    // None tests
+    assert(array_none_option == Option::None);
+    assert(Option::<Array>::None == array_none_option);
+
+    // Test with struct
+    let struct_option1 = Option::Some(MyStruct { x: 10 });
+    let struct_option2 = Option::Some(MyStruct { x: 10 });
+    let struct_option3 = Option::Some(MyStruct { x: 20 });
+    let struct_none_option: Option<MyStruct> = Option::None;
+
+    // Eq tests
+    assert(struct_option1 == struct_option1);
+    assert(struct_option1 == struct_option2);
+
+    // Neq tests
+    assert(struct_option1 != struct_option3);
+    assert(struct_option1 != struct_none_option);
+
+    // None tests
+    assert(struct_none_option == Option::None);
+    assert(Option::<MyStruct>::None == struct_none_option);
+
+    // Test with tuple
+    let tuple1: Tuple = (10, 20);
+    let tuple2: Tuple = (10, 30);
+
+    let tuple_option1 = Option::Some(tuple1);
+    let tuple_option2 = Option::Some(tuple1);
+    let tuple_option3 = Option::Some(tuple2);
+    let tuple_none_option: Option<Tuple> = Option::None;
+
+    // Eq tests
+    assert(tuple_option1 == tuple_option1);
+    assert(tuple_option1 == tuple_option2);
+
+    // Neq tests
+    assert(tuple_option1 != tuple_option3);
+    assert(tuple_option1 != tuple_none_option);
+
+    // None tests
+    assert(tuple_none_option == Option::None);
+    assert(Option::<Tuple>::None == tuple_none_option);
+
+    // Test with enums
+    let enum_option1 = Option::Some(MyEnum::A(42));
+    let enum_option2 = Option::Some(MyEnum::A(42));
+    let enum_option3 = Option::Some(MyEnum::B(true));
+    let enum_none_option: Option<MyEnum> = Option::None;
+
+    // Eq tests
+    assert(enum_option1 == enum_option1);
+    assert(enum_option1 == enum_option2);
+
+    // Neq tests
+    assert(enum_option1 != enum_option3);
+    assert(enum_option1 != enum_none_option);
+
+    // None tests
+    assert(enum_none_option == Option::None);
+    assert(Option::<MyEnum>::None == enum_none_option);
 
     true
 }
