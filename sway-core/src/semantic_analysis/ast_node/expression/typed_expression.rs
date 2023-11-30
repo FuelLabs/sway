@@ -430,7 +430,7 @@ impl ty::TyExpression {
         // an UnsignedInteger or a Numeric
         if let ty::TyExpressionVariant::Literal(lit) = typed_expression.clone().expression {
             if let Literal::Numeric(_) = lit {
-                match type_engine.get(typed_expression.return_type) {
+                match type_engine.get(typed_expression.return_type).deref() {
                     TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => {
                         typed_expression = Self::resolve_numeric_literal(
                             handler,
@@ -940,7 +940,8 @@ impl ty::TyExpression {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
-        let field_type_opt = match type_engine.get(ctx.type_annotation()) {
+        let t_arc = type_engine.get(ctx.type_annotation());
+        let field_type_opt = match t_arc.deref() {
             TypeInfo::Tuple(field_type_ids) if field_type_ids.len() == fields.len() => {
                 Some(field_type_ids)
             }
@@ -1576,7 +1577,7 @@ impl ty::TyExpression {
             ty::TyDecl::VariableDecl(ref decl) => {
                 let ty::TyVariableDecl { body: expr, .. } = &**decl;
                 let ret_ty = type_engine.get(expr.return_type);
-                let abi_name = match ret_ty {
+                let abi_name = match ret_ty.deref() {
                     TypeInfo::ContractCaller { abi_name, .. } => abi_name,
                     _ => {
                         return Err(handler.emit_err(CompileError::NotAnAbi {
@@ -1591,7 +1592,7 @@ impl ty::TyExpression {
                         let unknown_decl = ctx.namespace.resolve_call_path(
                             handler,
                             engines,
-                            &abi_name,
+                            abi_name,
                             ctx.self_type(),
                         )?;
                         unknown_decl.to_abi_ref(handler)?
@@ -1736,8 +1737,10 @@ impl ty::TyExpression {
         };
 
         // start each element with the known array element type
-        let initial_type = match ctx.engines().te().get(ctx.type_annotation()) {
-            TypeInfo::Array(element_type, _) => ctx.engines().te().get(element_type.type_id),
+        let initial_type = match ctx.engines().te().get(ctx.type_annotation()).deref() {
+            TypeInfo::Array(element_type, _) => {
+                ctx.engines().te().get(element_type.type_id).deref().clone()
+            }
             _ => TypeInfo::Unknown,
         };
 
@@ -1798,8 +1801,8 @@ impl ty::TyExpression {
         };
 
         fn get_array_type(ty: TypeId, type_engine: &TypeEngine) -> Option<TypeInfo> {
-            match &type_engine.get(ty) {
-                TypeInfo::Array(..) => Some(type_engine.get(ty)),
+            match type_engine.get(ty).deref() {
+                TypeInfo::Array(..) => Some(type_engine.get(ty).deref().clone()),
                 TypeInfo::Alias { ty, .. } => get_array_type(ty.type_id, type_engine),
                 _ => None,
             }
@@ -2028,7 +2031,7 @@ impl ty::TyExpression {
 
         // Parse and resolve a Numeric(span) based on new_type.
         let (val, new_integer_type) = match lit {
-            Literal::Numeric(num) => match type_engine.get(new_type) {
+            Literal::Numeric(num) => match type_engine.get(new_type).deref() {
                 TypeInfo::UnsignedInteger(n) => match n {
                     IntegerBits::Eight => (
                         num.to_string().parse().map(Literal::U8).map_err(|e| {

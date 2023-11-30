@@ -2,7 +2,7 @@ use crate::{
     core::{session::Session, token::get_range_from_span},
     utils::document::get_url_from_span,
 };
-use std::sync::Arc;
+use std::{ops::Deref, sync::Arc};
 use sway_core::{
     language::{
         ty::{TyDecl, TyTraitDecl},
@@ -43,9 +43,9 @@ impl<'a> HoverLinkContents<'a> {
     /// Adds the given type and any related type parameters to the list of related types.
     pub fn add_related_types(&mut self, type_id: &TypeId) {
         let type_info = self.engines.te().get(*type_id);
-        match type_info {
+        match type_info.deref() {
             TypeInfo::Enum(decl_ref) => {
-                let decl = self.engines.de().get_enum(&decl_ref);
+                let decl = self.engines.de().get_enum(decl_ref);
                 self.add_related_type(
                     decl_ref.name().to_string(),
                     &decl.span(),
@@ -56,7 +56,7 @@ impl<'a> HoverLinkContents<'a> {
                     .for_each(|type_param| self.add_related_types(&type_param.type_id));
             }
             TypeInfo::Struct(decl_ref) => {
-                let decl = self.engines.de().get_struct(&decl_ref);
+                let decl = self.engines.de().get_struct(decl_ref);
                 self.add_related_type(
                     decl_ref.name().to_string(),
                     &decl.span(),

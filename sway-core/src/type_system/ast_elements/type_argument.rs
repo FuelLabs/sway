@@ -1,5 +1,5 @@
 use crate::{engine_threading::*, language::CallPathTree, type_system::priv_prelude::*};
-use std::{cmp::Ordering, fmt, hash::Hasher};
+use std::{cmp::Ordering, fmt, hash::Hasher, ops::Deref};
 use sway_types::{Span, Spanned};
 
 #[derive(Debug, Clone)]
@@ -80,13 +80,21 @@ impl OrdWithEngines for TypeArgument {
 
 impl DisplayWithEngines for TypeArgument {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        write!(f, "{}", engines.help_out(engines.te().get(self.type_id)))
+        write!(
+            f,
+            "{}",
+            engines.help_out(engines.te().get(self.type_id).deref())
+        )
     }
 }
 
 impl DebugWithEngines for TypeArgument {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        write!(f, "{:?}", engines.help_out(engines.te().get(self.type_id)))
+        write!(
+            f,
+            "{:?}",
+            engines.help_out(engines.te().get(self.type_id).deref())
+        )
     }
 }
 

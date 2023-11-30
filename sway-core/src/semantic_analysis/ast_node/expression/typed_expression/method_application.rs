@@ -173,7 +173,9 @@ pub(crate) fn type_check_method_application(
             if let Some(first_arg) = args_buf.get(0) {
                 // check if the user calls an ABI supertrait's method (those are private)
                 // as a contract method
-                if let TypeInfo::ContractCaller { .. } = type_engine.get(first_arg.return_type) {
+                if let TypeInfo::ContractCaller { .. } =
+                    type_engine.get(first_arg.return_type).deref()
+                {
                     return Err(handler.emit_err(
                         CompileError::AbiSupertraitMethodCallAsContractCall {
                             fn_name: method_name.clone(),
@@ -296,7 +298,7 @@ pub(crate) fn type_check_method_application(
         let contract_caller = args_buf.pop_front();
         let contract_address = match contract_caller
             .clone()
-            .map(|x| type_engine.get(x.return_type))
+            .map(|x| type_engine.get(x.return_type).deref().clone())
         {
             Some(TypeInfo::ContractCaller { address, .. }) => match address {
                 Some(address) => address,
@@ -322,7 +324,7 @@ pub(crate) fn type_check_method_application(
         let contract_caller = contract_caller.unwrap();
         Some(ty::ContractCallParams {
             func_selector,
-            contract_address,
+            contract_address: contract_address.clone(),
             contract_caller: Box::new(contract_caller),
         })
     } else {
@@ -599,7 +601,7 @@ pub(crate) fn monomorphize_method_application(
                 qualified_call_path,
                 type_arguments: _,
                 root_type_id: _,
-            } = type_engine.get(t.initial_type_id)
+            } = type_engine.get(t.initial_type_id).deref()
             {
                 for p in method.type_parameters.clone() {
                     if p.name_ident.as_str() == qualified_call_path.call_path.suffix.as_str() {

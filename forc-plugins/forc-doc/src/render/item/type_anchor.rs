@@ -1,4 +1,6 @@
 //! Creation of HTML anchors for types that can be linked.
+use std::ops::Deref;
+
 use crate::{doc::module::ModuleInfo, RenderPlan};
 use anyhow::{anyhow, Result};
 use horrorshow::{box_html, RenderBox};
@@ -23,7 +25,7 @@ pub(crate) fn render_type_anchor(
     match type_info {
         TypeInfo::Array(ty_arg, len) => {
             let inner = render_type_anchor(
-                render_plan.engines.te().get(ty_arg.type_id),
+                render_plan.engines.te().get(ty_arg.type_id).deref().clone(),
                 render_plan,
                 current_module_info,
             )?;
@@ -37,7 +39,7 @@ pub(crate) fn render_type_anchor(
             let mut rendered_args: Vec<_> = Vec::new();
             for ty_arg in ty_args {
                 rendered_args.push(render_type_anchor(
-                    render_plan.engines.te().get(ty_arg.type_id),
+                    render_plan.engines.te().get(ty_arg.type_id).deref().clone(),
                     render_plan,
                     current_module_info,
                 )?)

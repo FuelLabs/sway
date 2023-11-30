@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crate::core::token::TokenIdent;
 use lsp_types::{
     CompletionItem, CompletionItemKind, CompletionItemLabelDetails, CompletionTextEdit, Position,
@@ -30,7 +32,7 @@ fn completion_items_for_type_id(
 ) -> Vec<CompletionItem> {
     let mut completion_items = vec![];
     let type_info = engines.te().get(type_id);
-    if let TypeInfo::Struct(decl_ref) = type_info {
+    if let TypeInfo::Struct(decl_ref) = type_info.deref() {
         let struct_decl = engines.de().get_struct(&decl_ref.id().clone());
         for field in struct_decl.fields.iter() {
             let item = CompletionItem {
@@ -164,7 +166,7 @@ fn type_id_of_raw_ident(
                     }
                     None
                 });
-        } else if let TypeInfo::Struct(decl_ref) = engines.te().get(curr_type_id.unwrap()) {
+        } else if let TypeInfo::Struct(decl_ref) = engines.te().get(curr_type_id.unwrap()).deref() {
             let struct_decl = engines.de().get_struct(&decl_ref.id().clone());
             curr_type_id = struct_decl
                 .fields

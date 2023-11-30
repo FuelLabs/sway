@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crate::{
     engine_threading::*,
     type_system::{priv_prelude::*, unify::occurs_check::OccursCheck},
@@ -213,7 +215,7 @@ impl<'a> UnifyCheck<'a> {
 
         // override top level generics with simple equality but only at top level
         if let NonGenericConstraintSubset = self.mode {
-            if let UnknownGeneric { .. } = right_info {
+            if let UnknownGeneric { .. } = right_info.deref() {
                 return left_info.eq(&right_info, self.engines);
             }
         }
@@ -232,7 +234,7 @@ impl<'a> UnifyCheck<'a> {
         let right_info = self.engines.te().get(right);
 
         // common recursion patterns
-        match (&left_info, &right_info) {
+        match (left_info.deref(), right_info.deref()) {
             (Array(l0, l1), Array(r0, r1)) => {
                 return self.check_inner(l0.type_id, r0.type_id) && l1.val() == r1.val();
             }
@@ -330,9 +332,9 @@ impl<'a> UnifyCheck<'a> {
 
         match self.mode {
             Coercion => {
-                match (left_info, right_info) {
+                match (left_info.deref(), right_info.deref()) {
                     (r @ UnknownGeneric { .. }, e @ UnknownGeneric { .. })
-                        if TypeInfo::is_self_type(&r) || TypeInfo::is_self_type(&e) =>
+                        if TypeInfo::is_self_type(r) || TypeInfo::is_self_type(e) =>
                     {
                         true
                     }
@@ -345,7 +347,7 @@ impl<'a> UnifyCheck<'a> {
                             name: rn,
                             trait_constraints: rtc,
                         },
-                    ) => ln == rn && rtc.eq(&ltc, self.engines),
+                    ) => ln == rn && rtc.eq(ltc, self.engines),
                     // any type can be coerced into a generic,
                     // except if the type already contains the generic
                     (_e, _g @ UnknownGeneric { .. }) => {
@@ -354,13 +356,13 @@ impl<'a> UnifyCheck<'a> {
 
                     // Let empty enums to coerce to any other type. This is useful for Never enum.
                     (Enum(r_decl_ref), _)
-                        if self.engines.de().get_enum(&r_decl_ref).variants.is_empty() =>
+                        if self.engines.de().get_enum(r_decl_ref).variants.is_empty() =>
                     {
                         true
                     }
                     (Enum(l_decl_ref), Enum(r_decl_ref)) => {
-                        let l_decl = self.engines.de().get_enum(&l_decl_ref);
-                        let r_decl = self.engines.de().get_enum(&r_decl_ref);
+                        let l_decl = self.engines.de().get_enum(l_decl_ref);
+                        let r_decl = self.engines.de().get_enum(r_decl_ref);
                         let l_names = l_decl
                             .variants
                             .iter()
@@ -428,11 +430,11 @@ impl<'a> UnifyCheck<'a> {
                     (ErrorRecovery(_), _) => true,
                     (_, ErrorRecovery(_)) => true,
 
-                    (a, b) => a.eq(&b, self.engines),
+                    (a, b) => a.eq(b, self.engines),
                 }
             }
             ConstraintSubset | NonGenericConstraintSubset => {
-                match (left_info, right_info) {
+                match (left_info.deref(), right_info.deref()) {
                     (
                         UnknownGeneric {
                             name: _,
@@ -442,7 +444,7 @@ impl<'a> UnifyCheck<'a> {
                             name: _,
                             trait_constraints: rtc,
                         },
-                    ) => rtc.eq(&ltc, self.engines),
+                    ) => rtc.eq(ltc, self.engines),
                     // any type can be coerced into a generic,
                     // except if the type already contains the generic
                     (_e, _g @ UnknownGeneric { .. }) => {
@@ -450,8 +452,8 @@ impl<'a> UnifyCheck<'a> {
                     }
 
                     (Enum(l_decl_ref), Enum(r_decl_ref)) => {
-                        let l_decl = self.engines.de().get_enum(&l_decl_ref);
-                        let r_decl = self.engines.de().get_enum(&r_decl_ref);
+                        let l_decl = self.engines.de().get_enum(l_decl_ref);
+                        let r_decl = self.engines.de().get_enum(r_decl_ref);
                         let l_names = l_decl
                             .variants
                             .iter()
@@ -482,10 +484,10 @@ impl<'a> UnifyCheck<'a> {
                     (Alias { ty: l_ty, .. }, Alias { ty: r_ty, .. }) => {
                         self.check_inner(l_ty.type_id, r_ty.type_id)
                     }
-                    (a, b) => a.eq(&b, self.engines),
+                    (a, b) => a.eq(b, self.engines),
                 }
             }
-            NonDynamicEquality => match (left_info, right_info) {
+            NonDynamicEquality => match (left_info.deref(), right_info.deref()) {
                 // when a type alias is encoutered, defer the decision to the type it contains (i.e. the
                 // type it aliases with)
                 (Alias { ty, .. }, _) => self.check_inner(ty.type_id, right),
@@ -517,12 +519,12 @@ impl<'a> UnifyCheck<'a> {
                         name: en,
                         trait_constraints: etc,
                     },
-                ) => rn.as_str() == en.as_str() && rtc.eq(&etc, self.engines),
+                ) => rn.as_str() == en.as_str() && rtc.eq(etc, self.engines),
                 (TypeInfo::Placeholder(_), TypeInfo::Placeholder(_)) => false,
 
                 (Enum(l_decl_ref), Enum(r_decl_ref)) => {
-                    let l_decl = self.engines.de().get_enum(&l_decl_ref);
-                    let r_decl = self.engines.de().get_enum(&r_decl_ref);
+                    let l_decl = self.engines.de().get_enum(l_decl_ref);
+                    let r_decl = self.engines.de().get_enum(r_decl_ref);
                     let l_names = l_decl
                         .variants
                         .iter()
@@ -560,7 +562,7 @@ impl<'a> UnifyCheck<'a> {
                     },
                 ) => {
                     l_abi_name == r_abi_name
-                        && Option::zip(l_address, r_address)
+                        && Option::zip(l_address.clone(), r_address.clone())
                             .map(|(l_address, r_address)| {
                                 self.check(l_address.return_type, r_address.return_type)
                             })
@@ -677,7 +679,7 @@ impl<'a> UnifyCheck<'a> {
                         let b = right_types.get(j).unwrap();
                         if matches!(&self.mode, Coercion)
                             && (matches!(
-                                (a, b),
+                                (a.deref(), b.deref()),
                                 (_, Placeholder(_))
                                     | (Placeholder(_), _)
                                     | (UnsignedInteger(_), Numeric)
@@ -697,7 +699,7 @@ impl<'a> UnifyCheck<'a> {
                     let b = left_types.get(j).unwrap();
                     if matches!(&self.mode, Coercion)
                         && (matches!(
-                            (a, b),
+                            (a.deref(), b.deref()),
                             (_, Placeholder(_))
                                 | (Placeholder(_), _)
                                 | (UnsignedInteger(_), Numeric)

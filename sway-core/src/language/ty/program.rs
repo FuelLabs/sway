@@ -129,7 +129,10 @@ impl TyProgram {
                         trait_decl_ref,
                         ..
                     } = impl_trait_decl.deref();
-                    if matches!(ty_engine.get(implementing_for.type_id), TypeInfo::Contract) {
+                    if matches!(
+                        ty_engine.get(implementing_for.type_id).deref(),
+                        TypeInfo::Contract
+                    ) {
                         // add methods to the ABI only if they come from an ABI implementation
                         // and not a (super)trait implementation for Contract
                         if let Some(trait_decl_ref) = trait_decl_ref {
@@ -255,7 +258,7 @@ impl TyProgram {
                 }
                 let main_func_id = mains.remove(0);
                 let main_func = decl_engine.get_function(&main_func_id);
-                match ty_engine.get(main_func.return_type.type_id) {
+                match ty_engine.get(main_func.return_type.type_id).deref() {
                     TypeInfo::Boolean => (),
                     _ => {
                         handler.emit_err(CompileError::PredicateMainDoesNotReturnBool(
@@ -325,7 +328,7 @@ impl TyProgram {
                 ) {
                     // Let main return `raw_slice` directly
                     if !matches!(
-                        engines.te().get(main_func.return_type.type_id),
+                        engines.te().get(main_func.return_type.type_id).deref(),
                         TypeInfo::RawUntypedSlice
                     ) {
                         handler.emit_err(error);

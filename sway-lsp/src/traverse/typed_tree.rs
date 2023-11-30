@@ -541,12 +541,12 @@ impl Parse for ty::TyExpression {
                             ctx.tokens.try_get_mut(&ctx.ident(&field.name)).try_unwrap()
                         {
                             token.typed = Some(TypedAstToken::Ident(field.name.clone()));
-                            match ctx.engines.te().get(container_type_id) {
+                            match ctx.engines.te().get(container_type_id).deref() {
                                 TypeInfo::Struct(decl_ref) => {
                                     if let Some(field_name) = ctx
                                         .engines
                                         .de()
-                                        .get_struct(&decl_ref)
+                                        .get_struct(decl_ref)
                                         .fields
                                         .iter()
                                         .find(|struct_field| {
@@ -1158,7 +1158,7 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ty
         &TypedAstToken::TypedArgument(type_arg.clone()),
         tree.qualified_call_path.call_path.suffix.span(),
     );
-    match &type_info {
+    match type_info.deref() {
         TypeInfo::Enum(decl_ref) => {
             let decl = ctx.engines.de().get_enum(decl_ref);
             let child_type_args = decl.type_parameters.iter().map(TypeArgument::from);
@@ -1262,7 +1262,7 @@ fn collect_type_id(
 ) {
     let type_info = ctx.engines.te().get(type_id);
     let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &type_info, Some(&type_span));
-    match &type_info {
+    match type_info.deref() {
         TypeInfo::Array(type_arg, ..) => {
             collect_type_argument(ctx, type_arg);
         }

@@ -16,8 +16,8 @@ use crate::{
     },
     Engines,
 };
-use std::fmt;
 use std::{collections::HashSet, sync::Arc};
+use std::{fmt, ops::Deref};
 use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{Ident, Span, Spanned};
 
@@ -502,19 +502,19 @@ fn effects_of_expression(engines: &Engines, expr: &ty::TyExpression) -> HashSet<
         | AbiName(_) => HashSet::new(),
         // this type of assignment only mutates local variables and not storage
         Reassignment(reassgn) => effects_of_expression(engines, &reassgn.rhs),
-        StorageAccess(_) => match type_engine.get(expr.return_type) {
+        StorageAccess(_) => match type_engine.get(expr.return_type).deref() {
             // accessing a storage map's method (or a storage vector's method),
             // which is represented using a struct with empty fields
             // does not result in a storage read
             crate::TypeInfo::Struct(decl_ref)
-                if decl_engine.get_struct(&decl_ref).fields.is_empty() =>
+                if decl_engine.get_struct(decl_ref).fields.is_empty() =>
             {
                 HashSet::new()
             }
             // if it's an empty enum then it cannot be constructed and hence cannot be read
             // adding this check here just to be on the safe side
             crate::TypeInfo::Enum(decl_ref)
-                if decl_engine.get_enum(&decl_ref).variants.is_empty() =>
+                if decl_engine.get_enum(decl_ref).variants.is_empty() =>
             {
                 HashSet::new()
             }

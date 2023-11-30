@@ -131,7 +131,7 @@ macro_rules! decl_engine_replace {
     ($slab:ident, $decl:ty) => {
         impl DeclEngineReplace<$decl> for DeclEngine {
             fn replace(&self, index: DeclId<$decl>, decl: $decl) {
-                self.$slab.replace(index, decl);
+                self.$slab.replace(index.inner(), decl);
             }
         }
     };

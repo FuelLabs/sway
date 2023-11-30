@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::{
     error::CompileError,
@@ -116,7 +118,8 @@ fn type_check_not(
     let operand = arguments[0].clone();
     let operand_expr = ty::TyExpression::type_check(handler, ctx.by_ref(), operand)?;
 
-    let t = engines.te().get(operand_expr.return_type);
+    let t_arc = engines.te().get(operand_expr.return_type);
+    let t = t_arc.deref();
     match t {
         TypeInfo::B256 | TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => Ok((
             ty::TyIntrinsicFunctionKind {
@@ -1023,7 +1026,8 @@ fn type_check_bitwise_binary_op(
     let rhs = arguments[1].clone();
     let rhs = ty::TyExpression::type_check(handler, ctx, rhs)?;
 
-    let t = engines.te().get(lhs.return_type);
+    let t_arc = engines.te().get(lhs.return_type);
+    let t = t_arc.deref();
     match t {
         TypeInfo::B256 | TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => Ok((
             ty::TyIntrinsicFunctionKind {
@@ -1096,7 +1100,8 @@ fn type_check_shift_binary_op(
         rhs,
     )?;
 
-    let t = engines.te().get(lhs.return_type);
+    let t_arc = engines.te().get(lhs.return_type);
+    let t = t_arc.deref();
     match t {
         TypeInfo::B256 | TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => Ok((
             ty::TyIntrinsicFunctionKind {

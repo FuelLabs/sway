@@ -141,7 +141,10 @@ impl TypeSubstMap {
         superset: TypeId,
         subset: TypeId,
     ) -> TypeSubstMap {
-        match (type_engine.get(superset), type_engine.get(subset)) {
+        match (
+            type_engine.get(superset).deref(),
+            type_engine.get(subset).deref(),
+        ) {
             (TypeInfo::UnknownGeneric { .. }, _) => TypeSubstMap {
                 mapping: BTreeMap::from([(superset, subset)]),
             },
@@ -153,11 +156,13 @@ impl TypeSubstMap {
                 TypeInfo::Custom { type_arguments, .. },
             ) => {
                 let type_parameters = type_parameters
+                    .clone()
                     .unwrap_or_default()
                     .iter()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
                 let type_arguments = type_arguments
+                    .clone()
                     .unwrap_or_default()
                     .iter()
                     .map(|x| x.type_id)
@@ -170,8 +175,8 @@ impl TypeSubstMap {
                 )
             }
             (TypeInfo::Enum(decl_ref_params), TypeInfo::Enum(decl_ref_args)) => {
-                let decl_params = decl_engine.get_enum(&decl_ref_params);
-                let decl_args = decl_engine.get_enum(&decl_ref_args);
+                let decl_params = decl_engine.get_enum(decl_ref_params);
+                let decl_args = decl_engine.get_enum(decl_ref_args);
                 let type_parameters = decl_params
                     .type_parameters
                     .iter()
@@ -190,8 +195,8 @@ impl TypeSubstMap {
                 )
             }
             (TypeInfo::Struct(decl_ref_params), TypeInfo::Struct(decl_ref_args)) => {
-                let decl_params = decl_engine.get_struct(&decl_ref_params);
-                let decl_args = decl_engine.get_struct(&decl_ref_args);
+                let decl_params = decl_engine.get_struct(decl_ref_params);
+                let decl_args = decl_engine.get_struct(decl_ref_args);
 
                 let type_parameters = decl_params
                     .type_parameters
@@ -330,7 +335,7 @@ impl TypeSubstMap {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         let type_info = type_engine.get(type_id);
-        match type_info {
+        match type_info.deref().clone() {
             TypeInfo::Custom { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::UnknownGeneric { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::Placeholder(_) => iter_for_match(engines, self, &type_info),
@@ -394,7 +399,7 @@ impl TypeSubstMap {
                     elem_ty.type_id = type_id;
                     type_engine.insert(
                         engines,
-                        TypeInfo::Array(elem_ty.clone(), count),
+                        TypeInfo::Array(elem_ty.clone(), count.clone()),
                         elem_ty.span.source_id(),
                     )
                 })
@@ -410,7 +415,7 @@ impl TypeSubstMap {
                             source_id = field.span.source_id().cloned();
                             field.type_id = type_id;
                         }
-                        field
+                        field.clone()
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
@@ -431,7 +436,7 @@ impl TypeSubstMap {
                             source_id = field.span.source_id().cloned();
                             field.type_argument.type_id = type_id;
                         }
-                        field
+                        field.clone()
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
@@ -450,7 +455,7 @@ impl TypeSubstMap {
                     type_engine.insert(
                         engines,
                         TypeInfo::Alias {
-                            name,
+                            name: name.clone(),
                             ty: ty.clone(),
                         },
                         ty.span.source_id(),

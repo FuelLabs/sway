@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use fuel_abi_types::program_abi;
 use sway_types::integer_bits::IntegerBits;
 
@@ -266,7 +268,10 @@ impl TypeId {
                     .abi_str(ctx, type_engine, decl_engine)
             )
         } else {
-            match (type_engine.get(*self), type_engine.get(resolved_type_id)) {
+            match (
+                type_engine.get(*self).deref(),
+                type_engine.get(resolved_type_id).deref(),
+            ) {
                 (TypeInfo::Custom { .. }, TypeInfo::Struct { .. }) => type_engine
                     .get(resolved_type_id)
                     .abi_str(ctx, type_engine, decl_engine),
@@ -339,9 +344,9 @@ impl TypeId {
         types: &mut Vec<program_abi::TypeDeclaration>,
         resolved_type_id: TypeId,
     ) -> Option<Vec<program_abi::TypeApplication>> {
-        match type_engine.get(*self) {
+        match type_engine.get(*self).deref() {
             TypeInfo::Enum(decl_ref) => {
-                let decl = decl_engine.get_enum(&decl_ref);
+                let decl = decl_engine.get_enum(decl_ref);
                 // A list of all `program_abi::TypeDeclaration`s needed for the enum variants
                 let variants = decl
                     .variants
@@ -392,7 +397,7 @@ impl TypeId {
                 )
             }
             TypeInfo::Struct(decl_ref) => {
-                let decl = decl_engine.get_struct(&decl_ref);
+                let decl = decl_engine.get_struct(decl_ref);
 
                 // A list of all `program_abi::TypeDeclaration`s needed for the struct fields
                 let field_types = decl
@@ -444,7 +449,7 @@ impl TypeId {
                 )
             }
             TypeInfo::Array(..) => {
-                if let TypeInfo::Array(elem_ty, _) = type_engine.get(resolved_type_id) {
+                if let TypeInfo::Array(elem_ty, _) = type_engine.get(resolved_type_id).deref() {
                     // The `program_abi::TypeDeclaration`s needed for the array element type
                     let elem_abi_ty = program_abi::TypeDeclaration {
                         type_id: elem_ty.initial_type_id.index(),
@@ -489,7 +494,7 @@ impl TypeId {
                 }
             }
             TypeInfo::Tuple(_) => {
-                if let TypeInfo::Tuple(fields) = type_engine.get(resolved_type_id) {
+                if let TypeInfo::Tuple(fields) = type_engine.get(resolved_type_id).deref() {
                     // A list of all `program_abi::TypeDeclaration`s needed for the tuple fields
                     let fields_types = fields
                         .iter()
@@ -545,6 +550,7 @@ impl TypeId {
                 if !self.is_generic_parameter(type_engine, decl_engine, resolved_type_id) {
                     // A list of all `program_abi::TypeDeclaration`s needed for the type arguments
                     let type_args = type_arguments
+                        .clone()
                         .unwrap_or_default()
                         .iter()
                         .zip(
@@ -591,7 +597,7 @@ impl TypeId {
                 }
             }
             TypeInfo::Alias { .. } => {
-                if let TypeInfo::Alias { ty, .. } = type_engine.get(resolved_type_id) {
+                if let TypeInfo::Alias { ty, .. } = type_engine.get(resolved_type_id).deref() {
                     ty.initial_type_id.get_abi_type_components(
                         ctx,
                         type_engine,
@@ -621,7 +627,7 @@ impl TypeId {
         resolved_type_id: TypeId,
     ) -> Option<Vec<program_abi::TypeApplication>> {
         let resolved_params = resolved_type_id.get_type_parameters(type_engine, decl_engine);
-        match type_engine.get(*self) {
+        match type_engine.get(*self).deref() {
             TypeInfo::Custom {
                 type_arguments: Some(type_arguments),
                 ..
@@ -672,7 +678,7 @@ impl TypeId {
                     .collect::<Vec<_>>()
             }),
             TypeInfo::Enum(decl_ref) => {
-                let decl = decl_engine.get_enum(&decl_ref);
+                let decl = decl_engine.get_enum(decl_ref);
                 // Here, type_id for each type parameter should contain resolved types
                 let abi_type_arguments = decl
                     .type_parameters
@@ -722,7 +728,7 @@ impl TypeId {
             }
 
             TypeInfo::Struct(decl_ref) => {
-                let decl = decl_engine.get_struct(&decl_ref);
+                let decl = decl_engine.get_struct(decl_ref);
                 // Here, type_id for each type parameter should contain resolved types
                 let abi_type_arguments = decl
                     .type_parameters

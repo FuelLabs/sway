@@ -801,7 +801,7 @@ impl TraitMap {
 
         let mut items = vec![];
         // small performance gain in bad case
-        if matches!(type_engine.get(type_id), TypeInfo::ErrorRecovery(_)) {
+        if matches!(type_engine.get(type_id).deref(), TypeInfo::ErrorRecovery(_)) {
             return items;
         }
         for entry in self.trait_impls.iter() {
@@ -834,7 +834,10 @@ impl TraitMap {
 
         let mut spans = vec![];
         // small performance gain in bad case
-        if matches!(type_engine.get(*type_id), TypeInfo::ErrorRecovery(_)) {
+        if matches!(
+            type_engine.get(*type_id).deref(),
+            TypeInfo::ErrorRecovery(_)
+        ) {
             return spans;
         }
         for entry in self.trait_impls.iter() {
@@ -885,7 +888,7 @@ impl TraitMap {
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
         let mut items = vec![];
         // small performance gain in bad case
-        if matches!(type_engine.get(type_id), TypeInfo::ErrorRecovery(_)) {
+        if matches!(type_engine.get(type_id).deref(), TypeInfo::ErrorRecovery(_)) {
             return items;
         }
         for e in self.trait_impls.iter() {
@@ -918,7 +921,7 @@ impl TraitMap {
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
         let mut trait_names = vec![];
         // small performance gain in bad case
-        if matches!(type_engine.get(type_id), TypeInfo::ErrorRecovery(_)) {
+        if matches!(type_engine.get(type_id).deref(), TypeInfo::ErrorRecovery(_)) {
             return trait_names;
         }
         for entry in self.trait_impls.iter() {
@@ -1107,7 +1110,7 @@ impl TraitMap {
                         qualified_call_path: _,
                         type_arguments: Some(type_arguments),
                         root_type_id: _,
-                    } = type_engine.get(*constraint_type_id)
+                    } = type_engine.get(*constraint_type_id).deref()
                     {
                         type_arguments_string = format!("<{}>", engines.help_out(type_arguments));
                     }

@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use sway_error::{
     handler::{ErrorEmitted, Handler},
     warning::{CompileWarning, Warning},
@@ -79,7 +81,7 @@ impl ty::TyConstantDecl {
         // to get the type of the variable. The type of the variable *has* to follow
         // `type_ascription` if `type_ascription` is a concrete integer type that does not
         // conflict with the type of `expression` (i.e. passes the type checking above).
-        let return_type = match type_engine.get(type_ascription.type_id) {
+        let return_type = match type_engine.get(type_ascription.type_id).deref() {
             TypeInfo::UnsignedInteger(_) => type_ascription.type_id,
             _ => match &value {
                 Some(value) => value.return_type,

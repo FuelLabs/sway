@@ -267,7 +267,7 @@ fn const_eval_typed_expr(
 ) -> Result<Option<Constant>, ConstEvalError> {
     Ok(match &expr.expression {
         ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
-            let implied_lit = match lookup.engines.te().get(expr.return_type) {
+            let implied_lit = match lookup.engines.te().get(expr.return_type).deref() {
                 TypeInfo::UnsignedInteger(IntegerBits::Eight) => Literal::U8(*n as u8),
                 _ => Literal::U64(*n),
             };

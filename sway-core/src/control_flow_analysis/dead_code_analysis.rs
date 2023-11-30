@@ -2177,9 +2177,9 @@ fn connect_type_id<'eng: 'cfg, 'cfg>(
     let decl_engine = engines.de();
     let type_engine = engines.te();
 
-    match type_engine.get(type_id) {
+    match type_engine.get(type_id).deref() {
         TypeInfo::Enum(decl_ref) => {
-            let decl = decl_engine.get_enum(&decl_ref);
+            let decl = decl_engine.get_enum(decl_ref);
             let enum_idx = graph.namespace.find_enum(decl.name());
             if let Some(enum_idx) = enum_idx.cloned() {
                 graph.add_edge(entry_node, enum_idx, "".into());
@@ -2189,7 +2189,7 @@ fn connect_type_id<'eng: 'cfg, 'cfg>(
             }
         }
         TypeInfo::Struct(decl_ref) => {
-            let decl = decl_engine.get_struct(&decl_ref);
+            let decl = decl_engine.get_struct(decl_ref);
             let struct_idx = graph.namespace.find_struct_decl(decl.name().as_str());
             if let Some(struct_idx) = struct_idx.cloned() {
                 graph.add_edge(entry_node, struct_idx, "".into());
@@ -2199,7 +2199,7 @@ fn connect_type_id<'eng: 'cfg, 'cfg>(
             }
         }
         TypeInfo::Alias { name, .. } => {
-            let alias_idx = graph.namespace.get_alias(&name);
+            let alias_idx = graph.namespace.get_alias(name);
             if let Some(alias_idx) = alias_idx.cloned() {
                 graph.add_edge(entry_node, alias_idx, "".into());
             }

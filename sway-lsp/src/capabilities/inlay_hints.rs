@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use lsp_types::{self, Range, Url};
-use std::sync::Arc;
+use std::{ops::Deref, sync::Arc};
 use sway_core::{language::ty::TyDecl, type_system::TypeInfo};
 use sway_types::Spanned;
 
@@ -64,7 +64,7 @@ pub fn inlay_hints(
         })
         .filter_map(|var| {
             let type_info = type_engine.get(var.type_ascription.type_id);
-            match type_info {
+            match type_info.deref() {
                 TypeInfo::Unknown | TypeInfo::UnknownGeneric { .. } => None,
                 _ => Some(var),
             }

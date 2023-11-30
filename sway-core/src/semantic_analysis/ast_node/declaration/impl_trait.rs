@@ -306,7 +306,7 @@ impl TyImplTrait {
         // create the trait name
         let trait_name = CallPath {
             prefixes: vec![],
-            suffix: match &type_engine.get(implementing_for.type_id) {
+            suffix: match &type_engine.get(implementing_for.type_id).deref() {
                 TypeInfo::Custom {
                     qualified_call_path: call_path,
                     ..
@@ -1376,7 +1376,7 @@ fn check_for_unconstrained_type_parameters(
     let mut defined_generics: HashMap<_, _> = HashMap::from_iter(
         type_parameters
             .iter()
-            .map(|x| (engines.te().get(x.type_id), x.span()))
+            .map(|x| (engines.te().get(x.type_id).deref().clone(), x.span()))
             .map(|(thing, sp)| (WithEngines::new(thing, engines), sp)),
     );
 

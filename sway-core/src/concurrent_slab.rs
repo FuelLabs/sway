@@ -1,9 +1,7 @@
-use crate::{decl_engine::*, engine_threading::*, type_system::*};
 use std::{
     fmt,
     sync::{Arc, RwLock},
 };
-use sway_types::{Named, Spanned};
 
 #[derive(Debug)]
 pub(crate) struct ConcurrentSlab<T> {
@@ -73,6 +71,12 @@ where
         ret
     }
 
+    pub fn replace(&self, index: usize, new_value: T) -> Option<T> {
+        let mut inner = self.inner.write().unwrap();
+        inner[index] = Arc::new(new_value);
+        None
+    }
+
     pub fn get(&self, index: usize) -> Arc<T> {
         let inner = self.inner.read().unwrap();
         inner[index].clone()
@@ -81,48 +85,5 @@ where
     pub fn retain(&self, predicate: impl Fn(&Arc<T>) -> bool) {
         let mut inner = self.inner.write().unwrap();
         inner.retain(predicate);
-    }
-}
-
-impl ConcurrentSlab<TypeSourceInfo> {
-    pub fn replace(
-        &self,
-        index: TypeId,
-        prev_value: &TypeSourceInfo,
-        new_value: TypeSourceInfo,
-        engines: &Engines,
-    ) -> Option<Arc<TypeSourceInfo>> {
-        let index = index.index();
-        // The comparison below ends up calling functions in the slab, which
-        // can lead to deadlocks if we used a single read/write lock.
-        // So we split the operation: we do the read only operations with
-        // a single scoped read lock below, and only after the scope do
-        // we get a write lock for writing into the slab.
-        {
-            let inner = self.inner.read().unwrap();
-            let actual_prev_value = &inner[index];
-            if !actual_prev_value
-                .type_info
-                .eq(&prev_value.type_info, engines)
-            {
-                return Some(actual_prev_value.clone());
-            }
-        }
-
-        let mut inner = self.inner.write().unwrap();
-        inner[index] = Arc::new(new_value);
-        None
-    }
-}
-
-impl<T> ConcurrentSlab<T>
-where
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned,
-{
-    pub fn replace(&self, index: DeclId<T>, new_value: T) -> Option<T> {
-        let mut inner = self.inner.write().unwrap();
-        inner[index.inner()] = Arc::new(new_value);
-        None
     }
 }

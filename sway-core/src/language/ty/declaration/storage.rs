@@ -1,4 +1,7 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    hash::{Hash, Hasher},
+    ops::Deref,
+};
 
 use sway_error::{
     error::CompileError,
@@ -89,8 +92,8 @@ impl TyStorageDecl {
             span: first_field.span(),
         });
 
-        let update_available_struct_fields = |id: TypeId| match type_engine.get(id) {
-            TypeInfo::Struct(decl_ref) => decl_engine.get_struct(&decl_ref).fields.clone(),
+        let update_available_struct_fields = |id: TypeId| match type_engine.get(id).deref() {
+            TypeInfo::Struct(decl_ref) => decl_engine.get_struct(decl_ref).fields.clone(),
             _ => vec![],
         };
 

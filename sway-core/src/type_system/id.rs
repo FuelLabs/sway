@@ -13,6 +13,7 @@ use crate::{
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
     fmt,
+    ops::Deref,
 };
 
 /// A identifier to uniquely refer to our type terms
@@ -21,13 +22,13 @@ pub struct TypeId(usize);
 
 impl DisplayWithEngines for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        write!(f, "{}", engines.help_out(engines.te().get(*self)))
+        write!(f, "{}", engines.help_out(engines.te().get(*self).deref()))
     }
 }
 
 impl DebugWithEngines for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        write!(f, "{:?}", engines.help_out(engines.te().get(*self)))
+        write!(f, "{:?}", engines.help_out(engines.te().get(*self).deref()))
     }
 }
 
@@ -51,16 +52,16 @@ impl CollectTypesMetadata for TypeId {
         let possible = self.extract_any_including_self(engines, &filter_fn, vec![]);
         let mut res = vec![];
         for (type_id, _) in possible.into_iter() {
-            match ctx.engines.te().get(type_id) {
+            match ctx.engines.te().get(type_id).deref() {
                 TypeInfo::UnknownGeneric { name, .. } => {
                     res.push(TypeMetadata::UnresolvedType(
-                        name,
+                        name.clone(),
                         ctx.call_site_get(&type_id),
                     ));
                 }
                 TypeInfo::Placeholder(type_param) => {
                     res.push(TypeMetadata::UnresolvedType(
-                        type_param.name_ident,
+                        type_param.name_ident.clone(),
                         ctx.call_site_get(self),
                     ));
                 }
@@ -75,7 +76,10 @@ impl SubstTypes for TypeId {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let type_engine = engines.te();
         if let Some(matching_id) = type_mapping.find_match(*self, engines) {
-            if !matches!(type_engine.get(matching_id), TypeInfo::ErrorRecovery(_)) {
+            if !matches!(
+                type_engine.get(matching_id).deref(),
+                TypeInfo::ErrorRecovery(_)
+            ) {
                 *self = matching_id;
             }
         }
@@ -113,13 +117,13 @@ impl TypeId {
         type_engine: &TypeEngine,
         decl_engine: &DeclEngine,
     ) -> Option<Vec<TypeParameter>> {
-        match type_engine.get(*self) {
+        match type_engine.get(*self).deref() {
             TypeInfo::Enum(decl_ref) => {
-                let decl = decl_engine.get_enum(&decl_ref);
+                let decl = decl_engine.get_enum(decl_ref);
                 (!decl.type_parameters.is_empty()).then_some(decl.type_parameters.clone())
             }
             TypeInfo::Struct(decl_ref) => {
-                let decl = decl_engine.get_struct(&decl_ref);
+                let decl = decl_engine.get_struct(decl_ref);
                 (!decl.type_parameters.is_empty()).then_some(decl.type_parameters.clone())
             }
             _ => None,
@@ -135,28 +139,31 @@ impl TypeId {
         decl_engine: &DeclEngine,
         resolved_type_id: TypeId,
     ) -> bool {
-        match (type_engine.get(self), type_engine.get(resolved_type_id)) {
+        match (
+            type_engine.get(self).deref(),
+            type_engine.get(resolved_type_id).deref(),
+        ) {
             (
                 TypeInfo::Custom {
                     qualified_call_path: call_path,
                     ..
                 },
                 TypeInfo::Enum(decl_ref),
-            ) => call_path.call_path.suffix != decl_engine.get_enum(&decl_ref).call_path.suffix,
+            ) => call_path.call_path.suffix != decl_engine.get_enum(decl_ref).call_path.suffix,
             (
                 TypeInfo::Custom {
                     qualified_call_path: call_path,
                     ..
                 },
                 TypeInfo::Struct(decl_ref),
-            ) => call_path.call_path.suffix != decl_engine.get_struct(&decl_ref).call_path.suffix,
+            ) => call_path.call_path.suffix != decl_engine.get_struct(decl_ref).call_path.suffix,
             (
                 TypeInfo::Custom {
                     qualified_call_path: call_path,
                     ..
                 },
                 TypeInfo::Alias { name, .. },
-            ) => call_path.call_path.suffix != name,
+            ) => call_path.call_path.suffix != name.clone(),
             (TypeInfo::Custom { .. }, _) => true,
             _ => false,
         }
@@ -203,7 +210,7 @@ impl TypeId {
 
         let decl_engine = engines.de();
         let mut found: HashMap<TypeId, Vec<TraitConstraint>> = HashMap::new();
-        match engines.te().get(*self) {
+        match engines.te().get(*self).deref() {
             TypeInfo::Unknown
             | TypeInfo::Placeholder(_)
             | TypeInfo::TypeParam(_)
@@ -219,7 +226,7 @@ impl TypeId {
             | TypeInfo::ErrorRecovery(_)
             | TypeInfo::TraitType { .. } => {}
             TypeInfo::Enum(enum_ref) => {
-                let enum_decl = decl_engine.get_enum(&enum_ref);
+                let enum_decl = decl_engine.get_enum(enum_ref);
                 for type_param in enum_decl.type_parameters.iter() {
                     extend(
                         &mut found,
@@ -242,7 +249,7 @@ impl TypeId {
                 }
             }
             TypeInfo::Struct(struct_ref) => {
-                let struct_decl = decl_engine.get_struct(&struct_ref);
+                let struct_decl = decl_engine.get_struct(struct_ref);
                 for type_param in struct_decl.type_parameters.iter() {
                     extend(
                         &mut found,
@@ -397,9 +404,9 @@ impl TypeId {
         let mut inner_types: Vec<TypeInfo> = self
             .extract_inner_types(engines)
             .into_iter()
-            .map(|type_id| type_engine.get(type_id))
+            .map(|type_id| type_engine.get(type_id).deref().clone())
             .collect();
-        inner_types.push(type_engine.get(self));
+        inner_types.push(type_engine.get(self).deref().clone());
         inner_types
     }
 
@@ -466,10 +473,10 @@ impl TypeId {
 
                 let structure_type_info = engines.te().get(*structure_type_id);
                 let structure_type_info_with_engines =
-                    engines.help_out(structure_type_info.clone());
+                    engines.help_out(structure_type_info.deref());
                 if let TypeInfo::UnknownGeneric {
                     trait_constraints, ..
-                } = &structure_type_info
+                } = structure_type_info.deref()
                 {
                     let mut generic_trait_constraints_trait_names: Vec<CallPath<BaseIdent>> =
                         vec![];

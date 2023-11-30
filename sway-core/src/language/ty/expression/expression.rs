@@ -1,4 +1,4 @@
-use std::{fmt, hash::Hasher};
+use std::{fmt, hash::Hasher, ops::Deref};
 
 use sway_error::{
     handler::{ErrorEmitted, Handler},
@@ -177,8 +177,8 @@ impl CollectTypesMetadata for TyExpression {
                 for type_parameter in &struct_decl.type_parameters {
                     ctx.call_site_insert(type_parameter.type_id, instantiation_span.clone());
                 }
-                if let TypeInfo::Struct(decl_ref) = ctx.engines.te().get(self.return_type) {
-                    let decl = decl_engine.get_struct(&decl_ref);
+                if let TypeInfo::Struct(decl_ref) = ctx.engines.te().get(self.return_type).deref() {
+                    let decl = decl_engine.get_struct(decl_ref);
                     for type_parameter in &decl.type_parameters {
                         ctx.call_site_insert(type_parameter.type_id, instantiation_span.clone());
                     }
@@ -502,7 +502,7 @@ impl TyExpression {
             } => {
                 if let Some(TyDecl::ImplTrait(t)) = &engines.de().get(fn_ref).implementing_type {
                     let t = &engines.de().get(&t.decl_id).implementing_for;
-                    if let TypeInfo::Struct(struct_ref) = engines.te().get(t.type_id) {
+                    if let TypeInfo::Struct(struct_ref) = engines.te().get(t.type_id).deref() {
                         let s = engines.de().get(struct_ref.id());
                         emit_warning_if_deprecated(
                             &s.attributes,
