@@ -48,7 +48,7 @@ fuels-core = "0.53.0"
 fuels-accounts = "0.53.0"
 
 # Dependencies from the `forc-wallet` repository:
-forc-wallet = "0.3.0"
+forc-wallet = "0.4.0"
 
 [workspace.package]
 edition = "2021"
@@ -57,6 +57,3 @@ homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
 
-[patch.crates-io]
-# Keep it until release of the `forc-wallet`.
-forc-wallet = { git = "https://github.com/FuelLabs/forc-wallet", branch = "chore/bump-fuels-rs-fuel-core" }
