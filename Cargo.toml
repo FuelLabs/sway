@@ -37,15 +37,15 @@ fuel-core-client = { version = "0.21.0", default-features = false }
 fuel-core-types = { version = "0.21.0", default-features = false }
 
 # Dependencies from the `fuel-vm` repository:
-fuel-asm = "0.43.0"
-fuel-crypto = "0.43.0"
-fuel-types = "0.43.0"
-fuel-tx = "0.43.0"
-fuel-vm = "0.43.0"
+fuel-asm = "0.43.1"
+fuel-crypto = "0.43.1"
+fuel-types = "0.43.1"
+fuel-tx = "0.43.1"
+fuel-vm = "0.43.1"
 
 # Dependencies from the `fuels-rs` repository:
-fuels-core = "0.52.0"
-fuels-accounts = "0.52.0"
+fuels-core = "0.53.0"
+fuels-accounts = "0.53.0"
 
 # Dependencies from the `forc-wallet` repository:
 forc-wallet = "0.3.0"
@@ -58,10 +58,5 @@ license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
 
 [patch.crates-io]
-# Keep it until release of the `fuels-rs`.
-fuels-core = { git = "https://github.com/FuelLabs/fuels-rs.git", branch = "hal3e/tx-status-log-and-response" }
-fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs.git", branch = "hal3e/tx-status-log-and-response" }
-
 # Keep it until release of the `forc-wallet`.
 forc-wallet = { git = "https://github.com/FuelLabs/forc-wallet", branch = "chore/bump-fuels-rs-fuel-core" }
-fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/tx-status-log-and-response" }

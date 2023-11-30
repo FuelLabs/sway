@@ -7,14 +7,10 @@ authors = ["{{authors}}"]
 license = "Apache-2.0"
 
 [dev-dependencies]
-fuels = { version = "0.52.0", features = ["fuel-core-lib"] }
+fuels = { version = "0.53.0", features = ["fuel-core-lib"] }
 tokio = { version = "1.12", features = ["rt", "macros"] }
 
 [[test]]
 harness = true
 name = "integration_tests"
 path = "tests/harness.rs"
-
-# TODO: @hal3e remove after new `fuels` release
-[patch.crates-io]
-fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/tx-status-log-and-response" }
