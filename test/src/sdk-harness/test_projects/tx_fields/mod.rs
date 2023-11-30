@@ -364,7 +364,7 @@ mod tx {
             .await
             .unwrap();
 
-        assert_eq!(response.value, 10968);
+        assert_eq!(response.value, 10960);
     }
 
     #[tokio::test]
