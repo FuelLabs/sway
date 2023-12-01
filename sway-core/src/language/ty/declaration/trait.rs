@@ -188,8 +188,7 @@ impl TypeCheckAnalysis for TyTraitItem {
 
         match self {
             TyTraitItem::Fn(node) => {
-                let item_fn = decl_engine.get_function(node);
-                item_fn.type_check_analyze(handler, ctx)?;
+                node.type_check_analyze(handler, ctx)?;
             }
             TyTraitItem::Constant(node) => {
                 let item_const = decl_engine.get_constant(node);

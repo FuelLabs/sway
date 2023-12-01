@@ -8,9 +8,10 @@ use sway_error::{
 };
 
 use crate::{
+    decl_engine::{DeclId, DeclRefFunction},
     language::{
         parsed::*,
-        ty::{self, TyCodeBlock},
+        ty::{self, TyCodeBlock, TyFunctionDecl},
         CallPath, Visibility,
     },
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
@@ -233,6 +234,48 @@ fn unify_return_statements(
         }
         Ok(())
     })
+}
+
+impl TypeCheckAnalysis for DeclId<TyFunctionDecl> {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            let node = ctx.get_node_for_fn_decl(self);
+            if let Some(node) = node {
+                ctx.node_stack.push(node);
+
+                let item_fn = ctx.engines.de().get_function(self);
+                let _ = item_fn.type_check_analyze(handler, ctx);
+
+                ctx.node_stack.pop();
+            }
+            Ok(())
+        })
+    }
+}
+
+impl TypeCheckAnalysis for DeclRefFunction {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            let node = ctx.get_node_for_fn_decl(self.id());
+            if let Some(node) = node {
+                ctx.node_stack.push(node);
+
+                let item_fn = ctx.engines.de().get_function(self);
+                let _ = item_fn.type_check_analyze(handler, ctx);
+
+                ctx.node_stack.pop();
+            }
+            Ok(())
+        })
+    }
 }
 
 impl TypeCheckAnalysis for ty::TyFunctionDecl {
