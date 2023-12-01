@@ -2,7 +2,6 @@ use std::{
     collections::HashMap,
     fmt::{self, Write},
     hash::{Hash, Hasher},
-    ops::Deref,
 };
 
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -792,7 +791,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     }
 
                     let decl_engine = ctx.engines().de();
-                    let mut method = decl_engine.get(fn_ref).deref().clone();
+                    let mut method = (*decl_engine.get(fn_ref)).clone();
 
                     // Handle the trait constraints. This includes checking to see if the trait
                     // constraints are satisfied and replacing old decl ids based on the
@@ -1262,15 +1261,13 @@ fn find_const_decl_from_impl(
                 .find(|item| match item {
                     TyTraitItem::Constant(decl_id) => {
                         let trait_const_decl =
-                            decl_engine.get_constant(&decl_id.clone()).deref().clone();
+                            (*decl_engine.get_constant(&decl_id.clone())).clone();
                         const_decl.name().eq(trait_const_decl.name())
                     }
                     _ => false,
                 })
                 .map(|item| match item {
-                    TyTraitItem::Constant(decl_id) => {
-                        decl_engine.get_constant(decl_id).deref().clone()
-                    }
+                    TyTraitItem::Constant(decl_id) => (*decl_engine.get_constant(decl_id)).clone(),
                     _ => unreachable!(),
                 })
         }

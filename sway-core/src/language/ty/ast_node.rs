@@ -1,7 +1,6 @@
 use std::{
     fmt::{self, Debug},
     hash::{Hash, Hasher},
-    ops::Deref,
 };
 
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -209,7 +208,7 @@ impl TyAstNode {
                 let fn_decl = decl_engine.get_function(decl_id);
                 let TyFunctionDecl {
                     type_parameters, ..
-                } = fn_decl.deref();
+                } = &*fn_decl;
                 !type_parameters.is_empty()
             }
             _ => false,
@@ -228,7 +227,7 @@ impl TyAstNode {
                 ..
             } => {
                 let fn_decl = decl_engine.get_function(decl_id);
-                let TyFunctionDecl { attributes, .. } = fn_decl.deref();
+                let TyFunctionDecl { attributes, .. } = &*fn_decl;
                 attributes.contains_key(&AttributeKind::Test)
             }
             _ => false,
@@ -324,10 +323,10 @@ impl TyAstNode {
         match &self.content {
             TyAstNodeContent::Declaration(_) => TypeInfo::Tuple(Vec::new()),
             TyAstNodeContent::Expression(TyExpression { return_type, .. }) => {
-                type_engine.get(*return_type).deref().clone()
+                (*type_engine.get(*return_type)).clone()
             }
             TyAstNodeContent::ImplicitReturnExpression(TyExpression { return_type, .. }) => {
-                type_engine.get(*return_type).deref().clone()
+                (*type_engine.get(*return_type)).clone()
             }
             TyAstNodeContent::SideEffect(_) => TypeInfo::Tuple(Vec::new()),
             TyAstNodeContent::Error(_, error) => TypeInfo::ErrorRecovery(*error),

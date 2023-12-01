@@ -18,7 +18,7 @@ use sway_error::{
 };
 use sway_types::{span::Span, Spanned};
 
-use std::{ops::Deref, sync::Arc};
+use std::sync::Arc;
 
 /// Is this a glob (`use foo::*;`) import?
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -309,7 +309,7 @@ impl Items {
     pub fn get_declared_storage(&self, decl_engine: &DeclEngine) -> Option<TyStorageDecl> {
         self.declared_storage
             .as_ref()
-            .map(|decl_ref| decl_engine.get_storage(decl_ref).deref().clone())
+            .map(|decl_ref| (*decl_engine.get_storage(decl_ref)).clone())
     }
 
     pub(crate) fn get_storage_field_descriptors(

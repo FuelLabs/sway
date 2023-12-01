@@ -1,6 +1,5 @@
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
-    ops::Deref,
     sync::Arc,
 };
 
@@ -128,7 +127,7 @@ impl TyImplTrait {
             .ok()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
-                let mut trait_decl = decl_engine.get_trait(&decl_id).deref().clone();
+                let mut trait_decl = (*decl_engine.get_trait(&decl_id)).clone();
 
                 // the following essentially is needed to map `Self` to `implementing_for`
                 // during trait decl monomorphization
@@ -306,7 +305,7 @@ impl TyImplTrait {
         // create the trait name
         let trait_name = CallPath {
             prefixes: vec![],
-            suffix: match &type_engine.get(implementing_for.type_id).deref() {
+            suffix: match &&*type_engine.get(implementing_for.type_id) {
                 TypeInfo::Custom {
                     qualified_call_path: call_path,
                     ..
@@ -462,8 +461,7 @@ impl TyImplTrait {
             for (item, new_item) in items.clone().into_iter().zip(new_items) {
                 match (item, new_item) {
                     (ImplItem::Fn(fn_decl), TyTraitItem::Fn(decl_ref)) => {
-                        let mut ty_fn_decl =
-                            decl_engine.get_function(decl_ref.id()).deref().clone();
+                        let mut ty_fn_decl = (*decl_engine.get_function(decl_ref.id())).clone();
                         let new_ty_fn_decl = match ty::TyFunctionDecl::type_check_body(
                             handler,
                             defer_ctx.by_ref(),
@@ -511,8 +509,7 @@ impl TyImplTrait {
             for idx in ordered_node_indices {
                 match (&items[idx], &new_items[idx]) {
                     (ImplItem::Fn(fn_decl), TyTraitItem::Fn(decl_ref)) => {
-                        let mut ty_fn_decl =
-                            decl_engine.get_function(decl_ref.id()).deref().clone();
+                        let mut ty_fn_decl = (*decl_engine.get_function(decl_ref.id())).clone();
                         let new_ty_fn_decl = match ty::TyFunctionDecl::type_check_body(
                             handler,
                             ctx.by_ref(),
@@ -540,13 +537,12 @@ impl TyImplTrait {
             for item in new_items {
                 match item {
                     TyTraitItem::Fn(decl_ref) => {
-                        let mut fn_decl = decl_engine.get_function(decl_ref.id()).deref().clone();
+                        let mut fn_decl = (*decl_engine.get_function(decl_ref.id())).clone();
                         let _ = fn_decl.type_check_finalize(handler, &mut finalizing_ctx);
                         decl_engine.replace(*decl_ref.id(), fn_decl);
                     }
                     TyTraitItem::Constant(decl_ref) => {
-                        let mut const_decl =
-                            decl_engine.get_constant(decl_ref.id()).deref().clone();
+                        let mut const_decl = (*decl_engine.get_constant(decl_ref.id())).clone();
                         let _ = const_decl.type_check_finalize(handler, &mut finalizing_ctx);
                         decl_engine.replace(*decl_ref.id(), const_decl);
                     }
@@ -894,7 +890,7 @@ fn type_check_trait_implementation(
     for item in trait_items.iter() {
         match item {
             TyImplItem::Fn(decl_ref) => {
-                let mut method = decl_engine.get_function(decl_ref).deref().clone();
+                let mut method = (*decl_engine.get_function(decl_ref)).clone();
 
                 // We need to add impl type parameters to the method's type parameters
                 // so that in-line monomorphization can complete.
@@ -927,13 +923,13 @@ fn type_check_trait_implementation(
                 ));
             }
             TyImplItem::Constant(decl_ref) => {
-                let mut const_decl = decl_engine.get_constant(decl_ref).deref().clone();
+                let mut const_decl = (*decl_engine.get_constant(decl_ref)).clone();
                 const_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
                 const_decl.subst(&type_mapping, engines);
                 all_items_refs.push(TyImplItem::Constant(decl_engine.insert(const_decl)));
             }
             TyImplItem::Type(decl_ref) => {
-                let mut type_decl = decl_engine.get_type(decl_ref).deref().clone();
+                let mut type_decl = (*decl_engine.get_type(decl_ref)).clone();
                 type_decl.subst(&type_mapping, engines);
                 all_items_refs.push(TyImplItem::Type(decl_engine.insert(type_decl.clone())));
             }
@@ -1011,7 +1007,7 @@ fn type_check_impl_method(
 
     // Ensure that the method checklist contains this function.
     let mut impl_method_signature = match method_checklist.get(&impl_method.name) {
-        Some(trait_fn) => trait_fn.deref().clone(),
+        Some(trait_fn) => (**trait_fn).clone(),
         None => {
             return Err(
                 handler.emit_err(CompileError::FunctionNotAPartOfInterfaceSurface {
@@ -1376,7 +1372,7 @@ fn check_for_unconstrained_type_parameters(
     let mut defined_generics: HashMap<_, _> = HashMap::from_iter(
         type_parameters
             .iter()
-            .map(|x| (engines.te().get(x.type_id).deref().clone(), x.span()))
+            .map(|x| ((*engines.te().get(x.type_id)).clone(), x.span()))
             .map(|(thing, sp)| (WithEngines::new(thing, engines), sp)),
     );
 

@@ -1,4 +1,4 @@
-use std::{fmt, ops::Deref};
+use std::fmt;
 
 use sway_error::{handler::Handler, type_error::TypeError};
 use sway_types::{Ident, Span};
@@ -96,7 +96,7 @@ impl<'a> Unifier<'a> {
         let r_type_source_info = self.engines.te().get(received);
         let l_type_source_info = self.engines.te().get(expected);
 
-        match (r_type_source_info.deref(), l_type_source_info.deref()) {
+        match (&*r_type_source_info, &*l_type_source_info) {
             // If they have the same `TypeInfo`, then we either compare them for
             // correctness or perform further unification.
             (Boolean, Boolean) => (),
@@ -168,7 +168,7 @@ impl<'a> Unifier<'a> {
                 if !self.occurs_check(received, expected)
                     && (matches!(self.unify_kind, UnifyKind::WithGeneric)
                         || !matches!(
-                            self.engines.te().get(expected).deref(),
+                            &*self.engines.te().get(expected),
                             TypeInfo::UnknownGeneric { .. }
                         )) =>
             {
@@ -235,7 +235,7 @@ impl<'a> Unifier<'a> {
                 // if one address is empty, coerce to the other one
                 self.replace_received_with_expected(
                     received,
-                    self.engines.te().get(expected).deref(),
+                    &self.engines.te().get(expected),
                     span,
                 )
             }
@@ -251,7 +251,7 @@ impl<'a> Unifier<'a> {
                 // if one address is empty, coerce to the other one
                 self.replace_expected_with_received(
                     expected,
-                    self.engines.te().get(received).deref(),
+                    &self.engines.te().get(received),
                     span,
                 )
             }

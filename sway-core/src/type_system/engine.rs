@@ -95,7 +95,7 @@ impl TypeEngine {
         // A slight infinite loop concern if we somehow have self-referential aliases, but that
         // shouldn't be possible.
         let type_info = self.slab.get(id.index());
-        match type_info.deref() {
+        match &*type_info {
             TypeInfo::Alias { ty, .. } => self.get_unaliased(ty.type_id),
             _ => type_info,
         }
@@ -234,7 +234,7 @@ impl TypeEngine {
     }
 
     pub(crate) fn to_typeinfo(&self, id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
-        match self.get(id).deref() {
+        match &*self.get(id) {
             TypeInfo::Unknown => Err(TypeError::UnknownType {
                 span: error_span.clone(),
             }),
@@ -244,7 +244,7 @@ impl TypeEngine {
 
     /// Return whether a given type still contains undecayed references to [TypeInfo::Numeric]
     pub(crate) fn contains_numeric(&self, decl_engine: &DeclEngine, type_id: TypeId) -> bool {
-        match &self.get(type_id).deref() {
+        match &&*self.get(type_id) {
             TypeInfo::Enum(decl_ref) => {
                 decl_engine
                     .get_enum(decl_ref)
@@ -299,7 +299,7 @@ impl TypeEngine {
     ) -> Result<(), ErrorEmitted> {
         let decl_engine = engines.de();
 
-        match &self.get(type_id).deref() {
+        match &&*self.get(type_id) {
             TypeInfo::Enum(decl_ref) => {
                 for variant_type in decl_engine.get_enum(decl_ref).variants.iter() {
                     self.decay_numeric(handler, engines, variant_type.type_argument.type_id, span)?;
@@ -365,7 +365,7 @@ impl TypeEngine {
         let mut builder = String::new();
         let mut list = vec![];
         for i in 0..self.slab.len() {
-            list.push(format!("{:?}", engines.help_out(self.slab.get(i).deref())));
+            list.push(format!("{:?}", engines.help_out(&*self.slab.get(i))));
         }
         let list = ListDisplay { list };
         write!(builder, "TypeEngine {{\n{list}\n}}").unwrap();

@@ -134,14 +134,11 @@ fn generic_enum_resolution() {
     let (_, errors) = h.consume();
     assert!(errors.is_empty());
 
-    if let TypeInfo::Enum(decl_ref_1) = engines.te().get(ty_1).deref() {
+    if let TypeInfo::Enum(decl_ref_1) = &*engines.te().get(ty_1) {
         let decl = engines.de().get_enum(decl_ref_1);
         assert_eq!(decl.call_path.suffix.as_str(), "Result");
         assert!(matches!(
-            engines
-                .te()
-                .get(variant_types[0].type_argument.type_id)
-                .deref(),
+            &*engines.te().get(variant_types[0].type_argument.type_id),
             TypeInfo::Boolean
         ));
     } else {

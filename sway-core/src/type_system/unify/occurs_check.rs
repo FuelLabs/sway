@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use crate::{engine_threading::*, type_system::priv_prelude::*};
 
 /// Helper struct to perform the occurs check.
@@ -37,7 +35,7 @@ impl<'a> OccursCheck<'a> {
         other_generics.contains(
             &self
                 .engines
-                .help_out(self.engines.te().get(generic).deref().clone()),
+                .help_out((*self.engines.te().get(generic)).clone()),
         )
     }
 }

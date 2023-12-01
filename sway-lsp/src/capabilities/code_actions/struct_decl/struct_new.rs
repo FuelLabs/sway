@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use crate::{
     capabilities::code_actions::{
         common::generate_impl::GenerateImplCodeAction, CodeAction, CodeActionContext,
@@ -37,7 +35,7 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
                     ty::ImplTrait { decl_id, .. },
                 ))) = token.typed
                 {
-                    Some(ctx.engines.de().get_impl_trait(&decl_id).deref().clone())
+                    Some((*ctx.engines.de().get_impl_trait(&decl_id)).clone())
                 } else {
                     None
                 }

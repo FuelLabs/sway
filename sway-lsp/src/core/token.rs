@@ -1,5 +1,5 @@
 use lsp_types::{Position, Range};
-use std::{ops::Deref, path::PathBuf};
+use std::path::PathBuf;
 use sway_ast::Intrinsic;
 use sway_core::{
     language::{
@@ -239,7 +239,7 @@ pub fn desugared_op(prefixes: &[Ident]) -> bool {
 
 /// Use the [TypeId] to look up the associated [TypeInfo] and return the [TokenIdent] if one is found.
 pub fn ident_of_type_id(engines: &Engines, type_id: &TypeId) -> Option<TokenIdent> {
-    let ident = match engines.te().get(*type_id).deref() {
+    let ident = match &*engines.te().get(*type_id) {
         TypeInfo::UnknownGeneric { name, .. } => name.clone(),
         TypeInfo::Enum(decl_ref) => engines.de().get_enum(decl_ref).call_path.suffix.clone(),
         TypeInfo::Struct(decl_ref) => engines.de().get_struct(decl_ref).call_path.suffix.clone(),

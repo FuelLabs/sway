@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    ops::Deref,
-};
+use std::collections::{HashMap, VecDeque};
 
 use crate::{
     decl_engine::{DeclEngineInsert, DeclRefFunction},
@@ -433,7 +430,7 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Result<TypeId, ErrorEmitted> {
         let type_engine = self.engines.te();
         let module_path = type_info_prefix.unwrap_or(mod_path);
-        let type_id = match type_engine.get(type_id).deref().clone() {
+        let type_id = match (*type_engine.get(type_id)).clone() {
             TypeInfo::Custom {
                 qualified_call_path,
                 type_arguments,
@@ -678,7 +675,7 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         let type_engine = self.engines().te();
         if let Some(qualified_path_root) = qualified_call_path.clone().qualified_path_root {
-            let root_type_id = match &type_engine.get(qualified_path_root.ty.type_id).deref() {
+            let root_type_id = match &&*type_engine.get(qualified_path_root.ty.type_id) {
                 TypeInfo::Custom {
                     qualified_call_path: call_path,
                     type_arguments,
@@ -702,7 +699,7 @@ impl<'a> TypeCheckContext<'a> {
                 _ => qualified_path_root.ty.type_id,
             };
 
-            let as_trait_opt = match &type_engine.get(qualified_path_root.as_trait).deref() {
+            let as_trait_opt = match &&*type_engine.get(qualified_path_root.as_trait) {
                 TypeInfo::Custom {
                     qualified_call_path: call_path,
                     ..
@@ -751,7 +748,7 @@ impl<'a> TypeCheckContext<'a> {
                 ..
             })) => {
                 // get the copy from the declaration engine
-                let mut new_copy = decl_engine.get_struct(&original_id).deref().clone();
+                let mut new_copy = (*decl_engine.get_struct(&original_id)).clone();
 
                 // monomorphize the copy, in place
                 self.monomorphize_with_modpath(
@@ -778,7 +775,7 @@ impl<'a> TypeCheckContext<'a> {
                 ..
             })) => {
                 // get the copy from the declaration engine
-                let mut new_copy = decl_engine.get_enum(&original_id).deref().clone();
+                let mut new_copy = (*decl_engine.get_enum(&original_id)).clone();
 
                 // monomorphize the copy, in place
                 self.monomorphize_with_modpath(
@@ -865,7 +862,7 @@ impl<'a> TypeCheckContext<'a> {
         // If the type that we are looking for is the error recovery type, then
         // we want to return the error case without creating a new error
         // message.
-        if let TypeInfo::ErrorRecovery(err) = type_engine.get(type_id).deref() {
+        if let TypeInfo::ErrorRecovery(err) = &*type_engine.get(type_id) {
             return Err(*err);
         }
 
@@ -985,7 +982,7 @@ impl<'a> TypeCheckContext<'a> {
                         .iter()
                         .zip(args_buf.iter())
                         .all(|(p, a)| coercion_check.check(p.type_argument.type_id, a.return_type))
-                    && (matches!(type_engine.get(annotation_type).deref(), TypeInfo::Unknown)
+                    && (matches!(&*type_engine.get(annotation_type), TypeInfo::Unknown)
                         || coercion_check.check(annotation_type, method.return_type.type_id))
                 {
                     maybe_method_decl_refs.push(decl_ref);
@@ -1008,7 +1005,7 @@ impl<'a> TypeCheckContext<'a> {
                                 qualified_call_path: call_path,
                                 type_arguments,
                                 root_type_id: _,
-                            } = type_engine.get(as_trait).deref()
+                            } = &*type_engine.get(as_trait)
                             {
                                 qualified_call_path = Some(call_path.clone());
                                 // When `<S as Trait<T>>::method()` is used we only add methods to `trait_methods` that
@@ -1140,7 +1137,7 @@ impl<'a> TypeCheckContext<'a> {
 
         if let Some(TypeInfo::ErrorRecovery(err)) = args_buf
             .get(0)
-            .map(|x| type_engine.get(x.return_type).deref().clone())
+            .map(|x| (*type_engine.get(x.return_type)).clone())
         {
             Err(err)
         } else {

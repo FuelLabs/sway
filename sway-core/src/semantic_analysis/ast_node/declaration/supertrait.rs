@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Span, Spanned};
@@ -57,7 +55,7 @@ pub(crate) fn insert_supertraits_into_namespace(
             match (decl.clone(), supertraits_of) {
                 // a trait can be a supertrait of either a trait or a an ABI
                 (Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })), _) => {
-                    let mut trait_decl = decl_engine.get_trait(&decl_id).deref().clone();
+                    let mut trait_decl = (*decl_engine.get_trait(&decl_id)).clone();
 
                     // Right now we don't parse type arguments for supertraits, so
                     // we should give this error message to users.

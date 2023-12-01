@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Span, Spanned};
 
@@ -237,7 +235,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
         // Check to see if this is a fn declaration.
         let fn_ref = unknown_decl.to_fn_ref(handler)?;
         // Get a new copy from the declaration engine.
-        let mut new_copy = decl_engine.get_function(fn_ref.id()).deref().clone();
+        let mut new_copy = (*decl_engine.get_function(fn_ref.id())).clone();
         match self.type_arguments {
             // Monomorphize the copy, in place.
             TypeArgs::Regular(_) => {
@@ -296,7 +294,7 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
         // Check to see if this is a struct declaration.
         let struct_ref = unknown_decl.to_struct_ref(handler, engines)?;
         // Get a new copy from the declaration engine.
-        let mut new_copy = decl_engine.get_struct(struct_ref.id()).deref().clone();
+        let mut new_copy = (*decl_engine.get_struct(struct_ref.id())).clone();
         // Monomorphize the copy, in place.
         ctx.monomorphize(
             handler,
@@ -341,11 +339,11 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
             ..
         }) = &unknown_decl
         {
-            decl_engine.get_enum(enum_ref.id()).deref().clone()
+            (*decl_engine.get_enum(enum_ref.id())).clone()
         } else {
             // Check to see if this is a enum declaration.
             let enum_ref = unknown_decl.to_enum_ref(handler, engines)?;
-            decl_engine.get_enum(enum_ref.id()).deref().clone()
+            (*decl_engine.get_enum(enum_ref.id())).clone()
         };
 
         // Monomorphize the copy, in place.

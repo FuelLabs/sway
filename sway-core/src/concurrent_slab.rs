@@ -53,8 +53,8 @@ where
     T: Clone,
 {
     pub fn len(&self) -> usize {
-        let lock = self.inner.read().unwrap();
-        lock.len()
+        let inner = self.inner.read().unwrap();
+        inner.len()
     }
 
     pub fn insert(&self, value: T) -> usize {

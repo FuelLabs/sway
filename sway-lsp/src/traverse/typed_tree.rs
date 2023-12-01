@@ -1,6 +1,4 @@
 #![allow(dead_code)]
-use std::ops::Deref;
-
 use crate::{
     core::token::{
         type_info_to_symbol_kind, SymbolKind, Token, TokenIdent, TypeDefinition, TypedAstToken,
@@ -235,11 +233,7 @@ impl Parse for ty::TyExpression {
                             collect_type_argument(ctx, type_arg);
                         });
                 }
-                let implementing_type_name = ctx
-                    .engines
-                    .de()
-                    .get_function(fn_ref)
-                    .deref()
+                let implementing_type_name = (*ctx.engines.de().get_function(fn_ref))
                     .clone()
                     .implementing_type
                     .and_then(|impl_type| impl_type.get_decl_ident());
@@ -541,7 +535,7 @@ impl Parse for ty::TyExpression {
                             ctx.tokens.try_get_mut(&ctx.ident(&field.name)).try_unwrap()
                         {
                             token.typed = Some(TypedAstToken::Ident(field.name.clone()));
-                            match ctx.engines.te().get(container_type_id).deref() {
+                            match &*ctx.engines.te().get(container_type_id) {
                                 TypeInfo::Struct(decl_ref) => {
                                     if let Some(field_name) = ctx
                                         .engines
@@ -635,7 +629,7 @@ impl Parse for ty::TraitTypeDecl {
 impl Parse for ty::FunctionDecl {
     fn parse(&self, ctx: &ParseContext) {
         let func_decl = ctx.engines.de().get_function(&self.decl_id);
-        let typed_token = TypedAstToken::TypedFunctionDeclaration(func_decl.deref().clone());
+        let typed_token = TypedAstToken::TypedFunctionDeclaration((*func_decl).clone());
         if let Some(mut token) = ctx
             .tokens
             .try_get_mut(&ctx.ident(&func_decl.name))
@@ -757,7 +751,7 @@ impl Parse for ty::ImplTrait {
             items,
             implementing_for,
             ..
-        } = impl_trait_decl.deref();
+        } = &*impl_trait_decl;
         impl_type_parameters.iter().for_each(|param| {
             collect_type_id(
                 ctx,
@@ -1158,7 +1152,7 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ty
         &TypedAstToken::TypedArgument(type_arg.clone()),
         tree.qualified_call_path.call_path.suffix.span(),
     );
-    match type_info.deref() {
+    match &*type_info {
         TypeInfo::Enum(decl_ref) => {
             let decl = ctx.engines.de().get_enum(decl_ref);
             let child_type_args = decl.type_parameters.iter().map(TypeArgument::from);
@@ -1262,7 +1256,7 @@ fn collect_type_id(
 ) {
     let type_info = ctx.engines.te().get(type_id);
     let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &type_info, Some(&type_span));
-    match type_info.deref() {
+    match &*type_info {
         TypeInfo::Array(type_arg, ..) => {
             collect_type_argument(ctx, type_arg);
         }

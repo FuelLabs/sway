@@ -13,10 +13,7 @@ use crate::{
     type_system::*,
 };
 use ast_node::typed_expression::check_function_arguments_arity;
-use std::{
-    collections::{HashMap, VecDeque},
-    ops::Deref,
-};
+use std::collections::{HashMap, VecDeque};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -173,9 +170,7 @@ pub(crate) fn type_check_method_application(
             if let Some(first_arg) = args_buf.get(0) {
                 // check if the user calls an ABI supertrait's method (those are private)
                 // as a contract method
-                if let TypeInfo::ContractCaller { .. } =
-                    type_engine.get(first_arg.return_type).deref()
-                {
+                if let TypeInfo::ContractCaller { .. } = &*type_engine.get(first_arg.return_type) {
                     return Err(handler.emit_err(
                         CompileError::AbiSupertraitMethodCallAsContractCall {
                             fn_name: method_name.clone(),
@@ -298,7 +293,7 @@ pub(crate) fn type_check_method_application(
         let contract_caller = args_buf.pop_front();
         let contract_address = match contract_caller
             .clone()
-            .map(|x| type_engine.get(x.return_type).deref().clone())
+            .map(|x| (*type_engine.get(x.return_type)).clone())
         {
             Some(TypeInfo::ContractCaller { address, .. }) => match address {
                 Some(address) => address,
@@ -574,7 +569,7 @@ pub(crate) fn monomorphize_method_application(
             fn_ref.clone(),
             type_binding.as_mut().unwrap().type_arguments.to_vec_mut(),
         )?;
-        let mut method = decl_engine.get_function(fn_ref).deref().clone();
+        let mut method = (*decl_engine.get_function(fn_ref)).clone();
 
         // unify the types of the arguments with the types of the parameters from the function declaration
         *arguments =
@@ -601,7 +596,7 @@ pub(crate) fn monomorphize_method_application(
                 qualified_call_path,
                 type_arguments: _,
                 root_type_id: _,
-            } = type_engine.get(t.initial_type_id).deref()
+            } = &*type_engine.get(t.initial_type_id)
             {
                 for p in method.type_parameters.clone() {
                     if p.name_ident.as_str() == qualified_call_path.call_path.suffix.as_str() {
@@ -649,7 +644,7 @@ pub(crate) fn monomorphize_method(
 ) -> Result<DeclRefFunction, ErrorEmitted> {
     let engines = ctx.engines();
     let decl_engine = engines.de();
-    let mut func_decl = decl_engine.get_function(&decl_ref).deref().clone();
+    let mut func_decl = (*decl_engine.get_function(&decl_ref)).clone();
 
     // monomorphize the function declaration
     ctx.monomorphize(

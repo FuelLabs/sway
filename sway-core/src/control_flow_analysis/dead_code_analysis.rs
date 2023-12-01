@@ -11,10 +11,7 @@ use crate::{
     Engines, TypeArgument, TypeEngine, TypeId,
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
-use std::{
-    collections::{BTreeSet, HashMap},
-    ops::Deref,
-};
+use std::collections::{BTreeSet, HashMap};
 use sway_ast::Intrinsic;
 use sway_error::{error::CompileError, type_error::TypeError};
 use sway_error::{
@@ -490,7 +487,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             let const_decl = decl_engine.get_constant(decl_id);
             let ty::TyConstantDecl {
                 call_path, value, ..
-            } = const_decl.deref();
+            } = &*const_decl;
             graph
                 .namespace
                 .insert_global_constant(call_path.suffix.clone(), entry_node);
@@ -550,7 +547,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                 trait_decl_ref,
                 implementing_for,
                 ..
-            } = impl_trait_decl.deref();
+            } = &*impl_trait_decl;
 
             connect_impl_trait(
                 engines,
@@ -2091,7 +2088,7 @@ fn construct_dead_code_warning_from_node(
                 })),
             span,
         } => {
-            let ty::TyImplTrait { .. } = decl_engine.get_impl_trait(decl_id).deref();
+            let ty::TyImplTrait { .. } = &*decl_engine.get_impl_trait(decl_id);
             CompileWarning {
                 span: span.clone(),
                 warning_content: Warning::DeadDeclaration,
@@ -2177,7 +2174,7 @@ fn connect_type_id<'eng: 'cfg, 'cfg>(
     let decl_engine = engines.de();
     let type_engine = engines.te();
 
-    match type_engine.get(type_id).deref() {
+    match &*type_engine.get(type_id) {
         TypeInfo::Enum(decl_ref) => {
             let decl = decl_engine.get_enum(decl_ref);
             let enum_idx = graph.namespace.find_enum(decl.name());

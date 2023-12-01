@@ -46,10 +46,7 @@ use rustc_hash::FxHashSet;
 
 use either::Either;
 
-use std::{
-    collections::{HashMap, VecDeque},
-    ops::Deref,
-};
+use std::collections::{HashMap, VecDeque};
 
 #[allow(clippy::too_many_arguments)]
 impl ty::TyExpression {
@@ -430,7 +427,7 @@ impl ty::TyExpression {
         // an UnsignedInteger or a Numeric
         if let ty::TyExpressionVariant::Literal(lit) = typed_expression.clone().expression {
             if let Literal::Numeric(_) = lit {
-                match type_engine.get(typed_expression.return_type).deref() {
+                match &*type_engine.get(typed_expression.return_type) {
                     TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => {
                         typed_expression = Self::resolve_numeric_literal(
                             handler,
@@ -504,7 +501,7 @@ impl ty::TyExpression {
                 }
             }
             Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) => {
-                let const_decl = decl_engine.get_constant(&decl_id).deref().clone();
+                let const_decl = (*decl_engine.get_constant(&decl_id)).clone();
                 let decl_name = const_decl.name().clone();
                 ty::TyExpression {
                     return_type: const_decl.return_type,
@@ -941,7 +938,7 @@ impl ty::TyExpression {
         let engines = ctx.engines();
 
         let t_arc = type_engine.get(ctx.type_annotation());
-        let field_type_opt = match t_arc.deref() {
+        let field_type_opt = match &*t_arc {
             TypeInfo::Tuple(field_type_ids) if field_type_ids.len() == fields.len() => {
                 Some(field_type_ids)
             }
@@ -1039,10 +1036,8 @@ impl ty::TyExpression {
             None,
         )?;
         let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_ref(handler, engines)?;
-        let mut storage_key_struct_decl = decl_engine
-            .get_struct(&storage_key_struct_decl_ref)
-            .deref()
-            .clone();
+        let mut storage_key_struct_decl =
+            (*decl_engine.get_struct(&storage_key_struct_decl_ref)).clone();
 
         // Set the type arguments to `StorageKey` to the `access_type`, which is represents the
         // type of the data that the `StorageKey` "points" to.
@@ -1577,7 +1572,7 @@ impl ty::TyExpression {
             ty::TyDecl::VariableDecl(ref decl) => {
                 let ty::TyVariableDecl { body: expr, .. } = &**decl;
                 let ret_ty = type_engine.get(expr.return_type);
-                let abi_name = match ret_ty.deref() {
+                let abi_name = match &*ret_ty {
                     TypeInfo::ContractCaller { abi_name, .. } => abi_name,
                     _ => {
                         return Err(handler.emit_err(CompileError::NotAnAbi {
@@ -1627,7 +1622,7 @@ impl ty::TyExpression {
             supertraits,
             span,
             ..
-        } = abi_decl.deref();
+        } = &*abi_decl;
 
         let return_type = type_engine.insert(
             engines,
@@ -1737,9 +1732,9 @@ impl ty::TyExpression {
         };
 
         // start each element with the known array element type
-        let initial_type = match ctx.engines().te().get(ctx.type_annotation()).deref() {
+        let initial_type = match &*ctx.engines().te().get(ctx.type_annotation()) {
             TypeInfo::Array(element_type, _) => {
-                ctx.engines().te().get(element_type.type_id).deref().clone()
+                (*ctx.engines().te().get(element_type.type_id)).clone()
             }
             _ => TypeInfo::Unknown,
         };
@@ -1801,8 +1796,8 @@ impl ty::TyExpression {
         };
 
         fn get_array_type(ty: TypeId, type_engine: &TypeEngine) -> Option<TypeInfo> {
-            match type_engine.get(ty).deref() {
-                TypeInfo::Array(..) => Some(type_engine.get(ty).deref().clone()),
+            match &*type_engine.get(ty) {
+                TypeInfo::Array(..) => Some((*type_engine.get(ty)).clone()),
                 TypeInfo::Alias { ty, .. } => get_array_type(ty.type_id, type_engine),
                 _ => None,
             }
@@ -2031,7 +2026,7 @@ impl ty::TyExpression {
 
         // Parse and resolve a Numeric(span) based on new_type.
         let (val, new_integer_type) = match lit {
-            Literal::Numeric(num) => match type_engine.get(new_type).deref() {
+            Literal::Numeric(num) => match &*type_engine.get(new_type) {
                 TypeInfo::UnsignedInteger(n) => match n {
                     IntegerBits::Eight => (
                         num.to_string().parse().map(Literal::U8).map_err(|e| {

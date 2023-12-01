@@ -9,7 +9,7 @@ use crate::{
 };
 use anyhow::Result;
 use horrorshow::{box_html, Raw, RenderBox, Template};
-use std::{collections::BTreeMap, fmt::Write, ops::Deref};
+use std::{collections::BTreeMap, fmt::Write};
 use sway_core::language::ty::{
     TyEnumVariant, TyImplTrait, TyStorageField, TyStructField, TyTraitFn, TyTraitItem,
 };
@@ -53,12 +53,7 @@ impl Renderable for Context {
                 for field in fields {
                     let struct_field_id = format!("structfield.{}", field.name.as_str());
                     let type_anchor = render_type_anchor(
-                        render_plan
-                            .engines
-                            .te()
-                            .get(field.type_argument.type_id)
-                            .deref()
-                            .clone(),
+                        (*render_plan.engines.te().get(field.type_argument.type_id)).clone(),
                         &render_plan,
                         &self.module_info,
                     );
@@ -86,12 +81,7 @@ impl Renderable for Context {
                 for field in fields {
                     let storage_field_id = format!("storagefield.{}", field.name.as_str());
                     let type_anchor = render_type_anchor(
-                        render_plan
-                            .engines
-                            .te()
-                            .get(field.type_argument.type_id)
-                            .deref()
-                            .clone(),
+                        (*render_plan.engines.te().get(field.type_argument.type_id)).clone(),
                         &render_plan,
                         &self.module_info,
                     );
@@ -119,12 +109,7 @@ impl Renderable for Context {
                 for variant in variants {
                     let enum_variant_id = format!("variant.{}", variant.name.as_str());
                     let type_anchor = render_type_anchor(
-                        render_plan
-                            .engines
-                            .te()
-                            .get(variant.type_argument.type_id)
-                            .deref()
-                            .clone(),
+                        (*render_plan.engines.te().get(variant.type_argument.type_id)).clone(),
                         &render_plan,
                         &self.module_info,
                     );

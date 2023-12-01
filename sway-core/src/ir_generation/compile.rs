@@ -18,7 +18,7 @@ use sway_error::{error::CompileError, handler::Handler};
 use sway_ir::{metadata::combine as md_combine, *};
 use sway_types::Spanned;
 
-use std::{collections::HashMap, ops::Deref, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_script(
@@ -222,7 +222,7 @@ pub(crate) fn compile_constants(
                     lookup: compile_const_decl,
                 },
                 &call_path,
-                &Some(const_decl.deref().clone()),
+                &Some((*const_decl).clone()),
             )?;
         }
     }
@@ -267,7 +267,7 @@ fn compile_declarations(
                         lookup: compile_const_decl,
                     },
                     &call_path,
-                    &Some(decl.deref().clone()),
+                    &Some((*decl).clone()),
                 )?;
             }
 

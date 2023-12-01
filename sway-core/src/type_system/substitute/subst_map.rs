@@ -3,7 +3,7 @@ use crate::{
     engine_threading::*,
     type_system::priv_prelude::*,
 };
-use std::{collections::BTreeMap, fmt, ops::Deref};
+use std::{collections::BTreeMap, fmt};
 use sway_types::Spanned;
 
 type SourceType = TypeId;
@@ -141,10 +141,7 @@ impl TypeSubstMap {
         superset: TypeId,
         subset: TypeId,
     ) -> TypeSubstMap {
-        match (
-            type_engine.get(superset).deref(),
-            type_engine.get(subset).deref(),
-        ) {
+        match (&*type_engine.get(superset), &*type_engine.get(subset)) {
             (TypeInfo::UnknownGeneric { .. }, _) => TypeSubstMap {
                 mapping: BTreeMap::from([(superset, subset)]),
             },
@@ -335,13 +332,13 @@ impl TypeSubstMap {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         let type_info = type_engine.get(type_id);
-        match type_info.deref().clone() {
+        match (*type_info).clone() {
             TypeInfo::Custom { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::UnknownGeneric { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::Placeholder(_) => iter_for_match(engines, self, &type_info),
             TypeInfo::TypeParam(_) => None,
             TypeInfo::Struct(decl_ref) => {
-                let mut decl = decl_engine.get_struct(&decl_ref).deref().clone();
+                let mut decl = (*decl_engine.get_struct(&decl_ref)).clone();
                 let mut need_to_create_new = false;
                 for field in decl.fields.iter_mut() {
                     if let Some(type_id) = self.find_match(field.type_argument.type_id, engines) {
@@ -367,7 +364,7 @@ impl TypeSubstMap {
                 }
             }
             TypeInfo::Enum(decl_ref) => {
-                let mut decl = decl_engine.get_enum(&decl_ref).deref().clone();
+                let mut decl = (*decl_engine.get_enum(&decl_ref)).clone();
                 let mut need_to_create_new = false;
 
                 for variant in decl.variants.iter_mut() {

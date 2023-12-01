@@ -1,7 +1,6 @@
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     fmt::Write,
-    ops::Deref,
     sync::{Arc, RwLock},
 };
 
@@ -288,7 +287,7 @@ impl DeclEngine {
         for i in 0..self.trait_slab.len() {
             let trait_decl = self.trait_slab.get(i);
             if trait_decl.name == *trait_name {
-                vec.push(trait_decl.deref().clone())
+                vec.push((*trait_decl).clone())
             }
         }
         vec
@@ -411,7 +410,7 @@ impl DeclEngine {
         for i in 0..self.function_slab.len() {
             list.push(format!(
                 "{:?}",
-                engines.help_out(self.function_slab.get(i).deref())
+                engines.help_out(&*self.function_slab.get(i))
             ));
         }
         let list = ListDisplay { list };

@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use crate::{
     engine_threading::*,
     type_system::{priv_prelude::*, unify::occurs_check::OccursCheck},
@@ -215,7 +213,7 @@ impl<'a> UnifyCheck<'a> {
 
         // override top level generics with simple equality but only at top level
         if let NonGenericConstraintSubset = self.mode {
-            if let UnknownGeneric { .. } = right_info.deref() {
+            if let UnknownGeneric { .. } = &*right_info {
                 return left_info.eq(&right_info, self.engines);
             }
         }
@@ -234,7 +232,7 @@ impl<'a> UnifyCheck<'a> {
         let right_info = self.engines.te().get(right);
 
         // common recursion patterns
-        match (left_info.deref(), right_info.deref()) {
+        match (&*left_info, &*right_info) {
             (Array(l0, l1), Array(r0, r1)) => {
                 return self.check_inner(l0.type_id, r0.type_id) && l1.val() == r1.val();
             }
@@ -332,7 +330,7 @@ impl<'a> UnifyCheck<'a> {
 
         match self.mode {
             Coercion => {
-                match (left_info.deref(), right_info.deref()) {
+                match (&*left_info, &*right_info) {
                     (r @ UnknownGeneric { .. }, e @ UnknownGeneric { .. })
                         if TypeInfo::is_self_type(r) || TypeInfo::is_self_type(e) =>
                     {
@@ -434,7 +432,7 @@ impl<'a> UnifyCheck<'a> {
                 }
             }
             ConstraintSubset | NonGenericConstraintSubset => {
-                match (left_info.deref(), right_info.deref()) {
+                match (&*left_info, &*right_info) {
                     (
                         UnknownGeneric {
                             name: _,
@@ -487,7 +485,7 @@ impl<'a> UnifyCheck<'a> {
                     (a, b) => a.eq(b, self.engines),
                 }
             }
-            NonDynamicEquality => match (left_info.deref(), right_info.deref()) {
+            NonDynamicEquality => match (&*left_info, &*right_info) {
                 // when a type alias is encoutered, defer the decision to the type it contains (i.e. the
                 // type it aliases with)
                 (Alias { ty, .. }, _) => self.check_inner(ty.type_id, right),
@@ -679,7 +677,7 @@ impl<'a> UnifyCheck<'a> {
                         let b = right_types.get(j).unwrap();
                         if matches!(&self.mode, Coercion)
                             && (matches!(
-                                (a.deref(), b.deref()),
+                                (&**a, &**b),
                                 (_, Placeholder(_))
                                     | (Placeholder(_), _)
                                     | (UnsignedInteger(_), Numeric)
@@ -699,7 +697,7 @@ impl<'a> UnifyCheck<'a> {
                     let b = left_types.get(j).unwrap();
                     if matches!(&self.mode, Coercion)
                         && (matches!(
-                            (a.deref(), b.deref()),
+                            (&**a, &**b),
                             (_, Placeholder(_))
                                 | (Placeholder(_), _)
                                 | (UnsignedInteger(_), Numeric)

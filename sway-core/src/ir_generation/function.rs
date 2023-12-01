@@ -30,7 +30,7 @@ use sway_types::{
     Named,
 };
 
-use std::{collections::HashMap, ops::Deref};
+use std::collections::HashMap;
 
 /// Engine for compiling a function and all of the AST nodes within.
 ///
@@ -363,7 +363,7 @@ impl<'eng> FnCompiler<'eng> {
                 self.compile_string_slice(context, span_md_idx, string_data, string_len)
             }
             ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
-                let implied_lit = match self.engines.te().get(ast_expr.return_type).deref() {
+                let implied_lit = match &*self.engines.te().get(ast_expr.return_type) {
                     TypeInfo::UnsignedInteger(IntegerBits::Eight) => Literal::U8(*n as u8),
                     _ => Literal::U64(*n),
                 };
@@ -668,7 +668,7 @@ impl<'eng> FnCompiler<'eng> {
             Intrinsic::IsStrArray => {
                 let targ = type_arguments[0].clone();
                 let val = matches!(
-                    engines.te().get_unaliased(targ.type_id).deref(),
+                    &*engines.te().get_unaliased(targ.type_id),
                     TypeInfo::StringArray(_) | TypeInfo::StringSlice
                 );
                 Ok(Constant::get_bool(context, val))
@@ -1875,7 +1875,7 @@ impl<'eng> FnCompiler<'eng> {
         // Nothing to do for an abi cast declarations. The address specified in them is already
         // provided in each contract call node in the AST.
         if matches!(
-            &self.engines.te().get_unaliased(body.return_type).deref(),
+            &&*self.engines.te().get_unaliased(body.return_type),
             TypeInfo::ContractCaller { .. }
         ) {
             return Ok(None);
@@ -2051,7 +2051,7 @@ impl<'eng> FnCompiler<'eng> {
                 .iter()
                 .scan(ast_reassignment.lhs_type, |cur_type_id, idx_kind| {
                     let cur_type_info_arc = self.engines.te().get_unaliased(*cur_type_id);
-                    let cur_type_info = cur_type_info_arc.deref();
+                    let cur_type_info = &*cur_type_info_arc;
                     Some(match (idx_kind, cur_type_info) {
                         (
                             ProjectionKind::StructField { name: idx_name },
@@ -2418,7 +2418,7 @@ impl<'eng> FnCompiler<'eng> {
 
         // Get the struct type info, with field names.
         let decl = self.engines.te().get_unaliased(struct_type_id);
-        let TypeInfo::Struct(decl_ref) = decl.deref() else {
+        let TypeInfo::Struct(decl_ref) = &*decl else {
             return Err(CompileError::Internal(
                 "Unknown struct in field expression.",
                 ast_field.span.clone(),

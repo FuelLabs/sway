@@ -1,4 +1,4 @@
-use std::{ops::Deref, sync::Arc};
+use std::sync::Arc;
 
 use crate::{
     decl_engine::*,
@@ -111,7 +111,7 @@ impl TyProgram {
                     decl_id,
                     ..
                 })) => {
-                    let config_decl = decl_engine.get_constant(decl_id).deref().clone();
+                    let config_decl = (*decl_engine.get_constant(decl_id)).clone();
                     if config_decl.is_configurable {
                         configurables.push(config_decl);
                     } else {
@@ -128,9 +128,9 @@ impl TyProgram {
                         implementing_for,
                         trait_decl_ref,
                         ..
-                    } = impl_trait_decl.deref();
+                    } = &*impl_trait_decl;
                     if matches!(
-                        ty_engine.get(implementing_for.type_id).deref(),
+                        &*ty_engine.get(implementing_for.type_id),
                         TypeInfo::Contract
                     ) {
                         // add methods to the ABI only if they come from an ABI implementation
@@ -258,7 +258,7 @@ impl TyProgram {
                 }
                 let main_func_id = mains.remove(0);
                 let main_func = decl_engine.get_function(&main_func_id);
-                match ty_engine.get(main_func.return_type.type_id).deref() {
+                match &*ty_engine.get(main_func.return_type.type_id) {
                     TypeInfo::Boolean => (),
                     _ => {
                         handler.emit_err(CompileError::PredicateMainDoesNotReturnBool(
@@ -328,7 +328,7 @@ impl TyProgram {
                 ) {
                     // Let main return `raw_slice` directly
                     if !matches!(
-                        engines.te().get(main_func.return_type.type_id).deref(),
+                        &*engines.te().get(main_func.return_type.type_id),
                         TypeInfo::RawUntypedSlice
                     ) {
                         handler.emit_err(error);
@@ -544,7 +544,7 @@ fn disallow_impure_functions(
     let mut err_purity = fn_decls
         .filter_map(|decl_id| {
             let fn_decl = decl_engine.get_function(&decl_id);
-            let TyFunctionDecl { purity, name, .. } = fn_decl.deref();
+            let TyFunctionDecl { purity, name, .. } = &*fn_decl;
             if *purity != Purity::Pure {
                 Some(CompileError::ImpureInNonContract { span: name.span() })
             } else {

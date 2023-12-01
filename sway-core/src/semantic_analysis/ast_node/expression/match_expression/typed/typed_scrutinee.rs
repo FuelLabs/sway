@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -172,7 +170,7 @@ fn type_check_variable(
     {
         // If this variable is a constant, then we turn it into a [TyScrutinee::Constant](ty::TyScrutinee::Constant).
         Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) => {
-            let constant_decl = decl_engine.get_constant(&decl_id).deref().clone();
+            let constant_decl = (*decl_engine.get_constant(&decl_id)).clone();
             let value = match constant_decl.value {
                 Some(ref value) => value,
                 None => {
@@ -224,7 +222,7 @@ fn type_check_struct(
         ctx.namespace
             .resolve_symbol(handler, engines, &struct_name, ctx.self_type())?;
     let struct_ref = unknown_decl.to_struct_ref(handler, ctx.engines())?;
-    let mut struct_decl = decl_engine.get_struct(&struct_ref).deref().clone();
+    let mut struct_decl = (*decl_engine.get_struct(&struct_ref)).clone();
 
     // monomorphize the struct definition
     ctx.monomorphize(
@@ -345,7 +343,7 @@ fn type_check_enum(
             let enum_ref = unknown_decl.to_enum_ref(handler, ctx.engines())?;
             (
                 enum_callpath.span(),
-                decl_engine.get_enum(&enum_ref).deref().clone(),
+                (*decl_engine.get_enum(&enum_ref)).clone(),
                 unknown_decl,
             )
         }
@@ -357,7 +355,7 @@ fn type_check_enum(
             if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl { enum_ref, .. }) = decl.clone() {
                 (
                     call_path.suffix.span(),
-                    decl_engine.get_enum(enum_ref.id()).deref().clone(),
+                    (*decl_engine.get_enum(enum_ref.id())).clone(),
                     decl,
                 )
             } else {

@@ -16,8 +16,8 @@ use crate::{
     },
     Engines,
 };
+use std::fmt;
 use std::{collections::HashSet, sync::Arc};
-use std::{fmt, ops::Deref};
 use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{Ident, Span, Spanned};
 
@@ -502,7 +502,7 @@ fn effects_of_expression(engines: &Engines, expr: &ty::TyExpression) -> HashSet<
         | AbiName(_) => HashSet::new(),
         // this type of assignment only mutates local variables and not storage
         Reassignment(reassgn) => effects_of_expression(engines, &reassgn.rhs),
-        StorageAccess(_) => match type_engine.get(expr.return_type).deref() {
+        StorageAccess(_) => match &*type_engine.get(expr.return_type) {
             // accessing a storage map's method (or a storage vector's method),
             // which is represented using a struct with empty fields
             // does not result in a storage read

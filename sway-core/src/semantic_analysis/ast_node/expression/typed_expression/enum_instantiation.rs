@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use crate::{
     decl_engine::DeclRefEnum,
     language::{parsed::*, ty, CallPath},
@@ -55,7 +53,7 @@ pub(crate) fn instantiate_enum(
 
     match (
         &args[..],
-        type_engine.get(enum_variant.type_argument.type_id).deref(),
+        &*type_engine.get(enum_variant.type_argument.type_id),
     ) {
         ([], ty) if ty.is_unit() => Ok(ty::TyExpression {
             return_type: type_engine.insert(
@@ -76,7 +74,7 @@ pub(crate) fn instantiate_enum(
         }),
         ([single_expr], _) => {
             // If type context is an enum, force `single_expr` to be the enum variant type
-            let start_type = match type_engine.get(ctx.type_annotation()).deref() {
+            let start_type = match &*type_engine.get(ctx.type_annotation()) {
                 TypeInfo::Enum(e) => {
                     let expected_enum_decl = decl_engine.get_enum(e.id());
                     let expected_enum_variant = expected_enum_decl

@@ -1,4 +1,4 @@
-use std::ops::{BitAnd, BitOr, BitXor, Deref, Not, Rem};
+use std::ops::{BitAnd, BitOr, BitXor, Not, Rem};
 
 use crate::{
     engine_threading::*,
@@ -132,7 +132,7 @@ pub(crate) fn compile_const_decl(
             let const_decl = match decl {
                 Ok(decl) => match decl {
                     ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
-                        Some(env.engines.de().get_constant(decl_id).deref().clone())
+                        Some((*env.engines.de().get_constant(decl_id)).clone())
                     }
                     _otherwise => const_decl.cloned(),
                 },
@@ -267,7 +267,7 @@ fn const_eval_typed_expr(
 ) -> Result<Option<Constant>, ConstEvalError> {
     Ok(match &expr.expression {
         ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
-            let implied_lit = match lookup.engines.te().get(expr.return_type).deref() {
+            let implied_lit = match &*lookup.engines.te().get(expr.return_type) {
                 TypeInfo::UnsignedInteger(IntegerBits::Eight) => Literal::U8(*n as u8),
                 _ => Literal::U64(*n),
             };

@@ -20,10 +20,7 @@
 //! `fn my_function() { .. }`, and to use [DeclRef] for cases like function
 //! application `my_function()`.
 
-use std::{
-    hash::{Hash, Hasher},
-    ops::Deref,
-};
+use std::hash::{Hash, Hasher};
 
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Span, Spanned};
@@ -117,7 +114,7 @@ where
         engines: &Engines,
     ) -> Self {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(&self.id).deref().clone();
+        let mut decl = (*decl_engine.get(&self.id)).clone();
         decl.subst(type_mapping, engines);
         decl_engine.insert(decl)
     }
@@ -150,7 +147,7 @@ where
         engines: &Engines,
     ) -> Self {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(&self.id).deref().clone();
+        let mut decl = (*decl_engine.get(&self.id)).clone();
         decl.subst(type_mapping, engines);
         decl_engine
             .insert(decl)
@@ -171,7 +168,7 @@ where
         ctx: &mut TypeCheckContext,
     ) -> Result<Self, ErrorEmitted> {
         let decl_engine = ctx.engines().de();
-        let mut decl = decl_engine.get(&self.id).deref().clone();
+        let mut decl = (*decl_engine.get(&self.id)).clone();
         decl.replace_decls(decl_mapping, handler, ctx)?;
         Ok(decl_engine
             .insert(decl)
@@ -287,7 +284,7 @@ where
 {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(&self.id).deref().clone();
+        let mut decl = (*decl_engine.get(&self.id)).clone();
         decl.subst(type_mapping, engines);
         decl_engine.replace(self.id, decl);
     }
@@ -324,7 +321,7 @@ impl ReplaceDecls for DeclRefFunction {
 impl ReplaceFunctionImplementingType for DeclRefFunction {
     fn replace_implementing_type(&mut self, engines: &Engines, implementing_type: ty::TyDecl) {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(&self.id).deref().clone();
+        let mut decl = (*decl_engine.get(&self.id)).clone();
         decl.set_implementing_type(implementing_type);
         decl_engine.replace(self.id, decl);
     }

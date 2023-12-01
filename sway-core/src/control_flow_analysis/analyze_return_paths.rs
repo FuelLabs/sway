@@ -1,8 +1,6 @@
 //! This is the flow graph, a graph which contains edges that represent possible steps of program
 //! execution.
 
-use std::ops::Deref;
-
 use crate::{
     control_flow_analysis::*,
     language::{
@@ -225,7 +223,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             let impl_trait = decl_engine.get_impl_trait(decl_id);
             let ty::TyImplTrait {
                 trait_name, items, ..
-            } = impl_trait.deref();
+            } = &*impl_trait;
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());

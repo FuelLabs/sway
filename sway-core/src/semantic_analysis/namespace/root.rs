@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -265,11 +263,7 @@ impl Root {
             )),
             ty::TyDecl::TraitTypeDecl(type_decl) => {
                 let type_decl = engines.de().get_type(&type_decl.decl_id);
-                engines
-                    .te()
-                    .get(type_decl.ty.clone().unwrap().type_id)
-                    .deref()
-                    .clone()
+                (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
             }
             _ => {
                 return Err(handler.emit_err(CompileError::SymbolNotFound {

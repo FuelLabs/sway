@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use sway_types::integer_bits::IntegerBits;
 
 use crate::{
@@ -43,8 +41,8 @@ fn get_type_str(
         )
     } else {
         match (
-            type_engine.get(*type_id).deref(),
-            type_engine.get(resolved_type_id).deref(),
+            &*type_engine.get(*type_id),
+            &*type_engine.get(resolved_type_id),
         ) {
             (TypeInfo::Custom { .. }, TypeInfo::Struct { .. }) => {
                 format!(

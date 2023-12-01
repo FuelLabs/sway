@@ -1,6 +1,4 @@
 //! Determine whether a [Declaration] is documentable.
-use std::ops::Deref;
-
 use crate::{
     doc::{module::ModuleInfo, Document},
     render::{
@@ -20,7 +18,7 @@ trait RequiredMethods {
 impl RequiredMethods for Vec<DeclRefTraitFn> {
     fn to_methods(&self, decl_engine: &DeclEngine) -> Vec<TyTraitFn> {
         self.iter()
-            .map(|decl_ref| decl_engine.get_trait_fn(decl_ref).deref().clone())
+            .map(|decl_ref| (*decl_engine.get_trait_fn(decl_ref)).clone())
             .collect()
     }
 }
@@ -117,7 +115,7 @@ impl Descriptor {
                 }
             }
             ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. }) => {
-                let trait_decl = decl_engine.get_trait(decl_id).deref().clone();
+                let trait_decl = (*decl_engine.get_trait(decl_id)).clone();
                 if !document_private_items && trait_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
@@ -165,7 +163,7 @@ impl Descriptor {
                 }
             }
             ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. }) => {
-                let abi_decl = decl_engine.get_abi(decl_id).deref().clone();
+                let abi_decl = (*decl_engine.get_abi(decl_id)).clone();
                 let item_name = abi_decl.name;
                 let attrs_opt =
                     (!abi_decl.attributes.is_empty()).then(|| abi_decl.attributes.to_html_string());
