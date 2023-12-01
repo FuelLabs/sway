@@ -39,6 +39,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_ast::AttributeDecl;
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_ir::live_variables::LIVE_VARIABLE_NAME;
 use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassManager,
     ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME,
@@ -787,6 +788,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         pass_group.append_pass(SROA_NAME);
         pass_group.append_pass(MEM2REG_NAME);
         pass_group.append_pass(DCE_NAME);
+        pass_group.append_pass(LIVE_VARIABLE_NAME);
     }
 
     if build_config.print_ir {

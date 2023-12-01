@@ -256,6 +256,12 @@ impl Function {
         context.functions[self.0].blocks[0]
     }
 
+    /// Return the last block
+    pub fn get_last_block(&self, context: &Context) -> Block {
+        let blocks = &context.functions[self.0].blocks;
+        blocks[blocks.len() - 1]
+    }
+
     /// Return the attached metadata.
     pub fn get_metadata(&self, context: &Context) -> Option<MetadataIndex> {
         context.functions[self.0].metadata
