@@ -37,7 +37,7 @@ abi TxContractTest {
 
     fn get_input_type(index: u64) -> Input;
     fn get_tx_input_pointer(index: u64) -> u64;
-    fn get_input_owner(index: u64) -> Address;
+    fn get_input_coin_owner(index: u64) -> Address;
     fn get_input_amount(index: u64) -> u64;
     fn get_tx_input_predicate_data_pointer(index: u64) -> u64;
     fn get_input_message_sender(index: u64) -> Address;
@@ -119,8 +119,8 @@ impl TxContractTest for Contract {
     fn get_input_type(index: u64) -> Input {
         input_type(index)
     }
-    fn get_input_owner(index: u64) -> Address {
-        input_owner(index).unwrap()
+    fn get_input_coin_owner(index: u64) -> Address {
+        input_coin_owner(index).unwrap()
     }
     fn get_input_amount(index: u64) -> u64 {
         input_amount(index).unwrap()

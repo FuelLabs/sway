@@ -564,7 +564,7 @@ mod inputs {
 
             let owner_result = contract_instance
                 .methods()
-                .get_input_owner(1)
+                .get_input_coin_owner(1)
                 .call()
                 .await
                 .unwrap();
