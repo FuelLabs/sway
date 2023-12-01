@@ -399,6 +399,49 @@ impl TyAstNode {
             TyAstNodeContent::SideEffect(_) | TyAstNodeContent::Error(_, _) => {}
         }
     }
+
+    pub(crate) fn check_recursive(
+        &self,
+        engines: &Engines,
+        handler: &Handler,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            match &self.content {
+                TyAstNodeContent::Declaration(node) => match node {
+                    TyDecl::VariableDecl(_decl) => {}
+                    TyDecl::ConstantDecl(_decl) => {}
+                    TyDecl::TraitTypeDecl(_) => {}
+                    TyDecl::FunctionDecl(decl) => {
+                        let fn_decl_id = decl.decl_id;
+                        let mut ctx = TypeCheckAnalysisContext::new(engines);
+                        let _ = fn_decl_id.type_check_analyze(handler, &mut ctx);
+                        let _ = ctx.check_recursive_calls(handler);
+                    }
+                    TyDecl::ImplTrait(decl) => {
+                        let decl = engines.de().get(&decl.decl_id);
+                        for item in decl.items.iter() {
+                            let mut ctx = TypeCheckAnalysisContext::new(engines);
+                            let _ = item.type_check_analyze(handler, &mut ctx);
+                            let _ = ctx.check_recursive_calls(handler);
+                        }
+                    }
+                    TyDecl::AbiDecl(_)
+                    | TyDecl::GenericTypeForFunctionScope(_)
+                    | TyDecl::ErrorRecovery(_, _)
+                    | TyDecl::StorageDecl(_)
+                    | TyDecl::TraitDecl(_)
+                    | TyDecl::StructDecl(_)
+                    | TyDecl::EnumDecl(_)
+                    | TyDecl::EnumVariantDecl(_)
+                    | TyDecl::TypeAliasDecl(_) => {}
+                },
+                TyAstNodeContent::Expression(_node) => {}
+                TyAstNodeContent::ImplicitReturnExpression(_node) => {}
+                TyAstNodeContent::SideEffect(_) | TyAstNodeContent::Error(_, _) => {}
+            };
+            Ok(())
+        })
+    }
 }
 
 #[derive(Clone, Debug)]

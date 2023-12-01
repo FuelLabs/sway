@@ -399,6 +399,14 @@ impl TyProgram {
         self.root
             .check_deprecated(engines, handler, &mut allow_deprecated);
     }
+
+    pub fn check_recursive(
+        &self,
+        engines: &Engines,
+        handler: &Handler,
+    ) -> Result<(), ErrorEmitted> {
+        self.root.check_recursive(engines, handler)
+    }
 }
 
 impl CollectTypesMetadata for TyProgram {
