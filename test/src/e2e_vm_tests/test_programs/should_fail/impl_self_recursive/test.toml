@@ -1,0 +1,13 @@
+category = "fail"
+
+# check: $()Function rec_0 is recursive, which is unsupported at this time.
+
+# check: $()Function rec_1 is recursive via rec_2, which is unsupported at this time.
+
+# check: $()Function rec_2 is recursive via rec_1, which is unsupported at this time.
+
+# check: $()Function rec_3 is recursive via rec_4 -> rec_5, which is unsupported at this time.
+
+# check: $()Function rec_4 is recursive via rec_5 -> rec_3, which is unsupported at this time.
+
+# check: $()Function rec_5 is recursive via rec_3 -> rec_4, which is unsupported at this time.

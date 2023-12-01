@@ -1,4 +1,4 @@
-use sway_error::handler::Handler;
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
 
 use crate::{
@@ -85,6 +85,24 @@ impl TyModule {
         for node in self.all_nodes.iter() {
             node.check_deprecated(engines, handler, allow_deprecated);
         }
+    }
+
+    pub(crate) fn check_recursive(
+        &self,
+        engines: &Engines,
+        handler: &Handler,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            for (_, submodule) in self.submodules.iter() {
+                let _ = submodule.module.check_recursive(engines, handler);
+            }
+
+            for node in self.all_nodes.iter() {
+                let _ = node.check_recursive(engines, handler);
+            }
+
+            Ok(())
+        })
     }
 }
 
