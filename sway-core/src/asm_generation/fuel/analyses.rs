@@ -51,13 +51,13 @@ pub(crate) fn liveness_analysis(
     ops: &[Op],
     ignore_constant_regs: bool,
 ) -> Vec<BTreeSet<VirtualRegister>> {
-    // Vectors representing maps that will reprsent the live_in and live_out tables. Each entry
+    // Vectors representing maps that will represent the live_in and live_out tables. Each entry
     // corresponds to an instruction in `ops`.
     let mut live_in: Vec<FxHashSet<VirtualRegister>> = vec![FxHashSet::default(); ops.len()];
     let mut live_out: Vec<BTreeSet<VirtualRegister>> = vec![BTreeSet::default(); ops.len()];
     let mut label_to_index: HashMap<Label, usize> = HashMap::new();
 
-    // Keep track of an map between jump labels and op indices. Useful to compute op successors.
+    // Keep track of a map between jump labels and op indices. Useful to compute op successors.
     for (idx, op) in ops.iter().enumerate() {
         if let Either::Right(ControlFlowOp::Label(op_label)) = op.opcode {
             label_to_index.insert(op_label, idx);

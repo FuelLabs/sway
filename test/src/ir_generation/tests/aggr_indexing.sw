@@ -8,7 +8,7 @@ struct S {
 
 
 abi TestContract {
-    fn foo(a: [u64; 10]) -> u64 ;
+    fn foo(a: [u64; 10]) -> u64;
     fn bar(s: S) -> u64;
     fn boo(s: [S; 4]) -> u64;
 }
