@@ -843,7 +843,7 @@ impl Parse for ImplSelf {
             qualified_call_path,
             type_arguments,
             root_type_id: _,
-        } = &ctx.engines.te().get(self.implementing_for.type_id)
+        } = &&*ctx.engines.te().get(self.implementing_for.type_id)
         {
             ctx.tokens.insert(
                 ctx.ident(&qualified_call_path.call_path.suffix),
@@ -1041,7 +1041,7 @@ impl Parse for TypeParameter {
 impl Parse for TypeArgument {
     fn parse(&self, ctx: &ParseContext) {
         let type_info = ctx.engines.te().get(self.type_id);
-        match &type_info {
+        match &*type_info {
             TypeInfo::Array(type_arg, length) => {
                 let ident = Ident::new(length.span());
                 ctx.tokens.insert(

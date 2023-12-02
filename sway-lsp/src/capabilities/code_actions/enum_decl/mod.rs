@@ -11,7 +11,7 @@ pub(crate) fn code_actions(
     decl_id: &DeclId<ty::TyEnumDecl>,
     ctx: &CodeActionContext,
 ) -> Option<Vec<CodeActionOrCommand>> {
-    let decl = ctx.engines.de().get_enum(decl_id);
+    let decl = (*ctx.engines.de().get_enum(decl_id)).clone();
     Some(vec![
         EnumImplCodeAction::new(ctx, &decl).code_action(),
         BasicDocCommentCodeAction::new(ctx, &decl).code_action(),

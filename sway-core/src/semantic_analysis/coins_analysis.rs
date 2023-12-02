@@ -33,9 +33,9 @@ pub fn possibly_nonzero_u64_expression(
                         }
                         ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
                             let const_decl = engines.de().get_constant(&decl_id);
-                            match const_decl.value {
+                            match &const_decl.value {
                                 Some(value) => {
-                                    possibly_nonzero_u64_expression(namespace, engines, &value)
+                                    possibly_nonzero_u64_expression(namespace, engines, value)
                                 }
                                 None => true,
                             }

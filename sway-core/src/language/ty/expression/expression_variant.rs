@@ -791,7 +791,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     }
 
                     let decl_engine = ctx.engines().de();
-                    let mut method = decl_engine.get(fn_ref);
+                    let mut method = (*decl_engine.get(fn_ref)).clone();
 
                     // Handle the trait constraints. This includes checking to see if the trait
                     // constraints are satisfied and replacing old decl ids based on the
@@ -1257,16 +1257,17 @@ fn find_const_decl_from_impl(
             let impl_trait = decl_engine.get_impl_trait(&decl_id.clone());
             impl_trait
                 .items
-                .into_iter()
+                .iter()
                 .find(|item| match item {
                     TyTraitItem::Constant(decl_id) => {
-                        let trait_const_decl = decl_engine.get_constant(&decl_id.clone());
+                        let trait_const_decl =
+                            (*decl_engine.get_constant(&decl_id.clone())).clone();
                         const_decl.name().eq(trait_const_decl.name())
                     }
                     _ => false,
                 })
                 .map(|item| match item {
-                    TyTraitItem::Constant(decl_id) => decl_engine.get_constant(&decl_id),
+                    TyTraitItem::Constant(decl_id) => (*decl_engine.get_constant(decl_id)).clone(),
                     _ => unreachable!(),
                 })
         }
