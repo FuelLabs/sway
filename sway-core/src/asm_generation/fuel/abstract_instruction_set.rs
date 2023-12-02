@@ -25,9 +25,9 @@ pub struct AbstractInstructionSet {
 }
 
 impl AbstractInstructionSet {
-    pub(crate) fn optimize(mut self, data_section: &DataSection) -> AbstractInstructionSet {
-        self.const_indexing_aggregates_function(data_section);
-        self.dce()
+    pub(crate) fn optimize(self, data_section: &DataSection) -> AbstractInstructionSet {
+        self.const_indexing_aggregates_function(data_section)
+            .dce()
             .remove_sequential_jumps()
             .remove_redundant_moves()
             .remove_unused_ops()

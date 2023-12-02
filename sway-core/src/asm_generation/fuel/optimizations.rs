@@ -18,7 +18,7 @@ impl AbstractInstructionSet {
     // can use the IMM field of LW/SW if the value fits in 12 bits.
     // Only the LW/SW instructions are modified, and the redundant
     // computations left untouched, to be later removed by a DCE pass.
-    pub(crate) fn const_indexing_aggregates_function(&mut self, data_section: &DataSection) {
+    pub(crate) fn const_indexing_aggregates_function(mut self, data_section: &DataSection) -> Self {
         // Poor man's SSA (local ... per block).
         #[derive(PartialEq, Eq, Hash, Clone)]
         struct VRegDef {
@@ -182,6 +182,8 @@ impl AbstractInstructionSet {
                 }
             }
         }
+
+        self
     }
 
     pub(crate) fn dce(mut self) -> AbstractInstructionSet {
