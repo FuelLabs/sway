@@ -16,6 +16,8 @@ use super::{
 impl AbstractInstructionSet {
     // Aggregates that are const index accessed from a base address
     // can use the IMM field of LW/SW if the value fits in 12 bits.
+    // Only the LW/SW instructions are modified, and the redundant
+    // computations left untouched, to be later removed by a DCE pass.
     pub(crate) fn const_indexing_aggregates_function(&mut self, data_section: &DataSection) {
         // Poor man's SSA (local ... per block).
         #[derive(PartialEq, Eq, Hash, Clone)]
@@ -55,69 +57,52 @@ impl AbstractInstructionSet {
         }
 
         for op in &mut self.ops {
+            fn process_add(
+                reg_contents: &mut FxHashMap<VirtualRegister, RegContents>,
+                latest_version: &mut FxHashMap<VirtualRegister, u32>,
+                dest: &VirtualRegister,
+                opd1: &VirtualRegister,
+                c2: u64,
+            ) {
+                match reg_contents.get(opd1) {
+                    Some(RegContents::Constant(c1)) => {
+                        reg_contents.insert(dest.clone(), RegContents::Constant(c1 + c2));
+                        record_new_def(latest_version, dest);
+                    }
+                    Some(RegContents::BaseOffset(base_reg, offset))
+                        if get_def_version(latest_version, &base_reg.reg) == base_reg.ver =>
+                    {
+                        reg_contents.insert(
+                            dest.clone(),
+                            RegContents::BaseOffset(base_reg.clone(), offset + c2),
+                        );
+                        record_new_def(latest_version, dest);
+                    }
+                    _ => {
+                        let base = VRegDef {
+                            reg: opd1.clone(),
+                            ver: get_def_version(latest_version, opd1),
+                        };
+                        reg_contents.insert(dest.clone(), RegContents::BaseOffset(base, c2));
+                        record_new_def(latest_version, dest);
+                    }
+                }
+            }
             match &mut op.opcode {
                 either::Either::Left(op) => match op {
                     VirtualOp::ADD(dest, opd1, opd2) => {
                         // We don't look for the first operand being a constant and the second
                         // one a base register. Such patterns must be canonicalised prior.
-                        let Some(RegContents::Constant(c2)) = reg_contents.get(opd2) else {
+                        let Some(&RegContents::Constant(c2)) = reg_contents.get(opd2) else {
                             reg_contents.remove(dest);
                             record_new_def(&mut latest_version, dest);
                             continue;
                         };
-                        match reg_contents.get(opd1) {
-                            Some(RegContents::Constant(c1)) => {
-                                reg_contents.insert(dest.clone(), RegContents::Constant(c1 + c2));
-                                record_new_def(&mut latest_version, dest);
-                            }
-                            Some(RegContents::BaseOffset(base_reg, offset))
-                                if get_def_version(&latest_version, &base_reg.reg)
-                                    == base_reg.ver =>
-                            {
-                                reg_contents.insert(
-                                    dest.clone(),
-                                    RegContents::BaseOffset(base_reg.clone(), offset + c2),
-                                );
-                                record_new_def(&mut latest_version, dest);
-                            }
-                            _ => {
-                                let base = VRegDef {
-                                    reg: opd1.clone(),
-                                    ver: get_def_version(&latest_version, opd1),
-                                };
-                                reg_contents
-                                    .insert(dest.clone(), RegContents::BaseOffset(base, *c2));
-                                record_new_def(&mut latest_version, dest);
-                            }
-                        }
+                        process_add(&mut reg_contents, &mut latest_version, dest, opd1, c2);
                     }
                     VirtualOp::ADDI(dest, opd1, opd2) => {
                         let c2 = opd2.value as u64;
-                        match reg_contents.get(opd1) {
-                            Some(RegContents::Constant(c1)) => {
-                                reg_contents.insert(dest.clone(), RegContents::Constant(c1 + c2));
-                                record_new_def(&mut latest_version, dest);
-                            }
-                            Some(RegContents::BaseOffset(base_reg, offset))
-                                if get_def_version(&latest_version, &base_reg.reg)
-                                    == base_reg.ver =>
-                            {
-                                reg_contents.insert(
-                                    dest.clone(),
-                                    RegContents::BaseOffset(base_reg.clone(), offset + c2),
-                                );
-                                record_new_def(&mut latest_version, dest);
-                            }
-                            _ => {
-                                let base = VRegDef {
-                                    reg: opd1.clone(),
-                                    ver: get_def_version(&latest_version, opd1),
-                                };
-                                reg_contents
-                                    .insert(dest.clone(), RegContents::BaseOffset(base, c2));
-                                record_new_def(&mut latest_version, dest);
-                            }
-                        }
+                        process_add(&mut reg_contents, &mut latest_version, dest, opd1, c2);
                     }
                     VirtualOp::MUL(dest, opd1, opd2) => {
                         match (reg_contents.get(opd1), reg_contents.get(opd2)) {
