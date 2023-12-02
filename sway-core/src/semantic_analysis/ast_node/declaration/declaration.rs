@@ -9,7 +9,7 @@ use crate::{
             self, TyAstNode, TyCodeBlock, TyDecl, TyExpression, TyFunctionDecl,
             TyFunctionParameter, TyImplItem, TyIntrinsicFunctionKind,
         },
-        CallPath,
+        CallPath, QualifiedCallPath,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
     semantic_analysis::{
@@ -19,6 +19,152 @@ use crate::{
     transform::AttributesMap,
     type_system::*,
 };
+
+fn auto_impl_abi_encode(handler: &Handler, ctx: &mut TypeCheckContext, decl: ty::TyDecl) {
+    let decl_ref = decl.get_struct_decl_ref().unwrap();
+
+    let type_id = ctx
+        .engines
+        .te()
+        .insert(ctx.engines, TypeInfo::Struct(decl_ref), None);
+
+    let unit = ctx
+        .engines
+        .te()
+        .insert(ctx.engines, TypeInfo::Tuple(vec![]), None);
+
+    let u64_type_id = ctx.engines.te().insert(
+        ctx.engines,
+        TypeInfo::UnsignedInteger(sway_types::integer_bits::IntegerBits::SixtyFour),
+        None,
+    );
+
+    if let Some(buffer_type_id) = ctx.engines.de().get_structs_by_name(
+        &Ident::new_no_span("Buffer".into())
+    ) {
+        let buffer_type_id = ctx.engines.te().insert(ctx.engines, TypeInfo::Custom { 
+            qualified_call_path: QualifiedCallPath {
+                call_path: CallPath {
+                    prefixes: vec![
+                        Ident::new_no_span("core".into()),
+                        Ident::new_no_span("codec".into()),
+                    ],
+                    suffix: Ident::new_no_span("Buffer".into()),
+                    is_absolute: false,
+                },
+                qualified_path_root: None,
+            }, 
+            type_arguments: None, 
+            root_type_id: None
+        }, None);
+    
+        let abi_encode_impl = ctx.engines.de().insert(TyFunctionDecl {
+            name: Ident::new_no_span("abi_encode".into()),
+            body: TyCodeBlock {
+                contents: vec![TyAstNode {
+                    content: ty::TyAstNodeContent::Expression(TyExpression {
+                        expression: ty::TyExpressionVariant::IntrinsicFunction(
+                            TyIntrinsicFunctionKind {
+                                kind: sway_ast::Intrinsic::Log,
+                                arguments: vec![TyExpression {
+                                    expression: ty::TyExpressionVariant::Literal(
+                                        crate::language::Literal::U64(12),
+                                    ),
+                                    return_type: u64_type_id,
+                                    span: Span::dummy(),
+                                }],
+                                type_arguments: vec![],
+                                span: Span::dummy(),
+                            },
+                        ),
+                        return_type: unit,
+                        span: Span::dummy(),
+                    }),
+                    span: Span::dummy(),
+                }],
+                whole_block_span: Span::dummy(),
+            },
+            parameters: vec![TyFunctionParameter {
+                name: Ident::new_no_span("self".into()),
+                is_reference: false,
+                is_mutable: false,
+                mutability_span: Span::dummy(),
+                type_argument: TypeArgument {
+                    type_id,
+                    initial_type_id: type_id,
+                    span: Span::dummy(),
+                    call_path_tree: None,
+                },
+            }, TyFunctionParameter {
+                name: Ident::new_no_span("buffer".into()),
+                is_reference: true,
+                is_mutable: true,
+                mutability_span: Span::dummy(),
+                type_argument: TypeArgument {
+                    type_id: buffer_type_id,
+                    initial_type_id: buffer_type_id,
+                    span: Span::dummy(),
+                    call_path_tree: Some(crate::language::CallPathTree { 
+                        qualified_call_path: QualifiedCallPath {
+                            call_path: CallPath {
+                                prefixes: vec![
+                                    Ident::new_no_span("core".into()),
+                                    Ident::new_no_span("codec".into()),
+                                ],
+                                suffix: Ident::new_no_span("Buffer".into()),
+                                is_absolute: false,
+                            },
+                            qualified_path_root: None,
+                        }, 
+                        children: vec![]
+                    }),
+                },
+            }],
+            implementing_type: None,
+            span: Span::dummy(),
+            call_path: CallPath {
+                prefixes: vec![],
+                suffix: Ident::new_no_span("abi_encode".into()),
+                is_absolute: true,
+            },
+            attributes: AttributesMap::default(),
+            type_parameters: vec![],
+            return_type: TypeArgument {
+                type_id: unit,
+                initial_type_id: unit,
+                span: Span::dummy(),
+                call_path_tree: None,
+            },
+            visibility: crate::language::Visibility::Public,
+            is_contract_call: false,
+            purity: crate::language::Purity::Pure,
+            where_clause: vec![],
+            is_trait_method_dummy: false,
+        });
+    
+        
+        let _ = ctx.namespace.implemented_traits.insert(
+            handler,
+            CallPath {
+                prefixes: vec![
+                    Ident::new_no_span("core".into()),
+                    Ident::new_no_span("codec".into()),
+                ],
+                suffix: Ident::new_no_span("AbiEncode".into()),
+                is_absolute: true,
+            },
+            vec![],
+            type_id,
+            &[TyImplItem::Fn(abi_encode_impl)],
+            &Span::dummy(),
+            None,
+            IsImplSelf::No,
+            IsExtendingExistingImpl::No,
+            ctx.engines,
+        );
+    }
+   
+}
 
 impl TyDecl {
     pub(crate) fn type_check(
@@ -241,7 +387,7 @@ impl TyDecl {
             }
             parsed::Declaration::StructDeclaration(decl) => {
                 let span = decl.span.clone();
-                let decl = match ty::TyStructDecl::type_check(handler, ctx.by_ref(), decl) {
+                let decl: ty::TyStructDecl = match ty::TyStructDecl::type_check(handler, ctx.by_ref(), decl) {
                     Ok(res) => res,
                     Err(err) => {
                         return Ok(ty::TyDecl::ErrorRecovery(span, err));
@@ -250,104 +396,11 @@ impl TyDecl {
                 let call_path = decl.call_path.clone();
                 let decl: ty::TyDecl = decl_engine.insert(decl).into();
 
-                let decl_ref = decl.get_struct_decl_ref().unwrap();
-                let type_id = ctx
-                    .engines
-                    .te()
-                    .insert(engines, TypeInfo::Struct(decl_ref), None);
-                let unit = ctx
-                    .engines
-                    .te()
-                    .insert(ctx.engines, TypeInfo::Tuple(vec![]), None);
-
-                let u64_type_id = ctx.engines.te().insert(
-                    ctx.engines,
-                    TypeInfo::UnsignedInteger(sway_types::integer_bits::IntegerBits::SixtyFour),
-                    None,
-                );
-
-                let abi_encode_impl = ctx.engines.de().insert(TyFunctionDecl {
-                    name: Ident::new_no_span("abi_encode".into()),
-                    body: TyCodeBlock {
-                        contents: vec![TyAstNode {
-                            content: ty::TyAstNodeContent::Expression(TyExpression {
-                                expression: ty::TyExpressionVariant::IntrinsicFunction(
-                                    TyIntrinsicFunctionKind {
-                                        kind: sway_ast::Intrinsic::Log,
-                                        arguments: vec![TyExpression {
-                                            expression: ty::TyExpressionVariant::Literal(
-                                                crate::language::Literal::U64(12),
-                                            ),
-                                            return_type: u64_type_id,
-                                            span: Span::dummy(),
-                                        }],
-                                        type_arguments: vec![],
-                                        span: Span::dummy(),
-                                    },
-                                ),
-                                return_type: unit,
-                                span: Span::dummy(),
-                            }),
-                            span,
-                        }],
-                        whole_block_span: Span::dummy(),
-                    },
-                    parameters: vec![TyFunctionParameter {
-                        name: Ident::new_no_span("self".into()),
-                        is_reference: false,
-                        is_mutable: false,
-                        mutability_span: Span::dummy(),
-                        type_argument: TypeArgument {
-                            type_id,
-                            initial_type_id: type_id,
-                            span: Span::dummy(),
-                            call_path_tree: None,
-                        },
-                    }],
-                    implementing_type: None,
-                    span: Span::dummy(),
-                    call_path: CallPath {
-                        prefixes: vec![],
-                        suffix: Ident::new_no_span("abi_encode".into()),
-                        is_absolute: true,
-                    },
-                    attributes: AttributesMap::default(),
-                    type_parameters: vec![],
-                    return_type: TypeArgument {
-                        type_id: unit,
-                        initial_type_id: unit,
-                        span: Span::dummy(),
-                        call_path_tree: None,
-                    },
-                    visibility: crate::language::Visibility::Public,
-                    is_contract_call: false,
-                    purity: crate::language::Purity::Pure,
-                    where_clause: vec![],
-                    is_trait_method_dummy: false,
-                });
-
-                let _ = ctx.namespace.implemented_traits.insert(
-                    handler,
-                    CallPath {
-                        prefixes: vec![
-                            Ident::new_no_span("core".into()),
-                            Ident::new_no_span("codec".into()),
-                        ],
-                        suffix: Ident::new_no_span("AbiEncode".into()),
-                        is_absolute: true,
-                    },
-                    vec![],
-                    type_id,
-                    &[TyImplItem::Fn(abi_encode_impl)],
-                    &Span::dummy(),
-                    None,
-                    IsImplSelf::No,
-                    IsExtendingExistingImpl::No,
-                    ctx.engines,
-                );
+                auto_impl_abi_encode(handler, &mut ctx, decl.clone());
 
                 // insert the struct decl into namespace
                 ctx.insert_symbol(handler, call_path.suffix, decl.clone())?;
+
                 decl
             }
             parsed::Declaration::AbiDeclaration(abi_decl) => {

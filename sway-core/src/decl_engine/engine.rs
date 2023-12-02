@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use sway_types::{ModuleId, Named, Spanned};
+use sway_types::{ModuleId, Named, Spanned, Span};
 
 use crate::{
     concurrent_slab::{ConcurrentSlab, ListDisplay},
@@ -362,6 +362,16 @@ impl DeclEngine {
         DeclEngine: DeclEngineGet<I, ty::TyStructDecl>,
     {
         self.get(index)
+    }
+
+    pub fn get_structs_by_name(&self, name: &Ident) -> Option<DeclRef<DeclId<TyStructDecl>>> {
+        self.struct_slab.with_slice(|elems| {
+            let i = elems
+                .iter()
+                .position(|decl| decl.name() == name)?;
+
+            Some(DeclRef::new(name.clone(), DeclId::new(i), Span::dummy()))
+        })
     }
 
     /// Friendly helper method for calling the `get` method from the
