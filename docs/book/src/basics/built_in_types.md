@@ -82,7 +82,7 @@ In Sway, string literals are stored as variable length string slices. Which mean
 let my_string: str = "fuel";
 ```
 
-String slices, because they contain pointers have limited usage. They cannot be used is constants, storages, configurables, nor as main function argument or returns.
+String slices, because they contain pointers have limited usage. They cannot be used as constants, storages, or configurables, nor as main function arguments or returns.
 
 For these cases one must use string arrays, as described below.
 
