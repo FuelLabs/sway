@@ -43,17 +43,25 @@ impl<'a> HoverLinkContents<'a> {
     /// Adds the given type and any related type parameters to the list of related types.
     pub fn add_related_types(&mut self, type_id: &TypeId) {
         let type_info = self.engines.te().get(*type_id);
-        match type_info {
+        match &*type_info {
             TypeInfo::Enum(decl_ref) => {
-                let decl = self.engines.de().get_enum(&decl_ref);
-                self.add_related_type(decl_ref.name().to_string(), &decl.span(), decl.call_path);
+                let decl = self.engines.de().get_enum(decl_ref);
+                self.add_related_type(
+                    decl_ref.name().to_string(),
+                    &decl.span(),
+                    decl.call_path.clone(),
+                );
                 decl.type_parameters
                     .iter()
                     .for_each(|type_param| self.add_related_types(&type_param.type_id));
             }
             TypeInfo::Struct(decl_ref) => {
-                let decl = self.engines.de().get_struct(&decl_ref);
-                self.add_related_type(decl_ref.name().to_string(), &decl.span(), decl.call_path);
+                let decl = self.engines.de().get_struct(decl_ref);
+                self.add_related_type(
+                    decl_ref.name().to_string(),
+                    &decl.span(),
+                    decl.call_path.clone(),
+                );
                 decl.type_parameters
                     .iter()
                     .for_each(|type_param| self.add_related_types(&type_param.type_id));
