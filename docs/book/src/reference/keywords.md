@@ -74,11 +74,11 @@ Keywords associated with defining the type of Sway program to compile
 - [`contract`](../sway-program-types/smart_contracts.md) - analogous to a deployed API with some database state
 - [`library`](../sway-program-types/libraries.md) - Sway code that defines new common behavior
 - [`predicate`](../sway-program-types/predicates.md) - programs that return a Boolean value and which represent ownership of some resource upon execution to true
-- [`script`](../sway-program-types/scripts.md) - a runnable bytecode on the chain, which executes once to preform a task
+- [`script`](../sway-program-types/scripts.md) - a runnable bytecode on the chain, which executes once to perform a task
 
 ### Attribute Keywords
 
-Keywords associated with defining the funcitonallity of attributes
+Keywords associated with defining the functionality of attributes
 
 - [`allow`](./attributes.md#allow) - overrides checks that would otherwise result in errors or warnings
 - [`doc`](./attributes.md#doc) - specifies documentation
