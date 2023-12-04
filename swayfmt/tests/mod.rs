@@ -403,7 +403,7 @@ trait CompSciStudent: Programmer + Student {
 }
 trait TraitWithGenerics<T>
 where
-    T: String
+    T: String,
 {
     fn from(b: T) -> Self;
 }
@@ -490,7 +490,9 @@ fn main() -> bool {
     fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
     assert(fuelcoin_balance == 4);
 
-    fuel_coin.force_transfer { gas: default_gas }(3, fuelcoin_id, balance_test_id);
+    fuel_coin.force_transfer {
+        gas: default_gas,
+    }(3, fuelcoin_id, balance_test_id);
 
     fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
     let balance_test_contract_balance = balance_of(fuelcoin_id, balance_test_id);
@@ -864,7 +866,8 @@ trait Qux {
     fn is_baz_true(self) -> bool;
 }
 
-impl<A, B> Qux<A, B> for Foo where
+impl<A, B> Qux<A, B> for Foo
+where
     A: Qux,
     B: Qux,
 {
@@ -1959,12 +1962,11 @@ fn main() {
         amount: 2,
         id: 42,
     });
-    my_enum
-        .test(Item {
-            price: 5,
-            amount: 2,
-            id: 42,
-        });
+    my_enum.test(Item {
+        price: 5,
+        amount: 2,
+        id: 42,
+    });
 }
 "#,
     )
@@ -2074,17 +2076,16 @@ fn method_call_long_args_with_long_expr() {
 fn access_control_with_identity() {
     // ANCHOR: access_control_with_identity
     let sender = msg_sender().unwrap();
-    sender
-        .require(
-            sender == storage
-                .owner
-                .read()
-                .some_prop()
-                .that_is_too_long_to_fit_in_one_line()
-                .or_two_lines(),
-            MyError::UnauthorizedUser(sender),
-        );
-        // ANCHOR_END: access_control_with_identity
+    sender.require(
+        sender == storage
+            .owner
+            .read()
+            .some_prop()
+            .that_is_too_long_to_fit_in_one_line()
+            .or_two_lines(),
+        MyError::UnauthorizedUser(sender),
+    );
+    // ANCHOR_END: access_control_with_identity
 }
 "#,
     )
@@ -2229,4 +2230,36 @@ fn main() {
 }
 "#,
     )
+}
+
+#[test]
+fn method_call_3() {
+    check(
+        r#"library;
+
+fn enum_in_vec() -> Vec<Pasta> {
+   let mut vec: Vec<Pasta> = Vec::new();
+   vec.push(Pasta::Tortelini(Bimba {
+      bim: 1111,
+      bam: 2222_u32,
+   }));
+   vec.push(Pasta::Rigatoni(1987));
+   vec.push(Pasta::Spaghetti(true));
+   vec
+}
+       "#,
+        r#"library;
+
+fn enum_in_vec() -> Vec<Pasta> {
+    let mut vec: Vec<Pasta> = Vec::new();
+    vec.push(Pasta::Tortelini(Bimba {
+        bim: 1111,
+        bam: 2222_u32,
+    }));
+    vec.push(Pasta::Rigatoni(1987));
+    vec.push(Pasta::Spaghetti(true));
+    vec
+}
+"#,
+    );
 }

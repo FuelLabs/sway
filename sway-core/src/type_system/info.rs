@@ -9,7 +9,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{integer_bits::IntegerBits, span::Span, Spanned};
+use sway_types::{integer_bits::IntegerBits, span::Span, SourceId, Spanned};
 
 use std::{
     cmp::Ordering,
@@ -64,6 +64,28 @@ impl<T: PartialEqWithEngines> VecSet<T> {
 impl<T: PartialEqWithEngines> PartialEqWithEngines for VecSet<T> {
     fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.eq(other, engines) && other.eq(self, engines)
+    }
+}
+
+/// Encapsulates type information and its optional source identifier.
+#[derive(Debug, Default, Clone)]
+pub struct TypeSourceInfo {
+    pub(crate) type_info: TypeInfo,
+    /// The source id that created this type.
+    pub(crate) source_id: Option<SourceId>,
+}
+
+impl HashWithEngines for TypeSourceInfo {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+        self.type_info.hash(state, engines);
+        self.source_id.hash(state);
+    }
+}
+
+impl EqWithEngines for TypeSourceInfo {}
+impl PartialEqWithEngines for TypeSourceInfo {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+        self.type_info.eq(&other.type_info, engines) && self.source_id == other.source_id
     }
 }
 
@@ -563,7 +585,7 @@ impl DebugWithEngines for TypeInfo {
         let s = match self {
             Unknown => "unknown".into(),
             UnknownGeneric { name, .. } => name.to_string(),
-            Placeholder(_) => "_".to_string(),
+            Placeholder(t) => format!("placeholder({:?})", engines.help_out(t)),
             TypeParam(n) => format!("typeparam({n})"),
             StringSlice => "str".into(),
             StringArray(x) => format!("str[{}]", x.val()),
@@ -931,7 +953,7 @@ impl TypeInfo {
             TypeInfo::Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
                 let mut found_unit_variant = false;
-                for variant_type in decl.variants {
+                for variant_type in decl.variants.iter() {
                     let type_info = type_engine.get(variant_type.type_argument.type_id);
                     if type_info.is_uninhabited(type_engine, decl_engine) {
                         continue;
@@ -947,7 +969,7 @@ impl TypeInfo {
             TypeInfo::Struct(decl_ref) => {
                 let decl = decl_engine.get_struct(decl_ref);
                 let mut all_zero_sized = true;
-                for field in decl.fields {
+                for field in decl.fields.iter() {
                     let type_info = type_engine.get(field.type_argument.type_id);
                     if type_info.is_uninhabited(type_engine, decl_engine) {
                         return true;

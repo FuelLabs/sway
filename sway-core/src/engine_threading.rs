@@ -1,12 +1,10 @@
+use crate::{decl_engine::DeclEngine, query_engine::QueryEngine, type_system::TypeEngine};
 use std::{
     cmp::Ordering,
     fmt,
     hash::{BuildHasher, Hash, Hasher},
 };
-
 use sway_types::SourceEngine;
-
-use crate::{decl_engine::DeclEngine, query_engine::QueryEngine, type_system::TypeEngine};
 
 #[derive(Debug, Default)]
 pub struct Engines {
@@ -45,6 +43,13 @@ impl Engines {
 
     pub fn se(&self) -> &SourceEngine {
         &self.source_engine
+    }
+
+    /// Removes all data associated with `module_id` from the declaration and type engines.
+    /// It is intended to be used during garbage collection to remove any data that is no longer needed.
+    pub fn clear_module(&mut self, module_id: &sway_types::ModuleId) {
+        self.type_engine.clear_module(module_id);
+        self.decl_engine.clear_module(module_id);
     }
 
     /// Helps out some `thing: T` by adding `self` as context.
@@ -139,6 +144,18 @@ impl<T: DisplayWithEngines> DisplayWithEngines for Box<T> {
     }
 }
 
+impl<T: DisplayWithEngines> DisplayWithEngines for Vec<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        let text = self
+            .iter()
+            .map(|e| format!("{}", engines.help_out(e)))
+            .collect::<Vec<_>>()
+            .join(", ")
+            .to_string();
+        f.write_str(&text)
+    }
+}
+
 pub(crate) trait DebugWithEngines {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result;
 }
@@ -161,6 +178,18 @@ impl<T: DebugWithEngines> DebugWithEngines for Option<T> {
 impl<T: DebugWithEngines> DebugWithEngines for Box<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         (**self).fmt(f, engines)
+    }
+}
+
+impl<T: DebugWithEngines> DebugWithEngines for Vec<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        let text = self
+            .iter()
+            .map(|e| format!("{:?}", engines.help_out(e)))
+            .collect::<Vec<_>>()
+            .join(", ")
+            .to_string();
+        f.write_str(&text)
     }
 }
 

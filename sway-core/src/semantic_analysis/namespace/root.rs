@@ -212,7 +212,9 @@ impl Root {
             handler,
             engines,
             symbol,
-            engines.te().insert(engines, type_info),
+            engines
+                .te()
+                .insert(engines, type_info, symbol.span().source_id()),
             as_trait,
             self_type,
         )
@@ -233,7 +235,9 @@ impl Root {
             handler,
             engines,
             symbol,
-            engines.te().insert(engines, type_info),
+            engines
+                .te()
+                .insert(engines, type_info, symbol.span().source_id()),
             as_trait,
             self_type,
         )
@@ -259,7 +263,7 @@ impl Root {
             )),
             ty::TyDecl::TraitTypeDecl(type_decl) => {
                 let type_decl = engines.de().get_type(&type_decl.decl_id);
-                engines.te().get(type_decl.ty.unwrap().type_id)
+                (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
             }
             _ => {
                 return Err(handler.emit_err(CompileError::SymbolNotFound {

@@ -61,7 +61,7 @@ async fn low_level_call(
         .main(id, function_selector, calldata, single_value_type_arg)
         .with_inputs(vec![contract_input])
         .with_outputs(vec![contract_output])
-        .tx_params(TxParameters::default().set_gas_limit(10_000_000));
+        .tx_params(TxParameters::default().with_gas_limit(10_000_000));
 
     tx.call().await.unwrap();
 }
@@ -77,7 +77,8 @@ async fn get_contract_instance() -> (TestContract<WalletUnlocked>, ContractId, W
         None,
         None,
     )
-    .await;
+    .await
+    .unwrap();
     let wallet = wallets.pop().unwrap();
 
     let id = Contract::load_from(

@@ -60,7 +60,7 @@ impl ty::TyTraitFn {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         let trait_fn = ty::TyTraitFn {
             name,
@@ -81,7 +81,7 @@ impl ty::TyTraitFn {
         ty::TyFunctionDecl {
             purity: self.purity,
             name: self.name.clone(),
-            body: ty::TyCodeBlock { contents: vec![] },
+            body: ty::TyCodeBlock::default(),
             parameters: self.parameters.clone(),
             implementing_type: match abi_mode.clone() {
                 AbiMode::ImplAbiFn(abi_name, abi_decl_id) => {

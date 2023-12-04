@@ -237,11 +237,12 @@ pub(crate) enum AllocatedOpcode {
     BLOB(VirtualImmediate24),
     DataSectionOffsetPlaceholder,
     DataSectionRegisterLoadPlaceholder,
-    LWDataId(AllocatedRegister, DataId),
+    LoadDataId(AllocatedRegister, DataId),
     Undefined,
 }
 
 impl AllocatedOpcode {
+    /// Returns a list of all registers *written* by instruction `self`.
     pub(crate) fn def_registers(&self) -> BTreeSet<&AllocatedRegister> {
         use AllocatedOpcode::*;
         (match self {
@@ -355,7 +356,7 @@ impl AllocatedOpcode {
             DataSectionRegisterLoadPlaceholder => vec![&AllocatedRegister::Constant(
                 ConstantRegister::DataSectionStart,
             )],
-            LWDataId(r1, _i) => vec![r1],
+            LoadDataId(r1, _i) => vec![r1],
             Undefined => vec![],
         })
         .into_iter()
@@ -480,7 +481,7 @@ impl fmt::Display for AllocatedOpcode {
                 )
             }
             DataSectionRegisterLoadPlaceholder => write!(fmtr, "lw   $ds $is 1"),
-            LWDataId(a, b) => write!(fmtr, "lw   {a} {b}"),
+            LoadDataId(a, b) => write!(fmtr, "load {a} {b}"),
             Undefined => write!(fmtr, "undefined op"),
         }
     }
@@ -669,8 +670,8 @@ impl AllocatedOp {
                 1.into(),
             )
             .into(),
-            LWDataId(a, b) => {
-                return Either::Left(realize_lw(a, b, data_section, offset_to_data_section))
+            LoadDataId(a, b) => {
+                return Either::Left(realize_load(a, b, data_section, offset_to_data_section))
             }
             Undefined => unreachable!("Sway cannot generate undefined ASM opcodes"),
         }])
@@ -681,25 +682,40 @@ impl AllocatedOp {
 /// actual bytewise offsets for use in bytecode.
 /// Returns one op if the type is less than one word big, but two ops if it has to construct
 /// a pointer and add it to $is.
-fn realize_lw(
+fn realize_load(
     dest: &AllocatedRegister,
     data_id: &DataId,
     data_section: &mut DataSection,
     offset_to_data_section: u64,
 ) -> Vec<fuel_asm::Instruction> {
-    // all data is word-aligned right now, and `offset_to_id` returns the offset in bytes
-    let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
-    let offset_words = offset_bytes / 8;
-    let offset = match VirtualImmediate12::new(offset_words, Span::new(" ".into(), 0, 0, None).unwrap()) {
-        Ok(value) => value,
-        Err(_) => panic!("Unable to offset into the data section more than 2^12 bits. Unsupported data section length.")
-    };
     // if this data is larger than a word, instead of loading the data directly
     // into the register, we want to load a pointer to the data into the register
     // this appends onto the data section and mutates it by adding the pointer as a literal
     let has_copy_type = data_section.has_copy_type(data_id).expect(
         "Internal miscalculation in data section -- data id did not match up to any actual data",
     );
+
+    let is_byte = data_section.is_byte(data_id).expect(
+        "Internal miscalculation in data section -- data id did not match up to any actual data",
+    );
+
+    // all data is word-aligned right now, and `offset_to_id` returns the offset in bytes
+    let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
+    assert!(
+        offset_bytes % 8 == 0,
+        "Internal miscalculation in data section -- data offset is not aligned to a word",
+    );
+    let offset_words = offset_bytes / 8;
+
+    let imm = VirtualImmediate12::new(
+        if is_byte { offset_bytes } else { offset_words },
+        Span::new(" ".into(), 0, 0, None).unwrap(),
+    );
+    let offset = match imm {
+            Ok(value) => value,
+            Err(_) => panic!("Unable to offset into the data section more than 2^12 bits. Unsupported data section length.")
+    };
+
     if !has_copy_type {
         // load the pointer itself into the register
         // `offset_to_data_section` is in bytes. We want a byte
@@ -710,7 +726,7 @@ fn realize_lw(
             data_section.append_pointer(pointer_offset_from_instruction_start);
         // now load the pointer we just created into the `dest`ination
         let mut buf = Vec::with_capacity(2);
-        buf.append(&mut realize_lw(
+        buf.append(&mut realize_load(
             dest,
             &data_id_for_pointer,
             data_section,
@@ -726,6 +742,13 @@ fn realize_lw(
             .into(),
         );
         buf
+    } else if is_byte {
+        vec![fuel_asm::op::LB::new(
+            dest.to_reg_id(),
+            fuel_asm::RegId::new(DATA_SECTION_REGISTER),
+            offset.value.into(),
+        )
+        .into()]
     } else {
         vec![fuel_asm::op::LW::new(
             dest.to_reg_id(),

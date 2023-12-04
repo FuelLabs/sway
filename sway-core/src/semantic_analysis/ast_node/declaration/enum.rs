@@ -1,10 +1,9 @@
-use sway_error::handler::{ErrorEmitted, Handler};
-
 use crate::{
     language::{parsed::*, ty, CallPath},
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
 };
+use sway_error::handler::{ErrorEmitted, Handler};
 
 impl ty::TyEnumDecl {
     pub fn type_check(
@@ -74,7 +73,7 @@ impl ty::TyEnumVariant {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
         Ok(ty::TyEnumVariant {
             name: variant.name.clone(),
             type_argument,

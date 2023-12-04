@@ -7,7 +7,7 @@ abigen!(Contract(
 ));
 
 async fn get_vec_in_abi_instance() -> (VecInAbiTestContract<WalletUnlocked>, ContractId) {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/vec_in_abi/out/debug/vec_in_abi.bin",
         LoadConfiguration::default(),

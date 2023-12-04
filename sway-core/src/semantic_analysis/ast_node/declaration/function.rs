@@ -8,9 +8,10 @@ use sway_error::{
 };
 
 use crate::{
+    decl_engine::{DeclId, DeclRefFunction},
     language::{
         parsed::*,
-        ty::{self, TyCodeBlock},
+        ty::{self, TyCodeBlock, TyFunctionDecl},
         CallPath, Visibility,
     },
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
@@ -115,7 +116,7 @@ impl ty::TyFunctionDecl {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         let (visibility, is_contract_call) = if is_method {
             if is_in_impl_self {
@@ -165,9 +166,6 @@ impl ty::TyFunctionDecl {
             ..
         } = ty_fn_decl;
 
-        let type_engine = ctx.engines.te();
-        let engines = ctx.engines();
-
         // create a namespace for the function
         let mut fn_namespace = ctx.namespace.clone();
         let mut ctx = ctx
@@ -191,57 +189,24 @@ impl ty::TyFunctionDecl {
         //
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
-        let (body, _implicit_block_return) = {
-            let ctx = ctx
-                .by_ref()
-                .with_purity(*purity)
-                .with_help_text("Function body's return type does not match up with its return type annotation.")
-                .with_type_annotation(return_type.type_id);
-            ty::TyCodeBlock::type_check(handler, ctx, body).unwrap_or_else(|err| {
-                (
-                    ty::TyCodeBlock { contents: vec![] },
-                    type_engine.insert(engines, TypeInfo::ErrorRecovery(err)),
-                )
-            })
-        };
+
+        let mut ctx = ctx
+            .by_ref()
+            .with_purity(*purity)
+            .with_help_text(
+                "Function body's return type does not match up with its return type annotation.",
+            )
+            .with_type_annotation(return_type.type_id);
+
+        let body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body)
+            .unwrap_or_else(|_err| ty::TyCodeBlock::default());
 
         ty_fn_decl.body = body;
 
-        Self::type_check_body_monomorphized(handler, ctx, ty_fn_decl)?;
+        let mut unification_ctx = TypeCheckUnificationContext::new(ctx.engines, ctx);
+        ty_fn_decl.type_check_unify(handler, &mut unification_ctx)?;
 
         Ok(ty_fn_decl.clone())
-    }
-
-    pub fn type_check_body_monomorphized(
-        handler: &Handler,
-        mut ctx: TypeCheckContext,
-        fn_decl: &Self,
-    ) -> Result<(), ErrorEmitted> {
-        let return_type = &fn_decl.return_type;
-
-        // gather the return statements
-        let return_statements: Vec<&ty::TyExpression> = fn_decl
-            .body
-            .contents
-            .iter()
-            .flat_map(|node| node.gather_return_statements())
-            .collect();
-
-        unify_return_statements(
-            handler,
-            ctx.by_ref(),
-            &return_statements,
-            return_type.type_id,
-        )?;
-
-        return_type.type_id.check_type_parameter_bounds(
-            handler,
-            &ctx,
-            &return_type.span,
-            vec![],
-        )?;
-
-        Ok(())
     }
 }
 
@@ -271,6 +236,48 @@ fn unify_return_statements(
     })
 }
 
+impl TypeCheckAnalysis for DeclId<TyFunctionDecl> {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            let node = ctx.get_node_for_fn_decl(self);
+            if let Some(node) = node {
+                ctx.node_stack.push(node);
+
+                let item_fn = ctx.engines.de().get_function(self);
+                let _ = item_fn.type_check_analyze(handler, ctx);
+
+                ctx.node_stack.pop();
+            }
+            Ok(())
+        })
+    }
+}
+
+impl TypeCheckAnalysis for DeclRefFunction {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            let node = ctx.get_node_for_fn_decl(self.id());
+            if let Some(node) = node {
+                ctx.node_stack.push(node);
+
+                let item_fn = ctx.engines.de().get_function(self);
+                let _ = item_fn.type_check_analyze(handler, ctx);
+
+                ctx.node_stack.pop();
+            }
+            Ok(())
+        })
+    }
+}
+
 impl TypeCheckAnalysis for ty::TyFunctionDecl {
     fn type_check_analyze(
         &self,
@@ -278,6 +285,46 @@ impl TypeCheckAnalysis for ty::TyFunctionDecl {
         ctx: &mut TypeCheckAnalysisContext,
     ) -> Result<(), ErrorEmitted> {
         self.body.type_check_analyze(handler, ctx)
+    }
+}
+
+impl TypeCheckUnification for ty::TyFunctionDecl {
+    fn type_check_unify(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckUnificationContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            self.body.type_check_unify(handler, ctx)?;
+
+            let type_check_ctx = &mut ctx.type_check_ctx;
+
+            let return_type = &self.return_type;
+
+            // gather the return statements
+            let return_statements: Vec<&ty::TyExpression> = self
+                .body
+                .contents
+                .iter()
+                .flat_map(|node| node.gather_return_statements())
+                .collect();
+
+            unify_return_statements(
+                handler,
+                type_check_ctx.by_ref(),
+                &return_statements,
+                return_type.type_id,
+            )?;
+
+            return_type.type_id.check_type_parameter_bounds(
+                handler,
+                type_check_ctx.by_ref(),
+                &return_type.span,
+                None,
+            )?;
+
+            Ok(())
+        })
     }
 }
 
@@ -306,7 +353,7 @@ fn test_function_selector_behavior() {
         purity: Default::default(),
         name: Ident::dummy(),
         implementing_type: None,
-        body: ty::TyCodeBlock { contents: vec![] },
+        body: ty::TyCodeBlock::default(),
         parameters: vec![],
         span: Span::dummy(),
         call_path: CallPath::from(Ident::dummy()),
@@ -329,7 +376,7 @@ fn test_function_selector_behavior() {
         purity: Default::default(),
         name: Ident::new_with_override("bar".into(), Span::dummy()),
         implementing_type: None,
-        body: ty::TyCodeBlock { contents: vec![] },
+        body: ty::TyCodeBlock::default(),
         parameters: vec![
             ty::TyFunctionParameter {
                 name: Ident::dummy(),
@@ -341,6 +388,7 @@ fn test_function_selector_behavior() {
                     .insert(
                         &engines,
                         TypeInfo::StringArray(Length::new(5, Span::dummy())),
+                        None,
                     )
                     .into(),
             },
@@ -350,12 +398,15 @@ fn test_function_selector_behavior() {
                 is_mutable: false,
                 mutability_span: Span::dummy(),
                 type_argument: TypeArgument {
-                    type_id: engines
-                        .te()
-                        .insert(&engines, TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
+                    type_id: engines.te().insert(
+                        &engines,
+                        TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
+                        None,
+                    ),
                     initial_type_id: engines.te().insert(
                         &engines,
                         TypeInfo::StringArray(Length::new(5, Span::dummy())),
+                        None,
                     ),
                     span: Span::dummy(),
                     call_path_tree: None,

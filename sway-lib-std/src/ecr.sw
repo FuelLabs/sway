@@ -9,14 +9,14 @@ use ::result::Result::{self, *};
 
 /// The error type used when the `ec_recover` function fails.
 pub enum EcRecoverError {
-    /// The error varient used when the recover fails.
+    /// The error variant used when the recover fails.
     UnrecoverablePublicKey: (),
 }
 
 /// Recover the public key derived from the private key used to sign a message.
 /// Returns a `Result` to let the caller choose an error handling strategy.
 ///
-/// # Additional Informaiton
+/// # Additional Information
 ///
 /// Follows the Secp256k1 elliptical curve.
 ///
@@ -65,7 +65,7 @@ pub fn ec_recover(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverErro
 /// Recover the public key derived from the private key used to sign a message.
 /// Returns a `Result` to let the caller choose an error handling strategy.
 ///
-/// # Additional Informaiton
+/// # Additional Information
 ///
 /// Follows the Secp256r1 elliptical curve.
 ///
@@ -114,7 +114,7 @@ pub fn ec_recover_r1(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverE
 /// Verifies that a public key derived from the private key was used to sign a message.
 /// Returns a `Result` to let the caller choose an error handling strategy.
 ///
-/// # Additional Informaiton
+/// # Additional Information
 ///
 /// Follows the edDSA curve25519 verification.
 ///
@@ -126,7 +126,7 @@ pub fn ec_recover_r1(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverE
 ///
 /// # Returns
 ///
-/// * [Result<bool, EcRecoverError>] - A verfied result or an error.
+/// * [Result<bool, EcRecoverError>] - A verified result or an error.
 ///
 /// # Examples
 ///
@@ -141,9 +141,9 @@ pub fn ec_recover_r1(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverE
 ///     let hi = 0xf38cef9361894be6c6e0eddec28a663d099d7ddff17c8077a1447d7ecb4e6545;
 ///     let lo = 0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00;
 ///     let signature: B512 = B512::from((hi, lo));
-///     // A verify public key with signature 
-///     let verfied = ed_verify(pub_key, signature, msg_hash).unwrap();
-///     assert(verfied);
+///     // A verified public key with signature 
+///     let verified = ed_verify(pub_key, signature, msg_hash).unwrap();
+///     assert(verified);
 /// }
 /// ```
 pub fn ed_verify(public_key: b256, signature: B512, msg_hash: b256) -> Result<bool, EcRecoverError> {
@@ -162,7 +162,7 @@ pub fn ed_verify(public_key: b256, signature: B512, msg_hash: b256) -> Result<bo
 /// Recover the address derived from the private key used to sign a message.
 /// Returns a `Result` to let the caller choose an error handling strategy.
 ///
-/// # Additional Informaiton
+/// # Additional Information
 ///
 /// Follows the Secp256k1 elliptical curve.
 ///
@@ -207,7 +207,7 @@ pub fn ec_recover_address(signature: B512, msg_hash: b256) -> Result<Address, Ec
 /// Recover the address derived from the private key used to sign a message.
 /// Returns a `Result` to let the caller choose an error handling strategy.
 ///
-/// # Additional Informaiton
+/// # Additional Information
 ///
 /// Follows the Secp256r1 elliptical curve.
 ///
@@ -266,6 +266,18 @@ fn test_ec_recover_r1() {
     assert(public_key.bytes[1] == pub_lo);
 }
 
+#[test(should_revert = "0")]
+fn test_revert_ec_recover_r1() {
+    use ::assert::assert;
+    use ::constants::ZERO_B256;
+    
+    let hi = ZERO_B256;
+    let lo = 0x44ac566bd156b4fc71a4a4cb2655d3da360c695edb27dc3b64d621e122fea23d;
+    let msg_hash = 0x1e45523606c96c98ba970ff7cf9511fab8b25e1bcd52ced30b81df1e4a9c4323;
+    let signature: B512 = B512::from((hi, lo));
+    let _ = ec_recover_r1(signature, msg_hash).unwrap();
+}
+
 #[test]
 fn test_ec_recover_address_r1() {
     use ::assert::assert;
@@ -280,6 +292,18 @@ fn test_ec_recover_address_r1() {
     assert(result_address == address);
 }
 
+#[test(should_revert = "0")]
+fn test_revert_ec_recover_address_r1() {
+    use ::assert::assert;
+    use ::constants::ZERO_B256;
+    
+    let hi = ZERO_B256;
+    let lo = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
+    let msg_hash = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
+    let signature: B512 = B512::from((hi, lo));
+    let _ = ec_recover_address_r1(signature, msg_hash).unwrap();
+}
+
 #[test]
 fn test_ed_verify() {
     use ::assert::assert;
@@ -292,7 +316,22 @@ fn test_ed_verify() {
     let hi = 0xf38cef9361894be6c6e0eddec28a663d099d7ddff17c8077a1447d7ecb4e6545;
     let lo = 0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00;
     let signature: B512 = B512::from((hi, lo));
-    // A verify public key with signature 
-    let verfied = ed_verify(pub_key, signature, msg_hash).unwrap();
-    assert(verfied);
+    // A verified public key with signature 
+    let verified = ed_verify(pub_key, signature, msg_hash).unwrap();
+    assert(verified);
+}
+
+#[test(should_revert = "0")]
+fn test_revert_ed_verify() {
+    use ::assert::assert;
+    use ::constants::ZERO_B256;
+
+    let pub_key = 0x314fa58689bbe1da2430517de2d772b384a1c1d2e9cb87e73c6afcf246045b10;
+    let msg = ZERO_B256;
+    let msg_hash = sha256(msg);
+
+    let hi = ZERO_B256;
+    let lo = 0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00;
+    let signature: B512 = B512::from((hi, lo));
+    let _ = ed_verify(pub_key, signature, msg_hash).unwrap();
 }

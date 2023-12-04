@@ -45,7 +45,7 @@
 //! 
 //! ### Extracting the contained value
 //! 
-//! These methods exctract the contained value in a `Result<T,E>` when it is
+//! These methods extract the contained value in a `Result<T,E>` when it is
 //! the `Ok` variant. If the `Result` is `Err`:
 //! 
 //! * `unwrap` reverts.

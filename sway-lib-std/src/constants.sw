@@ -32,3 +32,17 @@ pub const BASE_ASSET_ID: AssetId = AssetId::from(ZERO_B256);
 /// }
 /// ```
 pub const ZERO_B256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+
+/// The default Sub Id for assets.
+///
+/// # Examples
+/// 
+/// ```sway
+/// use std::{call_frames::contract_id, constants::DEFAULT_SUB_ID};
+///
+/// fn foo() {
+///     let asset = AssetId::default();
+///     assert(AssetId::new(contract_id(), DEFAULT_SUB_ID) == msg_asset_id());
+/// }
+/// ```
+pub const DEFAULT_SUB_ID = ZERO_B256;

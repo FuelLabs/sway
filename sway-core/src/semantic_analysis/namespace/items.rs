@@ -6,7 +6,7 @@ use crate::{
         CallPath,
     },
     namespace::*,
-    semantic_analysis::ast_node::ConstShadowingMode,
+    semantic_analysis::{ast_node::ConstShadowingMode, GenericShadowingMode},
     type_system::*,
 };
 
@@ -109,6 +109,7 @@ impl Items {
         name: Ident,
         item: ty::TyDecl,
         const_shadowing_mode: ConstShadowingMode,
+        generic_shadowing_mode: GenericShadowingMode,
     ) -> Result<(), ErrorEmitted> {
         let append_shadowing_error =
             |ident: &Ident,
@@ -118,7 +119,15 @@ impl Items {
              item: &ty::TyDecl,
              const_shadowing_mode: ConstShadowingMode| {
                 use ty::TyDecl::*;
-                match (ident, decl, is_use, is_alias, &item, const_shadowing_mode) {
+                match (
+                    ident,
+                    decl,
+                    is_use,
+                    is_alias,
+                    &item,
+                    const_shadowing_mode,
+                    generic_shadowing_mode,
+                ) {
                     // variable shadowing a constant
                     (
                         constant_ident,
@@ -126,6 +135,7 @@ impl Items {
                         is_imported_constant,
                         is_alias,
                         VariableDecl { .. },
+                        _,
                         _,
                     ) => {
                         handler.emit_err(CompileError::ConstantsCannotBeShadowed {
@@ -148,6 +158,7 @@ impl Items {
                         is_alias,
                         ConstantDecl { .. },
                         ConstShadowingMode::Sequential,
+                        _,
                     ) => {
                         handler.emit_err(CompileError::ConstantsCannotBeShadowed {
                             variable_or_constant: "Constant".to_string(),
@@ -162,7 +173,7 @@ impl Items {
                         });
                     }
                     // constant shadowing a variable
-                    (_, VariableDecl(variable_decl), _, _, ConstantDecl { .. }, _) => {
+                    (_, VariableDecl(variable_decl), _, _, ConstantDecl { .. }, _, _) => {
                         handler.emit_err(CompileError::ConstantShadowsVariable {
                             name: name.clone(),
                             variable_span: variable_decl.name.span(),
@@ -176,6 +187,7 @@ impl Items {
                         _,
                         ConstantDecl { .. },
                         ConstShadowingMode::ItemStyle,
+                        _,
                     ) => {
                         handler.emit_err(CompileError::MultipleDefinitionsOfConstant {
                             name: name.clone(),
@@ -200,6 +212,7 @@ impl Items {
                         | TraitDecl { .. }
                         | AbiDecl { .. },
                         _,
+                        _,
                     ) => {
                         handler.emit_err(CompileError::MultipleDefinitionsOfName {
                             name: name.clone(),
@@ -214,6 +227,7 @@ impl Items {
                         _,
                         GenericTypeForFunctionScope { .. },
                         _,
+                        GenericShadowingMode::Disallow,
                     ) => {
                         handler
                             .emit_err(CompileError::GenericShadowsGeneric { name: name.clone() });
@@ -295,7 +309,7 @@ impl Items {
     pub fn get_declared_storage(&self, decl_engine: &DeclEngine) -> Option<TyStorageDecl> {
         self.declared_storage
             .as_ref()
-            .map(|decl_ref| decl_engine.get_storage(decl_ref))
+            .map(|decl_ref| (*decl_engine.get_storage(decl_ref)).clone())
     }
 
     pub(crate) fn get_storage_field_descriptors(
@@ -304,7 +318,7 @@ impl Items {
         decl_engine: &DeclEngine,
     ) -> Result<Vec<ty::TyStorageField>, ErrorEmitted> {
         match self.get_declared_storage(decl_engine) {
-            Some(storage) => Ok(storage.fields),
+            Some(storage) => Ok(storage.fields.clone()),
             None => {
                 let msg = "unknown source location";
                 let span = Span::new(Arc::from(msg), 0, msg.len(), None).unwrap();
@@ -379,7 +393,7 @@ impl Items {
 
                             return Err(handler.emit_err(CompileError::FieldNotFound {
                                 field_name: field_name.clone(),
-                                struct_name: struct_decl.call_path.suffix,
+                                struct_name: struct_decl.call_path.suffix.clone(),
                                 available_fields: available_fields.join(", "),
                                 span: field_name.span(),
                             }));

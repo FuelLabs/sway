@@ -35,13 +35,13 @@ impl ty::TyFunctionParameter {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         type_argument.type_id.check_type_parameter_bounds(
             handler,
-            &ctx,
+            ctx,
             &type_argument.span,
-            vec![],
+            None,
         )?;
 
         let mutability = ty::VariableMutability::new_from_ref_mut(is_reference, is_mutable);
@@ -89,7 +89,7 @@ impl ty::TyFunctionParameter {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         let typed_parameter = ty::TyFunctionParameter {
             name,
@@ -104,6 +104,7 @@ impl ty::TyFunctionParameter {
 
     pub fn insert_into_namespace(&self, handler: &Handler, ctx: TypeCheckContext) {
         let const_shadowing_mode = ctx.const_shadowing_mode();
+        let generic_shadowing_mode = ctx.generic_shadowing_mode();
         let _ = ctx.namespace.insert_symbol(
             handler,
             self.name.clone(),
@@ -122,6 +123,7 @@ impl ty::TyFunctionParameter {
                 type_ascription: self.type_argument.clone(),
             })),
             const_shadowing_mode,
+            generic_shadowing_mode,
         );
     }
 }

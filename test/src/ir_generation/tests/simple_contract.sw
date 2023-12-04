@@ -47,17 +47,17 @@ impl Test for Contract {
 // check: lw   $(sel_reg=$REG) $$fp i73
 
 // Check selector for get_b256()
-// check: lw   $(get_b256_sel_reg=$REG) $(get_b256_sel_data=$ID)
+// check: load $(get_b256_sel_reg=$REG) $(get_b256_sel_data=$ID)
 // check: eq   $(eq_reg=$REG) $sel_reg $get_b256_sel_reg
 // check: jnzf $eq_reg $$zero $IMM
 
 // Check selector for get_s()
-// check: lw   $(get_s_sel_reg=$REG) $(get_s_sel_data=$ID)
+// check: load $(get_s_sel_reg=$REG) $(get_s_sel_data=$ID)
 // check: eq   $(eq_reg=$REG) $sel_reg $get_s_sel_reg
 // check: jnzf $eq_reg $$zero $IMM
 
 // Check selector for get_u64()
-// check: lw   $(get_u64_sel_reg=$REG) $(get_u64_sel_data=$ID)
+// check: load $(get_u64_sel_reg=$REG) $(get_u64_sel_data=$ID)
 // check: eq   $(eq_reg=$REG) $sel_reg $get_u64_sel_reg
 // check: jnzf $eq_reg $$zero $IMM
 

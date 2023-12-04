@@ -8,14 +8,14 @@ abigen!(Contract(
 
 #[tokio::test]
 async fn can_get_bytecode_root() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
 
     let (contract_instance, id) = get_test_contract_instance(wallet).await;
 
     let bytecode_root = contract_instance
         .methods()
         .get_contract_bytecode_root(ContractId::from(id.clone()))
-        .set_contracts(&[&contract_instance])
+        .with_contracts(&[&contract_instance])
         .call()
         .await
         .unwrap()

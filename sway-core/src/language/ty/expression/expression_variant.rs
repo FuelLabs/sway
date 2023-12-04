@@ -791,7 +791,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     }
 
                     let decl_engine = ctx.engines().de();
-                    let mut method = decl_engine.get(fn_ref);
+                    let mut method = (*decl_engine.get(fn_ref)).clone();
 
                     // Handle the trait constraints. This includes checking to see if the trait
                     // constraints are satisfied and replacing old decl ids based on the
@@ -800,6 +800,7 @@ impl ReplaceDecls for TyExpressionVariant {
                             handler,
                             ctx.by_ref(),
                             &method.type_parameters,
+                            method.name.as_str(),
                             &method.name.span(),
                         )?;
                     method.replace_decls(&inner_decl_mapping, handler, ctx)?;
@@ -907,12 +908,18 @@ impl TypeCheckAnalysis for TyExpressionVariant {
         match self {
             TyExpressionVariant::Literal(_) => {}
             TyExpressionVariant::FunctionApplication { fn_ref, .. } => {
-                let fn_node = ctx.get_node_from_impl_trait_fn_ref_app(fn_ref);
+                let fn_decl_id = ctx.get_normalized_fn_node_id(fn_ref.id());
+
+                let fn_node = ctx.get_node_for_fn_decl(&fn_decl_id);
                 if let Some(fn_node) = fn_node {
                     ctx.add_edge_from_current(
                         fn_node,
                         TyNodeDepGraphEdge(TyNodeDepGraphEdgeInfo::FnApp),
                     );
+
+                    if !ctx.node_stack.contains(&fn_node) {
+                        let _ = fn_decl_id.type_check_analyze(handler, ctx);
+                    }
                 }
             }
             TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
@@ -1250,16 +1257,17 @@ fn find_const_decl_from_impl(
             let impl_trait = decl_engine.get_impl_trait(&decl_id.clone());
             impl_trait
                 .items
-                .into_iter()
+                .iter()
                 .find(|item| match item {
                     TyTraitItem::Constant(decl_id) => {
-                        let trait_const_decl = decl_engine.get_constant(&decl_id.clone());
+                        let trait_const_decl =
+                            (*decl_engine.get_constant(&decl_id.clone())).clone();
                         const_decl.name().eq(trait_const_decl.name())
                     }
                     _ => false,
                 })
                 .map(|item| match item {
-                    TyTraitItem::Constant(decl_id) => decl_engine.get_constant(&decl_id),
+                    TyTraitItem::Constant(decl_id) => (*decl_engine.get_constant(decl_id)).clone(),
                     _ => unreachable!(),
                 })
         }

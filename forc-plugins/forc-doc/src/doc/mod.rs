@@ -18,7 +18,7 @@ use sway_types::{BaseIdent, Spanned};
 mod descriptor;
 pub mod module;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub(crate) struct Documentation(pub(crate) Vec<Document>);
 impl Documentation {
     /// Gather [Documentation] from the [TyProgram].
@@ -122,7 +122,7 @@ impl Documentation {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
                 if let TyDecl::ImplTrait(impl_trait) = decl {
                     impl_traits.push((
-                        decl_engine.get_impl_trait(&impl_trait.decl_id),
+                        (*decl_engine.get_impl_trait(&impl_trait.decl_id)).clone(),
                         module_info.clone(),
                     ))
                 } else {
@@ -214,7 +214,7 @@ impl Document {
             preview_opt: self.preview_opt(),
         }
     }
-    fn preview_opt(&self) -> Option<String> {
+    pub(crate) fn preview_opt(&self) -> Option<String> {
         create_preview(self.raw_attributes.clone())
     }
 }

@@ -44,8 +44,8 @@ use sway_core::{
     BuildTarget, Engines, Namespace, Programs,
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
-use sway_types::{SourceEngine, Spanned};
-use sway_utils::helpers::get_sway_files;
+use sway_types::{SourceEngine, SourceId, Spanned};
+use sway_utils::{helpers::get_sway_files, PerformanceData};
 use tokio::sync::Semaphore;
 
 pub type Documents = DashMap<String, TextDocument>;
@@ -64,10 +64,10 @@ pub struct CompiledProgram {
 pub struct ParseResult {
     pub(crate) diagnostics: (Vec<CompileError>, Vec<CompileWarning>),
     pub(crate) token_map: TokenMap,
-    pub(crate) engines: Engines,
     pub(crate) lexed: LexedProgram,
     pub(crate) parsed: ParseProgram,
     pub(crate) typed: ty::TyProgram,
+    pub(crate) metrics: DashMap<SourceId, PerformanceData>,
 }
 
 /// A `Session` is used to store information about a single member in a workspace.
@@ -87,6 +87,7 @@ pub struct Session {
     pub parse_permits: Arc<Semaphore>,
     // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
     pub diagnostics: Arc<RwLock<DiagnosticMap>>,
+    pub metrics: DashMap<SourceId, PerformanceData>,
 }
 
 impl Default for Session {
@@ -101,6 +102,7 @@ impl Session {
             token_map: TokenMap::new(),
             documents: DashMap::new(),
             runnables: DashMap::new(),
+            metrics: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
             engines: <_>::default(),
             sync: SyncWorkspace::new(),
@@ -145,16 +147,31 @@ impl Session {
         self.diagnostics.read().clone()
     }
 
+    /// Clean up memory in the [TypeEngine] and [DeclEngine] for the user's workspace.
+    pub fn garbage_collect(&self) -> Result<(), LanguageServerError> {
+        let path = self.sync.temp_dir()?;
+        let module_id = { self.engines.read().se().get_module_id(&path) };
+        if let Some(module_id) = module_id {
+            self.engines.write().clear_module(&module_id);
+        }
+        Ok(())
+    }
+
     /// Write the result of parsing to the session.
     /// This function should only be called after successfully parsing.
     pub fn write_parse_result(&self, res: ParseResult) {
         self.token_map.clear();
         self.runnables.clear();
+        self.metrics.clear();
 
-        *self.engines.write() = res.engines;
         res.token_map.deref().iter().for_each(|item| {
+            let (i, t) = item.pair();
+            self.token_map.insert(i.clone(), t.clone());
+        });
+
+        res.metrics.iter().for_each(|item| {
             let (s, t) = item.pair();
-            self.token_map.insert(s.clone(), t.clone());
+            self.metrics.insert(*s, t.clone());
         });
 
         self.create_runnables(
@@ -399,7 +416,7 @@ impl Session {
 }
 
 /// Create a [BuildPlan] from the given [Url] appropriate for the language server.
-fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
+pub(crate) fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
     let manifest_dir = PathBuf::from(uri.path());
     let manifest =
         ManifestFile::from_dir(&manifest_dir).map_err(|_| DocumentError::ManifestFileNotFound {
@@ -446,6 +463,7 @@ pub struct TraversalResult {
     pub diagnostics: (Vec<CompileError>, Vec<CompileWarning>),
     pub programs: Option<(LexedProgram, ParseProgram, ty::TyProgram)>,
     pub token_map: TokenMap,
+    pub metrics: DashMap<SourceId, PerformanceData>,
 }
 
 pub fn traverse(
@@ -453,6 +471,7 @@ pub fn traverse(
     engines: &Engines,
 ) -> Result<TraversalResult, LanguageServerError> {
     let token_map = TokenMap::new();
+    let metrics_map = DashMap::new();
     let mut diagnostics = (Vec::<CompileError>::new(), Vec::<CompileWarning>::new());
     let mut programs = None;
     let results_len = results.len();
@@ -468,8 +487,13 @@ pub fn traverse(
             lexed,
             parsed,
             typed,
-            metrics: _,
+            metrics,
         } = value.unwrap();
+
+        let source_id = lexed.root.tree.span().source_id().cloned();
+        if let Some(source_id) = source_id {
+            metrics_map.insert(source_id, metrics.clone());
+        }
 
         // Get a reference to the typed program AST.
         let typed_program = typed
@@ -514,26 +538,27 @@ pub fn traverse(
         diagnostics,
         programs,
         token_map,
+        metrics: metrics_map,
     })
 }
 
 /// Parses the project and returns true if the compiler diagnostics are new and should be published.
-pub fn parse_project(uri: &Url) -> Result<ParseResult, LanguageServerError> {
-    let engines = Engines::default();
-    let results = compile(uri, &engines)?;
+pub fn parse_project(uri: &Url, engines: &Engines) -> Result<ParseResult, LanguageServerError> {
+    let results = compile(uri, engines)?;
     let TraversalResult {
         diagnostics,
         programs,
         token_map,
-    } = traverse(results, &engines)?;
+        metrics,
+    } = traverse(results, engines)?;
     let (lexed, parsed, typed) = programs.expect("Programs should be populated at this point.");
     Ok(ParseResult {
         diagnostics,
         token_map,
-        engines,
         lexed,
         parsed,
         typed,
+        metrics,
     })
 }
 
@@ -600,7 +625,8 @@ mod tests {
     fn parse_project_returns_manifest_file_not_found() {
         let dir = get_absolute_path("sway-lsp/tests/fixtures");
         let uri = get_url(&dir);
-        let result = parse_project(&uri).expect_err("expected ManifestFileNotFound");
+        let engines = Engines::default();
+        let result = parse_project(&uri, &engines).expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(

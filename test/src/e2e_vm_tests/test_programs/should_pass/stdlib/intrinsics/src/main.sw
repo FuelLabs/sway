@@ -39,7 +39,7 @@ fn main() -> bool {
     assert(size_of::<u64>() == 8);
     assert(size_of::<u32>() == 8);
     assert(size_of::<u16>() == 8);
-    assert(size_of::<u8>() == 8);
+    assert(size_of::<u8>() == 1);
     assert(size_of::<b256>() == 32);
     assert(size_of::<str[11]>() == 16);
     assert(size_of::<[u16; 3]>() == 24);
@@ -48,7 +48,7 @@ fn main() -> bool {
     assert(size_of_val(a) == 8);
     assert(size_of_val(b) == 8);
     assert(size_of_val(c) == 8);
-    assert(size_of_val(d) == 8);
+    assert(size_of_val(d) == 1);
     assert(size_of_val(e) == 32);
     assert(size_of_val(f) == 16);
 

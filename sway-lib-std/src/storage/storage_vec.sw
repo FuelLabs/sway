@@ -8,7 +8,7 @@ use ::storage::storage_api::*;
 use ::storage::storage_key::*;
 use ::vec::Vec;
 
-/// A persistant vector struct.
+/// A persistent vector struct.
 pub struct StorageVec<V> {}
 
 impl<V> StorageKey<StorageVec<V>> {
@@ -141,7 +141,7 @@ impl<V> StorageKey<StorageVec<V>> {
         let offset = offset_calculator::<V>(index);
         // This StorageKey can be read by the standard storage api.
         // Field Id must be unique such that nested storage vecs work as they have a 
-        // __size_of() zero and will there forefore always have an offset of zero.
+        // __size_of() zero and will therefore always have an offset of zero.
         Some(StorageKey::<V>::new(
             key, 
             offset, 
@@ -481,34 +481,6 @@ impl<V> StorageKey<StorageVec<V>> {
         read::<u64>(self.field_id, 0).unwrap_or(0) == 0
     }
 
-    /// Sets the len to zero.
-    ///
-    /// # Number of Storage Accesses
-    ///
-    /// * Clears: `1`
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// use std::storage::storage_vec::*;
-    ///
-    /// storage {
-    ///     vec: StorageVec<u64> = StorageVec {}
-    /// }
-    ///
-    /// fn foo() {
-    ///     assert(0 == storage.vec.len());
-    ///     storage.vec.push(5);
-    ///     assert(1 == storage.vec.len());
-    ///     storage.vec.clear();
-    ///     assert(0 == storage.vec.len());
-    /// }
-    /// ```
-    #[storage(write)]
-    pub fn clear(self) {
-        let _ = clear::<u64>(self.field_id, 0);
-    }
-
     /// Swaps two elements.
     ///
     /// # Arguments
@@ -587,7 +559,7 @@ impl<V> StorageKey<StorageVec<V>> {
     ///
     ///     storage.vec.push(5);
     ///
-    ///     assert(5 == storage.vec.first().unwrwap());
+    ///     assert(5 == storage.vec.first().unwrap());
     /// }
     /// ```
     #[storage(read)]
@@ -909,6 +881,9 @@ impl<V> StorageKey<StorageVec<V>> {
     }
 }
 
+// Add padding to type so it can correctly use the storage api
 fn offset_calculator<T>(offset: u64) -> u64 {
-    (offset * __size_of::<T>()) / 8
+    let size_in_bytes = __size_of::<T>();
+    let size_in_bytes = (size_in_bytes + (8 - 1)) - ((size_in_bytes + (8 - 1)) % 8);
+    (offset * size_in_bytes) / 8
 }

@@ -64,7 +64,7 @@ pub fn inlay_hints(
         })
         .filter_map(|var| {
             let type_info = type_engine.get(var.type_ascription.type_id);
-            match type_info {
+            match &*type_info {
                 TypeInfo::Unknown | TypeInfo::UnknownGeneric { .. } => None,
                 _ => Some(var),
             }

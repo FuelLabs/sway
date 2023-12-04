@@ -1,12 +1,11 @@
-use std::{fmt, sync::RwLock};
-
-use sway_types::{Named, Spanned};
-
-use crate::{decl_engine::*, engine_threading::*, type_system::*};
+use std::{
+    fmt,
+    sync::{Arc, RwLock},
+};
 
 #[derive(Debug)]
 pub(crate) struct ConcurrentSlab<T> {
-    inner: RwLock<Vec<T>>,
+    inner: RwLock<Vec<Arc<T>>>,
 }
 
 impl<T> Clone for ConcurrentSlab<T>
@@ -26,12 +25,6 @@ impl<T> Default for ConcurrentSlab<T> {
         Self {
             inner: Default::default(),
         }
-    }
-}
-
-impl<T> ConcurrentSlab<T> {
-    pub fn with_slice<R>(&self, run: impl FnOnce(&[T]) -> R) -> R {
-        run(&self.inner.read().unwrap())
     }
 }
 
@@ -59,55 +52,38 @@ impl<T> ConcurrentSlab<T>
 where
     T: Clone,
 {
+    pub fn len(&self) -> usize {
+        let inner = self.inner.read().unwrap();
+        inner.len()
+    }
+
     pub fn insert(&self, value: T) -> usize {
+        let mut inner = self.inner.write().unwrap();
+        let ret = inner.len();
+        inner.push(Arc::new(value));
+        ret
+    }
+
+    pub fn insert_arc(&self, value: Arc<T>) -> usize {
         let mut inner = self.inner.write().unwrap();
         let ret = inner.len();
         inner.push(value);
         ret
     }
 
-    pub fn get(&self, index: usize) -> T {
+    pub fn replace(&self, index: usize, new_value: T) -> Option<T> {
+        let mut inner = self.inner.write().unwrap();
+        inner[index] = Arc::new(new_value);
+        None
+    }
+
+    pub fn get(&self, index: usize) -> Arc<T> {
         let inner = self.inner.read().unwrap();
         inner[index].clone()
     }
-}
 
-impl ConcurrentSlab<TypeInfo> {
-    pub fn replace(
-        &self,
-        index: TypeId,
-        prev_value: &TypeInfo,
-        new_value: TypeInfo,
-        engines: &Engines,
-    ) -> Option<TypeInfo> {
-        let index = index.index();
-        // The comparison below ends up calling functions in the slab, which
-        // can lead to deadlocks if we used a single read/write lock.
-        // So we split the operation: we do the read only operations with
-        // a single scoped read lock below, and only after the scope do
-        // we get a write lock for writing into the slab.
-        {
-            let inner = self.inner.read().unwrap();
-            let actual_prev_value = &inner[index];
-            if !actual_prev_value.eq(prev_value, engines) {
-                return Some(actual_prev_value.clone());
-            }
-        }
-
+    pub fn retain(&self, predicate: impl Fn(&Arc<T>) -> bool) {
         let mut inner = self.inner.write().unwrap();
-        inner[index] = new_value;
-        None
-    }
-}
-
-impl<T> ConcurrentSlab<T>
-where
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned,
-{
-    pub fn replace(&self, index: DeclId<T>, new_value: T) -> Option<T> {
-        let mut inner = self.inner.write().unwrap();
-        inner[index.inner()] = new_value;
-        None
+        inner.retain(predicate);
     }
 }

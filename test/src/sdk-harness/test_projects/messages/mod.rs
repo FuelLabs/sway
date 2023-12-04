@@ -20,8 +20,9 @@ async fn get_messages_contract_instance() -> (
         Some(amount_per_coin),
     );
 
-    let wallets = launch_custom_provider_and_get_wallets(config, None, None).await;
-
+    let wallets = launch_custom_provider_and_get_wallets(config, None, None)
+        .await
+        .unwrap();
     let messages_contract_id = Contract::load_from(
         "test_projects/messages/out/debug/messages.bin",
         LoadConfiguration::default(),
@@ -75,11 +76,8 @@ async fn can_send_bool_message() {
     assert_eq!(*messages_contract_id, **message_receipt.sender().unwrap());
     assert_eq!(&recipient_address, message_receipt.recipient().unwrap());
     assert_eq!(amount, message_receipt.amount().unwrap());
-    assert_eq!(16, message_receipt.len().unwrap()); // smo ID + 8 bytes
-    assert_eq!(
-        vec![0, 0, 0, 0, 0, 0, 0, 1],
-        message_receipt.data().unwrap()[8..16]
-    );
+    assert_eq!(9, message_receipt.len().unwrap()); // smo ID + 1 bytes
+    assert_eq!(vec![1], message_receipt.data().unwrap()[8..9]);
 }
 
 #[tokio::test]
@@ -105,11 +103,8 @@ async fn can_send_u8_message() {
     assert_eq!(*messages_contract_id, **message_receipt.sender().unwrap());
     assert_eq!(&recipient_address, message_receipt.recipient().unwrap());
     assert_eq!(amount, message_receipt.amount().unwrap());
-    assert_eq!(16, message_receipt.len().unwrap()); // smo ID + 8 bytes
-    assert_eq!(
-        vec![0, 0, 0, 0, 0, 0, 0, 42],
-        message_receipt.data().unwrap()[8..16]
-    );
+    assert_eq!(9, message_receipt.len().unwrap()); // smo ID + 8 bytes
+    assert_eq!(vec![42], message_receipt.data().unwrap()[8..9]);
 }
 
 #[tokio::test]
@@ -362,15 +357,14 @@ async fn can_send_string_message() {
     assert_eq!(*messages_contract_id, **message_receipt.sender().unwrap());
     assert_eq!(&recipient_address, message_receipt.recipient().unwrap());
     assert_eq!(amount, message_receipt.amount().unwrap());
-    assert_eq!(16, message_receipt.len().unwrap()); // smo ID + 8 bytes
+    assert_eq!(16, message_receipt.len().unwrap()); // smo ID + 4 bytes
     assert_eq!(
         [
             102, // 'f'
             117, // 'u'
             101, // 'e'
             108, // 'l'
-            0, 0, 0, 0, // padding
         ],
-        message_receipt.data().unwrap()[8..16]
+        message_receipt.data().unwrap()[8..12]
     );
 }

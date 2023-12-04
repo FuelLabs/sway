@@ -7,12 +7,15 @@ use std::fs;
 
 use petgraph::stable_graph::NodeIndex;
 use petgraph::Graph;
+use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 
-use crate::decl_engine::{DeclId, DeclIdIndexType, DeclRef};
+use crate::decl_engine::{AssociatedItemDeclId, DeclId, DeclIdIndexType};
 use crate::engine_threading::DebugWithEngines;
-use crate::language::ty::{self, TyImplItem, TyTraitItem};
+use crate::language::ty::{self, TyFunctionDecl, TyTraitItem};
 use crate::Engines;
+
+use graph_cycles::Cycles;
 
 pub type TyNodeDepGraphNodeId = petgraph::graph::NodeIndex;
 
@@ -36,6 +39,7 @@ impl Display for TyNodeDepGraphEdge {
 pub enum TyNodeDepGraphNode {
     ImplTrait { node: ty::ImplTrait },
     ImplTraitItem { node: ty::TyTraitItem },
+    Fn { node: DeclId<TyFunctionDecl> },
 }
 
 // Represents an ordered graph between declaration id indexes.
@@ -55,13 +59,73 @@ impl TypeCheckAnalysisContext<'_> {
         self.dep_graph.add_node(node)
     }
 
-    pub fn add_edge_from_current(&mut self, a: TyNodeDepGraphNodeId, edge: TyNodeDepGraphEdge) {
-        self.dep_graph
-            .add_edge(*self.node_stack.last().unwrap(), a, edge);
+    pub fn add_edge_from_current(&mut self, to: TyNodeDepGraphNodeId, edge: TyNodeDepGraphEdge) {
+        let from = *self.node_stack.last().unwrap();
+        if !self.dep_graph.contains_edge(from, to) {
+            self.dep_graph.add_edge(from, to, edge);
+        }
     }
 
     #[allow(clippy::map_entry)]
-    pub(crate) fn push_impl_trait(&mut self, impl_trait: &ty::ImplTrait) -> TyNodeDepGraphNodeId {
+    pub fn get_or_create_node_for_impl_item(&mut self, item: &TyTraitItem) -> TyNodeDepGraphNodeId {
+        let id = match item {
+            TyTraitItem::Fn(decl_ref) => decl_ref.id().inner(),
+            TyTraitItem::Constant(decl_ref) => decl_ref.id().inner(),
+            TyTraitItem::Type(decl_ref) => decl_ref.id().inner(),
+        };
+        if self.nodes.contains_key(&id) {
+            *self.nodes.get(&id).unwrap()
+        } else {
+            let item_node = self.add_node(TyNodeDepGraphNode::ImplTraitItem { node: item.clone() });
+
+            self.nodes.insert(id, item_node);
+            item_node
+        }
+    }
+
+    /// This functions either gets an existing node in the graph, or creates a new
+    /// node corresponding to the passed function declaration node.
+    /// The function will try to find a non-monomorphized declaration node id so that
+    /// future acesses always normalize to the same node id.
+    #[allow(clippy::map_entry)]
+    pub fn get_or_create_node_for_fn_decl(
+        &mut self,
+        fn_decl_id: &DeclId<TyFunctionDecl>,
+    ) -> TyNodeDepGraphNodeId {
+        let parents = self
+            .engines
+            .de()
+            .find_all_parents(self.engines, fn_decl_id)
+            .into_iter()
+            .filter_map(|f| match f {
+                AssociatedItemDeclId::TraitFn(_) => None,
+                AssociatedItemDeclId::Function(fn_id) => Some(fn_id),
+                AssociatedItemDeclId::Constant(_) => None,
+                AssociatedItemDeclId::Type(_) => None,
+            })
+            .collect::<Vec<_>>();
+        let id = if !parents.is_empty() {
+            parents.first().unwrap().inner()
+        } else {
+            fn_decl_id.inner()
+        };
+        if self.nodes.contains_key(&id) {
+            *self.nodes.get(&id).unwrap()
+        } else {
+            let item_node = self.add_node(TyNodeDepGraphNode::Fn { node: *fn_decl_id });
+
+            self.nodes.insert(id, item_node);
+            item_node
+        }
+    }
+
+    /// This function will process an impl trait declaration, pushing graph nodes
+    /// corresponding to each item in the trait impl.
+    #[allow(clippy::map_entry)]
+    pub(crate) fn push_nodes_for_impl_trait(
+        &mut self,
+        impl_trait: &ty::ImplTrait,
+    ) -> TyNodeDepGraphNodeId {
         if self.nodes.contains_key(&impl_trait.decl_id.inner()) {
             *self.nodes.get(&impl_trait.decl_id.inner()).unwrap()
         } else {
@@ -74,8 +138,7 @@ impl TypeCheckAnalysisContext<'_> {
             let impl_trait = decl_engine.get_impl_trait(&impl_trait.decl_id);
 
             for item in impl_trait.items.iter() {
-                let item_node =
-                    self.add_node(TyNodeDepGraphNode::ImplTraitItem { node: item.clone() });
+                let item_node = self.get_or_create_node_for_impl_item(item);
 
                 // Connect the item node to the impl trait node.
                 self.dep_graph.add_edge(
@@ -86,56 +149,71 @@ impl TypeCheckAnalysisContext<'_> {
 
                 self.items_node_stack.push(item_node);
             }
+
             node
         }
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn get_node_from_impl_trait_item(
-        &self,
-        item: &TyImplItem,
+    /// This function will return an option to the node that represents the
+    /// function being referenced by a function application.
+    /// It will look through all the parent nodes in the engine to deal with
+    /// monomorphized function references.
+    pub(crate) fn get_node_for_fn_decl(
+        &mut self,
+        fn_decl_id: &DeclId<TyFunctionDecl>,
     ) -> Option<TyNodeDepGraphNodeId> {
+        let parents = self
+            .engines
+            .de()
+            .find_all_parents(self.engines, fn_decl_id)
+            .into_iter()
+            .filter_map(|f| match f {
+                AssociatedItemDeclId::TraitFn(_) => None,
+                AssociatedItemDeclId::Function(fn_id) => Some(fn_id),
+                AssociatedItemDeclId::Constant(_) => None,
+                AssociatedItemDeclId::Type(_) => None,
+            })
+            .collect::<Vec<_>>();
+
+        let mut possible_nodes = vec![*fn_decl_id];
+        possible_nodes.append(&mut parents.clone());
+
+        for possible_node in possible_nodes.iter().rev() {
+            if let Some(found) = self.nodes.get(&possible_node.inner()) {
+                return Some(*found);
+            }
+        }
+
         for index in self.items_node_stack.iter().rev() {
             let node = self
                 .dep_graph
                 .node_weight(*index)
                 .expect("expecting valid node id");
-            if let TyNodeDepGraphNode::ImplTraitItem { node } = node {
-                let matches = match (item, node) {
-                    (TyTraitItem::Fn(item_fn_ref), TyTraitItem::Fn(fn_ref)) => {
-                        fn_ref.name() == item_fn_ref.name()
-                    }
-                    _ => unreachable!(),
-                };
-                if matches {
+
+            let fn_decl_id = match node {
+                TyNodeDepGraphNode::ImplTrait { node: _ } => unreachable!(),
+                TyNodeDepGraphNode::ImplTraitItem {
+                    node: TyTraitItem::Fn(item_fn_ref),
+                } => item_fn_ref.id(),
+                TyNodeDepGraphNode::Fn { node: fn_decl_id } => fn_decl_id,
+                _ => continue,
+            };
+
+            for possible_node in possible_nodes.iter() {
+                if possible_node.inner() == fn_decl_id.inner() {
                     return Some(*index);
                 }
             }
         }
 
-        None
-    }
-
-    pub(crate) fn get_node_from_impl_trait_fn_ref_app(
-        &self,
-        fn_ref: &DeclRef<DeclId<ty::TyFunctionDecl>>,
-    ) -> Option<TyNodeDepGraphNodeId> {
-        for index in self.items_node_stack.iter().rev() {
-            let node = self
-                .dep_graph
-                .node_weight(*index)
-                .expect("expecting valid node id");
-            if let TyNodeDepGraphNode::ImplTraitItem {
-                node: TyTraitItem::Fn(item_fn_ref),
-            } = node
-            {
-                if fn_ref.name() == item_fn_ref.name() {
-                    return Some(*index);
-                }
-            }
-        }
-
-        None
+        // If no node has been found yet, create it.
+        let base_id = if !parents.is_empty() {
+            parents.first().unwrap()
+        } else {
+            fn_decl_id
+        };
+        let node = self.get_or_create_node_for_fn_decl(base_id);
+        Some(node)
     }
 
     /// Prints out GraphViz DOT format for the dependency graph.
@@ -176,6 +254,89 @@ impl TypeCheckAnalysisContext<'_> {
         }
     }
 
+    /// Performs recursive analysis by running the Johnson's algorithm to find all cycles
+    /// in the previously constructed dependency graph.
+    pub(crate) fn check_recursive_calls(&self, handler: &Handler) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            let cycles = self.dep_graph.cycles();
+            if cycles.is_empty() {
+                return Ok(());
+            }
+            for mut sub_cycles in cycles {
+                // Manipulate the cycles order to get the same ordering as the source code's lexical order.
+                sub_cycles.rotate_left(1);
+                if sub_cycles.len() == 1 {
+                    let node = self.dep_graph.node_weight(sub_cycles[0]).unwrap();
+                    let fn_decl_id = self.get_fn_decl_id_from_node(node);
+
+                    let fn_decl = self.engines.de().get_function(&fn_decl_id);
+                    handler.emit_err(CompileError::RecursiveCall {
+                        fn_name: fn_decl.name.clone(),
+                        span: fn_decl.span.clone(),
+                    });
+                } else {
+                    let node = self.dep_graph.node_weight(sub_cycles[0]).unwrap();
+
+                    let mut call_chain = vec![];
+                    for i in sub_cycles.into_iter().skip(1) {
+                        let node = self.dep_graph.node_weight(i).unwrap();
+                        let fn_decl_id = self.get_fn_decl_id_from_node(node);
+                        let fn_decl = self.engines.de().get_function(&fn_decl_id);
+                        call_chain.push(fn_decl.name.to_string());
+                    }
+
+                    let fn_decl_id = self.get_fn_decl_id_from_node(node);
+                    let fn_decl = self.engines.de().get_function(&fn_decl_id);
+                    handler.emit_err(CompileError::RecursiveCallChain {
+                        fn_name: fn_decl.name.clone(),
+                        call_chain: call_chain.join(" -> "),
+                        span: fn_decl.span.clone(),
+                    });
+                }
+            }
+            Ok(())
+        })
+    }
+
+    pub(crate) fn get_normalized_fn_node_id(
+        &self,
+        fn_decl_id: &DeclId<TyFunctionDecl>,
+    ) -> DeclId<TyFunctionDecl> {
+        let parents = self
+            .engines
+            .de()
+            .find_all_parents(self.engines, fn_decl_id)
+            .into_iter()
+            .filter_map(|f| match f {
+                AssociatedItemDeclId::TraitFn(_) => None,
+                AssociatedItemDeclId::Function(fn_id) => Some(fn_id),
+                AssociatedItemDeclId::Constant(_) => None,
+                AssociatedItemDeclId::Type(_) => None,
+            })
+            .collect::<Vec<_>>();
+
+        if !parents.is_empty() {
+            *parents.first().unwrap()
+        } else {
+            *fn_decl_id
+        }
+    }
+
+    pub(crate) fn get_fn_decl_id_from_node(
+        &self,
+        node: &TyNodeDepGraphNode,
+    ) -> DeclId<TyFunctionDecl> {
+        match node {
+            TyNodeDepGraphNode::ImplTrait { .. } => unreachable!(),
+            TyNodeDepGraphNode::ImplTraitItem { node } => match node {
+                TyTraitItem::Fn(node) => *node.id(),
+                TyTraitItem::Constant(_) => unreachable!(),
+                TyTraitItem::Type(_) => unreachable!(),
+            },
+            TyNodeDepGraphNode::Fn { node } => *node,
+        }
+    }
+
     pub(crate) fn get_sub_graph(
         &self,
         node_index: NodeIndex,
@@ -199,7 +360,7 @@ impl TypeCheckAnalysisContext<'_> {
 }
 
 impl DebugWithEngines for TyNodeDepGraphNode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, _engines: &Engines) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: &Engines) -> std::fmt::Result {
         let text = match self {
             TyNodeDepGraphNode::ImplTraitItem { node } => {
                 let str = match node {
@@ -211,6 +372,10 @@ impl DebugWithEngines for TyNodeDepGraphNode {
             }
             TyNodeDepGraphNode::ImplTrait { node } => {
                 format!("{:?}", node.name.as_str())
+            }
+            TyNodeDepGraphNode::Fn { node } => {
+                let fn_decl = engines.de().get_function(node);
+                format!("{:?}", fn_decl.name.as_str())
             }
         };
         f.write_str(&text)

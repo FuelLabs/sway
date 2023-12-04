@@ -15,7 +15,6 @@ pub mod decl_engine;
 pub mod ir_generation;
 pub mod language;
 mod metadata;
-mod monomorphize;
 pub mod query_engine;
 pub mod semantic_analysis;
 pub mod source_map;
@@ -32,7 +31,6 @@ pub use build_config::{BuildConfig, BuildTarget};
 use control_flow_analysis::ControlFlowGraph;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModulePath, ProgramsCacheEntry};
-use semantic_analysis::{TypeCheckAnalysis, TypeCheckAnalysisContext};
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
@@ -486,9 +484,13 @@ pub fn parsed_to_ast(
 
     typed_program.check_deprecated(engines, handler);
 
-    // Analyze the AST for dependency information.
-    let mut ctx = TypeCheckAnalysisContext::new(engines);
-    typed_program.type_check_analyze(handler, &mut ctx)?;
+    match typed_program.check_recursive(engines, handler) {
+        Ok(()) => {}
+        Err(e) => {
+            handler.dedup();
+            return Err(e);
+        }
+    };
 
     // Collect information about the types used in this program
     let types_metadata_result = typed_program

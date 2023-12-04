@@ -6,6 +6,7 @@ use sway_types::{BaseIdent, Span};
 
 use crate::{
     decl_engine::DeclEngine, engine_threading::*, language::CallPath,
+    semantic_analysis::type_check_context::EnforceTypeArguments,
     semantic_analysis::TypeCheckContext, type_system::priv_prelude::*, types::*,
 };
 
@@ -20,13 +21,13 @@ pub struct TypeId(usize);
 
 impl DisplayWithEngines for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        write!(f, "{}", engines.help_out(engines.te().get(*self)))
+        write!(f, "{}", engines.help_out(&*engines.te().get(*self)))
     }
 }
 
 impl DebugWithEngines for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        write!(f, "{:?}", engines.help_out(engines.te().get(*self)))
+        write!(f, "{:?}", engines.help_out(&*engines.te().get(*self)))
     }
 }
 
@@ -50,16 +51,16 @@ impl CollectTypesMetadata for TypeId {
         let possible = self.extract_any_including_self(engines, &filter_fn, vec![]);
         let mut res = vec![];
         for (type_id, _) in possible.into_iter() {
-            match ctx.engines.te().get(type_id) {
+            match &*ctx.engines.te().get(type_id) {
                 TypeInfo::UnknownGeneric { name, .. } => {
                     res.push(TypeMetadata::UnresolvedType(
-                        name,
+                        name.clone(),
                         ctx.call_site_get(&type_id),
                     ));
                 }
                 TypeInfo::Placeholder(type_param) => {
                     res.push(TypeMetadata::UnresolvedType(
-                        type_param.name_ident,
+                        type_param.name_ident.clone(),
                         ctx.call_site_get(self),
                     ));
                 }
@@ -74,7 +75,7 @@ impl SubstTypes for TypeId {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let type_engine = engines.te();
         if let Some(matching_id) = type_mapping.find_match(*self, engines) {
-            if !matches!(type_engine.get(matching_id), TypeInfo::ErrorRecovery(_)) {
+            if !matches!(&*type_engine.get(matching_id), TypeInfo::ErrorRecovery(_)) {
                 *self = matching_id;
             }
         }
@@ -112,14 +113,14 @@ impl TypeId {
         type_engine: &TypeEngine,
         decl_engine: &DeclEngine,
     ) -> Option<Vec<TypeParameter>> {
-        match type_engine.get(*self) {
+        match &*type_engine.get(*self) {
             TypeInfo::Enum(decl_ref) => {
-                let decl = decl_engine.get_enum(&decl_ref);
-                (!decl.type_parameters.is_empty()).then_some(decl.type_parameters)
+                let decl = decl_engine.get_enum(decl_ref);
+                (!decl.type_parameters.is_empty()).then_some(decl.type_parameters.clone())
             }
             TypeInfo::Struct(decl_ref) => {
-                let decl = decl_engine.get_struct(&decl_ref);
-                (!decl.type_parameters.is_empty()).then_some(decl.type_parameters)
+                let decl = decl_engine.get_struct(decl_ref);
+                (!decl.type_parameters.is_empty()).then_some(decl.type_parameters.clone())
             }
             _ => None,
         }
@@ -134,28 +135,28 @@ impl TypeId {
         decl_engine: &DeclEngine,
         resolved_type_id: TypeId,
     ) -> bool {
-        match (type_engine.get(self), type_engine.get(resolved_type_id)) {
+        match (&*type_engine.get(self), &*type_engine.get(resolved_type_id)) {
             (
                 TypeInfo::Custom {
                     qualified_call_path: call_path,
                     ..
                 },
                 TypeInfo::Enum(decl_ref),
-            ) => call_path.call_path.suffix != decl_engine.get_enum(&decl_ref).call_path.suffix,
+            ) => call_path.call_path.suffix != decl_engine.get_enum(decl_ref).call_path.suffix,
             (
                 TypeInfo::Custom {
                     qualified_call_path: call_path,
                     ..
                 },
                 TypeInfo::Struct(decl_ref),
-            ) => call_path.call_path.suffix != decl_engine.get_struct(&decl_ref).call_path.suffix,
+            ) => call_path.call_path.suffix != decl_engine.get_struct(decl_ref).call_path.suffix,
             (
                 TypeInfo::Custom {
                     qualified_call_path: call_path,
                     ..
                 },
                 TypeInfo::Alias { name, .. },
-            ) => call_path.call_path.suffix != name,
+            ) => call_path.call_path.suffix != name.clone(),
             (TypeInfo::Custom { .. }, _) => true,
             _ => false,
         }
@@ -202,7 +203,7 @@ impl TypeId {
 
         let decl_engine = engines.de();
         let mut found: HashMap<TypeId, Vec<TraitConstraint>> = HashMap::new();
-        match engines.te().get(*self) {
+        match &*engines.te().get(*self) {
             TypeInfo::Unknown
             | TypeInfo::Placeholder(_)
             | TypeInfo::TypeParam(_)
@@ -218,7 +219,7 @@ impl TypeId {
             | TypeInfo::ErrorRecovery(_)
             | TypeInfo::TraitType { .. } => {}
             TypeInfo::Enum(enum_ref) => {
-                let enum_decl = decl_engine.get_enum(&enum_ref);
+                let enum_decl = decl_engine.get_enum(enum_ref);
                 for type_param in enum_decl.type_parameters.iter() {
                     extend(
                         &mut found,
@@ -241,7 +242,7 @@ impl TypeId {
                 }
             }
             TypeInfo::Struct(struct_ref) => {
-                let struct_decl = decl_engine.get_struct(&struct_ref);
+                let struct_decl = decl_engine.get_struct(struct_ref);
                 for type_param in struct_decl.type_parameters.iter() {
                     extend(
                         &mut found,
@@ -334,12 +335,18 @@ impl TypeId {
                 found.insert(*self, trait_constraints.to_vec());
                 for trait_constraint in trait_constraints.iter() {
                     for type_arg in trait_constraint.type_arguments.iter() {
-                        extend(
-                            &mut found,
-                            type_arg
-                                .type_id
-                                .extract_any_including_self(engines, filter_fn, vec![]),
-                        );
+                        // In case type_id was already added skip it.
+                        // This is required because of recursive generic trait such as `T: Trait<T>`
+                        if !found.contains_key(&type_arg.type_id) {
+                            extend(
+                                &mut found,
+                                type_arg.type_id.extract_any_including_self(
+                                    engines,
+                                    filter_fn,
+                                    vec![],
+                                ),
+                            );
+                        }
                     }
                 }
             }
@@ -390,9 +397,9 @@ impl TypeId {
         let mut inner_types: Vec<TypeInfo> = self
             .extract_inner_types(engines)
             .into_iter()
-            .map(|type_id| type_engine.get(type_id))
+            .map(|type_id| (*type_engine.get(type_id)).clone())
             .collect();
-        inner_types.push(type_engine.get(self));
+        inner_types.push((*type_engine.get(self)).clone());
         inner_types
     }
 
@@ -432,16 +439,18 @@ impl TypeId {
     pub(crate) fn check_type_parameter_bounds(
         &self,
         handler: &Handler,
-        ctx: &TypeCheckContext,
+        mut ctx: TypeCheckContext,
         span: &Span,
-        trait_constraints: Vec<TraitConstraint>,
+        type_param: Option<TypeParameter>,
     ) -> Result<(), ErrorEmitted> {
         let engines = ctx.engines();
 
         let mut structure_generics = self.extract_inner_types_with_trait_constraints(engines);
 
-        if !trait_constraints.is_empty() {
-            structure_generics.insert(*self, trait_constraints);
+        if let Some(type_param) = type_param {
+            if !type_param.trait_constraints.is_empty() {
+                structure_generics.insert(*self, type_param.trait_constraints);
+            }
         }
 
         handler.scope(|handler| {
@@ -450,17 +459,16 @@ impl TypeId {
                     continue;
                 }
 
-                // resolving trait constraits require a concrete type, we need to default numeric to u64
+                // resolving trait constraints require a concrete type, we need to default numeric to u64
                 engines
                     .te()
                     .decay_numeric(handler, engines, *structure_type_id, span)?;
 
                 let structure_type_info = engines.te().get(*structure_type_id);
-                let structure_type_info_with_engines =
-                    engines.help_out(structure_type_info.clone());
+                let structure_type_info_with_engines = engines.help_out(&*structure_type_info);
                 if let TypeInfo::UnknownGeneric {
                     trait_constraints, ..
-                } = &structure_type_info
+                } = &*structure_type_info
                 {
                     let mut generic_trait_constraints_trait_names: Vec<CallPath<BaseIdent>> =
                         vec![];
@@ -483,29 +491,114 @@ impl TypeId {
                         }
                     }
                 } else {
-                    let generic_trait_constraints_trait_names = ctx
-                        .namespace
-                        .implemented_traits
-                        .get_trait_names_for_type(engines, *structure_type_id);
-                    for structure_trait_constraint in structure_trait_constraints {
-                        if !generic_trait_constraints_trait_names.contains(
-                            &structure_trait_constraint
-                                .trait_name
-                                .to_fullpath(ctx.namespace),
-                        ) {
-                            handler.emit_err(CompileError::TraitConstraintNotSatisfied {
-                                ty: structure_type_info_with_engines.to_string(),
-                                trait_name: structure_trait_constraint
-                                    .trait_name
-                                    .suffix
-                                    .to_string(),
-                                span: span.clone(),
-                            });
-                        }
+                    let found_error = self.check_trait_constraints_errors(
+                        handler,
+                        ctx.by_ref(),
+                        structure_type_id,
+                        structure_trait_constraints,
+                        |_| {},
+                    );
+                    if found_error {
+                        // Retrieve the implemented traits for the type and insert them in the namespace.
+                        // insert_trait_implementation_for_type is done lazily only when required because of a failure.
+                        ctx.insert_trait_implementation_for_type(*structure_type_id);
+                        self.check_trait_constraints_errors(
+                            handler,
+                            ctx.by_ref(),
+                            structure_type_id,
+                            structure_trait_constraints,
+                            |structure_trait_constraint| {
+                                let mut type_arguments_string = "".to_string();
+                                if !structure_trait_constraint.type_arguments.is_empty() {
+                                    type_arguments_string = format!(
+                                        "<{}>",
+                                        engines.help_out(
+                                            structure_trait_constraint.type_arguments.clone()
+                                        )
+                                    );
+                                }
+                                handler.emit_err(CompileError::TraitConstraintNotSatisfied {
+                                    ty: structure_type_info_with_engines.to_string(),
+                                    trait_name: format!(
+                                        "{}{}",
+                                        structure_trait_constraint.trait_name.suffix,
+                                        type_arguments_string
+                                    ),
+                                    span: span.clone(),
+                                });
+                            },
+                        );
                     }
                 }
             }
             Ok(())
         })
+    }
+
+    fn check_trait_constraints_errors(
+        &self,
+        handler: &Handler,
+        mut ctx: TypeCheckContext,
+        structure_type_id: &TypeId,
+        structure_trait_constraints: &Vec<TraitConstraint>,
+        f: impl Fn(&TraitConstraint),
+    ) -> bool {
+        let engines = ctx.engines();
+        let unify_check = UnifyCheck::non_dynamic_equality(engines);
+        let mut found_error = false;
+        let generic_trait_constraints_trait_names_and_args = ctx
+            .namespace
+            .implemented_traits
+            .get_trait_names_and_type_arguments_for_type(engines, *structure_type_id);
+        for structure_trait_constraint in structure_trait_constraints {
+            let structure_trait_constraint_trait_name = &structure_trait_constraint
+                .trait_name
+                .to_fullpath(ctx.namespace);
+            if !generic_trait_constraints_trait_names_and_args.iter().any(
+                |(trait_name, trait_args)| {
+                    trait_name == structure_trait_constraint_trait_name
+                        && trait_args.len() == structure_trait_constraint.type_arguments.len()
+                        && trait_args
+                            .iter()
+                            .zip(structure_trait_constraint.type_arguments.iter())
+                            .all(|(t1, t2)| {
+                                unify_check.check(
+                                    ctx.resolve_type(
+                                        handler,
+                                        t1.type_id,
+                                        &t1.span,
+                                        EnforceTypeArguments::No,
+                                        None,
+                                    )
+                                    .unwrap_or_else(|err| {
+                                        engines.te().insert(
+                                            engines,
+                                            TypeInfo::ErrorRecovery(err),
+                                            None,
+                                        )
+                                    }),
+                                    ctx.resolve_type(
+                                        handler,
+                                        t2.type_id,
+                                        &t2.span,
+                                        EnforceTypeArguments::No,
+                                        None,
+                                    )
+                                    .unwrap_or_else(|err| {
+                                        engines.te().insert(
+                                            engines,
+                                            TypeInfo::ErrorRecovery(err),
+                                            None,
+                                        )
+                                    }),
+                                )
+                            })
+                },
+            ) {
+                found_error = true;
+                f(structure_trait_constraint);
+            }
+        }
+        found_error
     }
 }

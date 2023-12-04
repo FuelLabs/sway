@@ -8,7 +8,7 @@ async fn contract_uses_default_configurables() -> Result<()> {
             "test_projects/configurables_in_contract/out/debug/configurables_in_contract-abi.json"
     ));
 
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
 
     let contract_id = Contract::load_from(
         "test_projects/configurables_in_contract/out/debug/configurables_in_contract.bin",
@@ -51,7 +51,7 @@ async fn contract_configurables() -> Result<()> {
             "test_projects/configurables_in_contract/out/debug/configurables_in_contract-abi.json"
     ));
 
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
 
     let new_str: SizedAsciiString<4> = "FUEL".try_into()?;
     let new_struct = StructWithGeneric {
@@ -61,13 +61,13 @@ async fn contract_configurables() -> Result<()> {
     let new_enum = EnumWithGeneric::VariantTwo;
 
     let configurables = MyContractConfigurables::new()
-        .set_STR_4(new_str.clone())
-        .set_STRUCT(new_struct.clone())
-        .set_ENUM(new_enum.clone());
+        .with_STR_4(new_str.clone())
+        .with_STRUCT(new_struct.clone())
+        .with_ENUM(new_enum.clone());
 
     let contract_id = Contract::load_from(
         "test_projects/configurables_in_contract/out/debug/configurables_in_contract.bin",
-        LoadConfiguration::default().set_configurables(configurables),
+        LoadConfiguration::default().with_configurables(configurables),
     )?
     .deploy(&wallet, TxParameters::default())
     .await?;

@@ -72,7 +72,7 @@ impl CreateTypeId for TyAbiDecl {
             abi_name: AbiName::Known(self.name.clone().into()),
             address: None,
         };
-        type_engine.insert(engines, ty)
+        type_engine.insert(engines, ty, self.name.span().source_id())
     }
 }
 

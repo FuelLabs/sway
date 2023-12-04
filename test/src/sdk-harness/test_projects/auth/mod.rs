@@ -48,7 +48,7 @@ async fn msg_sender_from_contract() {
     let result = caller_instance
         .methods()
         .call_auth_contract(auth_id, caller_id)
-        .set_contracts(&[&auth_instance])
+        .with_contracts(&[&auth_instance])
         .call()
         .await
         .unwrap();
@@ -63,7 +63,7 @@ async fn get_contracts() -> (
     ContractId,
     Wallet,
 ) {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
 
     let id_1 = Contract::load_from(
         "test_artifacts/auth_testing_contract/out/debug/auth_testing_contract.bin",

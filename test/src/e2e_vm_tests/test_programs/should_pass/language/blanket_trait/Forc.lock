@@ -1,0 +1,8 @@
+[[package]]
+name = "blanket_trait"
+source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-764E7430BADFBDF1"

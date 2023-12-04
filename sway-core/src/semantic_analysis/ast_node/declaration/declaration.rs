@@ -42,7 +42,7 @@ impl TyDecl {
                         None,
                     )
                     .unwrap_or_else(|err| {
-                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err))
+                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
                     });
                 let mut ctx = ctx
                     .with_type_annotation(type_ascription.type_id)
@@ -58,7 +58,7 @@ impl TyDecl {
                 // to get the type of the variable. The type of the variable *has* to follow
                 // `type_ascription` if `type_ascription` is a concrete integer type that does not
                 // conflict with the type of `body` (i.e. passes the type checking above).
-                let return_type = match type_engine.get(type_ascription.type_id) {
+                let return_type = match &*type_engine.get(type_ascription.type_id) {
                     TypeInfo::UnsignedInteger(_) => type_ascription.type_id,
                     _ => body.return_type,
                 };
@@ -106,7 +106,7 @@ impl TyDecl {
             parsed::Declaration::FunctionDeclaration(fn_decl) => {
                 let span = fn_decl.span.clone();
                 let mut ctx =
-                    ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+                    ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
                 let fn_decl = match ty::TyFunctionDecl::type_check(
                     handler,
                     ctx.by_ref(),
@@ -350,7 +350,7 @@ impl TyDecl {
                 let new_ty = ctx
                     .resolve_type(handler, ty.type_id, &span, EnforceTypeArguments::Yes, None)
                     .unwrap_or_else(|err| {
-                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err))
+                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
                     });
 
                 // create the type alias decl using the resolved type above
@@ -444,42 +444,42 @@ impl TypeCheckFinalization for TyDecl {
                 node.type_check_finalize(handler, ctx)?;
             }
             TyDecl::ConstantDecl(node) => {
-                let mut const_decl = ctx.engines.de().get_constant(&node.decl_id);
+                let mut const_decl = (*ctx.engines.de().get_constant(&node.decl_id)).clone();
                 const_decl.type_check_finalize(handler, ctx)?;
             }
             TyDecl::FunctionDecl(node) => {
-                let mut fn_decl = ctx.engines.de().get_function(&node.decl_id);
+                let mut fn_decl = (*ctx.engines.de().get_function(&node.decl_id)).clone();
                 fn_decl.type_check_finalize(handler, ctx)?;
             }
             TyDecl::TraitDecl(node) => {
-                let mut trait_decl = ctx.engines.de().get_trait(&node.decl_id);
+                let mut trait_decl = (*ctx.engines.de().get_trait(&node.decl_id)).clone();
                 trait_decl.type_check_finalize(handler, ctx)?;
             }
             TyDecl::StructDecl(node) => {
-                let mut struct_decl = ctx.engines.de().get_struct(&node.decl_id);
+                let mut struct_decl = (*ctx.engines.de().get_struct(&node.decl_id)).clone();
                 struct_decl.type_check_finalize(handler, ctx)?;
             }
             TyDecl::EnumDecl(node) => {
-                let mut enum_decl = ctx.engines.de().get_enum(&node.decl_id);
+                let mut enum_decl = (*ctx.engines.de().get_enum(&node.decl_id)).clone();
                 enum_decl.type_check_finalize(handler, ctx)?;
             }
             TyDecl::EnumVariantDecl(_) => {}
             TyDecl::ImplTrait(node) => {
-                let mut impl_trait = decl_engine.get_impl_trait(&node.decl_id);
+                let mut impl_trait = (*decl_engine.get_impl_trait(&node.decl_id)).clone();
                 impl_trait.type_check_finalize(handler, ctx)?;
             }
             TyDecl::AbiDecl(node) => {
-                let mut abi_decl = decl_engine.get_abi(&node.decl_id);
+                let mut abi_decl = (*decl_engine.get_abi(&node.decl_id)).clone();
                 abi_decl.type_check_finalize(handler, ctx)?;
             }
             TyDecl::GenericTypeForFunctionScope(_) => {}
             TyDecl::ErrorRecovery(_, _) => {}
             TyDecl::StorageDecl(node) => {
-                let mut storage_decl = decl_engine.get_storage(&node.decl_id);
+                let mut storage_decl = (*decl_engine.get_storage(&node.decl_id)).clone();
                 storage_decl.type_check_finalize(handler, ctx)?;
             }
             TyDecl::TypeAliasDecl(node) => {
-                let mut type_alias_decl = decl_engine.get_type_alias(&node.decl_id);
+                let mut type_alias_decl = (*decl_engine.get_type_alias(&node.decl_id)).clone();
                 type_alias_decl.type_check_finalize(handler, ctx)?;
             }
             TyDecl::TraitTypeDecl(_node) => {}

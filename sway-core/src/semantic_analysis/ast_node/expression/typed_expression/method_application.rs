@@ -41,7 +41,7 @@ pub(crate) fn type_check_method_application(
         let ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
         args_buf.push_back(
             ty::TyExpression::type_check(handler, ctx, arg.clone())
                 .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines)),
@@ -117,6 +117,7 @@ pub(crate) fn type_check_method_application(
                         } else {
                             TypeInfo::B256
                         },
+                        param.name.span().source_id(),
                     );
                     let ctx = ctx
                         .by_ref()
@@ -153,7 +154,7 @@ pub(crate) fn type_check_method_application(
             {
                 return Err(
                     handler.emit_err(CompileError::CoinsPassedToNonPayableMethod {
-                        fn_name: method.name,
+                        fn_name: method.name.clone(),
                         span,
                     }),
                 );
@@ -169,7 +170,7 @@ pub(crate) fn type_check_method_application(
             if let Some(first_arg) = args_buf.get(0) {
                 // check if the user calls an ABI supertrait's method (those are private)
                 // as a contract method
-                if let TypeInfo::ContractCaller { .. } = type_engine.get(first_arg.return_type) {
+                if let TypeInfo::ContractCaller { .. } = &*type_engine.get(first_arg.return_type) {
                     return Err(handler.emit_err(
                         CompileError::AbiSupertraitMethodCallAsContractCall {
                             fn_name: method_name.clone(),
@@ -292,7 +293,7 @@ pub(crate) fn type_check_method_application(
         let contract_caller = args_buf.pop_front();
         let contract_address = match contract_caller
             .clone()
-            .map(|x| type_engine.get(x.return_type))
+            .map(|x| (*type_engine.get(x.return_type)).clone())
         {
             Some(TypeInfo::ContractCaller { address, .. }) => match address {
                 Some(address) => address,
@@ -318,7 +319,7 @@ pub(crate) fn type_check_method_application(
         let contract_caller = contract_caller.unwrap();
         Some(ty::ContractCallParams {
             func_selector,
-            contract_address,
+            contract_address: contract_address.clone(),
             contract_caller: Box::new(contract_caller),
         })
     } else {
@@ -386,7 +387,7 @@ fn unify_arguments_and_parameters(
         for ((_, arg), param) in arguments.iter().zip(parameters.iter()) {
             // unify the type of the argument with the type of the param
             let unify_res = handler.scope(|handler| {
-                type_engine.unify(
+                type_engine.unify_with_generic(
                     handler,
                     engines,
                     arg.return_type,
@@ -429,7 +430,9 @@ pub(crate) fn resolve_method_name(
             // type check the call path
             let type_id = call_path_binding
                 .type_check_with_type_info(handler, &mut ctx)
-                .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+                .unwrap_or_else(|err| {
+                    type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
+                });
 
             // find the module that the symbol is in
             let type_info_prefix = ctx
@@ -474,7 +477,7 @@ pub(crate) fn resolve_method_name(
             let type_id = arguments
                 .get(0)
                 .map(|x| x.return_type)
-                .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown));
+                .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown, None));
 
             // find the method
             let decl_ref = ctx.find_method_for_type(
@@ -498,7 +501,7 @@ pub(crate) fn resolve_method_name(
             let type_id = arguments
                 .get(0)
                 .map(|x| x.return_type)
-                .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown));
+                .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown, None));
 
             // find the method
             let decl_ref = ctx.find_method_for_type(
@@ -566,7 +569,7 @@ pub(crate) fn monomorphize_method_application(
             fn_ref.clone(),
             type_binding.as_mut().unwrap().type_arguments.to_vec_mut(),
         )?;
-        let mut method = decl_engine.get_function(fn_ref);
+        let mut method = (*decl_engine.get_function(fn_ref)).clone();
 
         // unify the types of the arguments with the types of the parameters from the function declaration
         *arguments =
@@ -574,12 +577,12 @@ pub(crate) fn monomorphize_method_application(
 
         // unify method return type with current ctx.type_annotation().
         handler.scope(|handler| {
-            type_engine.unify(
+            type_engine.unify_with_generic(
                 handler,
                 engines,
                 method.return_type.type_id,
                 ctx.type_annotation(),
-                &method.return_type.span(),
+                &call_path.span(),
                 "Function return type does not match up with local type annotation.",
                 None,
             );
@@ -588,12 +591,12 @@ pub(crate) fn monomorphize_method_application(
 
         // This handles the case of substituting the generic blanket type by call_path_typeid.
         if let Some(TyDecl::ImplTrait(t)) = method.clone().implementing_type {
-            let t = engines.de().get(&t.decl_id).implementing_for;
+            let t = &engines.de().get(&t.decl_id).implementing_for;
             if let TypeInfo::Custom {
                 qualified_call_path,
                 type_arguments: _,
                 root_type_id: _,
-            } = type_engine.get(t.initial_type_id)
+            } = &*type_engine.get(t.initial_type_id)
             {
                 for p in method.type_parameters.clone() {
                     if p.name_ident.as_str() == qualified_call_path.call_path.suffix.as_str() {
@@ -614,12 +617,9 @@ pub(crate) fn monomorphize_method_application(
             handler,
             ctx.by_ref(),
             &method.type_parameters,
+            method.name.as_str(),
             &call_path.span(),
         )?;
-
-        // Retrieve the implemented traits for the type of the return type and
-        // insert them in the broader namespace.
-        ctx.insert_trait_implementation_for_type(method.return_type.type_id);
 
         if !ctx.defer_monomorphization() {
             method.replace_decls(&decl_mapping, handler, &mut ctx)?;
@@ -644,7 +644,7 @@ pub(crate) fn monomorphize_method(
 ) -> Result<DeclRefFunction, ErrorEmitted> {
     let engines = ctx.engines();
     let decl_engine = engines.de();
-    let mut func_decl = decl_engine.get_function(&decl_ref);
+    let mut func_decl = (*decl_engine.get_function(&decl_ref)).clone();
 
     // monomorphize the function declaration
     ctx.monomorphize(
