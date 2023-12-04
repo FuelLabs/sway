@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     fmt::Write,
-    sync::RwLock,
+    sync::{Arc, RwLock},
 };
 
 use sway_types::{ModuleId, Named, Spanned};
@@ -35,7 +35,7 @@ pub struct DeclEngine {
 }
 
 pub trait DeclEngineGet<I, U> {
-    fn get(&self, index: &I) -> U;
+    fn get(&self, index: &I) -> Arc<U>;
 }
 
 pub trait DeclEngineInsert<T>
@@ -43,6 +43,13 @@ where
     T: Named + Spanned,
 {
     fn insert(&self, decl: T) -> DeclRef<DeclId<T>>;
+}
+
+pub trait DeclEngineInsertArc<T>
+where
+    T: Named + Spanned,
+{
+    fn insert_arc(&self, decl: Arc<T>) -> DeclRef<DeclId<T>>;
 }
 
 pub trait DeclEngineReplace<T> {
@@ -59,13 +66,13 @@ where
 macro_rules! decl_engine_get {
     ($slab:ident, $decl:ty) => {
         impl DeclEngineGet<DeclId<$decl>, $decl> for DeclEngine {
-            fn get(&self, index: &DeclId<$decl>) -> $decl {
+            fn get(&self, index: &DeclId<$decl>) -> Arc<$decl> {
                 self.$slab.get(index.inner())
             }
         }
 
         impl DeclEngineGet<DeclRef<DeclId<$decl>>, $decl> for DeclEngine {
-            fn get(&self, index: &DeclRef<DeclId<$decl>>) -> $decl {
+            fn get(&self, index: &DeclRef<DeclId<$decl>>) -> Arc<$decl> {
                 self.$slab.get(index.id().inner())
             }
         }
@@ -95,6 +102,16 @@ macro_rules! decl_engine_insert {
                 )
             }
         }
+        impl DeclEngineInsertArc<$decl> for DeclEngine {
+            fn insert_arc(&self, decl: Arc<$decl>) -> DeclRef<DeclId<$decl>> {
+                let span = decl.span();
+                DeclRef::new(
+                    decl.name().clone(),
+                    DeclId::new(self.$slab.insert_arc(decl)),
+                    span,
+                )
+            }
+        }
     };
 }
 decl_engine_insert!(function_slab, ty::TyFunctionDecl);
@@ -113,7 +130,7 @@ macro_rules! decl_engine_replace {
     ($slab:ident, $decl:ty) => {
         impl DeclEngineReplace<$decl> for DeclEngine {
             fn replace(&self, index: DeclId<$decl>, decl: $decl) {
-                self.$slab.replace(index, decl);
+                self.$slab.replace(index.inner(), decl);
             }
         }
     };
@@ -242,7 +259,7 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_function<I>(&self, index: &I) -> ty::TyFunctionDecl
+    pub fn get_function<I>(&self, index: &I) -> Arc<ty::TyFunctionDecl>
     where
         DeclEngine: DeclEngineGet<I, ty::TyFunctionDecl>,
     {
@@ -254,7 +271,7 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_trait<I>(&self, index: &I) -> ty::TyTraitDecl
+    pub fn get_trait<I>(&self, index: &I) -> Arc<ty::TyTraitDecl>
     where
         DeclEngine: DeclEngineGet<I, ty::TyTraitDecl>,
     {
@@ -266,13 +283,14 @@ impl DeclEngine {
     /// The method does a linear search over all the declared traits and is meant
     /// to be used only for diagnostic purposes.
     pub fn get_traits_by_name(&self, trait_name: &Ident) -> Vec<ty::TyTraitDecl> {
-        self.trait_slab.with_slice(|elems| {
-            elems
-                .iter()
-                .filter(|trait_decl| trait_decl.name == *trait_name)
-                .cloned()
-                .collect()
-        })
+        let mut vec = vec![];
+        for i in 0..self.trait_slab.len() {
+            let trait_decl = self.trait_slab.get(i);
+            if trait_decl.name == *trait_name {
+                vec.push((*trait_decl).clone())
+            }
+        }
+        vec
     }
 
     /// Friendly helper method for calling the `get` method from the
@@ -280,7 +298,7 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_trait_fn<I>(&self, index: &I) -> ty::TyTraitFn
+    pub fn get_trait_fn<I>(&self, index: &I) -> Arc<ty::TyTraitFn>
     where
         DeclEngine: DeclEngineGet<I, ty::TyTraitFn>,
     {
@@ -292,7 +310,7 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_impl_trait<I>(&self, index: &I) -> ty::TyImplTrait
+    pub fn get_impl_trait<I>(&self, index: &I) -> Arc<ty::TyImplTrait>
     where
         DeclEngine: DeclEngineGet<I, ty::TyImplTrait>,
     {
@@ -304,7 +322,7 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_struct<I>(&self, index: &I) -> ty::TyStructDecl
+    pub fn get_struct<I>(&self, index: &I) -> Arc<ty::TyStructDecl>
     where
         DeclEngine: DeclEngineGet<I, ty::TyStructDecl>,
     {
@@ -316,7 +334,7 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_storage<I>(&self, index: &I) -> ty::TyStorageDecl
+    pub fn get_storage<I>(&self, index: &I) -> Arc<ty::TyStorageDecl>
     where
         DeclEngine: DeclEngineGet<I, ty::TyStorageDecl>,
     {
@@ -328,7 +346,7 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_abi<I>(&self, index: &I) -> ty::TyAbiDecl
+    pub fn get_abi<I>(&self, index: &I) -> Arc<ty::TyAbiDecl>
     where
         DeclEngine: DeclEngineGet<I, ty::TyAbiDecl>,
     {
@@ -340,7 +358,7 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_constant<I>(&self, index: &I) -> ty::TyConstantDecl
+    pub fn get_constant<I>(&self, index: &I) -> Arc<ty::TyConstantDecl>
     where
         DeclEngine: DeclEngineGet<I, ty::TyConstantDecl>,
     {
@@ -352,7 +370,7 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_type<I>(&self, index: &I) -> ty::TyTraitType
+    pub fn get_type<I>(&self, index: &I) -> Arc<ty::TyTraitType>
     where
         DeclEngine: DeclEngineGet<I, ty::TyTraitType>,
     {
@@ -364,7 +382,7 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_enum<I>(&self, index: &I) -> ty::TyEnumDecl
+    pub fn get_enum<I>(&self, index: &I) -> Arc<ty::TyEnumDecl>
     where
         DeclEngine: DeclEngineGet<I, ty::TyEnumDecl>,
     {
@@ -376,7 +394,7 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_type_alias<I>(&self, index: &I) -> ty::TyTypeAliasDecl
+    pub fn get_type_alias<I>(&self, index: &I) -> Arc<ty::TyTypeAliasDecl>
     where
         DeclEngine: DeclEngineGet<I, ty::TyTypeAliasDecl>,
     {
@@ -388,13 +406,15 @@ impl DeclEngine {
     /// [DisplayWithEngines].
     pub fn pretty_print(&self, engines: &Engines) -> String {
         let mut builder = String::new();
-        self.function_slab.with_slice(|elems| {
-            let list = elems
-                .iter()
-                .map(|type_info| format!("{:?}", engines.help_out(type_info)));
-            let list = ListDisplay { list };
-            write!(builder, "DeclEngine {{\n{list}\n}}").unwrap();
-        });
+        let mut list = vec![];
+        for i in 0..self.function_slab.len() {
+            list.push(format!(
+                "{:?}",
+                engines.help_out(&*self.function_slab.get(i))
+            ));
+        }
+        let list = ListDisplay { list };
+        write!(builder, "DeclEngine {{\n{list}\n}}").unwrap();
         builder
     }
 }

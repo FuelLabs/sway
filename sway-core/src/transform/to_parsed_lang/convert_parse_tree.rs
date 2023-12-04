@@ -364,7 +364,7 @@ fn item_struct_to_struct_declaration(
         .collect::<Result<Vec<_>, _>>()?;
 
     if fields.iter().any(
-        |field| matches!(&engines.te().get(field.type_argument.type_id), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_struct.name),
+        |field| matches!(&&*engines.te().get(field.type_argument.type_id), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_struct.name),
     ) {
         errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
@@ -433,7 +433,7 @@ fn item_enum_to_enum_declaration(
         .collect::<Result<Vec<_>, _>>()?;
 
     if variants.iter().any(|variant| {
-       matches!(&engines.te().get(variant.type_argument.type_id), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_enum.name)
+       matches!(&&*engines.te().get(variant.type_argument.type_id), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_enum.name)
     }) {
         errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
@@ -727,7 +727,7 @@ fn item_impl_to_declaration(
             };
             Ok(Declaration::ImplTrait(impl_trait))
         }
-        None => match engines.te().get(implementing_for.type_id) {
+        None => match &*engines.te().get(implementing_for.type_id) {
             TypeInfo::Contract => Err(handler
                 .emit_err(ConvertParseTreeError::SelfImplForContract { span: block_span }.into())),
             _ => {

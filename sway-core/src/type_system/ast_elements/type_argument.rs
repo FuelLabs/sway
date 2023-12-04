@@ -80,13 +80,17 @@ impl OrdWithEngines for TypeArgument {
 
 impl DisplayWithEngines for TypeArgument {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        write!(f, "{}", engines.help_out(engines.te().get(self.type_id)))
+        write!(f, "{}", engines.help_out(&*engines.te().get(self.type_id)))
     }
 }
 
 impl DebugWithEngines for TypeArgument {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        write!(f, "{:?}", engines.help_out(engines.te().get(self.type_id)))
+        write!(
+            f,
+            "{:?}",
+            engines.help_out(&*engines.te().get(self.type_id))
+        )
     }
 }
 

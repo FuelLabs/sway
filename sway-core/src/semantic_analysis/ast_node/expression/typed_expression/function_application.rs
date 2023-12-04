@@ -23,7 +23,7 @@ pub(crate) fn instantiate_function_application(
 ) -> Result<ty::TyExpression, ErrorEmitted> {
     let decl_engine = ctx.engines.de();
 
-    let mut function_decl = decl_engine.get_function(&function_decl_ref);
+    let mut function_decl = (*decl_engine.get_function(&function_decl_ref)).clone();
 
     if arguments.is_none() {
         return Err(

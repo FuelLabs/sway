@@ -4,7 +4,7 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineInsert, DeclId},
+    decl_engine::{DeclEngineInsert, DeclEngineInsertArc, DeclId},
     language::ty::TyAbiDecl,
     namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
     semantic_analysis::{
@@ -91,11 +91,11 @@ impl ty::TyAbiDecl {
                     let superabi_impl_method =
                         ctx.engines.de().get_function(&superabi_impl_method_ref);
                     if let Some(ty::TyDecl::AbiDecl(abi_decl)) =
-                        superabi_impl_method.implementing_type
+                        &superabi_impl_method.implementing_type
                     {
                         handler.emit_err(CompileError::AbiShadowsSuperAbiMethod {
                             span: method_name.span(),
-                            superabi: abi_decl.name,
+                            superabi: abi_decl.name.clone(),
                         });
                     }
                 }
@@ -342,17 +342,19 @@ impl ty::TyAbiDecl {
                         all_items.push(TyImplItem::Fn(
                             ctx.engines
                                 .de()
-                                .insert(method)
+                                .insert_arc(method)
                                 .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
                         ));
                     }
                     ty::TyTraitItem::Constant(decl_ref) => {
                         let const_decl = decl_engine.get_constant(decl_ref);
-                        all_items.push(TyImplItem::Constant(ctx.engines.de().insert(const_decl)));
+                        all_items.push(TyImplItem::Constant(
+                            ctx.engines.de().insert_arc(const_decl),
+                        ));
                     }
                     ty::TyTraitItem::Type(decl_ref) => {
                         let type_decl = decl_engine.get_type(decl_ref);
-                        all_items.push(TyImplItem::Type(ctx.engines.de().insert(type_decl)));
+                        all_items.push(TyImplItem::Type(ctx.engines.de().insert_arc(type_decl)));
                     }
                 }
             }

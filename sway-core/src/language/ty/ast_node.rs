@@ -205,9 +205,10 @@ impl TyAstNode {
                     })),
                 ..
             } => {
+                let fn_decl = decl_engine.get_function(decl_id);
                 let TyFunctionDecl {
                     type_parameters, ..
-                } = decl_engine.get_function(decl_id);
+                } = &*fn_decl;
                 !type_parameters.is_empty()
             }
             _ => false,
@@ -225,7 +226,8 @@ impl TyAstNode {
                     })),
                 ..
             } => {
-                let TyFunctionDecl { attributes, .. } = decl_engine.get_function(decl_id);
+                let fn_decl = decl_engine.get_function(decl_id);
+                let TyFunctionDecl { attributes, .. } = &*fn_decl;
                 attributes.contains_key(&AttributeKind::Test)
             }
             _ => false,
@@ -321,10 +323,10 @@ impl TyAstNode {
         match &self.content {
             TyAstNodeContent::Declaration(_) => TypeInfo::Tuple(Vec::new()),
             TyAstNodeContent::Expression(TyExpression { return_type, .. }) => {
-                type_engine.get(*return_type)
+                (*type_engine.get(*return_type)).clone()
             }
             TyAstNodeContent::ImplicitReturnExpression(TyExpression { return_type, .. }) => {
-                type_engine.get(*return_type)
+                (*type_engine.get(*return_type)).clone()
             }
             TyAstNodeContent::SideEffect(_) => TypeInfo::Tuple(Vec::new()),
             TyAstNodeContent::Error(_, error) => TypeInfo::ErrorRecovery(*error),
@@ -345,14 +347,14 @@ impl TyAstNode {
                 }
                 TyDecl::ConstantDecl(decl) => {
                     let decl = engines.de().get(&decl.decl_id);
-                    if let Some(value) = decl.value {
+                    if let Some(value) = &decl.value {
                         value.check_deprecated(engines, handler, allow_deprecated);
                     }
                 }
                 TyDecl::TraitTypeDecl(_) => {}
                 TyDecl::FunctionDecl(decl) => {
                     let decl = engines.de().get(&decl.decl_id);
-                    let token = allow_deprecated.enter(decl.attributes);
+                    let token = allow_deprecated.enter(decl.attributes.clone());
                     for node in decl.body.contents.iter() {
                         node.check_deprecated(engines, handler, allow_deprecated);
                     }
@@ -364,7 +366,7 @@ impl TyAstNode {
                         match item {
                             TyTraitItem::Fn(item) => {
                                 let decl = engines.de().get(item.id());
-                                let token = allow_deprecated.enter(decl.attributes);
+                                let token = allow_deprecated.enter(decl.attributes.clone());
                                 for node in decl.body.contents.iter() {
                                     node.check_deprecated(engines, handler, allow_deprecated);
                                 }

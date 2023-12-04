@@ -953,7 +953,7 @@ impl TypeInfo {
             TypeInfo::Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
                 let mut found_unit_variant = false;
-                for variant_type in decl.variants {
+                for variant_type in decl.variants.iter() {
                     let type_info = type_engine.get(variant_type.type_argument.type_id);
                     if type_info.is_uninhabited(type_engine, decl_engine) {
                         continue;
@@ -969,7 +969,7 @@ impl TypeInfo {
             TypeInfo::Struct(decl_ref) => {
                 let decl = decl_engine.get_struct(decl_ref);
                 let mut all_zero_sized = true;
-                for field in decl.fields {
+                for field in decl.fields.iter() {
                     let type_info = type_engine.get(field.type_argument.type_id);
                     if type_info.is_uninhabited(type_engine, decl_engine) {
                         return true;

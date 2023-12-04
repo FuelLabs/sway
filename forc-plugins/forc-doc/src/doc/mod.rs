@@ -122,7 +122,7 @@ impl Documentation {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
                 if let TyDecl::ImplTrait(impl_trait) = decl {
                     impl_traits.push((
-                        decl_engine.get_impl_trait(&impl_trait.decl_id),
+                        (*decl_engine.get_impl_trait(&impl_trait.decl_id)).clone(),
                         module_info.clone(),
                     ))
                 } else {

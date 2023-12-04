@@ -12,7 +12,7 @@ pub(crate) fn instantiate_constant_expression(
     const_ref: DeclRefConstant,
     call_path_binding: TypeBinding<CallPath>,
 ) -> ty::TyExpression {
-    let const_decl = ctx.engines.de().get_constant(const_ref.id());
+    let const_decl = (*ctx.engines.de().get_constant(const_ref.id())).clone();
     ty::TyExpression {
         return_type: const_decl.return_type,
         span: call_path_binding.span(),

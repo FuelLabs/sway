@@ -484,12 +484,13 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             result
         }
         ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
+            let const_decl = decl_engine.get_constant(decl_id);
             let ty::TyConstantDecl {
                 call_path, value, ..
-            } = decl_engine.get_constant(decl_id);
+            } = &*const_decl;
             graph
                 .namespace
-                .insert_global_constant(call_path.suffix, entry_node);
+                .insert_global_constant(call_path.suffix.clone(), entry_node);
             if let Some(value) = &value {
                 connect_expression(
                     engines,
@@ -539,19 +540,20 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             Ok(leaves.to_vec())
         }
         ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. }) => {
+            let impl_trait_decl = decl_engine.get_impl_trait(decl_id);
             let ty::TyImplTrait {
                 trait_name,
                 items,
                 trait_decl_ref,
                 implementing_for,
                 ..
-            } = decl_engine.get_impl_trait(decl_id);
+            } = &*impl_trait_decl;
 
             connect_impl_trait(
                 engines,
-                &trait_name,
+                trait_name,
                 graph,
-                &items,
+                items,
                 entry_node,
                 tree_type,
                 trait_decl_ref,
@@ -641,8 +643,8 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     items: &[TyImplItem],
     entry_node: NodeIndex,
     tree_type: &TreeType,
-    trait_decl_ref: Option<DeclRef<InterfaceDeclId>>,
-    implementing_for: TypeArgument,
+    trait_decl_ref: &Option<DeclRef<InterfaceDeclId>>,
+    implementing_for: &TypeArgument,
     options: NodeConnectionOptions,
 ) -> Result<(), CompileError> {
     let decl_engine = engines.de();
@@ -670,7 +672,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     if let Some(trait_decl_ref) = trait_decl_ref {
         if let InterfaceDeclId::Trait(trait_decl_id) = &trait_decl_ref.id() {
             let trait_decl = decl_engine.get_trait(trait_decl_id);
-            for trait_item in trait_decl.items {
+            for trait_item in trait_decl.items.clone() {
                 if let ty::TyTraitItem::Fn(func_decl_ref) = trait_item {
                     let functional_decl_id = decl_engine.get_function(&func_decl_ref);
                     trait_items_method_names.push(functional_decl_id.name.as_str().to_string());
@@ -1060,31 +1062,31 @@ fn get_trait_fn_node_index<'a>(
 ) -> Result<Option<&'a NodeIndex>, CompileError> {
     let decl_engine = engines.de();
     let fn_decl = decl_engine.get_function(&function_decl_ref);
-    if let Some(implementing_type) = fn_decl.implementing_type {
+    if let Some(implementing_type) = &fn_decl.implementing_type {
         match implementing_type {
             ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. }) => {
-                let trait_decl = decl_engine.get_trait(&decl_id);
+                let trait_decl = decl_engine.get_trait(decl_id);
                 Ok(graph
                     .namespace
-                    .find_trait_method(&trait_decl.name.into(), &fn_decl.name))
+                    .find_trait_method(&trait_decl.name.clone().into(), &fn_decl.name))
             }
             ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
-                let struct_decl = decl_engine.get_struct(&decl_id);
+                let struct_decl = decl_engine.get_struct(decl_id);
                 Ok(graph
                     .namespace
-                    .find_trait_method(&struct_decl.call_path.suffix.into(), &fn_decl.name))
+                    .find_trait_method(&struct_decl.call_path.suffix.clone().into(), &fn_decl.name))
             }
             ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. }) => {
-                let impl_trait = decl_engine.get_impl_trait(&decl_id);
+                let impl_trait = decl_engine.get_impl_trait(decl_id);
                 Ok(graph
                     .namespace
                     .find_trait_method(&impl_trait.trait_name, &fn_decl.name))
             }
             ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. }) => {
-                let abi_decl = decl_engine.get_abi(&decl_id);
+                let abi_decl = decl_engine.get_abi(decl_id);
                 Ok(graph
                     .namespace
-                    .find_trait_method(&abi_decl.name.into(), &fn_decl.name))
+                    .find_trait_method(&abi_decl.name.clone().into(), &fn_decl.name))
             }
             _ => Err(CompileError::Internal(
                 "Could not get node index for trait function",
@@ -1514,7 +1516,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 .expect_struct(&Handler::default(), engines, field_instantiation_span)
                 .ok()
             {
-                Some(struct_decl_ref) => decl_engine.get_struct(&struct_decl_ref).call_path,
+                Some(struct_decl_ref) => decl_engine.get_struct(&struct_decl_ref).call_path.clone(),
                 None => {
                     return Err(CompileError::Internal(
                         "Called subfield on a non-struct",
@@ -2086,7 +2088,7 @@ fn construct_dead_code_warning_from_node(
                 })),
             span,
         } => {
-            let ty::TyImplTrait { .. } = decl_engine.get_impl_trait(decl_id);
+            let ty::TyImplTrait { .. } = &*decl_engine.get_impl_trait(decl_id);
             CompileWarning {
                 span: span.clone(),
                 warning_content: Warning::DeadDeclaration,
@@ -2172,29 +2174,29 @@ fn connect_type_id<'eng: 'cfg, 'cfg>(
     let decl_engine = engines.de();
     let type_engine = engines.te();
 
-    match type_engine.get(type_id) {
+    match &*type_engine.get(type_id) {
         TypeInfo::Enum(decl_ref) => {
-            let decl = decl_engine.get_enum(&decl_ref);
+            let decl = decl_engine.get_enum(decl_ref);
             let enum_idx = graph.namespace.find_enum(decl.name());
             if let Some(enum_idx) = enum_idx.cloned() {
                 graph.add_edge(entry_node, enum_idx, "".into());
             }
-            for type_param in decl.type_parameters {
+            for type_param in &decl.type_parameters {
                 connect_type_id(engines, type_param.type_id, graph, entry_node)?;
             }
         }
         TypeInfo::Struct(decl_ref) => {
-            let decl = decl_engine.get_struct(&decl_ref);
+            let decl = decl_engine.get_struct(decl_ref);
             let struct_idx = graph.namespace.find_struct_decl(decl.name().as_str());
             if let Some(struct_idx) = struct_idx.cloned() {
                 graph.add_edge(entry_node, struct_idx, "".into());
             }
-            for type_param in decl.type_parameters {
+            for type_param in &decl.type_parameters {
                 connect_type_id(engines, type_param.type_id, graph, entry_node)?;
             }
         }
         TypeInfo::Alias { name, .. } => {
-            let alias_idx = graph.namespace.get_alias(&name);
+            let alias_idx = graph.namespace.get_alias(name);
             if let Some(alias_idx) = alias_idx.cloned() {
                 graph.add_edge(entry_node, alias_idx, "".into());
             }
@@ -2251,36 +2253,38 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
         ty::TyAstNodeContent::Declaration(decl) => match &decl {
             ty::TyDecl::VariableDecl(_) => false,
             ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
-                allow_dead_code(decl_engine.get_constant(decl_id).attributes)
+                allow_dead_code(decl_engine.get_constant(decl_id).attributes.clone())
             }
             ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl { decl_id, .. }) => {
-                allow_dead_code(decl_engine.get_type(decl_id).attributes)
+                allow_dead_code(decl_engine.get_type(decl_id).attributes.clone())
             }
             ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
-                allow_dead_code(decl_engine.get_function(decl_id).attributes)
+                allow_dead_code(decl_engine.get_function(decl_id).attributes.clone())
             }
             ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. }) => {
-                allow_dead_code(decl_engine.get_trait(decl_id).attributes)
+                allow_dead_code(decl_engine.get_trait(decl_id).attributes.clone())
             }
             ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
-                allow_dead_code(decl_engine.get_struct(decl_id).attributes)
+                allow_dead_code(decl_engine.get_struct(decl_id).attributes.clone())
             }
             ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
-                allow_dead_code(decl_engine.get_enum(decl_id).attributes)
+                allow_dead_code(decl_engine.get_enum(decl_id).attributes.clone())
             }
             ty::TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
                 enum_ref,
                 variant_name,
                 ..
-            }) => decl_engine
-                .get_enum(enum_ref.id())
-                .variants
-                .into_iter()
-                .find(|v| v.name == *variant_name)
-                .map(|enum_variant| allow_dead_code(enum_variant.attributes))
-                .unwrap_or(false),
+            }) => {
+                let enum_decl = decl_engine.get_enum(enum_ref.id());
+                enum_decl
+                    .variants
+                    .iter()
+                    .find(|v| v.name == *variant_name)
+                    .map(|enum_variant| allow_dead_code(enum_variant.attributes.clone()))
+                    .unwrap_or(false)
+            }
             ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl { decl_id, .. }) => {
-                allow_dead_code(decl_engine.get_type_alias(decl_id).attributes)
+                allow_dead_code(decl_engine.get_type_alias(decl_id).attributes.clone())
             }
             ty::TyDecl::ImplTrait { .. } => false,
             ty::TyDecl::AbiDecl { .. } => false,
@@ -2312,11 +2316,11 @@ fn allow_dead_code_node(
             allow_dead_code_ast_node(decl_engine, node)
         }
         ControlFlowGraphNode::EnumVariant { enum_decl_id, .. } => {
-            allow_dead_code(decl_engine.get_enum(enum_decl_id).attributes)
+            allow_dead_code(decl_engine.get_enum(enum_decl_id).attributes.clone())
         }
         ControlFlowGraphNode::MethodDeclaration {
             method_decl_ref, ..
-        } => allow_dead_code(decl_engine.get_function(method_decl_ref).attributes),
+        } => allow_dead_code(decl_engine.get_function(method_decl_ref).attributes.clone()),
         ControlFlowGraphNode::StructField {
             struct_decl_id,
             attributes,
@@ -2325,7 +2329,7 @@ fn allow_dead_code_node(
             if allow_dead_code(attributes.clone()) {
                 true
             } else {
-                allow_dead_code(decl_engine.get_struct(struct_decl_id).attributes)
+                allow_dead_code(decl_engine.get_struct(struct_decl_id).attributes.clone())
             }
         }
         ControlFlowGraphNode::StorageField { .. } => false,
