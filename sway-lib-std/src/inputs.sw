@@ -46,10 +46,6 @@ pub const GTF_INPUT_MESSAGE_SENDER = 0x240;
 pub const GTF_INPUT_MESSAGE_RECIPIENT = 0x241;
 pub const GTF_INPUT_MESSAGE_AMOUNT = 0x242;
 pub const GTF_INPUT_MESSAGE_NONCE = 0x243;
-// These are based on the old spec (before
-// https://github.com/FuelLabs/fuel-specs/pull/400) because that's what's
-// currently implemented in `fuel-core`, `fuel-asm`, and `fuel-tx. They should
-// eventually be updated.
 pub const GTF_INPUT_MESSAGE_WITNESS_INDEX = 0x244;
 pub const GTF_INPUT_MESSAGE_DATA_LENGTH = 0x245;
 pub const GTF_INPUT_MESSAGE_PREDICATE_LENGTH = 0x246;

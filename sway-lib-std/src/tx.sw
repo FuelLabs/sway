@@ -72,6 +72,9 @@ pub enum Transaction {
 ///         Transaction::Script => {
 ///             log("Regular script transaction");
 ///         },
+///         Transaction::Create => {
+///             log("Contract deployment transaction");
+///         },
 ///     }
 /// }
 /// ```
