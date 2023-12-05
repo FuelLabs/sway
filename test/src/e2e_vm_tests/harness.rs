@@ -156,9 +156,9 @@ pub(crate) fn runs_in_vm(
                 ..Default::default()
             };
 
-            let mut tx = TransactionBuilder::script(script.bytecode.bytes, script_data);
+            let mut tb = TransactionBuilder::script(script.bytecode.bytes, script_data);
 
-            tx.with_params(params)
+            tb.with_params(params)
                 .add_unsigned_coin_input(
                     SecretKey::random(rng),
                     rng.gen(),
@@ -167,16 +167,25 @@ pub(crate) fn runs_in_vm(
                     rng.gen(),
                     0u32.into(),
                 )
-                // .script_gas_limit(ConsensusParameters::default().tx_params().max_gas_per_tx / 4)
                 .maturity(maturity);
 
             if let Some(witnesses) = witness_data {
                 for witness in witnesses {
-                    tx.add_witness(witness.into());
+                    tb.add_witness(witness.into());
                 }
             }
 
-            let tx = tx.finalize_checked(block_height);
+            // Temporarily finalize to calculate `script_gas_limit`
+            let tx = tb.finalize();
+            let consensus_params = ConsensusParameters::default();
+            // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
+            let max_gas =
+                tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
+            // Increase `script_gas_limit` to the maximum allowed value.
+            let script_gas_limit = consensus_params.tx_params().max_gas_per_tx - max_gas;
+
+            tb.script_gas_limit(script_gas_limit);
+            let tx = tb.finalize_checked(block_height);
 
             let mut i: Interpreter<_, _, NotSupportedEcal> =
                 Interpreter::with_storage(storage, Default::default());

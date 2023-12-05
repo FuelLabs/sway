@@ -11,6 +11,7 @@ use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::BuildTarget;
 use sway_types::Span;
 use tx::output::contract::Contract;
+use tx::{Chargeable, ConsensusParameters, Finalizable};
 use vm::prelude::SecretKey;
 
 /// The result of a `forc test` invocation.
@@ -786,7 +787,7 @@ fn exec_test(
     let tx_pointer = rng.gen();
     let block_height = (u32::MAX >> 1).into();
 
-    let mut tx = tx::TransactionBuilder::script(bytecode, script_input_data)
+    let mut tb = tx::TransactionBuilder::script(bytecode, script_input_data)
         .add_unsigned_coin_input(
             secret_key,
             utxo_id,
@@ -795,18 +796,12 @@ fn exec_test(
             tx_pointer,
             0u32.into(),
         )
-        // .script_gas_limit(
-        //     tx::ConsensusParameters::default()
-        //         .tx_params()
-        //         .max_gas_per_tx
-        //         / 4,
-        // )
         .maturity(maturity)
         .clone();
     let mut output_index = 1;
     // Insert contract ids into tx input
     for contract_id in test_setup.contract_ids() {
-        tx.add_input(tx::Input::contract(
+        tb.add_input(tx::Input::contract(
             tx::UtxoId::new(tx::Bytes32::zeroed(), 0),
             tx::Bytes32::zeroed(),
             tx::Bytes32::zeroed(),
@@ -820,7 +815,17 @@ fn exec_test(
         }));
         output_index += 1;
     }
-    let tx = tx.finalize_checked(block_height);
+
+    // Temporarily finalize to calculate `script_gas_limit`
+    let tx = tb.finalize();
+    let consensus_params = ConsensusParameters::default();
+    // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
+    let max_gas = tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
+    // Increase `script_gas_limit` to the maximum allowed value.
+    let script_gas_limit = consensus_params.tx_params().max_gas_per_tx - max_gas;
+
+    tb.script_gas_limit(script_gas_limit);
+    let tx = tb.finalize_checked(block_height);
 
     let mut interpreter: vm::prelude::Interpreter<_, _, vm::interpreter::NotSupportedEcal> =
         vm::interpreter::Interpreter::with_storage(
