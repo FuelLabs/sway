@@ -6,6 +6,7 @@ use forc_util::tx_utils::Salt;
 use fuel_tx::{
     output,
     policies::{Policies, PolicyType},
+    Buildable, Chargeable, ConsensusParameters,
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -662,13 +663,8 @@ impl TryFrom<Script> for fuel_tx::Script {
 
         let mut policies = Policies::default().with_maturity(script.maturity.maturity.into());
         policies.set(PolicyType::GasPrice, script.gas.price);
-        let script = fuel_tx::Transaction::script(
-            script.gas.script_gas_limit.unwrap_or(
-                fuel_tx::ConsensusParameters::default()
-                    .tx_params()
-                    .max_gas_per_tx
-                    / 4,
-            ),
+        let mut script_tx = fuel_tx::Transaction::script(
+            0, // Temporary value. Will be replaced below
             script_bytecode,
             script_data,
             policies,
@@ -676,7 +672,19 @@ impl TryFrom<Script> for fuel_tx::Script {
             outputs,
             witnesses,
         );
-        Ok(script)
+
+        if let Some(script_gas_limit) = script.gas.script_gas_limit {
+            script_tx.set_script_gas_limit(script_gas_limit)
+        } else {
+            let consensus_params = ConsensusParameters::default();
+            // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
+            let max_gas =
+                script_tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
+            // Increase `script_gas_limit` to the maximum allowed value.
+            script_tx.set_script_gas_limit(consensus_params.tx_params().max_gas_per_tx - max_gas);
+        }
+
+        Ok(script_tx)
     }
 }
 

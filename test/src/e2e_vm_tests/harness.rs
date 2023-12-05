@@ -167,7 +167,7 @@ pub(crate) fn runs_in_vm(
                     rng.gen(),
                     0u32.into(),
                 )
-                .script_gas_limit(ConsensusParameters::default().tx_params().max_gas_per_tx / 4)
+                // .script_gas_limit(ConsensusParameters::default().tx_params().max_gas_per_tx / 4)
                 .maturity(maturity);
 
             if let Some(witnesses) = witness_data {

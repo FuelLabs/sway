@@ -786,7 +786,6 @@ fn exec_test(
     let tx_pointer = rng.gen();
     let block_height = (u32::MAX >> 1).into();
 
-    let params = tx::ConsensusParameters::default();
     let mut tx = tx::TransactionBuilder::script(bytecode, script_input_data)
         .add_unsigned_coin_input(
             secret_key,
@@ -796,12 +795,12 @@ fn exec_test(
             tx_pointer,
             0u32.into(),
         )
-        .script_gas_limit(
-            tx::ConsensusParameters::default()
-                .tx_params()
-                .max_gas_per_tx
-                / 4,
-        )
+        // .script_gas_limit(
+        //     tx::ConsensusParameters::default()
+        //         .tx_params()
+        //         .max_gas_per_tx
+        //         / 4,
+        // )
         .maturity(maturity)
         .clone();
     let mut output_index = 1;
@@ -824,7 +823,10 @@ fn exec_test(
     let tx = tx.finalize_checked(block_height);
 
     let mut interpreter: vm::prelude::Interpreter<_, _, vm::interpreter::NotSupportedEcal> =
-        vm::interpreter::Interpreter::with_storage(storage, params.into());
+        vm::interpreter::Interpreter::with_storage(
+            storage,
+            tx::ConsensusParameters::default().into(),
+        );
 
     // Execute and return the result.
     let start = std::time::Instant::now();
