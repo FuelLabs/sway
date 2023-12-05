@@ -7,10 +7,10 @@ use forc_client::{
 };
 use forc_pkg::{Built, BuiltPackage};
 use fuel_tx::TransactionBuilder;
+use fuel_vm::fuel_tx;
 use fuel_vm::interpreter::Interpreter;
-use fuel_vm::interpreter::NotSupportedEcal;
 use fuel_vm::prelude::*;
-use fuel_vm::{checked_transaction::IntoChecked, fuel_tx};
+use fuel_vm::{checked_transaction::builder::TransactionBuilderExt, interpreter::NotSupportedEcal};
 use futures::Future;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
@@ -176,17 +176,15 @@ pub(crate) fn runs_in_vm(
             }
             let consensus_params = tb.get_params().clone();
 
-            // Finalize to calculate `script_gas_limit`
-            let mut tx = tb.finalize();
+            // Temporarily finalize to calculate `script_gas_limit`
+            let tmp_tx = tb.clone().finalize();
             // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
             let max_gas =
-                tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
+                tmp_tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
             // Increase `script_gas_limit` to the maximum allowed value.
-            tx.set_script_gas_limit(consensus_params.tx_params().max_gas_per_tx - max_gas);
+            tb.script_gas_limit(consensus_params.tx_params().max_gas_per_tx - max_gas);
 
-            let tx = tx
-                .into_checked(block_height, &consensus_params)
-                .expect("failed to check tx");
+            let tx = tb.finalize_checked(block_height);
 
             let mut i: Interpreter<_, _, NotSupportedEcal> =
                 Interpreter::with_storage(storage, Default::default());
