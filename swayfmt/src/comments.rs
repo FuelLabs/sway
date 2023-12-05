@@ -129,7 +129,14 @@ pub fn write_comments(
                     formatted_code.truncate(formatted_code.trim_end().len());
                     write!(formatted_code, " {} ", comment.span().as_str(),)?;
                 }
-                CommentKind::Multilined => {}
+                CommentKind::Multilined => {
+                    write!(
+                        formatted_code,
+                        "{}{}",
+                        formatter.indent_to_str()?,
+                        comment.span().as_str(),
+                    )?;
+                }
             }
         }
     }
