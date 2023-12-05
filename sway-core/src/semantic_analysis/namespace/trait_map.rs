@@ -1003,7 +1003,7 @@ impl TraitMap {
                     name: symbol.clone(),
                     span: symbol.span(),
                 }))
-            },
+            }
             Ordering::Equal => Ok(candidates.values().next().unwrap().clone()),
         }
     }

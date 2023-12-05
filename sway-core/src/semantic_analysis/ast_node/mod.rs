@@ -53,7 +53,7 @@ impl ty::TyAstNode {
                             // dbg!(&ctx.namespace.name);
                             let import =
                                 ctx.star_import(&star_import_handler, &path, a.is_absolute);
-                            
+
                             if import.is_ok() {
                                 handler.append(star_import_handler);
                                 import

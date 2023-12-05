@@ -4,12 +4,12 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType, DeclEngineGet},
+    decl_engine::{DeclEngineGet, DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType},
     language::{
         parsed,
         ty::{
             self, TyAstNode, TyCodeBlock, TyDecl, TyExpression, TyFunctionDecl,
-            TyFunctionParameter, TyImplItem, TyIntrinsicFunctionKind, TyStructExpressionField, VariableMutability,
+            TyFunctionParameter, TyImplItem, VariableMutability,
         },
         CallPath, QualifiedCallPath,
     },
@@ -35,42 +35,55 @@ fn auto_impl_abi_encode(handler: &Handler, ctx: &mut TypeCheckContext, decl: ty:
         .te()
         .insert(ctx.engines, TypeInfo::Tuple(vec![]), None);
 
-    let u64_type_id = ctx.engines.te().insert(
-        ctx.engines,
-        TypeInfo::UnsignedInteger(sway_types::integer_bits::IntegerBits::SixtyFour),
-        None,
-    );
-
     let struct_ref = ctx.engines().de().get(decl_ref.id());
 
-    let buffer_type_id = ctx.engines.te().insert(&ctx.engines, TypeInfo::Custom { 
-        qualified_call_path: QualifiedCallPath { 
-            call_path: CallPath { 
-                prefixes: vec![
-                    Ident::new_no_span("core".into()),
-                    Ident::new_no_span("codec".into()),
-                ], 
-                suffix: Ident::new_no_span("Buffer".into()), 
-                is_absolute: true
-            }, 
-            qualified_path_root: None
-        }, 
-        type_arguments: None, 
-        root_type_id: None
-    }, None);
-    let buffer_type_id = ctx.resolve_type(handler, 
-        buffer_type_id, 
-        &Span::dummy(), 
-        EnforceTypeArguments::No, 
-        None
-    ).unwrap();
+    let buffer_type_id = ctx.engines.te().insert(
+        ctx.engines,
+        TypeInfo::Custom {
+            qualified_call_path: QualifiedCallPath {
+                call_path: CallPath {
+                    prefixes: vec![
+                        Ident::new_no_span("core".into()),
+                        Ident::new_no_span("codec".into()),
+                    ],
+                    suffix: Ident::new_no_span("Buffer".into()),
+                    is_absolute: true,
+                },
+                qualified_path_root: None,
+            },
+            type_arguments: None,
+            root_type_id: None,
+        },
+        None,
+    );
+    let buffer_type_id = ctx
+        .resolve_type(
+            handler,
+            buffer_type_id,
+            &Span::dummy(),
+            EnforceTypeArguments::No,
+            None,
+        )
+        .unwrap();
 
-    let abi_encode_body = struct_ref.fields.iter()
+    let abi_encode_body = struct_ref
+        .fields
+        .iter()
         .map(|x| {
-            let abi_encode_ref = ctx.find_items_for_type(handler, x.type_argument.type_id, &[
+            let abi_encode_ref = ctx
+                .find_items_for_type(
+                    handler,
+                    x.type_argument.type_id,
+                    &[
                 // Ident::new_no_span("core".into()),
                 // Ident::new_no_span("codec".into()),
-            ], &Ident::new_no_span("abi_encode".into())).unwrap().into_iter().next().unwrap();
+            ],
+                    &Ident::new_no_span("abi_encode".into()),
+                )
+                .unwrap()
+                .into_iter()
+                .next()
+                .unwrap();
             let abi_encode_ref = match abi_encode_ref {
                 ty::TyTraitItem::Fn(f) => f,
                 ty::TyTraitItem::Constant(_) => todo!(),
@@ -78,67 +91,65 @@ fn auto_impl_abi_encode(handler: &Handler, ctx: &mut TypeCheckContext, decl: ty:
             };
 
             TyAstNode {
-                content: ty::TyAstNodeContent::Expression(
-                    TyExpression { 
-                        expression: ty::TyExpressionVariant::FunctionApplication { 
-                            call_path: CallPath {
-                                prefixes: vec![
-
-                                ],
-                                suffix: Ident::new_no_span("abi_encode".into()),
-                                is_absolute: false,
-                            },
-                            contract_call_params: HashMap::default(),
-                            arguments: vec![
-                                (
-                                    Ident::new_no_span("self".into()),
-                                    TyExpression { 
-                                        expression: ty::TyExpressionVariant::StructFieldAccess { 
-                                            prefix: Box::new(TyExpression {
-                                                expression: ty::TyExpressionVariant::VariableExpression { 
-                                                    name: Ident::new_no_span("self".into()), 
-                                                    span: Span::dummy(), 
-                                                    mutability: VariableMutability::Immutable, 
-                                                    call_path: None
+                content: ty::TyAstNodeContent::Expression(TyExpression {
+                    expression: ty::TyExpressionVariant::FunctionApplication {
+                        call_path: CallPath {
+                            prefixes: vec![],
+                            suffix: Ident::new_no_span("abi_encode".into()),
+                            is_absolute: false,
+                        },
+                        contract_call_params: HashMap::default(),
+                        arguments: vec![
+                            (
+                                Ident::new_no_span("self".into()),
+                                TyExpression {
+                                    expression: ty::TyExpressionVariant::StructFieldAccess {
+                                        prefix: Box::new(TyExpression {
+                                            expression:
+                                                ty::TyExpressionVariant::VariableExpression {
+                                                    name: Ident::new_no_span("self".into()),
+                                                    span: Span::dummy(),
+                                                    mutability: VariableMutability::Immutable,
+                                                    call_path: None,
                                                 },
-                                                return_type: unit.clone(),
-                                                span: Span::dummy()
-                                            }), 
-                                            field_to_access: x.clone(), 
-                                            field_instantiation_span: Span::dummy(), 
-                                            resolved_type_of_parent: type_id.clone()
-                                        }, 
-                                        return_type: unit, 
-                                        span: Span::dummy()
-                                    }
-                                ),
-                                (
-                                    Ident::new_no_span("buffer".into()),
-                                    TyExpression { 
-                                        expression: ty::TyExpressionVariant::VariableExpression { 
-                                            name: Ident::new_no_span("buffer".into()), 
-                                            span: Span::dummy(), 
-                                            mutability: VariableMutability::Mutable, 
-                                            call_path: None
-                                        }, 
-                                        return_type: buffer_type_id, 
-                                        span: Span::dummy()
-                                    }
-                                )
-                            ],
-                            fn_ref: abi_encode_ref,
-                            selector: None,
-                            type_binding: None,
-                            call_path_typeid: Some(type_id),
-                            deferred_monomorphization: ctx.defer_monomorphization()
-                        }, 
-                        return_type: unit, 
-                        span: Span::dummy()
-                    }
-                ),
+                                            return_type: unit,
+                                            span: Span::dummy(),
+                                        }),
+                                        field_to_access: x.clone(),
+                                        field_instantiation_span: Span::dummy(),
+                                        resolved_type_of_parent: type_id,
+                                    },
+                                    return_type: unit,
+                                    span: Span::dummy(),
+                                },
+                            ),
+                            (
+                                Ident::new_no_span("buffer".into()),
+                                TyExpression {
+                                    expression: ty::TyExpressionVariant::VariableExpression {
+                                        name: Ident::new_no_span("buffer".into()),
+                                        span: Span::dummy(),
+                                        mutability: VariableMutability::Mutable,
+                                        call_path: None,
+                                    },
+                                    return_type: buffer_type_id,
+                                    span: Span::dummy(),
+                                },
+                            ),
+                        ],
+                        fn_ref: abi_encode_ref,
+                        selector: None,
+                        type_binding: None,
+                        call_path_typeid: Some(type_id),
+                        deferred_monomorphization: ctx.defer_monomorphization(),
+                    },
+                    return_type: unit,
+                    span: Span::dummy(),
+                }),
                 span: Span::dummy(),
             }
-        }).collect::<Vec<_>>();
+        })
+        .collect::<Vec<_>>();
 
     let abi_encode_impl = ctx.engines.de().insert(TyFunctionDecl {
         name: Ident::new_no_span("abi_encode".into()),
@@ -146,29 +157,32 @@ fn auto_impl_abi_encode(handler: &Handler, ctx: &mut TypeCheckContext, decl: ty:
             contents: abi_encode_body,
             whole_block_span: Span::dummy(),
         },
-        parameters: vec![TyFunctionParameter {
-            name: Ident::new_no_span("self".into()),
-            is_reference: false,
-            is_mutable: false,
-            mutability_span: Span::dummy(),
-            type_argument: TypeArgument {
-                type_id,
-                initial_type_id: type_id,
-                span: Span::dummy(),
-                call_path_tree: None,
+        parameters: vec![
+            TyFunctionParameter {
+                name: Ident::new_no_span("self".into()),
+                is_reference: false,
+                is_mutable: false,
+                mutability_span: Span::dummy(),
+                type_argument: TypeArgument {
+                    type_id,
+                    initial_type_id: type_id,
+                    span: Span::dummy(),
+                    call_path_tree: None,
+                },
             },
-        }, TyFunctionParameter {
-            name: Ident::new_no_span("buffer".into()),
-            is_reference: true,
-            is_mutable: true,
-            mutability_span: Span::dummy(),
-            type_argument: TypeArgument {
-                type_id: buffer_type_id,
-                initial_type_id: buffer_type_id,
-                span: Span::dummy(),
-                call_path_tree: None,
+            TyFunctionParameter {
+                name: Ident::new_no_span("buffer".into()),
+                is_reference: true,
+                is_mutable: true,
+                mutability_span: Span::dummy(),
+                type_argument: TypeArgument {
+                    type_id: buffer_type_id,
+                    initial_type_id: buffer_type_id,
+                    span: Span::dummy(),
+                    call_path_tree: None,
+                },
             },
-        }],
+        ],
         implementing_type: None,
         span: Span::dummy(),
         call_path: CallPath {
@@ -191,7 +205,6 @@ fn auto_impl_abi_encode(handler: &Handler, ctx: &mut TypeCheckContext, decl: ty:
         is_trait_method_dummy: false,
     });
 
-    
     let _ = ctx.namespace.implemented_traits.insert(
         handler,
         CallPath {
@@ -434,12 +447,13 @@ impl TyDecl {
             }
             parsed::Declaration::StructDeclaration(decl) => {
                 let span = decl.span.clone();
-                let decl: ty::TyStructDecl = match ty::TyStructDecl::type_check(handler, ctx.by_ref(), decl) {
-                    Ok(res) => res,
-                    Err(err) => {
-                        return Ok(ty::TyDecl::ErrorRecovery(span, err));
-                    }
-                };
+                let decl: ty::TyStructDecl =
+                    match ty::TyStructDecl::type_check(handler, ctx.by_ref(), decl) {
+                        Ok(res) => res,
+                        Err(err) => {
+                            return Ok(ty::TyDecl::ErrorRecovery(span, err));
+                        }
+                    };
                 let call_path = decl.call_path.clone();
                 let decl: ty::TyDecl = decl_engine.insert(decl).into();
 

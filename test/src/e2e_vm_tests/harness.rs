@@ -194,8 +194,10 @@ pub(crate) fn runs_in_vm(
                 match r {
                     Receipt::LogData { data, .. } => {
                         eprintln!("LogData: {:?}", data);
-                    },
-                    _ => { dbg!(r); }
+                    }
+                    _ => {
+                        dbg!(r);
+                    }
                 }
             }
             

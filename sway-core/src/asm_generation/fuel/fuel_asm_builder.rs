@@ -1264,9 +1264,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             // If the type is a pointer then we use LOGD to log the data. First put the size into
             // the data section, then add a LW to get it, then add a LOGD which uses it.
             let log_ty = log_ty.get_pointee_type(self.context).unwrap();
-            
+
             // Slices arrive here as "ptr slice" because they are demoted. (see fn log_demotion)
-            let is_slice = log_ty.is_slice(self.context);  
+            let is_slice = log_ty.is_slice(self.context);
 
             if is_slice {
                 let ptr_reg = self.reg_seqr.next();
@@ -1301,7 +1301,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 });
             } else {
                 let size_in_bytes = log_ty.size(self.context).in_bytes();
-    
+
                 let size_reg = self.reg_seqr.next();
                 self.immediate_to_reg(
                     size_in_bytes,
@@ -1822,8 +1822,6 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 })
             })
             .ok_or_else(|| {
-                dbg!(value.with_context(self.context));
-                todo!();
                 CompileError::Internal(
                     "An attempt to get register for unknown Value.",
                     Span::dummy(),

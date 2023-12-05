@@ -270,7 +270,7 @@ impl Root {
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
                     name: symbol.clone(),
                     span: symbol.span(),
-                }))
+                }));
             }
         })
     }
@@ -368,7 +368,7 @@ impl Root {
                     .check_symbol(true_symbol)
                     .map_err(|e| handler.emit_err(e))
                     .cloned()
-            },
+            }
         }
     }
 }

@@ -259,15 +259,13 @@ impl Items {
     }
 
     pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&ty::TyDecl, CompileError> {
-        self.symbols
-            .get(name)
-            .ok_or_else(|| {
-                // dbg!(1);
-                CompileError::SymbolNotFound {
-                    name: name.clone(),
-                    span: name.span(),
-                }
-            })
+        self.symbols.get(name).ok_or_else(|| {
+            // dbg!(1);
+            CompileError::SymbolNotFound {
+                name: name.clone(),
+                span: name.span(),
+            }
+        })
     }
 
     pub fn get_items_for_type(&self, engines: &Engines, type_id: TypeId) -> Vec<ty::TyTraitItem> {
