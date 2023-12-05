@@ -1249,7 +1249,9 @@ impl<'eng> FnCompiler<'eng> {
                         self.current_block.append(context).store(temp_val, arg0);
 
                         // NOTE: Here we're casting the temp pointer to an integer.
-                        self.current_block.append(context).ptr_to_int(temp_val, u64_ty)
+                        self.current_block
+                            .append(context)
+                            .ptr_to_int(temp_val, u64_ty)
                     }
                 }
             }
@@ -1410,7 +1412,9 @@ impl<'eng> FnCompiler<'eng> {
                         CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                     })?;
                 let tmp_val = self.current_block.append(context).get_local(tmp_var);
-                self.current_block.append(context).store(tmp_val, asset_id_val);
+                self.current_block
+                    .append(context)
+                    .store(tmp_val, asset_id_val);
                 tmp_val
             }
         };
@@ -1722,7 +1726,9 @@ impl<'eng> FnCompiler<'eng> {
         // Jump to the while cond block.
         let cond_block = self.function.create_block(context, Some("while".into()));
         if !self.current_block.is_terminated(context) {
-            self.current_block.append(context).branch(cond_block, vec![]);
+            self.current_block
+                .append(context)
+                .branch(cond_block, vec![]);
         }
 
         // Create the break block.
@@ -1748,7 +1754,9 @@ impl<'eng> FnCompiler<'eng> {
         self.compile_code_block(context, md_mgr, body)
             .map_err(|mut x| x.pop().unwrap())?;
         if !self.current_block.is_terminated(context) {
-            self.current_block.append(context).branch(cond_block, vec![]);
+            self.current_block
+                .append(context)
+                .branch(cond_block, vec![]);
         }
 
         // Restore the blocks to jump to now that we're done with the current loop
