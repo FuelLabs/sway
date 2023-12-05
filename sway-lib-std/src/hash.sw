@@ -134,6 +134,24 @@ impl Hash for b256 {
     }
 }
 
+impl Hash for u256 {
+    fn hash(self, ref mut state: Hasher) {
+        let mut bytes = Bytes::with_capacity(32); // four word capacity
+        bytes.len = 32;
+
+        let (word_1, word_2, word_3, word_4) = asm(r1: self) { r1: (u64, u64, u64, u64) };
+
+        asm(ptr: bytes.buf.ptr(), val_1: word_1, val_2: word_2, val_3: word_3, val_4: word_4) {
+            sw ptr val_1 i0;
+            sw ptr val_2 i1;
+            sw ptr val_3 i2;
+            sw ptr val_4 i3;
+        };
+
+        state.write(bytes);
+    }
+}
+
 impl Hash for bool {
     fn hash(self, ref mut state: Hasher) {
         let mut bytes = Bytes::with_capacity(1);
@@ -469,6 +487,20 @@ fn test_hasher_sha256_b256() {
     assert(sha256 == 0xec4916dd28fc4c10d78e287ca5d9cc51ee1ae73cbfde08c6b37324cbfaac8bc5);
 }
 
+#[test]
+fn test_hasher_sha256_u256() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    0x0000000000000000000000000000000000000000000000000000000000000000_u256.hash(hasher);
+    let sha256 = hasher.sha256();
+    assert(sha256 == 0x66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925);
+
+    let mut hasher = Hasher::new();
+    0x0000000000000000000000000000000000000000000000000000000000000001_u256.hash(hasher);
+    let sha256 = hasher.sha256();
+    assert(sha256 == 0xec4916dd28fc4c10d78e287ca5d9cc51ee1ae73cbfde08c6b37324cbfaac8bc5);
+}
+
 #[test()]
 fn test_hasher_sha256_bool() {
     use ::assert::assert;
@@ -581,6 +613,20 @@ fn test_hasher_keccak256_b256() {
 
     let mut hasher = Hasher::new();
     0x0000000000000000000000000000000000000000000000000000000000000001.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0xb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6);
+}
+
+#[test]
+fn test_hasher_keccak256_u256() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    0x0000000000000000000000000000000000000000000000000000000000000000_u256.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563);
+
+    let mut hasher = Hasher::new();
+    0x0000000000000000000000000000000000000000000000000000000000000001_u256.hash(hasher);
     let keccak256 = hasher.keccak256();
     assert(keccak256 == 0xb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6);
 }
