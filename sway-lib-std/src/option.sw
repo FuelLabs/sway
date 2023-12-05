@@ -87,6 +87,16 @@ pub enum Option<T> {
 }
 // ANCHOR_END: docs_option
 
+impl<T> core::ops::Eq for Option<T> where T: Eq {
+    fn eq(self, other: Self) -> bool {
+        match (self, other) {
+            (Option::Some(a), Option::Some(b)) => a == b,
+            (Option::None, Option::None) => true,
+            _ => false,
+        }
+    }
+}
+
 // Type implementation
 //
 impl<T> Option<T> {

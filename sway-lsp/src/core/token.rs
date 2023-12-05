@@ -239,15 +239,15 @@ pub fn desugared_op(prefixes: &[Ident]) -> bool {
 
 /// Use the [TypeId] to look up the associated [TypeInfo] and return the [TokenIdent] if one is found.
 pub fn ident_of_type_id(engines: &Engines, type_id: &TypeId) -> Option<TokenIdent> {
-    let ident = match engines.te().get(*type_id) {
-        TypeInfo::UnknownGeneric { name, .. } => name,
-        TypeInfo::Enum(decl_ref) => engines.de().get_enum(&decl_ref).call_path.suffix,
-        TypeInfo::Struct(decl_ref) => engines.de().get_struct(&decl_ref).call_path.suffix,
-        TypeInfo::Alias { name, .. } => name,
+    let ident = match &*engines.te().get(*type_id) {
+        TypeInfo::UnknownGeneric { name, .. } => name.clone(),
+        TypeInfo::Enum(decl_ref) => engines.de().get_enum(decl_ref).call_path.suffix.clone(),
+        TypeInfo::Struct(decl_ref) => engines.de().get_struct(decl_ref).call_path.suffix.clone(),
+        TypeInfo::Alias { name, .. } => name.clone(),
         TypeInfo::Custom {
             qualified_call_path,
             ..
-        } => qualified_call_path.call_path.suffix,
+        } => qualified_call_path.call_path.suffix.clone(),
         _ => return None,
     };
     Some(TokenIdent::new(&ident, engines.se()))

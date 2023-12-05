@@ -16,8 +16,8 @@ use crate::{
     },
     Engines,
 };
-use std::collections::HashSet;
 use std::fmt;
+use std::{collections::HashSet, sync::Arc};
 use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{Ident, Span, Spanned};
 
@@ -93,7 +93,7 @@ fn analyze_contract(engines: &Engines, ast_nodes: &[ty::TyAstNode]) -> Vec<Compi
 fn contract_entry_points(
     decl_engine: &DeclEngine,
     ast_nodes: &[ty::TyAstNode],
-) -> Vec<ty::TyFunctionDecl> {
+) -> Vec<Arc<ty::TyFunctionDecl>> {
     use crate::ty::TyAstNodeContent::Declaration;
     ast_nodes
         .iter()
@@ -112,14 +112,14 @@ fn contract_entry_points(
 fn decl_id_to_fn_decls(
     decl_engine: &DeclEngine,
     decl_id: &DeclId<TyFunctionDecl>,
-) -> Vec<TyFunctionDecl> {
+) -> Vec<Arc<TyFunctionDecl>> {
     vec![decl_engine.get_function(decl_id)]
 }
 
 fn impl_trait_methods(
     decl_engine: &DeclEngine,
     impl_trait_decl_id: &DeclId<TyImplTrait>,
-) -> Vec<ty::TyFunctionDecl> {
+) -> Vec<Arc<ty::TyFunctionDecl>> {
     let impl_trait = decl_engine.get_impl_trait(impl_trait_decl_id);
     impl_trait
         .items
@@ -502,19 +502,19 @@ fn effects_of_expression(engines: &Engines, expr: &ty::TyExpression) -> HashSet<
         | AbiName(_) => HashSet::new(),
         // this type of assignment only mutates local variables and not storage
         Reassignment(reassgn) => effects_of_expression(engines, &reassgn.rhs),
-        StorageAccess(_) => match type_engine.get(expr.return_type) {
+        StorageAccess(_) => match &*type_engine.get(expr.return_type) {
             // accessing a storage map's method (or a storage vector's method),
             // which is represented using a struct with empty fields
             // does not result in a storage read
             crate::TypeInfo::Struct(decl_ref)
-                if decl_engine.get_struct(&decl_ref).fields.is_empty() =>
+                if decl_engine.get_struct(decl_ref).fields.is_empty() =>
             {
                 HashSet::new()
             }
             // if it's an empty enum then it cannot be constructed and hence cannot be read
             // adding this check here just to be on the safe side
             crate::TypeInfo::Enum(decl_ref)
-                if decl_engine.get_enum(&decl_ref).variants.is_empty() =>
+                if decl_engine.get_enum(decl_ref).variants.is_empty() =>
             {
                 HashSet::new()
             }
@@ -576,8 +576,8 @@ fn effects_of_expression(engines: &Engines, expr: &ty::TyExpression) -> HashSet<
             selector,
             ..
         } => {
-            let fn_body = decl_engine.get_function(fn_ref).body;
-            let mut effs = effects_of_codeblock(engines, &fn_body);
+            let fn_body = &decl_engine.get_function(fn_ref).body;
+            let mut effs = effects_of_codeblock(engines, fn_body);
             let args_effs = map_hashsets_union(arguments, |e| effects_of_expression(engines, &e.1));
             effs.extend(args_effs);
             if selector.is_some() {
