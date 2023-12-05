@@ -1,5 +1,7 @@
 library;
 
+use ::raw_slice::*;
+
 pub struct Buffer {
     buffer: raw_ptr,
     cap: u64,
@@ -23,14 +25,18 @@ impl Buffer {
         let count = __size_of::<T>();
 
         if self.cap >= self.size + count {
-            asm(dst: self.buffer, val: val, count: count) {
-                mcp dst val count;
-            };
+            self.buffer.add::<u64>(self.size).write(val);
             self.size += count;
         } else {
             __revert(123456789);
         }
         
+    }
+}
+
+impl AsRawSlice for Buffer {
+    fn as_raw_slice(self) -> raw_slice {
+        asm(ptr: (self.buffer, self.size)) { ptr: raw_slice }
     }
 }
 

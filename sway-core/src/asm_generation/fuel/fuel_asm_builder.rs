@@ -1264,27 +1264,64 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             // If the type is a pointer then we use LOGD to log the data. First put the size into
             // the data section, then add a LW to get it, then add a LOGD which uses it.
             let log_ty = log_ty.get_pointee_type(self.context).unwrap();
-            let size_in_bytes = log_ty.size(self.context).in_bytes();
+            
+            // Slices arrive here as "ptr slice" because they are demoted. (see fn log_demotion)
+            let is_slice = log_ty.is_slice(self.context);  
 
-            let size_reg = self.reg_seqr.next();
-            self.immediate_to_reg(
-                size_in_bytes,
-                size_reg.clone(),
-                None,
-                "loading size for LOGD",
-                owning_span.clone(),
-            );
+            if is_slice {
+                let ptr_reg = self.reg_seqr.next();
+                let size_reg = self.reg_seqr.next();
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::LW(
+                        ptr_reg.clone(),
+                        log_val_reg.clone(),
+                        VirtualImmediate12 { value: 0 },
+                    )),
+                    owning_span: owning_span.clone(),
+                    comment: "load slice ptr".into(),
+                });
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::LW(
+                        size_reg.clone(),
+                        log_val_reg.clone(),
+                        VirtualImmediate12 { value: 1 },
+                    )),
+                    owning_span: owning_span.clone(),
+                    comment: "load slice size".into(),
+                });
+                self.cur_bytecode.push(Op {
+                    owning_span,
+                    opcode: Either::Left(VirtualOp::LOGD(
+                        VirtualRegister::Constant(ConstantRegister::Zero),
+                        log_id_reg,
+                        ptr_reg,
+                        size_reg,
+                    )),
+                    comment: "log slice".into(),
+                });
+            } else {
+                let size_in_bytes = log_ty.size(self.context).in_bytes();
+    
+                let size_reg = self.reg_seqr.next();
+                self.immediate_to_reg(
+                    size_in_bytes,
+                    size_reg.clone(),
+                    None,
+                    "loading size for LOGD",
+                    owning_span.clone(),
+                );
 
-            self.cur_bytecode.push(Op {
-                owning_span,
-                opcode: Either::Left(VirtualOp::LOGD(
-                    VirtualRegister::Constant(ConstantRegister::Zero),
-                    log_id_reg,
-                    log_val_reg,
-                    size_reg,
-                )),
-                comment: "".into(),
-            });
+                self.cur_bytecode.push(Op {
+                    owning_span: owning_span.clone(),
+                    opcode: Either::Left(VirtualOp::LOGD(
+                        VirtualRegister::Constant(ConstantRegister::Zero),
+                        log_id_reg.clone(),
+                        log_val_reg.clone(),
+                        size_reg,
+                    )),
+                    comment: "log ptr".into(),
+                });
+            }
         }
 
         Ok(())
@@ -1785,6 +1822,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 })
             })
             .ok_or_else(|| {
+                dbg!(value.with_context(self.context));
+                todo!();
                 CompileError::Internal(
                     "An attempt to get register for unknown Value.",
                     Span::dummy(),

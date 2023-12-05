@@ -266,6 +266,7 @@ impl Root {
                 (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
             }
             _ => {
+                dbg!(1);
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
                     name: symbol.clone(),
                     span: symbol.span(),
@@ -356,10 +357,18 @@ impl Root {
                     None => self.resolve_symbol(handler, engines, src_path, true_symbol, self_type),
                 }
             }
-            _ => module
-                .check_symbol(true_symbol)
-                .map_err(|e| handler.emit_err(e))
-                .cloned(),
+            _ => {
+                // dbg!(
+                //     mod_path,
+                //     symbol,
+                //     module,
+                //     self_type,
+                // );
+                module
+                    .check_symbol(true_symbol)
+                    .map_err(|e| handler.emit_err(e))
+                    .cloned()
+            },
         }
     }
 }

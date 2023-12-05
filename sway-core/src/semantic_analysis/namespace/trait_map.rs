@@ -997,10 +997,13 @@ impl TraitMap {
                     span: symbol.span(),
                 },
             )),
-            Ordering::Less => Err(handler.emit_err(CompileError::SymbolNotFound {
-                name: symbol.clone(),
-                span: symbol.span(),
-            })),
+            Ordering::Less => {
+                // dbg!(1);
+                Err(handler.emit_err(CompileError::SymbolNotFound {
+                    name: symbol.clone(),
+                    span: symbol.span(),
+                }))
+            },
             Ordering::Equal => Ok(candidates.values().next().unwrap().clone()),
         }
     }

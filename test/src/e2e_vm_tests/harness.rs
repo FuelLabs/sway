@@ -189,9 +189,19 @@ pub(crate) fn runs_in_vm(
             let mut i: Interpreter<_, _, NotSupportedEcal> =
                 Interpreter::with_storage(storage, Default::default());
             let transition = i.transact(tx).map_err(anyhow::Error::msg)?;
+
+            for r in transition.receipts() {
+                match r {
+                    Receipt::LogData { data, .. } => {
+                        eprintln!("LogData: {:?}", data);
+                    },
+                    _ => { dbg!(r); }
+                }
+            }
+            
             Ok(VMExecutionResult::Fuel(
                 *transition.state(),
-                dbg!(transition.receipts().to_vec()),
+                transition.receipts().to_vec(),
             ))
         }
         BuildTarget::EVM => {
