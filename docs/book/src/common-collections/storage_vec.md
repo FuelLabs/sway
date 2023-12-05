@@ -83,7 +83,7 @@ We can now push different enum variants to the storage vector as follows:
 
 Now that we’ve discussed some of the most common ways to use storage vectors, be sure to review the API documentation for all the many useful methods defined on `StorageVec<T>` by the standard library. For now, these can be found in the [source code for `StorageVec<T>`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/storage.sw). For example, in addition to `push`, a `pop` method removes and returns the last element, a `remove` method removes and returns the element at some chosen index within the vector, an `insert` method inserts an element at some chosen index within the vector, etc.
 
-## Nested Storage Vecs
+## Nested Storage Vectors
 
 It is possible to nest storage vectors as follows:
 

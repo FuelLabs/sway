@@ -1,1 +1,1 @@
-# forc predicate-root
+# `forc predicate-root`

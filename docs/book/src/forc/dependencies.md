@@ -1,6 +1,6 @@
 # Dependencies
 
-Forc has a dependency management system which can pull packages using git and ipfs. This allows users to build and share Forc libraries.
+Forc has a dependency management system which can pull packages using git and `ipfs`. This allows users to build and share Forc libraries.
 
 ## Adding a dependency
 
@@ -24,7 +24,7 @@ Depending on a local library using `path`:
 custom_lib = { path = "../custom_lib" }
 ```
 
-For `ipfs` sources, `forc` will fetch the specified `cid` using either a local ipfs node or a public gateway. `forc` automatically tries to connect to local `ipfs` node and if it fails, fallbacks to using `https://ipfs.io/`, as a gateway.
+For `ipfs` sources, `forc` will fetch the specified `cid` using either a local `ipfs` node or a public gateway. `forc` automatically tries to connect to local `ipfs` node. If it fails, it defaults to using `https://ipfs.io/` as a gateway.
 
 The following example adds a dependency with an `ipfs` source.
 

@@ -6,7 +6,7 @@ Methods are similar to functions in that we declare them with the `fn` keyword a
 
 _Associated functions_ are very similar to _methods_, in that they are also defined in the context of a struct or enum, but they do not actually use any of the data in the struct and as a result do not take _self_ as a parameter. Associated functions could be standalone functions, but they are included in a specific type for organizational or semantic reasons.
 
-To declare methods and associated functions for a struct or enum, use an _impl block_. Here, `impl` stands for implementation.
+To declare methods and associated functions for a struct or enum, use an `impl` block. Here, `impl` stands for implementation.
 <!-- methods_af:example:end -->
 
 ```sway

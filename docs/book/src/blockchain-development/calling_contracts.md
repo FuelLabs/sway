@@ -2,7 +2,7 @@
 
 Smart contracts can be _called_ by other contracts or scripts. In the FuelVM, this is done primarily with the [`call`](https://fuellabs.github.io/fuel-specs/master/vm/instruction_set#call-call-contract) instruction.
 
-Sway provides a nice way to manage callable interfaces with its `abi` system. The Fuel ABI specification can be found [here](https://fuellabs.github.io/fuel-specs/master/protocol/abi).
+Sway provides a nice way to manage callable interfaces with its ABI system. The Fuel ABI specification can be found [here](https://fuellabs.github.io/fuel-specs/master/protocol/abi).
 
 ## Example
 
@@ -78,7 +78,7 @@ fn main() {
 
 A common attack vector for smart contracts is [re-entrancy](https://docs.soliditylang.org/en/v0.8.4/security-considerations.html#re-entrancy). Similar to the EVM, the FuelVM allows for re-entrancy.
 
-A _stateless_ re-entrancy guard is included in the [sway-libs](https://github.com/FuelLabs/sway-libs) library. The guard will panic (revert) at run time if re-entrancy is detected.
+A _stateless_ re-entrancy guard is included in the [`sway-libs`](https://github.com/FuelLabs/sway-libs) library. The guard will panic (revert) at run time if re-entrancy is detected.
 
 ```sway
 contract;
@@ -152,9 +152,9 @@ In case there is a storage read after an interaction, the CEI analyzer will issu
 
 In addition to storage reads and writes after an interaction, the CEI analyzer reports analogous warnings about:
 
-- balance tree updates, i.e. balance tree reads with subsequent writes, which may be produced by the `tr` and `tro` asm instructions or library functions using them under the hood;
+- balance tree updates, i.e. balance tree reads with subsequent writes, which may be produced by the `tr` and `tro` ASM instructions or library functions using them under the hood;
 - balance trees reads with `bal` instruction;
-- changes to the output messages that can be produced by the `__smo` intrinsic function or the `smo` asm instruction.
+- changes to the output messages that can be produced by the `__smo` intrinsic function or the `smo` ASM instruction.
 
 ## Differences from the EVM
 
