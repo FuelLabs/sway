@@ -2263,3 +2263,53 @@ fn enum_in_vec() -> Vec<Pasta> {
 "#,
     );
 }
+
+#[test]
+fn test_comment_random_places() {
+    check(
+        r#"library;
+
+fn enum_in_vec() -> Vec<Pasta> {
+    let number: /*
+        this number is for counting
+    */ u64 = 10;
+    let number: // this number is for counting
+    u64 = 10;
+}
+    "#,
+        r#"library;
+
+fn enum_in_vec() -> Vec<Pasta> {
+    let number: /*
+        this number is for counting
+    */ u64 = 10;
+    let number: // this number is for counting
+ u64 = 10;
+}
+"#,
+    );
+}
+
+#[test]
+fn test_comment_v2() {
+    check(
+        r#"library;
+    /// This is documentation for a commented out function
+    // fn commented_out_function() {
+    //}
+        
+    fn test_function() -> bool {
+        true
+    }
+        "#,
+        r#"library;
+/// This is documentation for a commented out function
+// fn commented_out_function() {
+//}
+
+fn test_function() -> bool {
+    true
+}
+"#,
+    );
+}
