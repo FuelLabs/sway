@@ -12,7 +12,7 @@ pub(crate) fn code_actions(
     decl_id: &DeclId<ty::TyStructDecl>,
     ctx: &CodeActionContext,
 ) -> Option<Vec<CodeActionOrCommand>> {
-    let decl = ctx.engines.de().get_struct(decl_id);
+    let decl = (*ctx.engines.de().get_struct(decl_id)).clone();
     Some(vec![
         StructImplCodeAction::new(ctx, &decl).code_action(),
         StructNewCodeAction::new(ctx, &decl).code_action(),

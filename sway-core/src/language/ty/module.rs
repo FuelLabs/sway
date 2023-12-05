@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
 
@@ -49,7 +51,7 @@ impl TyModule {
     pub fn test_fns<'a: 'b, 'b>(
         &'b self,
         decl_engine: &'a DeclEngine,
-    ) -> impl '_ + Iterator<Item = (TyFunctionDecl, DeclRefFunction)> {
+    ) -> impl '_ + Iterator<Item = (Arc<TyFunctionDecl>, DeclRefFunction)> {
         self.all_nodes.iter().filter_map(|node| {
             if let TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
                 decl_id,

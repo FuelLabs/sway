@@ -32,6 +32,10 @@ impl<'a> OccursCheck<'a> {
     /// unification.
     pub(super) fn check(&self, generic: TypeId, other: TypeId) -> bool {
         let other_generics = other.extract_nested_generics(self.engines);
-        other_generics.contains(&self.engines.help_out(self.engines.te().get(generic)))
+        other_generics.contains(
+            &self
+                .engines
+                .help_out((*self.engines.te().get(generic)).clone()),
+        )
     }
 }

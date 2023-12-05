@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{
     decl_engine::*,
     fuel_prelude::fuel_tx::StorageSlot,
@@ -109,7 +111,7 @@ impl TyProgram {
                     decl_id,
                     ..
                 })) => {
-                    let config_decl = decl_engine.get_constant(decl_id);
+                    let config_decl = (*decl_engine.get_constant(decl_id)).clone();
                     if config_decl.is_configurable {
                         configurables.push(config_decl);
                     } else {
@@ -120,13 +122,17 @@ impl TyProgram {
                 // itself, except for ABI supertraits, which do not expose their methods to
                 // the user
                 TyAstNodeContent::Declaration(TyDecl::ImplTrait(ImplTrait { decl_id, .. })) => {
+                    let impl_trait_decl = decl_engine.get_impl_trait(decl_id);
                     let TyImplTrait {
                         items,
                         implementing_for,
                         trait_decl_ref,
                         ..
-                    } = decl_engine.get_impl_trait(decl_id);
-                    if matches!(ty_engine.get(implementing_for.type_id), TypeInfo::Contract) {
+                    } = &*impl_trait_decl;
+                    if matches!(
+                        &*ty_engine.get(implementing_for.type_id),
+                        TypeInfo::Contract
+                    ) {
                         // add methods to the ABI only if they come from an ABI implementation
                         // and not a (super)trait implementation for Contract
                         if let Some(trait_decl_ref) = trait_decl_ref {
@@ -137,20 +143,20 @@ impl TyProgram {
                                             abi_entries.push(*method_ref.id());
                                         }
                                         TyImplItem::Constant(const_ref) => {
-                                            let const_decl = decl_engine.get_constant(&const_ref);
+                                            let const_decl = decl_engine.get_constant(const_ref);
                                             declarations.push(TyDecl::ConstantDecl(ConstantDecl {
                                                 name: const_decl.name().clone(),
                                                 decl_id: *const_ref.id(),
-                                                decl_span: const_decl.span,
+                                                decl_span: const_decl.span.clone(),
                                             }));
                                         }
                                         TyImplItem::Type(type_ref) => {
-                                            let type_decl = decl_engine.get_type(&type_ref);
+                                            let type_decl = decl_engine.get_type(type_ref);
                                             declarations.push(TyDecl::TraitTypeDecl(
                                                 TraitTypeDecl {
                                                     name: type_decl.name().clone(),
                                                     decl_id: *type_ref.id(),
-                                                    decl_span: type_decl.span,
+                                                    decl_span: type_decl.span.clone(),
                                                 },
                                             ));
                                         }
@@ -252,7 +258,7 @@ impl TyProgram {
                 }
                 let main_func_id = mains.remove(0);
                 let main_func = decl_engine.get_function(&main_func_id);
-                match ty_engine.get(main_func.return_type.type_id) {
+                match &*ty_engine.get(main_func.return_type.type_id) {
                     TypeInfo::Boolean => (),
                     _ => {
                         handler.emit_err(CompileError::PredicateMainDoesNotReturnBool(
@@ -322,7 +328,7 @@ impl TyProgram {
                 ) {
                     // Let main return `raw_slice` directly
                     if !matches!(
-                        engines.te().get(main_func.return_type.type_id),
+                        &*engines.te().get(main_func.return_type.type_id),
                         TypeInfo::RawUntypedSlice
                     ) {
                         handler.emit_err(error);
@@ -387,7 +393,7 @@ impl TyProgram {
     pub fn test_fns<'a: 'b, 'b>(
         &'b self,
         decl_engine: &'a DeclEngine,
-    ) -> impl '_ + Iterator<Item = (TyFunctionDecl, DeclRefFunction)> {
+    ) -> impl '_ + Iterator<Item = (Arc<TyFunctionDecl>, DeclRefFunction)> {
         self.root
             .submodules_recursive()
             .flat_map(|(_, submod)| submod.module.test_fns(decl_engine))
@@ -537,8 +543,9 @@ fn disallow_impure_functions(
         .chain(mains.to_owned());
     let mut err_purity = fn_decls
         .filter_map(|decl_id| {
-            let TyFunctionDecl { purity, name, .. } = decl_engine.get_function(&decl_id);
-            if purity != Purity::Pure {
+            let fn_decl = decl_engine.get_function(&decl_id);
+            let TyFunctionDecl { purity, name, .. } = &*fn_decl;
+            if *purity != Purity::Pure {
                 Some(CompileError::ImpureInNonContract { span: name.span() })
             } else {
                 None

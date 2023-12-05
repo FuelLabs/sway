@@ -112,12 +112,12 @@ impl ty::TyExpression {
         let method = decl_engine.get_function(&decl_ref);
         // check that the number of parameters and the number of the arguments is the same
         check_function_arguments_arity(handler, arguments.len(), &method, &call_path, false)?;
-        let return_type = method.return_type;
+        let return_type = &method.return_type;
         let args_and_names = method
             .parameters
-            .into_iter()
+            .iter()
             .zip(arguments)
-            .map(|(param, arg)| (param.name, arg))
+            .map(|(param, arg)| (param.name.clone(), arg))
             .collect::<Vec<(_, _)>>();
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::FunctionApplication {
@@ -427,7 +427,7 @@ impl ty::TyExpression {
         // an UnsignedInteger or a Numeric
         if let ty::TyExpressionVariant::Literal(lit) = typed_expression.clone().expression {
             if let Literal::Numeric(_) = lit {
-                match type_engine.get(typed_expression.return_type) {
+                match &*type_engine.get(typed_expression.return_type) {
                     TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => {
                         typed_expression = Self::resolve_numeric_literal(
                             handler,
@@ -501,7 +501,7 @@ impl ty::TyExpression {
                 }
             }
             Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) => {
-                let const_decl = decl_engine.get_constant(&decl_id);
+                let const_decl = (*decl_engine.get_constant(&decl_id)).clone();
                 let decl_name = const_decl.name().clone();
                 ty::TyExpression {
                     return_type: const_decl.return_type,
@@ -517,7 +517,9 @@ impl ty::TyExpression {
                 let decl = decl_engine.get_abi(&decl_id);
                 ty::TyExpression {
                     return_type: decl.create_type_id(engines),
-                    expression: ty::TyExpressionVariant::AbiName(AbiName::Known(decl.name.into())),
+                    expression: ty::TyExpressionVariant::AbiName(AbiName::Known(
+                        decl.name.clone().into(),
+                    )),
                     span,
                 }
             }
@@ -935,7 +937,8 @@ impl ty::TyExpression {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
-        let field_type_opt = match type_engine.get(ctx.type_annotation()) {
+        let t_arc = type_engine.get(ctx.type_annotation());
+        let field_type_opt = match &*t_arc {
             TypeInfo::Tuple(field_type_ids) if field_type_ids.len() == fields.len() => {
                 Some(field_type_ids)
             }
@@ -1033,7 +1036,8 @@ impl ty::TyExpression {
             None,
         )?;
         let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_ref(handler, engines)?;
-        let mut storage_key_struct_decl = decl_engine.get_struct(&storage_key_struct_decl_ref);
+        let mut storage_key_struct_decl =
+            (*decl_engine.get_struct(&storage_key_struct_decl_ref)).clone();
 
         // Set the type arguments to `StorageKey` to the `access_type`, which is represents the
         // type of the data that the `StorageKey` "points" to.
@@ -1568,7 +1572,7 @@ impl ty::TyExpression {
             ty::TyDecl::VariableDecl(ref decl) => {
                 let ty::TyVariableDecl { body: expr, .. } = &**decl;
                 let ret_ty = type_engine.get(expr.return_type);
-                let abi_name = match ret_ty {
+                let abi_name = match &*ret_ty {
                     TypeInfo::ContractCaller { abi_name, .. } => abi_name,
                     _ => {
                         return Err(handler.emit_err(CompileError::NotAnAbi {
@@ -1583,7 +1587,7 @@ impl ty::TyExpression {
                         let unknown_decl = ctx.namespace.resolve_call_path(
                             handler,
                             engines,
-                            &abi_name,
+                            abi_name,
                             ctx.self_type(),
                         )?;
                         unknown_decl.to_abi_ref(handler)?
@@ -1611,13 +1615,14 @@ impl ty::TyExpression {
                 }));
             }
         };
+        let abi_decl = decl_engine.get_abi(abi_ref.id());
         let ty::TyAbiDecl {
             interface_surface,
             items,
             supertraits,
             span,
             ..
-        } = decl_engine.get_abi(abi_ref.id());
+        } = &*abi_decl;
 
         let return_type = type_engine.insert(
             engines,
@@ -1631,10 +1636,10 @@ impl ty::TyExpression {
         // Retrieve the interface surface for this abi.
         let mut abi_items = vec![];
 
-        for item in interface_surface.into_iter() {
+        for item in interface_surface.iter() {
             match item {
                 ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
-                    let method = decl_engine.get_trait_fn(&decl_ref);
+                    let method = decl_engine.get_trait_fn(decl_ref);
                     abi_items.push(TyImplItem::Fn(
                         decl_engine
                             .insert(method.to_dummy_func(AbiMode::ImplAbiFn(
@@ -1645,18 +1650,18 @@ impl ty::TyExpression {
                     ));
                 }
                 ty::TyTraitInterfaceItem::Constant(decl_ref) => {
-                    let const_decl = decl_engine.get_constant(&decl_ref);
-                    abi_items.push(TyImplItem::Constant(decl_engine.insert(const_decl)));
+                    let const_decl = decl_engine.get_constant(decl_ref);
+                    abi_items.push(TyImplItem::Constant(decl_engine.insert_arc(const_decl)));
                 }
                 ty::TyTraitInterfaceItem::Type(decl_ref) => {
-                    let type_decl = decl_engine.get_type(&decl_ref);
-                    abi_items.push(TyImplItem::Type(decl_engine.insert(type_decl)));
+                    let type_decl = decl_engine.get_type(decl_ref);
+                    abi_items.push(TyImplItem::Type(decl_engine.insert_arc(type_decl)));
                 }
             }
         }
 
         // Retrieve the items for this abi.
-        abi_items.append(&mut items.into_iter().collect::<Vec<_>>());
+        abi_items.append(&mut items.to_vec());
 
         // Recursively make the interface surfaces and methods of the
         // supertraits available to this abi cast.
@@ -1664,7 +1669,7 @@ impl ty::TyExpression {
             handler,
             ctx.by_ref(),
             return_type,
-            &supertraits,
+            supertraits,
             &SupertraitOf::Abi(span.clone()),
         )?;
 
@@ -1675,7 +1680,7 @@ impl ty::TyExpression {
             vec![],
             return_type,
             &abi_items,
-            &span,
+            span,
             Some(span.clone()),
             IsImplSelf::No,
             IsExtendingExistingImpl::No,
@@ -1688,7 +1693,7 @@ impl ty::TyExpression {
                 span: span.clone(),
             },
             return_type,
-            span,
+            span: span.clone(),
         };
         Ok(exp)
     }
@@ -1727,8 +1732,10 @@ impl ty::TyExpression {
         };
 
         // start each element with the known array element type
-        let initial_type = match ctx.engines().te().get(ctx.type_annotation()) {
-            TypeInfo::Array(element_type, _) => ctx.engines().te().get(element_type.type_id),
+        let initial_type = match &*ctx.engines().te().get(ctx.type_annotation()) {
+            TypeInfo::Array(element_type, _) => {
+                (*ctx.engines().te().get(element_type.type_id)).clone()
+            }
             _ => TypeInfo::Unknown,
         };
 
@@ -1789,8 +1796,8 @@ impl ty::TyExpression {
         };
 
         fn get_array_type(ty: TypeId, type_engine: &TypeEngine) -> Option<TypeInfo> {
-            match &type_engine.get(ty) {
-                TypeInfo::Array(..) => Some(type_engine.get(ty)),
+            match &*type_engine.get(ty) {
+                TypeInfo::Array(..) => Some((*type_engine.get(ty)).clone()),
                 TypeInfo::Alias { ty, .. } => get_array_type(ty.type_id, type_engine),
                 _ => None,
             }
@@ -2019,7 +2026,7 @@ impl ty::TyExpression {
 
         // Parse and resolve a Numeric(span) based on new_type.
         let (val, new_integer_type) = match lit {
-            Literal::Numeric(num) => match type_engine.get(new_type) {
+            Literal::Numeric(num) => match &*type_engine.get(new_type) {
                 TypeInfo::UnsignedInteger(n) => match n {
                     IntegerBits::Eight => (
                         num.to_string().parse().map(Literal::U8).map_err(|e| {
