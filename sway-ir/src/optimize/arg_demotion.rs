@@ -295,7 +295,7 @@ fn demote_block_signature(context: &mut Context, function: &Function, block: Blo
                 pred,
                 crate::InsertionPosition::At(pred.num_instructions(context) - 1),
             );
-            inserter.insert_slice(&vec![get_local_val, store_val]);
+            inserter.insert_slice(&[get_local_val, store_val]);
 
             // Replace the use of the old argument with the `get_local` pointer value.
             let term_val = pred
