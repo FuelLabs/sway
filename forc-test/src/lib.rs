@@ -822,9 +822,8 @@ fn exec_test(
     // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
     let max_gas = tmp_tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
     // Increase `script_gas_limit` to the maximum allowed value.
-    let script_gas_limit = consensus_params.tx_params().max_gas_per_tx - max_gas;
+    tb.script_gas_limit(consensus_params.tx_params().max_gas_per_tx - max_gas);
 
-    tb.script_gas_limit(script_gas_limit);
     let tx = tb.finalize_checked(block_height);
 
     let mut interpreter: vm::prelude::Interpreter<_, _, vm::interpreter::NotSupportedEcal> =
