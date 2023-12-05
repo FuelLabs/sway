@@ -76,7 +76,9 @@ fn newline_map_from_src(unformatted_input: &str) -> Result<NewlineMap, Formatter
     let os_new_line = NEW_LINE.chars().collect::<Vec<_>>();
     while let Some((char_index, char)) = input_iter.next() {
         let next_char = input_iter.peek().map(|input| input.1);
-        if (char == '}' || char == ';') && is_new_line_next_in_iter(&mut input_iter, &os_new_line) {
+        if matches!(char, '/' | ';' | '}')
+            && is_new_line_next_in_iter(&mut input_iter, &os_new_line)
+        {
             if !in_sequence {
                 sequence_start = char_index + os_new_line.len();
                 in_sequence = true;
@@ -277,10 +279,13 @@ fn add_newlines(
                     }
                 }
 
+                let mut prev_character = None;
                 while let Some((_, character)) = whitespaces_with_comments_rev_it.next() {
                     if character == '/' {
                         // Comments either start with '//' or end with '*/'
-                        if let Some((_, '/') | (_, '*')) = whitespaces_with_comments_rev_it.peek() {
+                        let next_character =
+                            whitespaces_with_comments_rev_it.peek().map(|(_, c)| *c);
+                        if next_character == Some('/') || prev_character == Some('*') {
                             if let Some(newline_sequence) = first_newline_sequence_in_span(
                                 &ByteSpan {
                                     start: start + end_of_last_comment,
@@ -301,6 +306,7 @@ fn add_newlines(
                             break;
                         }
                     }
+                    prev_character = Some(character);
                 }
             }
         }
@@ -316,6 +322,11 @@ fn format_newline_sequence(newline_sequence: &NewlineSequence, threshold: usize)
     } else {
         newline_sequence.to_string()
     }
+}
+
+#[inline]
+fn is_alphanumeric(c: char) -> bool {
+    c.is_alphanumeric() || c == '_' || c == '.'
 }
 
 /// Inserts a `NewlineSequence` at position `at` and returns the length of `NewlineSequence` inserted.
@@ -345,9 +356,20 @@ fn insert_after_span(
         len -= (remove_until - at) as i64;
     }
 
-    src_rope
-        .try_insert(at, &sequence_string)
-        .map_err(|_| FormatterError::NewlineSequenceError)?;
+    // Do never insert the newline sequence between two alphanumeric characters
+    if !src_rope
+        .get_char(at)
+        .map(is_alphanumeric)
+        .unwrap_or_default()
+        || !src_rope
+            .get_char(at + 1)
+            .map(is_alphanumeric)
+            .unwrap_or_default()
+    {
+        src_rope
+            .try_insert(at, &sequence_string)
+            .map_err(|_| FormatterError::NewlineSequenceError)?;
+    }
 
     formatted_code.clear();
     formatted_code.push_str(&src_rope.to_string());
