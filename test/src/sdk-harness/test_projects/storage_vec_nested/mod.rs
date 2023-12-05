@@ -13,7 +13,7 @@ async fn test_storage_vec_nested_instance() -> TestStorageVecNestedContract<Wall
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 

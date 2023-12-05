@@ -16,7 +16,7 @@ async fn get_evm_test_instance() -> (EvmTestContract<WalletUnlocked>, ContractId
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
     let instance = EvmTestContract::new(id.clone(), wallet);

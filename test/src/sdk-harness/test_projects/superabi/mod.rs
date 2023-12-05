@@ -13,7 +13,7 @@ async fn get_superabi_instance() -> SuperAbiTestContract<WalletUnlocked> {
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
     SuperAbiTestContract::new(id.clone(), wallet)
