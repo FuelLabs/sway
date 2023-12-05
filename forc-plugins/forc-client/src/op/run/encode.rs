@@ -8,7 +8,7 @@ pub(crate) struct ScriptCallHandler {
 }
 
 impl ScriptCallHandler {
-    const MAIN_KEYWORD: &str = "main";
+    const MAIN_KEYWORD: &'static str = "main";
 
     /// Generate a new call handler for calling script main function from the json abi.
     ///

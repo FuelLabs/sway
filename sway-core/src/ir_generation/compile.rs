@@ -531,7 +531,7 @@ fn compile_fn(
         if ret_type.is_unit(context) {
             ret_val = Constant::get_unit(context);
         }
-        compiler.current_block.ins(context).ret(ret_val, ret_type);
+        compiler.current_block.append(context).ret(ret_val, ret_type);
     }
     Ok(func)
 }

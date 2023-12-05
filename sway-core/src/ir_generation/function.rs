@@ -233,7 +233,7 @@ impl<'eng> FnCompiler<'eng> {
         self.compile_expression(context, md_mgr, ast_expr)
             .map(|val| {
                 if val.get_type(context).map_or(false, |ty| ty.is_ptr(context)) {
-                    self.current_block.ins(context).load(val)
+                    self.current_block.append(context).load(val)
                 } else {
                     val
                 }
@@ -260,8 +260,8 @@ impl<'eng> FnCompiler<'eng> {
             .function
             .new_local_var(context, temp_name, ty, None, false)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
-        let tmp_val = self.current_block.ins(context).get_local(tmp_var);
-        self.current_block.ins(context).store(tmp_val, val);
+        let tmp_val = self.current_block.append(context).get_local(tmp_var);
+        self.current_block.append(context).store(tmp_val, val);
 
         Ok(tmp_val)
     }
@@ -278,7 +278,7 @@ impl<'eng> FnCompiler<'eng> {
         // build field values of the slice
         let ptr_val = self
             .current_block
-            .ins(context)
+            .append(context)
             .ptr_to_int(string_data, int_ty)
             .add_metadatum(context, span_md_idx);
         let len_val = Constant::get_uint(context, 64, string_len);
@@ -300,7 +300,7 @@ impl<'eng> FnCompiler<'eng> {
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
         let struct_val = self
             .current_block
-            .ins(context)
+            .append(context)
             .get_local(struct_var)
             .add_metadatum(context, span_md_idx);
 
@@ -310,14 +310,14 @@ impl<'eng> FnCompiler<'eng> {
             .zip(field_types)
             .enumerate()
             .for_each(|(insert_idx, (insert_val, field_type))| {
-                let gep_val = self.current_block.ins(context).get_elem_ptr_with_idx(
+                let gep_val = self.current_block.append(context).get_elem_ptr_with_idx(
                     struct_val,
                     field_type,
                     insert_idx as u64,
                 );
 
                 self.current_block
-                    .ins(context)
+                    .append(context)
                     .store(gep_val, insert_val)
                     .add_metadatum(context, span_md_idx);
             });
@@ -336,13 +336,13 @@ impl<'eng> FnCompiler<'eng> {
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
         let slice_val = self
             .current_block
-            .ins(context)
+            .append(context)
             .get_local(slice_var)
             .add_metadatum(context, span_md_idx);
 
         // copy the value of the struct variable into the slice
         self.current_block
-            .ins(context)
+            .append(context)
             .mem_copy_bytes(slice_val, struct_val, 16);
 
         // return the slice
@@ -535,7 +535,7 @@ impl<'eng> FnCompiler<'eng> {
                     // instruction. Error out otherwise.
                     Some(block_to_break_to) => Ok(self
                         .current_block
-                        .ins(context)
+                        .append(context)
                         .branch(block_to_break_to, vec![])),
                     None => Err(CompileError::BreakOutsideLoop {
                         span: ast_expr.span.clone(),
@@ -548,7 +548,7 @@ impl<'eng> FnCompiler<'eng> {
                 // instruction. Error out otherwise.
                 Some(block_to_continue_to) => Ok(self
                     .current_block
-                    .ins(context)
+                    .append(context)
                     .branch(block_to_continue_to, vec![])),
                 None => Err(CompileError::ContinueOutsideLoop {
                     span: ast_expr.span.clone(),
@@ -595,14 +595,14 @@ impl<'eng> FnCompiler<'eng> {
             // Convert the key variable to a value using get_local.
             let key_val = compiler
                 .current_block
-                .ins(context)
+                .append(context)
                 .get_local(key_var)
                 .add_metadatum(context, span_md_idx);
 
             // Store the value to the key pointer value
             compiler
                 .current_block
-                .ins(context)
+                .append(context)
                 .store(key_val, value)
                 .add_metadatum(context, span_md_idx);
             Ok(key_val)
@@ -711,7 +711,7 @@ impl<'eng> FnCompiler<'eng> {
                 };
                 Ok(self
                     .current_block
-                    .ins(context)
+                    .append(context)
                     .cmp(pred, lhs_value, rhs_value))
             }
             Intrinsic::Gtf => {
@@ -755,7 +755,7 @@ impl<'eng> FnCompiler<'eng> {
                 // The `gtf` instruction
                 let gtf_reg = self
                     .current_block
-                    .ins(context)
+                    .append(context)
                     .gtf(index, tx_field_id)
                     .add_metadatum(context, span_md_idx);
 
@@ -768,14 +768,14 @@ impl<'eng> FnCompiler<'eng> {
                 {
                     Ok(self
                         .current_block
-                        .ins(context)
+                        .append(context)
                         .bitcast(gtf_reg, target_ir_type)
                         .add_metadatum(context, span_md_idx))
                 } else {
                     let ptr_ty = Type::new_ptr(context, target_ir_type);
                     Ok(self
                         .current_block
-                        .ins(context)
+                        .append(context)
                         .int_to_ptr(gtf_reg, ptr_ty)
                         .add_metadatum(context, span_md_idx))
                 }
@@ -787,7 +787,7 @@ impl<'eng> FnCompiler<'eng> {
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 Ok(self
                     .current_block
-                    .ins(context)
+                    .append(context)
                     .ptr_to_int(value, int_ty)
                     .add_metadatum(context, span_md_idx))
             }
@@ -801,7 +801,7 @@ impl<'eng> FnCompiler<'eng> {
                 let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
                 Ok(self
                     .current_block
-                    .ins(context)
+                    .append(context)
                     .state_clear(key_var, number_of_slots_value)
                     .add_metadatum(context, span_md_idx))
             }
@@ -812,7 +812,7 @@ impl<'eng> FnCompiler<'eng> {
                 let key_var = store_key_in_local_mem(self, context, value, span_md_idx)?;
                 Ok(self
                     .current_block
-                    .ins(context)
+                    .append(context)
                     .state_load_word(key_var)
                     .add_metadatum(context, span_md_idx))
             }
@@ -835,7 +835,7 @@ impl<'eng> FnCompiler<'eng> {
                 let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
                 Ok(self
                     .current_block
-                    .ins(context)
+                    .append(context)
                     .state_store_word(val_value, key_var)
                     .add_metadatum(context, span_md_idx))
             }
@@ -864,18 +864,18 @@ impl<'eng> FnCompiler<'eng> {
                 // For quad word, the IR instructions take in a pointer rather than a raw u64.
                 let val_ptr = self
                     .current_block
-                    .ins(context)
+                    .append(context)
                     .int_to_ptr(val_value, b256_ptr_ty)
                     .add_metadatum(context, span_md_idx);
                 match kind {
                     Intrinsic::StateLoadQuad => Ok(self
                         .current_block
-                        .ins(context)
+                        .append(context)
                         .state_load_quad_word(val_ptr, key_var, number_of_slots_value)
                         .add_metadatum(context, span_md_idx)),
                     Intrinsic::StateStoreQuad => Ok(self
                         .current_block
-                        .ins(context)
+                        .append(context)
                         .state_store_quad_word(val_ptr, key_var, number_of_slots_value)
                         .add_metadatum(context, span_md_idx)),
                     _ => unreachable!(),
@@ -914,7 +914,7 @@ impl<'eng> FnCompiler<'eng> {
                         // The `log` instruction
                         Ok(self
                             .current_block
-                            .ins(context)
+                            .append(context)
                             .log(log_val, log_ty, log_id)
                             .add_metadatum(context, span_md_idx))
                     }
@@ -949,7 +949,7 @@ impl<'eng> FnCompiler<'eng> {
                 let rhs_value = self.compile_expression_to_value(context, md_mgr, rhs)?;
                 Ok(self
                     .current_block
-                    .ins(context)
+                    .append(context)
                     .binary_op(op, lhs_value, rhs_value))
             }
             Intrinsic::Revert => {
@@ -960,7 +960,7 @@ impl<'eng> FnCompiler<'eng> {
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 Ok(self
                     .current_block
-                    .ins(context)
+                    .append(context)
                     .revert(revert_code_val)
                     .add_metadatum(context, span_md_idx))
             }
@@ -985,14 +985,14 @@ impl<'eng> FnCompiler<'eng> {
                 let count = &arguments[1];
                 let lhs_value = self.compile_expression_to_value(context, md_mgr, lhs)?;
                 let count_value = self.compile_expression_to_value(context, md_mgr, count)?;
-                let rhs_value = self.current_block.ins(context).binary_op(
+                let rhs_value = self.current_block.append(context).binary_op(
                     BinaryOpKind::Mul,
                     len_value,
                     count_value,
                 );
                 Ok(self
                     .current_block
-                    .ins(context)
+                    .append(context)
                     .binary_op(op, lhs_value, rhs_value))
             }
             Intrinsic::Smo => {
@@ -1041,7 +1041,7 @@ impl<'eng> FnCompiler<'eng> {
                 // Step 4: Convert the local variable into a value via `get_local`.
                 let message = self
                     .current_block
-                    .ins(context)
+                    .append(context)
                     .get_local(message_ptr)
                     .add_metadatum(context, span_md_idx);
 
@@ -1059,22 +1059,22 @@ impl<'eng> FnCompiler<'eng> {
                     })?;
                 let gep_val = self
                     .current_block
-                    .ins(context)
+                    .append(context)
                     .get_elem_ptr_with_idx(message, u64_ty, 0);
                 self.current_block
-                    .ins(context)
+                    .append(context)
                     .store(gep_val, message_id_val)
                     .add_metadatum(context, span_md_idx);
 
                 // Step 6: Insert the user message data as the second field of the struct
-                let gep_val = self.current_block.ins(context).get_elem_ptr_with_idx(
+                let gep_val = self.current_block.append(context).get_elem_ptr_with_idx(
                     message,
                     user_message_type,
                     1,
                 );
                 let user_message_size = 8 + user_message_type.size(context).in_bytes();
                 self.current_block
-                    .ins(context)
+                    .append(context)
                     .store(gep_val, user_message)
                     .add_metadatum(context, span_md_idx);
 
@@ -1086,7 +1086,7 @@ impl<'eng> FnCompiler<'eng> {
 
                 Ok(self
                     .current_block
-                    .ins(context)
+                    .append(context)
                     .smo(recipient_var, message, user_message_size_val, coins)
                     .add_metadatum(context, span_md_idx))
             }
@@ -1097,7 +1097,7 @@ impl<'eng> FnCompiler<'eng> {
                 let value = self.compile_expression_to_value(context, md_mgr, op)?;
                 Ok(self
                     .current_block
-                    .ins(context)
+                    .append(context)
                     .unary_op(UnaryOpKind::Not, value))
             }
         }
@@ -1124,7 +1124,7 @@ impl<'eng> FnCompiler<'eng> {
             .get_type(context)
             .map(|ret_ty| {
                 self.current_block
-                    .ins(context)
+                    .append(context)
                     .ret(ret_value, ret_ty)
                     .add_metadatum(context, span_md_idx)
             })
@@ -1165,7 +1165,7 @@ impl<'eng> FnCompiler<'eng> {
         );
 
         if !cond_block_end.is_terminated(context) {
-            let cond_builder = cond_block_end.ins(context);
+            let cond_builder = cond_block_end.append(context);
             match ast_op {
                 LazyOp::And => cond_builder.conditional_branch(
                     lhs_val,
@@ -1187,7 +1187,7 @@ impl<'eng> FnCompiler<'eng> {
 
         if !self.current_block.is_terminated(context) {
             self.current_block
-                .ins(context)
+                .append(context)
                 .branch(final_block, vec![rhs_val])
                 .add_metadatum(context, span_md_idx);
         }
@@ -1229,7 +1229,7 @@ impl<'eng> FnCompiler<'eng> {
                 match arg0_type {
                     _ if arg0_type.is_copy_type() => self
                         .current_block
-                        .ins(context)
+                        .append(context)
                         .bitcast(arg0, u64_ty)
                         .add_metadatum(context, span_md_idx),
                     _ => {
@@ -1245,11 +1245,11 @@ impl<'eng> FnCompiler<'eng> {
                                 CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                             })?;
 
-                        let temp_val = self.current_block.ins(context).get_local(temp_var);
-                        self.current_block.ins(context).store(temp_val, arg0);
+                        let temp_val = self.current_block.append(context).get_local(temp_var);
+                        self.current_block.append(context).store(temp_val, arg0);
 
                         // NOTE: Here we're casting the temp pointer to an integer.
-                        self.current_block.ins(context).ptr_to_int(temp_val, u64_ty)
+                        self.current_block.append(context).ptr_to_int(temp_val, u64_ty)
                     }
                 }
             }
@@ -1281,7 +1281,7 @@ impl<'eng> FnCompiler<'eng> {
                 // Initialise each of the fields in the user args struct.
                 let user_args_struct_val = self
                     .current_block
-                    .ins(context)
+                    .append(context)
                     .get_local(user_args_struct_var)
                     .add_metadatum(context, span_md_idx);
                 compiled_args
@@ -1291,7 +1291,7 @@ impl<'eng> FnCompiler<'eng> {
                     .for_each(|(insert_idx, (field_val, field_type))| {
                         let gep_val = self
                             .current_block
-                            .ins(context)
+                            .append(context)
                             .get_elem_ptr_with_idx(
                                 user_args_struct_val,
                                 field_type,
@@ -1300,14 +1300,14 @@ impl<'eng> FnCompiler<'eng> {
                             .add_metadatum(context, span_md_idx);
 
                         self.current_block
-                            .ins(context)
+                            .append(context)
                             .store(gep_val, field_val)
                             .add_metadatum(context, span_md_idx);
                     });
 
                 // NOTE: Here we're casting the args struct pointer to an integer.
                 self.current_block
-                    .ins(context)
+                    .append(context)
                     .ptr_to_int(user_args_struct_val, u64_ty)
                     .add_metadatum(context, span_md_idx)
             }
@@ -1331,7 +1331,7 @@ impl<'eng> FnCompiler<'eng> {
 
         let ra_struct_ptr_val = self
             .current_block
-            .ins(context)
+            .append(context)
             .get_local(ra_struct_var)
             .add_metadatum(context, span_md_idx);
 
@@ -1340,10 +1340,10 @@ impl<'eng> FnCompiler<'eng> {
             self.compile_expression_to_value(context, md_mgr, &call_params.contract_address)?;
         let gep_val =
             self.current_block
-                .ins(context)
+                .append(context)
                 .get_elem_ptr_with_idx(ra_struct_ptr_val, b256_ty, 0);
         self.current_block
-            .ins(context)
+            .append(context)
             .store(gep_val, addr)
             .add_metadatum(context, span_md_idx);
 
@@ -1358,20 +1358,20 @@ impl<'eng> FnCompiler<'eng> {
         .add_metadatum(context, span_md_idx);
         let gep_val =
             self.current_block
-                .ins(context)
+                .append(context)
                 .get_elem_ptr_with_idx(ra_struct_ptr_val, u64_ty, 1);
         self.current_block
-            .ins(context)
+            .append(context)
             .store(gep_val, sel_val)
             .add_metadatum(context, span_md_idx);
 
         // Insert the user args value.
         let gep_val =
             self.current_block
-                .ins(context)
+                .append(context)
                 .get_elem_ptr_with_idx(ra_struct_ptr_val, u64_ty, 2);
         self.current_block
-            .ins(context)
+            .append(context)
             .store(gep_val, user_args_val)
             .add_metadatum(context, span_md_idx);
 
@@ -1409,8 +1409,8 @@ impl<'eng> FnCompiler<'eng> {
                     .map_err(|ir_error| {
                         CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                     })?;
-                let tmp_val = self.current_block.ins(context).get_local(tmp_var);
-                self.current_block.ins(context).store(tmp_val, asset_id_val);
+                let tmp_val = self.current_block.append(context).get_local(tmp_var);
+                self.current_block.append(context).store(tmp_val, asset_id_val);
                 tmp_val
             }
         };
@@ -1421,7 +1421,7 @@ impl<'eng> FnCompiler<'eng> {
             Some(gas_expr) => self.compile_expression_to_value(context, md_mgr, gas_expr)?,
             None => self
                 .current_block
-                .ins(context)
+                .append(context)
                 .read_register(sway_ir::Register::Cgas)
                 .add_metadatum(context, span_md_idx),
         };
@@ -1447,7 +1447,7 @@ impl<'eng> FnCompiler<'eng> {
         // Insert the contract_call instruction
         let call_val = self
             .current_block
-            .ins(context)
+            .append(context)
             .contract_call(
                 return_type,
                 ast_name.to_string(),
@@ -1462,7 +1462,7 @@ impl<'eng> FnCompiler<'eng> {
         Ok(if ret_is_copy_type {
             call_val
         } else {
-            self.current_block.ins(context).load(call_val)
+            self.current_block.append(context).load(call_val)
         })
     }
 
@@ -1551,7 +1551,7 @@ impl<'eng> FnCompiler<'eng> {
 
         Ok(self
             .current_block
-            .ins(context)
+            .append(context)
             .call(new_callee, &args)
             .add_metadatum(context, span_md_idx))
     }
@@ -1601,7 +1601,7 @@ impl<'eng> FnCompiler<'eng> {
         let false_block_end = self.current_block;
 
         cond_block
-            .ins(context)
+            .append(context)
             .conditional_branch(
                 cond_value,
                 true_block_begin,
@@ -1624,12 +1624,12 @@ impl<'eng> FnCompiler<'eng> {
         let merge_val_arg_idx = merge_block.new_arg(context, return_type);
         if !true_block_end.is_terminated(context) {
             true_block_end
-                .ins(context)
+                .append(context)
                 .branch(merge_block, vec![true_value]);
         }
         if !false_block_end.is_terminated(context) {
             false_block_end
-                .ins(context)
+                .append(context)
                 .branch(merge_block, vec![false_value]);
         }
 
@@ -1675,7 +1675,7 @@ impl<'eng> FnCompiler<'eng> {
             })?;
 
         // Get the offset to the variant.
-        Ok(self.current_block.ins(context).get_elem_ptr_with_idcs(
+        Ok(self.current_block.append(context).get_elem_ptr_with_idcs(
             compiled_value,
             variant_type,
             &[1, variant.tag as u64],
@@ -1694,7 +1694,7 @@ impl<'eng> FnCompiler<'eng> {
         let u64_ty = Type::get_uint64(context);
         Ok(self
             .current_block
-            .ins(context)
+            .append(context)
             .get_elem_ptr_with_idx(struct_val, u64_ty, 0)
             .add_metadatum(context, tag_span_md_idx))
     }
@@ -1722,7 +1722,7 @@ impl<'eng> FnCompiler<'eng> {
         // Jump to the while cond block.
         let cond_block = self.function.create_block(context, Some("while".into()));
         if !self.current_block.is_terminated(context) {
-            self.current_block.ins(context).branch(cond_block, vec![]);
+            self.current_block.append(context).branch(cond_block, vec![]);
         }
 
         // Create the break block.
@@ -1748,7 +1748,7 @@ impl<'eng> FnCompiler<'eng> {
         self.compile_code_block(context, md_mgr, body)
             .map_err(|mut x| x.pop().unwrap())?;
         if !self.current_block.is_terminated(context) {
-            self.current_block.ins(context).branch(cond_block, vec![]);
+            self.current_block.append(context).branch(cond_block, vec![]);
         }
 
         // Restore the blocks to jump to now that we're done with the current loop
@@ -1761,14 +1761,14 @@ impl<'eng> FnCompiler<'eng> {
             .create_block(context, Some("end_while".into()));
 
         // Add an unconditional jump from the break block to the final block.
-        break_block.ins(context).branch(final_block, vec![]);
+        break_block.append(context).branch(final_block, vec![]);
 
         // Add the conditional in the cond block which jumps into the body or out to the final
         // block.
         self.current_block = cond_block;
         let cond_value = self.compile_expression_to_value(context, md_mgr, condition)?;
         if !self.current_block.is_terminated(context) {
-            self.current_block.ins(context).conditional_branch(
+            self.current_block.append(context).conditional_branch(
                 cond_value,
                 body_block,
                 final_block,
@@ -1836,7 +1836,7 @@ impl<'eng> FnCompiler<'eng> {
         if let Some(var) = self.get_function_var(context, name.as_str()) {
             Ok(self
                 .current_block
-                .ins(context)
+                .append(context)
                 .get_local(var)
                 .add_metadatum(context, span_md_idx))
         } else if let Some(val) = self.function.get_arg(context, name.as_str()) {
@@ -1910,11 +1910,11 @@ impl<'eng> FnCompiler<'eng> {
         if var_ty.size(context).in_bytes() > 0 {
             let local_ptr = self
                 .current_block
-                .ins(context)
+                .append(context)
                 .get_local(local_var)
                 .add_metadatum(context, span_md_idx);
             self.current_block
-                .ins(context)
+                .append(context)
                 .store(local_ptr, init_val)
                 .add_metadatum(context, span_md_idx);
         }
@@ -1984,11 +1984,11 @@ impl<'eng> FnCompiler<'eng> {
                 Ok(if var_ty.size(context).in_bytes() > 0 {
                     let local_val = self
                         .current_block
-                        .ins(context)
+                        .append(context)
                         .get_local(local_var)
                         .add_metadatum(context, span_md_idx);
                     self.current_block
-                        .ins(context)
+                        .append(context)
                         .store(local_val, const_expr_val)
                         .add_metadatum(context, span_md_idx)
                 } else {
@@ -2018,7 +2018,7 @@ impl<'eng> FnCompiler<'eng> {
             .get_local_var(context, name)
             .map(|var| {
                 self.current_block
-                    .ins(context)
+                    .append(context)
                     .get_local(var)
                     .add_metadatum(context, span_md_idx)
             })
@@ -2103,13 +2103,13 @@ impl<'eng> FnCompiler<'eng> {
 
             // Create the GEP.
             self.current_block
-                .ins(context)
+                .append(context)
                 .get_elem_ptr(lhs_val, field_type, gep_indices)
                 .add_metadatum(context, span_md_idx)
         };
 
         self.current_block
-            .ins(context)
+            .append(context)
             .store(lhs_ptr, reassign_val)
             .add_metadatum(context, span_md_idx);
 
@@ -2141,7 +2141,7 @@ impl<'eng> FnCompiler<'eng> {
 
         let array_value = self
             .current_block
-            .ins(context)
+            .append(context)
             .get_local(array_var)
             .add_metadatum(context, span_md_idx);
 
@@ -2186,7 +2186,7 @@ impl<'eng> FnCompiler<'eng> {
                 let zero = Value::new_constant(context, zero);
                 // Branch to the loop block, passing the initial iteration value.
                 self.current_block
-                    .ins(context)
+                    .append(context)
                     .branch(loop_block, vec![zero]);
                 // Add a block argument (for the IV) to the loop block.
                 let index_var_index = loop_block.new_arg(context, Type::get_uint64(context));
@@ -2197,13 +2197,13 @@ impl<'eng> FnCompiler<'eng> {
                     .create_block(context, Some("array_init_exit".into()));
                 // Start building the loop block.
                 self.current_block = loop_block;
-                let gep_val = self.current_block.ins(context).get_elem_ptr(
+                let gep_val = self.current_block.append(context).get_elem_ptr(
                     array_value,
                     elem_type,
                     vec![index],
                 );
                 self.current_block
-                    .ins(context)
+                    .append(context)
                     .store(gep_val, *const_initializer)
                     .add_metadatum(context, span_md_idx);
                 // Increment index by one.
@@ -2211,17 +2211,17 @@ impl<'eng> FnCompiler<'eng> {
                 let one = Value::new_constant(context, one);
                 let index_inc =
                     self.current_block
-                        .ins(context)
+                        .append(context)
                         .binary_op(BinaryOpKind::Add, index, one);
                 // continue = index_inc < contents.len()
                 let len = Constant::new_uint(context, 64, contents.len() as u64);
                 let len = Value::new_constant(context, len);
                 let r#continue =
                     self.current_block
-                        .ins(context)
+                        .append(context)
                         .cmp(Predicate::LessThan, index_inc, len);
                 // if continue then loop_block else exit_block.
-                self.current_block.ins(context).conditional_branch(
+                self.current_block.append(context).conditional_branch(
                     r#continue,
                     loop_block,
                     exit_block,
@@ -2233,13 +2233,13 @@ impl<'eng> FnCompiler<'eng> {
             } else {
                 // Insert each element separately.
                 for (idx, elem_value) in compiled_elems.iter().enumerate() {
-                    let gep_val = self.current_block.ins(context).get_elem_ptr_with_idx(
+                    let gep_val = self.current_block.append(context).get_elem_ptr_with_idx(
                         array_value,
                         elem_type,
                         idx as u64,
                     );
                     self.current_block
-                        .ins(context)
+                        .append(context)
                         .store(gep_val, *elem_value)
                         .add_metadatum(context, span_md_idx);
                 }
@@ -2253,13 +2253,13 @@ impl<'eng> FnCompiler<'eng> {
             if elem_value.is_diverging(context) {
                 return Ok(elem_value);
             }
-            let gep_val = self.current_block.ins(context).get_elem_ptr_with_idx(
+            let gep_val = self.current_block.append(context).get_elem_ptr_with_idx(
                 array_value,
                 elem_type,
                 idx as u64,
             );
             self.current_block
-                .ins(context)
+                .append(context)
                 .store(gep_val, elem_value)
                 .add_metadatum(context, span_md_idx);
         }
@@ -2330,7 +2330,7 @@ impl<'eng> FnCompiler<'eng> {
 
         Ok(self
             .current_block
-            .ins(context)
+            .append(context)
             .get_elem_ptr(array_val, elem_type, vec![index_val])
             .add_metadatum(context, span_md_idx))
     }
@@ -2378,7 +2378,7 @@ impl<'eng> FnCompiler<'eng> {
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
         let struct_val = self
             .current_block
-            .ins(context)
+            .append(context)
             .get_local(struct_var)
             .add_metadatum(context, span_md_idx);
 
@@ -2388,14 +2388,14 @@ impl<'eng> FnCompiler<'eng> {
             .zip(field_types)
             .enumerate()
             .for_each(|(insert_idx, (insert_val, field_type))| {
-                let gep_val = self.current_block.ins(context).get_elem_ptr_with_idx(
+                let gep_val = self.current_block.append(context).get_elem_ptr_with_idx(
                     struct_val,
                     field_type,
                     insert_idx as u64,
                 );
 
                 self.current_block
-                    .ins(context)
+                    .append(context)
                     .store(gep_val, insert_val)
                     .add_metadatum(context, span_md_idx);
             });
@@ -2448,7 +2448,7 @@ impl<'eng> FnCompiler<'eng> {
 
         Ok(self
             .current_block
-            .ins(context)
+            .append(context)
             .get_elem_ptr_with_idx(struct_val, field_type, field_idx)
             .add_metadatum(context, span_md_idx))
     }
@@ -2485,17 +2485,17 @@ impl<'eng> FnCompiler<'eng> {
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
         let enum_ptr = self
             .current_block
-            .ins(context)
+            .append(context)
             .get_local(enum_var)
             .add_metadatum(context, span_md_idx);
         let u64_ty = Type::get_uint64(context);
         let tag_gep_val = self
             .current_block
-            .ins(context)
+            .append(context)
             .get_elem_ptr_with_idx(enum_ptr, u64_ty, 0)
             .add_metadatum(context, span_md_idx);
         self.current_block
-            .ins(context)
+            .append(context)
             .store(tag_gep_val, tag_value)
             .add_metadatum(context, span_md_idx);
 
@@ -2515,11 +2515,11 @@ impl<'eng> FnCompiler<'eng> {
             })?;
             let gep_val = self
                 .current_block
-                .ins(context)
+                .append(context)
                 .get_elem_ptr_with_idcs(enum_ptr, contents_type, &[1, tag as u64])
                 .add_metadatum(context, span_md_idx);
             self.current_block
-                .ins(context)
+                .append(context)
                 .store(gep_val, contents_value)
                 .add_metadatum(context, span_md_idx);
         }
@@ -2567,7 +2567,7 @@ impl<'eng> FnCompiler<'eng> {
                 })?;
             let tuple_val = self
                 .current_block
-                .ins(context)
+                .append(context)
                 .get_local(tuple_var)
                 .add_metadatum(context, span_md_idx);
 
@@ -2578,11 +2578,11 @@ impl<'eng> FnCompiler<'eng> {
                 .for_each(|(insert_idx, (field_val, field_type))| {
                     let gep_val = self
                         .current_block
-                        .ins(context)
+                        .append(context)
                         .get_elem_ptr_with_idx(tuple_val, field_type, insert_idx as u64)
                         .add_metadatum(context, span_md_idx);
                     self.current_block
-                        .ins(context)
+                        .append(context)
                         .store(gep_val, field_val)
                         .add_metadatum(context, span_md_idx);
                 });
@@ -2613,7 +2613,7 @@ impl<'eng> FnCompiler<'eng> {
             .map(|field_type| {
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 self.current_block
-                    .ins(context)
+                    .append(context)
                     .get_elem_ptr_with_idx(tuple_value, field_type, idx as u64)
                     .add_metadatum(context, span_md_idx)
             })
@@ -2695,7 +2695,7 @@ impl<'eng> FnCompiler<'eng> {
                                             .is_copy_type()
                                     {
                                         // It's a pointer to a copy type.  We need to derefence it.
-                                        self.current_block.ins(context).load(init_val)
+                                        self.current_block.append(context).load(init_val)
                                     } else {
                                         init_val
                                     }
@@ -2736,7 +2736,7 @@ impl<'eng> FnCompiler<'eng> {
         )?;
         Ok(self
             .current_block
-            .ins(context)
+            .append(context)
             .asm_block(registers, body, return_type, returns)
             .add_metadatum(context, whole_block_span_md_idx))
     }
@@ -2810,17 +2810,17 @@ impl<'eng> FnCompiler<'eng> {
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
         let storage_key = self
             .current_block
-            .ins(context)
+            .append(context)
             .get_local(storage_key_ptr)
             .add_metadatum(context, span_md_idx);
 
         // Store the key as the first field in the `StorageKey` struct
         let gep_0_val =
             self.current_block
-                .ins(context)
+                .append(context)
                 .get_elem_ptr_with_idx(storage_key, b256_ty, 0);
         self.current_block
-            .ins(context)
+            .append(context)
             .store(gep_0_val, const_key)
             .add_metadatum(context, span_md_idx);
 
@@ -2828,10 +2828,10 @@ impl<'eng> FnCompiler<'eng> {
         let offset_within_slot_val = Constant::get_uint(context, 64, offset_within_slot);
         let gep_1_val =
             self.current_block
-                .ins(context)
+                .append(context)
                 .get_elem_ptr_with_idx(storage_key, uint64_ty, 1);
         self.current_block
-            .ins(context)
+            .append(context)
             .store(gep_1_val, offset_within_slot_val)
             .add_metadatum(context, span_md_idx);
 
@@ -2841,10 +2841,10 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
         let gep_2_val =
             self.current_block
-                .ins(context)
+                .append(context)
                 .get_elem_ptr_with_idx(storage_key, b256_ty, 2);
         self.current_block
-            .ins(context)
+            .append(context)
             .store(gep_2_val, field_id)
             .add_metadatum(context, span_md_idx);
 

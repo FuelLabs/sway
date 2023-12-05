@@ -465,10 +465,9 @@ impl Function {
             .blocks
             .iter()
             .flat_map(move |block| {
-                context.blocks[block.0]
-                    .instructions
-                    .iter()
-                    .map(move |ins_val| (*block, *ins_val))
+                block
+                    .instruction_iter(context)
+                    .map(move |ins_val| (*block, ins_val))
             })
     }
 
