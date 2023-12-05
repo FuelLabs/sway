@@ -12,7 +12,7 @@ matrix:
           escapes: \\[\\`~]
           delimiters:
           # Ignore all code blocks
-          - open: '(?s)^(?P<open> *`{3,}\s*(\w+,?)+\s*)$'
+          - open: '(?s)^(?P<open> *`{3,}\s*(\w+\s*,?\s*)+.*?)$'
             close: '^( *`{3,})$'
       - pyspelling.filters.markdown:
           markdown_extensions:
