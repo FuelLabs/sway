@@ -11,7 +11,7 @@ use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::BuildTarget;
 use sway_types::Span;
 use tx::output::contract::Contract;
-use tx::{Chargeable, ConsensusParameters, Finalizable};
+use tx::{Cacheable, Chargeable, ConsensusParameters, Finalizable};
 use vm::prelude::SecretKey;
 
 /// The result of a `forc test` invocation.
@@ -815,12 +815,12 @@ fn exec_test(
         }));
         output_index += 1;
     }
+    let consensus_params = tb.get_params().clone();
 
     // Temporarily finalize to calculate `script_gas_limit`
-    let tx = tb.finalize();
-    let consensus_params = ConsensusParameters::default();
+    let tmp_tx = tb.clone().finalize();
     // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
-    let max_gas = tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
+    let max_gas = tmp_tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
     // Increase `script_gas_limit` to the maximum allowed value.
     let script_gas_limit = consensus_params.tx_params().max_gas_per_tx - max_gas;
 
@@ -828,10 +828,7 @@ fn exec_test(
     let tx = tb.finalize_checked(block_height);
 
     let mut interpreter: vm::prelude::Interpreter<_, _, vm::interpreter::NotSupportedEcal> =
-        vm::interpreter::Interpreter::with_storage(
-            storage,
-            tx::ConsensusParameters::default().into(),
-        );
+        vm::interpreter::Interpreter::with_storage(storage, consensus_params.into());
 
     // Execute and return the result.
     let start = std::time::Instant::now();
