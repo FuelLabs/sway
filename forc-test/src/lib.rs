@@ -11,7 +11,7 @@ use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::BuildTarget;
 use sway_types::Span;
 use tx::output::contract::Contract;
-use tx::{Cacheable, Chargeable, ConsensusParameters, Finalizable};
+use tx::{Chargeable, Finalizable};
 use vm::prelude::SecretKey;
 
 /// The result of a `forc test` invocation.
