@@ -23,6 +23,8 @@ use sway_error::{
 use sway_types::{span::Span, Ident, Spanned};
 use sway_utils::iter_prefixes;
 
+use super::GenericShadowingMode;
+
 /// Contextual state tracked and accumulated throughout type-checking.
 pub struct TypeCheckContext<'a> {
     /// The namespace context accumulated throughout type-checking.
@@ -64,6 +66,10 @@ pub struct TypeCheckContext<'a> {
     ///
     /// This is `Sequential` while checking const declarations in functions, otherwise `ItemStyle`.
     const_shadowing_mode: ConstShadowingMode,
+    /// Whether or not a generic type parameters shadows previous generic type parameters.
+    ///
+    /// This is `Disallow` everywhere except while checking type parameters bounds in struct instantiation.
+    generic_shadowing_mode: GenericShadowingMode,
     /// Provides "help text" to `TypeError`s during unification.
     // TODO: We probably shouldn't carry this through the `Context`, but instead pass it directly
     // to `unify` as necessary?
@@ -111,6 +117,7 @@ impl<'a> TypeCheckContext<'a> {
             help_text: "",
             abi_mode: AbiMode::NonAbi,
             const_shadowing_mode: ConstShadowingMode::ItemStyle,
+            generic_shadowing_mode: GenericShadowingMode::Disallow,
             purity: Purity::default(),
             kind: TreeType::Contract,
             disallow_functions: false,
@@ -135,6 +142,7 @@ impl<'a> TypeCheckContext<'a> {
             type_subst: self.type_subst.clone(),
             abi_mode: self.abi_mode.clone(),
             const_shadowing_mode: self.const_shadowing_mode,
+            generic_shadowing_mode: self.generic_shadowing_mode,
             help_text: self.help_text,
             purity: self.purity,
             kind: self.kind.clone(),
@@ -154,6 +162,7 @@ impl<'a> TypeCheckContext<'a> {
             type_subst: self.type_subst,
             abi_mode: self.abi_mode,
             const_shadowing_mode: self.const_shadowing_mode,
+            generic_shadowing_mode: self.generic_shadowing_mode,
             help_text: self.help_text,
             purity: self.purity,
             kind: self.kind,
@@ -224,6 +233,17 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Self {
         Self {
             const_shadowing_mode,
+            ..self
+        }
+    }
+
+    /// Map this `TypeCheckContext` instance to a new one with the given generic shadowing `mode`.
+    pub(crate) fn with_generic_shadowing_mode(
+        self,
+        generic_shadowing_mode: GenericShadowingMode,
+    ) -> Self {
+        Self {
+            generic_shadowing_mode,
             ..self
         }
     }
@@ -299,6 +319,10 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn const_shadowing_mode(&self) -> ConstShadowingMode {
         self.const_shadowing_mode
+    }
+
+    pub(crate) fn generic_shadowing_mode(&self) -> GenericShadowingMode {
+        self.generic_shadowing_mode
     }
 
     pub(crate) fn purity(&self) -> Purity {
@@ -377,8 +401,13 @@ impl<'a> TypeCheckContext<'a> {
         name: Ident,
         item: TyDecl,
     ) -> Result<(), ErrorEmitted> {
-        self.namespace
-            .insert_symbol(handler, name, item, self.const_shadowing_mode)
+        self.namespace.insert_symbol(
+            handler,
+            name,
+            item,
+            self.const_shadowing_mode,
+            self.generic_shadowing_mode,
+        )
     }
 
     /// Get the engines needed for engine threading.
@@ -401,7 +430,7 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Result<TypeId, ErrorEmitted> {
         let type_engine = self.engines.te();
         let module_path = type_info_prefix.unwrap_or(mod_path);
-        let type_id = match type_engine.get(type_id) {
+        let type_id = match (*type_engine.get(type_id)).clone() {
             TypeInfo::Custom {
                 qualified_call_path,
                 type_arguments,
@@ -430,11 +459,11 @@ impl<'a> TypeCheckContext<'a> {
                 self.type_decl_opt_to_type_id(
                     handler,
                     type_decl_opt,
-                    qualified_call_path,
+                    qualified_call_path.clone(),
                     span,
                     enforce_type_arguments,
                     mod_path,
-                    type_arguments,
+                    type_arguments.clone(),
                 )?
             }
             TypeInfo::Array(mut elem_ty, n) => {
@@ -455,7 +484,7 @@ impl<'a> TypeCheckContext<'a> {
 
                 self.engines.te().insert(
                     self.engines,
-                    TypeInfo::Array(elem_ty.clone(), n),
+                    TypeInfo::Array(elem_ty.clone(), n.clone()),
                     elem_ty.span.source_id(),
                 )
             }
@@ -496,7 +525,7 @@ impl<'a> TypeCheckContext<'a> {
                     .get_trait_item_for_type(handler, self.engines, &name, trait_type_id, None)?;
                 if let TyTraitItem::Type(type_ref) = item_ref {
                     let type_decl = self.engines.de().get_type(type_ref.id());
-                    if let Some(ty) = type_decl.ty {
+                    if let Some(ty) = &type_decl.ty {
                         ty.type_id
                     } else {
                         type_id
@@ -646,7 +675,7 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         let type_engine = self.engines().te();
         if let Some(qualified_path_root) = qualified_call_path.clone().qualified_path_root {
-            let root_type_id = match &type_engine.get(qualified_path_root.ty.type_id) {
+            let root_type_id = match &&*type_engine.get(qualified_path_root.ty.type_id) {
                 TypeInfo::Custom {
                     qualified_call_path: call_path,
                     type_arguments,
@@ -670,7 +699,7 @@ impl<'a> TypeCheckContext<'a> {
                 _ => qualified_path_root.ty.type_id,
             };
 
-            let as_trait_opt = match &type_engine.get(qualified_path_root.as_trait) {
+            let as_trait_opt = match &&*type_engine.get(qualified_path_root.as_trait) {
                 TypeInfo::Custom {
                     qualified_call_path: call_path,
                     ..
@@ -719,7 +748,7 @@ impl<'a> TypeCheckContext<'a> {
                 ..
             })) => {
                 // get the copy from the declaration engine
-                let mut new_copy = decl_engine.get_struct(&original_id);
+                let mut new_copy = (*decl_engine.get_struct(&original_id)).clone();
 
                 // monomorphize the copy, in place
                 self.monomorphize_with_modpath(
@@ -746,7 +775,7 @@ impl<'a> TypeCheckContext<'a> {
                 ..
             })) => {
                 // get the copy from the declaration engine
-                let mut new_copy = decl_engine.get_enum(&original_id);
+                let mut new_copy = (*decl_engine.get_enum(&original_id)).clone();
 
                 // monomorphize the copy, in place
                 self.monomorphize_with_modpath(
@@ -790,7 +819,7 @@ impl<'a> TypeCheckContext<'a> {
             })) => {
                 let decl_type = decl_engine.get_type(&decl_id);
 
-                if let Some(ty) = decl_type.ty {
+                if let Some(ty) = &decl_type.ty {
                     ty.type_id
                 } else if let Some(implementing_type) = self.self_type() {
                     type_engine.insert(
@@ -833,8 +862,8 @@ impl<'a> TypeCheckContext<'a> {
         // If the type that we are looking for is the error recovery type, then
         // we want to return the error case without creating a new error
         // message.
-        if let TypeInfo::ErrorRecovery(err) = type_engine.get(type_id) {
-            return Err(err);
+        if let TypeInfo::ErrorRecovery(err) = &*type_engine.get(type_id) {
+            return Err(*err);
         }
 
         // grab the local module
@@ -953,7 +982,7 @@ impl<'a> TypeCheckContext<'a> {
                         .iter()
                         .zip(args_buf.iter())
                         .all(|(p, a)| coercion_check.check(p.type_argument.type_id, a.return_type))
-                    && (matches!(type_engine.get(annotation_type), TypeInfo::Unknown)
+                    && (matches!(&*type_engine.get(annotation_type), TypeInfo::Unknown)
                         || coercion_check.check(annotation_type, method.return_type.type_id))
                 {
                     maybe_method_decl_refs.push(decl_ref);
@@ -976,12 +1005,14 @@ impl<'a> TypeCheckContext<'a> {
                                 qualified_call_path: call_path,
                                 type_arguments,
                                 root_type_id: _,
-                            } = type_engine.get(as_trait)
+                            } = &*type_engine.get(as_trait)
                             {
                                 qualified_call_path = Some(call_path.clone());
                                 // When `<S as Trait<T>>::method()` is used we only add methods to `trait_methods` that
                                 // originate from the qualified trait.
-                                if trait_decl.trait_name == call_path.to_call_path(handler)? {
+                                if trait_decl.trait_name
+                                    == call_path.clone().to_call_path(handler)?
+                                {
                                     let mut params_equal = true;
                                     if let Some(params) = type_arguments {
                                         if params.len() != trait_decl.trait_type_arguments.len() {
@@ -1026,7 +1057,7 @@ impl<'a> TypeCheckContext<'a> {
                         if !skip_insert {
                             trait_methods.insert(
                                 (
-                                    trait_decl.trait_name,
+                                    trait_decl.trait_name.clone(),
                                     trait_decl
                                         .trait_type_arguments
                                         .iter()
@@ -1104,8 +1135,9 @@ impl<'a> TypeCheckContext<'a> {
             return Ok(method_decl_ref);
         }
 
-        if let Some(TypeInfo::ErrorRecovery(err)) =
-            args_buf.get(0).map(|x| type_engine.get(x.return_type))
+        if let Some(TypeInfo::ErrorRecovery(err)) = args_buf
+            .get(0)
+            .map(|x| (*type_engine.get(x.return_type)).clone())
         {
             Err(err)
         } else {
@@ -1276,13 +1308,27 @@ impl<'a> TypeCheckContext<'a> {
         type_id: TypeId,
         trait_name: &CallPath,
     ) -> Vec<ty::TyTraitItem> {
+        self.get_items_for_type_and_trait_name_and_trait_type_arguments(type_id, trait_name, vec![])
+    }
+
+    pub(crate) fn get_items_for_type_and_trait_name_and_trait_type_arguments(
+        &self,
+        type_id: TypeId,
+        trait_name: &CallPath,
+        trait_type_args: Vec<TypeArgument>,
+    ) -> Vec<ty::TyTraitItem> {
         // Use trait name with full path, improves consistency between
         // this get and inserting in `insert_trait_implementation`.
         let trait_name = trait_name.to_fullpath(self.namespace);
 
         self.namespace
             .implemented_traits
-            .get_items_for_type_and_trait_name(self.engines, type_id, &trait_name)
+            .get_items_for_type_and_trait_name_and_trait_type_arguments(
+                self.engines,
+                type_id,
+                &trait_name,
+                trait_type_args,
+            )
     }
 
     /// Given a `value` of type `T` that is able to be monomorphized and a set

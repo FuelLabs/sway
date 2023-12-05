@@ -163,15 +163,21 @@ impl TypeParameter {
         let name_a = Ident::new_with_override("self".into(), self.name_ident.span());
         let name_b = Ident::new_with_override("Self".into(), self.name_ident.span());
         let const_shadowing_mode = ctx.const_shadowing_mode();
+        let generic_shadowing_mode = ctx.generic_shadowing_mode();
         let _ = ctx.namespace.insert_symbol(
             handler,
             name_a,
             type_parameter_decl.clone(),
             const_shadowing_mode,
+            generic_shadowing_mode,
         );
-        let _ =
-            ctx.namespace
-                .insert_symbol(handler, name_b, type_parameter_decl, const_shadowing_mode);
+        let _ = ctx.namespace.insert_symbol(
+            handler,
+            name_b,
+            type_parameter_decl,
+            const_shadowing_mode,
+            generic_shadowing_mode,
+        );
     }
 
     /// Type check a list of [TypeParameter] and return a new list of
@@ -309,7 +315,6 @@ impl TypeParameter {
         type_parameter: TypeParameter,
     ) -> Result<(), ErrorEmitted> {
         let type_engine = ctx.engines.te();
-        let engines = ctx.engines();
 
         let mut trait_constraints_with_supertraits: Vec<TraitConstraint> = type_parameter
             .trait_constraints
@@ -327,7 +332,6 @@ impl TypeParameter {
         // Trait constraints mutate so we replace the previous type id associated TypeInfo.
         type_engine.replace(
             type_parameter.type_id,
-            engines,
             TypeSourceInfo {
                 type_info: TypeInfo::UnknownGeneric {
                     name: type_parameter.name_ident.clone(),
@@ -402,7 +406,7 @@ impl TypeParameter {
         Ok(())
     }
 
-    fn insert_into_namespace_self(
+    pub(crate) fn insert_into_namespace_self(
         &self,
         handler: &Handler,
         mut ctx: TypeCheckContext,

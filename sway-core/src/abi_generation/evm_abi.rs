@@ -40,7 +40,10 @@ fn get_type_str(
             abi_str(&type_engine.get(*type_id), type_engine, decl_engine)
         )
     } else {
-        match (type_engine.get(*type_id), type_engine.get(resolved_type_id)) {
+        match (
+            &*type_engine.get(*type_id),
+            &*type_engine.get(resolved_type_id),
+        ) {
             (TypeInfo::Custom { .. }, TypeInfo::Struct { .. }) => {
                 format!(
                     "struct {}",

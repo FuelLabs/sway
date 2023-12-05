@@ -21,6 +21,7 @@ etk-dasm = { package = "fuel-etk-dasm", version = "0.3.1-dev" }
 etk-ops = { package = "fuel-etk-ops", version = "0.3.1-dev" }
 fuel-abi-types = "0.1"
 fuel-vm = { workspace = true, features = ["serde"] }
+graph-cycles = "0.1.0"
 hashbrown = "0.13.1"
 hex = { version = "0.4", optional = true }
 im = "15.0"

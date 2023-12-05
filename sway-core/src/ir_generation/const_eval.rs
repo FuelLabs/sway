@@ -1,7 +1,6 @@
 use std::ops::{BitAnd, BitOr, BitXor, Not, Rem};
 
 use crate::{
-    asm_generation::from_ir::{ir_type_size_in_bytes, ir_type_str_size_in_bytes},
     engine_threading::*,
     language::{
         ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
@@ -133,7 +132,7 @@ pub(crate) fn compile_const_decl(
             let const_decl = match decl {
                 Ok(decl) => match decl {
                     ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
-                        Some(env.engines.de().get_constant(decl_id))
+                        Some((*env.engines.de().get_constant(decl_id)).clone())
                     }
                     _otherwise => const_decl.cloned(),
                 },
@@ -159,7 +158,7 @@ pub(crate) fn compile_const_decl(
                         env.module_ns,
                         env.function_compiler,
                         &call_path,
-                        &value.unwrap(),
+                        &value.clone().unwrap(),
                         is_configurable,
                     )?;
 
@@ -268,7 +267,7 @@ fn const_eval_typed_expr(
 ) -> Result<Option<Constant>, ConstEvalError> {
     Ok(match &expr.expression {
         ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
-            let implied_lit = match lookup.engines.te().get(expr.return_type) {
+            let implied_lit = match &*lookup.engines.te().get(expr.return_type) {
                 TypeInfo::UnsignedInteger(IntegerBits::Eight) => Literal::U8(*n as u8),
                 _ => Literal::U64(*n),
             };
@@ -672,6 +671,7 @@ fn const_eval_codeblock(
                 let ty_const_decl = lookup.engines.de().get_constant(&const_decl.decl_id);
                 if let Some(constant) = ty_const_decl
                     .value
+                    .clone()
                     .and_then(|expr| const_eval_typed_expr(lookup, known_consts, &expr).ok())
                     .flatten()
                 {
@@ -942,7 +942,7 @@ fn const_eval_intrinsic(
             .map_err(ConstEvalError::CompileError)?;
             Ok(Some(Constant {
                 ty: Type::get_uint64(lookup.context),
-                value: ConstantValue::Uint(ir_type_size_in_bytes(lookup.context, &ir_type)),
+                value: ConstantValue::Uint(ir_type.size(lookup.context).in_bytes()),
             }))
         }
         Intrinsic::SizeOfVal => {
@@ -958,7 +958,7 @@ fn const_eval_intrinsic(
             .map_err(ConstEvalError::CompileError)?;
             Ok(Some(Constant {
                 ty: Type::get_uint64(lookup.context),
-                value: ConstantValue::Uint(ir_type_size_in_bytes(lookup.context, &ir_type)),
+                value: ConstantValue::Uint(ir_type.size(lookup.context).in_bytes()),
             }))
         }
         Intrinsic::SizeOfStr => {
@@ -973,7 +973,9 @@ fn const_eval_intrinsic(
             .map_err(ConstEvalError::CompileError)?;
             Ok(Some(Constant {
                 ty: Type::get_uint64(lookup.context),
-                value: ConstantValue::Uint(ir_type_str_size_in_bytes(lookup.context, &ir_type)),
+                value: ConstantValue::Uint(
+                    ir_type.get_string_len(lookup.context).unwrap_or_default(),
+                ),
             }))
         }
         Intrinsic::AssertIsStrArray => {
@@ -1159,7 +1161,7 @@ mod tests {
             ty::TyAstNodeContent::Expression(expr_under_test) => expr_under_test.clone(),
             ty::TyAstNodeContent::Declaration(crate::language::ty::TyDecl::ConstantDecl(decl)) => {
                 let decl = engines.de().get_constant(&decl.decl_id);
-                decl.value.unwrap()
+                decl.value.clone().unwrap()
             }
             x => todo!("{x:?}"),
         };

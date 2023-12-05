@@ -6,7 +6,6 @@ use super::{
     types::*,
 };
 use crate::{
-    asm_generation::from_ir::{ir_type_size_in_bytes, ir_type_str_size_in_bytes},
     engine_threading::*,
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
@@ -364,7 +363,7 @@ impl<'eng> FnCompiler<'eng> {
                 self.compile_string_slice(context, span_md_idx, string_data, string_len)
             }
             ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
-                let implied_lit = match self.engines.te().get(ast_expr.return_type) {
+                let implied_lit = match &*self.engines.te().get(ast_expr.return_type) {
                     TypeInfo::UnsignedInteger(IntegerBits::Eight) => Literal::U8(*n as u8),
                     _ => Literal::U64(*n),
                 };
@@ -625,8 +624,11 @@ impl<'eng> FnCompiler<'eng> {
                     &exp.span,
                 )?;
                 self.compile_expression_to_value(context, md_mgr, exp)?;
-                let size = ir_type_size_in_bytes(context, &ir_type);
-                Ok(Constant::get_uint(context, 64, size))
+                Ok(Constant::get_uint(
+                    context,
+                    64,
+                    ir_type.size(context).in_bytes(),
+                ))
             }
             Intrinsic::SizeOfType => {
                 let targ = type_arguments[0].clone();
@@ -640,7 +642,7 @@ impl<'eng> FnCompiler<'eng> {
                 Ok(Constant::get_uint(
                     context,
                     64,
-                    ir_type_size_in_bytes(context, &ir_type),
+                    ir_type.size(context).in_bytes(),
                 ))
             }
             Intrinsic::SizeOfStr => {
@@ -655,7 +657,7 @@ impl<'eng> FnCompiler<'eng> {
                 Ok(Constant::get_uint(
                     context,
                     64,
-                    ir_type_str_size_in_bytes(context, &ir_type),
+                    ir_type.get_string_len(context).unwrap_or_default(),
                 ))
             }
             Intrinsic::IsReferenceType => {
@@ -666,7 +668,7 @@ impl<'eng> FnCompiler<'eng> {
             Intrinsic::IsStrArray => {
                 let targ = type_arguments[0].clone();
                 let val = matches!(
-                    engines.te().get_unaliased(targ.type_id),
+                    &*engines.te().get_unaliased(targ.type_id),
                     TypeInfo::StringArray(_) | TypeInfo::StringSlice
                 );
                 Ok(Constant::get_bool(context, val))
@@ -977,8 +979,7 @@ impl<'eng> FnCompiler<'eng> {
                     &len.type_id,
                     &len.span,
                 )?;
-                let len_value =
-                    Constant::get_uint(context, 64, ir_type_size_in_bytes(context, &ir_type));
+                let len_value = Constant::get_uint(context, 64, ir_type.size(context).in_bytes());
 
                 let lhs = &arguments[0];
                 let count = &arguments[1];
@@ -1071,7 +1072,7 @@ impl<'eng> FnCompiler<'eng> {
                     user_message_type,
                     1,
                 );
-                let user_message_size = 8 + ir_type_size_in_bytes(context, &user_message_type);
+                let user_message_size = 8 + user_message_type.size(context).in_bytes();
                 self.current_block
                     .ins(context)
                     .store(gep_val, user_message)
@@ -1874,7 +1875,7 @@ impl<'eng> FnCompiler<'eng> {
         // Nothing to do for an abi cast declarations. The address specified in them is already
         // provided in each contract call node in the AST.
         if matches!(
-            &self.engines.te().get_unaliased(body.return_type),
+            &&*self.engines.te().get_unaliased(body.return_type),
             TypeInfo::ContractCaller { .. }
         ) {
             return Ok(None);
@@ -1903,10 +1904,10 @@ impl<'eng> FnCompiler<'eng> {
             .new_local_var(context, local_name.clone(), return_type, None, mutable)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
-        // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
+        // We can have empty aggregates, especially arrays, which shouldn't be initialized, but
         // otherwise use a store.
         let var_ty = local_var.get_type(context);
-        if ir_type_size_in_bytes(context, &var_ty) > 0 {
+        if var_ty.size(context).in_bytes() > 0 {
             let local_ptr = self
                 .current_block
                 .ins(context)
@@ -1980,7 +1981,7 @@ impl<'eng> FnCompiler<'eng> {
                 // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
                 // otherwise use a store.
                 let var_ty = local_var.get_type(context);
-                Ok(if ir_type_size_in_bytes(context, &var_ty) > 0 {
+                Ok(if var_ty.size(context).in_bytes() > 0 {
                     let local_val = self
                         .current_block
                         .ins(context)
@@ -2049,32 +2050,23 @@ impl<'eng> FnCompiler<'eng> {
                 .lhs_indices
                 .iter()
                 .scan(ast_reassignment.lhs_type, |cur_type_id, idx_kind| {
-                    let cur_type_info = self.engines.te().get_unaliased(*cur_type_id);
+                    let cur_type_info_arc = self.engines.te().get_unaliased(*cur_type_id);
+                    let cur_type_info = &*cur_type_info_arc;
                     Some(match (idx_kind, cur_type_info) {
                         (
                             ProjectionKind::StructField { name: idx_name },
                             TypeInfo::Struct(decl_ref),
                         ) => {
-                            // Get the struct type info, with field names.
-                            let ty::TyStructDecl {
-                                call_path: struct_call_path,
-                                fields: struct_fields,
-                                ..
-                            } = self.engines.de().get_struct(&decl_ref);
+                            let struct_decl = self.engines.de().get_struct(decl_ref);
 
-                            // Search for the index to the field name we're after, and its type
-                            // id.
-                            struct_fields
-                                .iter()
-                                .enumerate()
-                                .find(|(_, field)| field.name == *idx_name)
-                                .map(|(idx, field)| (idx as u64, field.type_argument.type_id))
+                            struct_decl
+                                .get_field_index_and_type(idx_name)
                                 .ok_or_else(|| {
                                     CompileError::InternalOwned(
                                         format!(
                                             "Unknown field name '{idx_name}' for struct '{}' \
                                                 in reassignment.",
-                                            struct_call_path.suffix.as_str(),
+                                            struct_decl.call_path.suffix.as_str(),
                                         ),
                                         ast_reassignment.lhs_base_name.span(),
                                     )
@@ -2425,29 +2417,23 @@ impl<'eng> FnCompiler<'eng> {
         let struct_val = self.compile_expression_to_ptr(context, md_mgr, ast_struct_expr)?;
 
         // Get the struct type info, with field names.
-        let TypeInfo::Struct(decl_ref) = self.engines.te().get_unaliased(struct_type_id) else {
+        let decl = self.engines.te().get_unaliased(struct_type_id);
+        let TypeInfo::Struct(decl_ref) = &*decl else {
             return Err(CompileError::Internal(
                 "Unknown struct in field expression.",
                 ast_field.span.clone(),
             ));
         };
-        let crate::language::ty::TyStructDecl {
-            call_path: struct_call_path,
-            fields: struct_fields,
-            ..
-        } = self.engines.de().get_struct(&decl_ref);
 
-        // Search for the index to the field name we're after, and its type id.
-        let (field_idx, field_type_id) = struct_fields
-            .iter()
-            .enumerate()
-            .find(|(_, field)| field.name == ast_field.name)
-            .map(|(idx, field)| (idx as u64, field.type_argument.type_id))
+        let struct_decl = self.engines.de().get_struct(decl_ref);
+
+        let (field_idx, field_type_id) = struct_decl
+            .get_field_index_and_type(&ast_field.name)
             .ok_or_else(|| {
                 CompileError::InternalOwned(
                     format!(
                         "Unknown field name '{}' for struct '{}' in field expression.",
-                        struct_call_path.suffix.as_str(),
+                        struct_decl.call_path.suffix.as_str(),
                         ast_field.name
                     ),
                     ast_field.span.clone(),
@@ -2757,31 +2743,6 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, whole_block_span_md_idx))
     }
 
-    /// Get the offset, in words, to a particular field in an aggregate type.
-    fn get_offset(
-        &mut self,
-        context: &mut Context,
-        ty: &Type,
-        indices: &[u64],
-    ) -> Result<u64, CompileError> {
-        let mut offset = 0;
-        let mut ty_at_idx = *ty;
-        for index in indices.iter() {
-            let fields = ty_at_idx.get_field_types(context);
-            for (field_idx, field_type) in fields.into_iter().enumerate() {
-                if (field_idx as u64) >= *index {
-                    ty_at_idx = field_type;
-                    break;
-                }
-                offset += size_bytes_round_up_to_word_alignment!(ir_type_size_in_bytes(
-                    context,
-                    &field_type
-                ));
-            }
-        }
-        Ok(offset / 8)
-    }
-
     fn compile_storage_read(
         &mut self,
         context: &mut Context,
@@ -2794,7 +2755,27 @@ impl<'eng> FnCompiler<'eng> {
         // within the slot. The offset depends on what field of the top level storage
         // variable is being accessed.
         let (storage_key, offset_within_slot) = {
-            let offset_in_words = self.get_offset(context, base_type, indices)?;
+            let offset_in_words = match base_type.get_indexed_offset(context, indices) {
+                Some(offset_in_bytes) => {
+                    // TODO-MEMLAY: Warning! Here we make an assumption about the memory layout of structs.
+                    //       The memory layout of structs can be changed in the future.
+                    //       We will not refactor the Storage API at the moment to remove this
+                    //       assumption. It is a questionable effort because we anyhow
+                    //       want to improve and refactor Storage API in the future.
+                    assert!(
+                        offset_in_bytes % 8 == 0,
+                        "Expected struct fields to be aligned to word boundary. The field offset in bytes was {}.",
+                        offset_in_bytes
+                    );
+                    offset_in_bytes / 8
+                }
+                None => {
+                    return Err(CompileError::Internal(
+                        "Cannot get the offset within the slot while compiling storage read.",
+                        Span::dummy(),
+                    ))
+                }
+            };
             let offset_in_slots = offset_in_words / 4;
             let offset_remaining = offset_in_words % 4;
 
