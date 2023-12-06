@@ -88,6 +88,8 @@ pub struct Session {
     // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
     pub diagnostics: Arc<RwLock<DiagnosticMap>>,
     pub metrics: DashMap<SourceId, PerformanceData>,
+
+    pub compiling_version: RwLock<i32>,
 }
 
 impl Default for Session {
@@ -108,6 +110,7 @@ impl Session {
             sync: SyncWorkspace::new(),
             parse_permits: Arc::new(Semaphore::new(2)),
             diagnostics: Arc::new(RwLock::new(DiagnosticMap::new())),
+            compiling_version: RwLock::new(1),
         }
     }
 
@@ -507,19 +510,19 @@ pub fn traverse(
 
         // The final element in the results is the main program.
         if i == results_len - 1 {
-            eprintln!("users module");
-            eprintln!("traversing lexed tree");
+            //eprintln!("users module");
+            //eprintln!("traversing lexed tree");
             // First, populate our token_map with sway keywords.
             lexed_tree::parse(&lexed, &ctx);
 
             // Next, populate our token_map with un-typed yet parsed ast nodes.
-            eprintln!("traversing parsed tree");
+            //eprintln!("traversing parsed tree");
             let parsed_tree = ParsedTree::new(&ctx);
             parsed_tree.collect_module_spans(&parsed);
             parse_ast_to_tokens(&parsed, &ctx, |an, _ctx| parsed_tree.traverse_node(an));
 
             // Finally, populate our token_map with typed ast nodes.
-            eprintln!("traversing typed tree");
+            //eprintln!("traversing typed tree");
             let typed_tree = TypedTree::new(&ctx);
             typed_tree.collect_module_spans(typed_program);
             parse_ast_to_typed_tokens(typed_program, &ctx, |node, _ctx| {
@@ -528,14 +531,14 @@ pub fn traverse(
 
             programs = Some((lexed, parsed, typed_program.clone()));
         } else {
-            eprint!("dependency module");
+            //eprint!("dependency module");
             // Collect tokens from dependencies and the standard library prelude.
-            eprintln!("traversing parsed tree");
+            //eprintln!("traversing parsed tree");
             parse_ast_to_tokens(&parsed, &ctx, |an, ctx| {
                 dependency::collect_parsed_declaration(an, ctx)
             });
 
-            eprintln!("traversing typed tree");
+            //eprintln!("traversing typed tree");
             parse_ast_to_typed_tokens(typed_program, &ctx, |node, ctx| {
                 dependency::collect_typed_declaration(node, ctx)
             });

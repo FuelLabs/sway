@@ -353,25 +353,25 @@ impl Parse for ty::TyExpression {
                 collect_call_path_prefixes(ctx, &call_path_binding.inner.prefixes);
 
                 fields.iter().for_each(|field| {
-                    dbg!();
+                    //dbg!();
 
                     if let Some(mut token) =
                         ctx.tokens.try_get_mut(&ctx.ident(&field.name)).try_unwrap()
                     {
-                        dbg!();
+                        //dbg!();
 
                         token.typed = Some(TypedAstToken::TypedExpression(field.value.clone()));
 
-                        dbg!();
+                        //dbg!();
 
                         if let Some(struct_decl) = &ctx
                             .tokens
                             .struct_declaration_of_type_id(ctx.engines, &self.return_type)
                         {
-                            dbg!();
+                            //dbg!();
 
                             struct_decl.fields.iter().for_each(|decl_field| {
-                                dbg!();
+                                //dbg!();
 
                                 if decl_field.name == field.name {
                                     token.type_def =
@@ -380,7 +380,7 @@ impl Parse for ty::TyExpression {
                             });
                         }
                     }
-                    dbg!();
+                    //dbg!();
 
                     field.value.parse(ctx);
                 });

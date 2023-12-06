@@ -88,6 +88,7 @@ impl ServerState {
         version: Option<i32>,
         session: Arc<Session>,
     ) {
+        eprintln!("calling parse_project | version {:?}", version);
         match run_blocking_parse_project(uri.clone(), version, session.clone()).await {
             Ok(_) => {
                 // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
@@ -119,28 +120,65 @@ async fn run_blocking_parse_project(
 ) -> Result<(), LanguageServerError> {
     // Acquire a permit to parse the project. If there are none available, return false. This way,
     // we avoid publishing the same diagnostics multiple times.
-    if session.parse_permits.try_acquire().is_err() {
-        return Err(LanguageServerError::UnableToAcquirePermit);
-    }
+    // if session.parse_permits.try_acquire().is_err() {
+    //     return Err(LanguageServerError::UnableToAcquirePermit);
+    // }
 
-    eprintln!("calling run_blocking_parse_project");
-    tokio::task::spawn_blocking(move || {
+    tokio::spawn(async move {
+    // tokio::task::spawn_blocking(move || {
+        // if let Some(version) = version {
+        //     eprintln!("compiling version {:?} | version - 1 {:?}", *session.compiling_version.read(), version - 1);
+        //     if *session.compiling_version.read() <= version - 1  {
+        //         eprintln!("skipping parsing as not latest version");
+        //         return Ok(());
+        //     }
+        // }
+        // eprintln!("run_blocking_parse_project | version {:?}", version);
+
+        if let Some(version) = version {
+            // Try to acquire a write lock immediately.
+            let mut latest_version = session.compiling_version.write();
+
+            // Check if the current version is outdated.
+            if *latest_version >= version {
+                // If the version is not the latest, return early.
+                eprintln!("Skipping parsing as not latest version");
+                return Ok(());
+            }
+
+            // If this is the latest version, update the version.
+            *latest_version = version;
+
+            // Drop the write lock as soon as possible.
+            drop(latest_version);
+
+            // Proceed with heavy computation.
+            eprintln!("Running heavy computation for version {:?}", version);
+
+            // ... Your heavy computation logic ...
+        }
+
         // Lock the diagnostics result to prevent multiple threads from parsing the project at the same time.
         let mut diagnostics = session.diagnostics.write();
 
         if let Some(version) = version {
             // Garbage collection is fairly expsensive so we only clear on every 10th keystroke.
             //if version % 10 == 0 {
-                eprintln!("garbage collecting");
-                if let Err(err) = session.garbage_collect() {
-                    tracing::error!("Unable to perform garbage collection: {}", err.to_string());
-                }
+                // eprintln!("garbage collecting");
+                // if let Err(err) = session.garbage_collect() {
+                //     tracing::error!("Unable to perform garbage collection: {}", err.to_string());
+                // }
             //}
         }
         let parse_result = session::parse_project(&uri, &session.engines.read())?;
         let (errors, warnings) = parse_result.diagnostics.clone();
         session.write_parse_result(parse_result);
         *diagnostics = get_diagnostics(&warnings, &errors, session.engines.read().se());
+        
+        // if let Some(version) = version {
+        //     *session.compiling_version.write() = version;
+        // }
+
         Ok(())
     })
     .await

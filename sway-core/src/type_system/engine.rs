@@ -376,21 +376,21 @@ impl TypeEngine {
 
 /// Maps specific `TypeInfo` variants to a reserved `SourceId`, returning `None` for non-mapped types.
 fn info_to_source_id(ty: &TypeInfo) -> Option<SourceId> {
-    // match ty {
-    //     TypeInfo::Unknown
-    //     | TypeInfo::UnsignedInteger(_)
-    //     | TypeInfo::Numeric
-    //     | TypeInfo::Boolean
-    //     | TypeInfo::B256
-    //     | TypeInfo::RawUntypedPtr
-    //     | TypeInfo::RawUntypedSlice
-    //     | TypeInfo::StringSlice
-    //     | TypeInfo::Contract
-    //     | TypeInfo::StringArray(_)
-    //     | TypeInfo::Array(_, _) => Some(SourceId::reserved()),
-    //     TypeInfo::Tuple(v) if v.is_empty() => Some(SourceId::reserved()),
-    //     _ => None,
-    // }
+    match ty {
+        TypeInfo::Unknown
+        | TypeInfo::UnsignedInteger(_)
+        | TypeInfo::Numeric
+        | TypeInfo::Boolean
+        | TypeInfo::B256
+        | TypeInfo::RawUntypedPtr
+        | TypeInfo::RawUntypedSlice
+        | TypeInfo::StringSlice
+        | TypeInfo::Contract
+        | TypeInfo::StringArray(_)
+        | TypeInfo::Array(_, _) => Some(SourceId::reserved()),
+        TypeInfo::Tuple(v) if v.is_empty() => Some(SourceId::reserved()),
+        _ => None,
+    }
 
-    Some(SourceId::reserved())
+    // Some(SourceId::reserved())
 }

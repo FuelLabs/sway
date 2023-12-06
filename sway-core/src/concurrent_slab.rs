@@ -77,12 +77,12 @@ where
     }
 
     pub fn retain(&self, predicate: impl Fn(&T) -> bool) {
-        {eprintln!("retain length original: {}", self.inner.read().unwrap().len());}
+        //{eprintln!("retain length original: {}", self.inner.read().unwrap().len());}
         {
             let mut inner = self.inner.write().unwrap();
             inner.retain(predicate);
         }
-        {eprintln!("retain length afterwards: {}", self.inner.read().unwrap().len());}
+        //{eprintln!("retain length afterwards: {}", self.inner.read().unwrap().len());}
 
     }
 }

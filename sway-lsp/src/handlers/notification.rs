@@ -15,6 +15,7 @@ pub async fn handle_did_open_text_document(
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)?;
     session.handle_open_file(&uri);
+
     // If the token map is empty, then we need to parse the project.
     // Otherwise, don't recompile the project when a new file in the project is opened
     // as the workspace is already compiled.
@@ -35,6 +36,8 @@ pub async fn handle_did_change_text_document(
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)?;
     session.write_changes_to_file(&uri, params.content_changes)?;
+    
+    eprintln!("did change version {:?}", params.text_document.version);
     state
         .parse_project(
             uri,
@@ -43,6 +46,7 @@ pub async fn handle_did_change_text_document(
             session.clone(),
         )
         .await;
+
     Ok(())
 }
 
@@ -55,6 +59,7 @@ pub(crate) async fn handle_did_save_text_document(
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)?;
     session.sync.resync()?;
+    
     state
         .parse_project(uri, params.text_document.uri, None, session.clone())
         .await;
