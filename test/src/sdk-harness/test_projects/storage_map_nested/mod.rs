@@ -12,7 +12,7 @@ async fn test_storage_map_nested_instance() -> TestStorageMapNestedContract<Wall
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 

@@ -376,10 +376,7 @@ impl Session {
                     tree_type: typed_program.kind.tree_type(),
                     test_name: Some(decl.name.to_string()),
                 });
-                self.runnables
-                    .entry(path)
-                    .or_insert(Vec::new())
-                    .push(runnable);
+                self.runnables.entry(path).or_default().push(runnable);
             }
         }
 
@@ -396,10 +393,7 @@ impl Session {
                     range: token::get_range_from_span(&span.clone()),
                     tree_type: typed_program.kind.tree_type(),
                 });
-                self.runnables
-                    .entry(path)
-                    .or_insert(Vec::new())
-                    .push(runnable);
+                self.runnables.entry(path).or_default().push(runnable);
             }
         }
     }

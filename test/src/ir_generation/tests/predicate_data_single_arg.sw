@@ -13,15 +13,15 @@ fn main(x: u64) -> bool {
 // regex: REG=\$r\d+
 
 // check: gm   $(r2=$REG) i3
-// check: gtf  $(r1=$REG) $r2 i257
+// check: gtf  $(r1=$REG) $r2 i512
 // nextln: jnzf $r1 $$zero $IMM
-// nextln: gtf  $(r3=$REG) $r2 i269
+// nextln: gtf  $(r3=$REG) $r2 i524
 // nextln: jmpf $$zero $IMM
 // nextln: movi $(r0=$REG) i2
 // nextln: eq   $r1 $r1 $r0
 // nextln: xori $r1 $r1 i1
 // nextln: jnzf $r1 $$zero $IMM
-// nextln: gtf  $r3 $r2 i287
+// nextln: gtf  $r3 $r2 i586
 // nextln: jmpf $$zero $IMM
 // nextln: ret  $$zero
 

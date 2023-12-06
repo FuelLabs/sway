@@ -28,7 +28,7 @@ async fn get_messages_contract_instance() -> (
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallets[0], TxParameters::default())
+    .deploy(&wallets[0], TxPolicies::default())
     .await
     .unwrap();
 
@@ -38,7 +38,7 @@ async fn get_messages_contract_instance() -> (
             &messages_contract_id,
             amount_per_coin >> 1,
             AssetId::BASE,
-            TxParameters::default(),
+            TxPolicies::default(),
         )
         .await
         .unwrap();

@@ -10,16 +10,14 @@ publish = false
 assert_matches = "1.5.0"
 
 # Dependencies from the `fuel-core` repository:
-fuel-core = { version = "0.20.8", default-features = false }
-fuel-core-client = { version = "0.20.8", default-features = false }
+fuel-core = { version = "0.21.0", default-features = false }
+fuel-core-client = { version = "0.21.0", default-features = false }
 
 # Dependencies from the `fuel-vm` repository:
-fuel-vm = "0.35.4"
+fuel-vm = "0.43.1"
 
 # Dependencies from the `fuels-rs` repository:
-fuels = { git = "https://github.com/FuelLabs/fuels-rs.git", branch = "hal3e/tx-status-log-and-response", features = [
-    "fuel-core-lib",
-]}
+fuels = { version = "0.53.0", features = ["fuel-core-lib"] }
 
 hex = "0.4.3"
 pretty_assertions = "1.4.0"
