@@ -18,7 +18,7 @@ abigen!(
     ),
     Predicate(
         name = "TestPredicate",
-        abi = "test_projects/tx_fields/out/debug/tx_predicate-abi.json"
+        abi = "test_projects/tx_fields/out/debug/tx_fields-abi.json"
     ),
     Predicate(
         name = "TestOutputPredicate",
