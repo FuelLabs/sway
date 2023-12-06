@@ -15,7 +15,7 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
-  RUST_VERSION: 1.72.1
+  RUST_VERSION: 1.73.0
   NIGHTLY_RUST_VERSION: nightly-2023-08-27
 
 jobs:
@@ -255,7 +255,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.20.3
+        image: ghcr.io/fuellabs/fuel-core:v0.21.0
         ports:
           - 4000:4000
     steps:

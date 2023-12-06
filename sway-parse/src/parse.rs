@@ -51,9 +51,8 @@ macro_rules! impl_tuple (
         where
             $($name: Parse,)*
         {
+            #[allow(unused)]
             fn parse(parser: &mut Parser) -> ParseResult<($($name,)*)> {
-                #[allow(unused)]
-                let parser = parser;
                 $(
                     #[allow(non_snake_case)]
                     let $name = parser.parse()?;

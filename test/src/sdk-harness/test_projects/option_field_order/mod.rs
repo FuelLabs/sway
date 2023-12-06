@@ -19,11 +19,9 @@ async fn setup() -> MyContract<WalletUnlocked> {
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 
-    let instance = MyContract::new(id.clone(), wallet);
-
-    instance
+    MyContract::new(id.clone(), wallet)
 }

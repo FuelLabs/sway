@@ -16,7 +16,7 @@ async fn get_type_aliases_instance() -> (TypeAliasesTestContract<WalletUnlocked>
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
     let instance = TypeAliasesTestContract::new(id.clone(), wallet);
@@ -45,7 +45,7 @@ async fn test_foo() -> Result<()> {
     let s = SizedAsciiString::try_from("fuelfuel0").unwrap();
 
     let (x_result, y_result, z_result, w_result, u_result, s_result) = contract_methods
-        .foo(x, y.clone(), z.clone(), w.clone(), u.clone(), s.clone())
+        .foo(x, y.clone(), z.clone(), w.clone(), u, s.clone())
         .call()
         .await
         .unwrap()

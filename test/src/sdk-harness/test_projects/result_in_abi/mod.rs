@@ -13,7 +13,7 @@ async fn get_result_in_abi_instance() -> (ResultInAbiTestContract<WalletUnlocked
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
     let instance = ResultInAbiTestContract::new(id.clone(), wallet);

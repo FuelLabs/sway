@@ -13,7 +13,7 @@ async fn get_vec_in_abi_instance() -> (VecInAbiTestContract<WalletUnlocked>, Con
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
     let instance = VecInAbiTestContract::new(id.clone(), wallet);
@@ -205,7 +205,7 @@ async fn test_vec_in_vec() -> Result<()> {
         .call()
         .await?;
     assert_eq!(
-        input.iter().cloned().flatten().collect::<Vec<_>>(),
+        input.into_iter().flatten().collect::<Vec<_>>(),
         response.value
     );
 

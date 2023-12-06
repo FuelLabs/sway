@@ -19,11 +19,10 @@ async fn can_mint() {
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet).await;
     let sub_id = Bytes32::zeroed();
     let asset_id = get_asset_id(sub_id, fuelcontract_id).await;
-    let target = fuelcontract_id.clone();
 
     let mut balance_result = fuelcontract_instance
         .methods()
-        .get_balance(Bits256(*asset_id), target.clone())
+        .get_balance(Bits256(*asset_id), fuelcontract_id)
         .call()
         .await
         .unwrap();
@@ -53,11 +52,10 @@ async fn can_mint_multiple() {
     let sub_id_2 = Bytes32::from([1u8; 32]);
     let asset_id_1 = get_asset_id(sub_id_1, fuelcontract_id).await;
     let asset_id_2 = get_asset_id(sub_id_2, fuelcontract_id).await;
-    let target = fuelcontract_id.clone();
 
     let mut balance_result_1 = fuelcontract_instance
         .methods()
-        .get_balance(Bits256(*asset_id_1), target.clone())
+        .get_balance(Bits256(*asset_id_1), fuelcontract_id)
         .call()
         .await
         .unwrap();
@@ -65,7 +63,7 @@ async fn can_mint_multiple() {
 
     let mut balance_result_2 = fuelcontract_instance
         .methods()
-        .get_balance(Bits256(*asset_id_2), target.clone())
+        .get_balance(Bits256(*asset_id_2), fuelcontract_id)
         .call()
         .await
         .unwrap();
@@ -108,11 +106,10 @@ async fn can_burn() {
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet).await;
     let sub_id = Bytes32::zeroed();
     let asset_id = get_asset_id(sub_id, fuelcontract_id).await;
-    let target = fuelcontract_id.clone();
 
     let mut balance_result = fuelcontract_instance
         .methods()
-        .get_balance(Bits256(*asset_id.clone()), target.clone())
+        .get_balance(Bits256(*asset_id), fuelcontract_id)
         .call()
         .await
         .unwrap();
@@ -133,7 +130,7 @@ async fn can_burn() {
 
     balance_result = fuelcontract_instance
         .methods()
-        .get_balance(Bits256(*asset_id), target)
+        .get_balance(Bits256(*asset_id), fuelcontract_id)
         .call()
         .await
         .unwrap();
@@ -148,11 +145,9 @@ async fn can_force_transfer() {
     let sub_id = Bytes32::zeroed();
     let asset_id = get_asset_id(sub_id, fuelcontract_id).await;
 
-    let target = balance_id.clone();
-
     let mut balance_result = fuelcontract_instance
         .methods()
-        .get_balance(Bits256(*asset_id), fuelcontract_id.clone())
+        .get_balance(Bits256(*asset_id), fuelcontract_id)
         .call()
         .await
         .unwrap();
@@ -167,7 +162,7 @@ async fn can_force_transfer() {
 
     balance_result = fuelcontract_instance
         .methods()
-        .get_balance(Bits256(*asset_id), fuelcontract_id.clone())
+        .get_balance(Bits256(*asset_id), fuelcontract_id)
         .call()
         .await
         .unwrap();
@@ -176,7 +171,7 @@ async fn can_force_transfer() {
     // confirm initial balance on balance contract (recipient)
     balance_result = fuelcontract_instance
         .methods()
-        .get_balance(Bits256(*asset_id), target.clone())
+        .get_balance(Bits256(*asset_id), balance_id)
         .with_contract_ids(&[balance_id.into()])
         .call()
         .await
@@ -187,7 +182,7 @@ async fn can_force_transfer() {
 
     fuelcontract_instance
         .methods()
-        .force_transfer_coins(coins, Bits256(*asset_id), target.clone())
+        .force_transfer_coins(coins, Bits256(*asset_id), balance_id)
         .with_contract_ids(&[balance_id.into()])
         .call()
         .await
@@ -196,7 +191,7 @@ async fn can_force_transfer() {
     // confirm remaining balance on fuelcoin contract
     balance_result = fuelcontract_instance
         .methods()
-        .get_balance(Bits256(*asset_id), fuelcontract_id.clone())
+        .get_balance(Bits256(*asset_id), fuelcontract_id)
         .call()
         .await
         .unwrap();
@@ -205,7 +200,7 @@ async fn can_force_transfer() {
     // confirm new balance on balance contract (recipient)
     balance_result = fuelcontract_instance
         .methods()
-        .get_balance(Bits256(*asset_id), target.clone())
+        .get_balance(Bits256(*asset_id), balance_id)
         .with_contract_ids(&[balance_id.into()])
         .call()
         .await
@@ -222,11 +217,9 @@ async fn can_mint_and_send_to_contract() {
     let sub_id = Bytes32::zeroed();
     let asset_id = get_asset_id(sub_id, fuelcontract_id).await;
 
-    let target = balance_id.clone();
-
     fuelcontract_instance
         .methods()
-        .mint_and_send_to_contract(amount, target.clone(), Bits256(*sub_id))
+        .mint_and_send_to_contract(amount, balance_id, Bits256(*sub_id))
         .with_contract_ids(&[balance_id.into()])
         .call()
         .await
@@ -234,7 +227,7 @@ async fn can_mint_and_send_to_contract() {
 
     let result = fuelcontract_instance
         .methods()
-        .get_balance(Bits256(*asset_id), target)
+        .get_balance(Bits256(*asset_id), balance_id)
         .with_contract_ids(&[balance_id.into()])
         .call()
         .await
@@ -250,7 +243,7 @@ async fn can_mint_and_send_to_address() {
     let amount = 55u64;
     let sub_id = Bytes32::zeroed();
     let asset_id = get_asset_id(sub_id, fuelcontract_id).await;
-    let asset_id_array: [u8; 32] = *asset_id.clone();
+    let asset_id_array: [u8; 32] = *asset_id;
 
     let address = wallet.address();
     let recipient = address.clone();
@@ -280,7 +273,7 @@ async fn can_perform_generic_mint_to_with_address() {
     let sub_id = Bytes32::zeroed();
     let asset_id = get_asset_id(sub_id, fuelcontract_id).await;
     let amount = 55u64;
-    let asset_id_array: [u8; 32] = *asset_id.clone();
+    let asset_id_array: [u8; 32] = *asset_id;
     let address = wallet.address();
 
     fuelcontract_instance
@@ -322,11 +315,9 @@ async fn can_perform_generic_mint_to_with_contract_id() {
     let sub_id = Bytes32::zeroed();
     let asset_id = get_asset_id(sub_id, fuelcontract_id).await;
 
-    let target = balance_id.clone();
-
     fuelcontract_instance
         .methods()
-        .generic_mint_to(amount, Identity::ContractId(target), Bits256(*sub_id))
+        .generic_mint_to(amount, Identity::ContractId(balance_id), Bits256(*sub_id))
         .with_contract_ids(&[balance_id.into()])
         .call()
         .await
@@ -334,7 +325,7 @@ async fn can_perform_generic_mint_to_with_contract_id() {
 
     let result = fuelcontract_instance
         .methods()
-        .get_balance(Bits256(*asset_id), target)
+        .get_balance(Bits256(*asset_id), balance_id)
         .with_contract_ids(&[balance_id.into()])
         .call()
         .await
@@ -350,7 +341,7 @@ async fn can_perform_generic_transfer_to_address() {
     let sub_id = Bytes32::zeroed();
     let asset_id = get_asset_id(sub_id, fuelcontract_id).await;
     let amount = 33u64;
-    let asset_id_array: [u8; 32] = *asset_id.clone();
+    let asset_id_array: [u8; 32] = *asset_id;
     let address = wallet.address();
 
     fuelcontract_instance
@@ -402,7 +393,6 @@ async fn can_perform_generic_transfer_to_contract() {
     let sub_id = Bytes32::zeroed();
     let asset_id = get_asset_id(sub_id, fuelcontract_id).await;
     let amount = 44u64;
-    let to = balance_id.clone();
 
     fuelcontract_instance
         .methods()
@@ -413,7 +403,7 @@ async fn can_perform_generic_transfer_to_contract() {
 
     fuelcontract_instance
         .methods()
-        .generic_transfer(amount, Bits256(*asset_id), Identity::ContractId(to))
+        .generic_transfer(amount, Bits256(*asset_id), Identity::ContractId(balance_id))
         .with_contract_ids(&[balance_id.into()])
         .call()
         .await
@@ -421,7 +411,7 @@ async fn can_perform_generic_transfer_to_contract() {
 
     let result = fuelcontract_instance
         .methods()
-        .get_balance(Bits256(*asset_id), to)
+        .get_balance(Bits256(*asset_id), balance_id)
         .with_contract_ids(&[balance_id.into()])
         .call()
         .await
@@ -489,7 +479,7 @@ async fn can_send_message_output_without_data() {
 
     let amount = 33u64;
     let recipient_hex = "0x000000000000000000000000b46a7a1a23f3897cc83a94521a96da5c23bc58db";
-    let recipient_address = Address::from_str(&recipient_hex).unwrap();
+    let recipient_address = Address::from_str(recipient_hex).unwrap();
 
     let call_response = fuelcontract_instance
         .methods()
@@ -519,17 +509,12 @@ async fn get_fuelcoin_instance(
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 
     wallet
-        .force_transfer_to_contract(
-            &fuelcontract_id,
-            1000,
-            AssetId::BASE,
-            TxParameters::default(),
-        )
+        .force_transfer_to_contract(&fuelcontract_id, 1000, AssetId::BASE, TxPolicies::default())
         .await
         .unwrap();
     let fuelcontract_instance = TestFuelCoinContract::new(fuelcontract_id.clone(), wallet);
@@ -543,7 +528,7 @@ async fn get_balance_contract_id(wallet: WalletUnlocked) -> ContractId {
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 

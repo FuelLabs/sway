@@ -617,6 +617,13 @@ impl Op {
         }
     }
 
+    pub(crate) fn def_const_registers(&self) -> BTreeSet<&VirtualRegister> {
+        match &self.opcode {
+            Either::Left(virt_op) => virt_op.def_const_registers(),
+            Either::Right(org_op) => org_op.def_const_registers(),
+        }
+    }
+
     pub(crate) fn successors(
         &self,
         index: usize,
@@ -1225,6 +1232,10 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
         })
         .into_iter()
         .collect()
+    }
+
+    pub(crate) fn def_const_registers(&self) -> BTreeSet<&VirtualRegister> {
+        BTreeSet::new()
     }
 
     pub(crate) fn update_register(&self, reg_to_reg_map: &HashMap<&Reg, &Reg>) -> Self {
