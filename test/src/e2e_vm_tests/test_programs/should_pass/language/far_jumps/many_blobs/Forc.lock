@@ -1,8 +1,16 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-CA7273114FB9B4E5'
+name = "core"
+source = "path+from-root-CA7273114FB9B4E5"
 
 [[package]]
-name = 'many_blobs'
-source = 'member'
-dependencies = ['core']
+name = "many_blobs"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
+
+[[package]]
+name = "std"
+source = "path+from-root-CA7273114FB9B4E5"
+dependencies = ["core"]
