@@ -24,5 +24,3 @@ fn main(x: u64, y: u64) -> bool {
 // nextln: gtf  $r3 $r2 i586
 // nextln: jmpf $$zero $IMM
 // nextln: ret  $$zero
-// nextln: lw   $r2 $r3 i0
-// nextln: lw   $r3 $r3 i1
