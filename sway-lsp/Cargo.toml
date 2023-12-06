@@ -1,6 +1,6 @@
 [package]
 name = "sway-lsp"
-version = "0.47.0"
+version = "0.48.0"
 description = "LSP server for Sway."
 authors.workspace = true
 edition.workspace = true
@@ -12,9 +12,9 @@ repository.workspace = true
 anyhow = "1.0.41"
 dashmap = "5.4"
 fd-lock = "4.0"
-forc-pkg = { version = "0.47.0", path = "../forc-pkg" }
-forc-tracing = { version = "0.47.0", path = "../forc-tracing" }
-forc-util = { version = "0.47.0", path = "../forc-util" }
+forc-pkg = { version = "0.48.0", path = "../forc-pkg" }
+forc-tracing = { version = "0.48.0", path = "../forc-tracing" }
+forc-util = { version = "0.48.0", path = "../forc-util" }
 lsp-types = { version = "0.94", features = ["proposed"] }
 notify = "5.0.0"
 notify-debouncer-mini = { version = "0.2.0" }
@@ -25,13 +25,13 @@ rayon = "1.5.0"
 ropey = "1.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.60"
-sway-ast = { version = "0.47.0", path = "../sway-ast" }
-sway-core = { version = "0.47.0", path = "../sway-core" }
-sway-error = { version = "0.47.0", path = "../sway-error" }
-sway-parse = { version = "0.47.0", path = "../sway-parse" }
-sway-types = { version = "0.47.0", path = "../sway-types" }
-sway-utils = { version = "0.47.0", path = "../sway-utils" }
-swayfmt = { version = "0.47.0", path = "../swayfmt" }
+sway-ast = { version = "0.48.0", path = "../sway-ast" }
+sway-core = { version = "0.48.0", path = "../sway-core" }
+sway-error = { version = "0.48.0", path = "../sway-error" }
+sway-parse = { version = "0.48.0", path = "../sway-parse" }
+sway-types = { version = "0.48.0", path = "../sway-types" }
+sway-utils = { version = "0.48.0", path = "../sway-utils" }
+swayfmt = { version = "0.48.0", path = "../swayfmt" }
 syn = { version = "1.0.73", features = ["full"] }
 tempfile = "3"
 thiserror = "1.0.30"

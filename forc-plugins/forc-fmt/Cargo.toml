@@ -1,6 +1,6 @@
 [package]
 name = "forc-fmt"
-version = "0.47.0"
+version = "0.48.0"
 description = "A `forc` plugin for running the Sway code formatter."
 authors.workspace = true
 edition.workspace = true
@@ -11,12 +11,12 @@ repository.workspace = true
 [dependencies]
 anyhow = "1"
 clap = { version = "3", features = ["derive"] }
-forc-pkg = { version = "0.47.0", path = "../../forc-pkg" }
-forc-tracing = { version = "0.47.0", path = "../../forc-tracing" }
-forc-util = { version = "0.47.0", path = "../../forc-util" }
+forc-pkg = { version = "0.48.0", path = "../../forc-pkg" }
+forc-tracing = { version = "0.48.0", path = "../../forc-tracing" }
+forc-util = { version = "0.48.0", path = "../../forc-util" }
 prettydiff = "0.5"
-sway-core = { version = "0.47.0", path = "../../sway-core" }
-sway-utils = { version = "0.47.0", path = "../../sway-utils" }
-swayfmt = { version = "0.47.0", path = "../../swayfmt" }
+sway-core = { version = "0.48.0", path = "../../sway-core" }
+sway-utils = { version = "0.48.0", path = "../../sway-utils" }
+swayfmt = { version = "0.48.0", path = "../../swayfmt" }
 taplo = "0.7"
 tracing = "0.1"

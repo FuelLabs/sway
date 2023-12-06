@@ -1,6 +1,6 @@
 [package]
 name = "sway-ir-macros"
-version = "0.47.0"
+version = "0.48.0"
 description = "Macros for sway's intermediate representation."
 authors.workspace = true
 edition.workspace = true
