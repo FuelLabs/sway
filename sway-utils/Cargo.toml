@@ -1,6 +1,6 @@
 [package]
 name = "sway-utils"
-version = "0.47.0"
+version = "0.48.0"
 description = "Sway common utils."
 authors.workspace = true
 edition.workspace = true

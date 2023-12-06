@@ -1,6 +1,6 @@
 [package]
 name = "sway-types"
-version = "0.47.0"
+version = "0.48.0"
 description = "Sway core types."
 authors.workspace = true
 edition.workspace = true
@@ -16,7 +16,7 @@ lazy_static = "1.4"
 num-bigint = "0.4.3"
 num-traits = "0.2.16"
 serde = { version = "1.0", features = ["derive"] }
-sway-utils = { version = "0.47.0", path = "../sway-utils" }
+sway-utils = { version = "0.48.0", path = "../sway-utils" }
 thiserror = "1"
 
 [features]

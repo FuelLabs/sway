@@ -1,6 +1,6 @@
 [package]
 name = "swayfmt"
-version = "0.47.0"
+version = "0.48.0"
 description = "Sway language formatter."
 authors.workspace = true
 edition.workspace = true
@@ -10,16 +10,16 @@ repository.workspace = true
 
 [dependencies]
 anyhow = "1"
-forc-tracing = { version = "0.47.0", path = "../forc-tracing" }
+forc-tracing = { version = "0.48.0", path = "../forc-tracing" }
 ropey = "1.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_ignored = "0.1.9"
-sway-ast = { version = "0.47.0", path = "../sway-ast" }
-sway-core = { version = "0.47.0", path = "../sway-core" }
-sway-error = { version = "0.47.0", path = "../sway-error" }
-sway-parse = { version = "0.47.0", path = "../sway-parse" }
-sway-types = { version = "0.47.0", path = "../sway-types" }
-sway-utils = { version = "0.47.0", path = "../sway-utils" }
+sway-ast = { version = "0.48.0", path = "../sway-ast" }
+sway-core = { version = "0.48.0", path = "../sway-core" }
+sway-error = { version = "0.48.0", path = "../sway-error" }
+sway-parse = { version = "0.48.0", path = "../sway-parse" }
+sway-types = { version = "0.48.0", path = "../sway-types" }
+sway-utils = { version = "0.48.0", path = "../sway-utils" }
 thiserror = "1.0.30"
 toml = { version = "0.7", features = ["parse"] }
 

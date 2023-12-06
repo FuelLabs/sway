@@ -1,6 +1,6 @@
 [package]
 name = "forc-util"
-version = "0.47.0"
+version = "0.48.0"
 description = "Utility items shared between forc crates."
 authors.workspace = true
 edition.workspace = true
@@ -15,15 +15,15 @@ anyhow = "1"
 clap = { version = "3.1", features = ["cargo", "derive", "env"] }
 dirs = "3.0.2"
 fd-lock = "4.0"
-forc-tracing = { version = "0.47.0", path = "../forc-tracing" }
+forc-tracing = { version = "0.48.0", path = "../forc-tracing" }
 fuel-tx = { workspace = true, features = ["serde"], optional = true }
 hex = "0.4.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.73"
-sway-core = { version = "0.47.0", path = "../sway-core" }
-sway-error = { version = "0.47.0", path = "../sway-error" }
-sway-types = { version = "0.47.0", path = "../sway-types" }
-sway-utils = { version = "0.47.0", path = "../sway-utils" }
+sway-core = { version = "0.48.0", path = "../sway-core" }
+sway-error = { version = "0.48.0", path = "../sway-error" }
+sway-types = { version = "0.48.0", path = "../sway-types" }
+sway-utils = { version = "0.48.0", path = "../sway-utils" }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["ansi", "env-filter", "json"] }
 unicode-xid = "0.2.2"

@@ -1,6 +1,6 @@
 [package]
 name = "forc-test"
-version = "0.47.0"
+version = "0.48.0"
 description = "A library for building and running Sway unit tests within Forc packages."
 authors.workspace = true
 edition.workspace = true
@@ -10,11 +10,11 @@ repository.workspace = true
 
 [dependencies]
 anyhow = "1"
-forc-pkg = { version = "0.47.0", path = "../forc-pkg" }
+forc-pkg = { version = "0.48.0", path = "../forc-pkg" }
 fuel-abi-types = "0.2"
 fuel-tx = { workspace = true, features = ["builder"] }
 fuel-vm = { workspace = true, features = ["random"] }
 rand = "0.8"
 rayon = "1.7.0"
-sway-core = { version = "0.47.0", path = "../sway-core" }
-sway-types = { version = "0.47.0", path = "../sway-types" }
+sway-core = { version = "0.48.0", path = "../sway-core" }
+sway-types = { version = "0.48.0", path = "../sway-types" }

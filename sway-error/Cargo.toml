@@ -1,6 +1,6 @@
 [package]
 name = "sway-error"
-version = "0.47.0"
+version = "0.48.0"
 description = "Sway's error handling"
 authors.workspace = true
 edition.workspace = true
@@ -12,7 +12,7 @@ repository.workspace = true
 either = "1.9.0"
 num-traits = "0.2.14"
 smallvec = "1.7"
-sway-types = { version = "0.47.0", path = "../sway-types" }
+sway-types = { version = "0.48.0", path = "../sway-types" }
 thiserror = "1.0"
 uwuify = { version = "^0.2", optional = true }
 
