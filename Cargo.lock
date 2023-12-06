@@ -143,30 +143,30 @@ checksum = "7079075b41f533b8c61d2a4d073c4676e1f8b249ff94a393b0595db304e0dd87"
 
 [[package]]
 name = "anstyle-parse"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "317b9a89c1868f5ea6ff1d9539a69f45dffc21ce321ac1fd1160dfa48c8e2140"
+checksum = "c75ac65da39e5fe5ab759307499ddad880d724eed2f6ce5b5e8a26f4f387928c"
 dependencies = [
  "utf8parse",
 ]
 
 [[package]]
 name = "anstyle-query"
-version = "1.0.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ca11d4be1bab0c8bc8734a9aa7bf4ee8316d462a08c6ac5052f888fef5b494b"
+checksum = "a3a318f1f38d2418400f8209655bfd825785afd25aa30bb7ba6cc792e4596748"
 dependencies = [
- "windows-sys 0.48.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
 name = "anstyle-wincon"
-version = "3.0.1"
+version = "3.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0699d10d2f4d628a98ee7b57b289abbc98ff3bad977cb3152709d4bf2330628"
+checksum = "1cd54b81ec8d6180e24654d0b371ad22fc3dd083b6ff8ba325b72e00c87660a7"
 dependencies = [
  "anstyle",
- "windows-sys 0.48.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -234,9 +234,9 @@ dependencies = [
 
 [[package]]
 name = "atomic-polyfill"
-version = "0.1.11"
+version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3ff7eb3f316534d83a8a2c3d1674ace8a5a71198eba31e2e2b597833f699b28"
+checksum = "8cf2bce30dfe09ef0bfaef228b9d414faaf7e563035494d7fe092dba54b300f4"
 dependencies = [
  "critical-section",
 ]
@@ -689,9 +689,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.4.10"
+version = "4.4.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41fffed7514f420abec6d183b1d3acfd9099c79c3a10a06ade4f8203f1411272"
+checksum = "bfaff671f6b22ca62406885ece523383b9b64022e341e53e009a62ebc47a45f2"
 dependencies = [
  "clap_builder",
  "clap_derive 4.4.7",
@@ -699,9 +699,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.4.9"
+version = "4.4.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63361bae7eef3771745f02d8d892bec2fee5f6e34af316ba556e7f97a7069ff1"
+checksum = "a216b506622bb1d316cd51328dce24e07bdff4a6128a47c7e7fad11878d5adbb"
 dependencies = [
  "anstream",
  "anstyle",
@@ -725,7 +725,7 @@ version = "4.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bffe91f06a11b4b9420f62103854e90867812cd5d01557f853c5ee8e791b12ae"
 dependencies = [
- "clap 4.4.10",
+ "clap 4.4.11",
 ]
 
 [[package]]
@@ -878,7 +878,7 @@ version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "784836d0812dade01579cc0cc9b1684847044e716fd7aa6bffbc172e42199500"
 dependencies = [
- "clap 4.4.10",
+ "clap 4.4.11",
  "entities",
  "memchr",
  "once_cell",
@@ -1024,7 +1024,7 @@ dependencies = [
  "anes",
  "cast",
  "ciborium",
- "clap 4.4.10",
+ "clap 4.4.11",
  "criterion-plot",
  "is-terminal",
  "itertools 0.10.5",
@@ -1836,14 +1836,14 @@ dependencies = [
 
 [[package]]
 name = "filetime"
-version = "0.2.22"
+version = "0.2.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d4029edd3e734da6fe05b6cd7bd2960760a616bd2ddd0d59a0124746d6272af0"
+checksum = "1ee447700ac8aa0b2f2bd7bc4462ad686ba06baa6727ac149a2d6277f0d240fd"
 dependencies = [
  "cfg-if",
  "libc",
- "redox_syscall 0.3.5",
- "windows-sys 0.48.0",
+ "redox_syscall 0.4.1",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1882,7 +1882,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.47.0"
+version = "0.48.0"
 dependencies = [
  "annotate-snippets",
  "ansi_term",
@@ -1915,7 +1915,7 @@ dependencies = [
 
 [[package]]
 name = "forc-client"
-version = "0.47.0"
+version = "0.48.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1950,7 +1950,7 @@ dependencies = [
 
 [[package]]
 name = "forc-crypto"
-version = "0.47.0"
+version = "0.48.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1975,10 +1975,10 @@ dependencies = [
 
 [[package]]
 name = "forc-doc"
-version = "0.47.0"
+version = "0.48.0"
 dependencies = [
  "anyhow",
- "clap 4.4.10",
+ "clap 4.4.11",
  "colored",
  "comrak",
  "dir_indexer",
@@ -2000,7 +2000,7 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.47.0"
+version = "0.48.0"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
@@ -2017,7 +2017,7 @@ dependencies = [
 
 [[package]]
 name = "forc-lsp"
-version = "0.47.0"
+version = "0.48.0"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
@@ -2027,7 +2027,7 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.47.0"
+version = "0.48.0"
 dependencies = [
  "ansi_term",
  "anyhow",
@@ -2063,7 +2063,7 @@ dependencies = [
 
 [[package]]
 name = "forc-test"
-version = "0.47.0"
+version = "0.48.0"
 dependencies = [
  "anyhow",
  "forc-pkg",
@@ -2078,7 +2078,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tracing"
-version = "0.47.0"
+version = "0.48.0"
 dependencies = [
  "ansi_term",
  "tracing",
@@ -2087,7 +2087,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tx"
-version = "0.47.0"
+version = "0.48.0"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
@@ -2102,7 +2102,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.47.0"
+version = "0.48.0"
 dependencies = [
  "annotate-snippets",
  "ansi_term",
@@ -2131,7 +2131,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4f332b2699675a4413f8d7a858feb509ff930c9ed0ad8e079de52de2ebb64fa5"
 dependencies = [
  "anyhow",
- "clap 4.4.10",
+ "clap 4.4.11",
  "eth-keystore",
  "fuel-crypto",
  "fuel-types",
@@ -3027,9 +3027,9 @@ dependencies = [
 
 [[package]]
 name = "heapless"
-version = "0.7.16"
+version = "0.7.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db04bc24a18b9ea980628ecf00e6c0264f3c1426dac36c00cb49b6fbad8b0743"
+checksum = "cdc6457c0eb62c71aac4bc17216026d8410337c4126773b9c5daba343f17964f"
 dependencies = [
  "atomic-polyfill",
  "hash32",
@@ -3876,7 +3876,7 @@ checksum = "80992cb0e05f22cc052c99f8e883f1593b891014b96a8b4637fd274d7030c85e"
 dependencies = [
  "anyhow",
  "chrono",
- "clap 4.4.10",
+ "clap 4.4.11",
  "clap_complete 4.4.4",
  "env_logger",
  "handlebars",
@@ -4410,9 +4410,9 @@ dependencies = [
 
 [[package]]
 name = "openssl"
-version = "0.10.60"
+version = "0.10.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79a4c6c3a2b158f7f8f2a2fc5a969fa3a068df6fc9dbb4a43845436e3af7c800"
+checksum = "6b8419dc8cc6d866deb801274bba2e6f8f6108c1bb7fcc10ee5ab864931dbb45"
 dependencies = [
  "bitflags 2.4.1",
  "cfg-if",
@@ -4451,9 +4451,9 @@ dependencies = [
 
 [[package]]
 name = "openssl-sys"
-version = "0.9.96"
+version = "0.9.97"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3812c071ba60da8b5677cc12bcb1d42989a65553772897a7e0355545a819838f"
+checksum = "c3eaad34cdd97d81de97964fc7f29e2d104f483840d906ef56daa1912338460b"
 dependencies = [
  "cc",
  "libc",
@@ -5192,15 +5192,6 @@ dependencies = [
 
 [[package]]
 name = "redox_syscall"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "567664f262709473930a4bf9e51bf2ebf3348f2e748ccc50dea20646858f8f29"
-dependencies = [
- "bitflags 1.3.2",
-]
-
-[[package]]
-name = "redox_syscall"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4722d768eff46b75989dd134e5c353f0d6296e5aaa3132e776cbdb56be7731aa"
@@ -5393,9 +5384,9 @@ dependencies = [
 
 [[package]]
 name = "ring"
-version = "0.17.6"
+version = "0.17.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "684d5e6e18f669ccebf64a92236bb7db9a34f07be010e3627368182027180866"
+checksum = "688c63d65483050968b2a8937f7995f443e27041a0f7700aa59b0822aedebb74"
 dependencies = [
  "cc",
  "getrandom 0.2.11",
@@ -5551,7 +5542,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "629648aced5775d558af50b2b4c7b02983a04b312126d45eeead26e7caa498b9"
 dependencies = [
  "log",
- "ring 0.17.6",
+ "ring 0.17.7",
  "rustls-webpki",
  "sct 0.7.1",
 ]
@@ -5595,7 +5586,7 @@ version = "0.101.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b6275d1ee7a1cd780b64aca7726599a1dbc893b1e64144529e55c3c2f745765"
 dependencies = [
- "ring 0.17.6",
+ "ring 0.17.7",
  "untrusted 0.9.0",
 ]
 
@@ -5704,7 +5695,7 @@ version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da046153aa2352493d6cb7da4b6e5c0c057d8a1d0a9aa8560baffdd945acd414"
 dependencies = [
- "ring 0.17.6",
+ "ring 0.17.7",
  "untrusted 0.9.0",
 ]
 
@@ -6240,7 +6231,7 @@ checksum = "81cdd64d312baedb58e21336b31bc043b77e01cc99033ce76ef539f78e965ebc"
 
 [[package]]
 name = "sway-ast"
-version = "0.47.0"
+version = "0.48.0"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -6252,7 +6243,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.47.0"
+version = "0.48.0"
 dependencies = [
  "clap 3.2.25",
  "derivative",
@@ -6295,7 +6286,7 @@ dependencies = [
 
 [[package]]
 name = "sway-error"
-version = "0.47.0"
+version = "0.48.0"
 dependencies = [
  "either",
  "num-traits",
@@ -6307,7 +6298,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.47.0"
+version = "0.48.0"
 dependencies = [
  "anyhow",
  "downcast-rs",
@@ -6325,7 +6316,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir-macros"
-version = "0.47.0"
+version = "0.48.0"
 dependencies = [
  "itertools 0.10.5",
  "proc-macro2",
@@ -6335,7 +6326,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.47.0"
+version = "0.48.0"
 dependencies = [
  "anyhow",
  "assert-json-diff",
@@ -6394,7 +6385,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.47.0"
+version = "0.48.0"
 dependencies = [
  "assert_matches",
  "extension-trait",
@@ -6412,7 +6403,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.47.0"
+version = "0.48.0"
 dependencies = [
  "fuel-asm",
  "fuel-crypto",
@@ -6427,7 +6418,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.47.0"
+version = "0.48.0"
 dependencies = [
  "serde",
  "walkdir",
@@ -6435,7 +6426,7 @@ dependencies = [
 
 [[package]]
 name = "swayfmt"
-version = "0.47.0"
+version = "0.48.0"
 dependencies = [
  "anyhow",
  "forc-tracing",
@@ -6692,7 +6683,7 @@ dependencies = [
  "anyhow",
  "assert_matches",
  "bytes",
- "clap 4.4.10",
+ "clap 4.4.11",
  "colored",
  "filecheck",
  "forc",
@@ -7789,9 +7780,9 @@ checksum = "dff9641d1cd4be8d1a070daf9e3773c5f67e78b4d9d42263020c057706765c04"
 
 [[package]]
 name = "winnow"
-version = "0.5.19"
+version = "0.5.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "829846f3e3db426d4cee4510841b71a8e58aa2a76b1132579487ae430ccd9c7b"
+checksum = "b7e87b8dfbe3baffbe687eef2e164e32286eff31a5ee16463ce03d991643ec94"
 dependencies = [
  "memchr",
 ]
@@ -7933,18 +7924,18 @@ dependencies = [
 
 [[package]]
 name = "zerocopy"
-version = "0.7.28"
+version = "0.7.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d6f15f7ade05d2a4935e34a457b936c23dc70a05cc1d97133dc99e7a3fe0f0e"
+checksum = "5d075cf85bbb114e933343e087b92f2146bac0d55b534cbb8188becf0039948e"
 dependencies = [
  "zerocopy-derive",
 ]
 
 [[package]]
 name = "zerocopy-derive"
-version = "0.7.28"
+version = "0.7.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbbad221e3f78500350ecbd7dfa4e63ef945c05f4c61cb7f4d3f84cd0bba649b"
+checksum = "86cd5ca076997b97ef09d3ad65efe811fa68c9e874cb636ccb211223a813b0c2"
 dependencies = [
  "proc-macro2",
  "quote",
