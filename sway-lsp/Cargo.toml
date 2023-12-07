@@ -60,6 +60,7 @@ futures = { version = "0.3", default-features = false, features = [
 pretty_assertions = "1.4.0"
 regex = "^1.10.2"
 sway-lsp-test-utils = { path = "tests/utils" }
+tikv-jemallocator = "0.5"
 tower = { version = "0.4.12", default-features = false, features = ["util"] }
 
 [[bench]]
