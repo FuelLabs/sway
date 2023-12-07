@@ -287,6 +287,8 @@ impl TyImplTrait {
             block_span,
         } = impl_self;
 
+        let span_str = block_span.as_str().to_string();
+
         let type_engine = ctx.engines.te();
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
@@ -506,6 +508,7 @@ impl TyImplTrait {
             };
 
             // Now lets type check the body of the functions (for real this time).
+            let a = ordered_node_indices.clone();
             for idx in ordered_node_indices {
                 match (&items[idx], &new_items[idx]) {
                     (ImplItem::Fn(fn_decl), TyTraitItem::Fn(decl_ref)) => {
@@ -574,7 +577,7 @@ impl TyImplTrait {
             let _ = impl_self.type_check_analyze(handler, &mut analysis_ctx);
 
             // Build a sub graph that just contains the items for this impl trait.
-            let impl_trait_node_index = analysis_ctx.nodes.get(&impl_self.decl_id.inner());
+            let impl_trait_node_index = analysis_ctx.nodes.get(&impl_self.decl_id.unique_id());
             let sub_graph = analysis_ctx.get_sub_graph(
                 *impl_trait_node_index.expect("expected a valid impl trait node id"),
             );

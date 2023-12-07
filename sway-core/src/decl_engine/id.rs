@@ -1,3 +1,5 @@
+use std::collections::hash_map::DefaultHasher;
+use std::hash::Hasher;
 use std::marker::PhantomData;
 use std::{fmt, hash::Hash};
 
@@ -23,9 +25,23 @@ impl<T> fmt::Debug for DeclId<T> {
     }
 }
 
+#[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub struct DeclUniqueId(u64);
+
 impl<T> DeclId<T> {
     pub(crate) fn inner(&self) -> DeclIdIndexType {
         self.0
+    }
+
+    pub fn unique_id(&self) -> DeclUniqueId 
+    where 
+        T: 'static
+    {
+        let mut hasher = DefaultHasher::default();
+        std::any::TypeId::of::<T>().hash(&mut hasher);
+        self.0.hash(&mut hasher);
+
+        DeclUniqueId(hasher.finish())
     }
 }
 

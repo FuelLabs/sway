@@ -998,7 +998,6 @@ impl TraitMap {
                 },
             )),
             Ordering::Less => {
-                // dbg!(1);
                 Err(handler.emit_err(CompileError::SymbolNotFound {
                     name: symbol.clone(),
                     span: symbol.span(),

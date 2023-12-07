@@ -916,8 +916,6 @@ impl<'eng> FnCompiler<'eng> {
                     )),
                     Some(log_ty) => {
                         let span_md_idx = md_mgr.span_to_md(context, &span);
-
-                        dbg!(log_ty, log_ty.as_string(context));
                         // The `log` instruction
                         Ok(self
                             .current_block

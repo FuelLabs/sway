@@ -10,7 +10,7 @@ use petgraph::Graph;
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 
-use crate::decl_engine::{AssociatedItemDeclId, DeclId, DeclIdIndexType};
+use crate::decl_engine::{AssociatedItemDeclId, DeclId, DeclIdIndexType, DeclUniqueId};
 use crate::engine_threading::DebugWithEngines;
 use crate::language::ty::{self, TyFunctionDecl, TyTraitItem};
 use crate::Engines;
@@ -49,7 +49,7 @@ pub type TyNodeDepGraph = petgraph::graph::DiGraph<TyNodeDepGraphNode, TyNodeDep
 pub struct TypeCheckAnalysisContext<'cx> {
     pub(crate) engines: &'cx Engines,
     pub(crate) dep_graph: TyNodeDepGraph,
-    pub(crate) nodes: HashMap<DeclIdIndexType, TyNodeDepGraphNodeId>,
+    pub(crate) nodes: HashMap<DeclUniqueId, TyNodeDepGraphNodeId>,
     pub(crate) items_node_stack: Vec<TyNodeDepGraphNodeId>,
     pub(crate) node_stack: Vec<TyNodeDepGraphNodeId>,
 }
@@ -69,9 +69,9 @@ impl TypeCheckAnalysisContext<'_> {
     #[allow(clippy::map_entry)]
     pub fn get_or_create_node_for_impl_item(&mut self, item: &TyTraitItem) -> TyNodeDepGraphNodeId {
         let id = match item {
-            TyTraitItem::Fn(decl_ref) => decl_ref.id().inner(),
-            TyTraitItem::Constant(decl_ref) => decl_ref.id().inner(),
-            TyTraitItem::Type(decl_ref) => decl_ref.id().inner(),
+            TyTraitItem::Fn(decl_ref) => decl_ref.id().unique_id(),
+            TyTraitItem::Constant(decl_ref) => decl_ref.id().unique_id(),
+            TyTraitItem::Type(decl_ref) => decl_ref.id().unique_id(),
         };
         if self.nodes.contains_key(&id) {
             *self.nodes.get(&id).unwrap()
@@ -105,9 +105,9 @@ impl TypeCheckAnalysisContext<'_> {
             })
             .collect::<Vec<_>>();
         let id = if !parents.is_empty() {
-            parents.first().unwrap().inner()
+            parents.first().unwrap().unique_id()
         } else {
-            fn_decl_id.inner()
+            fn_decl_id.unique_id()
         };
         if self.nodes.contains_key(&id) {
             *self.nodes.get(&id).unwrap()
@@ -126,13 +126,13 @@ impl TypeCheckAnalysisContext<'_> {
         &mut self,
         impl_trait: &ty::ImplTrait,
     ) -> TyNodeDepGraphNodeId {
-        if self.nodes.contains_key(&impl_trait.decl_id.inner()) {
-            *self.nodes.get(&impl_trait.decl_id.inner()).unwrap()
+        if self.nodes.contains_key(&impl_trait.decl_id.unique_id()) {
+            *self.nodes.get(&impl_trait.decl_id.unique_id()).unwrap()
         } else {
             let node = self.add_node(TyNodeDepGraphNode::ImplTrait {
                 node: impl_trait.clone(),
             });
-            self.nodes.insert(impl_trait.decl_id.inner(), node);
+            self.nodes.insert(impl_trait.decl_id.unique_id(), node);
 
             let decl_engine = self.engines.de();
             let impl_trait = decl_engine.get_impl_trait(&impl_trait.decl_id);
@@ -179,7 +179,7 @@ impl TypeCheckAnalysisContext<'_> {
         possible_nodes.append(&mut parents.clone());
 
         for possible_node in possible_nodes.iter().rev() {
-            if let Some(found) = self.nodes.get(&possible_node.inner()) {
+            if let Some(found) = self.nodes.get(&possible_node.unique_id()) {
                 return Some(*found);
             }
         }

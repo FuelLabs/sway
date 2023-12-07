@@ -260,7 +260,6 @@ impl Items {
 
     pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&ty::TyDecl, CompileError> {
         self.symbols.get(name).ok_or_else(|| {
-            // dbg!(1);
             CompileError::SymbolNotFound {
                 name: name.clone(),
                 span: name.span(),

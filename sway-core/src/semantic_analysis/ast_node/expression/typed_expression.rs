@@ -1473,7 +1473,6 @@ impl ty::TyExpression {
                 instantiate_constant_expression(ctx, const_ref, call_path_binding)
             }
             (false, None, None, None) => {
-                dbg!(1);
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
                     name: unknown_call_path_binding.inner.call_path.suffix.clone(),
                     span: unknown_call_path_binding.inner.call_path.suffix.span(),

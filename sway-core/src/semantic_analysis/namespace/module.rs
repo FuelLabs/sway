@@ -444,7 +444,6 @@ impl Module {
                 };
             }
             None => {
-                dbg!(1);
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
                     name: item.clone(),
                     span: item.span(),
@@ -535,7 +534,6 @@ impl Module {
                             None => add_synonym(variant_name),
                         };
                     } else {
-                        dbg!(1);
                         return Err(handler.emit_err(CompileError::SymbolNotFound {
                             name: variant_name.clone(),
                             span: variant_name.span(),
@@ -549,7 +547,6 @@ impl Module {
                 }
             }
             None => {
-                dbg!(1);
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
                     name: enum_name.clone(),
                     span: enum_name.span(),
@@ -626,7 +623,6 @@ impl Module {
                 }
             }
             None => {
-                dbg!(1);
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
                     name: enum_name.clone(),
                     span: enum_name.span(),
