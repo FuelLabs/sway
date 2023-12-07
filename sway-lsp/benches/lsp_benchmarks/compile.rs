@@ -3,7 +3,7 @@ use lsp_types::Url;
 use sway_core::Engines;
 use sway_lsp::core::session::{self, Session};
 
-const NUM_DID_CHANGE_ITERATIONS: usize = 20;
+const NUM_DID_CHANGE_ITERATIONS: usize = 4;
 
 fn benchmarks(c: &mut Criterion) {
     // Load the test project
@@ -28,9 +28,8 @@ fn benchmarks(c: &mut Criterion) {
 
     c.bench_function("did_change_with_caching", |b| {
         b.iter(|| {
-            let engines = Engines::default();
             for _ in 0..NUM_DID_CHANGE_ITERATIONS {
-                let _ = black_box(session::compile(&uri, &engines).unwrap());
+                let _ = black_box(session::compile(&uri, &session.engines.read()).unwrap());
             }
         })
     });
@@ -38,6 +37,6 @@ fn benchmarks(c: &mut Criterion) {
 
 criterion_group! {
     name = benches;
-    config = Criterion::default().measurement_time(std::time::Duration::from_secs(10));
+    config = Criterion::default().measurement_time(std::time::Duration::from_secs(10)).sample_size(10);
     targets = benchmarks
 }
