@@ -1,13 +1,13 @@
 [[package]]
-name = 'addrof_intrinsic'
-source = 'member'
-dependencies = ['std']
+name = "annotated_missing_item"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'core'
-source = 'path+from-root-B3EAB3022B5FAD04'
+name = "core"
+source = "path+from-root-7215716CB6117AD4"
 
 [[package]]
-name = 'std'
-source = 'path+from-root-B3EAB3022B5FAD04'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-7215716CB6117AD4"
+dependencies = ["core"]

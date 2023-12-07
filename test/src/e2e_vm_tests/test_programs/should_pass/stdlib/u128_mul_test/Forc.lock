@@ -1,13 +1,13 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-971B87177979B9DC'
+name = "core"
+source = "path+from-root-BF1FB1175400CC4C"
 
 [[package]]
-name = 'std'
-source = 'path+from-root-971B87177979B9DC'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-BF1FB1175400CC4C"
+dependencies = ["core"]
 
 [[package]]
-name = 'u128_mul_test_pass'
-source = 'member'
-dependencies = ['std']
+name = "u128_mul_test"
+source = "member"
+dependencies = ["std"]

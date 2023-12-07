@@ -18,7 +18,7 @@ abigen!(
     ),
     Predicate(
         name = "TestPredicate",
-        abi = "test_projects/tx_fields/out/debug/tx_predicate-abi.json"
+        abi = "test_projects/tx_fields/out/debug/tx_fields-abi.json"
     ),
     Predicate(
         name = "TestOutputPredicate",
@@ -89,7 +89,7 @@ async fn generate_predicate_inputs(
     wallet: &WalletUnlocked,
 ) -> (Vec<u8>, SdkInput, TxInput) {
     let provider = wallet.provider().unwrap();
-    let predicate = Predicate::load_from("test_projects/tx_fields/out/debug/tx_predicate.bin")
+    let predicate = Predicate::load_from("test_projects/tx_fields/out/debug/tx_fields.bin")
         .unwrap()
         .with_provider(provider.clone());
 
