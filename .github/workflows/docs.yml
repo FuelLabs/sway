@@ -10,7 +10,7 @@ on:
 
 jobs:
   test:
-    uses: FuelLabs/github-actions/.github/workflows/mdbook-docs.yml@sarah/spell-check
+    uses: FuelLabs/github-actions/.github/workflows/mdbook-docs.yml@master
     with:
       docs-src-path: 'docs/book/src'
       spellcheck-config-path: 'docs/book/.spellcheck.yml'
