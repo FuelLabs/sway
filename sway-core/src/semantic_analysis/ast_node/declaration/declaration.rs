@@ -22,6 +22,29 @@ use crate::{
     type_system::*,
 };
 
+fn can_auto_impl_abi_encode(handler: &Handler, ctx: &mut TypeCheckContext, decl: ty::TyDecl) -> bool {
+    let decl_ref = decl.get_struct_decl_ref().unwrap();
+    let struct_ref = ctx.engines().de().get(decl_ref.id());
+    struct_ref.fields
+        .iter()
+        .all(|x| {
+            ctx
+            .find_items_for_type(
+                handler,
+                x.type_argument.type_id,
+    &[
+                    // Ident::new_no_span("core".into()),
+                    // Ident::new_no_span("codec".into()),
+                ],
+                &Ident::new_no_span("abi_encode".into()),
+            )
+            .unwrap()
+            .into_iter()
+            .next()
+            .is_some()
+        })
+}
+
 fn auto_impl_abi_encode(handler: &Handler, ctx: &mut TypeCheckContext, decl: ty::TyDecl) {
     let decl_ref = decl.get_struct_decl_ref().unwrap();
 
@@ -458,7 +481,9 @@ impl TyDecl {
                 let decl: ty::TyDecl = decl_engine.insert(decl).into();
 
                 if ctx.namespace.name.as_ref().unwrap().as_str() == "logging" {
-                    auto_impl_abi_encode(handler, &mut ctx, decl.clone());
+                    if can_auto_impl_abi_encode(handler, &mut ctx, decl.clone()) {
+                        auto_impl_abi_encode(handler, &mut ctx, decl.clone());
+                    }
                 }
 
                 // insert the struct decl into namespace

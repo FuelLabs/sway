@@ -25,7 +25,7 @@ impl Buffer {
         let count = __size_of::<T>();
 
         if self.cap >= self.size + count {
-            self.buffer.add::<u64>(self.size).write(val);
+            self.buffer.add::<u8>(self.size).write(val);
             self.size += count;
         } else {
             __revert(123456789);
@@ -45,6 +45,60 @@ pub trait AbiEncode {
 }
 
 impl AbiEncode for u64 {
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        buffer.push(self);
+    }
+}
+
+impl AbiEncode for u32 {
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let output = [0_u8, 0_u8, 0_u8, 0_u8];
+        let output = asm(input: self, off: 0xFF, i: 0x8, j: 0x10, k: 0x18, output: output, r1) {
+            and  r1 input off;
+            sb   output r1 i0;
+
+            srl  r1 input i;
+            and  r1 r1 off;
+            sb   output r1 i1;
+
+            srl  r1 input j;
+            and  r1 r1 off;
+            sb   output r1 i2;
+
+            srl  r1 input k;
+            and  r1 r1 off;
+            sb   output r1 i3;
+
+            output: [u8; 4]
+        };
+
+        buffer.push(output[3]);
+        buffer.push(output[2]);
+        buffer.push(output[1]);
+        buffer.push(output[0]);
+    }
+}
+
+impl AbiEncode for u16 {
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let output = [0_u8, 0_u8];
+        let output = asm(input: self, off: 0xFF, i: 0x8, output: output, r1) {
+            and  r1 input off;
+            sb   output r1 i0;
+
+            srl  r1 input i;
+            and  r1 r1 off;
+            sb   output r1 i1;
+
+            output: [u8; 2]
+        };
+
+        buffer.push(output[1]);
+        buffer.push(output[0]);
+    }
+}
+
+impl AbiEncode for u8 {
     fn abi_encode(self, ref mut buffer: Buffer) {
         buffer.push(self);
     }
