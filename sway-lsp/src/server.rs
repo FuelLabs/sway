@@ -41,7 +41,7 @@ impl LanguageServer for ServerState {
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
-        if let Err(err) = document::remove_dirty_flag(&params.text_document.uri) {
+        if let Err(err) = document::remove_dirty_flag(&params.text_document.uri).await {
             tracing::error!("{}", err.to_string());
         }
     }
@@ -59,7 +59,7 @@ impl LanguageServer for ServerState {
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
-        if let Err(err) = notification::handle_did_change_watched_files(self, params) {
+        if let Err(err) = notification::handle_did_change_watched_files(self, params).await {
             tracing::error!("{}", err.to_string());
         }
     }
