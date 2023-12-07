@@ -84,7 +84,7 @@ async fn get_contract_instance() -> (TestContract<WalletUnlocked>, ContractId, W
     let wallet = wallets.pop().unwrap();
 
     let id = Contract::load_from(
-        "test_artifacts/low_level_callee_contract/out/debug/test_contract.bin",
+        "test_artifacts/low_level_callee_contract/out/debug/low_level_callee_contract.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
