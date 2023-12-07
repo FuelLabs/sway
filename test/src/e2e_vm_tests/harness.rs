@@ -200,7 +200,7 @@ pub(crate) fn runs_in_vm(
                     }
                 }
             }
-            
+
             Ok(VMExecutionResult::Fuel(
                 *transition.state(),
                 transition.receipts().to_vec(),

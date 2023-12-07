@@ -33,9 +33,9 @@ impl<T> DeclId<T> {
         self.0
     }
 
-    pub fn unique_id(&self) -> DeclUniqueId 
-    where 
-        T: 'static
+    pub fn unique_id(&self) -> DeclUniqueId
+    where
+        T: 'static,
     {
         let mut hasher = DefaultHasher::default();
         std::any::TypeId::of::<T>().hash(&mut hasher);

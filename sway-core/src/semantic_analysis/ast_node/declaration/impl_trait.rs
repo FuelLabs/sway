@@ -287,8 +287,6 @@ impl TyImplTrait {
             block_span,
         } = impl_self;
 
-        let span_str = block_span.as_str().to_string();
-
         let type_engine = ctx.engines.te();
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
@@ -508,7 +506,6 @@ impl TyImplTrait {
             };
 
             // Now lets type check the body of the functions (for real this time).
-            let a = ordered_node_indices.clone();
             for idx in ordered_node_indices {
                 match (&items[idx], &new_items[idx]) {
                     (ImplItem::Fn(fn_decl), TyTraitItem::Fn(decl_ref)) => {

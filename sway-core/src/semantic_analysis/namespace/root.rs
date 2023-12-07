@@ -356,12 +356,10 @@ impl Root {
                     None => self.resolve_symbol(handler, engines, src_path, true_symbol, self_type),
                 }
             }
-            _ => {
-                module
-                    .check_symbol(true_symbol)
-                    .map_err(|e| handler.emit_err(e))
-                    .cloned()
-            }
+            _ => module
+                .check_symbol(true_symbol)
+                .map_err(|e| handler.emit_err(e))
+                .cloned(),
         }
     }
 }

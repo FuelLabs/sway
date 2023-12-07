@@ -10,7 +10,7 @@ use petgraph::Graph;
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 
-use crate::decl_engine::{AssociatedItemDeclId, DeclId, DeclIdIndexType, DeclUniqueId};
+use crate::decl_engine::{AssociatedItemDeclId, DeclId, DeclUniqueId};
 use crate::engine_threading::DebugWithEngines;
 use crate::language::ty::{self, TyFunctionDecl, TyTraitItem};
 use crate::Engines;
