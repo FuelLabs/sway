@@ -13,7 +13,7 @@ async fn get_abi_impl_methods_callable_instance() -> AbiImplMethodsCallable<Wall
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
     AbiImplMethodsCallable::new(id.clone(), wallet)

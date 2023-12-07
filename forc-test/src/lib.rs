@@ -2,7 +2,6 @@ use forc_pkg as pkg;
 use fuel_abi_types::error_codes::ErrorSignal;
 use fuel_tx as tx;
 use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
-use fuel_vm::gas::GasCosts;
 use fuel_vm::{self as vm, fuel_asm, prelude::Instruction};
 use pkg::TestPassCondition;
 use pkg::{Built, BuiltPackage};
@@ -11,6 +10,9 @@ use rayon::prelude::*;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::BuildTarget;
 use sway_types::Span;
+use tx::output::contract::Contract;
+use tx::{Chargeable, Finalizable};
+use vm::prelude::SecretKey;
 
 /// The result of a `forc test` invocation.
 #[derive(Debug)]
@@ -274,20 +276,20 @@ impl PackageWithDeploymentToTest {
         // Setup the interpreter for deployment.
         let params = tx::ConsensusParameters::default();
         let storage = vm::storage::MemoryStorage::default();
-        let mut interpreter =
-            vm::interpreter::Interpreter::with_storage(storage, params, GasCosts::default());
+        let mut interpreter: vm::prelude::Interpreter<_, _, vm::interpreter::NotSupportedEcal> =
+            vm::interpreter::Interpreter::with_storage(storage, params.clone().into());
 
         // Iterate and create deployment transactions for contract dependencies of the root
         // contract.
-        let contract_dependency_setups = self
-            .contract_dependencies()
-            .map(|built_pkg| deployment_transaction(built_pkg, &built_pkg.bytecode, params));
+        let contract_dependency_setups = self.contract_dependencies().map(|built_pkg| {
+            deployment_transaction(built_pkg, &built_pkg.bytecode, params.clone())
+        });
 
         // Deploy contract dependencies of the root contract and collect their ids.
         let contract_dependency_ids = contract_dependency_setups
             .map(|(contract_id, tx)| {
                 // Transact the deployment transaction constructed for this contract dependency.
-                interpreter.transact(tx)?;
+                interpreter.transact(tx).map_err(anyhow::Error::msg)?;
                 Ok(contract_id)
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
@@ -302,7 +304,9 @@ impl PackageWithDeploymentToTest {
                 params,
             );
             // Deploy the root contract.
-            interpreter.transact(root_contract_tx)?;
+            interpreter
+                .transact(root_contract_tx)
+                .map_err(anyhow::Error::msg)?;
             let storage = interpreter.as_ref().clone();
             DeploymentSetup::Contract(ContractTestSetup {
                 storage,
@@ -675,10 +679,10 @@ fn deployment_transaction(
     let contract_id = contract.id(&salt, &root, &state_root);
 
     // Create the deployment transaction.
-    let mut rng = rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
+    let rng = &mut rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
 
     // Prepare the transaction metadata.
-    let secret_key = rng.gen();
+    let secret_key = SecretKey::random(rng);
     let utxo_id = rng.gen();
     let amount = 1;
     let maturity = 1u32.into();
@@ -691,7 +695,7 @@ fn deployment_transaction(
         .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer, maturity)
         .add_output(tx::Output::contract_created(contract_id, state_root))
         .maturity(maturity)
-        .finalize_checked(block_height, &GasCosts::default());
+        .finalize_checked(block_height);
     (contract_id, tx)
 }
 
@@ -772,10 +776,10 @@ fn exec_test(
 
     // Create a transaction to execute the test function.
     let script_input_data = vec![];
-    let mut rng = rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
+    let rng = &mut rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
 
     // Prepare the transaction metadata.
-    let secret_key = rng.gen();
+    let secret_key = SecretKey::random(rng);
     let utxo_id = rng.gen();
     let amount = 1;
     let maturity = 1.into();
@@ -783,8 +787,7 @@ fn exec_test(
     let tx_pointer = rng.gen();
     let block_height = (u32::MAX >> 1).into();
 
-    let params = tx::ConsensusParameters::default();
-    let mut tx = tx::TransactionBuilder::script(bytecode, script_input_data)
+    let mut tb = tx::TransactionBuilder::script(bytecode, script_input_data)
         .add_unsigned_coin_input(
             secret_key,
             utxo_id,
@@ -793,30 +796,38 @@ fn exec_test(
             tx_pointer,
             0u32.into(),
         )
-        .gas_limit(tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
         .maturity(maturity)
         .clone();
     let mut output_index = 1;
     // Insert contract ids into tx input
     for contract_id in test_setup.contract_ids() {
-        tx.add_input(tx::Input::contract(
+        tb.add_input(tx::Input::contract(
             tx::UtxoId::new(tx::Bytes32::zeroed(), 0),
             tx::Bytes32::zeroed(),
             tx::Bytes32::zeroed(),
             tx::TxPointer::new(0u32.into(), 0),
             contract_id,
         ))
-        .add_output(tx::Output::Contract {
+        .add_output(tx::Output::Contract(Contract {
             input_index: output_index,
             balance_root: fuel_tx::Bytes32::zeroed(),
             state_root: tx::Bytes32::zeroed(),
-        });
+        }));
         output_index += 1;
     }
-    let tx = tx.finalize_checked(block_height, &GasCosts::default());
+    let consensus_params = tb.get_params().clone();
 
-    let mut interpreter =
-        vm::interpreter::Interpreter::with_storage(storage, params, GasCosts::default());
+    // Temporarily finalize to calculate `script_gas_limit`
+    let tmp_tx = tb.clone().finalize();
+    // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
+    let max_gas = tmp_tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
+    // Increase `script_gas_limit` to the maximum allowed value.
+    tb.script_gas_limit(consensus_params.tx_params().max_gas_per_tx - max_gas);
+
+    let tx = tb.finalize_checked(block_height);
+
+    let mut interpreter: vm::prelude::Interpreter<_, _, vm::interpreter::NotSupportedEcal> =
+        vm::interpreter::Interpreter::with_storage(storage, consensus_params.into());
 
     // Execute and return the result.
     let start = std::time::Instant::now();

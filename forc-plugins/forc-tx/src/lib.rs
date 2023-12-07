@@ -3,6 +3,11 @@
 use clap::{Args, Parser};
 use devault::Devault;
 use forc_util::tx_utils::Salt;
+use fuel_tx::{
+    output,
+    policies::{Policies, PolicyType},
+    Buildable, Chargeable, ConsensusParameters,
+};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use thiserror::Error;
@@ -23,7 +28,6 @@ pub struct Command {
 pub enum Transaction {
     Create(Create),
     Script(Script),
-    Mint(Mint),
 }
 
 /// Construct a `Create` transaction for deploying a contract.
@@ -53,17 +57,6 @@ pub struct Create {
     #[clap(skip)]
     pub inputs: Vec<Input>,
     // Inputs and outputs must follow all other arguments and are parsed separately.
-    #[clap(skip)]
-    pub outputs: Vec<Output>,
-}
-
-/// Construct a `Mint` transaction for emulating a block producer.
-#[derive(Debug, Parser, Deserialize, Serialize)]
-pub struct Mint {
-    /// The location of the `Mint` transaction in the block.
-    #[clap(long)]
-    pub tx_ptr: fuel_tx::TxPointer,
-    // Outputs must follow all other arguments and are parsed separately.
     #[clap(skip)]
     pub outputs: Vec<Output>,
 }
@@ -104,8 +97,8 @@ pub struct Gas {
     #[clap(long = "gas-price")]
     pub price: Option<u64>,
     /// Gas limit for the transaction.
-    #[clap(long = "gas-limit")]
-    pub limit: Option<u64>,
+    #[clap(long = "script-gas-limit")]
+    pub script_gas_limit: Option<u64>,
 }
 
 /// Block until which tx cannot be included.
@@ -400,7 +393,7 @@ const EXAMPLES: &str = r"EXAMPLES:
     forc tx create \
         --bytecode ./my-contract/out/debug/my-contract.bin \
         --storage-slots ./my-contract/out/debug/my-contract-storage_slots.json \
-        --gas-limit 100 \
+        --script-gas-limit 100 \
         --gas-price 0 \
         --maturity 0 \
         --witness ADFD \
@@ -522,7 +515,6 @@ impl Command {
             match cmd {
                 Transaction::Create(ref mut create) => create.inputs.push(input),
                 Transaction::Script(ref mut script) => script.inputs.push(input),
-                Transaction::Mint(_) => return Err(ParseError::MintTxHasInput),
             }
             Ok(())
         }
@@ -531,7 +523,6 @@ impl Command {
             match cmd {
                 Transaction::Create(ref mut create) => create.outputs.push(output),
                 Transaction::Script(ref mut script) => script.outputs.push(output),
-                Transaction::Mint(ref mut mint) => mint.outputs.push(output),
             }
         }
 
@@ -586,7 +577,6 @@ impl TryFrom<Transaction> for fuel_tx::Transaction {
         let tx = match tx {
             Transaction::Create(create) => Self::Create(<_>::try_from(create)?),
             Transaction::Script(script) => Self::Script(<_>::try_from(script)?),
-            Transaction::Mint(mint) => Self::Mint(mint.into()),
         };
         Ok(tx)
     }
@@ -621,20 +611,22 @@ impl TryFrom<Create> for fuel_tx::Create {
             .into_iter()
             .map(|s| fuel_tx::Witness::from(s.as_bytes()))
             .collect();
+
+        let maturity = (create.maturity.maturity != 0).then_some(create.maturity.maturity.into());
+        let mut policies = Policies::default();
+        policies.set(PolicyType::GasPrice, create.gas.price);
+        policies.set(PolicyType::Maturity, maturity);
+
         let create = fuel_tx::Transaction::create(
-            create.gas.price.unwrap_or_default(),
-            create
-                .gas
-                .limit
-                .unwrap_or(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx),
-            create.maturity.maturity.into(),
             create.bytecode_witness_index,
+            policies,
             create.salt.salt.unwrap_or_default(),
             storage_slots,
             inputs,
             outputs,
             witnesses,
         );
+
         Ok(create)
     }
 }
@@ -668,31 +660,31 @@ impl TryFrom<Script> for fuel_tx::Script {
             .into_iter()
             .map(|s| fuel_tx::Witness::from(s.as_bytes()))
             .collect();
-        let script = fuel_tx::Transaction::script(
-            script.gas.price.unwrap_or_default(),
-            script
-                .gas
-                .limit
-                .unwrap_or(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx),
-            script.maturity.maturity.into(),
+
+        let mut policies = Policies::default().with_maturity(script.maturity.maturity.into());
+        policies.set(PolicyType::GasPrice, script.gas.price);
+        let mut script_tx = fuel_tx::Transaction::script(
+            0, // Temporary value. Will be replaced below
             script_bytecode,
             script_data,
+            policies,
             inputs,
             outputs,
             witnesses,
         );
-        Ok(script)
-    }
-}
 
-impl From<Mint> for fuel_tx::Mint {
-    fn from(mint: Mint) -> Self {
-        let outputs = mint
-            .outputs
-            .into_iter()
-            .map(fuel_tx::Output::from)
-            .collect();
-        fuel_tx::Transaction::mint(mint.tx_ptr, outputs)
+        if let Some(script_gas_limit) = script.gas.script_gas_limit {
+            script_tx.set_script_gas_limit(script_gas_limit)
+        } else {
+            let consensus_params = ConsensusParameters::default();
+            // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
+            let max_gas =
+                script_tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
+            // Increase `script_gas_limit` to the maximum allowed value.
+            script_tx.set_script_gas_limit(consensus_params.tx_params().max_gas_per_tx - max_gas);
+        }
+
+        Ok(script_tx)
     }
 }
 
@@ -849,11 +841,11 @@ impl From<Output> for fuel_tx::Output {
                 amount: coin.amount,
                 asset_id: coin.asset_id,
             },
-            Output::Contract(contract) => fuel_tx::Output::Contract {
+            Output::Contract(contract) => fuel_tx::Output::Contract(output::contract::Contract {
                 input_index: contract.input_ix,
                 balance_root: contract.balance_root,
                 state_root: contract.state_root,
-            },
+            }),
             Output::Change(change) => fuel_tx::Output::Change {
                 to: change.to,
                 amount: change.amount,
@@ -878,7 +870,7 @@ fn test_parse_create() {
         forc-tx create
             --bytecode ./my-contract/out/debug/my-contract.bin
             --storage-slots ./my-contract/out/debug/my-contract-storage_slots.json
-            --gas-limit 100
+            --script-gas-limit 100
             --gas-price 0
             --maturity 0
             --witness ADFD
@@ -895,25 +887,12 @@ fn test_parse_script() {
         forc-tx script
             --bytecode ./my-script/out/debug/my-script.bin
             --data ./my-script.dat
-            --gas-limit 100
+            --script-gas-limit 100
             --gas-price 0
             --maturity 0
             --receipts-root {receipts_root}
             --witness ADFD
             --witness DFDA
-    "#
-    );
-    dbg!(Command::try_parse_from_args(cmd.split_whitespace().map(|s| s.to_string())).unwrap());
-}
-
-#[test]
-fn test_parse_mint_coin() {
-    let tx_ptr = fuel_tx::TxPointer::default();
-    let address = fuel_tx::Address::default();
-    let asset_id = fuel_tx::AssetId::default();
-    let cmd = format!(
-        r#"
-        forc-tx mint --tx-ptr {tx_ptr:X} output coin --to {address} --amount 100 --asset-id {asset_id}
     "#
     );
     dbg!(Command::try_parse_from_args(cmd.split_whitespace().map(|s| s.to_string())).unwrap());
@@ -935,7 +914,7 @@ fn test_parse_create_inputs_outputs() {
         forc-tx create
             --bytecode ./my-contract/out/debug/my-contract.bin
             --storage-slots ./my-contract/out/debug/my-contract-storage_slots.json
-            --gas-limit 100
+            --script-gas-limit 100
             --gas-price 0
             --maturity 0
             --witness ADFD

@@ -16,7 +16,7 @@ async fn get_test_storage_instance() -> TestStorageContract<WalletUnlocked> {
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 
@@ -206,12 +206,7 @@ async fn can_store_tuple() {
     let t = (Bits256([7; 32]), 8, Bits256([6; 32]));
 
     // Test store
-    instance
-        .methods()
-        .store_tuple(t.clone())
-        .call()
-        .await
-        .unwrap();
+    instance.methods().store_tuple(t).call().await.unwrap();
     let result = instance.methods().get_tuple().call().await.unwrap();
     assert_eq!(result.value, Some(t));
 }

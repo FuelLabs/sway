@@ -17,7 +17,7 @@ async fn deploy_test_registers_instance() -> TestRegistersContract<WalletUnlocke
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 
@@ -133,9 +133,5 @@ async fn can_get_flags() {
 }
 
 fn is_within_range(n: u64) -> bool {
-    if n <= 0 || n > VM_MAX_RAM {
-        false
-    } else {
-        true
-    }
+    n > 0 && n <= VM_MAX_RAM
 }

@@ -3,7 +3,7 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 implicit-std = false
 license = "Apache-2.0"
-name = "basic_storage"
+name = "array_of_structs_contract"
 
 [dependencies]
 array_of_structs_abi = { path = "../../test_abis/array_of_structs_abi" }

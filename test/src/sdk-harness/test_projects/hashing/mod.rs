@@ -150,7 +150,7 @@ async fn get_hashing_instance() -> (HashingTestContract<WalletUnlocked>, Contrac
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
     let instance = HashingTestContract::new(id.clone(), wallet);
