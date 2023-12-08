@@ -22,11 +22,54 @@ use crate::{
     type_system::*,
 };
 
-fn can_auto_impl_abi_encode(ctx: &mut TypeCheckContext, decl: ty::TyDecl) -> bool {
+struct AutoImplAbiEncodeContext {
+    buffer_type_id: TypeId,
+}
+
+fn can_auto_impl_abi_encode(
+    ctx: &mut TypeCheckContext,
+    decl: ty::TyDecl,
+) -> Option<AutoImplAbiEncodeContext> {
+    // skip module "core"
+    if matches!(ctx.namespace.root().name.as_ref(), Some(x) if x.as_str() == "core") {
+        return None;
+    }
+
+    // if Buffer type is not reacheable, we cannot impl
+    let handler = Handler::default();
+    let buffer_type_id = ctx.engines.te().insert(
+        ctx.engines,
+        TypeInfo::Custom {
+            qualified_call_path: QualifiedCallPath {
+                call_path: CallPath {
+                    prefixes: vec![
+                        Ident::new_no_span("core".into()),
+                        Ident::new_no_span("codec".into()),
+                    ],
+                    suffix: Ident::new_no_span("Buffer".into()),
+                    is_absolute: true,
+                },
+                qualified_path_root: None,
+            },
+            type_arguments: None,
+            root_type_id: None,
+        },
+        None,
+    );
+    let buffer_type_id = ctx
+        .resolve_type(
+            &handler,
+            buffer_type_id,
+            &Span::dummy(),
+            EnforceTypeArguments::No,
+            None,
+        )
+        .ok()?;
+
     let decl_ref = decl.get_struct_decl_ref().unwrap();
     let struct_ref = ctx.engines().de().get(decl_ref.id());
 
-    struct_ref.fields.iter().all(|field| {
+    let all_fields_are_abi_encode = struct_ref.fields.iter().all(|field| {
         let handler = Handler::default();
         ctx.namespace
             .implemented_traits
@@ -49,10 +92,17 @@ fn can_auto_impl_abi_encode(ctx: &mut TypeCheckContext, decl: ty::TyDecl) -> boo
                 crate::namespace::TryInsertingTraitImplOnFailure::Yes,
             )
             .is_ok()
-    })
+    });
+
+    all_fields_are_abi_encode.then_some(AutoImplAbiEncodeContext { buffer_type_id })
 }
 
-fn auto_impl_abi_encode(handler: &Handler, ctx: &mut TypeCheckContext, decl: ty::TyDecl) {
+fn auto_impl_abi_encode(
+    handler: &Handler,
+    ctx: &mut TypeCheckContext,
+    decl: ty::TyDecl,
+    buffer_type_id: TypeId,
+) {
     let decl_ref = decl.get_struct_decl_ref().unwrap();
 
     let type_id = ctx
@@ -66,35 +116,6 @@ fn auto_impl_abi_encode(handler: &Handler, ctx: &mut TypeCheckContext, decl: ty:
         .insert(ctx.engines, TypeInfo::Tuple(vec![]), None);
 
     let struct_ref = ctx.engines().de().get(decl_ref.id());
-
-    let buffer_type_id = ctx.engines.te().insert(
-        ctx.engines,
-        TypeInfo::Custom {
-            qualified_call_path: QualifiedCallPath {
-                call_path: CallPath {
-                    prefixes: vec![
-                        Ident::new_no_span("core".into()),
-                        Ident::new_no_span("codec".into()),
-                    ],
-                    suffix: Ident::new_no_span("Buffer".into()),
-                    is_absolute: true,
-                },
-                qualified_path_root: None,
-            },
-            type_arguments: None,
-            root_type_id: None,
-        },
-        None,
-    );
-    let buffer_type_id = ctx
-        .resolve_type(
-            handler,
-            buffer_type_id,
-            &Span::dummy(),
-            EnforceTypeArguments::No,
-            None,
-        )
-        .unwrap();
 
     let abi_encode_body = struct_ref
         .fields
@@ -487,10 +508,10 @@ impl TyDecl {
                 let call_path = decl.call_path.clone();
                 let decl: ty::TyDecl = decl_engine.insert(decl).into();
 
-                let is_core =
-                    matches!(ctx.namespace.root().name.as_ref(), Some(x) if x.as_str() == "core");
-                if !is_core && can_auto_impl_abi_encode(&mut ctx, decl.clone()) {
-                    auto_impl_abi_encode(handler, &mut ctx, decl.clone());
+                if let Some(AutoImplAbiEncodeContext { buffer_type_id }) =
+                    can_auto_impl_abi_encode(&mut ctx, decl.clone())
+                {
+                    auto_impl_abi_encode(handler, &mut ctx, decl.clone(), buffer_type_id);
                 }
 
                 // insert the struct decl into namespace
