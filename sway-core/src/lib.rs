@@ -12,6 +12,7 @@ pub mod compiler_generated;
 mod concurrent_slab;
 mod control_flow_analysis;
 pub mod decl_engine;
+mod debug_generation;
 pub mod ir_generation;
 pub mod language;
 mod metadata;
@@ -29,6 +30,7 @@ use asm_generation::FinalizedAsm;
 pub use asm_generation::{CompiledBytecode, FinalizedEntry};
 pub use build_config::{BuildConfig, BuildTarget};
 use control_flow_analysis::ControlFlowGraph;
+use debug_generation::{generate_debug_info, DebugInfo};
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModulePath, ProgramsCacheEntry};
 use semantic_analysis::{TypeCheckAnalysis, TypeCheckAnalysisContext};
@@ -829,6 +831,16 @@ pub fn compile_to_bytecode(
         package_name,
     )?;
     asm_to_bytecode(handler, asm_res, source_map, engines.se())
+}
+
+/// Given the assembly (opcodes), compile to [DebugInfo], containing the debug info.
+pub fn asm_to_debug(
+    handler: &Handler,
+    asm: &CompiledAsm,
+    source_map: &mut SourceMap,
+    source_engine: &SourceEngine,
+) -> Result<DebugInfo, ErrorEmitted> {
+    generate_debug_info(handler, asm, source_map, source_engine)
 }
 
 /// Given the assembly (opcodes), compile to [CompiledBytecode], containing the asm in bytecode form.

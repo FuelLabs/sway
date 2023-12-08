@@ -1873,6 +1873,14 @@ pub fn compile(
         Ok(asm) => asm,
     };
 
+    let debug_gen = time_expr!(
+        "compile asm to debug",
+        "compile_asm_to_debug",
+        sway_core::asm_to_debug(&handler, &asm, source_map, engines.se()),
+        Some(sway_build_config.clone()),
+        metrics
+    );
+
     let bc_res = time_expr!(
         "compile asm to bytecode",
         "compile_asm_to_bytecode",
