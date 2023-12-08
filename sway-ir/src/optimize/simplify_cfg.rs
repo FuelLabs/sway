@@ -221,7 +221,7 @@ fn merge_blocks(context: &mut Context, function: &Function) -> Result<bool, IrEr
             }
 
             // Drop the terminator from `from_block`.
-            from_block.remove_instruction_at(context, from_block.num_instructions(context) - 1);
+            from_block.remove_last_instruction(context);
 
             // Move instructions from `to_block` to `from_block`.
             let to_block_instructions = to_block.instruction_iter(context).collect::<Vec<_>>();

@@ -313,7 +313,7 @@ pub fn inline_function_call(
     }
 
     // Remove the call from the pre_block instructions.  It's still in the context.values[] though.
-    pre_block.remove_instruction_at(context, pre_block.num_instructions(context) - 1);
+    pre_block.remove_last_instruction(context);
 
     // Returned values, if any, go to `post_block`, so a block arg there.
     // We don't expect `post_block` to already have any block args.

@@ -199,7 +199,7 @@ impl Block {
 
     /// Get instruction at position `pos`.
     ///
-    /// Returns `None` if block is empty.
+    /// Returns `None` if block is empty or if `pos` is out of bounds.
     pub fn get_instruction_at(&self, context: &Context, pos: usize) -> Option<Value> {
         context.blocks[self.0].instructions.get(pos).cloned()
     }
@@ -406,6 +406,13 @@ impl Block {
     /// avoid someday.
     pub fn remove_instruction_at(&self, context: &mut Context, pos: usize) {
         context.blocks[self.0].instructions.remove(pos);
+    }
+
+    /// Remove the last instruction in the block.
+    ///
+    /// **NOTE:** The caller must be very careful if removing the terminator.
+    pub fn remove_last_instruction(&self, context: &mut Context) {
+        context.blocks[self.0].instructions.pop();
     }
 
     /// Remove instructions from block that satisfy a given predicate.
