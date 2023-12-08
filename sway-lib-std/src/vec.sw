@@ -614,6 +614,25 @@ impl<T> From<raw_slice> for Vec<T> {
     }
 }
 
+use core::codec::*;
+
+impl<T> AbiEncode for Vec<T> 
+where
+    T: AbiEncode
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let len = self.len();
+        buffer.push(len);
+
+        let mut i = 0;
+        while i < len {
+            let item = self.get(i).unwrap();
+            item.abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+
 #[test()]
 fn test_vec_with_len_1() {
     let mut ve: Vec<u64> = Vec::new();
