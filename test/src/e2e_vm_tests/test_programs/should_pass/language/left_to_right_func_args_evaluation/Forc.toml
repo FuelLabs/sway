@@ -1,7 +1,7 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
-name = "left_to_right_arg_evaluation"
+name = "left_to_right_func_args_evaluation"
 entry = "main.sw"
 
 [dependencies]
