@@ -290,10 +290,9 @@ pub fn inline_function_call(
     call_data: &FxHashMap<Value, RefCell<(Block, Function)>>,
 ) -> Result<(), IrError> {
     // Split the block at right after the call site.
-    let call_site_idx = context.blocks[block.0]
-        .instructions
-        .iter()
-        .position(|&v| v == call_site)
+    let call_site_idx = block
+        .instruction_iter(context)
+        .position(|v| v == call_site)
         .unwrap();
     let (pre_block, post_block) = block.split_at(context, call_site_idx + 1);
     if post_block != block {
@@ -314,7 +313,7 @@ pub fn inline_function_call(
     }
 
     // Remove the call from the pre_block instructions.  It's still in the context.values[] though.
-    context.blocks[pre_block.0].instructions.pop();
+    pre_block.remove_last_instruction(context);
 
     // Returned values, if any, go to `post_block`, so a block arg there.
     // We don't expect `post_block` to already have any block args.
@@ -403,7 +402,7 @@ pub fn inline_function_call(
     // as we add new instructions which replace the old ones to it too.
     let inlined_blocks = context.functions[inlined_function.0].blocks.clone();
     for block in &inlined_blocks {
-        for ins in context.blocks[block.0].instructions.clone() {
+        for ins in block.instruction_iter(context) {
             inline_instruction(
                 context,
                 block_map.get(block).unwrap(),
@@ -467,39 +466,39 @@ fn inline_instruction(
                     .collect();
 
                 // We can re-use the old asm block with the updated args.
-                new_block.ins(context).asm_block_from_asm(asm, new_args)
+                new_block.append(context).asm_block_from_asm(asm, new_args)
             }
-            InstOp::BitCast(value, ty) => new_block.ins(context).bitcast(map_value(value), ty),
-            InstOp::UnaryOp { op, arg } => new_block.ins(context).unary_op(op, map_value(arg)),
+            InstOp::BitCast(value, ty) => new_block.append(context).bitcast(map_value(value), ty),
+            InstOp::UnaryOp { op, arg } => new_block.append(context).unary_op(op, map_value(arg)),
             InstOp::BinaryOp { op, arg1, arg2 } => {
                 new_block
-                    .ins(context)
+                    .append(context)
                     .binary_op(op, map_value(arg1), map_value(arg2))
             }
             // For `br` and `cbr` below we don't need to worry about the phi values, they're
             // adjusted later in `inline_function_call()`.
-            InstOp::Branch(b) => new_block.ins(context).branch(
+            InstOp::Branch(b) => new_block.append(context).branch(
                 map_block(b.block),
                 b.args.iter().map(|v| map_value(*v)).collect(),
             ),
-            InstOp::Call(f, args) => new_block.ins(context).call(
+            InstOp::Call(f, args) => new_block.append(context).call(
                 f,
                 args.iter()
                     .map(|old_val: &Value| map_value(*old_val))
                     .collect::<Vec<Value>>()
                     .as_slice(),
             ),
-            InstOp::CastPtr(val, ty) => new_block.ins(context).cast_ptr(map_value(val), ty),
+            InstOp::CastPtr(val, ty) => new_block.append(context).cast_ptr(map_value(val), ty),
             InstOp::Cmp(pred, lhs_value, rhs_value) => {
                 new_block
-                    .ins(context)
+                    .append(context)
                     .cmp(pred, map_value(lhs_value), map_value(rhs_value))
             }
             InstOp::ConditionalBranch {
                 cond_value,
                 true_block,
                 false_block,
-            } => new_block.ins(context).conditional_branch(
+            } => new_block.append(context).conditional_branch(
                 map_value(cond_value),
                 map_block(true_block.block),
                 map_block(false_block.block),
@@ -513,7 +512,7 @@ fn inline_instruction(
                 coins,
                 asset_id,
                 gas,
-            } => new_block.ins(context).contract_call(
+            } => new_block.append(context).contract_call(
                 return_type,
                 name,
                 map_value(params),
@@ -523,23 +522,25 @@ fn inline_instruction(
             ),
             InstOp::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
                 FuelVmInstruction::Gtf { index, tx_field_id } => {
-                    new_block.ins(context).gtf(map_value(index), tx_field_id)
+                    new_block.append(context).gtf(map_value(index), tx_field_id)
                 }
                 FuelVmInstruction::Log {
                     log_val,
                     log_ty,
                     log_id,
                 } => new_block
-                    .ins(context)
+                    .append(context)
                     .log(map_value(log_val), log_ty, map_value(log_id)),
-                FuelVmInstruction::ReadRegister(reg) => new_block.ins(context).read_register(reg),
-                FuelVmInstruction::Revert(val) => new_block.ins(context).revert(map_value(val)),
+                FuelVmInstruction::ReadRegister(reg) => {
+                    new_block.append(context).read_register(reg)
+                }
+                FuelVmInstruction::Revert(val) => new_block.append(context).revert(map_value(val)),
                 FuelVmInstruction::Smo {
                     recipient,
                     message,
                     message_size,
                     coins,
-                } => new_block.ins(context).smo(
+                } => new_block.append(context).smo(
                     map_value(recipient),
                     map_value(message),
                     map_value(message_size),
@@ -549,41 +550,41 @@ fn inline_instruction(
                     key,
                     number_of_slots,
                 } => new_block
-                    .ins(context)
+                    .append(context)
                     .state_clear(map_value(key), map_value(number_of_slots)),
                 FuelVmInstruction::StateLoadQuadWord {
                     load_val,
                     key,
                     number_of_slots,
-                } => new_block.ins(context).state_load_quad_word(
+                } => new_block.append(context).state_load_quad_word(
                     map_value(load_val),
                     map_value(key),
                     map_value(number_of_slots),
                 ),
                 FuelVmInstruction::StateLoadWord(key) => {
-                    new_block.ins(context).state_load_word(map_value(key))
+                    new_block.append(context).state_load_word(map_value(key))
                 }
                 FuelVmInstruction::StateStoreQuadWord {
                     stored_val,
                     key,
                     number_of_slots,
-                } => new_block.ins(context).state_store_quad_word(
+                } => new_block.append(context).state_store_quad_word(
                     map_value(stored_val),
                     map_value(key),
                     map_value(number_of_slots),
                 ),
                 FuelVmInstruction::StateStoreWord { stored_val, key } => new_block
-                    .ins(context)
+                    .append(context)
                     .state_store_word(map_value(stored_val), map_value(key)),
                 FuelVmInstruction::WideUnaryOp { op, arg, result } => new_block
-                    .ins(context)
+                    .append(context)
                     .wide_unary_op(op, map_value(arg), map_value(result)),
                 FuelVmInstruction::WideBinaryOp {
                     op,
                     arg1,
                     arg2,
                     result,
-                } => new_block.ins(context).wide_binary_op(
+                } => new_block.append(context).wide_binary_op(
                     op,
                     map_value(arg1),
                     map_value(arg2),
@@ -595,7 +596,7 @@ fn inline_instruction(
                     arg1,
                     arg2,
                     arg3,
-                } => new_block.ins(context).wide_modular_op(
+                } => new_block.append(context).wide_modular_op(
                     op,
                     map_value(result),
                     map_value(arg1),
@@ -603,7 +604,7 @@ fn inline_instruction(
                     map_value(arg3),
                 ),
                 FuelVmInstruction::WideCmpOp { op, arg1, arg2 } => new_block
-                    .ins(context)
+                    .append(context)
                     .wide_cmp_op(op, map_value(arg1), map_value(arg2)),
             },
             InstOp::GetElemPtr {
@@ -612,20 +613,24 @@ fn inline_instruction(
                 indices,
             } => {
                 let elem_ty = elem_ptr_ty.get_pointee_type(context).unwrap();
-                new_block.ins(context).get_elem_ptr(
+                new_block.append(context).get_elem_ptr(
                     map_value(base),
                     elem_ty,
                     indices.iter().map(|idx| map_value(*idx)).collect(),
                 )
             }
-            InstOp::GetLocal(local_var) => new_block.ins(context).get_local(map_local(local_var)),
-            InstOp::IntToPtr(value, ty) => new_block.ins(context).int_to_ptr(map_value(value), ty),
-            InstOp::Load(src_val) => new_block.ins(context).load(map_value(src_val)),
+            InstOp::GetLocal(local_var) => {
+                new_block.append(context).get_local(map_local(local_var))
+            }
+            InstOp::IntToPtr(value, ty) => {
+                new_block.append(context).int_to_ptr(map_value(value), ty)
+            }
+            InstOp::Load(src_val) => new_block.append(context).load(map_value(src_val)),
             InstOp::MemCopyBytes {
                 dst_val_ptr,
                 src_val_ptr,
                 byte_len,
-            } => new_block.ins(context).mem_copy_bytes(
+            } => new_block.append(context).mem_copy_bytes(
                 map_value(dst_val_ptr),
                 map_value(src_val_ptr),
                 byte_len,
@@ -634,19 +639,21 @@ fn inline_instruction(
                 dst_val_ptr,
                 src_val_ptr,
             } => new_block
-                .ins(context)
+                .append(context)
                 .mem_copy_val(map_value(dst_val_ptr), map_value(src_val_ptr)),
-            InstOp::Nop => new_block.ins(context).nop(),
-            InstOp::PtrToInt(value, ty) => new_block.ins(context).ptr_to_int(map_value(value), ty),
+            InstOp::Nop => new_block.append(context).nop(),
+            InstOp::PtrToInt(value, ty) => {
+                new_block.append(context).ptr_to_int(map_value(value), ty)
+            }
             // We convert `ret` to `br post_block` and add the returned value as a phi value.
             InstOp::Ret(val, _) => new_block
-                .ins(context)
+                .append(context)
                 .branch(*post_block, vec![map_value(val)]),
             InstOp::Store {
                 dst_val_ptr,
                 stored_val,
             } => new_block
-                .ins(context)
+                .append(context)
                 .store(map_value(dst_val_ptr), map_value(stored_val)),
         }
         .add_metadatum(context, metadata);

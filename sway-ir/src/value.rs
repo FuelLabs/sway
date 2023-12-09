@@ -149,6 +149,8 @@ impl Value {
         self.replace_instruction_values(context, &FxHashMap::from_iter([(old_val, new_val)]))
     }
 
+    /// If this value is an instruction and if any of its parameters is in `replace_map` as
+    /// a key, replace it with the mapped value.
     pub fn replace_instruction_values(
         &self,
         context: &mut Context,
