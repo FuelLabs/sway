@@ -1170,11 +1170,11 @@ impl TypeInfo {
             | TypeInfo::Placeholder(_)
             | TypeInfo::TypeParam(_)
             | TypeInfo::TraitType { .. } => Err(handler.emit_err(CompileError::Unimplemented(
-                "matching on this type is unsupported right now",
+                "Matching on this type is currently not supported.",
                 span.clone(),
             ))),
             TypeInfo::Ref(_) => Err(handler.emit_err(CompileError::Unimplemented( // TODO-IG: Implement.
-                "Using references in match expressions is currently not implemented.",
+                "Using references in match expressions is currently not supported.",
                 span.clone(),
             ))),
             TypeInfo::ErrorRecovery(err) => Err(*err),

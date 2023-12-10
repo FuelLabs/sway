@@ -851,7 +851,7 @@ impl TypeInfo {
                 trait_type_id: _,
             } => format!("trait type {}", name),
             Ref(ty) => {
-                format!("__ref {}", ty.abi_str(ctx, type_engine, decl_engine)) // TODO-IG: No references in ABIs.
+                format!("__ref {}", ty.abi_str(ctx, type_engine, decl_engine)) // TODO-IG: No references in ABIs according to the RFC. Or we want to have them?
             }
         }
     }

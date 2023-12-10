@@ -2705,7 +2705,6 @@ impl<'eng> FnCompiler<'eng> {
                         .map(|init_expr| {
                             self.compile_expression(context, md_mgr, init_expr)
                                 .map(|init_val| {
-                                    // TODO-IG: Should we have References on the IR level?
                                     let init_type = self
                                             .engines
                                             .te()
