@@ -186,7 +186,6 @@ pub enum TypeInfo {
     Ref(TypeArgument),
 }
 
-// TODO-IG: Check all impls of the TypeInfo.
 impl HashWithEngines for TypeInfo {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         self.discriminant_value().hash(state);
@@ -399,6 +398,7 @@ impl PartialEqWithEngines for TypeInfo {
                     .get(l_ty.type_id)
                     .eq(&type_engine.get(r_ty.type_id), engines)
             }
+
             (l, r) => l.discriminant_value() == r.discriminant_value(),
         }
     }
@@ -510,6 +510,11 @@ impl OrdWithEngines for TypeInfo {
             ) => l_trait_type_id
                 .cmp(r_trait_type_id)
                 .then_with(|| l_name.cmp(r_name)),
+            (Self::Ref(l_ty), Self::Ref(r_ty)) => {
+                type_engine
+                    .get(l_ty.type_id)
+                    .cmp(&type_engine.get(r_ty.type_id), engines)
+            }
 
             (l, r) => l.discriminant_value().cmp(&r.discriminant_value()),
         }
@@ -934,6 +939,8 @@ impl TypeInfo {
                         .to_selector_name(handler, engines, error_msg_span);
                 name?
             }
+            // TODO-IG: No references in ABIs according to the RFC. Or we want to have them?
+            // TODO-IG: Depending on that, we need to handle `Ref` here as well.
             _ => {
                 return Err(handler.emit_err(CompileError::InvalidAbiType {
                     span: error_msg_span.clone(),
@@ -1138,7 +1145,7 @@ impl TypeInfo {
         }
     }
 
-    /// Given a `TypeInfo` `self`, check to see if `self` is currently
+    /// Given a [TypeInfo] `self`, check to see if `self` is currently
     /// supported in match expressions, and return an error if it is not.
     pub(crate) fn expect_is_supported_in_match_expressions(
         &self,
@@ -1181,7 +1188,7 @@ impl TypeInfo {
         }
     }
 
-    /// Given a `TypeInfo` `self`, check to see if `self` is currently
+    /// Given a [TypeInfo] `self`, check to see if `self` is currently
     /// supported in `impl` blocks in the "type implementing for" position.
     pub(crate) fn expect_is_supported_in_impl_blocks_self(
         &self,
@@ -1225,7 +1232,7 @@ impl TypeInfo {
         }
     }
 
-    /// Given a `TypeInfo` `self` and a list of `Ident`'s `subfields`,
+    /// Given a [TypeInfo] `self` and a list of [Ident]'s `subfields`,
     /// iterate through the elements of `subfields` as `subfield`,
     /// and recursively apply `subfield` to `self`.
     ///
@@ -1233,7 +1240,7 @@ impl TypeInfo {
     /// applied without error.
     ///
     /// Returns an error when subfields could not be applied:
-    /// 1) in the case where `self` is not a `TypeInfo::Struct`
+    /// 1) in the case where `self` is not a [TypeInfo::Struct]
     /// 2) in the case where `subfields` is empty
     /// 3) in the case where a `subfield` does not exist on `self`
     pub(crate) fn apply_subfields(
@@ -1291,6 +1298,7 @@ impl TypeInfo {
                 .get(*type_id)
                 .apply_subfields(handler, engines, subfields, span),
             (TypeInfo::ErrorRecovery(err), _) => Err(*err),
+            // TODO-IG: Take a close look on this when implementing dereferencing.
             (type_info, _) => Err(handler.emit_err(CompileError::FieldAccessOnNonStruct {
                 actually: format!("{:?}", engines.help_out(type_info)),
                 span: span.clone(),
@@ -1320,8 +1328,7 @@ impl TypeInfo {
             | TypeInfo::Ptr(_)
             | TypeInfo::Slice(_)
             | TypeInfo::ErrorRecovery(_)
-            | TypeInfo::TraitType { .. }
-            | TypeInfo::Ref(_) => false, // TODO-IG: Check this.
+            | TypeInfo::TraitType { .. } => false,
             TypeInfo::Unknown
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::ContractCaller { .. }
@@ -1333,7 +1340,8 @@ impl TypeInfo {
             | TypeInfo::Numeric
             | TypeInfo::Placeholder(_)
             | TypeInfo::TypeParam(_)
-            | TypeInfo::Alias { .. } => true,
+            | TypeInfo::Alias { .. }
+            | TypeInfo::Ref(_) => true,
         }
     }
 
@@ -1349,8 +1357,8 @@ impl TypeInfo {
         }
     }
 
-    /// Given a `TypeInfo` `self`, expect that `self` is a `TypeInfo::Tuple`, or a
-    /// `TypeInfo::Alias` of a tuple type. Also, return the contents of the tuple.
+    /// Given a [TypeInfo] `self`, expect that `self` is a [TypeInfo::Tuple], or a
+    /// [TypeInfo::Alias] of a tuple type. Also, return the contents of the tuple.
     ///
     /// Note that this works recursively. That is, it supports situations where a tuple has a chain
     /// of aliases such as:
@@ -1364,7 +1372,7 @@ impl TypeInfo {
     /// }
     /// ```
     ///
-    /// Returns an error if `self` is not a `TypeInfo::Tuple` or a `TypeInfo::Alias` of a tuple
+    /// Returns an error if `self` is not a [TypeInfo::Tuple] or a [TypeInfo::Alias] of a tuple
     /// type, transitively.
     pub(crate) fn expect_tuple(
         &self,
@@ -1393,7 +1401,7 @@ impl TypeInfo {
         }
     }
 
-    /// Given a `TypeInfo` `self`, expect that `self` is a `TypeInfo::Enum`, or a `TypeInfo::Alias`
+    /// Given a [TypeInfo] `self`, expect that `self` is a [TypeInfo::Enum], or a [TypeInfo::Alias]
     /// of a enum type. Also, return the contents of the enum.
     ///
     /// Note that this works recursively. That is, it supports situations where a enum has a chain
@@ -1407,7 +1415,7 @@ impl TypeInfo {
     /// let e = Alias2::X;
     /// ```
     ///
-    /// Returns an error if `self` is not a `TypeInfo::Enum` or a `TypeInfo::Alias` of a enum type,
+    /// Returns an error if `self` is not a [TypeInfo::Enum] or a [TypeInfo::Alias] of a enum type,
     /// transitively.
     pub(crate) fn expect_enum(
         &self,
@@ -1434,8 +1442,8 @@ impl TypeInfo {
         }
     }
 
-    /// Given a `TypeInfo` `self`, expect that `self` is a `TypeInfo::Struct`, or a
-    /// `TypeInfo::Alias` of a struct type. Also, return the contents of the struct.
+    /// Given a [TypeInfo] `self`, expect that `self` is a [TypeInfo::Struct], or a
+    /// [TypeInfo::Alias] of a struct type. Also, return the contents of the struct.
     ///
     /// Note that this works recursively. That is, it supports situations where a struct has a
     /// chain of aliases such as:
@@ -1448,7 +1456,7 @@ impl TypeInfo {
     /// let s = Alias2 { x: 0 };
     /// ```
     ///
-    /// Returns an error if `self` is not a `TypeInfo::Struct` or a `TypeInfo::Alias` of a struct
+    /// Returns an error if `self` is not a [TypeInfo::Struct] or a [TypeInfo::Alias] of a struct
     /// type, transitively.
     #[allow(dead_code)]
     pub(crate) fn expect_struct(
