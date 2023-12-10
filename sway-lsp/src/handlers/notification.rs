@@ -34,7 +34,9 @@ pub async fn handle_did_change_text_document(
     let (uri, session) = state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)?;
-    session.write_changes_to_file(&uri, params.content_changes).await?;
+    session
+        .write_changes_to_file(&uri, params.content_changes)
+        .await?;
     state
         .parse_project(
             uri,

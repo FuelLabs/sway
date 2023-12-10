@@ -25,12 +25,7 @@ use lsp_types::{
 use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, BuildPlan};
 use rayon::iter::{ParallelBridge, ParallelIterator};
-use std::{
-    ops::Deref,
-    path::PathBuf,
-    sync::{atomic::Ordering, Arc},
-    vec,
-};
+use std::{ops::Deref, path::PathBuf, sync::Arc};
 use sway_core::{
     decl_engine::DeclEngine,
     language::{
@@ -44,10 +39,7 @@ use sway_core::{
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::{SourceEngine, SourceId, Spanned};
 use sway_utils::{helpers::get_sway_files, PerformanceData};
-use tokio::{
-    fs::File, io::AsyncWriteExt,
-    sync::Semaphore,
-};
+use tokio::{fs::File, io::AsyncWriteExt, sync::Semaphore};
 
 pub type Documents = DashMap<String, TextDocument>;
 pub type ProjectDirectory = PathBuf;
@@ -125,13 +117,10 @@ impl Session {
     }
 
     pub fn shutdown(&self) {
-        // Set the should_end flag to true
-        self.sync.should_end.store(true, Ordering::Relaxed);
-
-        // Wait for the thread to finish
-        let mut join_handle_option = self.sync.notify_join_handle.write();
-        if let Some(join_handle) = std::mem::take(&mut *join_handle_option) {
-            let _ = join_handle.join();
+        // shutdown the thread watching the manifest file
+        let handle = self.sync.notify_join_handle.read();
+        if let Some(join_handle) = &*handle {
+            join_handle.abort();
         }
 
         // Delete the temporary directory.
@@ -297,12 +286,13 @@ impl Session {
             }
         })?;
 
-        let mut file = File::create(uri.path())
-            .await
-            .map_err(|err| DocumentError::UnableToCreateFile {
-                path: uri.path().to_string(),
-                err: err.to_string(),
-            })?;
+        let mut file =
+            File::create(uri.path())
+                .await
+                .map_err(|err| DocumentError::UnableToCreateFile {
+                    path: uri.path().to_string(),
+                    err: err.to_string(),
+                })?;
 
         file.write_all(src.as_bytes())
             .await
