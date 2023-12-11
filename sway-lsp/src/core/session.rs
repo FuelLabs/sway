@@ -104,14 +104,14 @@ impl Session {
         }
     }
 
-    pub fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
+    pub async fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
         let manifest_dir = PathBuf::from(uri.path());
         // Create a new temp dir that clones the current workspace
         // and store manifest and temp paths
         self.sync.create_temp_dir_from_workspace(&manifest_dir)?;
         self.sync.clone_manifest_dir_to_temp()?;
         // iterate over the project dir, parse all sway files
-        let _ = self.store_sway_files();
+        let _ = self.store_sway_files().await;
         self.sync.watch_and_sync_manifest();
         self.sync.manifest_dir().map_err(Into::into)
     }

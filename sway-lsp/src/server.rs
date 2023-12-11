@@ -65,77 +65,77 @@ impl LanguageServer for ServerState {
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
-        request::handle_hover(self, params)
+        request::handle_hover(self, params).await
     }
 
     async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
-        request::handle_code_action(self, params)
+        request::handle_code_action(self, params).await
     }
 
     async fn code_lens(&self, params: CodeLensParams) -> Result<Option<Vec<CodeLens>>> {
-        request::handle_code_lens(self, params)
+        request::handle_code_lens(self, params).await
     }
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
-        request::handle_completion(self, params)
+        request::handle_completion(self, params).await
     }
 
     async fn document_symbol(
         &self,
         params: DocumentSymbolParams,
     ) -> Result<Option<DocumentSymbolResponse>> {
-        request::handle_document_symbol(self, params)
+        request::handle_document_symbol(self, params).await
     }
 
     async fn semantic_tokens_full(
         &self,
         params: SemanticTokensParams,
     ) -> Result<Option<SemanticTokensResult>> {
-        request::handle_semantic_tokens_full(self, params)
+        request::handle_semantic_tokens_full(self, params).await
     }
 
     async fn document_highlight(
         &self,
         params: DocumentHighlightParams,
     ) -> Result<Option<Vec<DocumentHighlight>>> {
-        request::handle_document_highlight(self, params)
+        request::handle_document_highlight(self, params).await
     }
 
     async fn goto_definition(
         &self,
         params: GotoDefinitionParams,
     ) -> Result<Option<GotoDefinitionResponse>> {
-        request::handle_goto_definition(self, params)
+        request::handle_goto_definition(self, params).await
     }
 
     async fn formatting(&self, params: DocumentFormattingParams) -> Result<Option<Vec<TextEdit>>> {
-        request::handle_formatting(self, params)
+        request::handle_formatting(self, params).await
     }
 
     async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
-        request::handle_rename(self, params)
+        request::handle_rename(self, params).await
     }
 
     async fn prepare_rename(
         &self,
         params: TextDocumentPositionParams,
     ) -> Result<Option<PrepareRenameResponse>> {
-        request::handle_prepare_rename(self, params)
+        request::handle_prepare_rename(self, params).await
     }
 
     async fn inlay_hint(&self, params: InlayHintParams) -> Result<Option<Vec<InlayHint>>> {
-        request::handle_inlay_hints(self, params)
+        request::handle_inlay_hints(self, params).await
     }
 }
 
 // Custom LSP-Server Methods
 impl ServerState {
     pub async fn show_ast(&self, params: ShowAstParams) -> Result<Option<TextDocumentIdentifier>> {
-        request::handle_show_ast(self, params)
+        request::handle_show_ast(self, params).await
     }
 
     pub async fn on_enter(&self, params: OnEnterParams) -> Result<Option<WorkspaceEdit>> {
-        request::handle_on_enter(self, params)
+        request::handle_on_enter(self, params).await
     }
 
     pub async fn visualize(&self, params: VisualizeParams) -> Result<Option<String>> {
@@ -146,6 +146,6 @@ impl ServerState {
         &self,
         params: MetricsParams,
     ) -> Result<Option<Vec<(String, PerformanceData)>>> {
-        request::metrics(self, params)
+        request::metrics(self, params).await
     }
 }
