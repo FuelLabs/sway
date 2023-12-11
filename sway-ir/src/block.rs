@@ -16,10 +16,10 @@ use crate::{
     context::Context,
     error::IrError,
     function::Function,
-    instruction::{FuelVmInstruction, InstOp, InstructionInserter, InstructionIterator},
-    pretty::DebugWithContext,
+    instruction::{FuelVmInstruction, InstOp},
     value::{Value, ValueDatum},
-    BranchToWithArgs, Instruction, Type,
+    BranchToWithArgs, DebugWithContext, Instruction, InstructionInserter, InstructionIterator,
+    Type,
 };
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
@@ -34,7 +34,7 @@ pub struct BlockContent {
     /// The function containing this block.
     pub function: Function,
     /// List of instructions in the block.
-    pub instructions: Vec<Value>,
+    pub(crate) instructions: Vec<Value>,
     /// Block arguments: Another form of SSA PHIs.
     pub args: Vec<Value>,
     /// CFG predecessors
@@ -92,8 +92,11 @@ impl Block {
     }
 
     /// Create a new [`InstructionInserter`] to more easily append instructions to this block.
-    pub fn ins<'a, 'eng>(&self, context: &'a mut Context<'eng>) -> InstructionInserter<'a, 'eng> {
-        InstructionInserter::new(context, *self)
+    pub fn append<'a, 'eng>(
+        &self,
+        context: &'a mut Context<'eng>,
+    ) -> InstructionInserter<'a, 'eng> {
+        InstructionInserter::new(context, *self, crate::InsertionPosition::End)
     }
 
     /// Get the label of this block.  If it wasn't given one upon creation it will be a generated
@@ -192,6 +195,13 @@ impl Block {
     pub fn replace_pred(&self, context: &mut Context, old_source: &Block, new_source: &Block) {
         self.remove_pred(context, old_source);
         self.add_pred(context, new_source);
+    }
+
+    /// Get instruction at position `pos`.
+    ///
+    /// Returns `None` if block is empty or if `pos` is out of bounds.
+    pub fn get_instruction_at(&self, context: &Context, pos: usize) -> Option<Value> {
+        context.blocks[self.0].instructions.get(pos).cloned()
     }
 
     /// Get a reference to the block terminator.
@@ -388,10 +398,38 @@ impl Block {
         }
     }
 
+    /// Remove an instruction at position `pos` from this block.
+    ///
+    /// **NOTE:** We must be very careful!  We mustn't remove the phi or the terminator.  Some
+    /// extra checks should probably be performed here to avoid corruption! Ideally we use get a
+    /// user/uses system implemented.  Using `Vec::remove()` is also O(n) which we may want to
+    /// avoid someday.
+    pub fn remove_instruction_at(&self, context: &mut Context, pos: usize) {
+        context.blocks[self.0].instructions.remove(pos);
+    }
+
+    /// Remove the last instruction in the block.
+    ///
+    /// **NOTE:** The caller must be very careful if removing the terminator.
+    pub fn remove_last_instruction(&self, context: &mut Context) {
+        context.blocks[self.0].instructions.pop();
+    }
+
     /// Remove instructions from block that satisfy a given predicate.
     pub fn remove_instructions<T: Fn(Value) -> bool>(&self, context: &mut Context, pred: T) {
         let ins = &mut context.blocks[self.0].instructions;
         ins.retain(|value| !pred(*value));
+    }
+
+    /// Clear the current instruction list and take the one provided.
+    pub fn take_body(&self, context: &mut Context, new_insts: Vec<Value>) {
+        let _ = std::mem::replace(&mut (context.blocks[self.0].instructions), new_insts);
+        for inst in &context.blocks[self.0].instructions {
+            let ValueDatum::Instruction(inst) = &mut context.values[inst.0].value else {
+                continue;
+            };
+            inst.parent = *self;
+        }
     }
 
     /// Insert instruction(s) at the beginning of the block.
@@ -403,12 +441,13 @@ impl Block {
 
     /// Replace an instruction in this block with another.  Will return a ValueNotFound on error.
     /// Any use of the old instruction value will also be replaced by the new value throughout the
-    /// owning function.
+    /// owning function if `replace_uses` is set.
     pub fn replace_instruction(
         &self,
         context: &mut Context,
         old_instr_val: Value,
         new_instr_val: Value,
+        replace_uses: bool,
     ) -> Result<(), IrError> {
         match context.blocks[self.0]
             .instructions
@@ -420,12 +459,14 @@ impl Block {
             )),
             Some(instr_val) => {
                 *instr_val = new_instr_val;
-                self.get_function(context).replace_value(
-                    context,
-                    old_instr_val,
-                    new_instr_val,
-                    Some(*self),
-                );
+                if replace_uses {
+                    self.get_function(context).replace_value(
+                        context,
+                        old_instr_val,
+                        new_instr_val,
+                        Some(*self),
+                    );
+                }
                 Ok(())
             }
         }
