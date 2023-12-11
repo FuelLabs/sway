@@ -193,7 +193,9 @@ pub(crate) async fn semantic_tokens_request(server: &ServerState, uri: &Url) {
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let response = request::handle_semantic_tokens_full(server, params).await.unwrap();
+    let response = request::handle_semantic_tokens_full(server, params)
+        .await
+        .unwrap();
     if let Some(SemanticTokensResult::Tokens(tokens)) = response {
         assert!(!tokens.data.is_empty());
     }
@@ -205,7 +207,9 @@ pub(crate) async fn document_symbol_request(server: &ServerState, uri: &Url) {
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let response = request::handle_document_symbol(server, params).await.unwrap();
+    let response = request::handle_document_symbol(server, params)
+        .await
+        .unwrap();
     if let Some(DocumentSymbolResponse::Flat(res)) = response {
         assert!(!res.is_empty());
     }
@@ -237,7 +241,9 @@ pub(crate) async fn highlight_request(server: &ServerState, uri: &Url) {
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let response = request::handle_document_highlight(server, params).await.unwrap();
+    let response = request::handle_document_highlight(server, params)
+        .await
+        .unwrap();
     let expected = vec![
         DocumentHighlight {
             range: Range {
@@ -416,7 +422,9 @@ pub(crate) async fn definition_check<'a>(server: &ServerState, go_to: &'a GotoDe
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let res = request::handle_goto_definition(server, params.clone()).await.unwrap();
+    let res = request::handle_goto_definition(server, params.clone())
+        .await
+        .unwrap();
     let unwrapped_response = res.as_ref().unwrap_or_else(|| {
         panic!(
             "Failed to deserialize response: {:?} input: {:#?}",
@@ -463,7 +471,10 @@ pub(crate) async fn definition_check_with_req_offset(
     definition_check(server, go_to).await;
 }
 
-pub(crate) async fn hover_request<'a>(server: &ServerState, hover_docs: &'a HoverDocumentation<'a>) {
+pub(crate) async fn hover_request<'a>(
+    server: &ServerState,
+    hover_docs: &'a HoverDocumentation<'a>,
+) {
     let params = HoverParams {
         text_document_position_params: TextDocumentPositionParams {
             text_document: TextDocumentIdentifier {
@@ -511,10 +522,15 @@ pub(crate) async fn prepare_rename_request<'a>(
             character: rename.req_char,
         },
     };
-    request::handle_prepare_rename(server, params).await.unwrap()
+    request::handle_prepare_rename(server, params)
+        .await
+        .unwrap()
 }
 
-pub(crate) async fn rename_request<'a>(server: &ServerState, rename: &'a Rename<'a>) -> WorkspaceEdit {
+pub(crate) async fn rename_request<'a>(
+    server: &ServerState,
+    rename: &'a Rename<'a>,
+) -> WorkspaceEdit {
     let params = RenameParams {
         text_document_position: TextDocumentPositionParams {
             text_document: TextDocumentIdentifier {

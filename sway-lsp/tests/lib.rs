@@ -1744,7 +1744,7 @@ macro_rules! lsp_capability_test {
 
 lsp_capability_test!(
     semantic_tokens,
-    lsp::semantic_tokens_request, // These need to be futures! 
+    lsp::semantic_tokens_request, // These need to be futures!
     doc_comments_dir().join("src/main.sw")
 );
 lsp_capability_test!(
