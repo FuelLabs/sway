@@ -167,7 +167,7 @@ impl TypeId {
         engines: &Engines,
         filter_fn: &F,
         trait_constraints: Vec<TraitConstraint>,
-        depth: usize
+        depth: usize,
     ) -> HashMap<TypeId, Vec<TraitConstraint>>
     where
         F: Fn(&TypeInfo) -> bool,
@@ -233,7 +233,7 @@ impl TypeId {
                             engines,
                             filter_fn,
                             type_param.trait_constraints.clone(),
-                            depth + 1
+                            depth + 1,
                         ),
                     );
                 }
@@ -244,7 +244,7 @@ impl TypeId {
                             engines,
                             filter_fn,
                             vec![],
-                            depth + 1
+                            depth + 1,
                         ),
                     );
                 }
@@ -258,7 +258,7 @@ impl TypeId {
                             engines,
                             filter_fn,
                             type_param.trait_constraints.clone(),
-                            depth + 1
+                            depth + 1,
                         ),
                     );
                 }
@@ -269,7 +269,7 @@ impl TypeId {
                             engines,
                             filter_fn,
                             vec![],
-                            depth + 1
+                            depth + 1,
                         ),
                     );
                 }
@@ -278,8 +278,12 @@ impl TypeId {
                 for elem in elems.iter() {
                     extend(
                         &mut found,
-                        elem.type_id
-                            .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
+                        elem.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                            depth + 1,
+                        ),
                     );
                 }
             }
@@ -290,9 +294,12 @@ impl TypeId {
                 if let Some(address) = address {
                     extend(
                         &mut found,
-                        address
-                            .return_type
-                            .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
+                        address.return_type.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                            depth + 1,
+                        ),
                     );
                 }
             }
@@ -305,9 +312,12 @@ impl TypeId {
                     for type_arg in type_arguments.iter() {
                         extend(
                             &mut found,
-                            type_arg
-                                .type_id
-                                .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
+                            type_arg.type_id.extract_any_including_self(
+                                engines,
+                                filter_fn,
+                                vec![],
+                                depth + 1,
+                            ),
                         );
                     }
                 }
@@ -327,7 +337,7 @@ impl TypeId {
                             engines,
                             filter_fn,
                             vec![],
-                            depth + 1
+                            depth + 1,
                         ),
                     );
                 }
@@ -355,7 +365,7 @@ impl TypeId {
                                     engines,
                                     filter_fn,
                                     vec![],
-                                    depth + 1
+                                    depth + 1,
                                 ),
                             );
                         }
