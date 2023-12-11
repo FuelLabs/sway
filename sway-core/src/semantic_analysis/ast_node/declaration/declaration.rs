@@ -66,8 +66,13 @@ fn can_auto_impl_abi_encode(
         )
         .ok()?;
 
-    let decl_ref = decl.get_struct_decl_ref().unwrap();
+    let decl_ref = decl.get_struct_decl_ref()?;
     let struct_ref = ctx.engines().de().get(decl_ref.id());
+
+    // Cannot implement if this struct has type parameters
+    if !struct_ref.type_parameters.is_empty() {
+        return None;
+    }
 
     let all_fields_are_abi_encode = struct_ref.fields.iter().all(|field| {
         let handler = Handler::default();
