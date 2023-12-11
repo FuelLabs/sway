@@ -325,6 +325,11 @@ impl<'a> UnifyCheck<'a> {
                     && self.check_multiple(&l_types, &r_types)
                     && self.check_multiple(&l_root_type_ids, &r_root_type_ids);
             }
+
+            (Ref(l_ty), Ref(r_ty)) => { // TODO-IG: Check this.
+                self.check_inner(l_ty.type_id, r_ty.type_id);
+            }
+
             _ => {}
         }
 

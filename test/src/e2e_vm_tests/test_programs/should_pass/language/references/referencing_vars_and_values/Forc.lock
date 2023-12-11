@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-1301526AA4E9372C"
+
+[[package]]
+name = "referencing_vars_and_values"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-1301526AA4E9372C"
+dependencies = ["core"]
