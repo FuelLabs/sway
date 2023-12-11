@@ -1,7 +1,7 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
-name = "tuple_types"
+name = "tuple_trait"
 entry = "main.sw"
 
 [dependencies]

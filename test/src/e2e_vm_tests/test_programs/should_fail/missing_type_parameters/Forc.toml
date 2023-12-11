@@ -2,7 +2,7 @@
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
-name = "missing_type_parameteres"
+name = "missing_type_parameters"
 
 [dependencies]
 std = { path = "../../../../../../sway-lib-std" }
