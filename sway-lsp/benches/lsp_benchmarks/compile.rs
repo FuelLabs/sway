@@ -2,14 +2,18 @@ use criterion::{black_box, criterion_group, Criterion};
 use lsp_types::Url;
 use sway_core::Engines;
 use sway_lsp::core::session::{self, Session};
+use tokio::runtime::Runtime;
 
 const NUM_DID_CHANGE_ITERATIONS: usize = 4;
 
 fn benchmarks(c: &mut Criterion) {
     // Load the test project
     let uri = Url::from_file_path(super::benchmark_dir().join("src/main.sw")).unwrap();
-    let session = Session::new();
-    session.handle_open_file(&uri);
+    let session = Runtime::new().unwrap().block_on(async {
+        let session = Session::new();
+        session.handle_open_file(&uri).await;
+        session
+    });
 
     c.bench_function("compile", |b| {
         b.iter(|| {

@@ -1,8 +1,11 @@
 use criterion::{black_box, criterion_group, Criterion};
 use lsp_types::Position;
+use tokio::runtime::Runtime;
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, session) = black_box(super::compile_test_project());
+    let (uri, session) = Runtime::new()
+        .unwrap()
+        .block_on(async { black_box(super::compile_test_project().await) });
     let engines = session.engines.read();
     let position = Position::new(1716, 24);
 

@@ -1,0 +1,3 @@
+[[package]]
+name = "module_dep"
+source = "member"
