@@ -145,10 +145,10 @@ async fn lsp_syncs_with_workspace_edits() {
         def_end_char: 11,
         def_path: uri.as_str(),
     };
-    lsp::definition_check(service.inner(), &go_to);
+    lsp::definition_check(service.inner(), &go_to).await;
     let _ = lsp::did_change_request(&mut service, &uri).await;
     go_to.def_line = 20;
-    lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 45, 24);
+    lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 45, 24).await;
     shutdown_and_exit(&mut service).await;
 }
 
@@ -183,7 +183,7 @@ async fn go_to_definition() {
         def_end_char: 11,
         def_path: uri.as_str(),
     };
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
     let _ = server.shutdown_server();
 }
 
@@ -205,14 +205,14 @@ async fn go_to_definition_for_fields() {
         def_path: "sway-lib-std/src/option.sw",
     };
     // Option
-    lsp::definition_check(&server, &opt_go_to);
-    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 5, 16);
-    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 9, 9);
-    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 9, 16);
-    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 13, 12);
-    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 13, 19);
-    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 13, 34);
-    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 13, 47);
+    lsp::definition_check(&server, &opt_go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 5, 16).await;
+    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 9, 9).await;
+    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 9, 16).await;
+    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 13, 12).await;
+    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 13, 19).await;
+    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 13, 34).await;
+    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 13, 47).await;
 
     let opt_go_to = GotoDefinition {
         req_uri: &uri,
@@ -224,7 +224,7 @@ async fn go_to_definition_for_fields() {
         def_path: "sway-lsp/tests/fixtures/tokens/fields/src/foo.sw",
     };
     // foo
-    lsp::definition_check(&server, &opt_go_to);
+    lsp::definition_check(&server, &opt_go_to).await;
 
     let opt_go_to = GotoDefinition {
         req_uri: &uri,
@@ -236,7 +236,7 @@ async fn go_to_definition_for_fields() {
         def_path: "sway-lsp/tests/fixtures/tokens/fields/src/foo.sw",
     };
     // Foo
-    lsp::definition_check(&server, &opt_go_to);
+    lsp::definition_check(&server, &opt_go_to).await;
 
     let _ = server.shutdown_server();
 }
@@ -260,15 +260,15 @@ async fn go_to_definition_inside_turbofish() {
         def_path: "sway-lib-std/src/option.sw",
     };
     // option.sw
-    lsp::definition_check(&server, &opt_go_to);
-    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 16, 17);
-    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 17, 29);
-    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 18, 19);
-    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 20, 13);
-    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 21, 19);
-    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 22, 29);
-    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 23, 18);
-    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 24, 26);
+    lsp::definition_check(&server, &opt_go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 16, 17).await;
+    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 17, 29).await;
+    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 18, 19).await;
+    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 20, 13).await;
+    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 21, 19).await;
+    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 22, 29).await;
+    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 23, 18).await;
+    lsp::definition_check_with_req_offset(&server, &mut opt_go_to, 24, 26).await;
 
     let mut res_go_to = GotoDefinition {
         req_uri: &uri,
@@ -280,11 +280,11 @@ async fn go_to_definition_inside_turbofish() {
         def_path: "sway-lib-std/src/result.sw",
     };
     // result.sw
-    lsp::definition_check(&server, &res_go_to);
-    lsp::definition_check_with_req_offset(&server, &mut res_go_to, 21, 25);
-    lsp::definition_check_with_req_offset(&server, &mut res_go_to, 22, 36);
-    lsp::definition_check_with_req_offset(&server, &mut res_go_to, 23, 27);
-    lsp::definition_check_with_req_offset(&server, &mut res_go_to, 24, 33);
+    lsp::definition_check(&server, &res_go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut res_go_to, 21, 25).await;
+    lsp::definition_check_with_req_offset(&server, &mut res_go_to, 22, 36).await;
+    lsp::definition_check_with_req_offset(&server, &mut res_go_to, 23, 27).await;
+    lsp::definition_check_with_req_offset(&server, &mut res_go_to, 24, 33).await;
 
     let _ = server.shutdown_server();
 }
@@ -308,13 +308,13 @@ async fn go_to_definition_for_matches() {
         def_path: "sway-lsp/tests/fixtures/tokens/matches/src/main.sw",
     };
     // EXAMPLE_CONST
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 19, 18);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 22, 18);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 19, 18).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 22, 18).await;
     // TODO: Enable the below check once this issue is fixed: https://github.com/FuelLabs/sway/issues/5221
     // lsp::definition_check_with_req_offset(&server, &mut go_to, 22, 30);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 23, 16);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 38);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 23, 16).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 38).await;
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -326,7 +326,7 @@ async fn go_to_definition_for_matches() {
         def_path: "sway-lsp/tests/fixtures/tokens/matches/src/main.sw",
     };
     // a => a + 1
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -338,13 +338,13 @@ async fn go_to_definition_for_matches() {
         def_path: "sway-lib-std/src/option.sw",
     };
     // Option
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 33);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 26, 11);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 27, 11);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 27, 22);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 11);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 22);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 33).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 26, 11).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 27, 11).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 27, 22).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 11).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 22).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -356,10 +356,10 @@ async fn go_to_definition_for_matches() {
         def_path: "sway-lib-std/src/option.sw",
     };
     // Some
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 27, 17);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 17);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 30);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 27, 17).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 17).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 30).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -371,8 +371,8 @@ async fn go_to_definition_for_matches() {
         def_path: "sway-lib-std/src/option.sw",
     };
     // None
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 27, 30);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 27, 30).await;
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -384,7 +384,7 @@ async fn go_to_definition_for_matches() {
         def_path: "sway-lsp/tests/fixtures/tokens/matches/src/main.sw",
     };
     // ExampleStruct
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -396,7 +396,7 @@ async fn go_to_definition_for_matches() {
         def_path: "sway-lsp/tests/fixtures/tokens/matches/src/main.sw",
     };
     // ExampleStruct.variable
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     let _ = server.shutdown_server();
 }
@@ -420,7 +420,7 @@ async fn go_to_definition_for_modules() {
         def_path: "sway-lsp/tests/fixtures/tokens/modules/src/test_mod.sw",
     };
     // mod test_mod;
-    lsp::definition_check(&server, &opt_go_to);
+    lsp::definition_check(&server, &opt_go_to).await;
 
     let _ = server.shutdown_server();
 
@@ -441,7 +441,7 @@ async fn go_to_definition_for_modules() {
         def_path: "sway-lsp/tests/fixtures/tokens/modules/src/test_mod/deep_mod.sw",
     };
     // mod deep_mod;
-    lsp::definition_check(&server, &opt_go_to);
+    lsp::definition_check(&server, &opt_go_to).await;
 
     let _ = server.shutdown_server();
 }
@@ -465,11 +465,11 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-std/src/lib.sw",
     };
     // std
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 12, 14);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 18, 5);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 24, 13);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 5);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 12, 14).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 18, 5).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 24, 13).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 5).await;
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -481,7 +481,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-std/src/option.sw",
     };
     // option
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -493,8 +493,8 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-std/src/option.sw",
     };
     // Option
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 14);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 14).await;
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -506,7 +506,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-std/src/vm.sw",
     };
     // vm
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -518,7 +518,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-std/src/vm/evm.sw",
     };
     // evm
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -530,7 +530,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-std/src/vm/evm/evm_address.sw",
     };
     // evm_address
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -542,7 +542,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-std/src/vm/evm/evm_address.sw",
     };
     // EvmAddress
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -554,9 +554,9 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/test_mod.sw",
     };
     // test_mod
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 22, 7);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 5, 5);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 22, 7).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 5, 5).await;
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -568,7 +568,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/test_mod.sw",
     };
     // test_fun
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -580,14 +580,14 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod.sw",
     };
     // deep_mod
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 6, 6);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 27, 16);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 16);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 29, 16);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 30, 16);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 32, 16);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 33, 16);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 6, 6).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 27, 16).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 16).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 29, 16).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 30, 16).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 32, 16).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 33, 16).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -599,14 +599,14 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
     };
     // deeper_mod
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 6, 16);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 27, 28);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 28);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 29, 28);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 30, 28);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 32, 28);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 33, 28);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 6, 16).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 27, 28).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 28).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 29, 28).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 30, 28).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 32, 28).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 33, 28).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -618,10 +618,10 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
     };
     // DeepEnum
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 38);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 29, 38);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 30, 38);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 38).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 29, 38).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 30, 38).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -633,8 +633,8 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
     };
     // DeepStruct
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 33, 37);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 33, 37).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -646,8 +646,8 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
     };
     // DeepEnum::Variant
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 48);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 48).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -659,8 +659,8 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
     };
     // DeepEnum::Number
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 30, 48);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 30, 48).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -672,8 +672,8 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
     };
     // deep_fun
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 6, 28);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 6, 28).await;
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -685,7 +685,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-std/src/assert.sw",
     };
     // assert
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -697,7 +697,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-core/src/lib.sw",
     };
     // core
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -709,8 +709,8 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-core/src/primitives.sw",
     };
     // primitives
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 20);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 20).await;
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -722,7 +722,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/test_mod.sw",
     };
     // A def
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -734,8 +734,8 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/test_mod.sw",
     };
     // A impl
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 22, 14);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 22, 14).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -747,8 +747,8 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/test_mod.sw",
     };
     // fun
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 22, 18);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 22, 18).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -760,9 +760,9 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-std/src/constants.sw",
     };
     // constants
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 11);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 23);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 11).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 23).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -774,8 +774,8 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-std/src/constants.sw",
     };
     // ZERO_B256
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 31);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 31).await;
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -787,7 +787,7 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-core/src/primitives.sw",
     };
     // u64::min()
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -799,8 +799,8 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lib-core/src/primitives.sw",
     };
     // b256::min()
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 38);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 38).await;
 
     // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/4211 is fixed.
     // let go_to = GotoDefinition {
@@ -813,7 +813,7 @@ async fn go_to_definition_for_paths() {
     //     def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
     // };
     // dfun
-    // lsp::definition_check(&server, &go_to);
+    // lsp::definition_check(&server, &go_to).await;
 
     let _ = server.shutdown_server();
 }
@@ -837,13 +837,13 @@ async fn go_to_definition_for_traits() {
         def_path: "sway-lsp/tests/fixtures/tokens/traits/src/traits.sw",
     };
 
-    lsp::definition_check(&server, &trait_go_to);
-    lsp::definition_check_with_req_offset(&server, &mut trait_go_to, 7, 10);
-    lsp::definition_check_with_req_offset(&server, &mut trait_go_to, 10, 6);
+    lsp::definition_check(&server, &trait_go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut trait_go_to, 7, 10).await;
+    lsp::definition_check_with_req_offset(&server, &mut trait_go_to, 10, 6).await;
     trait_go_to.req_line = 7;
     trait_go_to.req_char = 20;
     trait_go_to.def_line = 3;
-    lsp::definition_check(&server, &trait_go_to);
+    lsp::definition_check(&server, &trait_go_to).await;
     let _ = server.shutdown_server();
 }
 
@@ -866,74 +866,74 @@ async fn go_to_definition_for_variables() {
         def_path: uri.as_str(),
     };
     // Variable expressions
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     // Function arguments
     go_to.def_line = 20;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 35);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 35).await;
 
     // Struct fields
     go_to.def_line = 19;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 45);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 45).await;
 
     // Enum fields
     go_to.def_line = 19;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 31, 39);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 31, 39).await;
 
     // Tuple elements
     go_to.def_line = 21;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 34, 20);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 34, 20).await;
 
     // Array elements
     go_to.def_line = 22;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 37, 20);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 37, 20).await;
 
     // Scoped declarations
     go_to.def_line = 41;
     go_to.def_start_char = 12;
     go_to.def_end_char = 21;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 42, 13);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 42, 13).await;
 
     // If let scopes
     go_to.def_line = 47;
     go_to.def_start_char = 38;
     go_to.def_end_char = 39;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 47, 47);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 47, 47).await;
 
     // Shadowing
     go_to.def_line = 47;
     go_to.def_start_char = 8;
     go_to.def_end_char = 17;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 50, 29);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 50, 29).await;
 
     // Variable type ascriptions
     go_to.def_line = 6;
     go_to.def_start_char = 5;
     go_to.def_end_char = 16;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 53, 21);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 53, 21).await;
 
     // Complex type ascriptions
     go_to.def_line = 61;
     go_to.def_start_char = 9;
     go_to.def_end_char = 15;
     go_to.def_path = "sway-lib-std/src/result.sw";
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 56, 22);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 31);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 60);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 56, 22).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 31).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 60).await;
     go_to.def_line = 81;
     go_to.def_path = "sway-lib-std/src/option.sw";
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 56, 28);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 39);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 68);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 56, 28).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 39).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 68).await;
 
     // ContractCaller
     go_to.def_line = 15;
     go_to.def_start_char = 4;
     go_to.def_end_char = 11;
     go_to.def_path = uri.as_str();
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 60, 34);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 60, 50);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 61, 50);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 60, 34).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 60, 50).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 61, 50).await;
 
     let _ = server.shutdown_server();
 }
@@ -957,13 +957,13 @@ async fn go_to_definition_for_consts() {
         def_end_char: 21,
         def_path: "sway-lib-std/src/contract_id.sw",
     };
-    lsp::definition_check(&server, &contract_go_to);
+    lsp::definition_check(&server, &contract_go_to).await;
 
     contract_go_to.req_char = 34;
     contract_go_to.def_line = 40;
     contract_go_to.def_start_char = 7;
     contract_go_to.def_end_char = 11;
-    lsp::definition_check(&server, &contract_go_to);
+    lsp::definition_check(&server, &contract_go_to).await;
 
     // Constants defined in the same module
     let mut go_to = GotoDefinition {
@@ -975,10 +975,10 @@ async fn go_to_definition_for_consts() {
         def_end_char: 16,
         def_path: uri.as_str(),
     };
-    lsp::definition_check(&server, &contract_go_to);
+    lsp::definition_check(&server, &contract_go_to).await;
 
     go_to.def_line = 9;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 21, 29);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 21, 29).await;
 
     // Constants defined in a different module
     go_to = GotoDefinition {
@@ -990,27 +990,27 @@ async fn go_to_definition_for_consts() {
         def_end_char: 20,
         def_path: "consts/src/more_consts.sw",
     };
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     go_to.def_line = 13;
     go_to.def_start_char = 10;
     go_to.def_end_char = 18;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 31);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 31).await;
 
     // Constants with type ascriptions
     go_to.def_line = 6;
     go_to.def_start_char = 5;
     go_to.def_end_char = 9;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 10, 17);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 10, 17).await;
 
     // Complex type ascriptions
     go_to.def_line = 81;
     go_to.def_start_char = 9;
     go_to.def_end_char = 15;
     go_to.def_path = "sway-lib-std/src/option.sw";
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 17);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 24);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 38);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 17).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 24).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 38).await;
 }
 
 #[tokio::test]
@@ -1032,35 +1032,35 @@ async fn go_to_definition_for_functions() {
         def_path: uri.as_str(),
     };
     // Return type
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
     go_to.def_line = 23;
     go_to.def_start_char = 9;
     go_to.def_end_char = 15;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 33, 42);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 33, 42).await;
     go_to.def_line = 28;
     go_to.def_start_char = 9;
     go_to.def_end_char = 18;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 33, 55);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 33, 55).await;
 
     // Function parameters
     go_to.def_line = 2;
     go_to.def_start_char = 7;
     go_to.def_end_char = 12;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 13, 16);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 13, 16).await;
     go_to.def_line = 23;
     go_to.def_start_char = 9;
     go_to.def_end_char = 15;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 33, 18);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 33, 18).await;
     go_to.def_line = 28;
     go_to.def_start_char = 9;
     go_to.def_end_char = 18;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 33, 28);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 33, 28).await;
 
     // Functions expression
     go_to.def_line = 8;
     go_to.def_start_char = 3;
     go_to.def_end_char = 6;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 19, 13);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 19, 13).await;
 }
 
 #[tokio::test]
@@ -1082,15 +1082,15 @@ async fn go_to_definition_for_structs() {
         def_path: uri.as_str(),
     };
     // Type Params
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
     go_to.def_line = 3;
     go_to.def_start_char = 5;
     go_to.def_end_char = 9;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 12, 8);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 13, 16);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 14, 9);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 15, 16);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 15, 23);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 12, 8).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 13, 16).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 14, 9).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 15, 16).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 15, 23).await;
     go_to = GotoDefinition {
         req_uri: &uri,
         req_line: 16,
@@ -1101,7 +1101,7 @@ async fn go_to_definition_for_structs() {
         def_path: "sway-lib-std/src/option.sw",
     };
     // Type Params
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     // Call Path
     go_to = GotoDefinition {
@@ -1113,7 +1113,7 @@ async fn go_to_definition_for_structs() {
         def_end_char: 13,
         def_path: uri.as_str(),
     };
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 }
 
 #[tokio::test]
@@ -1135,10 +1135,10 @@ async fn go_to_definition_for_impls() {
         def_path: uri.as_str(),
     };
     // TestStruct
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 33);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 8, 17);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 8, 27);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 33).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 8, 17).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 8, 27).await;
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -1150,7 +1150,7 @@ async fn go_to_definition_for_impls() {
         def_path: uri.as_str(),
     };
     // TestTrait
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 }
 
 #[tokio::test]
@@ -1172,8 +1172,8 @@ async fn go_to_definition_for_where_clause() {
         def_path: uri.as_str(),
     };
     // Trait1
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 8);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 8).await;
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -1185,7 +1185,7 @@ async fn go_to_definition_for_where_clause() {
         def_path: uri.as_str(),
     };
     // Trait2
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -1197,7 +1197,7 @@ async fn go_to_definition_for_where_clause() {
         def_path: uri.as_str(),
     };
     // A
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -1209,7 +1209,7 @@ async fn go_to_definition_for_where_clause() {
         def_path: uri.as_str(),
     };
     // B
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 }
 
 #[tokio::test]
@@ -1231,28 +1231,28 @@ async fn go_to_definition_for_enums() {
         def_path: uri.as_str(),
     };
     // Type Params
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
     go_to.def_line = 8;
     go_to.def_start_char = 5;
     go_to.def_end_char = 10;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 17, 15);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 18, 20);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 17, 15).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 18, 20).await;
 
     // Variants
     go_to.def_line = 9;
     go_to.def_start_char = 4;
     go_to.def_end_char = 7;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 24, 21);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 24, 21).await;
     go_to.def_line = 20;
     go_to.def_start_char = 4;
     go_to.def_end_char = 10;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 31);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 31).await;
 
     // Call Path
     go_to.def_line = 15;
     go_to.def_start_char = 9;
     go_to.def_end_char = 15;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 23);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 23).await;
 }
 
 #[tokio::test]
@@ -1270,14 +1270,14 @@ async fn go_to_definition_for_abi() {
         def_path: uri.as_str(),
     };
     // Return type
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     // Abi name
     go_to.def_line = 5;
     go_to.def_start_char = 4;
     go_to.def_end_char = 14;
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 9, 11);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 16, 15);
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 9, 11).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 16, 15).await;
 }
 
 #[tokio::test]
@@ -1299,9 +1299,9 @@ async fn go_to_definition_for_storage() {
         def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
     };
     // storage
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 8);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 26, 8);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 8).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 26, 8).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -1313,9 +1313,9 @@ async fn go_to_definition_for_storage() {
         def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
     };
     // storage.var1
-    lsp::definition_check(&server, &go_to);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 17);
-    lsp::definition_check_with_req_offset(&server, &mut go_to, 26, 17);
+    lsp::definition_check(&server, &go_to).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 17).await;
+    lsp::definition_check_with_req_offset(&server, &mut go_to, 26, 17).await;
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -1327,7 +1327,7 @@ async fn go_to_definition_for_storage() {
         def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
     };
     // storage.var1.x
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -1339,7 +1339,7 @@ async fn go_to_definition_for_storage() {
         def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
     };
     // storage.var1.y
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -1351,7 +1351,7 @@ async fn go_to_definition_for_storage() {
         def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
     };
     // storage.var1.z
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     let go_to = GotoDefinition {
         req_uri: &uri,
@@ -1363,7 +1363,7 @@ async fn go_to_definition_for_storage() {
         def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
     };
     // storage.var1.z.x
-    lsp::definition_check(&server, &go_to);
+    lsp::definition_check(&server, &go_to).await;
 
     let _ = server.shutdown_server();
 }
@@ -1386,10 +1386,10 @@ async fn hover_docs_for_consts() {
         documentation: vec![" documentation for CONSTANT_1"],
     };
 
-    lsp::hover_request(&server, &hover);
+    lsp::hover_request(&server, &hover).await;
     hover.req_char = 49;
     hover.documentation = vec![" CONSTANT_2 has a value of 200"];
-    lsp::hover_request(&server, &hover);
+    lsp::hover_request(&server, &hover).await;
     let _ = server.shutdown_server();
 }
 
@@ -1408,7 +1408,7 @@ async fn hover_docs_for_functions() {
         req_char: 14,
         documentation: vec!["```sway\npub fn bar(p: Point) -> Point\n```\n---\n A function declaration with struct as a function parameter\n\n---\nGo to [Point](command:sway.goToLocation?%5B%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A5%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A2%7D%7D%2C%22uri%22%3A%22file","sway%2Fsway-lsp%2Ftests%2Ffixtures%2Ftokens%2Ffunctions%2Fsrc%2Fmain.sw%22%7D%5D \"functions::Point\")"],
     };
-    lsp::hover_request(&server, &hover);
+    lsp::hover_request(&server, &hover).await;
     let _ = server.shutdown_server();
 }
 
@@ -1428,16 +1428,16 @@ async fn hover_docs_for_structs() {
         req_char: 10,
         documentation: vec![data_documention],
     };
-    lsp::hover_request(&server, &hover);
+    lsp::hover_request(&server, &hover).await;
     hover.req_line = 13;
     hover.req_char = 15;
-    lsp::hover_request(&server, &hover);
+    lsp::hover_request(&server, &hover).await;
     hover.req_line = 14;
     hover.req_char = 10;
-    lsp::hover_request(&server, &hover);
+    lsp::hover_request(&server, &hover).await;
     hover.req_line = 15;
     hover.req_char = 16;
-    lsp::hover_request(&server, &hover);
+    lsp::hover_request(&server, &hover).await;
 
     hover = HoverDocumentation {
         req_uri: &uri,
@@ -1445,7 +1445,7 @@ async fn hover_docs_for_structs() {
         req_char: 8,
         documentation: vec!["```sway\nstruct MyStruct\n```\n---\n My struct type"],
     };
-    lsp::hover_request(&server, &hover);
+    lsp::hover_request(&server, &hover).await;
     let _ = server.shutdown_server();
 }
 
@@ -1464,15 +1464,15 @@ async fn hover_docs_for_enums() {
         req_char: 19,
         documentation: vec!["```sway\nstruct TestStruct\n```\n---\n Test Struct Docs"],
     };
-    lsp::hover_request(&server, &hover);
+    lsp::hover_request(&server, &hover).await;
     hover.req_line = 18;
     hover.req_char = 20;
     hover.documentation = vec!["```sway\nenum Color\n```\n---\n Color enum with RGB variants"];
-    lsp::hover_request(&server, &hover);
+    lsp::hover_request(&server, &hover).await;
     hover.req_line = 25;
     hover.req_char = 29;
     hover.documentation = vec![" Docs for variants"];
-    lsp::hover_request(&server, &hover);
+    lsp::hover_request(&server, &hover).await;
     let _ = server.shutdown_server();
 }
 
@@ -1487,7 +1487,7 @@ async fn hover_docs_for_abis() {
         req_char: 14,
         documentation: vec!["```sway\nabi MyContract\n```\n---\n Docs for MyContract"],
     };
-    lsp::hover_request(&server, &hover);
+    lsp::hover_request(&server, &hover).await;
     let _ = server.shutdown_server();
 }
 
@@ -1506,7 +1506,7 @@ async fn hover_docs_for_variables() {
         req_char: 14,
         documentation: vec!["```sway\nlet variable8: ContractCaller<TestAbi>\n```\n---"],
     };
-    lsp::hover_request(&server, &hover);
+    lsp::hover_request(&server, &hover).await;
     let _ = server.shutdown_server();
 }
 
@@ -1521,7 +1521,7 @@ async fn hover_docs_with_code_examples() {
             req_char: 24,
             documentation: vec!["```sway\nstruct Data\n```\n---\n Struct holding:\n\n 1. A `value` of type `NumberOrString`\n 2. An `address` of type `u64`"],
         };
-    lsp::hover_request(&server, &hover);
+    lsp::hover_request(&server, &hover).await;
     let _ = server.shutdown_server();
 }
 
@@ -1537,10 +1537,10 @@ async fn hover_docs_for_self_keywords() {
         documentation: vec!["\n```sway\nself\n```\n\n---\n\n The receiver of a method, or the current module.\n\n `self` is used in two situations: referencing the current module and marking\n the receiver of a method.\n\n In paths, `self` can be used to refer to the current module, either in a\n [`use`] statement or in a path to access an element:\n\n ```sway\n use std::contract_id::{self, ContractId};\n ```\n\n Is functionally the same as:\n\n ```sway\n use std::contract_id;\n use std::contract_id::ContractId;\n ```\n\n `self` as the current receiver for a method allows to omit the parameter\n type most of the time. With the exception of this particularity, `self` is\n used much like any other parameter:\n\n ```sway\n struct Foo(u32);\n\n impl Foo {\n     // No `self`.\n     fn new() -> Self {\n         Self(0)\n     }\n\n     // Borrowing `self`.\n     fn value(&self) -> u32 {\n         self.0\n     }\n\n     // Updating `self` mutably.\n     fn clear(ref mut self) {\n         self.0 = 0\n     }\n }\n ```"],
     };
 
-    lsp::hover_request(&server, &hover);
+    lsp::hover_request(&server, &hover).await;
     hover.req_char = 24;
     hover.documentation = vec!["```sway\nstruct MyStruct\n```\n---\n\n---\n[2 implementations](command:sway.peekLocations?%5B%7B%22locations%22%3A%5B%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A4%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A2%7D%7D%2C%22uri%22%3A%22file","sway%2Fsway-lsp%2Ftests%2Ffixtures%2Fcompletion%2Fsrc%2Fmain.sw%22%7D%2C%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A14%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A6%7D%7D%2C%22uri%22%3A%22file","sway%2Fsway-lsp%2Ftests%2Ffixtures%2Fcompletion%2Fsrc%2Fmain.sw%22%7D%5D%7D%5D \"Go to implementations\")"];
-    lsp::hover_request(&server, &hover);
+    lsp::hover_request(&server, &hover).await;
     let _ = server.shutdown_server();
 }
 
@@ -1560,11 +1560,11 @@ async fn hover_docs_for_boolean_keywords() {
         documentation: vec!["\n```sway\nfalse\n```\n\n---\n\n A value of type [`bool`] representing logical **false**.\n\n `false` is the logical opposite of [`true`].\n\n See the documentation for [`true`] for more information."],
     };
 
-    lsp::hover_request(&server, &hover);
+    lsp::hover_request(&server, &hover).await;
     hover.req_line = 25;
     hover.req_char = 31;
     hover.documentation = vec!["\n```sway\ntrue\n```\n\n---\n\n A value of type [`bool`] representing logical **true**.\n\n Logically `true` is not equal to [`false`].\n\n ## Control structures that check for **true**\n\n Several of Sway's control structures will check for a `bool` condition evaluating to **true**.\n\n   * The condition in an [`if`] expression must be of type `bool`.\n     Whenever that condition evaluates to **true**, the `if` expression takes\n     on the value of the first block. If however, the condition evaluates\n     to `false`, the expression takes on value of the `else` block if there is one.\n\n   * [`while`] is another control flow construct expecting a `bool`-typed condition.\n     As long as the condition evaluates to **true**, the `while` loop will continually\n     evaluate its associated block.\n\n   * [`match`] arms can have guard clauses on them."];
-    lsp::hover_request(&server, &hover);
+    lsp::hover_request(&server, &hover).await;
     let _ = server.shutdown_server();
 }
 
@@ -1580,8 +1580,8 @@ async fn rename() {
         req_char: 19,
         new_name: "pnt", // from "point"
     };
-    let _ = lsp::prepare_rename_request(&server, &rename);
-    let _ = lsp::rename_request(&server, &rename);
+    let _ = lsp::prepare_rename_request(&server, &rename).await;
+    let _ = lsp::rename_request(&server, &rename).await;
 
     // Enum
     let rename = Rename {
@@ -1590,8 +1590,8 @@ async fn rename() {
         req_char: 17,
         new_name: "MyEnum", // from "Color"
     };
-    let _ = lsp::prepare_rename_request(&server, &rename);
-    let _ = lsp::rename_request(&server, &rename);
+    let _ = lsp::prepare_rename_request(&server, &rename).await;
+    let _ = lsp::rename_request(&server, &rename).await;
 
     // Enum Variant
     let rename = Rename {
@@ -1600,8 +1600,8 @@ async fn rename() {
         req_char: 20,
         new_name: "Pink", // from "Red"
     };
-    let _ = lsp::prepare_rename_request(&server, &rename);
-    let _ = lsp::rename_request(&server, &rename);
+    let _ = lsp::prepare_rename_request(&server, &rename).await;
+    let _ = lsp::rename_request(&server, &rename).await;
 
     // raw identifier syntax
     let rename = Rename {
@@ -1610,8 +1610,8 @@ async fn rename() {
         req_char: 16,
         new_name: "new_var_name", // from r#struct
     };
-    let _ = lsp::prepare_rename_request(&server, &rename);
-    let _ = lsp::rename_request(&server, &rename);
+    let _ = lsp::prepare_rename_request(&server, &rename).await;
+    let _ = lsp::rename_request(&server, &rename).await;
 
     // Function name defined in external module
     let rename = Rename {
@@ -1620,8 +1620,8 @@ async fn rename() {
         req_char: 25,
         new_name: "better_func_name", // from test_fun
     };
-    let _ = lsp::prepare_rename_request(&server, &rename);
-    let _ = lsp::rename_request(&server, &rename);
+    let _ = lsp::prepare_rename_request(&server, &rename).await;
+    let _ = lsp::rename_request(&server, &rename).await;
 
     // Function method in ABI declaration
     let rename = Rename {
@@ -1630,8 +1630,8 @@ async fn rename() {
         req_char: 16,
         new_name: "name_func_name", // from test_function
     };
-    let _ = lsp::prepare_rename_request(&server, &rename);
-    let _ = lsp::rename_request(&server, &rename);
+    let _ = lsp::prepare_rename_request(&server, &rename).await;
+    let _ = lsp::rename_request(&server, &rename).await;
 
     // Function method in ABI implementation
     let rename = Rename {
@@ -1640,8 +1640,8 @@ async fn rename() {
         req_char: 16,
         new_name: "name_func_name", // from test_function
     };
-    let _ = lsp::prepare_rename_request(&server, &rename);
-    let _ = lsp::rename_request(&server, &rename);
+    let _ = lsp::prepare_rename_request(&server, &rename).await;
+    let _ = lsp::rename_request(&server, &rename).await;
 
     // Type alias used in function call
     let rename = Rename {
@@ -1650,8 +1650,8 @@ async fn rename() {
         req_char: 8,
         new_name: "Alias11", // from Alias1
     };
-    let _ = lsp::prepare_rename_request(&server, &rename);
-    let result = lsp::rename_request(&server, &rename);
+    let _ = lsp::prepare_rename_request(&server, &rename).await;
+    let result = lsp::rename_request(&server, &rename).await;
     assert_eq!(result.changes.unwrap().values().next().unwrap().len(), 3);
 
     // Fail to rename keyword
@@ -1661,7 +1661,7 @@ async fn rename() {
         req_char: 2,
         new_name: "StruCt", // from struct
     };
-    assert_eq!(lsp::prepare_rename_request(&server, &rename), None);
+    assert_eq!(lsp::prepare_rename_request(&server, &rename).await, None);
 
     // Fail to rename module
     let rename = Rename {
@@ -1670,7 +1670,7 @@ async fn rename() {
         req_char: 13,
         new_name: "new_mod_name", // from std
     };
-    assert_eq!(lsp::prepare_rename_request(&server, &rename), None);
+    assert_eq!(lsp::prepare_rename_request(&server, &rename).await, None);
 
     // Fail to rename a type defined in a module outside of the users workspace
     let rename = Rename {
@@ -1679,7 +1679,7 @@ async fn rename() {
         req_char: 33,
         new_name: "NEW_TYPE_NAME", // from ZERO_B256
     };
-    assert_eq!(lsp::prepare_rename_request(&server, &rename), None);
+    assert_eq!(lsp::prepare_rename_request(&server, &rename).await, None);
     let _ = server.shutdown_server();
 }
 
@@ -1728,7 +1728,7 @@ macro_rules! test_lsp_capability {
         let uri = open(&server, $entry_point).await;
 
         // Call the specific LSP capability function that was passed in.
-        let _ = $capability(&server, &uri);
+        let _ = $capability(&server, &uri).await;
         let _ = server.shutdown_server();
     }};
 }

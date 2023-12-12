@@ -119,12 +119,13 @@ mod tests {
         }
     }
 
-    #[test]
-    fn get_comment_workspace_edit_double_slash_indented() {
+    #[tokio::test]
+    async fn get_comment_workspace_edit_double_slash_indented() {
         let path = get_absolute_path("sway-lsp/tests/fixtures/diagnostics/dead_code/src/main.sw");
         let uri = Url::from_file_path(path.clone()).unwrap();
-        let text_document =
-            TextDocument::build_from_path(path.as_str()).expect("failed to build document");
+        let text_document = TextDocument::build_from_path(path.as_str())
+            .await
+            .expect("failed to build document");
         let params = OnEnterParams {
             text_document: TextDocumentIdentifier { uri },
             content_changes: vec![TextDocumentContentChangeEvent {
@@ -156,12 +157,13 @@ mod tests {
         assert_text_edit(&edits[0].edits[0], "// ".to_string(), 48, 4);
     }
 
-    #[test]
-    fn get_comment_workspace_edit_triple_slash_paste() {
+    #[tokio::test]
+    async fn get_comment_workspace_edit_triple_slash_paste() {
         let path = get_absolute_path("sway-lsp/tests/fixtures/diagnostics/dead_code/src/main.sw");
         let uri = Url::from_file_path(path.clone()).unwrap();
-        let text_document =
-            TextDocument::build_from_path(path.as_str()).expect("failed to build document");
+        let text_document = TextDocument::build_from_path(path.as_str())
+            .await
+            .expect("failed to build document");
         let params = OnEnterParams {
             text_document: TextDocumentIdentifier { uri },
             content_changes: vec![TextDocumentContentChangeEvent {

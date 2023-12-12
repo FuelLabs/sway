@@ -149,25 +149,25 @@ async fn run_blocking_parse_project(
 pub(crate) struct Sessions(DashMap<PathBuf, Arc<Session>>);
 
 impl Sessions {
-    fn init(&self, uri: &Url) -> Result<(), LanguageServerError> {
+    async fn init(&self, uri: &Url) -> Result<(), LanguageServerError> {
         let session = Arc::new(Session::new());
-        let project_name = session.init(uri)?;
+        let project_name = session.init(uri).await?;
         self.insert(project_name, session);
         Ok(())
     }
 
     /// Constructs and returns a tuple of `(Url, Arc<Session>)` from a given workspace URI.
     /// The returned URL represents the temp directory workspace.
-    pub(crate) fn uri_and_session_from_workspace(
+    pub(crate) async fn uri_and_session_from_workspace(
         &self,
         workspace_uri: &Url,
     ) -> Result<(Url, Arc<Session>), LanguageServerError> {
-        let session = self.url_to_session(workspace_uri)?;
+        let session = self.url_to_session(workspace_uri).await?;
         let uri = session.sync.workspace_to_temp_url(workspace_uri)?;
         Ok((uri, session))
     }
 
-    fn url_to_session(&self, uri: &Url) -> Result<Arc<Session>, LanguageServerError> {
+    async fn url_to_session(&self, uri: &Url) -> Result<Arc<Session>, LanguageServerError> {
         let path = PathBuf::from(uri.path());
         let manifest = PackageManifestFile::from_dir(&path).map_err(|_| {
             DocumentError::ManifestFileNotFound {
@@ -186,7 +186,7 @@ impl Sessions {
             Some(item) => item.value().clone(),
             None => {
                 // If no session can be found, then we need to call init and inserst a new session into the map
-                self.init(uri)?;
+                self.init(uri).await?;
                 self.try_get(&manifest_dir)
                     .try_unwrap()
                     .map(|item| item.value().clone())

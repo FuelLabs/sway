@@ -25,14 +25,7 @@ use lsp_types::{
 use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, BuildPlan};
 use rayon::iter::{ParallelBridge, ParallelIterator};
-use std::{
-    fs::File,
-    io::Write,
-    ops::Deref,
-    path::PathBuf,
-    sync::{atomic::Ordering, Arc},
-    vec,
-};
+use std::{ops::Deref, path::PathBuf, sync::Arc};
 use sway_core::{
     decl_engine::DeclEngine,
     language::{
@@ -46,7 +39,7 @@ use sway_core::{
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::{SourceEngine, SourceId, Spanned};
 use sway_utils::{helpers::get_sway_files, PerformanceData};
-use tokio::sync::Semaphore;
+use tokio::{fs::File, io::AsyncWriteExt, sync::Semaphore};
 
 pub type Documents = DashMap<String, TextDocument>;
 pub type ProjectDirectory = PathBuf;
@@ -111,26 +104,23 @@ impl Session {
         }
     }
 
-    pub fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
+    pub async fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
         let manifest_dir = PathBuf::from(uri.path());
         // Create a new temp dir that clones the current workspace
         // and store manifest and temp paths
         self.sync.create_temp_dir_from_workspace(&manifest_dir)?;
         self.sync.clone_manifest_dir_to_temp()?;
         // iterate over the project dir, parse all sway files
-        let _ = self.store_sway_files();
+        let _ = self.store_sway_files().await;
         self.sync.watch_and_sync_manifest();
         self.sync.manifest_dir().map_err(Into::into)
     }
 
     pub fn shutdown(&self) {
-        // Set the should_end flag to true
-        self.sync.should_end.store(true, Ordering::Relaxed);
-
-        // Wait for the thread to finish
-        let mut join_handle_option = self.sync.notify_join_handle.write();
-        if let Some(join_handle) = std::mem::take(&mut *join_handle_option) {
-            let _ = join_handle.join();
+        // shutdown the thread watching the manifest file
+        let handle = self.sync.notify_join_handle.read();
+        if let Some(join_handle) = &*handle {
+            join_handle.abort();
         }
 
         // Delete the temporary directory.
@@ -276,16 +266,16 @@ impl Session {
             .map(|page_text_edit| vec![page_text_edit])
     }
 
-    pub fn handle_open_file(&self, uri: &Url) {
+    pub async fn handle_open_file(&self, uri: &Url) {
         if !self.documents.contains_key(uri.path()) {
-            if let Ok(text_document) = TextDocument::build_from_path(uri.path()) {
+            if let Ok(text_document) = TextDocument::build_from_path(uri.path()).await {
                 let _ = self.store_document(text_document);
             }
         }
     }
 
-    /// Writes the changes to the file and updates the document.
-    pub fn write_changes_to_file(
+    /// Asynchronously writes the changes to the file and updates the document.
+    pub async fn write_changes_to_file(
         &self,
         uri: &Url,
         changes: Vec<TextDocumentContentChangeEvent>,
@@ -295,15 +285,22 @@ impl Session {
                 path: uri.path().to_string(),
             }
         })?;
+
         let mut file =
-            File::create(uri.path()).map_err(|err| DocumentError::UnableToCreateFile {
+            File::create(uri.path())
+                .await
+                .map_err(|err| DocumentError::UnableToCreateFile {
+                    path: uri.path().to_string(),
+                    err: err.to_string(),
+                })?;
+
+        file.write_all(src.as_bytes())
+            .await
+            .map_err(|err| DocumentError::UnableToWriteFile {
                 path: uri.path().to_string(),
                 err: err.to_string(),
             })?;
-        writeln!(&mut file, "{src}").map_err(|err| DocumentError::UnableToWriteFile {
-            path: uri.path().to_string(),
-            err: err.to_string(),
-        })?;
+
         Ok(())
     }
 
@@ -399,11 +396,11 @@ impl Session {
     }
 
     /// Populate [Documents] with sway files found in the workspace.
-    fn store_sway_files(&self) -> Result<(), LanguageServerError> {
+    async fn store_sway_files(&self) -> Result<(), LanguageServerError> {
         let temp_dir = self.sync.temp_dir()?;
         // Store the documents.
         for path in get_sway_files(temp_dir).iter().filter_map(|fp| fp.to_str()) {
-            self.store_document(TextDocument::build_from_path(path)?)?;
+            self.store_document(TextDocument::build_from_path(path).await?)?;
         }
         Ok(())
     }
@@ -594,22 +591,22 @@ mod tests {
     use super::*;
     use sway_lsp_test_utils::{get_absolute_path, get_url};
 
-    #[test]
-    fn store_document_returns_empty_tuple() {
+    #[tokio::test]
+    async fn store_document_returns_empty_tuple() {
         let session = Session::new();
         let path = get_absolute_path("sway-lsp/tests/fixtures/cats.txt");
-        let document = TextDocument::build_from_path(&path).unwrap();
+        let document = TextDocument::build_from_path(&path).await.unwrap();
         let result = Session::store_document(&session, document);
         assert!(result.is_ok());
     }
 
-    #[test]
-    fn store_document_returns_document_already_stored_error() {
+    #[tokio::test]
+    async fn store_document_returns_document_already_stored_error() {
         let session = Session::new();
         let path = get_absolute_path("sway-lsp/tests/fixtures/cats.txt");
-        let document = TextDocument::build_from_path(&path).unwrap();
+        let document = TextDocument::build_from_path(&path).await.unwrap();
         Session::store_document(&session, document).expect("expected successfully stored");
-        let document = TextDocument::build_from_path(&path).unwrap();
+        let document = TextDocument::build_from_path(&path).await.unwrap();
         let result = Session::store_document(&session, document)
             .expect_err("expected DocumentAlreadyStored");
         assert_eq!(result, DocumentError::DocumentAlreadyStored { path });
