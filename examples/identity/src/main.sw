@@ -5,6 +5,7 @@ mod errors;
 
 use abi::IdentityExample;
 use errors::MyError;
+use core::codec::*;
 
 use std::{
     constants::{

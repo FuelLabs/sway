@@ -11,6 +11,7 @@ use ::constants::{BASE_ASSET_ID, ZERO_B256};
 use ::contract_id::ContractId;
 use ::hash::{Hash, Hasher};
 use ::option::Option::{self, *};
+use core::codec::*;
 
 /// The `Identity` type: either an `Address` or a `ContractId`.
 // ANCHOR: docs_identity
@@ -19,6 +20,19 @@ pub enum Identity {
     ContractId: ContractId,
 }
 // ANCHOR_END: docs_identity
+
+impl AbiEncode for Identity {
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        match self {
+            Identity::Address(address) => {
+                address.abi_encode(buffer);
+            }
+            Identity::ContractId(x) => {
+                x.abi_encode(buffer);
+            }
+        }
+    }
+}
 
 impl core::ops::Eq for Identity {
     fn eq(self, other: Self) -> bool {

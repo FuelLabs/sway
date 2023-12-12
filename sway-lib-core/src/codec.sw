@@ -44,6 +44,16 @@ pub trait AbiEncode {
     fn abi_encode(self, ref mut buffer: Buffer);
 }
 
+impl AbiEncode for b256 {
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let (a, b, c, d): (u64, u64, u64, u64) = asm(r1: self) {r1: (u64, u64, u64, u64)};
+        buffer.push(a);
+        buffer.push(b);
+        buffer.push(c);
+        buffer.push(d);
+    }
+}
+
 impl AbiEncode for u256 {
     fn abi_encode(self, ref mut buffer: Buffer) {
         let (a, b, c, d): (u64, u64, u64, u64) = asm(r1: self) {r1: (u64, u64, u64, u64)};
@@ -140,12 +150,14 @@ where
     buffer.as_raw_slice()
 }
 
-
 #[test]
-fn encode_integers() {
+fn ok_encode() {
     encode(0u8);
     encode(0u16);
     encode(0u32);
     encode(0u64);
-    encode(0x0000000000000000000000000000u256);
+    encode(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFu256);
+
+    // b256
+    encode(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
 }
