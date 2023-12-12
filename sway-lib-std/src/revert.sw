@@ -3,6 +3,7 @@ library;
 
 use ::logging::log;
 use ::error_signals::FAILED_REQUIRE_SIGNAL;
+use core::codec::*;
 
 /// Will either panic or revert with a given number depending on the context.
 ///
@@ -53,7 +54,10 @@ pub fn revert(code: u64) {
 ///     log("The require function did not revert");
 /// }
 /// ```
-pub fn require<T>(condition: bool, value: T) {
+pub fn require<T>(condition: bool, value: T)
+where
+    T: AbiEncode
+{
     if !condition {
         log(value);
         revert(FAILED_REQUIRE_SIGNAL)

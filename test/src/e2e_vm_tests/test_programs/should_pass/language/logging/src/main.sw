@@ -8,7 +8,9 @@ struct S {
     b: u32,
     c: u16,
     d: u8,
-    e: Vec<u64>
+    e: Vec<u64>,
+    f: str,
+    g: u256
 }
 
 fn main() -> u64 {
@@ -16,16 +18,15 @@ fn main() -> u64 {
     e.push(1);
     e.push(2);
     e.push(3);
-    let s = S{
+    __log(S{
         a: 1,
         b: 2,
         c: 3,
         d: 4,
-        e
-    };
-    let buffer = encode(s);
-    let slice: raw_slice = buffer.as_raw_slice(); 
-    __log(slice);
+        e,
+        f: "sway",
+        g: u256::max()
+    });
     
     1
 }

@@ -719,6 +719,8 @@ impl Power for U256 {
 #[test]
 #[allow(deprecated)]
 fn test_five_pow_two_u256() {
+    use core::codec::*;
+
     let five = U256::from((0, 0, 0, 5));
 
     let five_pow_two = five.pow(2);
@@ -731,6 +733,8 @@ fn test_five_pow_two_u256() {
 #[test]
 #[allow(deprecated)]
 fn test_five_pow_three_u256() {
+    use core::codec::*;
+
     let five = U256::from((0, 0, 0, 5));
 
     let five_pow_three = five.pow(3);
@@ -743,6 +747,8 @@ fn test_five_pow_three_u256() {
 #[test]
 #[allow(deprecated)]
 fn test_five_pow_28_u256() {
+    use core::codec::*;
+
     let five = U256::from((0, 0, 0, 5));
 
     let five_pow_28 = five.pow(28);
@@ -755,6 +761,8 @@ fn test_five_pow_28_u256() {
 #[test]
 #[allow(deprecated)]
 fn test_is_zero() {
+    use core::codec::*;
+    
     let zero_u256 = U256::new();
     assert(zero_u256.is_zero());
 }

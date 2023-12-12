@@ -44,6 +44,16 @@ pub trait AbiEncode {
     fn abi_encode(self, ref mut buffer: Buffer);
 }
 
+impl AbiEncode for u256 {
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let (a, b, c, d): (u64, u64, u64, u64) = asm(r1: self) {r1: (u64, u64, u64, u64)};
+        buffer.push(a);
+        buffer.push(b);
+        buffer.push(c);
+        buffer.push(d);
+    }
+}
+
 impl AbiEncode for u64 {
     fn abi_encode(self, ref mut buffer: Buffer) {
         buffer.push(self);
@@ -104,11 +114,38 @@ impl AbiEncode for u8 {
     }
 }
 
-pub fn encode<T>(item: T) -> Buffer
+impl AbiEncode for str {
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        use ::str::*;
+        let len = self.len();
+        buffer.push(len);
+
+        let ptr = self.as_ptr();
+
+        let mut i = 0;
+        while i < len {
+            let byte = ptr.add::<u8>(i).read::<u8>();
+            buffer.push(byte);
+            i += 1;
+        }
+    }
+}
+
+pub fn encode<T>(item: T) -> raw_slice
 where
     T: AbiEncode
 {
     let mut buffer = Buffer::new();
     item.abi_encode(buffer);
-    buffer
+    buffer.as_raw_slice()
+}
+
+
+#[test]
+fn encode_integers() {
+    encode(0u8);
+    encode(0u16);
+    encode(0u32);
+    encode(0u64);
+    encode(0x0000000000000000000000000000u256);
 }

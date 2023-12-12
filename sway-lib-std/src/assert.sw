@@ -4,6 +4,7 @@ library;
 use ::logging::log;
 use ::revert::revert;
 use ::error_signals::{FAILED_ASSERT_EQ_SIGNAL, FAILED_ASSERT_NE_SIGNAL, FAILED_ASSERT_SIGNAL};
+use core::codec::*;
 
 /// Asserts that the given `condition` will always be `true` during runtime.
 ///
@@ -55,9 +56,9 @@ pub fn assert(condition: bool) {
 ///     log("a is equal to b");
 /// }
 /// ```
-pub fn assert_eq<T>(v1: T, v2: T)
-where
-    T: Eq,
+pub fn assert_eq<T>(v1: T, v2: T) 
+where 
+    T: Eq + AbiEncode
 {
     if (v1 != v2) {
         log(v1);

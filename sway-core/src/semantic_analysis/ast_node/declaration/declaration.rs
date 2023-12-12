@@ -60,7 +60,7 @@ fn can_auto_impl_abi_encode(
         .resolve_type(
             &handler,
             buffer_type_id,
-            &Span::dummy(),
+            &decl.span(),
             EnforceTypeArguments::No,
             None,
         )
@@ -92,7 +92,7 @@ fn can_auto_impl_abi_encode(
                     },
                     type_arguments: vec![],
                 }],
-                &Span::dummy(),
+                &decl.span(),
                 ctx.engines,
                 crate::namespace::TryInsertingTraitImplOnFailure::Yes,
             )
@@ -164,19 +164,19 @@ fn auto_impl_abi_encode(
                                             expression:
                                                 ty::TyExpressionVariant::VariableExpression {
                                                     name: Ident::new_no_span("self".into()),
-                                                    span: Span::dummy(),
+                                                    span: decl.span(),
                                                     mutability: VariableMutability::Immutable,
                                                     call_path: None,
                                                 },
                                             return_type: unit,
-                                            span: Span::dummy(),
+                                            span: decl.span(),
                                         }),
                                         field_to_access: x.clone(),
-                                        field_instantiation_span: Span::dummy(),
+                                        field_instantiation_span: decl.span(),
                                         resolved_type_of_parent: type_id,
                                     },
                                     return_type: unit,
-                                    span: Span::dummy(),
+                                    span: decl.span(),
                                 },
                             ),
                             (
@@ -184,12 +184,12 @@ fn auto_impl_abi_encode(
                                 TyExpression {
                                     expression: ty::TyExpressionVariant::VariableExpression {
                                         name: Ident::new_no_span("buffer".into()),
-                                        span: Span::dummy(),
+                                        span: decl.span(),
                                         mutability: VariableMutability::Mutable,
                                         call_path: None,
                                     },
                                     return_type: buffer_type_id,
-                                    span: Span::dummy(),
+                                    span: decl.span(),
                                 },
                             ),
                         ],
@@ -200,9 +200,9 @@ fn auto_impl_abi_encode(
                         deferred_monomorphization: ctx.defer_monomorphization(),
                     },
                     return_type: unit,
-                    span: Span::dummy(),
+                    span: decl.span(),
                 }),
-                span: Span::dummy(),
+                span: decl.span(),
             }
         })
         .collect::<Vec<_>>();
@@ -211,18 +211,18 @@ fn auto_impl_abi_encode(
         name: Ident::new_no_span("abi_encode".into()),
         body: TyCodeBlock {
             contents: abi_encode_body,
-            whole_block_span: Span::dummy(),
+            whole_block_span: decl.span(),
         },
         parameters: vec![
             TyFunctionParameter {
                 name: Ident::new_no_span("self".into()),
                 is_reference: false,
                 is_mutable: false,
-                mutability_span: Span::dummy(),
+                mutability_span: decl.span(),
                 type_argument: TypeArgument {
                     type_id,
                     initial_type_id: type_id,
-                    span: Span::dummy(),
+                    span: decl.span(),
                     call_path_tree: None,
                 },
             },
@@ -230,17 +230,17 @@ fn auto_impl_abi_encode(
                 name: Ident::new_no_span("buffer".into()),
                 is_reference: true,
                 is_mutable: true,
-                mutability_span: Span::dummy(),
+                mutability_span: decl.span(),
                 type_argument: TypeArgument {
                     type_id: buffer_type_id,
                     initial_type_id: buffer_type_id,
-                    span: Span::dummy(),
+                    span: decl.span(),
                     call_path_tree: None,
                 },
             },
         ],
         implementing_type: None,
-        span: Span::dummy(),
+        span: decl.span(),
         call_path: CallPath {
             prefixes: vec![],
             suffix: Ident::new_no_span("abi_encode".into()),
@@ -251,7 +251,7 @@ fn auto_impl_abi_encode(
         return_type: TypeArgument {
             type_id: unit,
             initial_type_id: unit,
-            span: Span::dummy(),
+            span: decl.span(),
             call_path_tree: None,
         },
         visibility: crate::language::Visibility::Public,
@@ -274,7 +274,7 @@ fn auto_impl_abi_encode(
         vec![],
         type_id,
         &[TyImplItem::Fn(abi_encode_impl)],
-        &Span::dummy(),
+        &decl.span(),
         None,
         IsImplSelf::No,
         IsExtendingExistingImpl::No,
@@ -371,6 +371,7 @@ impl TyDecl {
             }
             parsed::Declaration::FunctionDeclaration(fn_decl) => {
                 let span = fn_decl.span.clone();
+
                 let mut ctx =
                     ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
                 let fn_decl = match ty::TyFunctionDecl::type_check(
@@ -383,6 +384,7 @@ impl TyDecl {
                     Ok(res) => res,
                     Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                 };
+
                 let name = fn_decl.name.clone();
                 let decl: ty::TyDecl = decl_engine.insert(fn_decl).into();
                 let _ = ctx.insert_symbol(handler, name, decl.clone());

@@ -8,6 +8,7 @@ use ::contract_id::ContractId;
 use ::option::Option;
 use ::revert::require;
 use ::vec::Vec;
+use core::codec::*;
 
 /// A struct representing the call parameters of a function call.
 pub struct CallParams {
