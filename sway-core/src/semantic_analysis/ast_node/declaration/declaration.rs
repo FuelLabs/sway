@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Ident, Named, Span, Spanned};
+use sway_types::{Ident, Named, Spanned};
 
 use crate::{
     decl_engine::{DeclEngineGet, DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType},

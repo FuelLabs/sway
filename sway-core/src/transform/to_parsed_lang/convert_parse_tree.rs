@@ -1779,40 +1779,37 @@ fn expr_func_app_to_expression_kind(
     match Intrinsic::try_from_str(call_seg.name.as_str()) {
         Some(Intrinsic::Log) if last.is_none() && !is_absolute => {
             let span = name_args_span(span, type_arguments_span);
-            return Ok(
-                ExpressionKind::IntrinsicFunction(
-                        IntrinsicFunctionExpression {
-                            name: call_seg.name,
-                            kind_binding: TypeBinding {
-                                inner: Intrinsic::Log,
-                                type_arguments: TypeArgs::Regular(vec![]),
-                                span: span.clone(),
+            return Ok(ExpressionKind::IntrinsicFunction(
+                IntrinsicFunctionExpression {
+                    name: call_seg.name,
+                    kind_binding: TypeBinding {
+                        inner: Intrinsic::Log,
+                        type_arguments: TypeArgs::Regular(vec![]),
+                        span: span.clone(),
+                    },
+                    arguments: vec![Expression {
+                        kind: ExpressionKind::FunctionApplication(Box::new(
+                            FunctionApplicationExpression {
+                                call_path_binding: TypeBinding {
+                                    inner: CallPath {
+                                        prefixes: vec![
+                                            Ident::new_no_span("core".into()),
+                                            Ident::new_no_span("codec".into()),
+                                        ],
+                                        suffix: Ident::new_no_span("encode".into()),
+                                        is_absolute: true,
+                                    },
+                                    type_arguments: TypeArgs::Regular(type_arguments),
+                                    span: span.clone(),
+                                },
+                                arguments,
                             },
-                            arguments: vec![
-                                Expression { 
-                                    kind: ExpressionKind::FunctionApplication(
-                                        Box::new(FunctionApplicationExpression {
-                                            call_path_binding: TypeBinding { 
-                                                inner: CallPath {
-                                                    prefixes: vec![
-                                                        Ident::new_no_span("core".into()),
-                                                        Ident::new_no_span("codec".into()),
-                                                    ],
-                                                    suffix: Ident::new_no_span("encode".into()),
-                                                    is_absolute: true,
-                                                }, 
-                                                type_arguments: TypeArgs::Regular(type_arguments), 
-                                                span: span.clone()
-                                            },
-                                            arguments,
-                                        })
-                                    ), 
-                                    span: span.clone()
-                                }
-                            ],
-                        }
-                ));
-        },
+                        )),
+                        span: span.clone(),
+                    }],
+                },
+            ));
+        }
         Some(intrinsic) if last.is_none() && !is_absolute => {
             return Ok(ExpressionKind::IntrinsicFunction(
                 IntrinsicFunctionExpression {
