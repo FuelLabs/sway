@@ -1558,7 +1558,8 @@ pub fn sway_build_config(
     .print_ir(build_profile.print_ir)
     .include_tests(build_profile.include_tests)
     .time_phases(build_profile.time_phases)
-    .metrics(build_profile.metrics_outfile.clone());
+    .metrics(build_profile.metrics_outfile.clone())
+    .optimization_level(build_profile.optimization_level);
     Ok(build_config)
 }
 

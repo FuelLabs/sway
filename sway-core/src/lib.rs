@@ -768,44 +768,46 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // Initialize the pass manager and register known passes.
     let mut pass_mgr = PassManager::default();
     register_known_passes(&mut pass_mgr);
-    let mut pass_group = create_o1_pass_group();
+    if build_config.optimization_level != 0 {
+        let mut pass_group = create_o1_pass_group();
 
-    // Target specific transforms should be moved into something more configured.
-    if build_config.build_target == BuildTarget::Fuel {
-        // FuelVM target specific transforms.
-        //
-        // Demote large by-value constants, arguments and return values to by-reference values
-        // using temporaries.
-        pass_group.append_pass(CONSTDEMOTION_NAME);
-        pass_group.append_pass(ARGDEMOTION_NAME);
-        pass_group.append_pass(RETDEMOTION_NAME);
-        pass_group.append_pass(MISCDEMOTION_NAME);
+        // Target specific transforms should be moved into something more configured.
+        if build_config.build_target == BuildTarget::Fuel {
+            // FuelVM target specific transforms.
+            //
+            // Demote large by-value constants, arguments and return values to by-reference values
+            // using temporaries.
+            pass_group.append_pass(CONSTDEMOTION_NAME);
+            pass_group.append_pass(ARGDEMOTION_NAME);
+            pass_group.append_pass(RETDEMOTION_NAME);
+            pass_group.append_pass(MISCDEMOTION_NAME);
 
-        // Convert loads and stores to mem_copys where possible.
-        pass_group.append_pass(MEMCPYOPT_NAME);
+            // Convert loads and stores to mem_copys where possible.
+            pass_group.append_pass(MEMCPYOPT_NAME);
 
-        // Run a DCE and simplify-cfg to clean up any obsolete instructions.
-        pass_group.append_pass(DCE_NAME);
-        pass_group.append_pass(SIMPLIFYCFG_NAME);
-        pass_group.append_pass(SROA_NAME);
-        pass_group.append_pass(MEM2REG_NAME);
-        pass_group.append_pass(DCE_NAME);
+            // Run a DCE and simplify-cfg to clean up any obsolete instructions.
+            pass_group.append_pass(DCE_NAME);
+            pass_group.append_pass(SIMPLIFYCFG_NAME);
+            pass_group.append_pass(SROA_NAME);
+            pass_group.append_pass(MEM2REG_NAME);
+            pass_group.append_pass(DCE_NAME);
+        }
+
+        if build_config.print_ir {
+            pass_group.append_pass(MODULEPRINTER_NAME);
+        }
+
+        // Run the passes.
+        let res = if let Err(ir_error) = pass_mgr.run(&mut ir, &pass_group) {
+            Err(handler.emit_err(CompileError::InternalOwned(
+                ir_error.to_string(),
+                span::Span::dummy(),
+            )))
+        } else {
+            Ok(())
+        };
+        res?;
     }
-
-    if build_config.print_ir {
-        pass_group.append_pass(MODULEPRINTER_NAME);
-    }
-
-    // Run the passes.
-    let res = if let Err(ir_error) = pass_mgr.run(&mut ir, &pass_group) {
-        Err(handler.emit_err(CompileError::InternalOwned(
-            ir_error.to_string(),
-            span::Span::dummy(),
-        )))
-    } else {
-        Ok(())
-    };
-    res?;
 
     let final_asm = compile_ir_to_asm(handler, &ir, Some(build_config))?;
 

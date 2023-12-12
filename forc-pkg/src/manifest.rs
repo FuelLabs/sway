@@ -233,6 +233,7 @@ pub struct BuildProfile {
     #[serde(default)]
     pub error_on_warnings: bool,
     pub reverse_results: bool,
+    pub optimization_level: usize,
 }
 
 impl DependencyDetails {
@@ -718,6 +719,7 @@ impl BuildProfile {
             json_abi_with_callpaths: false,
             error_on_warnings: false,
             reverse_results: false,
+            optimization_level: 0,
         }
     }
 
@@ -736,6 +738,7 @@ impl BuildProfile {
             json_abi_with_callpaths: false,
             error_on_warnings: false,
             reverse_results: false,
+            optimization_level: 1,
         }
     }
 }

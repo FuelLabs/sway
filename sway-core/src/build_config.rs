@@ -46,6 +46,7 @@ pub struct BuildConfig {
     pub(crate) print_finalized_asm: bool,
     pub(crate) print_ir: bool,
     pub(crate) include_tests: bool,
+    pub(crate) optimization_level: usize,
     pub time_phases: bool,
     pub metrics_outfile: Option<String>,
 }
@@ -92,6 +93,7 @@ impl BuildConfig {
             include_tests: false,
             time_phases: false,
             metrics_outfile: None,
+            optimization_level: 0,
         }
     }
 
@@ -140,6 +142,13 @@ impl BuildConfig {
     pub fn metrics(self, a: Option<String>) -> Self {
         Self {
             metrics_outfile: a,
+            ..self
+        }
+    }
+
+    pub fn optimization_level(self, optimization_level: usize) -> Self {
+        Self {
+            optimization_level,
             ..self
         }
     }
