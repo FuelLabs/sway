@@ -261,8 +261,9 @@ fn auto_impl_abi_encode(
         is_trait_method_dummy: false,
     });
 
+    let auto_handler = Handler::default();
     let _ = ctx.namespace.implemented_traits.insert(
-        handler,
+        &auto_handler,
         CallPath {
             prefixes: vec![
                 Ident::new_no_span("core".into()),

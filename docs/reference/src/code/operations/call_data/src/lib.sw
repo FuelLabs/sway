@@ -1,5 +1,7 @@
 library;
 
+use core::codec::*;
+
 // ANCHOR: import_asset
 use std::{call_frames::msg_asset_id, constants::BASE_ASSET_ID};
 // ANCHOR_END: import_asset
