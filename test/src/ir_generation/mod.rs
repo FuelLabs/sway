@@ -15,7 +15,7 @@ use sway_error::handler::Handler;
 
 use sway_ir::{
     create_inline_in_module_pass, register_known_passes, PassGroup, PassManager, ARGDEMOTION_NAME,
-    CONSTDEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME, RETDEMOTION_NAME,
+    CONSTDEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME, RETDEMOTION_NAME, SIMPLIFYCFG_NAME, SROA_NAME, MEM2REG_NAME,
 };
 
 enum Checker {
@@ -326,9 +326,20 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                             }
 
                             let mut group = PassGroup::default();
-                            for pass in passes {
+                            for pass in dbg!(passes) {
                                 if pass == "o1" {
                                     group = sway_ir::create_o1_pass_group();
+                                } else if pass == "fuel" {
+                                    group.append_pass(CONSTDEMOTION_NAME);
+                                    group.append_pass(ARGDEMOTION_NAME);
+                                    group.append_pass(RETDEMOTION_NAME);
+                                    group.append_pass(MISCDEMOTION_NAME);
+                                    group.append_pass(MEMCPYOPT_NAME);
+                                    // group.append_pass(DCE_NAME);
+                                    // group.append_pass(SIMPLIFYCFG_NAME);
+                                    // group.append_pass(SROA_NAME);
+                                    // group.append_pass(MEM2REG_NAME);
+                                    // group.append_pass(DCE_NAME);
                                 } else {
                                     // pass needs a 'static str
                                     let pass = Box::leak(Box::new(pass));
