@@ -23,7 +23,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
     str::FromStr,
-    sync::Arc,
+    sync::{Arc, atomic::AtomicBool},
 };
 pub use sway_core::Programs;
 use sway_core::{
@@ -1776,6 +1776,7 @@ pub fn compile(
             namespace,
             Some(&sway_build_config),
             &pkg.name,
+            None,
         ),
         Some(sway_build_config.clone()),
         metrics
@@ -2581,6 +2582,7 @@ pub fn check(
     terse_mode: bool,
     include_tests: bool,
     engines: &Engines,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> anyhow::Result<Vec<(Option<Programs>, Handler)>> {
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
@@ -2627,6 +2629,7 @@ pub fn check(
         )?
         .include_tests(include_tests);
 
+        let now = std::time::Instant::now();
         let input = manifest.entry_string()?;
         let handler = Handler::default();
         let programs_res = sway_core::compile_to_ast(
@@ -2636,7 +2639,11 @@ pub fn check(
             dep_namespace,
             Some(&build_config),
             &pkg.name,
+            retrigger_compilation.clone(),
         );
+        eprintln!("compile_to_ast took: {:?}", now.elapsed());
+
+        
 
         let programs = match programs_res.as_ref() {
             Ok(programs) => programs,
