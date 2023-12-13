@@ -396,6 +396,11 @@ jobs:
 
   cargo-test-workspace:
     runs-on: ubuntu-latest
+    services:
+      fuel-core:
+        image: ghcr.io/fuellabs/fuel-core:v0.21.0
+        ports:
+          - 4000:4000
     steps:
       - uses: actions/checkout@v3
       - name: Install toolchain
