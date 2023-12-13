@@ -1907,7 +1907,7 @@ impl<'eng> FnCompiler<'eng> {
             &body.return_type,
             &body.span,
         )?;
-
+        
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
         let body_deterministically_aborts = body.deterministically_aborts(self.engines.de(), false);
@@ -1915,6 +1915,7 @@ impl<'eng> FnCompiler<'eng> {
         if init_val.is_diverging(context) || body_deterministically_aborts {
             return Ok(Some(init_val));
         }
+
         let mutable = matches!(mutability, ty::VariableMutability::Mutable);
         let local_name = self.lexical_map.insert(name.as_str().to_owned());
         let local_var = self
@@ -2710,16 +2711,23 @@ impl<'eng> FnCompiler<'eng> {
                                             .te()
                                             .get_unaliased(init_expr.return_type);
 
-                                    if (init_val
+                                    if init_val
                                         .get_type(context)
                                         .map_or(false, |ty| ty.is_ptr(context))
-                                        && init_type.is_copy_type())
+                                        &&
+                                        (init_type.is_copy_type()
                                         ||
-                                        init_type.is_reference_type()
+                                        init_type.is_reference_type())
                                     {
-                                        // It's a pointer to a copy type. We need to dereference it.
+                                        // It's a pointer to a copy type, or a reference behind a pointer. We need to dereference it.
+                                        // We can get a reference behind a pointer if a reference variable is passed to the ASM block.
+                                        // By "reference" we mean th `u64` value that represents the memory address of the referenced
+                                        // value.
                                         self.current_block.append(context).load(init_val)
                                     } else {
+                                        // If we have a direct value (not behind a pointer), we just passe it as the initial value.
+                                        // Note that if the `init_val` is a reference (`u64` representing the memory address) it
+                                        // behaves the same as any other value, we just passe it as the initial value to the register.
                                         init_val
                                     }
                                 })

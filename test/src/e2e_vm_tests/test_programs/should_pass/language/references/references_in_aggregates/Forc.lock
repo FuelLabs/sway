@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-8B7392CF84E0FBF2"
+
+[[package]]
+name = "references_in_aggregates"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-8B7392CF84E0FBF2"
+dependencies = ["core"]

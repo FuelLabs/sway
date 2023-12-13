@@ -77,7 +77,7 @@ impl raw_ptr {
     ///
     /// # Returns
     ///
-    /// * [T] - The value in memory at the location of the pointer.
+    /// * [T] - The copy of the value in memory at the location of the pointer.
     ///
     /// # Examples
     ///
