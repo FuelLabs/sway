@@ -19,5 +19,8 @@ out
 # Benchmarks data output directory
 benchmarks/
 
+# Generated client schema
+**/schema.graphql
+
 # .DS_Store
 .DS_Store

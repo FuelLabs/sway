@@ -1,4 +1,4 @@
-# Fuel Debugger
+# `forc-debug`
 
 [![build](https://github.com/FuelLabs/fuel-debugger/actions/workflows/ci.yml/badge.svg)](https://github.com/FuelLabs/fuel-debugger/actions/workflows/ci.yml)
 [![crates.io](https://img.shields.io/crates/v/fuel-debugger?label=latest)](https://crates.io/crates/fuel-debugger)

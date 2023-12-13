@@ -19,7 +19,7 @@ fn test_cli() {
         .expect("Failed to start fuel-core");
 
     let mut run_cmd = CargoBuild::new()
-        .bin("fuel-debugger")
+        .bin("forc-debug")
         .current_release()
         .current_target()
         .run()

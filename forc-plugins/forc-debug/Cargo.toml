@@ -1,7 +1,12 @@
 [package]
-name = "fuel-debugger"
-version = "0.1.0"
-edition = "2021"
+name = "forc-debug"
+version = "0.48.1"
+description = "Supports debugging Sway code via CLI and DAP server."
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 clap = { version = "3.1", features = ["env", "derive"] }

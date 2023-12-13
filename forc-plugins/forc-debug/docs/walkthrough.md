@@ -73,7 +73,7 @@ We can recognize the `while` loop by the conditional jumps `JNZI`. The condition
 
 ## Setting up the debugging
 
-We can start up the debug infrastructure. On a new terminal session run `fuel-core run --db-type in-memory --debug`; we need to have that running because it actually executes the program. Now we can fire up the debugger itself: `fuel-debugger`. Now
+We can start up the debug infrastructure. On a new terminal session run `fuel-core run --db-type in-memory --debug`; we need to have that running because it actually executes the program. Now we can fire up the debugger itself: `forc-debug`. Now
 if everything is set up correctly, you shoould see the debugger prompt (`>> `). You can use `help` command to list available commands.
 
 Now we would like to inspect the program while it's running. To do this, we first need to send the script to the executor, i.e. `fuel-core`. To do so, we need a *transaction specification*, `tx.json`. It looks something like this:
