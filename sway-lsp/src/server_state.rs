@@ -134,7 +134,18 @@ async fn run_blocking_parse_project(
                 }
             }
         }
-        let parse_result = session::parse_project(&uri, &session.engines.read())?;
+        let now = std::time::Instant::now();
+        let engines_clone = session.engines.read().clone();
+        eprintln!("parse_project: engines_clone: {:?}", now.elapsed());
+
+        let now = std::time::Instant::now();
+        let parse_result = session::parse_project(&uri, &engines_clone)?;
+        eprintln!("compilation_took: {:?}", now.elapsed());
+
+        let now = std::time::Instant::now();
+        *session.engines.write() = engines_clone;
+        eprintln!("parse_project: engines_write: {:?}", now.elapsed());
+
         let (errors, warnings) = parse_result.diagnostics.clone();
         session.write_parse_result(parse_result);
         *diagnostics = get_diagnostics(&warnings, &errors, session.engines.read().se());
