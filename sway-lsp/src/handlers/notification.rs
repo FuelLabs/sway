@@ -1,6 +1,8 @@
 //! This module is responsible for implementing handlers for Language Server
 //! Protocol. This module specifically handles notification messages sent by the Client.
 
+use std::sync::atomic::Ordering;
+
 use crate::{core::document, error::LanguageServerError, server_state::ServerState};
 use lsp_types::{
     DidChangeTextDocumentParams, DidChangeWatchedFilesParams, DidOpenTextDocumentParams,
@@ -39,6 +41,9 @@ pub async fn handle_did_change_text_document(
     session
         .write_changes_to_file(&uri, params.content_changes)
         .await?;
+    if *state.is_compiling.read() {
+        state.retrigger_compilation.store(true, Ordering::Relaxed);
+    }
     state
         .parse_project(
             uri,

@@ -36,6 +36,7 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use sway_ast::AttributeDecl;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{
@@ -467,6 +468,7 @@ pub fn parsed_to_ast(
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
     package_name: &str,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<ty::TyProgram, ErrorEmitted> {
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
@@ -476,6 +478,8 @@ pub fn parsed_to_ast(
         initial_namespace,
         package_name,
     );
+
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     let mut typed_program = match typed_program_opt {
         Ok(typed_program) => typed_program,
@@ -524,6 +528,9 @@ pub fn parsed_to_ast(
         ),
         None => (None, None),
     };
+
+    check_should_abort(handler, retrigger_compilation.clone())?;
+
     // Perform control flow analysis and extend with any errors.
     let _ = perform_control_flow_analysis(
         handler,
@@ -532,6 +539,8 @@ pub fn parsed_to_ast(
         print_graph,
         print_graph_url_format,
     );
+
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     // Evaluate const declarations, to allow storage slots initialization with consts.
     let mut ctx = Context::new(engines.se());
@@ -596,6 +605,7 @@ pub fn compile_to_ast(
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
     package_name: &str,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<Programs, ErrorEmitted> {
     let query_engine = engines.qe();
     let mut metrics = PerformanceData::default();
@@ -617,6 +627,8 @@ pub fn compile_to_ast(
         };
     }
 
+    check_should_abort(handler, retrigger_compilation.clone())?;
+
     // Parse the program to a concrete syntax tree (CST).
     let parse_program_opt = time_expr!(
         "parse the program to a concrete syntax tree (CST)",
@@ -625,6 +637,8 @@ pub fn compile_to_ast(
         build_config,
         metrics
     );
+
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     let (lexed_program, mut parsed_program) = match parse_program_opt {
         Ok(modules) => modules,
@@ -653,10 +667,13 @@ pub fn compile_to_ast(
             initial_namespace,
             build_config,
             package_name,
+            retrigger_compilation.clone(),
         ),
         build_config,
         metrics
     );
+
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     handler.dedup();
 
@@ -693,6 +710,7 @@ pub fn compile_to_asm(
         initial_namespace,
         Some(&build_config),
         package_name,
+        None,
     )?;
     ast_to_asm(handler, engines, &ast_res, &build_config)
 }
@@ -941,6 +959,16 @@ fn module_return_path_analysis(
         Err(mut error) => errors.append(&mut error),
     }
 }
+
+fn check_should_abort(handler: &Handler, retrigger_compilation: Option<Arc<AtomicBool>>) -> Result<(), ErrorEmitted> {
+    if let Some(ref retrigger_compilation) = retrigger_compilation {
+        if retrigger_compilation.load(Ordering::Relaxed) {
+            return Err(handler.cancel());
+        }
+    }
+    Ok(())
+}
+
 
 #[test]
 fn test_basic_prog() {

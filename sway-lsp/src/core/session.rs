@@ -25,7 +25,7 @@ use lsp_types::{
 use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, BuildPlan};
 use rayon::iter::{ParallelBridge, ParallelIterator};
-use std::{ops::Deref, path::PathBuf, sync::Arc};
+use std::{ops::Deref, path::PathBuf, sync::{Arc, atomic::AtomicBool}};
 use sway_core::{
     decl_engine::DeclEngine,
     language::{
@@ -437,6 +437,7 @@ pub(crate) fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
 pub fn compile(
     uri: &Url,
     engines: &Engines,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
     let build_plan = build_plan(uri)?;
     let tests_enabled = true;
@@ -446,6 +447,7 @@ pub fn compile(
         true,
         tests_enabled,
         engines,
+        retrigger_compilation,
     )
     .map_err(LanguageServerError::FailedToCompile)
 }
@@ -534,8 +536,8 @@ pub fn traverse(
 }
 
 /// Parses the project and returns true if the compiler diagnostics are new and should be published.
-pub fn parse_project(uri: &Url, engines: &Engines) -> Result<ParseResult, LanguageServerError> {
-    let results = compile(uri, engines)?;
+pub fn parse_project(uri: &Url, engines: &Engines, retrigger_compilation: Option<Arc<AtomicBool>>) -> Result<ParseResult, LanguageServerError> {
+    let results = compile(uri, engines, retrigger_compilation)?;
     let TraversalResult {
         diagnostics,
         programs,
@@ -617,7 +619,7 @@ mod tests {
         let dir = get_absolute_path("sway-lsp/tests/fixtures");
         let uri = get_url(&dir);
         let engines = Engines::default();
-        let result = parse_project(&uri, &engines).expect_err("expected ManifestFileNotFound");
+        let result = parse_project(&uri, &engines, None).expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(
