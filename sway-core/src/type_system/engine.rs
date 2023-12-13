@@ -26,6 +26,19 @@ pub struct TypeEngine {
     id_map: RwLock<HashMap<TypeSourceInfo, TypeId>>,
 }
 
+impl Clone for TypeEngine {
+    fn clone(&self) -> Self {
+        let now = std::time::Instant::now();
+        let te = TypeEngine {
+            slab: self.slab.clone(),
+            slab_source_ids: self.slab_source_ids.clone(),
+            id_map: RwLock::new(self.id_map.read().expect("Lock is poisoned").clone()),
+        };
+        eprintln!("TypeEngine clone: {:?}", now.elapsed());
+        te
+    }
+}
+
 impl TypeEngine {
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
