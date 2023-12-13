@@ -1,5 +1,7 @@
 script;
 
+use core::codec::*;
+
 struct TestStruct {
     field_1: bool,
     field_2: b256,
@@ -9,6 +11,15 @@ struct TestStruct {
 enum TestEnum {
     VariantOne: (),
     VariantTwo: (),
+}
+
+impl AbiEncode for TestEnum {
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        match self {
+            TestEnum::VariantOne => {}
+            TestEnum::VariantTwo => {}
+        }
+    }
 }
 
 fn main() {

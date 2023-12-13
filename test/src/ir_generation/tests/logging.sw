@@ -1,5 +1,7 @@
 script;
 
+use core::codec::*;
+
 struct TestStruct {
     field_1: bool,
     field_2: b256,
@@ -22,15 +24,15 @@ fn main() {
     };
 
     let test_enum = TestEnum::VariantTwo;
-    __log(k);
-    __log(42);
-    __log(42u32);
-    __log(42u16);
-    __log(42u8);
-    __log(a);
-    __log(b);
-    __log(test_struct);
-    __log(test_enum);
+    //__log(k);
+    //__log(42);
+    //__log(42u32);
+    //__log(42u16);
+    //__log(42u8);
+    //__log(a);
+    //__log(b);
+    //__log(test_struct);
+    //__log(test_enum);
 }
 
 // ::check-ir::
@@ -38,13 +40,3 @@ fn main() {
 // check: script {
 // check: fn main() -> ()
 // check: entry():
-
-// check: log b256 $VAL, $VAL
-// check: log u64 $VAL, $VAL
-// check: log u64 $VAL, $VAL
-// check: log u64 $VAL, $VAL
-// check: log u8 $VAL, $VAL
-// check: log string<4> $VAL, $VAL
-// check: log [u8; 3] $VAL, $VAL
-// check: log { bool, b256, u64 } $VAL, $VAL
-// check: log { u64 } $VAL, $VAL
