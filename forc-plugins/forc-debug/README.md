@@ -1,4 +1,4 @@
-# `forc-debug`
+# forc-debug
 
 Debugger attachable to FuelVM over a GraphQL API.
 
