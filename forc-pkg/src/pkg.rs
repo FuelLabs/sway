@@ -102,7 +102,7 @@ pub struct BuiltPackage {
     pub program_abi: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub warnings: Vec<CompileWarning>,
-    source_map: SourceMap,
+    pub source_map: SourceMap,
     pub tree_type: TreeType,
     pub bytecode: BuiltPackageBytecode,
     /// `Some` for contract member builds where tests were included. This is

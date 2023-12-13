@@ -1326,6 +1326,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         ret_type: &Type,
     ) -> Result<(), CompileError> {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+        println!("owning span: {:?}", owning_span);
         if ret_type.is_unit(self.context) {
             // Unit returns should always be zero, although because they can be omitted from
             // functions, the register is sometimes uninitialized. Manually return zero in this

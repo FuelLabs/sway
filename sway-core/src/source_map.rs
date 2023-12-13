@@ -10,17 +10,17 @@ use sway_types::span::Span;
 /// Index of an interned path string
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct PathIndex(usize);
+pub struct PathIndex(pub usize);
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SourceMap {
     /// Paths of dependencies in the `~/.forc` directory, with the prefix stripped.
     /// This makes inverse source mapping work on any machine with deps downloaded.
-    dependency_paths: Vec<PathBuf>,
+    pub dependency_paths: Vec<PathBuf>,
     /// Paths to source code files, defined separately to avoid repetition.
-    paths: Vec<PathBuf>,
+    pub paths: Vec<PathBuf>,
     /// Mapping from opcode index to source location
-    map: HashMap<usize, SourceMapSpan>,
+    pub map: HashMap<usize, SourceMapSpan>,
 }
 impl SourceMap {
     pub fn new() -> Self {

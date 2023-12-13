@@ -1044,6 +1044,7 @@ pub fn find_dir_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
     find_within(dir, pkg_name).and_then(|path| path.parent().map(Path::to_path_buf))
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
