@@ -45,10 +45,10 @@ pub struct ProgramsCacheEntry {
 
 pub type ProgramsCacheMap = HashMap<ModulePath, ProgramsCacheEntry>;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct QueryEngine {
-    parse_module_cache: RwLock<ModuleCacheMap>,
-    programs_cache: RwLock<ProgramsCacheMap>,
+    parse_module_cache: Arc<RwLock<ModuleCacheMap>>,
+    programs_cache: Arc<RwLock<ProgramsCacheMap>>,
 }
 
 impl QueryEngine {
