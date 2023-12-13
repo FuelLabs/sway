@@ -326,14 +326,13 @@ impl<'a> UnifyCheck<'a> {
                     && self.check_multiple(&l_root_type_ids, &r_root_type_ids);
             }
 
-            (Ref(l_ty), Ref(r_ty)) => { // TODO-IG: Check this.
-                self.check_inner(l_ty.type_id, r_ty.type_id);
+            (Ref(l_ty), Ref(r_ty)) => {
+                return self.check_inner(l_ty.type_id, r_ty.type_id);
             }
 
             _ => {}
         }
 
-        // TODO-IG: Implement for all modes. Is it common recursive? Very likely yes.
         match self.mode {
             Coercion => {
                 match (&*left_info, &*right_info) {
@@ -433,10 +432,6 @@ impl<'a> UnifyCheck<'a> {
 
                     (ErrorRecovery(_), _) => true,
                     (_, ErrorRecovery(_)) => true,
-
-                    (Ref(l_ty), Ref(r_ty)) => {
-                        self.check_inner(l_ty.type_id, r_ty.type_id)
-                    }
 
                     (a, b) => a.eq(b, self.engines),
                 }

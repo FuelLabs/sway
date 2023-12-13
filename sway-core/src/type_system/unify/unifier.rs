@@ -113,7 +113,7 @@ impl<'a> Unifier<'a> {
                 self.unify_tuples(handler, rfs, efs)
             }
             (Array(re, rc), Array(ee, ec)) if rc.val() == ec.val() => {
-                self.unify_arrays(handler, received, expected, span, re.type_id, ee.type_id)
+                self.unify_type_arguments_in_parents(handler, received, expected, span, re, ee)
             }
             (Struct(r_decl_ref), Struct(e_decl_ref)) => {
                 let r_decl = self.engines.de().get_struct(r_decl_ref);
@@ -260,6 +260,9 @@ impl<'a> Unifier<'a> {
             {
                 // if they are the same, then it's ok
             }
+            (Ref(r), Ref(e)) => {
+                self.unify_type_arguments_in_parents(handler, received, expected, span, r, e)
+            }
 
             // If no previous attempts to unify were successful, raise an error.
             (TypeInfo::ErrorRecovery(_), _) => (),
@@ -386,23 +389,27 @@ impl<'a> Unifier<'a> {
         }
     }
 
-    fn unify_arrays(
+    /// Unifies `received_type_argument` and `expected_type_argument`, and in case of a
+    /// mismatch, reports the `received_parent` and `expected_parent` as mismatching.
+    /// Useful for unifying types like arrays and references where issues in unification
+    /// of their [TypeArgument]s directly corresponds to the unification of enclosed types themselves.
+    fn unify_type_arguments_in_parents(
         &self,
         handler: &Handler,
-        received: TypeId,
-        expected: TypeId,
+        received_parent: TypeId,
+        expected_parent: TypeId,
         span: &Span,
-        r: TypeId,
-        e: TypeId,
+        received_type_argument: &TypeArgument,
+        expected_type_argument: &TypeArgument,
     ) {
         let h = Handler::default();
-        self.unify(&h, r, e, span);
+        self.unify(&h, received_type_argument.type_id, expected_type_argument.type_id, span);
         let (new_errors, warnings) = h.consume();
 
-        // If there was an error then we want to report the array types as mismatching, not
-        // the elem types.
+        // If there was an error then we want to report the parent types as mismatching, not
+        // the argument types.
         if !new_errors.is_empty() {
-            let (received, expected) = self.assign_args(received, expected);
+            let (received, expected) = self.assign_args(received_parent, expected_parent);
             handler.emit_err(
                 TypeError::MismatchedType {
                     expected,
