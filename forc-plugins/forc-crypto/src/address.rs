@@ -4,11 +4,36 @@ use fuels_core::types::bech32::Bech32Address;
 use serde_json::json;
 use std::str::{from_utf8, FromStr};
 
+fn help() -> &'static str {
+    Box::leak(
+        format!(
+            r#"
+EXAMPLES:
+    {}
+"#,
+            examples()
+        )
+        .into_boxed_str(),
+    )
+}
+
+pub(crate) fn examples() -> &'static str {
+    r#"# Convert address formats
+
+    ## Converts address from one format to another
+    forc crypto address 0x565e671a359a43e90c4c99761a02ddc448c0fae749a3e45ffeb7d275318a7589
+
+    ## Converts address from one format to another
+    forc crypto address fuel12e0xwx34nfp7jrzvn9mp5qkac3yvp7h8fx37ghl7klf82vv2wkys6wd523
+"#
+}
+
 #[derive(Debug, clap::Args)]
 #[clap(
     author,
     version,
-    about = "Converts any valid address to all supported formats"
+    about = "Converts any valid address to all supported formats",
+    after_long_help = help(),
 )]
 pub struct Args {
     /// The address to convert. It can be either a valid address in any format

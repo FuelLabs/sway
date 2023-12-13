@@ -7,12 +7,41 @@ use libp2p_identity::{secp256k1, Keypair, PeerId};
 use serde_json::json;
 use std::{ops::Deref, str::FromStr};
 
+const ABOUT: &str = "Parses a private key to view the associated public key";
+
+pub(crate) fn examples() -> String {
+    let secret = "{secret}";
+    format!(
+        r#"# {}
+
+    ## Parses the secret for a block-production secret
+    forc crypto parse-secret "{secret}"
+
+    ## Parses the secret for a block-production secret
+    forc crypto parse-secret "{secret}" -k peering
+    "#,
+        ABOUT
+    )
+}
+
+fn after_long_help() -> &'static str {
+    Box::leak(
+        format!(
+            r#"EXAMPLES:
+    {}"#,
+            examples()
+        )
+        .into_boxed_str(),
+    )
+}
+
 /// Parse a secret key to view the associated public key
 #[derive(Debug, clap::Args)]
 #[clap(
     author,
     version,
-    about = "Parses a private key to view the associated public key"
+    about = ABOUT,
+    after_long_help = after_long_help(),
 )]
 pub struct Arg {
     /// A private key in hex format

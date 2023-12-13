@@ -6,8 +6,46 @@ use std::{
     path::Path,
 };
 
+pub(crate) fn examples(sub_command: &str, example: &str) -> String {
+    format!(
+        r#"# Hashes a given data with the {sub_command} algorithm
+
+    ## Hashes passing the data from the argument
+    forc crypto {sub_command} "{example}"
+
+    ## Hashes a data through unix pipes
+    echo {example} | forc crypto {sub_command}
+
+    ## Hashes passing the data through the stdin
+    forc crypto {sub_command}
+    {example}^D
+
+    ## Hashes a file
+    forc crypto {sub_command} /path/to/file.txt
+"#
+    )
+}
+
+fn after_long_help() -> &'static str {
+    Box::leak(
+        format!(
+            r#"EXAMPLES:
+    {}
+    {}"#,
+            examples("keccack256", "fuel"),
+            examples("sha256", "fuel")
+        )
+        .into_boxed_str(),
+    )
+}
+
 #[derive(Debug, Clone, clap::Args)]
-#[clap(author, version, about = "Hashes the argument or file with this hash")]
+#[clap(
+    author,
+    version,
+    about = "Hashes the argument or file with this hash",
+    after_long_help = after_long_help(),
+)]
 pub struct HashArgs {
     /// This argument is optional, it can be either:
     ///
