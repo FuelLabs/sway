@@ -1,10 +1,10 @@
 use clap::Parser;
-use fuel_debugger::names::register_name;
+use forc_debug::names::register_name;
 use shellfish::async_fn;
 use shellfish::{Command as ShCommand, Shell};
 use std::error::Error;
 
-use fuel_debugger::{names, ContractId, FuelClient, RunResult, Transaction};
+use forc_debug::{names, ContractId, FuelClient, RunResult, Transaction};
 use fuel_vm::consts::{VM_MAX_RAM, VM_REGISTER_COUNT, WORD_SIZE};
 
 #[derive(Parser, Debug)]

@@ -1,4 +1,4 @@
-use fuel_debugger::{ContractId, FuelClient, Transaction};
+use forc_debug::{ContractId, FuelClient, Transaction};
 
 #[tokio::main]
 async fn main() {
