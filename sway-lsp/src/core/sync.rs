@@ -13,12 +13,12 @@ use std::{
     fs::{self, File},
     io::{Read, Write},
     path::{Path, PathBuf},
-    sync::{atomic::AtomicBool, mpsc, Arc},
-    thread::JoinHandle,
+    sync::Arc,
     time::Duration,
 };
 use sway_types::{SourceEngine, Span};
 use tempfile::Builder;
+use tokio::task::JoinHandle;
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub enum Directory {
@@ -30,8 +30,6 @@ pub enum Directory {
 pub struct SyncWorkspace {
     pub directories: DashMap<Directory, PathBuf>,
     pub notify_join_handle: RwLock<Option<JoinHandle<()>>>,
-    // if we should shutdown the thread watching the manifest file
-    pub should_end: Arc<AtomicBool>,
 }
 
 impl SyncWorkspace {
@@ -41,7 +39,6 @@ impl SyncWorkspace {
         Self {
             directories: DashMap::new(),
             notify_join_handle: RwLock::new(None),
-            should_end: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -195,13 +192,13 @@ impl SyncWorkspace {
                 if let Some(temp_manifest_path) = self.temp_manifest_path() {
                     edit_manifest_dependency_paths(&manifest, &temp_manifest_path);
 
-                    let (tx, rx) = mpsc::channel();
-                    let handle = std::thread::spawn(move || {
+                    let handle = tokio::spawn(async move {
+                        let (tx, mut rx) = tokio::sync::mpsc::channel(10);
                         // Setup debouncer. No specific tickrate, max debounce time 2 seconds
                         let mut debouncer =
                             new_debouncer(Duration::from_secs(1), None, move |event| {
                                 if let Ok(e) = event {
-                                    let _ = tx.send(e);
+                                    let _ = tx.blocking_send(e);
                                 }
                             })
                             .unwrap();
@@ -211,7 +208,7 @@ impl SyncWorkspace {
                             .watch(manifest_dir.as_ref().path(), RecursiveMode::NonRecursive)
                             .unwrap();
 
-                        while let Ok(_events) = rx.recv() {
+                        while let Some(_events) = rx.recv().await {
                             // Rescan the Forc.toml and convert
                             // relative paths to absolute. Save into our temp directory.
                             edit_manifest_dependency_paths(&manifest, &temp_manifest_path);
