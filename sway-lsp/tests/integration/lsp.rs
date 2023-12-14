@@ -91,11 +91,12 @@ pub(crate) async fn did_open_notification(
 pub(crate) async fn did_change_request(
     service: &mut LspService<ServerState>,
     uri: &Url,
+    version: i32,
 ) -> Request {
     let params = json!({
         "textDocument": {
             "uri": uri,
-            "version": 2
+            "version": version,
         },
         "contentChanges": [
             {

@@ -8,12 +8,15 @@ use crate::{
     utils::debug,
     utils::keyword_docs::KeywordDocs,
 };
+use crossbeam_channel::{Sender, Receiver};
 use dashmap::DashMap;
 use forc_pkg::PackageManifestFile;
 use lsp_types::{Diagnostic, Url};
 use parking_lot::RwLock;
+use sway_core::Engines;
 use std::{path::PathBuf, sync::{Arc, atomic::{AtomicBool, Ordering}}};
 use tower_lsp::{jsonrpc, Client};
+use tokio::sync::watch;
 
 /// `ServerState` is the primary mutable state of the language server
 pub struct ServerState {
@@ -22,7 +25,10 @@ pub struct ServerState {
     pub(crate) keyword_docs: Arc<KeywordDocs>,
     pub(crate) sessions: Arc<Sessions>,
     pub(crate) retrigger_compilation: Arc<AtomicBool>,
-    pub(crate) is_compiling: RwLock<bool>,
+    pub(crate) is_compiling: Arc<AtomicBool>,
+    pub(crate) watch_tx: Option<watch::Sender<Shared>>,
+    pub(crate) mpsc_tx: Option<Sender<Shared>>,
+    pub(crate) mpsc_rx: Option<Receiver<Shared>>,
 }
 
 impl Default for ServerState {
@@ -33,17 +39,111 @@ impl Default for ServerState {
             keyword_docs: Arc::new(KeywordDocs::new()),
             sessions: Arc::new(Sessions(DashMap::new())),
             retrigger_compilation: Arc::new(AtomicBool::new(false)),
-            is_compiling: RwLock::new(false),
+            is_compiling: Arc::new(AtomicBool::new(false)),
+            watch_tx: None,
+            mpsc_tx: None,
+            mpsc_rx: None,
         }
     }
 }
 
+#[derive(Debug, Default)]
+pub struct Shared {
+    pub session: Option<Arc<Session>>,
+    pub uri: Option<Url>,
+    pub version: Option<i32>,
+}
+
+fn reset_compilation_state(is_compiling: Arc<AtomicBool>, retrigger_compilation: Arc<AtomicBool>) {
+    is_compiling.store(false, Ordering::Relaxed);
+    retrigger_compilation.store(false, Ordering::Relaxed);
+}
+
 impl ServerState {
     pub fn new(client: Client) -> ServerState {
-        ServerState {
+        eprintln!("ServerState::new");
+
+        let (mpsc_tx, mpsc_rx) = crossbeam_channel::bounded(1);
+
+        let (watch_tx, mut watch_rx) = watch::channel(Default::default());
+        let state = ServerState {
             client: Some(client),
+            watch_tx: Some(watch_tx),
+            mpsc_tx: Some(mpsc_tx),
+            mpsc_rx: Some(mpsc_rx.clone()),
             ..Default::default()
-        }
+        };
+
+        // let is_compiling = state.is_compiling.clone();
+        // let retrigger_compilation = state.retrigger_compilation.clone();
+        // tokio::spawn(async move {
+        //     eprintln!("spawning compilation thread");
+        //     while watch_rx.changed().await.is_ok() {
+        //         eprintln!("new compilation request");
+        //         is_compiling.store(true, Ordering::Relaxed);
+
+        //         // let(version, uri, session, engines_clone) = {
+        //         //     let shared = watch_rx.borrow();
+        //         //     let version = shared.version.unwrap();
+        //         //     let uri = shared.uri.as_ref().unwrap();
+        //         //     let session = shared.session.as_ref().unwrap();
+        //         //     let engines_clone = session.engines.read().clone();
+        //         //     (version.clone(), uri.clone(), session.clone(), engines_clone)
+        //         // };
+
+        //         let uri = watch_rx.borrow().uri.as_ref().unwrap().clone();
+        //         let version = watch_rx.borrow().version.unwrap();
+
+        //         eprintln!("starting parsing project: version: {:?}", version);
+        //         let parse_result = match session::parse_project(&uri, &Engines::default(), Some(retrigger_compilation.clone())) {
+        //             Ok(parse_result) => parse_result,
+        //             Err(err) => {
+        //                 eprintln!("{:?}", err);
+        //                 is_compiling.store(false, Ordering::Relaxed);
+        //                 retrigger_compilation.store(false, Ordering::Relaxed);
+        //                 return;
+        //             },
+        //         };
+        //         eprintln!("finished parsing project: version: {:?}", version);
+
+        //         //*session.engines.write() = engines_clone;
+        //         //session.write_parse_result(parse_result);
+
+        //         is_compiling.store(false, Ordering::Relaxed);
+        //         retrigger_compilation.store(false, Ordering::Relaxed);
+        //     }
+        // });
+
+        let is_compiling = state.is_compiling.clone();
+        let retrigger_compilation = state.retrigger_compilation.clone();
+        std::thread::spawn(move || {
+            while let Ok(shared) = mpsc_rx.recv() {
+                eprintln!("new compilation request");
+                is_compiling.store(true, Ordering::Relaxed);
+
+                let uri = shared.uri.as_ref().unwrap().clone();
+                let version = shared.version.unwrap();
+                let session = shared.session.as_ref().unwrap().clone();
+                let engines_clone = session.engines.read().clone();
+
+                eprintln!("starting parsing project: version: {:?}", version);
+                match session::parse_project(&uri, &engines_clone, Some(retrigger_compilation.clone())) {
+                    Ok(parse_result) => {
+                        *session.engines.write() = engines_clone;
+                        session.write_parse_result(parse_result);
+                        reset_compilation_state(is_compiling.clone(), retrigger_compilation.clone()); 
+                    },
+                    Err(err) => {
+                        eprintln!("{:?}", err);
+                        reset_compilation_state(is_compiling.clone(), retrigger_compilation.clone());
+                        continue;
+                    },
+                }
+                eprintln!("finished parsing project: version: {:?}", version);
+            }
+        });
+        
+        state
     }
 
     pub fn shutdown_server(&self) -> jsonrpc::Result<()> {
@@ -92,7 +192,7 @@ impl ServerState {
         version: Option<i32>,
         session: Arc<Session>,
     ) {
-        *self.is_compiling.write() = true;
+        self.is_compiling.store(true, Ordering::Relaxed);
         match run_blocking_parse_project(uri.clone(), version, session.clone(), Some(self.retrigger_compilation.clone())).await {
             Ok(_) => {
                 // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
@@ -113,7 +213,7 @@ impl ServerState {
                 }
             }
         }
-        *self.is_compiling.write() = false;
+        self.is_compiling.store(false, Ordering::Relaxed);
         self.retrigger_compilation.store(false, Ordering::Relaxed);
     }
 }

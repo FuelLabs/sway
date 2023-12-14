@@ -28,14 +28,11 @@ pub struct TypeEngine {
 
 impl Clone for TypeEngine {
     fn clone(&self) -> Self {
-        let now = std::time::Instant::now();
-        let te = TypeEngine {
+        TypeEngine {
             slab: self.slab.clone(),
             slab_source_ids: self.slab_source_ids.clone(),
             id_map: RwLock::new(self.id_map.read().expect("Lock is poisoned").clone()),
-        };
-        eprintln!("TypeEngine clone: {:?}", now.elapsed());
-        te
+        }
     }
 }
 

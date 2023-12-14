@@ -479,7 +479,7 @@ pub fn parsed_to_ast(
         package_name,
     );
 
-    check_should_abort(handler, retrigger_compilation.clone())?;
+    check_should_abort(handler, retrigger_compilation.clone(), 482)?;
 
     let mut typed_program = match typed_program_opt {
         Ok(typed_program) => typed_program,
@@ -529,7 +529,7 @@ pub fn parsed_to_ast(
         None => (None, None),
     };
 
-    check_should_abort(handler, retrigger_compilation.clone())?;
+    check_should_abort(handler, retrigger_compilation.clone(), 532)?;
 
     // Perform control flow analysis and extend with any errors.
     let _ = perform_control_flow_analysis(
@@ -540,7 +540,7 @@ pub fn parsed_to_ast(
         print_graph_url_format,
     );
 
-    check_should_abort(handler, retrigger_compilation.clone())?;
+    check_should_abort(handler, retrigger_compilation.clone(), 543)?;
 
     // Evaluate const declarations, to allow storage slots initialization with consts.
     let mut ctx = Context::new(engines.se());
@@ -610,6 +610,8 @@ pub fn compile_to_ast(
     let query_engine = engines.qe();
     let mut metrics = PerformanceData::default();
 
+    check_should_abort(handler, retrigger_compilation.clone(), 613)?;
+
     if let Some(config) = build_config {
         let path = config.canonical_root_module();
         let include_tests = config.include_tests;
@@ -627,7 +629,7 @@ pub fn compile_to_ast(
         };
     }
 
-    check_should_abort(handler, retrigger_compilation.clone())?;
+    check_should_abort(handler, retrigger_compilation.clone(), 632)?;
 
     // Parse the program to a concrete syntax tree (CST).
     let parse_program_opt = time_expr!(
@@ -638,7 +640,7 @@ pub fn compile_to_ast(
         metrics
     );
 
-    check_should_abort(handler, retrigger_compilation.clone())?;
+    check_should_abort(handler, retrigger_compilation.clone(), 643)?;
 
     let (lexed_program, mut parsed_program) = match parse_program_opt {
         Ok(modules) => modules,
@@ -673,7 +675,7 @@ pub fn compile_to_ast(
         metrics
     );
 
-    check_should_abort(handler, retrigger_compilation.clone())?;
+    check_should_abort(handler, retrigger_compilation.clone(), 678)?;
 
     handler.dedup();
 
@@ -960,9 +962,10 @@ fn module_return_path_analysis(
     }
 }
 
-fn check_should_abort(handler: &Handler, retrigger_compilation: Option<Arc<AtomicBool>>) -> Result<(), ErrorEmitted> {
+fn check_should_abort(handler: &Handler, retrigger_compilation: Option<Arc<AtomicBool>>, line: u32) -> Result<(), ErrorEmitted> {
     if let Some(ref retrigger_compilation) = retrigger_compilation {
         if retrigger_compilation.load(Ordering::Relaxed) {
+            eprintln!("Aborting compilation due to retrigger as line {}.", line);
             return Err(handler.cancel());
         }
     }
