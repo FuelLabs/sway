@@ -2,7 +2,6 @@
 
 use escargot::CargoBuild;
 use rexpect::session::spawn_command;
-use std::process::Command;
 
 #[test]
 fn test_cli() {
@@ -43,4 +42,4 @@ fn test_cli() {
     cmd.send_line("start_tx examples/example_tx.json").unwrap();
     cmd.exp_regex(r"Receipt: Return").unwrap();
     cmd.send_line(r"exit").unwrap();
-    }
+}
