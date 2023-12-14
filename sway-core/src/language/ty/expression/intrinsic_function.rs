@@ -23,23 +23,21 @@ impl TyIntrinsicFunctionKind {
     pub fn get_logged_type(&self) -> Option<TypeId> {
         if matches!(self.kind, Intrinsic::Log) {
             match &self.arguments[0].expression {
-                TyExpressionVariant::FunctionApplication { 
-                    call_path, 
+                TyExpressionVariant::FunctionApplication {
+                    call_path,
                     arguments,
                     ..
                 } => {
                     assert!(call_path.suffix.as_str() == "encode");
                     Some(arguments[0].1.return_type)
-                },
-                _ => None
+                }
+                _ => None,
             }
         } else {
             None
         }
     }
 }
-
-
 
 impl EqWithEngines for TyIntrinsicFunctionKind {}
 impl PartialEqWithEngines for TyIntrinsicFunctionKind {
