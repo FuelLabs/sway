@@ -21,3 +21,6 @@ benchmarks/
 
 # .DS_Store
 .DS_Store
+
+# Generated files in test directories
+sway-lsp/tests/**/Forc.lock
