@@ -164,6 +164,13 @@ impl Session {
             self.metrics.insert(*s, t.clone());
         });
 
+        let (errors, warnings) = res.diagnostics;
+        *self.diagnostics.write() = capabilities::diagnostic::get_diagnostics(
+            &warnings,
+            &errors,
+            self.engines.read().se(),
+        );
+
         self.create_runnables(
             &res.typed,
             self.engines.read().de(),

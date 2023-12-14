@@ -23,8 +23,9 @@ pub async fn handle_did_open_text_document(
     // as the workspace is already compiled.
     if session.token_map().is_empty() {
         state
-            .parse_project(uri, params.text_document.uri, None, session.clone())
+            .parse_project(&uri, &params.text_document.uri, None, session.clone())
             .await;
+        state.publish_diagnostics(uri, params.text_document.uri, session).await;
     }
     Ok(())
 }
@@ -46,12 +47,6 @@ pub async fn handle_did_change_text_document(
         eprintln!("retrigger compilation!");
         state.retrigger_compilation.store(true, Ordering::Relaxed);
     }
-
-    // let _ = state.watch_tx.as_ref().unwrap().send(crate::server_state::Shared {
-    //     session: Some(session.clone()),
-    //     uri: Some(uri.clone()),
-    //     version: Some(params.text_document.version),
-    // });
 
     if let Some(tx) = state.mpsc_tx.as_ref() {
         // If channel is full, remove the old value so the compilation thread only
@@ -90,8 +85,10 @@ pub(crate) async fn handle_did_save_text_document(
         .await?;
     session.sync.resync()?;
     state
-        .parse_project(uri, params.text_document.uri, None, session.clone())
+        .parse_project(&uri, &params.text_document.uri, None, session.clone())
         .await;
+
+    state.publish_diagnostics(uri, params.text_document.uri, session).await;
     Ok(())
 }
 
