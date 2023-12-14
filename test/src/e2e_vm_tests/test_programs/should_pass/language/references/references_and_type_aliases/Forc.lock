@@ -1,13 +1,13 @@
 [[package]]
 name = "core"
-source = "path+from-root-1301526AA4E9372C"
+source = "path+from-root-C20A55B9AF89FB67"
 
 [[package]]
-name = "referencing_vars_and_values"
+name = "references_and_type_aliases"
 source = "member"
 dependencies = ["std"]
 
 [[package]]
 name = "std"
-source = "path+from-root-1301526AA4E9372C"
+source = "path+from-root-C20A55B9AF89FB67"
 dependencies = ["core"]

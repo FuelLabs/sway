@@ -35,6 +35,9 @@ impl B {
 
 #[inline(always)]
 fn in_structs() {
+    assert(__size_of::<A>() == 2 * 8);
+    assert(__size_of::<B>() == 2 * 8);
+
     let x = 123u8;
     let array: [u64;3] = [111, 222, 333];
 
@@ -75,14 +78,125 @@ fn in_structs_not_inlined() {
     in_structs()
 }
 
+enum E {
+    R_A: &A,
+    R_B: &B,
+}
+
+#[inline(always)]
+fn in_enums() {
+    assert(__size_of::<E>() == 2 * 8);
+
+    let x = 123u8;
+    let array: [u64;3] = [111, 222, 333];
+
+    let a = A { r_u8: &x, r_array: &array };
+    let b = B { r_a: &a, r_array: &[&a, &a, &a] };
+
+    let r_a_ptr = asm(r: &a) { r: raw_ptr };
+    let r_b_ptr = asm(r: &b) { r: raw_ptr };
+
+    let e_r_a = E::R_A(&a);
+    let e_r_b = E::R_B(&b);
+
+    match e_r_a {
+        E::R_A(r_a) => {
+            let local_r_a: &A = r_a; // To proof `r_a` is of type `&A`.
+
+            let local_r_a_ptr = asm(r: local_r_a) { r: raw_ptr };
+
+            assert(local_r_a_ptr == r_a_ptr);
+        }
+        _ => assert(false),
+    }
+
+    match e_r_b {
+        E::R_B(r_b) => {
+            let local_r_b: &B = r_b; // To proof `r_b` is of type `&B`.
+
+            let local_r_b_ptr = asm(r: local_r_b) { r: raw_ptr };
+
+            assert(local_r_b_ptr == r_b_ptr);
+        }
+        _ => assert(false),
+    }
+}
+
+#[inline(never)]
+fn in_enums_not_inlined() {
+    in_enums()
+}
+
+#[inline(always)]
+fn in_arrays() {
+    let x = 123u8;
+    let array: [u64;3] = [111, 222, 333];
+
+    let a = A { r_u8: &x, r_array: &array };
+    let b = B { r_a: &a, r_array: &[&a, &a, &a] };
+
+    let r_b_ptr = asm(r: &b) { r: raw_ptr };
+
+    let arr = [&b, &b, &b];
+
+    assert(__size_of_val(arr) == 3 * 8);
+
+    let r_arr_0_ptr = asm(r: arr[0]) { r: raw_ptr };
+    let r_arr_1_ptr = asm(r: arr[1]) { r: raw_ptr };
+    let r_arr_2_ptr = asm(r: arr[2]) { r: raw_ptr };
+
+    assert(r_b_ptr == r_arr_0_ptr);
+    assert(r_b_ptr == r_arr_1_ptr);
+    assert(r_b_ptr == r_arr_2_ptr);
+}
+
+#[inline(never)]
+fn in_arrays_not_inlined() {
+    in_arrays()
+}
+
+#[inline(always)]
+fn in_tuples() {
+    let x = 123u8;
+    let array: [u64;3] = [111, 222, 333];
+
+    let a = A { r_u8: &x, r_array: &array };
+    let b = B { r_a: &a, r_array: &[&a, &a, &a] };
+
+    let r_b_ptr = asm(r: &b) { r: raw_ptr };
+
+    let tuple = (&b, &b, &b);
+    
+    assert(__size_of_val(tuple) == 3 * 8);
+
+    let r_tuple_0_ptr = asm(r: tuple.0) { r: raw_ptr };
+    let r_tuple_1_ptr = asm(r: tuple.1) { r: raw_ptr };
+    let r_tuple_2_ptr = asm(r: tuple.2) { r: raw_ptr };
+
+    assert(r_b_ptr == r_tuple_0_ptr);
+    assert(r_b_ptr == r_tuple_1_ptr);
+    assert(r_b_ptr == r_tuple_2_ptr);
+}
+
+#[inline(never)]
+fn in_tuples_not_inlined() {
+    in_tuples()
+}
+
 #[inline(never)]
 fn test_all_inlined() {
     in_structs();
+    in_enums();
+    in_arrays();
+    in_tuples();
 }
 
 #[inline(never)]
 fn test_not_inlined() {
     in_structs_not_inlined();
+    in_enums_not_inlined();
+    in_arrays_not_inlined();
+    in_tuples_not_inlined();
 }
 
 fn main() -> u64 {

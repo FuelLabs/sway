@@ -563,6 +563,7 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::Ref(exp) => {
                 let value = self.compile_expression_to_ptr(context, md_mgr, exp)?;
 
+                // TODO-IG: Do we need to convert to int here? Can we only use Ptr? Investigate.
                 let int_ty = Type::new_uint(context, 64);
                 Ok(self
                     .current_block
