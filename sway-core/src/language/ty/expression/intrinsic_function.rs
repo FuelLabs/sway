@@ -19,6 +19,28 @@ pub struct TyIntrinsicFunctionKind {
     pub span: Span,
 }
 
+impl TyIntrinsicFunctionKind {
+    pub fn get_logged_type(&self) -> Option<TypeId> {
+        if matches!(self.kind, Intrinsic::Log) {
+            match &self.arguments[0].expression {
+                TyExpressionVariant::FunctionApplication { 
+                    call_path, 
+                    arguments,
+                    ..
+                } => {
+                    assert!(call_path.suffix.as_str() == "encode");
+                    Some(arguments[0].1.return_type)
+                },
+                _ => None
+            }
+        } else {
+            None
+        }
+    }
+}
+
+
+
 impl EqWithEngines for TyIntrinsicFunctionKind {}
 impl PartialEqWithEngines for TyIntrinsicFunctionKind {
     fn eq(&self, other: &Self, engines: &Engines) -> bool {
@@ -98,9 +120,10 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
 
         match self.kind {
             Intrinsic::Log => {
+                let logged_type = self.get_logged_type().unwrap();
                 types_metadata.push(TypeMetadata::LoggedType(
                     LogId::new(ctx.log_id_counter()),
-                    self.arguments[0].return_type,
+                    logged_type,
                 ));
                 *ctx.log_id_counter_mut() += 1;
             }

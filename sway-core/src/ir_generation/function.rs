@@ -573,7 +573,7 @@ impl<'eng> FnCompiler<'eng> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ty::TyIntrinsicFunctionKind {
+        i @ ty::TyIntrinsicFunctionKind {
             kind,
             arguments,
             type_arguments,
@@ -897,7 +897,8 @@ impl<'eng> FnCompiler<'eng> {
 
                 // The log value and the log ID are just Value.
                 let log_val = self.compile_expression_to_value(context, md_mgr, &arguments[0])?;
-                let log_id = match self.logged_types_map.get(&arguments[0].return_type) {
+                let logged_type = i.get_logged_type().unwrap();
+                let log_id = match self.logged_types_map.get(&logged_type) {
                     None => {
                         return Err(CompileError::Internal(
                             "Unable to determine ID for log instance.",
