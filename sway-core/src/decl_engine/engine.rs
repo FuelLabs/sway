@@ -36,8 +36,7 @@ pub struct DeclEngine {
 
 impl Clone for DeclEngine {
     fn clone(&self) -> Self {
-        let now = std::time::Instant::now();
-        let de = DeclEngine {
+        DeclEngine {
             function_slab: self.function_slab.clone(),
             trait_slab: self.trait_slab.clone(),
             trait_fn_slab: self.trait_fn_slab.clone(),
@@ -50,10 +49,7 @@ impl Clone for DeclEngine {
             enum_slab: self.enum_slab.clone(),
             type_alias_slab: self.type_alias_slab.clone(),
             parents: RwLock::new(self.parents.read().expect("Lock is poisoned").clone()),
-        };
-
-        eprintln!("DeclEngine clone: {:?}", now.elapsed());
-        de
+        }
     }
 }
 

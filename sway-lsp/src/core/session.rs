@@ -413,20 +413,17 @@ pub(crate) fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
         ManifestFile::from_dir(&manifest_dir).map_err(|_| DocumentError::ManifestFileNotFound {
             dir: uri.path().into(),
         })?;
-
     let member_manifests =
         manifest
             .member_manifests()
             .map_err(|_| DocumentError::MemberManifestsFailed {
                 dir: uri.path().into(),
             })?;
-
     let lock_path = manifest
         .lock_path()
         .map_err(|_| DocumentError::ManifestsLockPathFailed {
             dir: uri.path().into(),
         })?;
-
     // TODO: Either we want LSP to deploy a local node in the background or we want this to
     // point to Fuel operated IPFS node.
     let ipfs_node = pkg::source::IPFSNode::Local;
@@ -544,7 +541,7 @@ pub fn parse_project(uri: &Url, engines: &Engines, retrigger_compilation: Option
         token_map,
         metrics,
     } = traverse(results, engines)?;
-    let (lexed, parsed, typed) = programs.expect("Programs should be populated at this point.");
+    let (lexed, parsed, typed) = programs.ok_or(LanguageServerError::ProgramsIsNone)?;
     Ok(ParseResult {
         diagnostics,
         token_map,

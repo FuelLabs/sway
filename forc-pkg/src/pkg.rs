@@ -2629,7 +2629,6 @@ pub fn check(
         )?
         .include_tests(include_tests);
 
-        let now = std::time::Instant::now();
         let input = manifest.entry_string()?;
         let handler = Handler::default();
         let programs_res = sway_core::compile_to_ast(
@@ -2641,9 +2640,6 @@ pub fn check(
             &pkg.name,
             retrigger_compilation.clone(),
         );
-        eprintln!("compile_to_ast took: {:?}", now.elapsed());
-
-        
 
         let programs = match programs_res.as_ref() {
             Ok(programs) => programs,

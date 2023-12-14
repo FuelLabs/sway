@@ -33,6 +33,7 @@ pub async fn handle_did_change_text_document(
     state: &ServerState,
     params: DidChangeTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
+    eprintln!("did change text document: version: {:?}", params.text_document.version);
     document::mark_file_as_dirty(&params.text_document.uri).await?;
     let (uri, session) = state
         .sessions
@@ -41,17 +42,40 @@ pub async fn handle_did_change_text_document(
     session
         .write_changes_to_file(&uri, params.content_changes)
         .await?;
-    if *state.is_compiling.read() {
+    if state.is_compiling.load(Ordering::Relaxed) {
+        eprintln!("retrigger compilation!");
         state.retrigger_compilation.store(true, Ordering::Relaxed);
     }
-    state
-        .parse_project(
-            uri,
-            params.text_document.uri,
-            Some(params.text_document.version),
-            session.clone(),
-        )
-        .await;
+
+    // let _ = state.watch_tx.as_ref().unwrap().send(crate::server_state::Shared {
+    //     session: Some(session.clone()),
+    //     uri: Some(uri.clone()),
+    //     version: Some(params.text_document.version),
+    // });
+
+    if let Some(tx) = state.mpsc_tx.as_ref() {
+        // If channel is full, remove the old value so the compilation thread only
+        // gets the latest value.
+        if tx.is_full() {
+            eprintln!("channel is full!");
+            let _ = state.mpsc_rx.as_ref().unwrap().try_recv();
+        }
+
+        let _ = tx.send(crate::server_state::Shared {
+            session: Some(session.clone()),
+            uri: Some(uri.clone()),
+            version: Some(params.text_document.version),
+        });
+    }
+
+    // state
+    //     .parse_project(
+    //         uri,
+    //         params.text_document.uri,
+    //         Some(params.text_document.version),
+    //         session.clone(),
+    //     )
+    //     .await;
     Ok(())
 }
 
