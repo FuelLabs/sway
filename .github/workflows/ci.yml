@@ -396,11 +396,6 @@ jobs:
 
   cargo-test-workspace:
     runs-on: ubuntu-latest
-    services:
-      fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.21.0
-        ports:
-          - 4000:4000
     steps:
       - uses: actions/checkout@v3
       - name: Install toolchain
@@ -410,7 +405,11 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
         run: cargo test --locked --release
-
+      - name: Install fuel-core for tests
+        uses: baptiste0928/cargo-install@v2
+        with:
+          crate: fuel-core-bin
+          version: "0.21"
   cargo-unused-deps-check:
     runs-on: ubuntu-latest
     steps:

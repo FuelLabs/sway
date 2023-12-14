@@ -2,11 +2,24 @@
 
 use escargot::CargoBuild;
 use rexpect::session::spawn_command;
+use std::process::Command;
 
 #[test]
 fn test_cli() {
+    let port = portpicker::pick_unused_port().expect("No ports free");
+
+    let mut fuel_core = Command::new("fuel-core")
+        .arg("run")
+        .arg("--debug")
+        .arg("--db-type")
+        .arg("in-memory")
+        .arg("--port")
+        .arg(port.to_string())
+        .spawn()
+        .expect("Failed to start fuel-core");
+
     let mut run_cmd = CargoBuild::new()
-        .bin("forc-debug")
+        .bin("fuel-debugger")
         .current_release()
         .current_target()
         .run()
@@ -15,7 +28,7 @@ fn test_cli() {
 
     dbg!(&run_cmd);
 
-    run_cmd.arg(format!("http://127.0.0.1:{}/graphql", 4000));
+    run_cmd.arg(format!("http://127.0.0.1:{}/graphql", port));
 
     let mut cmd = spawn_command(run_cmd, Some(2000)).unwrap();
 
@@ -42,4 +55,6 @@ fn test_cli() {
     cmd.send_line("start_tx examples/example_tx.json").unwrap();
     cmd.exp_regex(r"Receipt: Return").unwrap();
     cmd.send_line(r"exit").unwrap();
+
+    fuel_core.kill().expect("Couldn't kill fuel-core");
 }
