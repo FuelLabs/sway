@@ -67,7 +67,7 @@ impl QueryEngine {
     }
 
     pub fn get_programs_cache_entry(&self, path: &Arc<PathBuf>) -> Option<ProgramsCacheEntry> {
-        let cache = self.programs_cache.read().unwrap();
+        let cache = self.programs_cache.read().expect("Failed to read programs cache");
         cache.get(path).cloned()
     }
 

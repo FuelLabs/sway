@@ -132,17 +132,12 @@ impl Session {
         &self.token_map
     }
 
-    /// Wait for the cached [DiagnosticMap] to be unlocked after parsing and return a copy.
-    pub fn wait_for_parsing(&self) -> DiagnosticMap {
-        self.diagnostics.read().clone()
-    }
-
     /// Clean up memory in the [TypeEngine] and [DeclEngine] for the user's workspace.
-    pub fn garbage_collect(&self) -> Result<(), LanguageServerError> {
+    pub fn garbage_collect(&self, engines: &mut Engines) -> Result<(), LanguageServerError> {
         let path = self.sync.temp_dir()?;
-        let module_id = { self.engines.read().se().get_module_id(&path) };
+        let module_id = { engines.se().get_module_id(&path) };
         if let Some(module_id) = module_id {
-            self.engines.write().clear_module(&module_id);
+            engines.clear_module(&module_id);
         }
         Ok(())
     }
@@ -165,6 +160,7 @@ impl Session {
         });
 
         let (errors, warnings) = res.diagnostics;
+        eprintln!("THREAD | success, about to write diagnostics");
         *self.diagnostics.write() = capabilities::diagnostic::get_diagnostics(
             &warnings,
             &errors,
@@ -176,6 +172,7 @@ impl Session {
             self.engines.read().de(),
             self.engines.read().se(),
         );
+        eprintln!("THREAD | success, about to write programs");
         self.compiled_program.write().lexed = Some(res.lexed);
         self.compiled_program.write().parsed = Some(res.parsed);
         self.compiled_program.write().typed = Some(res.typed);
@@ -183,11 +180,10 @@ impl Session {
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
         let (_, token) = self.token_map.token_at_position(url, position)?;
-        let engines = self.engines.read();
         let mut token_ranges: Vec<_> = self
             .token_map
             .tokens_for_file(url)
-            .all_references_of_token(&token, &engines)
+            .all_references_of_token(&token, &self.engines.read())
             .map(|(ident, _)| ident.range)
             .collect();
 
@@ -200,10 +196,9 @@ impl Session {
         uri: Url,
         position: Position,
     ) -> Option<GotoDefinitionResponse> {
-        let engines = self.engines.read();
         self.token_map
             .token_at_position(&uri, position)
-            .and_then(|(_, token)| token.declared_token_ident(&engines))
+            .and_then(|(_, token)| token.declared_token_ident(&self.engines.read()))
             .and_then(|decl_ident| {
                 decl_ident.path.and_then(|path| {
                     // We use ok() here because we don't care about propagating the error from from_file_path
@@ -226,11 +221,10 @@ impl Session {
             line: position.line,
             character: position.character - trigger_char.len() as u32 - 1,
         };
-        let engines = self.engines.read();
         let (ident_to_complete, _) = self.token_map.token_at_position(uri, shifted_position)?;
         let fn_tokens =
             self.token_map
-                .tokens_at_position(engines.se(), uri, shifted_position, Some(true));
+                .tokens_at_position(self.engines.read().se(), uri, shifted_position, Some(true));
         let (_, fn_token) = fn_tokens.first()?;
         let compiled_program = &*self.compiled_program.read();
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.typed.clone() {
@@ -542,12 +536,14 @@ pub fn traverse(
 /// Parses the project and returns true if the compiler diagnostics are new and should be published.
 pub fn parse_project(uri: &Url, engines: &Engines, retrigger_compilation: Option<Arc<AtomicBool>>) -> Result<ParseResult, LanguageServerError> {
     let results = compile(uri, engines, retrigger_compilation)?;
+    eprintln!("compilation successful, starting traversal");
     let TraversalResult {
         diagnostics,
         programs,
         token_map,
         metrics,
     } = traverse(results, engines)?;
+    eprintln!("traversal successful");
     let (lexed, parsed, typed) = programs.ok_or(LanguageServerError::ProgramsIsNone)?;
     Ok(ParseResult {
         diagnostics,
