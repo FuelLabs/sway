@@ -9,30 +9,13 @@ use std::{ops::Deref, str::FromStr};
 
 const ABOUT: &str = "Parses a private key to view the associated public key";
 
-pub(crate) fn examples() -> String {
-    let secret = "{secret}";
-    format!(
-        r#"# {}
+#[cfg(test)]
+#[allow(non_upper_case_globals)]
+const PrivateKey: &str = "f5204427d0ab9a311266c96a377f7c329cb8a41b9088225b6fcf40eefb423e28";
 
-    ## Parses the secret for a block-production secret
-    forc crypto parse-secret "{secret}"
-
-    ## Parses the secret for a block-production secret
-    forc crypto parse-secret "{secret}" -k peering
-    "#,
-        ABOUT
-    )
-}
-
-fn after_long_help() -> &'static str {
-    Box::leak(
-        format!(
-            r#"EXAMPLES:
-    {}"#,
-            examples()
-        )
-        .into_boxed_str(),
-    )
+forc::cli_examples! {
+    [ Parses the secret of a block production  => crypto "parse-secret" PrivateKey ]
+    [ Parses the secret of a peering  => crypto "parse-secret" "-k" "peering" PrivateKey ]
 }
 
 /// Parse a secret key to view the associated public key
@@ -41,7 +24,7 @@ fn after_long_help() -> &'static str {
     author,
     version,
     about = ABOUT,
-    after_long_help = after_long_help(),
+    after_long_help = help(),
 )]
 pub struct Arg {
     /// A private key in hex format

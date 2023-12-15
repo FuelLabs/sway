@@ -15,34 +15,15 @@ use std::ops::Deref;
 
 const ABOUT: &str = "Creates a new key for use with fuel-core";
 
-pub(crate) fn examples() -> String {
-    format!(
-        r#"# {}
-
-    ## Creates a new key for block-production
-    forc crypto new-key
-
-    ## Creates a new key for
-    forc crypto new-key -k peering
-    "#,
-        ABOUT
-    )
-}
-
-fn after_long_help() -> &'static str {
-    Box::leak(
-        format!(
-            r#"EXAMPLES:
-    {}"#,
-            examples()
-        )
-        .into_boxed_str(),
-    )
+forc::cli_examples! {
+    [ Creates a new key for block production by default => crypto "new-key" ]
+    [ Creates a new key for peering => crypto "new-key" "-k" "peering" ]
+    [ Creates a new key for block production => crypto "new-key" "-k" "peering" ]
 }
 
 /// Generate a random new secret & public key in the format expected by fuel-core
 #[derive(Debug, clap::Args)]
-#[clap(author, version, about = ABOUT, after_long_help = after_long_help())]
+#[clap(author, version, about = ABOUT, after_long_help = help())]
 pub struct Arg {
     /// Key type to generate. It can either be `block-production` or `peering`.
     #[clap(

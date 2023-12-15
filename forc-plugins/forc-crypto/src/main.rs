@@ -21,15 +21,8 @@ const ABOUT: &str = "Forc plugin for hashing arbitrary data.";
 fn after_long_help() -> &'static str {
     Box::leak(
         format!(
-            r#"EXAMPLES:
-    {}
-    {}
-    {}
-    {}
-    {}
-"#,
-            args::examples("keccack256", "fuel"),
-            args::examples("sha256", "fuel"),
+            "EXAMPLES:\n{}{}{}{}",
+            args::examples(),
             address::examples(),
             keygen::new_key::examples(),
             keygen::parse_secret::examples(),

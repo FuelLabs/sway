@@ -4,29 +4,19 @@ use forc_pkg::source::IPFSNode;
 
 const ABOUT: &str = "Forc plugin for building a Sway package's documentation";
 
-const EXAMPLES: &str = r#"EXAMPLES:
-
-    # Build the docs for the current project
-    forc doc
-
-    # Build the docs for the current project and open the browser
-    forc doc --open
-
-    # Build the docs for a project located in another path and open the browser
-    forc doc --manifest-path /path/to/project --open
-
-    # Build the docs for the current project, export private items/types and open the browser
-    forc doc --document-private-items --open
-
-    # Build the docs for the current project without downloading any new dependency through the network
-    forc doc --offline
-"#;
+forc::cli_examples! {
+    [ Build the docs for a project in the current path => doc ]
+    [ Build the docs for a project in the current path and open it in the browser => doc "--open" ]
+    [ Build the docs for a project located in another path => doc "--manifest-path" "../tests_project2" ]
+    [ Build the docs for the current project exportings private types => doc "--document-private-items" ]
+    [ Build the docs offline without downloading any dependency from the network => doc "--offline" ]
+}
 
 #[derive(Debug, Parser, Default)]
 #[clap(
     name = "forc-doc",
     about = ABOUT,
-    after_long_help = EXAMPLES,
+    after_long_help = help(),
     version
 )]
 pub struct Command {
