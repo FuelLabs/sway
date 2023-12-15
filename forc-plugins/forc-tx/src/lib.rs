@@ -12,6 +12,51 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use thiserror::Error;
 
+#[cfg(test)]
+const ROOT: &str = "0x2222222222222222222222222222222222222222222222222222222222222222";
+#[cfg(test)]
+const DATA_PATH: &str = "out/debug/tests.bin";
+#[cfg(test)]
+const BYTECODE_PATH: &str = "out/debug/tests.bin";
+
+forc::cli_examples!{
+    [ Script example => tx "script" "--bytecode" BYTECODE_PATH "--data" DATA_PATH  "--receipts-root" ROOT ]
+    [ Multiple inputs => tx "create" "--bytecode" "out/debug/tests.bin"
+        "--storage-slots" "out/debug/tests-storage_slots.json"
+        "--script-gas-limit" "100"
+        "--gas-price" "0"
+        "--maturity" "0"
+        "--witness" "ADFD"
+        "--witness" "DFDA"
+        "input" "contract"
+            "--utxo-id" "1"
+            "--output-ix" "1"
+            "--balance-root" "0x0000000000000000000000000000000000000000000000000000000000000000"
+            "--state-root" "0x0000000000000000000000000000000000000000000000000000000000000000"
+            "--tx-ptr" "89ACBDEFBDEF"
+            "--contract-id" "0xCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+        "output" "coin"
+            "--to" "0x2222222222222222222222222222222222222222222222222222222222222222"
+            "--amount" "100"
+            "--asset-id" "0x0000000000000000000000000000000000000000000000000000000000000000"
+        "output" "contract"
+            "--input-ix" "1"
+            "--balance-root" "0x0000000000000000000000000000000000000000000000000000000000000000"
+            "--state-root" "0x0000000000000000000000000000000000000000000000000000000000000000"
+        "output" "change"
+            "--to" "0x2222222222222222222222222222222222222222222222222222222222222222"
+            "--amount" "100"
+            "--asset-id" "0x0000000000000000000000000000000000000000000000000000000000000000"
+        "output" "variable"
+            "--to" "0x2222222222222222222222222222222222222222222222222222222222222222"
+            "--amount" "100"
+            "--asset-id" "0x0000000000000000000000000000000000000000000000000000000000000000"
+        "output" "contract-created"
+            "--contract-id" "0xCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+            "--state-root" "0x0000000000000000000000000000000000000000000000000000000000000000"
+    ]
+}
+
 /// The top-level `forc tx` command.
 #[derive(Debug, Parser, Deserialize, Serialize)]
 #[clap(about, version, after_help = EXAMPLES)]

@@ -2180,6 +2180,7 @@ dependencies = [
  "anyhow",
  "clap 3.2.25",
  "devault",
+ "forc",
  "forc-util",
  "fuel-tx",
  "fuel-types",
