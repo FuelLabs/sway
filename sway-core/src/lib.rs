@@ -618,7 +618,7 @@ pub fn compile_to_ast(
 
         // Check if we can re-use the data in the cache.
         if is_parse_module_cache_up_to_date(engines, &path, include_tests) {
-            let mut entry = query_engine.get_programs_cache_entry(&path).unwrap();
+            let mut entry = query_engine.get_programs_cache_entry(&path).expect(&format!("unable to find entry in cache at path {:?}", &path));
             entry.programs.metrics.reused_modules += 1;
 
             let (warnings, errors) = entry.handler_data;
@@ -963,11 +963,16 @@ fn module_return_path_analysis(
 }
 
 fn check_should_abort(handler: &Handler, retrigger_compilation: Option<Arc<AtomicBool>>, line: u32) -> Result<(), ErrorEmitted> {
+    eprintln!("check_should_abort at line {}.", line);
     if let Some(ref retrigger_compilation) = retrigger_compilation {
-        if retrigger_compilation.load(Ordering::Relaxed) {
+        if retrigger_compilation.load(Ordering::SeqCst) {
             eprintln!("Aborting compilation due to retrigger as line {}.", line);
             return Err(handler.cancel());
+        } else {
+            eprintln!("Continuing compilation at line {}.", line);
         }
+    } else {
+        eprintln!("retrigger_compilation is None at line {}.", line);
     }
     Ok(())
 }

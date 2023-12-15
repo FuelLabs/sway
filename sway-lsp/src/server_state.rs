@@ -23,22 +23,29 @@ pub struct ServerState {
     pub(crate) sessions: Arc<Sessions>,
     pub(crate) retrigger_compilation: Arc<AtomicBool>,
     pub(crate) is_compiling: Arc<AtomicBool>,
-    pub(crate) mpsc_tx: Option<Sender<Shared>>,
-    pub(crate) mpsc_rx: Option<Receiver<Shared>>,
+    pub(crate) mpsc_tx: Sender<Shared>,
+    pub(crate) mpsc_rx: Arc<Receiver<Shared>>,
+    pub(crate) finished_compilation: Arc<tokio::sync::Notify>,
 }
 
 impl Default for ServerState {
     fn default() -> Self {
-        ServerState {
+        let (mpsc_tx, mpsc_rx) = crossbeam_channel::bounded(1);
+
+        let state = ServerState {
             client: None,
             config: Arc::new(RwLock::new(Default::default())),
             keyword_docs: Arc::new(KeywordDocs::new()),
             sessions: Arc::new(Sessions(DashMap::new())),
             retrigger_compilation: Arc::new(AtomicBool::new(false)),
             is_compiling: Arc::new(AtomicBool::new(false)),
-            mpsc_tx: None,
-            mpsc_rx: None,
-        }
+            mpsc_tx,
+            mpsc_rx: Arc::new(mpsc_rx),
+            finished_compilation: Arc::new(tokio::sync::Notify::new()),
+        };
+
+        state.spawn_compilation_thread();
+        state
     }
 }
 
@@ -49,53 +56,92 @@ pub struct Shared {
     pub version: Option<i32>,
 }
 
-fn reset_compilation_state(is_compiling: Arc<AtomicBool>, retrigger_compilation: Arc<AtomicBool>) {
+fn reset_compilation_state(
+    is_compiling: Arc<AtomicBool>, 
+    retrigger_compilation: Arc<AtomicBool>,
+    finished_compilation: Arc<tokio::sync::Notify>
+) {
     is_compiling.store(false, Ordering::Relaxed);
     retrigger_compilation.store(false, Ordering::Relaxed);
+    eprintln!("THREAD | finished compilation, notifying waiters");
+    finished_compilation.notify_waiters();
 }
 
 impl ServerState {
     pub fn new(client: Client) -> ServerState {
         eprintln!("ServerState::new");
-
-        let (mpsc_tx, mpsc_rx) = crossbeam_channel::bounded(1);
-        let state = ServerState {
+        ServerState {
             client: Some(client),
-            mpsc_tx: Some(mpsc_tx),
-            mpsc_rx: Some(mpsc_rx.clone()),
             ..Default::default()
-        };
+        }
+    }
 
-        let is_compiling = state.is_compiling.clone();
-        let retrigger_compilation = state.retrigger_compilation.clone();
+    pub fn spawn_compilation_thread(&self) {
+        let is_compiling = self.is_compiling.clone();
+        let retrigger_compilation = self.retrigger_compilation.clone();
+        let finished_compilation = self.finished_compilation.clone();
+        let rx = self.mpsc_rx.clone();
         std::thread::spawn(move || {
-            while let Ok(shared) = mpsc_rx.recv() {
-                eprintln!("new compilation request");
-                is_compiling.store(true, Ordering::Relaxed);
-
+            while let Ok(shared) = rx.recv() {
+                eprintln!("THREAD | received new compilation request");
                 let uri = shared.uri.as_ref().unwrap().clone();
-                let version = shared.version.unwrap();
+                let version = shared.version;
                 let session = shared.session.as_ref().unwrap().clone();
-                let engines_clone = session.engines.read().clone();
+                let mut engines_clone = session.engines.read().clone();
 
-                eprintln!("starting parsing project: version: {:?}", version);
+                // if let Some(version) = version {
+                //     // Garbage collection is fairly expsensive so we only clear on every 10th keystroke.
+                //     if version % 10 == 0 {
+                //         // Call this on the engines clone so we don't clear types that are still in use
+                //         // and might be needed in the case cancel compilation was triggered.
+                //         if let Err(err) = session.garbage_collect(&mut engines_clone) {
+                //             tracing::error!("Unable to perform garbage collection: {}", err.to_string());
+                //         }
+                //     }
+                // }
+
+                eprintln!("THREAD | starting parsing project: version: {:?}", version);
                 match session::parse_project(&uri, &engines_clone, Some(retrigger_compilation.clone())) {
                     Ok(parse_result) => {
+                        eprintln!("THREAD | engines_write: {:?}", version);
                         *session.engines.write() = engines_clone;
+                        eprintln!("THREAD | success, about to write parse results: {:?}", version);
                         session.write_parse_result(parse_result);
-                        reset_compilation_state(is_compiling.clone(), retrigger_compilation.clone()); 
+                        reset_compilation_state(is_compiling.clone(), retrigger_compilation.clone(), finished_compilation.clone()); 
                     },
                     Err(err) => {
                         eprintln!("{:?}", err);
-                        reset_compilation_state(is_compiling.clone(), retrigger_compilation.clone());
+                        reset_compilation_state(is_compiling.clone(), retrigger_compilation.clone(), finished_compilation.clone());
                         continue;
                     },
                 }
-                eprintln!("finished parsing project: version: {:?}", version);
+                eprintln!("THREAD | finished parsing project: version: {:?}", version);
             }
         });
-        
-        state
+    }
+
+    /// Waits asynchronously for the `is_compiling` flag to become false.
+    /// 
+    /// This function checks the state of `is_compiling`, and if it's true,
+    /// it awaits on a notification. Once notified, it checks again, repeating
+    /// this process until `is_compiling` becomes false.
+    pub async fn wait_for_parsing(&self) {
+        loop {
+            eprintln!("are we still compiling?");
+            if !self.is_compiling.load(Ordering::Relaxed) {
+                eprintln!("compilation is finished, lets check if there are pending compilation requests");
+                if self.mpsc_rx.is_empty() {
+                    eprintln!("no pending compilation work, safe to break");
+                    break;
+                } else {
+                    eprintln!("there is pending compilation work, lets wait for it to finish");
+                }
+            } else {
+                eprintln!("we are still compiling, lets wait to be notified");
+            }
+            self.finished_compilation.notified().await;
+            eprintln!("we were notified, lets check if we are still compiling");
+        }
     }
 
     pub fn shutdown_server(&self) -> jsonrpc::Result<()> {
@@ -107,58 +153,27 @@ impl ServerState {
         Ok(())
     }
 
-    pub(crate) async fn parse_project(
-        &self,
-        uri: &Url,
-        workspace_uri: &Url,
-        version: Option<i32>,
-        session: Arc<Session>,
-    ) {
-        self.is_compiling.store(true, Ordering::Relaxed);
-        match run_blocking_parse_project(uri.clone(), version, session.clone(), Some(self.retrigger_compilation.clone())).await {
-            Ok(_) => {
-                // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
-                // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
-                if let Some(client) = self.client.as_ref() {
-                    client
-                        .publish_diagnostics(
-                            workspace_uri.clone(),
-                            self.diagnostics(&uri, session),
-                            None,
-                        )
-                        .await;
-                }
-            }
-            Err(err) => {
-                if matches!(err, LanguageServerError::FailedToParse) {
-                    tracing::error!("Error parsing project: {:?}", err);
-                }
-            }
-        }
-        self.is_compiling.store(false, Ordering::Relaxed);
-        self.retrigger_compilation.store(false, Ordering::Relaxed);
-    }
-
     pub(crate) async fn publish_diagnostics(
         &self,
         uri: Url,
         workspace_uri: Url,
         session: Arc<Session>,
     ) {
+        let diagnostics = self.diagnostics(&uri, session.clone()).await;
         // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
         // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
         if let Some(client) = self.client.as_ref() {
             client
                 .publish_diagnostics(
                     workspace_uri.clone(),
-                    self.diagnostics(&uri, session),
+                    diagnostics,
                     None,
                 )
                 .await;
         }
     }
 
-    fn diagnostics(&self, uri: &Url, session: Arc<Session>) -> Vec<Diagnostic> {
+    async fn diagnostics(&self, uri: &Url, session: Arc<Session>) -> Vec<Diagnostic> {
         let mut diagnostics_to_publish = vec![];
         let config = &self.config.read();
         let tokens = session.token_map().tokens_for_file(uri);
@@ -174,8 +189,7 @@ impl ServerState {
                 diagnostics_to_publish = debug::generate_warnings_for_typed_tokens(tokens)
             }
             Warnings::Default => {
-                let diagnostics_map = session.wait_for_parsing();
-                if let Some(diagnostics) = diagnostics_map.get(&PathBuf::from(uri.path())) {
+                if let Some(diagnostics) = session.diagnostics.read().get(&PathBuf::from(uri.path())) {
                     if config.diagnostic.show_warnings {
                         diagnostics_to_publish.extend(diagnostics.warnings.clone());
                     }
@@ -191,48 +205,48 @@ impl ServerState {
 
 
 
-/// Runs parse_project in a blocking thread, because parsing is not async.
-async fn run_blocking_parse_project(
-    uri: Url,
-    version: Option<i32>,
-    session: Arc<Session>,
-    retrigger_compilation: Option<Arc<AtomicBool>>,
-) -> Result<(), LanguageServerError> {
-    // Acquire a permit to parse the project. If there are none available, return false. This way,
-    // we avoid publishing the same diagnostics multiple times.
-    if session.parse_permits.try_acquire().is_err() {
-        return Err(LanguageServerError::UnableToAcquirePermit);
-    }
-    tokio::task::spawn_blocking(move || {
-        // Lock the diagnostics result to prevent multiple threads from parsing the project at the same time.
-        //let mut diagnostics = session.diagnostics.write();
+// /// Runs parse_project in a blocking thread, because parsing is not async.
+// async fn run_blocking_parse_project(
+//     uri: Url,
+//     version: Option<i32>,
+//     session: Arc<Session>,
+//     retrigger_compilation: Option<Arc<AtomicBool>>,
+// ) -> Result<(), LanguageServerError> {
+//     // Acquire a permit to parse the project. If there are none available, return false. This way,
+//     // we avoid publishing the same diagnostics multiple times.
+//     if session.parse_permits.try_acquire().is_err() {
+//         return Err(LanguageServerError::UnableToAcquirePermit);
+//     }
+//     tokio::task::spawn_blocking(move || {
+//         // Lock the diagnostics result to prevent multiple threads from parsing the project at the same time.
+//         let _ = session.diagnostics.write();
 
-        if let Some(version) = version {
-            // Garbage collection is fairly expsensive so we only clear on every 10th keystroke.
-            if version % 10 == 0 {
-                if let Err(err) = session.garbage_collect() {
-                    tracing::error!("Unable to perform garbage collection: {}", err.to_string());
-                }
-            }
-        }
-        let now = std::time::Instant::now();
-        let engines_clone = session.engines.read().clone();
-        eprintln!("parse_project: engines_clone: {:?}", now.elapsed());
+//         if let Some(version) = version {
+//             // Garbage collection is fairly expsensive so we only clear on every 10th keystroke.
+//             if version % 10 == 0 {
+//                 if let Err(err) = session.garbage_collect() {
+//                     tracing::error!("Unable to perform garbage collection: {}", err.to_string());
+//                 }
+//             }
+//         }
+//         let now = std::time::Instant::now();
+//         let engines_clone = session.engines.read().clone();
+//         eprintln!("parse_project: engines_clone: {:?}", now.elapsed());
 
-        let now = std::time::Instant::now();
-        let parse_result = session::parse_project(&uri, &engines_clone, retrigger_compilation)?;
-        eprintln!("compilation_took: {:?}", now.elapsed());
+//         let now = std::time::Instant::now();
+//         let parse_result = session::parse_project(&uri, &engines_clone, retrigger_compilation)?;
+//         eprintln!("compilation_took: {:?}", now.elapsed());
 
-        let now = std::time::Instant::now();
-        *session.engines.write() = engines_clone;
-        eprintln!("parse_project: engines_write: {:?}", now.elapsed());
+//         let now = std::time::Instant::now();
+//         *session.engines.write() = engines_clone;
+//         eprintln!("parse_project: engines_write: {:?}", now.elapsed());
 
-        session.write_parse_result(parse_result);
-        Ok(())
-    })
-    .await
-    .unwrap_or_else(|_| Err(LanguageServerError::FailedToParse))
-}
+//         session.write_parse_result(parse_result);
+//         Ok(())
+//     })
+//     .await
+//     .unwrap_or_else(|_| Err(LanguageServerError::FailedToParse))
+// }
 
 /// `Sessions` is a collection of [Session]s, each of which represents a project
 /// that has been opened in the users workspace.

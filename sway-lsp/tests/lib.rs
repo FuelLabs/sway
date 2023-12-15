@@ -91,7 +91,7 @@ async fn did_open() {
 async fn did_change() {
     let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
-    let _ = lsp::did_change_request(&mut service, &uri).await;
+    let _ = lsp::did_change_request(&mut service, &uri, 1).await;
     shutdown_and_exit(&mut service).await;
 }
 
@@ -101,7 +101,8 @@ async fn did_cache_test() {
         .custom_method("sway/metrics", ServerState::metrics)
         .finish();
     let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
-    let _ = lsp::did_change_request(&mut service, &uri).await;
+    let _ = lsp::did_change_request(&mut service, &uri, 1).await;
+    service.inner().wait_for_parsing().await;
     let metrics = lsp::metrics_request(&mut service, &uri).await;
     assert!(metrics.len() >= 2);
     for (path, metrics) in metrics {
@@ -118,15 +119,29 @@ async fn did_change_stress_test() {
     let (mut service, _) = LspService::build(ServerState::new)
         .custom_method("sway/metrics", ServerState::metrics)
         .finish();
-    let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
-    let times = 20;
-    for _ in 0..times {
-        let _ = lsp::did_change_request(&mut service, &uri).await;
+    let bench_dir = sway_workspace_dir().join("sway-lsp/tests/fixtures/benchmark");
+    
+    let uri = init_and_open(&mut service, bench_dir.join("src/main.sw")).await;
+    let times = 200000;
+    for version in 0..times {
+        let _ = lsp::did_change_request(&mut service, &uri, version + 1).await;
+        if version == 0 {
+            service.inner().wait_for_parsing().await;
+        }
         let metrics = lsp::metrics_request(&mut service, &uri).await;
         for (path, metrics) in metrics {
             if path.contains("sway-lib-core") || path.contains("sway-lib-std") {
+                eprintln!("metrics.reused_modules: {}", metrics.reused_modules);
                 assert!(metrics.reused_modules >= 1);
             }
+        }
+
+        if rand::random::<u8>() < 220 {
+            let random_duration = rand::random::<u8>() as u64 % 80;
+            std::thread::sleep(std::time::Duration::from_millis(random_duration));
+        } else {
+            let random_duration = rand::random::<u64>() % 3000;
+            std::thread::sleep(std::time::Duration::from_millis(random_duration));
         }
     }
     shutdown_and_exit(&mut service).await;
@@ -146,7 +161,8 @@ async fn lsp_syncs_with_workspace_edits() {
         def_path: uri.as_str(),
     };
     lsp::definition_check(service.inner(), &go_to).await;
-    let _ = lsp::did_change_request(&mut service, &uri).await;
+    let _ = lsp::did_change_request(&mut service, &uri, 1).await;
+    service.inner().wait_for_parsing().await;
     go_to.def_line = 20;
     lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 45, 24).await;
     shutdown_and_exit(&mut service).await;
@@ -421,10 +437,6 @@ async fn go_to_definition_for_modules() {
     };
     // mod test_mod;
     lsp::definition_check(&server, &opt_go_to).await;
-
-    let _ = server.shutdown_server();
-
-    let server = ServerState::default();
     let uri = open(
         &server,
         test_fixtures_dir().join("tokens/modules/src/test_mod.sw"),
