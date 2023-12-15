@@ -8,7 +8,6 @@ homepage.workspace = true
 license.workspace = true
 repository.workspace = true
 
-
 [dependencies]
 anyhow = "1.0.75"
 async-trait = "0.1.58"
