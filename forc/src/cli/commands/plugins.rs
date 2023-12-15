@@ -18,15 +18,32 @@ pub struct Command {
     describe: bool,
 }
 
+fn get_file_name(path: &Path) -> String {
+    path.file_name()
+        .expect("Failed to read file name")
+        .to_str()
+        .expect("Failed to print file name")
+        .to_string()
+}
+
 pub(crate) fn exec(command: PluginsCommand) -> ForcResult<()> {
     let PluginsCommand {
         print_full_path,
         describe,
     } = command;
 
+    let mut plugins = crate::cli::plugin::find_all()
+        .map(|path| {
+            print_plugin(path.clone(), print_full_path, describe)
+                .map(|info| (get_file_name(&path), info))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    plugins.sort_by(|a, b| a.0.cmp(&b.0));
+    plugins.dedup_by(|a, b| a.0 == b.0);
+
     info!("Installed Plugins:");
-    for path in crate::cli::plugin::find_all() {
-        info!("{}", print_plugin(path, print_full_path, describe)?);
+    for plugin in plugins {
+        info!("{}", plugin.1);
     }
     Ok(())
 }
@@ -72,11 +89,7 @@ fn format_print_description(
     let display = if print_full_path {
         path.display().to_string()
     } else {
-        path.file_name()
-            .expect("Failed to read file name")
-            .to_str()
-            .expect("Failed to print file name")
-            .to_string()
+        get_file_name(&path)
     };
 
     let description = parse_description_for_plugin(&path);
