@@ -1,8 +1,8 @@
 use crate::{Parse, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
 use sway_ast::keywords::{
-    AbiToken, ClassToken, ColonToken, ConfigurableToken, ConstToken, EnumToken, FnToken, ImplToken, ModToken,
-    MutToken, OpenAngleBracketToken, RefToken, SelfToken, SemicolonToken, StorageToken,
+    AbiToken, ClassToken, ColonToken, ConfigurableToken, ConstToken, EnumToken, FnToken, ImplToken,
+    ModToken, MutToken, OpenAngleBracketToken, RefToken, SelfToken, SemicolonToken, StorageToken,
     StructToken, TraitToken, TypeToken, UseToken, WhereToken,
 };
 use sway_ast::{
@@ -98,8 +98,7 @@ impl Parse for TypeField {
             name: parser.parse()?,
             colon_token: if parser.peek::<ColonToken>().is_some() {
                 parser.parse()
-            }
-            else {
+            } else {
                 Err(parser.emit_error(ParseErrorKind::MissingColonInEnumTypeField))
             }?,
             ty: parser.parse()?,
