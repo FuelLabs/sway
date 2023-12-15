@@ -19,11 +19,11 @@ pub struct Command {
 }
 
 fn get_file_name(path: &Path) -> String {
-    path.file_name()
-        .expect("Failed to read file name")
-        .to_str()
-        .expect("Failed to print file name")
-        .to_string()
+    if let Some(Some(path_str)) = path.file_name().map(|path_str| path_str.to_str()) {
+        path_str.to_owned()
+    } else {
+        panic!("Failed to read file name from {path:?}")
+    }
 }
 
 pub(crate) fn exec(command: PluginsCommand) -> ForcResult<()> {
