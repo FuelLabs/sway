@@ -18,35 +18,48 @@ const ROOT: &str = "0x2222222222222222222222222222222222222222222222222222222222
 const DATA_PATH: &str = "out/debug/tests.bin";
 #[cfg(test)]
 const BYTECODE_PATH: &str = "out/debug/tests.bin";
+#[cfg(test)]
+const STORAGE_SLOTS: &str = "out/debug/tests-storage_slots.json";
+#[cfg(test)]
+const BALANCE_ROOT_ADDR: &str =
+    "0x0000000000000000000000000000000000000000000000000000000000000000";
+#[cfg(test)]
+const STATE_ROOT_ADDR: &str = "0x0000000000000000000000000000000000000000000000000000000000000000";
+#[cfg(test)]
+const CONTRACT_ID: &str = "0x0000000000000000000000000000000000000000000000000000000000000000";
+#[cfg(test)]
+const COIN_TO_ADDR: &str = "0x2222222222222222222222222222222222222222222222222222222222222222";
+#[cfg(test)]
+const ASSET_ID: &str = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
-forc::cli_examples!{
+forc::cli_examples! {
     [ Script example => tx "script" "--bytecode" BYTECODE_PATH "--data" DATA_PATH  "--receipts-root" ROOT ]
-    [ Multiple inputs => tx "create" "--bytecode" "out/debug/tests.bin"
-        "--storage-slots" "out/debug/tests-storage_slots.json"
+    [ Multiple inputs => tx "create" "--bytecode" BYTECODE_PATH
+        "--storage-slots" STORAGE_SLOTS
         "--script-gas-limit" "100"
         "--gas-price" "0"
         "--maturity" "0"
-        "--witness" "ADFD"
-        "--witness" "DFDA"
+        "--witness" "adfd"
+        "--witness" "dfda"
         "input" "contract"
             "--utxo-id" "1"
             "--output-ix" "1"
-            "--balance-root" "0x0000000000000000000000000000000000000000000000000000000000000000"
-            "--state-root" "0x0000000000000000000000000000000000000000000000000000000000000000"
+            "--balance-root" BALANCE_ROOT_ADDR
+            "--state-root" STATE_ROOT_ADDR
             "--tx-ptr" "89ACBDEFBDEF"
-            "--contract-id" "0xCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+            "--contract-id" CONTRACT_ID
         "output" "coin"
-            "--to" "0x2222222222222222222222222222222222222222222222222222222222222222"
+            "--to" COIN_TO_ADDR,
             "--amount" "100"
-            "--asset-id" "0x0000000000000000000000000000000000000000000000000000000000000000"
+            "--asset-id" ASSET_ID
         "output" "contract"
             "--input-ix" "1"
-            "--balance-root" "0x0000000000000000000000000000000000000000000000000000000000000000"
-            "--state-root" "0x0000000000000000000000000000000000000000000000000000000000000000"
+            "--balance-root" BALANCE_ROOT_ADDR
+            "--state-root" STATE_ROOT_ADDR
         "output" "change"
-            "--to" "0x2222222222222222222222222222222222222222222222222222222222222222"
+            "--to" COIN_TO_ADDR
             "--amount" "100"
-            "--asset-id" "0x0000000000000000000000000000000000000000000000000000000000000000"
+            "--asset-id" ASSET_ID
         "output" "variable"
             "--to" "0x2222222222222222222222222222222222222222222222222222222222222222"
             "--amount" "100"
@@ -59,7 +72,7 @@ forc::cli_examples!{
 
 /// The top-level `forc tx` command.
 #[derive(Debug, Parser, Deserialize, Serialize)]
-#[clap(about, version, after_help = EXAMPLES)]
+#[clap(about, version, after_help = help())]
 pub struct Command {
     #[clap(long, short = 'o')]
     pub output_path: Option<PathBuf>,
@@ -433,7 +446,7 @@ pub enum ConvertInputError {
     WitnessPredicateMismatch,
 }
 
-const EXAMPLES: &str = r"EXAMPLES:
+const _EXAMPLES: &str = r"EXAMPLES:
     # An example constructing a `create` transaction.
     forc tx create \
         --bytecode ./my-contract/out/debug/my-contract.bin \

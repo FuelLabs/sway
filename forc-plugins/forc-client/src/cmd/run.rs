@@ -6,8 +6,7 @@ pub use super::submit::Network;
 pub use forc::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
 pub use forc_tx::{Gas, Maturity};
 
-forc::cli_examples! {
-}
+forc::cli_examples! {}
 
 /// Run script project.
 /// Crafts a script transaction then sends it to a running node.
