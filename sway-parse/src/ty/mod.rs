@@ -123,5 +123,13 @@ mod tests {
         assert_matches!(item, Ty::Slice { .. });
     }
 
-    // TODO-IG: Extend tests for references. E.g. ref on different types, refs on refs, etc.
+    #[test]
+    fn parse_ref() {
+        let item = parse::<Ty>(
+            r#"
+            &T
+            "#,
+        );
+        assert_matches!(item, Ty::Ref { .. });
+    }
 }
