@@ -22,7 +22,7 @@ fn get_file_name(path: &Path) -> String {
     if let Some(Some(path_str)) = path.file_name().map(|path_str| path_str.to_str()) {
         path_str.to_owned()
     } else {
-        panic!("Failed to read file name from {path:?}")
+        path.display().to_string()
     }
 }
 
@@ -37,7 +37,7 @@ pub(crate) fn exec(command: PluginsCommand) -> ForcResult<()> {
             print_plugin(path.clone(), print_full_path, describe)
                 .map(|info| (get_file_name(&path), info))
         })
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<Result<Vec<(String, String)>, _>>()?;
     plugins.sort_by(|a, b| a.0.cmp(&b.0));
     plugins.dedup_by(|a, b| a.0 == b.0);
 
