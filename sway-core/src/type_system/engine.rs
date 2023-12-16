@@ -6,10 +6,7 @@ use crate::{
 };
 use core::fmt::Write;
 use hashbrown::{hash_map::RawEntryMut, HashMap};
-use std::{
-    ops::Deref,
-    sync::{Arc, RwLock},
-};
+use std::sync::{Arc, RwLock};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -71,8 +68,15 @@ impl TypeEngine {
 
     /// Removes all data associated with `module_id` from the type engine.
     pub fn clear_module(&mut self, module_id: &ModuleId) {
+        self.slab.retain(|key, _type_info| {
+            let source_id = self.slab_source_ids.get(*key);
+            match *source_id {
+                Some(source_id) => &source_id.module_id() != module_id,
+                None => false,
+            }
+        });
         self.slab_source_ids
-            .retain(|source_id| match source_id.deref() {
+            .retain(|_key, source_id| match **source_id {
                 Some(source_id) => &source_id.module_id() != module_id,
                 None => false,
             });
@@ -364,8 +368,8 @@ impl TypeEngine {
     pub fn pretty_print(&self, _decl_engine: &DeclEngine, engines: &Engines) -> String {
         let mut builder = String::new();
         let mut list = vec![];
-        for i in 0..self.slab.len() {
-            list.push(format!("{:?}", engines.help_out(&*self.slab.get(i))));
+        for type_info in self.slab.values() {
+            list.push(format!("{:?}", engines.help_out(&*type_info)));
         }
         let list = ListDisplay { list };
         write!(builder, "TypeEngine {{\n{list}\n}}").unwrap();

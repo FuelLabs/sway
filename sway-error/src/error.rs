@@ -1138,7 +1138,11 @@ impl ToDiagnostic for CompileError {
                     format!("Consider removing the variable \"{variable}\" altogether, or adding it to all alternatives."),
                 ],
             },
-            TraitNotImportedAtFunctionApplication { trait_name, function_name, function_call_site_span, trait_constraint_span, trait_candidates }=> Diagnostic {
+            TraitNotImportedAtFunctionApplication { trait_name, function_name, function_call_site_span, trait_constraint_span, trait_candidates }=> {
+                // Make candidates order deterministic
+                let mut trait_candidates = trait_candidates.clone();
+                trait_candidates.sort();
+                Diagnostic {
                 reason: Some(Reason::new(code(1), "Trait is not imported".to_string())),
                 issue: Issue::error(
                     source_engine,
@@ -1221,7 +1225,7 @@ impl ToDiagnostic for CompileError {
 
                     help
                 },
-            },
+            }},
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we
