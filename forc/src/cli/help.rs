@@ -22,9 +22,14 @@ macro_rules! cli_examples_v2 {
 
                     let path = std::path::Path::new("tests");
                     if path.is_dir() {
+                        // a tests folder exists, move the cwd of the process to
+                        // be executed there. In that folder all files needed to
+                        // run the cmd should be stored
                         proc.current_dir(path);
                     }
                     let output = proc.output().expect(stringify!($command));
+                    // We don't know what to get or how to parse the output, all
+                    // we care is to get a valid exit code
                     assert!(output.status.success(), "{}: {:?}", stringify!($($description)*), output);
                 }
             }
