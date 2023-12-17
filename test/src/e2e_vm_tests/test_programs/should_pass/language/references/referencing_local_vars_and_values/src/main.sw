@@ -1,12 +1,20 @@
 script;
 
+mod impls;
+
+use impls::*;
+
+use core::ops::Eq;
+
 #[inline(always)]
-fn bool() {
-    let x = true;
+fn reference_local_var_and_value<T>()
+    where T: Eq + New
+{
+    let x = T::new();
 
     let r_x_1 = &x;
     let r_x_2 = &x;
-    let r_val = &true;
+    let r_val = &T::new();
 
     let r_x_1_ptr = asm(r: r_x_1) { r: raw_ptr };
     let r_x_2_ptr = asm(r: r_x_2) { r: raw_ptr };
@@ -15,122 +23,27 @@ fn bool() {
     assert(r_x_1_ptr == r_x_2_ptr);
     assert(r_x_1_ptr != r_val_ptr);
 
-    let r_x_1_ptr_val = r_x_1_ptr.read::<bool>();
-    let r_x_2_ptr_val = r_x_2_ptr.read::<bool>();
-    let r_x_val_val = r_val_ptr.read::<bool>();
+    let r_x_1_ptr_val = r_x_1_ptr.read::<T>();
+    let r_x_2_ptr_val = r_x_2_ptr.read::<T>();
+    let r_x_val_val = r_val_ptr.read::<T>();
 
     assert(r_x_1_ptr_val == x);
     assert(r_x_2_ptr_val == x);
-    assert(r_x_val_val == true);
+    assert(r_x_val_val == T::new());
 }
 
 #[inline(never)]
-fn bool_not_inlined() {
-    bool()
-}
-
-#[inline(always)]
-fn unsigned_u8() {
-    let x = 123u8;
-
-    let r_x_1 = &x;
-    let r_x_2 = &x;
-    let r_val = &123u8;
-
-    let r_x_1_ptr = asm(r: r_x_1) { r: raw_ptr };
-    let r_x_2_ptr = asm(r: r_x_2) { r: raw_ptr };
-    let r_val_ptr = asm(r: r_val) { r: raw_ptr };
-
-    assert(r_x_1_ptr == r_x_2_ptr);
-    assert(r_x_1_ptr != r_val_ptr);
-
-    let r_x_1_ptr_val = r_x_1_ptr.read::<u8>();
-    let r_x_2_ptr_val = r_x_2_ptr.read::<u8>();
-    let r_x_val_val = r_val_ptr.read::<u8>();
-
-    assert(r_x_1_ptr_val == x);
-    assert(r_x_2_ptr_val == x);
-    assert(r_x_val_val == 123u8);
-}
-
-#[inline(never)]
-fn unsigned_u8_not_inlined() {
-    unsigned_u8()
-}
-
-#[inline(always)]
-fn unsigned_u32() {
-    let x = 123u32;
-
-    let r_x_1 = &x;
-    let r_x_2 = &x;
-    let r_val = &123u32;
-
-    let r_x_1_ptr = asm(r: r_x_1) { r: raw_ptr };
-    let r_x_2_ptr = asm(r: r_x_2) { r: raw_ptr };
-    let r_val_ptr = asm(r: r_val) { r: raw_ptr };
-
-    assert(r_x_1_ptr == r_x_2_ptr);
-    assert(r_x_1_ptr != r_val_ptr);
-
-    let r_x_1_ptr_val = r_x_1_ptr.read::<u32>();
-    let r_x_2_ptr_val = r_x_2_ptr.read::<u32>();
-    let r_x_val_val = r_val_ptr.read::<u32>();
-
-    assert(r_x_1_ptr_val == x);
-    assert(r_x_2_ptr_val == x);
-    assert(r_x_val_val == 123u32);
-}
-
-#[inline(never)]
-fn unsigned_u32_not_inlined() {
-    unsigned_u32()
-}
-
-#[inline(always)]
-fn array() {
-    let x = [123u32];
-
-    let r_x_1 = &x;
-    let r_x_2 = &x;
-    let r_val = &[123u32];
-
-    let r_x_1_ptr = asm(r: r_x_1) { r: raw_ptr };
-    let r_x_2_ptr = asm(r: r_x_2) { r: raw_ptr };
-    let r_val_ptr = asm(r: r_val) { r: raw_ptr };
-
-    assert(r_x_1_ptr == r_x_2_ptr);
-    assert(r_x_1_ptr != r_val_ptr);
-
-    let r_x_1_ptr_val = r_x_1_ptr.read::<[u32;1]>();
-    let r_x_2_ptr_val = r_x_2_ptr.read::<[u32;1]>();
-    let r_x_val_val = r_val_ptr.read::<[u32;1]>();
-
-    assert(r_x_1_ptr_val[0] == x[0]);
-    assert(r_x_2_ptr_val[0] == x[0]);
-    assert(r_x_val_val[0] == 123u32);
-}
-
-#[inline(never)]
-fn array_not_inlined() {
-    array()
+fn reference_local_var_and_value_not_inlined<T>()
+    where T: Eq + New
+{
+    reference_local_var_and_value::<T>()
 }
 
 struct EmptyStruct { }
 
-impl core::ops::Eq for EmptyStruct {
+impl Eq for EmptyStruct {
     fn eq(self, other: Self) -> bool {
         true
-    }
-}
-
-struct Struct {
-    x: u64,
-}
-
-impl core::ops::Eq for Struct {
-    fn eq(self, other: Self) -> bool {
-        self.x == other.x
     }
 }
 
@@ -179,53 +92,47 @@ fn empty_struct_not_inlined() {
     empty_struct(false)
 }
 
-#[inline(always)]
-fn non_empty_struct() {
-    let x = Struct { x: 123 };
-
-    let r_x_1 = &x;
-    let r_x_2 = &x;
-    let r_val = &Struct { x: 321 };
-
-    let r_x_1_ptr = asm(r: r_x_1) { r: raw_ptr };
-    let r_x_2_ptr = asm(r: r_x_2) { r: raw_ptr };
-    let r_val_ptr = asm(r: r_val) { r: raw_ptr };
-
-    assert(r_x_1_ptr == r_x_2_ptr);
-    assert(r_x_1_ptr != r_val_ptr);
-
-    let r_x_1_ptr_val = r_x_1_ptr.read::<Struct>();
-    let r_x_2_ptr_val = r_x_2_ptr.read::<Struct>();
-    let r_x_val_val = r_val_ptr.read::<Struct>();
-
-    assert(r_x_1_ptr_val == x);
-    assert(r_x_2_ptr_val == x);
-    assert(r_x_val_val == Struct { x: 321 });
-}
-
-#[inline(never)]
-fn non_empty_struct_not_inlined() {
-    non_empty_struct()
-}
-
+// TODO-IG: Check types that are failing: `u256`, `b256`, `&u8`.
 #[inline(never)]
 fn test_all_inlined() {
-    bool();
-    unsigned_u8();
-    unsigned_u32();
-    array();
+    reference_local_var_and_value::<bool>();
+    reference_local_var_and_value::<u8>();
+    reference_local_var_and_value::<u16>();
+    reference_local_var_and_value::<u32>();
+    reference_local_var_and_value::<u64>();
+    //reference_local_var_and_value::<u256>();
+    reference_local_var_and_value::<[u64;2]>();
+    reference_local_var_and_value::<Struct>();
     empty_struct(true);
-    non_empty_struct();
+    reference_local_var_and_value::<str>();
+    reference_local_var_and_value::<str[6]>();
+    reference_local_var_and_value::<Enum>();
+    reference_local_var_and_value::<(u8, u32)>();
+    //reference_local_var_and_value::<b256>();
+    reference_local_var_and_value::<raw_ptr>();
+    reference_local_var_and_value::<raw_slice>();
+    //reference_local_var_and_value::<&u8>();
 }
 
 #[inline(never)]
 fn test_not_inlined() {
-    bool_not_inlined();
-    unsigned_u8_not_inlined();
-    unsigned_u32_not_inlined();
-    array_not_inlined();
+    reference_local_var_and_value_not_inlined::<bool>();
+    reference_local_var_and_value_not_inlined::<u8>();
+    reference_local_var_and_value_not_inlined::<u16>();
+    reference_local_var_and_value_not_inlined::<u32>();
+    reference_local_var_and_value_not_inlined::<u64>();
+    //reference_local_var_and_value_not_inlined::<u256>();
+    reference_local_var_and_value_not_inlined::<[u64;2]>();
+    reference_local_var_and_value_not_inlined::<Struct>();
     empty_struct_not_inlined();
-    non_empty_struct_not_inlined();
+    reference_local_var_and_value_not_inlined::<str>();
+    reference_local_var_and_value_not_inlined::<str[6]>();
+    reference_local_var_and_value_not_inlined::<Enum>();
+    reference_local_var_and_value_not_inlined::<(u8, u32)>();
+    //reference_local_var_and_value_not_inlined::<b256>();
+    reference_local_var_and_value_not_inlined::<raw_ptr>();
+    reference_local_var_and_value_not_inlined::<raw_slice>();
+    //reference_local_var_and_value_not_inlined::<&u8>();
 }
 
 fn main() -> u64 {
