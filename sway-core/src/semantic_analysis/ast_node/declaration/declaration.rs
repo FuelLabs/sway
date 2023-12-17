@@ -30,7 +30,7 @@ fn can_auto_impl_abi_encode(
         return None;
     }
 
-    // if Buffer type is not reacheable, we cannot impl
+    // if Buffer type is not reacheable, we cannot auto impl
     let handler = Handler::default();
     let buffer_type_id = ctx.engines.te().insert(
         ctx.engines,
@@ -118,8 +118,9 @@ fn auto_impl_abi_encode(
 
     let struct_ref = ctx.engines().de().get(decl_ref.id());
 
+    let import_handler = Handler::default();
     let _ = ctx.star_import(
-        handler,
+        &import_handler,
         &[
             Ident::new_no_span("core".into()),
             Ident::new_no_span("codec".into()),
@@ -127,39 +128,12 @@ fn auto_impl_abi_encode(
         true,
     );
 
-    // let impl_type_parameters = struct_ref.type_parameters
-    //     .iter()
-    //     .map(|x| {
-    //         let mut constraints = x.trait_constraints.clone();
-    //         constraints.push(TraitConstraint {
-    //             trait_name: CallPath {
-    //                 prefixes: vec![
-    //                 ],
-    //                 suffix: Ident::new_no_span("AbiEncode".into()),
-    //                 is_absolute: false
-    //             },
-    //             type_arguments: vec![]
-    //         });
+    if import_handler.has_errors() {
+        return;
+    }
 
-    //         let type_id = ctx.engines.te().insert(
-    //             ctx.engines(),
-    //             TypeInfo::UnknownGeneric {
-    //                 name: x.name_ident.clone(),
-    //                 trait_constraints: VecSet(vec![])
-    //             }, None);
-
-    //         TypeParameter {
-    //             type_id,
-    //             initial_type_id: type_id,
-    //             name_ident: x.name_ident.clone(),
-    //             trait_constraints: constraints,
-    //             trait_constraints_span: Span::dummy(),
-    //             is_from_parent: false,
-    //         }
-    //     }).collect();
-
-    let t = ctx.engines.te().get(type_id);
-    let impl_type_parameters = match &*t {
+    let implementing_for = ctx.engines.te().get(type_id);
+    let impl_type_parameters = match &*implementing_for {
         TypeInfo::Struct(decl) => {
             let decl = ctx.engines.de().get(decl.id());
             decl.type_parameters
@@ -181,17 +155,19 @@ fn auto_impl_abi_encode(
         _ => todo!(),
     };
 
+    let abi_encode_trait_name = CallPath {
+        prefixes: vec![
+            Ident::new_no_span("core".into()),
+            Ident::new_no_span("codec".into()),
+        ],
+        suffix: Ident::new_no_span("AbiEncode".into()),
+        is_absolute: true,
+    };
+
     let impl_trait =  parsed::Declaration::ImplTrait(
         parsed::ImplTrait {
             impl_type_parameters,
-            trait_name: CallPath {
-                prefixes: vec![
-                    Ident::new_no_span("core".into()),
-                    Ident::new_no_span("codec".into()),
-                ],
-                suffix: Ident::new_no_span("AbiEncode".into()),
-                is_absolute: true,
-            },
+            trait_name: abi_encode_trait_name,
             trait_type_arguments: vec![],
             implementing_for: TypeArgument {
                 type_id,
@@ -299,6 +275,7 @@ fn auto_impl_abi_encode(
             block_span: Span::dummy(),
         }
     );
+
     let _ = TyDecl::type_check(handler, ctx.by_ref(), impl_trait);
 }
 

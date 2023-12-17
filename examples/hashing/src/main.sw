@@ -1,7 +1,6 @@
 script;
 
 use std::hash::*;
-use core::codec::*;
 
 impl Hash for Location {
     fn hash(self, ref mut state: Hasher) {
