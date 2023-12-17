@@ -27,15 +27,15 @@ struct StructWithGeneric<D> {
     field_2: u64,
 }
 
-impl<D> AbiEncode for StructWithGeneric<D>
-where
-    D: AbiEncode
-{
-    fn abi_encode(self, ref mut buffer: Buffer) {
-        self.field_1.abi_encode(buffer);
-        self.field_2.abi_encode(buffer);
-    }
-}
+//impl<D> AbiEncode for StructWithGeneric<D>
+//where
+//    D: AbiEncode
+//{
+//    fn abi_encode(self, ref mut buffer: Buffer) {
+//        self.field_1.abi_encode(buffer);
+//        self.field_2.abi_encode(buffer);
+//    }
+//}
 
 enum EnumWithGeneric<D> {
     VariantOne: D,

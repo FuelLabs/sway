@@ -344,13 +344,15 @@ impl<'a> UnifyCheck<'a> {
                     (
                         UnknownGeneric {
                             name: ln,
-                            trait_constraints: ltc,
+                            //trait_constraints: ltc,
+                            ..
                         },
                         UnknownGeneric {
                             name: rn,
-                            trait_constraints: rtc,
+                            //trait_constraints: rtc,
+                            ..
                         },
-                    ) => ln == rn && rtc.eq(ltc, self.engines),
+                    ) => ln == rn, /*&& rtc.eq(ltc, self.engines)*/
                     // any type can be coerced into a generic,
                     // except if the type already contains the generic
                     (_e, _g @ UnknownGeneric { .. }) => {

@@ -1,16 +1,11 @@
-use std::collections::HashMap;
-
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Ident, Named, Spanned};
+use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     decl_engine::{DeclEngineGet, DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType},
     language::{
-        parsed,
-        ty::{
-            self, TyAstNode, TyCodeBlock, TyDecl, TyExpression, TyFunctionDecl,
-            TyFunctionParameter, TyImplItem, VariableMutability,
-        },
+        parsed::{self, FunctionDeclaration, FunctionParameter, SubfieldExpression},
+        ty::{self, TyDecl},
         CallPath, QualifiedCallPath,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
@@ -69,12 +64,13 @@ fn can_auto_impl_abi_encode(
     let decl_ref = decl.get_struct_decl_ref()?;
     let struct_ref = ctx.engines().de().get(decl_ref.id());
 
-    // Cannot implement if this struct has type parameters
-    if !struct_ref.type_parameters.is_empty() {
-        return None;
-    }
-
     let all_fields_are_abi_encode = struct_ref.fields.iter().all(|field| {
+        if let TypeInfo::UnknownGeneric { .. } =
+            &*ctx.engines().te().get(field.type_argument.type_id)
+        {
+            return true;
+        }
+
         let handler = Handler::default();
         ctx.namespace
             .implemented_traits
@@ -115,172 +111,195 @@ fn auto_impl_abi_encode(
         .te()
         .insert(ctx.engines, TypeInfo::Struct(decl_ref.clone()), None);
 
-    let unit = ctx
+    let unit_type_id = ctx
         .engines
         .te()
         .insert(ctx.engines, TypeInfo::Tuple(vec![]), None);
 
     let struct_ref = ctx.engines().de().get(decl_ref.id());
 
-    let abi_encode_body = struct_ref
-        .fields
-        .iter()
-        .map(|x| {
-            let abi_encode_ref = ctx
-                .find_items_for_type(
-                    handler,
-                    x.type_argument.type_id,
-                    &[
-                // Ident::new_no_span("core".into()),
-                // Ident::new_no_span("codec".into()),
-            ],
-                    &Ident::new_no_span("abi_encode".into()),
-                )
-                .unwrap()
-                .into_iter()
-                .next()
-                .unwrap();
-            let abi_encode_ref = match abi_encode_ref {
-                ty::TyTraitItem::Fn(f) => f,
-                ty::TyTraitItem::Constant(_) => todo!(),
-                ty::TyTraitItem::Type(_) => todo!(),
-            };
+    let _ = ctx.star_import(
+        handler,
+        &[
+            Ident::new_no_span("core".into()),
+            Ident::new_no_span("codec".into()),
+        ],
+        true,
+    );
 
-            TyAstNode {
-                content: ty::TyAstNodeContent::Expression(TyExpression {
-                    expression: ty::TyExpressionVariant::FunctionApplication {
-                        call_path: CallPath {
+    // let impl_type_parameters = struct_ref.type_parameters
+    //     .iter()
+    //     .map(|x| {
+    //         let mut constraints = x.trait_constraints.clone();
+    //         constraints.push(TraitConstraint {
+    //             trait_name: CallPath {
+    //                 prefixes: vec![
+    //                 ],
+    //                 suffix: Ident::new_no_span("AbiEncode".into()),
+    //                 is_absolute: false
+    //             },
+    //             type_arguments: vec![]
+    //         });
+
+    //         let type_id = ctx.engines.te().insert(
+    //             ctx.engines(),
+    //             TypeInfo::UnknownGeneric {
+    //                 name: x.name_ident.clone(),
+    //                 trait_constraints: VecSet(vec![])
+    //             }, None);
+
+    //         TypeParameter {
+    //             type_id,
+    //             initial_type_id: type_id,
+    //             name_ident: x.name_ident.clone(),
+    //             trait_constraints: constraints,
+    //             trait_constraints_span: Span::dummy(),
+    //             is_from_parent: false,
+    //         }
+    //     }).collect();
+
+    let t = ctx.engines.te().get(type_id);
+    let impl_type_parameters = match &*t {
+        TypeInfo::Struct(decl) => {
+            let decl = ctx.engines.de().get(decl.id());
+            decl.type_parameters
+                .iter()
+                .map(|x| {
+                    let mut t = x.clone();
+                    t.trait_constraints.push(TraitConstraint {
+                        trait_name: CallPath {
                             prefixes: vec![],
-                            suffix: Ident::new_no_span("abi_encode".into()),
+                            suffix: Ident::new_no_span("AbiEncode".into()),
                             is_absolute: false,
                         },
-                        contract_call_params: HashMap::default(),
-                        arguments: vec![
-                            (
-                                Ident::new_no_span("self".into()),
-                                TyExpression {
-                                    expression: ty::TyExpressionVariant::StructFieldAccess {
-                                        prefix: Box::new(TyExpression {
-                                            expression:
-                                                ty::TyExpressionVariant::VariableExpression {
-                                                    name: Ident::new_no_span("self".into()),
-                                                    span: decl.span(),
-                                                    mutability: VariableMutability::Immutable,
-                                                    call_path: None,
-                                                },
-                                            return_type: unit,
-                                            span: decl.span(),
-                                        }),
-                                        field_to_access: x.clone(),
-                                        field_instantiation_span: decl.span(),
-                                        resolved_type_of_parent: type_id,
-                                    },
-                                    return_type: unit,
-                                    span: decl.span(),
-                                },
-                            ),
-                            (
-                                Ident::new_no_span("buffer".into()),
-                                TyExpression {
-                                    expression: ty::TyExpressionVariant::VariableExpression {
-                                        name: Ident::new_no_span("buffer".into()),
-                                        span: decl.span(),
-                                        mutability: VariableMutability::Mutable,
-                                        call_path: None,
-                                    },
-                                    return_type: buffer_type_id,
-                                    span: decl.span(),
-                                },
-                            ),
+                        type_arguments: vec![],
+                    });
+                    t
+                })
+                .collect()
+        }
+        _ => todo!(),
+    };
+
+    let impl_trait =  parsed::Declaration::ImplTrait(
+        parsed::ImplTrait {
+            impl_type_parameters,
+            trait_name: CallPath {
+                prefixes: vec![
+                    Ident::new_no_span("core".into()),
+                    Ident::new_no_span("codec".into()),
+                ],
+                suffix: Ident::new_no_span("AbiEncode".into()),
+                is_absolute: true,
+            },
+            trait_type_arguments: vec![],
+            implementing_for: TypeArgument {
+                type_id,
+                initial_type_id: type_id,
+                span: Span::dummy(),
+                call_path_tree: None,
+            },
+            items: vec![
+                parsed::ImplItem::Fn(
+                    FunctionDeclaration {
+                        purity: crate::language::Purity::Pure,
+                        attributes: AttributesMap::default(),
+                        name: Ident::new_no_span("abi_encode".into()),
+                        visibility: crate::language::Visibility::Public,
+                        body: parsed::CodeBlock {
+                            contents: struct_ref.fields
+                                .iter()
+                                .map(|x| {
+                                    parsed::AstNode {
+                                        content: parsed::AstNodeContent::Expression(
+                                            parsed::Expression {
+                                                kind: parsed::ExpressionKind::MethodApplication(
+                                                    Box::new(parsed::MethodApplicationExpression {
+                                                        method_name_binding: TypeBinding {
+                                                            inner: parsed::MethodName::FromModule {
+                                                                method_name: Ident::new_no_span("abi_encode".into())
+                                                            },
+                                                            type_arguments: TypeArgs::Regular(vec![]),
+                                                            span: Span::dummy()
+                                                        },
+                                                        arguments: vec![
+                                                            parsed::Expression {
+                                                                kind: parsed::ExpressionKind::Subfield (
+                                                                    SubfieldExpression {
+                                                                        prefix: Box::new(
+                                                                            parsed::Expression {
+                                                                                kind: parsed::ExpressionKind::AmbiguousVariableExpression (
+                                                                                    Ident::new_no_span("self".into())
+                                                                                ),
+                                                                                span: Span::dummy()
+                                                                            }
+                                                                        ),
+                                                                        field_to_access: x.name.clone()
+                                                                    }
+                                                                ),
+                                                                span: Span::dummy()
+                                                            },
+                                                            parsed::Expression {
+                                                                kind: parsed::ExpressionKind::AmbiguousVariableExpression(
+                                                                    Ident::new_no_span("buffer".into())
+                                                                ),
+                                                                span: Span::dummy()
+                                                            }
+                                                        ],
+                                                        contract_call_params: vec![],
+                                                    })
+                                                ),
+                                                span: Span::dummy()
+                                            }
+                                        ),
+                                        span: Span::dummy()
+                                    }
+                                })
+                                .collect(),
+                            whole_block_span: Span::dummy()
+                        },
+                        parameters: vec![
+                            FunctionParameter {
+                                name: Ident::new_no_span("self".into()),
+                                is_reference: false,
+                                is_mutable: false,
+                                mutability_span: Span::dummy(),
+                                type_argument: TypeArgument {
+                                    type_id,
+                                    initial_type_id: type_id,
+                                    span: Span::dummy(),
+                                    call_path_tree: None
+                                }
+                            },
+                            FunctionParameter {
+                                name: Ident::new_no_span("buffer".into()),
+                                is_reference: true,
+                                is_mutable: true,
+                                mutability_span: Span::dummy(),
+                                type_argument: TypeArgument {
+                                    type_id: buffer_type_id,
+                                    initial_type_id: buffer_type_id,
+                                    span: Span::dummy(),
+                                    call_path_tree: None
+                                }
+                            },
                         ],
-                        fn_ref: abi_encode_ref,
-                        selector: None,
-                        type_binding: None,
-                        call_path_typeid: Some(type_id),
-                        deferred_monomorphization: ctx.defer_monomorphization(),
-                    },
-                    return_type: unit,
-                    span: decl.span(),
-                }),
-                span: decl.span(),
-            }
-        })
-        .collect::<Vec<_>>();
-
-    let abi_encode_impl = ctx.engines.de().insert(TyFunctionDecl {
-        name: Ident::new_no_span("abi_encode".into()),
-        body: TyCodeBlock {
-            contents: abi_encode_body,
-            whole_block_span: decl.span(),
-        },
-        parameters: vec![
-            TyFunctionParameter {
-                name: Ident::new_no_span("self".into()),
-                is_reference: false,
-                is_mutable: false,
-                mutability_span: decl.span(),
-                type_argument: TypeArgument {
-                    type_id,
-                    initial_type_id: type_id,
-                    span: decl.span(),
-                    call_path_tree: None,
-                },
-            },
-            TyFunctionParameter {
-                name: Ident::new_no_span("buffer".into()),
-                is_reference: true,
-                is_mutable: true,
-                mutability_span: decl.span(),
-                type_argument: TypeArgument {
-                    type_id: buffer_type_id,
-                    initial_type_id: buffer_type_id,
-                    span: decl.span(),
-                    call_path_tree: None,
-                },
-            },
-        ],
-        implementing_type: None,
-        span: decl.span(),
-        call_path: CallPath {
-            prefixes: vec![],
-            suffix: Ident::new_no_span("abi_encode".into()),
-            is_absolute: true,
-        },
-        attributes: AttributesMap::default(),
-        type_parameters: vec![],
-        return_type: TypeArgument {
-            type_id: unit,
-            initial_type_id: unit,
-            span: decl.span(),
-            call_path_tree: None,
-        },
-        visibility: crate::language::Visibility::Public,
-        is_contract_call: false,
-        purity: crate::language::Purity::Pure,
-        where_clause: vec![],
-        is_trait_method_dummy: false,
-    });
-
-    let auto_handler = Handler::default();
-    let _ = ctx.namespace.implemented_traits.insert(
-        &auto_handler,
-        CallPath {
-            prefixes: vec![
-                Ident::new_no_span("core".into()),
-                Ident::new_no_span("codec".into()),
+                        span: Span::dummy(),
+                        return_type: TypeArgument {
+                            type_id: unit_type_id,
+                            initial_type_id: unit_type_id,
+                            span: Span::dummy(),
+                            call_path_tree: None
+                        },
+                        type_parameters: vec![],
+                        where_clause: vec![]
+                    }
+                )
             ],
-            suffix: Ident::new_no_span("AbiEncode".into()),
-            is_absolute: true,
-        },
-        vec![],
-        type_id,
-        &[TyImplItem::Fn(abi_encode_impl)],
-        &decl.span(),
-        None,
-        IsImplSelf::No,
-        IsExtendingExistingImpl::No,
-        ctx.engines,
+            block_span: Span::dummy(),
+        }
     );
+    let _ = TyDecl::type_check(handler, ctx.by_ref(), impl_trait);
 }
 
 impl TyDecl {
@@ -456,6 +475,7 @@ impl TyDecl {
                 } else {
                     &emp_vec
                 };
+
                 ctx.insert_trait_implementation(
                     handler,
                     impl_trait.trait_name.clone(),
