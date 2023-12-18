@@ -1961,6 +1961,8 @@ dependencies = [
  "fs_extra",
  "fuel-asm",
  "hex",
+ "regex",
+ "semver",
  "serde",
  "serde_json",
  "sway-core",
