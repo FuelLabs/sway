@@ -1,6 +1,6 @@
 script;
 
-// A developer familiar with Rust might be tempted to define enum variants as 'Foo' or 'Bar(u32).
+// A developer familiar with Rust might be tempted to define enum variants as `Foo` or `Bar(u32)`.
 // This file tests the error message that informs the developer of the correct syntax.
 
 enum Enum1 {
