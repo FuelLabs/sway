@@ -13,7 +13,7 @@ enum Enum2 {
   G(u32, u32),   // Also illegal, but shadowed by previous error
 }
 
-fn main() -> () {
+fn main() {
     ()
 }
 
