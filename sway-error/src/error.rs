@@ -756,7 +756,7 @@ pub enum CompileError {
     #[error("Expression cannot be referenced.")]
     ExpressionCannotBeReferenced {
         expression: NonReferenceableExpression,
-        span: Span
+        span: Span,
     },
 }
 

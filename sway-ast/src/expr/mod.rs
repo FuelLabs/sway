@@ -227,7 +227,10 @@ impl Spanned for Expr {
             Expr::TupleFieldProjection {
                 target, field_span, ..
             } => Span::join(target.span(), field_span.clone()),
-            Expr::Ref { ampersand_token, expr } => Span::join(ampersand_token.span(), expr.span()),
+            Expr::Ref {
+                ampersand_token,
+                expr,
+            } => Span::join(ampersand_token.span(), expr.span()),
             Expr::Deref { star_token, expr } => Span::join(star_token.span(), expr.span()),
             Expr::Not { bang_token, expr } => Span::join(bang_token.span(), expr.span()),
             Expr::Pow { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),

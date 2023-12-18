@@ -334,7 +334,10 @@ impl Format for Expr {
                     field_span.as_str(),
                 )?;
             }
-            Self::Ref { ampersand_token, expr } => {
+            Self::Ref {
+                ampersand_token,
+                expr,
+            } => {
                 write!(formatted_code, "{}", ampersand_token.span().as_str())?;
                 expr.format(formatted_code, formatter)?;
             }
@@ -1012,7 +1015,10 @@ fn expr_leaf_spans(expr: &Expr) -> Vec<ByteSpan> {
             collected_spans.push(ByteSpan::from(field_span.clone()));
             collected_spans
         }
-        Expr::Ref { ampersand_token, expr } => {
+        Expr::Ref {
+            ampersand_token,
+            expr,
+        } => {
             let mut collected_spans = vec![ByteSpan::from(ampersand_token.span())];
             collected_spans.append(&mut expr.leaf_spans());
             collected_spans

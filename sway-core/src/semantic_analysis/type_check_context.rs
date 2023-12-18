@@ -553,11 +553,9 @@ impl<'a> TypeCheckContext<'a> {
                             .insert(self.engines, TypeInfo::ErrorRecovery(err), None)
                     });
 
-                self.engines.te().insert(
-                    self.engines,
-                    TypeInfo::Ref(ty.clone()),
-                    None,
-                )
+                self.engines
+                    .te()
+                    .insert(self.engines, TypeInfo::Ref(ty.clone()), None)
             }
             _ => type_id,
         };

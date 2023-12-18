@@ -6,7 +6,7 @@ use std::fmt::Write;
 use sway_ast::{
     brackets::SquareBrackets,
     expr::Expr,
-    keywords::{PtrToken, SliceToken, StrToken, Token, UnderscoreToken, AmpersandToken},
+    keywords::{AmpersandToken, PtrToken, SliceToken, StrToken, Token, UnderscoreToken},
     ty::{Ty, TyArrayDescriptor, TyTupleDescriptor},
 };
 use sway_types::{ast::Delimiter, Spanned};
@@ -45,9 +45,10 @@ impl Format for Ty {
             Self::Slice { slice_token, ty } => {
                 format_slice(formatted_code, slice_token.clone(), ty.clone())
             }
-            Self::Ref { ampersand_token, ty } => {
-                format_ref(formatted_code, ampersand_token.clone(), ty.clone())
-            }
+            Self::Ref {
+                ampersand_token,
+                ty,
+            } => format_ref(formatted_code, ampersand_token.clone(), ty.clone()),
         }
     }
 }
@@ -189,7 +190,10 @@ impl LeafSpans for Ty {
                 collected_spans.append(&mut ty.leaf_spans());
                 collected_spans
             }
-            Ty::Ref { ampersand_token, ty } => {
+            Ty::Ref {
+                ampersand_token,
+                ty,
+            } => {
                 let mut collected_spans = vec![ByteSpan::from(ampersand_token.span())];
                 collected_spans.append(&mut ty.leaf_spans());
                 collected_spans

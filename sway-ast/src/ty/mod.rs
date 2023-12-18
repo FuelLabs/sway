@@ -25,7 +25,7 @@ pub enum Ty {
     Ref {
         ampersand_token: AmpersandToken,
         ty: Box<Ty>,
-    }
+    },
 }
 
 impl Spanned for Ty {
@@ -39,7 +39,10 @@ impl Spanned for Ty {
             Ty::Infer { underscore_token } => underscore_token.span(),
             Ty::Ptr { ptr_token, ty } => Span::join(ptr_token.span(), ty.span()),
             Ty::Slice { slice_token, ty } => Span::join(slice_token.span(), ty.span()),
-            Ty::Ref { ampersand_token, ty } => Span::join(ampersand_token.span(), ty.span()),
+            Ty::Ref {
+                ampersand_token,
+                ty,
+            } => Span::join(ampersand_token.span(), ty.span()),
         }
     }
 }

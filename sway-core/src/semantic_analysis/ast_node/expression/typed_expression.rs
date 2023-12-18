@@ -402,10 +402,8 @@ impl ty::TyExpression {
                     span,
                 };
                 Ok(typed_expr)
-            },
-            ExpressionKind::Ref(expr) => {
-                Self::type_check_ref(handler, ctx.by_ref(), expr, span)
             }
+            ExpressionKind::Ref(expr) => Self::type_check_ref(handler, ctx.by_ref(), expr, span),
         };
         let mut typed_expression = match res {
             Ok(r) => r,
@@ -2017,14 +2015,19 @@ impl ty::TyExpression {
         }
     }
 
-    fn type_check_ref(handler: &Handler, mut ctx: TypeCheckContext<'_>, expr: Box<Expression>, span: Span) -> Result<ty::TyExpression, ErrorEmitted> {
+    fn type_check_ref(
+        handler: &Handler,
+        mut ctx: TypeCheckContext<'_>,
+        expr: Box<Expression>,
+        span: Span,
+    ) -> Result<ty::TyExpression, ErrorEmitted> {
         return match expr.kind {
-            ExpressionKind::Break | ExpressionKind::Continue | ExpressionKind::Return(_) => {
-                Err(handler.emit_err(CompileError::ExpressionCannotBeReferenced {
+            ExpressionKind::Break | ExpressionKind::Continue | ExpressionKind::Return(_) => Err(
+                handler.emit_err(CompileError::ExpressionCannotBeReferenced {
                     expression: NonReferenceableExpression::from(expr.kind),
-                    span
-                }))
-            },
+                    span,
+                }),
+            ),
             _ => {
                 let engines = ctx.engines();
                 let type_engine = ctx.engines().te();
@@ -2039,7 +2042,11 @@ impl ty::TyExpression {
                 let expr_type_argument: TypeArgument = expr.return_type.into();
                 let typed_expr = ty::TyExpression {
                     expression: ty::TyExpressionVariant::Ref(Box::new(expr)),
-                    return_type: type_engine.insert(engines, TypeInfo::Ref(expr_type_argument), None),
+                    return_type: type_engine.insert(
+                        engines,
+                        TypeInfo::Ref(expr_type_argument),
+                        None,
+                    ),
                     span,
                 };
 
@@ -2053,7 +2060,7 @@ impl ty::TyExpression {
                     ExpressionKind::Break => NonReferenceableExpression::Break,
                     ExpressionKind::Continue => NonReferenceableExpression::Continue,
                     ExpressionKind::Return(_) => NonReferenceableExpression::Return,
-                    _ => unreachable!("")
+                    _ => unreachable!(""),
                 }
             }
         }

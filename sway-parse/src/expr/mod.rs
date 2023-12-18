@@ -508,7 +508,10 @@ fn parse_mul(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
 
 fn parse_unary_op(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
     if let Some((ampersand_token, expr)) = parse_op_rhs(parser, ctx, parse_unary_op)? {
-        return Ok(Expr::Ref { ampersand_token, expr });
+        return Ok(Expr::Ref {
+            ampersand_token,
+            expr,
+        });
     }
     if let Some((star_token, expr)) = parse_op_rhs(parser, ctx, parse_unary_op)? {
         return Ok(Expr::Deref { star_token, expr });

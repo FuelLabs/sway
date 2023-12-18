@@ -1908,7 +1908,7 @@ impl<'eng> FnCompiler<'eng> {
             &body.return_type,
             &body.span,
         )?;
-        
+
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
         let body_deterministically_aborts = body.deterministically_aborts(self.engines.de(), false);
@@ -2707,18 +2707,14 @@ impl<'eng> FnCompiler<'eng> {
                         .map(|init_expr| {
                             self.compile_expression(context, md_mgr, init_expr)
                                 .map(|init_val| {
-                                    let init_type = self
-                                            .engines
-                                            .te()
-                                            .get_unaliased(init_expr.return_type);
+                                    let init_type =
+                                        self.engines.te().get_unaliased(init_expr.return_type);
 
                                     if init_val
                                         .get_type(context)
                                         .map_or(false, |ty| ty.is_ptr(context))
-                                        &&
-                                        (init_type.is_copy_type()
-                                        ||
-                                        init_type.is_reference_type())
+                                        && (init_type.is_copy_type()
+                                            || init_type.is_reference_type())
                                     {
                                         // It's a pointer to a copy type, or a reference behind a pointer. We need to dereference it.
                                         // We can get a reference behind a pointer if a reference variable is passed to the ASM block.

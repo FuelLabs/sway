@@ -2086,8 +2086,10 @@ fn expr_to_expression(
             span,
         },
         Expr::Ref { expr, .. } => Expression {
-            kind: ExpressionKind::Ref(Box::new(expr_to_expression(context, handler, engines, *expr)?)),
-            span
+            kind: ExpressionKind::Ref(Box::new(expr_to_expression(
+                context, handler, engines, *expr,
+            )?)),
+            span,
         },
         Expr::Deref { star_token, .. } => {
             let error = ConvertParseTreeError::DerefExprNotYetSupported {

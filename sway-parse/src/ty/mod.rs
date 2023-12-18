@@ -62,7 +62,10 @@ impl Parse for Ty {
         }
         if let Some(ampersand_token) = parser.take() {
             let ty = Box::new(parser.parse()?);
-            return Ok(Ty::Ref { ampersand_token, ty });
+            return Ok(Ty::Ref {
+                ampersand_token,
+                ty,
+            });
         }
         if parser.peek::<OpenAngleBracketToken>().is_some()
             || parser.peek::<DoubleColonToken>().is_some()

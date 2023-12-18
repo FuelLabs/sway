@@ -403,7 +403,12 @@ impl<'a> Unifier<'a> {
         expected_type_argument: &TypeArgument,
     ) {
         let h = Handler::default();
-        self.unify(&h, received_type_argument.type_id, expected_type_argument.type_id, span);
+        self.unify(
+            &h,
+            received_type_argument.type_id,
+            expected_type_argument.type_id,
+            span,
+        );
         let (new_errors, warnings) = h.consume();
 
         // If there was an error then we want to report the parent types as mismatching, not

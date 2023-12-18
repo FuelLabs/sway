@@ -393,11 +393,9 @@ impl PartialEqWithEngines for TypeInfo {
                         .get(*l_trait_type_id)
                         .eq(&type_engine.get(*r_trait_type_id), engines)
             }
-            (Self::Ref(l_ty), Self::Ref(r_ty)) => {
-                type_engine
-                    .get(l_ty.type_id)
-                    .eq(&type_engine.get(r_ty.type_id), engines)
-            }
+            (Self::Ref(l_ty), Self::Ref(r_ty)) => type_engine
+                .get(l_ty.type_id)
+                .eq(&type_engine.get(r_ty.type_id), engines),
 
             (l, r) => l.discriminant_value() == r.discriminant_value(),
         }
@@ -510,11 +508,9 @@ impl OrdWithEngines for TypeInfo {
             ) => l_trait_type_id
                 .cmp(r_trait_type_id)
                 .then_with(|| l_name.cmp(r_name)),
-            (Self::Ref(l_ty), Self::Ref(r_ty)) => {
-                type_engine
-                    .get(l_ty.type_id)
-                    .cmp(&type_engine.get(r_ty.type_id), engines)
-            }
+            (Self::Ref(l_ty), Self::Ref(r_ty)) => type_engine
+                .get(l_ty.type_id)
+                .cmp(&type_engine.get(r_ty.type_id), engines),
 
             (l, r) => l.discriminant_value().cmp(&r.discriminant_value()),
         }
@@ -1067,8 +1063,7 @@ impl TypeInfo {
                 | TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)
                 | TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
                 | TypeInfo::RawUntypedPtr
-                | TypeInfo::Numeric
-                // TODO-IG: Should Ptr and Ref also be a copy type?
+                | TypeInfo::Numeric // TODO-IG: Should Ptr and Ref also be a copy type?
         ) || self.is_unit()
     }
 
@@ -1180,7 +1175,8 @@ impl TypeInfo {
                 "Matching on this type is currently not supported.",
                 span.clone(),
             ))),
-            TypeInfo::Ref(_) => Err(handler.emit_err(CompileError::Unimplemented( // TODO-IG: Implement.
+            TypeInfo::Ref(_) => Err(handler.emit_err(CompileError::Unimplemented(
+                // TODO-IG: Implement.
                 "Using references in match expressions is currently not supported.",
                 span.clone(),
             ))),
