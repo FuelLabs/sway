@@ -4,7 +4,7 @@
 
 <!-- This section should explain structs in Sway -->
 <!-- structs:example:start -->
-Structs in Sway are a named grouping of types. You may also be familiar with structs via another name: _product types_. Sway does not make any significantly unique usages of structs; they are similar to most other languages which have structs. If you're coming from an object-oriented background, a struct is like the data attributes of an object.
+Structs in Sway are a named grouping of types. You may also be familiar with structs via another name: _product types_. Sway does not make any significantly unique usages of structs; they are similar to most other languages that have structs. If you're coming from an object-oriented background, a struct is like the data attributes of an object.
 <!-- structs:example:end -->
 
 Firstly, we declare a struct named `Foo` with two fields. The first field is named `bar` and it accepts values of type `u64`, the second field is named `baz` and it accepts `bool` values.
