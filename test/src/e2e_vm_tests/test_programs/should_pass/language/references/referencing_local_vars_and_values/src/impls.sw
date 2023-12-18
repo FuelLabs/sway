@@ -8,6 +8,8 @@ pub trait New {
     fn new() -> Self;
 }
 
+pub trait ZeroSize { }
+
 impl New for bool {
     fn new() -> Self {
         true
@@ -114,6 +116,22 @@ impl New for Struct {
     }
 }
 
+pub struct EmptyStruct { }
+
+impl Eq for EmptyStruct {
+    fn eq(self, other: Self) -> bool {
+        true
+    }
+}
+
+impl New for EmptyStruct {
+    fn new() -> Self {
+        EmptyStruct { }
+    }
+}
+
+impl ZeroSize for EmptyStruct { }
+
 pub enum Enum {
     A: u64,
 }
@@ -184,22 +202,28 @@ impl Eq for raw_slice {
     }
 }
 
-impl New for &u8 {
+impl New for () {
     fn new() -> Self {
-        let ptr = asm() { zero: raw_ptr }.add::<u64>(42);
-        
-        asm(r: ptr) { r: &u8 }
+        ()
     }
 }
 
-impl Eq for &u8 {
+impl Eq for () {
     fn eq(self, other: Self) -> bool {
-        // For the purpose of this test, we consider two references
-        // to be equal if they point to the same memory location,
-        // not if values they point to are equal.
-        let self_ptr = asm(r: self) { r: raw_ptr };
-        let other_ptr = asm(r: other) { r: raw_ptr };
-
-        self_ptr == other_ptr
+        true
     }
 }
+
+impl New for [u64;0] {
+    fn new() -> Self {
+        []
+    }
+}
+
+impl Eq for [u64;0] {
+    fn eq(self, other: Self) -> bool {
+        true
+    }
+}
+
+impl ZeroSize for [u64;0] { }
