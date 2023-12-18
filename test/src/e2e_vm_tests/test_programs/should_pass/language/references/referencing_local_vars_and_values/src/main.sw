@@ -92,7 +92,6 @@ fn empty_struct_not_inlined() {
     empty_struct(false)
 }
 
-// TODO-IG: Check types that are failing: `u256`, `b256`, `&u8`.
 #[inline(never)]
 fn test_all_inlined() {
     reference_local_var_and_value::<bool>();
@@ -100,7 +99,7 @@ fn test_all_inlined() {
     reference_local_var_and_value::<u16>();
     reference_local_var_and_value::<u32>();
     reference_local_var_and_value::<u64>();
-    //reference_local_var_and_value::<u256>();
+    reference_local_var_and_value::<u256>();
     reference_local_var_and_value::<[u64;2]>();
     reference_local_var_and_value::<Struct>();
     empty_struct(true);
@@ -108,7 +107,7 @@ fn test_all_inlined() {
     reference_local_var_and_value::<str[6]>();
     reference_local_var_and_value::<Enum>();
     reference_local_var_and_value::<(u8, u32)>();
-    //reference_local_var_and_value::<b256>();
+    reference_local_var_and_value::<b256>();
     reference_local_var_and_value::<raw_ptr>();
     reference_local_var_and_value::<raw_slice>();
     //reference_local_var_and_value::<&u8>();
@@ -121,7 +120,7 @@ fn test_not_inlined() {
     reference_local_var_and_value_not_inlined::<u16>();
     reference_local_var_and_value_not_inlined::<u32>();
     reference_local_var_and_value_not_inlined::<u64>();
-    //reference_local_var_and_value_not_inlined::<u256>();
+    reference_local_var_and_value_not_inlined::<u256>();
     reference_local_var_and_value_not_inlined::<[u64;2]>();
     reference_local_var_and_value_not_inlined::<Struct>();
     empty_struct_not_inlined();
@@ -129,7 +128,7 @@ fn test_not_inlined() {
     reference_local_var_and_value_not_inlined::<str[6]>();
     reference_local_var_and_value_not_inlined::<Enum>();
     reference_local_var_and_value_not_inlined::<(u8, u32)>();
-    //reference_local_var_and_value_not_inlined::<b256>();
+    reference_local_var_and_value_not_inlined::<b256>();
     reference_local_var_and_value_not_inlined::<raw_ptr>();
     reference_local_var_and_value_not_inlined::<raw_slice>();
     //reference_local_var_and_value_not_inlined::<&u8>();

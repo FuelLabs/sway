@@ -1,6 +1,8 @@
 library;
 
 use core::ops::Eq;
+use std::bytes_conversions::u256::*;
+use std::bytes_conversions::b256::*;
 
 pub trait New {
     fn new() -> Self;
@@ -38,7 +40,19 @@ impl New for u64 {
 
 impl New for u256 {
     fn new() -> Self {
-        0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20_u256
+        // We cannot have a constants here, because it would
+        // end up being a reference type constant which means
+        // we will get the same reference for each `new()`
+        // instance which breaks the semantics of the test.
+        // That's why this manual creation here.
+        let mut bytes = std::bytes::Bytes::with_capacity(32);
+        let mut i: u8 = 0;
+        while i < 32_u8 {
+            bytes.push(32_u8 - i);
+            i += 1_u8;
+        }
+    
+        u256::from_le_bytes(bytes)
     }
 }
 
@@ -132,7 +146,19 @@ impl New for (u8, u32) {
 
 impl New for b256 {
     fn new() -> Self {
-        0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
+        // We cannot have a constants here, because it would
+        // end up being a reference type constant which means
+        // we will get the same reference for each `new()`
+        // instance which breaks the semantics of the test.
+        // That's why this manual creation here.
+        let mut bytes = std::bytes::Bytes::with_capacity(32);
+        let mut i: u8 = 0;
+        while i < 32_u8 {
+            bytes.push(32_u8 - i);
+            i += 1_u8;
+        }
+    
+        b256::from_le_bytes(bytes)
     }
 }
 
