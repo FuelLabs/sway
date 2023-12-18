@@ -14,6 +14,5 @@ enum Enum2 {
 }
 
 fn main() {
-    ()
 }
 
