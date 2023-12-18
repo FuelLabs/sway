@@ -1,0 +1,15 @@
+category = "fail"
+
+#check: $()`break` keyword cannot be referenced
+#check: $()&break;
+#nextln: $()`break` keyword is referenced here.
+
+#check: $()`continue` keyword cannot be referenced
+#check: $()&continue;
+#nextln: $()`continue` keyword is referenced here.
+
+#check: $()`return` keyword cannot be referenced
+#check: $()&return;
+#nextln: $()`return` keyword is referenced here.
+#nextln: $()Are you trying to return a reference?
+#nextln: $()In that case, use `return &<your expression>;`.

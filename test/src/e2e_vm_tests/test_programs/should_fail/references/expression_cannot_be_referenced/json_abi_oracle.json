@@ -1,0 +1,16 @@
+[
+  {
+    "attributes": null,
+    "inputs": [],
+    "name": "main",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u32",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  }
+]

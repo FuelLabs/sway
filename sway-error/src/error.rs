@@ -751,9 +751,13 @@ pub enum CompileError {
     AbiSupertraitMethodCallAsContractCall { fn_name: Ident, span: Span },
     #[error("\"Self\" is not valid in the self type of an impl block")]
     SelfIsNotValidAsImplementingFor { span: Span },
-
-    #[error("Unitialized register is being read before being written")]
+    #[error("Uninitialized register is being read before being written")]
     UninitRegisterInAsmBlockBeingRead { span: Span },
+    #[error("Expression cannot be referenced.")]
+    ExpressionCannotBeReferenced {
+        expression: NonReferenceableExpression,
+        span: Span
+    },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -946,6 +950,7 @@ impl Spanned for CompileError {
             ExpectedStringLiteral { span } => span.clone(),
             SelfIsNotValidAsImplementingFor { span } => span.clone(),
             UninitRegisterInAsmBlockBeingRead { span } => span.clone(),
+            ExpressionCannotBeReferenced { span, .. } => span.clone(),
         }
     }
 }
@@ -1222,6 +1227,32 @@ impl ToDiagnostic for CompileError {
                     help
                 },
             },
+            ExpressionCannotBeReferenced { expression, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), format!("{expression} cannot be referenced"))),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("{expression} is referenced here.")
+                ),
+                hints: {
+                    match expression {
+                        NonReferenceableExpression::Return => vec![
+                            Hint::help(
+                                source_engine,
+                                span.clone(),
+                                "Are you trying to return a reference?".to_string()
+                            ),
+                            Hint::help(
+                                source_engine,
+                                span.clone(),
+                                "In that case, use `return &<your expression>;`.".to_string()
+                            ),
+                        ],
+                        _ => vec![],
+                    }
+                },
+                help: vec![],
+            },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we
@@ -1256,6 +1287,26 @@ pub enum TypeNotAllowedReason {
 
     #[error("`str` or a type containing `str` on `const` is not allowed.")]
     StringSliceInConst,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum NonReferenceableExpression {
+    Break,
+    Continue,
+    Return,
+    // TODO-IG: Add other expressions that cannot be referenced.
+}
+
+impl std::fmt::Display for NonReferenceableExpression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use NonReferenceableExpression::*;
+        let s = match self {
+            Break => "`break` keyword",
+            Continue => "`continue` keyword",
+            Return => "`return` keyword",
+        };
+        write!(f, "{s}")
+    }
 }
 
 /// Returns the file name (with extension) for the provided `source_id`,

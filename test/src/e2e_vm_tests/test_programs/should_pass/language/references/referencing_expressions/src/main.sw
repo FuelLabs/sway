@@ -18,6 +18,8 @@ impl core::ops::Eq for [Struct; 3] {
     }
 }
 
+// TODO-IG: Add tests for other expressions that can be referenced and errors for those that cannot.
+
 #[inline(always)]
 fn if_expr<T>(input: u64, left: T, right: T) where T: Eq {
     let x = if input > 42 {

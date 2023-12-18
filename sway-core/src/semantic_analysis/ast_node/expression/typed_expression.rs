@@ -36,7 +36,7 @@ use ast_node::declaration::{insert_supertraits_into_namespace, SupertraitOf};
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::{
     convert_parse_tree_error::ConvertParseTreeError,
-    error::CompileError,
+    error::{CompileError, NonReferenceableExpression},
     handler::{ErrorEmitted, Handler},
     warning::{CompileWarning, Warning},
 };
@@ -404,20 +404,7 @@ impl ty::TyExpression {
                 Ok(typed_expr)
             },
             ExpressionKind::Ref(expr) => {
-                let ctx = ctx
-                    .by_ref()
-                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
-                    .with_help_text("");
-                let expr_span = expr.span();
-                let expr = ty::TyExpression::type_check(handler, ctx, *expr)
-                    .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span.clone(), engines));
-                let expr_type_argument: TypeArgument = expr.return_type.into();
-                let typed_expr = ty::TyExpression {
-                    expression: ty::TyExpressionVariant::Ref(Box::new(expr)),
-                    return_type: type_engine.insert(engines, TypeInfo::Ref(expr_type_argument), None),
-                    span,
-                };
-                Ok(typed_expr)
+                Self::type_check_ref(handler, ctx.by_ref(), expr, span)
             }
         };
         let mut typed_expression = match res {
@@ -2026,6 +2013,48 @@ impl ty::TyExpression {
                     return_type: type_engine.insert(engines, TypeInfo::Tuple(Vec::new()), None),
                     span,
                 })
+            }
+        }
+    }
+
+    fn type_check_ref(handler: &Handler, mut ctx: TypeCheckContext<'_>, expr: Box<Expression>, span: Span) -> Result<ty::TyExpression, ErrorEmitted> {
+        return match expr.kind {
+            ExpressionKind::Break | ExpressionKind::Continue | ExpressionKind::Return(_) => {
+                Err(handler.emit_err(CompileError::ExpressionCannotBeReferenced {
+                    expression: NonReferenceableExpression::from(expr.kind),
+                    span
+                }))
+            },
+            _ => {
+                let engines = ctx.engines();
+                let type_engine = ctx.engines().te();
+
+                let ctx = ctx
+                    .by_ref()
+                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
+                    .with_help_text("");
+                let expr_span = expr.span();
+                let expr = ty::TyExpression::type_check(handler, ctx, *expr)
+                    .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span.clone(), engines));
+                let expr_type_argument: TypeArgument = expr.return_type.into();
+                let typed_expr = ty::TyExpression {
+                    expression: ty::TyExpressionVariant::Ref(Box::new(expr)),
+                    return_type: type_engine.insert(engines, TypeInfo::Ref(expr_type_argument), None),
+                    span,
+                };
+
+                Ok(typed_expr)
+            }
+        };
+
+        impl From<ExpressionKind> for NonReferenceableExpression {
+            fn from(expression_kind: ExpressionKind) -> Self {
+                match expression_kind {
+                    ExpressionKind::Break => NonReferenceableExpression::Break,
+                    ExpressionKind::Continue => NonReferenceableExpression::Continue,
+                    ExpressionKind::Return(_) => NonReferenceableExpression::Return,
+                    _ => unreachable!("")
+                }
             }
         }
     }
