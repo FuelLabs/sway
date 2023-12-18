@@ -373,7 +373,7 @@ jobs:
         run: cargo install cargo-deps
 
       # We require this check to avoid cyclic dependencies between 'fuels' and 'forc-pkg'.
-      # Detailed explanation is found in the echo below.
+      # A detailed explanation is found in the echo below.
       - name: Check 'forc-pkg' dependencies for 'fuels' crates
         run: |
           deps=$(cargo deps --manifest-path forc-pkg/Cargo.toml)
