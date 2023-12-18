@@ -344,6 +344,9 @@ impl Parse for Expression {
             ExpressionKind::Return(expr) => {
                 expr.parse(ctx);
             }
+            ExpressionKind::Ref(expr) => {
+                expr.parse(ctx);
+            }
             // We are collecting these tokens in the lexed phase.
             ExpressionKind::Break | ExpressionKind::Continue => {}
         }

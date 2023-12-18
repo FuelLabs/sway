@@ -593,6 +593,7 @@ impl Parse for ty::TyExpression {
                 reassignment.parse(ctx);
             }
             ty::TyExpressionVariant::Return(exp) => exp.parse(ctx),
+            ty::TyExpressionVariant::Ref(exp) => exp.parse(ctx),
         }
     }
 }

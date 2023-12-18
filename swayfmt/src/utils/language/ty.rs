@@ -121,7 +121,7 @@ fn format_slice(
 fn format_ref(
     formatted_code: &mut FormattedCode,
     ampersand_token: AmpersandToken,
-    ty: Ty,
+    ty: Box<Ty>,
 ) -> Result<(), FormatterError> {
     write!(
         formatted_code,
