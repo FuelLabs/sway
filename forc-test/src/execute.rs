@@ -2,7 +2,7 @@ use crate::setup::TestSetup;
 use crate::TestResult;
 use crate::TEST_METADATA_SEED;
 use forc_pkg::PkgTestEntry;
-use fuel_tx::{self as tx, output::contract::Contract};
+use fuel_tx::{self as tx, output::contract::Contract, Chargeable, Finalizable};
 use fuel_vm::error::InterpreterError;
 use fuel_vm::{
     self as vm,
@@ -78,6 +78,14 @@ impl TestExecutor {
             output_index += 1;
         }
         let consensus_params = tx_builder.get_params().clone();
+
+        // Temporarily finalize to calculate `script_gas_limit`
+        let tmp_tx = tx_builder.clone().finalize();
+        // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
+        let max_gas =
+            tmp_tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
+        // Increase `script_gas_limit` to the maximum allowed value.
+        tx_builder.script_gas_limit(consensus_params.tx_params().max_gas_per_tx - max_gas);
 
         TestExecutor {
             interpreter: Interpreter::with_storage(storage, consensus_params.into()),
