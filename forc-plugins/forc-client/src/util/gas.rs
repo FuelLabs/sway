@@ -6,7 +6,7 @@ use fuel_tx::{
     Buildable, Chargeable, Input, Script, TxPointer,
 };
 use fuels_accounts::provider::Provider;
-use fuels_core::types::tx_builders::DryRunner;
+use fuels_core::types::transaction_builders::DryRunner;
 
 /// Returns the gas to use for deployment, overriding default values if necessary.
 pub fn get_gas_price(gas: &Gas, node_info: NodeInfo) -> u64 {
