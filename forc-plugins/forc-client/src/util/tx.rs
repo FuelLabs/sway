@@ -11,7 +11,7 @@ use fuels_accounts::{provider::Provider, wallet::Wallet, ViewOnlyAccount};
 use fuels_core::types::{
     bech32::{Bech32Address, FUEL_BECH32_HRP},
     coin_type::CoinType,
-    tx_builders::{create_coin_input, create_coin_message_input},
+    transaction_builders::{create_coin_input, create_coin_message_input},
 };
 
 use forc_wallet::{

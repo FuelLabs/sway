@@ -605,7 +605,7 @@ mod inputs {
         }
 
         mod message {
-            use fuels::types::{coin_type::CoinType, tx_builders::TransactionBuilder};
+            use fuels::types::{coin_type::CoinType, transaction_builders::TransactionBuilder};
 
             use super::*;
 
