@@ -1616,11 +1616,13 @@ script;
 
 use std::{constants::ZERO_B256, vm::evm::evm_address::EvmAddress};
 
-configurable { /* inline comment */
-    // double slash comment
-    /// triple slash comment
+configurable { /* multiline */
+    // double slash
+    /// triple slash
     SIGNER: EvmAddress = EvmAddress {
-        value: ZERO_B256,
+        // double slash 
+        // double slash
+        value: ZERO_B256, // end of line
     },
 }
 
@@ -1629,11 +1631,13 @@ fn main() {}"#,
 
 use std::{constants::ZERO_B256, vm::evm::evm_address::EvmAddress};
 
-configurable { /* inline comment */
-    // double slash comment
-    /// triple slash comment
+configurable { /* multiline */
+    // double slash
+    /// triple slash
     SIGNER: EvmAddress = EvmAddress {
-        value: ZERO_B256,
+        // double slash 
+        // double slash
+        value: ZERO_B256, // end of line
     },
 }
 
