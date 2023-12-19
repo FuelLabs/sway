@@ -878,7 +878,7 @@ pub(crate) fn item_const_to_constant_declaration(
     let span = item_const.span();
 
     let expr = match item_const.expr_opt {
-        Some(expr) => Some(expr_to_expression(context, handler, engines, expr)?),
+        Some(expr) => Some(expr_to_expression(context, handler, engines, expr, false)?),
         None => {
             if require_expression {
                 let err = ConvertParseTreeError::ConstantRequiresExpression { span: span.clone() };
@@ -1597,7 +1597,7 @@ fn expr_to_ast_node(
 ) -> Result<AstNode, ErrorEmitted> {
     let span = expr.span();
     let ast_node = {
-        let expression = expr_to_expression(context, handler, engines, expr)?;
+        let expression = expr_to_expression(context, handler, engines, expr, is_statement)?;
         if !is_statement {
             AstNode {
                 content: AstNodeContent::ImplicitReturnExpression(expression),
@@ -1621,7 +1621,7 @@ fn abi_cast_args_to_abi_cast_expression(
 ) -> Result<Box<AbiCastExpression>, ErrorEmitted> {
     let AbiCastArgs { name, address, .. } = args.into_inner();
     let abi_name = path_type_to_call_path(context, handler, name)?;
-    let address = Box::new(expr_to_expression(context, handler, engines, *address)?);
+    let address = Box::new(expr_to_expression(context, handler, engines, *address, false)?);
     Ok(Box::new(AbiCastExpression { abi_name, address }))
 }
 
@@ -1692,7 +1692,7 @@ fn method_call_fields_to_method_application_expression(
     };
     let arguments = iter::once(*target)
         .chain(args.into_inner())
-        .map(|expr| expr_to_expression(context, handler, engines, expr))
+        .map(|expr| expr_to_expression(context, handler, engines, expr, false))
         .collect::<Result<_, _>>()?;
     Ok(Box::new(MethodApplicationExpression {
         method_name_binding,
@@ -1761,7 +1761,7 @@ fn expr_func_app_to_expression_kind(
     let arguments = args
         .into_inner()
         .into_iter()
-        .map(|expr| expr_to_expression(context, handler, engines, expr))
+        .map(|expr| expr_to_expression(context, handler, engines, expr, false))
         .collect::<Result<_, _>>()?;
 
     let name_args_span = |start, end: Option<_>| match end {
@@ -1857,6 +1857,7 @@ fn expr_to_expression(
     handler: &Handler,
     engines: &Engines,
     expr: Expr,
+    is_statement: bool,
 ) -> Result<Expression, ErrorEmitted> {
     let span = expr.span();
     let expression = match expr {
@@ -1899,7 +1900,8 @@ fn expr_to_expression(
             }
         }
         Expr::Parens(parens) => {
-            expr_to_expression(context, handler, engines, *parens.into_inner())?
+            expr_to_expression(context, handler, engines, *parens.into_inner(), is_statement)?
+            //TODO: if is_statement && *parens.into_inner().is_return { warn("Unnecessary parentheses") }
         }
         Expr::Block(braced_code_block_contents) => braced_code_block_contents_to_expression(
             context,
@@ -1912,7 +1914,7 @@ fn expr_to_expression(
                 ExprArrayDescriptor::Sequence(exprs) => {
                     let contents = exprs
                         .into_iter()
-                        .map(|expr| expr_to_expression(context, handler, engines, expr))
+                        .map(|expr| expr_to_expression(context, handler, engines, expr, false))
                         .collect::<Result<_, _>>()?;
                     let array_expression = ArrayExpression {
                         contents,
@@ -1924,7 +1926,7 @@ fn expr_to_expression(
                     }
                 }
                 ExprArrayDescriptor::Repeat { value, length, .. } => {
-                    let expression = expr_to_expression(context, handler, engines, *value)?;
+                    let expression = expr_to_expression(context, handler, engines, *value, false)?;
                     let length_span = length.span();
                     let length = expr_to_usize(context, handler, *length)?;
                     let contents = iter::repeat_with(|| expression.clone())
@@ -1949,8 +1951,9 @@ fn expr_to_expression(
             }
         }
         Expr::Return { expr_opt, .. } => {
+            // TODO: if !is_statement { Illegal return }
             let expression = match expr_opt {
-                Some(expr) => expr_to_expression(context, handler, engines, *expr)?,
+                Some(expr) => expr_to_expression(context, handler, engines, *expr, false)?,
                 None => Expression {
                     kind: ExpressionKind::Tuple(Vec::new()),
                     span: span.clone(),
@@ -1981,7 +1984,7 @@ fn expr_to_expression(
             condition, block, ..
         } => Expression {
             kind: ExpressionKind::WhileLoop(WhileLoopExpression {
-                condition: Box::new(expr_to_expression(context, handler, engines, *condition)?),
+                condition: Box::new(expr_to_expression(context, handler, engines, *condition, false)?),
                 body: braced_code_block_contents_to_code_block(context, handler, engines, block)?,
             }),
             span,
@@ -1992,12 +1995,13 @@ fn expr_to_expression(
         }
         Expr::Index { target, arg } => Expression {
             kind: ExpressionKind::ArrayIndex(ArrayIndexExpression {
-                prefix: Box::new(expr_to_expression(context, handler, engines, *target)?),
+                prefix: Box::new(expr_to_expression(context, handler, engines, *target, false)?),
                 index: Box::new(expr_to_expression(
                     context,
                     handler,
                     engines,
                     *arg.into_inner(),
+                    false,
                 )?),
             }),
             span,
@@ -2052,7 +2056,7 @@ fn expr_to_expression(
                     _ => {
                         break ExpressionKind::Subfield(SubfieldExpression {
                             prefix: Box::new(expr_to_expression(
-                                context, handler, engines, *target,
+                                context, handler, engines, *target, false
                             )?),
                             field_to_access: name,
                         })
@@ -2068,7 +2072,7 @@ fn expr_to_expression(
             ..
         } => Expression {
             kind: ExpressionKind::TupleIndex(TupleIndexExpression {
-                prefix: Box::new(expr_to_expression(context, handler, engines, *target)?),
+                prefix: Box::new(expr_to_expression(context, handler, engines, *target, false)?),
                 index: match usize::try_from(field) {
                     Ok(index) => index,
                     Err(..) => {
@@ -2094,7 +2098,7 @@ fn expr_to_expression(
             return Err(handler.emit_err(error.into()));
         }
         Expr::Not { bang_token, expr } => {
-            let expr = expr_to_expression(context, handler, engines, *expr)?;
+            let expr = expr_to_expression(context, handler, engines, *expr, false)?;
             op_call("not", bang_token.span(), span, &[expr])?
         }
         Expr::Pow {
@@ -2102,8 +2106,8 @@ fn expr_to_expression(
             double_star_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
-            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs, false)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs, false)?;
             op_call("pow", double_star_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Mul {
@@ -2111,8 +2115,8 @@ fn expr_to_expression(
             star_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
-            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs, false)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs, false)?;
             op_call("multiply", star_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Div {
@@ -2120,8 +2124,8 @@ fn expr_to_expression(
             forward_slash_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
-            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs, false)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs, false)?;
             op_call("divide", forward_slash_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Modulo {
@@ -2129,8 +2133,8 @@ fn expr_to_expression(
             percent_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
-            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs, false)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs, false)?;
             op_call("modulo", percent_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Add {
@@ -2138,8 +2142,8 @@ fn expr_to_expression(
             add_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
-            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs, false)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs, false)?;
             op_call("add", add_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Sub {
@@ -2147,8 +2151,8 @@ fn expr_to_expression(
             sub_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
-            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs, false)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs, false)?;
             op_call("subtract", sub_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Shl {
@@ -2156,8 +2160,8 @@ fn expr_to_expression(
             shl_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
-            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs, false)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs, false)?;
             op_call("lsh", shl_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Shr {
@@ -2165,8 +2169,8 @@ fn expr_to_expression(
             shr_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
-            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs, false)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs, false)?;
             op_call("rsh", shr_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::BitAnd {
@@ -2174,8 +2178,8 @@ fn expr_to_expression(
             ampersand_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
-            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs, false)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs, false)?;
             op_call("binary_and", ampersand_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::BitXor {
@@ -2183,8 +2187,8 @@ fn expr_to_expression(
             caret_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
-            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs, false)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs, false)?;
             op_call("binary_xor", caret_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::BitOr {
@@ -2192,8 +2196,8 @@ fn expr_to_expression(
             pipe_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
-            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs, false)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs, false)?;
             op_call("binary_or", pipe_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Equal {
@@ -2201,8 +2205,8 @@ fn expr_to_expression(
             double_eq_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
-            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs, false)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs, false)?;
             op_call("eq", double_eq_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::NotEqual {
@@ -2210,8 +2214,8 @@ fn expr_to_expression(
             bang_eq_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
-            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs, false)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs, false)?;
             op_call("neq", bang_eq_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::LessThan {
@@ -2219,8 +2223,8 @@ fn expr_to_expression(
             less_than_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
-            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs, false)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs, false)?;
             op_call("lt", less_than_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::GreaterThan {
@@ -2228,8 +2232,8 @@ fn expr_to_expression(
             greater_than_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
-            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs, false)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs, false)?;
             op_call("gt", greater_than_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::LessThanEq {
@@ -2237,8 +2241,8 @@ fn expr_to_expression(
             less_than_eq_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
-            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs, false)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs, false)?;
             op_call("le", less_than_eq_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::GreaterThanEq {
@@ -2246,23 +2250,23 @@ fn expr_to_expression(
             greater_than_eq_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
-            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs, false)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs, false)?;
             op_call("ge", greater_than_eq_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::LogicalAnd { lhs, rhs, .. } => Expression {
             kind: ExpressionKind::LazyOperator(LazyOperatorExpression {
                 op: LazyOp::And,
-                lhs: Box::new(expr_to_expression(context, handler, engines, *lhs)?),
-                rhs: Box::new(expr_to_expression(context, handler, engines, *rhs)?),
+                lhs: Box::new(expr_to_expression(context, handler, engines, *lhs, false)?),
+                rhs: Box::new(expr_to_expression(context, handler, engines, *rhs, false)?),
             }),
             span,
         },
         Expr::LogicalOr { lhs, rhs, .. } => Expression {
             kind: ExpressionKind::LazyOperator(LazyOperatorExpression {
                 op: LazyOp::Or,
-                lhs: Box::new(expr_to_expression(context, handler, engines, *lhs)?),
-                rhs: Box::new(expr_to_expression(context, handler, engines, *rhs)?),
+                lhs: Box::new(expr_to_expression(context, handler, engines, *lhs, false)?),
+                rhs: Box::new(expr_to_expression(context, handler, engines, *rhs, false)?),
             }),
             span,
         },
@@ -2278,7 +2282,7 @@ fn expr_to_expression(
             ReassignmentOpVariant::Equals => Expression {
                 kind: ExpressionKind::Reassignment(ReassignmentExpression {
                     lhs: assignable_to_reassignment_target(context, handler, engines, assignable)?,
-                    rhs: Box::new(expr_to_expression(context, handler, engines, *expr)?),
+                    rhs: Box::new(expr_to_expression(context, handler, engines, *expr, false)?),
                 }),
                 span,
             },
@@ -2295,7 +2299,7 @@ fn expr_to_expression(
                     span.clone(),
                     &vec![
                         assignable_to_expression(context, handler, engines, assignable)?,
-                        expr_to_expression(context, handler, engines, *expr)?,
+                        expr_to_expression(context, handler, engines, *expr, false)?,
                     ],
                 )?);
                 Expression {
@@ -2359,7 +2363,7 @@ fn storage_field_to_storage_field(
         name: storage_field.name,
         type_argument: ty_to_type_argument(context, handler, engines, storage_field.ty)?,
         span,
-        initializer: expr_to_expression(context, handler, engines, storage_field.initializer)?,
+        initializer: expr_to_expression(context, handler, engines, storage_field.initializer, false)?,
     };
     Ok(storage_field)
 }
@@ -2381,6 +2385,7 @@ fn configurable_field_to_constant_declaration(
             handler,
             engines,
             configurable_field.initializer,
+            false,
         )?),
         visibility: Visibility::Public,
         is_configurable: true,
@@ -2709,7 +2714,7 @@ fn if_expr_to_expression(
     let expression = match condition {
         IfCondition::Expr(condition) => Expression {
             kind: ExpressionKind::If(IfExpression {
-                condition: Box::new(expr_to_expression(context, handler, engines, *condition)?),
+                condition: Box::new(expr_to_expression(context, handler, engines, *condition, false)?),
                 then: Box::new(then_block),
                 r#else: else_block.map(Box::new),
             }),
@@ -2768,7 +2773,7 @@ fn match_expr_to_expression(
     branches: Vec<MatchBranch>,
     span: Span,
 ) -> Result<Expression, ErrorEmitted> {
-    let value = expr_to_expression(context, handler, engines, value)?;
+    let value = expr_to_expression(context, handler, engines, value, false)?;
     let var_decl_span = value.span();
 
     // Generate a deterministic name for the variable matched by the match expression.
@@ -3164,7 +3169,7 @@ fn expr_struct_field_to_struct_expression_field(
 ) -> Result<StructExpressionField, ErrorEmitted> {
     let span = expr_struct_field.span();
     let value = match expr_struct_field.expr_opt {
-        Some((_colon_token, expr)) => expr_to_expression(context, handler, engines, *expr)?,
+        Some((_colon_token, expr)) => expr_to_expression(context, handler, engines, *expr, false)?,
         None => Expression {
             kind: ExpressionKind::Variable(expr_struct_field.field_name.clone()),
             span: span.clone(),
@@ -3186,9 +3191,9 @@ fn expr_tuple_descriptor_to_expressions(
     let expressions = match expr_tuple_descriptor {
         ExprTupleDescriptor::Nil => Vec::new(),
         ExprTupleDescriptor::Cons { head, tail, .. } => {
-            let mut expressions = vec![expr_to_expression(context, handler, engines, *head)?];
+            let mut expressions = vec![expr_to_expression(context, handler, engines, *head, false)?];
             for expr in tail {
-                expressions.push(expr_to_expression(context, handler, engines, expr)?);
+                expressions.push(expr_to_expression(context, handler, engines, expr, false)?);
             }
             expressions
         }
@@ -3269,7 +3274,7 @@ fn match_branch_to_match_branch(
                 }
             }
             MatchBranchKind::Expr { expr, .. } => {
-                expr_to_expression(context, handler, engines, expr)?
+                expr_to_expression(context, handler, engines, expr, false)?
             }
         },
         span,
@@ -3587,7 +3592,7 @@ fn statement_let_to_ast_nodes(
         Ok(ast_nodes)
     }
     let span = statement_let.span();
-    let initial_expression = expr_to_expression(context, handler, engines, statement_let.expr)?;
+    let initial_expression = expr_to_expression(context, handler, engines, statement_let.expr, false)?;
     unfold(
         context,
         handler,
@@ -3630,7 +3635,7 @@ fn asm_register_declaration_to_asm_register_declaration(
 ) -> Result<AsmRegisterDeclaration, ErrorEmitted> {
     let initializer = asm_register_declaration
         .value_opt
-        .map(|(_colon_token, expr)| expr_to_expression(context, handler, engines, *expr))
+        .map(|(_colon_token, expr)| expr_to_expression(context, handler, engines, *expr, false))
         .transpose()?;
 
     Ok(AsmRegisterDeclaration {
@@ -3908,6 +3913,7 @@ fn assignable_to_expression(
                     handler,
                     engines,
                     *arg.into_inner(),
+                    false,
                 )?),
             }),
             span,
