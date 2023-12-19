@@ -2513,6 +2513,10 @@ fn asm_block_v2() {
         // maintain a manual index as we only have `while` loops in sway atm:
         let mut index = 0;
 
+        asm(input: input) {
+            input: u256
+        }
+
         // If an output of type `OutputVariable` is found, check if its `amount` is
         // zero. As one cannot transfer zero coins to an output without a panic, a
         // variable output with a value of zero is by definition unused.
@@ -2537,6 +2541,10 @@ fn asm_block_v2() {
 pub fn transfer(self, asset_id: AssetId, amount: u64) {
     // maintain a manual index as we only have `while` loops in sway atm:
     let mut index = 0;
+
+    asm( input: input ) {
+        input: u256
+    }
 
     // If an output of type `OutputVariable` is found, check if its `amount` is
     // zero. As one cannot transfer zero coins to an output without a panic, a
