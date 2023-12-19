@@ -1427,9 +1427,9 @@ fn foo() {
         r#"library;
 
 fn foo() {
-    asm(r1: self, r2: other, r3, r4) {
+    asm( r1: self, r2: other, r3, r4 ) {
         addi r3 zero i32;
-        meq  r4 r1 r2 r3;
+        meq r4 r1 r2 r3;
         r4: bool
     }
 }
@@ -2494,7 +2494,7 @@ pub fn realloc<T>(ptr: raw_ptr, count: u64, new_count: u64) -> raw_ptr {
 
 /// Allocates zeroed memory on the heap in individual bytes.
 pub fn alloc_bytes(count: u64) -> raw_ptr {
-    asm(size: count, ptr) {
+    asm( size: count, ptr ) {
         aloc size;
         move ptr hp;
         ptr: raw_ptr
@@ -2502,4 +2502,65 @@ pub fn alloc_bytes(count: u64) -> raw_ptr {
 }
 "#,
     )
+}
+
+#[test]
+fn asm_block_v2() {
+    check(
+        r#"library;
+    
+    pub fn transfer(self, asset_id: AssetId, amount: u64) {
+        // maintain a manual index as we only have `while` loops in sway atm:
+        let mut index = 0;
+
+        // If an output of type `OutputVariable` is found, check if its `amount` is
+        // zero. As one cannot transfer zero coins to an output without a panic, a
+        // variable output with a value of zero is by definition unused.
+        let number_of_outputs = output_count();
+        while index < number_of_outputs {
+            if let Output::Variable = output_type(index) {
+                if output_amount(index) == 0 {
+                    asm(r1: self.value, r2: index, r3: amount, r4: asset_id.value) {
+                        tro r1 r2 r3 r4;
+                    };
+                    return;
+                }
+            }
+            index += 1;
+        }
+
+        revert(FAILED_TRANSFER_TO_ADDRESS_SIGNAL);
+    }
+    "#,
+        r#"library;
+
+pub fn transfer(self, asset_id: AssetId, amount: u64) {
+    // maintain a manual index as we only have `while` loops in sway atm:
+    let mut index = 0;
+
+    // If an output of type `OutputVariable` is found, check if its `amount` is
+    // zero. As one cannot transfer zero coins to an output without a panic, a
+    // variable output with a value of zero is by definition unused.
+    let number_of_outputs = output_count();
+    while index < number_of_outputs {
+        if let Output::Variable = output_type(index) {
+            if output_amount(index) == 0 {
+                asm(
+                    r1: self.value,
+                    r2: index,
+                    r3: amount,
+                    r4: asset_id.value,
+                ) {
+                    tro r1 r2 r3 r4;
+                };
+                return;
+            }
+        }
+        index += 1;
+    }
+
+    revert(FAILED_TRANSFER_TO_ADDRESS_SIGNAL);
+}
+"#,
+    );
 }
