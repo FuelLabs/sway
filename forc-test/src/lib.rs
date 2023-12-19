@@ -356,7 +356,7 @@ impl<'a> PackageTests {
                         test_entry,
                         name,
                     )
-                    .execute();
+                    .execute()
                 })
                 .collect::<anyhow::Result<_>>()
         })?;
