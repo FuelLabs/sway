@@ -6,7 +6,7 @@ use fuels::{
     core::codec::ABIEncoder,
     prelude::*,
     types::{
-        input::Input, transaction_builders::ScriptTransactionBuilder,
+        input::Input, tx_builders::ScriptTransactionBuilder,
         unresolved_bytes::UnresolvedBytes, Token,
     },
 };

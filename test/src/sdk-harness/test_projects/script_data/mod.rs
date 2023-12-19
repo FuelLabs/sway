@@ -1,5 +1,5 @@
 use assert_matches::assert_matches;
-use fuels::{prelude::*, tx::Receipt, types::transaction_builders::ScriptTransactionBuilder};
+use fuels::{prelude::*, tx::Receipt, types::tx_builders::ScriptTransactionBuilder};
 
 async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();

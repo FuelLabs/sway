@@ -1,18 +1,25 @@
+pub mod execute;
+pub mod setup;
+
 use forc_pkg as pkg;
 use fuel_abi_types::error_codes::ErrorSignal;
 use fuel_tx as tx;
 use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::{self as vm, fuel_asm, prelude::Instruction};
-use pkg::TestPassCondition;
 use pkg::{Built, BuiltPackage};
+use pkg::{PkgTestEntry, TestPassCondition};
 use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::BuildTarget;
 use sway_types::Span;
 use tx::output::contract::Contract;
-use tx::{Chargeable, Finalizable};
+use tx::{Chargeable, Finalizable, TransactionBuilder};
+use vm::interpreter::ExecutableTransaction;
 use vm::prelude::SecretKey;
+use vm::storage::MemoryStorage;
+use crate::execute::TestExecutor;
+use crate::setup::{TestSetup, DeploymentSetup, ScriptTestSetup, ContractTestSetup};
 
 /// The result of a `forc test` invocation.
 #[derive(Debug)]
@@ -117,31 +124,6 @@ pub enum PackageWithDeploymentToTest {
     Contract(ContractToTest),
 }
 
-/// Required test setup for package types that requires a deployment.
-#[derive(Debug)]
-enum DeploymentSetup {
-    Script(ScriptTestSetup),
-    Contract(ContractTestSetup),
-}
-
-impl DeploymentSetup {
-    /// Returns the storage for this test setup
-    fn storage(&self) -> &vm::storage::MemoryStorage {
-        match self {
-            DeploymentSetup::Script(script_setup) => &script_setup.storage,
-            DeploymentSetup::Contract(contract_setup) => &contract_setup.storage,
-        }
-    }
-
-    /// Return the root contract id if this is a contract setup.
-    fn root_contract_id(&self) -> Option<tx::ContractId> {
-        match self {
-            DeploymentSetup::Script(_) => None,
-            DeploymentSetup::Contract(contract_setup) => Some(contract_setup.root_contract_id),
-        }
-    }
-}
-
 /// The set of options provided to the `test` function.
 #[derive(Default, Clone)]
 pub struct Opts {
@@ -176,68 +158,6 @@ pub struct TestPrintOpts {
     pub print_logs: bool,
 }
 
-/// The storage and the contract id (if a contract is being tested) for a test.
-#[derive(Debug)]
-enum TestSetup {
-    WithDeployment(DeploymentSetup),
-    WithoutDeployment(vm::storage::MemoryStorage),
-}
-
-impl TestSetup {
-    /// Returns the storage for this test setup
-    fn storage(&self) -> &vm::storage::MemoryStorage {
-        match self {
-            TestSetup::WithDeployment(deployment_setup) => deployment_setup.storage(),
-            TestSetup::WithoutDeployment(storage) => storage,
-        }
-    }
-
-    /// Produces an iterator yielding contract ids of contract dependencies for this test setup.
-    fn contract_dependency_ids(&self) -> impl Iterator<Item = &tx::ContractId> + '_ {
-        match self {
-            TestSetup::WithDeployment(deployment_setup) => match deployment_setup {
-                DeploymentSetup::Script(script_setup) => {
-                    script_setup.contract_dependency_ids.iter()
-                }
-                DeploymentSetup::Contract(contract_setup) => {
-                    contract_setup.contract_dependency_ids.iter()
-                }
-            },
-            TestSetup::WithoutDeployment(_) => [].iter(),
-        }
-    }
-
-    /// Return the root contract id if this is a contract setup.
-    fn root_contract_id(&self) -> Option<tx::ContractId> {
-        match self {
-            TestSetup::WithDeployment(deployment_setup) => deployment_setup.root_contract_id(),
-            TestSetup::WithoutDeployment(_) => None,
-        }
-    }
-
-    /// Produces an iterator yielding all contract ids required to be included in the transaction
-    /// for this test setup.
-    fn contract_ids(&self) -> impl Iterator<Item = tx::ContractId> + '_ {
-        self.contract_dependency_ids()
-            .cloned()
-            .chain(self.root_contract_id())
-    }
-}
-
-/// The data collected to test a contract.
-#[derive(Debug)]
-struct ContractTestSetup {
-    storage: vm::storage::MemoryStorage,
-    contract_dependency_ids: Vec<tx::ContractId>,
-    root_contract_id: tx::ContractId,
-}
-
-/// The data collected to test a script.
-#[derive(Debug)]
-struct ScriptTestSetup {
-    storage: vm::storage::MemoryStorage,
-    contract_dependency_ids: Vec<tx::ContractId>,
-}
 
 impl TestedPackage {
     pub fn tests_passed(&self) -> bool {
@@ -426,41 +346,14 @@ impl<'a> PackageTests {
                         .expect("test instruction offset out of range");
                     let name = entry.finalized.fn_name.clone();
                     let test_setup = self.setup()?;
-                    let (state, duration, receipts) =
-                        exec_test(&pkg_with_tests.bytecode.bytes, offset, test_setup);
-
-                    let gas_used = *receipts
-                        .iter()
-                        .find_map(|receipt| match receipt {
-                            tx::Receipt::ScriptResult { gas_used, .. } => Some(gas_used),
-                            _ => None,
-                        })
-                        .ok_or_else(|| {
-                            anyhow::anyhow!("missing used gas information from test execution")
-                        })?;
-
-                    // Only retain `Log` and `LogData` receipts.
-                    let logs = receipts
-                        .into_iter()
-                        .filter(|receipt| {
-                            matches!(receipt, fuel_tx::Receipt::Log { .. })
-                                || matches!(receipt, fuel_tx::Receipt::LogData { .. })
-                        })
-                        .collect();
-
-                    let span = test_entry.span.clone();
-                    let file_path = test_entry.file_path.clone();
-                    let condition = test_entry.pass_condition.clone();
-                    Ok(TestResult {
+                    let mut executor = TestExecutor::new(
+                        &pkg_with_tests.bytecode.bytes,
+                        offset,
+                        test_setup,
+                        test_entry,
                         name,
-                        file_path,
-                        duration,
-                        span,
-                        state,
-                        condition,
-                        logs,
-                        gas_used,
-                    })
+                    );
+                    executor.execute()
                 })
                 .collect::<anyhow::Result<_>>()
         })?;
@@ -528,7 +421,7 @@ impl TestResult {
         }
     }
 
-    /// Return the revert code for this `TestResult` if the test is reverted.
+    /// Return the revert code for this [TestResult] if the test is reverted.
     pub fn revert_code(&self) -> Option<u64> {
         match self.state {
             vm::state::ProgramState::Revert(revert_code) => Some(revert_code),
@@ -536,7 +429,7 @@ impl TestResult {
         }
     }
 
-    /// Return a `ErrorSignal` for this `TestResult` if the test is failed to pass.
+    /// Return an [ErrorSignal] for this [TestResult] if the test is failed to pass.
     pub fn error_signal(&self) -> anyhow::Result<ErrorSignal> {
         let revert_code = self.revert_code().ok_or_else(|| {
             anyhow::anyhow!("there is no revert code to convert to `ErrorSignal`")
@@ -544,7 +437,7 @@ impl TestResult {
         ErrorSignal::try_from_revert_code(revert_code).map_err(|e| anyhow::anyhow!(e))
     }
 
-    /// Return `TestDetails` from the span of the function declaring this test.
+    /// Return [TestDetails] from the span of the function declaring this test.
     pub fn details(&self) -> anyhow::Result<TestDetails> {
         let span_start = self.span.start();
         let file_str = fs::read_to_string(&*self.file_path)?;
@@ -722,122 +615,85 @@ fn run_tests(
     }
 }
 
-/// Given some bytecode and an instruction offset for some test's desired entry point, patch the
-/// bytecode with a `JI` (jump) instruction to jump to the desired test.
-///
-/// We want to splice in the `JI` only after the initial data section setup is complete, and only
-/// if the entry point doesn't begin exactly after the data section setup.
-///
-/// The following is how the beginning of the bytecode is laid out:
-///
-/// ```ignore
-/// [0] ji   i4                       ; Jumps to the data section setup.
-/// [1] noop
-/// [2] DATA_SECTION_OFFSET[0..32]
-/// [3] DATA_SECTION_OFFSET[32..64]
-/// [4] lw   $ds $is 1                ; The data section setup, i.e. where the first ji lands.
-/// [5] add  $$ds $$ds $is
-/// [6] <first-entry-point>           ; This is where we want to jump from to our test code!
-/// ```
-fn patch_test_bytecode(bytecode: &[u8], test_offset: u32) -> std::borrow::Cow<[u8]> {
-    // TODO: Standardize this or add metadata to bytecode.
-    const PROGRAM_START_INST_OFFSET: u32 = 6;
-    const PROGRAM_START_BYTE_OFFSET: usize = PROGRAM_START_INST_OFFSET as usize * Instruction::SIZE;
+// // Execute the test whose entry point is at the given instruction offset as if it were a script.
+// fn exec_test(
+//     bytecode: &[u8],
+//     test_offset: u32,
+//     test_setup: TestSetup,
+// ) -> (
+//     vm::state::ProgramState,
+//     std::time::Duration,
+//     Vec<fuel_tx::Receipt>,
+// ) {
+//     let storage = test_setup.storage().clone();
 
-    // If our desired entry point is the program start, no need to jump.
-    if test_offset == PROGRAM_START_INST_OFFSET {
-        return std::borrow::Cow::Borrowed(bytecode);
-    }
+//     // Patch the bytecode to jump to the relevant test.
+//     let bytecode = patch_test_bytecode(bytecode, test_offset).into_owned();
 
-    // Create the jump instruction and splice it into the bytecode.
-    let ji = fuel_asm::op::ji(test_offset);
-    let ji_bytes = ji.to_bytes();
-    let start = PROGRAM_START_BYTE_OFFSET;
-    let end = start + ji_bytes.len();
-    let mut patched = bytecode.to_vec();
-    patched.splice(start..end, ji_bytes);
-    std::borrow::Cow::Owned(patched)
-}
+//     // Create a transaction to execute the test function.
+//     let script_input_data = vec![];
+//     let rng = &mut rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
 
-// Execute the test whose entry point is at the given instruction offset as if it were a script.
-fn exec_test(
-    bytecode: &[u8],
-    test_offset: u32,
-    test_setup: TestSetup,
-) -> (
-    vm::state::ProgramState,
-    std::time::Duration,
-    Vec<fuel_tx::Receipt>,
-) {
-    let storage = test_setup.storage().clone();
+//     // Prepare the transaction metadata.
+//     let secret_key = SecretKey::random(rng);
+//     let utxo_id = rng.gen();
+//     let amount = 1;
+//     let maturity = 1.into();
+//     let asset_id = rng.gen();
+//     let tx_pointer = rng.gen();
+//     let block_height = (u32::MAX >> 1).into();
 
-    // Patch the bytecode to jump to the relevant test.
-    let bytecode = patch_test_bytecode(bytecode, test_offset).into_owned();
+//     let mut tb = tx::TransactionBuilder::script(bytecode, script_input_data)
+//         .add_unsigned_coin_input(
+//             secret_key,
+//             utxo_id,
+//             amount,
+//             asset_id,
+//             tx_pointer,
+//             0u32.into(),
+//         )
+//         .maturity(maturity)
+//         .clone();
+//     let mut output_index = 1;
+//     // Insert contract ids into tx input
+//     for contract_id in test_setup.contract_ids() {
+//         tb.add_input(tx::Input::contract(
+//             tx::UtxoId::new(tx::Bytes32::zeroed(), 0),
+//             tx::Bytes32::zeroed(),
+//             tx::Bytes32::zeroed(),
+//             tx::TxPointer::new(0u32.into(), 0),
+//             contract_id,
+//         ))
+//         .add_output(tx::Output::Contract(Contract {
+//             input_index: output_index,
+//             balance_root: fuel_tx::Bytes32::zeroed(),
+//             state_root: tx::Bytes32::zeroed(),
+//         }));
+//         output_index += 1;
+//     }
+//     let consensus_params = tb.get_params().clone();
 
-    // Create a transaction to execute the test function.
-    let script_input_data = vec![];
-    let rng = &mut rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
+//     // Temporarily finalize to calculate `script_gas_limit`
+//     let tmp_tx = tb.clone().finalize();
+//     // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
+//     let max_gas = tmp_tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
+//     // Increase `script_gas_limit` to the maximum allowed value.
+//     tb.script_gas_limit(consensus_params.tx_params().max_gas_per_tx - max_gas);
 
-    // Prepare the transaction metadata.
-    let secret_key = SecretKey::random(rng);
-    let utxo_id = rng.gen();
-    let amount = 1;
-    let maturity = 1.into();
-    let asset_id = rng.gen();
-    let tx_pointer = rng.gen();
-    let block_height = (u32::MAX >> 1).into();
+//     let tx = tb.finalize_checked(block_height);
 
-    let mut tb = tx::TransactionBuilder::script(bytecode, script_input_data)
-        .add_unsigned_coin_input(
-            secret_key,
-            utxo_id,
-            amount,
-            asset_id,
-            tx_pointer,
-            0u32.into(),
-        )
-        .maturity(maturity)
-        .clone();
-    let mut output_index = 1;
-    // Insert contract ids into tx input
-    for contract_id in test_setup.contract_ids() {
-        tb.add_input(tx::Input::contract(
-            tx::UtxoId::new(tx::Bytes32::zeroed(), 0),
-            tx::Bytes32::zeroed(),
-            tx::Bytes32::zeroed(),
-            tx::TxPointer::new(0u32.into(), 0),
-            contract_id,
-        ))
-        .add_output(tx::Output::Contract(Contract {
-            input_index: output_index,
-            balance_root: fuel_tx::Bytes32::zeroed(),
-            state_root: tx::Bytes32::zeroed(),
-        }));
-        output_index += 1;
-    }
-    let consensus_params = tb.get_params().clone();
+//     let mut interpreter: vm::prelude::Interpreter<_, _, vm::interpreter::NotSupportedEcal> =
+//         vm::interpreter::Interpreter::with_storage(storage, consensus_params.into());
 
-    // Temporarily finalize to calculate `script_gas_limit`
-    let tmp_tx = tb.clone().finalize();
-    // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
-    let max_gas = tmp_tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
-    // Increase `script_gas_limit` to the maximum allowed value.
-    tb.script_gas_limit(consensus_params.tx_params().max_gas_per_tx - max_gas);
+//     // Execute and return the result.
+//     let start = std::time::Instant::now();
+//     let transition = interpreter.transact(tx).unwrap();
+//     let duration = start.elapsed();
+//     let state = *transition.state();
+//     let receipts = transition.receipts().to_vec();
 
-    let tx = tb.finalize_checked(block_height);
-
-    let mut interpreter: vm::prelude::Interpreter<_, _, vm::interpreter::NotSupportedEcal> =
-        vm::interpreter::Interpreter::with_storage(storage, consensus_params.into());
-
-    // Execute and return the result.
-    let start = std::time::Instant::now();
-    let transition = interpreter.transact(tx).unwrap();
-    let duration = start.elapsed();
-    let state = *transition.state();
-    let receipts = transition.receipts().to_vec();
-
-    (state, duration, receipts)
-}
+//     (state, duration, receipts)
+// }
 
 #[cfg(test)]
 mod tests {
