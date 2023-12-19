@@ -2505,6 +2505,31 @@ pub fn alloc_bytes(count: u64) -> raw_ptr {
 }
 
 #[test]
+fn broken_doc_comment() {
+    check(
+        r#"library;
+        /// line 1
+        /// line 2
+        // line 3
+        /// line 4
+        // line 5
+        /// line 6
+        fn test() {
+        }
+    "#,
+        r#"library;
+/// line 1
+/// line 2
+// line 3
+/// line 4
+// line 5
+/// line 6
+fn test() {}
+"#,
+    );
+}
+
+#[test]
 fn asm_block_v2() {
     check(
         r#"library;
