@@ -1,25 +1,23 @@
 pub mod execute;
 pub mod setup;
 
+use crate::execute::TestExecutor;
+use crate::setup::{
+    ContractDeploymentSetup, ContractTestSetup, DeploymentSetup, ScriptTestSetup, TestSetup,
+};
 use forc_pkg as pkg;
 use fuel_abi_types::error_codes::ErrorSignal;
 use fuel_tx as tx;
 use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
-use fuel_vm::{self as vm, fuel_asm, prelude::Instruction};
+use fuel_vm::{self as vm};
+use pkg::TestPassCondition;
 use pkg::{Built, BuiltPackage};
-use pkg::{PkgTestEntry, TestPassCondition};
 use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::BuildTarget;
 use sway_types::Span;
-use tx::output::contract::Contract;
-use tx::{Chargeable, Finalizable, TransactionBuilder};
-use vm::interpreter::ExecutableTransaction;
 use vm::prelude::SecretKey;
-use vm::storage::MemoryStorage;
-use crate::execute::TestExecutor;
-use crate::setup::{TestSetup, DeploymentSetup, ScriptTestSetup, ContractTestSetup};
 
 /// The result of a `forc test` invocation.
 #[derive(Debug)]
@@ -157,7 +155,6 @@ pub struct TestPrintOpts {
     pub pretty_print: bool,
     pub print_logs: bool,
 }
-
 
 impl TestedPackage {
     pub fn tests_passed(&self) -> bool {
@@ -332,37 +329,43 @@ impl<'a> PackageTests {
                 .bytecode
                 .entries
                 .par_iter()
-                .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
-                .filter(|(entry, _)| {
-                    // If a test filter is specified, only the tests containing the filter phrase in
-                    // their name are going to be executed.
-                    match &test_filter {
-                        Some(filter) => filter.filter(&entry.finalized.fn_name),
-                        None => true,
+                .filter_map(|entry| {
+                    match entry.kind.test() {
+                        Some(test_entry) => {
+                            // If a test filter is specified, only the tests containing the filter phrase in
+                            // their name are going to be executed.
+                            let name = entry.finalized.fn_name.clone();
+                            if let Some(filter) = test_filter {
+                                if !filter.filter(&name) {
+                                    return None;
+                                }
+                            }
+
+                            // Execute the test and return the result.
+                            let offset = u32::try_from(entry.finalized.imm)
+                                .expect("test instruction offset out of range");
+                            let test_setup = self.setup()?;
+                            return Some(
+                                TestExecutor::new(
+                                    &pkg_with_tests.bytecode.bytes,
+                                    offset,
+                                    test_setup,
+                                    test_entry,
+                                    name,
+                                )
+                                .execute(),
+                            );
+                        }
+                        None => None,
                     }
-                })
-                .map(|(entry, test_entry)| {
-                    let offset = u32::try_from(entry.finalized.imm)
-                        .expect("test instruction offset out of range");
-                    let name = entry.finalized.fn_name.clone();
-                    let test_setup = self.setup()?;
-                    let mut executor = TestExecutor::new(
-                        &pkg_with_tests.bytecode.bytes,
-                        offset,
-                        test_setup,
-                        test_entry,
-                        name,
-                    );
-                    executor.execute()
                 })
                 .collect::<anyhow::Result<_>>()
         })?;
 
-        let tested_pkg = TestedPackage {
+        Ok(TestedPackage {
             built: Box::new(pkg_with_tests.clone()),
             tests,
-        };
-        Ok(tested_pkg)
+        })
     }
 
     /// Setup the storage for a test and returns a contract id for testing contracts.
@@ -551,9 +554,6 @@ pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
     BuiltTests::from_built(built, &member_contract_dependencies)
 }
 
-/// Result of preparing a deployment transaction setup for a contract.
-type ContractDeploymentSetup = (tx::ContractId, vm::checked_transaction::Checked<tx::Create>);
-
 /// Deploys the provided contract and returns an interpreter instance ready to be used in test
 /// executions with deployed contract.
 fn deployment_transaction(
@@ -614,86 +614,6 @@ fn run_tests(
         }
     }
 }
-
-// // Execute the test whose entry point is at the given instruction offset as if it were a script.
-// fn exec_test(
-//     bytecode: &[u8],
-//     test_offset: u32,
-//     test_setup: TestSetup,
-// ) -> (
-//     vm::state::ProgramState,
-//     std::time::Duration,
-//     Vec<fuel_tx::Receipt>,
-// ) {
-//     let storage = test_setup.storage().clone();
-
-//     // Patch the bytecode to jump to the relevant test.
-//     let bytecode = patch_test_bytecode(bytecode, test_offset).into_owned();
-
-//     // Create a transaction to execute the test function.
-//     let script_input_data = vec![];
-//     let rng = &mut rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
-
-//     // Prepare the transaction metadata.
-//     let secret_key = SecretKey::random(rng);
-//     let utxo_id = rng.gen();
-//     let amount = 1;
-//     let maturity = 1.into();
-//     let asset_id = rng.gen();
-//     let tx_pointer = rng.gen();
-//     let block_height = (u32::MAX >> 1).into();
-
-//     let mut tb = tx::TransactionBuilder::script(bytecode, script_input_data)
-//         .add_unsigned_coin_input(
-//             secret_key,
-//             utxo_id,
-//             amount,
-//             asset_id,
-//             tx_pointer,
-//             0u32.into(),
-//         )
-//         .maturity(maturity)
-//         .clone();
-//     let mut output_index = 1;
-//     // Insert contract ids into tx input
-//     for contract_id in test_setup.contract_ids() {
-//         tb.add_input(tx::Input::contract(
-//             tx::UtxoId::new(tx::Bytes32::zeroed(), 0),
-//             tx::Bytes32::zeroed(),
-//             tx::Bytes32::zeroed(),
-//             tx::TxPointer::new(0u32.into(), 0),
-//             contract_id,
-//         ))
-//         .add_output(tx::Output::Contract(Contract {
-//             input_index: output_index,
-//             balance_root: fuel_tx::Bytes32::zeroed(),
-//             state_root: tx::Bytes32::zeroed(),
-//         }));
-//         output_index += 1;
-//     }
-//     let consensus_params = tb.get_params().clone();
-
-//     // Temporarily finalize to calculate `script_gas_limit`
-//     let tmp_tx = tb.clone().finalize();
-//     // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
-//     let max_gas = tmp_tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
-//     // Increase `script_gas_limit` to the maximum allowed value.
-//     tb.script_gas_limit(consensus_params.tx_params().max_gas_per_tx - max_gas);
-
-//     let tx = tb.finalize_checked(block_height);
-
-//     let mut interpreter: vm::prelude::Interpreter<_, _, vm::interpreter::NotSupportedEcal> =
-//         vm::interpreter::Interpreter::with_storage(storage, consensus_params.into());
-
-//     // Execute and return the result.
-//     let start = std::time::Instant::now();
-//     let transition = interpreter.transact(tx).unwrap();
-//     let duration = start.elapsed();
-//     let state = *transition.state();
-//     let receipts = transition.receipts().to_vec();
-
-//     (state, duration, receipts)
-// }
 
 #[cfg(test)]
 mod tests {

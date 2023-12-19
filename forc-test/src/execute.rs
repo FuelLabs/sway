@@ -1,29 +1,23 @@
-use forc_pkg as pkg;
-use fuel_abi_types::error_codes::ErrorSignal;
-use fuel_tx as tx;
-use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
-use fuel_vm::{self as vm, fuel_asm, prelude::Instruction};
-use pkg::{Built, BuiltPackage};
-use pkg::{PkgTestEntry, TestPassCondition};
-use rand::{Rng, SeedableRng};
-use rayon::prelude::*;
-use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
-use sway_core::BuildTarget;
-use sway_types::Span;
-use tx::output::contract::Contract;
-use tx::{Chargeable, Finalizable, TransactionBuilder};
-use vm::interpreter::ExecutableTransaction;
-use vm::prelude::SecretKey;
-use vm::storage::MemoryStorage;
 use crate::setup::TestSetup;
 use crate::TestResult;
 use crate::TEST_METADATA_SEED;
+use forc_pkg::PkgTestEntry;
+use fuel_tx::{self as tx, output::contract::Contract};
+use fuel_vm::error::InterpreterError;
+use fuel_vm::{
+    self as vm,
+    checked_transaction::builder::TransactionBuilderExt,
+    interpreter::{Interpreter, NotSupportedEcal},
+    prelude::{Instruction, SecretKey},
+    storage::MemoryStorage,
+};
+use rand::{Rng, SeedableRng};
 
+/// An interface for executing a test within a VM [Interpreter] instance.
 #[derive(Debug)]
 pub struct TestExecutor {
-    pub interpreter:
-        vm::prelude::Interpreter<MemoryStorage, fuel_tx::Script, vm::interpreter::NotSupportedEcal>,
-    tx_builder: TransactionBuilder<fuel_tx::Script>,
+    pub interpreter: Interpreter<MemoryStorage, tx::Script, NotSupportedEcal>,
+    tx_builder: tx::TransactionBuilder<tx::Script>,
     test_entry: PkgTestEntry,
     name: String,
 }
@@ -64,30 +58,29 @@ impl TestExecutor {
             )
             .maturity(maturity)
             .clone();
+
         let mut output_index = 1;
         // Insert contract ids into tx input
         for contract_id in test_setup.contract_ids() {
-            tx_builder.add_input(tx::Input::contract(
-                tx::UtxoId::new(tx::Bytes32::zeroed(), 0),
-                tx::Bytes32::zeroed(),
-                tx::Bytes32::zeroed(),
-                tx::TxPointer::new(0u32.into(), 0),
-                contract_id,
-            ))
-            .add_output(tx::Output::Contract(Contract {
-                input_index: output_index,
-                balance_root: fuel_tx::Bytes32::zeroed(),
-                state_root: tx::Bytes32::zeroed(),
-            }));
+            tx_builder
+                .add_input(tx::Input::contract(
+                    tx::UtxoId::new(tx::Bytes32::zeroed(), 0),
+                    tx::Bytes32::zeroed(),
+                    tx::Bytes32::zeroed(),
+                    tx::TxPointer::new(0u32.into(), 0),
+                    contract_id,
+                ))
+                .add_output(tx::Output::Contract(Contract {
+                    input_index: output_index,
+                    balance_root: fuel_tx::Bytes32::zeroed(),
+                    state_root: tx::Bytes32::zeroed(),
+                }));
             output_index += 1;
         }
         let consensus_params = tx_builder.get_params().clone();
 
         TestExecutor {
-            interpreter: vm::interpreter::Interpreter::with_storage(
-                storage,
-                consensus_params.into(),
-            ),
+            interpreter: Interpreter::with_storage(storage, consensus_params.into()),
             tx_builder,
             test_entry: test_entry.clone(),
             name,
@@ -95,16 +88,12 @@ impl TestExecutor {
     }
 
     pub fn execute(&mut self) -> anyhow::Result<TestResult> {
-        // let offset = u32::try_from(entry.finalized.imm)
-        // .expect("test instruction offset out of range");
-        // let name = entry.finalized.fn_name.clone();
-        // let test_setup = self.setup()?;
-
         let block_height = (u32::MAX >> 1).into();
         let start = std::time::Instant::now();
         let transition = self
             .interpreter
-            .transact(self.tx_builder.finalize_checked(block_height)).map_err(|err| anyhow::anyhow!(err))?;
+            .transact(self.tx_builder.finalize_checked(block_height))
+            .map_err(|err: InterpreterError<_>| anyhow::anyhow!(err))?;
         let duration = start.elapsed();
         let state = *transition.state();
         let receipts = transition.receipts().to_vec();
@@ -121,16 +110,17 @@ impl TestExecutor {
         let logs = receipts
             .into_iter()
             .filter(|receipt| {
-                matches!(receipt, fuel_tx::Receipt::Log { .. })
-                    || matches!(receipt, fuel_tx::Receipt::LogData { .. })
+                matches!(receipt, tx::Receipt::Log { .. })
+                    || matches!(receipt, tx::Receipt::LogData { .. })
             })
             .collect();
 
         let span = self.test_entry.span.clone();
         let file_path = self.test_entry.file_path.clone();
         let condition = self.test_entry.pass_condition.clone();
+        let name = self.name.clone();
         Ok(TestResult {
-            name: self.name.clone(),
+            name,
             file_path,
             duration,
             span,
@@ -170,7 +160,7 @@ fn patch_test_bytecode(bytecode: &[u8], test_offset: u32) -> std::borrow::Cow<[u
     }
 
     // Create the jump instruction and splice it into the bytecode.
-    let ji = fuel_asm::op::ji(test_offset);
+    let ji = vm::fuel_asm::op::ji(test_offset);
     let ji_bytes = ji.to_bytes();
     let start = PROGRAM_START_BYTE_OFFSET;
     let end = start + ji_bytes.len();

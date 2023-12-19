@@ -1,25 +1,8 @@
-use forc_pkg as pkg;
-use fuel_abi_types::error_codes::ErrorSignal;
 use fuel_tx as tx;
-use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
-use fuel_vm::{self as vm, fuel_asm, prelude::Instruction};
-use pkg::{Built, BuiltPackage};
-use pkg::{PkgTestEntry, TestPassCondition};
-use rand::{Rng, SeedableRng};
-use rayon::prelude::*;
-use std::ops::Deref;
-use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
-use sway_core::BuildTarget;
-use sway_types::Span;
-use tx::output::contract::Contract;
-use tx::{Chargeable, Finalizable, TransactionBuilder};
-use vm::interpreter::ExecutableTransaction;
-use vm::prelude::SecretKey;
-use vm::storage::MemoryStorage;
-use crate::PackageWithDeploymentToTest;
-use crate::TestResult;
-use crate::TestDetails;
+use fuel_vm::{self as vm};
 
+/// Result of preparing a deployment transaction setup for a contract.
+type ContractDeploymentSetup = (tx::ContractId, vm::checked_transaction::Checked<tx::Create>);
 
 /// Required test setup for package types that requires a deployment.
 #[derive(Debug)]
