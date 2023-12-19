@@ -10,9 +10,9 @@ In order to use `StorageVec<T>`, you must first import `StorageVec` as follows:
 
 Another major difference between `Vec<T>` and `StorageVec<T>` is that `StorageVec<T>` can only be used in a contract because only contracts are allowed to access persistent storage.
 
-## Creating a New Storage Vector
+## Creating a New `StorageVec`
 
-To create a new empty storage vector, we have to declare the vector in a `storage` block as follows:
+To create a new empty `StorageVec`, we have to declare the vector in a `storage` block as follows:
 
 ```sway
 {{#include ../../../../examples/storage_vec/src/main.sw:storage_vec_decl}}
@@ -20,17 +20,17 @@ To create a new empty storage vector, we have to declare the vector in a `storag
 
 Just like any other storage variable, two things are required when declaring a `StorageVec`: a type annotation and an initializer. The initializer is just an empty struct of type `StorageVec` because `StorageVec<T>` itself is an empty struct! Everything that is interesting about `StorageVec<T>` is implemented in its methods.
 
-Storage vectors, just like `Vec<T>`, are implemented using generics which means that the `StorageVec<T>` type provided by the standard library can hold any type. When we create a storage vector to hold a specific type, we can specify the type within angle brackets. In the example above, we’ve told the Sway compiler that the `StorageVec<T>` in `v` will hold elements of the `u64` type.
+Storage vectors, just like `Vec<T>`, are implemented using generics which means that the `StorageVec<T>` type provided by the standard library can hold any type. When we create a `StorageVec` to hold a specific type, we can specify the type within angle brackets. In the example above, we’ve told the Sway compiler that the `StorageVec<T>` in `v` will hold elements of the `u64` type.
 
-## Updating a Storage Vector
+## Updating a `StorageVec`
 
-To add elements to a storage vector, we can use the `push` method, as shown below:
+To add elements to a `StorageVec`, we can use the `push` method, as shown below:
 
 ```sway
 {{#include ../../../../examples/storage_vec/src/main.sw:storage_vec_push}}
 ```
 
-Note two details here. First, in order to use `push`, we need to first access the vector using the `storage` keyword. Second, because `push` requires accessing storage, a `storage` annotation is required on the ABI function that calls `push`. While it may seem that `#[storage(write)]` should be enough here, the `read` annotation is also required because each call to `push` requires _reading_ (and then updating) the length of the storage vector which is also stored in persistent storage.
+Note two details here. First, in order to use `push`, we need to first access the vector using the `storage` keyword. Second, because `push` requires accessing storage, a `storage` annotation is required on the ABI function that calls `push`. While it may seem that `#[storage(write)]` should be enough here, the `read` annotation is also required because each call to `push` requires _reading_ (and then updating) the length of the `StorageVec` which is also stored in persistent storage.
 
 > **Note**
 > The storage annotation is also required for any private function defined in the contract that tries to push into the vector.
@@ -69,13 +69,13 @@ Storage vectors, just like `Vec<T>`, can only store values that are the same typ
 {{#include ../../../../examples/storage_vec/src/main.sw:storage_vec_multiple_types_enum}}
 ```
 
-Then we can declare a storage vector in a `storage` block to hold that enum and so, ultimately, holds different types:
+Then we can declare a `StorageVec` in a `storage` block to hold that enum and so, ultimately, holds different types:
 
 ```sway
 {{#include ../../../../examples/storage_vec/src/main.sw:storage_vec_multiple_types_decl}}
 ```
 
-We can now push different enum variants to the storage vector as follows:
+We can now push different enum variants to the `StorageVec` as follows:
 
 ```sway
 {{#include ../../../../examples/storage_vec/src/main.sw:storage_vec_multiple_types_fn}}
