@@ -150,7 +150,7 @@ impl AbiEncode for str {
 // str arrays
 
 impl AbiEncode for str[0] {
-    fn abi_encode(self, ref mut buffer: Buffer) {
+    fn abi_encode(self, ref mut _buffer: Buffer) {
     }
 }
 
@@ -245,7 +245,7 @@ impl<T> AbiEncode for [T;0]
 where
     T: AbiEncode
 {
-    fn abi_encode(self, ref mut buffer: Buffer) {
+    fn abi_encode(self, ref mut _buffer: Buffer) {
     }
 }
 
@@ -315,14 +315,14 @@ where
 
 #[test]
 fn ok_encode() {
-    encode(true);
+    let _ = encode(true);
 
-    encode(0u8);
-    encode(0u16);
-    encode(0u32);
-    encode(0u64);
-    encode(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFu256);
+    let _ = encode(0u8);
+    let _ = encode(0u16);
+    let _ = encode(0u32);
+    let _ = encode(0u64);
+    let _ = encode(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFu256);
 
     // b256
-    encode(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
+    let _ = encode(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
 }

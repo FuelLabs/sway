@@ -21,10 +21,10 @@ use core::codec::*;
 ///     log("Fuel is blazingly fast");
 /// }
 /// ```
-pub fn log<T>(value222: T)
+pub fn log<T>(value: T)
 where
     T: AbiEncode
 {
-    let slice = encode(value222);
-    __log::<T>(value222);
+    let slice = encode(value);
+    __log::<T>(value);
 }

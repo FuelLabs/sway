@@ -1,5 +1,7 @@
 predicate;
 
+use core::codec::*;
+
 use std::{
     inputs::input_coin_owner,
     logging::log,

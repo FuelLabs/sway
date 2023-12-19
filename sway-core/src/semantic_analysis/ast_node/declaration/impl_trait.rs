@@ -93,13 +93,13 @@ impl TyImplTrait {
             .expect_is_supported_in_impl_blocks_self(handler, &implementing_for.span)?;
 
         // check for unconstrained type parameters
-        check_for_unconstrained_type_parameters(
-            handler,
-            engines,
-            &new_impl_type_parameters,
-            &trait_type_arguments,
-            implementing_for.type_id,
-        )?;
+        // check_for_unconstrained_type_parameters(
+        //     handler,
+        //     engines,
+        //     &new_impl_type_parameters,
+        //     &trait_type_arguments,
+        //     implementing_for.type_id,
+        // )?;
 
         // Unify the "self" type param and the type that we are implementing for
         handler.scope(|h| {
@@ -1393,6 +1393,12 @@ fn check_for_unconstrained_type_parameters(
 
     handler.scope(|handler| {
         // create an error for all of the leftover generics
+        if !defined_generics.is_empty() {
+            dbg!(engines.te().get(self_type));
+            dbg!(type_parameters);
+            dbg!(trait_type_arguments);
+        }
+
         for (k, v) in defined_generics.into_iter() {
             handler.emit_err(CompileError::UnconstrainedGenericParameter {
                 ty: format!("{k}"),

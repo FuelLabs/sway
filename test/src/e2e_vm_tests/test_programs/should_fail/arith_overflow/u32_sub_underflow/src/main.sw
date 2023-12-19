@@ -1,5 +1,7 @@
 script;
 
+use core::codec::*;
+
 fn main() -> bool {
     let a: u32 = u32::min();
     let b: u32 = 1;

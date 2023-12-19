@@ -1,5 +1,7 @@
 script;
 
+use core::codec::*;
+
 fn main() -> bool {
     let a: u64 = u64::max();
     let b: u64 = 2;

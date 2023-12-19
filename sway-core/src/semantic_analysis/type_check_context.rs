@@ -1180,6 +1180,19 @@ impl<'a> TypeCheckContext<'a> {
                     TryInsertingTraitImplOnFailure::No,
                 );
             }
+
+            dbg!(self.engines.te().get(type_id));
+            dbg!(
+                type_id,
+                method_prefix,
+                method_name,
+                annotation_type,
+                args_buf,
+                as_trait,
+                try_inserting_trait_impl_on_failure,
+            );
+            dbg!(matching_method_decl_refs);
+
             let type_name = if let Some(call_path) = qualified_call_path {
                 format!(
                     "{} as {}",
