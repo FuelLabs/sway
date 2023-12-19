@@ -44,6 +44,11 @@ pub trait AbiEncode {
     fn abi_encode(self, ref mut buffer: Buffer);
 }
 
+impl AbiEncode for () {
+    fn abi_encode(self, ref mut _buffer: Buffer) {
+    }
+}
+
 impl AbiEncode for b256 {
     fn abi_encode(self, ref mut buffer: Buffer) {
         let (a, b, c, d): (u64, u64, u64, u64) = asm(r1: self) {r1: (u64, u64, u64, u64)};

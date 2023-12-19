@@ -1,6 +1,7 @@
 script;
 
 mod inner;
+use core::codec::*;
 
 fn main() { }
 

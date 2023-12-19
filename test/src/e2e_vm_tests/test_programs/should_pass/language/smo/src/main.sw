@@ -1,5 +1,9 @@
 script;
 
+fn encode<T>(_item: T) -> raw_slice {
+    asm(ptr: (0, 0)) { ptr: raw_slice }
+}
+
 fn smo<T>(recipient: b256, value: T, coins: u64) {
     __smo::<T>(recipient, value, coins);
 }

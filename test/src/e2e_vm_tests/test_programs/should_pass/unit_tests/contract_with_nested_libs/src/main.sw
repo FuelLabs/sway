@@ -1,6 +1,7 @@
 contract;
 
 mod inner;
+use core::codec::*;
 
 abi MyContract {
     fn foo();

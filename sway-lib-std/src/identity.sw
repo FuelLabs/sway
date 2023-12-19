@@ -21,19 +21,6 @@ pub enum Identity {
 }
 // ANCHOR_END: docs_identity
 
-impl AbiEncode for Identity {
-    fn abi_encode(self, ref mut buffer: Buffer) {
-        match self {
-            Identity::Address(address) => {
-                address.abi_encode(buffer);
-            }
-            Identity::ContractId(x) => {
-                x.abi_encode(buffer);
-            }
-        }
-    }
-}
-
 impl core::ops::Eq for Identity {
     fn eq(self, other: Self) -> bool {
         match (self, other) {

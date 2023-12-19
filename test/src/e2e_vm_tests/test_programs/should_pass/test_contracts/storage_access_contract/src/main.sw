@@ -1,5 +1,6 @@
 contract;
 
+use core::codec::*;
 use storage_access_abi::{E, S, StorageAccess, T};
 
 storage {

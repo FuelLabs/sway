@@ -2,6 +2,7 @@
 //! which are needed when working with public keys and signatures.
 library;
 
+use core::codec::*;
 use ::constants::ZERO_B256;
 use ::convert::From;
 

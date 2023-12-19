@@ -2,6 +2,7 @@ contract;
 
 mod ownable;
 use ownable::{Ownable, StorageHelpers};
+use core::codec::*;
 
 storage {
     owner: b256 = std::constants::ZERO_B256,

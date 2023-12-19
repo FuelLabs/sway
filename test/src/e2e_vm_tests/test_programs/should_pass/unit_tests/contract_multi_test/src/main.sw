@@ -1,5 +1,7 @@
 contract;
 
+use core::codec::*;
+
 abi MyContract {
     fn test_function() -> bool;
 }

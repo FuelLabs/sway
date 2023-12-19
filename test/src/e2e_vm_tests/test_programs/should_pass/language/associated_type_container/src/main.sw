@@ -1,5 +1,6 @@
 script;
 
+use core::codec::*;
 use std::vec::*;
 
 trait Container {

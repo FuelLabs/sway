@@ -1,6 +1,7 @@
 //! The `Bytes` type is used when a collection of tightly-packed arbitrary bytes is needed.
 library;
 
+use core::codec::*;
 use ::{alloc::{alloc_bytes, realloc_bytes}, vec::Vec};
 use ::assert::assert;
 use ::intrinsics::size_of_val;
@@ -853,6 +854,12 @@ impl From<Vec<u8>> for Bytes {
             i += 1;
         };
         vec
+    }
+}
+
+impl AbiEncode for Bytes {
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        buffer.push(self.as_raw_slice());
     }
 }
 

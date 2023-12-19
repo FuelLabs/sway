@@ -1,6 +1,7 @@
 library;
 
 mod inner2;
+use core::codec::*;
 
 #[test]
 fn test_meaning_of_life_inner() {

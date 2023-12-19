@@ -1792,12 +1792,9 @@ fn expr_func_app_to_expression_kind(
                             FunctionApplicationExpression {
                                 call_path_binding: TypeBinding {
                                     inner: CallPath {
-                                        prefixes: vec![
-                                            Ident::new_no_span("core".into()),
-                                            Ident::new_no_span("codec".into()),
-                                        ],
+                                        prefixes: vec![],
                                         suffix: Ident::new_no_span("encode".into()),
-                                        is_absolute: true,
+                                        is_absolute: false,
                                     },
                                     type_arguments: TypeArgs::Regular(type_arguments),
                                     span: span.clone(),

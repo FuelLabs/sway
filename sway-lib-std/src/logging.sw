@@ -25,6 +25,5 @@ pub fn log<T>(value: T)
 where
     T: AbiEncode
 {
-    let slice = encode(value);
     __log::<T>(value);
 }

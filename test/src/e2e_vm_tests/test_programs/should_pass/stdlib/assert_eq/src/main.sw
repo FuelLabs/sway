@@ -1,5 +1,6 @@
 script;
 
+use core::codec::*;
 use std::bytes::Bytes;
 use std::b512::B512;
 

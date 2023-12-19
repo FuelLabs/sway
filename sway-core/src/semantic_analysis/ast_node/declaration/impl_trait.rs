@@ -93,13 +93,13 @@ impl TyImplTrait {
             .expect_is_supported_in_impl_blocks_self(handler, &implementing_for.span)?;
 
         // check for unconstrained type parameters
-        // check_for_unconstrained_type_parameters(
-        //     handler,
-        //     engines,
-        //     &new_impl_type_parameters,
-        //     &trait_type_arguments,
-        //     implementing_for.type_id,
-        // )?;
+        check_for_unconstrained_type_parameters(
+            handler,
+            engines,
+            &new_impl_type_parameters,
+            &trait_type_arguments,
+            implementing_for.type_id,
+        )?;
 
         // Unify the "self" type param and the type that we are implementing for
         handler.scope(|h| {
