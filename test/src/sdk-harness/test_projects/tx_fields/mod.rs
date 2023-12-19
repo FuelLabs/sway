@@ -1,6 +1,6 @@
 use fuel_vm::fuel_crypto::Hasher;
 use fuel_vm::fuel_tx::{Bytes32, ConsensusParameters, ContractId, Input as TxInput};
-use fuels::types::tx_builders::TransactionBuilder;
+use fuels::types::transaction_builders::TransactionBuilder;
 use fuels::{
     accounts::{predicate::Predicate, wallet::WalletUnlocked, Account},
     prelude::*,
@@ -292,7 +292,7 @@ mod tx {
         let mut builder = contract_instance
             .methods()
             .get_tx_inputs_count()
-            .tx_builder()
+            .transaction_builder()
             .await
             .unwrap();
 
@@ -583,7 +583,7 @@ mod inputs {
             let mut tb = contract_instance
                 .methods()
                 .get_input_predicate(1, predicate_bytes.clone())
-                .tx_builder()
+                .transaction_builder()
                 .await
                 .unwrap();
 
@@ -605,7 +605,7 @@ mod inputs {
         }
 
         mod message {
-            use fuels::types::{coin_type::CoinType, tx_builders::TransactionBuilder};
+            use fuels::types::{coin_type::CoinType, transaction_builders::TransactionBuilder};
 
             use super::*;
 
@@ -618,7 +618,7 @@ mod inputs {
                 let mut builder = contract_instance
                     .methods()
                     .get_input_message_sender(1)
-                    .tx_builder()
+                    .transaction_builder()
                     .await
                     .unwrap();
 
@@ -653,7 +653,7 @@ mod inputs {
                 let mut builder = contract_instance
                     .methods()
                     .get_input_message_recipient(3)
-                    .tx_builder()
+                    .transaction_builder()
                     .await
                     .unwrap();
 
@@ -690,7 +690,7 @@ mod inputs {
                 let mut builder = contract_instance
                     .methods()
                     .get_input_message_nonce(3)
-                    .tx_builder()
+                    .transaction_builder()
                     .await
                     .unwrap();
 
@@ -738,7 +738,7 @@ mod inputs {
                 let mut builder = contract_instance
                     .methods()
                     .get_input_message_data_length(3)
-                    .tx_builder()
+                    .transaction_builder()
                     .await
                     .unwrap();
 
@@ -774,7 +774,7 @@ mod inputs {
                 let mut builder = contract_instance
                     .methods()
                     .get_input_predicate_length(3)
-                    .tx_builder()
+                    .transaction_builder()
                     .await
                     .unwrap();
 
@@ -808,7 +808,7 @@ mod inputs {
                 let mut builder = contract_instance
                     .methods()
                     .get_input_predicate_data_length(1)
-                    .tx_builder()
+                    .transaction_builder()
                     .await
                     .unwrap();
 
@@ -842,7 +842,7 @@ mod inputs {
                 let mut builder = contract_instance
                     .methods()
                     .get_input_message_data(3, 0, MESSAGE_DATA)
-                    .tx_builder()
+                    .transaction_builder()
                     .await
                     .unwrap();
 
@@ -880,7 +880,7 @@ mod inputs {
                     .methods()
                     .get_input_predicate(3, predicate_bytecode);
 
-                let mut builder = handler.tx_builder().await.unwrap();
+                let mut builder = handler.transaction_builder().await.unwrap();
 
                 wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
 
