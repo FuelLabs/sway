@@ -9,13 +9,9 @@ use std::{ops::Deref, str::FromStr};
 
 const ABOUT: &str = "Parses a private key to view the associated public key";
 
-#[cfg(test)]
-#[allow(non_upper_case_globals)]
-const PRIVATE_KEY: &str = "f5204427d0ab9a311266c96a377f7c329cb8a41b9088225b6fcf40eefb423e28";
-
 forc::cli_examples! {
-    [ Parses the secret of a block production  => crypto "parse-secret" PRIVATE_KEY ]
-    [ Parses the secret of a peering  => crypto "parse-secret" "-k" "peering" PRIVATE_KEY ]
+    [ Parses the secret of a block production  => crypto "parse-secret \"f5204427d0ab9a311266c96a377f7c329cb8a41b9088225b6fcf40eefb423e28\"" ]
+    [ Parses the secret of a peering  => crypto "parse-secret -k peering \"f5204427d0ab9a311266c96a377f7c329cb8a41b9088225b6fcf40eefb423e28\"" ]
 }
 
 /// Parse a secret key to view the associated public key
