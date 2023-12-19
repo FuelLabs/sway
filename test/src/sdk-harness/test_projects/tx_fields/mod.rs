@@ -1,6 +1,6 @@
 use fuel_vm::fuel_crypto::Hasher;
 use fuel_vm::fuel_tx::{Bytes32, ConsensusParameters, ContractId, Input as TxInput};
-use fuels::types::transaction_builders::TransactionBuilder;
+use fuels::types::tx_builders::TransactionBuilder;
 use fuels::{
     accounts::{predicate::Predicate, wallet::WalletUnlocked, Account},
     prelude::*,
@@ -605,7 +605,7 @@ mod inputs {
         }
 
         mod message {
-            use fuels::types::{coin_type::CoinType, transaction_builders::TransactionBuilder};
+            use fuels::types::{coin_type::CoinType, tx_builders::TransactionBuilder};
 
             use super::*;
 
