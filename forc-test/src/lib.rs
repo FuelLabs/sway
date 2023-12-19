@@ -11,7 +11,7 @@ use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::BuildTarget;
 use sway_types::Span;
 use tx::output::contract::Contract;
-use tx::{Chargeable, Finalizable};
+use tx::{Chargeable, Finalizable, TransactionBuilder};
 use vm::prelude::SecretKey;
 
 /// The result of a `forc test` invocation.
@@ -651,10 +651,8 @@ pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
                     .filter_map(|pinned| built_members.get(&pinned))
                     .cloned()
                     .collect();
+            });
 
-                (pinned_member, contract_dependencies)
-            })
-            .collect();
     BuiltTests::from_built(built, &member_contract_dependencies)
 }
 
@@ -757,6 +755,90 @@ fn patch_test_bytecode(bytecode: &[u8], test_offset: u32) -> std::borrow::Cow<[u
     let mut patched = bytecode.to_vec();
     patched.splice(start..end, ji_bytes);
     std::borrow::Cow::Owned(patched)
+}
+
+pub struct TestResult {
+    state: vm::state::ProgramState,
+    duration: std::time::Duration,
+    receipts: Vec<fuel_tx::Receipt>,
+}
+
+struct TestExecutor {
+    interpreter: vm::prelude::Interpreter<_, _, vm::interpreter::NotSupportedEcal>,
+    transaction_builder: TransactionBuilder<Script>
+}
+
+fn get_test_executor(
+    bytecode: &[u8],
+    test_offset: u32,
+    test_setup: TestSetup,
+) -> TestExecutor {
+    let storage = test_setup.storage().clone();
+
+    // Patch the bytecode to jump to the relevant test.
+    let bytecode = patch_test_bytecode(bytecode, test_offset).into_owned();
+
+    // Create a transaction to execute the test function.
+    let script_input_data = vec![];
+    // let rng = &mut rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
+
+    // Prepare the transaction metadata.
+    let secret_key = SecretKey::random(rng);
+    let utxo_id = rng.gen();
+    let amount = 1;
+    let maturity = 1.into();
+    let asset_id = rng.gen();
+    let tx_pointer = rng.gen();
+
+    let mut tb = tx::TransactionBuilder::script(bytecode, script_input_data)
+        .add_unsigned_coin_input(
+            secret_key,
+            utxo_id,
+            amount,
+            asset_id,
+            tx_pointer,
+            0u32.into(),
+        )
+        .maturity(maturity)
+        .clone();
+    let mut output_index = 1;
+    // Insert contract ids into tx input
+    for contract_id in test_setup.contract_ids() {
+        tb.add_input(tx::Input::contract(
+            tx::UtxoId::new(tx::Bytes32::zeroed(), 0),
+            tx::Bytes32::zeroed(),
+            tx::Bytes32::zeroed(),
+            tx::TxPointer::new(0u32.into(), 0),
+            contract_id,
+        ))
+        .add_output(tx::Output::Contract(Contract {
+            input_index: output_index,
+            balance_root: fuel_tx::Bytes32::zeroed(),
+            state_root: tx::Bytes32::zeroed(),
+        }));
+        output_index += 1;
+    }
+    let consensus_params = tb.get_params().clone();
+
+    TestExecutor {
+        interpreter:
+    vm::interpreter::Interpreter::with_storage(storage, consensus_params.into()),
+        transaction_builder: tb,
+    }
+    
+}
+
+impl TestExecutor {
+    pub fn execute(&mut self) -> anyhow::Result<TestResult> {
+        let block_height = (u32::MAX >> 1).into();
+        let start = std::time::Instant::now();
+        let transition = self.interpreter.transact(self.transaction_builder.finalize_checked(block_height))?;
+        let duration = start.elapsed();
+        let state = *transition.state();
+        let receipts = transition.receipts().to_vec();
+
+        Ok(TestResult {state, duration, receipts})
+    }
 }
 
 // Execute the test whose entry point is at the given instruction offset as if it were a script.
@@ -885,7 +967,7 @@ mod tests {
         match tested {
             crate::Tested::Package(tested_pkg) => Ok(tested_pkg.tests),
             crate::Tested::Workspace(_) => {
-                unreachable!("test_library is a package, not a workspace.")
+                unreachable!("{test_library} is a package, not a workspace.")
             }
         }
     }
