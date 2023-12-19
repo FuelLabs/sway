@@ -1393,12 +1393,6 @@ fn check_for_unconstrained_type_parameters(
 
     handler.scope(|handler| {
         // create an error for all of the leftover generics
-        if !defined_generics.is_empty() {
-            dbg!(engines.te().get(self_type));
-            dbg!(type_parameters);
-            dbg!(trait_type_arguments);
-        }
-
         for (k, v) in defined_generics.into_iter() {
             handler.emit_err(CompileError::UnconstrainedGenericParameter {
                 ty: format!("{k}"),

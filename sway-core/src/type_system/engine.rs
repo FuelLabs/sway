@@ -209,8 +209,6 @@ impl TypeEngine {
             // argument has been provided
             match err_override {
                 Some(err_override) => {
-                    dbg!(engines.te().get(received));
-                    dbg!(engines.te().get(expected));
                     handler.emit_err(err_override);
                 }
                 None => {
