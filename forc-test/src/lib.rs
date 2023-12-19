@@ -330,34 +330,33 @@ impl<'a> PackageTests {
                 .entries
                 .par_iter()
                 .filter_map(|entry| {
-                    match entry.kind.test() {
-                        Some(test_entry) => {
-                            // If a test filter is specified, only the tests containing the filter phrase in
-                            // their name are going to be executed.
-                            let name = entry.finalized.fn_name.clone();
-                            if let Some(filter) = test_filter {
-                                if !filter.filter(&name) {
-                                    return None;
-                                }
+                    if let Some(test_entry) = entry.kind.test() {
+                        // If a test filter is specified, only the tests containing the filter phrase in
+                        // their name are going to be executed.
+                        let name = entry.finalized.fn_name.clone();
+                        if let Some(filter) = test_filter {
+                            if !filter.filter(&name) {
+                                return None;
                             }
-
-                            // Execute the test and return the result.
-                            let offset = u32::try_from(entry.finalized.imm)
-                                .expect("test instruction offset out of range");
-                            let test_setup = self.setup()?;
-                            return Some(
-                                TestExecutor::new(
-                                    &pkg_with_tests.bytecode.bytes,
-                                    offset,
-                                    test_setup,
-                                    test_entry,
-                                    name,
-                                )
-                                .execute(),
-                            );
                         }
-                        None => None,
+                        return Some((entry, test_entry));
                     }
+                    None
+                })
+                .map(|(entry, test_entry)| {
+                    // Execute the test and return the result.
+                    let offset = u32::try_from(entry.finalized.imm)
+                        .expect("test instruction offset out of range");
+                    let name = entry.finalized.fn_name.clone();
+                    let test_setup = self.setup()?;
+                    TestExecutor::new(
+                        &pkg_with_tests.bytecode.bytes,
+                        offset,
+                        test_setup,
+                        test_entry,
+                        name,
+                    )
+                    .execute();
                 })
                 .collect::<anyhow::Result<_>>()
         })?;

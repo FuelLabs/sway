@@ -2,7 +2,7 @@ use fuel_tx as tx;
 use fuel_vm::{self as vm};
 
 /// Result of preparing a deployment transaction setup for a contract.
-type ContractDeploymentSetup = (tx::ContractId, vm::checked_transaction::Checked<tx::Create>);
+pub type ContractDeploymentSetup = (tx::ContractId, vm::checked_transaction::Checked<tx::Create>);
 
 /// Required test setup for package types that requires a deployment.
 #[derive(Debug)]
