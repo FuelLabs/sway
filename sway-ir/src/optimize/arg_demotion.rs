@@ -3,8 +3,8 @@
 /// This pass demotes 'by-value' function arg types to 'by-reference` pointer types, based on target
 /// specific parameters.
 use crate::{
-    AnalysisResults, Block, BlockArgument, Context, Function, InstOp, Instruction, IrError, Pass,
-    PassMutability, ScopedPass, Type, Value, ValueDatum,
+    AnalysisResults, Block, BlockArgument, Context, Function, InstOp, Instruction,
+    InstructionInserter, IrError, Pass, PassMutability, ScopedPass, Type, Value, ValueDatum,
 };
 
 use rustc_hash::FxHashMap;
@@ -123,21 +123,19 @@ fn demote_fn_signature(context: &mut Context, function: &Function, arg_idcs: &[(
         .collect::<Vec<_>>();
 
     // For each of the old args, which have had their types changed, insert a `load` instruction.
-    let arg_val_pairs = old_arg_vals
-        .into_iter()
-        .rev()
-        .map(|(old_arg_val, new_arg_val)| {
-            let load_from_new_arg =
-                Value::new_instruction(context, entry_block, InstOp::Load(new_arg_val));
-            context.blocks[entry_block.0]
-                .instructions
-                .insert(0, load_from_new_arg);
-            (old_arg_val, load_from_new_arg)
-        })
-        .collect::<Vec<_>>();
+    let mut replace_map = FxHashMap::default();
+    let mut new_inserts = Vec::new();
+    for (old_arg_val, new_arg_val) in old_arg_vals {
+        let load_from_new_arg =
+            Value::new_instruction(context, entry_block, InstOp::Load(new_arg_val));
+        new_inserts.push(load_from_new_arg);
+        replace_map.insert(old_arg_val, load_from_new_arg);
+    }
+
+    entry_block.prepend_instructions(context, new_inserts);
 
     // Replace all uses of the old arg with the loads.
-    function.replace_values(context, &FxHashMap::from_iter(arg_val_pairs), None);
+    function.replace_values(context, &replace_map, None);
 }
 
 fn demote_caller(
@@ -196,26 +194,19 @@ fn demote_caller(
         new_instrs.push(store_val);
     }
 
-    // Append the new call with updated args.
+    // Replace call with the new one with updated args.
     let new_call_val = Value::new_instruction(context, call_block, InstOp::Call(*function, args));
-    new_instrs.push(new_call_val);
-
-    // We don't have an actual instruction _inserter_ yet, just an appender, so we need to find the
-    // call instruction index and insert instructions manually.
-    let block_instrs = &mut context.blocks[call_block.0].instructions;
-    let call_inst_idx = block_instrs
-        .iter()
-        .position(|&instr_val| instr_val == call_val)
+    call_block
+        .replace_instruction(context, call_val, new_call_val, false)
         .unwrap();
 
-    // Overwrite the old call with the first new instruction.
-    let mut new_instrs_iter = new_instrs.into_iter();
-    block_instrs[call_inst_idx] = new_instrs_iter.next().unwrap();
-
-    // Insert the rest.
-    for (insert_idx, instr_val) in new_instrs_iter.enumerate() {
-        block_instrs.insert(call_inst_idx + 1 + insert_idx, instr_val);
-    }
+    // Insert new_instrs before the call.
+    let mut inserter = InstructionInserter::new(
+        context,
+        call_block,
+        crate::InsertionPosition::Before(new_call_val),
+    );
+    inserter.insert_slice(&new_instrs);
 
     // Replace the old call with the new call.
     call_function.replace_value(context, call_val, new_call_val, None);
@@ -236,36 +227,33 @@ fn demote_block_signature(context: &mut Context, function: &Function, block: Blo
         return false;
     }
 
+    let mut replace_map = FxHashMap::default();
+    let mut new_inserts = Vec::new();
     // Update the block signature for each candidate arg.  Create a replacement load for each one.
-    let args_and_loads = candidate_args
-        .iter()
-        .rev()
-        .map(|(_arg_idx, arg_val, arg_ty)| {
-            let ptr_ty = Type::new_ptr(context, *arg_ty);
+    for (_arg_idx, arg_val, arg_ty) in &candidate_args {
+        let ptr_ty = Type::new_ptr(context, *arg_ty);
 
-            // Create a new block arg, same as the old one but with a different type.
-            let ValueDatum::Argument(block_arg) = context.values[arg_val.0].value else {
-                panic!("Block argument is not of right Value kind");
-            };
-            let new_blk_arg_val = Value::new_argument(
-                context,
-                BlockArgument {
-                    ty: ptr_ty,
-                    ..block_arg
-                },
-            );
-            block.set_arg(context, new_blk_arg_val);
+        // Create a new block arg, same as the old one but with a different type.
+        let ValueDatum::Argument(block_arg) = context.values[arg_val.0].value else {
+            panic!("Block argument is not of right Value kind");
+        };
+        let new_blk_arg_val = Value::new_argument(
+            context,
+            BlockArgument {
+                ty: ptr_ty,
+                ..block_arg
+            },
+        );
+        block.set_arg(context, new_blk_arg_val);
 
-            let load_val = Value::new_instruction(context, block, InstOp::Load(new_blk_arg_val));
-            let block_instrs = &mut context.blocks[block.0].instructions;
-            block_instrs.insert(0, load_val);
+        let load_val = Value::new_instruction(context, block, InstOp::Load(new_blk_arg_val));
+        new_inserts.push(load_val);
+        replace_map.insert(*arg_val, load_val);
+    }
 
-            (*arg_val, load_val)
-        })
-        .collect::<Vec<_>>();
-
+    block.prepend_instructions(context, new_inserts);
     // Replace the arg uses with the loads.
-    function.replace_values(context, &FxHashMap::from_iter(args_and_loads), None);
+    function.replace_values(context, &replace_map, None);
 
     // Find the predecessors to this block and for each one use a temporary and pass its address to
     // this block. We create a temporary for each block argument and they can be 'shared' between
@@ -302,10 +290,12 @@ fn demote_block_signature(context: &mut Context, function: &Function, block: Blo
                 },
             );
 
-            let block_instrs = &mut context.blocks[pred.0].instructions;
-            let insert_idx = block_instrs.len() - 1;
-            block_instrs.insert(insert_idx, get_local_val);
-            block_instrs.insert(insert_idx + 1, store_val);
+            let mut inserter = InstructionInserter::new(
+                context,
+                pred,
+                crate::InsertionPosition::At(pred.num_instructions(context) - 1),
+            );
+            inserter.insert_slice(&[get_local_val, store_val]);
 
             // Replace the use of the old argument with the `get_local` pointer value.
             let term_val = pred

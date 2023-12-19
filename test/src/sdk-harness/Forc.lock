@@ -146,6 +146,21 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
+name = "low_level_call"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "low_level_call_bytes"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "low_level_callee_contract"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "messages"
 source = "member"
 dependencies = ["std"]
@@ -336,21 +351,6 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
-name = "test_contract"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "test_script"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "test_script_bytes"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
 name = "token_ops"
 source = "member"
 dependencies = ["std"]
@@ -361,12 +361,12 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
-name = "tx_output_predicate"
+name = "tx_fields"
 source = "member"
 dependencies = ["std"]
 
 [[package]]
-name = "tx_predicate"
+name = "tx_output_predicate"
 source = "member"
 dependencies = ["std"]
 

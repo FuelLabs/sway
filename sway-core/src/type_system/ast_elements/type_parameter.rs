@@ -315,7 +315,6 @@ impl TypeParameter {
         type_parameter: TypeParameter,
     ) -> Result<(), ErrorEmitted> {
         let type_engine = ctx.engines.te();
-        let engines = ctx.engines();
 
         let mut trait_constraints_with_supertraits: Vec<TraitConstraint> = type_parameter
             .trait_constraints
@@ -333,7 +332,6 @@ impl TypeParameter {
         // Trait constraints mutate so we replace the previous type id associated TypeInfo.
         type_engine.replace(
             type_parameter.type_id,
-            engines,
             TypeSourceInfo {
                 type_info: TypeInfo::UnknownGeneric {
                     name: type_parameter.name_ident.clone(),

@@ -19,7 +19,7 @@ async fn test_storage_init_instance() -> TestStorageInitContract<WalletUnlocked>
         ),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 

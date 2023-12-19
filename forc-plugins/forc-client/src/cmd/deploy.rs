@@ -52,4 +52,24 @@ pub struct Command {
     /// Sign the deployment transaction manually.
     #[clap(long)]
     pub manual_signing: bool,
+    /// Override storage slot initialization.
+    ///
+    /// By default, storage slots are initialized with the values defined in the storage block in
+    /// the contract. You can override the initialization by providing the file path to a JSON file
+    /// containing the overriden values.
+    ///
+    /// The file format and key values should match the compiler-generated `*-storage_slots.json` file in the output
+    /// directory of the compiled contract.
+    ///
+    /// Example: `forc deploy --override-storage-slots my_override.json`
+    ///
+    /// my_override.json:
+    /// [
+    ///   {
+    ///     "key": "<key from out/debug/storage_slots.json>",
+    ///     "value": "0000000000000000000000000000000000000000000000000000000000000001"
+    ///   }
+    /// ]
+    #[clap(long, verbatim_doc_comment, name = "JSON_FILE_PATH")]
+    pub override_storage_slots: Option<String>,
 }

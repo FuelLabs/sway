@@ -1,13 +1,13 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-53DBC6786CED201E'
+name = "contract_with_nested_libs"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'script_with_nested_libs'
-source = 'member'
-dependencies = ['std']
+name = "core"
+source = "path+from-root-46468E57724BD00F"
 
 [[package]]
-name = 'std'
-source = 'path+from-root-53DBC6786CED201E'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-46468E57724BD00F"
+dependencies = ["core"]

@@ -381,7 +381,7 @@ pub fn sroa(
             }
             new_insts.push(inst);
         }
-        context.blocks[block.0].instructions = new_insts;
+        block.take_body(context, new_insts);
     }
 
     function.replace_values(context, &scalar_replacements, None);

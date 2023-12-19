@@ -1,4 +1,6 @@
-use sway_error::handler::Handler;
+use std::sync::Arc;
+
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
 
 use crate::{
@@ -49,7 +51,7 @@ impl TyModule {
     pub fn test_fns<'a: 'b, 'b>(
         &'b self,
         decl_engine: &'a DeclEngine,
-    ) -> impl '_ + Iterator<Item = (TyFunctionDecl, DeclRefFunction)> {
+    ) -> impl '_ + Iterator<Item = (Arc<TyFunctionDecl>, DeclRefFunction)> {
         self.all_nodes.iter().filter_map(|node| {
             if let TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
                 decl_id,
@@ -85,6 +87,24 @@ impl TyModule {
         for node in self.all_nodes.iter() {
             node.check_deprecated(engines, handler, allow_deprecated);
         }
+    }
+
+    pub(crate) fn check_recursive(
+        &self,
+        engines: &Engines,
+        handler: &Handler,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            for (_, submodule) in self.submodules.iter() {
+                let _ = submodule.module.check_recursive(engines, handler);
+            }
+
+            for node in self.all_nodes.iter() {
+                let _ = node.check_recursive(engines, handler);
+            }
+
+            Ok(())
+        })
     }
 }
 

@@ -15,7 +15,7 @@ async fn get_block_instance() -> (BlockTestContract<WalletUnlocked>, ContractId,
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
     let instance = BlockTestContract::new(id.clone(), wallet.clone());

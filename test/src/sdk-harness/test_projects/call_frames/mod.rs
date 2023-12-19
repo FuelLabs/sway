@@ -16,7 +16,7 @@ async fn get_call_frames_instance() -> (CallFramesTestContract<WalletUnlocked>, 
     )
     .unwrap();
 
-    let id = id.deploy(&wallet, TxParameters::default()).await.unwrap();
+    let id = id.deploy(&wallet, TxPolicies::default()).await.unwrap();
     let instance = CallFramesTestContract::new(id.clone(), wallet);
 
     (instance, id.into())
@@ -84,7 +84,7 @@ async fn can_get_second_param_bool() {
     let (instance, _id) = get_call_frames_instance().await;
     let result = instance.methods().get_second_param_bool(true);
     let result = result.call().await.unwrap();
-    assert_eq!(result.value, true);
+    assert!(result.value);
 }
 
 #[tokio::test]
@@ -133,9 +133,5 @@ async fn can_get_second_param_multiple_params2() {
 }
 
 fn is_within_range(n: u64) -> bool {
-    if n <= 0 || n > VM_MAX_RAM {
-        false
-    } else {
-        true
-    }
+    n > 0 && n <= VM_MAX_RAM
 }
