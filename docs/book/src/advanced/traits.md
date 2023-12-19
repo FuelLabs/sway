@@ -20,7 +20,7 @@ We have just declared a trait called `Compare`. After the name of the trait, the
 
 ## Implementing a Trait
 
-Ok, so I know that numbers can be equal. I want to implement my `Compare` trait for `u64`. Let's take a look at how that is done:
+The example below implements a `Compare` trait for `u64` to check if two numbers are equal. Let's take a look at how that is done:
 
 ```sway
 impl Compare for u64 {
@@ -34,8 +34,8 @@ The above snippet declares all of the methods in the trait `Compare` for the typ
 
 ## Supertraits
 
-When using multiple traits, scenarios often come up where one trait may require functionality from another trait. This is where supertraits come in as they allow you to require a trait when implementing another
-trait (ie. a trait with a trait). A good example of this is the `Ord` trait of the `core` library of Sway. The `Ord` trait requires the `Eq` trait, so `Eq` is kept as a separate trait as one may decide to implement `Eq`
+When using multiple traits, scenarios often come up where one trait may require functionality from another trait. This is where supertraits come in as they allow you to require a trait when implementing another trait, i.e., a trait with a trait.
+A good example of this is the `Ord` trait of the `core` library of Sway. The `Ord` trait requires the `Eq` trait, so `Eq` is kept as a separate trait as one may decide to implement `Eq`
 without implementing other parts of the `Ord` trait.
 
 ```sway
