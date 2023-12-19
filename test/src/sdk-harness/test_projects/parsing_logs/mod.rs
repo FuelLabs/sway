@@ -16,7 +16,7 @@ async fn get_parsing_logs_instance() -> (ParsingLogsTestContract<WalletUnlocked>
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
     let instance = ParsingLogsTestContract::new(id.clone(), wallet);

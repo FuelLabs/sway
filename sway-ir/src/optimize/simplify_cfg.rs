@@ -12,8 +12,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     block::Block, context::Context, error::IrError, function::Function, instruction::InstOp,
-    value::ValueDatum, AnalysisResults, BranchToWithArgs, Instruction, Pass, PassMutability,
-    ScopedPass, Value,
+    value::ValueDatum, AnalysisResults, BranchToWithArgs, Instruction, InstructionInserter, Pass,
+    PassMutability, ScopedPass, Value,
 };
 
 pub const SIMPLIFYCFG_NAME: &str = "simplifycfg";
@@ -220,18 +220,14 @@ fn merge_blocks(context: &mut Context, function: &Function) -> Result<bool, IrEr
                 instr.parent = from_block;
             }
 
-            // Re-get the block contents mutably.
-            let (from_contents, to_contents) = context.blocks.get2_mut(from_block.0, to_block.0);
-            let from_contents = from_contents.unwrap();
-            let to_contents = to_contents.unwrap();
-
             // Drop the terminator from `from_block`.
-            from_contents.instructions.pop();
+            from_block.remove_last_instruction(context);
 
             // Move instructions from `to_block` to `from_block`.
-            from_contents
-                .instructions
-                .append(&mut to_contents.instructions);
+            let to_block_instructions = to_block.instruction_iter(context).collect::<Vec<_>>();
+            let mut inserter =
+                InstructionInserter::new(context, from_block, crate::InsertionPosition::End);
+            inserter.insert_slice(&to_block_instructions);
 
             // Remove `to_block`.
             function.remove_block(context, &to_block)?;

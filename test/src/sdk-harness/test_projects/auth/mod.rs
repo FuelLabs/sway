@@ -25,7 +25,7 @@ async fn is_external_from_sdk() {
         .await
         .unwrap();
 
-    assert_eq!(result.value, true);
+    assert!(result.value);
 }
 
 #[tokio::test]
@@ -38,7 +38,7 @@ async fn msg_sender_from_sdk() {
         .await
         .unwrap();
 
-    assert_eq!(result.value, true);
+    assert!(result.value);
 }
 
 #[tokio::test]
@@ -53,7 +53,7 @@ async fn msg_sender_from_contract() {
         .await
         .unwrap();
 
-    assert_eq!(result.value, true);
+    assert!(result.value);
 }
 
 async fn get_contracts() -> (
@@ -70,7 +70,7 @@ async fn get_contracts() -> (
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 
@@ -79,7 +79,7 @@ async fn get_contracts() -> (
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 

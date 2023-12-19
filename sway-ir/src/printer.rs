@@ -336,10 +336,9 @@ fn block_to_doc(
         ),
     )
     .append(Doc::List(
-        block_content
-            .instructions
-            .iter()
-            .map(|ins| instruction_to_doc(context, md_namer, namer, block, ins))
+        block
+            .instruction_iter(context)
+            .map(|ins| instruction_to_doc(context, md_namer, namer, block, &ins))
             .collect(),
     ))
 }

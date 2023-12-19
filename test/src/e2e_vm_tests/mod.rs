@@ -173,6 +173,12 @@ impl TestContext {
                                 TestResult::ReturnData(data)
                             }
                             ProgramState::Revert(v) => TestResult::Revert(v),
+                            ProgramState::RunProgram(_) => {
+                                panic!("Execution is in a suspended state: RunProgram");
+                            }
+                            ProgramState::VerifyPredicate(_) => {
+                                panic!("Execution is in a suspended state: VerifyPredicate");
+                            }
                         }
                     }
                     harness::VMExecutionResult::Evm(state) => match state.exit_reason {

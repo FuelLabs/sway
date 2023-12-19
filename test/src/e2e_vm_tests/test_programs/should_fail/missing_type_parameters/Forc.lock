@@ -1,13 +1,13 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-71DB3AC72E68AF59'
+name = "core"
+source = "path+from-root-2661557639CEB78D"
 
 [[package]]
-name = 'missing_type_parameteres'
-source = 'member'
-dependencies = ['std']
+name = "missing_type_parameters"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'std'
-source = 'path+from-root-71DB3AC72E68AF59'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-2661557639CEB78D"
+dependencies = ["core"]

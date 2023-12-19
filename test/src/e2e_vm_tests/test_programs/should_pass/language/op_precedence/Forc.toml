@@ -1,7 +1,7 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
-name = "unary_not_basic"
+name = "op_precedence"
 entry = "main.sw"
 
 [dependencies]

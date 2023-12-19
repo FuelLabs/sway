@@ -5,6 +5,7 @@ members = [
     "forc-pkg",
     "forc-plugins/forc-client",
     "forc-plugins/forc-crypto",
+    "forc-plugins/forc-debug",
     "forc-plugins/forc-doc",
     "forc-plugins/forc-fmt",
     "forc-plugins/forc-lsp",
@@ -33,21 +34,22 @@ exclude = [
 
 [workspace.dependencies]
 # Dependencies from the `fuel-core` repository:
-fuel-core-client = { version = "0.20.3", default-features = false }
+fuel-core-client = { version = "0.21.0", default-features = false }
+fuel-core-types = { version = "0.21.0", default-features = false }
 
 # Dependencies from the `fuel-vm` repository:
-fuel-asm = "0.35.3"
-fuel-crypto = "0.35.3"
-fuel-types = "0.35.3"
-fuel-tx = "0.35.3"
-fuel-vm = "0.35.3"
+fuel-asm = "0.43.1"
+fuel-crypto = "0.43.1"
+fuel-types = "0.43.1"
+fuel-tx = "0.43.1"
+fuel-vm = "0.43.1"
 
 # Dependencies from the `fuels-rs` repository:
-fuels-core = "0.45"
-fuels-accounts = "0.45"
+fuels-core = "0.53.0"
+fuels-accounts = "0.53.0"
 
 # Dependencies from the `forc-wallet` repository:
-forc-wallet = "0.2.5"
+forc-wallet = "0.4.0"
 
 [workspace.package]
 edition = "2021"

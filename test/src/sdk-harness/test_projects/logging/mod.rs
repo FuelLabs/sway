@@ -1,5 +1,4 @@
 use fuels::prelude::*;
-use hex;
 
 #[tokio::test]
 async fn run_valid() -> Result<()> {

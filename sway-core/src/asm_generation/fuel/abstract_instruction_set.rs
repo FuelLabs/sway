@@ -15,6 +15,8 @@ use std::{collections::HashSet, fmt};
 
 use either::Either;
 
+use super::data_section::DataSection;
+
 /// An [AbstractInstructionSet] is a set of instructions that use entirely virtual registers
 /// and excessive moves, with the intention of later optimizing it.
 #[derive(Clone)]
@@ -23,8 +25,10 @@ pub struct AbstractInstructionSet {
 }
 
 impl AbstractInstructionSet {
-    pub(crate) fn optimize(self) -> AbstractInstructionSet {
-        self.remove_sequential_jumps()
+    pub(crate) fn optimize(self, data_section: &DataSection) -> AbstractInstructionSet {
+        self.const_indexing_aggregates_function(data_section)
+            .dce()
+            .remove_sequential_jumps()
             .remove_redundant_moves()
             .remove_unused_ops()
     }

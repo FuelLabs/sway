@@ -1,7 +1,7 @@
 use crate::{
     cmd,
     util::{
-        gas::{get_gas_limit, get_gas_price},
+        gas::get_gas_price,
         node_url::get_node_url,
         pkg::built_pkgs,
         tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
@@ -16,6 +16,7 @@ use fuel_core_client::client::FuelClient;
 use fuel_crypto::fuel_types::ChainId;
 use fuel_tx::{Output, Salt, TransactionBuilder};
 use fuel_vm::prelude::*;
+use fuels_accounts::provider::Provider;
 use futures::FutureExt;
 use pkg::BuiltPackage;
 use serde::{Deserialize, Serialize};
@@ -215,7 +216,14 @@ pub async fn deploy_pkg(
 
     let bytecode = &compiled.bytecode.bytes;
 
-    let mut storage_slots = compiled.storage_slots.clone();
+    let mut storage_slots =
+        if let Some(storage_slot_override_file) = &command.override_storage_slots {
+            let storage_slots_file = std::fs::read_to_string(storage_slot_override_file)?;
+            let storage_slots: Vec<StorageSlot> = serde_json::from_str(&storage_slots_file)?;
+            storage_slots
+        } else {
+            compiled.storage_slots.clone()
+        };
     storage_slots.sort();
 
     let contract = Contract::from(bytecode.clone());
@@ -230,12 +238,11 @@ pub async fn deploy_pkg(
     };
 
     let tx = TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots.clone())
-        .gas_limit(get_gas_limit(&command.gas, client.chain_info().await?))
         .gas_price(get_gas_price(&command.gas, client.node_info().await?))
         .maturity(command.maturity.maturity.into())
         .add_output(Output::contract_created(contract_id, state_root))
         .finalize_signed(
-            client.clone(),
+            Provider::connect(node_url.clone()).await?,
             command.default_signer || command.unsigned,
             command.signing_key,
             wallet_mode,

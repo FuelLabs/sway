@@ -1,6 +1,6 @@
 [package]
 name = "forc-crypto"
-version = "0.47.0"
+version = "0.48.1"
 description = "A `forc` plugin for handling various cryptographic operations and conversions."
 authors.workspace = true
 edition.workspace = true
@@ -8,15 +8,14 @@ homepage.workspace = true
 license.workspace = true
 repository.workspace = true
 
-
 [dependencies]
 anyhow = "1.0.75"
 async-trait = "0.1.58"
 atty = "0.2.14"
 clap = { version = "3", features = ["derive", "env"] }
-forc-tracing = { version = "0.47.0", path = "../../forc-tracing" }
-fuel-core-types = { version = "0.20.5" }
-fuel-crypto = { workspace = true }
+forc-tracing = { version = "0.48.1", path = "../../forc-tracing" }
+fuel-core-types = { workspace = true }
+fuel-crypto = { workspace = true, features = ["random"] }
 fuels-core = { workspace = true }
 futures = "0.3"
 hex = "0.4.3"

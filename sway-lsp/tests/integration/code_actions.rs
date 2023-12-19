@@ -106,13 +106,14 @@ fn create_changes_for_qualify(
     create_changes_map(uri, range, call_path)
 }
 
-fn send_request(server: &ServerState, params: &CodeActionParams) -> Vec<CodeActionOrCommand> {
+async fn send_request(server: &ServerState, params: &CodeActionParams) -> Vec<CodeActionOrCommand> {
     request::handle_code_action(server, params.clone())
+        .await
         .unwrap()
         .unwrap_or_else(|| panic!("Empty response from server for request: {:?}", params))
 }
 
-pub(crate) fn code_action_abi_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_action_abi_request(server: &ServerState, uri: &Url) {
     let params = create_code_action_params(
         uri.clone(),
         Range {
@@ -150,11 +151,11 @@ pub(crate) fn code_action_abi_request(server: &ServerState, uri: &Url) {
         Some(CodeActionKind::REFACTOR),
     )];
 
-    let actual = send_request(server, &params);
+    let actual = send_request(server, &params).await;
     assert_eq!(expected, actual);
 }
 
-pub(crate) fn code_action_function_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_action_function_request(server: &ServerState, uri: &Url) {
     let params = create_code_action_params(
         uri.clone(),
         Range {
@@ -189,11 +190,11 @@ pub(crate) fn code_action_function_request(server: &ServerState, uri: &Url) {
         Some(CodeActionKind::REFACTOR),
     )];
 
-    let actual = send_request(server, &params);
+    let actual = send_request(server, &params).await;
     assert_eq!(expected, actual);
 }
 
-pub(crate) fn code_action_trait_fn_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_action_trait_fn_request(server: &ServerState, uri: &Url) {
     let params = create_code_action_params(
         uri.clone(),
         Range {
@@ -228,11 +229,11 @@ pub(crate) fn code_action_trait_fn_request(server: &ServerState, uri: &Url) {
         Some(CodeActionKind::REFACTOR),
     )];
 
-    let actual = send_request(server, &params);
+    let actual = send_request(server, &params).await;
     assert_eq!(expected, actual);
 }
 
-pub(crate) fn code_action_struct_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_action_struct_request(server: &ServerState, uri: &Url) {
     let params = create_code_action_params(
         uri.clone(),
         Range {
@@ -310,11 +311,11 @@ pub(crate) fn code_action_struct_request(server: &ServerState, uri: &Url) {
         Some(CodeActionKind::REFACTOR),
     ));
 
-    let actual = send_request(server, &params);
+    let actual = send_request(server, &params).await;
     assert_eq!(expected, actual);
 }
 
-pub(crate) fn code_action_struct_type_params_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_action_struct_type_params_request(server: &ServerState, uri: &Url) {
     let params = create_code_action_params(
         uri.clone(),
         Range {
@@ -398,11 +399,11 @@ pub(crate) fn code_action_struct_type_params_request(server: &ServerState, uri: 
         Some(CodeActionKind::REFACTOR),
     ));
 
-    let actual = send_request(server, &params);
+    let actual = send_request(server, &params).await;
     assert_eq!(expected, actual);
 }
 
-pub(crate) fn code_action_struct_existing_impl_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_action_struct_existing_impl_request(server: &ServerState, uri: &Url) {
     let params = create_code_action_params(
         uri.clone(),
         Range {
@@ -482,11 +483,11 @@ pub(crate) fn code_action_struct_existing_impl_request(server: &ServerState, uri
         Some(CodeActionKind::REFACTOR),
     ));
 
-    let actual = send_request(server, &params);
+    let actual = send_request(server, &params).await;
     assert_eq!(expected, actual);
 }
 
-pub(crate) fn code_action_auto_import_struct_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_action_auto_import_struct_request(server: &ServerState, uri: &Url) {
     // EvmAddress: external library
     let range = Range {
         start: Position {
@@ -527,7 +528,7 @@ pub(crate) fn code_action_auto_import_struct_request(server: &ServerState, uri: 
         ),
     ];
 
-    let actual = send_request(server, &params);
+    let actual = send_request(server, &params).await;
     assert_eq!(expected, actual);
 
     // DeepStruct: local library
@@ -570,11 +571,11 @@ pub(crate) fn code_action_auto_import_struct_request(server: &ServerState, uri: 
         ),
     ];
 
-    let actual = send_request(server, &params);
+    let actual = send_request(server, &params).await;
     assert_eq!(expected, actual);
 }
 
-pub(crate) fn code_action_auto_import_enum_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_action_auto_import_enum_request(server: &ServerState, uri: &Url) {
     // TODO: Add a test for an enum variant when https://github.com/FuelLabs/sway/issues/5188 is fixed.
 
     // AuthError: external library
@@ -617,7 +618,7 @@ pub(crate) fn code_action_auto_import_enum_request(server: &ServerState, uri: &U
         ),
     ];
 
-    let actual = send_request(server, &params);
+    let actual = send_request(server, &params).await;
     assert_eq!(expected, actual);
 
     // DeepEnum: local library
@@ -660,11 +661,11 @@ pub(crate) fn code_action_auto_import_enum_request(server: &ServerState, uri: &U
         ),
     ];
 
-    let actual = send_request(server, &params);
+    let actual = send_request(server, &params).await;
     assert_eq!(expected, actual);
 }
 
-pub(crate) fn code_action_auto_import_function_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_action_auto_import_function_request(server: &ServerState, uri: &Url) {
     // TODO: external library, test with `overflow``
     // Tracking issue: https://github.com/FuelLabs/sway/issues/5191
 
@@ -708,11 +709,11 @@ pub(crate) fn code_action_auto_import_function_request(server: &ServerState, uri
         ),
     ];
 
-    let actual = send_request(server, &params);
+    let actual = send_request(server, &params).await;
     assert_eq!(expected, actual);
 }
 
-pub(crate) fn code_action_auto_import_constant_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_action_auto_import_constant_request(server: &ServerState, uri: &Url) {
     // TODO: external library, test with ZERO_B256
     // Tracking issue: https://github.com/FuelLabs/sway/issues/5192
 
@@ -756,11 +757,11 @@ pub(crate) fn code_action_auto_import_constant_request(server: &ServerState, uri
         ),
     ];
 
-    let actual = send_request(server, &params);
+    let actual = send_request(server, &params).await;
     assert_eq!(expected, actual);
 }
 
-pub(crate) fn code_action_auto_import_trait_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_action_auto_import_trait_request(server: &ServerState, uri: &Url) {
     // TryFrom: external library
     let range = Range {
         start: Position {
@@ -801,7 +802,7 @@ pub(crate) fn code_action_auto_import_trait_request(server: &ServerState, uri: &
         ),
     ];
 
-    let actual = send_request(server, &params);
+    let actual = send_request(server, &params).await;
     assert_eq!(expected, actual);
 
     // DeepTrait: local library
@@ -844,11 +845,11 @@ pub(crate) fn code_action_auto_import_trait_request(server: &ServerState, uri: &
         ),
     ];
 
-    let actual = send_request(server, &params);
+    let actual = send_request(server, &params).await;
     assert_eq!(expected, actual);
 }
 
-pub(crate) fn code_action_auto_import_alias_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_action_auto_import_alias_request(server: &ServerState, uri: &Url) {
     // TODO: find an example in an external library
     // A: local library with multiple possible imports
     let range = Range {
@@ -905,6 +906,6 @@ pub(crate) fn code_action_auto_import_alias_request(server: &ServerState, uri: &
         ),
     ];
 
-    let actual = send_request(server, &params);
+    let actual = send_request(server, &params).await;
     assert_eq!(expected, actual);
 }

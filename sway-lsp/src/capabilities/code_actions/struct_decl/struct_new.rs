@@ -35,7 +35,7 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
                     ty::ImplTrait { decl_id, .. },
                 ))) = token.typed
                 {
-                    Some(ctx.engines.de().get_impl_trait(&decl_id))
+                    Some((*ctx.engines.de().get_impl_trait(&decl_id)).clone())
                 } else {
                     None
                 }

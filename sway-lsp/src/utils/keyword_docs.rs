@@ -837,8 +837,8 @@ fn extract_lit(tokens: TokenStream) -> String {
     res
 }
 
-#[test]
-fn keywords_in_sync() {
+#[tokio::test]
+async fn keywords_in_sync() {
     let keyword_docs = KeywordDocs::new();
     let lsp_keywords: Vec<_> = keyword_docs.keys().collect();
     let compiler_keywords: Vec<_> = sway_parse::RESERVED_KEYWORDS

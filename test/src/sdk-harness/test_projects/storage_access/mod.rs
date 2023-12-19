@@ -12,7 +12,7 @@ async fn test_storage_access_instance() -> TestStorageAccessContract<WalletUnloc
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 

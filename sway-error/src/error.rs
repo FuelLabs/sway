@@ -28,6 +28,16 @@ impl fmt::Display for InterfaceName {
 // this type.
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CompileError {
+    #[error(
+        "There was an error while evaluating the evaluation order for the module dependency graph."
+    )]
+    ModuleDepGraphEvaluationError {},
+    #[error("A cyclic reference was found between the modules: {}.",
+        modules.iter().map(|ident| ident.as_str().to_string())
+    .collect::<Vec<_>>()
+    .join(", "))]
+    ModuleDepGraphCyclicReference { modules: Vec<BaseIdent> },
+
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
     UnknownVariable { var_name: Ident, span: Span },
     #[error("Identifier \"{name}\" was used as a variable, but it is actually a {what_it_is}.")]
@@ -756,6 +766,8 @@ impl Spanned for CompileError {
     fn span(&self) -> Span {
         use CompileError::*;
         match self {
+            ModuleDepGraphEvaluationError { .. } => Span::dummy(),
+            ModuleDepGraphCyclicReference { .. } => Span::dummy(),
             UnknownVariable { span, .. } => span.clone(),
             NotAVariable { span, .. } => span.clone(),
             Unimplemented(_, span) => span.clone(),
