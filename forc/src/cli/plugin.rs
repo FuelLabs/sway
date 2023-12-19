@@ -14,7 +14,10 @@ use std::{
 ///
 /// E.g. given `foo bar baz` where `foo` is an unrecognized subcommand to `forc`, tries to execute
 /// `forc-foo bar baz`.
-pub(crate) fn execute_external_subcommand(args: Vec<String>) -> Result<process::Output> {
+pub(crate) fn execute_external_subcommand(
+    args: Vec<String>,
+    is_verbose: bool,
+) -> Result<process::Output> {
     let cmd = args.get(0).expect("`args` must not be empty");
     let args = &args[1..];
     let path = find_external_subcommand(cmd);
@@ -22,6 +25,24 @@ pub(crate) fn execute_external_subcommand(args: Vec<String>) -> Result<process::
         Some(command) => command,
         None => bail!("no such subcommand: `{}`", cmd),
     };
+
+    if let Ok(forc_path) = std::env::current_exe() {
+        if is_verbose && command.parent() != forc_path.parent() {
+            let bold_yellow_code = "\x1b[1;33m";
+            let bold_white_code = "\x1b[1;37m";
+            let reset_code = "\x1b[0m";
+            eprintln!(
+                "{}WARNING:{} The {} ({}) plugin is in a different directory than forc ({}){}\n",
+                bold_yellow_code,
+                bold_white_code,
+                cmd,
+                command.display(),
+                forc_path.display(),
+                reset_code,
+            );
+        }
+    }
+
     let output = process::Command::new(command)
         .stdin(process::Stdio::inherit())
         .stdout(process::Stdio::inherit())
