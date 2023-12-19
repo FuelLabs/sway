@@ -13,7 +13,7 @@ use libp2p_identity::{secp256k1, Keypair, PeerId};
 use serde_json::json;
 use std::ops::Deref;
 
-const ABOUT: &str = "Creates a new key for use with fuel-core";
+const ABOUT: &str = "Creates a new key for the use with fuel-core";
 
 forc::cli_examples! {
     [ Creates a new key default for block production => crypto "new-key" ]
