@@ -1,0 +1,26 @@
+category = "fail"
+
+# check: $()error
+# check: return_non_statement/src/main.sw:9:14
+# check: $()let a = [return 0u64];
+# nextln: $()'return' not allowed in this position
+
+# check: $()error
+# check: return_non_statement/src/main.sw:11:14
+# check: $()let a = (return 0u64, return 1u64);
+# nextln: $()'return' not allowed in this position
+
+# check: $()error
+# check: return_non_statement/src/main.sw:13:8
+# check: $()if return 0u64 {
+# nextln: $()'return' not allowed in this position
+
+# check: $()error
+# check: return_non_statement/src/main.sw:17:13
+# check: $()let a = return 0u64;
+# nextln: $()'return' not allowed in this position
+
+# check: $()error
+# check: return_non_statement/src/main.sw:19:19
+# check: $()let _ = match return 0u64 {
+# nextln: $()'return' not allowed in this position
