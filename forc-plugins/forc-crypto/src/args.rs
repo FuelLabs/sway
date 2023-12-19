@@ -17,7 +17,7 @@ forc::cli_examples! {
 #[clap(
     author,
     version,
-    about = "Hashes the argument or file with this hash",
+    about = "Hashes the argument or file with this algorithm",
     after_long_help = help(),
 )]
 pub struct HashArgs {
