@@ -121,6 +121,8 @@ pub enum ConvertParseTreeError {
     InvalidCfgProgramTypeArgValue { span: Span, value: String },
     #[error("Expected a value for the program_type argument")]
     ExpectedCfgProgramTypeArgValue { span: Span },
+    #[error("'return' not allowed in this position")]
+    ReturnNotAllowedInNonStatementPosition { span: Span },
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -185,6 +187,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::ExpectedCfgTargetArgValue { span } => span.clone(),
             ConvertParseTreeError::InvalidCfgProgramTypeArgValue { span, .. } => span.clone(),
             ConvertParseTreeError::ExpectedCfgProgramTypeArgValue { span } => span.clone(),
+            ConvertParseTreeError::ReturnNotAllowedInNonStatementPosition { span } => span.clone(),
         }
     }
 }

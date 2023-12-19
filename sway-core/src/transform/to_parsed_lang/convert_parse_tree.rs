@@ -1950,8 +1950,12 @@ fn expr_to_expression(
                 span,
             }
         }
-        Expr::Return { expr_opt, .. } => {
-            // TODO: if !is_statement { Illegal return }
+        Expr::Return { return_token, expr_opt } => {
+            if !is_statement {
+                let error =
+                    ConvertParseTreeError::ReturnNotAllowedInNonStatementPosition { span: return_token.span() };
+                return Err(handler.emit_err(error.into()));
+            }
             let expression = match expr_opt {
                 Some(expr) => expr_to_expression(context, handler, engines, *expr, false)?,
                 None => Expression {
