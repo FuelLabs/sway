@@ -2597,3 +2597,29 @@ pub fn transfer(self, asset_id: AssetId, amount: u64) {
 "#,
     );
 }
+
+#[test]
+fn long_expr_single_arg() {
+    check(
+        r#"library;
+fn test() {
+    Self::from((
+        self.b * other.c + result_b_d.upper + overflow_of_b_to_a_3 + overflow_of_b_to_a_2 + overflow_of_b_to_a_1 + overflow_of_b_to_a_0,
+        b,
+        c,
+        result_d_d.lower,
+    ))
+}
+    "#,
+        r#"library;
+fn test() {
+    Self::from((
+        self.b * other.c + result_b_d.upper + overflow_of_b_to_a_3 + overflow_of_b_to_a_2 + overflow_of_b_to_a_1 + overflow_of_b_to_a_0,
+        b,
+        c,
+        result_d_d.lower,
+    ))
+}
+"#,
+    );
+}
