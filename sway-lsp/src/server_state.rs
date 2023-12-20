@@ -12,7 +12,7 @@ use dashmap::DashMap;
 use forc_pkg::PackageManifestFile;
 use lsp_types::{Diagnostic, Url};
 use parking_lot::RwLock;
-use std::{path::PathBuf, sync::{Arc, atomic::{AtomicBool, Ordering}}};
+use std::{path::PathBuf, sync::{Arc, atomic::{AtomicBool, Ordering}}, thread::JoinHandle};
 use tower_lsp::{jsonrpc, Client};
 
 /// `ServerState` is the primary mutable state of the language server
@@ -26,6 +26,7 @@ pub struct ServerState {
     pub(crate) mpsc_tx: Sender<Shared>,
     pub(crate) mpsc_rx: Arc<Receiver<Shared>>,
     pub(crate) finished_compilation: Arc<tokio::sync::Notify>,
+    pub(crate) compilation_thread_join_handle: RwLock<Option<JoinHandle<()>>>,
 }
 
 impl Default for ServerState {
@@ -42,9 +43,10 @@ impl Default for ServerState {
             mpsc_tx,
             mpsc_rx: Arc::new(mpsc_rx),
             finished_compilation: Arc::new(tokio::sync::Notify::new()),
+            compilation_thread_join_handle: RwLock::new(None),
         };
 
-        state.spawn_compilation_thread();
+        *state.compilation_thread_join_handle.write() = Some(state.spawn_compilation_thread());
         state
     }
 }
@@ -56,15 +58,24 @@ pub struct Shared {
     pub version: Option<i32>,
 }
 
-fn reset_compilation_state(
+fn update_compilation_state(
     is_compiling: Arc<AtomicBool>, 
     retrigger_compilation: Arc<AtomicBool>,
-    finished_compilation: Arc<tokio::sync::Notify>
+    finished_compilation: Arc<tokio::sync::Notify>,
+    rx: Arc<Receiver<Shared>>,
 ) {
-    is_compiling.store(false, Ordering::Relaxed);
-    retrigger_compilation.store(false, Ordering::Relaxed);
-    eprintln!("THREAD | finished compilation, notifying waiters");
-    finished_compilation.notify_waiters();
+    eprintln!("THREAD | update_compilation_state");
+    retrigger_compilation.store(false, Ordering::SeqCst);
+    eprintln!("THREAD | retrigger_compilation = {:?}", retrigger_compilation.load(Ordering::SeqCst));
+    // Make sure there isn't any pending compilation work
+    if rx.is_empty() {
+        eprintln!("THREAD | no pending compilation work, safe to set is_compiling to false");
+        is_compiling.store(false, Ordering::SeqCst);
+        eprintln!("THREAD | finished compilation, notifying waiters");
+        finished_compilation.notify_waiters();
+    } else {
+        eprintln!("THREAD | there is pending compilation work");
+    }
 }
 
 impl ServerState {
@@ -76,7 +87,7 @@ impl ServerState {
         }
     }
 
-    pub fn spawn_compilation_thread(&self) {
+    pub fn spawn_compilation_thread(&self) -> JoinHandle<()> {
         let is_compiling = self.is_compiling.clone();
         let retrigger_compilation = self.retrigger_compilation.clone();
         let finished_compilation = self.finished_compilation.clone();
@@ -84,6 +95,7 @@ impl ServerState {
         std::thread::spawn(move || {
             while let Ok(shared) = rx.recv() {
                 eprintln!("THREAD | received new compilation request");
+
                 let uri = shared.uri.as_ref().unwrap().clone();
                 let version = shared.version;
                 let session = shared.session.as_ref().unwrap().clone();
@@ -101,23 +113,23 @@ impl ServerState {
                 // }
 
                 eprintln!("THREAD | starting parsing project: version: {:?}", version);
-                match session::parse_project(&uri, &engines_clone, Some(retrigger_compilation.clone())) {
+                match session::parse_project(&uri, version, &engines_clone, Some(retrigger_compilation.clone())) {
                     Ok(parse_result) => {
                         eprintln!("THREAD | engines_write: {:?}", version);
                         *session.engines.write() = engines_clone;
                         eprintln!("THREAD | success, about to write parse results: {:?}", version);
                         session.write_parse_result(parse_result);
-                        reset_compilation_state(is_compiling.clone(), retrigger_compilation.clone(), finished_compilation.clone()); 
+                        update_compilation_state(is_compiling.clone(), retrigger_compilation.clone(), finished_compilation.clone(), rx.clone()); 
                     },
                     Err(err) => {
-                        eprintln!("{:?}", err);
-                        reset_compilation_state(is_compiling.clone(), retrigger_compilation.clone(), finished_compilation.clone());
+                        eprintln!("compilation has returned cancelled {:?}", err);
+                        update_compilation_state(is_compiling.clone(), retrigger_compilation.clone(), finished_compilation.clone(), rx.clone());
                         continue;
                     },
                 }
                 eprintln!("THREAD | finished parsing project: version: {:?}", version);
             }
-        });
+        })
     }
 
     /// Waits asynchronously for the `is_compiling` flag to become false.
@@ -127,8 +139,8 @@ impl ServerState {
     /// this process until `is_compiling` becomes false.
     pub async fn wait_for_parsing(&self) {
         loop {
-            eprintln!("are we still compiling?");
-            if !self.is_compiling.load(Ordering::Relaxed) {
+            eprintln!("are we still compiling? | is_compiling = {:?}", self.is_compiling.load(Ordering::SeqCst));
+            if !self.is_compiling.load(Ordering::SeqCst) {
                 eprintln!("compilation is finished, lets check if there are pending compilation requests");
                 if self.mpsc_rx.is_empty() {
                     eprintln!("no pending compilation work, safe to break");
@@ -146,6 +158,13 @@ impl ServerState {
 
     pub fn shutdown_server(&self) -> jsonrpc::Result<()> {
         tracing::info!("Shutting Down the Sway Language Server");
+
+        // shutdown the compilation thread
+        let mut join_handle_option = self.compilation_thread_join_handle.write();
+        if let Some(join_handle) = std::mem::take(&mut *join_handle_option) {
+            let _ = join_handle.join();
+        }
+
         let _ = self.sessions.iter().map(|item| {
             let session = item.value();
             session.shutdown();
