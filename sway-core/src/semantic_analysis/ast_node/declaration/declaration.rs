@@ -4,7 +4,9 @@ use sway_types::{Ident, Named, Span, Spanned};
 use crate::{
     decl_engine::{DeclEngineGet, DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType},
     language::{
-        parsed::{self, FunctionDeclaration, FunctionParameter, SubfieldExpression},
+        parsed::{
+            self, AstNode, CodeBlock, FunctionDeclaration, FunctionParameter, SubfieldExpression,
+        },
         ty::{self, TyDecl},
         CallPath, QualifiedCallPath,
     },
@@ -290,7 +292,148 @@ fn enum_auto_impl_abi_encode(
             name: Ident::new_no_span("abi_encode".into()),
             visibility: crate::language::Visibility::Public,
             body: parsed::CodeBlock {
-                contents: vec![],
+                contents: vec![
+                    parsed::AstNode {
+                        content: parsed::AstNodeContent::Expression(
+                            parsed::Expression {
+                                kind: parsed::ExpressionKind::Match(
+                                    parsed::MatchExpression {
+                                        value: Box::new(parsed::Expression {
+                                            kind: parsed::ExpressionKind::AmbiguousVariableExpression (
+                                                Ident::new_no_span("self".into())
+                                            ),
+                                            span: Span::dummy()
+                                        }),
+                                        branches: enum_decl.variants.iter()
+                                            .enumerate()
+                                            .map(|(i, x)| {
+                                                let variant_type = ctx.engines().te().get(x.type_argument.type_id);
+                                                parsed::MatchBranch {
+                                                    scrutinee: parsed::Scrutinee::EnumScrutinee {
+                                                        call_path: CallPath {
+                                                            prefixes: vec![
+                                                                Ident::new_no_span("Self".into())
+                                                            ],
+                                                            suffix: Ident::new_no_span(
+                                                                x.name.as_str().into()
+                                                            ),
+                                                            is_absolute: false
+                                                        },
+                                                        value: Box::new(if variant_type.is_unit() {
+                                                            parsed::Scrutinee::CatchAll {
+                                                                span: Span::dummy()
+                                                            }
+                                                        } else {
+                                                            parsed::Scrutinee::Variable {
+                                                                name: Ident::new_no_span("x".into()),
+                                                                span: Span::dummy()
+                                                            }
+                                                        }),
+                                                        span: Span::dummy(),
+                                                    },
+                                                    result: parsed::Expression {
+                                                        kind: parsed::ExpressionKind::CodeBlock(
+                                                            CodeBlock {
+                                                                contents: {
+                                                                    let mut contents = vec![];
+
+                                                                    // discriminant
+                                                                    contents.push(
+                                                                        AstNode {
+                                                                            content: parsed::AstNodeContent::Expression(
+                                                                                parsed::Expression {
+                                                                                    kind: parsed::ExpressionKind::MethodApplication(
+                                                                                        Box::new(parsed::MethodApplicationExpression {
+                                                                                            method_name_binding: TypeBinding {
+                                                                                                inner: parsed::MethodName::FromModule {
+                                                                                                    method_name: Ident::new_no_span("abi_encode".into())
+                                                                                                },
+                                                                                                type_arguments: TypeArgs::Regular(vec![]),
+                                                                                                span: Span::dummy()
+                                                                                            },
+                                                                                            arguments: vec![
+                                                                                                parsed::Expression {
+                                                                                                    kind: parsed::ExpressionKind::Literal(
+                                                                                                        crate::language::Literal::U64(
+                                                                                                            i as u64
+                                                                                                        )
+                                                                                                    ),
+                                                                                                    span: Span::dummy()
+                                                                                                },
+                                                                                                parsed::Expression {
+                                                                                                    kind: parsed::ExpressionKind::AmbiguousVariableExpression(
+                                                                                                        Ident::new_no_span("buffer".into())
+                                                                                                    ),
+                                                                                                    span: Span::dummy()
+                                                                                                }
+                                                                                            ],
+                                                                                            contract_call_params: vec![],
+                                                                                        })
+                                                                                    ),
+                                                                                    span: Span::dummy()
+                                                                                }
+                                                                            ),
+                                                                            span: Span::dummy()
+                                                                    });
+
+                                                                    // variant data
+                                                                    if !variant_type.is_unit() {
+                                                                        contents.push(
+                                                                            AstNode {
+                                                                                content: parsed::AstNodeContent::Expression(
+                                                                                    parsed::Expression {
+                                                                                        kind: parsed::ExpressionKind::MethodApplication(
+                                                                                            Box::new(parsed::MethodApplicationExpression {
+                                                                                                method_name_binding: TypeBinding {
+                                                                                                    inner: parsed::MethodName::FromModule {
+                                                                                                        method_name: Ident::new_no_span("abi_encode".into())
+                                                                                                    },
+                                                                                                    type_arguments: TypeArgs::Regular(vec![]),
+                                                                                                    span: Span::dummy()
+                                                                                                },
+                                                                                                arguments: vec![
+                                                                                                    parsed::Expression {
+                                                                                                        kind: parsed::ExpressionKind::AmbiguousVariableExpression (
+                                                                                                            Ident::new_no_span("x".into())
+                                                                                                        ),
+                                                                                                        span: Span::dummy()
+                                                                                                    },
+                                                                                                    parsed::Expression {
+                                                                                                        kind: parsed::ExpressionKind::AmbiguousVariableExpression(
+                                                                                                            Ident::new_no_span("buffer".into())
+                                                                                                        ),
+                                                                                                        span: Span::dummy()
+                                                                                                    }
+                                                                                                ],
+                                                                                                contract_call_params: vec![],
+                                                                                            })
+                                                                                        ),
+                                                                                        span: Span::dummy()
+                                                                                    }
+                                                                                ),
+                                                                                span: Span::dummy()
+                                                                            }
+                                                                        );
+                                                                    }
+
+                                                                    contents
+                                                                },
+                                                                whole_block_span: Span::dummy()
+                                                            }
+                                                        ),
+                                                        span: Span::dummy()
+                                                    },
+                                                    span: Span::dummy()
+                                                }
+                                            }).collect()
+                                    }
+                                ),
+                                span: Span::dummy()
+                            }
+                        ),
+                        span: Span::dummy()
+                    }
+                ],
                 whole_block_span: Span::dummy(),
             },
             parameters: vec![

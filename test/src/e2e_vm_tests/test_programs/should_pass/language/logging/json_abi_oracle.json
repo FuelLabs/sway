@@ -7,7 +7,7 @@
       "name": "main",
       "output": {
         "name": "",
-        "type": 10,
+        "type": 12,
         "typeArguments": null
       }
     }
@@ -17,7 +17,7 @@
       "logId": 0,
       "loggedType": {
         "name": "",
-        "type": 3,
+        "type": 5,
         "typeArguments": []
       }
     },
@@ -25,171 +25,238 @@
       "logId": 1,
       "loggedType": {
         "name": "",
-        "type": 4,
+        "type": 6,
         "typeArguments": [
           {
             "name": "",
-            "type": 10,
+            "type": 12,
             "typeArguments": null
           }
         ]
+      }
+    },
+    {
+      "logId": 2,
+      "loggedType": {
+        "name": "",
+        "type": 1,
+        "typeArguments": []
+      }
+    },
+    {
+      "logId": 3,
+      "loggedType": {
+        "name": "",
+        "type": 1,
+        "typeArguments": []
+      }
+    },
+    {
+      "logId": 4,
+      "loggedType": {
+        "name": "",
+        "type": 6,
+        "typeArguments": [
+          {
+            "name": "",
+            "type": 12,
+            "typeArguments": null
+          }
+        ]
+      }
+    },
+    {
+      "logId": 5,
+      "loggedType": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
       }
     }
   ],
   "messagesTypes": [],
   "types": [
     {
-      "components": null,
-      "type": "generic T",
+      "components": [],
+      "type": "()",
       "typeId": 0,
       "typeParameters": null
     },
     {
-      "components": null,
-      "type": "raw untyped ptr",
+      "components": [
+        {
+          "name": "A",
+          "type": 6,
+          "typeArguments": [
+            {
+              "name": "",
+              "type": 12,
+              "typeArguments": null
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "type": 0,
+          "typeArguments": null
+        }
+      ],
+      "type": "enum E",
       "typeId": 1,
       "typeParameters": null
     },
     {
       "components": null,
-      "type": "str",
+      "type": "generic T",
       "typeId": 2,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "raw untyped ptr",
+      "typeId": 3,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "str",
+      "typeId": 4,
       "typeParameters": null
     },
     {
       "components": [
         {
           "name": "a",
-          "type": 10,
+          "type": 12,
           "typeArguments": null
         },
         {
           "name": "b",
-          "type": 9,
-          "typeArguments": null
-        },
-        {
-          "name": "c",
-          "type": 7,
-          "typeArguments": null
-        },
-        {
-          "name": "d",
           "type": 11,
           "typeArguments": null
         },
         {
+          "name": "c",
+          "type": 9,
+          "typeArguments": null
+        },
+        {
+          "name": "d",
+          "type": 13,
+          "typeArguments": null
+        },
+        {
           "name": "e",
-          "type": 6,
+          "type": 8,
           "typeArguments": [
             {
               "name": "",
-              "type": 10,
+              "type": 12,
               "typeArguments": null
             }
           ]
         },
         {
           "name": "f",
-          "type": 2,
+          "type": 4,
           "typeArguments": null
         },
         {
           "name": "g",
-          "type": 8,
+          "type": 10,
           "typeArguments": null
         }
       ],
       "type": "struct S",
-      "typeId": 3,
+      "typeId": 5,
       "typeParameters": null
     },
     {
       "components": [
         {
           "name": "ss",
-          "type": 0,
+          "type": 2,
           "typeArguments": null
         }
       ],
       "type": "struct SS",
-      "typeId": 4,
+      "typeId": 6,
       "typeParameters": [
-        0
+        2
       ]
     },
     {
       "components": [
         {
           "name": "ptr",
-          "type": 1,
+          "type": 3,
           "typeArguments": null
         },
         {
           "name": "cap",
-          "type": 10,
+          "type": 12,
           "typeArguments": null
         }
       ],
       "type": "struct std::vec::RawVec",
-      "typeId": 5,
+      "typeId": 7,
       "typeParameters": [
-        0
+        2
       ]
     },
     {
       "components": [
         {
           "name": "buf",
-          "type": 5,
+          "type": 7,
           "typeArguments": [
             {
               "name": "",
-              "type": 0,
+              "type": 2,
               "typeArguments": null
             }
           ]
         },
         {
           "name": "len",
-          "type": 10,
+          "type": 12,
           "typeArguments": null
         }
       ],
       "type": "struct std::vec::Vec",
-      "typeId": 6,
+      "typeId": 8,
       "typeParameters": [
-        0
+        2
       ]
     },
     {
       "components": null,
       "type": "u16",
-      "typeId": 7,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u256",
-      "typeId": 8,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u32",
       "typeId": 9,
       "typeParameters": null
     },
     {
       "components": null,
-      "type": "u64",
+      "type": "u256",
       "typeId": 10,
       "typeParameters": null
     },
     {
       "components": null,
-      "type": "u8",
+      "type": "u32",
       "typeId": 11,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 12,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u8",
+      "typeId": 13,
       "typeParameters": null
     }
   ]

@@ -18,6 +18,15 @@ struct S {
     g: u256
 }
 
+enum E {
+    A: SS<u64>,
+    B: ()
+}
+
+enum F {
+    A: ()
+}
+
 fn main() -> u64 {
     let mut e = Vec::new();
     e.push(1);
@@ -36,6 +45,20 @@ fn main() -> u64 {
     __log(SS{
         ss: 1u64
     });
-    
+
+    __log(E::A(SS{
+        ss: 1u64
+    }));
+    __log(E::B);
+
+    match E::B {
+        E::A(x) => __log(x),
+        E::B(x) => __log(x),
+    }
+
+    match F::A {
+        F::A => {}
+    }
+
     1
 }
