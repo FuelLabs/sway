@@ -2549,7 +2549,7 @@ fn asm_block_v2() {
         while index < number_of_outputs {
             if let Output::Variable = output_type(index) {
                 if output_amount(index) == 0 {
-                    asm(r1: self.value, r2: index, r3: amount, r4: asset_id.value) {
+                    asm(r1: self.value, r2: index, r3: amount, r4: asset_id.value.with_long_long_name) {
                         tro r1 r2 r3 r4;
                     };
                     return;
@@ -2582,7 +2582,7 @@ pub fn transfer(self, asset_id: AssetId, amount: u64) {
                     r1: self.value,
                     r2: index,
                     r3: amount,
-                    r4: asset_id.value,
+                    r4: asset_id.value.with_long_long_name,
                 ) {
                     tro r1 r2 r3 r4;
                 };
@@ -2593,6 +2593,54 @@ pub fn transfer(self, asset_id: AssetId, amount: u64) {
     }
 
     revert(FAILED_TRANSFER_TO_ADDRESS_SIGNAL);
+}
+"#,
+    );
+}
+
+#[test]
+fn long_expr_assign() {
+    check(
+        r#"library;
+
+fn foo() {
+    let x = self.a > other.a || (self.a == other.a && (self.b > other.b || (self.b == other.b && (self.c > other.c || (self.c == other.c && self.d > other.d)))));
+}
+    "#,
+        r#"library;
+
+fn foo() {
+    let x = self.a > other.a
+        || (self.a == other.a
+            && (self.b > other.b
+                || (self.b == other.b
+                    && (self.c > other.c
+                        || (self.c == other.c
+                            && self.d > other.d)))));
+}
+"#,
+    );
+}
+
+#[test]
+fn long_expr_return() {
+    check(
+        r#"library;
+
+fn foo() {
+    self.a > other.a || (self.a == other.a && (self.b > other.b || (self.b == other.b && (self.c > other.c || (self.c == other.c && self.d > other.d)))));
+}
+    "#,
+        r#"library;
+
+fn foo() {
+    self.a > other.a
+        || (self.a == other.a
+            && (self.b > other.b
+                || (self.b == other.b
+                    && (self.c > other.c
+                        || (self.c == other.c
+                            && self.d > other.d)))));
 }
 "#,
     );

@@ -107,9 +107,15 @@ impl Format for Expr {
                 )?;
             }
             Self::Parens(expr) => {
+                if formatter.shape.code_line.expr_new_line {
+                    formatter.indent();
+                }
                 Self::open_parenthesis(formatted_code, formatter)?;
                 expr.get().format(formatted_code, formatter)?;
                 Self::close_parenthesis(formatted_code, formatter)?;
+                if formatter.shape.code_line.expr_new_line {
+                    formatter.unindent();
+                }
             }
             Self::Block(code_block) => {
                 if !code_block.get().statements.is_empty()
@@ -544,46 +550,110 @@ impl Format for Expr {
                 double_ampersand_token,
                 rhs,
             } => {
-                lhs.format(formatted_code, formatter)?;
-                match formatter.shape.code_line.line_style {
-                    LineStyle::Multiline => {
-                        write!(
-                            formatted_code,
-                            "\n{}{} ",
-                            formatter.indent_to_str()?,
-                            double_ampersand_token.span().as_str()
-                        )?;
+                let mut rhs_code = FormattedCode::new();
+                rhs.format(&mut rhs_code, formatter)?;
+
+                if !formatter.shape.code_line.expr_new_line
+                    && rhs_code.len() > formatter.shape.width_heuristics.collection_width
+                {
+                    // Right hand side is too long to fit in a single line, and
+                    // the current expr is not being rendered multiline at the
+                    // expr level, then add an indentation to the following
+                    // expression and generate the code
+                    formatter.with_shape(
+                        formatter
+                            .shape
+                            .with_code_line_from(LineStyle::Multiline, ExprKind::Undetermined),
+                        |formatter| -> Result<(), FormatterError> {
+                            formatter.shape.code_line.update_expr_new_line(true);
+
+                            lhs.format(formatted_code, formatter)?;
+                            formatter.indent();
+                            write!(
+                                formatted_code,
+                                "\n{}{} ",
+                                formatter.indent_to_str()?,
+                                double_ampersand_token.span().as_str()
+                            )?;
+                            rhs.format(formatted_code, formatter)?;
+                            formatter.unindent();
+                            Ok(())
+                        },
+                    )?;
+                } else {
+                    lhs.format(formatted_code, formatter)?;
+                    match formatter.shape.code_line.line_style {
+                        LineStyle::Multiline => {
+                            write!(
+                                formatted_code,
+                                "\n{}{} ",
+                                formatter.indent_to_str()?,
+                                double_ampersand_token.span().as_str()
+                            )?;
+                        }
+                        _ => {
+                            write!(
+                                formatted_code,
+                                " {} ",
+                                double_ampersand_token.span().as_str()
+                            )?;
+                        }
                     }
-                    _ => {
-                        write!(
-                            formatted_code,
-                            " {} ",
-                            double_ampersand_token.span().as_str()
-                        )?;
-                    }
+                    write!(formatted_code, "{}", rhs_code)?;
                 }
-                rhs.format(formatted_code, formatter)?;
             }
             Self::LogicalOr {
                 lhs,
                 double_pipe_token,
                 rhs,
             } => {
-                lhs.format(formatted_code, formatter)?;
-                match formatter.shape.code_line.line_style {
-                    LineStyle::Multiline => {
-                        write!(
-                            formatted_code,
-                            "\n{}{} ",
-                            formatter.indent_to_str()?,
-                            double_pipe_token.span().as_str()
-                        )?;
+                let mut rhs_code = FormattedCode::new();
+                rhs.format(&mut rhs_code, formatter)?;
+
+                if !formatter.shape.code_line.expr_new_line
+                    && rhs_code.len() > formatter.shape.width_heuristics.collection_width
+                {
+                    // Right hand side is too long to fit in a single line, and
+                    // the current expr is not being rendered multiline at the
+                    // expr level, then add an indentation to the following
+                    // expression and generate the code
+                    formatter.with_shape(
+                        formatter
+                            .shape
+                            .with_code_line_from(LineStyle::Multiline, ExprKind::Undetermined),
+                        |formatter| -> Result<(), FormatterError> {
+                            formatter.shape.code_line.update_expr_new_line(true);
+
+                            lhs.format(formatted_code, formatter)?;
+                            formatter.indent();
+                            write!(
+                                formatted_code,
+                                "\n{}{} ",
+                                formatter.indent_to_str()?,
+                                double_pipe_token.span().as_str()
+                            )?;
+                            rhs.format(formatted_code, formatter)?;
+                            formatter.unindent();
+                            Ok(())
+                        },
+                    )?;
+                } else {
+                    lhs.format(formatted_code, formatter)?;
+                    match formatter.shape.code_line.line_style {
+                        LineStyle::Multiline => {
+                            write!(
+                                formatted_code,
+                                "\n{}{} ",
+                                formatter.indent_to_str()?,
+                                double_pipe_token.span().as_str()
+                            )?;
+                        }
+                        _ => {
+                            write!(formatted_code, " {} ", double_pipe_token.span().as_str())?;
+                        }
                     }
-                    _ => {
-                        write!(formatted_code, " {} ", double_pipe_token.span().as_str())?;
-                    }
+                    write!(formatted_code, "{}", rhs_code)?;
                 }
-                rhs.format(formatted_code, formatter)?;
             }
             Self::Reassignment {
                 assignable,
