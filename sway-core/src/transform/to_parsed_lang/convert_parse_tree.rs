@@ -1597,7 +1597,7 @@ fn expr_to_ast_node(
 ) -> Result<AstNode, ErrorEmitted> {
     let span = expr.span();
     let ast_node = {
-        let expression = expr_to_expression(context, handler, engines, expr, is_statement)?;
+        let expression = expr_to_expression(context, handler, engines, expr, true)?;
         if !is_statement {
             AstNode {
                 content: AstNodeContent::ImplicitReturnExpression(expression),
@@ -1857,7 +1857,7 @@ fn expr_to_expression(
     handler: &Handler,
     engines: &Engines,
     expr: Expr,
-    is_statement: bool,
+    allow_return: bool,
 ) -> Result<Expression, ErrorEmitted> {
     let span = expr.span();
     let expression = match expr {
@@ -1900,8 +1900,7 @@ fn expr_to_expression(
             }
         }
         Expr::Parens(parens) => {
-            expr_to_expression(context, handler, engines, *parens.into_inner(), is_statement)?
-            //TODO: if is_statement && *parens.into_inner().is_return { warn("Unnecessary parentheses") }
+            expr_to_expression(context, handler, engines, *parens.into_inner(), false)?
         }
         Expr::Block(braced_code_block_contents) => braced_code_block_contents_to_expression(
             context,
@@ -1951,7 +1950,7 @@ fn expr_to_expression(
             }
         }
         Expr::Return { return_token, expr_opt } => {
-            if !is_statement {
+            if !allow_return {
                 let error =
                     ConvertParseTreeError::ReturnNotAllowedInNonStatementPosition { span: return_token.span() };
                 return Err(handler.emit_err(error.into()));
@@ -3278,7 +3277,7 @@ fn match_branch_to_match_branch(
                 }
             }
             MatchBranchKind::Expr { expr, .. } => {
-                expr_to_expression(context, handler, engines, expr, false)?
+                expr_to_expression(context, handler, engines, expr, true)?
             }
         },
         span,
