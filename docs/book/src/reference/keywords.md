@@ -4,14 +4,16 @@ The following list contains keywords that are reserved for current or
 future use by the Sway language. As such, they cannot be used as
 identifiers. Identifiers are names of functions, variables,
 parameters, modules, constants, attributes, types or
-traits, ect.
+traits, etc.
 
 ## Keywords Currently in Use
 
 The following is a list of keywords currently in use, with their
 functionality described.
 
-- `as` - rename items in `use` statements, eg `use type::a as alias_name`
+
+- `as` - rename items in `use` statements, e.g., `use type::a as alias_name`
+- `as` - rename items in `use` statements, e.g., `use type::a as alias_name`
 - [`abi`](../sway-program-types/smart_contracts.md#the-abi-declaration) - defines a smart contract ABI in a syntactically similar way to traits
 - [`break`](../basics/control_flow.md#break-and-continue) - exit a loop immediately
 - [`const`](../basics/constants.md) - define constant items
@@ -23,7 +25,7 @@ functionality described.
 - [`if`](../basics/control_flow.md#if-expressions) - branch based on the result of a conditional expression
 - `impl` - implement inherent or trait functionality
 - `let` - bind a variable
-- [`match`](../basics/control_flow.md#match-expressions) - exhaustfully match a value to patterns
+- [`match`](../basics/control_flow.md#match-expressions) - exhaustively match a value to patterns
 - `mod` - define a module
 - `mut` - denote mutability in references, or pattern bindings
 - `pub` - denote public visibility of Sway data structures, traits, or modules
@@ -78,7 +80,7 @@ Keywords associated with defining the type of Sway program to compile
 
 ### Attribute Keywords
 
-Keywords associated with defining the funcitonallity of attributes
+Keywords associated with defining the functionality of attributes
 
 - [`allow`](./attributes.md#allow) - overrides checks that would otherwise result in errors or warnings
 - [`doc`](./attributes.md#doc) - specifies documentation
