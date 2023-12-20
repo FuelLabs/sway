@@ -337,9 +337,10 @@ impl PartialEqWithEngines for TypeInfo {
                 .iter()
                 .zip(r.iter())
                 .map(|(l, r)| {
-                    type_engine
-                        .get(l.type_id)
-                        .eq(&type_engine.get(r.type_id), engines)
+                    (l.type_id == r.type_id)
+                        || type_engine
+                            .get(l.type_id)
+                            .eq(&type_engine.get(r.type_id), engines)
                 })
                 .all(|x| x),
             (
@@ -355,9 +356,10 @@ impl PartialEqWithEngines for TypeInfo {
                 l_abi_name == r_abi_name && l_address.as_deref().eq(&r_address.as_deref(), engines)
             }
             (Self::Array(l0, l1), Self::Array(r0, r1)) => {
-                type_engine
-                    .get(l0.type_id)
-                    .eq(&type_engine.get(r0.type_id), engines)
+                ((l0.type_id == r0.type_id)
+                    || type_engine
+                        .get(l0.type_id)
+                        .eq(&type_engine.get(r0.type_id), engines))
                     && l1.val() == r1.val()
             }
             (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
@@ -374,9 +376,10 @@ impl PartialEqWithEngines for TypeInfo {
                 },
             ) => {
                 l_name == r_name
-                    && type_engine
-                        .get(l_ty.type_id)
-                        .eq(&type_engine.get(r_ty.type_id), engines)
+                    && ((l_ty.type_id == r_ty.type_id)
+                        || type_engine
+                            .get(l_ty.type_id)
+                            .eq(&type_engine.get(r_ty.type_id), engines))
             }
             (
                 TypeInfo::TraitType {
@@ -389,13 +392,17 @@ impl PartialEqWithEngines for TypeInfo {
                 },
             ) => {
                 l_name == r_name
-                    && type_engine
-                        .get(*l_trait_type_id)
-                        .eq(&type_engine.get(*r_trait_type_id), engines)
+                    && ((*l_trait_type_id == *r_trait_type_id)
+                        || type_engine
+                            .get(*l_trait_type_id)
+                            .eq(&type_engine.get(*r_trait_type_id), engines))
             }
-            (Self::Ref(l_ty), Self::Ref(r_ty)) => type_engine
-                .get(l_ty.type_id)
-                .eq(&type_engine.get(r_ty.type_id), engines),
+            (Self::Ref(l_ty), Self::Ref(r_ty)) => {
+                (l_ty.type_id == r_ty.type_id)
+                    || type_engine
+                        .get(l_ty.type_id)
+                        .eq(&type_engine.get(r_ty.type_id), engines)
+            }
 
             (l, r) => l.discriminant_value() == r.discriminant_value(),
         }

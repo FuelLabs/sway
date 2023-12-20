@@ -908,7 +908,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Slice(..) => "__slice",
         TypeInfo::Alias { .. } => "alias",
         TypeInfo::TraitType { .. } => "trait type",
-        TypeInfo::Ref(..) => "ref",
+        TypeInfo::Ref(..) => "reference type",
     }
     .to_string()
 }
