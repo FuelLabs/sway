@@ -1,4 +1,4 @@
-# forc-client
+# `forc-client`
 
 Forc plugin for interacting with a Fuel node.
 
@@ -18,7 +18,7 @@ By default `fuel-core` runs without UTXO validation, this allows you to send inv
 
 If you want to run `fuel-core` with UTXO validation, you can pass `--utxo-validation` to `fuel-core run`.
 
-To install `forc-wallet` please refer to `forc-wallet`'s [github repo](https://github.com/FuelLabs/forc-wallet#forc-wallet).
+To install `forc-wallet` please refer to `forc-wallet`'s [GitHub repo](https://github.com/FuelLabs/forc-wallet#forc-wallet).
 
 1. Construct the transaction by using either `forc deploy` or `forc run`. To do so simply run `forc deploy` or `forc run` with your desired parameters. For a list of parameters please refer to the [forc-deploy](./forc_deploy.md) or [forc-run](./forc_run.md) section of the book. Once you run either command you will be asked the address of the wallet you are going to be signing with. After the address is given the transaction will be generated and you will be given a transaction ID. At this point CLI will actively wait for you to insert the signature.
 2. Take the transaction ID generated in the first step and sign it with `forc wallet sign --account <account_index> tx-id <transaction_id>`. This will generate a signature.
@@ -62,7 +62,7 @@ To interact with the latest testnet, use the `--testnet` flag. When this flag is
 forc-deploy --testnet
 ```
 
-It is also possible to pass the exact node url while using `forc-deploy` or `forc-run` which can be done using `--node-url` flag.
+It is also possible to pass the exact node URL while using `forc-deploy` or `forc-run` which can be done using `--node-url` flag.
 
 ```sh
 forc-deploy --node-url https://beta-3.fuel.network

@@ -9,11 +9,10 @@ and our Rust code we can add integration testing.
 To add Rust integration testing to a Forc project we can use [the `sway-test-rs`
 cargo generate
 template](https://github.com/FuelLabs/sway/tree/master/templates/sway-test-rs).
-This template makes it easy for Sway devs to add the boilerplate required when
+This template makes it easier for Sway developers to add the boilerplate required when
 setting up their Rust integration testing.
 
-Let's add a Rust integration test to [the fresh project we created in the
-introduction](../introduction/forc_project.md).
+Let's add a Rust integration test to [the fresh project we created in the introduction](../introduction/forc_project.md).
 
 ### 1. Enter the project
 
@@ -36,8 +35,8 @@ template. Let's make sure we have the `cargo generate` command installed!
 cargo install cargo-generate
 ```
 
-> _**Note**: You can learn more about cargo generate by visiting [its
-> repository](https://github.com/cargo-generate/cargo-generate)._
+> _**Note**: You can learn more about cargo generate by visiting the
+> [cargo-generate repository](https://github.com/cargo-generate/cargo-generate)._
 
 ### 3. Generate the test harness
 
@@ -88,8 +87,7 @@ We have two new files!
 ### 4. Build the forc project
 
 Before running the tests, we need to build our contract so that the necessary
-ABI, storage and bytecode artifacts are available. We can do so with `forc
-build`:
+ABI, storage and bytecode artifacts are available. We can do so with `forc build`:
 
 ```console
 $ forc build
@@ -175,7 +173,7 @@ following:
 ```rust,ignore
 use fuels::{prelude::*, types::ContractId};
 
-// Load abi from json
+// Load ABI from JSON
 abigen!(TestContract, "out/debug/my-fuel-project-abi.json");
 
 async fn get_contract_instance() -> (TestContract, ContractId) {
