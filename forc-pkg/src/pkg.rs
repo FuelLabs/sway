@@ -2641,6 +2641,14 @@ pub fn check(
             retrigger_compilation.clone(),
         );
 
+        if retrigger_compilation
+            .as_ref()
+            .map(|b| b.load(std::sync::atomic::Ordering::SeqCst))
+            .unwrap_or(false)
+        {
+            bail!("compilation was retriggered")
+        }
+
         let programs = match programs_res.as_ref() {
             Ok(programs) => programs,
             _ => {
