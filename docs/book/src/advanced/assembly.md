@@ -1,10 +1,10 @@
 # Inline Assembly in Sway
 
-While many users will never have to touch assembly language while writing sway code, it is a powerful tool that enables many advanced use-cases (ie: optimizations, building libraries, etc).
+While many users will never have to touch assembly language while writing sway code, it is a powerful tool that enables many advanced use-cases (e.g., optimizations, building libraries, etc).
 
 ## ASM Block
 
-In Sway, the way we use assembly inline is to declare an asm block like this:
+In Sway, the way we use assembly inline is to declare an `asm` block like this:
 
 ```sway
 asm() {...}

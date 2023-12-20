@@ -19,7 +19,7 @@ In order to instantiate the struct we use _struct instantiation syntax_, which i
 
 There are three ways to instantiate the struct.
 
-- Hardcoding values for the fields
+- Hard coding values for the fields
 - Passing in variables with names different than the struct fields
 - Using a shorthand notation via variables that are the same as the field names
 <!-- new_struct:example:end -->
