@@ -13,45 +13,14 @@ enum TestEnum {
     VariantTwo: (),
 }
 
-impl AbiEncode for TestEnum {
-    fn abi_encode(self, ref mut buffer: Buffer) {
-        match self {
-            TestEnum::VariantOne => {}
-            TestEnum::VariantTwo => {}
-        }
-    }
-}
-
 struct StructWithGeneric<D> {
     field_1: D,
     field_2: u64,
 }
 
-//impl<D> AbiEncode for StructWithGeneric<D>
-//where
-//    D: AbiEncode
-//{
-//    fn abi_encode(self, ref mut buffer: Buffer) {
-//        self.field_1.abi_encode(buffer);
-//        self.field_2.abi_encode(buffer);
-//    }
-//}
-
 enum EnumWithGeneric<D> {
     VariantOne: D,
     VariantTwo: (),
-}
-
-impl<D> AbiEncode for EnumWithGeneric<D>
-where
-    D: AbiEncode
-{
-    fn abi_encode(self, ref mut buffer: Buffer) {
-        match self {
-            EnumWithGeneric::VariantOne(x) => x.abi_encode(buffer),
-            EnumWithGeneric::VariantTwo => {}
-        }
-    }
 }
 
 struct StructWithNestedGeneric<D> {
@@ -59,29 +28,9 @@ struct StructWithNestedGeneric<D> {
     field_2: u64,
 }
 
-impl<D> AbiEncode for StructWithNestedGeneric<D>
-where
-    D: AbiEncode
-{
-    fn abi_encode(self, ref mut buffer: Buffer) {
-        self.field_1.abi_encode(buffer);
-        self.field_2.abi_encode(buffer);
-    }
-}
-
 struct StructDeeplyNestedGeneric<D> {
     field_1: D,
     field_2: u64,
-}
-
-impl<D> AbiEncode for StructDeeplyNestedGeneric<D>
-where
-    D: AbiEncode
-{
-    fn abi_encode(self, ref mut buffer: Buffer) {
-        self.field_1.abi_encode(buffer);
-        self.field_2.abi_encode(buffer);
-    }
 }
 
 abi TestContract {
