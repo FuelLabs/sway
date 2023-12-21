@@ -106,7 +106,7 @@ pub async fn run_cli() -> ForcResult<()> {
         Forc::ContractId(command) => contract_id::exec(command),
         Forc::PredicateRoot(command) => predicate_root::exec(command),
         Forc::Plugin(args) => {
-            let output = plugin::execute_external_subcommand(args, opt.verbose > 0)?;
+            let output = plugin::execute_external_subcommand(args, opt.silent)?;
             let code = output
                 .status
                 .code()

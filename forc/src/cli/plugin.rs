@@ -1,6 +1,7 @@
 //! Items related to plugin support for `forc`.
 
 use anyhow::{bail, Result};
+use forc_tracing::println_warning;
 use std::{
     env, fs,
     path::{Path, PathBuf},
@@ -16,7 +17,7 @@ use std::{
 /// `forc-foo bar baz`.
 pub(crate) fn execute_external_subcommand(
     args: Vec<String>,
-    is_verbose: bool,
+    silent: bool,
 ) -> Result<process::Output> {
     let cmd = args.get(0).expect("`args` must not be empty");
     let args = &args[1..];
@@ -27,19 +28,13 @@ pub(crate) fn execute_external_subcommand(
     };
 
     if let Ok(forc_path) = std::env::current_exe() {
-        if is_verbose && command.parent() != forc_path.parent() {
-            let bold_yellow_code = "\x1b[1;33m";
-            let bold_white_code = "\x1b[1;37m";
-            let reset_code = "\x1b[0m";
-            eprintln!(
-                "{}WARNING:{} The {} ({}) plugin is in a different directory than forc ({}){}\n",
-                bold_yellow_code,
-                bold_white_code,
+        if !silent && command.parent() != forc_path.parent() {
+            println_warning(&format!(
+                "The {} ({}) plugin is in a different directory than forc ({})\n",
                 cmd,
                 command.display(),
                 forc_path.display(),
-                reset_code,
-            );
+            ));
         }
     }
 
