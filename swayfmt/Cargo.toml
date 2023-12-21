@@ -24,6 +24,7 @@ thiserror = "1.0.30"
 toml = { version = "0.7", features = ["parse"] }
 
 [dev-dependencies]
+difference = "2.0.0"
 paste = "1.0"
 prettydiff = "0.6"
 test-macros = { path = "test_macros" }
