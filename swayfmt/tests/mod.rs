@@ -1427,7 +1427,7 @@ fn foo() {
         r#"library;
 
 fn foo() {
-    asm( r1: self, r2: other, r3, r4 ) {
+    asm(r1: self, r2: other, r3, r4) {
         addi r3 zero i32;
         meq r4 r1 r2 r3;
         r4: bool
@@ -2494,7 +2494,7 @@ pub fn realloc<T>(ptr: raw_ptr, count: u64, new_count: u64) -> raw_ptr {
 
 /// Allocates zeroed memory on the heap in individual bytes.
 pub fn alloc_bytes(count: u64) -> raw_ptr {
-    asm( size: count, ptr ) {
+    asm(size: count, ptr) {
         aloc size;
         move ptr hp;
         ptr: raw_ptr
@@ -2567,7 +2567,7 @@ pub fn transfer(self, asset_id: AssetId, amount: u64) {
     // maintain a manual index as we only have `while` loops in sway atm:
     let mut index = 0;
 
-    asm( input: input ) {
+    asm(input: input) {
         input: u256
     }
 

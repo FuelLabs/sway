@@ -64,7 +64,7 @@ fn format_asm_block(
             formatter
                 .shape
                 .code_line
-                .update_line_style(LineStyle::Inline);
+                .update_line_style(LineStyle::Normal);
 
             let mut inline_arguments = FormattedCode::new();
             asm_block
