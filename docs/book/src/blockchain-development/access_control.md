@@ -27,7 +27,7 @@ The `msg_sender` function works as follows:
 
 ## Contract Ownership
 
-Many contracts require some form of ownership for access control. The [SRC-5 Ownership Standard](https://github.com/FuelLabs/sway-standards/tree/master/standards/src_5) has been defined to provide a interoperable interface for ownership within contracts.
+Many contracts require some form of ownership for access control. The [SRC-5 Ownership Standard](https://github.com/FuelLabs/sway-standards/tree/master/standards/src5-ownership) has been defined to provide a interoperable interface for ownership within contracts.
 
 To accomplish this, use the [Ownership Library](https://github.com/FuelLabs/sway-libs/tree/master/libs/ownership) to keep track of the owner. This allows setting and revoking ownership using the variants `Some(..)` and `None` respectively. This is better, safer, and more readable than using the `Identity` type directly where revoking ownership has to be done using some magic value such as `std::constants::ZERO_B256` or otherwise.
 
