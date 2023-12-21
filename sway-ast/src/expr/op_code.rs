@@ -321,6 +321,7 @@ define_op_codes!(
     (K256, K256Opcode, "k256", (addr: reg, data: reg, size: reg)),
     (S256, S256Opcode, "s256", (addr: reg, data: reg, size: reg)),
     /* Other Instructions */
+    (Ecal, EcalOpcode, "ecal", (reg_a: reg, reg_b: reg, reg_c: reg, reg_d:reg)),
     (Flag, FlagOpcode, "flag", (value: reg)),
     (Gm, GmOpcode, "gm", (ret: reg, op: imm)),
     (

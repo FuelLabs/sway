@@ -110,6 +110,7 @@ define_op_codes!(
     (K256, K256Opcode, "k256", (addr, data, size)),
     (S256, S256Opcode, "s256", (addr, data, size)),
     /* Other Instructions */
+    (Ecal, EcalOpcode, "ecal", (reg_a, reg_b, reg_c, reg_d)),
     (Flag, FlagOpcode, "flag", (value)),
     (Gm, GmOpcode, "gm", (ret, op)),
     (Gtf, GtfOpcode, "gtf", (ret, index, tx_field_id)),
