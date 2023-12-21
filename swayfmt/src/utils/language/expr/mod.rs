@@ -609,9 +609,9 @@ impl Format for Expr {
                 rhs,
             } => {
                 two_parts_expr(
-                    &**lhs,
+                    lhs,
                     double_ampersand_token.span().as_str(),
-                    &**rhs,
+                    rhs,
                     formatted_code,
                     formatter,
                 )?;
@@ -622,9 +622,9 @@ impl Format for Expr {
                 rhs,
             } => {
                 two_parts_expr(
-                    &**lhs,
+                    lhs,
                     double_pipe_token.span().as_str(),
-                    &**rhs,
+                    rhs,
                     formatted_code,
                     formatter,
                 )?;
