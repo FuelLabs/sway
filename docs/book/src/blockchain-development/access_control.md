@@ -2,18 +2,14 @@
 
 <!-- This section should explain access control in Sway -->
 <!-- access_control:example:start -->
-
 Smart contracts require the ability to restrict access to and identify certain users or contracts. Unlike account-based blockchains, transactions in UTXO-based blockchains (i.e. Fuel) do not necessarily have a unique transaction sender. Additional logic is needed to handle this difference, and is provided by the standard library.
-
 <!-- access_control:example:end -->
 
 ## `msg_sender`
 
 <!-- This section should explain what the `msg_sender` method is -->
 <!-- msg_sender:example:start -->
-
 To deliver an experience akin to the EVM's access control, the `std` library provides a `msg_sender` function, which identifies a unique caller based upon the call and/or transaction input data.
-
 <!-- msg_sender:example:end -->
 
 ```sway
@@ -22,7 +18,6 @@ To deliver an experience akin to the EVM's access control, the `std` library pro
 
 <!-- This section should explain how the `msg_sender` method works -->
 <!-- msg_sender_details:example:start -->
-
 The `msg_sender` function works as follows:
 
 - If the caller is a contract, then `Ok(Sender)` is returned with the `ContractId` sender variant.
