@@ -52,7 +52,7 @@ computation gets reverted automatically by FuelVM.
 additional overflow/underflow checks inserted, which generally results in
 somewhat higher gas consumption.
 
-The same does not happen with 256-bit operations, including `b256`, which uses specialized operations and are as performant as possible.
+The same does not happen with 256-bit operations, including `b256`, which uses specialized operations and are as efficient as possible.
 <!-- default_num:example:end -->
 
 ## Boolean Type
@@ -82,7 +82,7 @@ In Sway, string literals are stored as variable length string slices. Which mean
 let my_string: str = "fuel";
 ```
 
-String slices, because they contain pointers have limited usage. They cannot be used is constants, storages, configurables, nor as main function argument or returns.
+String slices, because they contain pointers, have limited usage. They cannot be used in constants, storage, configurable constants, nor as main function arguments or returns.
 
 For these cases one must use string arrays, as described below.
 
@@ -174,7 +174,7 @@ let x = [1, 2, 3, 4, 5];
 <!-- array_details:example:start -->
 Arrays are allocated on the stack since their size is known. An array's size is _always_ static, i.e. it cannot change. An array of five elements cannot become an array of six elements.
 
-Arrays can be iterated over, unlike tuples. An array's type is written as the type the array contains followed by the number of elements, semicolon-separated and within square brackets, e.g. `[u64; 5]`. To access an element in an array, use the _array indexing syntax_, i.e. square brackets.
+Arrays can be iterated over, unlike tuples. An array's type is written as the type the array contains followed by the number of elements, semicolon-separated and within square brackets, e.g., `[u64; 5]`. To access an element in an array, use the _array indexing syntax_, i.e. square brackets.
 <!-- array_details:example:end -->
 
 Array elements can also be mutated if the underlying array is declared as mutable:

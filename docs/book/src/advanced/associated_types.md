@@ -61,7 +61,7 @@ In this example, `get_value` is a trait method that returns an associated type `
 ## Use Cases
 
 Associated types are particularly useful in scenarios where you want to define traits that work with different
-types of data structures or abstractions, allowing the implementor to specify the concrete types. Some common use cases include:
+types of data structures or abstractions, allowing the implementer to specify the concrete types. Some common use cases include:
 
 - Collections: Traits for generic collections that allow users to specify the type of elements.
 - Iterator Patterns: Traits for implementing iterators with varying element types.

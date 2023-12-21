@@ -1,0 +1,28 @@
+matrix:
+  - name: SPCheck
+    aspell:
+      lang: en
+    dictionary:
+      encoding: utf-8
+      wordlists:
+        - docs/book/spell-check-custom-words.txt
+    pipeline:
+      - pyspelling.filters.context:
+          context_visible_first: true
+          escapes: \\[\\`~]
+          delimiters:
+          # Ignore all code blocks
+          - open: '(?s)^(?P<open> *`{3,}\s*(\w+\s*,?\s*)+.*?)$'
+            close: '^( *`{3,})$'
+      - pyspelling.filters.markdown:
+          markdown_extensions:
+            - pymdownx.superfences:
+      - pyspelling.filters.html:
+          comments: false
+          ignores:
+            - code
+            - pre
+    sources:
+      - '**/book/src/*.md'
+      - '**/book/src/**/*.md'
+    default_encoding: utf-8

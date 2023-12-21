@@ -1,4 +1,4 @@
-## An example project
+# An example project
 
 First, we need a project to debug, so create a new project using
 
@@ -27,7 +27,6 @@ fn main() {
     log::<u64>(factorial(5)); // 120
 }
 ```
-
 
 ## Building and bytecode output
 
@@ -74,7 +73,7 @@ We can recognize the `while` loop by the conditional jumps `JNZI`. The condition
 ## Setting up the debugging
 
 We can start up the debug infrastructure. On a new terminal session run `fuel-core run --db-type in-memory --debug`; we need to have that running because it actually executes the program. Now we can fire up the debugger itself: `forc-debug`. Now
-if everything is set up correctly, you shoould see the debugger prompt (`>> `). You can use `help` command to list available commands.
+if everything is set up correctly, you shoould see the debugger prompt (`>>`). You can use `help` command to list available commands.
 
 Now we would like to inspect the program while it's running. To do this, we first need to send the script to the executor, i.e. `fuel-core`. To do so, we need a *transaction specification*, `tx.json`. It looks something like this:
 
@@ -158,7 +157,7 @@ Stopped on breakpoint at address 0 of contract 0x0000000000000000000000000000000
 
 Now we have stopped execution at the breakpoint on entry (address `0`). We can now inspect the initial state of the VM.
 
-```
+```text
 >> register ggas
 
 reg[0x9] = 1000000  # ggas
@@ -170,7 +169,7 @@ reg[0x9] = 1000000  # ggas
 
 However, that's not too interesting either, so let's just execute until the end, and then reset the vm to remove the breakpoints.
 
-```
+```text
 >> continue
 
 Receipt: Log { id: 0000000000000000000000000000000000000000000000000000000000000000, ra: 120, rb: 0, rc: 0, rd: 0, pc: 10380, is: 10336 }
@@ -183,14 +182,14 @@ Terminated
 
 Next, we will setup a breakpoint to check the state on each iteration of the `while` loop. For instance, if we'd like to see what numbers get multiplied together, we could set up a breakpoint before the operation. The bytecode has only a single `MUL` instruction:
 
-```
+```text
   half-word   byte   op                                    raw           notes
          14   56     MUL { ra: 18, rb: 18, rc: 17 }        1b 49 24 40
 ```
 
 We can set a breakpoint on its address, at halfword-offset `14`.
 
-```
+```text
 >>> breakpoint 14
 
 >> start_tx tx.json
@@ -202,7 +201,7 @@ Stopped on breakpoint at address 56 of contract 0x000000000000000000000000000000
 
 Now we can inspect the inputs tu multiply. Looking at [the specification](https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/instruction-set.md#mul-multiply) tells us that the instruction `MUL { ra: 18, rb: 18, rc: 17 }` means `reg[18] = reg[18] * reg[17]`. So inpecting the inputs tells us that
 
-```
+```text
 >> r 18 17
 
 reg[0x12] = 1        # reg18
@@ -211,7 +210,7 @@ reg[0x11] = 1        # reg17
 
 So on the first round the numbers are `1` and `1`, so we can continue to the next iteration:
 
-```
+```text
 >> c
 
 Stopped on breakpoint at address 56 of contract 0x0000000000000000000000000000000000000000000000000000000000000000
@@ -225,7 +224,7 @@ reg[0x11] = 2        # reg17
 
 And the next one:
 
-```
+```text
 >> c
 
 Stopped on breakpoint at address 56 of contract 0x0000000000000000000000000000000000000000000000000000000000000000
@@ -238,7 +237,7 @@ reg[0x11] = 3        # reg17
 
 And fourth one:
 
-```
+```text
 >> c
 
 Stopped on breakpoint at address 56 of contract 0x0000000000000000000000000000000000000000000000000000000000000000
@@ -252,7 +251,7 @@ reg[0x11] = 4        # reg17
 
 And round 5:
 
-```
+```text
 >> c
 
 Stopped on breakpoint at address 56 of contract 0x0000000000000000000000000000000000000000000000000000000000000000
@@ -276,7 +275,7 @@ At this point we can look at the values
 
 From this we can clearly see that the left side, register `17` is the `counter` variable, and register `18` is `result`. Now the counter equals the given factorial function argument `5`, and the loop terminates. So when we continue, the program finishes without encountering any more breakpoints:
 
-```
+```text
 >> c
 
 Receipt: Log { id: 0000000000000000000000000000000000000000000000000000000000000000, ra: 120, rb: 0, rc: 0, rd: 0, pc: 10380, is: 10336 }
