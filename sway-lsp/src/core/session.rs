@@ -75,9 +75,6 @@ pub struct Session {
     pub compiled_program: RwLock<CompiledProgram>,
     pub engines: RwLock<Engines>,
     pub sync: SyncWorkspace,
-    // Limit the number of threads that can wait to parse at the same time. One thread can be parsing
-    // and one thread can be waiting to start parsing. All others will return the cached diagnostics.
-    pub parse_permits: Arc<Semaphore>,
     // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
     pub diagnostics: Arc<RwLock<DiagnosticMap>>,
     pub metrics: DashMap<SourceId, PerformanceData>,
@@ -99,7 +96,6 @@ impl Session {
             compiled_program: RwLock::new(Default::default()),
             engines: <_>::default(),
             sync: SyncWorkspace::new(),
-            parse_permits: Arc::new(Semaphore::new(2)),
             diagnostics: Arc::new(RwLock::new(DiagnosticMap::new())),
         }
     }

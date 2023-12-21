@@ -29,7 +29,6 @@ pub struct ServerState {
     pub(crate) mpsc_tx: Sender<ThreadMessage>,
     pub(crate) mpsc_rx: Arc<Receiver<ThreadMessage>>,
     pub(crate) finished_compilation: Arc<tokio::sync::Notify>,
-
     pub(crate) last_compilation_state: Arc<RwLock<LastCompilationState>>,
 }
 
@@ -262,51 +261,6 @@ impl ServerState {
         diagnostics_to_publish
     }
 }
-
-
-
-// /// Runs parse_project in a blocking thread, because parsing is not async.
-// async fn run_blocking_parse_project(
-//     uri: Url,
-//     version: Option<i32>,
-//     session: Arc<Session>,
-//     retrigger_compilation: Option<Arc<AtomicBool>>,
-// ) -> Result<(), LanguageServerError> {
-//     // Acquire a permit to parse the project. If there are none available, return false. This way,
-//     // we avoid publishing the same diagnostics multiple times.
-//     if session.parse_permits.try_acquire().is_err() {
-//         return Err(LanguageServerError::UnableToAcquirePermit);
-//     }
-//     tokio::task::spawn_blocking(move || {
-//         // Lock the diagnostics result to prevent multiple threads from parsing the project at the same time.
-//         let _ = session.diagnostics.write();
-
-//         if let Some(version) = version {
-//             // Garbage collection is fairly expsensive so we only clear on every 10th keystroke.
-//             if version % 10 == 0 {
-//                 if let Err(err) = session.garbage_collect() {
-//                     tracing::error!("Unable to perform garbage collection: {}", err.to_string());
-//                 }
-//             }
-//         }
-//         let now = std::time::Instant::now();
-//         let engines_clone = session.engines.read().clone();
-//         eprintln!("parse_project: engines_clone: {:?}", now.elapsed());
-
-//         let now = std::time::Instant::now();
-//         let parse_result = session::parse_project(&uri, &engines_clone, retrigger_compilation)?;
-//         eprintln!("compilation_took: {:?}", now.elapsed());
-
-//         let now = std::time::Instant::now();
-//         *session.engines.write() = engines_clone;
-//         eprintln!("parse_project: engines_write: {:?}", now.elapsed());
-
-//         session.write_parse_result(parse_result);
-//         Ok(())
-//     })
-//     .await
-//     .unwrap_or_else(|_| Err(LanguageServerError::FailedToParse))
-// }
 
 /// `Sessions` is a collection of [Session]s, each of which represents a project
 /// that has been opened in the users workspace.
