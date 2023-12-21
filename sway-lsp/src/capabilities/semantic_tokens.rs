@@ -4,7 +4,7 @@ use crate::core::{
 };
 use lsp_types::{
     Range, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
-    SemanticTokensResult, Url,
+    SemanticTokensResult, Url, SemanticTokensRangeResult,
 };
 use std::sync::{
     atomic::{AtomicU32, Ordering},
@@ -16,6 +16,23 @@ pub fn semantic_tokens_full(session: Arc<Session>, url: &Url) -> Option<Semantic
     // The tokens need sorting by their span so each token is sequential
     // If this step isn't done, then the bit offsets used for the lsp_types::SemanticToken are incorrect.
     let mut tokens_sorted: Vec<_> = session.token_map().tokens_for_file(url).collect();
+    tokens_sorted.sort_by(|(a_span, _), (b_span, _)| {
+        let a = (a_span.range.start, a_span.range.end);
+        let b = (b_span.range.start, b_span.range.end);
+        a.cmp(&b)
+    });
+    Some(semantic_tokens(&tokens_sorted).into())
+}
+
+pub fn semantic_tokens_range(session: Arc<Session>, url: &Url, range: &Range) -> Option<SemanticTokensRangeResult> {
+    eprintln!("semantic_tokens_range: range: {:#?}", range);
+    let mut tokens_sorted: Vec<_> = session.token_map().tokens_for_file(url)
+    .filter(|t| {
+        // make sure the tokenident range is within the range that was passed in
+        let token_range = t.0.range;
+        token_range.start >= range.start && token_range.end <= range.end
+    }).collect();
+    eprintln!("Number of tokens in range: {}", tokens_sorted.len());
     tokens_sorted.sort_by(|(a_span, _), (b_span, _)| {
         let a = (a_span.range.start, a_span.range.end);
         let b = (b_span.range.start, b_span.range.end);

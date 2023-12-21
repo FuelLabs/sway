@@ -15,7 +15,7 @@ use lsp_types::{
     DocumentSymbolResponse, GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams,
     InitializeParams, InitializeResult, InitializedParams, InlayHint, InlayHintParams,
     PrepareRenameResponse, RenameParams, SemanticTokensParams, SemanticTokensResult,
-    TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, WorkspaceEdit,
+    TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, WorkspaceEdit, SemanticTokensRangeParams, SemanticTokensRangeResult,
 };
 use sway_utils::PerformanceData;
 use tower_lsp::{jsonrpc::Result, LanguageServer};
@@ -31,7 +31,7 @@ impl LanguageServer for ServerState {
     }
 
     async fn shutdown(&self) -> Result<()> {
-        self.shutdown_server()
+        self.shutdown_server().await
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
@@ -92,6 +92,13 @@ impl LanguageServer for ServerState {
         params: SemanticTokensParams,
     ) -> Result<Option<SemanticTokensResult>> {
         request::handle_semantic_tokens_full(self, params).await
+    }
+
+    async fn semantic_tokens_range(
+        &self,
+        params: SemanticTokensRangeParams,
+    ) -> Result<Option<SemanticTokensRangeResult>> {
+        request::handle_semantic_tokens_range(self, params).await
     }
 
     async fn document_highlight(

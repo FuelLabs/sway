@@ -8,7 +8,7 @@ use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions, TracingWri
 use lsp_types::{
     CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse,
     InitializeResult, InlayHint, InlayHintParams, PrepareRenameResponse, RenameParams,
-    SemanticTokensParams, SemanticTokensResult, TextDocumentIdentifier, Url, WorkspaceEdit,
+    SemanticTokensParams, SemanticTokensResult, TextDocumentIdentifier, Url, WorkspaceEdit, SemanticTokensRangeResult, SemanticTokensRangeParams,
 };
 use std::{
     fs::File,
@@ -198,6 +198,7 @@ pub async fn handle_document_highlight(
     state: &ServerState,
     params: lsp_types::DocumentHighlightParams,
 ) -> Result<Option<Vec<lsp_types::DocumentHighlight>>> {
+    let _ = state.wait_for_parsing().await;
     match state
         .sessions
         .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
@@ -220,6 +221,7 @@ pub async fn handle_formatting(
     state: &ServerState,
     params: DocumentFormattingParams,
 ) -> Result<Option<Vec<lsp_types::TextEdit>>> {
+    let _ = state.wait_for_parsing().await;
     state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
@@ -267,6 +269,29 @@ pub async fn handle_code_lens(
     {
         Ok((url, session)) => {
             Ok(Some(capabilities::code_lens::code_lens(&session, &url)))
+        }
+        Err(err) => {
+            tracing::error!("{}", err.to_string());
+            Ok(None)
+        }
+    }
+}
+
+pub async fn handle_semantic_tokens_range(
+    state: &ServerState,
+    params: SemanticTokensRangeParams,
+) -> Result<Option<SemanticTokensRangeResult>> {
+    eprintln!("semantic_tokens_range");
+    let _ = state.wait_for_parsing().await;
+    match state
+        .sessions
+        .uri_and_session_from_workspace(&params.text_document.uri)
+        .await
+    {
+        Ok((uri, session)) => {
+            Ok(capabilities::semantic_tokens::semantic_tokens_range(
+                session, &uri, &params.range,
+            ))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());
