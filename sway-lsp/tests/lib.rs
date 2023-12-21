@@ -84,7 +84,7 @@ async fn initialize() {
 async fn did_open() {
     let server = ServerState::default();
     let _ = open(&server, e2e_test_dir().join("src/main.sw")).await;
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
 
 #[tokio::test]
@@ -113,7 +113,7 @@ async fn did_cache_test() {
     shutdown_and_exit(&mut service).await;
 }
 
-// #[tokio::test]
+#[tokio::test]
 #[allow(dead_code)]
 async fn did_change_stress_test() {
     let (mut service, _) = LspService::build(ServerState::new)
@@ -121,8 +121,9 @@ async fn did_change_stress_test() {
         .finish();
     let bench_dir = sway_workspace_dir().join("sway-lsp/tests/fixtures/benchmark");
     
+    let now = std::time::Instant::now();
     let uri = init_and_open(&mut service, bench_dir.join("src/main.sw")).await;
-    let times = 200000;
+    let times = 400;
     for version in 0..times {
         let _ = lsp::did_change_request(&mut service, &uri, version + 1).await;
         if version == 0 {
@@ -131,20 +132,21 @@ async fn did_change_stress_test() {
         let metrics = lsp::metrics_request(&mut service, &uri).await;
         for (path, metrics) in metrics {
             if path.contains("sway-lib-core") || path.contains("sway-lib-std") {
-                eprintln!("metrics.reused_modules: {}", metrics.reused_modules);
                 assert!(metrics.reused_modules >= 1);
             }
         }
 
-        if rand::random::<u8>() < 220 {
-            let random_duration = rand::random::<u8>() as u64 % 80;
-            std::thread::sleep(std::time::Duration::from_millis(random_duration));
-        } else {
-            let random_duration = rand::random::<u64>() % 3000;
-            std::thread::sleep(std::time::Duration::from_millis(random_duration));
-        }
+        // if rand::random::<u8>() < 220 {
+        //     let random_duration = rand::random::<u8>() as u64 % 80;
+        //     std::thread::sleep(std::time::Duration::from_millis(random_duration));
+        // } else {
+        //     let random_duration = rand::random::<u64>() % 3000;
+        //     std::thread::sleep(std::time::Duration::from_millis(random_duration));
+        // }
     }
+    eprintln!("SHUTTING DOWN!...");
     shutdown_and_exit(&mut service).await;
+    eprintln!("did_change_stress_test took: {:?}", now.elapsed());
 }
 
 #[tokio::test]
@@ -173,7 +175,7 @@ async fn show_ast() {
     let server = ServerState::default();
     let uri = open(&server, e2e_test_dir().join("src/main.sw")).await;
     lsp::show_ast_request(&server, &uri, "typed", None).await;
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
 
 #[tokio::test]
@@ -181,7 +183,7 @@ async fn visualize() {
     let server = ServerState::default();
     let uri = open(&server, e2e_test_dir().join("src/main.sw")).await;
     lsp::visualize_request(&server, &uri, "build_plan").await;
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
 
 //------------------- GO TO DEFINITION -------------------//
@@ -200,7 +202,7 @@ async fn go_to_definition() {
         def_path: uri.as_str(),
     };
     lsp::definition_check(&server, &go_to).await;
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
 
 #[tokio::test]
@@ -254,7 +256,7 @@ async fn go_to_definition_for_fields() {
     // Foo
     lsp::definition_check(&server, &opt_go_to).await;
 
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
 
 #[tokio::test]
@@ -302,7 +304,7 @@ async fn go_to_definition_inside_turbofish() {
     lsp::definition_check_with_req_offset(&server, &mut res_go_to, 23, 27).await;
     lsp::definition_check_with_req_offset(&server, &mut res_go_to, 24, 33).await;
 
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
 
 #[tokio::test]
@@ -414,7 +416,7 @@ async fn go_to_definition_for_matches() {
     // ExampleStruct.variable
     lsp::definition_check(&server, &go_to).await;
 
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
 
 #[tokio::test]
@@ -455,7 +457,7 @@ async fn go_to_definition_for_modules() {
     // mod deep_mod;
     lsp::definition_check(&server, &opt_go_to).await;
 
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
 
 #[tokio::test]
@@ -827,7 +829,7 @@ async fn go_to_definition_for_paths() {
     // dfun
     // lsp::definition_check(&server, &go_to).await;
 
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
 
 #[tokio::test]
@@ -856,7 +858,7 @@ async fn go_to_definition_for_traits() {
     trait_go_to.req_char = 20;
     trait_go_to.def_line = 3;
     lsp::definition_check(&server, &trait_go_to).await;
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
 
 #[tokio::test]
@@ -947,7 +949,7 @@ async fn go_to_definition_for_variables() {
     lsp::definition_check_with_req_offset(&server, &mut go_to, 60, 50).await;
     lsp::definition_check_with_req_offset(&server, &mut go_to, 61, 50).await;
 
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
 
 #[tokio::test]
@@ -1377,7 +1379,7 @@ async fn go_to_definition_for_storage() {
     // storage.var1.z.x
     lsp::definition_check(&server, &go_to).await;
 
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
 
 //------------------- HOVER DOCUMENTATION -------------------//
@@ -1402,7 +1404,7 @@ async fn hover_docs_for_consts() {
     hover.req_char = 49;
     hover.documentation = vec![" CONSTANT_2 has a value of 200"];
     lsp::hover_request(&server, &hover).await;
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
 
 #[tokio::test]
@@ -1421,7 +1423,7 @@ async fn hover_docs_for_functions() {
         documentation: vec!["```sway\npub fn bar(p: Point) -> Point\n```\n---\n A function declaration with struct as a function parameter\n\n---\nGo to [Point](command:sway.goToLocation?%5B%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A5%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A2%7D%7D%2C%22uri%22%3A%22file","sway%2Fsway-lsp%2Ftests%2Ffixtures%2Ftokens%2Ffunctions%2Fsrc%2Fmain.sw%22%7D%5D \"functions::Point\")"],
     };
     lsp::hover_request(&server, &hover).await;
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
 
 #[tokio::test]
@@ -1458,7 +1460,7 @@ async fn hover_docs_for_structs() {
         documentation: vec!["```sway\nstruct MyStruct\n```\n---\n My struct type"],
     };
     lsp::hover_request(&server, &hover).await;
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
 
 #[tokio::test]
@@ -1485,7 +1487,7 @@ async fn hover_docs_for_enums() {
     hover.req_char = 29;
     hover.documentation = vec![" Docs for variants"];
     lsp::hover_request(&server, &hover).await;
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
 
 #[tokio::test]
@@ -1500,7 +1502,7 @@ async fn hover_docs_for_abis() {
         documentation: vec!["```sway\nabi MyContract\n```\n---\n Docs for MyContract"],
     };
     lsp::hover_request(&server, &hover).await;
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
 
 #[tokio::test]
@@ -1519,7 +1521,7 @@ async fn hover_docs_for_variables() {
         documentation: vec!["```sway\nlet variable8: ContractCaller<TestAbi>\n```\n---"],
     };
     lsp::hover_request(&server, &hover).await;
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
 
 #[tokio::test]
@@ -1534,7 +1536,7 @@ async fn hover_docs_with_code_examples() {
             documentation: vec!["```sway\nstruct Data\n```\n---\n Struct holding:\n\n 1. A `value` of type `NumberOrString`\n 2. An `address` of type `u64`"],
         };
     lsp::hover_request(&server, &hover).await;
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
 
 #[tokio::test]
@@ -1553,7 +1555,7 @@ async fn hover_docs_for_self_keywords() {
     hover.req_char = 24;
     hover.documentation = vec!["```sway\nstruct MyStruct\n```\n---\n\n---\n[2 implementations](command:sway.peekLocations?%5B%7B%22locations%22%3A%5B%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A4%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A2%7D%7D%2C%22uri%22%3A%22file","sway%2Fsway-lsp%2Ftests%2Ffixtures%2Fcompletion%2Fsrc%2Fmain.sw%22%7D%2C%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A14%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A6%7D%7D%2C%22uri%22%3A%22file","sway%2Fsway-lsp%2Ftests%2Ffixtures%2Fcompletion%2Fsrc%2Fmain.sw%22%7D%5D%7D%5D \"Go to implementations\")"];
     lsp::hover_request(&server, &hover).await;
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
 
 #[tokio::test]
@@ -1577,7 +1579,7 @@ async fn hover_docs_for_boolean_keywords() {
     hover.req_char = 31;
     hover.documentation = vec!["\n```sway\ntrue\n```\n\n---\n\n A value of type [`bool`] representing logical **true**.\n\n Logically `true` is not equal to [`false`].\n\n ## Control structures that check for **true**\n\n Several of Sway's control structures will check for a `bool` condition evaluating to **true**.\n\n   * The condition in an [`if`] expression must be of type `bool`.\n     Whenever that condition evaluates to **true**, the `if` expression takes\n     on the value of the first block. If however, the condition evaluates\n     to `false`, the expression takes on value of the `else` block if there is one.\n\n   * [`while`] is another control flow construct expecting a `bool`-typed condition.\n     As long as the condition evaluates to **true**, the `while` loop will continually\n     evaluate its associated block.\n\n   * [`match`] arms can have guard clauses on them."];
     lsp::hover_request(&server, &hover).await;
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
 
 #[tokio::test]
@@ -1692,7 +1694,7 @@ async fn rename() {
         new_name: "NEW_TYPE_NAME", // from ZERO_B256
     };
     assert_eq!(lsp::prepare_rename_request(&server, &rename).await, None);
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
 
 #[tokio::test]
@@ -1741,7 +1743,7 @@ macro_rules! test_lsp_capability {
 
         // Call the specific LSP capability function that was passed in.
         let _ = $capability(&server, &uri).await;
-        let _ = server.shutdown_server();
+        let _ = server.shutdown_server().await;
     }};
 }
 
@@ -1900,5 +1902,5 @@ async fn write_all_example_asts() {
             lsp::show_ast_request(&server, &uri, "typed", example_dir).await;
         }
     }
-    let _ = server.shutdown_server();
+    let _ = server.shutdown_server().await;
 }
