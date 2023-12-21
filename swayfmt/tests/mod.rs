@@ -2671,3 +2671,19 @@ fn test() {
 "#,
     );
 }
+
+#[test]
+fn single_argument_not() {
+    check(
+        r#"library;
+fn test() {
+    assert(!(U256::from((0, 0, 0, 1)) > U256::from((0, u64::max(), 0, 0))));
+}
+    "#,
+        r#"library;
+fn test() {
+    assert(!(U256::from((0, 0, 0, 1)) > U256::from((0, u64::max(), 0, 0))));
+}
+"#,
+    );
+}
