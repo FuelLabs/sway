@@ -1,11 +1,107 @@
 category = "fail"
 
-# check: $()error
-# check: enum_rust_like/src/main.sw:7:5
-# check: $()Ok,    // Illegal
-# nextln: $()Expected ':'. Enum variants must be in the form `Variant: ()`, `Variant: <type>`, or `Variant: (<type1>, ..., <typeN>)`. E.g., `Foo: (), or `Bar: (bool, u32)`.
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:9:16
+# check: $()pub struct S { x : u64, y : u64, }
+# nextln: $()This struct field is never accessed.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:9:25
+# check: $()pub struct S { x : u64, y : u64, }
+# nextln: $()This struct field is never accessed.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:16:5
+# check: $()45
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:22:5
+# check: $()145
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:28:5
+# check: $()245
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:34:5
+# check: $()345
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:40:5
+# check: $()445
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:46:5
+# check: $()545
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:51:9
+# check: $()543
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:54:9
+# check: $()345
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:57:5
+# check: $()645
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:71:5
+# check: $()_ => 845,
+# nextln: $()}
+# nextln: $()This code is unreachable.
 
 # check: $()error
-# check: enum_rust_like/src/main.sw:12:4
-# check: $()F(u32),        // Illegal
-# nextln: $()Expected ':'. Enum variants must be in the form `Variant: ()`, `Variant: <type>`, or `Variant: (<type1>, ..., <typeN>)`. E.g., `Foo: (), or `Bar: (bool, u32)`.
+# check: return_in_strange_positions/src/main.sw:99:20
+# check: $()let _ = return + return;
+# nextln: $()Expected an expression.
+
+# check: $()error
+# check: return_in_strange_positions/src/main.sw:106:5
+# check: $()else {
+# nextln: $()Expected an opening brace.
+
+# check: $()error
+# check: return_in_strange_positions/src/main.sw:106:5
+# check: $()else {
+# nextln: $()Identifiers cannot be a reserved keyword.
+
+# check: $()error
+# check: return_in_strange_positions/src/main.sw:108:6
+# check: $()};
+# nextln: $()Expected an expression.
+
+# check: $()error
+# check: return_in_strange_positions/src/main.sw:114:6
+# check: $()};
+# nextln: $()Expected an opening brace.
+
+# check: $()error
+# check: return_in_strange_positions/src/main.sw:114:6
+# check: $()};
+# nextln: $()Expected an expression.
+
+# check: $()error
+# check: return_in_strange_positions/src/main.sw:119:9
+# check: $()_ => 845,
+# nextln: $()Expected an expression.
+
+# check: $()error
+# check: return_in_strange_positions/src/main.sw:120:6
+# check: $()}
+# nextln: $()Expected an opening brace.
+
+# check: $()error
+# check: return_in_strange_positions/src/main.sw:71:11
+# check: $()match return 42 {
+# nextln: $()Unimplemented feature: matching on this type is unsupported right now
