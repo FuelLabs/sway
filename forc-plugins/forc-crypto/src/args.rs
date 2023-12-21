@@ -86,16 +86,19 @@ fn read_as_binary(content: &Option<String>) -> Vec<u8> {
 ///     fully valid hex strings are accepted.
 ///  7. Any other string, or any malformed hex string will be treated as a
 ///     vector of bytes
+pub fn read_content_or_filepath(arg: Option<String>) -> Vec<u8> {
+    match checked_read_file(&arg) {
+        Some(bytes) => bytes,
+        None => match checked_read_stdin(&arg, io::stdin().lock()) {
+            Some(bytes) => bytes,
+            None => read_as_binary(&arg),
+        },
+    }
+}
+
 impl From<HashArgs> for Vec<u8> {
     fn from(value: HashArgs) -> Self {
-        let arg = value.content_or_filepath;
-        match checked_read_file(&arg) {
-            Some(bytes) => bytes,
-            None => match checked_read_stdin(&arg, io::stdin().lock()) {
-                Some(bytes) => bytes,
-                None => read_as_binary(&arg),
-            },
-        }
+        read_content_or_filepath(value.content_or_filepath)
     }
 }
 
