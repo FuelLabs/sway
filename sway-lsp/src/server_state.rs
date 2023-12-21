@@ -12,7 +12,10 @@ use dashmap::DashMap;
 use forc_pkg::PackageManifestFile;
 use lsp_types::{Diagnostic, Url};
 use parking_lot::RwLock;
-use std::{path::PathBuf, sync::{Arc, atomic::{AtomicBool, Ordering}}, thread::JoinHandle};
+use std::{
+    path::PathBuf, 
+    sync::{Arc, atomic::{AtomicBool, Ordering}},
+};
 use tower_lsp::{jsonrpc, Client};
 
 /// `ServerState` is the primary mutable state of the language server
@@ -22,7 +25,7 @@ pub struct ServerState {
     pub(crate) keyword_docs: Arc<KeywordDocs>,
     pub(crate) sessions: Arc<Sessions>,
     pub(crate) retrigger_compilation: Arc<AtomicBool>,
-    pub(crate) is_compiling: Arc<AtomicBool>,
+    pub is_compiling: Arc<AtomicBool>,
     pub(crate) mpsc_tx: Sender<ThreadMessage>,
     pub(crate) mpsc_rx: Arc<Receiver<ThreadMessage>>,
     pub(crate) finished_compilation: Arc<tokio::sync::Notify>,
@@ -34,6 +37,7 @@ pub struct ServerState {
 pub enum LastCompilationState {
     Success,
     Failed,
+    Uninitialized,
 }
 
 impl Default for ServerState {
@@ -50,7 +54,7 @@ impl Default for ServerState {
             mpsc_tx,
             mpsc_rx: Arc::new(mpsc_rx),
             finished_compilation: Arc::new(tokio::sync::Notify::new()),
-            last_compilation_state: Arc::new(RwLock::new(LastCompilationState::Success)),
+            last_compilation_state: Arc::new(RwLock::new(LastCompilationState::Uninitialized)),
         };
 
         state.spawn_compilation_thread();
@@ -77,28 +81,27 @@ fn update_compilation_state(
     finished_compilation: Arc<tokio::sync::Notify>,
     rx: Arc<Receiver<ThreadMessage>>,
 ) {
-    eprintln!("THREAD | update_compilation_state");
+    //eprintln!("THREAD | update_compilation_state");
 
     is_compiling.store(false, Ordering::SeqCst);
-    eprintln!("THREAD | is_compiling = {:?}", is_compiling.load(Ordering::SeqCst));
+    //eprintln!("THREAD | is_compiling = {:?}", is_compiling.load(Ordering::SeqCst));
 
     retrigger_compilation.store(false, Ordering::SeqCst);
-    eprintln!("THREAD | retrigger_compilation = {:?}", retrigger_compilation.load(Ordering::SeqCst));
+    //eprintln!("THREAD | retrigger_compilation = {:?}", retrigger_compilation.load(Ordering::SeqCst));
 
     // Make sure there isn't any pending compilation work
     if rx.is_empty() {
         //eprintln!("THREAD | no pending compilation work, safe to set is_compiling to false");
         
-        eprintln!("THREAD | finished compilation, notifying waiters");
+        //eprintln!("THREAD | finished compilation, notifying waiters");
         finished_compilation.notify_waiters();
     } else {
-        eprintln!("THREAD | there is pending compilation work");
+        //eprintln!("THREAD | there is pending compilation work");
     }
 }
 
 impl ServerState {
     pub fn new(client: Client) -> ServerState {
-        eprintln!("ServerState::new");
         ServerState {
             client: Some(client),
             ..Default::default()
@@ -115,7 +118,7 @@ impl ServerState {
             while let Ok(msg) = rx.recv() {
                 match msg {
                     ThreadMessage::CompilationData(shared) => {
-                        eprintln!("THREAD | received new compilation request");
+                        //eprintln!("THREAD | received new compilation request");
 
                         let uri = shared.uri.as_ref().unwrap().clone();
                         let version = shared.version;
@@ -133,28 +136,28 @@ impl ServerState {
                         //     }
                         // }
                         is_compiling.store(true, Ordering::SeqCst); 
-                        eprintln!("THREAD | starting parsing project: version: {:?}", version);
+                        //eprintln!("THREAD | starting parsing project: version: {:?}", version);
                         match session::parse_project(&uri, version, &engines_clone, Some(retrigger_compilation.clone())) {
                             Ok(parse_result) => {
-                                eprintln!("THREAD | engines_write: {:?}", version);
+                                //eprintln!("THREAD | engines_write: {:?}", version);
                                 *session.engines.write() = engines_clone;
-                                eprintln!("THREAD | success, about to write parse results: {:?}", version);
+                                //eprintln!("THREAD | success, about to write parse results: {:?}", version);
                                 session.write_parse_result(parse_result);
-                                eprintln!("THREAD | finished writing parse results: {:?}", version);
+                                //eprintln!("THREAD | finished writing parse results: {:?}", version);
                                 update_compilation_state(is_compiling.clone(), retrigger_compilation.clone(), finished_compilation.clone(), rx.clone());
                                 *last_compilation_state.write() = LastCompilationState::Success;
                             },
                             Err(err) => {
-                                eprintln!("compilation has returned cancelled {:?}", err);
+                                //eprintln!("compilation has returned cancelled {:?}", err);
                                 update_compilation_state(is_compiling.clone(), retrigger_compilation.clone(), finished_compilation.clone(), rx.clone());
                                 *last_compilation_state.write() = LastCompilationState::Failed;
                                 continue;
                             },
                         }
-                        eprintln!("THREAD | finished parsing project: version: {:?}", version);
+                        //eprintln!("THREAD | finished parsing project: version: {:?}", version);
                     }
                     ThreadMessage::Terminate => {
-                        eprintln!("THREAD | received terminate message");
+                        //eprintln!("THREAD | received terminate message");
                         return;
                     }
                 }
@@ -169,38 +172,40 @@ impl ServerState {
     /// this process until `is_compiling` becomes false.
     pub async fn wait_for_parsing(&self) {
         loop {
-            eprintln!("are we still compiling? | is_compiling = {:?}", self.is_compiling.load(Ordering::SeqCst));
+            //eprintln!("are we still compiling? | is_compiling = {:?}", self.is_compiling.load(Ordering::SeqCst));
             if !self.is_compiling.load(Ordering::SeqCst) {
-                eprintln!("compilation is finished, lets check if there are pending compilation requests");
+                //eprintln!("compilation is finished, lets check if there are pending compilation requests");
                 if self.mpsc_rx.is_empty() {
-                    eprintln!("no pending compilation work, safe to break");
+                    //eprintln!("no pending compilation work, safe to break");
                     eprintln!("And the last compilation state was: {:?}", &self.last_compilation_state.read());
+
                     break;
                 } else {
-                    eprintln!("there is pending compilation work, lets wait for it to finish");
+                    //eprintln!("there is pending compilation work, lets wait for it to finish");
                 }
             } else {
-                eprintln!("we are still compiling, lets wait to be notified");
+                //eprintln!("we are still compiling, lets wait to be notified");
             }
             self.finished_compilation.notified().await;
-            eprintln!("we were notified, lets check if we are still compiling");
+            //eprintln!("we were notified, lets check if we are still compiling");
         }
     }
 
     pub async fn shutdown_server(&self) -> jsonrpc::Result<()> {
         tracing::info!("Shutting Down the Sway Language Server");
 
-        // set the retrigger_compilation flag to true so that the compilation exit early
+        // Drain pending compilation requests
         while let Ok(_) = self.mpsc_rx.try_recv() {
-            eprintln!("draining pending compilation requests");
+            //eprintln!("draining pending compilation requests");
         }
+        // set the retrigger_compilation flag to true so that the compilation exit early
         self.retrigger_compilation.store(true, Ordering::SeqCst);
         self.wait_for_parsing().await;
 
-        eprintln!("sending terminate message");
+        //eprintln!("sending terminate message");
         self.mpsc_tx.send(ThreadMessage::Terminate).expect("failed to send terminate message");
 
-        eprintln!("shutting down the sessions");
+        //eprintln!("shutting down the sessions");
         let _ = self.sessions.iter().map(|item| {
             let session = item.value();
             session.shutdown();

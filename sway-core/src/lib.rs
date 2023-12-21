@@ -624,7 +624,7 @@ pub fn compile_to_ast(
             let new_handler = Handler::from_parts(warnings, errors);
             handler.append(new_handler);
 
-            eprintln!("re-using cached prgram data, returning from compilation");
+            //eprintln!("re-using cached prgram data, returning from compilation");
             return Ok(entry.programs);
         };
     }
@@ -963,7 +963,6 @@ fn module_return_path_analysis(
 }
 
 fn check_should_abort(handler: &Handler, retrigger_compilation: Option<Arc<AtomicBool>>, line: u32) -> Result<(), ErrorEmitted> {
-    //eprintln!("check_should_abort at line {}.", line);
     if let Some(ref retrigger_compilation) = retrigger_compilation {
         if retrigger_compilation.load(Ordering::SeqCst) {
             eprintln!("Aborting compilation due to retrigger as line {}.", line);
@@ -972,7 +971,7 @@ fn check_should_abort(handler: &Handler, retrigger_compilation: Option<Arc<Atomi
             //eprintln!("Continuing compilation at line {}.", line);
         }
     } else {
-        eprintln!("retrigger_compilation is None at line {}.", line);
+        //eprintln!("retrigger_compilation is None at line {}.", line);
     }
     Ok(())
 }

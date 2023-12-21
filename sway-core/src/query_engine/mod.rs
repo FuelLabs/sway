@@ -54,8 +54,8 @@ pub struct QueryEngine {
 impl Clone for QueryEngine {
     fn clone(&self) -> Self {
         Self {
-            parse_module_cache: RwLock::new(self.parse_module_cache.read().unwrap().clone()),
-            programs_cache: RwLock::new(self.programs_cache.read().unwrap().clone()),
+            parse_module_cache: RwLock::new(self.parse_module_cache.read().expect("Lock is poisoned").clone()),
+            programs_cache: RwLock::new(self.programs_cache.read().expect("Lock is poisoned").clone()),
         }
     }
 }

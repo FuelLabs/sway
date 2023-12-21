@@ -13,8 +13,6 @@ pub async fn handle_did_open_text_document(
     params: DidOpenTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
     eprintln!("did_open_text_document");
-
-    //eprintln!("did_open_text_document");
     let (uri, session) = state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
@@ -24,7 +22,13 @@ pub async fn handle_did_open_text_document(
     // Otherwise, don't recompile the project when a new file in the project is opened
     // as the workspace is already compiled.
     if session.token_map().is_empty() {
-        send_new_compilation_request(&state, session.clone(), &uri, None);
+        // send_new_compilation_request(&state, session.clone(), &uri, None);
+        let _ = state.mpsc_tx.send(ThreadMessage::CompilationData(Shared {
+            session: Some(session.clone()),
+            uri: Some(uri.clone()),
+            version: None,
+        })); 
+        state.is_compiling.store(true, Ordering::SeqCst);
 
         eprintln!("did open - waiting for parsing to finish");
         state.wait_for_parsing().await;
@@ -39,21 +43,21 @@ fn send_new_compilation_request(
     uri: &Url,
     version: Option<i32>,
 ) {
-    eprintln!("new compilation request: version {:?} - setting is_compiling to true", version);
+    //eprintln!("new compilation request: version {:?} - setting is_compiling to true", version);
     if state.is_compiling.load(Ordering::SeqCst) {
-        eprintln!("retrigger compilation!");
+       // eprintln!("retrigger compilation!");
         state.retrigger_compilation.store(true, Ordering::SeqCst);
     }
-
-    // If channel is full, remove the old value so the compilation thread only
-    // gets the latest value.
+    
+    // If channel is full, remove the old value so the compilation 
+    // thread only gets the latest value.
     if state.mpsc_tx.is_full() {
-        if let Ok(ThreadMessage::CompilationData(res)) = state.mpsc_rx.try_recv() {
-            eprintln!("channel is full! discarding version: {:?}", res.version);
+        if let Ok(ThreadMessage::CompilationData(_)) = state.mpsc_rx.try_recv() {
+            //eprintln!("channel is full! discarding version: {:?}", res.version);
         }
     }
 
-    eprintln!("sending new compilation request: version {:?}", version);
+    //eprintln!("sending new compilation request: version {:?}", version);
     let _ = state.mpsc_tx.send(ThreadMessage::CompilationData(Shared {
         session: Some(session.clone()),
         uri: Some(uri.clone()),
@@ -65,17 +69,17 @@ pub async fn handle_did_change_text_document(
     state: &ServerState,
     params: DidChangeTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
-    eprintln!("did change text document: version: {:?}", params.text_document.version);
+    //eprintln!("did change text document: version: {:?}", params.text_document.version);
     document::mark_file_as_dirty(&params.text_document.uri).await?;
     let (uri, session) = state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
-    eprintln!("writing changes to file for version: {:?}", params.text_document.version);
+    //eprintln!("writing changes to file for version: {:?}", params.text_document.version);
     session
         .write_changes_to_file(&uri, params.content_changes)
         .await?;
-    eprintln!("changes for version {:?} have been written to disk", params.text_document.version);
+    //eprintln!("changes for version {:?} have been written to disk", params.text_document.version);
     send_new_compilation_request(&state, session.clone(), &uri, Some(params.text_document.version));
     Ok(())
 }
@@ -84,14 +88,14 @@ pub(crate) async fn handle_did_save_text_document(
     state: &ServerState,
     params: DidSaveTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
-    eprintln!("did save text document");
+    //eprintln!("did save text document");
     document::remove_dirty_flag(&params.text_document.uri).await?;
     let (uri, session) = state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
     session.sync.resync()?;
-    eprintln!("resynced");
+    //eprintln!("resynced");
     send_new_compilation_request(&state, session.clone(), &uri, None);
     state.wait_for_parsing().await;
     state.publish_diagnostics(uri, params.text_document.uri, session).await;

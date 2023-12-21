@@ -119,6 +119,8 @@ pub(crate) async fn did_change_request(
         .params(params)
         .finish();
     let response = call_request(service, did_change.clone()).await;
+    // make sure to set is_compiling to true so the wait_for_parsing method can properly synchnonize
+    service.inner().is_compiling.store(true, std::sync::atomic::Ordering::SeqCst);
     assert_eq!(response, Ok(None));
     did_change
 }

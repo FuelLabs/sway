@@ -149,7 +149,7 @@ impl Session {
         self.runnables.clear();
         self.metrics.clear();
 
-        eprintln!("THREAD | success, about to token map");
+        //eprintln!("THREAD | success, about to token map");
         res.token_map.deref().iter().for_each(|item| {
             let (i, t) = item.pair();
             self.token_map.insert(i.clone(), t.clone());
@@ -161,7 +161,7 @@ impl Session {
         });
 
         let (errors, warnings) = res.diagnostics;
-        eprintln!("THREAD | success, about to write diagnostics");
+        //eprintln!("THREAD | success, about to write diagnostics");
         *self.diagnostics.write() = capabilities::diagnostic::get_diagnostics(
             &warnings,
             &errors,
@@ -173,7 +173,7 @@ impl Session {
             self.engines.read().de(),
             self.engines.read().se(),
         );
-        eprintln!("THREAD | success, about to write programs");
+        //eprintln!("THREAD | success, about to write programs");
         self.compiled_program.write().lexed = Some(res.lexed);
         self.compiled_program.write().parsed = Some(res.parsed);
         self.compiled_program.write().typed = Some(res.typed);
@@ -439,10 +439,7 @@ pub fn compile(
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
-    let now = std::time::Instant::now();
-    eprintln!("loading build plan for version {:?}", version);
     let build_plan = build_plan(uri)?;
-    eprintln!("build plan loaded, about to compile version {:?} | took {:?}", version, now.elapsed());
     let tests_enabled = true;
     pkg::check(
         &build_plan,
@@ -542,10 +539,10 @@ pub fn traverse(
 pub fn parse_project(uri: &Url, version: Option<i32>, engines: &Engines, retrigger_compilation: Option<Arc<AtomicBool>>) -> Result<ParseResult, LanguageServerError> {
     let results = compile(uri, version, engines, retrigger_compilation)?;
     if results.last().is_none() {
-        eprintln!("compilation failed, returning");
+        //eprintln!("compilation failed, returning");
         return Err(LanguageServerError::ProgramsIsNone);
     } else {
-        eprintln!("compilation successful, starting traversal");
+        //eprintln!("compilation successful, starting traversal");
     }
     let TraversalResult {
         diagnostics,
@@ -553,7 +550,7 @@ pub fn parse_project(uri: &Url, version: Option<i32>, engines: &Engines, retrigg
         token_map,
         metrics,
     } = traverse(results, engines)?;
-    eprintln!("traversal successful");
+    //eprintln!("traversal successful");
     let (lexed, parsed, typed) = programs.ok_or(LanguageServerError::ProgramsIsNone)?;
     Ok(ParseResult {
         diagnostics,
