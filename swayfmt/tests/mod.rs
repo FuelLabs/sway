@@ -2312,7 +2312,7 @@ fn test_function() -> bool {
 }
 
 #[test]
-fn long_doc_break_new_line_bug() {
+fn long_doc_break_new_line() {
     check(
         r#"library;
 
