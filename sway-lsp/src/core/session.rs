@@ -39,7 +39,7 @@ use sway_core::{
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::{SourceEngine, SourceId, Spanned};
 use sway_utils::{helpers::get_sway_files, PerformanceData};
-use tokio::{fs::File, io::AsyncWriteExt, sync::Semaphore};
+use tokio::{fs::File, io::AsyncWriteExt};
 
 pub type Documents = DashMap<String, TextDocument>;
 pub type ProjectDirectory = PathBuf;
