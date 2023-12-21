@@ -1777,7 +1777,9 @@ fn expr_func_app_to_expression_kind(
 
     // Route intrinsic calls to different AST node.
     match Intrinsic::try_from_str(call_seg.name.as_str()) {
-        Some(Intrinsic::Log) if last.is_none() && !is_absolute => {
+        Some(Intrinsic::Log)
+            if context.experimental.new_encoding && last.is_none() && !is_absolute =>
+        {
             let span = name_args_span(span, type_arguments_span);
             return Ok(ExpressionKind::IntrinsicFunction(
                 IntrinsicFunctionExpression {

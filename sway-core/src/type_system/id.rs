@@ -390,7 +390,7 @@ impl TypeId {
                 extend(
                     &mut found,
                     ty.type_id
-                        .extract_any_including_self(engines, filter_fn, vec![]),
+                        .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
                 );
             }
         }

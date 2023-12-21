@@ -1,6 +1,7 @@
 use std::collections::{HashMap, VecDeque};
 
 use crate::{
+    build_config::ExperimentalFlags,
     decl_engine::{DeclEngineInsert, DeclRefFunction},
     engine_threading::*,
     language::{
@@ -91,6 +92,9 @@ pub struct TypeCheckContext<'a> {
     /// case of impl trait methods after the initial type checked AST is constructed, and
     /// after we perform a dependency analysis on the tree.
     defer_monomorphization: bool,
+
+    /// Set of experimental flags
+    pub experimental: ExperimentalFlags,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -122,6 +126,7 @@ impl<'a> TypeCheckContext<'a> {
             kind: TreeType::Contract,
             disallow_functions: false,
             defer_monomorphization: false,
+            experimental: ExperimentalFlags::default(),
         }
     }
 
@@ -149,6 +154,7 @@ impl<'a> TypeCheckContext<'a> {
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             defer_monomorphization: self.defer_monomorphization,
+            experimental: self.experimental,
         }
     }
 
@@ -169,6 +175,7 @@ impl<'a> TypeCheckContext<'a> {
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             defer_monomorphization: self.defer_monomorphization,
+            experimental: self.experimental,
         }
     }
 
@@ -1529,6 +1536,13 @@ impl<'a> TypeCheckContext<'a> {
         self.namespace
             .implemented_traits
             .insert_for_type(self.engines, type_id);
+    }
+
+    pub(crate) fn with_experimental_flags(self, experimental: ExperimentalFlags) -> Self {
+        Self {
+            experimental,
+            ..self
+        }
     }
 }
 

@@ -20,21 +20,25 @@ pub struct TyIntrinsicFunctionKind {
 }
 
 impl TyIntrinsicFunctionKind {
-    pub fn get_logged_type(&self) -> Option<TypeId> {
-        if matches!(self.kind, Intrinsic::Log) {
-            match &self.arguments[0].expression {
-                TyExpressionVariant::FunctionApplication {
-                    call_path,
-                    arguments,
-                    ..
-                } => {
-                    assert!(call_path.suffix.as_str() == "encode");
-                    Some(arguments[0].1.return_type)
+    pub fn get_logged_type(&self, new_encoding: bool) -> Option<TypeId> {
+        if new_encoding {
+            if matches!(self.kind, Intrinsic::Log) {
+                match &self.arguments[0].expression {
+                    TyExpressionVariant::FunctionApplication {
+                        call_path,
+                        arguments,
+                        ..
+                    } => {
+                        assert!(call_path.suffix.as_str() == "encode");
+                        Some(arguments[0].1.return_type)
+                    }
+                    _ => None,
                 }
-                _ => None,
+            } else {
+                None
             }
         } else {
-            None
+            Some(self.arguments[0].return_type)
         }
     }
 }
@@ -118,7 +122,7 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
 
         match self.kind {
             Intrinsic::Log => {
-                let logged_type = self.get_logged_type().unwrap();
+                let logged_type = self.get_logged_type(ctx.experimental.new_encoding).unwrap();
                 types_metadata.push(TypeMetadata::LoggedType(
                     LogId::new(ctx.log_id_counter()),
                     logged_type,

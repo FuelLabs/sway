@@ -897,7 +897,9 @@ impl<'eng> FnCompiler<'eng> {
 
                 // The log value and the log ID are just Value.
                 let log_val = self.compile_expression_to_value(context, md_mgr, &arguments[0])?;
-                let logged_type = i.get_logged_type().unwrap();
+                let logged_type = i
+                    .get_logged_type(context.experimental.new_encoding)
+                    .expect("Could not return logged type.");
                 let log_id = match self.logged_types_map.get(&logged_type) {
                     None => {
                         return Err(CompileError::Internal(

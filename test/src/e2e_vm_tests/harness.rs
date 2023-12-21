@@ -5,7 +5,7 @@ use forc_client::{
     op::{deploy, run},
     NodeTarget,
 };
-use forc_pkg::{Built, BuiltPackage};
+use forc_pkg::{manifest::ExperimentalFlags, Built, BuiltPackage};
 use fuel_tx::TransactionBuilder;
 use fuel_vm::fuel_tx;
 use fuel_vm::interpreter::Interpreter;
@@ -190,17 +190,6 @@ pub(crate) fn runs_in_vm(
                 Interpreter::with_storage(storage, Default::default());
             let transition = i.transact(tx).map_err(anyhow::Error::msg)?;
 
-            // for r in transition.receipts() {
-            //     match r {
-            //         Receipt::LogData { data, .. } => {
-            //             eprintln!("LogData: {:?}", data);
-            //         }
-            //         _ => {
-            //             dbg!(r);
-            //         }
-            //     }
-            // }
-
             Ok(VMExecutionResult::Fuel(
                 *transition.state(),
                 transition.receipts().to_vec(),
@@ -271,6 +260,9 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
             terse: false,
             json_abi_with_callpaths: true,
             ..Default::default()
+        },
+        experimental: ExperimentalFlags {
+            new_encoding: run_config.experimental.new_encoding,
         },
         ..Default::default()
     };
