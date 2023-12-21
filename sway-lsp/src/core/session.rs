@@ -149,6 +149,7 @@ impl Session {
         self.runnables.clear();
         self.metrics.clear();
 
+        eprintln!("THREAD | success, about to token map");
         res.token_map.deref().iter().for_each(|item| {
             let (i, t) = item.pair();
             self.token_map.insert(i.clone(), t.clone());
@@ -434,10 +435,14 @@ pub(crate) fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
 
 pub fn compile(
     uri: &Url,
+    version: Option<i32>,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
+    let now = std::time::Instant::now();
+    eprintln!("loading build plan for version {:?}", version);
     let build_plan = build_plan(uri)?;
+    eprintln!("build plan loaded, about to compile version {:?} | took {:?}", version, now.elapsed());
     let tests_enabled = true;
     pkg::check(
         &build_plan,
@@ -534,9 +539,14 @@ pub fn traverse(
 }
 
 /// Parses the project and returns true if the compiler diagnostics are new and should be published.
-pub fn parse_project(uri: &Url, engines: &Engines, retrigger_compilation: Option<Arc<AtomicBool>>) -> Result<ParseResult, LanguageServerError> {
-    let results = compile(uri, engines, retrigger_compilation)?;
-    eprintln!("compilation successful, starting traversal");
+pub fn parse_project(uri: &Url, version: Option<i32>, engines: &Engines, retrigger_compilation: Option<Arc<AtomicBool>>) -> Result<ParseResult, LanguageServerError> {
+    let results = compile(uri, version, engines, retrigger_compilation)?;
+    if results.last().is_none() {
+        eprintln!("compilation failed, returning");
+        return Err(LanguageServerError::ProgramsIsNone);
+    } else {
+        eprintln!("compilation successful, starting traversal");
+    }
     let TraversalResult {
         diagnostics,
         programs,
@@ -619,7 +629,7 @@ mod tests {
         let dir = get_absolute_path("sway-lsp/tests/fixtures");
         let uri = get_url(&dir);
         let engines = Engines::default();
-        let result = parse_project(&uri, &engines, None).expect_err("expected ManifestFileNotFound");
+        let result = parse_project(&uri, None, &engines, None).expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(

@@ -2,8 +2,7 @@
 //! Protocol. This module specifically handles notification messages sent by the Client.
 
 use std::sync::{atomic::Ordering, Arc};
-
-use crate::{core::{document, session::Session}, error::LanguageServerError, server_state::ServerState};
+use crate::{core::{document, session::Session}, error::LanguageServerError, server_state::{ServerState, Shared, ThreadMessage}};
 use lsp_types::{
     DidChangeTextDocumentParams, DidChangeWatchedFilesParams, DidOpenTextDocumentParams,
     DidSaveTextDocumentParams, FileChangeType, Url,
@@ -14,6 +13,8 @@ pub async fn handle_did_open_text_document(
     params: DidOpenTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
     eprintln!("did_open_text_document");
+
+    //eprintln!("did_open_text_document");
     let (uri, session) = state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
@@ -38,26 +39,26 @@ fn send_new_compilation_request(
     uri: &Url,
     version: Option<i32>,
 ) {
-    if state.is_compiling.load(Ordering::Relaxed) {
+    eprintln!("new compilation request: version {:?} - setting is_compiling to true", version);
+    if state.is_compiling.load(Ordering::SeqCst) {
         eprintln!("retrigger compilation!");
         state.retrigger_compilation.store(true, Ordering::SeqCst);
     }
-    eprintln!("new compilation request - setting is_compiling to true");
-    state.is_compiling.store(true, Ordering::Relaxed);
 
     // If channel is full, remove the old value so the compilation thread only
     // gets the latest value.
     if state.mpsc_tx.is_full() {
-        eprintln!("channel is full!");
-        let _ = state.mpsc_rx.try_recv();
+        if let Ok(ThreadMessage::CompilationData(res)) = state.mpsc_rx.try_recv() {
+            eprintln!("channel is full! discarding version: {:?}", res.version);
+        }
     }
 
-    eprintln!("sending new compilation request");
-    let _ = state.mpsc_tx.send(crate::server_state::Shared {
+    eprintln!("sending new compilation request: version {:?}", version);
+    let _ = state.mpsc_tx.send(ThreadMessage::CompilationData(Shared {
         session: Some(session.clone()),
         uri: Some(uri.clone()),
         version,
-    });
+    }));
 }
 
 pub async fn handle_did_change_text_document(
@@ -70,9 +71,11 @@ pub async fn handle_did_change_text_document(
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
+    eprintln!("writing changes to file for version: {:?}", params.text_document.version);
     session
         .write_changes_to_file(&uri, params.content_changes)
         .await?;
+    eprintln!("changes for version {:?} have been written to disk", params.text_document.version);
     send_new_compilation_request(&state, session.clone(), &uri, Some(params.text_document.version));
     Ok(())
 }

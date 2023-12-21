@@ -23,10 +23,17 @@ pub struct ServerState {
     pub(crate) sessions: Arc<Sessions>,
     pub(crate) retrigger_compilation: Arc<AtomicBool>,
     pub(crate) is_compiling: Arc<AtomicBool>,
-    pub(crate) mpsc_tx: Sender<Shared>,
-    pub(crate) mpsc_rx: Arc<Receiver<Shared>>,
+    pub(crate) mpsc_tx: Sender<ThreadMessage>,
+    pub(crate) mpsc_rx: Arc<Receiver<ThreadMessage>>,
     pub(crate) finished_compilation: Arc<tokio::sync::Notify>,
-    pub(crate) compilation_thread_join_handle: RwLock<Option<JoinHandle<()>>>,
+
+    pub(crate) last_compilation_state: Arc<RwLock<LastCompilationState>>,
+}
+
+#[derive(Debug)]
+pub enum LastCompilationState {
+    Success,
+    Failed,
 }
 
 impl Default for ServerState {
@@ -43,12 +50,18 @@ impl Default for ServerState {
             mpsc_tx,
             mpsc_rx: Arc::new(mpsc_rx),
             finished_compilation: Arc::new(tokio::sync::Notify::new()),
-            compilation_thread_join_handle: RwLock::new(None),
+            last_compilation_state: Arc::new(RwLock::new(LastCompilationState::Success)),
         };
 
-        *state.compilation_thread_join_handle.write() = Some(state.spawn_compilation_thread());
+        state.spawn_compilation_thread();
         state
     }
+}
+
+#[derive(Debug)]
+pub enum ThreadMessage {
+    CompilationData(Shared),
+    Terminate,
 }
 
 #[derive(Debug, Default)]
@@ -62,15 +75,20 @@ fn update_compilation_state(
     is_compiling: Arc<AtomicBool>, 
     retrigger_compilation: Arc<AtomicBool>,
     finished_compilation: Arc<tokio::sync::Notify>,
-    rx: Arc<Receiver<Shared>>,
+    rx: Arc<Receiver<ThreadMessage>>,
 ) {
     eprintln!("THREAD | update_compilation_state");
+
+    is_compiling.store(false, Ordering::SeqCst);
+    eprintln!("THREAD | is_compiling = {:?}", is_compiling.load(Ordering::SeqCst));
+
     retrigger_compilation.store(false, Ordering::SeqCst);
     eprintln!("THREAD | retrigger_compilation = {:?}", retrigger_compilation.load(Ordering::SeqCst));
+
     // Make sure there isn't any pending compilation work
     if rx.is_empty() {
-        eprintln!("THREAD | no pending compilation work, safe to set is_compiling to false");
-        is_compiling.store(false, Ordering::SeqCst);
+        //eprintln!("THREAD | no pending compilation work, safe to set is_compiling to false");
+        
         eprintln!("THREAD | finished compilation, notifying waiters");
         finished_compilation.notify_waiters();
     } else {
@@ -87,49 +105,61 @@ impl ServerState {
         }
     }
 
-    pub fn spawn_compilation_thread(&self) -> JoinHandle<()> {
+    pub fn spawn_compilation_thread(&self) {
         let is_compiling = self.is_compiling.clone();
         let retrigger_compilation = self.retrigger_compilation.clone();
         let finished_compilation = self.finished_compilation.clone();
         let rx = self.mpsc_rx.clone();
+        let last_compilation_state = self.last_compilation_state.clone();
         std::thread::spawn(move || {
-            while let Ok(shared) = rx.recv() {
-                eprintln!("THREAD | received new compilation request");
+            while let Ok(msg) = rx.recv() {
+                match msg {
+                    ThreadMessage::CompilationData(shared) => {
+                        eprintln!("THREAD | received new compilation request");
 
-                let uri = shared.uri.as_ref().unwrap().clone();
-                let version = shared.version;
-                let session = shared.session.as_ref().unwrap().clone();
-                let mut engines_clone = session.engines.read().clone();
-
-                // if let Some(version) = version {
-                //     // Garbage collection is fairly expsensive so we only clear on every 10th keystroke.
-                //     if version % 10 == 0 {
-                //         // Call this on the engines clone so we don't clear types that are still in use
-                //         // and might be needed in the case cancel compilation was triggered.
-                //         if let Err(err) = session.garbage_collect(&mut engines_clone) {
-                //             tracing::error!("Unable to perform garbage collection: {}", err.to_string());
-                //         }
-                //     }
-                // }
-
-                eprintln!("THREAD | starting parsing project: version: {:?}", version);
-                match session::parse_project(&uri, version, &engines_clone, Some(retrigger_compilation.clone())) {
-                    Ok(parse_result) => {
-                        eprintln!("THREAD | engines_write: {:?}", version);
-                        *session.engines.write() = engines_clone;
-                        eprintln!("THREAD | success, about to write parse results: {:?}", version);
-                        session.write_parse_result(parse_result);
-                        update_compilation_state(is_compiling.clone(), retrigger_compilation.clone(), finished_compilation.clone(), rx.clone()); 
-                    },
-                    Err(err) => {
-                        eprintln!("compilation has returned cancelled {:?}", err);
-                        update_compilation_state(is_compiling.clone(), retrigger_compilation.clone(), finished_compilation.clone(), rx.clone());
-                        continue;
-                    },
+                        let uri = shared.uri.as_ref().unwrap().clone();
+                        let version = shared.version;
+                        let session = shared.session.as_ref().unwrap().clone();
+                        let mut engines_clone = session.engines.read().clone();
+        
+                        // if let Some(version) = version {
+                        //     // Garbage collection is fairly expsensive so we only clear on every 10th keystroke.
+                        //     if version % 10 == 0 {
+                        //         // Call this on the engines clone so we don't clear types that are still in use
+                        //         // and might be needed in the case cancel compilation was triggered.
+                        //         if let Err(err) = session.garbage_collect(&mut engines_clone) {
+                        //             tracing::error!("Unable to perform garbage collection: {}", err.to_string());
+                        //         }
+                        //     }
+                        // }
+                        is_compiling.store(true, Ordering::SeqCst); 
+                        eprintln!("THREAD | starting parsing project: version: {:?}", version);
+                        match session::parse_project(&uri, version, &engines_clone, Some(retrigger_compilation.clone())) {
+                            Ok(parse_result) => {
+                                eprintln!("THREAD | engines_write: {:?}", version);
+                                *session.engines.write() = engines_clone;
+                                eprintln!("THREAD | success, about to write parse results: {:?}", version);
+                                session.write_parse_result(parse_result);
+                                eprintln!("THREAD | finished writing parse results: {:?}", version);
+                                update_compilation_state(is_compiling.clone(), retrigger_compilation.clone(), finished_compilation.clone(), rx.clone());
+                                *last_compilation_state.write() = LastCompilationState::Success;
+                            },
+                            Err(err) => {
+                                eprintln!("compilation has returned cancelled {:?}", err);
+                                update_compilation_state(is_compiling.clone(), retrigger_compilation.clone(), finished_compilation.clone(), rx.clone());
+                                *last_compilation_state.write() = LastCompilationState::Failed;
+                                continue;
+                            },
+                        }
+                        eprintln!("THREAD | finished parsing project: version: {:?}", version);
+                    }
+                    ThreadMessage::Terminate => {
+                        eprintln!("THREAD | received terminate message");
+                        return;
+                    }
                 }
-                eprintln!("THREAD | finished parsing project: version: {:?}", version);
             }
-        })
+        });
     }
 
     /// Waits asynchronously for the `is_compiling` flag to become false.
@@ -144,6 +174,7 @@ impl ServerState {
                 eprintln!("compilation is finished, lets check if there are pending compilation requests");
                 if self.mpsc_rx.is_empty() {
                     eprintln!("no pending compilation work, safe to break");
+                    eprintln!("And the last compilation state was: {:?}", &self.last_compilation_state.read());
                     break;
                 } else {
                     eprintln!("there is pending compilation work, lets wait for it to finish");
@@ -156,15 +187,20 @@ impl ServerState {
         }
     }
 
-    pub fn shutdown_server(&self) -> jsonrpc::Result<()> {
+    pub async fn shutdown_server(&self) -> jsonrpc::Result<()> {
         tracing::info!("Shutting Down the Sway Language Server");
 
-        // shutdown the compilation thread
-        let mut join_handle_option = self.compilation_thread_join_handle.write();
-        if let Some(join_handle) = std::mem::take(&mut *join_handle_option) {
-            let _ = join_handle.join();
+        // set the retrigger_compilation flag to true so that the compilation exit early
+        while let Ok(_) = self.mpsc_rx.try_recv() {
+            eprintln!("draining pending compilation requests");
         }
+        self.retrigger_compilation.store(true, Ordering::SeqCst);
+        self.wait_for_parsing().await;
 
+        eprintln!("sending terminate message");
+        self.mpsc_tx.send(ThreadMessage::Terminate).expect("failed to send terminate message");
+
+        eprintln!("shutting down the sessions");
         let _ = self.sessions.iter().map(|item| {
             let session = item.value();
             session.shutdown();
