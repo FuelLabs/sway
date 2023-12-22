@@ -124,17 +124,17 @@ impl ServerState {
                         let session = shared.session.as_ref().unwrap().clone();
                         let mut engines_clone = session.engines.read().clone();
         
-                        if let Some(version) = version {
-                            // Garbage collection is fairly expsensive so we only clear on every 10th keystroke.
-                            if version % 10 == 0 {
-                                // Call this on the engines clone so we don't clear types that are still in use
-                                // and might be needed in the case cancel compilation was triggered.
-                                if let Err(err) = session.garbage_collect(&mut engines_clone) {
-                                    tracing::error!("Unable to perform garbage collection: {}", err.to_string());
-                                }
-                            }
-                        }
-                        
+                        // if let Some(version) = version {
+                        //     // Garbage collection is fairly expsensive so we only clear on every 10th keystroke.
+                        //     if version % 10 == 0 {
+                        //         // Call this on the engines clone so we don't clear types that are still in use
+                        //         // and might be needed in the case cancel compilation was triggered.
+                        //         if let Err(err) = session.garbage_collect(&mut engines_clone) {
+                        //             tracing::error!("Unable to perform garbage collection: {}", err.to_string());
+                        //         }
+                        //     }
+                        // }
+
                         is_compiling.store(true, Ordering::SeqCst); 
                         //eprintln!("THREAD | starting parsing project: version: {:?}", version);
                         match session::parse_project(&uri, version, &engines_clone, Some(retrigger_compilation.clone())) {

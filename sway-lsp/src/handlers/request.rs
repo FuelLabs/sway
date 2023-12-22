@@ -52,7 +52,6 @@ pub async fn handle_document_symbol(
     state: &ServerState,
     params: lsp_types::DocumentSymbolParams,
 ) -> Result<Option<lsp_types::DocumentSymbolResponse>> {
-    eprintln!("document_symbol");
     let _ = state.wait_for_parsing().await;
     match state
         .sessions
@@ -75,7 +74,6 @@ pub async fn handle_goto_definition(
     state: &ServerState,
     params: lsp_types::GotoDefinitionParams,
 ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
-    eprintln!("goto_definition");
     match state
         .sessions
         .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
@@ -281,7 +279,6 @@ pub async fn handle_semantic_tokens_range(
     state: &ServerState,
     params: SemanticTokensRangeParams,
 ) -> Result<Option<SemanticTokensRangeResult>> {
-    eprintln!("semantic_tokens_range");
     let _ = state.wait_for_parsing().await;
     match state
         .sessions
@@ -304,7 +301,6 @@ pub async fn handle_semantic_tokens_full(
     state: &ServerState,
     params: SemanticTokensParams,
 ) -> Result<Option<SemanticTokensResult>> {
-    eprintln!("semantic_tokens_full");
     let _ = state.wait_for_parsing().await;
     match state
         .sessions
@@ -327,7 +323,6 @@ pub(crate) async fn handle_inlay_hints(
     state: &ServerState,
     params: InlayHintParams,
 ) -> Result<Option<Vec<InlayHint>>> {
-    eprintln!("inlay_hints");
     let _ = state.wait_for_parsing().await;
     match state
         .sessions
