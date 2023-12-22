@@ -122,20 +122,16 @@ macro_rules! assert_eq_pretty {
         let got = &$got;
         let expected = &$expected;
         if got != expected {
-            panic!(
-                "
-printed outputs differ!
-expected:
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-{}
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-got:
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-{}
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-",
-                expected, got
-            );
+            use difference::{Changeset, Difference};
+            let changeset = Changeset::new(expected, got, "\n");
+            for diff in changeset.diffs {
+                match diff {
+                    Difference::Same(s) => println!("{}", s),
+                    Difference::Add(s) => println!("\x1b[32m+{}\x1b[0m", s), // Green color for additions
+                    Difference::Rem(s) => println!("\x1b[31m-{}\x1b[0m", s), // Red color for removals
+                }
+            }
+            panic!("printed outputs differ!");
         }
     };
 }
