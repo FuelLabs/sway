@@ -1,7 +1,7 @@
 library;
 
 use ::alloc::alloc;
-use ::option::Option::{*, self};
+use ::option::Option::{self, *};
 
 /// Stores a stack value in storage. Will not work for heap values.
 ///

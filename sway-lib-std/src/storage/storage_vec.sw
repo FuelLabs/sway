@@ -3,7 +3,7 @@ library;
 use ::alloc::{alloc_bytes, realloc_bytes};
 use ::assert::assert;
 use ::hash::*;
-use ::option::Option::{*, self};
+use ::option::Option::{self, *};
 use ::storage::storage_api::*;
 use ::storage::storage_key::*;
 use ::vec::Vec;

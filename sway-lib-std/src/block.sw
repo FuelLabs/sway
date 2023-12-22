@@ -3,7 +3,7 @@ library;
 
 use ::assert::assert;
 use ::constants::ZERO_B256;
-use ::result::Result::{*, self};
+use ::result::Result::{self, *};
 use ::logging::log;
 
 /// Error type for when the block hash cannot be found.

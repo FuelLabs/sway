@@ -4,7 +4,7 @@ library;
 use ::{alloc::{alloc_bytes, realloc_bytes}, vec::Vec};
 use ::assert::assert;
 use ::intrinsics::size_of_val;
-use ::option::Option::{*, self};
+use ::option::Option::{self, *};
 use ::convert::From;
 
 struct RawBytes {

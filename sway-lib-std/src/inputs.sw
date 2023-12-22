@@ -7,7 +7,7 @@ use ::assert::assert;
 use ::bytes::Bytes;
 use ::constants::BASE_ASSET_ID;
 use ::contract_id::{AssetId, ContractId};
-use ::option::Option::{*, self};
+use ::option::Option::{self, *};
 use ::revert::revert;
 use ::tx::{
     GTF_CREATE_INPUT_AT_INDEX,

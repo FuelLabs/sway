@@ -5,7 +5,7 @@ use ::address::Address;
 use ::b512::B512;
 use ::registers::error;
 use ::hash::*;
-use ::result::Result::{*, self};
+use ::result::Result::{self, *};
 
 /// The error type used when the `ec_recover` function fails.
 pub enum EcRecoverError {

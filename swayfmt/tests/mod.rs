@@ -2687,3 +2687,17 @@ fn test() {
 "#,
     );
 }
+
+#[test]
+fn use_sorting_items() {
+    check(
+        r#"library;
+    
+    use ::option::Option::{*, self, z, foo, bar};
+"#,
+        r#"library;
+
+use ::option::Option::{self, bar, foo, z, *};
+"#,
+    );
+}

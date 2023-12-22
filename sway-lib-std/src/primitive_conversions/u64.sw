@@ -1,7 +1,7 @@
 library;
 
 use ::convert::TryFrom;
-use ::option::Option::{*, self};
+use ::option::Option::{self, *};
 
 impl u64 {
     pub fn try_as_u8(self) -> Option<u8> {

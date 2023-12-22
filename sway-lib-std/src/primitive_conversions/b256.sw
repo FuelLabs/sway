@@ -2,7 +2,7 @@ library;
 
 use ::bytes::Bytes;
 use ::convert::TryFrom;
-use ::option::Option::{*, self};
+use ::option::Option::{self, *};
 
 impl TryFrom<Bytes> for b256 {
     fn try_from(b: Bytes) -> Option<Self> {

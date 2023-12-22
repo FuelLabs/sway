@@ -5,7 +5,7 @@ use ::assert::assert;
 use ::convert::From;
 use ::flags::{disable_panic_on_overflow, set_flags};
 use ::math::*;
-use ::result::Result::{*, self};
+use ::result::Result::{self, *};
 
 /// The 128-bit unsigned integer type.
 ///

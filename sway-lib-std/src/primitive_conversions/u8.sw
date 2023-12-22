@@ -1,7 +1,7 @@
 library;
 
 use ::convert::TryFrom;
-use ::option::Option::{*, self};
+use ::option::Option::{self, *};
 
 impl TryFrom<u16> for u8 {
     fn try_from(u: u16) -> Option<Self> {

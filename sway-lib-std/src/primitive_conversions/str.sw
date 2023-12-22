@@ -1,6 +1,6 @@
 library;
 
-use ::option::Option::{*, self};
+use ::option::Option::{self, *};
 
 impl str {
     pub fn try_as_str_array<S>(self) -> Option<S> {

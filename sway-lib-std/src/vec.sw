@@ -3,7 +3,7 @@ library;
 
 use ::alloc::{alloc, realloc};
 use ::assert::assert;
-use ::option::Option::{*, self};
+use ::option::Option::{self, *};
 use ::convert::From;
 
 struct RawVec<T> {

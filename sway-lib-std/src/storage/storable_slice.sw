@@ -2,7 +2,7 @@ library;
 
 use ::alloc::{alloc, alloc_bytes, realloc_bytes};
 use ::hash::*;
-use ::option::Option::{*, self};
+use ::option::Option::{self, *};
 use ::storage::storage_api::*;
 
 /// Store a raw_slice from the heap into storage.

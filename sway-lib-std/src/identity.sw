@@ -9,7 +9,7 @@ use ::call_frames::contract_id;
 use ::constants::{BASE_ASSET_ID, ZERO_B256};
 use ::contract_id::{AssetId, ContractId};
 use ::hash::*;
-use ::option::Option::{*, self};
+use ::option::Option::{self, *};
 
 /// The `Identity` type: either an `Address` or a `ContractId`.
 // ANCHOR: docs_identity

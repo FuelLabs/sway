@@ -3,7 +3,7 @@ library;
 
 use ::assert::*;
 use ::convert::From;
-use ::result::Result::{*, self};
+use ::result::Result::{self, *};
 use ::u128::U128;
 use ::math::Power;
 
