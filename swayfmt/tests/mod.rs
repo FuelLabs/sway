@@ -2701,3 +2701,119 @@ use ::option::Option::{self, bar, foo, z, *};
 "#,
     );
 }
+
+#[test]
+fn whitespace_after_doccomment() {
+    check(
+        r#"library;
+    
+/// Trait to evaluate if one value is greater than or equal, or less than or equal to another of the same type.
+trait OrdEq: Ord + Eq {
+} {
+    /// Evaluates if one value of the same type is greater or equal to than another.
+    ///
+    /// # Additional Information
+    ///
+    /// This trait requires that the `Ord` and `Eq` traits are implemented.
+    ///
+    /// # Arguments
+    ///
+    /// * `other`: [Self] - The value of the same type.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] - `true` if `self` is greater than or equal to `other`, otherwise `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// struct MyStruct {
+    ///     val: u64,
+    /// }
+    ///
+    /// impl Eq for MyStruct {
+    ///     fn eq(self, other: Self) -> bool {
+    ///         self.val == other.val
+    ///     }
+    /// }
+    ///
+    /// impl Ord for MyStruct {
+    ///     fn gt(self, other: Self) -> bool {
+    ///         self.val > other.val
+    ///     }
+    /// }
+    ///
+    /// impl OrdEq for MyStruct {}
+    ///
+    /// fn foo() {
+    ///     let struct1 = MyStruct { val: 10 };
+    ///     let struct2 = MyStruct { val: 10 };
+    ///     let result = struct1 >= struct2;
+    ///     assert(result);
+    /// }
+    /// ```
+    fn ge(self, other: Self) -> bool {
+        self.gt(other) || self.eq(other)
+    }
+    /// Some test
+    fn test() {
+
+    }
+}
+    "#,
+        r#"library;
+
+/// Trait to evaluate if one value is greater than or equal, or less than or equal to another of the same type.
+trait OrdEq: Ord + Eq {
+} {
+    /// Evaluates if one value of the same type is greater or equal to than another.
+    ///
+    /// # Additional Information
+    ///
+    /// This trait requires that the `Ord` and `Eq` traits are implemented.
+    ///
+    /// # Arguments
+    ///
+    /// * `other`: [Self] - The value of the same type.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] - `true` if `self` is greater than or equal to `other`, otherwise `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// struct MyStruct {
+    ///     val: u64,
+    /// }
+    ///
+    /// impl Eq for MyStruct {
+    ///     fn eq(self, other: Self) -> bool {
+    ///         self.val == other.val
+    ///     }
+    /// }
+    ///
+    /// impl Ord for MyStruct {
+    ///     fn gt(self, other: Self) -> bool {
+    ///         self.val > other.val
+    ///     }
+    /// }
+    ///
+    /// impl OrdEq for MyStruct {}
+    ///
+    /// fn foo() {
+    ///     let struct1 = MyStruct { val: 10 };
+    ///     let struct2 = MyStruct { val: 10 };
+    ///     let result = struct1 >= struct2;
+    ///     assert(result);
+    /// }
+    /// ```
+    fn ge(self, other: Self) -> bool {
+        self.gt(other) || self.eq(other)
+    }
+    /// Some test
+    fn test() {}
+}
+"#,
+    );
+}
