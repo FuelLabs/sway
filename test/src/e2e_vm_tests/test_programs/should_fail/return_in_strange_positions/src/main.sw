@@ -1,6 +1,5 @@
 script;
 
-use std::assert::assert;
 
 // This file tests the reported errors and warnings in various instances when a 'return'
 // occurs in a non-statement position. This is allowed, but will often result in
