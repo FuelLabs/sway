@@ -1,0 +1,57 @@
+category = "compile"
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:7:16
+# check: $()pub struct S { x : u64, y : u64, }
+# nextln: $()This struct field is never accessed.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:7:25
+# check: $()pub struct S { x : u64, y : u64, }
+# nextln: $()This struct field is never accessed.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:17:5
+# check: $()45
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:23:5
+# check: $()145
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:29:5
+# check: $()245
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:35:5
+# check: $()345
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:41:5
+# check: $()445
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:47:5
+# check: $()545
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:52:9
+# check: $()543
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:55:9
+# check: $()345
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:58:5
+# check: $()645
+# nextln: $()This code is unreachable.
+
