@@ -85,10 +85,35 @@ fn format_statement(
 
             remove_arguments_from_expr(expr.clone()).format(&mut temp_expr, formatter)?;
             if temp_expr.len() > formatter.shape.width_heuristics.chain_width {
-                formatter.shape.code_line.expr_new_line = true;
+                let update_expr_new_line = if !matches!(
+                    expr,
+                    Expr::MethodCall { .. }
+                        | Expr::FuncApp { func: _, args: _ }
+                        | Expr::If(_)
+                        | Expr::While {
+                            while_token: _,
+                            condition: _,
+                            block: _
+                        }
+                ) {
+                    // Method calls, If, While should not tamper with the
+                    // expr_new_line because that would be inherited for all
+                    // statements. That should be applied at the lowest level
+                    // possible (ideally at the expression level)
+                    formatter.shape.code_line.expr_new_line
+                } else if formatter.shape.code_line.expr_new_line {
+                    // already enabled
+                    true
+                } else {
+                    formatter.shape.code_line.update_expr_new_line(true);
+                    false
+                };
                 // reformat the expression adding a break
                 expr.format(formatted_code, formatter)?;
-                formatter.shape.code_line.expr_new_line = false;
+                formatter
+                    .shape
+                    .code_line
+                    .update_expr_new_line(update_expr_new_line);
             } else {
                 expr.format(formatted_code, formatter)?;
             }
