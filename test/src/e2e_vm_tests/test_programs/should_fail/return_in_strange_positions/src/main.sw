@@ -72,7 +72,7 @@ fn in_match_scrutinee() -> u64 {
     }
 }
 
-// Incorrect return types. These should fail because of the 'return'.
+// Returning `()`.
 
 fn in_init_non_value_return() {
     let _ = return;
