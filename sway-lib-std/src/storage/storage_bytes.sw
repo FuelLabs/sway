@@ -1,7 +1,7 @@
 library;
 
 use ::bytes::Bytes;
-use ::option::Option::{self, *};
+use ::option::Option::{*, self};
 use ::storage::storable_slice::*;
 use ::storage::storage_api::*;
 

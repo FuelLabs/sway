@@ -3,7 +3,7 @@ library;
 
 use ::constants::ZERO_B256;
 use ::revert::revert;
-use ::option::Option::{self, *};
+use ::option::Option::{*, self};
 
 // GTF Opcode const selectors
 //
@@ -574,5 +574,7 @@ const TX_ID_OFFSET = 0;
 /// }
 /// ```
 pub fn tx_id() -> b256 {
-    asm(ptr: TX_ID_OFFSET) { ptr: raw_ptr }.read()
+    asm(ptr: TX_ID_OFFSET) {
+        ptr: raw_ptr
+    }.read()
 }

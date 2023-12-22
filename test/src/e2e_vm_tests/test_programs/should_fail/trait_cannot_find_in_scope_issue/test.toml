@@ -4,7 +4,7 @@ category = "fail"
 #check: $()let _ = sha256(123u8);
 #nextln: $()Trait "Hash" is not imported into "main.sw" when calling "sha256".
 #check: $()Import the "Hash" trait into "main.sw" by using: `use std::hash::Hash;`.
-#check: $()pub fn sha256<T>(s: T) -> b256 where T: Hash {
+#check: $()T: Hash,
 #nextln: $()In the definition of "sha256", "Hash" is used in this trait constraint.
 
 #check: $()Trait is not imported

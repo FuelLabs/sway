@@ -3,7 +3,7 @@ library;
 
 use ::assert::*;
 use ::convert::From;
-use ::result::Result::{self, *};
+use ::result::Result::{*, self};
 use ::u128::U128;
 use ::math::Power;
 
@@ -159,12 +159,12 @@ impl U256 {
     /// fn foo() {
     ///     let zero_u256 = U256 { a: 0, b: 0, c: 0, d: 0 };
     ///     let zero_u64 = zero_u256.as_u64().unwrap();
-    /// 
+    ///
     ///     assert(zero_u64 == 0);
-    /// 
+    ///
     ///     let max_u256 = U256::max();
     ///     let result = U256.as_u64();
-    /// 
+    ///
     ///     assert(result.is_err()))
     /// }
     /// ```
@@ -195,12 +195,12 @@ impl U256 {
     /// fn foo() {
     ///     let zero_u256 = U256 { a: 0, b: 0, c: 0, d: 0 };
     ///     let zero_u128 = zero_u256.as_u128().unwrap();
-    /// 
+    ///
     ///     assert(zero_u128 == U128 { upper: 0, lower: 0 });
-    /// 
+    ///
     ///     let max_u256 = U256::max();
     ///     let result = U256.as_u64();
-    /// 
+    ///
     ///     assert(result.is_err()))
     /// }
     /// ```
@@ -227,7 +227,7 @@ impl U256 {
     /// fn foo() {
     ///     let min_u256 = U256::min();
     ///     let zero_u256 = U256 { a: 0, b: 0, c: 0, d: 0 };
-    /// 
+    ///
     ///     assert(min_u256 == zero_u256);
     /// }
     /// ```
@@ -255,7 +255,7 @@ impl U256 {
     /// fn foo() {
     ///     let max_u256 = U256::max();
     ///     let maxed_u256 = U256 { a: u64::max(), b: u64::max(), c: u64::max(), d: u64::max() };
-    /// 
+    ///
     ///     assert(max_u256 == maxed_u256);
     /// }
     /// ```
@@ -293,18 +293,24 @@ impl U256 {
 impl core::ops::Ord for U256 {
     #[allow(deprecated)]
     fn gt(self, other: Self) -> bool {
-        self.a > other.a ||
-                (self.a == other.a && (self.b > other.b ||
-                                      (self.b == other.b && (self.c > other.c ||
-                                                            (self.c == other.c && self.d > other.d)))) )
-        }
+        self.a > other.a
+            || (self.a == other.a
+                && (self.b > other.b
+                    || (self.b == other.b
+                        && (self.c > other.c
+                            || (self.c == other.c
+                                && self.d > other.d)))))
+    }
 
     #[allow(deprecated)]
     fn lt(self, other: Self) -> bool {
-        self.a < other.a ||
-                (self.a == other.a && (self.b < other.b ||
-                                      (self.b == other.b && (self.c < other.c ||
-                                                            (self.c == other.c && self.d < other.d)))) )
+        self.a < other.a
+            || (self.a == other.a
+                && (self.b < other.b
+                    || (self.b == other.b
+                        && (self.c < other.c
+                            || (self.c == other.c
+                                && self.d < other.d)))))
     }
 }
 
@@ -682,10 +688,10 @@ impl core::ops::Divide for U256 {
 
 impl Power for U256 {
     /// Raises self to the power of `exponent`, using exponentiation by squaring.
-	///
-	/// # Panics
-	///
-	/// Panics if the result overflows the type.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the result overflows the type.
     #[allow(deprecated)]
     fn pow(self, exponent: u32) -> Self {
         let one = U256::from((0, 0, 0, 1));
@@ -714,7 +720,7 @@ impl Power for U256 {
 #[allow(deprecated)]
 fn test_five_pow_two_u256() {
     let five = U256::from((0, 0, 0, 5));
-  
+
     let five_pow_two = five.pow(2);
     assert(five_pow_two.a == 0);
     assert(five_pow_two.b == 0);

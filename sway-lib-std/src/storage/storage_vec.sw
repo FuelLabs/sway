@@ -3,7 +3,7 @@ library;
 use ::alloc::{alloc_bytes, realloc_bytes};
 use ::assert::assert;
 use ::hash::*;
-use ::option::Option::{self, *};
+use ::option::Option::{*, self};
 use ::storage::storage_api::*;
 use ::storage::storage_key::*;
 use ::vec::Vec;
@@ -142,11 +142,7 @@ impl<V> StorageKey<StorageVec<V>> {
         // This StorageKey can be read by the standard storage api.
         // Field Id must be unique such that nested storage vecs work as they have a 
         // __size_of() zero and will therefore always have an offset of zero.
-        Some(StorageKey::<V>::new(
-            key, 
-            offset, 
-            sha256((index, key))
-        ))
+        Some(StorageKey::<V>::new(key, offset, sha256((index, key))))
     }
 
     /// Removes the element in the given index and moves all the elements in the following indexes
@@ -159,7 +155,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// # Arguments
     ///
     /// * `index`: [u64] - The index of the vec to remove the item from.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [V] - The element that has been removed at the index.
@@ -401,7 +397,9 @@ impl<V> StorageKey<StorageVec<V>> {
             let read_offset = offset_calculator::<V>(count);
             write::<V>(key, write_offset, read::<V>(key, read_offset).unwrap());
 
-            if count == 0 { break; }
+            if count == 0 {
+                break;
+            }
             count -= 1;
         }
 
@@ -532,7 +530,12 @@ impl<V> StorageKey<StorageVec<V>> {
 
         let element1_value = read::<V>(key, element1_offset).unwrap();
 
-        write::<V>(key, element1_offset, read::<V>(key, element2_offset).unwrap());
+        write::<V>(
+            key,
+            element1_offset,
+            read::<V>(key, element2_offset)
+                .unwrap(),
+        );
         write::<V>(key, element2_offset, element1_value);
     }
 
@@ -567,11 +570,7 @@ impl<V> StorageKey<StorageVec<V>> {
         let key = sha256(self.field_id);
         match read::<u64>(self.field_id, 0).unwrap_or(0) {
             0 => None,
-            _ => Some(StorageKey::<V>::new(
-                key, 
-                0, 
-                sha256((0, key))
-            )),
+            _ => Some(StorageKey::<V>::new(key, 0, sha256((0, key)))),
         }
     }
 
@@ -609,11 +608,7 @@ impl<V> StorageKey<StorageVec<V>> {
             0 => None,
             len => {
                 let offset = offset_calculator::<V>(len - 1);
-                Some(StorageKey::<V>::new(
-                    key, 
-                    offset, 
-                    sha256((len - 1, key))
-                ))
+                Some(StorageKey::<V>::new(key, offset, sha256((len - 1, key))))
             },
         }
     }
@@ -785,7 +780,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// This will overwrite any existing values in the `StorageVec`.
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `vec`: [Vec<V>] - The vector to store in storage.
     ///
     /// # Number of Storage Accesses
@@ -835,7 +830,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// Load a `Vec` from the `StorageVec`.
     ///
     /// # Returns
-    /// 
+    ///
     /// * [Option<Vec<V>>] - The vector constructed from storage or `None`.
     ///
     /// # Number of Storage Accesses
@@ -875,7 +870,11 @@ impl<V> StorageKey<StorageVec<V>> {
                 let ptr = alloc_bytes(number_of_slots * 32);
                 // Load the stored slice into the pointer.
                 let _ = __state_load_quad(sha256(self.field_id), ptr, number_of_slots);
-                Vec::from(asm(ptr: (ptr, bytes)) { ptr: raw_slice })
+                Vec::from(
+                    asm(ptr: (ptr, bytes)) {
+                        ptr: raw_slice
+                    },
+                )
             }
         }
     }

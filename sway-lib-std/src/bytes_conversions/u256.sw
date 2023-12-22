@@ -8,7 +8,7 @@ use ::bytes_conversions::u64::*;
 
 impl u256 {
     /// Converts the `u256` to a sequence of little-endian bytes.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [Bytes] - The 32 bytes that compose the `u256`.
@@ -28,29 +28,31 @@ impl u256 {
     /// }
     /// ```
     pub fn to_le_bytes(self) -> Bytes {
-        let (a, b, c, d): (u64, u64, u64, u64) = asm(r1: self) {r1: (u64, u64, u64, u64)};
+        let (a, b, c, d): (u64, u64, u64, u64) = asm(r1: self) {
+            r1: (u64, u64, u64, u64)
+        };
         let a = a.to_le_bytes();
         let b = b.to_le_bytes();
         let c = c.to_le_bytes();
         let d = d.to_le_bytes();
 
-        let (mut a, mut b, mut c, mut d) = (d,c,b,a);
+        let (mut a, mut b, mut c, mut d) = (d, c, b, a);
 
         a.append(b);
         a.append(c);
         a.append(d);
 
-        a        
+        a
     }
 
     /// Converts a sequence of little-endian bytes to a `u256`.
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `bytes`: [Bytes] - The 32 bytes that compose the `u256`.
     ///
     /// # Returns
-    /// 
+    ///
     /// * [u256] - The resulting `u256` value.
     ///
     /// # Examples
@@ -89,7 +91,7 @@ impl u256 {
     }
 
     /// Converts the `u256` to a sequence of big-endian bytes.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [Bytes] - The 32 bytes that compose the `u256`.
@@ -109,18 +111,20 @@ impl u256 {
     /// }
     /// ```
     pub fn to_be_bytes(self) -> Bytes {
-        let b: b256 = asm(r1: self) {r1: b256};
+        let b: b256 = asm(r1: self) {
+            r1: b256
+        };
         Bytes::from(b)
     }
 
     /// Converts a sequence of big-endian bytes to a `u256`.
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `bytes`: [Bytes] - The 32 bytes that compose the `u256`.
     ///
     /// # Returns
-    /// 
+    ///
     /// * [u256] - The resulting `u256` value.
     ///
     /// # Examples
@@ -159,7 +163,9 @@ fn test_u256_from_le_bytes() {
 
     let x = u256::from_le_bytes(bytes);
 
-    assert(x == 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20_u256);
+    assert(
+        x == 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20_u256,
+    );
 }
 
 #[test]
@@ -187,7 +193,9 @@ fn test_u256_from_be_bytes() {
 
     let x = u256::from_be_bytes(bytes);
 
-    assert(x == 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20_u256);
+    assert(
+        x == 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20_u256,
+    );
 }
 
 #[test]

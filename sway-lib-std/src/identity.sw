@@ -6,10 +6,10 @@ use ::assert::assert;
 use ::address::Address;
 use ::alias::SubId;
 use ::call_frames::contract_id;
-use ::constants::{ZERO_B256, BASE_ASSET_ID};
+use ::constants::{BASE_ASSET_ID, ZERO_B256};
 use ::contract_id::{AssetId, ContractId};
 use ::hash::*;
-use ::option::Option::{self, *};
+use ::option::Option::{*, self};
 
 /// The `Identity` type: either an `Address` or a `ContractId`.
 // ANCHOR: docs_identity
@@ -33,7 +33,7 @@ impl Identity {
     /// Returns the `Address` of the `Identity`.
     ///
     /// # Returns
-    /// 
+    ///
     /// * [Option<Address>] - `Some(Address)` if the underlying type is an `Address`, otherwise `None`.
     ///
     /// # Examples
@@ -57,7 +57,7 @@ impl Identity {
     /// Returns the `ContractId` of the `Identity`.
     ///
     /// # Returns
-    /// 
+    ///
     /// * [Option<ContractId>] - `Some(Contract)` if the underlying type is an `ContractId`, otherwise `None`.
     ///
     /// # Examples
@@ -81,7 +81,7 @@ impl Identity {
     /// Returns whether the `Identity` represents an `Address`.
     ///
     /// # Returns
-    /// 
+    ///
     /// * [bool] - Indicates whether the `Identity` holds an `Address`.
     ///
     /// # Examples
@@ -104,7 +104,7 @@ impl Identity {
     /// Returns whether the `Identity` represents a `ContractId`.
     ///
     /// # Returns
-    /// 
+    ///
     /// * [bool] - Indicates whether the `Identity` holds a `ContractId`.
     ///
     /// # Examples
@@ -123,7 +123,7 @@ impl Identity {
             Self::ContractId(_) => true,
         }
     }
-  
+
     /// Transfer `amount` coins of the type `asset_id` and send them
     /// to the Identity.
     ///

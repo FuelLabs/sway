@@ -1,7 +1,7 @@
 library;
 
 use ::convert::TryFrom;
-use ::option::Option::{self, *};
+use ::option::Option::{*, self};
 
 impl u64 {
     pub fn try_as_u8(self) -> Option<u8> {
@@ -23,7 +23,7 @@ impl u64 {
             None
         }
     }
-    
+
     pub fn try_as_u32(self) -> Option<u32> {
         if self <= u32::max().as_u64() {
             Some(asm(input: self) {
@@ -37,7 +37,9 @@ impl u64 {
 
 impl TryFrom<u256> for u64 {
     fn try_from(u: u256) -> Option<Self> {
-        let parts = asm(r1: u) { r1: (u64, u64, u64, u64) };
+        let parts = asm(r1: u) {
+            r1: (u64, u64, u64, u64)
+        };
 
         if parts.0 != 0 || parts.1 != 0 || parts.2 != 0 {
             None
@@ -50,7 +52,7 @@ impl TryFrom<u256> for u64 {
 #[test]
 fn test_u64_try_from_u256() {
     use ::assert::assert;
-    
+
     let u256_1 = 0x0000000000000000000000000000000000000000000000000000000000000002u256;
     let u256_2 = 0x1000000000000000000000000000000000000000000000000000000000000000u256;
 

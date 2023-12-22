@@ -12,7 +12,7 @@ use ::tx::{
     Transaction,
     tx_type,
 };
-use ::option::Option::{self, *};
+use ::option::Option::{*, self};
 
 // GTF Opcode const selectors
 //
