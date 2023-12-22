@@ -54,7 +54,7 @@ impl AsRawSlice for MyType {
 
 fn foo() {
     let my_type = MyType {
-        ptr: alloc_bytes(0),   
+        ptr: alloc_bytes(0),
         len: 0
     }
     let slice = my_type.as_raw_slice();
