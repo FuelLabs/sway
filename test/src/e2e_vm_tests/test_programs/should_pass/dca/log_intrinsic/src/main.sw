@@ -1,9 +1,5 @@
 script;
 
-fn encode<T>(_item: T) -> raw_slice {
-    asm(ptr: (0, 0)) { ptr: raw_slice }
-}
-
 struct Foo {
     value: u64
 }
