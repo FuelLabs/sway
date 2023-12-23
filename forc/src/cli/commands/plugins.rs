@@ -1,8 +1,12 @@
 use crate::cli::PluginsCommand;
 use anyhow::anyhow;
 use clap::Parser;
+use forc_tracing::println_warning;
 use forc_util::ForcResult;
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 use tracing::info;
 
 /// Find all forc plugins available via `PATH`.
@@ -33,17 +37,48 @@ pub(crate) fn exec(command: PluginsCommand) -> ForcResult<()> {
     } = command;
 
     let mut plugins = crate::cli::plugin::find_all()
-        .map(|path| {
-            print_plugin(path.clone(), print_full_path, describe)
-                .map(|info| (get_file_name(&path), info))
+        .map(|path| print_plugin(path.clone(), print_full_path, describe).map(|info| (path, info)))
+        .collect::<Result<Vec<(_, _)>, _>>()?
+        .into_iter()
+        .fold(HashMap::new(), |mut acc, (path, content)| {
+            let bin_name = get_file_name(&path);
+            acc.entry(bin_name.clone())
+                .or_insert_with(|| (bin_name, vec![], content.clone()))
+                .1
+                .push(path);
+            acc
         })
-        .collect::<Result<Vec<(String, String)>, _>>()?;
+        .into_values()
+        .map(|(bin_name, paths, content)| {
+            let mut temp_hashmap = HashMap::new();
+            (
+                bin_name,
+                paths
+                    .into_iter()
+                    .map(|path| {
+                        if temp_hashmap.get(&path).is_some() {
+                            return None;
+                        }
+                        temp_hashmap.insert(path.clone(), true);
+                        Some(path)
+                    })
+                    .filter_map(|x| x)
+                    .collect::<Vec<_>>(),
+                content,
+            )
+        })
+        .collect::<Vec<_>>();
     plugins.sort_by(|a, b| a.0.cmp(&b.0));
-    plugins.dedup_by(|a, b| a.0 == b.0);
 
     info!("Installed Plugins:");
     for plugin in plugins {
-        info!("{}", plugin.1);
+        info!("{}", plugin.2);
+        if plugin.1.len() > 1 {
+            println_warning(&format!("Multiple path found for {}", plugin.0));
+            for path in plugin.1 {
+                println_warning(&format!("   {}", path.display()));
+            }
+        }
     }
     Ok(())
 }
