@@ -566,7 +566,7 @@ fn can_struct_auto_impl_abi_encode(
 }
 
 fn struct_auto_impl_abi_encode(
-    handler: &Handler,
+    _handler: &Handler,
     ctx: &mut TypeCheckContext,
     decl: ty::TyDecl,
     buffer_type_id: TypeId,
@@ -858,7 +858,8 @@ fn struct_auto_impl_abi_encode(
         }
     );
 
-    let _ = TyDecl::type_check(handler, ctx.by_ref(), impl_trait);
+    let handler2 = Handler::default();
+    let _ = TyDecl::type_check(&handler2, ctx.by_ref(), impl_trait);
 }
 
 impl TyDecl {
