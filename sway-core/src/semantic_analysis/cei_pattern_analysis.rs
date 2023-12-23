@@ -307,7 +307,8 @@ fn analyze_expression(
         | EnumTag { exp: expr }
         | UnsafeDowncast { exp: expr, .. }
         | AbiCast { address: expr, .. }
-        | Ref(expr) => analyze_expression(engines, expr, block_name, warnings),
+        | Ref(expr)
+        | Deref(expr) => analyze_expression(engines, expr, block_name, warnings),
         EnumInstantiation { contents, .. } => match contents {
             Some(expr) => analyze_expression(engines, expr, block_name, warnings),
             None => HashSet::new(),
@@ -558,7 +559,8 @@ fn effects_of_expression(engines: &Engines, expr: &ty::TyExpression) -> HashSet<
         | EnumTag { exp: expr }
         | UnsafeDowncast { exp: expr, .. }
         | Return(expr)
-        | Ref(expr) => effects_of_expression(engines, expr),
+        | Ref(expr)
+        | Deref(expr) => effects_of_expression(engines, expr),
         EnumInstantiation { contents, .. } => match contents {
             Some(expr) => effects_of_expression(engines, expr),
             None => HashSet::new(),

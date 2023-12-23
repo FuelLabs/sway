@@ -51,6 +51,14 @@ fn referencing_references() {
 
     let x_via_refs = r_r_r_x_ptr.read::<raw_ptr>().read::<raw_ptr>().read::<u8>();
     assert(x_via_refs == x);
+
+    assert(*r_x == x);
+    assert(*r_x_1 == x);
+    assert(*r_x_2 == x);
+    assert(**r_r_x_1 == x);
+    assert(**r_r_x_2 == x);
+    assert(**r_r_x_chain == x);
+    assert(***r_r_r_x_chain == x);
 }
 
 #[inline(never)]

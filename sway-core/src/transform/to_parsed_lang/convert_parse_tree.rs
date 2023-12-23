@@ -2091,12 +2091,12 @@ fn expr_to_expression(
             )?)),
             span,
         },
-        Expr::Deref { star_token, .. } => {
-            let error = ConvertParseTreeError::DerefExprNotYetSupported {
-                span: star_token.span(),
-            };
-            return Err(handler.emit_err(error.into()));
-        }
+        Expr::Deref { expr, .. } => Expression {
+            kind: ExpressionKind::Deref(Box::new(expr_to_expression(
+                context, handler, engines, *expr,
+            )?)),
+            span,
+        },
         Expr::Not { bang_token, expr } => {
             let expr = expr_to_expression(context, handler, engines, *expr)?;
             op_call("not", bang_token.span(), span, &[expr])?

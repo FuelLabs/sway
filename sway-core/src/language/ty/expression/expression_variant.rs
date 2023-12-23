@@ -144,6 +144,7 @@ pub enum TyExpressionVariant {
     Reassignment(Box<TyReassignment>),
     Return(Box<TyExpression>),
     Ref(Box<TyExpression>),
+    Deref(Box<TyExpression>),
 }
 
 impl EqWithEngines for TyExpressionVariant {}
@@ -602,7 +603,7 @@ impl HashWithEngines for TyExpressionVariant {
             Self::Return(exp) => {
                 exp.hash(state, engines);
             }
-            Self::Ref(exp) => {
+            Self::Ref(exp) | Self::Deref(exp) => {
                 exp.hash(state, engines);
             }
         }
@@ -749,7 +750,7 @@ impl SubstTypes for TyExpressionVariant {
             Continue => (),
             Reassignment(reassignment) => reassignment.subst(type_mapping, engines),
             Return(stmt) => stmt.subst(type_mapping, engines),
-            Ref(exp) => exp.subst(type_mapping, engines),
+            Ref(exp) | Deref(exp) => exp.subst(type_mapping, engines),
         }
     }
 }
@@ -897,7 +898,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     reassignment.replace_decls(decl_mapping, handler, ctx)?
                 }
                 Return(stmt) => stmt.replace_decls(decl_mapping, handler, ctx)?,
-                Ref(exp) => exp.replace_decls(decl_mapping, handler, ctx)?,
+                Ref(exp) | Deref(exp) => exp.replace_decls(decl_mapping, handler, ctx)?,
             }
 
             Ok(())
@@ -1012,7 +1013,7 @@ impl TypeCheckAnalysis for TyExpressionVariant {
             TyExpressionVariant::Return(node) => {
                 node.type_check_analyze(handler, ctx)?;
             }
-            TyExpressionVariant::Ref(exp) => {
+            TyExpressionVariant::Ref(exp) | TyExpressionVariant::Deref(exp) => {
                 exp.type_check_analyze(handler, ctx)?;
             }
         }
@@ -1150,7 +1151,7 @@ impl TypeCheckFinalization for TyExpressionVariant {
                 TyExpressionVariant::Return(node) => {
                     node.type_check_finalize(handler, ctx)?;
                 }
-                TyExpressionVariant::Ref(exp) => {
+                TyExpressionVariant::Ref(exp) | TyExpressionVariant::Deref(exp) => {
                     exp.type_check_finalize(handler, ctx)?;
                 }
             }
@@ -1255,7 +1256,7 @@ impl UpdateConstantExpression for TyExpressionVariant {
                 reassignment.update_constant_expression(engines, implementing_type)
             }
             Return(stmt) => stmt.update_constant_expression(engines, implementing_type),
-            Ref(exp) => exp.update_constant_expression(engines, implementing_type),
+            Ref(exp) | Deref(exp) => exp.update_constant_expression(engines, implementing_type),
         }
     }
 }
@@ -1421,6 +1422,9 @@ impl DebugWithEngines for TyExpressionVariant {
             TyExpressionVariant::Ref(exp) => {
                 format!("&({:?})", engines.help_out(&**exp))
             }
+            TyExpressionVariant::Deref(exp) => {
+                format!("*({:?})", engines.help_out(&**exp))
+            }
         };
         write!(f, "{s}")
     }
@@ -1534,7 +1538,9 @@ impl TyExpressionVariant {
             TyExpressionVariant::Return(exp) => {
                 vec![exp]
             }
-            TyExpressionVariant::Ref(exp) => exp.gather_return_statements(),
+            TyExpressionVariant::Ref(exp) | TyExpressionVariant::Deref(exp) => {
+                exp.gather_return_statements()
+            }
             // if it is impossible for an expression to contain a return _statement_ (not an
             // implicit return!), put it in the pattern below.
             TyExpressionVariant::Literal(_)

@@ -33,9 +33,13 @@ fn reference_to_copy_type() {
     let r_ret_ptr = asm(r: r_ret) { r: raw_ptr };
     assert(r_ret_ptr == ptr);
 
+    assert(*r_ret == *r_x);
+
     let r_ret = copy_type_ref(r_x, x, ptr);
     let r_ret_ptr = asm(r: r_ret) { r: raw_ptr };
     assert(r_ret_ptr == ptr);
+
+    assert(*r_ret == *r_x);
 }
 
 #[inline(never)]
@@ -48,6 +52,8 @@ fn copy_type_ref(r: &u8, v: u8, ptr: raw_ptr) -> &u8 {
 
     assert(r_ptr == ptr);
     assert(r_ptr.read::<u8>() == v);
+
+    assert(*r == v);
 
     r
 }
@@ -64,9 +70,13 @@ fn reference_to_aggregate() {
     let r_ret_ptr = asm(r: r_ret) { r: raw_ptr };
     assert(r_ret_ptr == ptr);
 
+    assert(*r_ret == *r_s);
+
     let r_ret = aggregate_ref(r_s, s, ptr);
     let r_ret_ptr = asm(r: r_ret) { r: raw_ptr };
     assert(r_ret_ptr == ptr);
+
+    assert(*r_ret == *r_s);
 }
 
 #[inline(never)]
@@ -79,6 +89,8 @@ fn aggregate_ref(r: &S, v: S, ptr: raw_ptr) -> &S {
 
     assert(r_ptr == ptr);
     assert(r_ptr.read::<S>() == v);
+
+    assert(*r == v);
 
     r
 }
@@ -139,9 +151,13 @@ fn reference_to_generic_test<T>(t: T)
     let r_ret_ptr = asm(r: r_ret) { r: raw_ptr };
     assert(r_ret_ptr == ptr);
 
+    assert(*r_ret == *r_t);
+
     let r_ret = generic_ref(r_t, t, ptr);
     let r_ret_ptr = asm(r: r_ret) { r: raw_ptr };
     assert(r_ret_ptr == ptr);
+
+    assert(*r_ret == *r_t);
 }
 
 #[inline(never)]
@@ -156,6 +172,8 @@ fn generic_ref<T>(r: &T, v: T, ptr: raw_ptr) -> &T
 
     assert(r_ptr == ptr);
     assert(r_ptr.read::<T>() == v);
+
+    assert(*r == v);
 
     r
 }

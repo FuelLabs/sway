@@ -558,18 +558,13 @@ impl<'eng> FnCompiler<'eng> {
                 self.compile_reassignment(context, md_mgr, reassignment, span_md_idx)
             }
             ty::TyExpressionVariant::Return(exp) => {
-                self.compile_return_statement(context, md_mgr, exp)
+                self.compile_return(context, md_mgr, exp, span_md_idx)
             }
             ty::TyExpressionVariant::Ref(exp) => {
-                let value = self.compile_expression_to_ptr(context, md_mgr, exp)?;
-
-                // TODO-IG: Do we need to convert to `u64` here? Can we use `Ptr` directly? Investigate.
-                let int_ty = Type::get_uint64(context);
-                Ok(self
-                    .current_block
-                    .append(context)
-                    .ptr_to_int(value, int_ty)
-                    .add_metadatum(context, span_md_idx))
+                self.compile_ref(context, md_mgr, exp, span_md_idx)
+            }
+            ty::TyExpressionVariant::Deref(exp) => {
+                self.compile_deref(context, md_mgr, exp, span_md_idx)
             }
         }
     }
@@ -1114,11 +1109,12 @@ impl<'eng> FnCompiler<'eng> {
         }
     }
 
-    fn compile_return_statement(
+    fn compile_return(
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
+        span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         // Nothing to do if the current block already has a terminator
         if self.current_block.is_terminated(context) {
@@ -1130,7 +1126,6 @@ impl<'eng> FnCompiler<'eng> {
             return Ok(ret_value);
         }
 
-        let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
         ret_value
             .get_type(context)
             .map(|ret_ty| {
@@ -1141,10 +1136,89 @@ impl<'eng> FnCompiler<'eng> {
             })
             .ok_or_else(|| {
                 CompileError::Internal(
-                    "Unable to determine type for return statement expression.",
+                    "Unable to determine type for return expression.",
                     ast_expr.span.clone(),
                 )
             })
+    }
+
+    fn compile_ref(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        ast_expr: &ty::TyExpression,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<Value, CompileError> {
+        let value = self.compile_expression_to_ptr(context, md_mgr, ast_expr)?;
+
+        // TODO-IG: Do we need to convert to `u64` here? Can we use `Ptr` directly? Investigate.
+        let int_ty = Type::get_uint64(context);
+        Ok(self
+            .current_block
+            .append(context)
+            .ptr_to_int(value, int_ty)
+            .add_metadatum(context, span_md_idx))
+    }
+
+    fn compile_deref(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        ast_expr: &ty::TyExpression,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<Value, CompileError> {
+        let ref_value = self.compile_expression(context, md_mgr, ast_expr)?;
+
+        let ptr_as_int = if ref_value
+            .get_type(context)
+            .map_or(false, |ref_value_type| ref_value_type.is_ptr(context))
+        {
+            // We are dereferencing a reference variable and we got a pointer to it.
+            // To get the address the reference is pointing to we need to load the value.
+            self.current_block.append(context).load(ref_value)
+        } else {
+            // The value itself is the address.
+            ref_value
+        };
+
+        let reference_type = self.engines.te().get_unaliased(ast_expr.return_type);
+
+        let referenced_ast_type = match *reference_type {
+            TypeInfo::Ref(ref referenced_type) => Ok(referenced_type.type_id),
+            _ => Err(CompileError::Internal(
+                "Cannot dereference a non-reference expression.",
+                ast_expr.span.clone(),
+            )),
+        }?;
+
+        let referenced_ir_type = convert_resolved_typeid(
+            self.engines.te(),
+            self.engines.de(),
+            context,
+            &referenced_ast_type,
+            &ast_expr.span.clone(),
+        )?;
+
+        let ptr_type = Type::new_ptr(context, referenced_ir_type);
+        let ptr = self
+            .current_block
+            .append(context)
+            .int_to_ptr(ptr_as_int, ptr_type)
+            .add_metadatum(context, span_md_idx);
+
+        let referenced_type = self.engines.te().get_unaliased(referenced_ast_type);
+
+        let result = if referenced_type.is_copy_type() || referenced_type.is_reference_type() {
+            // For non aggregates, we need to return the value.
+            // This means, loading the value the `ptr` is pointing to.
+            self.current_block.append(context).load(ptr)
+        } else {
+            // For aggregates, we access them via pointer, so we just
+            // need to return the `ptr`.
+            ptr
+        };
+
+        Ok(result)
     }
 
     fn compile_lazy_op(

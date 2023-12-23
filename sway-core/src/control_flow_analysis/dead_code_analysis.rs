@@ -1858,7 +1858,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             }
             Ok(vec![])
         }
-        Ref(exp) => connect_expression(
+        Ref(exp) | Deref(exp) => connect_expression(
             engines,
             &exp.expression,
             graph,

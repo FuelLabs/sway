@@ -105,8 +105,6 @@ pub enum ConvertParseTreeError {
     CannotAnnotateDependency { span: Span },
     #[error("Expected dependency at the beginning before any other items.")]
     ExpectedDependencyAtBeginning { span: Span },
-    #[error("Deref expressions are not supported yet.")]
-    DerefExprNotYetSupported { span: Span },
     #[error("Constant requires expression.")]
     ConstantRequiresExpression { span: Span },
     #[error("Constant requires type ascription.")]
@@ -175,7 +173,6 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::CannotDocCommentDependency { span } => span.clone(),
             ConvertParseTreeError::CannotAnnotateDependency { span } => span.clone(),
             ConvertParseTreeError::ExpectedDependencyAtBeginning { span } => span.clone(),
-            ConvertParseTreeError::DerefExprNotYetSupported { span } => span.clone(),
             ConvertParseTreeError::ConstantRequiresExpression { span } => span.clone(),
             ConvertParseTreeError::ConstantRequiresTypeAscription { span } => span.clone(),
             ConvertParseTreeError::InvalidCfgTargetArgValue { span, .. } => span.clone(),

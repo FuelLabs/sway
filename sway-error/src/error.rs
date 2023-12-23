@@ -753,11 +753,8 @@ pub enum CompileError {
     SelfIsNotValidAsImplementingFor { span: Span },
     #[error("Uninitialized register is being read before being written")]
     UninitRegisterInAsmBlockBeingRead { span: Span },
-    #[error("Expression cannot be referenced.")]
-    ExpressionCannotBeReferenced {
-        expression: NonReferenceableExpression,
-        span: Span,
-    },
+    #[error("Expression of type \"{expression_type}\" cannot be dereferenced.")]
+    ExpressionCannotBeDereferenced { expression_type: String, span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -950,7 +947,7 @@ impl Spanned for CompileError {
             ExpectedStringLiteral { span } => span.clone(),
             SelfIsNotValidAsImplementingFor { span } => span.clone(),
             UninitRegisterInAsmBlockBeingRead { span } => span.clone(),
-            ExpressionCannotBeReferenced { span, .. } => span.clone(),
+            ExpressionCannotBeDereferenced { span, .. } => span.clone(),
         }
     }
 }
@@ -1227,30 +1224,26 @@ impl ToDiagnostic for CompileError {
                     help
                 },
             },
-            ExpressionCannotBeReferenced { expression, span } => Diagnostic {
-                reason: Some(Reason::new(code(1), format!("{expression} cannot be referenced"))),
+            // TODO-IG: Extend error messages to pointers, once typed pointers are defined and can be dereferenced.
+            ExpressionCannotBeDereferenced { expression_type, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Expression cannot be dereferenced".to_string())),
                 issue: Issue::error(
                     source_engine,
                     span.clone(),
-                    format!("{expression} is referenced here.")
+                    format!("This expression cannot be dereferenced, because it is of type \"{expression_type}\", which is not a reference type.")
                 ),
-                hints: {
-                    match expression {
-                        NonReferenceableExpression::Return => vec![
-                            Hint::help(
-                                source_engine,
-                                span.clone(),
-                                "Are you trying to return a reference?".to_string()
-                            ),
-                            Hint::help(
-                                source_engine,
-                                span.clone(),
-                                "In that case, use `return &<your expression>;`.".to_string()
-                            ),
-                        ],
-                        _ => vec![],
-                    }
-                },
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        "In Sway, only references can be dereferenced.".to_string()
+                    ),
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        "Are you missing the reference operator `&` somewhere in the code?".to_string()
+                    ),
+                ],
                 help: vec![],
             },
            _ => Diagnostic {
@@ -1287,26 +1280,6 @@ pub enum TypeNotAllowedReason {
 
     #[error("`str` or a type containing `str` on `const` is not allowed.")]
     StringSliceInConst,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum NonReferenceableExpression {
-    Break,
-    Continue,
-    Return,
-    // TODO-IG: Add other expressions that cannot be referenced.
-}
-
-impl std::fmt::Display for NonReferenceableExpression {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use NonReferenceableExpression::*;
-        let s = match self {
-            Break => "`break` keyword",
-            Continue => "`continue` keyword",
-            Return => "`return` keyword",
-        };
-        write!(f, "{s}")
-    }
 }
 
 /// Returns the file name (with extension) for the provided `source_id`,

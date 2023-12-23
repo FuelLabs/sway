@@ -45,6 +45,9 @@ fn if_expr<T>(input: u64, left: T, right: T) where T: Eq {
 
     assert(r_x_ptr_val == x);
     assert(r_x_val_val == x);
+
+    assert(*r_x == x);
+    assert(*r_val == x);
 }
 
 #[inline(never)]

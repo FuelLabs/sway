@@ -309,6 +309,7 @@ pub enum ExpressionKind {
     Reassignment(ReassignmentExpression),
     Return(Box<Expression>),
     Ref(Box<Expression>),
+    Deref(Box<Expression>),
 }
 
 #[derive(Debug, Clone)]

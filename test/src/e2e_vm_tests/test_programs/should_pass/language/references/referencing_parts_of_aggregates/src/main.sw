@@ -48,11 +48,11 @@ impl C {
     }
 }
 
-// TODO-IG: Add tests for accessing via reference chains once dereferencing is implemented.
+// TODO-IG: Add tests for accessing via reference chains once dereferencing operators `[]` and `.` are implemented.
 
 #[inline(always)]
 fn struct_fields() {
-    let x = 123u8;
+    let mut x = 123u8;
 
     let a = A { x, r_x: &x };
     let b = B { a, r_a: &a };
@@ -67,6 +67,9 @@ fn struct_fields() {
     assert(r_a_x_ptr.read::<u8>() == x);
     assert(r_a_r_x_ptr.read::<raw_ptr>().read::<u8>() == x);
 
+    assert(*r_a_x == x);
+    assert(**r_a_r_x == x);
+
     let r_c_b_a_x: &u8 = &c.b.a.x;
     let r_c_b_a_r_x: & &u8 = &c.b.a.r_x;
 
@@ -75,6 +78,9 @@ fn struct_fields() {
 
     assert(r_c_b_a_x_ptr.read::<u8>() == x);
     assert(r_c_b_a_r_x_ptr.read::<raw_ptr>().read::<u8>() == x);
+
+    assert(*r_c_b_a_x == x);
+    assert(**r_c_b_a_r_x == x);
 }
 
 #[inline(never)]
@@ -99,6 +105,9 @@ fn tuple_fields() {
     assert(r_t1_x_ptr.read::<u8>() == x);
     assert(r_t1_r_x_ptr.read::<raw_ptr>().read::<u8>() == x);
 
+    assert(*r_t1_x == x);
+    assert(**r_t1_r_x == x);
+
     let r_t3_t2_t1_x: &u8 = &t3.0.0.0;
     let r_t3_t2_t1_r_x: & &u8 = &t3.0.0.1;
 
@@ -107,6 +116,9 @@ fn tuple_fields() {
 
     assert(r_t3_t2_t1_x_ptr.read::<u8>() == x);
     assert(r_t3_t2_t1_r_x_ptr.read::<raw_ptr>().read::<u8>() == x);
+
+    assert(*r_t3_t2_t1_x == x);
+    assert(**r_t3_t2_t1_r_x == x);
 }
 
 #[inline(never)]
@@ -116,7 +128,7 @@ fn tuple_fields_not_inlined() {
 
 #[inline(always)]
 fn array_elements() {
-    // TODO-IG: Add tests for arrays of references once dereferencing is implemented.
+    // TODO-IG: Add tests for arrays of references once dereferencing operator `[]` is implemented.
     let x1 = 111u8;
     let x2 = 222u8;
 
@@ -133,6 +145,9 @@ fn array_elements() {
     assert(r_a1_x1_ptr.read::<u8>() == x1);
     assert(r_a1_x2_ptr.read::<u8>() == x2);
 
+    assert(*r_a1_x1 == x1);
+    assert(*r_a1_x2 == x2);
+
     let r_a3_a2_a1_x1: &u8 = &a3[0][1][0];
     let r_a3_a2_a1_x2: &u8 = &a3[1][0][1];
 
@@ -141,6 +156,9 @@ fn array_elements() {
 
     assert(r_a3_a2_a1_x1_ptr.read::<u8>() == x1);
     assert(r_a3_a2_a1_x2_ptr.read::<u8>() == x2);
+
+    assert(*r_a3_a2_a1_x1 == x1);
+    assert(*r_a3_a2_a1_x2 == x2);
 }
 
 #[inline(never)]
@@ -165,6 +183,9 @@ fn all_in_one() {
     assert(r_222_ptr.read::<u32>() == 222);
     assert(r_555_ptr.read::<u32>() == 555);
 
+    assert(*r_222 == 222);
+    assert(*r_555 == 555);
+
     // ----
 
     let s1 = S { a: [(1222, 1333), (1444, 1555)] };
@@ -181,6 +202,9 @@ fn all_in_one() {
     assert(r_1555_ptr.read::<u32>() == 1555);
     assert(r_2333_ptr.read::<u32>() == 2333);
 
+    assert(*r_1555 == 1555);
+    assert(*r_2333 == 2333);
+
     // ----
     
     let t = ([s, s1], [s1, s2], [s, s2]);
@@ -193,6 +217,9 @@ fn all_in_one() {
 
     assert(r_1555_ptr.read::<u32>() == 1555);
     assert(r_2333_ptr.read::<u32>() == 2333);
+
+    assert(*r_1555 == 1555);
+    assert(*r_2333 == 2333);
 }
 
 #[inline(never)]

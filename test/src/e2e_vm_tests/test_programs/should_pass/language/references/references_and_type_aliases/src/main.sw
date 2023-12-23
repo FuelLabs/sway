@@ -14,6 +14,8 @@ fn references_and_type_aliases() {
     let ret_ptr = asm(r: ret) { r: raw_ptr };
 
     assert(ret_ptr.read::<u64>() == 123);
+
+    assert(*r == 123);
 }
 
 fn passing_and_returning_ref_type_aliases(x: RefToTupleOfRefs) -> RefToU64 {

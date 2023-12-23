@@ -85,6 +85,10 @@ fn return_references_from_asm_blocks() {
 
     assert(s_x == s.x);
 
+    assert((*r_s).x == s.x);
+    assert((*r_s_ref_1).x == s.x);
+    assert((*r_s_ref_2).x == s.x);
+
     // ----
     // Since aggregates are passed by reference we can always
     // cast a reference to an aggregate to the aggregate itself.

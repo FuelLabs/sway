@@ -1059,6 +1059,7 @@ impl TypeInfo {
         }
     }
 
+    // TODO-IG: Check all the usages of `is_copy_type`.
     pub fn is_copy_type(&self) -> bool {
         // XXX This is FuelVM specific.  We need to find the users of this method and determine
         // whether they're actually asking 'is_aggregate()` or something else.

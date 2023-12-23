@@ -82,6 +82,7 @@ pub fn possibly_nonzero_u64_expression(
         | Continue
         | Reassignment(_)
         | Return(_)
-        | Ref(_) => true,
+        | Ref(_)
+        | Deref(_) => true,
     }
 }

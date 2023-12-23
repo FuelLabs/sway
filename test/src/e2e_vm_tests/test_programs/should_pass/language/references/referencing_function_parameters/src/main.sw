@@ -62,6 +62,8 @@ fn array_parameter(p: [u64;2]) {
     assert(p_ptr == r_p_2_ptr);
 
     assert(p_ptr.read::<[u64;2]>() == p);
+
+    assert(*r_p_1 == *r_p_2);
 }
 
 #[inline(never)]
@@ -90,6 +92,8 @@ fn empty_struct_parameter(p: EmptyStruct) {
     assert(p_ptr == r_p_2_ptr);
 
     assert(p_ptr.read::<EmptyStruct>() == p);
+
+    assert(*r_p_1 == *r_p_2);
 }
 
 #[inline(never)]
@@ -110,6 +114,8 @@ fn struct_parameter(p: S) {
     assert(p_ptr == r_p_2_ptr);
 
     assert(p_ptr.read::<S>() == p);
+
+    assert(*r_p_1 == *r_p_2);
 }
 
 #[inline(never)]
@@ -142,6 +148,8 @@ fn enum_parameter(p: E) {
     assert(p_ptr == r_p_2_ptr);
 
     assert(p_ptr.read::<E>() == p);
+
+    assert(*r_p_1 == *r_p_2);
 }
 
 #[inline(never)]
@@ -180,6 +188,8 @@ fn generic_parameter_test<T>(p: T) where T: Eq {
     assert(p_ptr == r_p_2_ptr);
 
     assert(p_ptr.read::<T>() == p);
+
+    assert(*r_p_1 == *r_p_2);
 }
 
 #[inline(never)]

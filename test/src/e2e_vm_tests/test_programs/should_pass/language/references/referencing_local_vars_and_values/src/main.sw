@@ -30,6 +30,10 @@ fn reference_local_var_and_value<T>()
     assert(r_x_1_ptr_val == x);
     assert(r_x_2_ptr_val == x);
     assert(r_x_val_val == T::new());
+
+    assert(*r_x_1 == x);
+    assert(*r_x_2 == x);
+    assert(*r_val == T::new());
 }
 
 #[inline(never)]
@@ -64,6 +68,12 @@ fn reference_local_reference_var_and_value<T>()
     assert(r_r_x_1_ptr != r_r_val_ptr);
 
     assert(r_r_x_a_ptr == r_r_x_b_ptr);
+
+    assert(**r_r_x_1 == x);
+    assert(**r_r_x_2 == x);
+    assert(**r_r_val == T::new());
+    assert(**r_r_x_a == x);
+    assert(**r_r_x_b == x);
 
     let r_r_x_1_ptr_ptr = r_r_x_1_ptr.read::<raw_ptr>();
     let r_r_x_2_ptr_ptr = r_r_x_2_ptr.read::<raw_ptr>();
@@ -143,6 +153,11 @@ fn reference_zero_sized_local_var_and_value<T>(is_inlined: bool)
     assert(r_x_2_ptr_val == x);
     assert(r_x_val_val == T::new());
     assert(r_dummy_val == 123);
+
+    assert(*r_x_1 == x);
+    assert(*r_x_2 == x);
+    assert(*r_val == T::new());
+    assert(*r_dummy == 123);
 }
 
 #[inline(never)]

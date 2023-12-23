@@ -614,7 +614,9 @@ impl Dependencies {
                 self.gather_from_expr(engines, &reassignment.rhs)
             }
             ExpressionKind::Return(expr) => self.gather_from_expr(engines, expr),
-            ExpressionKind::Ref(expr) => self.gather_from_expr(engines, expr),
+            ExpressionKind::Ref(expr) | ExpressionKind::Deref(expr) => {
+                self.gather_from_expr(engines, expr)
+            }
         }
     }
 

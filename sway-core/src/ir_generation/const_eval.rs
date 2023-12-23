@@ -622,7 +622,7 @@ fn const_eval_typed_expr(
                 }
             }
         }
-        ty::TyExpressionVariant::Ref(_) => {
+        ty::TyExpressionVariant::Ref(_) | ty::TyExpressionVariant::Deref(_) => {
             return Err(ConstEvalError::CompileError(CompileError::Unimplemented(
                 "Constant references are currently not supported.",
                 expr.span.clone(),
