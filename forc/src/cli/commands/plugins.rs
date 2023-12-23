@@ -55,14 +55,13 @@ pub(crate) fn exec(command: PluginsCommand) -> ForcResult<()> {
                 bin_name,
                 paths
                     .into_iter()
-                    .map(|path| {
+                    .filter_map(|path| {
                         if temp_hashmap.get(&path).is_some() {
                             return None;
                         }
                         temp_hashmap.insert(path.clone(), true);
                         Some(path)
                     })
-                    .filter_map(|x| x)
                     .collect::<Vec<_>>(),
                 content,
             )
