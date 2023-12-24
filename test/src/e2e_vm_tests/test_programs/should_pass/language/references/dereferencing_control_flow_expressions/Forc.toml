@@ -1,7 +1,7 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
-name = "referencing_control_flow_expressions"
+name = "dereferencing_control_flow_expressions"
 entry = "main.sw"
 
 [dependencies]

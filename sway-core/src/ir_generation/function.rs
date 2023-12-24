@@ -1151,6 +1151,10 @@ impl<'eng> FnCompiler<'eng> {
     ) -> Result<Value, CompileError> {
         let value = self.compile_expression_to_ptr(context, md_mgr, ast_expr)?;
 
+        if value.is_diverging(context) {
+            return Ok(value);
+        }
+
         // TODO-IG: Do we need to convert to `u64` here? Can we use `Ptr` directly? Investigate.
         let int_ty = Type::get_uint64(context);
         Ok(self
@@ -1168,6 +1172,10 @@ impl<'eng> FnCompiler<'eng> {
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         let ref_value = self.compile_expression(context, md_mgr, ast_expr)?;
+
+        if ref_value.is_diverging(context) {
+            return Ok(ref_value);
+        }
 
         let ptr_as_int = if ref_value
             .get_type(context)
