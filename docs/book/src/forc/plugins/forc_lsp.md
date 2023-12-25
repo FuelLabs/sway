@@ -1,1 +1,1 @@
-# forc lsp
+# `forc lsp`

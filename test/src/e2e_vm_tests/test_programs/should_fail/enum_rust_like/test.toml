@@ -1,0 +1,11 @@
+category = "fail"
+
+# check: $()error
+# check: enum_rust_like/src/main.sw:7:5
+# check: $()Ok,    // Illegal
+# nextln: $()Expected ':'. Enum variants must be in the form `Variant: ()`, `Variant: <type>`, or `Variant: (<type1>, ..., <typeN>)`. E.g., `Foo: (), or `Bar: (bool, u32)`.
+
+# check: $()error
+# check: enum_rust_like/src/main.sw:12:4
+# check: $()F(u32),        // Illegal
+# nextln: $()Expected ':'. Enum variants must be in the form `Variant: ()`, `Variant: <type>`, or `Variant: (<type1>, ..., <typeN>)`. E.g., `Foo: (), or `Bar: (bool, u32)`.

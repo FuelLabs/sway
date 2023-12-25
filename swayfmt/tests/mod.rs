@@ -1429,7 +1429,7 @@ fn foo() {
 fn foo() {
     asm(r1: self, r2: other, r3, r4) {
         addi r3 zero i32;
-        meq  r4 r1 r2 r3;
+        meq r4 r1 r2 r3;
         r4: bool
     }
 }
@@ -2306,6 +2306,383 @@ fn test_comment_v2() {
 
 fn test_function() -> bool {
     true
+}
+"#,
+    );
+}
+
+#[test]
+fn long_doc_break_new_line() {
+    check(
+        r#"library;
+
+/// Allocates zeroed memory on the heap.
+///
+/// # Additional Information
+///
+/// In the FuelVM, the heap begins at `VM_MAX_RAM` and grows downward.
+/// The heap pointer(`$hp`) always points to the first allocated byte.
+///
+/// Initially the heap will look like this:
+/// ```
+///                                                     ▾$hp
+/// ... 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
+///                                                     ▴VM_MAX_RAM
+/// ```
+/// After allocating with `let ptr = alloc::<u64>(1)`:
+/// ```
+///                             ▾$hp
+/// ... 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
+///                             ▴ptr                    ▴VM_MAX_RAM
+/// ```
+/// After writing with `sw(ptr, u64::max())`:
+/// ```
+///                             ▾$hp
+/// ... 00 00 00 00 00 00 00 00 FF FF FF FF FF FF FF FF |
+///                             ▴ptr                    ▴VM_MAX_RAM
+/// ```
+/// For more information, see the Fuel Spec for [VM Initialization](https://fuellabs.github.io/fuel-specs/master/vm#vm-initialization)
+/// and the VM Instruction Set for [Memory Allocation](https://fuellabs.github.io/fuel-specs/master/vm/instruction_set.html#aloc-allocate-memory).
+///
+/// # Arguments
+/// 
+/// * `count`: [u64] - The number of `size_of<T>` bytes to allocate onto the heap.
+///
+/// # Returns
+///
+/// * [raw_ptr] - The pointer to the newly allocated memory.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::alloc::alloc;
+/// 
+/// fn foo() {
+///     let ptr = alloc::<u64>(2);
+///     assert(!ptr.is_null());
+/// }
+/// ```
+/// Reallocates the given area of memory.
+/// 
+/// # Arguments
+///
+/// * `ptr`: [raw_ptr] - The pointer to the area of memory to reallocate.
+/// * `count`: [u64] - The number of `size_of<T>` bytes kept when reallocating. These are not set to 0.
+/// * `new_count`: [u64] - The number of new `size_of<T>` bytes to allocate. These are set to 0.
+///
+/// # Returns
+/// 
+/// * [raw_ptr] - The pointer to the newly reallocated memory.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::alloc::{alloc, realloc};
+///
+/// fn foo() {
+///     let ptr = alloc::<u64>(1);
+///     ptr.write(5);
+///     let reallocated_ptr = realloc::<u64>(ptr, 1, 2);
+///     assert(reallocated_ptr.read::<u64>() == 5);
+/// }
+/// ```
+pub fn realloc<T>(ptr: raw_ptr, count: u64, new_count: u64) -> raw_ptr {
+    if new_count > count {
+        let new_ptr = alloc::<T>(new_count);
+        if count > 0 {
+            ptr.copy_to::<T>(new_ptr, count);
+        }
+        new_ptr
+    } else {
+        ptr
+    }
+}
+
+/// Allocates zeroed memory on the heap in individual bytes.
+pub fn alloc_bytes(count: u64) -> raw_ptr {
+    asm(size: count, ptr) {
+        aloc size;
+        move ptr hp;
+        ptr: raw_ptr
+    }
+}
+
+        "#,
+        r#"library;
+
+/// Allocates zeroed memory on the heap.
+///
+/// # Additional Information
+///
+/// In the FuelVM, the heap begins at `VM_MAX_RAM` and grows downward.
+/// The heap pointer(`$hp`) always points to the first allocated byte.
+///
+/// Initially the heap will look like this:
+/// ```
+///                                                     ▾$hp
+/// ... 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
+///                                                     ▴VM_MAX_RAM
+/// ```
+/// After allocating with `let ptr = alloc::<u64>(1)`:
+/// ```
+///                             ▾$hp
+/// ... 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
+///                             ▴ptr                    ▴VM_MAX_RAM
+/// ```
+/// After writing with `sw(ptr, u64::max())`:
+/// ```
+///                             ▾$hp
+/// ... 00 00 00 00 00 00 00 00 FF FF FF FF FF FF FF FF |
+///                             ▴ptr                    ▴VM_MAX_RAM
+/// ```
+/// For more information, see the Fuel Spec for [VM Initialization](https://fuellabs.github.io/fuel-specs/master/vm#vm-initialization)
+/// and the VM Instruction Set for [Memory Allocation](https://fuellabs.github.io/fuel-specs/master/vm/instruction_set.html#aloc-allocate-memory).
+///
+/// # Arguments
+///
+/// * `count`: [u64] - The number of `size_of<T>` bytes to allocate onto the heap.
+///
+/// # Returns
+///
+/// * [raw_ptr] - The pointer to the newly allocated memory.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::alloc::alloc;
+///
+/// fn foo() {
+///     let ptr = alloc::<u64>(2);
+///     assert(!ptr.is_null());
+/// }
+/// ```
+/// Reallocates the given area of memory.
+///
+/// # Arguments
+///
+/// * `ptr`: [raw_ptr] - The pointer to the area of memory to reallocate.
+/// * `count`: [u64] - The number of `size_of<T>` bytes kept when reallocating. These are not set to 0.
+/// * `new_count`: [u64] - The number of new `size_of<T>` bytes to allocate. These are set to 0.
+///
+/// # Returns
+///
+/// * [raw_ptr] - The pointer to the newly reallocated memory.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::alloc::{alloc, realloc};
+///
+/// fn foo() {
+///     let ptr = alloc::<u64>(1);
+///     ptr.write(5);
+///     let reallocated_ptr = realloc::<u64>(ptr, 1, 2);
+///     assert(reallocated_ptr.read::<u64>() == 5);
+/// }
+/// ```
+pub fn realloc<T>(ptr: raw_ptr, count: u64, new_count: u64) -> raw_ptr {
+    if new_count > count {
+        let new_ptr = alloc::<T>(new_count);
+        if count > 0 {
+            ptr.copy_to::<T>(new_ptr, count);
+        }
+        new_ptr
+    } else {
+        ptr
+    }
+}
+
+/// Allocates zeroed memory on the heap in individual bytes.
+pub fn alloc_bytes(count: u64) -> raw_ptr {
+    asm(size: count, ptr) {
+        aloc size;
+        move ptr hp;
+        ptr: raw_ptr
+    }
+}
+"#,
+    )
+}
+
+#[test]
+fn broken_doc_comment() {
+    check(
+        r#"library;
+        /// line 1
+        /// line 2
+        // line 3
+        /// line 4
+        // line 5
+        /// line 6
+        fn test() {
+        }
+    "#,
+        r#"library;
+/// line 1
+/// line 2
+// line 3
+/// line 4
+// line 5
+/// line 6
+fn test() {}
+"#,
+    );
+}
+
+#[test]
+fn asm_block_v2() {
+    check(
+        r#"library;
+    
+    pub fn transfer(self, asset_id: AssetId, amount: u64) {
+        // maintain a manual index as we only have `while` loops in sway atm:
+        let mut index = 0;
+
+        asm(input: input) {
+            input: u256
+        }
+
+        // If an output of type `OutputVariable` is found, check if its `amount` is
+        // zero. As one cannot transfer zero coins to an output without a panic, a
+        // variable output with a value of zero is by definition unused.
+        let number_of_outputs = output_count();
+        while index < number_of_outputs {
+            if let Output::Variable = output_type(index) {
+                if output_amount(index) == 0 {
+                    asm(r1: self.value, r2: index, r3: amount, r4: asset_id.value.with_long_long_name) {
+                        tro r1 r2 r3 r4;
+                    };
+                    return;
+                }
+            }
+            index += 1;
+        }
+
+        revert(FAILED_TRANSFER_TO_ADDRESS_SIGNAL);
+    }
+    "#,
+        r#"library;
+
+pub fn transfer(self, asset_id: AssetId, amount: u64) {
+    // maintain a manual index as we only have `while` loops in sway atm:
+    let mut index = 0;
+
+    asm(input: input) {
+        input: u256
+    }
+
+    // If an output of type `OutputVariable` is found, check if its `amount` is
+    // zero. As one cannot transfer zero coins to an output without a panic, a
+    // variable output with a value of zero is by definition unused.
+    let number_of_outputs = output_count();
+    while index < number_of_outputs {
+        if let Output::Variable = output_type(index) {
+            if output_amount(index) == 0 {
+                asm(
+                    r1: self.value,
+                    r2: index,
+                    r3: amount,
+                    r4: asset_id.value.with_long_long_name,
+                ) {
+                    tro r1 r2 r3 r4;
+                };
+                return;
+            }
+        }
+        index += 1;
+    }
+
+    revert(FAILED_TRANSFER_TO_ADDRESS_SIGNAL);
+}
+"#,
+    );
+}
+
+#[test]
+fn long_expr_assign() {
+    check(
+        r#"library;
+
+fn foo() {
+    let x = self.a > other.a || (self.a == other.a && (self.b > other.b || (self.b == other.b && (self.c > other.c || (self.c == other.c && self.d > other.d)))));
+}
+    "#,
+        r#"library;
+
+fn foo() {
+    let x = self.a > other.a
+        || (self.a == other.a
+            && (self.b > other.b
+                || (self.b == other.b
+                    && (self.c > other.c
+                        || (self.c == other.c
+                            && self.d > other.d)))));
+}
+"#,
+    );
+}
+
+#[test]
+fn long_expr_return() {
+    check(
+        r#"library;
+
+fn foo() {
+    self.a > other.a || (self.a == other.a && (self.b > other.b || (self.b == other.b && (self.c > other.c || (self.c == other.c && self.d > other.d)))));
+}
+    "#,
+        r#"library;
+
+fn foo() {
+    self.a > other.a
+        || (self.a == other.a
+            && (self.b > other.b
+                || (self.b == other.b
+                    && (self.c > other.c
+                        || (self.c == other.c
+                            && self.d > other.d)))));
+}
+"#,
+    );
+}
+
+#[test]
+fn long_expr_single_arg() {
+    check(
+        r#"library;
+fn test() {
+    Self::from((
+        self.b * other.c + result_b_d.upper + overflow_of_b_to_a_3 + overflow_of_b_to_a_2 + overflow_of_b_to_a_1 + overflow_of_b_to_a_0,
+        b,
+        c,
+        result_d_d.lower,
+    ))
+}
+    "#,
+        r#"library;
+fn test() {
+    Self::from((
+        self.b * other.c + result_b_d.upper + overflow_of_b_to_a_3 + overflow_of_b_to_a_2 + overflow_of_b_to_a_1 + overflow_of_b_to_a_0,
+        b,
+        c,
+        result_d_d.lower,
+    ))
+}
+"#,
+    );
+}
+
+#[test]
+fn single_argument_not() {
+    check(
+        r#"library;
+fn test() {
+    assert(!(U256::from((0, 0, 0, 1)) > U256::from((0, u64::max(), 0, 0))));
+}
+    "#,
+        r#"library;
+fn test() {
+    assert(!(U256::from((0, 0, 0, 1)) > U256::from((0, u64::max(), 0, 0))));
 }
 "#,
     );
