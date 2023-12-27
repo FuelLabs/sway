@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-386EBA3A9A7586D3"
+
+[[package]]
+name = "square_root_test"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-386EBA3A9A7586D3"
+dependencies = ["core"]
