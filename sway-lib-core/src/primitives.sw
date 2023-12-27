@@ -3,7 +3,7 @@ library;
 impl u256 {
     /// The smallest value that can be represented by this integer type.
     ///
-    /// # Returns 
+    /// # Returns
     ///
     /// * [u256] - The smallest `u256` value.
     ///
@@ -60,7 +60,7 @@ impl u256 {
 impl u64 {
     /// The smallest value that can be represented by this integer type.
     ///
-    /// # Returns 
+    /// # Returns
     ///
     /// * [u64] - The smallest `u64` value.
     ///
@@ -234,7 +234,7 @@ impl u8 {
     /// # Returns
     ///
     /// * [u8] - The smallest `u8` value.
-    /// 
+    ///
     /// # Examples
     ///
     /// ```sway
@@ -271,7 +271,7 @@ impl u8 {
     /// # Returns
     ///
     /// * [u64] - The number of bits for a `u8`.
-    /// 
+    ///
     /// # Examples
     ///
     /// ```sway
@@ -291,9 +291,9 @@ impl b256 {
     /// # Returns
     ///
     /// * [b256] - The smallest `b256` value.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```sway
     /// use std::constants::ZERO_B256;
     ///
@@ -336,7 +336,7 @@ impl b256 {
     /// ```sway
     /// fn foo() {
     ///     let bits == b256::bits();
-    ///     assert(bits == 256);        
+    ///     assert(bits == 256);
     /// }
     /// ```
     pub fn bits() -> u64 {
