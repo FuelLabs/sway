@@ -3,6 +3,7 @@ library;
 
 use ::intrinsics::size_of_val;
 use ::convert::From;
+use ::hash::*;
 
 /// The `EvmAddress` type, a struct wrapper around the inner `b256` value.
 pub struct EvmAddress {
@@ -33,5 +34,12 @@ impl From<b256> for EvmAddress {
 
     fn into(self) -> b256 {
         self.value
+    }
+}
+
+impl Hash for EvmAddress {
+    fn hash(self, ref mut state: Hasher) {
+        let Address { value } = self;
+        value.hash(state);
     }
 }
