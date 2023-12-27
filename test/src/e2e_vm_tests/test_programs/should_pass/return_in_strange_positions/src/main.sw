@@ -6,7 +6,7 @@ script;
 
 pub struct S { x : u64, y : u64, }
 pub enum Enum {
-    A: u64,
+    A: (u64, u64),
 }
 
 // Legal return types. These should warn of unreachable code, but otherwise no error.
@@ -67,18 +67,18 @@ fn in_while_condition() -> u64 {
 }
 
 fn in_enum() -> u64 {
-    let _ = Enum::A(return 42);
+    let _ = Enum::A((return 42, return 43));
     
     845
 }
 
 
-fn helper_fun(x : u64) -> u64 {
-    x + 1
+fn helper_fun(x : u64, y : u64) -> u64 {
+    x + y
 }
 
 fn in_fun_arg() -> u64 {
-    let _ = helper_fun(return 42);
+    let _ = helper_fun(return 42, return 43);
 
     945
 }

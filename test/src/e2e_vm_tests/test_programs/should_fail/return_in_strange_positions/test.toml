@@ -53,7 +53,7 @@ category = "fail"
 
 # check: $()warning
 # check: return_in_strange_positions/src/main.sw:94:4
-# check: $()fn helper_fun(x : u64) -> u64 {
+# check: $()fn helper_fun(x : u64, y : u64) -> u64 {
 # nextln: $()This function is never called.
 
 # check: $()error
@@ -166,8 +166,16 @@ category = "fail"
 # nextln: $()help: Return statement must return the declared function return type.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:89:21
-# check: $()let _ = Enum::A(return);
+# check: return_in_strange_positions/src/main.sw:89:22
+# check: $()let _ = Enum::A((return, return));
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return statement must return the declared function return type.
+
+# check: $()error
+# check: return_in_strange_positions/src/main.sw:89:30
+# check: $()let _ = Enum::A((return, return));
 # nextln: $()Mismatched types.
 # nextln: $()expected: u64
 # nextln: $()found:    ().
@@ -175,7 +183,15 @@ category = "fail"
 
 # check: $()error
 # check: return_in_strange_positions/src/main.sw:99:24
-# check: $()let _ = helper_fun(return);
+# check: $()let _ = helper_fun(return, return);
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return statement must return the declared function return type.
+
+# check: $()error
+# check: return_in_strange_positions/src/main.sw:99:32
+# check: $()let _ = helper_fun(return, return);
 # nextln: $()Mismatched types.
 # nextln: $()expected: u64
 # nextln: $()found:    ().
@@ -215,4 +231,3 @@ category = "fail"
 # check: return_in_strange_positions/src/main.sw:118:17
 # check: $()assert(42 != in_fun_arg());
 # nextln: $()Could not find symbol "in_fun_arg" in this scope.
- 

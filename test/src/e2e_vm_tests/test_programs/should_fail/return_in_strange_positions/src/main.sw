@@ -6,7 +6,7 @@ script;
 
 pub struct S { x : u64, y : u64, }
 pub enum Enum {
-    A: u64,
+    A: (u64, u64),
 }
 
 // Legal return type. Matching on the type is unimplemented.
@@ -86,17 +86,17 @@ fn in_match_scrutinee() -> u64 {
 }
  
 fn in_enum() -> u64 {
-    let _ = Enum::A(return);
+    let _ = Enum::A((return, return));
     
     945
 }
 
-fn helper_fun(x : u64) -> u64 {
-    x + 1
+fn helper_fun(x : u64, y : u64) -> u64 {
+    x + y
 }
 
 fn in_fun_arg() -> u64 {
-    let _ = helper_fun(return);
+    let _ = helper_fun(return, return);
 
     1045
 }
