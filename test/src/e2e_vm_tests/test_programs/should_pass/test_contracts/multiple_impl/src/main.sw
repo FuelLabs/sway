@@ -20,5 +20,3 @@ impl TestContr for Contract {
         bar();
     }
 }
-
-fn main() {}

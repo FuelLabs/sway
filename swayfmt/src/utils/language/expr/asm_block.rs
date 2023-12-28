@@ -61,20 +61,53 @@ fn format_asm_block(
     formatter.with_shape(
         formatter.shape.with_default_code_line(),
         |formatter| -> Result<(), FormatterError> {
-            AsmBlock::open_parenthesis(formatted_code, formatter)?;
+            formatter
+                .shape
+                .code_line
+                .update_line_style(LineStyle::Normal);
+
+            let mut inline_arguments = FormattedCode::new();
             asm_block
                 .registers
                 .get()
-                .format(formatted_code, formatter)?;
-            AsmBlock::close_parenthesis(formatted_code, formatter)?;
+                .format(&mut inline_arguments, formatter)?;
+
+            formatter.shape.code_line.update_expr_new_line(false);
+            formatter
+                .shape
+                .code_line
+                .update_expr_kind(shape::ExprKind::Function);
+            if inline_arguments.len() > formatter.shape.width_heuristics.fn_call_width {
+                formatter
+                    .shape
+                    .code_line
+                    .update_line_style(LineStyle::Multiline);
+                AsmBlock::open_parenthesis(formatted_code, formatter)?;
+                formatter.indent();
+                asm_block
+                    .registers
+                    .get()
+                    .format(formatted_code, formatter)?;
+                formatter.unindent();
+                write!(formatted_code, "{}", formatter.indent_to_str()?)?;
+                AsmBlock::close_parenthesis(formatted_code, formatter)?;
+            } else {
+                AsmBlock::open_parenthesis(formatted_code, formatter)?;
+                write!(formatted_code, "{}", inline_arguments)?;
+                AsmBlock::close_parenthesis(formatted_code, formatter)?;
+            }
+
+            formatter
+                .shape
+                .code_line
+                .update_line_style(LineStyle::Multiline);
+            AsmBlock::open_curly_brace(formatted_code, formatter)?;
+            asm_block.contents.get().format(formatted_code, formatter)?;
+            AsmBlock::close_curly_brace(formatted_code, formatter)?;
 
             Ok(())
         },
     )?;
-
-    AsmBlock::open_curly_brace(formatted_code, formatter)?;
-    asm_block.contents.get().format(formatted_code, formatter)?;
-    AsmBlock::close_curly_brace(formatted_code, formatter)?;
 
     Ok(())
 }
@@ -156,7 +189,7 @@ impl Format for Instruction {
         formatted_code: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(formatted_code, "{:<4}", &self.op_code_ident().as_str())?;
+        write!(formatted_code, "{}", &self.op_code_ident().as_str())?;
         for arg in self.register_arg_idents() {
             write!(formatted_code, " {}", arg.as_str())?
         }
