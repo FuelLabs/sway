@@ -18,10 +18,20 @@ use sway_core::{BuildConfig, BuildTarget};
 use sway_utils::{constants, find_parent_manifest_dir, get_sway_files, is_sway_file};
 use swayfmt::Formatter;
 
+forc::cli_examples! {
+    [ Run the formatter in check mode on the current directory => fmt "--check"]
+    [ Run the formatter in check mode on the current directory with short format => fmt "-c"]
+    [ Run formatter against a given file => fmt "--file src/main.sw"]
+    [ Run formatter against a given file with short format => fmt "-f src/main.sw"]
+    [ Run formatter against a given dir => fmt "--path ../tests/"]
+    [ Run formatter against a given dir with short format => fmt "-p ../tests"]
+}
+
 #[derive(Debug, Parser)]
 #[clap(
     name = "forc-fmt",
     about = "Forc plugin for running the Sway code formatter.",
+    after_long_help = help(),
     version
 )]
 pub struct App {
@@ -34,6 +44,7 @@ pub struct App {
     /// Path to the project, if not specified, current working directory will be used.
     #[clap(short, long)]
     pub path: Option<String>,
+    #[clap(short, long)]
     /// Formats a single .sw file with the default settings.
     /// If not specified, current working directory will be formatted using a Forc.toml configuration.
     pub file: Option<String>,

@@ -11,6 +11,7 @@ repository.workspace = true
 [dependencies]
 anyhow = "1"
 clap = { version = "3", features = ["derive"] }
+forc = { version = "0.48.1", path = "../../forc" }
 forc-pkg = { version = "0.48.1", path = "../../forc-pkg" }
 forc-tracing = { version = "0.48.1", path = "../../forc-tracing" }
 forc-util = { version = "0.48.1", path = "../../forc-util" }

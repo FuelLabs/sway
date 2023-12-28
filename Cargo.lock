@@ -2091,6 +2091,7 @@ version = "0.48.1"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
+ "forc",
  "forc-pkg",
  "forc-tracing",
  "forc-util",
