@@ -6,7 +6,7 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     decl_engine::DeclRefStruct,
-    language::{parsed::*, ty, CallPath},
+    language::{parsed::*, ty, CallPath, Visibility},
     semantic_analysis::{
         type_check_context::EnforceTypeArguments, GenericShadowingMode, TypeCheckContext,
     },
@@ -119,14 +119,33 @@ pub(crate) fn struct_instantiation(
         None,
     );
 
-    // check that there are no extra fields
-    for field in fields {
+    // Check that there are no extra fields.
+    for field in fields.iter() {
         if !struct_fields.iter().any(|x| x.name == field.name) {
             handler.emit_err(CompileError::StructDoesNotHaveField {
                 field_name: field.name.clone(),
                 struct_name: struct_name.clone(),
-                span: field.span,
+                span: field.name.span(),
             });
+        }
+    }
+
+    // If the current module being checked is not a submodule of the
+    // module in which the struct is declared, only public fields can be accessed.
+    assert!(struct_decl.call_path.is_absolute, "The call path of the struct field declaration must always be absolute.");
+    if !ctx.namespace.module_is_submodule_of(&struct_decl.call_path.prefixes, true) {
+        for field in fields {
+            if let Some(ty_field) = struct_fields.iter().find(|x| x.name == field.name) {
+                if matches!(ty_field.visibility, Visibility::Private) {
+                    handler.emit_err(CompileError::StructFieldIsPrivate {
+                        field_name: field.name.clone(),
+                        struct_name: struct_name.clone(),
+                        span: field.name.span(),
+                        field_decl_span: ty_field.name.span(),
+                        is_external_struct: ctx.namespace.module_is_external(&struct_decl.call_path.prefixes),
+                    });
+                }
+            }
         }
     }
 

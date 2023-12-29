@@ -145,6 +145,63 @@ impl Namespace {
             parent_mod_path,
         }
     }
+
+    // TODO-IG: Check corner cases (modules without names, packages with the same names, ...).
+    /// Returns true if the current module being checked is a direct or indirect submodule of
+    /// the module given by the `absolute_module_path`.
+    /// 
+    /// The current module being checked is determined by `mod_path`.
+    ///
+    /// E.g., the `mod_path` `[fist, second, third]` of the root `foo` is a submodule of the module
+    /// `[foo, first]`. Note that the `mod_path` does not contain the root name, while the
+    /// `absolute_module_path` always contains it.
+    ///
+    /// If the current module being checked is the same as the module given by the `absolute_module_path`,
+    /// the `true_if_same` is returned.
+    pub(crate) fn module_is_submodule_of(&self, absolute_module_path: &Path, true_if_same: bool) -> bool {
+        // `mod_path` does not contain the root name, so we have to separately check
+        // that the root name is equal to the module package name.
+        let root_name = match &self.root.name {
+            Some(name) => name,
+            None => return false,
+        };
+
+        let (package_name, modules) = absolute_module_path.split_first().expect("Absolute module path must have at least one element, because it always contains the package name.");
+
+        if root_name != package_name {
+            return false;
+        }
+
+        if self.mod_path.len() < modules.len() {
+            return false;
+        }
+
+        let is_submodule = modules.iter().zip(self.mod_path.iter()).all(|(left, right)| left == right);
+
+        if is_submodule {
+            if self.mod_path.len() == modules.len() {
+                true_if_same
+            } else {
+                true
+            }
+        } else {
+            false
+        }
+    }
+
+    // TODO-IG: Check corner cases (modules without names, packages with the same names, ...).
+    /// Returns true if the module given by the `absolute_module_path` is external
+    /// to the current package. External modules are imported in the `Forc.toml` file.
+    pub(crate) fn module_is_external(&self, absolute_module_path: &Path) -> bool {
+        let root_name = match &self.root.name {
+            Some(name) => name,
+            None => return true, // If we don't have the package name, all other packages are external.
+        };
+
+        assert!(absolute_module_path.len() > 0, "Absolute module path must have at least one element, because it always contains the package name.");
+
+        root_name != &absolute_module_path[0]
+    }
 }
 
 impl std::ops::Deref for Namespace {

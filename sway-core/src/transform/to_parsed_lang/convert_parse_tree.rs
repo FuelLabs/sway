@@ -1071,6 +1071,7 @@ fn type_field_to_struct_field(
 ) -> Result<StructField, ErrorEmitted> {
     let span = type_field.span();
     let struct_field = StructField {
+        visibility: pub_token_opt_to_visibility(type_field.visibility),
         name: type_field.name,
         attributes,
         type_argument: ty_to_type_argument(context, handler, engines, type_field.ty)?,
@@ -3203,13 +3204,12 @@ fn expr_struct_field_to_struct_expression_field(
         Some((_colon_token, expr)) => expr_to_expression(context, handler, engines, *expr)?,
         None => Expression {
             kind: ExpressionKind::Variable(expr_struct_field.field_name.clone()),
-            span: span.clone(),
+            span,
         },
     };
     Ok(StructExpressionField {
         name: expr_struct_field.field_name,
         value,
-        span,
     })
 }
 

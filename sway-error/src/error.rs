@@ -218,6 +218,14 @@ pub enum CompileError {
         struct_name: Ident,
         span: Span,
     },
+    #[error("Field \"{field_name}\" of the struct \"{struct_name}\" is private.")]
+    StructFieldIsPrivate {
+        field_name: Ident,
+        struct_name: Ident,
+        span: Span,
+        field_decl_span: Span,
+        is_external_struct: bool,
+    },
     #[error("No method named \"{method_name}\" found for type \"{type_name}\".")]
     MethodNotFound {
         method_name: Ident,
@@ -807,6 +815,7 @@ impl Spanned for CompileError {
             NeedsTypeArguments { span, .. } => span.clone(),
             StructMissingField { span, .. } => span.clone(),
             StructDoesNotHaveField { span, .. } => span.clone(),
+            StructFieldIsPrivate { span, .. } => span.clone(),
             MethodNotFound { span, .. } => span.clone(),
             ModuleNotFound { span, .. } => span.clone(),
             NotATuple { span, .. } => span.clone(),
@@ -1140,8 +1149,8 @@ impl ToDiagnostic for CompileError {
                     format!("Consider removing the variable \"{variable}\" altogether, or adding it to all alternatives."),
                 ],
             },
-            TraitNotImportedAtFunctionApplication { trait_name, function_name, function_call_site_span, trait_constraint_span, trait_candidates }=> {
-                // Make candidates order deterministic
+            TraitNotImportedAtFunctionApplication { trait_name, function_name, function_call_site_span, trait_constraint_span, trait_candidates } => {
+                // Make candidates order deterministic.
                 let mut trait_candidates = trait_candidates.clone();
                 trait_candidates.sort();
                 let trait_candidates = &trait_candidates; // Remove mutability.
@@ -1253,6 +1262,33 @@ impl ToDiagnostic for CompileError {
                 ],
                 help: vec![],
             },
+            StructFieldIsPrivate { field_name, struct_name, span, field_decl_span, is_external_struct } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Struct field is private".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("Private field \"{field_name}\" of the struct \"{struct_name}\" cannot be used here.")
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        "Private struct fields can be used only within the module in which the struct is defined (and its submodules).".to_string()
+                    ),
+                    Hint::info(
+                        source_engine,
+                        field_decl_span.clone(),
+                        format!("Field \"{field_name}\" is declared here as private.")
+                    ),
+                ],
+                help: if *is_external_struct {
+                    vec![]
+                } else {
+                    vec![
+                        format!("Consider declaring field \"{field_name}\" as public: `pub {field_name}: ...,`."),
+                    ]
+                } ,
+            },            
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we
@@ -1260,7 +1296,7 @@ impl ToDiagnostic for CompileError {
                     //       of a diagnostic must come from the enum variant parameters.
                     issue: Issue::error(source_engine, self.span(), format!("{}", self)),
                     ..Default::default()
-                }
+            }
         }
     }
 }

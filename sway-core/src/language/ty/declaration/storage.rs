@@ -7,7 +7,7 @@ use sway_error::{
 use sway_types::{state::StateIndex, Ident, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::DeclEngine, engine_threading::*, language::ty::*, transform, type_system::*,
+    decl_engine::DeclEngine, engine_threading::*, language::{ty::*, Visibility}, transform, type_system::*,
 };
 
 #[derive(Clone, Debug)]
@@ -152,6 +152,7 @@ impl TyStorageDecl {
                      ref attributes,
                      ..
                  }| TyStructField {
+                    visibility: Visibility::Public,
                     name: name.clone(),
                     span: span.clone(),
                     type_argument: type_argument.clone(),

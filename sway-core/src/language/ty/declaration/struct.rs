@@ -144,6 +144,7 @@ impl Spanned for TyStructField {
 
 #[derive(Debug, Clone)]
 pub struct TyStructField {
+    pub visibility: Visibility,
     pub name: Ident,
     pub span: Span,
     pub type_argument: TypeArgument,
@@ -153,6 +154,7 @@ pub struct TyStructField {
 impl HashWithEngines for TyStructField {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyStructField {
+            visibility,
             name,
             type_argument,
             // these fields are not hashed because they aren't relevant/a
@@ -160,6 +162,7 @@ impl HashWithEngines for TyStructField {
             span: _,
             attributes: _,
         } = self;
+        visibility.hash(state);
         name.hash(state);
         type_argument.hash(state, engines);
     }
@@ -177,18 +180,18 @@ impl OrdWithEngines for TyStructField {
         let TyStructField {
             name: ln,
             type_argument: lta,
-            // these fields are not compared because they aren't relevant/a
-            // reliable source of obj v. obj distinction
+            // these fields are not compared because they aren't relevant for ordering
             span: _,
             attributes: _,
+            visibility: _,
         } = self;
         let TyStructField {
             name: rn,
             type_argument: rta,
-            // these fields are not compared because they aren't relevant/a
-            // reliable source of obj v. obj distinction
+            // these fields are not compared because they aren't relevant for ordering
             span: _,
             attributes: _,
+            visibility: _,
         } = other;
         ln.cmp(rn).then_with(|| lta.cmp(rta, engines))
     }

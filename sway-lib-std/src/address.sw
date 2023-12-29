@@ -7,7 +7,7 @@ use ::hash::{Hash, Hasher};
 /// The `Address` type, a struct wrapper around the inner `b256` value.
 pub struct Address {
     /// The underlying raw `b256` data of the address.
-    value: b256,
+    pub value: b256,
 }
 
 impl core::ops::Eq for Address {
