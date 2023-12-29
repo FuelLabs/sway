@@ -8,6 +8,12 @@ pub struct S { x : u64, y : u64, }
 pub enum Enum {
     A: (u64, u64),
 }
+// Single-variant enums are treated differently in the IR generation, so a second test
+// enum is necessary.
+pub enum Enum_multivariant {
+    A: (),
+    B: (u64, u64),
+}
 
 // Legal return type. Matching on the type is unimplemented.
 
@@ -52,21 +58,27 @@ fn in_parentheses()  -> u64 {
     445
 }
 
-fn in_arithmetic()  -> u64 {
+fn in_arithmetic_parse()  -> u64 {
     let _ = return + return;
 
     545
 }
 
+fn in_arithmetic_typecheck()  -> u64 {
+    let _ = (return) + return;
+
+    645
+}
+
 fn in_if_condition() -> u64 {
     let _ = if return {
-        456
+        457
     }
     else {
         457
     };
 
-    645
+    745
 }
 
 fn in_while_condition() -> u64 {
@@ -74,7 +86,7 @@ fn in_while_condition() -> u64 {
         break;
     };
 
-    745
+    845
 }
 
 fn in_match_scrutinee() -> u64 {
@@ -82,13 +94,19 @@ fn in_match_scrutinee() -> u64 {
         _ => 458,
     }
 
-    845
+    945
 }
  
 fn in_enum() -> u64 {
     let _ = Enum::A((return, return));
     
-    945
+    1045
+}
+
+fn in_enum_multivariant() -> u64 {
+    let _ = Enum_multivariant::B((return, return));
+    
+    1145
 }
 
 fn helper_fun(x : u64, y : u64) -> u64 {
@@ -98,7 +116,31 @@ fn helper_fun(x : u64, y : u64) -> u64 {
 fn in_fun_arg() -> u64 {
     let _ = helper_fun(return, return);
 
-    1045
+    1245
+}
+
+fn in_lazy_and_parse() -> u64 {
+    let _ = return && return;
+
+    1345
+}
+
+fn in_lazy_and_typecheck() -> u64 {
+    let _ = (return) && return;
+
+    1445
+}
+
+fn in_lazy_or_parse() -> u64 {
+    let _ = return || return;
+
+    1545
+}
+
+fn in_lazy_or_typecheck() -> u64 {
+    let _ = (return) || return;
+
+    1645
 }
 
 
@@ -110,10 +152,16 @@ fn main() {
    assert(42 != in_tuple());
    assert(42 != in_struct());
    assert(42 != in_parentheses());
-   assert(42 != in_arithmetic());
+   assert(42 != in_arithmetic_parse());
+   assert(42 != in_arithmetic_typecheck());
    assert(42 != in_if_condition());
    assert(42 != in_while_condition());
    assert(42 != in_match_scrutinee());
    assert(42 != in_enum());
+   assert(42 != in_enum_multivariant());
    assert(42 != in_fun_arg());
+   assert(42 != in_lazy_and_parse());
+   assert(42 != in_lazy_and_typecheck());
+   assert(42 != in_lazy_or_parse());
+   assert(42 != in_lazy_or_typecheck());
 }

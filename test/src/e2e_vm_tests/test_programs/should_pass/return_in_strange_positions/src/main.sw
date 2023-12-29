@@ -8,6 +8,12 @@ pub struct S { x : u64, y : u64, }
 pub enum Enum {
     A: (u64, u64),
 }
+// Single-variant enums are treated differently in the IR generation, so a second test
+// enum is necessary.
+pub enum Enum_multivariant {
+    A: (),
+    B: (u64, u64),
+}
 
 // Legal return types. These should warn of unreachable code, but otherwise no error.
 
@@ -72,6 +78,11 @@ fn in_enum() -> u64 {
     845
 }
 
+fn in_enum_multivariant() -> u64 {
+    let _ = Enum_multivariant::B((return 42, return 43));
+    
+    945
+}
 
 fn helper_fun(x : u64, y : u64) -> u64 {
     x + y
@@ -80,8 +91,21 @@ fn helper_fun(x : u64, y : u64) -> u64 {
 fn in_fun_arg() -> u64 {
     let _ = helper_fun(return 42, return 43);
 
-    945
+    1045
 }
+
+fn in_lazy_and() -> u64 {
+    let _ = (return 42) && return 43;
+
+    1145
+}
+
+fn in_lazy_or() -> u64 {
+    let _ = (return 42) || return 43;
+
+    1245
+}
+
 
 fn main() {
     assert(42 == in_init());
@@ -93,5 +117,8 @@ fn main() {
     assert(42 == in_if_condition());
     assert(42 == in_while_condition());
     assert(42 == in_enum());
+    assert(42 == in_enum_multivariant());
     assert(42 == in_fun_arg());
+    assert(42 == in_lazy_and());
+    assert(42 == in_lazy_or());
 }
