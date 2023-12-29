@@ -1797,8 +1797,8 @@ fn test() {
         .quux([1, 2])
         .yet_another_call(
             [
-                1, 2, 3, 4, 6, 7, 7, 8, 8, 9, 9, 9, 19, 1123123,
-                12312, 312, 312, 3123, 12, 31, 44,
+                1, 2, 3, 4, 6, 7, 7, 8, 8, 9, 9, 9, 19, 1123123, 12312, 312, 312,
+                3123, 12, 31, 44,
             ],
             [1, 2],
             true,
@@ -1906,13 +1906,13 @@ fn long_array() {
     check(
         r#"library;
         fn main() {
-            let x = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22];
+            let x = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,99,22];
         }"#,
         r#"library;
 fn main() {
     let x = [
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-        17, 18, 19, 20, 21, 22,
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+        22, 99, 22,
     ];
 }
 "#,
@@ -2175,7 +2175,7 @@ fn single_long_arg() {
     fn main() {
         if foo {
             // ANCHOR: storage_map_insert
-                let addr1 = Address::from(0x0101010101010101010101010101010101010101010101010101010101010101);
+                let addr1 = Address::from(0x010101010101010101010101010101010101010101010101010101010101010101010101010101);
             }
     }
     "#,
@@ -2185,7 +2185,7 @@ fn main() {
     if foo {
         // ANCHOR: storage_map_insert
         let addr1 = Address::from(
-            0x0101010101010101010101010101010101010101010101010101010101010101,
+            0x010101010101010101010101010101010101010101010101010101010101010101010101010101,
         );
     }
 }
@@ -2813,6 +2813,29 @@ trait OrdEq: Ord + Eq {
     }
     /// Some test
     fn test() {}
+}
+"#,
+    );
+}
+
+#[test]
+fn single_argument_method() {
+    check(
+        r#"library;
+    
+    pub fn from_be_bytes(bytes: [u8; 32]) -> Self {
+        let a = u64::from_be_bytes(
+            [
+                bytes[0], bytes[1], bytes[2], bytes[3], bytes[4],
+                bytes[5], bytes[6], bytes[7],
+            ],
+        );
+    }
+    "#,
+        r#"library;
+
+pub fn from_be_bytes(bytes: [u8; 32]) -> Self {
+    let a = u64::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7]]);
 }
 "#,
     );
