@@ -193,7 +193,7 @@ pub fn caller_address() -> Result<Address, AuthError> {
 /// ```sway
 /// use std::{auth::predicate_id};
 ///
-/// fn foo() {
+/// fn main() {
 ///     let this_predicate = predicate_id();
 ///     log(this_predicate);
 /// }
