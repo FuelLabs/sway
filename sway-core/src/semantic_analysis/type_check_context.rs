@@ -976,6 +976,11 @@ impl<'a> TypeCheckContext<'a> {
             let mut maybe_method_decl_refs: Vec<DeclRefFunction> = vec![];
             for decl_ref in matching_method_decl_refs.clone().into_iter() {
                 let method = decl_engine.get_function(&decl_ref);
+                let mut args_buf = args_buf.clone();
+                if method.is_contract_call {
+                    // Pop contract caller as method.parameters does not include it.
+                    let _contract_caller = args_buf.pop_front();
+                }
                 if method.parameters.len() == args_buf.len()
                     && method
                         .parameters
@@ -1125,9 +1130,7 @@ impl<'a> TypeCheckContext<'a> {
                     maybe_method_decl_refs.get(0).cloned()
                 }
             } else {
-                // When we can't match any method with parameter types we still return the first method found
-                // This was the behavior before introducing the parameter type matching
-                matching_method_decl_refs.get(0).cloned()
+                None
             }
         };
 

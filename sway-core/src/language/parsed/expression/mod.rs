@@ -7,7 +7,7 @@ use crate::{
     },
     language::{parsed::CodeBlock, *},
     type_system::TypeBinding,
-    Engines, TypeArgument, TypeId,
+    Engines, TypeArgument, TypeId, TypeInfo,
 };
 use sway_error::handler::ErrorEmitted;
 use sway_types::{ident::Ident, Span, Spanned};
@@ -380,6 +380,17 @@ impl OpVariant {
             LessThan => "lt",
             LessThanOrEqualTo => "le",
             GreaterThanOrEqualTo => "ge",
+        }
+    }
+
+    pub(crate) fn return_type_info(&self) -> TypeInfo {
+        use OpVariant::*;
+        match self {
+            Add | Subtract | Divide | Multiply | Modulo | Xor | BinaryOr | BinaryAnd => {
+                TypeInfo::Numeric
+            }
+            Or | And | Equals | NotEquals | GreaterThan | LessThan | LessThanOrEqualTo
+            | GreaterThanOrEqualTo => TypeInfo::Boolean,
         }
     }
 }

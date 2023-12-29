@@ -76,6 +76,13 @@ impl ty::TyExpression {
         span: Span,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let decl_engine = ctx.engines.de();
+        let type_engine = ctx.engines.te();
+        let engines = ctx.engines;
+
+        let mut ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(type_engine.insert(engines, op_variant.return_type_info(), None));
 
         let call_path = CallPath {
             prefixes: vec![
