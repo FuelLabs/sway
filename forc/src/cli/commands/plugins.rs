@@ -37,7 +37,9 @@ pub(crate) fn exec(command: PluginsCommand) -> ForcResult<()> {
     } = command;
 
     let mut plugins = crate::cli::plugin::find_all()
-        .map(|path| print_plugin(path.clone(), print_full_path, describe).map(|info| (path, info)))
+        .map(|path| {
+            get_plugin_info(path.clone(), print_full_path, describe).map(|info| (path, info))
+        })
         .collect::<Result<Vec<(_, _)>, _>>()?
         .into_iter()
         .fold(HashMap::new(), |mut acc, (path, content)| {
@@ -49,22 +51,10 @@ pub(crate) fn exec(command: PluginsCommand) -> ForcResult<()> {
             acc
         })
         .into_values()
-        .map(|(bin_name, paths, content)| {
-            let mut temp_hashmap = HashMap::new();
-            (
-                bin_name,
-                paths
-                    .into_iter()
-                    .filter_map(|path| {
-                        if temp_hashmap.get(&path).is_some() {
-                            return None;
-                        }
-                        temp_hashmap.insert(path.clone(), true);
-                        Some(path)
-                    })
-                    .collect::<Vec<_>>(),
-                content,
-            )
+        .map(|(bin_name, mut paths, content)| {
+            paths.sort();
+            paths.dedup();
+            (bin_name, paths, content)
         })
         .collect::<Vec<_>>();
     plugins.sort_by(|a, b| a.0.cmp(&b.0));
@@ -141,7 +131,7 @@ fn format_print_description(
 /// paths yielded from plugin::find_all(), as well as that the file names are in valid
 /// unicode format since file names should be prefixed with `forc-`. Should one of these 2
 /// assumptions fail, this function panics.
-fn print_plugin(path: PathBuf, print_full_path: bool, describe: bool) -> ForcResult<String> {
+fn get_plugin_info(path: PathBuf, print_full_path: bool, describe: bool) -> ForcResult<String> {
     format_print_description(path, print_full_path, describe)
         .map_err(|e| anyhow!("Could not get plugin info: {}", e.as_ref()).into())
 }
