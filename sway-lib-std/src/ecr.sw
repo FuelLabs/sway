@@ -297,9 +297,7 @@ fn test_ec_recover_address_r1() {
     let hi = 0xbd0c9b8792876713afa8bf3383eebf31c43437823ed761cc3600d0016de5110c;
     let lo = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
     let msg_hash = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
-    let address = Address::from(
-        0xb4a5fabee8cc852084b71f17107e9c18d682033a58967027af0ab01edf2f9a6a,
-    );
+    let address = Address::from(0xb4a5fabee8cc852084b71f17107e9c18d682033a58967027af0ab01edf2f9a6a);
     let signature: B512 = B512::from((hi, lo));
     // A recovered Fuel address.
     let result_address = ec_recover_address_r1(signature, msg_hash).unwrap();

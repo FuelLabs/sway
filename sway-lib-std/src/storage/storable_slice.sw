@@ -86,11 +86,9 @@ pub fn read_slice(key: b256) -> Option<raw_slice> {
             let ptr = alloc_bytes(number_of_slots * 32);
             // Load the stored slice into the pointer.
             let _ = __state_load_quad(sha256(key), ptr, number_of_slots);
-            Some(
-                asm(ptr: (ptr, len)) {
-                    ptr: raw_slice
-                },
-            )
+            Some(asm(ptr: (ptr, len)) {
+                ptr: raw_slice
+            })
         }
     }
 }

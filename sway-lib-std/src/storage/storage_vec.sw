@@ -870,11 +870,9 @@ impl<V> StorageKey<StorageVec<V>> {
                 let ptr = alloc_bytes(number_of_slots * 32);
                 // Load the stored slice into the pointer.
                 let _ = __state_load_quad(sha256(self.field_id), ptr, number_of_slots);
-                Vec::from(
-                    asm(ptr: (ptr, bytes)) {
-                        ptr: raw_slice
-                    },
-                )
+                Vec::from(asm(ptr: (ptr, bytes)) {
+                    ptr: raw_slice
+                })
             }
         }
     }

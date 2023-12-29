@@ -163,9 +163,7 @@ fn test_u256_from_le_bytes() {
 
     let x = u256::from_le_bytes(bytes);
 
-    assert(
-        x == 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20_u256,
-    );
+    assert(x == 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20_u256);
 }
 
 #[test]
@@ -193,9 +191,7 @@ fn test_u256_from_be_bytes() {
 
     let x = u256::from_be_bytes(bytes);
 
-    assert(
-        x == 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20_u256,
-    );
+    assert(x == 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20_u256);
 }
 
 #[test]

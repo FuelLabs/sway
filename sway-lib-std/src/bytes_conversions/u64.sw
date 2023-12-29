@@ -133,9 +133,8 @@ impl u64 {
         let h = (ptr.add_uint_offset(7)).read_byte();
 
         asm(
-            a: a, b: b, c: c, d: d, e: e, f: f, g: g, h: h, i: 0x8,
-            j: 0x10, k: 0x18, l: 0x20, m: 0x28, n: 0x30, o: 0x38,
-            r1, r2, r3,
+            a: a, b: b, c: c, d: d, e: e, f: f, g: g, h: h, i: 0x8, j: 0x10, k: 0x18,
+            l: 0x20, m: 0x28, n: 0x30, o: 0x38, r1, r2, r3,
         ) {
             sll r1 h o;
             sll r2 g n;
@@ -283,9 +282,8 @@ impl u64 {
         let a = (ptr.add_uint_offset(7)).read_byte();
 
         asm(
-            a: a, b: b, c: c, d: d, e: e, f: f, g: g, h: h, i: 0x8,
-            j: 0x10, k: 0x18, l: 0x20, m: 0x28, n: 0x30, o: 0x38,
-            r1, r2, r3,
+            a: a, b: b, c: c, d: d, e: e, f: f, g: g, h: h, i: 0x8, j: 0x10, k: 0x18,
+            l: 0x20, m: 0x28, n: 0x30, o: 0x38, r1, r2, r3,
         ) {
             sll r1 h o;
             sll r2 g n;
