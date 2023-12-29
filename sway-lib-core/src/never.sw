@@ -42,7 +42,7 @@ use ::ops::{Eq, Not, Ord};
 /// ```
 ///
 /// Regardless of the type of `x`, the return block of type `Never` will always coerce into `x` type.
-/// 
+///
 /// # Examples
 ///
 /// ```sway
@@ -57,8 +57,7 @@ pub enum Never {}
 
 impl Not for Never {
     fn not(self) -> Self {
-        match self {
-        }
+        match self {}
     }
 }
 
