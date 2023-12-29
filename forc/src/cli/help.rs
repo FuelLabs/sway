@@ -1,7 +1,7 @@
 #[macro_export]
 // Let the user format the help and parse it from that string into arguments to create the unit test
 macro_rules! cli_examples {
-    ($( [ $($description:ident)* => $command:tt $args:expr ] )*) => {
+    ($( [ $($description:ident)* => $command:tt $args:expr $( => $output:expr )? ] )*) => {
             #[cfg(test)]
             use $crate::serial_test;
             $(
@@ -9,6 +9,7 @@ macro_rules! cli_examples {
                 #[cfg(test)]
                 #[test]
                 #[serial_test::serial]
+                #[allow(unreachable_code)]
                 fn [<$($description:lower _)*:snake example>] () {
                     let mut proc = std::process::Command::new("cargo");
                     proc.arg("run");
@@ -28,6 +29,22 @@ macro_rules! cli_examples {
                         proc.current_dir(path);
                     }
                     let output = proc.output().expect(stringify!($command));
+
+                    $(
+                        let expected_output = ::forc::Regex::new($output).expect("valid regex");
+                        let stdout = String::from_utf8_lossy(&output.stdout);
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+
+                        assert!(
+                            expected_output.is_match(&stdout) ||
+                            expected_output.is_match(&stderr),
+                            "expected_output: {}\nStdOut:\n{}\nStdErr:\n{}\n",
+                            expected_output,
+                            stdout,
+                            stderr,
+                        );
+                        return;
+                    )?
                     // We don't know what to get or how to parse the output, all
                     // we care is to get a valid exit code
                     assert!(output.status.success(), "{}: {:?}", stringify!($($description)*), output);

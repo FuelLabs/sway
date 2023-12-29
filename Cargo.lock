@@ -1968,6 +1968,7 @@ dependencies = [
  "fuel-asm",
  "hex",
  "paste",
+ "regex",
  "serde",
  "serde_json",
  "serial_test",

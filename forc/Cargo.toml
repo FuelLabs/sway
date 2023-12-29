@@ -30,6 +30,7 @@ fs_extra = "1.2"
 fuel-asm = { workspace = true }
 hex = "0.4.3"
 paste = "1.0.14"
+regex = "1.10.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.73"
 serial_test = "2.0.0"
