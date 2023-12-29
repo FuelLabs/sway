@@ -485,7 +485,9 @@ impl<'eng> FnCompiler<'eng> {
                 ..
             } => {
                 let enum_decl = self.engines.de().get_enum(enum_ref);
-                self.compile_enum_expr(context, md_mgr, &enum_decl, *tag, contents.as_deref())
+                let res = self.compile_enum_expr(context, md_mgr, &enum_decl, *tag, contents.as_deref());
+                res
+
             }
             ty::TyExpressionVariant::Tuple { fields } => {
                 self.compile_tuple_expr(context, md_mgr, fields, span_md_idx)
@@ -2517,21 +2519,24 @@ impl<'eng> FnCompiler<'eng> {
             // Insert the value too.
             let contents_value =
                 self.compile_expression_to_value(context, md_mgr, contents.unwrap())?;
-            let contents_type = contents_value.get_type(context).ok_or_else(|| {
-                CompileError::Internal(
-                    "Unable to get type for enum contents.",
-                    enum_decl.span.clone(),
-                )
-            })?;
-            let gep_val = self
-                .current_block
-                .append(context)
-                .get_elem_ptr_with_idcs(enum_ptr, contents_type, &[1, tag as u64])
-                .add_metadatum(context, span_md_idx);
-            self.current_block
-                .append(context)
-                .store(gep_val, contents_value)
-                .add_metadatum(context, span_md_idx);
+            // Only store if the the value does not diverge.
+            if !contents_value.is_diverging(context) {
+                let contents_type = contents_value.get_type(context).ok_or_else(|| {
+                    CompileError::Internal(
+                        "Unable to get type for enum contents.",
+                        enum_decl.span.clone(),
+                    )
+                })?;
+                let gep_val = self
+                    .current_block
+                    .append(context)
+                    .get_elem_ptr_with_idcs(enum_ptr, contents_type, &[1, tag as u64])
+                    .add_metadatum(context, span_md_idx);
+                self.current_block
+                    .append(context)
+                    .store(gep_val, contents_value)
+                    .add_metadatum(context, span_md_idx);
+            }
         }
 
         // Return the pointer.
