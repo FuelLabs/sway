@@ -23,7 +23,7 @@ pub struct Command {
 }
 
 fn get_file_name(path: &Path) -> String {
-    if let Some(Some(path_str)) = path.file_name().map(|path_str| path_str.to_str()) {
+    if let Some(path_str) = path.file_name().and_then(|path_str| path_str.to_str()) {
         path_str.to_owned()
     } else {
         path.display().to_string()
