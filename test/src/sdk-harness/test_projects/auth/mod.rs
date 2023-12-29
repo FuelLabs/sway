@@ -1,8 +1,9 @@
 use fuels::{
-    accounts::wallet::{Wallet, WalletUnlocked},
+    accounts::{wallet::{Wallet, WalletUnlocked}, predicate::Predicate},
     prelude::*,
     types::ContractId,
 };
+use std::str::FromStr;
 
 abigen!(
     Contract(
@@ -14,8 +15,8 @@ abigen!(
         abi = "test_artifacts/auth_caller_contract/out/debug/auth_caller_contract-abi.json"
     ),
     Predicate(
-        name="AuthPredicate", 
-        abi="test_artifacts/auth_predicate/out/debug/auth_predicate-abi.json"
+        name = "AuthPredicate", 
+        abi = "test_artifacts/auth_predicate/out/debug/auth_predicate-abi.json"
     ),
 );
 
@@ -118,13 +119,14 @@ async fn can_get_predicate_id() {
     // Setup Predciate
     let hex_predicate_address: &str = "0x935a191561e0e9388c1b5dfc4626f6ecd98b2b3dd416a9a9e9ce2f0bb214f4b8";
     let predicate_address = Address::from_str(hex_predicate_address).expect("failed to create Address from string");
-    let predicate_data = AuthPredicateEncoder::encode_data(Bech32Address::from(predicate_address));
+    let predicate_bech32_address = Bech32Address::from(predicate_address);
+    let predicate_data = AuthPredicateEncoder::encode_data(predicate_bech32_address);
     let predicate: Predicate = Predicate::load_from("test_artifacts/auth_predicate/out/debug/auth_predicate.bin").unwrap()
         .with_provider(first_wallet.try_provider().unwrap().clone())
         .with_data(predicate_data);
 
     // Assert predicate addresses are the same
-    assert_eq!(predicate.address(), predicate_address);
+    assert_eq!(*predicate.address(), predicate_bech32_address);
 
     // Next, we lock some assets in this predicate using the first wallet:
     // First wallet transfers amount to predicate.
@@ -159,7 +161,7 @@ async fn can_get_predicate_id() {
 }
 
 #[tokio::test]
-#[should_fail]
+#[should_panic]
 async fn when_incorrect_predicate_address_passed() {
     // Setup Wallets
     let asset_id = AssetId::default();
