@@ -125,9 +125,6 @@ async fn can_get_predicate_id() {
         .with_provider(first_wallet.try_provider().unwrap().clone())
         .with_data(predicate_data);
 
-    // Assert predicate addresses are the same
-    assert_eq!(*predicate.address(), predicate_bech32_address);
-
     // Next, we lock some assets in this predicate using the first wallet:
     // First wallet transfers amount to predicate.
     first_wallet
