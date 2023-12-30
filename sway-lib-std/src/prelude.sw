@@ -17,7 +17,7 @@ use ::storage::storage_map::*;
 use ::vec::Vec;
 
 // Error handling
-use ::assert::{assert, assert_eq};
+use ::assert::{assert, assert_eq, assert_ne};
 use ::option::Option::{self, *};
 use ::result::Result::{self, *};
 use ::revert::{require, revert};
