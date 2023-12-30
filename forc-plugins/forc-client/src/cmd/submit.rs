@@ -2,9 +2,13 @@ use crate::NodeTarget;
 use devault::Devault;
 use std::path::PathBuf;
 
+forc::cli_examples! {
+    [ Submit a transaction from a json file => submit "./mint.json" => "Submission of tx or awaiting commit failed" ]
+}
+
 /// Submit a transaction to the specified fuel node.
 #[derive(Debug, Default, clap::Parser)]
-#[clap(about, version)]
+#[clap(about, version, after_help = help())]
 pub struct Command {
     #[clap(flatten)]
     pub network: Network,

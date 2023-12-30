@@ -13,7 +13,7 @@ forc::cli_examples! {
 }
 
 #[derive(Debug, Default, Parser)]
-#[clap(bin_name = "forc deploy", version)]
+#[clap(bin_name = "forc deploy", version, after_help = help())]
 pub struct Command {
     #[clap(flatten)]
     pub pkg: Pkg,
