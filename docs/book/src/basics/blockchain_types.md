@@ -54,7 +54,7 @@ let forty_two: b256 = my_contract_id.into();
 
 <!-- This section should explain the `Identity` type -->
 <!-- identity:example:start -->
-The `Identity` type is an enum that allows for the handling of both `Address` and `ContractId` types. This is useful in cases where either type is accepted, e.g. receiving funds from an identified sender, but not caring if the sender is an address or a contract.
+The `Identity` type is an enum that allows for the handling of both `Address` and `ContractId` types. This is useful in cases where either type is accepted, e.g., receiving funds from an identified sender, but not caring if the sender is an address or a contract.
 <!-- identity:example:end -->
 
 An `Identity` is implemented as follows.
