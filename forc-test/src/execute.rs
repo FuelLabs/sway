@@ -12,14 +12,29 @@ use fuel_vm::{
     storage::MemoryStorage,
 };
 use rand::{Rng, SeedableRng};
+use tx::Receipt;
+use vm::interpreter::ExecutableTransaction;
+use vm::state::DebugEval;
+use vm::state::ProgramState;
+use vm::state::StateTransitionRef;
+use fuel_tx::field::Script;
 
 /// An interface for executing a test within a VM [Interpreter] instance.
 #[derive(Debug)]
 pub struct TestExecutor {
     pub interpreter: Interpreter<MemoryStorage, tx::Script, NotSupportedEcal>,
-    tx_builder: tx::TransactionBuilder<tx::Script>,
+    pub tx_builder: tx::TransactionBuilder<tx::Script>,
+    pub script_offset: usize,
     test_entry: PkgTestEntry,
     name: String,
+}
+
+/// The result of executing a test with breakpoints enabled.
+pub enum DebugResult {
+    // Holds the test result.
+    TestComplete(TestResult),
+    // Holds the program counter of where the program stopped due to a breakpoint.
+    Breakpoint(u64)
 }
 
 impl TestExecutor {
@@ -86,13 +101,47 @@ impl TestExecutor {
             tmp_tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
         // Increase `script_gas_limit` to the maximum allowed value.
         tx_builder.script_gas_limit(consensus_params.tx_params().max_gas_per_tx - max_gas);
+        // Save the offset of where the script starts within the transaction.
+        let script_offset = tmp_tx.script_offset();
 
         TestExecutor {
             interpreter: Interpreter::with_storage(storage, consensus_params.into()),
             tx_builder,
             test_entry: test_entry.clone(),
             name,
+            script_offset,
         }
+    }
+
+    /// Execute the test with breakpoints enabled.
+    pub fn debug(&mut self) -> anyhow::Result<DebugResult> {
+        let block_height = (u32::MAX >> 1).into();
+        let start = std::time::Instant::now();
+        let transition = self
+            .interpreter
+            .transact(self.tx_builder.finalize_checked(block_height))
+            .map_err(|err: InterpreterError<_>| anyhow::anyhow!(err))?;
+        let state = *transition.state();
+        if let ProgramState::RunProgram(DebugEval::Breakpoint(breakpoint)) = state {
+            // A breakpoint was hit, so we tell the client to stop.
+            return Ok(DebugResult::Breakpoint(breakpoint.pc()));
+        }
+        let duration = start.elapsed();
+        let (gas_used, logs) = Self::get_gas_and_receipts(transition)?;
+        let span = self.test_entry.span.clone();
+        let file_path = self.test_entry.file_path.clone();
+        let condition = self.test_entry.pass_condition.clone();
+        let name = self.name.clone();
+        Ok(DebugResult::TestComplete(TestResult {
+            name,
+            file_path,
+            duration,
+            span,
+            state,
+            condition,
+            logs,
+            gas_used,
+        }))
     }
 
     pub fn execute(&mut self) -> anyhow::Result<TestResult> {
@@ -102,27 +151,10 @@ impl TestExecutor {
             .interpreter
             .transact(self.tx_builder.finalize_checked(block_height))
             .map_err(|err: InterpreterError<_>| anyhow::anyhow!(err))?;
-        let duration = start.elapsed();
         let state = *transition.state();
-        let receipts = transition.receipts().to_vec();
 
-        let gas_used = *receipts
-            .iter()
-            .find_map(|receipt| match receipt {
-                tx::Receipt::ScriptResult { gas_used, .. } => Some(gas_used),
-                _ => None,
-            })
-            .ok_or_else(|| anyhow::anyhow!("missing used gas information from test execution"))?;
-
-        // Only retain `Log` and `LogData` receipts.
-        let logs = receipts
-            .into_iter()
-            .filter(|receipt| {
-                matches!(receipt, tx::Receipt::Log { .. })
-                    || matches!(receipt, tx::Receipt::LogData { .. })
-            })
-            .collect();
-
+        let duration = start.elapsed();
+        let (gas_used, logs) = Self::get_gas_and_receipts(transition)?;
         let span = self.test_entry.span.clone();
         let file_path = self.test_entry.file_path.clone();
         let condition = self.test_entry.pass_condition.clone();
@@ -137,6 +169,27 @@ impl TestExecutor {
             logs,
             gas_used,
         })
+    }
+
+    fn get_gas_and_receipts(transition: StateTransitionRef<'_, tx::Script>) -> anyhow::Result<(u64, Vec<Receipt>)> {
+        let receipts = transition.receipts().to_vec();
+        let gas_used = *receipts
+        .iter()
+        .find_map(|receipt| match receipt {
+            tx::Receipt::ScriptResult { gas_used, .. } => Some(gas_used),
+            _ => None,
+        })
+        .ok_or_else(|| anyhow::anyhow!("missing used gas information from test execution"))?;
+            
+            // Only retain `Log` and `LogData` receipts.
+            let logs = receipts
+            .into_iter()
+            .filter(|receipt| {
+                matches!(receipt, tx::Receipt::Log { .. })
+                    || matches!(receipt, tx::Receipt::LogData { .. })
+            })
+            .collect();
+        Ok((gas_used, logs))
     }
 }
 

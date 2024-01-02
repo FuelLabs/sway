@@ -105,6 +105,7 @@ pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
     }
 }
 
+// TODO
 fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> ForcResult<()> {
     let succeeded = pkg.tests.iter().filter(|t| t.passed()).count();
     let failed = pkg.tests.len() - succeeded;
@@ -183,8 +184,8 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> For
     Ok(())
 }
 
-fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
-    forc_test::Opts {
+fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
+    forc_test::TestOpts {
         pkg: pkg::PkgOpts {
             path: cmd.build.pkg.path,
             offline: cmd.build.pkg.offline,

@@ -21,6 +21,7 @@ pub type MemberName = String;
 /// A manifest for each workspace member, or just one manifest if working with a single package
 pub type MemberManifestFiles = BTreeMap<MemberName, PackageManifestFile>;
 
+#[derive(Clone, Debug)]
 pub enum ManifestFile {
     Package(Box<PackageManifestFile>),
     Workspace(WorkspaceManifestFile),
@@ -121,6 +122,28 @@ impl ManifestFile {
         match self {
             ManifestFile::Package(pkg_manifest) => pkg_manifest.lock_path(),
             ManifestFile::Workspace(workspace_manifest) => Ok(workspace_manifest.lock_path()),
+        }
+    }
+}
+
+impl TryInto<PackageManifestFile> for ManifestFile {
+    type Error = anyhow::Error;
+
+    fn try_into(self) -> Result<PackageManifestFile> {
+        match self {
+            ManifestFile::Package(pkg_manifest_file) => Ok(*pkg_manifest_file),
+            ManifestFile::Workspace(_) => bail!("Cannot convert workspace manifest to package manifest"),
+        }
+    }
+}
+
+impl TryInto<WorkspaceManifestFile> for ManifestFile {
+    type Error = anyhow::Error;
+
+    fn try_into(self) -> Result<WorkspaceManifestFile> {
+        match self {
+            ManifestFile::Package(_) => bail!("Cannot convert package manifest to workspace manifest"),
+            ManifestFile::Workspace(workspace_manifest_file) => Ok(workspace_manifest_file),
         }
     }
 }

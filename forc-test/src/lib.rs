@@ -17,6 +17,7 @@ use rayon::prelude::*;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::BuildTarget;
 use sway_types::Span;
+use tx::input::contract;
 use vm::prelude::SecretKey;
 
 /// The result of a `forc test` invocation.
@@ -124,7 +125,7 @@ pub enum PackageWithDeploymentToTest {
 
 /// The set of options provided to the `test` function.
 #[derive(Default, Clone)]
-pub struct Opts {
+pub struct TestOpts {
     pub pkg: pkg::PkgOpts,
     pub print: pkg::PrintOpts,
     pub minify: pkg::MinifyOpts,
@@ -242,23 +243,42 @@ impl PackageWithDeploymentToTest {
     }
 }
 
+/// Returns a mapping of each member package of a build plan to its compiled contract dependencies,
+/// ordered by deployment order.
+///
+/// Each dependency package needs to be deployed before executing the test for that package.
+fn get_contract_dependency_map(built: &Built, build_plan: &pkg::BuildPlan) -> ContractDependencyMap {
+    let built_members: HashMap<&pkg::Pinned, Arc<pkg::BuiltPackage>> =
+        built.into_members().collect();
+    // For each member node, collect their contract dependencies.
+    build_plan.member_nodes().map(|member_node| {
+        let graph = build_plan.graph();
+        let pinned_member = graph[member_node].clone();
+        let contract_dependencies = build_plan
+            .contract_dependencies(member_node)
+            .map(|contract_depency_node_ix| graph[contract_depency_node_ix].clone())
+            .filter_map(|pinned| built_members.get(&pinned))
+            .cloned()
+            .collect::<Vec<_>>();
+        (pinned_member, contract_dependencies)
+    }).collect()
+}
+
 impl BuiltTests {
     /// Constructs a `PackageTests` from `Built`.
-    ///
-    /// `contract_dependencies` represents ordered (by deployment order) packages that needs to be deployed for each package, before executing the test.
-    pub(crate) fn from_built(
-        built: Built,
-        contract_dependencies: &ContractDependencyMap,
-    ) -> anyhow::Result<BuiltTests> {
+    pub fn from_built(built: Built, build_plan: &pkg::BuildPlan) -> anyhow::Result<BuiltTests> {
+        let contract_dependencies = get_contract_dependency_map(&built, build_plan);
         let built = match built {
             Built::Package(built_pkg) => BuiltTests::Package(PackageTests::from_built_pkg(
                 built_pkg,
-                contract_dependencies,
+                &contract_dependencies,
             )),
             Built::Workspace(built_workspace) => {
                 let pkg_tests = built_workspace
                     .into_iter()
-                    .map(|built_pkg| PackageTests::from_built_pkg(built_pkg, contract_dependencies))
+                    .map(|built_pkg| {
+                        PackageTests::from_built_pkg(built_pkg, &contract_dependencies)
+                    })
                     .collect();
                 BuiltTests::Workspace(pkg_tests)
             }
@@ -371,7 +391,7 @@ impl<'a> PackageTests {
     ///
     /// For testing contracts, storage returned from this function contains the deployed contract.
     /// For other types, default storage is returned.
-    fn setup(&self) -> anyhow::Result<TestSetup> {
+    pub fn setup(&self) -> anyhow::Result<TestSetup> {
         match self {
             PackageTests::Contract(contract_to_test) => {
                 let test_setup = contract_to_test.deploy()?;
@@ -388,9 +408,8 @@ impl<'a> PackageTests {
     }
 }
 
-impl Opts {
-    /// Convert this set of test options into a set of build options.
-    pub fn into_build_opts(self) -> pkg::BuildOpts {
+impl Into<pkg::BuildOpts> for TestOpts {
+    fn into(self) -> pkg::BuildOpts {
         pkg::BuildOpts {
             pkg: self.pkg,
             print: self.print,
@@ -527,28 +546,26 @@ impl BuiltTests {
 }
 
 /// First builds the package or workspace, ready for execution.
-pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
-    let build_opts = opts.into_build_opts();
+pub fn build(opts: TestOpts) -> anyhow::Result<BuiltTests> {
+    let build_opts = opts.into();
     let build_plan = pkg::BuildPlan::from_build_opts(&build_opts)?;
     let built = pkg::build_with_options(build_opts)?;
-    let built_members: HashMap<&pkg::Pinned, Arc<BuiltPackage>> = built.into_members().collect();
+    // let built_members: HashMap<&pkg::Pinned, Arc<BuiltPackage>> = built.into_members().collect();
 
-    // For each member node collect their contract dependencies.
-    let member_contract_dependencies: HashMap<pkg::Pinned, Vec<Arc<pkg::BuiltPackage>>> =
-        build_plan
-            .member_nodes()
-            .map(|member_node| {
-                let graph = build_plan.graph();
-                let pinned_member = graph[member_node].clone();
-                let contract_dependencies = build_plan
-                    .contract_dependencies(member_node)
-                    .map(|contract_depency_node_ix| graph[contract_depency_node_ix].clone())
-                    .filter_map(|pinned| built_members.get(&pinned))
-                    .cloned()
-                    .collect();
-            });
+    // // For each member node collect their contract dependencies.
+    // let member_contract_dependencies: HashMap<pkg::Pinned, Vec<Arc<pkg::BuiltPackage>>> =
+    //     build_plan.member_nodes().map(|member_node| {
+    //         let graph = build_plan.graph();
+    //         let pinned_member = graph[member_node].clone();
+    //         let contract_dependencies = build_plan
+    //             .contract_dependencies(member_node)
+    //             .map(|contract_depency_node_ix| graph[contract_depency_node_ix].clone())
+    //             .filter_map(|pinned| built_members.get(&pinned))
+    //             .cloned()
+    //             .collect();
+    //     });
 
-    BuiltTests::from_built(built, &member_contract_dependencies)
+    BuiltTests::from_built(built, &build_plan)
 }
 
 /// Deploys the provided contract and returns an interpreter instance ready to be used in test
@@ -616,7 +633,7 @@ fn run_tests(
 mod tests {
     use std::path::PathBuf;
 
-    use crate::{build, BuiltTests, Opts, TestFilter, TestResult};
+    use crate::{build, BuiltTests, TestFilter, TestOpts, TestResult};
 
     /// Name of the folder containing required data for tests to run, such as an example forc
     /// project.
@@ -638,7 +655,7 @@ mod tests {
             .join(TEST_DATA_FOLDER_NAME)
             .join(package_name);
         let library_package_dir_string = library_package_dir.to_string_lossy().to_string();
-        let build_options = Opts {
+        let build_options = TestOpts {
             pkg: forc_pkg::PkgOpts {
                 path: Some(library_package_dir_string),
                 ..Default::default()
