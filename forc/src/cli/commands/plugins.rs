@@ -63,7 +63,7 @@ pub(crate) fn exec(command: PluginsCommand) -> ForcResult<()> {
     for plugin in plugins {
         info!("{}", plugin.2);
         if plugin.1.len() > 1 {
-            println_warning(&format!("Multiple path found for {}", plugin.0));
+            println_warning(&format!("Multiple paths found for {}", plugin.0));
             for path in plugin.1 {
                 println_warning(&format!("   {}", path.display()));
             }
