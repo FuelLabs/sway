@@ -186,12 +186,12 @@ pub fn caller_address() -> Result<Address, AuthError> {
 ///
 /// # Reverts
 ///
-/// * When called not in a predicate context.
+/// * When called outside of a predicate program.
 ///
 /// # Examples
 ///
 /// ```sway
-/// use std::{auth::predicate_id};
+/// use std::auth::predicate_id;
 ///
 /// fn main() {
 ///     let this_predicate = predicate_id();

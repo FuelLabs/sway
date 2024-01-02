@@ -117,7 +117,7 @@ async fn can_get_predicate_id() {
     let second_wallet = &wallets[1];
 
     // Setup Predciate
-    let hex_predicate_address: &str = "0x935a191561e0e9388c1b5dfc4626f6ecd98b2b3dd416a9a9e9ce2f0bb214f4b8";
+    let hex_predicate_address: &str = "0x76bae6a88c3f54a9aee40ee5390696dd9edaf1b2a16d96a75adbcaac2ec6584f";
     let predicate_address = Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);
     let predicate_data = AuthPredicateEncoder::encode_data(predicate_bech32_address);
