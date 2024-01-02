@@ -116,18 +116,30 @@ impl DisplayWithEngines for AssociatedItemDeclId {
             Self::TraitFn(decl_id) => {
                 write!(
                     f,
-                    "decl(trait function {})",
-                    engines.de().get(decl_id).name()
+                    "decl(trait function {:#?})",
+                    engines.help_out(engines.de().get(decl_id))
                 )
             }
             Self::Function(decl_id) => {
-                write!(f, "decl(function {})", engines.de().get(decl_id).name())
+                write!(
+                    f,
+                    "decl(function {:#?})",
+                    engines.help_out(engines.de().get(decl_id))
+                )
             }
             Self::Constant(decl_id) => {
-                write!(f, "decl(constant {})", engines.de().get(decl_id).name())
+                write!(
+                    f,
+                    "decl(constant {:#?})",
+                    engines.help_out(engines.de().get(decl_id))
+                )
             }
             Self::Type(decl_id) => {
-                write!(f, "decl(type {})", engines.de().get(decl_id).name())
+                write!(
+                    f,
+                    "decl(type {:#?})",
+                    engines.help_out(engines.de().get(decl_id))
+                )
             }
         }
     }

@@ -147,7 +147,7 @@ impl Type {
     }
 
     /// Get slice type
-    pub fn get_slice(context: &mut Context) -> Type {
+    pub fn get_slice(context: &Context) -> Type {
         Self::get_type(context, &TypeContent::Slice).expect("create_basic_types not called")
     }
 

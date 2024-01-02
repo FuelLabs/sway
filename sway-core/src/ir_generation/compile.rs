@@ -117,6 +117,7 @@ pub(super) fn compile_predicate(
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_contract(
     context: &mut Context,
+    main_function: Option<&DeclId<ty::TyFunctionDecl>>,
     abi_entries: &[DeclId<ty::TyFunctionDecl>],
     namespace: &namespace::Module,
     declarations: &[ty::TyDecl],
@@ -138,6 +139,20 @@ pub(super) fn compile_contract(
         declarations,
     )
     .map_err(|err| vec![err])?;
+
+    if let Some(main_function) = main_function {
+        compile_entry_function(
+            engines,
+            context,
+            &mut md_mgr,
+            module,
+            main_function,
+            logged_types_map,
+            messages_types_map,
+            None,
+        )?;
+    }
+
     for decl in abi_entries {
         compile_abi_method(
             context,
@@ -149,6 +164,7 @@ pub(super) fn compile_contract(
             engines,
         )?;
     }
+
     compile_tests(
         engines,
         context,
@@ -421,6 +437,10 @@ fn compile_fn(
     } = ast_fn_decl;
 
     if *is_trait_method_dummy {
+        dbg!(ast_fn_decl);
+        dbg!(engines.help_out(ast_fn_decl.return_type.initial_type_id));
+        dbg!(engines.help_out(ast_fn_decl.return_type.type_id));
+        dbg!(engines.help_out(ast_fn_decl.implementing_for_typeid));
         return Err(vec![CompileError::InternalOwned(
             format!("Method {name} is a trait method dummy and was not properly replaced."),
             span.clone(),
@@ -571,16 +591,14 @@ fn compile_abi_method(
         }
     };
 
-    // An ABI method is always an entry point.
-    let is_entry = true;
-
     compile_fn(
         engines,
         context,
         md_mgr,
         module,
         &ast_fn_decl,
-        is_entry,
+        // ABI are only entries when the new encoding if off
+        !context.experimental.new_encoding,
         Some(selector),
         logged_types_map,
         messages_types_map,

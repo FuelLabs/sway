@@ -10,6 +10,7 @@
 
 use std::collections::{HashMap, HashSet};
 
+#[derive(Debug)]
 pub(super) struct LexicalMap {
     symbol_map: Vec<HashMap<String, String>>,
     reserved_sybols: HashSet<String>,

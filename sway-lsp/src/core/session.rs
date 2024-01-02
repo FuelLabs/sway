@@ -545,7 +545,8 @@ fn create_runnables(
 
     // Insert runnable main function if the program is a script.
     if let ty::TyProgramKind::Script {
-        ref main_function, ..
+        entry_function: ref main_function,
+        ..
     } = typed_program.kind
     {
         let main_function = decl_engine.get_function(main_function);

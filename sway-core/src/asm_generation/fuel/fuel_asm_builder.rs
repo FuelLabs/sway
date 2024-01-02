@@ -306,6 +306,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         arg3,
                     } => self.compile_wide_modular_op(instr_val, op, result, arg1, arg2, arg3),
                     FuelVmInstruction::JmpMem => self.compile_jmp_mem(instr_val),
+                    FuelVmInstruction::JmpbSsp(offset) => self.compile_jmpb_ssp(instr_val, offset),
+                    FuelVmInstruction::Retd { ptr, len } => self.compile_retd(instr_val, ptr, len),
                 },
                 InstOp::GetElemPtr {
                     base,
@@ -669,6 +671,24 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         Ok(())
     }
 
+    fn compile_retd(
+        &mut self,
+        instr_val: &Value,
+        ptr: &Value,
+        len: &Value,
+    ) -> Result<(), CompileError> {
+        let ptr = self.value_to_register(ptr)?;
+        let len = self.value_to_register(len)?;
+
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::RETD(ptr, len)),
+            comment: String::new(),
+            owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+        });
+
+        Ok(())
+    }
+
     fn compile_wide_cmp_op(
         &mut self,
         instr_val: &Value,
@@ -869,16 +889,16 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
         });
 
-        // now, move the return value of the contract call to the return register.
-        // TODO validate RETL matches the expected type (this is a comment from the old codegen)
-        let instr_reg = self.reg_seqr.next();
-        self.cur_bytecode.push(Op::register_move(
-            instr_reg.clone(),
-            VirtualRegister::Constant(ConstantRegister::ReturnValue),
-            "save call result",
-            None,
-        ));
-        self.reg_map.insert(*instr_val, instr_reg);
+        // // now, move the return value of the contract call to the return register.
+        // // TODO validate RETL matches the expected type (this is a comment from the old codegen)
+        // let instr_reg = self.reg_seqr.next();
+        // self.cur_bytecode.push(Op::register_move(
+        //     instr_reg.clone(),
+        //     VirtualRegister::Constant(ConstantRegister::ReturnValue),
+        //     "save call result",
+        //     None,
+        // ));
+        // self.reg_map.insert(*instr_val, instr_reg);
         Ok(())
     }
 

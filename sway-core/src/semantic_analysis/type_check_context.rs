@@ -104,7 +104,35 @@ pub struct TypeCheckContext<'a> {
 
 impl<'a> TypeCheckContext<'a> {
     /// Initialize a type-checking context with a namespace.
-    pub fn from_namespace(namespace: &'a mut Namespace, engines: &'a Engines) -> Self {
+    pub fn from_namespace(
+        namespace: &'a mut Namespace,
+        engines: &'a Engines,
+        experimental: ExperimentalFlags,
+    ) -> Self {
+        todo!()
+    }
+
+    /// Initialize a context at the top-level of a module with its namespace.
+    ///
+    /// Initializes with:
+    ///
+    /// - type_annotation: unknown
+    /// - mode: NoneAbi
+    /// - help_text: ""
+    /// - purity: Pure
+    pub fn from_root(
+        root_namespace: &'a mut Namespace,
+        engines: &'a Engines,
+        experimental: ExperimentalFlags,
+    ) -> Self {
+        Self::from_module_namespace(root_namespace, engines, experimental)
+    }
+
+    fn from_module_namespace(
+        namespace: &'a mut Namespace,
+        engines: &'a Engines,
+        experimental: ExperimentalFlags,
+    ) -> Self {
         Self {
             namespace,
             engines,
@@ -122,7 +150,7 @@ impl<'a> TypeCheckContext<'a> {
             disallow_functions: false,
             defer_monomorphization: false,
             storage_declaration: false,
-            experimental: ExperimentalFlags::default(),
+            experimental,
         }
     }
 
@@ -147,7 +175,7 @@ impl<'a> TypeCheckContext<'a> {
             generic_shadowing_mode: self.generic_shadowing_mode,
             help_text: self.help_text,
             purity: self.purity,
-            kind: self.kind.clone(),
+            kind: self.kind,
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             defer_monomorphization: self.defer_monomorphization,
@@ -201,7 +229,8 @@ impl<'a> TypeCheckContext<'a> {
         let mut submod_ns = self
             .namespace_mut()
             .enter_submodule(mod_name, visibility, module_span);
-        let submod_ctx = TypeCheckContext::from_namespace(&mut submod_ns, engines);
+        let submod_ctx =
+            TypeCheckContext::from_namespace(&mut submod_ns, engines, self.experimental);
         with_submod_ctx(submod_ctx)
     }
 
@@ -375,7 +404,7 @@ impl<'a> TypeCheckContext<'a> {
 
     #[allow(dead_code)]
     pub(crate) fn kind(&self) -> TreeType {
-        self.kind.clone()
+        self.kind
     }
 
     pub(crate) fn functions_disallowed(&self) -> bool {

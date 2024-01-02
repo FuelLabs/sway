@@ -441,11 +441,17 @@ impl DeclEngine {
     /// [DisplayWithEngines].
     pub fn pretty_print(&self, engines: &Engines) -> String {
         let mut builder = String::new();
-        let mut list = vec![];
-        for func in self.function_slab.values() {
-            list.push(format!("{:?}", engines.help_out(&*func)));
+        let mut list = String::with_capacity(1024 * 1024);
+        let funcs = self.function_slab.values();
+        for (i, func) in funcs.iter().enumerate() {
+            list.push_str(&format!("{i} - {:?}\n", engines.help_out(&*func)));
+
+            if func.name.as_str().contains("__entry") || func.name.as_str().contains("main") {
+                for item in func.body.contents.iter() {
+                    list.push_str(&format!("    {:#?}\n", item));
+                }
+            }
         }
-        let list = ListDisplay { list };
         write!(builder, "DeclEngine {{\n{list}\n}}").unwrap();
         builder
     }

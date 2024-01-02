@@ -1241,3 +1241,19 @@ impl Eq for str {
         }
     }
 }
+
+fn assert(v: bool) {
+    if !v {
+        __revert(0)
+    }
+}
+
+#[test]
+pub fn ok_str_eq() {
+    assert("" == "");
+    assert("a" == "a");
+    
+    assert("a" != "");
+    assert("" != "a");
+    assert("a" != "b");
+}

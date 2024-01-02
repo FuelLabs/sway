@@ -12,6 +12,7 @@ use colored::*;
 use core::fmt;
 use forc_pkg::BuildProfile;
 use fuel_vm::fuel_tx;
+use fuel_vm::fuel_types::canonical::Serialize;
 use fuel_vm::prelude::*;
 use regex::Regex;
 use std::collections::HashSet;
@@ -29,7 +30,7 @@ use tracing::Instrument;
 
 use self::util::VecExt;
 
-#[derive(PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 enum TestCategory {
     Compiles,
     FailsToCompile,
@@ -39,7 +40,7 @@ enum TestCategory {
     Disabled,
 }
 
-#[derive(PartialEq)]
+#[derive(Clone, PartialEq)]
 enum TestResult {
     Result(Word),
     Return(u64),
@@ -58,10 +59,34 @@ impl fmt::Debug for TestResult {
     }
 }
 
+#[derive(Clone)]
+pub struct FileCheck(String);
+
+impl FileCheck {
+    pub fn build(&self) -> Result<filecheck::Checker, anyhow::Error> {
+        const DIRECTIVE_RX: &str = r"(?m)^\s*#\s*(\w+):\s+(.*)$";
+
+        let mut checker = filecheck::CheckerBuilder::new();
+
+        // Parse the file and check for unknown FileCheck directives.
+        let re = Regex::new(DIRECTIVE_RX).unwrap();
+        for cap in re.captures_iter(&self.0) {
+            if let Ok(false) = checker.directive(&cap[0]) {
+                bail!("Unknown FileCheck directive: {}", &cap[1]);
+            }
+        }
+
+        Ok(checker.finish())
+    }
+}
+
+#[derive(Clone)]
 struct TestDescription {
     name: String,
+    suffix: Option<String>,
     category: TestCategory,
     script_data: Option<Vec<u8>>,
+    script_data_new_encoding: Option<Vec<u8>>,
     witness_data: Option<Vec<Vec<u8>>>,
     expected_result: Option<TestResult>,
     expected_warnings: u32,
@@ -70,7 +95,8 @@ struct TestDescription {
     validate_storage_slots: bool,
     supported_targets: HashSet<BuildTarget>,
     unsupported_profiles: Vec<&'static str>,
-    checker: filecheck::Checker,
+    checker: FileCheck,
+    run_config: Option<RunConfig>,
 }
 
 #[derive(Clone)]
@@ -221,12 +247,14 @@ impl TestContext {
             },
         )
     }
+
     async fn run(&self, test: TestDescription, output: &mut String, verbose: bool) -> Result<()> {
         let context = self;
         let TestDescription {
             name,
             category,
             script_data,
+            script_data_new_encoding,
             witness_data,
             expected_result,
             expected_warnings,
@@ -237,12 +265,28 @@ impl TestContext {
             ..
         } = test;
 
+        let checker = checker.build().unwrap();
+
+        let script_data = if self.run_config.experimental.new_encoding {
+            script_data_new_encoding
+        } else {
+            script_data
+        };
+
         match category {
             TestCategory::Runs => {
-                let res = match expected_result {
-                    Some(TestResult::Return(_))
-                    | Some(TestResult::ReturnData(_))
-                    | Some(TestResult::Revert(_)) => expected_result.unwrap(),
+                let expected_result = match expected_result {
+                    Some(TestResult::Return(v)) => {
+                        // With the new encoding, `Return` is actually `ReturnData`
+                        if context.run_config.experimental.new_encoding {
+                            TestResult::ReturnData(v.to_bytes())
+                        } else {
+                            expected_result.unwrap()
+                        }
+                    }
+                    Some(TestResult::ReturnData(_)) | Some(TestResult::Revert(_)) => {
+                        expected_result.unwrap()
+                    }
 
                     _ => panic!(
                         "For {name}:\n\
@@ -273,7 +317,7 @@ impl TestContext {
                 }
 
                 let result = harness::runs_in_vm(compiled.clone(), script_data, witness_data)?;
-                let result = match result {
+                let actual_result = match result {
                     harness::VMExecutionResult::Fuel(state, receipts) => {
                         print_receipts(output, &receipts);
                         match state {
@@ -316,14 +360,19 @@ impl TestContext {
                     }
                 };
 
-                if result != res {
+                if actual_result != expected_result {
                     Err(anyhow::Error::msg(format!(
-                        "expected: {res:?}\nactual: {result:?}"
+                        "expected: {expected_result:?}\nactual: {actual_result:?}"
                     )))
                 } else {
                     if validate_abi {
                         let (result, out) = run_and_capture_output(|| async {
-                            harness::test_json_abi(&name, &compiled)
+                            harness::test_json_abi(
+                                &name,
+                                &compiled,
+                                self.run_config.experimental.new_encoding,
+                                self.run_config.update_output_files,
+                            )
                         })
                         .await;
                         output.push_str(&out);
@@ -366,7 +415,12 @@ impl TestContext {
                 if validate_abi {
                     for (name, built_pkg) in &compiled_pkgs {
                         let (result, out) = run_and_capture_output(|| async {
-                            harness::test_json_abi(name, built_pkg)
+                            harness::test_json_abi(
+                                name,
+                                built_pkg,
+                                self.run_config.experimental.new_encoding,
+                                self.run_config.update_output_files,
+                            )
                         })
                         .await;
                         result?;
@@ -541,6 +595,32 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     if filter_config.first_only && !tests.is_empty() {
         tests = vec![tests.remove(0)];
     }
+
+    // Expand tests that need to run with multiple configurations.
+    // Be mindful that this can explode exponentially the number of tests
+    // that run because one expansion expands on top of another
+    let mut tests = tests;
+    let expansions = ["new_encoding"];
+    for expansion in expansions {
+        tests = tests
+            .into_iter()
+            .flat_map(|t| {
+                if expansion == "new_encoding" && t.script_data_new_encoding.is_some() {
+                    let mut with_new_encoding = t.clone();
+                    with_new_encoding.suffix = Some("New Encoding".into());
+
+                    let mut run_config_with_new_encoding = run_config.clone();
+                    run_config_with_new_encoding.experimental.new_encoding = true;
+                    with_new_encoding.run_config = Some(run_config_with_new_encoding);
+
+                    vec![t, with_new_encoding]
+                } else {
+                    vec![t]
+                }
+            })
+            .collect();
+    }
+
     let cur_profile = if run_config.release {
         BuildProfile::RELEASE
     } else {
@@ -558,7 +638,17 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     let mut failed_tests = vec![];
 
     for (i, test) in tests.into_iter().enumerate() {
-        let name = test.name.clone();
+        let name = if let Some(suffix) = test.suffix.as_ref() {
+            format!("{} ({})", test.name, suffix)
+        } else {
+            test.name.clone()
+        };
+
+        let run_config = test
+            .run_config
+            .clone()
+            .unwrap_or_else(|| run_config.clone());
+
         print!("Testing {} ...", name.clone().bold());
         stdout().flush().unwrap();
 
@@ -601,21 +691,21 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     if number_of_tests_executed == 0 {
         if let Some(skip_until) = &filter_config.skip_until {
             tracing::info!(
-                "Filtered {} tests with `skip-until` regex: {}",
+                "Filtered {} tests with `skip-until` regex: {:?}",
                 skipped_tests.len(),
                 skip_until.to_string()
             );
         }
         if let Some(include) = &filter_config.include {
             tracing::info!(
-                "Filtered {} tests with `include` regex: {}",
+                "Filtered {} tests with `include` regex: {:?}",
                 included_tests.len(),
                 include.to_string()
             );
         }
         if let Some(exclude) = &filter_config.exclude {
             tracing::info!(
-                "Filtered {} tests with `exclude` regex: {}",
+                "Filtered {} tests with `exclude` regex: {:?}",
                 excluded_tests.len(),
                 exclude.to_string()
             );
@@ -688,22 +778,6 @@ fn discover_test_configs() -> Result<Vec<TestDescription>> {
     Ok(configs)
 }
 
-const DIRECTIVE_RX: &str = r"(?m)^\s*#\s*(\w+):\s+(.*)$";
-
-fn build_file_checker(content: &str) -> Result<filecheck::Checker> {
-    let mut checker = filecheck::CheckerBuilder::new();
-
-    // Parse the file and check for unknown FileCheck directives.
-    let re = Regex::new(DIRECTIVE_RX).unwrap();
-    for cap in re.captures_iter(content) {
-        if let Ok(false) = checker.directive(&cap[0]) {
-            bail!("Unknown FileCheck directive: {}", &cap[1]);
-        }
-    }
-
-    Ok(checker.finish())
-}
-
 /// This functions gets passed the previously built FileCheck-based file checker,
 /// along with the output of the compilation, and checks the output for the
 /// FileCheck directives that were found in the test.toml file, panicking
@@ -723,7 +797,8 @@ fn check_file_checker(checker: filecheck::Checker, name: &String, output: &str) 
 fn parse_test_toml(path: &Path) -> Result<TestDescription> {
     let toml_content_str = std::fs::read_to_string(path)?;
 
-    let checker = build_file_checker(&toml_content_str)?;
+    let file_check = FileCheck(toml_content_str.clone());
+    let checker = file_check.build()?;
 
     let toml_content = toml_content_str.parse::<toml::Value>()?;
 
@@ -752,11 +827,11 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
         bail!("'fail' tests must contain some FileCheck verification directives.");
     }
 
-    let script_data = match &category {
+    let (script_data, script_data_new_encoding) = match &category {
         TestCategory::Runs | TestCategory::RunsWithContract => {
-            match toml_content.get("script_data") {
+            let script_data = match toml_content.get("script_data") {
                 Some(toml::Value::String(v)) => {
-                    let decoded = hex::decode(v)
+                    let decoded = hex::decode(v.replace(' ', ""))
                         .map_err(|e| anyhow!("Invalid hex value for 'script_data': {}", e))?;
                     Some(decoded)
                 }
@@ -764,12 +839,26 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
                     bail!("Expected 'script_data' to be a hex string.");
                 }
                 _ => None,
-            }
+            };
+
+            let script_data_new_encoding = match toml_content.get("script_data_new_encoding") {
+                Some(toml::Value::String(v)) => {
+                    let decoded = hex::decode(v.replace(' ', ""))
+                        .map_err(|e| anyhow!("Invalid hex value for 'script_data': {}", e))?;
+                    Some(decoded)
+                }
+                Some(_) => {
+                    bail!("Expected 'script_data' to be a hex string.");
+                }
+                _ => None,
+            };
+
+            (script_data, script_data_new_encoding)
         }
         TestCategory::Compiles
         | TestCategory::FailsToCompile
         | TestCategory::UnitTestsPass
-        | TestCategory::Disabled => None,
+        | TestCategory::Disabled => (None, None),
     };
 
     let witness_data = match &category {
@@ -891,8 +980,10 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
 
     Ok(TestDescription {
         name,
+        suffix: None,
         category,
         script_data,
+        script_data_new_encoding,
         witness_data,
         expected_result,
         expected_warnings,
@@ -901,7 +992,8 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
         validate_storage_slots,
         supported_targets,
         unsupported_profiles,
-        checker,
+        checker: file_check,
+        run_config: None,
     })
 }
 

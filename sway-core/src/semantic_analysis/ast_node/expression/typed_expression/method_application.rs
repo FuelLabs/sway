@@ -5,7 +5,7 @@ use crate::{
     },
     language::{
         parsed::*,
-        ty::{self, TyDecl},
+        ty::{self, TyDecl, TyExpression},
         *,
     },
     namespace::TryInsertingTraitImplOnFailure,
@@ -16,6 +16,7 @@ use ast_node::typed_expression::check_function_arguments_arity;
 use indexmap::IndexMap;
 use itertools::izip;
 use std::collections::VecDeque;
+use sway_ast::Intrinsic;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -33,6 +34,8 @@ pub(crate) fn type_check_method_application(
     arguments: Vec<Expression>,
     span: Span,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
+    // let aaaa = arguments.clone();
+
     let type_engine = ctx.engines.te();
     let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
@@ -135,6 +138,7 @@ pub(crate) fn type_check_method_application(
     }
 
     // generate the map of the contract call params
+    let mut untyped_contract_call_params_map = std::collections::HashMap::new();
     let mut contract_call_params_map = IndexMap::new();
     if method.is_contract_call {
         for param_name in &[
@@ -160,6 +164,8 @@ pub(crate) fn type_check_method_application(
                 constants::CONTRACT_CALL_GAS_PARAMETER_NAME
                 | constants::CONTRACT_CALL_COINS_PARAMETER_NAME
                 | constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME => {
+                    untyped_contract_call_params_map
+                        .insert(param.name.to_string(), param.value.clone());
                     let type_annotation = type_engine.insert(
                         engines,
                         if param.name.span().as_str()
@@ -388,12 +394,140 @@ pub(crate) fn type_check_method_application(
         is_method_call_syntax_used,
     )?;
 
+    let old_arguments = arguments;
     let arguments = method
         .parameters
         .iter()
         .map(|m| m.name.clone())
         .zip(args_buf.iter().cloned())
         .collect::<Vec<_>>();
+
+    if method.is_contract_call {
+        fn call_contract_call(
+            ctx: &mut TypeCheckContext,
+            return_type: TypeId,
+            method_name_expr: Expression,
+            caller: Expression,
+            arguments: Vec<Expression>,
+            typed_argumens: Vec<TypeId>,
+            coins_expr: Expression,
+            asset_id_expr: Expression,
+            gas_expr: Expression,
+        ) -> Expression {
+            let tuple_args_type_id = ctx.engines.te().insert(
+                ctx.engines,
+                TypeInfo::Tuple(
+                    typed_argumens
+                        .iter()
+                        .map(|&type_id| TypeArgument {
+                            type_id,
+                            initial_type_id: type_id,
+                            span: Span::dummy(),
+                            call_path_tree: None,
+                        })
+                        .collect(),
+                ),
+                None,
+            );
+            Expression {
+                kind: ExpressionKind::FunctionApplication(Box::new(
+                    FunctionApplicationExpression {
+                        call_path_binding: TypeBinding {
+                            inner: CallPath {
+                                prefixes: vec![],
+                                suffix: Ident::new_no_span("contract_call".into()),
+                                is_absolute: false,
+                            },
+                            type_arguments: TypeArgs::Regular(vec![
+                                TypeArgument {
+                                    type_id: return_type,
+                                    initial_type_id: return_type,
+                                    span: Span::dummy(),
+                                    call_path_tree: None,
+                                },
+                                TypeArgument {
+                                    type_id: tuple_args_type_id,
+                                    initial_type_id: tuple_args_type_id,
+                                    span: Span::dummy(),
+                                    call_path_tree: None,
+                                },
+                            ]),
+                            span: Span::dummy(),
+                        },
+                        arguments: vec![
+                            Expression {
+                                kind: ExpressionKind::Literal(Literal::B256([0u8; 32])),
+                                span: Span::dummy(),
+                            },
+                            method_name_expr,
+                            as_tuple(arguments),
+                            coins_expr,
+                            asset_id_expr,
+                            gas_expr,
+                        ],
+                    },
+                )),
+                span: Span::dummy(),
+            }
+        }
+
+        fn string_slice_literal(ident: &BaseIdent) -> Expression {
+            Expression {
+                kind: ExpressionKind::Literal(Literal::String(ident.span())),
+                span: ident.span(),
+            }
+        }
+
+        fn as_tuple(elements: Vec<Expression>) -> Expression {
+            Expression {
+                kind: ExpressionKind::Tuple(elements),
+                span: Span::dummy(),
+            }
+        }
+
+        let gas_expr = untyped_contract_call_params_map
+            .remove(constants::CONTRACT_CALL_GAS_PARAMETER_NAME)
+            .unwrap_or_else(|| Expression {
+                kind: ExpressionKind::Literal(Literal::U64(u64::MAX)),
+                span: Span::dummy(),
+            });
+        let coins_expr = untyped_contract_call_params_map
+            .remove(constants::CONTRACT_CALL_COINS_PARAMETER_NAME)
+            .unwrap_or_else(|| Expression {
+                kind: ExpressionKind::Literal(Literal::U64(0)),
+                span: Span::dummy(),
+            });
+        let asset_id_expr = untyped_contract_call_params_map
+            .remove(constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME)
+            .unwrap_or_else(|| Expression {
+                kind: ExpressionKind::Literal(Literal::B256([0u8; 32])),
+                span: Span::dummy(),
+            });
+
+        let contract_call = call_contract_call(
+            &mut ctx,
+            method.return_type.type_id,
+            string_slice_literal(&method.name),
+            old_arguments.get(0).cloned().unwrap(),
+            old_arguments.into_iter().skip(1).collect(),
+            arguments.iter().map(|x| x.1.return_type).collect(),
+            coins_expr,
+            asset_id_expr,
+            gas_expr,
+        );
+        let mut expr = TyExpression::type_check(handler, ctx.by_ref(), contract_call)?;
+
+        // We need to "fix" contract_id here because it was created with zero
+        // given that we only have access to it after type_checking the contract caller
+        match &mut expr.expression {
+            ty::TyExpressionVariant::FunctionApplication { arguments, .. } => {
+                arguments[0].1 = (*selector.unwrap().contract_address).clone()
+            }
+            _ => unreachable!(),
+        }
+
+        return Ok(expr);
+    }
 
     let mut fn_app = ty::TyExpressionVariant::FunctionApplication {
         call_path: call_path.clone(),
@@ -621,6 +755,7 @@ pub(crate) fn monomorphize_method_application(
             type_binding.as_mut().unwrap().type_arguments.to_vec_mut(),
         )?;
         let mut method = (*decl_engine.get_function(fn_ref)).clone();
+        method.is_trait_method_dummy = false;
 
         // unify the types of the arguments with the types of the parameters from the function declaration
         *arguments =

@@ -1,5 +1,6 @@
 script;
 
+use core::codec::*;
 use std::constants::BASE_ASSET_ID;
 use context_testing_abi::*;
 

@@ -506,14 +506,12 @@ fn inline_instruction(
                 false_block.args.iter().map(|v| map_value(*v)).collect(),
             ),
             InstOp::ContractCall {
-                return_type,
                 name,
                 params,
                 coins,
                 asset_id,
                 gas,
             } => new_block.append(context).contract_call(
-                return_type,
                 name,
                 map_value(params),
                 map_value(coins),
@@ -536,6 +534,9 @@ fn inline_instruction(
                 }
                 FuelVmInstruction::Revert(val) => new_block.append(context).revert(map_value(val)),
                 FuelVmInstruction::JmpMem => new_block.append(context).jmp_mem(),
+                FuelVmInstruction::JmpbSsp(val) => {
+                    new_block.append(context).revert(map_value(val))
+                }
                 FuelVmInstruction::Smo {
                     recipient,
                     message,
@@ -607,6 +608,9 @@ fn inline_instruction(
                 FuelVmInstruction::WideCmpOp { op, arg1, arg2 } => new_block
                     .append(context)
                     .wide_cmp_op(op, map_value(arg1), map_value(arg2)),
+                FuelVmInstruction::Retd { ptr, len } => new_block
+                    .append(context)
+                    .retd(map_value(ptr), map_value(len)),
             },
             InstOp::GetElemPtr {
                 base,

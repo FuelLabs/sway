@@ -4,8 +4,12 @@ use sway_error::{handler::Handler, type_error::TypeError};
 use sway_types::Span;
 
 use crate::{
+    decl_engine::DeclEngineGet,
     engine_threading::*,
+    engine_threading::*,
+    language::ty,
     language::{ty, CallPath},
+    type_system::priv_prelude::*,
     type_system::priv_prelude::*,
 };
 
@@ -279,6 +283,7 @@ impl<'a> Unifier<'a> {
                         received,
                         help_text: self.help_text.clone(),
                         span: span.clone(),
+                        internal: "4".into(),
                     }
                     .into(),
                 );
@@ -307,6 +312,7 @@ impl<'a> Unifier<'a> {
                     received,
                     help_text: self.help_text.clone(),
                     span: span.clone(),
+                    internal: "3".into(),
                 }
                 .into(),
             );
@@ -350,6 +356,7 @@ impl<'a> Unifier<'a> {
                     received,
                     help_text: self.help_text.clone(),
                     span: span.clone(),
+                    internal: "2".into(),
                 }
                 .into(),
             );
@@ -380,6 +387,8 @@ impl<'a> Unifier<'a> {
                 self.unify(handler, rtp.type_id, etp.type_id, span);
             });
         } else {
+            dbg!(rn == en, rvs.len() == evs.len(), rtps.len() == etps.len());
+            let internal = format!("[{:?}] versus [{:?}]", received, expected);
             let (received, expected) = self.assign_args(received, expected);
             handler.emit_err(
                 TypeError::MismatchedType {
@@ -387,6 +396,7 @@ impl<'a> Unifier<'a> {
                     received,
                     help_text: self.help_text.clone(),
                     span: span.clone(),
+                    internal,
                 }
                 .into(),
             );
@@ -425,6 +435,7 @@ impl<'a> Unifier<'a> {
                     received,
                     help_text: self.help_text.clone(),
                     span: span.clone(),
+                    internal: "1".into(),
                 }
                 .into(),
             );

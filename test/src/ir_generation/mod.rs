@@ -257,6 +257,20 @@ pub(super) async fn run(
                 let programs = compile_res
                     .expect("there were no errors, so there should be a program");
 
+                if verbose {
+                    println!("Declaration Engine");
+                    println!("-----------------------");
+                    println!("{}", engines.de().pretty_print(&engines));
+
+                    // println!("Parsed");
+                    // println!("-----------------------");
+                    // dbg!(&programs.parsed);
+
+                    // println!("Typed");
+                    // println!("-----------------------");
+                    // dbg!(&programs.typed);
+                }
+
                 let typed_program = programs.typed.as_ref().unwrap();
 
                 // Compile to IR.

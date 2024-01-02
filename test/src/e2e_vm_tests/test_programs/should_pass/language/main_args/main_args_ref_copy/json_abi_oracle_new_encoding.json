@@ -1,0 +1,26 @@
+{
+  "configurables": [],
+  "encoding": "1",
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "__entry",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": [],
+      "type": "()",
+      "typeId": 0,
+      "typeParameters": null
+    }
+  ]
+}

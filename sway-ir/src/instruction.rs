@@ -74,7 +74,6 @@ pub enum InstOp {
     },
     /// A contract call with a list of arguments
     ContractCall {
-        return_type: Type,
         name: String,
         params: Value,
         coins: Value,
@@ -195,6 +194,11 @@ pub enum FuelVmInstruction {
         arg2: Value,
     },
     JmpMem,
+    JmpbSsp(Value),
+    Retd {
+        ptr: Value,
+        len: Value,
+    },
 }
 
 /// Comparison operations.
@@ -272,11 +276,12 @@ impl InstOp {
             InstOp::Call(function, _) => Some(context.functions[function.0].return_type),
             InstOp::CastPtr(_val, ty) => Some(*ty),
             InstOp::Cmp(..) => Some(Type::get_bool(context)),
-            InstOp::ContractCall { return_type, .. } => Some(*return_type),
+            InstOp::ContractCall { .. } => None,
             InstOp::FuelVm(FuelVmInstruction::Gtf { .. }) => Some(Type::get_uint64(context)),
             InstOp::FuelVm(FuelVmInstruction::Log { .. }) => Some(Type::get_unit(context)),
             InstOp::FuelVm(FuelVmInstruction::ReadRegister(_)) => Some(Type::get_uint64(context)),
             InstOp::FuelVm(FuelVmInstruction::Smo { .. }) => Some(Type::get_unit(context)),
+            InstOp::FuelVm(FuelVmInstruction::Retd { .. }) => None,
 
             // Load needs to strip the pointer from the source type.
             InstOp::Load(ptr_val) => match &context.values[ptr_val.0].value {
@@ -299,7 +304,7 @@ impl InstOp {
             // These are all terminators which don't return, essentially.  No type.
             InstOp::Branch(_)
             | InstOp::ConditionalBranch { .. }
-            | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpMem)
+            | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpMem | FuelVmInstruction::JmpbSsp(..))
             | InstOp::Ret(..) => None,
 
             // No-op is also no-type.
@@ -354,7 +359,6 @@ impl InstOp {
                 v
             }
             InstOp::ContractCall {
-                return_type: _,
                 name: _,
                 params,
                 coins,
@@ -410,6 +414,7 @@ impl InstOp {
                 FuelVmInstruction::ReadRegister(_) => vec![],
                 FuelVmInstruction::Revert(v) => vec![*v],
                 FuelVmInstruction::JmpMem => vec![],
+                FuelVmInstruction::JmpbSsp(v) => vec![*v],
                 FuelVmInstruction::Smo {
                     recipient,
                     message,
@@ -446,6 +451,9 @@ impl InstOp {
                     arg3,
                     ..
                 } => vec![*result, *arg1, *arg2, *arg3],
+                FuelVmInstruction::Retd { ptr, len } => {
+                    vec![*ptr, *len]
+                }
             },
         }
     }
@@ -547,6 +555,7 @@ impl InstOp {
                 FuelVmInstruction::ReadRegister { .. } => (),
                 FuelVmInstruction::Revert(revert_val) => replace(revert_val),
                 FuelVmInstruction::JmpMem => (),
+                FuelVmInstruction::JmpbSsp(val) => replace(val),
                 FuelVmInstruction::Smo {
                     recipient,
                     message,
@@ -617,6 +626,10 @@ impl InstOp {
                     replace(arg2);
                     replace(arg3);
                 }
+                FuelVmInstruction::Retd { ptr, len } => {
+                    replace(ptr);
+                    replace(len);
+                }
             },
         }
     }
@@ -632,7 +645,10 @@ impl InstOp {
             | InstOp::FuelVm(FuelVmInstruction::StateLoadQuadWord { .. })
             | InstOp::FuelVm(FuelVmInstruction::StateStoreQuadWord { .. })
             | InstOp::FuelVm(FuelVmInstruction::StateStoreWord { .. })
-            | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpMem)
+            | InstOp::FuelVm(FuelVmInstruction::Revert(..))
+            | InstOp::FuelVm(FuelVmInstruction::JmpMem)
+            | InstOp::FuelVm(FuelVmInstruction::JmpbSsp(..))
+            | InstOp::FuelVm(FuelVmInstruction::Retd { .. })
             | InstOp::MemCopyBytes { .. }
             | InstOp::MemCopyVal { .. }
             | InstOp::Store { .. }
@@ -949,7 +965,6 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
 
     pub fn contract_call(
         self,
-        return_type: Type,
         name: String,
         params: Value,
         coins: Value,    // amount of coins to forward
@@ -959,7 +974,6 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
         insert_instruction!(
             self,
             InstOp::ContractCall {
-                return_type,
                 name,
                 params,
                 coins,
@@ -1061,6 +1075,10 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
 
     pub fn ret(self, value: Value, ty: Type) -> Value {
         insert_instruction!(self, InstOp::Ret(value, ty))
+    }
+
+    pub fn retd(self, ptr: Value, len: Value) -> Value {
+        insert_instruction!(self, InstOp::FuelVm(FuelVmInstruction::Retd { ptr, len }))
     }
 
     pub fn revert(self, value: Value) -> Value {

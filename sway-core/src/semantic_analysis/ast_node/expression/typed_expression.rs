@@ -156,6 +156,7 @@ impl ty::TyExpression {
                     suffix: name.clone(),
                     is_absolute: false,
                 };
+
                 if matches!(
                     ctx.namespace()
                         .resolve_call_path(

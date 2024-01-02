@@ -7,6 +7,21 @@ pub struct Quad {
     pub v4: u64,
 }
 
+impl AbiDecode for Quad {
+    fn abi_decode(ref mut buffer: BufferReader) -> Quad {
+        let v1 = u64::abi_decode(buffer);
+        let v2 = u64::abi_decode(buffer);
+        let v3 = u64::abi_decode(buffer);
+        let v4 = u64::abi_decode(buffer);
+        Quad {
+            v1,
+            v2,
+            v3,
+            v4
+        }
+    }
+}
+
 abi BasicStorage {
     #[storage(write)]
     fn store_u64(key: b256, value: u64);

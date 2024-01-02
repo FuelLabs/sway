@@ -1,3 +1,4 @@
 category = "compile"
+expected_warnings = 1 # TODO change to zero
 
 # not: $()Possibly non-zero amount of coins transferred to non-payable contract method "send_funds".

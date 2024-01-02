@@ -7,10 +7,10 @@ use crate::{
     },
     language::{parsed::CodeBlock, *},
     type_system::TypeBinding,
-    Engines, TypeArgument, TypeId,
+    Engines, TypeArgs, TypeArgument, TypeId, TypeInfo,
 };
 use sway_error::handler::ErrorEmitted;
-use sway_types::{ident::Ident, Span, Spanned};
+use sway_types::{ident::Ident, BaseIdent, Span, Spanned};
 
 mod asm;
 mod match_branch;
@@ -27,6 +27,201 @@ use sway_ast::intrinsics::Intrinsic;
 pub struct Expression {
     pub kind: ExpressionKind,
     pub span: Span,
+}
+
+impl Expression {
+    pub fn match_branch(value: Expression, branches: Vec<MatchBranch>) -> Self {
+        Expression {
+            kind: ExpressionKind::Match(MatchExpression {
+                value: Box::new(value),
+                branches,
+            }),
+            span: Span::dummy(),
+        }
+    }
+
+    pub fn revert_u64(value: u64) -> Self {
+        Expression {
+            kind: ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
+                name: Ident::new_no_span("__revert".into()),
+                kind_binding: TypeBinding {
+                    inner: Intrinsic::Revert,
+                    type_arguments: TypeArgs::Regular(vec![]),
+                    span: Span::dummy(),
+                },
+                arguments: vec![Expression {
+                    kind: ExpressionKind::Literal(Literal::U64(value)),
+                    span: Span::dummy(),
+                }],
+            }),
+            span: Span::dummy(),
+        }
+    }
+
+    pub fn literal_u64(value: u64) -> Self {
+        Expression {
+            kind: ExpressionKind::Literal(Literal::U64(value)),
+            span: Span::dummy(),
+        }
+    }
+
+    pub fn code_block(nodes: impl IntoIterator<Item = parsed::AstNode>) -> Self {
+        Expression {
+            kind: ExpressionKind::CodeBlock(CodeBlock {
+                contents: nodes.into_iter().collect(),
+                whole_block_span: Span::dummy(),
+            }),
+            span: Span::dummy(),
+        }
+    }
+
+    pub fn ambiguous_variable_expression(name: BaseIdent) -> Self {
+        Expression {
+            kind: ExpressionKind::AmbiguousVariableExpression(name),
+            span: Span::dummy(),
+        }
+    }
+
+    pub fn call_function_with_suffix(suffix: BaseIdent, arguments: Vec<Expression>) -> Self {
+        Expression {
+            kind: ExpressionKind::FunctionApplication(Box::new(FunctionApplicationExpression {
+                call_path_binding: TypeBinding {
+                    inner: CallPath {
+                        prefixes: vec![],
+                        suffix,
+                        is_absolute: false,
+                    },
+                    type_arguments: crate::TypeArgs::Regular(vec![]),
+                    span: Span::dummy(),
+                },
+                arguments,
+            })),
+            span: Span::dummy(),
+        }
+    }
+
+    pub fn call_method(method_name: BaseIdent, arguments: Vec<Expression>) -> Self {
+        Expression {
+            kind: ExpressionKind::MethodApplication(Box::new(MethodApplicationExpression {
+                method_name_binding: TypeBinding {
+                    inner: MethodName::FromModule { method_name },
+                    type_arguments: TypeArgs::Regular(vec![]),
+                    span: Span::dummy(),
+                },
+                contract_call_params: vec![],
+                arguments,
+            })),
+            span: Span::dummy(),
+        }
+    }
+
+    pub fn call_associated_function_as_trait(
+        ty: TypeArgument,
+        as_trait: TypeId,
+        method_name: BaseIdent,
+        arguments: Vec<Expression>,
+    ) -> Self {
+        Expression {
+            kind: ExpressionKind::MethodApplication(Box::new(MethodApplicationExpression {
+                method_name_binding: TypeBinding {
+                    inner: MethodName::FromQualifiedPathRoot {
+                        ty,
+                        as_trait,
+                        method_name,
+                    },
+                    type_arguments: TypeArgs::Regular(vec![]),
+                    span: Span::dummy(),
+                },
+                contract_call_params: vec![],
+                arguments,
+            })),
+            span: Span::dummy(),
+        }
+    }
+
+    pub fn call_associated_function(
+        suffix: (TypeInfo, BaseIdent),
+        method_name: BaseIdent,
+        arguments: Vec<Expression>,
+    ) -> Self {
+        Expression {
+            kind: ExpressionKind::MethodApplication(Box::new(MethodApplicationExpression {
+                method_name_binding: TypeBinding {
+                    inner: MethodName::FromType {
+                        call_path_binding: TypeBinding {
+                            inner: CallPath {
+                                prefixes: vec![],
+                                suffix,
+                                is_absolute: false,
+                            },
+                            type_arguments: TypeArgs::Regular(vec![]),
+                            span: Span::dummy(),
+                        },
+                        method_name,
+                    },
+                    type_arguments: TypeArgs::Regular(vec![]),
+                    span: Span::dummy(),
+                },
+                contract_call_params: vec![],
+                arguments,
+            })),
+            span: Span::dummy(),
+        }
+    }
+
+    pub fn retd(ptr: Expression, len: Expression) -> Self {
+        Expression {
+            kind: ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
+                name: Ident::new_no_span("__contract_ret".into()),
+                kind_binding: TypeBinding {
+                    inner: Intrinsic::ContractRet,
+                    type_arguments: TypeArgs::Regular(vec![]),
+                    span: Span::dummy(),
+                },
+                arguments: vec![ptr, len],
+            }),
+            span: Span::dummy(),
+        }
+    }
+
+    pub fn retd_addr_of_variable(var: BaseIdent, len: Expression) -> Self {
+        Expression {
+            kind: ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
+                name: Ident::new_no_span("__contract_ret".into()),
+                kind_binding: TypeBinding {
+                    inner: Intrinsic::ContractRet,
+                    type_arguments: TypeArgs::Regular(vec![]),
+                    span: Span::dummy(),
+                },
+                arguments: vec![
+                    Expression {
+                        kind: ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
+                            name: Ident::new_no_span("__addr_of".into()),
+                            kind_binding: TypeBinding {
+                                inner: Intrinsic::AddrOf,
+                                type_arguments: TypeArgs::Regular(vec![]),
+                                span: Span::dummy(),
+                            },
+                            arguments: vec![Expression::ambiguous_variable_expression(var)],
+                        }),
+                        span: Span::dummy(),
+                    },
+                    len,
+                ],
+            }),
+            span: Span::dummy(),
+        }
+    }
+
+    pub fn subfield(prefix: Expression, field_to_access: BaseIdent) -> Self {
+        Expression {
+            kind: ExpressionKind::Subfield(SubfieldExpression {
+                prefix: Box::new(prefix),
+                field_to_access,
+            }),
+            span: Span::dummy(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

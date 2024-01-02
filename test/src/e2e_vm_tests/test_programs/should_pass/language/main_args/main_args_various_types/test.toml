@@ -1,5 +1,7 @@
 category = "run"
-script_data = "73657400000000000000000000000000000000000000053a616464000000000000000000000000010000000000000001" # [("set", SignedNum::Positive(1338)), ("add", SignedNum::Negative(1))]
+# [("set", SignedNum::Positive(1338)), ("add", SignedNum::Negative(1))]
+script_data = "73657400000000000000000000000000000000000000053a616464000000000000000000000000010000000000000001" 
+script_data_new_encoding = "736574 0000000000000000 000000000000053a 616464 0000000000000001 0000000000000001"
 expected_result = { action = "return", value = 1 }
 validate_abi = true
-expected_warnings = 4
+expected_warnings = 7

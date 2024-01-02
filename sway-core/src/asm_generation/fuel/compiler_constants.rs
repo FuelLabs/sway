@@ -36,5 +36,5 @@ pub(crate) const EIGHTEEN_BITS: u64 = 0b11_1111_1111_1111_1111;
 pub(crate) const TWELVE_BITS: u64 = 0b1111_1111_1111;
 pub(crate) const SIX_BITS: u64 = 0b11_1111;
 
-/// Some arbitrary values used for error codes.
+// Some arbitrary values used for error codes.
 pub(crate) const MISMATCHED_SELECTOR_REVERT_CODE: u32 = 123;

@@ -6,6 +6,7 @@ use forc_client::{
     NodeTarget,
 };
 use forc_pkg::{manifest::build_profile::ExperimentalFlags, BuildProfile, Built, BuiltPackage};
+use forc_pkg::{manifest::ExperimentalFlags, Built, BuiltPackage, PrintOpts};
 use fuel_tx::TransactionBuilder;
 use fuel_vm::fuel_tx;
 use fuel_vm::interpreter::Interpreter;
@@ -258,6 +259,15 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
         build_target: run_config.build_target,
         build_profile: BuildProfile::DEBUG.into(),
         release: run_config.release,
+        print: PrintOpts {
+            ast: true,
+            dca_graph: None,
+            dca_graph_url_format: None,
+            finalized_asm: false,
+            intermediate_asm: false,
+            ir: false,
+            reverse_order: false,
+        },
         pkg: forc_pkg::PkgOpts {
             path: Some(format!(
                 "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}",
@@ -329,17 +339,35 @@ pub(crate) async fn compile_and_run_unit_tests(
     .await
 }
 
-pub(crate) fn test_json_abi(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
+pub(crate) fn test_json_abi(
+    file_name: &str,
+    built_package: &BuiltPackage,
+    experimental_new_encoding: bool,
+    update_output_files: bool,
+) -> Result<()> {
     emit_json_abi(file_name, built_package)?;
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let oracle_path = format!(
-        "{}/src/e2e_vm_tests/test_programs/{}/{}",
-        manifest_dir, file_name, "json_abi_oracle.json"
-    );
+    let oracle_path = if experimental_new_encoding {
+        format!(
+            "{}/src/e2e_vm_tests/test_programs/{}/{}",
+            manifest_dir, file_name, "json_abi_oracle_new_encoding.json"
+        )
+    } else {
+        format!(
+            "{}/src/e2e_vm_tests/test_programs/{}/{}",
+            manifest_dir, file_name, "json_abi_oracle.json"
+        )
+    };
     let output_path = format!(
         "{}/src/e2e_vm_tests/test_programs/{}/{}",
         manifest_dir, file_name, "json_abi_output.json"
     );
+
+    // Update the oracle failing silently
+    if update_output_files {
+        let _ = std::fs::copy(&output_path, &oracle_path);
+    }
+
     if fs::metadata(oracle_path.clone()).is_err() {
         bail!("JSON ABI oracle file does not exist for this test.");
     }
@@ -347,11 +375,11 @@ pub(crate) fn test_json_abi(file_name: &str, built_package: &BuiltPackage) -> Re
         bail!("JSON ABI output file does not exist for this test.");
     }
     let oracle_contents =
-        fs::read_to_string(oracle_path).expect("Something went wrong reading the file.");
+        fs::read_to_string(&oracle_path).expect("Something went wrong reading the file.");
     let output_contents =
-        fs::read_to_string(output_path).expect("Something went wrong reading the file.");
+        fs::read_to_string(&output_path).expect("Something went wrong reading the file.");
     if oracle_contents != output_contents {
-        println!("Mismatched ABI JSON output.");
+        println!("Mismatched ABI JSON output [{oracle_path}] versus [{output_path}]",);
         println!(
             "{}",
             prettydiff::diff_lines(&oracle_contents, &output_contents)
