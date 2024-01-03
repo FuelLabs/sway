@@ -43,6 +43,7 @@ members = [
   "test_projects/vec_in_abi",
   "test_artifacts/auth_caller_contract",
   "test_artifacts/auth_caller_script",
+  "test_artifacts/auth_predicate",
   "test_artifacts/auth_testing_abi",
   "test_artifacts/auth_testing_contract",
   "test_artifacts/balance_contract",
