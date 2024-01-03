@@ -3,7 +3,7 @@ library;
 
 use ::logging::log;
 use ::revert::revert;
-use ::error_signals::{FAILED_ASSERT_SIGNAL, FAILED_ASSERT_EQ_SIGNAL, FAILED_ASSERT_NE_SIGNAL};
+use ::error_signals::{FAILED_ASSERT_EQ_SIGNAL, FAILED_ASSERT_NE_SIGNAL, FAILED_ASSERT_SIGNAL};
 
 /// Asserts that the given `condition` will always be `true` during runtime.
 ///
@@ -86,7 +86,10 @@ where
 ///     log("a is not equal to b");
 /// }
 /// ```
-pub fn assert_ne<T>(v1: T, v2: T) where T: Eq {
+pub fn assert_ne<T>(v1: T, v2: T)
+where
+    T: Eq,
+{
     if (v1 == v2) {
         log(v1);
         log(v2);
