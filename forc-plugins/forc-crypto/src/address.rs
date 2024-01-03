@@ -10,9 +10,9 @@ forc::cli_examples! {
 
 #[derive(Debug, clap::Args)]
 #[clap(
-    author,
     version,
     about = "Converts an address to another format",
+    after_help = help(),
     after_long_help = help(),
 )]
 pub struct Args {

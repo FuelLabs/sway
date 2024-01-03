@@ -18,7 +18,7 @@ mod sha256;
 
 const ABOUT: &str = "Forc plugin for hashing arbitrary data.";
 
-fn after_long_help() -> &'static str {
+fn help() -> &'static str {
     Box::leak(
         format!(
             "EXAMPLES:\n{}{}{}{}",
@@ -35,7 +35,8 @@ fn after_long_help() -> &'static str {
 #[clap(
     name = "forc-crypto",
     about = ABOUT,
-    after_long_help = after_long_help(),
+    after_help = help(),
+    after_long_help = help(),
     version
 )]
 pub enum Command {

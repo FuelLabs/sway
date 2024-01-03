@@ -17,9 +17,9 @@ forc::cli_examples! {
 /// Parse a secret key to view the associated public key
 #[derive(Debug, clap::Args)]
 #[clap(
-    author,
     version,
     about = ABOUT,
+    after_help = help(),
     after_long_help = help(),
 )]
 pub struct Arg {

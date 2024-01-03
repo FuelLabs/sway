@@ -31,6 +31,7 @@ forc::cli_examples! {
 #[clap(
     name = "forc-fmt",
     about = "Forc plugin for running the Sway code formatter.",
+    after_help = help(),
     after_long_help = help(),
     version
 )]

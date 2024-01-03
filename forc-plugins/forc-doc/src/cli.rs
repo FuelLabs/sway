@@ -16,6 +16,7 @@ forc::cli_examples! {
 #[clap(
     name = "forc-doc",
     about = ABOUT,
+    after_help = help(),
     after_long_help = help(),
     version
 )]

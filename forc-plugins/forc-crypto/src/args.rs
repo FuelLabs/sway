@@ -15,9 +15,9 @@ forc::cli_examples! {
 
 #[derive(Debug, Clone, clap::Args)]
 #[clap(
-    author,
     version,
     about = "Hashes the argument or file with this algorithm",
+    after_help = help(),
     after_long_help = help(),
 )]
 pub struct HashArgs {
