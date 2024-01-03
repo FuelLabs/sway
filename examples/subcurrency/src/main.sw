@@ -37,9 +37,7 @@ abi Token {
 // Constants
 ////////////////////////////////////////
 /// Address of contract creator.
-const MINTER = Address::from(
-    0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b,
-);
+const MINTER = Address::from(0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b);
 
 ////////////////////////////////////////
 // Contract storage

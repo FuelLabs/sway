@@ -15,7 +15,7 @@ use ::outputs::{Output, output_amount, output_count, output_type};
 /// `transfer_to_address`, depending on the type of `Identity`.
 ///
 /// # Additional Information
-/// 
+///
 /// If the `to` Identity is a contract, this will transfer coins to the contract even with no way to retrieve them
 /// (i.e: no withdrawal functionality on the receiving contract), possibly leading to
 /// the **_PERMANENT LOSS OF COINS_** if not used with care.
@@ -47,7 +47,7 @@ pub fn mint_to(to: Identity, sub_id: SubId, amount: u64) {
 /// UNCONDITIONALLY to the contract at `to`.
 ///
 /// # Additional Information
-/// 
+///
 /// This will transfer coins to a contract even with no way to retrieve them
 /// (i.e: no withdrawal functionality on the receiving contract), possibly leading to
 /// the **_PERMANENT LOSS OF COINS_** if not used with care.
@@ -150,7 +150,7 @@ pub fn burn(sub_id: SubId, amount: u64) {
 /// `transfer_to_address`, depending on the type of `Identity`.
 ///
 /// # Additional Information
-/// 
+///
 /// If the `to` Identity is a contract this may transfer coins to the contract even with no way to retrieve them
 /// (i.e. no withdrawal functionality on receiving contract), possibly leading
 /// to the **_PERMANENT LOSS OF COINS_** if not used with care.
@@ -190,7 +190,7 @@ pub fn transfer(to: Identity, asset_id: AssetId, amount: u64) {
 /// the contract at `to`.
 ///
 /// # Additional Information
-/// 
+///
 /// This will transfer coins to a contract even with no way to retrieve them
 /// (i.e. no withdrawal functionality on receiving contract), possibly leading
 /// to the **_PERMANENT LOSS OF COINS_** if not used with care.
