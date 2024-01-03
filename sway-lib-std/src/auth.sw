@@ -179,7 +179,7 @@ pub fn caller_address() -> Result<Address, AuthError> {
 }
 
 /// Get the current predicate's id when called in an internal context.
-/// 
+///
 /// # Returns
 ///
 /// * [Address] - The address of this predicate.
@@ -201,7 +201,7 @@ pub fn caller_address() -> Result<Address, AuthError> {
 pub fn predicate_id() -> Address {
     // Get index of current predicate.
     // i3 = GM_GET_VERIFYING_PREDICATE
-    let predicate_index = asm(r1) { 
+    let predicate_index = asm(r1) {
         gm r1 i3;
         r1: u64
     };
