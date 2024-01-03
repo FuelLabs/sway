@@ -11,8 +11,8 @@ However, if the <code>F_UNSAFEMATH</code> flag is set, $err is set to <code>true
 
 fn foo() {
     disable_panic_on_unsafe_math();
-    let bar = 1 / 0; 
-    assert(error() == 1); 
+    let bar = 1 / 0;
+    assert(error() == 1);
     enable_panic_on_unsafe_math();
 }
 </code></pre>

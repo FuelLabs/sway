@@ -8,7 +8,7 @@
 
 fn foo() {
     let prior_flags = disable_panic_on_overflow_preserving();
-     
+
     // Adding 1 to the max value of a u64 is considered an overflow.
     let bar = u64::max() + 1;
 

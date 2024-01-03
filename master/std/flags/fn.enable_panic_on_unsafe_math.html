@@ -9,11 +9,11 @@
 
 fn main() {
     disable_panic_on_unsafe_math();
-     
+
     // Division by zero is considered unsafe math.
-    let bar = 1 / 0; 
+    let bar = 1 / 0;
     // Error flag is set to true whenever unsafe math occurs. Here represented as 1.
-    assert(error() == 1); 
+    assert(error() == 1);
 
     enable_panic_on_unsafe_math();
 }
