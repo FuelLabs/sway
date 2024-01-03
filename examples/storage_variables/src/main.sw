@@ -37,9 +37,7 @@ impl StorageExample for Contract {
         storage
             .var2
             .w
-            .write(
-                0x1111111111111111111111111111111111111111111111111111111111111111,
-            );
+            .write(0x1111111111111111111111111111111111111111111111111111111111111111);
         storage.var2.z.write(true);
     }
     // ANCHOR_END: storage_write
@@ -49,9 +47,7 @@ impl StorageExample for Contract {
         (
             storage.var1.x.try_read().unwrap_or(0),
             storage.var1.y.try_read().unwrap_or(0),
-            storage.var2.w.try_read().unwrap_or(
-                0x0000000000000000000000000000000000000000000000000000000000000000,
-            ),
+            storage.var2.w.try_read().unwrap_or(0x0000000000000000000000000000000000000000000000000000000000000000),
             storage.var2.z.try_read().unwrap_or(false),
         )
     }

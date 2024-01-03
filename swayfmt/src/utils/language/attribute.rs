@@ -15,7 +15,7 @@ use sway_types::{
     Spanned,
 };
 
-impl<T: Format + Spanned> Format for Annotated<T> {
+impl<T: Format + Spanned + std::fmt::Debug> Format for Annotated<T> {
     fn format(
         &self,
         formatted_code: &mut FormattedCode,
@@ -24,11 +24,17 @@ impl<T: Format + Spanned> Format for Annotated<T> {
         // format each `Attribute`
         let mut start = None;
         for attr in &self.attribute_list {
+            if let Some(start) = start {
+                // Write any comments that may have been defined in between the
+                // attributes and the value
+                write_comments(formatted_code, start..attr.span().start(), formatter)?;
+                if !formatted_code.ends_with(NEW_LINE) {
+                    write!(formatted_code, "{}", NEW_LINE)?;
+                }
+            }
             formatter.write_indent_into_buffer(formatted_code)?;
             attr.format(formatted_code, formatter)?;
-            if start.is_none() {
-                start = Some(attr.span().end());
-            }
+            start = Some(attr.span().end());
         }
         if let Some(start) = start {
             // Write any comments that may have been defined in between the

@@ -1,0 +1,19 @@
+category = "fail"
+
+#check: $()error
+#check: $()enum Enum {
+#nextln: $()Name "Enum" is defined multiple times.
+
+#check: $()error
+#check: $()struct Struct {
+#nextln: $()Name "Struct" is defined multiple times.
+
+#check: $()error
+#check: $()pub struct PubStruct {
+#nextln: $()Name "PubStruct" is defined multiple times.
+
+#check: $()error
+#check: $()struct GenericStruct<T> {
+#nextln: $()Name "GenericStruct" is defined multiple times.
+
+#not: $()error

@@ -1,12 +1,6 @@
 use anyhow::Result;
-use ropey::Rope;
-use std::{
-    collections::BTreeMap,
-    iter::{Enumerate, Peekable},
-    path::PathBuf,
-    str::Chars,
-    sync::Arc,
-};
+use ropey::{str_utils::byte_to_char_idx, Rope};
+use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
 use sway_ast::Module;
 use sway_types::SourceEngine;
 
@@ -45,59 +39,50 @@ fn is_new_line_in_rope(rope: &Rope, index: usize) -> bool {
     true
 }
 
-/// Checks if there is a new line (Operating system specific) next in the iter of characters
-#[inline]
-fn is_new_line_next_in_iter(
-    input_iter: &mut Peekable<Enumerate<Chars<'_>>>,
-    new_line: &[char],
-) -> bool {
-    let total = new_line.len();
-    for (p, char_new_line) in new_line.iter().enumerate() {
-        if input_iter.peek().map(|x| x.1) == Some(*char_new_line) {
-            if total != p + 1 {
-                input_iter.next();
-            }
-        } else {
-            return false;
-        }
-    }
-
-    true
-}
-
 /// Search for newline sequences in the unformatted code and collect ByteSpan -> NewlineSequence for the input source
 fn newline_map_from_src(unformatted_input: &str) -> Result<NewlineMap, FormatterError> {
     let mut newline_map = BTreeMap::new();
     // Iterate over the unformatted source code to find NewlineSequences
-    let mut input_iter = unformatted_input.chars().enumerate().peekable();
+    let mut input_iter = unformatted_input.chars().peekable();
     let mut current_sequence_length = 0;
     let mut in_sequence = false;
     let mut sequence_start = 0;
-    let os_new_line = NEW_LINE.chars().collect::<Vec<_>>();
-    while let Some((char_index, char)) = input_iter.next() {
-        let next_char = input_iter.peek().map(|input| input.1);
-        if matches!(char, '/' | ';' | '}')
-            && is_new_line_next_in_iter(&mut input_iter, &os_new_line)
-        {
+    let mut bytes_offset = 0;
+    while let Some(char) = input_iter.next() {
+        // Keep of byte offset for each char, it is used for indexing the
+        // unformatted input (to replace the newline sequences with correct
+        // amount of newlines). The code downstream deal with a vector of bytes
+        // and not utf-8 chars.
+        let char_index = bytes_offset;
+        bytes_offset += char.len_utf8();
+
+        let next_char = input_iter.peek();
+        let is_new_line = unformatted_input
+            .get(char_index..char_index + NEW_LINE.len())
+            .map(|c| c == NEW_LINE)
+            .unwrap_or(false);
+        let is_new_line_next = unformatted_input
+            .get(char_index + 1..char_index + 1 + NEW_LINE.len())
+            .map(|c| c == NEW_LINE)
+            .unwrap_or(false);
+
+        if matches!(char, ';' | '}') && is_new_line_next {
             if !in_sequence {
-                sequence_start = char_index + os_new_line.len();
+                sequence_start = char_index + NEW_LINE.len();
                 in_sequence = true;
             }
-        } else if os_new_line.ends_with(&[char]) && in_sequence {
+        } else if is_new_line && in_sequence {
             current_sequence_length += 1;
         }
-        if (Some('}') == next_char || Some('(') == next_char) && in_sequence {
+        if (Some(&'}') == next_char || Some(&'(') == next_char) && in_sequence {
             // If we are in a sequence and find `}`, abort the sequence
             current_sequence_length = 0;
             in_sequence = false;
         }
-        if next_char == Some(' ') || next_char == Some('\t') {
+        if next_char == Some(&' ') || next_char == Some(&'\t') {
             continue;
         }
-        if !is_new_line_next_in_iter(&mut input_iter, &os_new_line)
-            && current_sequence_length > 0
-            && in_sequence
-        {
+        if !is_new_line_next && current_sequence_length > 0 && in_sequence {
             // Next char is not a newline so this is the end of the sequence
             let byte_span = ByteSpan {
                 start: sequence_start,
@@ -341,6 +326,8 @@ fn insert_after_span(
     let mut len = sequence_string.len() as i64;
     let mut src_rope = Rope::from_str(formatted_code);
 
+    let at = byte_to_char_idx(formatted_code, at);
+
     // Remove the previous sequence_length, that will be replaced in the next statement
     let mut remove_until = at;
     for i in at..at + newline_sequence.sequence_length {
@@ -349,26 +336,33 @@ fn insert_after_span(
         }
         remove_until = i;
     }
-    if remove_until > at {
+    let removed = if remove_until > at {
         src_rope
             .try_remove(at..remove_until)
             .map_err(|_| FormatterError::NewlineSequenceError)?;
-        len -= (remove_until - at) as i64;
-    }
+        let removed = (remove_until - at) as i64;
+        len -= removed;
+        removed
+    } else {
+        0
+    };
 
     // Do never insert the newline sequence between two alphanumeric characters
-    if !src_rope
+    let is_token = src_rope
         .get_char(at)
         .map(is_alphanumeric)
         .unwrap_or_default()
-        || !src_rope
+        && src_rope
             .get_char(at + 1)
             .map(is_alphanumeric)
-            .unwrap_or_default()
-    {
+            .unwrap_or_default();
+
+    if !is_token {
         src_rope
             .try_insert(at, &sequence_string)
             .map_err(|_| FormatterError::NewlineSequenceError)?;
+    } else {
+        len = -removed;
     }
 
     formatted_code.clear();

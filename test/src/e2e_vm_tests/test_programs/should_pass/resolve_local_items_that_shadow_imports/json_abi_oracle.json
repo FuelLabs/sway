@@ -16,8 +16,8 @@
   "messagesTypes": [],
   "types": [
     {
-      "components": null,
-      "type": "bool",
+      "components": [],
+      "type": "()",
       "typeId": 0,
       "typeParameters": null
     }

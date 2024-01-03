@@ -8,7 +8,7 @@ use ::bytes_conversions::u64::*;
 
 impl b256 {
     /// Converts the `b256` to a sequence of little-endian bytes.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [Bytes] - The 32 bytes that compose the `b256`.
@@ -28,29 +28,31 @@ impl b256 {
     /// }
     /// ```
     pub fn to_le_bytes(self) -> Bytes {
-        let (a, b, c, d): (u64, u64, u64, u64) = asm(r1: self) {r1: (u64, u64, u64, u64)};
+        let (a, b, c, d): (u64, u64, u64, u64) = asm(r1: self) {
+            r1: (u64, u64, u64, u64)
+        };
         let a = a.to_le_bytes();
         let b = b.to_le_bytes();
         let c = c.to_le_bytes();
         let d = d.to_le_bytes();
 
-        let (mut a, mut b, mut c, mut d) = (d,c,b,a);
+        let (mut a, mut b, mut c, mut d) = (d, c, b, a);
 
         a.append(b);
         a.append(c);
         a.append(d);
 
-        a        
+        a
     }
 
     /// Converts a sequence of little-endian bytes to a `b256`.
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `bytes`: [Bytes] - The 32 bytes that compose the `b256`.
     ///
     /// # Returns
-    /// 
+    ///
     /// * [b256] - The resulting `b256` value.
     ///
     /// # Examples
@@ -89,7 +91,7 @@ impl b256 {
     }
 
     /// Converts the `b256` to a sequence of big-endian bytes.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [Bytes] - The 32 bytes that compose the `b256`.
@@ -115,11 +117,11 @@ impl b256 {
     /// Converts a sequence of big-endian bytes to a `b256`.
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `bytes`: [Bytes] - The 32 bytes that compose the `b256`.
     ///
     /// # Returns
-    /// 
+    ///
     /// * [b256] - The resulting `b256` value.
     ///
     /// # Examples

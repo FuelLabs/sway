@@ -606,7 +606,7 @@ impl<'a> TypeCheckContext<'a> {
     ///
     /// The `mod_path` is significant here as we assume the resolution is done within the
     /// context of the module pointed to by `mod_path` and will only check the call path prefixes
-    /// and the symbol's own visibility
+    /// and the symbol's own visibility.
     pub(crate) fn resolve_call_path_with_visibility_check_and_modpath(
         &self,
         handler: &Handler,
