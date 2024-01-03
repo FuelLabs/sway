@@ -6,4 +6,4 @@ name = "sway_project"
 implicit-std = false
 
 [dependencies]
-std = { git = "https://github.com/FuelLabs/sway", tag = "v0.48.1" }
+std = { path = "../../../../sway-lib-std" }
