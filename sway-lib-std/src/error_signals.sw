@@ -28,3 +28,10 @@ pub const FAILED_ASSERT_EQ_SIGNAL = 0xffff_ffff_ffff_0003;
 ///
 /// The value is: 18446744073709486084
 pub const FAILED_ASSERT_SIGNAL = 0xffff_ffff_ffff_0004;
+
+/// A revert with this value signals that it was caused by a failing call to `std::assert::assert_ne`.
+///
+/// # Additional Information
+///
+/// The value is: 18446744073709486085
+pub const FAILED_ASSERT_NE_SIGNAL = 0xffff_ffff_ffff_0005;
