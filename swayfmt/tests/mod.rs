@@ -1797,8 +1797,8 @@ fn test() {
         .quux([1, 2])
         .yet_another_call(
             [
-                1, 2, 3, 4, 6, 7, 7, 8, 8, 9, 9, 9, 19, 1123123,
-                12312, 312, 312, 3123, 12, 31, 44,
+                1, 2, 3, 4, 6, 7, 7, 8, 8, 9, 9, 9, 19, 1123123, 12312, 312, 312,
+                3123, 12, 31, 44,
             ],
             [1, 2],
             true,
@@ -1906,13 +1906,13 @@ fn long_array() {
     check(
         r#"library;
         fn main() {
-            let x = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22];
+            let x = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,99,22];
         }"#,
         r#"library;
 fn main() {
     let x = [
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-        17, 18, 19, 20, 21, 22,
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+        22, 99, 22,
     ];
 }
 "#,
@@ -2175,7 +2175,7 @@ fn single_long_arg() {
     fn main() {
         if foo {
             // ANCHOR: storage_map_insert
-                let addr1 = Address::from(0x0101010101010101010101010101010101010101010101010101010101010101);
+                let addr1 = Address::from(0x010101010101010101010101010101010101010101010101010101010101010101010101010101);
             }
     }
     "#,
@@ -2185,7 +2185,7 @@ fn main() {
     if foo {
         // ANCHOR: storage_map_insert
         let addr1 = Address::from(
-            0x0101010101010101010101010101010101010101010101010101010101010101,
+            0x010101010101010101010101010101010101010101010101010101010101010101010101010101,
         );
     }
 }
@@ -2683,6 +2683,159 @@ fn test() {
         r#"library;
 fn test() {
     assert(!(U256::from((0, 0, 0, 1)) > U256::from((0, u64::max(), 0, 0))));
+}
+"#,
+    );
+}
+
+#[test]
+fn use_sorting_items() {
+    check(
+        r#"library;
+    
+    use ::option::Option::{*, self, z, foo, bar};
+"#,
+        r#"library;
+
+use ::option::Option::{self, bar, foo, z, *};
+"#,
+    );
+}
+
+#[test]
+fn whitespace_after_doccomment() {
+    check(
+        r#"library;
+    
+/// Trait to evaluate if one value is greater than or equal, or less than or equal to another of the same type.
+trait OrdEq: Ord + Eq {
+} {
+    /// Evaluates if one value of the same type is greater or equal to than another.
+    ///
+    /// # Additional Information
+    ///
+    /// This trait requires that the `Ord` and `Eq` traits are implemented.
+    ///
+    /// # Arguments
+    ///
+    /// * `other`: [Self] - The value of the same type.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] - `true` if `self` is greater than or equal to `other`, otherwise `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// struct MyStruct {
+    ///     val: u64,
+    /// }
+    ///
+    /// impl Eq for MyStruct {
+    ///     fn eq(self, other: Self) -> bool {
+    ///         self.val == other.val
+    ///     }
+    /// }
+    ///
+    /// impl Ord for MyStruct {
+    ///     fn gt(self, other: Self) -> bool {
+    ///         self.val > other.val
+    ///     }
+    /// }
+    ///
+    /// impl OrdEq for MyStruct {}
+    ///
+    /// fn foo() {
+    ///     let struct1 = MyStruct { val: 10 };
+    ///     let struct2 = MyStruct { val: 10 };
+    ///     let result = struct1 >= struct2;
+    ///     assert(result);
+    /// }
+    /// ```
+    fn ge(self, other: Self) -> bool {
+        self.gt(other) || self.eq(other)
+    }
+    /// Some test
+    fn test() {
+
+    }
+}
+    "#,
+        r#"library;
+
+/// Trait to evaluate if one value is greater than or equal, or less than or equal to another of the same type.
+trait OrdEq: Ord + Eq {
+} {
+    /// Evaluates if one value of the same type is greater or equal to than another.
+    ///
+    /// # Additional Information
+    ///
+    /// This trait requires that the `Ord` and `Eq` traits are implemented.
+    ///
+    /// # Arguments
+    ///
+    /// * `other`: [Self] - The value of the same type.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] - `true` if `self` is greater than or equal to `other`, otherwise `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// struct MyStruct {
+    ///     val: u64,
+    /// }
+    ///
+    /// impl Eq for MyStruct {
+    ///     fn eq(self, other: Self) -> bool {
+    ///         self.val == other.val
+    ///     }
+    /// }
+    ///
+    /// impl Ord for MyStruct {
+    ///     fn gt(self, other: Self) -> bool {
+    ///         self.val > other.val
+    ///     }
+    /// }
+    ///
+    /// impl OrdEq for MyStruct {}
+    ///
+    /// fn foo() {
+    ///     let struct1 = MyStruct { val: 10 };
+    ///     let struct2 = MyStruct { val: 10 };
+    ///     let result = struct1 >= struct2;
+    ///     assert(result);
+    /// }
+    /// ```
+    fn ge(self, other: Self) -> bool {
+        self.gt(other) || self.eq(other)
+    }
+    /// Some test
+    fn test() {}
+}
+"#,
+    );
+}
+
+#[test]
+fn single_argument_method() {
+    check(
+        r#"library;
+    
+    pub fn from_be_bytes(bytes: [u8; 32]) -> Self {
+        let a = u64::from_be_bytes(
+            [
+                bytes[0], bytes[1], bytes[2], bytes[3], bytes[4],
+                bytes[5], bytes[6], bytes[7],
+            ],
+        );
+    }
+    "#,
+        r#"library;
+
+pub fn from_be_bytes(bytes: [u8; 32]) -> Self {
+    let a = u64::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7]]);
 }
 "#,
     );
