@@ -485,9 +485,9 @@ impl<'eng> FnCompiler<'eng> {
                 ..
             } => {
                 let enum_decl = self.engines.de().get_enum(enum_ref);
-                let res = self.compile_enum_expr(context, md_mgr, &enum_decl, *tag, contents.as_deref());
+                let res =
+                    self.compile_enum_expr(context, md_mgr, &enum_decl, *tag, contents.as_deref());
                 res
-
             }
             ty::TyExpressionVariant::Tuple { fields } => {
                 self.compile_tuple_expr(context, md_mgr, fields, span_md_idx)
@@ -2138,12 +2138,13 @@ impl<'eng> FnCompiler<'eng> {
         // If the first element diverges, then the element type has not been determined,
         // so we can't use the normal compilation scheme. Instead just generate code for
         // the first element.
-        let first_elem_deterministically_aborts = contents[0].deterministically_aborts(self.engines.de(), false);
+        let first_elem_deterministically_aborts =
+            contents[0].deterministically_aborts(self.engines.de(), false);
         let first_elem_value = self.compile_expression_to_value(context, md_mgr, &contents[0])?;
         if first_elem_value.is_diverging(context) || first_elem_deterministically_aborts {
             return Ok(first_elem_value);
         }
-            
+
         let elem_type = convert_resolved_typeid_no_span(
             self.engines.te(),
             self.engines.de(),
@@ -2180,15 +2181,16 @@ impl<'eng> FnCompiler<'eng> {
         if all_consts && contents.len() > 5 {
             // We can compile all elements ahead of time without affecting register pressure.
             let compiled_elems = contents
-                .iter().enumerate()
-                .map(|(idx, e)|
-                     if idx == 0 {
-                         // The first element has already been compiled
-                         Ok(first_elem_value)
-                     }
-                     else {
-                         self.compile_expression_to_value(context, md_mgr, e)
-                     })
+                .iter()
+                .enumerate()
+                .map(|(idx, e)| {
+                    if idx == 0 {
+                        // The first element has already been compiled
+                        Ok(first_elem_value)
+                    } else {
+                        self.compile_expression_to_value(context, md_mgr, e)
+                    }
+                })
                 .collect::<Result<Vec<_>, _>>()?;
             let mut compiled_elems_iter = compiled_elems.iter();
             let first = compiled_elems_iter.next();
@@ -2276,14 +2278,12 @@ impl<'eng> FnCompiler<'eng> {
 
         // Compile each element and insert it immediately.
         for (idx, elem_expr) in contents.iter().enumerate() {
-            let elem_value =
-                if idx == 0 {
-                    // The first element has already been compiled
-                    first_elem_value
-                }
-                else { 
-                    self.compile_expression_to_value(context, md_mgr, elem_expr)?
-                };
+            let elem_value = if idx == 0 {
+                // The first element has already been compiled
+                first_elem_value
+            } else {
+                self.compile_expression_to_value(context, md_mgr, elem_expr)?
+            };
             if elem_value.is_diverging(context) {
                 return Ok(elem_value);
             }
@@ -2544,7 +2544,7 @@ impl<'eng> FnCompiler<'eng> {
                 self.compile_expression_to_value(context, md_mgr, contents.unwrap())?;
             // Only store if the the value does not diverge.
             if contents_value.is_diverging(context) {
-                return Ok(contents_value)
+                return Ok(contents_value);
             }
             let contents_type = contents_value.get_type(context).ok_or_else(|| {
                 CompileError::Internal(
