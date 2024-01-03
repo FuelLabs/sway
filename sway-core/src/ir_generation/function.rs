@@ -1891,7 +1891,14 @@ impl<'eng> FnCompiler<'eng> {
             return Ok(None);
         }
 
-        // Grab this before we move body into compilation.
+        // We must compile the RHS before checking for shadowing, as it will still be in the
+        // previous scope.
+        let body_deterministically_aborts = body.deterministically_aborts(self.engines.de(), false);
+        let init_val = self.compile_expression_to_value(context, md_mgr, body)?;
+        if init_val.is_diverging(context) || body_deterministically_aborts {
+            return Ok(Some(init_val));
+        }
+
         let return_type = convert_resolved_typeid(
             self.engines.te(),
             self.engines.de(),
@@ -1900,13 +1907,6 @@ impl<'eng> FnCompiler<'eng> {
             &body.span,
         )?;
 
-        // We must compile the RHS before checking for shadowing, as it will still be in the
-        // previous scope.
-        let body_deterministically_aborts = body.deterministically_aborts(self.engines.de(), false);
-        let init_val = self.compile_expression_to_value(context, md_mgr, body)?;
-        if init_val.is_diverging(context) || body_deterministically_aborts {
-            return Ok(Some(init_val));
-        }
         let mutable = matches!(mutability, ty::VariableMutability::Mutable);
         let local_name = self.lexical_map.insert(name.as_str().to_owned());
         let local_var = self
@@ -2135,6 +2135,15 @@ impl<'eng> FnCompiler<'eng> {
         contents: &[ty::TyExpression],
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
+        // If the first element diverges, then the element type has not been determined,
+        // so we can't use the normal compilation scheme. Instead just generate code for
+        // the first element.
+        let first_elem_deterministically_aborts = contents[0].deterministically_aborts(self.engines.de(), false);
+        let first_elem_value = self.compile_expression_to_value(context, md_mgr, &contents[0])?;
+        if first_elem_value.is_diverging(context) || first_elem_deterministically_aborts {
+            return Ok(first_elem_value);
+        }
+            
         let elem_type = convert_resolved_typeid_no_span(
             self.engines.te(),
             self.engines.de(),
@@ -2171,8 +2180,15 @@ impl<'eng> FnCompiler<'eng> {
         if all_consts && contents.len() > 5 {
             // We can compile all elements ahead of time without affecting register pressure.
             let compiled_elems = contents
-                .iter()
-                .map(|e| self.compile_expression_to_value(context, md_mgr, e))
+                .iter().enumerate()
+                .map(|(idx, e)|
+                     if idx == 0 {
+                         // The first element has already been compiled
+                         Ok(first_elem_value)
+                     }
+                     else {
+                         self.compile_expression_to_value(context, md_mgr, e)
+                     })
                 .collect::<Result<Vec<_>, _>>()?;
             let mut compiled_elems_iter = compiled_elems.iter();
             let first = compiled_elems_iter.next();
@@ -2260,7 +2276,14 @@ impl<'eng> FnCompiler<'eng> {
 
         // Compile each element and insert it immediately.
         for (idx, elem_expr) in contents.iter().enumerate() {
-            let elem_value = self.compile_expression_to_value(context, md_mgr, elem_expr)?;
+            let elem_value =
+                if idx == 0 {
+                    // The first element has already been compiled
+                    first_elem_value
+                }
+                else { 
+                    self.compile_expression_to_value(context, md_mgr, elem_expr)?
+                };
             if elem_value.is_diverging(context) {
                 return Ok(elem_value);
             }
@@ -2520,23 +2543,24 @@ impl<'eng> FnCompiler<'eng> {
             let contents_value =
                 self.compile_expression_to_value(context, md_mgr, contents.unwrap())?;
             // Only store if the the value does not diverge.
-            if !contents_value.is_diverging(context) {
-                let contents_type = contents_value.get_type(context).ok_or_else(|| {
-                    CompileError::Internal(
-                        "Unable to get type for enum contents.",
-                        enum_decl.span.clone(),
-                    )
-                })?;
-                let gep_val = self
-                    .current_block
-                    .append(context)
-                    .get_elem_ptr_with_idcs(enum_ptr, contents_type, &[1, tag as u64])
-                    .add_metadatum(context, span_md_idx);
-                self.current_block
-                    .append(context)
-                    .store(gep_val, contents_value)
-                    .add_metadatum(context, span_md_idx);
+            if contents_value.is_diverging(context) {
+                return Ok(contents_value)
             }
+            let contents_type = contents_value.get_type(context).ok_or_else(|| {
+                CompileError::Internal(
+                    "Unable to get type for enum contents.",
+                    enum_decl.span.clone(),
+                )
+            })?;
+            let gep_val = self
+                .current_block
+                .append(context)
+                .get_elem_ptr_with_idcs(enum_ptr, contents_type, &[1, tag as u64])
+                .add_metadatum(context, span_md_idx);
+            self.current_block
+                .append(context)
+                .store(gep_val, contents_value)
+                .add_metadatum(context, span_md_idx);
         }
 
         // Return the pointer.
@@ -2558,16 +2582,16 @@ impl<'eng> FnCompiler<'eng> {
             let mut init_values = Vec::with_capacity(fields.len());
             let mut init_types = Vec::with_capacity(fields.len());
             for field_expr in fields {
+                let init_value = self.compile_expression_to_value(context, md_mgr, field_expr)?;
+                if init_value.is_diverging(context) {
+                    return Ok(init_value);
+                }
                 let init_type = convert_resolved_typeid_no_span(
                     self.engines.te(),
                     self.engines.de(),
                     context,
                     &field_expr.return_type,
                 )?;
-                let init_value = self.compile_expression_to_value(context, md_mgr, field_expr)?;
-                if init_value.is_diverging(context) {
-                    return Ok(init_value);
-                }
                 init_values.push(init_value);
                 init_types.push(init_type);
             }

@@ -1,4 +1,5 @@
 category = "compile"
+expected_warnings = 13
 
 # check: $()warning
 # check: return_in_strange_positions/src/main.sw:7:16
@@ -64,4 +65,3 @@ category = "compile"
 # check: return_in_strange_positions/src/main.sw:106:5
 # check: $()1245
 # nextln: $()This code is unreachable.
-
