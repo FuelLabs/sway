@@ -1,5 +1,6 @@
 use crate::{
     comments::{has_comments_in_formatter, rewrite_with_comments, write_comments},
+    constants::NEW_LINE,
     formatter::*,
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
@@ -50,10 +51,10 @@ impl Format for ItemImpl {
         } else {
             Self::open_curly_brace(formatted_code, formatter)?;
             formatter.indent();
-            writeln!(formatted_code)?;
+            write!(formatted_code, "{}", NEW_LINE)?;
             for item in contents.iter() {
                 item.format(formatted_code, formatter)?;
-                writeln!(formatted_code)?;
+                write!(formatted_code, "{}", NEW_LINE)?;
             }
             Self::close_curly_brace(formatted_code, formatter)?;
         }

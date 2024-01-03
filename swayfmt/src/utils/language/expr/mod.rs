@@ -751,6 +751,7 @@ fn same_line_if_only_argument(expr: &Expr) -> bool {
         expr,
         Expr::Struct { path: _, fields: _ }
             | Expr::Tuple(_)
+            | Expr::Array(_)
             | Expr::Parens(_)
             | Expr::Not {
                 bang_token: _,
