@@ -12,7 +12,7 @@ forc::cli_examples! {
 #[clap(
     author,
     version,
-    about = "Converts any valid address to all supported formats",
+    about = "Converts an address to another format",
     after_long_help = help(),
 )]
 pub struct Args {
