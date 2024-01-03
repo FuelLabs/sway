@@ -90,7 +90,7 @@ impl<T> StorageKey<T> {
     ///     };
     ///
     ///     // Writes 42 at the third word of storage slot with key 0x000...0
-    ///     let x = r.write(42); 
+    ///     let x = r.write(42);
     /// }
     /// ```
     #[storage(read, write)]
@@ -98,7 +98,7 @@ impl<T> StorageKey<T> {
         write(self.slot, self.offset, value);
     }
 
-    /// Clears the value at `self`. 
+    /// Clears the value at `self`.
     ///
     /// # Number of Storage Accesses
     ///
@@ -155,7 +155,9 @@ impl<T> StorageKey<T> {
     /// ```
     pub fn new(slot: b256, offset: u64, field_id: b256) -> Self {
         Self {
-            slot, offset, field_id
+            slot,
+            offset,
+            field_id,
         }
     }
 }
@@ -164,7 +166,7 @@ impl<T> StorageKey<T> {
 fn test_storage_key_new() {
     use ::constants::ZERO_B256;
     use ::assert::assert;
-    
+
     let key = StorageKey::<u64>::new(ZERO_B256, 0, ZERO_B256);
     assert(key.slot == ZERO_B256);
     assert(key.offset == 0);

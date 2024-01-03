@@ -64,7 +64,8 @@ fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
     let mut target_bytes = Bytes::with_capacity(32);
     target_bytes.len = 32;
 
-    __addr_of(contract_id).copy_bytes_to(target_bytes.buf.ptr, 32);
+    __addr_of(contract_id)
+        .copy_bytes_to(target_bytes.buf.ptr, 32);
 
     target_bytes
 }
@@ -121,7 +122,7 @@ fn ptr_as_bytes(ptr: raw_ptr) -> Bytes {
 /// 32	    byte[32]    to      Contract ID to call.
 /// 8	    byte[8]	    param1  First parameter (function selector).
 /// 8	    byte[8]	    param2  Second parameter (abi-encoded calldata: value if value type, otherwise pointer to reference type).
-/// 
+///
 /// # Arguments
 ///
 /// * `payload` : [Bytes] - The encoded payload to be called.
@@ -142,7 +143,12 @@ fn ptr_as_bytes(ptr: raw_ptr) -> Bytes {
 /// }
 /// ```
 fn call_with_raw_payload(payload: Bytes, call_params: CallParams) {
-    asm(r1: payload.buf.ptr, r2: call_params.coins, r3: call_params.asset_id, r4: call_params.gas) {
+    asm(
+        r1: payload.buf.ptr,
+        r2: call_params.coins,
+        r3: call_params.asset_id,
+        r4: call_params.gas,
+    ) {
         call r1 r2 r3 r4;
     };
 }
@@ -189,7 +195,11 @@ fn create_payload(
     8	    byte[8]	    param1  First parameter (function selector).
     8	    byte[8]	    param2  Second parameter (abi-encoded calldata: value if value type, otherwise pointer to reference type).
     */
-    require(function_selector.len() == 8, "function selector must be 8 bytes");
+    require(
+        function_selector
+            .len() == 8,
+        "function selector must be 8 bytes",
+    );
 
     // let mut payload = Bytes::new().append(contract_id_to_bytes(target)).append(function_selector);
     let mut payload = Bytes::new();
@@ -269,5 +279,11 @@ pub fn call_with_function_selector_vec(
     let mut function_selector = function_selector;
     let mut calldata = calldata;
 
-    call_with_function_selector(target, Bytes::from(function_selector), Bytes::from(calldata), single_value_type_arg, call_params);
+    call_with_function_selector(
+        target,
+        Bytes::from(function_selector),
+        Bytes::from(calldata),
+        single_value_type_arg,
+        call_params,
+    );
 }

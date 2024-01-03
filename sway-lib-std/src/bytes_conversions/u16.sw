@@ -7,7 +7,7 @@ use ::option::Option;
 
 impl u16 {
     /// Converts the `u16` to a sequence of little-endian bytes.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [Bytes] - The 2 bytes that compose the `u16`.
@@ -18,7 +18,7 @@ impl u16 {
     /// fn foo() {
     ///     let x: u16 = 513;
     ///     let result = x.to_le_bytes();
-    /// 
+    ///
     ///     assert(result.get(0).unwrap() == 1_u8);
     ///     assert(result.get(1).unwrap() == 2_u8);
     /// }
@@ -27,14 +27,13 @@ impl u16 {
         let ptr = asm(input: self, off: 0xFF, i: 0x8, size: 2, ptr, r1) {
             aloc size;
             move ptr hp;
-            
+
             and r1 input off;
             sb ptr r1 i0;
 
             srl r1 input i;
             and r1 r1 off;
-            sb ptr r1 i1;            
-
+            sb ptr r1 i1;
             ptr: raw_ptr
         };
 
@@ -48,7 +47,7 @@ impl u16 {
     /// Converts a sequence of little-endian bytes to a `u16`.
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `bytes`: [Bytes] - The 2 bytes that compose the `u16`.
     ///
     /// # Returns
@@ -76,14 +75,14 @@ impl u16 {
         let b = (ptr.add_uint_offset(1)).read_byte();
         let i = 0x8;
         asm(a: a, b: b, i: i, r1) {
-            sll  r1 b i;
-            or   r1 a r1;
+            sll r1 b i;
+            or r1 a r1;
             r1: u16
         }
     }
 
     /// Converts the `u16` to a sequence of big-endian bytes.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [Bytes] - The 2 bytes that compose the `u16`.
@@ -105,7 +104,7 @@ impl u16 {
         let ptr = asm(input: self, off: 0xFF, i: 0x8, size: 2, ptr, r1) {
             aloc size;
             move ptr hp;
-            
+
             srl r1 input i;
             sb ptr r1 i0;
 
@@ -118,14 +117,14 @@ impl u16 {
         let rs = asm(parts: (ptr, 2)) {
             parts: raw_slice
         };
-        
+
         Bytes::from(rs)
     }
 
     /// Converts a sequence of big-endian bytes to a `u16`.
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `bytes`: [Bytes] - The 2 bytes that compose the `u16`.
     ///
     /// # Returns
@@ -153,8 +152,8 @@ impl u16 {
         let b = (ptr.add_uint_offset(1)).read_byte();
 
         asm(a: a, b: b, i: 0x8, r1) {
-            sll  r1 a i;
-            or   r1 r1 b;
+            sll r1 a i;
+            or r1 r1 b;
             r1: u16
         }
     }
