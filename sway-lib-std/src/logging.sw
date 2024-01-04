@@ -4,7 +4,7 @@ library;
 /// Log any stack type.
 ///
 /// # Additional Information
-/// 
+///
 /// If the type is a reference type, `log` is used.
 /// Otherwise `logd` is used.'
 ///

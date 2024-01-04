@@ -18,19 +18,19 @@ impl core::ops::Eq for ContractId {
 }
 
 /// Functions for casting between the `b256` and `ContractId` types.
-impl From<b256> for ContractId { 
+impl From<b256> for ContractId {
     /// Casts raw `b256` data to a `ContractId`.
-    /// 
+    ///
     /// # Arguments
     ///
     /// * `bits`: [b256] - The raw `b256` data to be casted.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [ContractId] - The newly created `ContractId` from the raw `b256`.
     ///
     /// # Examples
-    /// 
+    ///
     /// ```sway
     /// use std::constants::ZERO_B256;
     ///
@@ -42,15 +42,14 @@ impl From<b256> for ContractId {
         Self { value: bits }
     }
 
-
     /// Casts a `ContractId` to raw `b256` data.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [b256] - The underlying raw `b256` data of the `ContractId`.
     ///
     /// # Examples
-    /// 
+    ///
     /// ```sway
     /// use std::constants::ZERO_B256;
     ///
@@ -72,7 +71,7 @@ impl Hash for ContractId {
     }
 }
 
-/// An AssetId is used for interacting with an asset on the network. 
+/// An AssetId is used for interacting with an asset on the network.
 ///
 /// # Additional Information
 ///
@@ -101,17 +100,17 @@ impl core::ops::Eq for AssetId {
 
 impl From<b256> for AssetId {
     /// Casts raw `b256` data to an `AssetId`.
-    /// 
+    ///
     /// # Arguments
     ///
     /// * `bits`: [b256] - The raw `b256` data to be casted.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [AssetId] - The newly created `AssetId` from the raw `b256`.
     ///
     /// # Examples
-    /// 
+    ///
     /// ```sway
     /// use std::constants::ZERO_B256;
     ///
@@ -124,13 +123,13 @@ impl From<b256> for AssetId {
     }
 
     /// Casts an `AssetId` to raw `b256` data.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [b256] - The underlying raw `b256` data of the `AssetId`.
     ///
     /// # Examples
-    /// 
+    ///
     /// ```sway
     /// use std::constants::ZERO_B256;
     ///
@@ -166,16 +165,22 @@ impl AssetId {
     ///     let contract_id = contract_id();
     ///     let sub_id = ZERO_B256;
     ///
-    ///     let asset_id = AssetId::new(contract_id, sub_id);        
+    ///     let asset_id = AssetId::new(contract_id, sub_id);
     /// }
     /// ```
     pub fn new(contract_id: ContractId, sub_id: SubId) -> Self {
         let result_buffer = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        asm(asset_id: result_buffer, ptr: (contract_id, sub_id), bytes: 64) {
+        asm(
+            asset_id: result_buffer,
+            ptr: (contract_id, sub_id),
+            bytes: 64,
+        ) {
             s256 asset_id ptr bytes;
         };
-        
-        Self { value: result_buffer }
+
+        Self {
+            value: result_buffer,
+        }
     }
 
     /// Creates a new AssetId with the default SubId for the current contract.
@@ -195,13 +200,24 @@ impl AssetId {
     /// }
     /// ```
     pub fn default() -> Self {
-        let contract_id = asm() { fp: b256 };
+        let contract_id = asm() {
+            fp: b256
+        };
         let result_buffer = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        asm(asset_id: result_buffer, ptr: (contract_id, 0x0000000000000000000000000000000000000000000000000000000000000000), bytes: 64) {
+        asm(
+            asset_id: result_buffer,
+            ptr: (
+                contract_id,
+                0x0000000000000000000000000000000000000000000000000000000000000000,
+            ),
+            bytes: 64,
+        ) {
             s256 asset_id ptr bytes;
         };
 
-        Self { value: result_buffer }
+        Self {
+            value: result_buffer,
+        }
     }
 
     /// The base_asset_id represents the base asset of a chain.
@@ -242,7 +258,7 @@ impl ContractId {
     ///
     /// **_Note:_** If called in an external context, this will **not** return a ContractId.
     /// If called externally, will actually return a pointer to the Transaction Id (Wrapped in the ContractId struct).
-    /// 
+    ///
     /// # Returns
     ///
     /// * [ContractId] - The contract id of this contract.
@@ -259,7 +275,9 @@ impl ContractId {
     /// }
     /// ```
     pub fn this() -> ContractId {
-        ContractId::from(asm() { fp: b256 })
+        ContractId::from(asm() {
+            fp: b256
+        })
     }
     /// UNCONDITIONAL transfer of `amount` coins of type `asset_id` to
     /// the ContractId.
@@ -327,7 +345,15 @@ impl ContractId {
         asm(r1: amount, r2: sub_id) {
             mint r1 r2;
         };
-        self.transfer(AssetId::new(ContractId::from(asm() { fp: b256 }), sub_id), amount);
+        self.transfer(
+            AssetId::new(
+                ContractId::from(asm() {
+                    fp: b256
+                }),
+                sub_id,
+            ),
+            amount,
+        );
     }
 }
 
@@ -335,12 +361,14 @@ impl ContractId {
 fn test_hasher_sha256_asset_id() {
     use ::assert::assert;
     let mut hasher = Hasher::new();
-    AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000000).hash(hasher);
+    AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000000)
+        .hash(hasher);
     let s256 = hasher.sha256();
     assert(s256 == 0x66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925);
 
     let mut hasher = Hasher::new();
-    AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000001).hash(hasher);
+    AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000001)
+        .hash(hasher);
     let s256 = hasher.sha256();
     assert(s256 == 0xec4916dd28fc4c10d78e287ca5d9cc51ee1ae73cbfde08c6b37324cbfaac8bc5);
 }
@@ -349,12 +377,14 @@ fn test_hasher_sha256_asset_id() {
 fn test_hasher_sha256_contract_id() {
     use ::assert::assert;
     let mut hasher = Hasher::new();
-    ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000).hash(hasher);
+    ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000)
+        .hash(hasher);
     let s256 = hasher.sha256();
     assert(s256 == 0x66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925);
 
     let mut hasher = Hasher::new();
-    ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001).hash(hasher);
+    ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001)
+        .hash(hasher);
     let s256 = hasher.sha256();
     assert(s256 == 0xec4916dd28fc4c10d78e287ca5d9cc51ee1ae73cbfde08c6b37324cbfaac8bc5);
 }
