@@ -19,7 +19,7 @@ pub(crate) fn execute_external_subcommand(
     args: Vec<String>,
     silent: bool,
 ) -> Result<process::Output> {
-    let cmd = args.get(0).expect("`args` must not be empty");
+    let cmd = args.first().expect("`args` must not be empty");
     let args = &args[1..];
     let path = find_external_subcommand(cmd);
     let command = match path {

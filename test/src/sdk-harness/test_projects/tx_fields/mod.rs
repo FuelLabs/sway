@@ -187,10 +187,9 @@ async fn setup_output_predicate() -> (WalletUnlocked, WalletUnlocked, Predicate,
 }
 
 mod tx {
-    use fuel_vm::fuel_tx::field::Script;
-    use fuels::types::coin_type::CoinType;
-
     use super::*;
+    use fuel_vm::fuel_tx::field::Script;
+    use fuels::types::{coin_type::CoinType, transaction::Transaction};
 
     #[tokio::test]
     async fn can_get_tx_type() {
