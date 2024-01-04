@@ -619,17 +619,12 @@ pub fn compile_to_ast(
         if is_parse_module_cache_up_to_date(engines, &path, include_tests) {
             let mut entry = query_engine
                 .get_programs_cache_entry(&path)
-                .expect(&format!(
-                    "unable to find entry in cache at path {:?}",
-                    &path
-                ));
+                .unwrap_or_else(|| panic!("unable to find entry in cache at path {:?}", &path));
             entry.programs.metrics.reused_modules += 1;
-
+            
             let (warnings, errors) = entry.handler_data;
             let new_handler = Handler::from_parts(warnings, errors);
             handler.append(new_handler);
-
-            //eprintln!("re-using cached prgram data, returning from compilation");
             return Ok(entry.programs);
         };
     }
@@ -688,7 +683,6 @@ pub fn compile_to_ast(
 
     if let Some(config) = build_config {
         let path = config.canonical_root_module();
-
         let cache_entry = ProgramsCacheEntry {
             path,
             programs: programs.clone(),

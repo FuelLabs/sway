@@ -11,13 +11,13 @@ fn benchmarks(c: &mut Criterion) {
     c.bench_function("compile", |b| {
         b.iter(|| {
             let engines = Engines::default();
-            let _ = black_box(session::compile(&uri, None, &engines, None).unwrap());
+            let _ = black_box(session::compile(&uri, &engines, None).unwrap());
         })
     });
 
     c.bench_function("traverse", |b| {
         let engines = Engines::default();
-        let results = black_box(session::compile(&uri, None, &engines, None).unwrap());
+        let results = black_box(session::compile(&uri, &engines, None).unwrap());
         b.iter(|| {
             let _ = black_box(session::traverse(results.clone(), &engines).unwrap());
         })
@@ -26,10 +26,8 @@ fn benchmarks(c: &mut Criterion) {
     c.bench_function("did_change_with_caching", |b| {
         let engines = Engines::default();
         b.iter(|| {
-            for version in 0..NUM_DID_CHANGE_ITERATIONS {
-                let _ = black_box(
-                    session::compile(&uri, Some(version as i32), &engines, None).unwrap(),
-                );
+            for _ in 0..NUM_DID_CHANGE_ITERATIONS {
+                let _ = black_box(session::compile(&uri, &engines, None).unwrap());
             }
         })
     });

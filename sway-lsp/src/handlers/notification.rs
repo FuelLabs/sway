@@ -91,7 +91,7 @@ pub async fn handle_did_change_text_document(
         .await?;
     //eprintln!("changes for version {:?} have been written to disk", params.text_document.version);
     send_new_compilation_request(
-        &state,
+        state,
         session.clone(),
         &uri,
         Some(params.text_document.version),
@@ -111,7 +111,7 @@ pub(crate) async fn handle_did_save_text_document(
         .await?;
     session.sync.resync()?;
     //eprintln!("resynced");
-    send_new_compilation_request(&state, session.clone(), &uri, None);
+    send_new_compilation_request(state, session.clone(), &uri, None);
     state.wait_for_parsing().await;
     state
         .publish_diagnostics(uri, params.text_document.uri, session)

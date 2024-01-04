@@ -158,7 +158,6 @@ impl ServerState {
                         //eprintln!("THREAD | starting parsing project: version: {:?}", version);
                         match session::parse_project(
                             &uri,
-                            version,
                             &engines_clone,
                             Some(retrigger_compilation.clone()),
                         ) {
@@ -176,7 +175,7 @@ impl ServerState {
                                 );
                                 *last_compilation_state.write() = LastCompilationState::Success;
                             }
-                            Err(err) => {
+                            Err(_err) => {
                                 //eprintln!("compilation has returned cancelled {:?}", err);
                                 update_compilation_state(
                                     is_compiling.clone(),
@@ -232,7 +231,7 @@ impl ServerState {
         tracing::info!("Shutting Down the Sway Language Server");
 
         // Drain pending compilation requests
-        while let Ok(_) = self.cb_rx.try_recv() {
+        while self.cb_rx.try_recv().is_ok() {
             //eprintln!("draining pending compilation requests");
         }
         // set the retrigger_compilation flag to true so that the compilation exit early
