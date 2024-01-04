@@ -168,13 +168,6 @@ macro_rules! decl_engine_clear_module {
     ($($slab:ident, $decl:ty);* $(;)?) => {
         impl DeclEngine {
             pub fn clear_module(&mut self, module_id: &ModuleId) {
-                $(
-                    self.$slab.retain(|_k, ty| match ty.span().source_id() {
-                        Some(source_id) => &source_id.module_id() != module_id,
-                        None => false,
-                    });
-                )*
-
                 self.parents.write().unwrap().retain(|key, _| {
                     match key {
                         AssociatedItemDeclId::TraitFn(decl_id) => {
@@ -191,6 +184,13 @@ macro_rules! decl_engine_clear_module {
                         },
                     }
                 });
+
+                $(
+                    self.$slab.retain(|_k, ty| match ty.span().source_id() {
+                        Some(source_id) => &source_id.module_id() != module_id,
+                        None => false,
+                    });
+                )*                
             }
         }
     };
