@@ -121,7 +121,7 @@ async fn did_change_stress_test() {
         .finish();
     let bench_dir = sway_workspace_dir().join("sway-lsp/tests/fixtures/benchmark");
     let uri = init_and_open(&mut service, bench_dir.join("src/main.sw")).await;
-    let times = 400;
+    let times = 4000;
     for version in 0..times {
         let _ = lsp::did_change_request(&mut service, &uri, version + 1).await;
         if version == 0 {
@@ -134,13 +134,13 @@ async fn did_change_stress_test() {
             }
         }
 
-        // if rand::random::<u8>() < 230 {
-        //     let random_duration = rand::random::<u8>() as u64 % 10;
-        //     std::thread::sleep(std::time::Duration::from_millis(random_duration));
-        // } else {
-        //     let random_duration = rand::random::<u64>() % 3000;
-        //     std::thread::sleep(std::time::Duration::from_millis(random_duration));
-        // }
+        if rand::random::<u8>() < 230 {
+            let random_duration = rand::random::<u8>() as u64 % 10;
+            std::thread::sleep(std::time::Duration::from_millis(random_duration));
+        } else {
+            let random_duration = rand::random::<u64>() % 3000;
+            std::thread::sleep(std::time::Duration::from_millis(random_duration));
+        }
     }
     shutdown_and_exit(&mut service).await;
 }
