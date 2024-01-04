@@ -59,7 +59,7 @@ forc::cli_examples! {
             --state-root 0x0000000000000000000000000000000000000000000000000000000000000000
         "#
     ]
-    [ An example constructing a create transaction => tx r#"create \
+    [ An example constructing a create transaction => tx "create \
         --bytecode ./my-contract/out/debug/my-contract.bin \
         --storage-slots out/debug/tests-storage_slots.json
         --script-gas-limit 100 \
@@ -109,7 +109,7 @@ forc::cli_examples! {
             --asset-id 0x0000000000000000000000000000000000000000000000000000000000000000 \
         output contract-created \
             --contract-id 0xCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC \
-            --state-root 0x0000000000000000000000000000000000000000000000000000000000000000"#
+            --state-root 0x0000000000000000000000000000000000000000000000000000000000000000"
     ]
 }
 
