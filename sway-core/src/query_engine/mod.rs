@@ -54,8 +54,18 @@ pub struct QueryEngine {
 impl Clone for QueryEngine {
     fn clone(&self) -> Self {
         Self {
-            parse_module_cache: RwLock::new(self.parse_module_cache.read().expect("Lock is poisoned").clone()),
-            programs_cache: RwLock::new(self.programs_cache.read().expect("Lock is poisoned").clone()),
+            parse_module_cache: RwLock::new(
+                self.parse_module_cache
+                    .read()
+                    .expect("Lock is poisoned")
+                    .clone(),
+            ),
+            programs_cache: RwLock::new(
+                self.programs_cache
+                    .read()
+                    .expect("Lock is poisoned")
+                    .clone(),
+            ),
         }
     }
 }
@@ -76,7 +86,10 @@ impl QueryEngine {
     }
 
     pub fn get_programs_cache_entry(&self, path: &Arc<PathBuf>) -> Option<ProgramsCacheEntry> {
-        let cache = self.programs_cache.read().expect("Failed to read programs cache");
+        let cache = self
+            .programs_cache
+            .read()
+            .expect("Failed to read programs cache");
         cache.get(path).cloned()
     }
 

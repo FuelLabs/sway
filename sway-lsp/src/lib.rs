@@ -16,9 +16,8 @@ pub mod utils;
 
 use lsp_types::{
     CodeActionProviderCapability, CodeLensOptions, CompletionOptions, ExecuteCommandOptions,
-    HoverProviderCapability, OneOf, RenameOptions, SemanticTokensLegend,
-    SemanticTokensOptions, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind,
-    WorkDoneProgressOptions,
+    HoverProviderCapability, OneOf, RenameOptions, SemanticTokensLegend, SemanticTokensOptions,
+    ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, WorkDoneProgressOptions,
 };
 use server_state::ServerState;
 use tower_lsp::{LspService, Server};

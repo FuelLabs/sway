@@ -1,12 +1,16 @@
 //! This module is responsible for implementing handlers for Language Server
 //! Protocol. This module specifically handles notification messages sent by the Client.
 
-use std::sync::{atomic::Ordering, Arc};
-use crate::{core::{document, session::Session}, error::LanguageServerError, server_state::{ServerState, Shared, ThreadMessage}};
+use crate::{
+    core::{document, session::Session},
+    error::LanguageServerError,
+    server_state::{ServerState, Shared, ThreadMessage},
+};
 use lsp_types::{
     DidChangeTextDocumentParams, DidChangeWatchedFilesParams, DidOpenTextDocumentParams,
     DidSaveTextDocumentParams, FileChangeType, Url,
 };
+use std::sync::{atomic::Ordering, Arc};
 
 pub async fn handle_did_open_text_document(
     state: &ServerState,
@@ -27,12 +31,14 @@ pub async fn handle_did_open_text_document(
             session: Some(session.clone()),
             uri: Some(uri.clone()),
             version: None,
-        })); 
+        }));
         state.is_compiling.store(true, Ordering::SeqCst);
 
         eprintln!("did open - waiting for parsing to finish");
         state.wait_for_parsing().await;
-        state.publish_diagnostics(uri, params.text_document.uri, session).await;
+        state
+            .publish_diagnostics(uri, params.text_document.uri, session)
+            .await;
     }
     Ok(())
 }
@@ -45,11 +51,11 @@ fn send_new_compilation_request(
 ) {
     //eprintln!("new compilation request: version {:?} - setting is_compiling to true", version);
     if state.is_compiling.load(Ordering::SeqCst) {
-       // eprintln!("retrigger compilation!");
+        // eprintln!("retrigger compilation!");
         state.retrigger_compilation.store(true, Ordering::SeqCst);
     }
-    
-    // If channel is full, remove the old value so the compilation 
+
+    // If channel is full, remove the old value so the compilation
     // thread only gets the latest value.
     if state.mpsc_tx.is_full() {
         if let Ok(ThreadMessage::CompilationData(_)) = state.mpsc_rx.try_recv() {
@@ -80,7 +86,12 @@ pub async fn handle_did_change_text_document(
         .write_changes_to_file(&uri, params.content_changes)
         .await?;
     //eprintln!("changes for version {:?} have been written to disk", params.text_document.version);
-    send_new_compilation_request(&state, session.clone(), &uri, Some(params.text_document.version));
+    send_new_compilation_request(
+        &state,
+        session.clone(),
+        &uri,
+        Some(params.text_document.version),
+    );
     Ok(())
 }
 
@@ -98,7 +109,9 @@ pub(crate) async fn handle_did_save_text_document(
     //eprintln!("resynced");
     send_new_compilation_request(&state, session.clone(), &uri, None);
     state.wait_for_parsing().await;
-    state.publish_diagnostics(uri, params.text_document.uri, session).await;
+    state
+        .publish_diagnostics(uri, params.text_document.uri, session)
+        .await;
     Ok(())
 }
 

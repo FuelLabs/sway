@@ -7,14 +7,17 @@ use crate::{
     utils::debug,
     utils::keyword_docs::KeywordDocs,
 };
-use crossbeam_channel::{Sender, Receiver};
+use crossbeam_channel::{Receiver, Sender};
 use dashmap::DashMap;
 use forc_pkg::PackageManifestFile;
 use lsp_types::{Diagnostic, Url};
 use parking_lot::RwLock;
 use std::{
-    path::PathBuf, 
-    sync::{Arc, atomic::{AtomicBool, Ordering}},
+    path::PathBuf,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
 };
 use tower_lsp::{jsonrpc, Client};
 
@@ -75,7 +78,7 @@ pub struct Shared {
 }
 
 fn update_compilation_state(
-    is_compiling: Arc<AtomicBool>, 
+    is_compiling: Arc<AtomicBool>,
     retrigger_compilation: Arc<AtomicBool>,
     finished_compilation: Arc<tokio::sync::Notify>,
     rx: Arc<Receiver<ThreadMessage>>,
@@ -91,7 +94,7 @@ fn update_compilation_state(
     // Make sure there isn't any pending compilation work
     if rx.is_empty() {
         //eprintln!("THREAD | no pending compilation work, safe to set is_compiling to false");
-        
+
         //eprintln!("THREAD | finished compilation, notifying waiters");
         finished_compilation.notify_waiters();
     } else {
@@ -123,7 +126,7 @@ impl ServerState {
                         let version = shared.version;
                         let session = shared.session.as_ref().unwrap().clone();
                         let mut engines_clone = session.engines.read().clone();
-        
+
                         if let Some(version) = version {
                             // Garbage collection is fairly expsensive so we only clear on every 10th keystroke.
                             if version % 10 == 0 {
@@ -131,29 +134,47 @@ impl ServerState {
                                 // Call this on the engines clone so we don't clear types that are still in use
                                 // and might be needed in the case cancel compilation was triggered.
                                 if let Err(err) = session.garbage_collect(&mut engines_clone) {
-                                    tracing::error!("Unable to perform garbage collection: {}", err.to_string());
+                                    tracing::error!(
+                                        "Unable to perform garbage collection: {}",
+                                        err.to_string()
+                                    );
                                 }
                             }
                         }
 
-                        is_compiling.store(true, Ordering::SeqCst); 
+                        is_compiling.store(true, Ordering::SeqCst);
                         //eprintln!("THREAD | starting parsing project: version: {:?}", version);
-                        match session::parse_project(&uri, version, &engines_clone, Some(retrigger_compilation.clone())) {
+                        match session::parse_project(
+                            &uri,
+                            version,
+                            &engines_clone,
+                            Some(retrigger_compilation.clone()),
+                        ) {
                             Ok(parse_result) => {
                                 //eprintln!("THREAD | engines_write: {:?}", version);
                                 *session.engines.write() = engines_clone;
                                 //eprintln!("THREAD | success, about to write parse results: {:?}", version);
                                 session.write_parse_result(parse_result);
                                 //eprintln!("THREAD | finished writing parse results: {:?}", version);
-                                update_compilation_state(is_compiling.clone(), retrigger_compilation.clone(), finished_compilation.clone(), rx.clone());
+                                update_compilation_state(
+                                    is_compiling.clone(),
+                                    retrigger_compilation.clone(),
+                                    finished_compilation.clone(),
+                                    rx.clone(),
+                                );
                                 *last_compilation_state.write() = LastCompilationState::Success;
-                            },
+                            }
                             Err(err) => {
                                 //eprintln!("compilation has returned cancelled {:?}", err);
-                                update_compilation_state(is_compiling.clone(), retrigger_compilation.clone(), finished_compilation.clone(), rx.clone());
+                                update_compilation_state(
+                                    is_compiling.clone(),
+                                    retrigger_compilation.clone(),
+                                    finished_compilation.clone(),
+                                    rx.clone(),
+                                );
                                 *last_compilation_state.write() = LastCompilationState::Failed;
                                 continue;
-                            },
+                            }
                         }
                         //eprintln!("THREAD | finished parsing project: version: {:?}", version);
                     }
@@ -167,7 +188,7 @@ impl ServerState {
     }
 
     /// Waits asynchronously for the `is_compiling` flag to become false.
-    /// 
+    ///
     /// This function checks the state of `is_compiling`, and if it's true,
     /// it awaits on a notification. Once notified, it checks again, repeating
     /// this process until `is_compiling` becomes false.
@@ -178,7 +199,10 @@ impl ServerState {
                 //eprintln!("compilation is finished, lets check if there are pending compilation requests");
                 if self.mpsc_rx.is_empty() {
                     //eprintln!("no pending compilation work, safe to break");
-                    eprintln!("And the last compilation state was: {:?}", &self.last_compilation_state.read());
+                    eprintln!(
+                        "And the last compilation state was: {:?}",
+                        &self.last_compilation_state.read()
+                    );
 
                     break;
                 } else {
@@ -204,7 +228,9 @@ impl ServerState {
         self.wait_for_parsing().await;
 
         //eprintln!("sending terminate message");
-        self.mpsc_tx.send(ThreadMessage::Terminate).expect("failed to send terminate message");
+        self.mpsc_tx
+            .send(ThreadMessage::Terminate)
+            .expect("failed to send terminate message");
 
         //eprintln!("shutting down the sessions");
         let _ = self.sessions.iter().map(|item| {
@@ -225,11 +251,7 @@ impl ServerState {
         // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
         if let Some(client) = self.client.as_ref() {
             client
-                .publish_diagnostics(
-                    workspace_uri.clone(),
-                    diagnostics,
-                    None,
-                )
+                .publish_diagnostics(workspace_uri.clone(), diagnostics, None)
                 .await;
         }
     }
@@ -250,7 +272,9 @@ impl ServerState {
                 diagnostics_to_publish = debug::generate_warnings_for_typed_tokens(tokens)
             }
             Warnings::Default => {
-                if let Some(diagnostics) = session.diagnostics.read().get(&PathBuf::from(uri.path())) {
+                if let Some(diagnostics) =
+                    session.diagnostics.read().get(&PathBuf::from(uri.path()))
+                {
                     if config.diagnostic.show_warnings {
                         diagnostics_to_publish.extend(diagnostics.warnings.clone());
                     }

@@ -25,7 +25,11 @@ use lsp_types::{
 use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, BuildPlan};
 use rayon::iter::{ParallelBridge, ParallelIterator};
-use std::{ops::Deref, path::PathBuf, sync::{Arc, atomic::AtomicBool}};
+use std::{
+    ops::Deref,
+    path::PathBuf,
+    sync::{atomic::AtomicBool, Arc},
+};
 use sway_core::{
     decl_engine::DeclEngine,
     language::{
@@ -158,11 +162,8 @@ impl Session {
 
         let (errors, warnings) = res.diagnostics;
         //eprintln!("THREAD | success, about to write diagnostics");
-        *self.diagnostics.write() = capabilities::diagnostic::get_diagnostics(
-            &warnings,
-            &errors,
-            self.engines.read().se(),
-        );
+        *self.diagnostics.write() =
+            capabilities::diagnostic::get_diagnostics(&warnings, &errors, self.engines.read().se());
 
         self.create_runnables(
             &res.typed,
@@ -219,9 +220,12 @@ impl Session {
             character: position.character - trigger_char.len() as u32 - 1,
         };
         let (ident_to_complete, _) = self.token_map.token_at_position(uri, shifted_position)?;
-        let fn_tokens =
-            self.token_map
-                .tokens_at_position(self.engines.read().se(), uri, shifted_position, Some(true));
+        let fn_tokens = self.token_map.tokens_at_position(
+            self.engines.read().se(),
+            uri,
+            shifted_position,
+            Some(true),
+        );
         let (_, fn_token) = fn_tokens.first()?;
         let compiled_program = &*self.compiled_program.read();
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.typed.clone() {
@@ -532,7 +536,12 @@ pub fn traverse(
 }
 
 /// Parses the project and returns true if the compiler diagnostics are new and should be published.
-pub fn parse_project(uri: &Url, version: Option<i32>, engines: &Engines, retrigger_compilation: Option<Arc<AtomicBool>>) -> Result<ParseResult, LanguageServerError> {
+pub fn parse_project(
+    uri: &Url,
+    version: Option<i32>,
+    engines: &Engines,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
+) -> Result<ParseResult, LanguageServerError> {
     let results = compile(uri, version, engines, retrigger_compilation)?;
     if results.last().is_none() {
         //eprintln!("compilation failed, returning");
@@ -622,7 +631,8 @@ mod tests {
         let dir = get_absolute_path("sway-lsp/tests/fixtures");
         let uri = get_url(&dir);
         let engines = Engines::default();
-        let result = parse_project(&uri, None, &engines, None).expect_err("expected ManifestFileNotFound");
+        let result =
+            parse_project(&uri, None, &engines, None).expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(

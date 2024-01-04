@@ -14,8 +14,9 @@ use lsp_types::{
     DocumentFormattingParams, DocumentHighlight, DocumentHighlightParams, DocumentSymbolParams,
     DocumentSymbolResponse, GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams,
     InitializeParams, InitializeResult, InitializedParams, InlayHint, InlayHintParams,
-    PrepareRenameResponse, RenameParams, SemanticTokensParams, SemanticTokensResult,
-    TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, WorkspaceEdit, SemanticTokensRangeParams, SemanticTokensRangeResult,
+    PrepareRenameResponse, RenameParams, SemanticTokensParams, SemanticTokensRangeParams,
+    SemanticTokensRangeResult, SemanticTokensResult, TextDocumentIdentifier,
+    TextDocumentPositionParams, TextEdit, WorkspaceEdit,
 };
 use sway_utils::PerformanceData;
 use tower_lsp::{jsonrpc::Result, LanguageServer};

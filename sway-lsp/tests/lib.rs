@@ -101,7 +101,7 @@ async fn did_cache_test() {
         .custom_method("sway/metrics", ServerState::metrics)
         .finish();
     let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
-    let _ = lsp::did_change_request(&mut service, &uri, 1).await;    
+    let _ = lsp::did_change_request(&mut service, &uri, 1).await;
     service.inner().wait_for_parsing().await;
     let metrics = lsp::metrics_request(&mut service, &uri).await;
     assert!(metrics.len() >= 2);

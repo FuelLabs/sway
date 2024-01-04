@@ -23,7 +23,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
     str::FromStr,
-    sync::{Arc, atomic::AtomicBool},
+    sync::{atomic::AtomicBool, Arc},
 };
 pub use sway_core::Programs;
 use sway_core::{

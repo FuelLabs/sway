@@ -8,7 +8,8 @@ use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions, TracingWri
 use lsp_types::{
     CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse,
     InitializeResult, InlayHint, InlayHintParams, PrepareRenameResponse, RenameParams,
-    SemanticTokensParams, SemanticTokensResult, TextDocumentIdentifier, Url, WorkspaceEdit, SemanticTokensRangeResult, SemanticTokensRangeParams,
+    SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
+    SemanticTokensResult, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use std::{
     fs::File,
@@ -58,11 +59,9 @@ pub async fn handle_document_symbol(
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
-        Ok((uri, session)) => {   
-            Ok(session
-                .symbol_information(&uri)
-                .map(DocumentSymbolResponse::Flat))
-        }
+        Ok((uri, session)) => Ok(session
+            .symbol_information(&uri)
+            .map(DocumentSymbolResponse::Flat)),
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)
@@ -265,9 +264,7 @@ pub async fn handle_code_lens(
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
-        Ok((url, session)) => {
-            Ok(Some(capabilities::code_lens::code_lens(&session, &url)))
-        }
+        Ok((url, session)) => Ok(Some(capabilities::code_lens::code_lens(&session, &url))),
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)
@@ -285,11 +282,11 @@ pub async fn handle_semantic_tokens_range(
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
-        Ok((uri, session)) => {
-            Ok(capabilities::semantic_tokens::semantic_tokens_range(
-                session, &uri, &params.range,
-            ))
-        }
+        Ok((uri, session)) => Ok(capabilities::semantic_tokens::semantic_tokens_range(
+            session,
+            &uri,
+            &params.range,
+        )),
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)
@@ -307,11 +304,9 @@ pub async fn handle_semantic_tokens_full(
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
-        Ok((uri, session)) => {
-            Ok(capabilities::semantic_tokens::semantic_tokens_full(
-                session, &uri,
-            ))
-        }
+        Ok((uri, session)) => Ok(capabilities::semantic_tokens::semantic_tokens_full(
+            session, &uri,
+        )),
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)
@@ -385,7 +380,11 @@ pub async fn handle_show_ast(
 
             // Returns true if the current path matches the path of a submodule
             let path_is_submodule = |ident: &Ident, path: &Option<PathBuf>| -> bool {
-                ident.span().source_id().map(|p| session.engines.read().se().get_path(p)) == *path
+                ident
+                    .span()
+                    .source_id()
+                    .map(|p| session.engines.read().se().get_path(p))
+                    == *path
             };
 
             let ast_path = PathBuf::from(params.save_path.path());
@@ -507,7 +506,9 @@ pub(crate) async fn metrics(
         Ok((_, session)) => {
             let mut metrics = vec![];
             for kv in session.metrics.iter() {
-                let path = session.engines.read()
+                let path = session
+                    .engines
+                    .read()
                     .se()
                     .get_path(kv.key())
                     .to_string_lossy()
