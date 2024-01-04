@@ -32,7 +32,6 @@ forc::cli_examples! {
     name = "forc-fmt",
     about = "Forc plugin for running the Sway code formatter.",
     after_help = help(),
-    after_long_help = help(),
     version
 )]
 pub struct App {

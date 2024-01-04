@@ -36,7 +36,6 @@ fn help() -> &'static str {
     name = "forc-crypto",
     about = ABOUT,
     after_help = help(),
-    after_long_help = help(),
     version
 )]
 pub enum Command {

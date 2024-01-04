@@ -23,7 +23,7 @@ forc::cli_examples! {
 
 /// Generate a random new secret & public key in the format expected by fuel-core
 #[derive(Debug, clap::Args)]
-#[clap(version, about = ABOUT, after_help = help(), after_long_help = help())]
+#[clap(version, about = ABOUT, after_help = help())]
 pub struct Arg {
     /// Key type to generate. It can either be `block-production` or `peering`.
     #[clap(

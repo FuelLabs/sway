@@ -20,7 +20,6 @@ forc::cli_examples! {
     version,
     about = ABOUT,
     after_help = help(),
-    after_long_help = help(),
 )]
 pub struct Arg {
     /// A private key in hex format

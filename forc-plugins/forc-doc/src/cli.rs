@@ -17,7 +17,6 @@ forc::cli_examples! {
     name = "forc-doc",
     about = ABOUT,
     after_help = help(),
-    after_long_help = help(),
     version
 )]
 pub struct Command {
