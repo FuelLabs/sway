@@ -240,7 +240,7 @@ impl fmt::Display for IrError {
             IrError::VerifyLoadFromNonPointer(ty) => {
                 write!(
                     f,
-                    "Verification failed: Load cannot be from a non-pinter {ty}."
+                    "Verification failed: Load cannot be from a non-pointer {ty}."
                 )
             }
             IrError::VerifyMemcopyNonPointer(ty) => {

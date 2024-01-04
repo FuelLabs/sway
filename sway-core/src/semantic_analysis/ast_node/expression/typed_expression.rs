@@ -403,6 +403,10 @@ impl ty::TyExpression {
                 };
                 Ok(typed_expr)
             }
+            ExpressionKind::Ref(expr) => Self::type_check_ref(handler, ctx.by_ref(), expr, span),
+            ExpressionKind::Deref(expr) => {
+                Self::type_check_deref(handler, ctx.by_ref(), expr, span)
+            }
         };
         let mut typed_expression = match res {
             Ok(r) => r,
@@ -2012,6 +2016,74 @@ impl ty::TyExpression {
                 })
             }
         }
+    }
+
+    fn type_check_ref(
+        handler: &Handler,
+        mut ctx: TypeCheckContext<'_>,
+        expr: Box<Expression>,
+        span: Span,
+    ) -> Result<ty::TyExpression, ErrorEmitted> {
+        let engines = ctx.engines();
+        let type_engine = ctx.engines().te();
+
+        // We need to remove the type annotation, because the type expected from the context will
+        // be the reference type, and we are checking the referenced type.
+        let ctx = ctx
+            .by_ref()
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
+            .with_help_text("");
+        let expr_span = expr.span();
+        let expr = ty::TyExpression::type_check(handler, ctx, *expr)
+            .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span.clone(), engines));
+        let expr_type_argument: TypeArgument = expr.return_type.into();
+        let typed_expr = ty::TyExpression {
+            expression: ty::TyExpressionVariant::Ref(Box::new(expr)),
+            return_type: type_engine.insert(engines, TypeInfo::Ref(expr_type_argument), None),
+            span,
+        };
+
+        Ok(typed_expr)
+    }
+
+    fn type_check_deref(
+        handler: &Handler,
+        mut ctx: TypeCheckContext<'_>,
+        expr: Box<Expression>,
+        span: Span,
+    ) -> Result<ty::TyExpression, ErrorEmitted> {
+        let engines = ctx.engines();
+        let type_engine = ctx.engines().te();
+
+        // We need to remove the type annotation, because the type expected from the context will
+        // be the referenced type, and we are checking the reference type.
+        let ctx = ctx
+            .by_ref()
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
+            .with_help_text("");
+        let expr_span = expr.span();
+        let expr = ty::TyExpression::type_check(handler, ctx, *expr)
+            .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span.clone(), engines));
+
+        let expr_type = type_engine.get(expr.return_type);
+        let return_type = match *expr_type {
+            TypeInfo::ErrorRecovery(_) => Ok(expr.return_type), // Just forward the error return type.
+            TypeInfo::Ref(ref exp) => Ok(exp.type_id),          // Get the referenced type.
+            _ => Err(
+                handler.emit_err(CompileError::ExpressionCannotBeDereferenced {
+                    expression_type: engines.help_out(expr.return_type).to_string(),
+                    span: expr_span,
+                }),
+            ),
+        }?;
+
+        let typed_expr = ty::TyExpression {
+            expression: ty::TyExpressionVariant::Deref(Box::new(expr)),
+            return_type,
+            span,
+        };
+
+        Ok(typed_expr)
     }
 
     fn resolve_numeric_literal(

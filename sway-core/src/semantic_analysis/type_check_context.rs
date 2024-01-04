@@ -537,6 +537,26 @@ impl<'a> TypeCheckContext<'a> {
                     )));
                 }
             }
+            TypeInfo::Ref(mut ty) => {
+                ty.type_id = self
+                    .resolve(
+                        handler,
+                        ty.type_id,
+                        span,
+                        enforce_type_arguments,
+                        None,
+                        mod_path,
+                    )
+                    .unwrap_or_else(|err| {
+                        self.engines
+                            .te()
+                            .insert(self.engines, TypeInfo::ErrorRecovery(err), None)
+                    });
+
+                self.engines
+                    .te()
+                    .insert(self.engines, TypeInfo::Ref(ty.clone()), None)
+            }
             _ => type_id,
         };
 
