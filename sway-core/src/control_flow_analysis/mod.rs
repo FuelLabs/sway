@@ -40,5 +40,4 @@ mod analyze_return_paths;
 mod dead_code_analysis;
 mod flow_graph;
 
-
 pub use flow_graph::*;

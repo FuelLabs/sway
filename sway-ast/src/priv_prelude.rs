@@ -1,7 +1,7 @@
 pub use {
     crate::{
         assignable::Assignable,
-        attribute::{Annotated},
+        attribute::Annotated,
         brackets::{AngleBrackets, Braces, Parens, SquareBrackets},
         expr::{
             asm::{AsmBlock, AsmImmediate},
@@ -24,18 +24,18 @@ pub use {
             FnSignature, Item, ItemKind, TraitType, TypeField,
         },
         keywords::*,
-        literal::{Literal},
+        literal::Literal,
         path::{PathExpr, PathType},
         pattern::Pattern,
         punctuated::Punctuated,
-        statement::{Statement},
+        statement::Statement,
         submodule::Submodule,
         ty::Ty,
-        where_clause::{WhereClause},
+        where_clause::WhereClause,
     },
     extension_trait::extension_trait,
     num_bigint::BigUint,
-    serde::{Serialize},
+    serde::Serialize,
     sway_types::{
         ast::{Delimiter, PunctKind},
         Ident, Span, Spanned,

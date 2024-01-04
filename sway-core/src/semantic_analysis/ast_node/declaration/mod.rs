@@ -13,14 +13,4 @@ mod trait_fn;
 mod trait_type;
 mod type_alias;
 
-
-
-
-
-
-
-
 pub(crate) use supertrait::*;
-
-
-

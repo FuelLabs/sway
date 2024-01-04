@@ -1,6 +1,5 @@
 mod function_parameter;
 
-
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
