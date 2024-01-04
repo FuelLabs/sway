@@ -29,7 +29,9 @@ library;
 /// }
 /// ```
 pub fn overflow() -> u64 {
-    asm() { of }
+    asm() {
+        of
+    }
 }
 
 /// The program counter. Memory address of the current instruction.
@@ -49,7 +51,9 @@ pub fn overflow() -> u64 {
 /// }
 /// ```
 pub fn program_counter() -> raw_ptr {
-    asm() { pc: raw_ptr }
+    asm() {
+        pc: raw_ptr
+    }
 }
 
 /// Memory address of bottom of current writable stack area.
@@ -69,7 +73,9 @@ pub fn program_counter() -> raw_ptr {
 /// }
 /// ```
 pub fn stack_start_ptr() -> raw_ptr {
-    asm() { ssp: raw_ptr }
+    asm() {
+        ssp: raw_ptr
+    }
 }
 
 /// Memory address on top of current writable stack area (points to free memory).
@@ -89,7 +95,9 @@ pub fn stack_start_ptr() -> raw_ptr {
 /// }
 /// ```
 pub fn stack_ptr() -> raw_ptr {
-    asm() { sp: raw_ptr }
+    asm() {
+        sp: raw_ptr
+    }
 }
 
 /// Memory address of beginning of current call frame.
@@ -109,7 +117,9 @@ pub fn stack_ptr() -> raw_ptr {
 /// }
 /// ```
 pub fn frame_ptr() -> raw_ptr {
-    asm() { fp: raw_ptr }
+    asm() {
+        fp: raw_ptr
+    }
 }
 
 /// Memory address below the current bottom of the heap (points to free memory).
@@ -129,14 +139,16 @@ pub fn frame_ptr() -> raw_ptr {
 /// }
 /// ```
 pub fn heap_ptr() -> raw_ptr {
-    asm() { hp: raw_ptr }
+    asm() {
+        hp: raw_ptr
+    }
 }
 
 /// Error codes for particular operations.
 ///
 /// # Additional Information
 ///
-/// Normally, if the result of an ALU operation is mathematically undefined (e.g. dividing by zero), the VM Reverts. 
+/// Normally, if the result of an ALU operation is mathematically undefined (e.g. dividing by zero), the VM Reverts.
 /// However, if the `F_UNSAFEMATH` flag is set, $err is set to `true` and execution continues.
 ///
 /// # Returns
@@ -150,13 +162,15 @@ pub fn heap_ptr() -> raw_ptr {
 ///
 /// fn foo() {
 ///     disable_panic_on_unsafe_math();
-///     let bar = 1 / 0; 
-///     assert(error() == 1); 
+///     let bar = 1 / 0;
+///     assert(error() == 1);
 ///     enable_panic_on_unsafe_math();
 /// }
 /// ```
 pub fn error() -> u64 {
-    asm() { err }
+    asm() {
+        err
+    }
 }
 
 /// Remaining gas globally.
@@ -184,7 +198,9 @@ pub fn error() -> u64 {
 /// }
 /// ```
 pub fn global_gas() -> u64 {
-    asm() { ggas }
+    asm() {
+        ggas
+    }
 }
 
 /// Remaining gas in the context.
@@ -209,7 +225,9 @@ pub fn global_gas() -> u64 {
 /// }
 /// ```
 pub fn context_gas() -> u64 {
-    asm() { cgas }
+    asm() {
+        cgas
+    }
 }
 
 /// Get the amount of units of `call_frames::msg_asset_id()` being sent.
@@ -228,7 +246,9 @@ pub fn context_gas() -> u64 {
 /// }
 /// ```
 pub fn balance() -> u64 {
-    asm() { bal }
+    asm() {
+        bal
+    }
 }
 
 /// Pointer to the start of the currently-executing code.
@@ -248,13 +268,15 @@ pub fn balance() -> u64 {
 /// }
 /// ```
 pub fn instrs_start() -> raw_ptr {
-    asm() { is: raw_ptr }
+    asm() {
+        is: raw_ptr
+    }
 }
 
 /// Return value or pointer.
 ///
 /// # Returns
-/// 
+///
 /// * [u64] - The value or pointer stored in the return register of the VM for the current context.
 ///
 /// # Examples
@@ -268,13 +290,15 @@ pub fn instrs_start() -> raw_ptr {
 /// }
 /// ```
 pub fn return_value() -> u64 {
-    asm() { ret }
+    asm() {
+        ret
+    }
 }
 
 /// Return value length in bytes.
 ///
 /// # Returns
-/// 
+///
 /// * [u64] - The length in bytes of the value stored in the return register of the VM for the current context.
 ///
 /// # Examples
@@ -288,7 +312,9 @@ pub fn return_value() -> u64 {
 /// }
 /// ```
 pub fn return_length() -> u64 {
-    asm() { retl }
+    asm() {
+        retl
+    }
 }
 
 /// Flags register.
@@ -313,5 +339,7 @@ pub fn return_length() -> u64 {
 /// }
 /// ```
 pub fn flags() -> u64 {
-    asm() { flag }
+    asm() {
+        flag
+    }
 }

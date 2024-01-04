@@ -168,8 +168,25 @@ macro_rules! decl_engine_clear_module {
     ($($slab:ident, $decl:ty);* $(;)?) => {
         impl DeclEngine {
             pub fn clear_module(&mut self, module_id: &ModuleId) {
+                self.parents.write().unwrap().retain(|key, _| {
+                    match key {
+                        AssociatedItemDeclId::TraitFn(decl_id) => {
+                            self.get_trait_fn(decl_id).span().source_id().map_or(false, |src_id| &src_id.module_id() != module_id)
+                        },
+                        AssociatedItemDeclId::Function(decl_id) => {
+                            self.get_function(decl_id).span().source_id().map_or(false, |src_id| &src_id.module_id() != module_id)
+                        },
+                        AssociatedItemDeclId::Type(decl_id) => {
+                            self.get_type(decl_id).span().source_id().map_or(false, |src_id| &src_id.module_id() != module_id)
+                        },
+                        AssociatedItemDeclId::Constant(decl_id) => {
+                            self.get_constant(decl_id).span().source_id().map_or(false, |src_id| &src_id.module_id() != module_id)
+                        },
+                    }
+                });
+
                 $(
-                    self.$slab.retain(|ty| match ty.span().source_id() {
+                    self.$slab.retain(|_k, ty| match ty.span().source_id() {
                         Some(source_id) => &source_id.module_id() != module_id,
                         None => false,
                     });
@@ -284,8 +301,7 @@ impl DeclEngine {
     /// to be used only for diagnostic purposes.
     pub fn get_traits_by_name(&self, trait_name: &Ident) -> Vec<ty::TyTraitDecl> {
         let mut vec = vec![];
-        for i in 0..self.trait_slab.len() {
-            let trait_decl = self.trait_slab.get(i);
+        for trait_decl in self.trait_slab.values() {
             if trait_decl.name == *trait_name {
                 vec.push((*trait_decl).clone())
             }
@@ -407,11 +423,8 @@ impl DeclEngine {
     pub fn pretty_print(&self, engines: &Engines) -> String {
         let mut builder = String::new();
         let mut list = vec![];
-        for i in 0..self.function_slab.len() {
-            list.push(format!(
-                "{:?}",
-                engines.help_out(&*self.function_slab.get(i))
-            ));
+        for func in self.function_slab.values() {
+            list.push(format!("{:?}", engines.help_out(&*func)));
         }
         let list = ListDisplay { list };
         write!(builder, "DeclEngine {{\n{list}\n}}").unwrap();
