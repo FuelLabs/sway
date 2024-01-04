@@ -203,7 +203,7 @@ impl<T, E> Result<T, E> {
             Self::Err(_) => default,
         }
     }
-    
+
     /// Returns the contained `Ok` value, consuming the `self` value.
     /// If the `Result` is the `Err` variant, logs the provided message, along with the error value.
     ///
