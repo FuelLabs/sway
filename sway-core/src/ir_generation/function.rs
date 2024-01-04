@@ -2138,12 +2138,18 @@ impl<'eng> FnCompiler<'eng> {
         // If the first element diverges, then the element type has not been determined,
         // so we can't use the normal compilation scheme. Instead just generate code for
         // the first element.
-        let first_elem_deterministically_aborts =
-            contents[0].deterministically_aborts(self.engines.de(), false);
-        let first_elem_value = self.compile_expression_to_value(context, md_mgr, &contents[0])?;
-        if first_elem_value.is_diverging(context) || first_elem_deterministically_aborts {
-            return Ok(first_elem_value);
-        }
+        let first_elem_value = if contents.len() > 0 {
+            let first_elem_deterministically_aborts =
+                contents[0].deterministically_aborts(self.engines.de(), false);
+            let first_elem_value =
+                self.compile_expression_to_value(context, md_mgr, &contents[0])?;
+            if first_elem_value.is_diverging(context) || first_elem_deterministically_aborts {
+                return Ok(first_elem_value);
+            }
+            Some(first_elem_value)
+        } else {
+            None
+        };
 
         let elem_type = convert_resolved_typeid_no_span(
             self.engines.te(),
@@ -2186,7 +2192,7 @@ impl<'eng> FnCompiler<'eng> {
                 .map(|(idx, e)| {
                     if idx == 0 {
                         // The first element has already been compiled
-                        Ok(first_elem_value)
+                        Ok(first_elem_value.unwrap())
                     } else {
                         self.compile_expression_to_value(context, md_mgr, e)
                     }
@@ -2280,7 +2286,7 @@ impl<'eng> FnCompiler<'eng> {
         for (idx, elem_expr) in contents.iter().enumerate() {
             let elem_value = if idx == 0 {
                 // The first element has already been compiled
-                first_elem_value
+                first_elem_value.unwrap()
             } else {
                 self.compile_expression_to_value(context, md_mgr, elem_expr)?
             };
