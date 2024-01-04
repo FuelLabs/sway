@@ -65,6 +65,13 @@ impl TypeEngine {
             Some(source_id) => &source_id.module_id() != module_id,
             None => false,
         });
+        self.id_map
+            .write()
+            .unwrap()
+            .retain(|tsi, _| match tsi.source_id {
+                Some(source_id) => &source_id.module_id() != module_id,
+                None => false,
+            });
     }
 
     pub fn replace(&self, id: TypeId, new_value: TypeSourceInfo) {
