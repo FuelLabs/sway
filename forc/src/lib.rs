@@ -15,5 +15,5 @@ pub mod util {
     pub use sway_utils::constants;
 }
 
-pub extern crate paste;
+pub use paste;
 pub use serial_test;

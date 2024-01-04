@@ -3,10 +3,10 @@
 macro_rules! cli_examples {
     ($( [ $($description:ident)* => $command:tt $args:expr $( => $output:expr )? ] )*) => {
             #[cfg(test)]
+            mod cli_examples {
             use $crate::serial_test;
             $(
             $crate::paste::paste! {
-                #[cfg(test)]
                 #[test]
                 #[serial_test::serial]
                 #[allow(unreachable_code)]
@@ -17,7 +17,7 @@ macro_rules! cli_examples {
                     proc.arg(format!("forc-{}", stringify!($command)));
                     proc.arg("--");
 
-                    parse_args($args).into_iter().for_each(|arg| {
+                    super::parse_args($args).into_iter().for_each(|arg| {
                         proc.arg(arg);
                     });
 
@@ -51,6 +51,7 @@ macro_rules! cli_examples {
                 }
             }
             )*
+        }
 
         #[cfg(test)]
         fn parse_args(input: &str) -> Vec<String> {
