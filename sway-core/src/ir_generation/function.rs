@@ -2138,7 +2138,7 @@ impl<'eng> FnCompiler<'eng> {
         // If the first element diverges, then the element type has not been determined,
         // so we can't use the normal compilation scheme. Instead just generate code for
         // the first element.
-        let first_elem_value = if contents.len() > 0 {
+        let first_elem_value = if !contents.is_empty() {
             let first_elem_deterministically_aborts =
                 contents[0].deterministically_aborts(self.engines.de(), false);
             let first_elem_value =
