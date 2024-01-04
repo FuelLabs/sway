@@ -1,7 +1,7 @@
 pub use {
     crate::{
         assignable::Assignable,
-        attribute::{Annotated, Attribute, AttributeDecl},
+        attribute::{Annotated},
         brackets::{AngleBrackets, Braces, Parens, SquareBrackets},
         expr::{
             asm::{AsmBlock, AsmImmediate},
@@ -9,7 +9,6 @@ pub use {
             CodeBlockContents, Expr,
         },
         generics::{GenericArgs, GenericParams},
-        intrinsics::*,
         item::{
             item_abi::ItemAbi,
             item_configurable::ItemConfigurable,
@@ -25,22 +24,18 @@ pub use {
             FnSignature, Item, ItemKind, TraitType, TypeField,
         },
         keywords::*,
-        literal::{LitBool, LitBoolType, LitChar, LitInt, LitIntType, LitString, Literal},
+        literal::{Literal},
         path::{PathExpr, PathType},
         pattern::Pattern,
         punctuated::Punctuated,
-        statement::{Statement, StatementLet},
+        statement::{Statement},
         submodule::Submodule,
-        token::{Group, Punct, Spacing, TokenStream, TokenTree},
         ty::Ty,
-        where_clause::{WhereBound, WhereClause},
+        where_clause::{WhereClause},
     },
     extension_trait::extension_trait,
     num_bigint::BigUint,
-    serde::{Serialize, Serializer},
-    std::{
-        fmt, marker::PhantomData, mem, ops::ControlFlow, path::PathBuf, str::FromStr, sync::Arc,
-    },
+    serde::{Serialize},
     sway_types::{
         ast::{Delimiter, PunctKind},
         Ident, Span, Spanned,
