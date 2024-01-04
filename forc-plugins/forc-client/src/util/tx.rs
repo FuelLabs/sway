@@ -20,7 +20,7 @@ use forc_wallet::{
         collect_accounts_with_verification, print_account_balances, AccountBalances,
         AccountVerification, AccountsMap,
     },
-    new::new_wallet_cli,
+    new::{new_wallet_cli, New},
     utils::default_wallet_path,
 };
 
@@ -180,8 +180,9 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
                 if !wallet_path.exists() {
                     let question = format!("Could not find a wallet at {wallet_path:?}, would you like to create a new one? [y/N]: ");
                     let accepted = ask_user_yes_no_question(&question)?;
+                    let new_options = New { force: false };
                     if accepted {
-                        new_wallet_cli(&wallet_path)?;
+                        new_wallet_cli(&wallet_path, new_options)?;
                         println!("Wallet created successfully.");
                         // Derive first account for the fresh wallet we created.
                         new_at_index_cli(&wallet_path, 0)?;
