@@ -1140,7 +1140,12 @@ impl ToDiagnostic for CompileError {
                     format!("Consider removing the variable \"{variable}\" altogether, or adding it to all alternatives."),
                 ],
             },
-            TraitNotImportedAtFunctionApplication { trait_name, function_name, function_call_site_span, trait_constraint_span, trait_candidates }=> Diagnostic {
+            TraitNotImportedAtFunctionApplication { trait_name, function_name, function_call_site_span, trait_constraint_span, trait_candidates }=> {
+                // Make candidates order deterministic
+                let mut trait_candidates = trait_candidates.clone();
+                trait_candidates.sort();
+                let trait_candidates = &trait_candidates;
+                Diagnostic {
                 reason: Some(Reason::new(code(1), "Trait is not imported".to_string())),
                 issue: Issue::error(
                     source_engine,
@@ -1223,7 +1228,7 @@ impl ToDiagnostic for CompileError {
 
                     help
                 },
-            },
+            }},
             // TODO-IG: Extend error messages to pointers, once typed pointers are defined and can be dereferenced.
             ExpressionCannotBeDereferenced { expression_type, span } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Expression cannot be dereferenced".to_string())),

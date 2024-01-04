@@ -15,6 +15,7 @@ use std::{
     cmp::Ordering,
     fmt,
     hash::{Hash, Hasher},
+    sync::Arc,
 };
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, PartialOrd, Ord)]
@@ -70,7 +71,7 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for VecSet<T> {
 /// Encapsulates type information and its optional source identifier.
 #[derive(Debug, Default, Clone)]
 pub struct TypeSourceInfo {
-    pub(crate) type_info: TypeInfo,
+    pub(crate) type_info: Arc<TypeInfo>,
     /// The source id that created this type.
     pub(crate) source_id: Option<SourceId>,
 }

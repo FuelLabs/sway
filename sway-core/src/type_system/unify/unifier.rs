@@ -61,7 +61,7 @@ impl<'a> Unifier<'a> {
         type_engine.replace(
             received,
             TypeSourceInfo {
-                type_info: expected_type_info.clone(),
+                type_info: expected_type_info.clone().into(),
                 source_id,
             },
         );
@@ -79,7 +79,7 @@ impl<'a> Unifier<'a> {
         type_engine.replace(
             expected,
             TypeSourceInfo {
-                type_info: received_type_info.clone(),
+                type_info: received_type_info.clone().into(),
                 source_id,
             },
         );
