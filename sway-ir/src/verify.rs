@@ -805,7 +805,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
     }
 
     fn verify_load(&self, src_val: &Value) -> Result<(), IrError> {
-        // Just confirm src_val is a pointer.
+        // Just confirm `src_val` is a pointer.
         self.get_ptr_type(src_val, IrError::VerifyLoadFromNonPointer)
             .map(|_| ())
     }
