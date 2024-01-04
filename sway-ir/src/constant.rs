@@ -24,6 +24,7 @@ pub enum ConstantValue {
     String(Vec<u8>),
     Array(Vec<Constant>),
     Struct(Vec<Constant>),
+    Reference(Box<Constant>),
 }
 
 /// A [Constant] with its required [Padding].

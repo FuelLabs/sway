@@ -1858,6 +1858,17 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             }
             Ok(vec![])
         }
+        Ref(exp) | Deref(exp) => connect_expression(
+            engines,
+            &exp.expression,
+            graph,
+            leaves,
+            exit_node,
+            "",
+            tree_type,
+            exp.span.clone(),
+            options,
+        ),
     }
 }
 

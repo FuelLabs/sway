@@ -292,6 +292,7 @@ impl CollectTypesMetadata for TyExpression {
                 }
             }
             Return(exp) => res.append(&mut exp.collect_types_metadata(handler, ctx)?),
+            Ref(exp) | Deref(exp) => res.append(&mut exp.collect_types_metadata(handler, ctx)?),
             // storage access can never be generic
             // variable expressions don't ever have return types themselves, they're stored in
             // `TyExpression::return_type`. Variable expressions are just names of variables.
@@ -404,7 +405,8 @@ impl DeterministicallyAborts for TyExpression {
             // Also, is it necessary to check the expression to see if avoids the return? eg.
             // someone could write `return break;` in a loop, which would mean the return never
             // gets executed.
-            Return(..) => true,
+            Return(_) => true,
+            Ref(exp) | Deref(exp) => exp.deterministically_aborts(decl_engine, check_call_body),
         }
     }
 }

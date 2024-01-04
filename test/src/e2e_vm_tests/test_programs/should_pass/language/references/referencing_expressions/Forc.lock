@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-AFEEDD5F5BF46FB3"
+
+[[package]]
+name = "referencing_expressions"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-AFEEDD5F5BF46FB3"
+dependencies = ["core"]

@@ -246,7 +246,7 @@ pub fn sroa(
                         let elm_index_values = indices
                             .iter()
                             .map(|&index| {
-                                let c = Constant::new_uint(context, 64, index.try_into().unwrap());
+                                let c = Constant::new_uint(context, 64, index.into());
                                 Value::new_constant(context, c)
                             })
                             .collect();
@@ -316,7 +316,7 @@ pub fn sroa(
                         let elm_index_values = indices
                             .iter()
                             .map(|&index| {
-                                let c = Constant::new_uint(context, 64, index.try_into().unwrap());
+                                let c = Constant::new_uint(context, 64, index.into());
                                 Value::new_constant(context, c)
                             })
                             .collect();

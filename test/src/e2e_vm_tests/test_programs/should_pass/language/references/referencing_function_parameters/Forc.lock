@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-5FDEE1872BB129D5"
+
+[[package]]
+name = "referencing_function_parameters"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-5FDEE1872BB129D5"
+dependencies = ["core"]

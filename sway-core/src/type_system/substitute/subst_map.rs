@@ -314,18 +314,21 @@ impl TypeSubstMap {
     /// Given a [TypeId] `type_id`, find (or create) a match for `type_id` in
     /// this [TypeSubstMap] and return it, if there is a match. Importantly, this
     /// function is recursive, so any `type_id` it's given will undergo
-    /// recursive calls this function. For instance, in the case of
+    /// recursive calls of this function. For instance, in the case of
     /// [TypeInfo::Struct], both `fields` and `type_parameters` will recursively
     /// call `find_match` (via calling [SubstTypes]).
     ///
-    /// A match can be found in two different circumstances:
-    /// - `type_id` is a [TypeInfo::Custom] or [TypeInfo::UnknownGeneric]
+    /// A match can be found in these circumstances:
+    /// - `type_id` is one of the following: [TypeInfo::Custom],
+    ///   [TypeInfo::UnknownGeneric], [TypeInfo::Placeholder], or [TypeInfo::TraitType].
     ///
-    /// A match is potentially created (i.e. a new `TypeId` is created) in these
+    /// A match is potentially created (i.e. a new [TypeId] is created) in these
     /// circumstances:
-    /// - `type_id` is a [TypeInfo::Struct], [TypeInfo::Enum],
-    ///     [TypeInfo::Array], or [TypeInfo::Tuple] and one of the sub-types
-    ///     finds a match in a recursive call to `find_match`
+    /// - `type_id` is one of the following: [TypeInfo::Struct], [TypeInfo::Enum],
+    ///    [TypeInfo::Array], [TypeInfo::Tuple], [TypeInfo::Storage], [TypeInfo::Alias],
+    ///    [TypeInfo::Alias], [TypeInfo::Ptr], [TypeInfo::Slice], or [TypeInfo::Ref],
+    ///    and one of the contained types (e.g. a struct field, or a referenced type)
+    ///    finds a match in a recursive call to `find_match`.
     ///
     /// A match cannot be found in any other circumstance.
     pub(crate) fn find_match(&self, type_id: TypeId, engines: &Engines) -> Option<TypeId> {
@@ -468,6 +471,10 @@ impl TypeSubstMap {
                 type_engine.insert(engines, TypeInfo::Slice(ty.clone()), ty.span.source_id())
             }),
             TypeInfo::TraitType { .. } => iter_for_match(engines, self, &type_info),
+            TypeInfo::Ref(mut ty) => self.find_match(ty.type_id, engines).map(|type_id| {
+                ty.type_id = type_id;
+                type_engine.insert(engines, TypeInfo::Ref(ty.clone()), ty.span.source_id())
+            }),
             TypeInfo::Unknown
             | TypeInfo::StringArray(..)
             | TypeInfo::StringSlice
