@@ -190,7 +190,7 @@ macro_rules! decl_engine_clear_module {
                         Some(source_id) => &source_id.module_id() != module_id,
                         None => false,
                     });
-                )*                
+                )*
             }
         }
     };
