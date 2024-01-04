@@ -124,7 +124,7 @@ category = "fail"
 # check: $()error
 # check: return_in_strange_positions/src/main.sw:21:11
 # check: $()match return 42 {
-# nextln: $()Unimplemented feature: matching on this type is unsupported right now
+# nextln: $()Unimplemented feature: Matching on this type is currently not supported.
 
 # check: $()error
 # check: return_in_strange_positions/src/main.sw:32:13
