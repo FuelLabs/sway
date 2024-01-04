@@ -2139,11 +2139,9 @@ impl<'eng> FnCompiler<'eng> {
         // so we can't use the normal compilation scheme. Instead just generate code for
         // the first element.
         let first_elem_value = if !contents.is_empty() {
-            let first_elem_deterministically_aborts =
-                contents[0].deterministically_aborts(self.engines.de(), false);
             let first_elem_value =
                 self.compile_expression_to_value(context, md_mgr, &contents[0])?;
-            if first_elem_value.is_diverging(context) || first_elem_deterministically_aborts {
+            if first_elem_value.is_diverging(context) {
                 return Ok(first_elem_value);
             }
             Some(first_elem_value)
