@@ -1,4 +1,8 @@
-use fuels::{accounts::wallet::WalletUnlocked, prelude::*, types::Bits256};
+use fuels::{
+    accounts::wallet::WalletUnlocked,
+    prelude::{Input, Output},
+    types::Bits256,
+};
 use std::str::FromStr;
 
 abigen!(Contract(

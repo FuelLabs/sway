@@ -22,7 +22,8 @@ macro_rules! calldata {
 abigen!(
     Contract(
         name = "TestContract",
-        abi = "test_artifacts/low_level_callee_contract/out/debug/low_level_callee_contract-abi.json"
+        abi =
+            "test_artifacts/low_level_callee_contract/out/debug/low_level_callee_contract-abi.json"
     ),
     Script(
         name = "TestScript",
