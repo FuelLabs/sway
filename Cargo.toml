@@ -49,7 +49,7 @@ fuels-core = "0.53.0"
 fuels-accounts = "0.53.0"
 
 # Dependencies from the `forc-wallet` repository:
-forc-wallet = "0.4.0"
+forc-wallet = "0.4.1"
 
 [workspace.package]
 edition = "2021"
