@@ -749,7 +749,7 @@ fn type_check_state_store_word(
         TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
         None,
     ));
-    let type_argument = type_arguments.get(0).map(|targ| {
+    let type_argument = type_arguments.first().map(|targ| {
         let mut ctx =
             ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
         let initial_type_info = type_engine
@@ -843,7 +843,7 @@ fn type_check_state_quad(
     ));
     let number_of_slots_exp =
         ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[2].clone())?;
-    let type_argument = type_arguments.get(0).map(|targ| {
+    let type_argument = type_arguments.first().map(|targ| {
         let mut ctx =
             ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
         let initial_type_info = type_engine
@@ -1298,7 +1298,7 @@ fn type_check_smo(
     }
 
     // Type check the type argument
-    let type_argument = type_arguments.get(0).map(|targ| {
+    let type_argument = type_arguments.first().map(|targ| {
         let mut ctx = ctx
             .by_ref()
             .with_help_text("")

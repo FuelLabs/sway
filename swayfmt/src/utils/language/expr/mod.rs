@@ -398,12 +398,15 @@ impl Format for Expr {
                     field_span.as_str(),
                 )?;
             }
-            Self::Ref { ref_token, expr } => {
-                write!(formatted_code, "{} ", ref_token.span().as_str())?;
+            Self::Ref {
+                ampersand_token,
+                expr,
+            } => {
+                write!(formatted_code, "{}", ampersand_token.span().as_str())?;
                 expr.format(formatted_code, formatter)?;
             }
-            Self::Deref { deref_token, expr } => {
-                write!(formatted_code, "{} ", deref_token.span().as_str())?;
+            Self::Deref { star_token, expr } => {
+                write!(formatted_code, "{}", star_token.span().as_str())?;
                 expr.format(formatted_code, formatter)?;
             }
             Self::Not { bang_token, expr } => {
@@ -748,6 +751,7 @@ fn same_line_if_only_argument(expr: &Expr) -> bool {
         expr,
         Expr::Struct { path: _, fields: _ }
             | Expr::Tuple(_)
+            | Expr::Array(_)
             | Expr::Parens(_)
             | Expr::Not {
                 bang_token: _,
@@ -1062,13 +1066,16 @@ fn expr_leaf_spans(expr: &Expr) -> Vec<ByteSpan> {
             collected_spans.push(ByteSpan::from(field_span.clone()));
             collected_spans
         }
-        Expr::Ref { ref_token, expr } => {
-            let mut collected_spans = vec![ByteSpan::from(ref_token.span())];
+        Expr::Ref {
+            ampersand_token,
+            expr,
+        } => {
+            let mut collected_spans = vec![ByteSpan::from(ampersand_token.span())];
             collected_spans.append(&mut expr.leaf_spans());
             collected_spans
         }
-        Expr::Deref { deref_token, expr } => {
-            let mut collected_spans = vec![ByteSpan::from(deref_token.span())];
+        Expr::Deref { star_token, expr } => {
+            let mut collected_spans = vec![ByteSpan::from(star_token.span())];
             collected_spans.append(&mut expr.leaf_spans());
             collected_spans
         }

@@ -26,17 +26,17 @@ impl core::ops::Eq for Address {
 /// Functions for casting between the `b256` and `Address` types.
 impl From<b256> for Address {
     /// Casts raw `b256` data to an `Address`.
-    /// 
+    ///
     /// # Arguments
     ///
     /// * `bits`: [b256] - The raw `b256` data to be casted.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [Address] - The newly created `Address` from the raw `b256`.
     ///
     /// # Examples
-    /// 
+    ///
     /// ```sway
     /// use std::constants::ZERO_B256;
     ///
@@ -49,13 +49,13 @@ impl From<b256> for Address {
     }
 
     /// Casts an `Address` to raw `b256` data.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [b256] - The underlying raw `b256` data of the `Address`.
     ///
     /// # Examples
-    /// 
+    ///
     /// ```sway
     /// use std::constants::ZERO_B256;
     ///
