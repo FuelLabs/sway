@@ -168,6 +168,23 @@ macro_rules! decl_engine_clear_module {
     ($($slab:ident, $decl:ty);* $(;)?) => {
         impl DeclEngine {
             pub fn clear_module(&mut self, module_id: &ModuleId) {
+                self.parents.write().unwrap().retain(|key, _| {
+                    match key {
+                        AssociatedItemDeclId::TraitFn(decl_id) => {
+                            self.get_trait_fn(decl_id).span().source_id().map_or(false, |src_id| &src_id.module_id() != module_id)
+                        },
+                        AssociatedItemDeclId::Function(decl_id) => {
+                            self.get_function(decl_id).span().source_id().map_or(false, |src_id| &src_id.module_id() != module_id)
+                        },
+                        AssociatedItemDeclId::Type(decl_id) => {
+                            self.get_type(decl_id).span().source_id().map_or(false, |src_id| &src_id.module_id() != module_id)
+                        },
+                        AssociatedItemDeclId::Constant(decl_id) => {
+                            self.get_constant(decl_id).span().source_id().map_or(false, |src_id| &src_id.module_id() != module_id)
+                        },
+                    }
+                });
+
                 $(
                     self.$slab.retain(|_k, ty| match ty.span().source_id() {
                         Some(source_id) => &source_id.module_id() != module_id,

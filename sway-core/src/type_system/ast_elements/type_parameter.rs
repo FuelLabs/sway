@@ -336,7 +336,8 @@ impl TypeParameter {
                 type_info: TypeInfo::UnknownGeneric {
                     name: type_parameter.name_ident.clone(),
                     trait_constraints: VecSet(trait_constraints_with_supertraits.clone()),
-                },
+                }
+                .into(),
                 source_id: type_parameter.name_ident.span().source_id().cloned(),
             },
         );

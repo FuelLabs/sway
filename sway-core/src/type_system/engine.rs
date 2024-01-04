@@ -18,8 +18,7 @@ use super::unify::unifier::UnifyKind;
 
 #[derive(Debug, Default)]
 pub struct TypeEngine {
-    slab: ConcurrentSlab<TypeInfo>,
-    slab_source_ids: ConcurrentSlab<Option<SourceId>>,
+    slab: ConcurrentSlab<TypeSourceInfo>,
     id_map: RwLock<HashMap<TypeSourceInfo, TypeId>>,
 }
 
@@ -36,7 +35,7 @@ impl TypeEngine {
             .map(Clone::clone)
             .or_else(|| info_to_source_id(&ty));
         let tsi = TypeSourceInfo {
-            type_info: ty.clone(),
+            type_info: ty.clone().into(),
             source_id,
         };
         let mut id_map = self.id_map.write().unwrap();
@@ -50,16 +49,10 @@ impl TypeEngine {
         match raw_entry {
             RawEntryMut::Occupied(o) => return *o.get(),
             RawEntryMut::Vacant(_) if ty.can_change(engines.de()) => {
-                let t1 = self.slab.insert(ty);
-                let t2 = self.slab_source_ids.insert(source_id);
-                assert!(t1 == t2);
-                TypeId::new(t1)
+                TypeId::new(self.slab.insert(tsi))
             }
             RawEntryMut::Vacant(v) => {
-                let t1 = self.slab.insert(ty);
-                let t2 = self.slab_source_ids.insert(source_id);
-                assert!(t1 == t2);
-                let type_id = TypeId::new(t1);
+                let type_id = TypeId::new(self.slab.insert(tsi.clone()));
                 v.insert_with_hasher(ty_hash, tsi, type_id, make_hasher(&hash_builder, engines));
                 type_id
             }
@@ -68,29 +61,26 @@ impl TypeEngine {
 
     /// Removes all data associated with `module_id` from the type engine.
     pub fn clear_module(&mut self, module_id: &ModuleId) {
-        self.slab.retain(|key, _type_info| {
-            let source_id = self.slab_source_ids.get(*key);
-            match *source_id {
-                Some(source_id) => &source_id.module_id() != module_id,
-                None => false,
-            }
+        self.slab.retain(|_, tsi| match tsi.source_id {
+            Some(source_id) => &source_id.module_id() != module_id,
+            None => false,
         });
-        self.slab_source_ids
-            .retain(|_key, source_id| match **source_id {
+        self.id_map
+            .write()
+            .unwrap()
+            .retain(|tsi, _| match tsi.source_id {
                 Some(source_id) => &source_id.module_id() != module_id,
                 None => false,
             });
     }
 
     pub fn replace(&self, id: TypeId, new_value: TypeSourceInfo) {
-        self.slab.replace(id.index(), new_value.type_info);
-        self.slab_source_ids
-            .replace(id.index(), new_value.source_id);
+        self.slab.replace(id.index(), new_value);
     }
 
     /// Performs a lookup of `id` into the [TypeEngine].
     pub fn get(&self, id: TypeId) -> Arc<TypeInfo> {
-        self.slab.get(id.index())
+        self.slab.get(id.index()).type_info.clone()
     }
 
     /// Performs a lookup of `id` into the [TypeEngine] recursing when finding a
@@ -98,10 +88,10 @@ impl TypeEngine {
     pub fn get_unaliased(&self, id: TypeId) -> Arc<TypeInfo> {
         // A slight infinite loop concern if we somehow have self-referential aliases, but that
         // shouldn't be possible.
-        let type_info = self.slab.get(id.index());
-        match &*type_info {
+        let tsi = self.slab.get(id.index());
+        match &*tsi.type_info {
             TypeInfo::Alias { ty, .. } => self.get_unaliased(ty.type_id),
-            _ => type_info,
+            _ => tsi.type_info.clone(),
         }
     }
 
@@ -368,8 +358,8 @@ impl TypeEngine {
     pub fn pretty_print(&self, _decl_engine: &DeclEngine, engines: &Engines) -> String {
         let mut builder = String::new();
         let mut list = vec![];
-        for type_info in self.slab.values() {
-            list.push(format!("{:?}", engines.help_out(&*type_info)));
+        for tsi in self.slab.values() {
+            list.push(format!("{:?}", engines.help_out(&*tsi.type_info)));
         }
         let list = ListDisplay { list };
         write!(builder, "TypeEngine {{\n{list}\n}}").unwrap();
