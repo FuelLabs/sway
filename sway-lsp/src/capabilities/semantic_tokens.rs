@@ -12,40 +12,42 @@ use std::sync::{
 };
 
 // https://github.com/microsoft/vscode-extension-samples/blob/5ae1f7787122812dcc84e37427ca90af5ee09f14/semantic-tokens-sample/vscode.proposed.d.ts#L71
+
+/// Get the semantic tokens for the entire file.
 pub fn semantic_tokens_full(session: Arc<Session>, url: &Url) -> Option<SemanticTokensResult> {
-    // The tokens need sorting by their span so each token is sequential
-    // If this step isn't done, then the bit offsets used for the lsp_types::SemanticToken are incorrect.
-    let mut tokens_sorted: Vec<_> = session.token_map().tokens_for_file(url).collect();
-    tokens_sorted.sort_by(|(a_span, _), (b_span, _)| {
-        let a = (a_span.range.start, a_span.range.end);
-        let b = (b_span.range.start, b_span.range.end);
-        a.cmp(&b)
-    });
-    Some(semantic_tokens(&tokens_sorted).into())
+    let mut tokens: Vec<_> = session.token_map().tokens_for_file(url).collect();
+    sort_tokens(&mut tokens);
+    Some(semantic_tokens(&tokens).into())
 }
 
+/// Get the semantic tokens within a range.
 pub fn semantic_tokens_range(
     session: Arc<Session>,
     url: &Url,
     range: &Range,
 ) -> Option<SemanticTokensRangeResult> {
-    eprintln!("semantic_tokens_range: range: {:#?}", range);
-    let mut tokens_sorted: Vec<_> = session
+    let mut tokens: Vec<_> = session
         .token_map()
         .tokens_for_file(url)
         .filter(|t| {
-            // make sure the tokenident range is within the range that was passed in
+            // make sure the token_ident range is within the range that was passed in
             let token_range = t.0.range;
             token_range.start >= range.start && token_range.end <= range.end
         })
         .collect();
-    eprintln!("Number of tokens in range: {}", tokens_sorted.len());
-    tokens_sorted.sort_by(|(a_span, _), (b_span, _)| {
+    sort_tokens(&mut tokens);
+    Some(semantic_tokens(&tokens).into())
+}
+
+/// Sort tokens by their span so each token is sequential.
+///
+/// If this step isn't done, then the bit offsets used for the lsp_types::SemanticToken are incorrect.
+fn sort_tokens(tokens: &mut Vec<(TokenIdent, Token)>) {
+    tokens.sort_by(|(a_span, _), (b_span, _)| {
         let a = (a_span.range.start, a_span.range.end);
         let b = (b_span.range.start, b_span.range.end);
         a.cmp(&b)
     });
-    Some(semantic_tokens(&tokens_sorted).into())
 }
 
 //-------------------------------

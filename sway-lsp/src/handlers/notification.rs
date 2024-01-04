@@ -4,7 +4,7 @@
 use crate::{
     core::{document, session::Session},
     error::LanguageServerError,
-    server_state::{ServerState, Shared, ThreadMessage},
+    server_state::{CompilationContext, ServerState, TaskMessage},
 };
 use lsp_types::{
     DidChangeTextDocumentParams, DidChangeWatchedFilesParams, DidOpenTextDocumentParams,
@@ -27,11 +27,13 @@ pub async fn handle_did_open_text_document(
     // as the workspace is already compiled.
     if session.token_map().is_empty() {
         // send_new_compilation_request(&state, session.clone(), &uri, None);
-        let _ = state.mpsc_tx.send(ThreadMessage::CompilationData(Shared {
-            session: Some(session.clone()),
-            uri: Some(uri.clone()),
-            version: None,
-        }));
+        let _ = state
+            .cb_tx
+            .send(TaskMessage::CompilationContext(CompilationContext {
+                session: Some(session.clone()),
+                uri: Some(uri.clone()),
+                version: None,
+            }));
         state.is_compiling.store(true, Ordering::SeqCst);
 
         eprintln!("did open - waiting for parsing to finish");
@@ -57,18 +59,20 @@ fn send_new_compilation_request(
 
     // If channel is full, remove the old value so the compilation
     // thread only gets the latest value.
-    if state.mpsc_tx.is_full() {
-        if let Ok(ThreadMessage::CompilationData(_)) = state.mpsc_rx.try_recv() {
+    if state.cb_tx.is_full() {
+        if let Ok(TaskMessage::CompilationContext(_)) = state.cb_rx.try_recv() {
             //eprintln!("channel is full! discarding version: {:?}", res.version);
         }
     }
 
     //eprintln!("sending new compilation request: version {:?}", version);
-    let _ = state.mpsc_tx.send(ThreadMessage::CompilationData(Shared {
-        session: Some(session.clone()),
-        uri: Some(uri.clone()),
-        version,
-    }));
+    let _ = state
+        .cb_tx
+        .send(TaskMessage::CompilationContext(CompilationContext {
+            session: Some(session.clone()),
+            uri: Some(uri.clone()),
+            version,
+        }));
 }
 
 pub async fn handle_did_change_text_document(

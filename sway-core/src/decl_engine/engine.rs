@@ -48,7 +48,7 @@ impl Clone for DeclEngine {
             constant_slab: self.constant_slab.clone(),
             enum_slab: self.enum_slab.clone(),
             type_alias_slab: self.type_alias_slab.clone(),
-            parents: RwLock::new(self.parents.read().expect("Lock is poisoned").clone()),
+            parents: RwLock::new(self.parents.read().unwrap().clone()),
         }
     }
 }

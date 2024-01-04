@@ -29,23 +29,15 @@ pub struct ServerState {
     pub(crate) sessions: Arc<Sessions>,
     pub(crate) retrigger_compilation: Arc<AtomicBool>,
     pub is_compiling: Arc<AtomicBool>,
-    pub(crate) mpsc_tx: Sender<ThreadMessage>,
-    pub(crate) mpsc_rx: Arc<Receiver<ThreadMessage>>,
+    pub(crate) cb_tx: Sender<TaskMessage>,
+    pub(crate) cb_rx: Arc<Receiver<TaskMessage>>,
     pub(crate) finished_compilation: Arc<tokio::sync::Notify>,
-    pub(crate) last_compilation_state: Arc<RwLock<LastCompilationState>>,
-}
-
-#[derive(Debug)]
-pub enum LastCompilationState {
-    Success,
-    Failed,
-    Uninitialized,
+    last_compilation_state: Arc<RwLock<LastCompilationState>>,
 }
 
 impl Default for ServerState {
     fn default() -> Self {
-        let (mpsc_tx, mpsc_rx) = crossbeam_channel::bounded(1);
-
+        let (cb_tx, cb_rx) = crossbeam_channel::bounded(1);
         let state = ServerState {
             client: None,
             config: Arc::new(RwLock::new(Default::default())),
@@ -53,35 +45,50 @@ impl Default for ServerState {
             sessions: Arc::new(Sessions(DashMap::new())),
             retrigger_compilation: Arc::new(AtomicBool::new(false)),
             is_compiling: Arc::new(AtomicBool::new(false)),
-            mpsc_tx,
-            mpsc_rx: Arc::new(mpsc_rx),
+            cb_tx,
+            cb_rx: Arc::new(cb_rx),
             finished_compilation: Arc::new(tokio::sync::Notify::new()),
             last_compilation_state: Arc::new(RwLock::new(LastCompilationState::Uninitialized)),
         };
-
+        // Spawn a new thread dedicated to handling compilation tasks
         state.spawn_compilation_thread();
         state
     }
 }
 
+/// `LastCompilationState` represents the state of the last compilation process.
+/// It's primarily used for debugging purposes.
 #[derive(Debug)]
-pub enum ThreadMessage {
-    CompilationData(Shared),
+enum LastCompilationState {
+    Success,
+    Failed,
+    Uninitialized,
+}
+
+/// `TaskMessage` represents the set of messages or commands that can be sent to and processed by a worker thread in the compilation environment.
+#[derive(Debug)]
+pub enum TaskMessage {
+    CompilationContext(CompilationContext),
+    // A signal to the receiving thread to gracefully terminate its operation.
     Terminate,
 }
 
+/// `CompilationContext` encapsulates all the necessary details required by the compilation thread to execute a compilation process.
+/// It acts as a container for shared resources and state information relevant to a specific compilation task.
 #[derive(Debug, Default)]
-pub struct Shared {
+pub struct CompilationContext {
     pub session: Option<Arc<Session>>,
     pub uri: Option<Url>,
     pub version: Option<i32>,
 }
 
+/// This function is responsible for managing the compilation flags and signaling
+/// the completion of the compilation process if there is no pending compilation work.
 fn update_compilation_state(
     is_compiling: Arc<AtomicBool>,
     retrigger_compilation: Arc<AtomicBool>,
     finished_compilation: Arc<tokio::sync::Notify>,
-    rx: Arc<Receiver<ThreadMessage>>,
+    rx: Arc<Receiver<TaskMessage>>,
 ) {
     //eprintln!("THREAD | update_compilation_state");
 
@@ -110,21 +117,26 @@ impl ServerState {
         }
     }
 
+    /// Spawns a new thread dedicated to handling compilation tasks. This thread listens for
+    /// `TaskMessage` instances sent over a channel and processes them accordingly.
+    ///
+    /// This approach allows for asynchronous compilation tasks to be handled in parallel to
+    /// the main application flow, improving efficiency and responsiveness.
     pub fn spawn_compilation_thread(&self) {
         let is_compiling = self.is_compiling.clone();
         let retrigger_compilation = self.retrigger_compilation.clone();
         let finished_compilation = self.finished_compilation.clone();
-        let rx = self.mpsc_rx.clone();
+        let rx = self.cb_rx.clone();
         let last_compilation_state = self.last_compilation_state.clone();
         std::thread::spawn(move || {
             while let Ok(msg) = rx.recv() {
                 match msg {
-                    ThreadMessage::CompilationData(shared) => {
+                    TaskMessage::CompilationContext(ctx) => {
                         //eprintln!("THREAD | received new compilation request");
 
-                        let uri = shared.uri.as_ref().unwrap().clone();
-                        let version = shared.version;
-                        let session = shared.session.as_ref().unwrap().clone();
+                        let uri = ctx.uri.as_ref().unwrap().clone();
+                        let version = ctx.version;
+                        let session = ctx.session.as_ref().unwrap().clone();
                         let mut engines_clone = session.engines.read().clone();
 
                         if let Some(version) = version {
@@ -178,7 +190,7 @@ impl ServerState {
                         }
                         //eprintln!("THREAD | finished parsing project: version: {:?}", version);
                     }
-                    ThreadMessage::Terminate => {
+                    TaskMessage::Terminate => {
                         //eprintln!("THREAD | received terminate message");
                         return;
                     }
@@ -197,7 +209,7 @@ impl ServerState {
             //eprintln!("are we still compiling? | is_compiling = {:?}", self.is_compiling.load(Ordering::SeqCst));
             if !self.is_compiling.load(Ordering::SeqCst) {
                 //eprintln!("compilation is finished, lets check if there are pending compilation requests");
-                if self.mpsc_rx.is_empty() {
+                if self.cb_rx.is_empty() {
                     //eprintln!("no pending compilation work, safe to break");
                     eprintln!(
                         "And the last compilation state was: {:?}",
@@ -220,7 +232,7 @@ impl ServerState {
         tracing::info!("Shutting Down the Sway Language Server");
 
         // Drain pending compilation requests
-        while let Ok(_) = self.mpsc_rx.try_recv() {
+        while let Ok(_) = self.cb_rx.try_recv() {
             //eprintln!("draining pending compilation requests");
         }
         // set the retrigger_compilation flag to true so that the compilation exit early
@@ -228,8 +240,8 @@ impl ServerState {
         self.wait_for_parsing().await;
 
         //eprintln!("sending terminate message");
-        self.mpsc_tx
-            .send(ThreadMessage::Terminate)
+        self.cb_tx
+            .send(TaskMessage::Terminate)
             .expect("failed to send terminate message");
 
         //eprintln!("shutting down the sessions");

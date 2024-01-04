@@ -26,7 +26,7 @@ impl Clone for TypeEngine {
     fn clone(&self) -> Self {
         TypeEngine {
             slab: self.slab.clone(),
-            id_map: RwLock::new(self.id_map.read().expect("Lock is poisoned").clone()),
+            id_map: RwLock::new(self.id_map.read().unwrap().clone()),
         }
     }
 }

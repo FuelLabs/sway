@@ -27,32 +27,12 @@ pub struct SourceEngine {
 impl Clone for SourceEngine {
     fn clone(&self) -> Self {
         SourceEngine {
-            next_source_id: RwLock::new(*self.next_source_id.read().expect("Lock is poisoned")),
-            path_to_source_map: RwLock::new(
-                self.path_to_source_map
-                    .read()
-                    .expect("Lock is poisoned")
-                    .clone(),
-            ),
-            source_to_path_map: RwLock::new(
-                self.source_to_path_map
-                    .read()
-                    .expect("Lock is poisoned")
-                    .clone(),
-            ),
-            next_module_id: RwLock::new(*self.next_module_id.read().expect("Lock is poisoned")),
-            path_to_module_map: RwLock::new(
-                self.path_to_module_map
-                    .read()
-                    .expect("Lock is poisoned")
-                    .clone(),
-            ),
-            module_to_sources_map: RwLock::new(
-                self.module_to_sources_map
-                    .read()
-                    .expect("Lock is poisoned")
-                    .clone(),
-            ),
+            next_source_id: RwLock::new(*self.next_source_id.read().unwrap()),
+            path_to_source_map: RwLock::new(self.path_to_source_map.read().unwrap().clone()),
+            source_to_path_map: RwLock::new(self.source_to_path_map.read().unwrap().clone()),
+            next_module_id: RwLock::new(*self.next_module_id.read().unwrap()),
+            path_to_module_map: RwLock::new(self.path_to_module_map.read().unwrap().clone()),
+            module_to_sources_map: RwLock::new(self.module_to_sources_map.read().unwrap().clone()),
         }
     }
 }
