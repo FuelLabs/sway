@@ -37,87 +37,87 @@ category = "fail"
 # nextln: $()This code is unreachable.
 
 # check: $()warning
-# check: return_in_strange_positions/src/main.sw:64:5
+# check: return_in_strange_positions/src/main.sw:85:5
 # check: $()545
 # nextln: $()This code is unreachable.
 
 # check: $()warning
-# check: return_in_strange_positions/src/main.sw:81:5
+# check: return_in_strange_positions/src/main.sw:102:5
 # check: $()745
 # nextln: $()This code is unreachable.
 
 # check: $()warning
-# check: return_in_strange_positions/src/main.sw:89:5
+# check: return_in_strange_positions/src/main.sw:110:5
 # check: $()845
 # nextln: $()This code is unreachable.
 
 # check: $()warning
-# check: return_in_strange_positions/src/main.sw:97:5
+# check: return_in_strange_positions/src/main.sw:118:5
 # check: $()945
 # nextln: $()This code is unreachable.
 
 # check: $()warning
-# check: return_in_strange_positions/src/main.sw:112:4
+# check: return_in_strange_positions/src/main.sw:133:4
 # check: $()fn helper_fun(x : u64, y : u64) -> u64 {
 # nextln: $()This function is never called.
 
 # check: $()warning
-# check: return_in_strange_positions/src/main.sw:125:5
+# check: return_in_strange_positions/src/main.sw:146:5
 # check: $()1345
 # nextln: $()This code is unreachable.
 
 # check: $()warning
-# check: return_in_strange_positions/src/main.sw:137:5
+# check: return_in_strange_positions/src/main.sw:158:5
 # check: $()1545
 # nextln: $()This code is unreachable.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:62:20
+# check: return_in_strange_positions/src/main.sw:83:20
 # check: $()let _ = return + return;
 # nextln: $()Expected an expression.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:77:5
+# check: return_in_strange_positions/src/main.sw:98:5
 # check: $()else {
 # nextln: $()Expected an opening brace.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:77:5
+# check: return_in_strange_positions/src/main.sw:98:5
 # check: $()else {
 # nextln: $()Identifiers cannot be a reserved keyword.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:79:6
+# check: return_in_strange_positions/src/main.sw:100:6
 # check: $()};
 # nextln: $()Expected an expression.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:87:6
+# check: return_in_strange_positions/src/main.sw:108:6
 # check: $()};
 # nextln: $()Expected an opening brace.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:87:6
+# check: return_in_strange_positions/src/main.sw:108:6
 # check: $()};
 # nextln: $()Expected an expression.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:94:9
+# check: return_in_strange_positions/src/main.sw:115:9
 # check: $()_ => 458,
 # nextln: $()Expected an expression.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:97:5
+# check: return_in_strange_positions/src/main.sw:118:5
 # check: $()945
 # nextln: $()Expected an opening brace.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:123:20
+# check: return_in_strange_positions/src/main.sw:144:20
 # check: $()let _ = return && return;
 # nextln: $()Expected an expression.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:135:20
+# check: return_in_strange_positions/src/main.sw:156:20
 # check: $()let _ = return || return;
 # nextln: $()Expected an expression.
 
@@ -151,7 +151,31 @@ category = "fail"
 # nextln: $()help: Return statement must return the declared function return type.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:44:14
+# check: return_in_strange_positions/src/main.sw:45:14
+# check: $()let _ = [return];
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return statement must return the declared function return type.
+
+# check: $()error
+# check: return_in_strange_positions/src/main.sw:52:14
+# check: $()let _ = [return, 0];
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return statement must return the declared function return type.
+
+# check: $()error
+# check: return_in_strange_positions/src/main.sw:59:17
+# check: $()let _ = [0, return];
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return statement must return the declared function return type.
+
+# check: $()error
+# check: return_in_strange_positions/src/main.sw:65:14
 # check: $()let _ = (return, return);
 # nextln: $()Mismatched types.
 # nextln: $()expected: u64
@@ -159,7 +183,7 @@ category = "fail"
 # nextln: $()help: Return statement must return the declared function return type.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:44:22
+# check: return_in_strange_positions/src/main.sw:65:22
 # check: $()let _ = (return, return);
 # nextln: $()Mismatched types.
 # nextln: $()expected: u64
@@ -167,7 +191,7 @@ category = "fail"
 # nextln: $()help: Return statement must return the declared function return type.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:50:20
+# check: return_in_strange_positions/src/main.sw:71:20
 # check: $()let _ = S { x: return, y: return };
 # nextln: $()Mismatched types.
 # nextln: $()expected: u64
@@ -175,7 +199,7 @@ category = "fail"
 # nextln: $()help: Return statement must return the declared function return type.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:50:31
+# check: return_in_strange_positions/src/main.sw:71:31
 # check: $()let _ = S { x: return, y: return };
 # nextln: $()Mismatched types.
 # nextln: $()expected: u64
@@ -183,7 +207,7 @@ category = "fail"
 # nextln: $()help: Return statement must return the declared function return type.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:56:14
+# check: return_in_strange_positions/src/main.sw:77:14
 # check: $()let _ = (return);
 # nextln: $()Mismatched types.
 # nextln: $()expected: u64
@@ -191,12 +215,12 @@ category = "fail"
 # nextln: $()help: Return statement must return the declared function return type.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:68:22
+# check: return_in_strange_positions/src/main.sw:89:22
 # check: $()let _ = (return) + return;
 # nextln: $()No method named "add" found for type "{unknown}".
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:101:22
+# check: return_in_strange_positions/src/main.sw:122:22
 # check: $()let _ = Enum::A((return, return));
 # nextln: $()Mismatched types.
 # nextln: $()expected: u64
@@ -204,7 +228,7 @@ category = "fail"
 # nextln: $()help: Return statement must return the declared function return type.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:101:30
+# check: return_in_strange_positions/src/main.sw:122:30
 # check: $()let _ = Enum::A((return, return));
 # nextln: $()Mismatched types.
 # nextln: $()expected: u64
@@ -212,7 +236,7 @@ category = "fail"
 # nextln: $()help: Return statement must return the declared function return type.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:107:35
+# check: return_in_strange_positions/src/main.sw:128:35
 # check: $()let _ = Enum_multivariant::B((return, return));
 # nextln: $()Mismatched types.
 # nextln: $()expected: u64
@@ -220,7 +244,7 @@ category = "fail"
 # nextln: $()help: Return statement must return the declared function return type.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:107:43
+# check: return_in_strange_positions/src/main.sw:128:43
 # check: $()let _ = Enum_multivariant::B((return, return));
 # nextln: $()Mismatched types.
 # nextln: $()expected: u64
@@ -228,7 +252,7 @@ category = "fail"
 # nextln: $()help: Return statement must return the declared function return type.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:117:24
+# check: return_in_strange_positions/src/main.sw:138:24
 # check: $()let _ = helper_fun(return, return);
 # nextln: $()Mismatched types.
 # nextln: $()expected: u64
@@ -236,7 +260,7 @@ category = "fail"
 # nextln: $()help: Return statement must return the declared function return type.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:117:32
+# check: return_in_strange_positions/src/main.sw:138:32
 # check: $()let _ = helper_fun(return, return);
 # nextln: $()Mismatched types.
 # nextln: $()expected: u64
@@ -244,7 +268,7 @@ category = "fail"
 # nextln: $()help: Return statement must return the declared function return type.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:129:14
+# check: return_in_strange_positions/src/main.sw:150:14
 # check: $()let _ = (return) && return;
 # nextln: $()Mismatched types.
 # nextln: $()expected: u64
@@ -252,7 +276,7 @@ category = "fail"
 # nextln: $()help: Return statement must return the declared function return type.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:129:25
+# check: return_in_strange_positions/src/main.sw:150:25
 # check: $()let _ = (return) && return;
 # nextln: $()Mismatched types.
 # nextln: $()expected: u64
@@ -260,7 +284,7 @@ category = "fail"
 # nextln: $()help: Return statement must return the declared function return type.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:141:14
+# check: return_in_strange_positions/src/main.sw:162:14
 # check: $()let _ = (return) || return;
 # nextln: $()Mismatched types.
 # nextln: $()expected: u64
@@ -268,7 +292,7 @@ category = "fail"
 # nextln: $()help: Return statement must return the declared function return type.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:141:25
+# check: return_in_strange_positions/src/main.sw:162:25
 # check: $()let _ = (return) || return;
 # nextln: $()Mismatched types.
 # nextln: $()expected: u64
@@ -276,51 +300,66 @@ category = "fail"
 # nextln: $()help: Return statement must return the declared function return type.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:150:17
+# check: return_in_strange_positions/src/main.sw:171:18
 # check: $()assert(42 != in_init());
 # nextln: $()Could not find symbol "in_init" in this scope.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:151:17
+# check: return_in_strange_positions/src/main.sw:172:18
 # check: $()assert(42 != in_array());
 # nextln: $()Could not find symbol "in_array" in this scope.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:152:17
+# check: return_in_strange_positions/src/main.sw:173:18
+# check: $()assert(42 != in_length_1_array());
+# nextln: $()Could not find symbol "in_length_1_array" in this scope.
+
+# check: $()error
+# check: return_in_strange_positions/src/main.sw:174:18
+# check: $()assert(42 != in_length_2_array_first());
+# nextln: $()Could not find symbol "in_length_2_array_first" in this scope.
+
+# check: $()error
+# check: return_in_strange_positions/src/main.sw:175:18
+# check: $()assert(42 != in_length_2_array_second());
+# nextln: $()Could not find symbol "in_length_2_array_second" in this scope.
+
+# check: $()error
+# check: return_in_strange_positions/src/main.sw:176:18
 # check: $()assert(42 != in_tuple());
 # nextln: $()Could not find symbol "in_tuple" in this scope.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:153:17
+# check: return_in_strange_positions/src/main.sw:177:18
 # check: $()assert(42 != in_struct());
 # nextln: $()Could not find symbol "in_struct" in this scope.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:154:17
+# check: return_in_strange_positions/src/main.sw:178:18
 # check: $()assert(42 != in_parentheses());
 # nextln: $()Could not find symbol "in_parentheses" in this scope.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:160:17
+# check: return_in_strange_positions/src/main.sw:184:18
 # check: $()assert(42 != in_enum());
 # nextln: $()Could not find symbol "in_enum" in this scope.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:161:17
+# check: return_in_strange_positions/src/main.sw:185:18
 # check: $()assert(42 != in_enum_multivariant());
 # nextln: $()Could not find symbol "in_enum_multivariant" in this scope.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:162:17
+# check: return_in_strange_positions/src/main.sw:186:18
 # check: $()assert(42 != in_fun_arg());
 # nextln: $()Could not find symbol "in_fun_arg" in this scope.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:164:17
+# check: return_in_strange_positions/src/main.sw:188:18
 # check: $()assert(42 != in_lazy_and_typecheck());
 # nextln: $()Could not find symbol "in_lazy_and_typecheck" in this scope.
 
 # check: $()error
-# check: return_in_strange_positions/src/main.sw:166:17
+# check: return_in_strange_positions/src/main.sw:190:18
 # check: $()assert(42 != in_lazy_or_typecheck());
 # nextln: $()Could not find symbol "in_lazy_or_typecheck" in this scope.

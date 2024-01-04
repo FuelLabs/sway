@@ -29,6 +29,27 @@ fn in_array() -> u64 {
     145
 }
 
+// Arrays of length 1 are treated differently
+fn in_length_1_array() -> u64 {
+    let _ = [return 42];
+    
+    145
+}
+
+// The first element of an array is treated differently
+fn in_length_2_array_first() -> u64 {
+    let _ = [return 42, 0];
+    
+    145
+}
+
+// The first element of an array is treated differently
+fn in_length_2_array_second() -> u64 {
+    let _ = [0, return 42];
+    
+    145
+}
+
 fn in_tuple() -> u64 {
     let _ = (return 42, return 43);
     
@@ -110,6 +131,9 @@ fn in_lazy_or() -> u64 {
 fn main() {
     assert(42 == in_init());
     assert(42 == in_array());
+    assert(42 == in_length_1_array());
+    assert(42 == in_length_2_array_first());
+    assert(42 == in_length_2_array_second());
     assert(42 == in_tuple());
     assert(42 == in_struct());
     assert(42 == in_parentheses());

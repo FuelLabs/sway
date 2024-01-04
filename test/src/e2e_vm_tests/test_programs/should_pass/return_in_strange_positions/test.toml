@@ -1,5 +1,5 @@
 category = "compile"
-expected_warnings = 13
+expected_warnings = 14
 
 # check: $()warning
 # check: return_in_strange_positions/src/main.sw:7:16
@@ -22,46 +22,51 @@ expected_warnings = 13
 # nextln: $()This code is unreachable.
 
 # check: $()warning
-# check: return_in_strange_positions/src/main.sw:35:5
+# check: return_in_strange_positions/src/main.sw:36:5
+# check: $()145
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:56:5
 # check: $()245
 # nextln: $()This code is unreachable.
 
 # check: $()warning
-# check: return_in_strange_positions/src/main.sw:41:5
+# check: return_in_strange_positions/src/main.sw:62:5
 # check: $()345
 # nextln: $()This code is unreachable.
 
 # check: $()warning
-# check: return_in_strange_positions/src/main.sw:47:5
+# check: return_in_strange_positions/src/main.sw:68:5
 # check: $()445
 # nextln: $()This code is unreachable.
 
 # check: $()warning
-# check: return_in_strange_positions/src/main.sw:53:5
+# check: return_in_strange_positions/src/main.sw:74:5
 # check: $()545
 # nextln: $()This code is unreachable.
 
 # check: $()warning
-# check: return_in_strange_positions/src/main.sw:58:9
+# check: return_in_strange_positions/src/main.sw:79:9
 # check: $()543
 # nextln: $()This code is unreachable.
 
 # check: $()warning
-# check: return_in_strange_positions/src/main.sw:61:9
+# check: return_in_strange_positions/src/main.sw:82:9
 # check: $()345
 # nextln: $()This code is unreachable.
 
 # check: $()warning
-# check: return_in_strange_positions/src/main.sw:64:5
+# check: return_in_strange_positions/src/main.sw:85:5
 # check: $()645
 # nextln: $()This code is unreachable.
 
 # check: $()warning
-# check: return_in_strange_positions/src/main.sw:100:5
+# check: return_in_strange_positions/src/main.sw:121:5
 # check: $()1145
 # nextln: $()This code is unreachable.
 
 # check: $()warning
-# check: return_in_strange_positions/src/main.sw:106:5
+# check: return_in_strange_positions/src/main.sw:127:5
 # check: $()1245
 # nextln: $()This code is unreachable.

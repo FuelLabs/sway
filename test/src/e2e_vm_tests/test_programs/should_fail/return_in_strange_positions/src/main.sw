@@ -36,7 +36,28 @@ fn in_init() -> u64 {
 
 fn in_array() -> u64 {
     let _ = [return, return];
+    
+    145
+}
 
+// Arrays of length 1 are treated differently
+fn in_length_1_array() -> u64 {
+    let _ = [return];
+    
+    145
+}
+
+// The first element of an array is treated differently
+fn in_length_2_array_first() -> u64 {
+    let _ = [return, 0];
+    
+    145
+}
+
+// The first element of an array is treated differently
+fn in_length_2_array_second() -> u64 {
+    let _ = [0, return];
+    
     145
 }
 
@@ -145,23 +166,26 @@ fn in_lazy_or_typecheck() -> u64 {
 
 
 fn main() {
-   assert(42 == in_match_scrutinee_legal_return());
-
-   assert(42 != in_init());
-   assert(42 != in_array());
-   assert(42 != in_tuple());
-   assert(42 != in_struct());
-   assert(42 != in_parentheses());
-   assert(42 != in_arithmetic_parse());
-   assert(42 != in_arithmetic_typecheck());
-   assert(42 != in_if_condition());
-   assert(42 != in_while_condition());
-   assert(42 != in_match_scrutinee());
-   assert(42 != in_enum());
-   assert(42 != in_enum_multivariant());
-   assert(42 != in_fun_arg());
-   assert(42 != in_lazy_and_parse());
-   assert(42 != in_lazy_and_typecheck());
-   assert(42 != in_lazy_or_parse());
-   assert(42 != in_lazy_or_typecheck());
+    assert(42 == in_match_scrutinee_legal_return());
+    
+    assert(42 != in_init());
+    assert(42 != in_array());
+    assert(42 != in_length_1_array());
+    assert(42 != in_length_2_array_first());
+    assert(42 != in_length_2_array_second());
+    assert(42 != in_tuple());
+    assert(42 != in_struct());
+    assert(42 != in_parentheses());
+    assert(42 != in_arithmetic_parse());
+    assert(42 != in_arithmetic_typecheck());
+    assert(42 != in_if_condition());
+    assert(42 != in_while_condition());
+    assert(42 != in_match_scrutinee());
+    assert(42 != in_enum());
+    assert(42 != in_enum_multivariant());
+    assert(42 != in_fun_arg());
+    assert(42 != in_lazy_and_parse());
+    assert(42 != in_lazy_and_typecheck());
+    assert(42 != in_lazy_or_parse());
+    assert(42 != in_lazy_or_typecheck());
 }
