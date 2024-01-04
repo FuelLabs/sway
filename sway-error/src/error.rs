@@ -1142,6 +1142,7 @@ impl ToDiagnostic for CompileError {
                 // Make candidates order deterministic
                 let mut trait_candidates = trait_candidates.clone();
                 trait_candidates.sort();
+                let trait_candidates = &trait_candidates;
                 Diagnostic {
                 reason: Some(Reason::new(code(1), "Trait is not imported".to_string())),
                 issue: Issue::error(
