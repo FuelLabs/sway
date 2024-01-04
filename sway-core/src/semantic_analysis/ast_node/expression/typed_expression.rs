@@ -2104,6 +2104,155 @@ impl ty::TyExpression {
     }
 }
 
+fn check_asm_block_validity(
+    handler: &Handler,
+    asm: &AsmExpression,
+    ctx: &TypeCheckContext,
+) -> Result<(), ErrorEmitted> {
+    // Collect all asm block instructions in the form of `VirtualOp`s
+    let mut opcodes = vec![];
+    for op in &asm.body {
+        let registers = op
+            .op_args
+            .iter()
+            .map(|reg_name| VirtualRegister::Virtual(reg_name.to_string()))
+            .collect::<Vec<VirtualRegister>>();
+
+        opcodes.push((
+            crate::asm_lang::Op::parse_opcode(
+                handler,
+                &op.op_name,
+                &registers,
+                &op.immediate,
+                op.span.clone(),
+            )?,
+            op.op_name.clone(),
+            op.span.clone(),
+        ));
+    }
+
+    // Check #1: Disallow control flow instructions
+    //
+    for err in opcodes
+        .iter()
+        .filter(|op| {
+            matches!(
+                op.0,
+                VirtualOp::JMP(_)
+                    | VirtualOp::JI(_)
+                    | VirtualOp::JNE(..)
+                    | VirtualOp::JNEI(..)
+                    | VirtualOp::JNZI(..)
+                    | VirtualOp::RET(_)
+                    | VirtualOp::RETD(..)
+                    | VirtualOp::RVRT(..)
+            )
+        })
+        .map(|op| CompileError::DisallowedControlFlowInstruction {
+            name: op.1.to_string(),
+            span: op.2.clone(),
+        })
+    {
+        handler.emit_err(err);
+    }
+
+    // Check #2: Disallow initialized registers from being reassigned in the asm block
+    //
+    // 1. Collect all registers that have initializers in the list of arguments
+    let initialized_registers = asm
+        .registers
+        .iter()
+        .filter(|reg| reg.initializer.is_some())
+        .map(|reg| VirtualRegister::Virtual(reg.name.to_string()))
+        .collect::<FxHashSet<_>>();
+
+    // 2. From the list of `VirtualOp`s, figure out what registers are assigned
+    let assigned_registers: FxHashSet<VirtualRegister> =
+        opcodes.iter().fold(FxHashSet::default(), |mut acc, op| {
+            for u in op.0.def_registers() {
+                acc.insert(u.clone());
+            }
+            acc
+        });
+
+    // 3. Intersect the list of assigned registers with the list of initialized registers
+    let initialized_and_assigned_registers = assigned_registers
+        .intersection(&initialized_registers)
+        .collect::<FxHashSet<_>>();
+
+    // 4. Form all the compile errors given the violating registers above. Obtain span information
+    //    from the original `asm.registers` vector.
+    for err in asm
+        .registers
+        .iter()
+        .filter(|reg| {
+            initialized_and_assigned_registers
+                .contains(&VirtualRegister::Virtual(reg.name.to_string()))
+        })
+        .map(|reg| CompileError::InitializedRegisterReassignment {
+            name: reg.name.to_string(),
+            span: reg.name.span(),
+        })
+    {
+        handler.emit_err(err);
+    }
+
+    // Check #3: Check if there are uninitialized registers that are read before being written
+    let mut uninitialized_registers = asm
+        .registers
+        .iter()
+        .filter(|reg| reg.initializer.is_none())
+        .map(|reg| {
+            let span = reg.name.span();
+
+            // Emit warning if this register shadows a variable
+            let temp_handler = Handler::default();
+            let decl = ctx.namespace.resolve_call_path(
+                &temp_handler,
+                ctx.engines,
+                &CallPath {
+                    prefixes: vec![],
+                    suffix: sway_types::BaseIdent::new(span.clone()),
+                    is_absolute: true,
+                },
+                None,
+            );
+
+            if let Ok(ty::TyDecl::VariableDecl(decl)) = decl {
+                handler.emit_warn(CompileWarning {
+                    span: span.clone(),
+                    warning_content: Warning::UninitializedAsmRegShadowsVariable {
+                        name: decl.name.clone(),
+                    },
+                });
+            }
+
+            (VirtualRegister::Virtual(reg.name.to_string()), span)
+        })
+        .collect::<HashMap<_, _>>();
+
+    for (op, _, _) in opcodes.iter() {
+        for being_read in op.use_registers() {
+            if let Some(span) = uninitialized_registers.remove(being_read) {
+                handler.emit_err(CompileError::UninitRegisterInAsmBlockBeingRead { span });
+            }
+        }
+
+        for being_written in op.def_registers() {
+            uninitialized_registers.remove(being_written);
+        }
+    }
+
+    if let Some((reg, _)) = asm.returns.as_ref() {
+        let reg = VirtualRegister::Virtual(reg.name.to_string());
+        if let Some(span) = uninitialized_registers.remove(&reg) {
+            handler.emit_err(CompileError::UninitRegisterInAsmBlockBeingRead { span });
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2293,153 +2442,4 @@ mod tests {
         assert!(comp_res.is_ok());
         assert!(warnings.is_empty() && errors.is_empty());
     }
-}
-
-fn check_asm_block_validity(
-    handler: &Handler,
-    asm: &AsmExpression,
-    ctx: &TypeCheckContext,
-) -> Result<(), ErrorEmitted> {
-    // Collect all asm block instructions in the form of `VirtualOp`s
-    let mut opcodes = vec![];
-    for op in &asm.body {
-        let registers = op
-            .op_args
-            .iter()
-            .map(|reg_name| VirtualRegister::Virtual(reg_name.to_string()))
-            .collect::<Vec<VirtualRegister>>();
-
-        opcodes.push((
-            crate::asm_lang::Op::parse_opcode(
-                handler,
-                &op.op_name,
-                &registers,
-                &op.immediate,
-                op.span.clone(),
-            )?,
-            op.op_name.clone(),
-            op.span.clone(),
-        ));
-    }
-
-    // Check #1: Disallow control flow instructions
-    //
-    for err in opcodes
-        .iter()
-        .filter(|op| {
-            matches!(
-                op.0,
-                VirtualOp::JMP(_)
-                    | VirtualOp::JI(_)
-                    | VirtualOp::JNE(..)
-                    | VirtualOp::JNEI(..)
-                    | VirtualOp::JNZI(..)
-                    | VirtualOp::RET(_)
-                    | VirtualOp::RETD(..)
-                    | VirtualOp::RVRT(..)
-            )
-        })
-        .map(|op| CompileError::DisallowedControlFlowInstruction {
-            name: op.1.to_string(),
-            span: op.2.clone(),
-        })
-    {
-        handler.emit_err(err);
-    }
-
-    // Check #2: Disallow initialized registers from being reassigned in the asm block
-    //
-    // 1. Collect all registers that have initializers in the list of arguments
-    let initialized_registers = asm
-        .registers
-        .iter()
-        .filter(|reg| reg.initializer.is_some())
-        .map(|reg| VirtualRegister::Virtual(reg.name.to_string()))
-        .collect::<FxHashSet<_>>();
-
-    // 2. From the list of `VirtualOp`s, figure out what registers are assigned
-    let assigned_registers: FxHashSet<VirtualRegister> =
-        opcodes.iter().fold(FxHashSet::default(), |mut acc, op| {
-            for u in op.0.def_registers() {
-                acc.insert(u.clone());
-            }
-            acc
-        });
-
-    // 3. Intersect the list of assigned registers with the list of initialized registers
-    let initialized_and_assigned_registers = assigned_registers
-        .intersection(&initialized_registers)
-        .collect::<FxHashSet<_>>();
-
-    // 4. Form all the compile errors given the violating registers above. Obtain span information
-    //    from the original `asm.registers` vector.
-    for err in asm
-        .registers
-        .iter()
-        .filter(|reg| {
-            initialized_and_assigned_registers
-                .contains(&VirtualRegister::Virtual(reg.name.to_string()))
-        })
-        .map(|reg| CompileError::InitializedRegisterReassignment {
-            name: reg.name.to_string(),
-            span: reg.name.span(),
-        })
-    {
-        handler.emit_err(err);
-    }
-
-    // Check #3: Check if there are uninitialized registers that are read before being written
-    let mut uninitialized_registers = asm
-        .registers
-        .iter()
-        .filter(|reg| reg.initializer.is_none())
-        .map(|reg| {
-            let span = reg.name.span();
-
-            // Emit warning if this register shadows a variable
-            let temp_handler = Handler::default();
-            let decl = ctx.namespace.resolve_call_path(
-                &temp_handler,
-                ctx.engines,
-                &CallPath {
-                    prefixes: vec![],
-                    suffix: sway_types::BaseIdent::new(span.clone()),
-                    is_absolute: true,
-                },
-                None,
-            );
-
-            if let Ok(ty::TyDecl::VariableDecl(decl)) = decl {
-                handler.emit_warn(CompileWarning {
-                    span: span.clone(),
-                    warning_content: Warning::UninitializedAsmRegShadowsVariable {
-                        name: decl.name.clone(),
-                    },
-                });
-            }
-
-            (VirtualRegister::Virtual(reg.name.to_string()), span)
-        })
-        .collect::<HashMap<_, _>>();
-
-    for (op, _, _) in opcodes.iter() {
-        for being_read in op.use_registers() {
-            if let Some(span) = uninitialized_registers.remove(being_read) {
-                handler.emit_err(CompileError::UninitRegisterInAsmBlockBeingRead { span });
-            }
-        }
-
-        for being_written in op.def_registers() {
-            uninitialized_registers.remove(being_written);
-        }
-    }
-
-    if let Some((reg, _)) = asm.returns.as_ref() {
-        let reg = VirtualRegister::Virtual(reg.name.to_string());
-        if let Some(span) = uninitialized_registers.remove(&reg) {
-            handler.emit_err(CompileError::UninitRegisterInAsmBlockBeingRead { span });
-        }
-    }
-
-    Ok(())
 }

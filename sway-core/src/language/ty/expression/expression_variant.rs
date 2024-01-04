@@ -765,7 +765,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     ref mut arguments,
                     ..
                 } => {
-                    let filter_type_opt = arguments.get(0).map(|(_, arg)| arg.return_type);
+                    let filter_type_opt = arguments.first().map(|(_, arg)| arg.return_type);
 
                     if let Some(filter_type) = filter_type_opt {
                         let filtered_decl_mapping =
