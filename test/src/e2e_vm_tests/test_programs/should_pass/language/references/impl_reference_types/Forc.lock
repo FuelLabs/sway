@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-1F7B33F0B2B16AF4"
+
+[[package]]
+name = "impl_reference_types"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-1F7B33F0B2B16AF4"
+dependencies = ["core"]

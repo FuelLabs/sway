@@ -726,7 +726,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     program: &ty::TyProgram,
     build_config: &BuildConfig,
 ) -> Result<FinalizedAsm, ErrorEmitted> {
-    // the IR pipeline relies on type information being fully resolved.
+    // The IR pipeline relies on type information being fully resolved.
     // If type information is found to still be generic or unresolved inside of
     // IR, this is considered an internal compiler error. To resolve this situation,
     // we need to explicitly ensure all types are resolved before going into IR.
