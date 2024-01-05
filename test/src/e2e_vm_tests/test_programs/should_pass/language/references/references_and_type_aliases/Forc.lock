@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-C20A55B9AF89FB67"
+
+[[package]]
+name = "references_and_type_aliases"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-C20A55B9AF89FB67"
+dependencies = ["core"]

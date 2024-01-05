@@ -1097,6 +1097,7 @@ impl Constant {
                     .collect::<Vec<String>>()
                     .join(", ")
             ),
+            ConstantValue::Reference(constant) => format!("&({})", constant.as_lit_string(context)),
         }
     }
 }

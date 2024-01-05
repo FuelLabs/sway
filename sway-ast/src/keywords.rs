@@ -75,7 +75,6 @@ define_keyword!(LetToken, "let");
 define_keyword!(WhileToken, "while");
 define_keyword!(WhereToken, "where");
 define_keyword!(RefToken, "ref");
-define_keyword!(DerefToken, "deref");
 define_keyword!(TrueToken, "true");
 define_keyword!(FalseToken, "false");
 define_keyword!(BreakToken, "break");
@@ -85,12 +84,12 @@ define_keyword!(TypeToken, "type");
 define_keyword!(PtrToken, "__ptr");
 define_keyword!(SliceToken, "__slice");
 
-/// The type is a keyword.
+/// The type is a token.
 pub trait Token: Spanned + Sized {
-    /// Creates the keyword from the given `span`.
+    /// Creates the token from the given `span`.
     fn new(span: Span) -> Self;
 
-    /// Returns an identifier for this keyword.
+    /// Returns an identifier for this token.
     fn ident(&self) -> Ident;
 
     /// The sequence of punctuations that make up the token.

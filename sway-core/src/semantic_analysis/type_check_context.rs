@@ -537,6 +537,26 @@ impl<'a> TypeCheckContext<'a> {
                     )));
                 }
             }
+            TypeInfo::Ref(mut ty) => {
+                ty.type_id = self
+                    .resolve(
+                        handler,
+                        ty.type_id,
+                        span,
+                        enforce_type_arguments,
+                        None,
+                        mod_path,
+                    )
+                    .unwrap_or_else(|err| {
+                        self.engines
+                            .te()
+                            .insert(self.engines, TypeInfo::ErrorRecovery(err), None)
+                    });
+
+                self.engines
+                    .te()
+                    .insert(self.engines, TypeInfo::Ref(ty.clone()), None)
+            }
             _ => type_id,
         };
 
@@ -1122,12 +1142,12 @@ impl<'a> TypeCheckContext<'a> {
                     // When we use a qualified path the expected method should be in trait_methods.
                     None
                 } else {
-                    maybe_method_decl_refs.get(0).cloned()
+                    maybe_method_decl_refs.first().cloned()
                 }
             } else {
                 // When we can't match any method with parameter types we still return the first method found
                 // This was the behavior before introducing the parameter type matching
-                matching_method_decl_refs.get(0).cloned()
+                matching_method_decl_refs.first().cloned()
             }
         };
 
@@ -1136,7 +1156,7 @@ impl<'a> TypeCheckContext<'a> {
         }
 
         if let Some(TypeInfo::ErrorRecovery(err)) = args_buf
-            .get(0)
+            .front()
             .map(|x| (*type_engine.get(x.return_type)).clone())
         {
             Err(err)

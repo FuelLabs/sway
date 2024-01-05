@@ -1,5 +1,8 @@
 use fuels::{
-    accounts::{wallet::{Wallet, WalletUnlocked}, predicate::Predicate},
+    accounts::{
+        predicate::Predicate,
+        wallet::{Wallet, WalletUnlocked},
+    },
     prelude::*,
     types::ContractId,
 };
@@ -15,7 +18,7 @@ abigen!(
         abi = "test_artifacts/auth_caller_contract/out/debug/auth_caller_contract-abi.json"
     ),
     Predicate(
-        name = "AuthPredicate", 
+        name = "AuthPredicate",
         abi = "test_artifacts/auth_predicate/out/debug/auth_predicate-abi.json"
     ),
 );
@@ -112,27 +115,37 @@ async fn can_get_predicate_id() {
             coin_amount: 1_000,
         }],
     );
-    let wallets = &launch_custom_provider_and_get_wallets(wallets_config, None, None).await.unwrap();
+    let wallets = &launch_custom_provider_and_get_wallets(wallets_config, None, None)
+        .await
+        .unwrap();
     let first_wallet = &wallets[0];
     let second_wallet = &wallets[1];
 
     // Setup Predciate
-    let hex_predicate_address: &str = "0x76bae6a88c3f54a9aee40ee5390696dd9edaf1b2a16d96a75adbcaac2ec6584f";
-    let predicate_address = Address::from_str(hex_predicate_address).expect("failed to create Address from string");
+    let hex_predicate_address: &str =
+        "0x76bae6a88c3f54a9aee40ee5390696dd9edaf1b2a16d96a75adbcaac2ec6584f";
+    let predicate_address =
+        Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);
     let predicate_data = AuthPredicateEncoder::encode_data(predicate_bech32_address);
-    let predicate: Predicate = Predicate::load_from("test_artifacts/auth_predicate/out/debug/auth_predicate.bin").unwrap()
-        .with_provider(first_wallet.try_provider().unwrap().clone())
-        .with_data(predicate_data);
+    let predicate: Predicate =
+        Predicate::load_from("test_artifacts/auth_predicate/out/debug/auth_predicate.bin")
+            .unwrap()
+            .with_provider(first_wallet.try_provider().unwrap().clone())
+            .with_data(predicate_data);
 
     // Next, we lock some assets in this predicate using the first wallet:
     // First wallet transfers amount to predicate.
     first_wallet
         .transfer(predicate.address(), 500, asset_id, TxPolicies::default())
-        .await.unwrap();
+        .await
+        .unwrap();
 
     // Check predicate balance.
-    let balance = predicate.get_asset_balance(&AssetId::default()).await.unwrap();
+    let balance = predicate
+        .get_asset_balance(&AssetId::default())
+        .await
+        .unwrap();
     assert_eq!(balance, 500);
 
     // Then we can transfer assets owned by the predicate via the Account trait:
@@ -146,14 +159,21 @@ async fn can_get_predicate_id() {
             asset_id,
             TxPolicies::default(),
         )
-        .await.unwrap();
+        .await
+        .unwrap();
 
     // Predicate balance is zero.
-    let balance = predicate.get_asset_balance(&AssetId::default()).await.unwrap();
+    let balance = predicate
+        .get_asset_balance(&AssetId::default())
+        .await
+        .unwrap();
     assert_eq!(balance, 0);
 
     // Second wallet balance is updated.
-    let balance = second_wallet.get_asset_balance(&AssetId::default()).await.unwrap();
+    let balance = second_wallet
+        .get_asset_balance(&AssetId::default())
+        .await
+        .unwrap();
     assert_eq!(balance, 1500);
 }
 
@@ -170,26 +190,36 @@ async fn when_incorrect_predicate_address_passed() {
             coin_amount: 1_000,
         }],
     );
-    let wallets = &launch_custom_provider_and_get_wallets(wallets_config, None, None).await.unwrap();
+    let wallets = &launch_custom_provider_and_get_wallets(wallets_config, None, None)
+        .await
+        .unwrap();
     let first_wallet = &wallets[0];
     let second_wallet = &wallets[1];
 
     // Setup Predciate with incorrect address
-    let hex_predicate_address: &str = "0x36bf4bd40f2a3b3db595ef8fd8b21dbe9e6c0dd7b419b4413ff6b584ce7da5d7";
-    let predicate_address = Address::from_str(hex_predicate_address).expect("failed to create Address from string");
+    let hex_predicate_address: &str =
+        "0x36bf4bd40f2a3b3db595ef8fd8b21dbe9e6c0dd7b419b4413ff6b584ce7da5d7";
+    let predicate_address =
+        Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_data = AuthPredicateEncoder::encode_data(Bech32Address::from(predicate_address));
-    let predicate: Predicate = Predicate::load_from("test_artifacts/auth_predicate/out/debug/auth_predicate.bin").unwrap()
-        .with_provider(first_wallet.try_provider().unwrap().clone())
-        .with_data(predicate_data);
+    let predicate: Predicate =
+        Predicate::load_from("test_artifacts/auth_predicate/out/debug/auth_predicate.bin")
+            .unwrap()
+            .with_provider(first_wallet.try_provider().unwrap().clone())
+            .with_data(predicate_data);
 
     // Next, we lock some assets in this predicate using the first wallet:
     // First wallet transfers amount to predicate.
     first_wallet
         .transfer(predicate.address(), 500, asset_id, TxPolicies::default())
-        .await.unwrap();
+        .await
+        .unwrap();
 
     // Check predicate balance.
-    let balance = predicate.get_asset_balance(&AssetId::default()).await.unwrap();
+    let balance = predicate
+        .get_asset_balance(&AssetId::default())
+        .await
+        .unwrap();
     assert_eq!(balance, 500);
 
     // Then we can transfer assets owned by the predicate via the Account trait:
@@ -203,5 +233,6 @@ async fn when_incorrect_predicate_address_passed() {
             asset_id,
             TxPolicies::default(),
         )
-        .await.unwrap();
+        .await
+        .unwrap();
 }
