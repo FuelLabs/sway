@@ -149,7 +149,6 @@ impl Session {
         self.runnables.clear();
         self.metrics.clear();
 
-        //eprintln!("THREAD | success, about to token map");
         res.token_map.deref().iter().for_each(|item| {
             let (i, t) = item.pair();
             self.token_map.insert(i.clone(), t.clone());
@@ -161,7 +160,6 @@ impl Session {
         });
 
         let (errors, warnings) = res.diagnostics;
-        //eprintln!("THREAD | success, about to write diagnostics");
         *self.diagnostics.write() =
             capabilities::diagnostic::get_diagnostics(&warnings, &errors, self.engines.read().se());
 
@@ -170,7 +168,6 @@ impl Session {
             self.engines.read().de(),
             self.engines.read().se(),
         );
-        //eprintln!("THREAD | success, about to write programs");
         self.compiled_program.write().lexed = Some(res.lexed);
         self.compiled_program.write().parsed = Some(res.parsed);
         self.compiled_program.write().typed = Some(res.typed);
@@ -541,10 +538,7 @@ pub fn parse_project(
 ) -> Result<ParseResult, LanguageServerError> {
     let results = compile(uri, engines, retrigger_compilation)?;
     if results.last().is_none() {
-        //eprintln!("compilation failed, returning");
         return Err(LanguageServerError::ProgramsIsNone);
-    } else {
-        //eprintln!("compilation successful, starting traversal");
     }
     let TraversalResult {
         diagnostics,
@@ -552,7 +546,6 @@ pub fn parse_project(
         token_map,
         metrics,
     } = traverse(results, engines)?;
-    //eprintln!("traversal successful");
     let (lexed, parsed, typed) = programs.ok_or(LanguageServerError::ProgramsIsNone)?;
     Ok(ParseResult {
         diagnostics,

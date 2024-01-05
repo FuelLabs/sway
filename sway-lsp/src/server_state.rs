@@ -82,34 +82,6 @@ pub struct CompilationContext {
     pub version: Option<i32>,
 }
 
-/// This function is responsible for managing the compilation flags and signaling
-/// the completion of the compilation process if there is no pending compilation work.
-/// Tokio's [Notify] is used to notify waiters that the compilation process has finished.
-fn update_compilation_state(
-    is_compiling: Arc<AtomicBool>,
-    retrigger_compilation: Arc<AtomicBool>,
-    finished_compilation: Arc<Notify>,
-    rx: Arc<Receiver<TaskMessage>>,
-) {
-    //eprintln!("THREAD | update_compilation_state");
-
-    is_compiling.store(false, Ordering::SeqCst);
-    //eprintln!("THREAD | is_compiling = {:?}", is_compiling.load(Ordering::SeqCst));
-
-    retrigger_compilation.store(false, Ordering::SeqCst);
-    //eprintln!("THREAD | retrigger_compilation = {:?}", retrigger_compilation.load(Ordering::SeqCst));
-
-    // Make sure there isn't any pending compilation work
-    if rx.is_empty() {
-        //eprintln!("THREAD | no pending compilation work, safe to set is_compiling to false");
-
-        //eprintln!("THREAD | finished compilation, notifying waiters");
-        finished_compilation.notify_waiters();
-    } else {
-        //eprintln!("THREAD | there is pending compilation work");
-    }
-}
-
 impl ServerState {
     pub fn new(client: Client) -> ServerState {
         ServerState {
@@ -133,14 +105,11 @@ impl ServerState {
             while let Ok(msg) = rx.recv() {
                 match msg {
                     TaskMessage::CompilationContext(ctx) => {
-                        //eprintln!("THREAD | received new compilation request");
-
                         let uri = ctx.uri.as_ref().unwrap().clone();
-                        let version = ctx.version;
                         let session = ctx.session.as_ref().unwrap().clone();
                         let mut engines_clone = session.engines.read().clone();
 
-                        if let Some(version) = version {
+                        if let Some(version) = ctx.version {
                             // Garbage collection is fairly expsensive so we only clear on every 10th keystroke.
                             if version % 10 == 0 {
                                 // Call this on the engines clone so we don't clear types that are still in use
@@ -154,41 +123,38 @@ impl ServerState {
                             }
                         }
 
+                        // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
                         is_compiling.store(true, Ordering::SeqCst);
-                        //eprintln!("THREAD | starting parsing project: version: {:?}", version);
                         match session::parse_project(
                             &uri,
                             &engines_clone,
                             Some(retrigger_compilation.clone()),
                         ) {
                             Ok(parse_result) => {
-                                //eprintln!("THREAD | engines_write: {:?}", version);
                                 *session.engines.write() = engines_clone;
-                                //eprintln!("THREAD | success, about to write parse results: {:?}", version);
                                 session.write_parse_result(parse_result);
-                                //eprintln!("THREAD | finished writing parse results: {:?}", version);
                                 *last_compilation_state.write() = LastCompilationState::Success;
                             }
                             Err(_err) => {
-                                //eprintln!("compilation has returned cancelled {:?}", err);
                                 *last_compilation_state.write() = LastCompilationState::Failed;
                             }
                         }
 
-                        update_compilation_state(
-                            is_compiling.clone(),
-                            retrigger_compilation.clone(),
-                            finished_compilation.clone(),
-                            rx.clone(),
-                        );
+                        // Reset the flags to false
+                        is_compiling.store(false, Ordering::SeqCst);
+                        retrigger_compilation.store(false, Ordering::SeqCst);
+
+                        // Make sure there isn't any pending compilation work
+                        if rx.is_empty() {
+                            // finished compilation, notify waiters
+                            finished_compilation.notify_waiters();
+                        }
+
                         if *last_compilation_state.read() == LastCompilationState::Failed {
                             continue;
                         }
-                        //eprintln!("THREAD | finished parsing project: version: {:?}", version);
                     }
                     TaskMessage::Terminate => {
-                        //eprintln!("THREAD | received terminate message");
-
                         // If we receive a terminate message, we need to exit the thread
                         return;
                     }
@@ -204,25 +170,15 @@ impl ServerState {
     /// this process until `is_compiling` becomes false.
     pub async fn wait_for_parsing(&self) {
         loop {
-            //eprintln!("are we still compiling? | is_compiling = {:?}", self.is_compiling.load(Ordering::SeqCst));
             if !self.is_compiling.load(Ordering::SeqCst) {
-                //eprintln!("compilation is finished, lets check if there are pending compilation requests");
+                // compilation is finished, lets check if there are pending compilation requests.
                 if self.cb_rx.is_empty() {
-                    //eprintln!("no pending compilation work, safe to break");
-                    eprintln!(
-                        "And the last compilation state was: {:?}",
-                        &self.last_compilation_state.read()
-                    );
-
+                    // no pending compilation work, safe to break.
                     break;
-                } else {
-                    //eprintln!("there is pending compilation work, lets wait for it to finish");
                 }
-            } else {
-                //eprintln!("we are still compiling, lets wait to be notified");
             }
+            // We are still compiling, lets wait to be notified.
             self.finished_compilation.notified().await;
-            //eprintln!("we were notified, lets check if we are still compiling");
         }
     }
 
@@ -230,19 +186,17 @@ impl ServerState {
         tracing::info!("Shutting Down the Sway Language Server");
 
         // Drain pending compilation requests
-        while self.cb_rx.try_recv().is_ok() {
-            //eprintln!("draining pending compilation requests");
-        }
+        while self.cb_rx.try_recv().is_ok() {}
+
         // set the retrigger_compilation flag to true so that the compilation exit early
         self.retrigger_compilation.store(true, Ordering::SeqCst);
         self.wait_for_parsing().await;
 
-        //eprintln!("sending terminate message");
+        // Send a terminate message to the compilation thread
         self.cb_tx
             .send(TaskMessage::Terminate)
             .expect("failed to send terminate message");
 
-        //eprintln!("shutting down the sessions");
         let _ = self.sessions.iter().map(|item| {
             let session = item.value();
             session.shutdown();

@@ -257,7 +257,6 @@ pub async fn handle_code_lens(
     state: &ServerState,
     params: lsp_types::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
-    eprintln!("code_lens");
     let _ = state.wait_for_parsing().await;
     match state
         .sessions
