@@ -302,7 +302,6 @@ impl Session {
                 path: uri.path().to_string(),
                 err: err.to_string(),
             })?;
-
         Ok(())
     }
 
