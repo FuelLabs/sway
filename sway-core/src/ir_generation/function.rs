@@ -485,9 +485,7 @@ impl<'eng> FnCompiler<'eng> {
                 ..
             } => {
                 let enum_decl = self.engines.de().get_enum(enum_ref);
-                let res =
-                    self.compile_enum_expr(context, md_mgr, &enum_decl, *tag, contents.as_deref());
-                res
+                self.compile_enum_expr(context, md_mgr, &enum_decl, *tag, contents.as_deref())
             }
             ty::TyExpressionVariant::Tuple { fields } => {
                 self.compile_tuple_expr(context, md_mgr, fields, span_md_idx)
@@ -2639,7 +2637,7 @@ impl<'eng> FnCompiler<'eng> {
             // Insert the value too.
             let contents_value =
                 self.compile_expression_to_value(context, md_mgr, contents.unwrap())?;
-            // Only store if the the value does not diverge.
+            // Only store if the value does not diverge.
             if contents_value.is_diverging(context) {
                 return Ok(contents_value);
             }
