@@ -840,8 +840,7 @@ fn error(handler: &Handler, error: LexError) -> ErrorEmitted {
 
 #[cfg(test)]
 mod tests {
-    use super::{lex, lex_commented};
-    use crate::priv_prelude::*;
+    use super::*;
     use assert_matches::assert_matches;
     use std::sync::Arc;
     use sway_ast::{

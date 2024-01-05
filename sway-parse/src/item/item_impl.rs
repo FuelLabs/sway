@@ -105,4 +105,24 @@ mod tests {
         );
         assert_matches!(item.ty, Ty::Slice { .. });
     }
+
+    #[test]
+    fn parse_impl_ref() {
+        let item = parse::<ItemImpl>(
+            r#"
+            impl &T {}
+            "#,
+        );
+        assert_matches!(item.ty, Ty::Ref { .. });
+    }
+
+    #[test]
+    fn parse_impl_for_ref() {
+        let item = parse::<ItemImpl>(
+            r#"
+            impl Foo for &T {}
+            "#,
+        );
+        assert_matches!(item.ty, Ty::Ref { .. });
+    }
 }
