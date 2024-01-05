@@ -1,5 +1,7 @@
-category = "compile"
-expected_warnings = 14
+category = "run"
+expected_result = { action = "return", value = 8193 }
+validate_abi = true
+expected_warnings = 22
 
 # check: $()warning
 # check: return_in_strange_positions/src/main.sw:7:16

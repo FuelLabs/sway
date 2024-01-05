@@ -69,7 +69,7 @@ fn in_parentheses() -> u64 {
 }
 
 fn in_arithmetic() -> u64 {
-    let _ = return 42 + return 43;
+    let _ = return 43 + return 42; // Grouped as return (43 + return 42), so returns 42
 
     545
 }
@@ -128,7 +128,7 @@ fn in_lazy_or() -> u64 {
 }
 
 
-fn main() {
+fn main() -> u64 {
     assert(42 == in_init());
     assert(42 == in_array());
     assert(42 == in_length_1_array());
@@ -145,4 +145,6 @@ fn main() {
     assert(42 == in_fun_arg());
     assert(42 == in_lazy_and());
     assert(42 == in_lazy_or());
+
+    8193
 }
