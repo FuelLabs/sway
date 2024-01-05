@@ -19,6 +19,7 @@ use std::{
         Arc,
     },
 };
+use tokio::sync::Notify;
 use tower_lsp::{jsonrpc, Client};
 
 /// `ServerState` is the primary mutable state of the language server
@@ -31,7 +32,7 @@ pub struct ServerState {
     pub is_compiling: Arc<AtomicBool>,
     pub(crate) cb_tx: Sender<TaskMessage>,
     pub(crate) cb_rx: Arc<Receiver<TaskMessage>>,
-    pub(crate) finished_compilation: Arc<tokio::sync::Notify>,
+    pub(crate) finished_compilation: Arc<Notify>,
     last_compilation_state: Arc<RwLock<LastCompilationState>>,
 }
 
@@ -47,7 +48,7 @@ impl Default for ServerState {
             is_compiling: Arc::new(AtomicBool::new(false)),
             cb_tx,
             cb_rx: Arc::new(cb_rx),
-            finished_compilation: Arc::new(tokio::sync::Notify::new()),
+            finished_compilation: Arc::new(Notify::new()),
             last_compilation_state: Arc::new(RwLock::new(LastCompilationState::Uninitialized)),
         };
         // Spawn a new thread dedicated to handling compilation tasks
@@ -57,8 +58,7 @@ impl Default for ServerState {
 }
 
 /// `LastCompilationState` represents the state of the last compilation process.
-/// It's primarily used for debugging purposes.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum LastCompilationState {
     Success,
     Failed,
@@ -84,10 +84,11 @@ pub struct CompilationContext {
 
 /// This function is responsible for managing the compilation flags and signaling
 /// the completion of the compilation process if there is no pending compilation work.
+/// Tokio's [Notify] is used to notify waiters that the compilation process has finished.
 fn update_compilation_state(
     is_compiling: Arc<AtomicBool>,
     retrigger_compilation: Arc<AtomicBool>,
-    finished_compilation: Arc<tokio::sync::Notify>,
+    finished_compilation: Arc<Notify>,
     rx: Arc<Receiver<TaskMessage>>,
 ) {
     //eprintln!("THREAD | update_compilation_state");
@@ -142,7 +143,6 @@ impl ServerState {
                         if let Some(version) = version {
                             // Garbage collection is fairly expsensive so we only clear on every 10th keystroke.
                             if version % 10 == 0 {
-                                eprintln!("Garbage collecting");
                                 // Call this on the engines clone so we don't clear types that are still in use
                                 // and might be needed in the case cancel compilation was triggered.
                                 if let Err(err) = session.garbage_collect(&mut engines_clone) {
@@ -167,30 +167,29 @@ impl ServerState {
                                 //eprintln!("THREAD | success, about to write parse results: {:?}", version);
                                 session.write_parse_result(parse_result);
                                 //eprintln!("THREAD | finished writing parse results: {:?}", version);
-                                update_compilation_state(
-                                    is_compiling.clone(),
-                                    retrigger_compilation.clone(),
-                                    finished_compilation.clone(),
-                                    rx.clone(),
-                                );
                                 *last_compilation_state.write() = LastCompilationState::Success;
                             }
                             Err(_err) => {
                                 //eprintln!("compilation has returned cancelled {:?}", err);
-                                update_compilation_state(
-                                    is_compiling.clone(),
-                                    retrigger_compilation.clone(),
-                                    finished_compilation.clone(),
-                                    rx.clone(),
-                                );
                                 *last_compilation_state.write() = LastCompilationState::Failed;
-                                continue;
                             }
+                        }
+
+                        update_compilation_state(
+                            is_compiling.clone(),
+                            retrigger_compilation.clone(),
+                            finished_compilation.clone(),
+                            rx.clone(),
+                        );
+                        if *last_compilation_state.read() == LastCompilationState::Failed {
+                            continue;
                         }
                         //eprintln!("THREAD | finished parsing project: version: {:?}", version);
                     }
                     TaskMessage::Terminate => {
                         //eprintln!("THREAD | received terminate message");
+
+                        // If we receive a terminate message, we need to exit the thread
                         return;
                     }
                 }

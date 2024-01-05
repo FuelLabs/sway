@@ -34,7 +34,7 @@ impl Handler {
         ErrorEmitted { _priv: () }
     }
 
-    // todo: decide what to return here
+    // Compilation should be cancelled.
     pub fn cancel(&self) -> ErrorEmitted {
         ErrorEmitted { _priv: () }
     }
