@@ -529,6 +529,8 @@ pub fn parsed_to_ast(
         None => (None, None),
     };
 
+    check_should_abort(handler, retrigger_compilation.clone())?;
+
     // Perform control flow analysis and extend with any errors.
     let _ = perform_control_flow_analysis(
         handler,

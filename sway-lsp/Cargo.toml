@@ -60,7 +60,6 @@ futures = { version = "0.3", default-features = false, features = [
     "async-await",
 ] }
 pretty_assertions = "1.4.0"
-rand = "0.8"
 regex = "^1.10.2"
 sway-lsp-test-utils = { path = "tests/utils" }
 tikv-jemallocator = "0.5"

@@ -122,26 +122,16 @@ async fn did_change_stress_test() {
     let uri = init_and_open(&mut service, bench_dir.join("src/main.sw")).await;
     let times = 400;
     for version in 0..times {
-        let now = std::time::Instant::now();
         let _ = lsp::did_change_request(&mut service, &uri, version + 1).await;
         if version == 0 {
             service.inner().wait_for_parsing().await;
         }
-        eprintln!("did_change took {:?}", now.elapsed());
         let metrics = lsp::metrics_request(&mut service, &uri).await;
         for (path, metrics) in metrics {
             if path.contains("sway-lib-core") || path.contains("sway-lib-std") {
                 assert!(metrics.reused_modules >= 1);
             }
         }
-
-        // if rand::random::<u8>() < 230 {
-        //     let random_duration = rand::random::<u8>() as u64 % 10;
-        //     std::thread::sleep(std::time::Duration::from_millis(random_duration));
-        // } else {
-        //     let random_duration = rand::random::<u64>() % 3000;
-        //     std::thread::sleep(std::time::Duration::from_millis(random_duration));
-        // }
     }
     shutdown_and_exit(&mut service).await;
 }
