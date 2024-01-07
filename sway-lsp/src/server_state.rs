@@ -188,7 +188,7 @@ impl ServerState {
         // Drain pending compilation requests
         while self.cb_rx.try_recv().is_ok() {}
 
-        // set the retrigger_compilation flag to true so that the compilation exit early
+        // Set the retrigger_compilation flag to true so that the compilation exits early
         self.retrigger_compilation.store(true, Ordering::SeqCst);
         self.wait_for_parsing().await;
 
