@@ -96,6 +96,21 @@ pub(crate) fn struct_instantiation(
     let struct_fields = struct_decl.fields;
     let mut struct_fields = struct_fields;
 
+    // To avoid conflicting and overlapping errors, we follow the Rust approach:
+    // - Missing fields are reported only if the struct can actually be instantiated.
+    // - Individual fields issues are always reported: private field access, non-existing fields.
+
+    assert!(struct_decl.call_path.is_absolute, "The call path of the struct field declaration must always be absolute.");
+
+    // For solution suggestions, we assume that the programmers can adapt the struct (e.g., changing field privacy)
+    // if the struct is in the same package where the issue is.
+    // A bit too restrictive, considering the same workspace might be more appropriate, but it will work for now.
+    let struct_can_be_adapted = !ctx.namespace.module_is_external(&struct_decl.call_path.prefixes);
+
+    let is_out_of_decl_module_instantiation = !ctx.namespace.module_is_submodule_of(&struct_decl.call_path.prefixes, true);
+    let struct_has_private_fields = struct_fields.iter().any(|field| matches!(field.visibility, Visibility::Private));
+    let struct_can_be_instantiated = !is_out_of_decl_module_instantiation || !struct_has_private_fields;
+    
     let typed_fields = type_check_field_arguments(
         handler,
         ctx.by_ref(),
@@ -103,7 +118,21 @@ pub(crate) fn struct_instantiation(
         &struct_name,
         &mut struct_fields,
         &span,
+        &struct_decl.span,
+        // Emit the missing fields error only if the struct can actually be instantiated.
+        struct_can_be_instantiated
     )?;
+
+    if !struct_can_be_instantiated {
+        handler.emit_err(CompileError::StructCannotBeInstantiated {
+            struct_name: struct_name.clone(),
+            span: span.clone(),
+            struct_decl_span: struct_decl.span.clone(),
+            private_fields: struct_fields.iter().filter(|field| matches!(field.visibility, Visibility::Private)).map(|field| field.name.clone()).collect(),
+            all_fields_are_private: struct_fields.iter().all(|field| matches!(field.visibility, Visibility::Private)),
+            struct_can_be_adapted,
+        });
+    }
 
     unify_field_arguments_and_struct_fields(handler, ctx.by_ref(), &typed_fields, &struct_fields)?;
 
@@ -131,9 +160,8 @@ pub(crate) fn struct_instantiation(
     }
 
     // If the current module being checked is not a submodule of the
-    // module in which the struct is declared, only public fields can be accessed.
-    assert!(struct_decl.call_path.is_absolute, "The call path of the struct field declaration must always be absolute.");
-    if !ctx.namespace.module_is_submodule_of(&struct_decl.call_path.prefixes, true) {
+    // module in which the struct is declared, check for private fields usage.
+    if is_out_of_decl_module_instantiation {
         for field in fields {
             if let Some(ty_field) = struct_fields.iter().find(|x| x.name == field.name) {
                 if matches!(ty_field.visibility, Visibility::Private) {
@@ -142,7 +170,9 @@ pub(crate) fn struct_instantiation(
                         struct_name: struct_name.clone(),
                         span: field.name.span(),
                         field_decl_span: ty_field.name.span(),
-                        is_external_struct: ctx.namespace.module_is_external(&struct_decl.call_path.prefixes),
+                        // Suppress struct changing suggestions, because we already gave them in the
+                        // StructCannotBeInstantiated error.
+                        struct_can_be_adapted: false,
                     });
                 }
             }
@@ -184,11 +214,14 @@ fn type_check_field_arguments(
     struct_name: &Ident,
     struct_fields: &mut [ty::TyStructField],
     span: &Span,
+    struct_decl_span: &Span,
+    emit_missing_fields_error: bool
 ) -> Result<Vec<ty::TyStructExpressionField>, ErrorEmitted> {
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
     let mut typed_fields = vec![];
+    let mut missing_fields = vec![];
 
     for struct_field in struct_fields.iter_mut() {
         match fields.iter().find(|x| x.name == struct_field.name) {
@@ -209,11 +242,14 @@ fn type_check_field_arguments(
                 struct_field.span = field.value.span.clone();
             }
             None => {
-                let err = handler.emit_err(CompileError::StructMissingField {
+                missing_fields.push(struct_field.name.clone());
+
+                let err = Handler::default().emit_err(CompileError::StructInstantiationMissingFieldForErrorRecovery {
                     field_name: struct_field.name.clone(),
                     struct_name: struct_name.clone(),
                     span: span.clone(),
                 });
+
                 typed_fields.push(ty::TyStructExpressionField {
                     name: struct_field.name.clone(),
                     value: ty::TyExpression {
@@ -228,6 +264,16 @@ fn type_check_field_arguments(
                 });
             }
         }
+    }
+
+    if emit_missing_fields_error && !missing_fields.is_empty() {
+        handler.emit_err(CompileError::StructInstantiationMissingFields {
+            field_names: missing_fields,
+            struct_name: struct_name.clone(),
+            span: span.clone(),
+            struct_decl_span: struct_decl_span.clone(),
+            total_number_of_fields: struct_fields.len(),
+        });
     }
 
     Ok(typed_fields)

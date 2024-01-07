@@ -206,25 +206,52 @@ pub enum CompileError {
          it?"
     )]
     EnumNotFound { name: Ident, span: Span },
-    #[error("Initialization of struct \"{struct_name}\" is missing field \"{field_name}\".")]
-    StructMissingField {
+    // This error is used only for error recovery reporting and is not emitted as a compiler
+    // error to the users. The compiler emits a cumulative error given below and that also
+    // only if the struct can actually be instantiated.
+    #[error("Instantiation of struct \"{struct_name}\" is missing field \"{field_name}\".")]
+    StructInstantiationMissingFieldForErrorRecovery {
         field_name: Ident,
+        /// Original, non-aliased struct name.
         struct_name: Ident,
         span: Span,
+    },
+    #[error("Instantiation of struct \"{struct_name}\" is missing {} {}.",
+        if field_names.len() == 1 { "field" } else { "fields" },
+        field_names.iter().map(|name| format!("\"{name}\"")).collect::<Vec::<_>>().join(", "))]
+    StructInstantiationMissingFields {
+        field_names: Vec<Ident>,
+        /// Original, non-aliased struct name.
+        struct_name: Ident,
+        span: Span,
+        struct_decl_span: Span,
+        total_number_of_fields: usize,
+    },
+    #[error("Struct \"{struct_name}\" cannot be instantiated here because it has private fields.")]
+    StructCannotBeInstantiated {
+        /// Original, non-aliased struct name.
+        struct_name: Ident,
+        span: Span,
+        struct_decl_span: Span,
+        private_fields: Vec<Ident>,
+        all_fields_are_private: bool,
+        struct_can_be_adapted: bool,
     },
     #[error("Struct \"{struct_name}\" does not have field \"{field_name}\".")]
     StructDoesNotHaveField {
         field_name: Ident,
+        /// Original, non-aliased struct name.
         struct_name: Ident,
         span: Span,
     },
     #[error("Field \"{field_name}\" of the struct \"{struct_name}\" is private.")]
     StructFieldIsPrivate {
         field_name: Ident,
+        /// Original, non-aliased struct name.
         struct_name: Ident,
         span: Span,
         field_decl_span: Span,
-        is_external_struct: bool,
+        struct_can_be_adapted: bool,
     },
     #[error("No method named \"{method_name}\" found for type \"{type_name}\".")]
     MethodNotFound {
@@ -813,8 +840,10 @@ impl Spanned for CompileError {
             DoesNotTakeTypeArgumentsAsPrefix { span, .. } => span.clone(),
             TypeArgumentsNotAllowed { span } => span.clone(),
             NeedsTypeArguments { span, .. } => span.clone(),
-            StructMissingField { span, .. } => span.clone(),
+            StructInstantiationMissingFieldForErrorRecovery { span, .. } => span.clone(),
+            StructInstantiationMissingFields { span, .. } => span.clone(),
             StructDoesNotHaveField { span, .. } => span.clone(),
+            StructCannotBeInstantiated { span, .. } => span.clone(),
             StructFieldIsPrivate { span, .. } => span.clone(),
             MethodNotFound { span, .. } => span.clone(),
             ModuleNotFound { span, .. } => span.clone(),
@@ -1262,12 +1291,97 @@ impl ToDiagnostic for CompileError {
                 ],
                 help: vec![],
             },
-            StructFieldIsPrivate { field_name, struct_name, span, field_decl_span, is_external_struct } => Diagnostic {
+            StructInstantiationMissingFields { field_names, struct_name, span, struct_decl_span, total_number_of_fields } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Struct instantiation is missing fields".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("Instantiation of the struct \"{struct_name}\" is missing {} {}.",
+                            if field_names.len() == 1 { "field" } else { "fields" },
+                            match &field_names[..] {
+                                [] => unreachable!("There must be at least one missing field."),
+                                [field] => format!("\"{field}\""),
+                                [first_field, second_field] => format!("\"{first_field}\" and \"{second_field}\""),
+                                _ => format!("{}, and \"{}\"",
+                                        field_names.split_last().unwrap().1.iter().map(|name| format!("\"{name}\"")).collect::<Vec::<_>>().join(", "),
+                                        field_names.last().unwrap())
+                            })
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        struct_decl_span.clone(),
+                        format!("Struct \"{struct_name}\" is declared here, and has {} {}.",
+                            number_to_str(*total_number_of_fields),
+                            if *total_number_of_fields == 1 { "field" } else { "fields" },
+                        )
+                    ),
+                ],
+                help: vec![],
+            },            
+            StructCannotBeInstantiated { struct_name, span, struct_decl_span, private_fields, all_fields_are_private, struct_can_be_adapted } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Struct cannot be instantiated due to private fields".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("Struct \"{struct_name}\" cannot be instantiated in this module because it has private fields.")
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        "Structs with private fields can be instantiated only within the module in which they are defined (and its submodules).".to_string()
+                    ),
+                    Hint::info(
+                        source_engine,
+                        struct_decl_span.clone(),
+                        format!("Struct \"{struct_name}\" is declared here, and has {}.",
+                            if *all_fields_are_private {
+                                "only private fields".to_string()
+                            } else {
+                                match &private_fields[..] {
+                                    [] => unreachable!("There must be at least one private field."),
+                                    [field] => format!("private field \"{field}\""),
+                                    [first_field, second_field] => format!("private fields \"{first_field}\" and \"{second_field}\""),
+                                    _ => format!("{} private fields", number_to_str(private_fields.len())),
+                                }
+                            }
+                        )
+                    ),
+                ],
+                help: if !*struct_can_be_adapted {
+                    vec![]
+                } else {
+                    vec![
+                        format!("Consider declaring {} as public: `pub {}: ...,`.",
+                            if *all_fields_are_private {
+                                "all fields".to_string()
+                            } else {
+                                match &private_fields[..] {
+                                    [] => unreachable!("There must be at least one private field."),
+                                    [field] => format!("field \"{field}\""),
+                                    [first_field, second_field] => format!("fields \"{first_field}\" and \"{second_field}\""),
+                                    _ => format!("{} private fields", number_to_str(private_fields.len())),
+                                }
+                            },
+                            if *all_fields_are_private {
+                                "<field name>".to_string()
+                            } else {
+                                match &private_fields[..] {
+                                    [field] => format!("{field}"),
+                                    _ => "<field name>".to_string(),
+                                }
+                            },
+                        ),
+                    ]
+                } ,
+            },            
+            StructFieldIsPrivate { field_name, struct_name, span, field_decl_span, struct_can_be_adapted } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Struct field is private".to_string())),
                 issue: Issue::error(
                     source_engine,
                     span.clone(),
-                    format!("Private field \"{field_name}\" of the struct \"{struct_name}\" cannot be used here.")
+                    format!("Private field \"{field_name}\" of the struct \"{struct_name}\" cannot be used in this module.")
                 ),
                 hints: vec![
                     Hint::help(
@@ -1281,7 +1395,7 @@ impl ToDiagnostic for CompileError {
                         format!("Field \"{field_name}\" is declared here as private.")
                     ),
                 ],
-                help: if *is_external_struct {
+                help: if !*struct_can_be_adapted {
                     vec![]
                 } else {
                     vec![
@@ -1332,5 +1446,23 @@ fn get_file_name(source_engine: &SourceEngine, source_id: Option<&SourceId>) -> 
     match source_id {
         Some(source_id) => source_engine.get_file_name(source_id),
         None => None,
+    }
+}
+
+/// Returns reading-friendly textual representation for small numbers.
+fn number_to_str(number: usize) -> String {
+    match number {
+        0 => "zero".to_string(),
+        1 => "one".to_string(),
+        2 => "two".to_string(),
+        3 => "three".to_string(),
+        4 => "four".to_string(),
+        5 => "five".to_string(),
+        6 => "six".to_string(),
+        7 => "seven".to_string(),
+        8 => "eight".to_string(),
+        9 => "nine".to_string(),
+        10 => "ten".to_string(),
+        _ => format!("{number}"),
     }
 }
