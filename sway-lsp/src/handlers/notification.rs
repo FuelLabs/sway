@@ -25,7 +25,6 @@ pub async fn handle_did_open_text_document(
     // Otherwise, don't recompile the project when a new file in the project is opened
     // as the workspace is already compiled.
     if session.token_map().is_empty() {
-        // send_new_compilation_request(&state, session.clone(), &uri, None);
         let _ = state
             .cb_tx
             .send(TaskMessage::CompilationContext(CompilationContext {

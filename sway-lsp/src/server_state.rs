@@ -13,6 +13,7 @@ use forc_pkg::PackageManifestFile;
 use lsp_types::{Diagnostic, Url};
 use parking_lot::RwLock;
 use std::{
+    mem,
     path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -131,7 +132,7 @@ impl ServerState {
                             Some(retrigger_compilation.clone()),
                         ) {
                             Ok(parse_result) => {
-                                *session.engines.write() = engines_clone;
+                                mem::swap(&mut *session.engines.write(), &mut engines_clone);
                                 session.write_parse_result(parse_result);
                                 *last_compilation_state.write() = LastCompilationState::Success;
                             }

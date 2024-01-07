@@ -616,9 +616,7 @@ pub fn compile_to_ast(
 
         // Check if we can re-use the data in the cache.
         if is_parse_module_cache_up_to_date(engines, &path, include_tests) {
-            let mut entry = query_engine
-                .get_programs_cache_entry(&path)
-                .unwrap_or_else(|| panic!("unable to find entry in cache at path {:?}", &path));
+            let mut entry = query_engine.get_programs_cache_entry(&path).unwrap();
             entry.programs.metrics.reused_modules += 1;
 
             let (warnings, errors) = entry.handler_data;
