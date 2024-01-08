@@ -1,9 +1,6 @@
 //! Utility items shared between forc crates.
 
-use annotate_snippets::{
-    display_list::{DisplayList, FormatOptions},
-    snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
-};
+use annotate_snippets::{Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation, renderer::{AnsiColor, Style} };
 use ansi_term::Colour;
 use anyhow::{bail, Context, Result};
 use forc_tracing::{println_red_err, println_yellow_err};
@@ -434,6 +431,19 @@ pub fn print_on_failure(
     }
 }
 
+/// Creates [Renderer] for printing warnings and errors.
+/// 
+/// To ensure the same styling of printed warnings and errors across all the tools,
+/// always use this function to create [Renderer]s, 
+pub fn create_diagnostics_renderer() -> Renderer {
+    // For the diagnostic messages we use bold and bright colors.
+    // Note that for the summaries of warnings and errors we use
+    // their regular equivalents which are defined in `forc-tracing` package.
+    Renderer::styled()
+        .warning(Style::new().bold().fg_color(Some(AnsiColor::BrightYellow.into())))
+        .error(Style::new().bold().fg_color(Some(AnsiColor::BrightRed.into())))
+}
+
 fn format_diagnostic(diagnostic: &Diagnostic) {
     /// Temporary switch for testing the feature.
     /// Keep it false until we decide to fully support the diagnostic codes.
@@ -482,15 +492,12 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
         title: snippet_title,
         slices: snippet_slices,
         footer: snippet_footer,
-        opt: FormatOptions {
-            color: true,
-            ..Default::default()
-        },
     };
 
+    let renderer = create_diagnostics_renderer();
     match diagnostic.level() {
-        Level::Warning => tracing::warn!("{}\n____\n", DisplayList::from(snippet)),
-        Level::Error => tracing::error!("{}\n____\n", DisplayList::from(snippet)),
+        Level::Warning => tracing::warn!("{}\n____\n", renderer.render(snippet)),
+        Level::Error => tracing::error!("{}\n____\n", renderer.render(snippet)),
     }
 
     fn format_old_style_diagnostic(issue: &Issue) {
@@ -535,13 +542,10 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
             title: snippet_title,
             footer: vec![],
             slices: snippet_slices,
-            opt: FormatOptions {
-                color: true,
-                ..Default::default()
-            },
         };
 
-        tracing::error!("{}\n____\n", DisplayList::from(snippet));
+        let renderer = create_diagnostics_renderer();
+        tracing::error!("{}\n____\n", renderer.render(snippet));
     }
 
     fn get_title_label(diagnostics: &Diagnostic, label: &mut String) {

@@ -1,16 +1,13 @@
 use anyhow::anyhow;
 use clap::Parser;
-use forc_util::ForcResult;
+use forc_util::{ForcResult, create_diagnostics_renderer};
 use std::collections::VecDeque;
 use std::fs::{self, File};
 use std::io::{self, prelude::*, BufReader};
 use std::path::{Path, PathBuf};
 use tracing::info;
 
-use annotate_snippets::{
-    display_list::{DisplayList, FormatOptions},
-    snippet::{AnnotationType, Slice, Snippet, SourceAnnotation},
-};
+use annotate_snippets::{AnnotationType, Slice, Snippet, SourceAnnotation};
 
 use sway_core::source_map::{LocationRange, SourceMap};
 
@@ -66,12 +63,10 @@ pub(crate) fn exec(command: Command) -> ForcResult<()> {
                     range: (rr.offset, rr.offset + rr.length),
                 }],
             }],
-            opt: FormatOptions {
-                color: true,
-                ..Default::default()
-            },
         };
-        info!("{}", DisplayList::from(snippet));
+
+        let renderer = create_diagnostics_renderer();
+        info!("{}", renderer.render(snippet));
 
         Ok(())
     } else {
