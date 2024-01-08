@@ -9,6 +9,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+bytecount = "0.6"
 fuel-asm = { workspace = true }
 fuel-crypto = { workspace = true }
 fuel-tx = { workspace = true }
