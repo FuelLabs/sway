@@ -2,6 +2,7 @@
 //! This includes `Output::Coins`, `Input::Messages` and `Input::Contracts`.
 library;
 
+use ::address::Address;
 use ::contract_id::{AssetId, ContractId};
 use ::revert::revert;
 use ::tx::{
@@ -225,8 +226,7 @@ pub fn output_asset_id(index: u64) -> Option<AssetId> {
     }
 }
 
-// TODO: Update to `Identity` when https://github.com/FuelLabs/sway/issues/4569 is resolved
-/// Returns the receiver of the output if it is a `Output::Coin`. Represents the receiver as a `b256`.
+/// Returns the receiver of the output if it is a `Output::Coin`.
 ///
 /// # Arguments
 ///
@@ -234,7 +234,7 @@ pub fn output_asset_id(index: u64) -> Option<AssetId> {
 ///
 /// # Returns
 ///
-/// * [Option<b256>] - The receiver of the output if it is a `Output::Coin`. None otherwise.
+/// * [Option<Address>] - The receiver of the output if it is a `Output::Coin`. None otherwise.
 ///
 /// # Reverts
 ///
@@ -250,9 +250,9 @@ pub fn output_asset_id(index: u64) -> Option<AssetId> {
 ///     log(output_receiver);
 /// }
 /// ```
-pub fn output_asset_to(index: u64) -> Option<b256> {
+pub fn output_asset_to(index: u64) -> Option<Address> {
     match output_type(index) {
-        Output::Coin => Some(__gtf::<b256>(index, GTF_OUTPUT_COIN_TO)),
+        Output::Coin => Some(Address::from(__gtf::<Address>(index, GTF_OUTPUT_COIN_TO))),
         _ => None,
     }
 }
