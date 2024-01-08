@@ -2,7 +2,7 @@
 
 use crate::{
     config::{Config, Warnings},
-    core::session::{self, Session},
+    core::session::{self, ParseResult, Session},
     error::{DirectoryError, DocumentError, LanguageServerError},
     utils::debug,
     utils::keyword_docs::KeywordDocs,
@@ -126,14 +126,16 @@ impl ServerState {
 
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
                         is_compiling.store(true, Ordering::SeqCst);
+                        let mut parse_result = ParseResult::default();
                         match session::parse_project(
                             &uri,
                             &engines_clone,
                             Some(retrigger_compilation.clone()),
+                            &mut parse_result,
                         ) {
-                            Ok(parse_result) => {
+                            Ok(_) => {
                                 mem::swap(&mut *session.engines.write(), &mut engines_clone);
-                                session.write_parse_result(parse_result);
+                                session.write_parse_result(&mut parse_result);
                                 *last_compilation_state.write() = LastCompilationState::Success;
                             }
                             Err(_err) => {

@@ -61,10 +61,19 @@ pub struct CompiledProgram {
 pub struct ParseResult {
     pub(crate) diagnostics: (Vec<CompileError>, Vec<CompileWarning>),
     pub(crate) token_map: TokenMap,
-    pub(crate) lexed: LexedProgram,
-    pub(crate) parsed: ParseProgram,
-    pub(crate) typed: ty::TyProgram,
+    pub(crate) compiled_program: CompiledProgram,
     pub(crate) metrics: DashMap<SourceId, PerformanceData>,
+}
+
+impl Default for ParseResult {
+    fn default() -> Self {
+        ParseResult {
+            diagnostics: Default::default(),
+            token_map: Default::default(),
+            compiled_program: Default::default(),
+            metrics: Default::default(),
+        }
+    }
 }
 
 /// A `Session` is used to store information about a single member in a workspace.
@@ -144,7 +153,8 @@ impl Session {
 
     /// Write the result of parsing to the session.
     /// This function should only be called after successfully parsing.
-    pub fn write_parse_result(&self, res: ParseResult) {
+    pub fn write_parse_result(&self, res: &mut ParseResult) {
+        let now = std::time::Instant::now();
         self.token_map.clear();
         self.runnables.clear();
         self.metrics.clear();
@@ -159,18 +169,19 @@ impl Session {
             self.metrics.insert(*s, t.clone());
         });
 
-        let (errors, warnings) = res.diagnostics;
+        let (errors, warnings) = &res.diagnostics;
         *self.diagnostics.write() =
             capabilities::diagnostic::get_diagnostics(&warnings, &errors, self.engines.read().se());
 
-        self.create_runnables(
-            &res.typed,
-            self.engines.read().de(),
-            self.engines.read().se(),
+        if let Some(typed) = &res.compiled_program.typed {
+            self.create_runnables(typed, self.engines.read().de(), self.engines.read().se());
+        }
+        std::mem::swap(
+            &mut *self.compiled_program.write(),
+            &mut res.compiled_program,
         );
-        self.compiled_program.write().lexed = Some(res.lexed);
-        self.compiled_program.write().parsed = Some(res.parsed);
-        self.compiled_program.write().typed = Some(res.typed);
+
+        eprintln!("write_parse_result took {:?}", now.elapsed());
     }
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
@@ -535,7 +546,8 @@ pub fn parse_project(
     uri: &Url,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
-) -> Result<ParseResult, LanguageServerError> {
+    parse_result: &mut ParseResult,
+) -> Result<(), LanguageServerError> {
     let results = compile(uri, engines, retrigger_compilation)?;
     if results.last().is_none() {
         return Err(LanguageServerError::ProgramsIsNone);
@@ -547,14 +559,14 @@ pub fn parse_project(
         metrics,
     } = traverse(results, engines)?;
     let (lexed, parsed, typed) = programs.ok_or(LanguageServerError::ProgramsIsNone)?;
-    Ok(ParseResult {
-        diagnostics,
-        token_map,
-        lexed,
-        parsed,
-        typed,
-        metrics,
-    })
+
+    parse_result.diagnostics = diagnostics;
+    parse_result.token_map = token_map;
+    parse_result.compiled_program.lexed = Some(lexed);
+    parse_result.compiled_program.parsed = Some(parsed);
+    parse_result.compiled_program.typed = Some(typed);
+    parse_result.metrics = metrics;
+    Ok(())
 }
 
 /// Parse the [ParseProgram] AST to populate the [TokenMap] with parsed AST nodes.
@@ -621,8 +633,9 @@ mod tests {
         let dir = get_absolute_path("sway-lsp/tests/fixtures");
         let uri = get_url(&dir);
         let engines = Engines::default();
-        let result =
-            parse_project(&uri, &engines, None).expect_err("expected ManifestFileNotFound");
+        let parse_result = &mut ParseResult::default();
+        let result = parse_project(&uri, &engines, None, parse_result)
+            .expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(
