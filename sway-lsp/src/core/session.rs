@@ -57,23 +57,12 @@ pub struct CompiledProgram {
 
 /// Used to write the result of compiling into so we can update
 /// the types in [Session] after successfully parsing.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ParseResult {
     pub(crate) diagnostics: (Vec<CompileError>, Vec<CompileWarning>),
     pub(crate) token_map: TokenMap,
     pub(crate) compiled_program: CompiledProgram,
     pub(crate) metrics: DashMap<SourceId, PerformanceData>,
-}
-
-impl Default for ParseResult {
-    fn default() -> Self {
-        ParseResult {
-            diagnostics: Default::default(),
-            token_map: Default::default(),
-            compiled_program: Default::default(),
-            metrics: Default::default(),
-        }
-    }
 }
 
 /// A `Session` is used to store information about a single member in a workspace.
@@ -170,7 +159,7 @@ impl Session {
 
         let (errors, warnings) = &res.diagnostics;
         *self.diagnostics.write() =
-            capabilities::diagnostic::get_diagnostics(&warnings, &errors, self.engines.read().se());
+            capabilities::diagnostic::get_diagnostics(warnings, errors, self.engines.read().se());
 
         if let Some(typed) = &res.compiled_program.typed {
             self.create_runnables(typed, self.engines.read().de(), self.engines.read().se());
