@@ -154,7 +154,6 @@ impl Session {
     /// Write the result of parsing to the session.
     /// This function should only be called after successfully parsing.
     pub fn write_parse_result(&self, res: &mut ParseResult) {
-        let now = std::time::Instant::now();
         self.token_map.clear();
         self.runnables.clear();
         self.metrics.clear();
@@ -180,8 +179,6 @@ impl Session {
             &mut *self.compiled_program.write(),
             &mut res.compiled_program,
         );
-
-        eprintln!("write_parse_result took {:?}", now.elapsed());
     }
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
