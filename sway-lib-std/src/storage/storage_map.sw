@@ -176,7 +176,7 @@ where
         K: Hash,
 {
         let key = sha256((key, self.field_id));
-        
+
         let val = read::<V>(key, 0);
 
         match val {

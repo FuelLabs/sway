@@ -62,4 +62,3 @@ generate_try_insert_tests!(struct_to_u64, Struct { x: 1, y: Bits256([1; 32]), z:
 generate_try_insert_tests!(enum_to_u64, Enum::V1(Bits256([1; 32])), 1, 2);
 generate_try_insert_tests!(str_to_u64, SizedAsciiString::try_from("fastest_modular_execution_layer_A").unwrap(), 1, 2);
 generate_try_insert_tests!(array_to_u64, [Bits256([1; 32]); 3], 1, 2);
-
