@@ -4,6 +4,8 @@ use fuels::{
     types::{Bits256, SizedAsciiString},
 };
 
+pub mod try_insert;
+
 abigen!(Contract(
     name = "TestStorageMapContract",
     abi = "test_projects/storage_map/out/debug/storage_map-abi.json",
