@@ -35,6 +35,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use sway_ast::AttributeDecl;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -467,6 +468,7 @@ pub fn parsed_to_ast(
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
     package_name: &str,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<ty::TyProgram, ErrorEmitted> {
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
@@ -476,6 +478,8 @@ pub fn parsed_to_ast(
         initial_namespace,
         package_name,
     );
+
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     let mut typed_program = match typed_program_opt {
         Ok(typed_program) => typed_program,
@@ -524,6 +528,9 @@ pub fn parsed_to_ast(
         ),
         None => (None, None),
     };
+
+    check_should_abort(handler, retrigger_compilation.clone())?;
+
     // Perform control flow analysis and extend with any errors.
     let _ = perform_control_flow_analysis(
         handler,
@@ -596,7 +603,10 @@ pub fn compile_to_ast(
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
     package_name: &str,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<Programs, ErrorEmitted> {
+    check_should_abort(handler, retrigger_compilation.clone())?;
+
     let query_engine = engines.qe();
     let mut metrics = PerformanceData::default();
 
@@ -612,7 +622,6 @@ pub fn compile_to_ast(
             let (warnings, errors) = entry.handler_data;
             let new_handler = Handler::from_parts(warnings, errors);
             handler.append(new_handler);
-
             return Ok(entry.programs);
         };
     }
@@ -625,6 +634,8 @@ pub fn compile_to_ast(
         build_config,
         metrics
     );
+
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     let (lexed_program, mut parsed_program) = match parse_program_opt {
         Ok(modules) => modules,
@@ -653,10 +664,13 @@ pub fn compile_to_ast(
             initial_namespace,
             build_config,
             package_name,
+            retrigger_compilation.clone(),
         ),
         build_config,
         metrics
     );
+
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     handler.dedup();
 
@@ -664,7 +678,6 @@ pub fn compile_to_ast(
 
     if let Some(config) = build_config {
         let path = config.canonical_root_module();
-
         let cache_entry = ProgramsCacheEntry {
             path,
             programs: programs.clone(),
@@ -693,6 +706,7 @@ pub fn compile_to_asm(
         initial_namespace,
         Some(&build_config),
         package_name,
+        None,
     )?;
     ast_to_asm(handler, engines, &ast_res, &build_config)
 }
@@ -940,6 +954,20 @@ fn module_return_path_analysis(
         Ok(graph) => errors.extend(graph.analyze_return_paths(engines)),
         Err(mut error) => errors.append(&mut error),
     }
+}
+
+/// Check if the retrigger compilation flag has been set to true in the language server.
+/// If it has, there is a new compilation request, so we should abort the current compilation.
+fn check_should_abort(
+    handler: &Handler,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
+) -> Result<(), ErrorEmitted> {
+    if let Some(ref retrigger_compilation) = retrigger_compilation {
+        if retrigger_compilation.load(Ordering::SeqCst) {
+            return Err(handler.cancel());
+        }
+    }
+    Ok(())
 }
 
 #[test]

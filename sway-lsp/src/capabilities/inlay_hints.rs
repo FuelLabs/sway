@@ -38,9 +38,6 @@ pub fn inlay_hints(
         return None;
     }
 
-    let engines = session.engines.read();
-    let type_engine = engines.te();
-
     let hints: Vec<lsp_types::InlayHint> = session
         .token_map()
         .tokens_for_file(uri)
@@ -63,7 +60,7 @@ pub fn inlay_hints(
             })
         })
         .filter_map(|var| {
-            let type_info = type_engine.get(var.type_ascription.type_id);
+            let type_info = session.engines.read().te().get(var.type_ascription.type_id);
             match &*type_info {
                 TypeInfo::Unknown | TypeInfo::UnknownGeneric { .. } => None,
                 _ => Some(var),
@@ -72,7 +69,7 @@ pub fn inlay_hints(
         .map(|var| {
             let range = get_range_from_span(&var.name.span());
             let kind = InlayKind::TypeHint;
-            let label = format!("{}", engines.help_out(var.type_ascription));
+            let label = format!("{}", session.engines.read().help_out(var.type_ascription));
             let inlay_hint = InlayHint { range, kind, label };
             self::inlay_hint(config.render_colons, inlay_hint)
         })

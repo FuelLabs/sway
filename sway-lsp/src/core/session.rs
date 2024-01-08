@@ -25,7 +25,11 @@ use lsp_types::{
 use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, BuildPlan};
 use rayon::iter::{ParallelBridge, ParallelIterator};
-use std::{ops::Deref, path::PathBuf, sync::Arc};
+use std::{
+    ops::Deref,
+    path::PathBuf,
+    sync::{atomic::AtomicBool, Arc},
+};
 use sway_core::{
     decl_engine::DeclEngine,
     language::{
@@ -39,7 +43,7 @@ use sway_core::{
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::{SourceEngine, SourceId, Spanned};
 use sway_utils::{helpers::get_sway_files, PerformanceData};
-use tokio::{fs::File, io::AsyncWriteExt, sync::Semaphore};
+use tokio::{fs::File, io::AsyncWriteExt};
 
 pub type Documents = DashMap<String, TextDocument>;
 pub type ProjectDirectory = PathBuf;
@@ -53,13 +57,11 @@ pub struct CompiledProgram {
 
 /// Used to write the result of compiling into so we can update
 /// the types in [Session] after successfully parsing.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ParseResult {
     pub(crate) diagnostics: (Vec<CompileError>, Vec<CompileWarning>),
     pub(crate) token_map: TokenMap,
-    pub(crate) lexed: LexedProgram,
-    pub(crate) parsed: ParseProgram,
-    pub(crate) typed: ty::TyProgram,
+    pub(crate) compiled_program: CompiledProgram,
     pub(crate) metrics: DashMap<SourceId, PerformanceData>,
 }
 
@@ -75,9 +77,6 @@ pub struct Session {
     pub compiled_program: RwLock<CompiledProgram>,
     pub engines: RwLock<Engines>,
     pub sync: SyncWorkspace,
-    // Limit the number of threads that can wait to parse at the same time. One thread can be parsing
-    // and one thread can be waiting to start parsing. All others will return the cached diagnostics.
-    pub parse_permits: Arc<Semaphore>,
     // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
     pub diagnostics: Arc<RwLock<DiagnosticMap>>,
     pub metrics: DashMap<SourceId, PerformanceData>,
@@ -99,7 +98,6 @@ impl Session {
             compiled_program: RwLock::new(Default::default()),
             engines: <_>::default(),
             sync: SyncWorkspace::new(),
-            parse_permits: Arc::new(Semaphore::new(2)),
             diagnostics: Arc::new(RwLock::new(DiagnosticMap::new())),
         }
     }
@@ -132,24 +130,19 @@ impl Session {
         &self.token_map
     }
 
-    /// Wait for the cached [DiagnosticMap] to be unlocked after parsing and return a copy.
-    pub fn wait_for_parsing(&self) -> DiagnosticMap {
-        self.diagnostics.read().clone()
-    }
-
     /// Clean up memory in the [TypeEngine] and [DeclEngine] for the user's workspace.
-    pub fn garbage_collect(&self) -> Result<(), LanguageServerError> {
+    pub fn garbage_collect(&self, engines: &mut Engines) -> Result<(), LanguageServerError> {
         let path = self.sync.temp_dir()?;
-        let module_id = { self.engines.read().se().get_module_id(&path) };
+        let module_id = { engines.se().get_module_id(&path) };
         if let Some(module_id) = module_id {
-            self.engines.write().clear_module(&module_id);
+            engines.clear_module(&module_id);
         }
         Ok(())
     }
 
     /// Write the result of parsing to the session.
     /// This function should only be called after successfully parsing.
-    pub fn write_parse_result(&self, res: ParseResult) {
+    pub fn write_parse_result(&self, res: &mut ParseResult) {
         self.token_map.clear();
         self.runnables.clear();
         self.metrics.clear();
@@ -164,23 +157,25 @@ impl Session {
             self.metrics.insert(*s, t.clone());
         });
 
-        self.create_runnables(
-            &res.typed,
-            self.engines.read().de(),
-            self.engines.read().se(),
+        let (errors, warnings) = &res.diagnostics;
+        *self.diagnostics.write() =
+            capabilities::diagnostic::get_diagnostics(warnings, errors, self.engines.read().se());
+
+        if let Some(typed) = &res.compiled_program.typed {
+            self.create_runnables(typed, self.engines.read().de(), self.engines.read().se());
+        }
+        std::mem::swap(
+            &mut *self.compiled_program.write(),
+            &mut res.compiled_program,
         );
-        self.compiled_program.write().lexed = Some(res.lexed);
-        self.compiled_program.write().parsed = Some(res.parsed);
-        self.compiled_program.write().typed = Some(res.typed);
     }
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
         let (_, token) = self.token_map.token_at_position(url, position)?;
-        let engines = self.engines.read();
         let mut token_ranges: Vec<_> = self
             .token_map
             .tokens_for_file(url)
-            .all_references_of_token(&token, &engines)
+            .all_references_of_token(&token, &self.engines.read())
             .map(|(ident, _)| ident.range)
             .collect();
 
@@ -193,10 +188,9 @@ impl Session {
         uri: Url,
         position: Position,
     ) -> Option<GotoDefinitionResponse> {
-        let engines = self.engines.read();
         self.token_map
             .token_at_position(&uri, position)
-            .and_then(|(_, token)| token.declared_token_ident(&engines))
+            .and_then(|(_, token)| token.declared_token_ident(&self.engines.read()))
             .and_then(|decl_ident| {
                 decl_ident.path.and_then(|path| {
                     // We use ok() here because we don't care about propagating the error from from_file_path
@@ -219,11 +213,13 @@ impl Session {
             line: position.line,
             character: position.character - trigger_char.len() as u32 - 1,
         };
-        let engines = self.engines.read();
         let (ident_to_complete, _) = self.token_map.token_at_position(uri, shifted_position)?;
-        let fn_tokens =
-            self.token_map
-                .tokens_at_position(engines.se(), uri, shifted_position, Some(true));
+        let fn_tokens = self.token_map.tokens_at_position(
+            self.engines.read().se(),
+            uri,
+            shifted_position,
+            Some(true),
+        );
         let (_, fn_token) = fn_tokens.first()?;
         let compiled_program = &*self.compiled_program.read();
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.typed.clone() {
@@ -300,7 +296,6 @@ impl Session {
                 path: uri.path().to_string(),
                 err: err.to_string(),
             })?;
-
         Ok(())
     }
 
@@ -413,20 +408,17 @@ pub(crate) fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
         ManifestFile::from_dir(&manifest_dir).map_err(|_| DocumentError::ManifestFileNotFound {
             dir: uri.path().into(),
         })?;
-
     let member_manifests =
         manifest
             .member_manifests()
             .map_err(|_| DocumentError::MemberManifestsFailed {
                 dir: uri.path().into(),
             })?;
-
     let lock_path = manifest
         .lock_path()
         .map_err(|_| DocumentError::ManifestsLockPathFailed {
             dir: uri.path().into(),
         })?;
-
     // TODO: Either we want LSP to deploy a local node in the background or we want this to
     // point to Fuel operated IPFS node.
     let ipfs_node = pkg::source::IPFSNode::Local;
@@ -437,6 +429,7 @@ pub(crate) fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
 pub fn compile(
     uri: &Url,
     engines: &Engines,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
     let build_plan = build_plan(uri)?;
     let tests_enabled = true;
@@ -446,6 +439,7 @@ pub fn compile(
         true,
         tests_enabled,
         engines,
+        retrigger_compilation,
     )
     .map_err(LanguageServerError::FailedToCompile)
 }
@@ -534,23 +528,31 @@ pub fn traverse(
 }
 
 /// Parses the project and returns true if the compiler diagnostics are new and should be published.
-pub fn parse_project(uri: &Url, engines: &Engines) -> Result<ParseResult, LanguageServerError> {
-    let results = compile(uri, engines)?;
+pub fn parse_project(
+    uri: &Url,
+    engines: &Engines,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
+    parse_result: &mut ParseResult,
+) -> Result<(), LanguageServerError> {
+    let results = compile(uri, engines, retrigger_compilation)?;
+    if results.last().is_none() {
+        return Err(LanguageServerError::ProgramsIsNone);
+    }
     let TraversalResult {
         diagnostics,
         programs,
         token_map,
         metrics,
     } = traverse(results, engines)?;
-    let (lexed, parsed, typed) = programs.expect("Programs should be populated at this point.");
-    Ok(ParseResult {
-        diagnostics,
-        token_map,
-        lexed,
-        parsed,
-        typed,
-        metrics,
-    })
+    let (lexed, parsed, typed) = programs.ok_or(LanguageServerError::ProgramsIsNone)?;
+
+    parse_result.diagnostics = diagnostics;
+    parse_result.token_map = token_map;
+    parse_result.compiled_program.lexed = Some(lexed);
+    parse_result.compiled_program.parsed = Some(parsed);
+    parse_result.compiled_program.typed = Some(typed);
+    parse_result.metrics = metrics;
+    Ok(())
 }
 
 /// Parse the [ParseProgram] AST to populate the [TokenMap] with parsed AST nodes.
@@ -617,7 +619,9 @@ mod tests {
         let dir = get_absolute_path("sway-lsp/tests/fixtures");
         let uri = get_url(&dir);
         let engines = Engines::default();
-        let result = parse_project(&uri, &engines).expect_err("expected ManifestFileNotFound");
+        let parse_result = &mut ParseResult::default();
+        let result = parse_project(&uri, &engines, None, parse_result)
+            .expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(
