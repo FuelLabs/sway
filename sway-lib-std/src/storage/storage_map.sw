@@ -156,7 +156,7 @@ where
     ///     storage.map.insert(key, value);
     ///     let retrieved_value = storage.map.get(key).read();
     ///     assert(value == retrieved_value);
-    ///     
+    ///
     ///     let new_value = false;
     ///     let old_value = storage.map.try_insert(key, new_value);
     ///     assert(old_value == Option::Some(value)); // The old value is returned.
@@ -172,14 +172,17 @@ where
     /// ```
     #[storage(read, write)]
     pub fn try_insert(self, key: K, value: V) -> Option<V>
-    where K: Hash, 
+    where 
+        K: Hash, 
     {
         let key = sha256((key, self.field_id));
         
         let val = read::<V>(key, 0);
 
         match val {
-            Option::Some(v) => {Option::Some(v)},
+            Option::Some(v) => {
+                Option::Some(v)
+            },
             Option::None => {
                 write::<V>(key, 0, value);
                 Option::None
