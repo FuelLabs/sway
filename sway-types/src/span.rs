@@ -21,17 +21,24 @@ impl<'a> Position<'a> {
         input.get(pos..).map(|_| Position { input, pos })
     }
 
-    #[inline]
     pub fn line_col(&self) -> (usize, usize) {
         if self.pos > self.input.len() {
             panic!("position out of bounds");
         }
 
-        let slice = &self.input[..self.pos];
-        let lines = slice.split('\n').collect::<Vec<_>>();
-        let line_count = lines.len();
-        let last_line_len = lines.last().unwrap_or(&"").chars().count() + 1;
-        (line_count, last_line_len)
+        // This is performance critical, so we use bytecount instead of a naive implementation.
+        let newlines_up_to_pos = bytecount::count(&self.input.as_bytes()[..self.pos], b'\n');
+        let line = newlines_up_to_pos + 1;
+
+        // Find the last newline character before the position
+        let last_newline_pos = match self.input[..self.pos].rfind('\n') {
+            Some(pos) => pos + 1, // Start after the newline
+            None => 0,            // If no newline, start is at the beginning
+        };
+
+        // Column number should start from 1, not 0
+        let col = self.pos - last_newline_pos + 1;
+        (line, col)
     }
 }
 
