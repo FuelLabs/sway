@@ -1,4 +1,8 @@
-use crate::{decl_engine::DeclEngine, query_engine::QueryEngine, type_system::TypeEngine};
+use crate::{
+    decl_engine::{parsed_engine::ParsedDeclEngine, DeclEngine},
+    query_engine::QueryEngine,
+    type_system::TypeEngine,
+};
 use std::{
     cmp::Ordering,
     fmt,
@@ -10,6 +14,7 @@ use sway_types::SourceEngine;
 pub struct Engines {
     type_engine: TypeEngine,
     decl_engine: DeclEngine,
+    parsed_decl_engine: ParsedDeclEngine,
     query_engine: QueryEngine,
     source_engine: SourceEngine,
 }
@@ -18,12 +23,14 @@ impl Engines {
     pub fn new(
         type_engine: TypeEngine,
         decl_engine: DeclEngine,
+        parsed_decl_engine: ParsedDeclEngine,
         query_engine: QueryEngine,
         source_engine: SourceEngine,
     ) -> Engines {
         Engines {
             type_engine,
             decl_engine,
+            parsed_decl_engine,
             query_engine,
             source_engine,
         }
@@ -35,6 +42,10 @@ impl Engines {
 
     pub fn de(&self) -> &DeclEngine {
         &self.decl_engine
+    }
+
+    pub fn pe(&self) -> &ParsedDeclEngine {
+        &self.parsed_decl_engine
     }
 
     pub fn qe(&self) -> &QueryEngine {
