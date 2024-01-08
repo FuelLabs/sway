@@ -1,16 +1,9 @@
-//! Functionality for performing common operations with tokens.
 library;
 
-//use ::address::Address;
 use ::alias::SubId;
-//use ::call_frames::contract_id;
 use ::contract_id::ContractId;
 use ::convert::From;
-//use ::error_signals::FAILED_TRANSFER_TO_ADDRESS_SIGNAL;
 use ::hash::{Hash, Hasher};
-//use ::identity::Identity;
-//use ::revert::revert;
-//use ::outputs::{Output, output_amount, output_count, output_type};
 
 /// An AssetId is used for interacting with an asset on the network.
 ///
