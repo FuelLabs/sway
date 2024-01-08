@@ -172,9 +172,9 @@ where
     /// ```
     #[storage(read, write)]
     pub fn try_insert(self, key: K, value: V) -> Option<V>
-    where 
-        K: Hash, 
-    {
+    where
+        K: Hash,
+{
         let key = sha256((key, self.field_id));
         
         let val = read::<V>(key, 0);
