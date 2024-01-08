@@ -1,7 +1,6 @@
 library;
 
 mod req;
-use core::codec::*;
 
 #[allow(dead_code)]
 // ANCHOR: assert
