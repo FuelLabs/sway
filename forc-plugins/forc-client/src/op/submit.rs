@@ -55,6 +55,7 @@ pub fn fmt_status(status: &TransactionStatus, s: &mut String) -> anyhow::Result<
             block_id,
             time,
             program_state,
+            ..
         } => {
             let utc = chrono::Utc.timestamp_nanos(time.to_unix());
             writeln!(s, "Transaction Succeeded")?;
@@ -70,6 +71,7 @@ pub fn fmt_status(status: &TransactionStatus, s: &mut String) -> anyhow::Result<
             time,
             reason,
             program_state,
+            ..
         } => {
             let utc = chrono::Utc.timestamp_nanos(time.to_unix());
             writeln!(s, "Transaction Failed")?;
