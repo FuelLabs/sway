@@ -20,13 +20,13 @@ fuel-vm = "0.43.1"
 fuels = { version = "0.53.0", features = ["fuel-core-lib"] }
 
 hex = "0.4.3"
+paste = "1.0.14"
 pretty_assertions = "1.4.0"
 rand = "0.8"
 sha2 = "0.10"
 sha3 = "0.10.1"
 tai64 = { version = "4.0", features = ["serde"] }
 tokio = { version = "1.12", features = ["rt", "macros"] }
-paste = "1.0.14"
 
 [[test]]
 harness = true
