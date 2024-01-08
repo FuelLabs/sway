@@ -59,6 +59,7 @@ impl Default for ServerState {
 }
 
 /// `LastCompilationState` represents the state of the last compilation process.
+/// It is primarily used for debugging purposes.
 #[derive(Debug, PartialEq)]
 enum LastCompilationState {
     Success,
@@ -151,10 +152,6 @@ impl ServerState {
                         if rx.is_empty() {
                             // finished compilation, notify waiters
                             finished_compilation.notify_waiters();
-                        }
-
-                        if *last_compilation_state.read() == LastCompilationState::Failed {
-                            continue;
                         }
                     }
                     TaskMessage::Terminate => {
