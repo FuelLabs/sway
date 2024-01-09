@@ -28,8 +28,22 @@ mod commands;
 mod plugin;
 pub mod shared;
 
+fn help() -> &'static str {
+    Box::leak(
+        format!(
+            "Examples:\n{}{}{}",
+            plugins::examples(),
+            test::examples(),
+            build::examples()
+        )
+        .trim_end()
+        .to_string()
+        .into_boxed_str(),
+    )
+}
+
 #[derive(Debug, Parser)]
-#[clap(name = "forc", about = "Fuel Orchestrator", version)]
+#[clap(name = "forc", about = "Fuel Orchestrator", version, after_help = help())]
 struct Opt {
     /// The command to run
     #[clap(subcommand)]
