@@ -113,7 +113,7 @@ fn enum_auto_impl_abi_encode(
 
     let enum_decl = ctx.engines().de().get(implementing_for_decl_ref.id());
 
-    // Check if the compilation context has acces to the 
+    // Check if the compilation context has acces to the
     // core library.
     let import_handler = Handler::default();
     let _ = ctx.star_import(
@@ -490,7 +490,7 @@ fn can_struct_auto_impl_abi_encode(
 ) -> Option<AutoImplAbiEncodeContext> {
     // skip module "core"
     // Because of ordering, we cannot guarantee auto impl
-    // for structs inside "core" 
+    // for structs inside "core"
     if matches!(ctx.namespace.root().name.as_ref(), Some(x) if x.as_str() == "core") {
         return None;
     }
