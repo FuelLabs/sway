@@ -2069,7 +2069,6 @@ dependencies = [
  "comrak",
  "dir_indexer",
  "expect-test",
- "forc",
  "forc-pkg",
  "forc-util",
  "horrorshow",

@@ -14,7 +14,11 @@ macro_rules! cli_examples {
                     let mut proc = std::process::Command::new("cargo");
                     proc.arg("run");
                     proc.arg("--bin");
-                    proc.arg(format!("forc-{}", stringify!($command)));
+                    proc.arg(if stringify!($command) == "forc" {
+                        "forc".to_owned()
+                    } else {
+                        format!("forc-{}", stringify!($command))
+                    });
                     proc.arg("--");
 
                     super::parse_args($args).into_iter().for_each(|arg| {
@@ -127,7 +131,11 @@ macro_rules! cli_examples {
             Box::leak( [
             $(
             $crate::paste::paste! {
+                if stringify!($command) == "forc" {
+                    format!("  #{}\n  forc {}\n\n", stringify!($($description)*), $args )
+                } else {
                     format!("  #{}\n  forc {} {}\n\n", stringify!($($description)*), stringify!($command), $args )
+                }
             },
             )*
             ].concat().into_boxed_str())
