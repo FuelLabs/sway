@@ -30,6 +30,7 @@ pub struct TestExecutor {
 }
 
 /// The result of executing a test with breakpoints enabled.
+#[derive(Debug)]
 pub enum DebugResult {
     // Holds the test result.
     TestComplete(TestResult),
@@ -109,7 +110,7 @@ impl TestExecutor {
             tx_builder,
             test_entry: test_entry.clone(),
             name,
-            script_offset,
+            script_offset, // todo: remove this
         }
     }
 

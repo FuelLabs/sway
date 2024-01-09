@@ -21,6 +21,7 @@ use forc_pkg::{
     self, manifest::ManifestFile, Built, BuiltPackage, PackageManifest, PackageManifestFile,
 };
 use thiserror::Error;
+use rand::Rng;
 
 #[derive(Error, Debug)]
 enum AdapterError {
@@ -86,7 +87,9 @@ impl DapServer {
             }
             Command::BreakpointLocations(ref args) => {
                 // Set the breakpoints in the VM
+                let mut rng = rand::thread_rng();
                 let breakpoint = Breakpoint {
+                    id: rng.gen(),
                     verified: true,
                     line: Some(args.line),
                     source: Some(args.source.clone()),
@@ -132,7 +135,7 @@ impl DapServer {
             // Command::Goto(_) => todo!(),
             // Command::GotoTargets(_) => todo!(),
             Command::Initialize(_) => Ok(ResponseBody::Initialize(types::Capabilities {
-                supports_function_breakpoints: Some(true),
+                // supports_function_breakpoints: Some(true),
                 // supports_conditional_breakpoints: Some(true),
                 // supports_hit_conditional_breakpoints: Some(true),
                 // supports_goto_targets_request: Some(true),
@@ -145,7 +148,7 @@ impl DapServer {
             })),
             Command::Launch(_) => {
                 self.mode = Some(StartDebuggingRequestKind::Launch);
-                let _ = self.handle_launch();
+                // let _ = self.handle_launch();
                 Ok(ResponseBody::Launch)
             } //self.handle_launch(),
             // Command::LoadedSources => todo!(),
@@ -177,11 +180,19 @@ impl DapServer {
                     responses::SetBreakpointsResponse { breakpoints },
                 ))
             }
-            // Command::SetDataBreakpoints(_) => todo!(),
-            // Command::SetExceptionBreakpoints(_) => todo!(),
+            Command::SetDataBreakpoints(_) => Ok(ResponseBody::SetDataBreakpoints(
+                responses::SetDataBreakpointsResponse { breakpoints: self.breakpoints.clone() },
+            )),
+            Command::SetExceptionBreakpoints(_) => Ok(ResponseBody::SetExceptionBreakpoints(
+                responses::SetExceptionBreakpointsResponse { breakpoints: None },
+            )),
             // Command::SetExpression(_) => todo!(),
-            // Command::SetFunctionBreakpoints(_) => todo!(),
-            // Command::SetInstructionBreakpoints(_) => todo!(),
+            Command::SetFunctionBreakpoints(_) => Ok(ResponseBody::SetFunctionBreakpoints(
+                responses::SetFunctionBreakpointsResponse { breakpoints: self.breakpoints.clone() },
+            )),
+            Command::SetInstructionBreakpoints(_) => Ok(ResponseBody::SetInstructionBreakpoints(
+                responses::SetInstructionBreakpointsResponse { breakpoints: self.breakpoints.clone() },
+            )),
             // Command::SetVariable(_) => todo!(),
             // Command::Source(_) => todo!(),
             // Command::StackTrace(_) => todo!(),
@@ -191,7 +202,12 @@ impl DapServer {
             // Command::StepOut(_) => todo!(),
             // Command::Terminate(_) => todo!(),
             // Command::TerminateThreads(_) => todo!(),
-            // Command::Threads => todo!(),
+            Command::Threads => Ok(ResponseBody::Threads(responses::ThreadsResponse {
+                threads: vec![types::Thread {
+                    id: 1,
+                    name: "main".into(),
+                }],
+            })),
             // Command::Variables(_) => todo!(),
             // Command::WriteMemory(_) => todo!(),
             // Command::Cancel(_) => todo!(),

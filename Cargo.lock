@@ -2449,6 +2449,7 @@ dependencies = [
  "fuel-types",
  "fuel-vm",
  "portpicker",
+ "rand 0.8.5",
  "rayon",
  "rexpect",
  "serde",
