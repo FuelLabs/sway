@@ -22,6 +22,15 @@ pub struct TypeEngine {
     id_map: RwLock<HashMap<TypeSourceInfo, TypeId>>,
 }
 
+impl Clone for TypeEngine {
+    fn clone(&self) -> Self {
+        TypeEngine {
+            slab: self.slab.clone(),
+            id_map: RwLock::new(self.id_map.read().unwrap().clone()),
+        }
+    }
+}
+
 impl TypeEngine {
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].

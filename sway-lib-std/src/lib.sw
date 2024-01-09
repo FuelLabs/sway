@@ -19,6 +19,7 @@ pub mod u128;
 pub mod u256;
 pub mod alias;
 pub mod hash;
+pub mod asset_id;
 pub mod contract_id;
 pub mod constants;
 pub mod call_frames;
