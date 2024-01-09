@@ -31,10 +31,11 @@ pub mod shared;
 fn help() -> &'static str {
     Box::leak(
         format!(
-            "Examples:\n{}{}{}",
+            "Examples:\n{}{}{}{}",
             plugins::examples(),
             test::examples(),
-            build::examples()
+            build::examples(),
+            check::examples(),
         )
         .trim_end()
         .to_string()
