@@ -163,20 +163,17 @@ where
     ///     let key = 5_u64;
     ///     let value = true;
     ///     storage.map.insert(key, value);
-    ///     let retrieved_value = storage.map.get(key).read();
-    ///     assert(value == retrieved_value);
     ///
     ///     let new_value = false;
-    ///     let old_value = storage.map.try_insert(key, new_value);
-    ///     assert(old_value == Result::Err(StorageMapError::OccupiedError(value))); // The old value is returned.
+    ///     let result = storage.map.try_insert(key, new_value);
+    ///     assert(result == Result::Err(StorageMapError::OccupiedError(value))); // The old value is returned.
+    ///
     ///     let retrieved_value = storage.map.get(key).read();
     ///     assert(value == retrieved_value); // New value was not inserted, as a value already existed.
     ///
     ///     let key2 = 10_u64;
     ///     let returned_value = storage.map.try_insert(key2, new_value);
     ///     assert(returned_value == Result::Ok(new_value)); // New value is returned.
-    ///     let retrieved_value = storage.map.get(key2).read();
-    ///     assert(new_value == retrieved_value); // New value was inserted, as no value existed prior.
     /// }
     /// ```
     #[storage(read, write)]
