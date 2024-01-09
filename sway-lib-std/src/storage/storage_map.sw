@@ -143,7 +143,7 @@ where
     ///
     /// # Returns
     ///
-    /// * [Result<V, StorageMapError<V>>] - `Result::Ok(value)` if the value was inserted, or `Result::Err(StorageMapError::OccupiedError(pre_existing_value))` if a value already existed for the key. 
+    /// * [Result<V, StorageMapError<V>>] - `Result::Ok(value)` if the value was inserted, or `Result::Err(StorageMapError::OccupiedError(pre_existing_value))` if a value already existed for the key.
     ///
     /// # Number of Storage Accesses
     ///
