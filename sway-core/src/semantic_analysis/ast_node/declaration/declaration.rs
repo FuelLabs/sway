@@ -321,7 +321,9 @@ impl TyDecl {
                         None,
                     )?;
 
-                    let mut ctx = ctx.by_ref().with_type_annotation(type_argument.type_id);
+                    let mut ctx = ctx.by_ref()
+                        .with_type_annotation(type_argument.type_id)
+                        .with_storage_declaration();
                     let initializer =
                         ty::TyExpression::type_check(handler, ctx.by_ref(), initializer)?;
 

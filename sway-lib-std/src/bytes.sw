@@ -8,7 +8,7 @@ use ::option::Option::{self, *};
 use ::convert::From;
 
 struct RawBytes {
-    ptr: raw_ptr,
+    pub ptr: raw_ptr,
     cap: u64,
 }
 
@@ -53,9 +53,9 @@ impl RawBytes {
 /// A type used to represent raw bytes.
 pub struct Bytes {
     /// A barebones struct for the bytes.
-    buf: RawBytes,
+    pub buf: RawBytes,
     /// The number of bytes being stored.
-    len: u64,
+    pub len: u64,
 }
 
 impl Bytes {

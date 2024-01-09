@@ -5,7 +5,10 @@ use crate::parser_error::ParseError;
 use crate::type_error::TypeError;
 
 use core::fmt;
+use std::cmp;
+use std::fmt::Display;
 use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
+use sway_types::style::to_snake_case;
 use sway_types::{BaseIdent, Ident, SourceEngine, SourceId, Span, Spanned};
 use thiserror::Error;
 
@@ -234,7 +237,9 @@ pub enum CompileError {
         span: Span,
         struct_decl_span: Span,
         private_fields: Vec<Ident>,
+        constructors: Vec<String>,
         all_fields_are_private: bool,
+        is_in_storage_declaration: bool,
         struct_can_be_adapted: bool,
     },
     #[error("Struct \"{struct_name}\" does not have field \"{field_name}\".")]
@@ -558,11 +563,20 @@ pub enum CompileError {
         missing_patterns: String,
         span: Span,
     },
-    #[error("Pattern does not mention {}: {}",
+    #[error("Struct pattern is missing {}{}: {}.",
+        if *missing_fields_are_public { "public " } else { "" },
         if missing_fields.len() == 1 { "field" } else { "fields" },
-        missing_fields.join(", "))]
+        missing_fields.iter().map(|field| format!("\"{field}\"")).collect::<Vec<_>>().join(", "))]
     MatchStructPatternMissingFields {
-        missing_fields: Vec<String>,
+        missing_fields: Vec<Ident>,
+        missing_fields_are_public: bool,
+        span: Span,
+    },
+    #[error("Struct pattern requires `..` due to private {}: {}.",
+        if private_fields.len() == 1 { "field" } else { "fields" },
+        private_fields.iter().map(|field| format!("\"{field}\"")).collect::<Vec<_>>().join(", "))]
+    MatchStructPatternRequiresRest {
+        private_fields: Vec<Ident>,
         span: Span,
     },
     #[error("Variable \"{variable}\" is not defined in all alternatives.")]
@@ -917,6 +931,7 @@ impl Spanned for CompileError {
             GenericShadowsGeneric { name } => name.span(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
             MatchStructPatternMissingFields { span, .. } => span.clone(),
+            MatchStructPatternRequiresRest { span, .. } => span.clone(),
             MatchArmVariableNotDefinedInAllAlternatives { variable, .. } => variable.span(),
             MatchArmVariableMismatchedType { variable, .. } => variable.span(),
             NotAnEnum { span, .. } => span.clone(),
@@ -1292,22 +1307,21 @@ impl ToDiagnostic for CompileError {
                 help: vec![],
             },
             StructInstantiationMissingFields { field_names, struct_name, span, struct_decl_span, total_number_of_fields } => Diagnostic {
-                reason: Some(Reason::new(code(1), "Struct instantiation is missing fields".to_string())),
+                reason: Some(Reason::new(code(1), "Struct instantiation has missing fields".to_string())),
                 issue: Issue::error(
                     source_engine,
                     span.clone(),
-                    format!("Instantiation of the struct \"{struct_name}\" is missing {} {}.",
+                    format!("Instantiation of \"{struct_name}\" is missing the {} {}.",
                             if field_names.len() == 1 { "field" } else { "fields" },
-                            match &field_names[..] {
-                                [] => unreachable!("There must be at least one missing field."),
-                                [field] => format!("\"{field}\""),
-                                [first_field, second_field] => format!("\"{first_field}\" and \"{second_field}\""),
-                                _ => format!("{}, and \"{}\"",
-                                        field_names.split_last().unwrap().1.iter().map(|name| format!("\"{name}\"")).collect::<Vec::<_>>().join(", "),
-                                        field_names.last().unwrap())
-                            })
+                            sequence_to_str(&field_names, Enclosing::DoubleQuote, 2)
+                        )
                 ),
                 hints: vec![
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        "Struct instantiation must initialize all the fields of the struct.".to_string()
+                    ),
                     Hint::info(
                         source_engine,
                         struct_decl_span.clone(),
@@ -1319,75 +1333,151 @@ impl ToDiagnostic for CompileError {
                 ],
                 help: vec![],
             },            
-            StructCannotBeInstantiated { struct_name, span, struct_decl_span, private_fields, all_fields_are_private, struct_can_be_adapted } => Diagnostic {
-                reason: Some(Reason::new(code(1), "Struct cannot be instantiated due to private fields".to_string())),
+            StructCannotBeInstantiated { struct_name, span, struct_decl_span, private_fields, constructors, all_fields_are_private, is_in_storage_declaration, struct_can_be_adapted } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Struct cannot be instantiated due to inaccessible private fields".to_string())),
                 issue: Issue::error(
                     source_engine,
                     span.clone(),
-                    format!("Struct \"{struct_name}\" cannot be instantiated in this module because it has private fields.")
+                    format!("\"{struct_name}\" cannot be instantiated in this {}, because it has {}inaccessible private field{}.",
+                        if *is_in_storage_declaration { "storage declaration" } else { "module" },
+                        singular_plural(private_fields.len(), "an ", ""),
+                        plural_s(private_fields.len())
+                    )
                 ),
                 hints: vec![
                     Hint::help(
                         source_engine,
                         span.clone(),
-                        "Structs with private fields can be instantiated only within the module in which they are defined (and its submodules).".to_string()
+                        if *is_in_storage_declaration {
+                            "Structs with private fields can be used in storage declarations only if they are declared in the same module as the storage.".to_string()
+                        } else {
+                            "Structs with private fields can be instantiated only within the module in which they are declared.".to_string()
+                        }
+                    ),
+                    if *is_in_storage_declaration {
+                        Hint::help(
+                            source_engine,
+                            span.clone(),
+                            "They can still be stored in storage by using the `read` and `write` functions provided in the `std::storage::storage_api`.".to_string()
+                        )
+                    } else {
+                        Hint::none()
+                    },
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        format!("Inaccessible field{} {} {}.",
+                            plural_s(private_fields.len()),
+                            is_are(private_fields.len()),
+                            sequence_to_str(&private_fields, Enclosing::DoubleQuote, 5)
+                        )
                     ),
                     Hint::info(
                         source_engine,
                         struct_decl_span.clone(),
                         format!("Struct \"{struct_name}\" is declared here, and has {}.",
                             if *all_fields_are_private {
-                                "only private fields".to_string()
+                                "all private fields".to_string()
                             } else {
-                                match &private_fields[..] {
-                                    [] => unreachable!("There must be at least one private field."),
-                                    [field] => format!("private field \"{field}\""),
-                                    [first_field, second_field] => format!("private fields \"{first_field}\" and \"{second_field}\""),
-                                    _ => format!("{} private fields", number_to_str(private_fields.len())),
-                                }
+                                format!("private field{} {}",
+                                    plural_s(private_fields.len()),
+                                    sequence_to_str(&private_fields, Enclosing::DoubleQuote, 2)
+                                )
                             }
                         )
                     ),
                 ],
-                help: if !*struct_can_be_adapted {
-                    vec![]
-                } else {
-                    vec![
-                        format!("Consider declaring {} as public: `pub {}: ...,`.",
-                            if *all_fields_are_private {
-                                "all fields".to_string()
+                help: {
+                    let mut help = vec![];
+
+                    if *is_in_storage_declaration {
+                        help.push(format!("If you need to store instances of \"{struct_name}\" in the contract storage, use the `std::storage::storage_api`:"));
+                        help.push(format!("  use std::storage::storage_api::{{read, write}};"));
+                        help.push(format!("  ..."));
+                        help.push(format!("  write(STORAGE_KEY, 0, my_{});", to_snake_case(struct_name.as_str())));
+                        help.push(format!("  let my_{}_option = read::<{struct_name}>(STORAGE_KEY, 0);", to_snake_case(struct_name.as_str())));
+                    }
+                    else if !constructors.is_empty() {
+                        help.push(format!("Consider instantiating \"{struct_name}\" by using one of the available constructors{}:",
+                            if *struct_can_be_adapted {
+                                ", or implement a new one"
                             } else {
-                                match &private_fields[..] {
-                                    [] => unreachable!("There must be at least one private field."),
-                                    [field] => format!("field \"{field}\""),
-                                    [first_field, second_field] => format!("fields \"{first_field}\" and \"{second_field}\""),
-                                    _ => format!("{} private fields", number_to_str(private_fields.len())),
-                                }
-                            },
-                            if *all_fields_are_private {
-                                "<field name>".to_string()
-                            } else {
-                                match &private_fields[..] {
-                                    [field] => format!("{field}"),
-                                    _ => "<field name>".to_string(),
-                                }
-                            },
-                        ),
-                    ]
-                } ,
+                                ""
+                            }
+                        ));
+                        let max_items = cmp::min(5, constructors.len());
+                        let (to_display, remaining) = constructors.split_at(max_items);
+                        for constructor in to_display {
+                            help.push(format!("  - {}", constructor.clone()));
+                        }
+                        if remaining.len() > 0 {
+                            help.push(format!("  - and {} more", number_to_str(remaining.len())));
+                        }
+                    }
+
+                    if *struct_can_be_adapted {
+                        if *is_in_storage_declaration || !constructors.is_empty() {
+                            help.push(Diagnostic::help_empty_line());
+                        }
+
+                        if !*is_in_storage_declaration && constructors.is_empty() {
+                            help.push(format!("Consider implementing a public constructor for \"{struct_name}\"."));
+                        };
+
+                        help.push(
+                            // Alternatively, consider declaring field "f" as public, `pub f: ...,`, and use "Struct" in storage declaration.
+                            //  or
+                            // Alternatively, consider declaring fields "f" and "g" as public, `pub <field>: ...,`, and use "Struct" in storage declaration.
+                            //  or
+                            // Consider declaring field "f" as public: `pub f: ...,`.
+                            //  or
+                            // Consider declaring fields "f" and "g" as public: `pub <field>: ...,`.
+                            format!("Alternatively, consider declaring {} as public{} `pub {}: ...,`{}.",
+                                if *all_fields_are_private {
+                                    "all fields".to_string()
+                                } else {
+                                    format!("{} {}",
+                                        if private_fields.len() == 1 { "field" } else { "fields" },
+                                        sequence_to_str(&private_fields, Enclosing::DoubleQuote, 2)
+                                    )
+                                },
+                                if *is_in_storage_declaration {
+                                    ","
+                                } else {
+                                    ":"
+                                },
+                                if *all_fields_are_private {
+                                    "<field>".to_string()
+                                } else {
+                                    match &private_fields[..] {
+                                        [field] => format!("{field}"),
+                                        _ => "<field>".to_string(),
+                                    }
+                                },
+                                if *is_in_storage_declaration {
+                                    format!(", and use \"{struct_name}\" in storage declaration")
+                                } else {
+                                    "".to_string()
+                                },
+                            )
+                        )
+                    };
+
+                    help
+                }
             },            
             StructFieldIsPrivate { field_name, struct_name, span, field_decl_span, struct_can_be_adapted } => Diagnostic {
-                reason: Some(Reason::new(code(1), "Struct field is private".to_string())),
+                reason: Some(Reason::new(code(1), "Private struct field is inaccessible".to_string())),
                 issue: Issue::error(
                     source_engine,
                     span.clone(),
-                    format!("Private field \"{field_name}\" of the struct \"{struct_name}\" cannot be used in this module.")
+                    format!("Private field \"{field_name}\" of the struct \"{struct_name}\" is inaccessible in this module.")
                 ),
                 hints: vec![
                     Hint::help(
                         source_engine,
                         span.clone(),
-                        "Private struct fields can be used only within the module in which the struct is defined (and its submodules).".to_string()
+                        "Private struct fields can be accessed only within the module in which the struct is declared.".to_string()
                     ),
                     Hint::info(
                         source_engine,
@@ -1449,7 +1539,8 @@ fn get_file_name(source_engine: &SourceEngine, source_id: Option<&SourceId>) -> 
     }
 }
 
-/// Returns reading-friendly textual representation for small numbers.
+/// Returns reading-friendly textual representation for `number` smaller than or equal to 10
+/// or its numeric representation if it is greater than 10.
 fn number_to_str(number: usize) -> String {
     match number {
         0 => "zero".to_string(),
@@ -1465,4 +1556,80 @@ fn number_to_str(number: usize) -> String {
         10 => "ten".to_string(),
         _ => format!("{number}"),
     }
+}
+
+enum Enclosing {
+    #[allow(dead_code)]
+    None,
+    DoubleQuote,
+}
+
+impl Display for Enclosing {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::None => "",
+                Self::DoubleQuote => "\"",
+            },
+        )
+    }
+}
+
+/// Returns reading-friendly textual representation of the `sequence`, with each item
+/// optionally enclosed in the specified `enclosing`. If the sequence has more than
+/// `max_items` the remaining items are replaced with the text "and <number> more".
+///
+/// E.g.:
+/// [a] => "a"
+/// [a, b] => "a" and "b"
+/// [a, b, c] => "a", "b" and "c"
+/// [a, b, c, d] => "a", "b", "c" and one more
+/// [a, b, c, d, e] => "a", "b", "c" and two more
+///
+/// Panics if the `sequence` is empty, or `max_items` is zero.
+fn sequence_to_str<T>(sequence: &[T], enclosing: Enclosing, max_items: usize) -> String
+    where T: Display
+{
+    assert!(!sequence.is_empty(), "Sequence to display must not be empty.");
+    assert!(max_items > 0, "Maximum number of items to display must be greater than zero.");
+
+    let max_items = cmp::min(max_items, sequence.len());
+
+    let (to_display, remaining) = sequence.split_at(max_items);
+
+    let fmt_item = |item: &T| format!("{enclosing}{item}{enclosing}");
+
+    if remaining.len() > 0 {
+        format!("{}, and {} more",
+            to_display.iter().map(|item| fmt_item(item)).collect::<Vec<_>>().join(", "),
+            number_to_str(remaining.len())
+        )
+    } else {
+        match to_display {
+            [] => unreachable!("There must be at least one item in the sequence."),
+            [item] => fmt_item(item),
+            [first_item, second_item] => format!("{} and {}", fmt_item(first_item), fmt_item(second_item)),
+            _ => format!("{}, and {}",
+                    to_display.split_last().unwrap().1.iter().map(|item| fmt_item(item)).collect::<Vec::<_>>().join(", "),
+                    fmt_item(&to_display.last().unwrap()))
+        }
+    }
+}
+
+/// Returns "s" if `count` is different than 1, otherwise empty string.
+/// Convenient for building simple plural of words.
+fn plural_s(count: usize) -> &'static str {
+    if count == 1 { "" } else { "s" }
+}
+
+/// Returns "is" if `count` is 1, otherwise "are".
+fn is_are(count: usize) -> &'static str {
+    if count == 1 { "is" } else { "are" }
+}
+
+/// Returns `singular` if `count` is 1, otherwise `plural`.
+fn singular_plural<'a>(count: usize, singular: &'a str, plural: &'a str) -> &'a str {
+    if count == 1 { singular } else { plural }
 }

@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -10,7 +11,7 @@ use crate::{
     semantic_analysis::{
         type_check_context::EnforceTypeArguments, GenericShadowingMode, TypeCheckContext,
     },
-    type_system::*,
+    type_system::*, error::module_can_be_adapted, Namespace,
 };
 
 const UNIFY_STRUCT_FIELD_HELP_TEXT: &str =
@@ -100,15 +101,12 @@ pub(crate) fn struct_instantiation(
     // - Missing fields are reported only if the struct can actually be instantiated.
     // - Individual fields issues are always reported: private field access, non-existing fields.
 
-    assert!(struct_decl.call_path.is_absolute, "The call path of the struct field declaration must always be absolute.");
+    assert!(struct_decl.call_path.is_absolute, "The call path of the struct declaration must always be absolute.");
 
-    // For solution suggestions, we assume that the programmers can adapt the struct (e.g., changing field privacy)
-    // if the struct is in the same package where the issue is.
-    // A bit too restrictive, considering the same workspace might be more appropriate, but it will work for now.
-    let struct_can_be_adapted = !ctx.namespace.module_is_external(&struct_decl.call_path.prefixes);
+    let struct_can_be_adapted = module_can_be_adapted(ctx.namespace, &struct_decl.call_path.prefixes);
 
     let is_out_of_decl_module_instantiation = !ctx.namespace.module_is_submodule_of(&struct_decl.call_path.prefixes, true);
-    let struct_has_private_fields = struct_fields.iter().any(|field| matches!(field.visibility, Visibility::Private));
+    let struct_has_private_fields = struct_fields.iter().any(|field| field.is_private());
     let struct_can_be_instantiated = !is_out_of_decl_module_instantiation || !struct_has_private_fields;
     
     let typed_fields = type_check_field_arguments(
@@ -124,12 +122,20 @@ pub(crate) fn struct_instantiation(
     )?;
 
     if !struct_can_be_instantiated {
+        let constructors = if !ctx.storage_declaration() {
+            collect_struct_constructors(ctx.namespace, ctx.engines, type_id)
+        } else {
+            vec![]
+        };
+
         handler.emit_err(CompileError::StructCannotBeInstantiated {
             struct_name: struct_name.clone(),
-            span: span.clone(),
+            span: inner_span.clone(),
             struct_decl_span: struct_decl.span.clone(),
-            private_fields: struct_fields.iter().filter(|field| matches!(field.visibility, Visibility::Private)).map(|field| field.name.clone()).collect(),
-            all_fields_are_private: struct_fields.iter().all(|field| matches!(field.visibility, Visibility::Private)),
+            private_fields: struct_fields.iter().filter(|field| field.is_private()).map(|field| field.name.clone()).collect(),
+            constructors,
+            all_fields_are_private: struct_fields.iter().all(|field| field.is_private()),
+            is_in_storage_declaration: ctx.storage_declaration(),
             struct_can_be_adapted,
         });
     }
@@ -164,7 +170,7 @@ pub(crate) fn struct_instantiation(
     if is_out_of_decl_module_instantiation {
         for field in fields {
             if let Some(ty_field) = struct_fields.iter().find(|x| x.name == field.name) {
-                if matches!(ty_field.visibility, Visibility::Private) {
+                if ty_field.is_private() {
                     handler.emit_err(CompileError::StructFieldIsPrivate {
                         field_name: field.name.clone(),
                         struct_name: struct_name.clone(),
@@ -203,7 +209,27 @@ pub(crate) fn struct_instantiation(
         span,
     };
 
-    Ok(exp)
+    return Ok(exp);
+
+    fn collect_struct_constructors(namespace: &Namespace, engines: &crate::Engines, struct_type_id: TypeId) -> Vec<String> {
+        // Searching only for public constructors is a bit too restrictive because we can also have them in local private impls.
+        // Checking that would be a questionable additional effort considering that this search gives good suggestions for
+        // common patterns in which constructors can be found.
+        // Removing return type from the signature by searching for last `->` will work as long as we don't have something like `Fn`.
+        namespace
+            .get_items_for_type(engines, struct_type_id)
+            .iter()
+            .filter_map(|item| match item {
+                ty::TyTraitItem::Fn(fn_decl_id) => Some(fn_decl_id),
+                _ => None,
+            })
+            .map(|fn_decl_id| engines.de().get_function(fn_decl_id))
+            .filter(|fn_decl| matches!(fn_decl.visibility, Visibility::Public) && fn_decl.is_constructor(engines, struct_type_id).unwrap_or_default())
+            .map(|fn_decl| format!("{}", engines.help_out((*fn_decl).clone())).rsplit_once(" -> ").unwrap().0.to_string())
+            .sorted()
+            .dedup()
+            .collect_vec()
+    }
 }
 
 /// Type checks the field arguments.

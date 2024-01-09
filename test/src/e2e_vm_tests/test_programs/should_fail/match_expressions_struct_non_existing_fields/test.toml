@@ -1,0 +1,16 @@
+category = "fail"
+
+#check: $()error
+#check: $()Struct { x, nn_1 } => { x },
+#nextln: $()Field "nn_1" not found on struct "Struct". Available fields are:
+#nextln: $()x
+
+#check: $()error
+#check: $()Struct { x, nn_1, nn_2 } => { x },
+#nextln: $()Field "nn_1" not found on struct "Struct". Available fields are:
+#nextln: $()x
+
+#check: $()error
+#check: $()Struct { x, nn_1, nn_2 } => { x },
+#nextln: $()Field "nn_2" not found on struct "Struct". Available fields are:
+#nextln: $()x

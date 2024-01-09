@@ -9,7 +9,7 @@ use ::convert::From;
 /// Guaranteed to be contiguous for use with ec-recover: `std::ecr::ec_recover`.
 pub struct B512 {
     /// The two `b256`s that make up the `B512`.
-    bytes: [b256; 2],
+    pub bytes: [b256; 2],
 }
 
 impl core::ops::Eq for B512 {

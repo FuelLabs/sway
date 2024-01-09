@@ -7,7 +7,7 @@ use sway_error::{
 use sway_types::{state::StateIndex, Ident, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::DeclEngine, engine_threading::*, language::{ty::*, Visibility}, transform, type_system::*,
+    decl_engine::DeclEngine, engine_threading::*, language::{ty::*, Visibility}, transform, type_system::*, Namespace, error::module_can_be_adapted,
 };
 
 #[derive(Clone, Debug)]
@@ -59,6 +59,7 @@ impl TyStorageDecl {
         handler: &Handler,
         type_engine: &TypeEngine,
         decl_engine: &DeclEngine,
+        namespace: &Namespace,
         fields: Vec<Ident>,
         storage_fields: &[TyStorageField],
         storage_keyword_span: Span,
@@ -89,14 +90,19 @@ impl TyStorageDecl {
             span: first_field.span(),
         });
 
-        let update_available_struct_fields = |id: TypeId| match &*type_engine.get(id) {
-            TypeInfo::Struct(decl_ref) => decl_engine.get_struct(decl_ref).fields.clone(),
-            _ => vec![],
+        let update_struct_decl_and_available_struct_fields = |id: TypeId| match &*type_engine.get(id) {
+            TypeInfo::Struct(decl_ref) => {
+                let struct_decl = decl_engine.get_struct(decl_ref);
+                let fields = struct_decl.fields.clone();
+
+                (Some(struct_decl), fields)
+            },
+            _ => (None, vec![]),
         };
 
         // if the previously iterated type was a struct, put its fields here so we know that,
         // in the case of a subfield, we can type check the that the subfield exists and its type.
-        let mut available_struct_fields = update_available_struct_fields(initial_field_type);
+        let (mut struct_decl, mut available_struct_fields) = update_struct_decl_and_available_struct_fields(initial_field_type);
 
         // get the initial field's type
         // make sure the next field exists in that type
@@ -106,13 +112,29 @@ impl TyStorageDecl {
                 .find(|x| x.name.as_str() == field.as_str())
             {
                 Some(struct_field) => {
+                    let decl = struct_decl.expect("If a field is found that means we have the struct declaration.");
+                    assert!(decl.call_path.is_absolute, "The call path of the struct declaration must always be absolute.");
+
+                    let struct_can_be_adapted = module_can_be_adapted(namespace, &decl.call_path.prefixes);
+                    let is_out_of_struct_decl_module_access = !namespace.module_is_submodule_of(&decl.call_path.prefixes, true);
+
+                    if is_out_of_struct_decl_module_access && struct_field.is_private() {
+                        return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
+                            field_name: field.clone(),
+                            struct_name: decl.call_path.suffix.clone(),
+                            span: field.span(),
+                            field_decl_span: struct_field.name.span(),
+                            struct_can_be_adapted,
+                        }));
+                    }
+
                     type_checked_buf.push(TyStorageAccessDescriptor {
                         name: field.clone(),
                         type_id: struct_field.type_argument.type_id,
                         span: field.span().clone(),
                     });
-                    available_struct_fields =
-                        update_available_struct_fields(struct_field.type_argument.type_id);
+                    (struct_decl, available_struct_fields) =
+                        update_struct_decl_and_available_struct_fields(struct_field.type_argument.type_id);
                 }
                 None => {
                     let available_fields = available_struct_fields

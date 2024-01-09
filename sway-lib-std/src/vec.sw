@@ -7,7 +7,7 @@ use ::option::Option::{self, *};
 use ::convert::From;
 
 struct RawVec<T> {
-    ptr: raw_ptr,
+    pub ptr: raw_ptr,
     cap: u64,
 }
 
@@ -130,7 +130,7 @@ impl<T> RawVec<T> {
 
 /// A contiguous growable array type, written as `Vec<T>`, short for 'vector'.
 pub struct Vec<T> {
-    buf: RawVec<T>,
+    pub buf: RawVec<T>,
     len: u64,
 }
 

@@ -924,11 +924,11 @@ impl ty::TyExpression {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
-        let ctx = ctx
+        let mut ctx = ctx
             .with_help_text("")
             .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
-        let parent = ty::TyExpression::type_check(handler, ctx, prefix)?;
-        let exp = instantiate_struct_field_access(handler, engines, parent, field_to_access, span)?;
+        let parent = ty::TyExpression::type_check(handler, ctx.by_ref(), prefix)?;
+        let exp = instantiate_struct_field_access(handler, engines, ctx.namespace, parent, field_to_access, span)?;
         Ok(exp)
     }
 
@@ -1018,6 +1018,7 @@ impl ty::TyExpression {
         let (storage_access, mut access_type) = ctx.namespace.apply_storage_load(
             handler,
             ctx.engines,
+            ctx.namespace,
             checkee,
             &storage_fields,
             storage_keyword_span,

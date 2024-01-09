@@ -1,4 +1,4 @@
 category = "fail"
 
-# check: $()Instantiation of struct "Data" is missing field "value".
+# check: $()Instantiation of the struct "Data" is missing the field "value".
 # check: $()Struct "Data" does not have field "val".

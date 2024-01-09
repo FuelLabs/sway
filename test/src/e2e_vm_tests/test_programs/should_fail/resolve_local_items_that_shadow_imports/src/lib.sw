@@ -4,7 +4,7 @@ pub enum Enum {
     A: (),
 }
 
-pub struct struct {
+pub struct Struct {
     pub x: u64,
 }
 

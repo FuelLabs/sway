@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -15,7 +16,7 @@ use crate::{
         type_check_context::EnforceTypeArguments, TypeCheckContext, TypeCheckFinalization,
         TypeCheckFinalizationContext,
     },
-    type_system::*,
+    type_system::*, error::module_can_be_adapted,
 };
 
 impl TyScrutinee {
@@ -233,54 +234,147 @@ fn type_check_struct(
         &struct_name.span(),
     )?;
 
-    // type check the fields
+    let has_rest_pattern = fields.iter().any(|field| matches!(field, StructScrutineeField::Rest { .. }));
+
+    // check for field existence and type check nested scrutinees; short-circuit if there are non-existing fields
+    // TODO: Is short-circuiting really needed or was it more a convenience? In the first implementation
+    //       we had a short-circuit on the first error non-existing field and didn't even collecting all errors. 
     let mut typed_fields = vec![];
-    let mut rest_pattern = None;
-    for field in fields.into_iter() {
-        match field {
-            StructScrutineeField::Rest { .. } => rest_pattern = Some(field),
-            StructScrutineeField::Field {
-                field,
-                scrutinee,
-                span,
-            } => {
-                // ensure that the struct definition has this field
-                let struct_field = struct_decl.expect_field(handler, &field)?;
-                // type check the nested scrutinee
-                let typed_scrutinee = match scrutinee {
-                    None => None,
-                    Some(scrutinee) => Some(ty::TyScrutinee::type_check(
-                        handler,
-                        ctx.by_ref(),
-                        scrutinee,
-                    )?),
-                };
-                typed_fields.push(ty::TyStructScrutineeField {
+    handler.scope(|handler| {
+        for field in fields.iter() {
+            match field {
+                StructScrutineeField::Field {
                     field,
-                    scrutinee: typed_scrutinee,
+                    scrutinee,
                     span,
-                    field_def_name: struct_field.name.clone(),
-                });
+                } => {
+                    // ensure that the struct definition has this field
+                    let struct_field = match struct_decl.expect_field(handler, &field) {
+                        Ok(struct_field) => struct_field,
+                        Err(_) => continue,
+                    };
+
+                    // type check the nested scrutinee
+                    let typed_scrutinee = match scrutinee {
+                        None => None,
+                        Some(scrutinee) => Some(ty::TyScrutinee::type_check(
+                            handler,
+                            ctx.by_ref(),
+                            scrutinee.clone(),
+                        )?),
+                    };
+
+                    typed_fields.push(ty::TyStructScrutineeField {
+                        field: field.clone(),
+                        scrutinee: typed_scrutinee,
+                        span: span.clone(),
+                        field_def_name: struct_field.name.clone(),
+                    });
+                },
+                StructScrutineeField::Rest { .. } => { }
+            }
+        }
+
+        Ok(())
+    })?;
+
+    // report struct field privacy errors
+    // This check is intentionally separated from checking the field existence and type-checking the scrutinees.
+    // While we could check private field access immediately after finding the field and emit errors,
+    // that would mean short-circuiting in case of privacy issues which we do not want to do.
+    // The consequence is repeating the search for fields here, but the performance penalty is negligible.
+
+    assert!(struct_decl.call_path.is_absolute, "The call path of the struct declaration must always be absolute.");
+
+    let struct_can_be_adapted = module_can_be_adapted(ctx.namespace, &struct_decl.call_path.prefixes);
+    let is_out_of_struct_decl_module_access = !ctx.namespace.module_is_submodule_of(&struct_decl.call_path.prefixes, true);
+
+    if is_out_of_struct_decl_module_access {
+        for field in fields {
+            match field {
+                StructScrutineeField::Field { field: field_name, .. } => {
+                    let struct_field = struct_decl.find_field(&field_name).expect("The struct field with the given field name must exist.");
+
+                    if struct_field.is_private() {
+                        let field_name_span = field_name.span();
+
+                        handler.emit_err(CompileError::StructFieldIsPrivate {
+                            field_name,
+                            struct_name: struct_decl.call_path.suffix.clone(),
+                            span: field_name_span,
+                            field_decl_span: struct_field.name.span(),
+                            struct_can_be_adapted,
+                        });
+                    }
+                },
+                StructScrutineeField::Rest { .. } => { }
             }
         }
     }
 
     // ensure that the pattern uses all fields of the struct unless the rest pattern is present
-    if (struct_decl.fields.len() != typed_fields.len()) && rest_pattern.is_none() {
-        let missing_fields = struct_decl
+    // Here we follow the approach Rust has, and show a dedicated error if only all public fields are
+    // listed, but the mandatory `..` (because of the private fields) is missing because the struct
+    // has private fields and is used outside of its decl module.
+    // Also, in case of privacy issues and mixing public and private fields we list only the public
+    // fields as missing.
+    // The error message in both cases gives adequate explanation how to fix the reported issue. 
+
+    if !has_rest_pattern && (struct_decl.fields.len() != typed_fields.len()) {
+        let all_public_fields_are_matched = struct_decl
             .fields
             .iter()
-            .filter_map(|f| {
-                (!typed_fields.iter().any(|tf| f.name == tf.field)).then_some(f.name.to_string())
-            })
-            .collect::<Vec<_>>();
+            .filter(|f| f.is_public())
+            .all(|f| typed_fields.iter().any(|tf| f.name == tf.field));
 
-        return Err(
-            handler.emit_err(CompileError::MatchStructPatternMissingFields {
-                span,
-                missing_fields,
-            }),
-        );
+        let only_public_fields_are_matched = typed_fields
+            .iter()
+            .map(|tf| struct_decl.find_field(&tf.field).expect("The struct field with the given field name must exist."))
+            .all(|f| f.is_public());
+
+        // In the case of public access where all public fields are listed along with some private fields,
+        // we already have an error emitted for those private fields with the detailed, pattern matching related
+        // explanation that proposes using ignore `..`.
+        if !(is_out_of_struct_decl_module_access && all_public_fields_are_matched && !only_public_fields_are_matched) {
+            let missing_fields = |only_public: bool| struct_decl
+                .fields
+                .iter()
+                .filter(|f| !only_public || f.is_public())
+                .filter(|f| !typed_fields.iter().any(|tf| f.name == tf.field))
+                .map(|field| field.name.clone())
+                .collect_vec();
+
+            return Err(handler.emit_err(
+                match (is_out_of_struct_decl_module_access, all_public_fields_are_matched, only_public_fields_are_matched) {
+                    // Public access. Only all public fields are matched. All missing fields are private.
+                    // -> Emit error for the mandatory ignore `..`.
+                    (true, true, true) => CompileError::MatchStructPatternRequiresRest {
+                        private_fields: missing_fields(false),
+                        span,
+                    },
+
+                    // Public access. All public fields are matched. Some private fields are matched.
+                    // -> Do not emit error here because it is already covered when reporting private field.
+                    (true, true, false) => unreachable!("The above if condition eliminates this case."),
+
+                    // Public access. Some or non of the public fields are matched. Some or none of the private fields are matched.
+                    // -> Emit error listing only missing public fields. Recommendation for mandatory use of `..` is already given
+                    //    when reporting the inaccessible private field.
+                    (true, false, _) => CompileError::MatchStructPatternMissingFields {
+                        missing_fields: missing_fields(true),
+                        missing_fields_are_public: true,
+                        span,
+                    },
+
+                    // In struct decl module access. We do not distinguish between private and public fields here.
+                    // -> Emit error listing all missing fields.
+                    (false, _, _) => CompileError::MatchStructPatternMissingFields {
+                        missing_fields: missing_fields(false),
+                        missing_fields_are_public: false,
+                        span,
+                    },
+            }));
+        }
     }
 
     let struct_ref = decl_engine.insert(struct_decl);

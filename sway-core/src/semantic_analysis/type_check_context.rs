@@ -93,6 +93,9 @@ pub struct TypeCheckContext<'a> {
     /// after we perform a dependency analysis on the tree.
     defer_monomorphization: bool,
 
+    /// Indicates when semantic analysis is type checking storage declaration.
+    storage_declaration: bool,
+
     /// Set of experimental flags
     pub experimental: ExperimentalFlags,
 }
@@ -126,6 +129,7 @@ impl<'a> TypeCheckContext<'a> {
             kind: TreeType::Contract,
             disallow_functions: false,
             defer_monomorphization: false,
+            storage_declaration: false,
             experimental: ExperimentalFlags::default(),
         }
     }
@@ -154,6 +158,7 @@ impl<'a> TypeCheckContext<'a> {
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             defer_monomorphization: self.defer_monomorphization,
+            storage_declaration: self.storage_declaration,
             experimental: self.experimental,
         }
     }
@@ -175,6 +180,7 @@ impl<'a> TypeCheckContext<'a> {
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             defer_monomorphization: self.defer_monomorphization,
+            storage_declaration: self.storage_declaration,
             experimental: self.experimental,
         }
     }
@@ -297,6 +303,15 @@ impl<'a> TypeCheckContext<'a> {
         }
     }
 
+    /// Map this `TypeCheckContext` instance to a new one with
+    /// `storage_declaration` set to `true`.
+    pub(crate) fn with_storage_declaration(self) -> Self {
+        Self {
+            storage_declaration: true,
+            ..self
+        }
+    }
+
     // A set of accessor methods. We do this rather than making the fields `pub` in order to ensure
     // that these are only updated via the `with_*` methods that produce a new `TypeCheckContext`.
 
@@ -347,6 +362,10 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn defer_monomorphization(&self) -> bool {
         self.defer_monomorphization
+    }
+
+    pub(crate) fn storage_declaration(&self) -> bool {
+        self.storage_declaration
     }
 
     // Provide some convenience functions around the inner context.

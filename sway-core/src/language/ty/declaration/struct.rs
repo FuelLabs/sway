@@ -99,10 +99,7 @@ impl TyStructDecl {
         handler: &Handler,
         field_to_access: &Ident,
     ) -> Result<&TyStructField, ErrorEmitted> {
-        match self
-            .fields
-            .iter()
-            .find(|TyStructField { name, .. }| name.as_str() == field_to_access.as_str())
+        match self.find_field(field_to_access)
         {
             Some(field) => Ok(field),
             None => {
@@ -119,6 +116,14 @@ impl TyStructDecl {
                 }));
             }
         }
+    }
+
+    /// Returns [TyStructField] with the given `field_name`, or `None` if the field with the
+    /// name `field_name` does not exist.
+    pub(crate) fn find_field(&self, field_name: &Ident) -> Option<&TyStructField> {
+        self.fields
+            .iter()
+            .find(|field| field.name == *field_name)
     }
 
     /// For the given `field_name` returns the zero-based index and the type of the field
@@ -149,6 +154,15 @@ pub struct TyStructField {
     pub span: Span,
     pub type_argument: TypeArgument,
     pub attributes: transform::AttributesMap,
+}
+
+impl TyStructField {
+    pub fn is_private(&self) -> bool {
+        matches!(self.visibility, Visibility::Private)
+    }
+    pub fn is_public(&self) -> bool {
+        matches!(self.visibility, Visibility::Public)
+    }
 }
 
 impl HashWithEngines for TyStructField {

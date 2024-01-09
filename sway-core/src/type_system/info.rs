@@ -3,7 +3,7 @@ use crate::{
     engine_threading::*,
     language::{ty, CallPath, QualifiedCallPath},
     type_system::priv_prelude::*,
-    Ident,
+    Ident, Namespace, error::module_can_be_adapted,
 };
 use sway_error::{
     error::CompileError,
@@ -1248,10 +1248,12 @@ impl TypeInfo {
     /// 1) in the case where `self` is not a [TypeInfo::Struct]
     /// 2) in the case where `subfields` is empty
     /// 3) in the case where a `subfield` does not exist on `self`
+    /// 4) in the case where a `subfield` is private and only public subfields can be accessed
     pub(crate) fn apply_subfields(
         &self,
         handler: &Handler,
         engines: &Engines,
+        namespace: &Namespace,
         subfields: &[Ident],
         span: &Span,
     ) -> Result<ty::TyStructField, ErrorEmitted> {
@@ -1263,12 +1265,30 @@ impl TypeInfo {
             }
             (TypeInfo::Struct(decl_ref), Some((first, rest))) => {
                 let decl = decl_engine.get_struct(decl_ref);
+
+                assert!(decl.call_path.is_absolute, "The call path of the struct declaration must always be absolute.");
+
+                let struct_can_be_adapted = module_can_be_adapted(namespace, &decl.call_path.prefixes);
+                let is_out_of_struct_decl_module_access = !namespace.module_is_submodule_of(&decl.call_path.prefixes, true);
+
                 let field = match decl
                     .fields
                     .iter()
                     .find(|field| field.name.as_str() == first.as_str())
                 {
-                    Some(field) => field.clone(),
+                    Some(field) => {
+                        if is_out_of_struct_decl_module_access && field.is_private() {
+                            return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
+                                field_name: field.name.clone(),
+                                struct_name: decl.call_path.suffix.clone(),
+                                span: first.span(),
+                                field_decl_span: field.name.span(),
+                                struct_can_be_adapted,
+                            }));
+                        }
+
+                        field.clone()
+                    },
                     None => {
                         // gather available fields for the error message
                         let available_fields = decl
@@ -1289,7 +1309,7 @@ impl TypeInfo {
                 } else {
                     type_engine
                         .get(field.type_argument.type_id)
-                        .apply_subfields(handler, engines, rest, span)?
+                        .apply_subfields(handler, engines, namespace, rest, span)?
                 };
                 Ok(field)
             }
@@ -1301,7 +1321,7 @@ impl TypeInfo {
                 _,
             ) => type_engine
                 .get(*type_id)
-                .apply_subfields(handler, engines, subfields, span),
+                .apply_subfields(handler, engines, namespace, subfields, span),
             (TypeInfo::ErrorRecovery(err), _) => Err(*err),
             // TODO-IG: Take a close look on this when implementing dereferencing.
             (type_info, _) => Err(handler.emit_err(CompileError::FieldAccessOnNonStruct {
