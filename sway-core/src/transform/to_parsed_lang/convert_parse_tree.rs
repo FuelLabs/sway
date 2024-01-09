@@ -3,6 +3,7 @@ use crate::{
         generate_destructured_struct_var_name, generate_matched_value_var_name,
         generate_tuple_var_name,
     },
+    decl_engine::{parsed_engine::ParsedDeclEngineInsert, parsed_id::ParsedDeclId},
     language::{parsed::*, *},
     transform::{attribute::*, to_parsed_lang::context::Context},
     type_system::*,
@@ -90,8 +91,9 @@ pub fn module_to_sway_parse_tree(
     Ok(ParseTree { span, root_nodes })
 }
 
-fn ast_node_is_test_fn(node: &AstNode) -> bool {
-    if let AstNodeContent::Declaration(Declaration::FunctionDeclaration(ref decl)) = node.content {
+fn ast_node_is_test_fn(engines: &Engines, node: &AstNode) -> bool {
+    if let AstNodeContent::Declaration(Declaration::FunctionDeclaration(decl_id)) = node.content {
+        let decl = engines.pe().get_function(&decl_id);
         if decl.attributes.contains_key(&AttributeKind::Test) {
             return true;
         }
@@ -172,9 +174,10 @@ fn item_to_ast_nodes(
             item_enum_to_enum_declaration(context, handler, engines, item_enum, attributes)?,
         )),
         ItemKind::Fn(item_fn) => {
-            let function_declaration = item_fn_to_function_declaration(
+            let function_declaration_decl_id = item_fn_to_function_declaration(
                 context, handler, engines, item_fn, attributes, None, None,
             )?;
+            let function_declaration = engines.pe().get_function(&function_declaration_decl_id);
             error_if_self_param_is_not_allowed(
                 context,
                 handler,
@@ -182,7 +185,9 @@ fn item_to_ast_nodes(
                 &function_declaration.parameters,
                 "a free function",
             )?;
-            decl(Declaration::FunctionDeclaration(function_declaration))
+            decl(Declaration::FunctionDeclaration(
+                function_declaration_decl_id,
+            ))
         }
         ItemKind::Trait(item_trait) => decl(Declaration::TraitDeclaration(
             item_trait_to_trait_declaration(context, handler, engines, item_trait, attributes)?,
@@ -478,7 +483,7 @@ fn item_fn_to_function_declaration(
     attributes: AttributesMap,
     parent_generic_params_opt: Option<GenericParams>,
     parent_where_clause_opt: Option<WhereClause>,
-) -> Result<FunctionDeclaration, ErrorEmitted> {
+) -> Result<ParsedDeclId<FunctionDeclaration>, ErrorEmitted> {
     let span = item_fn.span();
     let return_type = match item_fn.fn_signature.return_type_opt {
         Some((_right_arrow, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
@@ -496,7 +501,7 @@ fn item_fn_to_function_declaration(
             }
         }
     };
-    Ok(FunctionDeclaration {
+    let fn_decl = FunctionDeclaration {
         purity: get_attributed_purity(context, handler, &attributes)?,
         attributes,
         name: item_fn.fn_signature.name,
@@ -527,7 +532,9 @@ fn item_fn_to_function_declaration(
             })
             .transpose()?
             .unwrap_or(vec![]),
-    })
+    };
+    let decl_id = engines.pe().insert(fn_decl);
+    Ok(decl_id)
 }
 
 fn get_attributed_purity(
@@ -841,7 +848,7 @@ fn item_abi_to_abi_declaration(
                     if !cfg_eval(context, handler, &attributes)? {
                         return Ok(None);
                     }
-                    let function_declaration = item_fn_to_function_declaration(
+                    let function_declaration_id = item_fn_to_function_declaration(
                         context,
                         handler,
                         engines,
@@ -850,6 +857,7 @@ fn item_abi_to_abi_declaration(
                         None,
                         None,
                     )?;
+                    let function_declaration = engines.pe().get_function(&function_declaration_id);
                     error_if_self_param_is_not_allowed(
                         context,
                         handler,
@@ -857,7 +865,7 @@ fn item_abi_to_abi_declaration(
                         &function_declaration.parameters,
                         "a method provided by ABI",
                     )?;
-                    Ok(Some(function_declaration))
+                    Ok(Some(function_declaration_id))
                 })
                 .filter_map_ok(|fn_decl| fn_decl)
                 .collect::<Result<_, _>>()?,
@@ -2438,7 +2446,7 @@ fn statement_to_ast_nodes(
         Statement::Item(item) => {
             let nodes = item_to_ast_nodes(context, handler, engines, item, false, None)?;
             nodes.iter().try_fold((), |res, node| {
-                if ast_node_is_test_fn(node) {
+                if ast_node_is_test_fn(engines, node) {
                     let span = node.span.clone();
                     let error = ConvertParseTreeError::TestFnOnlyAllowedAtModuleLevel { span };
                     Err(handler.emit_err(error.into()))

@@ -377,11 +377,12 @@ impl TyImplTrait {
         handler.scope(|handler| {
             for item in items.iter() {
                 match item {
-                    ImplItem::Fn(fn_decl) => {
+                    ImplItem::Fn(fn_decl_id) => {
+                        let fn_decl = engines.pe().get_function(fn_decl_id);
                         let fn_decl = match ty::TyFunctionDecl::type_check_signature(
                             handler,
                             ctx.by_ref(),
-                            fn_decl.clone(),
+                            &fn_decl,
                             true,
                             true,
                         ) {
@@ -460,7 +461,8 @@ impl TyImplTrait {
             let new_items = &impl_trait.items;
             for (item, new_item) in items.clone().into_iter().zip(new_items) {
                 match (item, new_item) {
-                    (ImplItem::Fn(fn_decl), TyTraitItem::Fn(decl_ref)) => {
+                    (ImplItem::Fn(fn_decl_id), TyTraitItem::Fn(decl_ref)) => {
+                        let fn_decl = engines.pe().get_function(&fn_decl_id);
                         let mut ty_fn_decl = (*decl_engine.get_function(decl_ref.id())).clone();
                         let new_ty_fn_decl = match ty::TyFunctionDecl::type_check_body(
                             handler,
@@ -508,12 +510,13 @@ impl TyImplTrait {
             // Now lets type check the body of the functions (for real this time).
             for idx in ordered_node_indices {
                 match (&items[idx], &new_items[idx]) {
-                    (ImplItem::Fn(fn_decl), TyTraitItem::Fn(decl_ref)) => {
+                    (ImplItem::Fn(fn_decl_id), TyTraitItem::Fn(decl_ref)) => {
+                        let fn_decl = engines.pe().get_function(fn_decl_id);
                         let mut ty_fn_decl = (*decl_engine.get_function(decl_ref.id())).clone();
                         let new_ty_fn_decl = match ty::TyFunctionDecl::type_check_body(
                             handler,
                             ctx.by_ref(),
-                            fn_decl,
+                            &fn_decl,
                             &mut ty_fn_decl,
                         ) {
                             Ok(res) => res,
@@ -810,19 +813,20 @@ fn type_check_trait_implementation(
 
     for item in impl_items {
         match item {
-            ImplItem::Fn(impl_method) => {
+            ImplItem::Fn(impl_method_id) => {
+                let impl_method = engines.pe().get_function(impl_method_id);
                 let mut impl_method = type_check_impl_method(
                     handler,
                     ctx.by_ref().with_type_subst(&trait_type_mapping),
                     implementing_for,
                     impl_type_parameters,
-                    impl_method,
+                    &impl_method,
                     trait_name,
                     is_contract,
                     &impld_item_refs,
                     &method_checklist,
                 )
-                .unwrap_or_else(|_| ty::TyFunctionDecl::error(impl_method.clone()));
+                .unwrap_or_else(|_| ty::TyFunctionDecl::error(&impl_method));
 
                 impl_method.subst(&trait_type_mapping, engines);
 
@@ -993,7 +997,7 @@ fn type_check_impl_method(
 
     // type check the function declaration
     let mut impl_method =
-        ty::TyFunctionDecl::type_check(handler, ctx.by_ref(), impl_method.clone(), true, false)?;
+        ty::TyFunctionDecl::type_check(handler, ctx.by_ref(), impl_method, true, false)?;
 
     // Ensure that there aren't multiple definitions of this function impl'd
     if impld_item_refs.contains_key(&(impl_method.name.clone(), implementing_for)) {

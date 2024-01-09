@@ -198,10 +198,11 @@ impl TyTraitDecl {
 
         // Type check the items.
         let mut new_items = vec![];
-        for method in methods.into_iter() {
+        for method_decl_id in methods.into_iter() {
+            let method = engines.pe().get_function(&method_decl_id);
             let method =
-                ty::TyFunctionDecl::type_check(handler, ctx.by_ref(), method.clone(), true, false)
-                    .unwrap_or_else(|_| ty::TyFunctionDecl::error(method));
+                ty::TyFunctionDecl::type_check(handler, ctx.by_ref(), &method, true, false)
+                    .unwrap_or_else(|_| ty::TyFunctionDecl::error(&method));
             new_items.push(ty::TyTraitItem::Fn(decl_engine.insert(method)));
         }
 

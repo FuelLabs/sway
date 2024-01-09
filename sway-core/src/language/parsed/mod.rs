@@ -20,6 +20,8 @@ pub use use_statement::{ImportType, UseStatement};
 
 use sway_types::span::Span;
 
+use crate::Engines;
+
 /// Represents some exportable information that results from compiling some
 /// Sway source code.
 #[derive(Debug, Clone)]
@@ -70,16 +72,16 @@ pub enum AstNodeContent {
 
 impl ParseTree {
     /// Excludes all test functions from the parse tree.
-    pub(crate) fn exclude_tests(&mut self) {
-        self.root_nodes.retain(|node| !node.is_test());
+    pub(crate) fn exclude_tests(&mut self, engines: &Engines) {
+        self.root_nodes.retain(|node| !node.is_test(engines));
     }
 }
 
 impl AstNode {
     /// Checks if this `AstNode` is a test.
-    pub(crate) fn is_test(&self) -> bool {
+    pub(crate) fn is_test(&self, engines: &Engines) -> bool {
         if let AstNodeContent::Declaration(decl) = &self.content {
-            decl.is_test()
+            decl.is_test(engines)
         } else {
             false
         }

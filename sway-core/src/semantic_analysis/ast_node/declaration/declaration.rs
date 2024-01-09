@@ -104,7 +104,8 @@ impl TyDecl {
 
                 decl
             }
-            parsed::Declaration::FunctionDeclaration(fn_decl) => {
+            parsed::Declaration::FunctionDeclaration(decl_id) => {
+                let fn_decl = engines.pe().get_function(&decl_id);
                 let span = fn_decl.span.clone();
 
                 let mut ctx =
@@ -112,7 +113,7 @@ impl TyDecl {
                 let fn_decl = match ty::TyFunctionDecl::type_check(
                     handler,
                     ctx.by_ref(),
-                    fn_decl,
+                    &fn_decl,
                     false,
                     false,
                 ) {

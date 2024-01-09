@@ -15,6 +15,7 @@ use sway_core::{
         is_generated_any_match_expression_var_name, is_generated_destructured_struct_var_name,
         is_generated_tuple_var_name,
     },
+    decl_engine::parsed_id::ParsedDeclId,
     language::{
         parsed::{
             AbiCastExpression, AbiDeclaration, AmbiguousPathExpression, ArrayExpression,
@@ -120,7 +121,7 @@ impl Parse for Declaration {
     fn parse(&self, ctx: &ParseContext) {
         match self {
             Declaration::VariableDeclaration(decl) => decl.parse(ctx),
-            Declaration::FunctionDeclaration(decl) => decl.parse(ctx),
+            Declaration::FunctionDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::TraitDeclaration(decl) => decl.parse(ctx),
             Declaration::StructDeclaration(decl) => decl.parse(ctx),
             Declaration::EnumDeclaration(decl) => decl.parse(ctx),
@@ -722,30 +723,32 @@ impl Parse for VariableDeclaration {
     }
 }
 
-impl Parse for FunctionDeclaration {
+impl Parse for ParsedDeclId<FunctionDeclaration> {
     fn parse(&self, ctx: &ParseContext) {
         let token = Token::from_parsed(
-            AstToken::Declaration(Declaration::FunctionDeclaration(self.clone())),
+            AstToken::Declaration(Declaration::FunctionDeclaration(*self)),
             SymbolKind::Function,
         );
-        ctx.tokens.insert(ctx.ident(&self.name), token.clone());
-        self.body.contents.par_iter().for_each(|node| {
+        let fn_decl = ctx.engines.pe().get_function(self);
+
+        ctx.tokens.insert(ctx.ident(&fn_decl.name), token.clone());
+        fn_decl.body.contents.par_iter().for_each(|node| {
             node.parse(ctx);
         });
-        self.parameters.par_iter().for_each(|param| {
+        fn_decl.parameters.par_iter().for_each(|param| {
             param.parse(ctx);
         });
-        self.type_parameters.par_iter().for_each(|type_param| {
+        fn_decl.type_parameters.par_iter().for_each(|type_param| {
             type_param.parse(ctx);
         });
-        for (ident, constraints) in &self.where_clause {
+        for (ident, constraints) in &fn_decl.where_clause {
             ctx.tokens.insert(ctx.ident(ident), token.clone());
             constraints.par_iter().for_each(|constraint| {
                 constraint.parse(ctx);
             });
         }
-        self.return_type.parse(ctx);
-        self.attributes.parse(ctx);
+        fn_decl.return_type.parse(ctx);
+        fn_decl.attributes.parse(ctx);
     }
 }
 

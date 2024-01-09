@@ -669,7 +669,7 @@ pub fn compile_to_ast(
         .map(|config| !config.include_tests)
         .unwrap_or(true)
     {
-        parsed_program.exclude_tests();
+        parsed_program.exclude_tests(engines);
     }
 
     // Type check (+ other static analysis) the CST to a typed AST.
@@ -1143,12 +1143,11 @@ fn test_unary_ordering() {
     // expression should be `&&`
     if let parsed::AstNode {
         content:
-            parsed::AstNodeContent::Declaration(parsed::Declaration::FunctionDeclaration(
-                parsed::FunctionDeclaration { body, .. },
-            )),
+            parsed::AstNodeContent::Declaration(parsed::Declaration::FunctionDeclaration(decl_id)),
         ..
     } = &prog.root.tree.root_nodes[0]
     {
+        let fn_decl = engines.pe().get_function(decl_id);
         if let parsed::AstNode {
             content:
                 parsed::AstNodeContent::Expression(parsed::Expression {
@@ -1159,7 +1158,7 @@ fn test_unary_ordering() {
                     ..
                 }),
             ..
-        } = &body.contents[2]
+        } = &fn_decl.body.contents[2]
         {
             assert_eq!(op, &language::LazyOp::And)
         } else {

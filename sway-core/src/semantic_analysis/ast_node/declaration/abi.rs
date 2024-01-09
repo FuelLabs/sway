@@ -34,6 +34,7 @@ impl ty::TyAbiDecl {
         ctx: TypeCheckContext,
         abi_decl: AbiDeclaration,
     ) -> Result<Self, ErrorEmitted> {
+        let engines = ctx.engines();
         let AbiDeclaration {
             name,
             interface_surface,
@@ -167,10 +168,11 @@ impl ty::TyAbiDecl {
 
         // Type check the items.
         let mut new_items = vec![];
-        for method in methods.into_iter() {
+        for method_id in methods.into_iter() {
+            let method = engines.pe().get_function(&method_id);
             let method =
-                ty::TyFunctionDecl::type_check(handler, ctx.by_ref(), method.clone(), false, false)
-                    .unwrap_or_else(|_| ty::TyFunctionDecl::error(method.clone()));
+                ty::TyFunctionDecl::type_check(handler, ctx.by_ref(), &method, false, false)
+                    .unwrap_or_else(|_| ty::TyFunctionDecl::error(&method));
             error_on_shadowing_superabi_method(&method.name, &mut ctx);
             for param in &method.parameters {
                 if param.is_reference || param.is_mutable {
