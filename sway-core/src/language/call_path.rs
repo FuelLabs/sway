@@ -244,6 +244,20 @@ impl<T: Spanned> Spanned for CallPath<T> {
 }
 
 impl CallPath {
+    pub fn absolute(path: &[&str]) -> Self {
+        assert!(path.len() >= 1);
+
+        CallPath {
+            prefixes: path
+                .iter()
+                .take(path.len() - 1)
+                .map(|&x| Ident::new_no_span(x.into()))
+                .collect(),
+            suffix: path.last().map(|&x| Ident::new_no_span(x.into())).unwrap(),
+            is_absolute: true,
+        }
+    }
+
     /// Shifts the last prefix into the suffix, and removes the old suffix.
     /// Does nothing if prefixes are empty.
     pub fn rshift(&self) -> CallPath {
