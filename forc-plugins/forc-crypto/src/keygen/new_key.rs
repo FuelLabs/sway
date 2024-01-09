@@ -15,7 +15,7 @@ use std::ops::Deref;
 
 const ABOUT: &str = "Creates a new key for use with fuel-core";
 
-forc::cli_examples! {
+forc_util::cli_examples! {
     [ Creates a new key default for block production => crypto "new-key" ]
     [ Creates a new key for peering => crypto "new-key -k peering" ]
     [ Creates a new key for block production => crypto "new-key -k block-production" ]

@@ -6,7 +6,7 @@ use std::{
     path::Path,
 };
 
-forc::cli_examples! {
+forc_util::cli_examples! {
     [ Hashes an argument with SHA256 => crypto "sha256 test" ]
     [ Hashes an argument with Keccak256 => crypto "keccak256 test" ]
     [ Hashes a file path with SHA256 => crypto "sha256 src/args.rs" ]

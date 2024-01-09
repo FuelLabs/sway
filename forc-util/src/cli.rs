@@ -31,7 +31,7 @@ macro_rules! cli_examples {
                     let output = proc.output().expect(stringify!($command));
 
                     $(
-                        let expected_output = ::forc::Regex::new($output).expect("valid regex");
+                        let expected_output = $crate::Regex::new($output).expect("valid regex");
                         let stdout = String::from_utf8_lossy(&output.stdout);
                         let stderr = String::from_utf8_lossy(&output.stderr);
 

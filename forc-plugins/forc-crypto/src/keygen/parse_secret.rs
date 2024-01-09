@@ -9,7 +9,7 @@ use std::{ops::Deref, str::FromStr};
 
 const ABOUT: &str = "Parses a private key to view the associated public key";
 
-forc::cli_examples! {
+forc_util::cli_examples! {
     [ Parses the secret of a block production  => crypto "parse-secret \"f5204427d0ab9a311266c96a377f7c329cb8a41b9088225b6fcf40eefb423e28\"" ]
     [ Parses the secret of a peering  => crypto "parse-secret -k peering \"f5204427d0ab9a311266c96a377f7c329cb8a41b9088225b6fcf40eefb423e28\"" ]
 }

@@ -8,12 +8,7 @@ pub mod test {
     pub use crate::ops::{forc_build, forc_check};
 }
 
-pub use regex::Regex;
-
 #[cfg(feature = "util")]
 pub mod util {
     pub use sway_utils::constants;
 }
-
-pub use paste;
-pub use serial_test;

@@ -18,7 +18,7 @@ use sway_core::{BuildConfig, BuildTarget};
 use sway_utils::{constants, find_parent_manifest_dir, get_sway_files, is_sway_file};
 use swayfmt::Formatter;
 
-forc::cli_examples! {
+forc_util::cli_examples! {
     [ Run the formatter in check mode on the current directory => fmt "--check"]
     [ Run the formatter in check mode on the current directory with short format => fmt "-c"]
     [ Run formatter against a given file => fmt "--file src/main.sw"]

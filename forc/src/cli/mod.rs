@@ -24,8 +24,6 @@ pub use test::Command as TestCommand;
 use tracing::metadata::LevelFilter;
 pub use update::Command as UpdateCommand;
 
-#[macro_use]
-pub mod help;
 mod commands;
 mod plugin;
 pub mod shared;

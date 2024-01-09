@@ -1963,11 +1963,8 @@ dependencies = [
  "fs_extra",
  "fuel-asm",
  "hex",
- "paste",
- "regex",
  "serde",
  "serde_json",
- "serial_test",
  "sway-core",
  "sway-error",
  "sway-types",
@@ -2026,8 +2023,8 @@ dependencies = [
  "async-trait",
  "atty",
  "clap 3.2.25",
- "forc",
  "forc-tracing 0.48.1",
+ "forc-util",
  "fuel-core-types 0.22.0",
  "fuel-crypto",
  "fuels-core",
@@ -2094,7 +2091,6 @@ version = "0.48.1"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
- "forc",
  "forc-pkg",
  "forc-tracing 0.48.1",
  "forc-util",
@@ -2195,7 +2191,6 @@ dependencies = [
  "anyhow",
  "clap 3.2.25",
  "devault",
- "forc",
  "forc-util",
  "fuel-tx",
  "fuel-types",
@@ -2217,8 +2212,11 @@ dependencies = [
  "forc-tracing 0.48.1",
  "fuel-tx",
  "hex",
+ "paste",
+ "regex",
  "serde",
  "serde_json",
+ "serial_test",
  "sway-core",
  "sway-error",
  "sway-types",
@@ -6145,9 +6143,9 @@ dependencies = [
 
 [[package]]
 name = "serial_test"
-version = "2.0.0"
+version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e56dd856803e253c8f298af3f4d7eb0ae5e23a737252cd90bb4f3b435033b2d"
+checksum = "953ad9342b3aaca7cb43c45c097dd008d4907070394bd0751a0aa8817e5a018d"
 dependencies = [
  "dashmap",
  "futures",
@@ -6159,9 +6157,9 @@ dependencies = [
 
 [[package]]
 name = "serial_test_derive"
-version = "2.0.0"
+version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91d129178576168c589c9ec973feedf7d3126c01ac2bf08795109aa35b69fb8f"
+checksum = "b93fb4adc70021ac1b47f7d45e8cc4169baaa7ea58483bc5b721d19a26202212"
 dependencies = [
  "proc-macro2",
  "quote",

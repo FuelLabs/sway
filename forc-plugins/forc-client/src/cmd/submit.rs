@@ -2,7 +2,7 @@ use crate::NodeTarget;
 use devault::Devault;
 use std::path::PathBuf;
 
-forc::cli_examples! {
+forc_util::cli_examples! {
     [ Submit a transaction from a json file => submit "./mint.json" => "Submission of tx or awaiting commit failed" ]
     [ Submit a transaction from a json file and wait for confirmation => submit "./mint.json --await true" => "Submission of tx or awaiting commit failed" ]
     [ Submit a transaction from a json file and get output in json => submit "./mint.json --tx-status-json true" => "Submission of tx or awaiting commit failed" ]

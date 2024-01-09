@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use thiserror::Error;
 
-forc::cli_examples! {
+forc_util::cli_examples! {
     [ Script example => tx r#"script --bytecode "out/debug/tests.bin" --data "data.bin"  \
         --receipts-root 0x2222222222222222222222222222222222222222222222222222222222222222"# ]
     [ Multiple inputs => tx r#"create --bytecode "out/debug/tests.bin"
