@@ -245,7 +245,7 @@ impl<T: Spanned> Spanned for CallPath<T> {
 
 impl CallPath {
     pub fn absolute(path: &[&str]) -> Self {
-        assert!(path.len() >= 1);
+        assert!(!path.is_empty());
 
         CallPath {
             prefixes: path

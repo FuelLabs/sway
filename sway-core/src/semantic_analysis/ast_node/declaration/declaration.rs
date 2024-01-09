@@ -1,21 +1,18 @@
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Ident, Named, Span, Spanned};
+use sway_types::{Named, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineGet, DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType},
+    decl_engine::{DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType},
     language::{
-        parsed::{
-            self, AstNode, CodeBlock, FunctionDeclaration, FunctionParameter, SubfieldExpression,
-        },
+        parsed,
         ty::{self, TyDecl},
-        CallPath, QualifiedCallPath,
+        CallPath,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
     semantic_analysis::{
         type_check_context::EnforceTypeArguments, TypeCheckAnalysis, TypeCheckAnalysisContext,
         TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext,
     },
-    transform::AttributesMap,
     type_system::*,
 };
 

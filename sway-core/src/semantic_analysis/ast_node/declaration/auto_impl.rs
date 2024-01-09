@@ -31,7 +31,7 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
         Some(Self {
             ctx,
             buffer_type_id,
-            abi_encode_call_path:  CallPath::absolute(&["core", "codec", "AbiEncode"]),
+            abi_encode_call_path: CallPath::absolute(&["core", "codec", "AbiEncode"]),
         })
     }
 
@@ -61,7 +61,7 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
         Some(buffer_type_id)
     }
 
-    fn import_core_codec(&self) -> bool {
+    fn import_core_codec(&mut self) -> bool {
         // Check if the compilation context has acces to the
         // core library.
         let handler = Handler::default();
@@ -139,7 +139,9 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
                         qualified_call_path: QualifiedCallPath {
                             call_path: CallPath {
                                 prefixes: vec![],
-                                suffix: Ident::new_no_span(type_parameter.name_ident.as_str().into()),
+                                suffix: Ident::new_no_span(
+                                    type_parameter.name_ident.as_str().into(),
+                                ),
                                 is_absolute: false,
                             },
                             qualified_path_root: None,
@@ -200,7 +202,7 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
                             .collect(),
                     })
                     .collect();
-                
+
                 trait_constraints.push(TraitConstraint {
                     trait_name: CallPath {
                         prefixes: vec![],
@@ -484,41 +486,6 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
         if matches!(self.ctx.namespace.root().name.as_ref(), Some(x) if x.as_str() == "core") {
             return false;
         }
-
-        // if Buffer type is not reacheable, we cannot auto impl
-        let handler = Handler::default();
-        let buffer_type_id = self.ctx.engines.te().insert(
-            self.ctx.engines,
-            TypeInfo::Custom {
-                qualified_call_path: QualifiedCallPath {
-                    call_path: CallPath {
-                        prefixes: vec![
-                            Ident::new_no_span("core".into()),
-                            Ident::new_no_span("codec".into()),
-                        ],
-                        suffix: Ident::new_no_span("Buffer".into()),
-                        is_absolute: true,
-                    },
-                    qualified_path_root: None,
-                },
-                type_arguments: None,
-                root_type_id: None,
-            },
-            None,
-        );
-        let Some(buffer_type_id) = self
-            .ctx
-            .resolve_type(
-                &handler,
-                buffer_type_id,
-                &Span::dummy(),
-                EnforceTypeArguments::No,
-                None,
-            )
-            .ok()
-        else {
-            return false;
-        };
 
         let Some(decl_ref) = decl.get_struct_decl_ref() else {
             return false;
