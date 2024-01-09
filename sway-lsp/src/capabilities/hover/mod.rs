@@ -89,14 +89,14 @@ fn extract_fn_signature(span: &Span) -> String {
     value.split('{').take(1).map(|v| v.trim()).collect()
 }
 
-fn format_doc_attributes(token: &Token) -> String {
+fn format_doc_attributes(engines: &Engines, token: &Token) -> String {
     let mut doc_comment = String::new();
-    if let Some(attributes) = doc_comment_attributes(token) {
+    doc_comment_attributes(engines, token, |attributes| {
         doc_comment = attributes.iter().fold("".to_string(), |output, attribute| {
             let comment = attribute.args.first().unwrap().name.as_str();
             format!("{output}{comment}\n")
-        })
-    }
+        });
+    });
     doc_comment
 }
 
@@ -130,7 +130,7 @@ fn hover_format(
     ident_name: &str,
 ) -> lsp_types::HoverContents {
     let decl_engine = engines.de();
-    let doc_comment = format_doc_attributes(token);
+    let doc_comment = format_doc_attributes(engines, token);
 
     let format_name_with_type = |name: &str, type_id: &TypeId| -> String {
         let type_name = format!("{}", engines.help_out(type_id));

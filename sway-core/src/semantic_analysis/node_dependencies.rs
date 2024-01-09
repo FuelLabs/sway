@@ -22,8 +22,6 @@ pub(crate) fn order_ast_nodes_by_dependency(
     engines: &Engines,
     nodes: Vec<AstNode>,
 ) -> Result<Vec<AstNode>, ErrorEmitted> {
-    let type_engine = engines.te();
-
     let decl_dependencies = DependencyMap::from_iter(
         nodes
             .iter()
@@ -50,7 +48,7 @@ pub(crate) fn order_ast_nodes_by_dependency(
     Ok(nodes
         .into_iter()
         .fold(Vec::<AstNode>::new(), |ordered, node| {
-            insert_into_ordered_nodes(type_engine, &decl_dependencies, ordered, node)
+            insert_into_ordered_nodes(engines, &decl_dependencies, ordered, node)
         }))
 }
 
@@ -207,14 +205,14 @@ fn build_recursive_type_error(name: Ident, chain: &[Ident]) -> CompileError {
 type DependencyMap = HashMap<DependentSymbol, Dependencies>;
 
 fn insert_into_ordered_nodes(
-    type_engine: &TypeEngine,
+    engines: &Engines,
     decl_dependencies: &DependencyMap,
     mut ordered_nodes: Vec<AstNode>,
     node: AstNode,
 ) -> Vec<AstNode> {
     for idx in 0..ordered_nodes.len() {
         // If we find a node which depends on the new node, insert it in front.
-        if depends_on(type_engine, decl_dependencies, &ordered_nodes[idx], &node) {
+        if depends_on(engines, decl_dependencies, &ordered_nodes[idx], &node) {
             ordered_nodes.insert(idx, node);
             return ordered_nodes;
         }
@@ -231,7 +229,7 @@ fn insert_into_ordered_nodes(
 // Does the dependant depend on the dependee?
 
 fn depends_on(
-    type_engine: &TypeEngine,
+    engines: &Engines,
     decl_dependencies: &DependencyMap,
     dependant_node: &AstNode,
     dependee_node: &AstNode,
@@ -250,10 +248,7 @@ fn depends_on(
         (AstNodeContent::IncludeStatement(_), AstNodeContent::Declaration(_)) => false,
         (AstNodeContent::UseStatement(_), AstNodeContent::Declaration(_)) => false,
         (AstNodeContent::Declaration(dependant), AstNodeContent::Declaration(dependee)) => {
-            match (
-                decl_name(type_engine, dependant),
-                decl_name(type_engine, dependee),
-            ) {
+            match (decl_name(engines, dependant), decl_name(engines, dependee)) {
                 (Some(dependant_name), Some(dependee_name)) => decl_dependencies
                     .get(&dependant_name)
                     .map(|deps_set| {
@@ -283,9 +278,8 @@ impl Dependencies {
         engines: &Engines,
         node: &AstNode,
     ) -> Option<(DependentSymbol, Dependencies)> {
-        let type_engine = engines.te();
         match &node.content {
-            AstNodeContent::Declaration(decl) => decl_name(type_engine, decl).map(|name| {
+            AstNodeContent::Declaration(decl) => decl_name(engines, decl).map(|name| {
                 (
                     name,
                     Dependencies {
@@ -309,7 +303,10 @@ impl Dependencies {
                 .gather_from_expr(engines, body),
             Declaration::ConstantDeclaration(decl) => self.gather_from_constant_decl(engines, decl),
             Declaration::TraitTypeDeclaration(decl) => self.gather_from_type_decl(engines, decl),
-            Declaration::FunctionDeclaration(fn_decl) => self.gather_from_fn_decl(engines, fn_decl),
+            Declaration::FunctionDeclaration(decl_id) => {
+                let fn_decl = engines.pe().get_function(decl_id);
+                self.gather_from_fn_decl(engines, &fn_decl)
+            }
             Declaration::StructDeclaration(StructDeclaration {
                 fields,
                 type_parameters,
@@ -349,8 +346,9 @@ impl Dependencies {
                     TraitItem::Type(type_decl) => deps.gather_from_type_decl(engines, type_decl),
                     TraitItem::Error(_, _) => deps,
                 })
-                .gather_from_iter(methods.iter(), |deps, fn_decl| {
-                    deps.gather_from_fn_decl(engines, fn_decl)
+                .gather_from_iter(methods.iter(), |deps, fn_decl_id| {
+                    let fn_decl = engines.pe().get_function(fn_decl_id);
+                    deps.gather_from_fn_decl(engines, &fn_decl)
                 }),
             Declaration::ImplTrait(ImplTrait {
                 impl_type_parameters,
@@ -363,7 +361,10 @@ impl Dependencies {
                 .gather_from_type_argument(engines, implementing_for)
                 .gather_from_type_parameters(impl_type_parameters)
                 .gather_from_iter(items.iter(), |deps, item| match item {
-                    ImplItem::Fn(fn_decl) => deps.gather_from_fn_decl(engines, fn_decl),
+                    ImplItem::Fn(fn_decl_id) => {
+                        let fn_decl = engines.pe().get_function(fn_decl_id);
+                        deps.gather_from_fn_decl(engines, &fn_decl)
+                    }
                     ImplItem::Constant(const_decl) => {
                         deps.gather_from_constant_decl(engines, const_decl)
                     }
@@ -376,7 +377,10 @@ impl Dependencies {
             }) => self
                 .gather_from_type_argument(engines, implementing_for)
                 .gather_from_iter(items.iter(), |deps, item| match item {
-                    ImplItem::Fn(fn_decl) => deps.gather_from_fn_decl(engines, fn_decl),
+                    ImplItem::Fn(fn_decl_id) => {
+                        let fn_decl = engines.pe().get_function(fn_decl_id);
+                        deps.gather_from_fn_decl(engines, &fn_decl)
+                    }
                     ImplItem::Constant(const_decl) => {
                         deps.gather_from_constant_decl(engines, const_decl)
                     }
@@ -403,8 +407,9 @@ impl Dependencies {
                     TraitItem::Type(type_decl) => deps.gather_from_type_decl(engines, type_decl),
                     TraitItem::Error(_, _) => deps,
                 })
-                .gather_from_iter(methods.iter(), |deps, fn_decl| {
-                    deps.gather_from_fn_decl(engines, fn_decl)
+                .gather_from_iter(methods.iter(), |deps, fn_decl_id| {
+                    let fn_decl = engines.pe().get_function(fn_decl_id);
+                    deps.gather_from_fn_decl(engines, &fn_decl)
                 }),
             Declaration::StorageDeclaration(StorageDeclaration { fields, .. }) => self
                 .gather_from_iter(
@@ -799,7 +804,8 @@ impl Hash for DependentSymbol {
     }
 }
 
-fn decl_name(type_engine: &TypeEngine, decl: &Declaration) -> Option<DependentSymbol> {
+fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
+    let type_engine = engines.te();
     let dep_sym = |name| Some(DependentSymbol::Symbol(name));
     // `method_names` is the concatenation of all the method names defined in an impl block.
     // This is needed because there can exist multiple impl self blocks for a single type in a
@@ -814,10 +820,13 @@ fn decl_name(type_engine: &TypeEngine, decl: &Declaration) -> Option<DependentSy
 
     match decl {
         // These declarations can depend upon other declarations.
-        Declaration::FunctionDeclaration(decl) => Some(DependentSymbol::Fn(
-            decl.name.clone(),
-            Some(decl.span.clone()),
-        )),
+        Declaration::FunctionDeclaration(decl_id) => {
+            let decl = engines.pe().get_function(decl_id);
+            Some(DependentSymbol::Fn(
+                decl.name.clone(),
+                Some(decl.span.clone()),
+            ))
+        }
         Declaration::ConstantDeclaration(decl) => dep_sym(decl.name.clone()),
         Declaration::TraitTypeDeclaration(decl) => dep_sym(decl.name.clone()),
         Declaration::StructDeclaration(decl) => dep_sym(decl.name.clone()),
@@ -835,11 +844,14 @@ fn decl_name(type_engine: &TypeEngine, decl: &Declaration) -> Option<DependentSy
                 decl.items
                     .iter()
                     .map(|item| match item {
-                        ImplItem::Fn(fn_decl) => fn_decl.name.as_str(),
-                        ImplItem::Constant(const_decl) => const_decl.name.as_str(),
-                        ImplItem::Type(type_decl) => type_decl.name.as_str(),
+                        ImplItem::Fn(fn_decl_id) => {
+                            let fn_decl = engines.pe().get_function(fn_decl_id);
+                            fn_decl.name.to_string()
+                        }
+                        ImplItem::Constant(const_decl) => const_decl.name.to_string(),
+                        ImplItem::Type(type_decl) => type_decl.name.to_string(),
                     })
-                    .collect::<Vec<&str>>()
+                    .collect::<Vec<String>>()
                     .join(""),
             )
         }
@@ -851,11 +863,14 @@ fn decl_name(type_engine: &TypeEngine, decl: &Declaration) -> Option<DependentSy
                     decl.items
                         .iter()
                         .map(|item| match item {
-                            ImplItem::Fn(fn_decl) => fn_decl.name.as_str(),
-                            ImplItem::Constant(const_decl) => const_decl.name.as_str(),
-                            ImplItem::Type(type_decl) => type_decl.name.as_str(),
+                            ImplItem::Fn(fn_decl_id) => {
+                                let fn_decl = engines.pe().get_function(fn_decl_id);
+                                fn_decl.name.to_string()
+                            }
+                            ImplItem::Constant(const_decl) => const_decl.name.to_string(),
+                            ImplItem::Type(type_decl) => type_decl.name.to_string(),
                         })
-                        .collect::<Vec<&str>>()
+                        .collect::<Vec<_>>()
                         .join(""),
                 )
             } else {
