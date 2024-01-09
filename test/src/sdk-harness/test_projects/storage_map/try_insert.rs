@@ -16,7 +16,7 @@ macro_rules! generate_try_insert_tests {
 
                 let result = instance.methods().[<try_insert_into_ $input_string _map>]($key, $value2).call().await.unwrap().value;
 
-                assert_eq!(result, Some($value1));
+                assert_eq!(result, Err(StorageMapError::OccupiedError($value1)));
 
                 let after = instance.methods().[<get_from_ $input_string _map>]($key).call().await.unwrap().value;
 
@@ -33,7 +33,7 @@ macro_rules! generate_try_insert_tests {
 
                 let result = instance.methods().[<try_insert_into_ $input_string _map>]($key, $value2).call().await.unwrap().value;
 
-                assert_eq!(result, None);
+                assert_eq!(result, Ok($value2));
 
                 let after = instance.methods().[<get_from_ $input_string _map>]($key).call().await.unwrap().value;
 

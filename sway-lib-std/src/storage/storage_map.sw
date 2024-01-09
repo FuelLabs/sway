@@ -2,8 +2,15 @@ library;
 
 use ::hash::*;
 use ::option::Option;
+use ::result::Result;
 use ::storage::storage_api::*;
 use ::storage::storage_key::*;
+
+/// Errors pertaining to the `StorageMap` struct.
+pub enum StorageMapError<V> {
+    /// Indicates that a value already exists for the key.
+    OccupiedError: V,
+}
 
 /// A persistent key-value pair mapping struct.
 pub struct StorageMap<K, V>
@@ -136,7 +143,7 @@ where
     ///
     /// # Returns
     ///
-    /// * [Option<V>] - The value previously stored at `key`, if any.
+    /// * [Result<V, StorageMapError<V>>] - `Result::Ok(value)` if the value was inserted, or `Result::Err(StorageMapError::OccupiedError(pre_existing_value))` if a value already existed for the key. 
     ///
     /// # Number of Storage Accesses
     ///
@@ -146,6 +153,8 @@ where
     /// # Examples
     ///
     /// ```sway
+    /// use std::storage::storage_map::StorageMapError;
+    ///
     /// storage {
     ///     map: StorageMap<u64, bool> = StorageMap {}
     /// }
@@ -159,19 +168,19 @@ where
     ///
     ///     let new_value = false;
     ///     let old_value = storage.map.try_insert(key, new_value);
-    ///     assert(old_value == Option::Some(value)); // The old value is returned.
+    ///     assert(old_value == Result::Err(StorageMapError::OccupiedError(value))); // The old value is returned.
     ///     let retrieved_value = storage.map.get(key).read();
     ///     assert(value == retrieved_value); // New value was not inserted, as a value already existed.
     ///
     ///     let key2 = 10_u64;
-    ///     let old_value = storage.map.try_insert(key2, new_value);
-    ///     assert(old_value == Option::None); // No old value is returned.
+    ///     let returned_value = storage.map.try_insert(key2, new_value);
+    ///     assert(returned_value == Result::Ok(new_value)); // New value is returned.
     ///     let retrieved_value = storage.map.get(key2).read();
     ///     assert(new_value == retrieved_value); // New value was inserted, as no value existed prior.
     /// }
     /// ```
     #[storage(read, write)]
-    pub fn try_insert(self, key: K, value: V) -> Option<V>
+    pub fn try_insert(self, key: K, value: V) -> Result<V, StorageMapError<V>>
     where
         K: Hash,
 {
@@ -181,11 +190,11 @@ where
 
         match val {
             Option::Some(v) => {
-                Option::Some(v)
+                Result::Err(StorageMapError::OccupiedError(v))
             },
             Option::None => {
                 write::<V>(key, 0, value);
-                Option::None
+                Result::Ok(value)
             }
         }
     }
