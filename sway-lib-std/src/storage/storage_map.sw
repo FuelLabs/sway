@@ -134,7 +134,7 @@ where
         clear::<V>(key, 0)
     }
 
-    /// Inserts a key-value pair into the map, if a value does not already exist for the key.
+    /// Inserts a key-value pair into the map if a value does not already exist for the key.
     ///
     /// # Arguments
     ///
