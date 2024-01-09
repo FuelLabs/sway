@@ -1,7 +1,6 @@
 //! The `Bytes` type is used when a collection of tightly-packed arbitrary bytes is needed.
 library;
 
-use core::codec::*;
 use ::{alloc::{alloc_bytes, realloc_bytes}, vec::Vec};
 use ::assert::assert;
 use ::intrinsics::size_of_val;

@@ -1,7 +1,5 @@
 script;
 
-use core::codec::*;
-
 fn main() -> bool {
     let a: u16 = u16::max();
     let b: u16 = 2;

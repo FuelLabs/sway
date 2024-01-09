@@ -2,7 +2,6 @@
 contract;
 
 use std::hash::*;
-use core::codec::*;
 
 ////////////////////////////////////////
 // Event declarations

@@ -1,7 +1,5 @@
 script;
 
-use core::codec::*;
-
 fn main() -> bool {
     let a: u64 = u64::min();
     let b: u64 = 1;

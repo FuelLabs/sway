@@ -3,7 +3,6 @@ library;
 
 use ::logging::log;
 use ::error_signals::FAILED_REQUIRE_SIGNAL;
-use core::codec::*;
 
 /// Will either panic or revert with a given number depending on the context.
 ///

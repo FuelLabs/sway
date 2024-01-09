@@ -1,7 +1,5 @@
 script;
 
-use core::codec::*;
-
 fn main() {
     // ANCHOR: vec_new
     let v: Vec<u64> = Vec::new();

@@ -1,5 +1,4 @@
 script;
-use core::codec::*;
 
 fn divide(numerator: u64, denominator: u64) -> Option<u64> {
     if denominator == 0 {

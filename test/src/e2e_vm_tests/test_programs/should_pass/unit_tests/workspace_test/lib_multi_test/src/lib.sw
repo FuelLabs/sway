@@ -1,7 +1,5 @@
 library;
 
-use core::codec::*;
-
 fn pow2(x: u64) -> u64 {
     log(x);
     x * x

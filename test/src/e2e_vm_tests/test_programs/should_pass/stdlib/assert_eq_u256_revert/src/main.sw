@@ -1,6 +1,5 @@
 script;
 
-use core::codec::*;
 use std::u256::*;
 
 #[allow(deprecated)]

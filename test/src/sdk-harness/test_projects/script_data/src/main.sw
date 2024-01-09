@@ -1,7 +1,6 @@
 script;
 
 use std::tx::tx_script_data;
-use core::codec::*;
 
 fn main() {
     // Reference type

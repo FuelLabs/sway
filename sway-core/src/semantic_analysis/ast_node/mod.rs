@@ -48,7 +48,6 @@ impl ty::TyAstNode {
                             let star_import_handler = Handler::default();
                             let import =
                                 ctx.star_import(&star_import_handler, &path, a.is_absolute);
-
                             if import.is_ok() {
                                 handler.append(star_import_handler);
                                 import

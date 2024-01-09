@@ -67,43 +67,44 @@ pub(crate) fn print_decl_engine_types(
 ) -> String {
     all_nodes
         .iter()
-        .fold(String::new(), |result, n| match &n.content {
+        .map(|n| match &n.content {
             ty::TyAstNodeContent::Declaration(declaration) => match declaration {
                 ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
                     let const_decl = decl_engine.get_constant(decl_id);
-                    format!("{result}{const_decl:#?}")
+                    format!("{const_decl:#?}")
                 }
                 ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
                     let func_decl = decl_engine.get_function(decl_id);
-                    format!("{result}{func_decl:#?}")
+                    format!("{func_decl:#?}")
                 }
                 ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. }) => {
                     let trait_decl = decl_engine.get_trait(decl_id);
-                    format!("{result}{trait_decl:#?}")
+                    format!("{trait_decl:#?}")
                 }
                 ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
                     let struct_decl = decl_engine.get_struct(decl_id);
-                    format!("{result}{struct_decl:#?}")
+                    format!("{struct_decl:#?}")
                 }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
                     let enum_decl = decl_engine.get_enum(decl_id);
-                    format!("{result}{enum_decl:#?}")
+                    format!("{enum_decl:#?}")
                 }
                 ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. }) => {
                     let abi_decl = decl_engine.get_abi(decl_id);
-                    format!("{result}{abi_decl:#?}")
+                    format!("{abi_decl:#?}")
                 }
                 ty::TyDecl::StorageDecl(ty::StorageDecl { decl_id, .. }) => {
                     let storage_decl = decl_engine.get_storage(decl_id);
-                    format!("{result}{storage_decl:#?}")
+                    format!("{storage_decl:#?}")
                 }
-                _ => format!("{result}{declaration:#?}"),
+                _ => format!("{declaration:#?}"),
             },
             ty::TyAstNodeContent::Expression(expression)
             | ty::TyAstNodeContent::ImplicitReturnExpression(expression) => {
-                format!("{result}{expression:#?}")
+                format!("{expression:#?}")
             }
-            ty::TyAstNodeContent::SideEffect(side_effect) => format!("{result}{side_effect:#?}"),
-            ty::TyAstNodeContent::Error(_, _) => format!("{result}error"),
+            ty::TyAstNodeContent::SideEffect(side_effect) => format!("{side_effect:#?}"),
+            ty::TyAstNodeContent::Error(_, _) => "error".to_string(),
         })
+        .fold("".to_string(), |output, s| format!("{output}{s}\n"))
 }

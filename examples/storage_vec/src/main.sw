@@ -1,7 +1,5 @@
 contract;
 
-use core::codec::*;
-
 // ANCHOR: storage_vec_import
 use std::storage::storage_vec::*;
 // ANCHOR_END: storage_vec_import

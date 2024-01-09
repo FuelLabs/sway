@@ -20,6 +20,9 @@ pub struct TyIntrinsicFunctionKind {
 }
 
 impl TyIntrinsicFunctionKind {
+    /// Returns the actual type being logged. When the "new_encoding" is off,
+    /// this is just the `__log` argument; but when it is on, it is actually the 
+    /// type of the argument to fn `encode`.
     pub fn get_logged_type(&self, new_encoding: bool) -> Option<TypeId> {
         if new_encoding {
             if matches!(self.kind, Intrinsic::Log) {

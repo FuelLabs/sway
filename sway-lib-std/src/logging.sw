@@ -1,8 +1,6 @@
 //! Allows logging of arbitrary stack types, emitted as either `Log` or `Logd` receipts.
 library;
 
-use core::codec::*;
-
 /// Log any stack type.
 ///
 /// # Additional Information

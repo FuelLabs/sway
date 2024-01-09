@@ -614,8 +614,6 @@ impl<T> From<raw_slice> for Vec<T> {
     }
 }
 
-use core::codec::*;
-
 impl<T> AbiEncode for Vec<T> 
 where
     T: AbiEncode

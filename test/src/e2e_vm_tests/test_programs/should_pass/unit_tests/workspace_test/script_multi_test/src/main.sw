@@ -1,7 +1,5 @@
 script;
 
-use core::codec::*;
-
 fn main() {
     revert(0);
 }

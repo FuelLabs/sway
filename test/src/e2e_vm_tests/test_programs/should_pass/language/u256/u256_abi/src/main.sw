@@ -1,6 +1,4 @@
-script;
-
-use core::codec::*;
+script; 
 
 configurable {
     SOME_U256: u256 = 0x00000000000000000000000000000000000000000000000000000001u256,

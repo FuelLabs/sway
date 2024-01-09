@@ -269,7 +269,7 @@ impl Root {
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
                     name: symbol.clone(),
                     span: symbol.span(),
-                }));
+                }))
             }
         })
     }

@@ -1,7 +1,5 @@
 library;
 
-use core::codec::*;
-
 pub struct OwnershipTransferred {
     previous_owner: b256,
     new_owner: b256,
@@ -42,7 +40,7 @@ pub trait Ownable : StorageHelpers {
         Self::set_owner(new_owner);
 
         // log does not work here
-        (OwnershipTransferred {
+        std::logging::log(OwnershipTransferred {
             previous_owner: old_owner,
             new_owner: new_owner,
         });

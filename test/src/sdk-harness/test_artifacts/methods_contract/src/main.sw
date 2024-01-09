@@ -1,7 +1,6 @@
 contract;
 
 use methods_abi::MethodsContract;
-use core::codec::*;
 
 fn bogus() -> Identity {
     let sender = msg_sender();

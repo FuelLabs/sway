@@ -19,10 +19,12 @@ use crate::{
     type_system::*,
 };
 
+/// Contains all information needed to implement AbiEncode
 struct AutoImplAbiEncodeContext {
     buffer_type_id: TypeId,
 }
 
+/// Verify with a enum has all variants that can be auto implemented.
 fn can_enum_auto_impl_abi_encode(
     ctx: &mut TypeCheckContext,
     decl: ty::TyDecl,
@@ -95,6 +97,7 @@ fn can_enum_auto_impl_abi_encode(
     all_variants_are_abi_encode.then_some(AutoImplAbiEncodeContext { buffer_type_id })
 }
 
+/// Auto implements AbiEncode for structs
 fn enum_auto_impl_abi_encode(
     handler: &Handler,
     ctx: &mut TypeCheckContext,
@@ -110,6 +113,8 @@ fn enum_auto_impl_abi_encode(
 
     let enum_decl = ctx.engines().de().get(implementing_for_decl_ref.id());
 
+    // Check if the compilation context has acces to the 
+    // core library.
     let import_handler = Handler::default();
     let _ = ctx.star_import(
         &import_handler,
@@ -478,11 +483,14 @@ fn enum_auto_impl_abi_encode(
     let _ = TyDecl::type_check(handler, ctx.by_ref(), impl_trait);
 }
 
+// Check if a struct can implement AbiEncode
 fn can_struct_auto_impl_abi_encode(
     ctx: &mut TypeCheckContext,
     decl: ty::TyDecl,
 ) -> Option<AutoImplAbiEncodeContext> {
     // skip module "core"
+    // Because of ordering, we cannot guarantee auto impl
+    // for structs inside "core" 
     if matches!(ctx.namespace.root().name.as_ref(), Some(x) if x.as_str() == "core") {
         return None;
     }
@@ -565,6 +573,7 @@ fn can_struct_auto_impl_abi_encode(
     all_fields_are_abi_encode.then_some(AutoImplAbiEncodeContext { buffer_type_id })
 }
 
+// Auto implements AbiEncode for structs
 fn struct_auto_impl_abi_encode(
     _handler: &Handler,
     ctx: &mut TypeCheckContext,
@@ -948,6 +957,7 @@ impl TyDecl {
                 let decl: ty::TyDecl = decl_engine.insert(enum_decl).into();
                 ctx.insert_symbol(handler, call_path.suffix, decl.clone())?;
 
+                // auto implement AbiEncode
                 if let Some(AutoImplAbiEncodeContext { buffer_type_id }) =
                     can_enum_auto_impl_abi_encode(&mut ctx, decl.clone())
                 {
@@ -1106,6 +1116,7 @@ impl TyDecl {
                 // insert the struct decl into namespace
                 ctx.insert_symbol(handler, call_path.suffix, decl.clone())?;
 
+                // auto implement AbiEncode
                 if let Some(AutoImplAbiEncodeContext { buffer_type_id }) =
                     can_struct_auto_impl_abi_encode(&mut ctx, decl.clone())
                 {
