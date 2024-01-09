@@ -8,6 +8,7 @@ use tracing::info;
 
 forc_util::cli_examples! {
     [ Run test => forc "test" => ".*could not find `Forc.toml`.*" ]
+    [ Run test with a filter => forc "test $filter" => ".*could not find `Forc.toml`.*" ]
     [ Run test without any output => forc "test --silent" => "^$" ]
     [ Run test without creating or update the lock file  => forc "test --locked" => ".*could not find `Forc.toml`.*" ]
 }
