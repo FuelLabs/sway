@@ -1,0 +1,13 @@
+[[package]]
+name = "auth_predicate"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "core"
+source = "path+from-root-7FCE6F17DDEC6CE9"
+
+[[package]]
+name = "std"
+source = "path+from-root-7FCE6F17DDEC6CE9"
+dependencies = ["core"]

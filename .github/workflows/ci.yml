@@ -15,8 +15,8 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
-  RUST_VERSION: 1.73.0
-  NIGHTLY_RUST_VERSION: nightly-2023-08-27
+  RUST_VERSION: 1.75.0
+  NIGHTLY_RUST_VERSION: nightly-2023-12-27
 
 jobs:
   build-sway-lib-core:
@@ -70,6 +70,30 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Build Sway examples workspace
         run: cargo run --locked -p forc -- build --locked --path ./docs/reference/src/code/Forc.toml
+
+  forc-fmt-check-sway-lib-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Check Sway sway-lib-core formatting
+        run: cargo run --locked -p forc-fmt -- --check --path ./sway-lib-core
+
+  forc-fmt-check-sway-lib-std:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Check Sway sway-lib-std formatting
+        run: cargo run --locked -p forc-fmt -- --check --path ./sway-lib-std
 
   forc-fmt-check-sway-examples:
     runs-on: ubuntu-latest
@@ -256,7 +280,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.21.0
+        image: ghcr.io/fuellabs/fuel-core:v0.22.0
         ports:
           - 4000:4000
     steps:
@@ -406,7 +430,7 @@ jobs:
         uses: baptiste0928/cargo-install@v2
         with:
           crate: fuel-core-bin
-          version: "0.21"
+          version: "0.22"
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
         run: cargo test --locked --release

@@ -19,6 +19,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "auth_predicate"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "auth_testing_abi"
 source = "member"
 dependencies = ["std"]

@@ -132,7 +132,7 @@ impl DeclMapping {
                     let func = engines.de().get(&func_id);
 
                     let unify_check = UnifyCheck::non_dynamic_equality(engines);
-                    if let (left, Some(right)) = (self_type, func.parameters.get(0)) {
+                    if let (left, Some(right)) = (self_type, func.parameters.first()) {
                         if unify_check.check(left, right.type_argument.type_id) {
                             mapping.push((source_decl_ref, dest_decl_ref));
                         }

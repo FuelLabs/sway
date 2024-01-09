@@ -18,7 +18,7 @@ use ::contract_id::ContractId;
 ///
 /// ```sway
 /// use std::{external::bytecode_root, call_frames::contract_id, constants::ZERO_B256};
-/// 
+///
 /// fn foo() {
 ///     let root_of_this_contract = bytecode_root(contract_id());
 ///     assert(root_of_this_contract != ZERO_B256);

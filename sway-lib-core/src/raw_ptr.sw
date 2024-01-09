@@ -79,7 +79,7 @@ impl raw_ptr {
     ///
     /// # Returns
     ///
-    /// * [T] - The value in memory at the location of the pointer.
+    /// * [T] - The copy of the value in memory at the location of the pointer.
     ///
     /// # Examples
     ///
@@ -263,7 +263,7 @@ impl raw_ptr {
     ///     let ptr = alloc::<u64>(2);
     ///     let offset_ptr_1 = ptr.add::<u64>(1);
     ///     let offset_ptr_2 = ptr.add_uint_offset(1);
-    ///     assert(offset_ptr_1 == offset_ptr_1);
+    ///     assert(offset_ptr_1 == offset_ptr_2);
     /// }
     /// ```
     pub fn add_uint_offset(self, offset: u64) -> Self {

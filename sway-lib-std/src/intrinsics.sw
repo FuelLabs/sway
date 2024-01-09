@@ -11,7 +11,7 @@ library;
 ///
 /// ```sway
 /// use std::intrinsics::is_reference_type;
-/// 
+///
 /// fn foo() {
 ///     let a = 1;
 ///     assert(is_reference_type(a))
