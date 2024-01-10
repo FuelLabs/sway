@@ -7,7 +7,7 @@ use crate::{
             MatchExpression, MethodApplicationExpression, MethodName, Scrutinee,
             SubfieldExpression,
         },
-        ty::{self, TyDecl, TyAstNodeContent, TyAstNode},
+        ty::{self, TyAstNode, TyDecl},
         CallPath, QualifiedCallPath,
     },
     semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
@@ -82,9 +82,8 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
         let handler = Handler::default();
         let Ok(enum_decl) = decl
             .to_enum_ref(&handler, self.ctx.engines())
-            .map(|enum_ref| 
-                self.ctx.engines().de().get(enum_ref.id())
-            ) else {
+            .map(|enum_ref| self.ctx.engines().de().get(enum_ref.id()))
+        else {
             return false;
         };
 
@@ -488,8 +487,9 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
             AstNode {
                 content: AstNodeContent::Declaration(impl_trait),
                 span: Span::dummy(),
-            }
-        ).ok()
+            },
+        )
+        .ok()
     }
 
     // Check if a struct can implement AbiEncode
@@ -851,8 +851,9 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
             AstNode {
                 content: AstNodeContent::Declaration(impl_trait),
                 span: Span::dummy(),
-            }
-        ).ok()
+            },
+        )
+        .ok()
     }
 
     pub fn auto_impl_abi_encode(&mut self, decl: &ty::TyDecl) -> Option<TyAstNode> {
