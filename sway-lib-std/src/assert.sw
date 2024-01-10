@@ -55,9 +55,9 @@ pub fn assert(condition: bool) {
 ///     log("a is equal to b");
 /// }
 /// ```
-pub fn assert_eq<T>(v1: T, v2: T) 
-where 
-    T: Eq + AbiEncode
+pub fn assert_eq<T>(v1: T, v2: T)
+where
+    T: Eq + AbiEncode,
 {
     if (v1 != v2) {
         log(v1);

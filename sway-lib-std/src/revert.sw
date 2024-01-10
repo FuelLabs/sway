@@ -55,7 +55,7 @@ pub fn revert(code: u64) {
 /// ```
 pub fn require<T>(condition: bool, value: T)
 where
-    T: AbiEncode
+    T: AbiEncode,
 {
     if !condition {
         log(value);

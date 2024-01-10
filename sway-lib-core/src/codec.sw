@@ -5,7 +5,7 @@ use ::raw_slice::*;
 pub struct Buffer {
     buffer: raw_ptr,
     cap: u64,
-    size: u64
+    size: u64,
 }
 
 impl Buffer {
@@ -17,7 +17,7 @@ impl Buffer {
                 hp: raw_ptr
             },
             cap,
-            size: 0
+            size: 0,
         }
     }
 
@@ -30,13 +30,14 @@ impl Buffer {
         } else {
             __revert(123456789);
         }
-        
     }
 }
 
 impl AsRawSlice for Buffer {
     fn as_raw_slice(self) -> raw_slice {
-        asm(ptr: (self.buffer, self.size)) { ptr: raw_slice }
+        asm(ptr: (self.buffer, self.size)) {
+            ptr: raw_slice
+        }
     }
 }
 
@@ -45,13 +46,14 @@ pub trait AbiEncode {
 }
 
 impl AbiEncode for () {
-    fn abi_encode(self, ref mut _buffer: Buffer) {
-    }
+    fn abi_encode(self, ref mut _buffer: Buffer) {}
 }
 
 impl AbiEncode for b256 {
     fn abi_encode(self, ref mut buffer: Buffer) {
-        let (a, b, c, d): (u64, u64, u64, u64) = asm(r1: self) {r1: (u64, u64, u64, u64)};
+        let (a, b, c, d): (u64, u64, u64, u64) = asm(r1: self) {
+            r1: (u64, u64, u64, u64)
+        };
         buffer.push(a);
         buffer.push(b);
         buffer.push(c);
@@ -67,7 +69,9 @@ impl AbiEncode for bool {
 
 impl AbiEncode for u256 {
     fn abi_encode(self, ref mut buffer: Buffer) {
-        let (a, b, c, d): (u64, u64, u64, u64) = asm(r1: self) {r1: (u64, u64, u64, u64)};
+        let (a, b, c, d): (u64, u64, u64, u64) = asm(r1: self) {
+            r1: (u64, u64, u64, u64)
+        };
         buffer.push(a);
         buffer.push(b);
         buffer.push(c);
@@ -84,21 +88,29 @@ impl AbiEncode for u64 {
 impl AbiEncode for u32 {
     fn abi_encode(self, ref mut buffer: Buffer) {
         let output = [0_u8, 0_u8, 0_u8, 0_u8];
-        let output = asm(input: self, off: 0xFF, i: 0x8, j: 0x10, k: 0x18, output: output, r1) {
-            and  r1 input off;
-            sb   output r1 i0;
+        let output = asm(
+            input: self,
+            off: 0xFF,
+            i: 0x8,
+            j: 0x10,
+            k: 0x18,
+            output: output,
+            r1,
+        ) {
+            and r1 input off;
+            sb output r1 i0;
 
-            srl  r1 input i;
-            and  r1 r1 off;
-            sb   output r1 i1;
+            srl r1 input i;
+            and r1 r1 off;
+            sb output r1 i1;
 
-            srl  r1 input j;
-            and  r1 r1 off;
-            sb   output r1 i2;
+            srl r1 input j;
+            and r1 r1 off;
+            sb output r1 i2;
 
-            srl  r1 input k;
-            and  r1 r1 off;
-            sb   output r1 i3;
+            srl r1 input k;
+            and r1 r1 off;
+            sb output r1 i3;
 
             output: [u8; 4]
         };
@@ -114,12 +126,12 @@ impl AbiEncode for u16 {
     fn abi_encode(self, ref mut buffer: Buffer) {
         let output = [0_u8, 0_u8];
         let output = asm(input: self, off: 0xFF, i: 0x8, output: output, r1) {
-            and  r1 input off;
-            sb   output r1 i0;
+            and r1 input off;
+            sb output r1 i0;
 
-            srl  r1 input i;
-            and  r1 r1 off;
-            sb   output r1 i1;
+            srl r1 input i;
+            and r1 r1 off;
+            sb output r1 i1;
 
             output: [u8; 2]
         };
@@ -155,8 +167,7 @@ impl AbiEncode for str {
 // str arrays
 
 impl AbiEncode for str[0] {
-    fn abi_encode(self, ref mut _buffer: Buffer) {
-    }
+    fn abi_encode(self, ref mut _buffer: Buffer) {}
 }
 
 impl AbiEncode for str[1] {
@@ -246,26 +257,25 @@ impl AbiEncode for str[5] {
 
 // arrays
 
-impl<T> AbiEncode for [T;0]
+impl<T> AbiEncode for [T; 0]
 where
-    T: AbiEncode
+    T: AbiEncode,
 {
-    fn abi_encode(self, ref mut _buffer: Buffer) {
-    }
+    fn abi_encode(self, ref mut _buffer: Buffer) {}
 }
 
-impl<T> AbiEncode for [T;1]
+impl<T> AbiEncode for [T; 1]
 where
-    T: AbiEncode
+    T: AbiEncode,
 {
     fn abi_encode(self, ref mut buffer: Buffer) {
         self[0].abi_encode(buffer);
     }
 }
 
-impl<T> AbiEncode for [T;2]
+impl<T> AbiEncode for [T; 2]
 where
-    T: AbiEncode
+    T: AbiEncode,
 {
     fn abi_encode(self, ref mut buffer: Buffer) {
         self[0].abi_encode(buffer);
@@ -273,9 +283,9 @@ where
     }
 }
 
-impl<T> AbiEncode for [T;3]
+impl<T> AbiEncode for [T; 3]
 where
-    T: AbiEncode
+    T: AbiEncode,
 {
     fn abi_encode(self, ref mut buffer: Buffer) {
         self[0].abi_encode(buffer);
@@ -284,9 +294,9 @@ where
     }
 }
 
-impl<T> AbiEncode for [T;4] 
+impl<T> AbiEncode for [T; 4]
 where
-    T: AbiEncode
+    T: AbiEncode,
 {
     fn abi_encode(self, ref mut buffer: Buffer) {
         self[0].abi_encode(buffer);
@@ -296,9 +306,9 @@ where
     }
 }
 
-impl<T> AbiEncode for [T;5]
+impl<T> AbiEncode for [T; 5]
 where
-    T: AbiEncode
+    T: AbiEncode,
 {
     fn abi_encode(self, ref mut buffer: Buffer) {
         self[0].abi_encode(buffer);
@@ -311,7 +321,7 @@ where
 
 pub fn encode<T>(item: T) -> raw_slice
 where
-    T: AbiEncode
+    T: AbiEncode,
 {
     let mut buffer = Buffer::new();
     item.abi_encode(buffer);

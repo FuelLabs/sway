@@ -21,7 +21,7 @@ library;
 /// ```
 pub fn log<T>(value: T)
 where
-    T: AbiEncode
+    T: AbiEncode,
 {
     __log::<T>(value);
 }

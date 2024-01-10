@@ -286,9 +286,7 @@ impl ty::TyModule {
                     TypeInfo::Struct(decl) => {
                         Some(ctx.engines().de().get(decl.id()).name().clone())
                     }
-                    TypeInfo::Enum(decl) => {
-                        Some(ctx.engines().de().get(decl.id()).name().clone())
-                    }
+                    TypeInfo::Enum(decl) => Some(ctx.engines().de().get(decl.id()).name().clone()),
                     TypeInfo::Custom {
                         qualified_call_path,
                         ..

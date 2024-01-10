@@ -614,9 +614,9 @@ impl<T> From<raw_slice> for Vec<T> {
     }
 }
 
-impl<T> AbiEncode for Vec<T> 
+impl<T> AbiEncode for Vec<T>
 where
-    T: AbiEncode
+    T: AbiEncode,
 {
     fn abi_encode(self, ref mut buffer: Buffer) {
         let len = self.len();
