@@ -7,12 +7,19 @@ use libp2p_identity::{secp256k1, Keypair, PeerId};
 use serde_json::json;
 use std::{ops::Deref, str::FromStr};
 
+const ABOUT: &str = "Parses a private key to view the associated public key";
+
+forc_util::cli_examples! {
+    [ Parses the secret of a block production  => crypto "parse-secret \"f5204427d0ab9a311266c96a377f7c329cb8a41b9088225b6fcf40eefb423e28\"" ]
+    [ Parses the secret of a peering  => crypto "parse-secret -k peering \"f5204427d0ab9a311266c96a377f7c329cb8a41b9088225b6fcf40eefb423e28\"" ]
+}
+
 /// Parse a secret key to view the associated public key
 #[derive(Debug, clap::Args)]
 #[clap(
-    author,
     version,
-    about = "Parses a private key to view the associated public key"
+    about = ABOUT,
+    after_help = help(),
 )]
 pub struct Arg {
     /// A private key in hex format

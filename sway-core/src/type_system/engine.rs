@@ -22,6 +22,15 @@ pub struct TypeEngine {
     id_map: RwLock<HashMap<TypeSourceInfo, TypeId>>,
 }
 
+impl Clone for TypeEngine {
+    fn clone(&self) -> Self {
+        TypeEngine {
+            slab: self.slab.clone(),
+            id_map: RwLock::new(self.id_map.read().unwrap().clone()),
+        }
+    }
+}
+
 impl TypeEngine {
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
@@ -261,6 +270,7 @@ impl TypeEngine {
             }
             TypeInfo::Ptr(targ) => self.contains_numeric(decl_engine, targ.type_id),
             TypeInfo::Slice(targ) => self.contains_numeric(decl_engine, targ.type_id),
+            TypeInfo::Ref(targ) => self.contains_numeric(decl_engine, targ.type_id),
             TypeInfo::Unknown
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Placeholder(..)
@@ -314,6 +324,7 @@ impl TypeEngine {
             }
             TypeInfo::Ptr(targ) => self.decay_numeric(handler, engines, targ.type_id, span)?,
             TypeInfo::Slice(targ) => self.decay_numeric(handler, engines, targ.type_id, span)?,
+            TypeInfo::Ref(targ) => self.decay_numeric(handler, engines, targ.type_id, span)?,
 
             TypeInfo::Unknown
             | TypeInfo::UnknownGeneric { .. }
@@ -367,7 +378,7 @@ impl TypeEngine {
     }
 }
 
-/// Maps specific `TypeInfo` variants to a reserved `SourceId`, returning `None` for non-mapped types.
+/// Maps specific [TypeInfo] variants to a reserved [SourceId], returning `None` for non-mapped types.
 fn info_to_source_id(ty: &TypeInfo) -> Option<SourceId> {
     match ty {
         TypeInfo::Unknown
@@ -380,7 +391,8 @@ fn info_to_source_id(ty: &TypeInfo) -> Option<SourceId> {
         | TypeInfo::StringSlice
         | TypeInfo::Contract
         | TypeInfo::StringArray(_)
-        | TypeInfo::Array(_, _) => Some(SourceId::reserved()),
+        | TypeInfo::Array(_, _)
+        | TypeInfo::Ref(_) => Some(SourceId::reserved()),
         TypeInfo::Tuple(v) if v.is_empty() => Some(SourceId::reserved()),
         _ => None,
     }

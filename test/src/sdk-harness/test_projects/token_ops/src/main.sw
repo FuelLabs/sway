@@ -1,6 +1,6 @@
 contract;
 
-use std::{contract_id::AssetId, bytes::Bytes, constants::ZERO_B256, context::balance_of, message::send_message, primitive_conversions::u64::*, token::*};
+use std::{bytes::Bytes, constants::ZERO_B256, context::balance_of, message::send_message, primitive_conversions::u64::*, token::*};
 
 abi TestFuelCoin {
     fn mint_coins(mint_amount: u64, sub_id: b256);
@@ -13,13 +13,6 @@ abi TestFuelCoin {
     fn generic_mint_to(amount: u64, to: Identity, sub_id: b256);
     fn generic_transfer(amount: u64, asset_id: b256, to: Identity);
     fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64);
-
-    fn address_mint_to(recipient: Address, amount: u64, sub_id: b256);
-    fn address_transfer(recipient: Address, asset_id: b256, amount: u64);
-    fn contract_mint_to(recipient: ContractId, amount: u64, sub_id: b256);
-    fn contract_transfer(recipient: ContractId, asset_id: b256, amount: u64);
-    fn identity_mint_to(recipient: Identity, amount: u64, sub_id: b256);
-    fn identity_transfer(recipient: Identity, asset_id: b256, amount: u64);
 }
 
 impl TestFuelCoin for Contract {
@@ -72,32 +65,5 @@ impl TestFuelCoin for Contract {
         }
 
         send_message(recipient, data, coins);
-    }
-
-    fn address_mint_to(recipient: Address, amount: u64, sub_id: b256) {
-        recipient.mint_to(sub_id, amount);
-    }
-
-    fn address_transfer(recipient: Address, asset_id: b256, amount: u64) {
-        let asset_id = AssetId { value: asset_id };
-        recipient.transfer(asset_id, amount);
-    }
-
-    fn contract_mint_to(recipient: ContractId, amount: u64, sub_id: b256) {
-        recipient.mint_to(sub_id, amount);
-    }
-
-    fn contract_transfer(recipient: ContractId, asset_id: b256, amount: u64) {
-        let asset_id = AssetId { value: asset_id };
-        recipient.transfer(asset_id, amount);
-    }
-
-    fn identity_mint_to(recipient: Identity, amount: u64, sub_id: b256) {
-        recipient.mint_to(sub_id, amount);
-    }
-
-    fn identity_transfer(recipient: Identity, asset_id: b256, amount: u64) {
-        let asset_id = AssetId { value: asset_id };
-        recipient.transfer(asset_id, amount);
     }
 }

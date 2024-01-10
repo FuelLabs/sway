@@ -226,6 +226,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                     core_lib.clone(),
                     Some(&bld_cfg),
                     "test_lib",
+                    None,
                 );
                 let (errors, _warnings) = handler.consume();
                 if !errors.is_empty() {

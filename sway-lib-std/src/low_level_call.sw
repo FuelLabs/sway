@@ -2,8 +2,9 @@
 library;
 
 use ::assert::assert;
+use ::asset_id::AssetId;
 use ::bytes::Bytes;
-use ::contract_id::{AssetId, ContractId};
+use ::contract_id::ContractId;
 use ::option::Option;
 use ::revert::require;
 use ::vec::Vec;
