@@ -333,7 +333,7 @@ impl ty::TyModule {
                 continue;
             };
 
-            let impl_node = match (auto_impl_abiencode, AutoImplAbiEncodeContext::new(&mut ctx)) {
+            match (auto_impl_abiencode, AutoImplAbiEncodeContext::new(&mut ctx)) {
                 (true, Some(mut ctx)) => match &node.content {
                     TyAstNodeContent::Declaration(decl @ TyDecl::StructDecl(_))
                     | TyAstNodeContent::Declaration(decl @ TyDecl::EnumDecl(_)) => {
@@ -345,7 +345,6 @@ impl ty::TyModule {
             };
 
             typed_nodes.push(node);
-            typed_nodes.extend(impl_node);
         }
 
         Ok(typed_nodes)
