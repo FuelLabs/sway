@@ -144,6 +144,9 @@ fn assert_file_tree(doc_dir_name: &str, project_name: &str, expected_files: Vec<
     let files = get_relative_file_paths_set(doc_root.clone());
     if files != expected {
         let diffs = files.symmetric_difference(&expected);
-        assert_eq!(files, expected, "Symmetric Difference: {diffs:?} at {doc_root:?}");
+        assert_eq!(
+            files, expected,
+            "Symmetric Difference: {diffs:?} at {doc_root:?}"
+        );
     }
 }
