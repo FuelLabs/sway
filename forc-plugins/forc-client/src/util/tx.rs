@@ -196,7 +196,16 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
                     );
                 let password = rpassword::prompt_password(prompt)?;
                 let verification = AccountVerification::Yes(password.clone());
-                let accounts = collect_accounts_with_verification(&wallet_path, verification)?;
+                let accounts = collect_accounts_with_verification(&wallet_path, verification)
+                    .map_err(|e| {
+                        if e.to_string().contains("Mac Mismatch") {
+                            anyhow::anyhow!(
+                                "Failed to access forc-wallet vault. Please check your password"
+                            )
+                        } else {
+                            e
+                        }
+                    })?;
                 let account_balances = collect_account_balances(&accounts, &provider).await?;
 
                 let total_balance = account_balances
