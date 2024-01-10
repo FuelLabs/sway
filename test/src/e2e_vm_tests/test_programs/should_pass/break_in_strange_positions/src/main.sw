@@ -22,7 +22,7 @@ fn in_init() -> u64 {
     while i < 52 {
         i = i + 1;
         let _ = break;
-        i = i + 1;
+        i = 100;
     }
 
     i
@@ -34,7 +34,7 @@ fn in_length_1_array() -> u64 {
     while i < 52 {
         i = i + 1;
         let _ = [break];
-        i = i + 1;
+        i = 100;
     }
 
     i
@@ -45,8 +45,8 @@ fn in_length_2_array_first() -> u64 {
     let mut i = 41;
     while i < 52 {
         i = i + 1;
-        let x = [break, 1];
-        i = i + x[1];         // Missing warning
+        let x = [break, { i = 90; 100 } ];
+        i = x[1];         // Missing warning
     }
 
     i
@@ -54,11 +54,11 @@ fn in_length_2_array_first() -> u64 {
 
 // The first element of an array is treated differently
 fn in_length_2_array_second() -> u64 {
-    let mut i = 41;
-    while i < 52 {
+    let mut i = 31;
+    while i < 32 {
         i = i + 1;
-        let x = [1, break];
-        i = i + x[0];         // Missing warning
+        let x = [ { i = 42; 100 }, break];
+        i = x[0];         // Missing warning
     }
     
     i
@@ -68,8 +68,8 @@ fn in_array() -> u64 {
     let mut i = 41;
     while i < 52 {
         i = i + 1;
-        let _ = [break, { i = i + 1; break }];
-        i = i + 1;
+        let _ = [break, { i = 90; break }];
+        i = 100;
     }
     
     i
@@ -79,8 +79,8 @@ fn in_tuple() -> u64 {
     let mut i = 41;
     while i < 52 {
         i = i + 1;
-        let _ = (break, { i = i + 1; break });
-        i = i + 1;
+        let _ = (break, { i = 90; break });
+        i = 100;
     }
     
     i
@@ -90,8 +90,8 @@ fn in_struct() -> u64 {
     let mut i = 41;
     while i < 52 {
         i = i + 1;
-        let _ = S { x: break, y: { i = i + 1; break } };
-        i = i + 1;
+        let _ = S { x: break, y: { i = 90; break } };
+        i = 100;
     }
     
     i
@@ -102,7 +102,7 @@ fn in_parentheses() -> u64 {
     while i < 52 {
         i = i + 1;
         let _ = (break);
-        i = i + 1;
+        i = 100;
     }
     
     i
@@ -113,7 +113,7 @@ fn in_arithmetic() -> u64 {
     while i < 52 {
         i = i + 1;
         let _ = 1 + break;  // Missing warning
-        i = i + 1;
+        i = 100;
     }
     
     i
@@ -129,7 +129,7 @@ fn in_if_condition() -> u64 {
         else {
             345
         };
-        i = i + 1;
+        i = 100;
     }
     
     i
@@ -140,9 +140,10 @@ fn in_while_condition() -> u64 {
     while i < 52 {
         i = i + 1;
         while break {
-            i = i + 1;
+            i = 90;
+            break;
         }
-        i = i + 1;  // Missing warning
+        i = i + 100;  // Missing warning
     }
     
     i
@@ -152,8 +153,8 @@ fn in_enum() -> u64 {
     let mut i = 41;
     while i < 52 {
         i = i + 1;
-        let _ = Enum::A((break, { i = i + 1; break}));
-        i = i + 1;
+        let _ = Enum::A((break, { i = 90; break}));
+        i = 100;
     }
     
     i
@@ -163,8 +164,8 @@ fn in_enum_multivariant() -> u64 {
     let mut i = 41;
     while i < 52 {
         i = i + 1;
-        let _ = Enum_multivariant::B((break, { i = i + 1; break}));
-        i = i + 1;
+        let _ = Enum_multivariant::B((break, { i = 90; break}));
+        i = 100;
     }
     
     i
@@ -178,8 +179,8 @@ fn in_fun_arg() -> u64 {
     let mut i = 41;
     while i < 52 {
         i = i + 1;
-        let _ = helper_fun(break, { i = i + 1; break});
-        i = i + 1;
+        let _ = helper_fun(break, { i = 90; break});
+        i = 100;
     }
     
     i
@@ -189,8 +190,8 @@ fn in_lazy_and() -> u64 {
     let mut i = 41;
     while i < 52 {
         i = i + 1;
-        let _ = (break) && { i = i + 1; break};
-        i = i + 1;
+        let _ = (break) && { i = 90; break};
+        i = 100;
     }
     
     i
@@ -200,8 +201,8 @@ fn in_lazy_or() -> u64 {
     let mut i = 41;
     while i < 52 {
         i = i + 1;
-        let _ = (break) || { i = i + 1; break};
-        i = i + 1;
+        let _ = (break) || { i = 90; break};
+        i = 100;
     }
     
     i
@@ -212,7 +213,7 @@ fn in_return() -> u64 {
     while i < 52 {
         i = i + 1;
         let _ = return break;
-        i = i + 1;
+        i = 100;
     }
     
     i
