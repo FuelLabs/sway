@@ -6,8 +6,19 @@ use std::{
     path::Path,
 };
 
+forc_util::cli_examples! {
+    [ Hashes an argument with SHA256 => crypto "sha256 test" ]
+    [ Hashes an argument with Keccak256 => crypto "keccak256 test" ]
+    [ Hashes a file path with SHA256 => crypto "sha256 src/args.rs" ]
+    [ Hashes a file path with Keccak256 => crypto "keccak256 src/args.rs" ]
+}
+
 #[derive(Debug, Clone, clap::Args)]
-#[clap(author, version, about = "Hashes the argument or file with this hash")]
+#[clap(
+    version,
+    about = "Hashes the argument or file with this algorithm",
+    after_help = help(),
+)]
 pub struct HashArgs {
     /// This argument is optional, it can be either:
     ///
