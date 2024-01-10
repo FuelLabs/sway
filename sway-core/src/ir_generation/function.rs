@@ -1253,7 +1253,7 @@ impl<'eng> FnCompiler<'eng> {
             lhs_val.get_type(context).unwrap_or_else(|| {
                 rhs_val
                     .get_type(context)
-                    .unwrap_or_else(|| Type::get_unit(context))
+                    .unwrap_or_else(|| Type::get_bool(context))
             }),
         );
 
@@ -1984,9 +1984,8 @@ impl<'eng> FnCompiler<'eng> {
 
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
-        let body_deterministically_aborts = body.deterministically_aborts(self.engines.de(), false);
         let init_val = self.compile_expression_to_value(context, md_mgr, body)?;
-        if init_val.is_diverging(context) || body_deterministically_aborts {
+        if init_val.is_diverging(context) {
             return Ok(Some(init_val));
         }
 

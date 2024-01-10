@@ -1,0 +1,13 @@
+[[package]]
+name = "break_in_strange_positions"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "core"
+source = "path+from-root-6BF8A70D7426D33F"
+
+[[package]]
+name = "std"
+source = "path+from-root-6BF8A70D7426D33F"
+dependencies = ["core"]
