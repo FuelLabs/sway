@@ -1560,7 +1560,7 @@ impl<'a> TypeCheckContext<'a> {
                 constraints,
                 &Span::dummy(),
                 self.engines,
-                crate::namespace::TryInsertingTraitImplOnFailure::No,
+                crate::namespace::TryInsertingTraitImplOnFailure::Yes,
             )
             .is_ok()
     }

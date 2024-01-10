@@ -27,11 +27,21 @@ enum F {
     A: ()
 }
 
+struct CustomAbiEncode {
+}
+
+impl AbiEncode for CustomAbiEncode {
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        buffer.push(77);
+    }
+}
+
 fn main() -> u64 {
     let mut e = Vec::new();
     e.push(1);
     e.push(2);
     e.push(3);
+
     __log(S{
         a: 1,
         b: 2,
@@ -41,24 +51,14 @@ fn main() -> u64 {
         f: "sway",
         g: u256::max()
     });
-
     __log(SS{
         ss: 1u64
     });
-
     __log(E::A(SS{
         ss: 1u64
     }));
     __log(E::B);
-
-    match E::B {
-        E::A(x) => __log(x),
-        E::B(x) => __log(x),
-    }
-
-    match F::A {
-        F::A => {}
-    }
+    __log(CustomAbiEncode {});
 
     1
 }

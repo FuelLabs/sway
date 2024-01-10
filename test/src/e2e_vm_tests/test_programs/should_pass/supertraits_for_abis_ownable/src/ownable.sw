@@ -1,8 +1,18 @@
 library;
 
+trait T1 {
+    fn f(self);
+}
+
 pub struct OwnershipTransferred {
     previous_owner: b256,
     new_owner: b256,
+}
+
+impl AbiEncode for OwnershipTransferred {
+    fn abi_encode(self, buffer: Buffer) {
+
+    }
 }
 
 pub trait StorageHelpers {
@@ -40,9 +50,9 @@ pub trait Ownable : StorageHelpers {
         Self::set_owner(new_owner);
 
         // log does not work here
-        std::logging::log(OwnershipTransferred {
+        (OwnershipTransferred {
             previous_owner: old_owner,
             new_owner: new_owner,
-        });
+        }).abi_encode();
     }
 }

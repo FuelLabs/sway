@@ -7,7 +7,7 @@ use crate::{
             MatchExpression, MethodApplicationExpression, MethodName, Scrutinee,
             SubfieldExpression,
         },
-        ty::{self, TyDecl},
+        ty::{self, TyDecl, TyAstNodeContent, TyAstNode},
         CallPath, QualifiedCallPath,
     },
     semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
@@ -80,10 +80,13 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
     /// Verify with a enum has all variants that can be auto implemented.
     fn can_enum_auto_impl_abi_encode(&mut self, decl: &ty::TyDecl) -> bool {
         let handler = Handler::default();
-        let Some(enum_ref) = decl.to_enum_ref(&handler, self.ctx.engines()).ok() else {
+        let Ok(enum_decl) = decl
+            .to_enum_ref(&handler, self.ctx.engines())
+            .map(|enum_ref| 
+                self.ctx.engines().de().get(enum_ref.id())
+            ) else {
             return false;
         };
-        let enum_decl = self.ctx.engines().de().get(enum_ref.id());
 
         let all_variants_are_abi_encode = enum_decl.variants.iter().all(|variant| {
             // If the variant is the generic argument of the enum, we are ok
@@ -112,7 +115,11 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
     }
 
     /// Auto implements AbiEncode for structs
-    fn enum_auto_impl_abi_encode(&mut self, decl: &TyDecl) -> bool {
+    fn enum_auto_impl_abi_encode(&mut self, decl: &TyDecl) -> Option<TyAstNode> {
+        if !self.can_enum_auto_impl_abi_encode(decl) {
+            return None;
+        }
+
         let implementing_for_decl_ref = decl.get_enum_decl_ref().unwrap();
 
         let unit_type_id =
@@ -124,7 +131,7 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
         let enum_decl = self.ctx.engines().de().get(implementing_for_decl_ref.id());
 
         if !self.import_core_codec() {
-            return false;
+            return None;
         }
 
         // If the enum has generic parameters, they must have AbiEncode appended
@@ -475,7 +482,14 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
         });
 
         let handler = Handler::default();
-        TyDecl::type_check(&handler, self.ctx.by_ref(), impl_trait).is_ok()
+        TyAstNode::type_check(
+            &handler,
+            self.ctx.by_ref(),
+            AstNode {
+                content: AstNodeContent::Declaration(impl_trait),
+                span: Span::dummy(),
+            }
+        ).ok()
     }
 
     // Check if a struct can implement AbiEncode
@@ -538,16 +552,19 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
     }
 
     // Auto implements AbiEncode for structs
-    fn struct_auto_impl_abi_encode(&mut self, decl: &TyDecl) -> bool {
+    fn struct_auto_impl_abi_encode(&mut self, decl: &TyDecl) -> Option<TyAstNode> {
+        if !self.can_struct_auto_impl_abi_encode(decl) {
+            return None;
+        }
+
         let implementing_for_decl_ref = decl.get_struct_decl_ref().unwrap();
+        let struct_decl = self.ctx.engines().de().get(implementing_for_decl_ref.id());
 
         let unit_type_id =
             self.ctx
                 .engines
                 .te()
                 .insert(self.ctx.engines, TypeInfo::Tuple(vec![]), None);
-
-        let struct_decl = self.ctx.engines().de().get(implementing_for_decl_ref.id());
 
         let import_handler = Handler::default();
         let _ = self.ctx.star_import(
@@ -560,7 +577,7 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
         );
 
         if import_handler.has_errors() {
-            return false;
+            return None;
         }
 
         let abi_encode_trait_name = CallPath {
@@ -827,19 +844,22 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
             }
         );
 
-        let handler2 = Handler::default();
-        TyDecl::type_check(&handler2, self.ctx.by_ref(), impl_trait).is_ok()
+        let handler = Handler::default();
+        TyAstNode::type_check(
+            &handler,
+            self.ctx.by_ref(),
+            AstNode {
+                content: AstNodeContent::Declaration(impl_trait),
+                span: Span::dummy(),
+            }
+        ).ok()
     }
 
-    pub fn auto_impl_abi_encode(&mut self, decl: &ty::TyDecl) -> bool {
+    pub fn auto_impl_abi_encode(&mut self, decl: &ty::TyDecl) -> Option<TyAstNode> {
         match decl {
-            TyDecl::StructDecl(_) if self.can_struct_auto_impl_abi_encode(decl) => {
-                self.struct_auto_impl_abi_encode(decl)
-            }
-            TyDecl::EnumDecl(_) if self.can_enum_auto_impl_abi_encode(decl) => {
-                self.enum_auto_impl_abi_encode(decl)
-            }
-            _ => false,
+            TyDecl::StructDecl(_) => self.struct_auto_impl_abi_encode(decl),
+            TyDecl::EnumDecl(_) => self.enum_auto_impl_abi_encode(decl),
+            _ => None,
         }
     }
 }

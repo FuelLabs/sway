@@ -16,8 +16,6 @@ use crate::{
     type_system::*,
 };
 
-use super::auto_impl::AutoImplAbiEncodeContext;
-
 impl TyDecl {
     pub(crate) fn type_check(
         handler: &Handler,
@@ -103,10 +101,6 @@ impl TyDecl {
                 let call_path = enum_decl.call_path.clone();
                 let decl: ty::TyDecl = decl_engine.insert(enum_decl).into();
                 ctx.insert_symbol(handler, call_path.suffix, decl.clone())?;
-
-                if let Some(mut auto_impl_ctx) = AutoImplAbiEncodeContext::new(&mut ctx) {
-                    auto_impl_ctx.auto_impl_abi_encode(&decl);
-                }
 
                 decl
             }
@@ -259,10 +253,6 @@ impl TyDecl {
 
                 // insert the struct decl into namespace
                 ctx.insert_symbol(handler, call_path.suffix, decl.clone())?;
-
-                if let Some(mut auto_impl_ctx) = AutoImplAbiEncodeContext::new(&mut ctx) {
-                    auto_impl_ctx.auto_impl_abi_encode(&decl);
-                }
 
                 decl
             }
