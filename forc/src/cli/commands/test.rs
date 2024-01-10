@@ -6,6 +6,13 @@ use forc_test::{TestFilter, TestRunnerCount, TestedPackage};
 use forc_util::{tx_utils::format_log_receipts, ForcError, ForcResult};
 use tracing::info;
 
+forc_util::cli_examples! {
+    [ Run test => forc "test" => ".*could not find `Forc.toml`.*" ]
+    [ Run test with a filter => forc "test $filter" => ".*could not find `Forc.toml`.*" ]
+    [ Run test without any output => forc "test --silent" => "^$" ]
+    [ Run test without creating or update the lock file  => forc "test --locked" => ".*could not find `Forc.toml`.*" ]
+}
+
 /// Run the Sway unit tests for the current project.
 ///
 /// NOTE: Previously this command was used to support Rust integration testing, however the
@@ -42,6 +49,7 @@ pub struct Command {
 
 /// The set of options provided for controlling output of a test.
 #[derive(Parser, Debug, Clone)]
+#[clap(after_help = help())]
 pub struct TestPrintOpts {
     #[clap(long = "pretty-print", short = 'r')]
     /// Pretty-print the logs emiited from tests.

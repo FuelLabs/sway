@@ -16,10 +16,26 @@ mod keccak256;
 mod keygen;
 mod sha256;
 
+const ABOUT: &str = "Forc plugin for hashing arbitrary data.";
+
+fn help() -> &'static str {
+    Box::leak(
+        format!(
+            "EXAMPLES:\n{}{}{}{}",
+            args::examples(),
+            address::examples(),
+            keygen::new_key::examples(),
+            keygen::parse_secret::examples(),
+        )
+        .into_boxed_str(),
+    )
+}
+
 #[derive(Debug, Parser)]
 #[clap(
     name = "forc-crypto",
-    about = "Forc plugin for hashing arbitrary data.",
+    about = ABOUT,
+    after_help = help(),
     version
 )]
 pub enum Command {
