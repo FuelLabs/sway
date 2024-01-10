@@ -39,6 +39,10 @@ struct Cli {
     #[arg(long, env = "SWAY_TEST_VERBOSE")]
     verbose: bool,
 
+    /// Compile sway code in release mode
+    #[arg(long)]
+    release: bool,
+
     /// Intended for use in `CI` to ensure test lock files are up to date
     #[arg(long)]
     locked: bool,
@@ -63,6 +67,7 @@ pub struct RunConfig {
     pub build_target: BuildTarget,
     pub locked: bool,
     pub verbose: bool,
+    pub release: bool,
 }
 
 #[tokio::main]
@@ -89,6 +94,7 @@ async fn main() -> Result<()> {
     let run_config = RunConfig {
         locked: cli.locked,
         verbose: cli.verbose,
+        release: cli.release,
         build_target,
     };
 
