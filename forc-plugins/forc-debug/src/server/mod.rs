@@ -20,8 +20,8 @@ use dap::types::StartDebuggingRequestKind;
 use forc_pkg::{
     self, manifest::ManifestFile, Built, BuiltPackage, PackageManifest, PackageManifestFile,
 };
-use thiserror::Error;
 use rand::Rng;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 enum AdapterError {
@@ -46,6 +46,7 @@ pub struct DapServer {
     source_map: SourceMap,
     mode: Option<StartDebuggingRequestKind>,
     breakpoints: Vec<Breakpoint>,
+    initialized_event_sent: bool,
 }
 
 pub type Line = i64;
@@ -62,6 +63,7 @@ impl DapServer {
             source_map: Default::default(),
             mode: None,
             breakpoints: Default::default(),
+            initialized_event_sent: false,
         }
     }
 
@@ -71,6 +73,11 @@ impl DapServer {
                 Some(req) => {
                     let rsp = self.handle(req)?;
                     self.server.respond(rsp)?;
+
+                    if !self.initialized_event_sent {
+                        let _ = self.server.send_event(Event::Initialized);
+                        self.initialized_event_sent = true;
+                    }
                 }
                 None => return Err(Box::new(AdapterError::MissingCommandError)),
             };
@@ -86,16 +93,40 @@ impl DapServer {
                 Ok(ResponseBody::Attach)
             }
             Command::BreakpointLocations(ref args) => {
-                // Set the breakpoints in the VM
-                let mut rng = rand::thread_rng();
-                let breakpoint = Breakpoint {
-                    id: rng.gen(),
-                    verified: true,
-                    line: Some(args.line),
-                    source: Some(args.source.clone()),
-                    ..Default::default()
-                };
-                self.breakpoints.push(breakpoint);
+                // Add this breakpoint if we don't already have it
+                match self.breakpoints.iter().find(|bp| {
+                    if let Some(source) = &bp.source {
+                        if let Some(line) = bp.line {
+                            if args.source.path == source.path && args.line == line {
+                                return true;
+                            }
+                        }
+                    }
+                    false
+                }) {
+                    Some(_) => {}
+                    None => {
+                        let mut rng = rand::thread_rng();
+                        let breakpoint = Breakpoint {
+                            id: Some(rng.gen_range(0..1000000)),
+                            verified: true,
+                            line: Some(args.line),
+                            source: Some(args.source.clone()),
+                            ..Default::default()
+                        };
+                        self.breakpoints.push(breakpoint.clone());
+
+                        // Update the client with the server's view of the breakpoints, including the IDs
+                        let _ = self
+                            .server
+                            .send_event(Event::Breakpoint(events::BreakpointEventBody {
+                                breakpoint,
+                                reason: types::BreakpointEventReason::Changed,
+                            }));
+                        self.log(format!("sent bp changed event!\n\n"));
+                    }
+                }
+
                 let breakpoints = self
                     .breakpoints
                     .iter()
@@ -122,7 +153,7 @@ impl DapServer {
             Command::ConfigurationDone => {
                 self.log("configuration done req".into());
                 // if let Some(StartDebuggingRequestKind::Launch) = self.mode {
-                // let _ = self.handle_launch();
+                let _ = self.handle_launch();
                 // }
                 Ok(ResponseBody::ConfigurationDone)
             }
@@ -135,16 +166,46 @@ impl DapServer {
             // Command::Goto(_) => todo!(),
             // Command::GotoTargets(_) => todo!(),
             Command::Initialize(_) => Ok(ResponseBody::Initialize(types::Capabilities {
-                // supports_function_breakpoints: Some(true),
-                // supports_conditional_breakpoints: Some(true),
-                // supports_hit_conditional_breakpoints: Some(true),
-                // supports_goto_targets_request: Some(true),
-                // supports_step_in_targets_request: Some(true),
-                // support_suspend_debuggee: Some(true),
-                // supports_data_breakpoints: Some(true),
                 supports_breakpoint_locations_request: Some(true),
                 supports_configuration_done_request: Some(true),
-                ..Default::default()
+                supports_function_breakpoints: Some(true),
+                supports_conditional_breakpoints: Some(true),
+                supports_hit_conditional_breakpoints: Some(true),
+                supports_evaluate_for_hovers: Some(true),
+                exception_breakpoint_filters: None,
+                supports_step_back: Some(true),
+                supports_set_variable: Some(true),
+                supports_restart_frame: Some(true),
+                supports_goto_targets_request: Some(true),
+                supports_step_in_targets_request: Some(true),
+                supports_completions_request: Some(true),
+                completion_trigger_characters: None,
+                supports_modules_request: Some(true),
+                additional_module_columns: None,
+                supported_checksum_algorithms: None,
+                supports_restart_request: Some(true),
+                supports_exception_options: Some(true),
+                supports_value_formatting_options: Some(true),
+                supports_exception_info_request: Some(true),
+                support_terminate_debuggee: Some(true),
+                support_suspend_debuggee: Some(true),
+                supports_delayed_stack_trace_loading: Some(true),
+                supports_loaded_sources_request: Some(true),
+                supports_log_points: Some(true),
+                supports_terminate_threads_request: Some(true),
+                supports_set_expression: Some(true),
+                supports_terminate_request: Some(true),
+                supports_data_breakpoints: Some(true),
+                supports_read_memory_request: Some(true),
+                supports_write_memory_request: Some(true),
+                supports_disassemble_request: Some(true),
+                supports_cancel_request: Some(true),
+                supports_clipboard_context: Some(true),
+                supports_stepping_granularity: Some(true),
+                supports_instruction_breakpoints: None,
+                supports_exception_filter_options: Some(true),
+                supports_single_thread_execution_requests: Some(true),
+                // ..Default::default()
             })),
             Command::Launch(_) => {
                 self.mode = Some(StartDebuggingRequestKind::Launch);
@@ -159,18 +220,22 @@ impl DapServer {
             // Command::Restart(_) => todo!(),
             // Command::RestartFrame(_) => todo!(),
             // Command::ReverseContinue(_) => todo!(),
-            // Command::Scopes(_) => todo!(),
+            Command::Scopes(ref args) => Ok(ResponseBody::Scopes(responses::ScopesResponse {
+                scopes: vec![],
+            })),
             Command::SetBreakpoints(ref args) => {
+                let mut rng = rand::thread_rng();
                 let breakpoints = args
                     .breakpoints
                     .clone()
                     .unwrap_or_default()
                     .iter()
                     .map(|bp| {
-                        let line = Some(bp.line);
                         types::Breakpoint {
+                            id: Some(rng.gen_range(0..1000000)),
                             verified: true,
-                            line,
+                            line: Some(bp.line),
+                            source: Some(args.source.clone()),
                             ..Default::default()
                         }
                     })
@@ -181,21 +246,39 @@ impl DapServer {
                 ))
             }
             Command::SetDataBreakpoints(_) => Ok(ResponseBody::SetDataBreakpoints(
-                responses::SetDataBreakpointsResponse { breakpoints: self.breakpoints.clone() },
+                responses::SetDataBreakpointsResponse {
+                    breakpoints: self.breakpoints.clone(),
+                },
             )),
             Command::SetExceptionBreakpoints(_) => Ok(ResponseBody::SetExceptionBreakpoints(
                 responses::SetExceptionBreakpointsResponse { breakpoints: None },
             )),
             // Command::SetExpression(_) => todo!(),
             Command::SetFunctionBreakpoints(_) => Ok(ResponseBody::SetFunctionBreakpoints(
-                responses::SetFunctionBreakpointsResponse { breakpoints: self.breakpoints.clone() },
+                responses::SetFunctionBreakpointsResponse {
+                    breakpoints: self.breakpoints.clone(),
+                },
             )),
             Command::SetInstructionBreakpoints(_) => Ok(ResponseBody::SetInstructionBreakpoints(
-                responses::SetInstructionBreakpointsResponse { breakpoints: self.breakpoints.clone() },
+                responses::SetInstructionBreakpointsResponse {
+                    breakpoints: self.breakpoints.clone(),
+                },
             )),
             // Command::SetVariable(_) => todo!(),
             // Command::Source(_) => todo!(),
-            // Command::StackTrace(_) => todo!(),
+            Command::StackTrace(ref args) => {
+                Ok(ResponseBody::StackTrace(responses::StackTraceResponse {
+                    stack_frames: vec![types::StackFrame {
+                        id: 0,
+                        name: "Some name".to_string(),
+                        source: None,
+                        line: 5,
+                        column: 0,
+                        ..Default::default()
+                    }],
+                    total_frames: None,
+                }))
+            }
             // Command::StepBack(_) => todo!(),
             // Command::StepIn(_) => todo!(),
             // Command::StepInTargets(_) => todo!(),
@@ -204,11 +287,15 @@ impl DapServer {
             // Command::TerminateThreads(_) => todo!(),
             Command::Threads => Ok(ResponseBody::Threads(responses::ThreadsResponse {
                 threads: vec![types::Thread {
-                    id: 1,
+                    id: 0,
                     name: "main".into(),
                 }],
             })),
-            // Command::Variables(_) => todo!(),
+            Command::Variables(ref args) => {
+                Ok(ResponseBody::Variables(responses::VariablesResponse {
+                    variables: vec![],
+                }))
+            }
             // Command::WriteMemory(_) => todo!(),
             // Command::Cancel(_) => todo!(),
             _ => Err(AdapterError::UnhandledCommandError),

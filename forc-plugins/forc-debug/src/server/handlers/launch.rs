@@ -3,6 +3,7 @@ use bimap::BiMap;
 use dap::events::{BreakpointEventBody, OutputEventBody, StoppedEventBody};
 use dap::responses::*;
 use forc_test::execute::{DebugResult, TestExecutor};
+use fuel_core_client::client::schema::schema::__fields::Mutation::_set_breakpoint_arguments::breakpoint;
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::min,
@@ -31,18 +32,6 @@ use thiserror::Error;
 impl DapServer {
     pub(crate) fn handle_launch(&mut self) -> Result<ResponseBody, AdapterError> {
         self.log("launch!\n\n".into());
-
-        // send an event to update the client with the server's view of the breakpoints
-        // let _ = self.server.send_event(Event::Breakpoint(BreakpointEventBody {
-        //     breakpoint: dap::types::Breakpoint {
-        //         id: Some(1),
-        //         line: Some(13),
-        //         ..Default::default()
-        //     },
-        //     reason: todo!(),
-        // }));
-
-        // self.log(format!("sent bp event!\n\n"));
 
         // let compiled_program = args.additional_data.
         let program =
@@ -74,7 +63,7 @@ impl DapServer {
         )
         .map_err(|_| AdapterError::BuildError)?;
 
-        self.log(format!("build plan!\n{:?}\n", build_plan));
+        // self.log(format!("build plan!\n{:?}\n", build_plan));
 
         // let compiled = forc_pkg::check(&plan, Default::default(), false, true, Default::default())?;
 
@@ -249,42 +238,70 @@ impl DapServer {
             let src_path = PathBuf::from(
                 "/Users/sophiedankel/Development/sway-playground/projects/swaypad/src/main.sw",
             );
-            // When the breakpoint is applied, $is is added. So we only need to provide the index of the instruction
-            // from the beginning of the script.
-            let opcode_index = *self.source_map.get(&src_path).unwrap().get(&13).unwrap();
+
+            // Set all breakpoints in the VM
+            self.log(format!("setting vm bps\n"));
+
             let opcode_offset = offset as u64 / 4;
-            let pc_1 = opcode_index + opcode_offset;
-            // executor.interpreter.set_single_stepping(true);
-            let breakpoint = Breakpoint::script(pc_1); // instruction count.
-            executor.interpreter.set_breakpoint(breakpoint);
+            let vm_bps = self.breakpoints.iter().map(|bp| {
+
+                // When the breakpoint is applied, $is is added. We only need to provide the index of the instruction
+                // from the beginning of the script.
+                let opcode_index = *self.source_map.get(&src_path).unwrap().get(&bp.line.unwrap()).unwrap();
+                let pc_1 = opcode_index + opcode_offset;
+                let bp = Breakpoint::script(pc_1); // instruction count.
+                executor.interpreter.set_breakpoint(bp);
+                bp.clone()
+            });
+
+            self.log(format!("vm bps: {:?}\n", vm_bps.collect::<Vec<_>>()));
+
+            self.log(format!("calling executor.debug \n"));
+
             let debug_res = executor.debug()?;
-            // self.log(format!("debug_res: {:?}", debug_res));
+            self.log(format!("opcode_offset: {:?}\n", opcode_offset));
+            self.log(format!("debug_res: {:?}\n", debug_res));
+            self.log(format!("source_map: {:?}\n", self.source_map));
             match debug_res {
                 DebugResult::TestComplete(result) => {
                     // self.log(format!("finished executing test: {}\n", name));
                     test_results.push(result);
                 }
                 DebugResult::Breakpoint(pc) => {
-                    // send an event to update the client with the server's view of the breakpoints
-                    self.log(format!("sending bp changed event! pc: {}\n\n", pc));
-                    let _ = self
-                        .server
-                        .send_event(Event::Breakpoint(BreakpointEventBody {
-                            breakpoint: dap::types::Breakpoint {
-                                id: Some(1),
-                                line: Some(13),
-                                ..Default::default()
-                            },
-                            reason: types::BreakpointEventReason::Changed,
-                        }));
-
-                    self.log(format!("sent bp changed event!\n\n"));
-
                     // self.log(format!("stopped executing test: {}\n", name));
                     // let (line, _) = self.source_map.get(&src_path).unwrap().get_by_right(&pc).unwrap();
                     // let breakpoint_id = self.breakpoints.iter().find(|bp| bp.line == Some(*line)).unwrap().id.unwrap();
-                    let breakpoint_id = 1; //self.breakpoints.first().unwrap().id.unwrap_or(1);
+                    // let breakpoint_id = 1; //self.breakpoints.first().unwrap().id.unwrap_or(1);
                                            // self.log(format!("breakpoints: {:?}\n", self.breakpoints));
+                                           ////
+                                           /// 
+
+                    // let opcode_index = *self.source_map.get(&src_path).unwrap().get(&bp.line.unwrap()).unwrap();
+                    // let opcode_offset = offset as u64 / 4;
+                    // let pc_1 = opcode_index + opcode_offset;
+
+                    let to_look_up = pc / 4 - opcode_offset;
+
+                    // self.log(format!("to_look_up: {:?}\n", to_look_up));
+
+    
+                    let (line, _) = self.source_map.get(&src_path).unwrap().iter().find(|(_, pc)| {
+                        // self.log(format!("pc: {}, to_look_up: {}\n", pc, to_look_up));
+                        **pc == to_look_up
+                    }).unwrap();
+                    // let line = 12;
+
+                    // self.log(format!("line: {:?}\n", line));
+
+                    // self.log(format!("breakpoints: {:?}\n", self.breakpoints));
+
+                    let breakpoint_id = self.breakpoints.iter().find(|bp| bp.id.is_some() && bp.line == Some(*line)).unwrap().id.unwrap();
+                                                               ////
+                                           /// 
+                                           /// 
+                    // let breakpoint_id: i64 =self.breakpoints.first().unwrap().id.unwrap();
+                    // let breakpoint_id: i64 = 1;
+
                     self.log(format!(
                         "sending event for breakpoint: {}\n\n",
                         breakpoint_id
@@ -293,12 +310,12 @@ impl DapServer {
                         reason: types::StoppedEventReason::Breakpoint,
                         hit_breakpoint_ids: Some(vec![breakpoint_id]),
                         description: None,
-                        thread_id: None,
+                        thread_id: Some(0),
                         preserve_focus_hint: None,
                         text: None,
                         all_threads_stopped: None,
                     }));
-                    self.log(format!("sent stopped bp event!\n\n"));
+                    // self.log(format!("sent stopped bp event!\n\n"));
                     break;
                 }
             }
