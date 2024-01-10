@@ -160,3 +160,29 @@ impl BuildConfig {
         self.canonical_root_module.clone()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn test_root_from_file_name_and_manifest_path() {
+        let root_module = PathBuf::from("mock_path/src/main.sw");
+        let canonical_manifest_dir = PathBuf::from("/tmp/sway_project/mock_path");
+        BuildConfig::root_from_file_name_and_manifest_path(
+            root_module,
+            canonical_manifest_dir,
+            BuildTarget::default(),
+        );
+    }
+
+    #[test]
+    fn test_root_from_file_name_and_manifest_path_contains_dot() {
+        let root_module = PathBuf::from("mock_path_contains_._dot/src/main.sw");
+        let canonical_manifest_dir = PathBuf::from("/tmp/sway_project/mock_path_contains_._dot");
+        BuildConfig::root_from_file_name_and_manifest_path(
+            root_module,
+            canonical_manifest_dir,
+            BuildTarget::default(),
+        );
+    }
+}
