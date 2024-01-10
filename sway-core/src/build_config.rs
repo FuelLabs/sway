@@ -72,7 +72,7 @@ impl BuildConfig {
             true => root_module,
             false => {
                 assert!(
-                    root_module.starts_with(canonical_manifest_dir.file_stem().unwrap()),
+                    root_module.starts_with(canonical_manifest_dir.file_name().unwrap()),
                     "file_name must be either absolute or relative to manifest directory",
                 );
                 canonical_manifest_dir
