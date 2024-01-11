@@ -1984,8 +1984,9 @@ impl<'eng> FnCompiler<'eng> {
 
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
+        let body_deterministically_aborts = body.deterministically_aborts(self.engines.de(), false);
         let init_val = self.compile_expression_to_value(context, md_mgr, body)?;
-        if init_val.is_diverging(context) {
+        if init_val.is_diverging(context) || body_deterministically_aborts {
             return Ok(Some(init_val));
         }
 
