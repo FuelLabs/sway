@@ -2,7 +2,8 @@
 //! [Call frames](https://fuellabs.github.io/fuel-specs/master/vm#call-frames) store metadata across untrusted inter-contract calls.
 library;
 
-use ::contract_id::{AssetId, ContractId};
+use ::asset_id::AssetId;
+use ::contract_id::ContractId;
 use ::intrinsics::is_reference_type;
 use ::registers::frame_ptr;
 

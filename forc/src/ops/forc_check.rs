@@ -34,7 +34,14 @@ pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<ty::TyP
     )?;
     let tests_enabled = !disable_tests;
 
-    let mut v = pkg::check(&plan, build_target, terse_mode, tests_enabled, engines)?;
+    let mut v = pkg::check(
+        &plan,
+        build_target,
+        terse_mode,
+        tests_enabled,
+        engines,
+        None,
+    )?;
     let (res, handler) = v
         .pop()
         .expect("there is guaranteed to be at least one elem in the vector");

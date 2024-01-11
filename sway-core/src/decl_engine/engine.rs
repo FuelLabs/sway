@@ -34,6 +34,25 @@ pub struct DeclEngine {
     parents: RwLock<HashMap<AssociatedItemDeclId, Vec<AssociatedItemDeclId>>>,
 }
 
+impl Clone for DeclEngine {
+    fn clone(&self) -> Self {
+        DeclEngine {
+            function_slab: self.function_slab.clone(),
+            trait_slab: self.trait_slab.clone(),
+            trait_fn_slab: self.trait_fn_slab.clone(),
+            trait_type_slab: self.trait_type_slab.clone(),
+            impl_trait_slab: self.impl_trait_slab.clone(),
+            struct_slab: self.struct_slab.clone(),
+            storage_slab: self.storage_slab.clone(),
+            abi_slab: self.abi_slab.clone(),
+            constant_slab: self.constant_slab.clone(),
+            enum_slab: self.enum_slab.clone(),
+            type_alias_slab: self.type_alias_slab.clone(),
+            parents: RwLock::new(self.parents.read().unwrap().clone()),
+        }
+    }
+}
+
 pub trait DeclEngineGet<I, U> {
     fn get(&self, index: &I) -> Arc<U>;
 }

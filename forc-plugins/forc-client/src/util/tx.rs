@@ -20,7 +20,7 @@ use forc_wallet::{
         collect_accounts_with_verification, print_account_balances, AccountBalances,
         AccountVerification, AccountsMap,
     },
-    new::new_wallet_cli,
+    new::{new_wallet_cli, New},
     utils::default_wallet_path,
 };
 
@@ -180,8 +180,9 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
                 if !wallet_path.exists() {
                     let question = format!("Could not find a wallet at {wallet_path:?}, would you like to create a new one? [y/N]: ");
                     let accepted = ask_user_yes_no_question(&question)?;
+                    let new_options = New { force: false };
                     if accepted {
-                        new_wallet_cli(&wallet_path)?;
+                        new_wallet_cli(&wallet_path, new_options)?;
                         println!("Wallet created successfully.");
                         // Derive first account for the fresh wallet we created.
                         new_at_index_cli(&wallet_path, 0)?;
@@ -195,7 +196,16 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
                     );
                 let password = rpassword::prompt_password(prompt)?;
                 let verification = AccountVerification::Yes(password.clone());
-                let accounts = collect_accounts_with_verification(&wallet_path, verification)?;
+                let accounts = collect_accounts_with_verification(&wallet_path, verification)
+                    .map_err(|e| {
+                        if e.to_string().contains("Mac Mismatch") {
+                            anyhow::anyhow!(
+                                "Failed to access forc-wallet vault. Please check your password"
+                            )
+                        } else {
+                            e
+                        }
+                    })?;
                 let account_balances = collect_account_balances(&accounts, &provider).await?;
 
                 let total_balance = account_balances

@@ -280,7 +280,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.21.0
+        image: ghcr.io/fuellabs/fuel-core:v0.22.0
         ports:
           - 4000:4000
     steps:
@@ -430,7 +430,7 @@ jobs:
         uses: baptiste0928/cargo-install@v2
         with:
           crate: fuel-core-bin
-          version: "0.21"
+          version: "0.22"
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
         run: cargo test --locked --release
