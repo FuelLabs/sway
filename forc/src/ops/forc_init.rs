@@ -72,10 +72,11 @@ pub fn init(command: InitCommand) -> ForcResult<()> {
     let project_name = match command.name {
         Some(name) => name,
         None => project_dir
-            .file_stem()
+            .file_name()
             .context("Failed to infer project name from directory name.")?
             .to_string_lossy()
-            .into_owned(),
+            .into_owned()
+            .replace(".", "_"),
     };
 
     validate_name(&project_name, "project name")?;
