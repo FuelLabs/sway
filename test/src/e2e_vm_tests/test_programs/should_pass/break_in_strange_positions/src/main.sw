@@ -46,7 +46,7 @@ fn in_length_2_array_first() -> u64 {
     while i < 52 {
         i = i + 1;
         let x = [break, { i = 90; 100 } ];
-        i = x[1];         // Missing warning
+        i = x[1];
     }
 
     i
@@ -58,7 +58,7 @@ fn in_length_2_array_second() -> u64 {
     while i < 32 {
         i = i + 1;
         let x = [ { i = 42; 100 }, break];
-        i = x[0];         // Missing warning
+        i = x[0];
     }
     
     i
@@ -112,7 +112,7 @@ fn in_arithmetic() -> u64 {
     let mut i = 41;
     while i < 52 {
         i = i + 1;
-        let _ = 1 + break;  // Missing warning
+        let _ = 1 + break;
         i = 100;
     }
     
@@ -143,7 +143,7 @@ fn in_while_condition() -> u64 {
             i = 90;
             break;
         }
-        i = i + 100;  // Missing warning
+        i = i + 100;
     }
     
     i

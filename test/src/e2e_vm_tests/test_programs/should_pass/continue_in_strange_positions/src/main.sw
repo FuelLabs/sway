@@ -46,7 +46,7 @@ fn in_length_2_array_first() -> u64 {
     while i < 42 {
         i = i + 1;
         let x = [continue, { i = 90; 100 } ];
-        i = x[1];            // Missing warning
+        i = x[1];
     }
     
     i
@@ -58,7 +58,7 @@ fn in_length_2_array_second() -> u64 {
     while i < 32 {
         i = i + 1;
         let x = [ { i = 42; 100 }, continue];
-        i = x[0];         // Missing warning
+        i = x[0];
     }
     
     i
@@ -112,7 +112,7 @@ fn in_arithmetic() -> u64 {
     let mut i = 31;
     while i < 42 {
         i = i + 1;
-        let _ = 1 + continue;  // Missing warning
+        let _ = 1 + continue;
         i = 100;
     }
     
@@ -141,7 +141,7 @@ fn in_while_condition() -> u64 {
         while continue {
             i = 90;
         }
-        i = 100;  // Missing warning
+        i = 100;
     }
     
     i
@@ -152,7 +152,7 @@ fn in_enum() -> u64 {
     while i < 42 {
         i = i + 1;
         let _ = Enum::A((continue, { i = 90; continue}));
-        i = 100; // Missing warning
+        i = 100;
     }
     
     i
@@ -163,7 +163,7 @@ fn in_enum_multivariant() -> u64 {
     while i < 42 {
         i = i + 1;
         let _ = Enum_multivariant::B((continue, { i = 90; continue}));
-        i = 100; // Missing warning
+        i = 100;
     }
     
     i
@@ -178,7 +178,7 @@ fn in_fun_arg() -> u64 {
     while i < 42 {
         i = i + 1;
         let _ = helper_fun(continue, { i = 90; continue});
-        i = 100; // Missing warning
+        i = 100;
     }
     
     i
@@ -188,7 +188,7 @@ fn in_lazy_and() -> u64 {
     let mut i = 31;
     while i < 42 {
         i = i + 1;
-        let _ = (continue) && { i = 90; continue}; // Missing warning
+        let _ = (continue) && { i = 90; continue};
         i = 100;
     }
     
@@ -199,7 +199,7 @@ fn in_lazy_or() -> u64 {
     let mut i = 31;
     while i < 42 {
         i = i + 1;
-        let _ = (continue) || { i = 90; continue}; // Missing warning
+        let _ = (continue) || { i = 90; continue};
         i = 100;
     }
     
@@ -210,7 +210,7 @@ fn in_return() -> u64 {
     let mut i = 31;
     while i < 42 {
         i = i + 1;
-        let _ = return continue; // Missing warning
+        let _ = return continue;
         i = 100;
     }
     
