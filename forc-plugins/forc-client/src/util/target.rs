@@ -1,4 +1,6 @@
-use crate::constants::{BETA_2_ENDPOINT_URL, BETA_3_ENDPOINT_URL, BETA_4_ENDPOINT_URL, NODE_URL, BETA_5_ENDPOINT_URL};
+use crate::constants::{
+    BETA_2_ENDPOINT_URL, BETA_3_ENDPOINT_URL, BETA_4_ENDPOINT_URL, BETA_5_ENDPOINT_URL, NODE_URL,
+};
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
