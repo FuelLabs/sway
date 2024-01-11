@@ -76,7 +76,7 @@ pub fn init(command: InitCommand) -> ForcResult<()> {
             .context("Failed to infer project name from directory name.")?
             .to_string_lossy()
             .into_owned()
-            .replace(".", "_"),
+            .replace('.', "_"),
     };
 
     validate_name(&project_name, "project name")?;
