@@ -1,4 +1,4 @@
-use crate::constants::{BETA_2_ENDPOINT_URL, BETA_3_ENDPOINT_URL, BETA_4_ENDPOINT_URL, NODE_URL};
+use crate::constants::{BETA_2_ENDPOINT_URL, BETA_3_ENDPOINT_URL, BETA_4_ENDPOINT_URL, NODE_URL, BETA_5_ENDPOINT_URL};
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -9,6 +9,7 @@ pub enum Target {
     Beta2,
     Beta3,
     Beta4,
+    Beta5,
     Local,
 }
 
@@ -24,6 +25,7 @@ impl Target {
             Target::Beta2 => BETA_2_ENDPOINT_URL,
             Target::Beta3 => BETA_3_ENDPOINT_URL,
             Target::Beta4 => BETA_4_ENDPOINT_URL,
+            Target::Beta5 => BETA_5_ENDPOINT_URL,
             Target::Local => NODE_URL,
         };
         url.to_string()
@@ -41,7 +43,7 @@ impl Target {
 
     pub fn is_testnet(&self) -> bool {
         match self {
-            Target::Beta2 | Target::Beta3 | Target::Beta4 => true,
+            Target::Beta2 | Target::Beta3 | Target::Beta4 | Target::Beta5 => true,
             Target::Local => false,
         }
     }
@@ -55,6 +57,7 @@ impl FromStr for Target {
             "beta-2" => Ok(Target::Beta2),
             "beta-3" => Ok(Target::Beta3),
             "beta-4" => Ok(Target::Beta4),
+            "beta-5" => Ok(Target::Beta5),
             "local" => Ok(Target::Local),
             _ => bail!(
                 "'{s}' is not a valid target name. Possible values: '{}', '{}', '{}', '{}'",
@@ -73,6 +76,7 @@ impl std::fmt::Display for Target {
             Target::Beta2 => "beta-2",
             Target::Beta3 => "beta-3",
             Target::Beta4 => "beta-4",
+            Target::Beta5 => "beta-5",
             Target::Local => "local",
         };
         write!(f, "{}", s)
