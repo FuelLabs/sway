@@ -1,4 +1,4 @@
-//! Functionality for performing common operations with tokens.
+//! Functionality for performing common operations with assets.
 library;
 
 use ::address::Address;
@@ -25,12 +25,12 @@ use ::outputs::{Output, output_amount, output_count, output_type};
 ///
 /// * `to`: [Identity] - The recipient identity.
 /// * `sub_id`: [SubId] - The sub identifier of the asset which to mint.
-/// * `amount`: [u64] - The amount of tokens to mint.
+/// * `amount`: [u64] - The amount of coins to mint.
 ///
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::ZERO_B256, token::mint_to};
+/// use std::{constants::ZERO_B256, asset::mint_to};
 ///
 /// fn foo() {
 ///     let to_address = Identity::Address(Address::from(ZERO_B256));
@@ -57,12 +57,12 @@ pub fn mint_to(to: Identity, sub_id: SubId, amount: u64) {
 ///
 /// * `to`: [ContractId] - The recipient contract.
 /// * `sub_id`: [SubId] - The sub identifier of the asset which to mint.
-/// * `amount`: [u64] - The amount of tokens to mint.
+/// * `amount`: [u64] - The amount of coins to mint.
 ///
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::ZERO_B256, token::mint_to_contract};
+/// use std::{constants::ZERO_B256, asset::mint_to_contract};
 ///
 /// fn foo() {
 ///     let to = ContractId::from(ZERO_B256);
@@ -81,12 +81,12 @@ pub fn mint_to_contract(to: ContractId, sub_id: SubId, amount: u64) {
 ///
 /// * `to`: [Address] - The recipient address.
 /// * `sub_id`: [SubId] - The sub identifier of the asset which to mint.
-/// * `amount`: [u64] - The amount of tokens to mint.
+/// * `amount`: [u64] - The amount of coins to mint.
 ///
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::ZERO_B256, token::mint_to_address};
+/// use std::{constants::ZERO_B256, asset::mint_to_address};
 ///
 /// fn foo() {
 ///     let to = Address::from(ZERO_B256);
@@ -98,17 +98,17 @@ pub fn mint_to_address(to: Address, sub_id: SubId, amount: u64) {
     transfer_to_address(to, AssetId::new(contract_id(), sub_id), amount);
 }
 
-/// Mint `amount` coins of the current contract's `sub_id`. The newly minted tokens are owned by the current contract.
+/// Mint `amount` coins of the current contract's `sub_id`. The newly minted assets are owned by the current contract.
 ///
 /// # Arguments
 ///
 /// * `sub_id`: [SubId] - The sub identifier of the asset which to mint.
-/// * `amount`: [u64] - The amount of tokens to mint.
+/// * `amount`: [u64] - The amount of coins to mint.
 ///
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::ZERO_B256, token::mint};
+/// use std::{constants::ZERO_B256, asset::mint};
 ///
 /// fn foo() {
 ///     mint(ZERO_B256, 500);
@@ -125,7 +125,7 @@ pub fn mint(sub_id: SubId, amount: u64) {
 /// # Arguments
 ///
 /// * `sub_id`: [SubId] - The sub identifier of the asset which to burn.
-/// * `amount`: [u64] - The amount of tokens to burn.
+/// * `amount`: [u64] - The amount of coins to burn.
 ///
 /// # Reverts
 ///
@@ -134,7 +134,7 @@ pub fn mint(sub_id: SubId, amount: u64) {
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::ZERO_B256, token::burn};
+/// use std::{constants::ZERO_B256, asset::burn};
 ///
 /// fn foo() {
 ///     burn(ZERO_B256, 500);
@@ -159,8 +159,8 @@ pub fn burn(sub_id: SubId, amount: u64) {
 /// # Arguments
 ///
 /// * `to`: [Identity] - The recipient identity.
-/// * `asset_id`: [AssetId] - The token to transfer.
-/// * `amount`: [u64] - The amount of tokens to transfer.
+/// * `asset_id`: [AssetId] - The asset to transfer.
+/// * `amount`: [u64] - The amount of coins to transfer.
 ///
 /// # Reverts
 ///
@@ -171,7 +171,7 @@ pub fn burn(sub_id: SubId, amount: u64) {
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, token::transfer};
+/// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, asset::transfer};
 ///
 /// fn foo() {
 ///     let to_address = Identity::Address(Address::from(ZERO_B256));
@@ -199,8 +199,8 @@ pub fn transfer(to: Identity, asset_id: AssetId, amount: u64) {
 /// # Arguments
 ///
 /// * `to`: [ContractId] - The recipient contract.
-/// * `asset_id`: [AssetId] - The token to transfer.
-/// * `amount`: [u64] - The amount of tokens to transfer.
+/// * `asset_id`: [AssetId] - The asset to transfer.
+/// * `amount`: [u64] - The amount of coins to transfer.
 ///
 /// # Reverts
 ///
@@ -210,7 +210,7 @@ pub fn transfer(to: Identity, asset_id: AssetId, amount: u64) {
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, token::force_transfer_to_contract};
+/// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, asset::force_transfer_to_contract};
 ///
 /// fn foo() {
 ///     let to_contract_id = ContractId::from(ZERO_B256);
@@ -229,8 +229,8 @@ pub fn force_transfer_to_contract(to: ContractId, asset_id: AssetId, amount: u64
 /// # Arguments
 ///
 /// * `to`: [Address] - The recipient address.
-/// * `asset_id`: [AssetId] - The token to transfer.
-/// * `amount`: [u64] - The amount of tokens to transfer.
+/// * `asset_id`: [AssetId] - The asset to transfer.
+/// * `amount`: [u64] - The amount of coins to transfer.
 ///
 /// # Reverts
 ///
@@ -241,7 +241,7 @@ pub fn force_transfer_to_contract(to: ContractId, asset_id: AssetId, amount: u64
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, token::transfer_to_address};
+/// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, asset::transfer_to_address};
 ///
 /// fn foo() {
 ///     let to_address = Address::from(ZERO_B256);
