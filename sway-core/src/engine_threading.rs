@@ -6,7 +6,7 @@ use std::{
 };
 use sway_types::SourceEngine;
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Engines {
     type_engine: TypeEngine,
     decl_engine: DeclEngine,
