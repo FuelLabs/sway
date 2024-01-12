@@ -7,13 +7,13 @@ use abi::IdentityExample;
 use errors::MyError;
 
 use std::{
-    constants::{
-        BASE_ASSET_ID,
-        ZERO_B256,
-    },
     asset::{
         force_transfer_to_contract,
         transfer_to_address,
+    },
+    constants::{
+        BASE_ASSET_ID,
+        ZERO_B256,
     },
 };
 

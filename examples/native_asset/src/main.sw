@@ -1,6 +1,6 @@
 contract;
 
-use std::{constants::DEFAULT_SUB_ID, context::*, asset::*};
+use std::{asset::*, constants::DEFAULT_SUB_ID, context::*};
 
 abi NativeAsset {
     fn mint_coins(mint_amount: u64);

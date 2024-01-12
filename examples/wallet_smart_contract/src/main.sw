@@ -2,10 +2,10 @@
 contract;
 
 use std::{
+    asset::transfer_to_address,
     call_frames::msg_asset_id,
     constants::BASE_ASSET_ID,
     context::msg_amount,
-    asset::transfer_to_address,
 };
 
 // ANCHOR: abi_import
