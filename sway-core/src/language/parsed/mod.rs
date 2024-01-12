@@ -5,7 +5,6 @@ mod expression;
 mod include_statement;
 mod module;
 mod program;
-mod return_statement;
 mod use_statement;
 
 pub use code_block::*;
@@ -14,7 +13,6 @@ pub use expression::*;
 pub use include_statement::IncludeStatement;
 pub use module::{ParseModule, ParseSubmodule};
 pub use program::{ParseProgram, TreeType};
-pub use return_statement::*;
 use sway_error::handler::ErrorEmitted;
 pub use use_statement::{ImportType, UseStatement};
 
@@ -54,7 +52,7 @@ pub enum AstNodeContent {
     Declaration(Declaration),
     /// Any type of expression, of which there are quite a few. See [Expression] for more details.
     Expression(Expression),
-    /// An implicit return expression is different from a [AstNodeContent::ReturnStatement] because
+    /// An implicit return expression is different from a [Expression::Return] because
     /// it is not a control flow item. Therefore it is a different variant.
     ///
     /// An implicit return expression is an [Expression] at the end of a code block which has no
