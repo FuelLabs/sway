@@ -32,7 +32,7 @@ async fn get_messages_contract_instance() -> (
     .await
     .unwrap();
 
-    // Send tokens to the contract to be able withdraw via `smo`.
+    // Send assets to the contract to be able withdraw via `smo`.
     wallets[0]
         .force_transfer_to_contract(
             &messages_contract_id,

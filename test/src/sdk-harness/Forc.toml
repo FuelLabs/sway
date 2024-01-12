@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "test_projects/abi_impl_methods_callable",
+  "test_projects/asset_ops",
   "test_projects/block",
   "test_projects/call_frames",
   "test_projects/configurables_in_contract",
@@ -37,7 +38,6 @@ members = [
   "test_projects/storage_vec_to_vec",
   "test_projects/superabi",
   "test_projects/superabi_supertrait",
-  "test_projects/token_ops",
   "test_projects/tx_fields",
   "test_projects/type_aliases",
   "test_projects/vec_in_abi",
