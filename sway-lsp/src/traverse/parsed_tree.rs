@@ -125,7 +125,7 @@ impl Parse for Declaration {
             Declaration::TraitDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::StructDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::EnumDeclaration(decl_id) => decl_id.parse(ctx),
-            Declaration::ImplTrait(decl) => decl.parse(ctx),
+            Declaration::ImplTrait(decl_id) => decl_id.parse(ctx),
             Declaration::ImplSelf(decl) => decl.parse(ctx),
             Declaration::AbiDeclaration(decl) => decl.parse(ctx),
             Declaration::ConstantDeclaration(decl) => decl.parse(ctx),
@@ -825,26 +825,30 @@ impl Parse for ParsedDeclId<EnumDeclaration> {
     }
 }
 
-impl Parse for ImplTrait {
+impl Parse for ParsedDeclId<ImplTrait> {
     fn parse(&self, ctx: &ParseContext) {
-        self.trait_name.prefixes.par_iter().for_each(|ident| {
+        let impl_trait = ctx.engines.pe().get_impl_trait(self);
+        impl_trait.trait_name.prefixes.par_iter().for_each(|ident| {
             ctx.tokens.insert(
                 ctx.ident(ident),
                 Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Module),
             );
         });
         ctx.tokens.insert(
-            ctx.ident(&self.trait_name.suffix),
+            ctx.ident(&impl_trait.trait_name.suffix),
             Token::from_parsed(
-                AstToken::Declaration(Declaration::ImplTrait(self.clone())),
+                AstToken::Declaration(Declaration::ImplTrait(*self)),
                 SymbolKind::Trait,
             ),
         );
-        self.implementing_for.parse(ctx);
-        self.impl_type_parameters.par_iter().for_each(|type_param| {
-            type_param.parse(ctx);
-        });
-        self.items.par_iter().for_each(|item| match item {
+        impl_trait.implementing_for.parse(ctx);
+        impl_trait
+            .impl_type_parameters
+            .par_iter()
+            .for_each(|type_param| {
+                type_param.parse(ctx);
+            });
+        impl_trait.items.par_iter().for_each(|item| match item {
             ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
             ImplItem::Constant(const_decl) => const_decl.parse(ctx),
             ImplItem::Type(type_decl) => type_decl.parse(ctx),

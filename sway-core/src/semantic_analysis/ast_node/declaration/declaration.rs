@@ -171,7 +171,8 @@ impl TyDecl {
                 ctx.insert_symbol(handler, name, decl.clone())?;
                 decl
             }
-            parsed::Declaration::ImplTrait(impl_trait) => {
+            parsed::Declaration::ImplTrait(decl_id) => {
+                let impl_trait = engines.pe().get_impl_trait(&decl_id).as_ref().clone();
                 let span = impl_trait.block_span.clone();
                 let mut impl_trait =
                     match ty::TyImplTrait::type_check_impl_trait(handler, ctx.by_ref(), impl_trait)

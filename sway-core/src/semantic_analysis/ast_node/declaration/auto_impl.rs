@@ -474,14 +474,16 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
         };
         let impl_trait_item = engines.pe().insert(impl_trait_item);
 
-        let impl_trait = Declaration::ImplTrait(ImplTrait {
+        let impl_trait = ImplTrait {
             impl_type_parameters,
             trait_name: self.abi_encode_call_path.clone(),
             trait_type_arguments: vec![],
             implementing_for,
             items: vec![ImplItem::Fn(impl_trait_item)],
             block_span: Span::dummy(),
-        });
+        };
+        let impl_trait = engines.pe().insert(impl_trait);
+        let impl_trait = Declaration::ImplTrait(impl_trait);
 
         let handler = Handler::default();
         TyAstNode::type_check(
@@ -833,14 +835,16 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
         };
         let impl_trait_item = engines.pe().insert(impl_trait_item);
 
-        let impl_trait = Declaration::ImplTrait(ImplTrait {
+        let impl_trait = ImplTrait {
             impl_type_parameters,
             trait_name: abi_encode_trait_name,
             trait_type_arguments: vec![],
             implementing_for,
             items: vec![ImplItem::Fn(impl_trait_item)],
             block_span: Span::dummy(),
-        });
+        };
+        let impl_trait = engines.pe().insert(impl_trait);
+        let impl_trait = Declaration::ImplTrait(impl_trait);
 
         let handler = Handler::default();
         TyAstNode::type_check(
