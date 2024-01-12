@@ -26,7 +26,7 @@ use crate::{decl_engine::parsed_id::ParsedDeclId, Engines};
 pub enum Declaration {
     VariableDeclaration(ParsedDeclId<VariableDeclaration>),
     FunctionDeclaration(ParsedDeclId<FunctionDeclaration>),
-    TraitDeclaration(TraitDeclaration),
+    TraitDeclaration(ParsedDeclId<TraitDeclaration>),
     StructDeclaration(StructDeclaration),
     EnumDeclaration(EnumDeclaration),
     ImplTrait(ImplTrait),

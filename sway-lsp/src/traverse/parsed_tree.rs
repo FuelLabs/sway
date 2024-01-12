@@ -122,7 +122,7 @@ impl Parse for Declaration {
         match self {
             Declaration::VariableDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::FunctionDeclaration(decl_id) => decl_id.parse(ctx),
-            Declaration::TraitDeclaration(decl) => decl.parse(ctx),
+            Declaration::TraitDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::StructDeclaration(decl) => decl.parse(ctx),
             Declaration::EnumDeclaration(decl) => decl.parse(ctx),
             Declaration::ImplTrait(decl) => decl.parse(ctx),
@@ -754,16 +754,18 @@ impl Parse for ParsedDeclId<FunctionDeclaration> {
     }
 }
 
-impl Parse for TraitDeclaration {
+impl Parse for ParsedDeclId<TraitDeclaration> {
     fn parse(&self, ctx: &ParseContext) {
+        let trait_decl = ctx.engines.pe().get_trait(self);
         ctx.tokens.insert(
-            ctx.ident(&self.name),
+            ctx.ident(&trait_decl.name),
             Token::from_parsed(
-                AstToken::Declaration(Declaration::TraitDeclaration(self.clone())),
+                AstToken::Declaration(Declaration::TraitDeclaration(*self)),
                 SymbolKind::Trait,
             ),
         );
-        self.interface_surface
+        trait_decl
+            .interface_surface
             .par_iter()
             .for_each(|item| match item {
                 TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
@@ -771,10 +773,10 @@ impl Parse for TraitDeclaration {
                 TraitItem::Type(trait_type) => trait_type.parse(ctx),
                 TraitItem::Error(_, _) => {}
             });
-        self.methods.par_iter().for_each(|func_dec| {
+        trait_decl.methods.par_iter().for_each(|func_dec| {
             func_dec.parse(ctx);
         });
-        self.supertraits.par_iter().for_each(|supertrait| {
+        trait_decl.supertraits.par_iter().for_each(|supertrait| {
             supertrait.parse(ctx);
         });
     }
