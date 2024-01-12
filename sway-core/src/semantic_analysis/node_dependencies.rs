@@ -327,31 +327,36 @@ impl Dependencies {
                     deps.gather_from_type_argument(engines, &variant.type_argument)
                 })
                 .gather_from_type_parameters(type_parameters),
-            Declaration::TraitDeclaration(TraitDeclaration {
-                interface_surface,
-                methods,
-                supertraits,
-                ..
-            }) => self
-                .gather_from_iter(supertraits.iter(), |deps, sup| {
+            Declaration::TraitDeclaration(decl_id) => {
+                let trait_decl = engines.pe().get_trait(decl_id);
+                self.gather_from_iter(trait_decl.supertraits.iter(), |deps, sup| {
                     deps.gather_from_call_path(&sup.name, false, false)
                 })
-                .gather_from_iter(interface_surface.iter(), |deps, item| match item {
-                    TraitItem::TraitFn(sig) => deps
-                        .gather_from_iter(sig.parameters.iter(), |deps, param| {
-                            deps.gather_from_type_argument(engines, &param.type_argument)
-                        })
-                        .gather_from_type_argument(engines, &sig.return_type),
-                    TraitItem::Constant(const_decl) => {
-                        deps.gather_from_constant_decl(engines, const_decl)
-                    }
-                    TraitItem::Type(type_decl) => deps.gather_from_type_decl(engines, type_decl),
-                    TraitItem::Error(_, _) => deps,
-                })
-                .gather_from_iter(methods.iter(), |deps, fn_decl_id| {
-                    let fn_decl = engines.pe().get_function(fn_decl_id);
-                    deps.gather_from_fn_decl(engines, &fn_decl)
-                }),
+                .gather_from_iter(
+                    trait_decl.interface_surface.iter(),
+                    |deps, item| match item {
+                        TraitItem::TraitFn(sig) => deps
+                            .gather_from_iter(sig.parameters.iter(), |deps, param| {
+                                deps.gather_from_type_argument(engines, &param.type_argument)
+                            })
+                            .gather_from_type_argument(engines, &sig.return_type),
+                        TraitItem::Constant(const_decl) => {
+                            deps.gather_from_constant_decl(engines, const_decl)
+                        }
+                        TraitItem::Type(type_decl) => {
+                            deps.gather_from_type_decl(engines, type_decl)
+                        }
+                        TraitItem::Error(_, _) => deps,
+                    },
+                )
+                .gather_from_iter(
+                    trait_decl.methods.iter(),
+                    |deps, fn_decl_id| {
+                        let fn_decl = engines.pe().get_function(fn_decl_id);
+                        deps.gather_from_fn_decl(engines, &fn_decl)
+                    },
+                )
+            }
             Declaration::ImplTrait(ImplTrait {
                 impl_type_parameters,
                 trait_name,
@@ -833,7 +838,10 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
         Declaration::TraitTypeDeclaration(decl) => dep_sym(decl.name.clone()),
         Declaration::StructDeclaration(decl) => dep_sym(decl.name.clone()),
         Declaration::EnumDeclaration(decl) => dep_sym(decl.name.clone()),
-        Declaration::TraitDeclaration(decl) => dep_sym(decl.name.clone()),
+        Declaration::TraitDeclaration(decl_id) => {
+            let decl = engines.pe().get_trait(decl_id);
+            dep_sym(decl.name.clone())
+        }
         Declaration::AbiDeclaration(decl) => dep_sym(decl.name.clone()),
         Declaration::TypeAliasDeclaration(decl) => dep_sym(decl.name.clone()),
 

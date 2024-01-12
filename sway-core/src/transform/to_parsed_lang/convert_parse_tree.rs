@@ -595,7 +595,7 @@ fn item_trait_to_trait_declaration(
     engines: &Engines,
     item_trait: ItemTrait,
     attributes: AttributesMap,
-) -> Result<TraitDeclaration, ErrorEmitted> {
+) -> Result<ParsedDeclId<TraitDeclaration>, ErrorEmitted> {
     let span = item_trait.span();
     let type_parameters = generic_params_opt_to_type_parameters(
         context,
@@ -659,7 +659,7 @@ fn item_trait_to_trait_declaration(
         Some((_colon_token, traits)) => traits_to_supertraits(context, handler, traits)?,
     };
     let visibility = pub_token_opt_to_visibility(item_trait.visibility);
-    Ok(TraitDeclaration {
+    let trait_decl_id = engines.pe().insert(TraitDeclaration {
         name: item_trait.name,
         type_parameters,
         interface_surface,
@@ -668,7 +668,8 @@ fn item_trait_to_trait_declaration(
         visibility,
         attributes,
         span,
-    })
+    });
+    Ok(trait_decl_id)
 }
 
 fn item_impl_to_declaration(
