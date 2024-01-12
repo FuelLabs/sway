@@ -10,7 +10,7 @@ use std::hash::*;
 // Events allow clients to react to changes in the contract.
 // Unlike Solidity, events are simply structs.
 //
-/// Emitted when a token is sent.
+/// Emitted when an asset is sent.
 struct Sent {
     from: Address,
     to: Address,
@@ -21,13 +21,13 @@ struct Sent {
 // ABI method declarations
 ////////////////////////////////////////
 /// ABI for a subcurrency.
-abi Token {
-    // Mint new tokens and send to an address.
+abi Asset {
+    // Mint new coins and send to an address.
     // Can only be called by the contract creator.
     #[storage(read, write)]
     fn mint(receiver: Address, amount: u64);
 
-    // Sends an amount of an existing token.
+    // Sends an amount of an existing asset.
     // Can be called from any address.
     #[storage(read, write)]
     fn send(receiver: Address, amount: u64);
@@ -50,8 +50,8 @@ storage {
 ////////////////////////////////////////
 // ABI definitions
 ////////////////////////////////////////
-/// Contract implements the `Token` ABI.
-impl Token for Contract {
+/// Contract implements the `Asset` ABI.
+impl Asset for Contract {
     #[storage(read, write)]
     fn mint(receiver: Address, amount: u64) {
         let sender = msg_sender().unwrap();
