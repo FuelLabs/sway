@@ -361,26 +361,28 @@ impl Dependencies {
                     },
                 )
             }
-            Declaration::ImplTrait(ImplTrait {
-                impl_type_parameters,
-                trait_name,
-                implementing_for,
-                items,
-                ..
-            }) => self
-                .gather_from_call_path(trait_name, false, false)
-                .gather_from_type_argument(engines, implementing_for)
-                .gather_from_type_parameters(impl_type_parameters)
-                .gather_from_iter(items.iter(), |deps, item| match item {
-                    ImplItem::Fn(fn_decl_id) => {
-                        let fn_decl = engines.pe().get_function(fn_decl_id);
-                        deps.gather_from_fn_decl(engines, &fn_decl)
-                    }
-                    ImplItem::Constant(const_decl) => {
-                        deps.gather_from_constant_decl(engines, const_decl)
-                    }
-                    ImplItem::Type(type_decl) => deps.gather_from_type_decl(engines, type_decl),
-                }),
+            Declaration::ImplTrait(decl_id) => {
+                let ImplTrait {
+                    impl_type_parameters,
+                    trait_name,
+                    implementing_for,
+                    items,
+                    ..
+                } = &*engines.pe().get_impl_trait(decl_id);
+                self.gather_from_call_path(trait_name, false, false)
+                    .gather_from_type_argument(engines, implementing_for)
+                    .gather_from_type_parameters(impl_type_parameters)
+                    .gather_from_iter(items.iter(), |deps, item| match item {
+                        ImplItem::Fn(fn_decl_id) => {
+                            let fn_decl = engines.pe().get_function(fn_decl_id);
+                            deps.gather_from_fn_decl(engines, &fn_decl)
+                        }
+                        ImplItem::Constant(const_decl) => {
+                            deps.gather_from_constant_decl(engines, const_decl)
+                        }
+                        ImplItem::Type(type_decl) => deps.gather_from_type_decl(engines, type_decl),
+                    })
+            }
             Declaration::ImplSelf(ImplSelf {
                 implementing_for,
                 items,
@@ -875,7 +877,8 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
                     .join(""),
             )
         }
-        Declaration::ImplTrait(decl) => {
+        Declaration::ImplTrait(decl_id) => {
+            let decl = engines.pe().get_impl_trait(decl_id);
             if decl.trait_name.prefixes.is_empty() {
                 impl_sym(
                     decl.trait_name.suffix.clone(),

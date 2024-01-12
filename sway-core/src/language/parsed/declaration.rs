@@ -29,7 +29,7 @@ pub enum Declaration {
     TraitDeclaration(ParsedDeclId<TraitDeclaration>),
     StructDeclaration(ParsedDeclId<StructDeclaration>),
     EnumDeclaration(ParsedDeclId<EnumDeclaration>),
-    ImplTrait(ImplTrait),
+    ImplTrait(ParsedDeclId<ImplTrait>),
     ImplSelf(ImplSelf),
     AbiDeclaration(AbiDeclaration),
     ConstantDeclaration(ConstantDeclaration),

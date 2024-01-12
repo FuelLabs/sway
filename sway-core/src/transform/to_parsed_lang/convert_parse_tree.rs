@@ -733,6 +733,7 @@ fn item_impl_to_declaration(
                 items,
                 block_span,
             };
+            let impl_trait = engines.pe().insert(impl_trait);
             Ok(Declaration::ImplTrait(impl_trait))
         }
         None => match &*engines.te().get(implementing_for.type_id) {
