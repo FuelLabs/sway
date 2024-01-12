@@ -1,6 +1,10 @@
 contract;
 
 use std::{
+    asset::{
+        mint_to_address,
+        transfer_to_address,
+    },
     call_frames::{
         contract_id,
         msg_asset_id,
@@ -8,10 +12,6 @@ use std::{
     constants::DEFAULT_SUB_ID,
     context::msg_amount,
     hash::*,
-    asset::{
-        mint_to_address,
-        transfer_to_address,
-    },
 };
 
 abi LiquidityPool {
