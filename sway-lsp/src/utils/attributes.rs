@@ -8,7 +8,10 @@ where
 {
     match &token.parsed {
         AstToken::Declaration(declaration) => match declaration {
-            Declaration::EnumDeclaration(decl) => callback(&decl.attributes),
+            Declaration::EnumDeclaration(decl_id) => {
+                let decl = engines.pe().get_enum(decl_id);
+                callback(&decl.attributes)
+            }
             Declaration::FunctionDeclaration(decl_id) => {
                 let decl = engines.pe().get_function(decl_id);
                 callback(&decl.attributes)

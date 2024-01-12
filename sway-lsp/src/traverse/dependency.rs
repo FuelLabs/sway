@@ -30,7 +30,10 @@ pub fn collect_parsed_declaration(node: &AstNode, ctx: &ParseContext) {
                 (decl.name.clone(), SymbolKind::Function)
             }
             Declaration::ConstantDeclaration(decl) => (decl.name.clone(), SymbolKind::Const),
-            Declaration::EnumDeclaration(decl) => (decl.name.clone(), SymbolKind::Enum),
+            Declaration::EnumDeclaration(decl_id) => {
+                let decl = ctx.engines.pe().get_enum(decl_id);
+                (decl.name.clone(), SymbolKind::Enum)
+            }
             _ => return,
         };
 
