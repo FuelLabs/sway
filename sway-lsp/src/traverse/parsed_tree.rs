@@ -124,7 +124,7 @@ impl Parse for Declaration {
             Declaration::FunctionDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::TraitDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::StructDeclaration(decl_id) => decl_id.parse(ctx),
-            Declaration::EnumDeclaration(decl) => decl.parse(ctx),
+            Declaration::EnumDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::ImplTrait(decl) => decl.parse(ctx),
             Declaration::ImplSelf(decl) => decl.parse(ctx),
             Declaration::AbiDeclaration(decl) => decl.parse(ctx),
@@ -805,22 +805,23 @@ impl Parse for ParsedDeclId<StructDeclaration> {
     }
 }
 
-impl Parse for EnumDeclaration {
+impl Parse for ParsedDeclId<EnumDeclaration> {
     fn parse(&self, ctx: &ParseContext) {
+        let enum_decl = ctx.engines.pe().get_enum(self);
         ctx.tokens.insert(
-            ctx.ident(&self.name),
+            ctx.ident(&enum_decl.name),
             Token::from_parsed(
-                AstToken::Declaration(Declaration::EnumDeclaration(self.clone())),
+                AstToken::Declaration(Declaration::EnumDeclaration(*self)),
                 SymbolKind::Enum,
             ),
         );
-        self.type_parameters.par_iter().for_each(|type_param| {
+        enum_decl.type_parameters.par_iter().for_each(|type_param| {
             type_param.parse(ctx);
         });
-        self.variants.par_iter().for_each(|variant| {
+        enum_decl.variants.par_iter().for_each(|variant| {
             variant.parse(ctx);
         });
-        self.attributes.parse(ctx);
+        enum_decl.attributes.parse(ctx);
     }
 }
 

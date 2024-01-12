@@ -320,15 +320,17 @@ impl Dependencies {
                 })
                 .gather_from_type_parameters(type_parameters)
             }
-            Declaration::EnumDeclaration(EnumDeclaration {
-                variants,
-                type_parameters,
-                ..
-            }) => self
-                .gather_from_iter(variants.iter(), |deps, variant| {
+            Declaration::EnumDeclaration(decl_id) => {
+                let EnumDeclaration {
+                    variants,
+                    type_parameters,
+                    ..
+                } = &*engines.pe().get_enum(decl_id);
+                self.gather_from_iter(variants.iter(), |deps, variant| {
                     deps.gather_from_type_argument(engines, &variant.type_argument)
                 })
-                .gather_from_type_parameters(type_parameters),
+                .gather_from_type_parameters(type_parameters)
+            }
             Declaration::TraitDeclaration(decl_id) => {
                 let trait_decl = engines.pe().get_trait(decl_id);
                 self.gather_from_iter(trait_decl.supertraits.iter(), |deps, sup| {
@@ -842,7 +844,10 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
             let decl = engines.pe().get_struct(decl_id);
             dep_sym(decl.name.clone())
         }
-        Declaration::EnumDeclaration(decl) => dep_sym(decl.name.clone()),
+        Declaration::EnumDeclaration(decl_id) => {
+            let decl = engines.pe().get_enum(decl_id);
+            dep_sym(decl.name.clone())
+        }
         Declaration::TraitDeclaration(decl_id) => {
             let decl = engines.pe().get_trait(decl_id);
             dep_sym(decl.name.clone())

@@ -325,7 +325,8 @@ impl ty::TyModule {
                     let decl = ctx.engines().pe().get_struct(decl_id);
                     all_abiencode_impls.get(&decl.name).is_none()
                 }
-                AstNodeContent::Declaration(Declaration::EnumDeclaration(decl)) => {
+                AstNodeContent::Declaration(Declaration::EnumDeclaration(decl_id)) => {
+                    let decl = ctx.engines().pe().get_enum(decl_id);
                     all_abiencode_impls.get(&decl.name).is_none()
                 }
                 _ => false,

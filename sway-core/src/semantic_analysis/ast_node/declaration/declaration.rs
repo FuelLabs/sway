@@ -95,7 +95,8 @@ impl TyDecl {
                 ctx.insert_symbol(handler, type_decl.name().clone(), typed_type_decl.clone())?;
                 typed_type_decl
             }
-            parsed::Declaration::EnumDeclaration(decl) => {
+            parsed::Declaration::EnumDeclaration(decl_id) => {
+                let decl = engines.pe().get_enum(&decl_id).as_ref().clone();
                 let span = decl.span.clone();
                 let enum_decl = match ty::TyEnumDecl::type_check(handler, ctx.by_ref(), decl) {
                     Ok(res) => res,

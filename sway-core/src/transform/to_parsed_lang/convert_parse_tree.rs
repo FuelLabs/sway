@@ -412,7 +412,7 @@ fn item_enum_to_enum_declaration(
     engines: &Engines,
     item_enum: ItemEnum,
     attributes: AttributesMap,
-) -> Result<EnumDeclaration, ErrorEmitted> {
+) -> Result<ParsedDeclId<EnumDeclaration>, ErrorEmitted> {
     let mut errors = Vec::new();
     let span = item_enum.span();
     let variants = item_enum
@@ -458,7 +458,7 @@ fn item_enum_to_enum_declaration(
         return Err(emitted);
     }
 
-    let enum_declaration = EnumDeclaration {
+    let enum_declaration_id = engines.pe().insert(EnumDeclaration {
         name: item_enum.name,
         type_parameters: generic_params_opt_to_type_parameters(
             context,
@@ -471,8 +471,8 @@ fn item_enum_to_enum_declaration(
         span,
         visibility: pub_token_opt_to_visibility(item_enum.visibility),
         attributes,
-    };
-    Ok(enum_declaration)
+    });
+    Ok(enum_declaration_id)
 }
 
 fn item_fn_to_function_declaration(
