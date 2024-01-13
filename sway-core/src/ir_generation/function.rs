@@ -1253,7 +1253,7 @@ impl<'eng> FnCompiler<'eng> {
             lhs_val.get_type(context).unwrap_or_else(|| {
                 rhs_val
                     .get_type(context)
-                    .unwrap_or_else(|| Type::get_unit(context))
+                    .unwrap_or_else(|| Type::get_bool(context))
             }),
         );
 
