@@ -224,11 +224,23 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
                 }
                 print_account_balances(&accounts, &account_balances);
 
-                print!("\nPlease provide the index of account to use for signing: ");
-                std::io::stdout().flush()?;
-                let mut account_index = String::new();
-                std::io::stdin().read_line(&mut account_index)?;
-                let account_index = account_index.trim().parse::<usize>()?;
+                let mut account_index;
+                loop {
+                    print!("\nPlease provide the index of account to use for signing: ");
+                    std::io::stdout().flush()?;
+                    let mut input_account_index = String::new();
+                    std::io::stdin().read_line(&mut input_account_index)?;
+                    account_index = input_account_index.trim().parse::<usize>()?;
+                    if accounts.contains_key(&account_index) {
+                        break;
+                    }
+                    let options: Vec<String> = accounts.keys().map(|key| key.to_string()).collect();
+                    println_warning(&format!(
+                        "\"{}\" is not a valid account.\nPlease choose a valid option from {}",
+                        account_index,
+                        options.join(","),
+                    ));
+                }
 
                 let secret_key = derive_secret_key(&wallet_path, account_index, &password)
                     .map_err(|e| {
