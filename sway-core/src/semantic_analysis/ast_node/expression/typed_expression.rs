@@ -2205,29 +2205,26 @@ fn check_asm_block_validity(
 
     // Check #1: Disallow control flow instructions
     //
-    for err in opcodes
-        .iter()
-        .filter_map(|op| {
-            if matches!(
-                op.0,
-                VirtualOp::JMP(_)
-                    | VirtualOp::JI(_)
-                    | VirtualOp::JNE(..)
-                    | VirtualOp::JNEI(..)
-                    | VirtualOp::JNZI(..)
-                    | VirtualOp::RET(_)
-                    | VirtualOp::RETD(..)
-                    | VirtualOp::RVRT(..)
-            ) {
-                Some(CompileError::DisallowedControlFlowInstruction {
-                    name: op.1.to_string(),
-                    span: op.2.clone(),
-                })
-            } else {
-                None
-            }
-        })
-    {
+    for err in opcodes.iter().filter_map(|op| {
+        if matches!(
+            op.0,
+            VirtualOp::JMP(_)
+                | VirtualOp::JI(_)
+                | VirtualOp::JNE(..)
+                | VirtualOp::JNEI(..)
+                | VirtualOp::JNZI(..)
+                | VirtualOp::RET(_)
+                | VirtualOp::RETD(..)
+                | VirtualOp::RVRT(..)
+        ) {
+            Some(CompileError::DisallowedControlFlowInstruction {
+                name: op.1.to_string(),
+                span: op.2.clone(),
+            })
+        } else {
+            None
+        }
+    }) {
         handler.emit_err(err);
     }
 
@@ -2262,22 +2259,18 @@ fn check_asm_block_validity(
 
     // 4. Form all the compile errors given the violating registers above. Obtain span information
     //    from the original `asm.registers` vector.
-    for err in asm
-        .registers
-        .iter()
-        .filter_map(|reg| {
-            if initialized_and_assigned_registers
-                .contains(&VirtualRegister::Virtual(reg.name.to_string()))
-            {
-                Some(CompileError::InitializedRegisterReassignment {
-                    name: reg.name.to_string(),
-                    span: reg.name.span(),
-                })
-            } else {
-                None
-            }
-        })
-    {
+    for err in asm.registers.iter().filter_map(|reg| {
+        if initialized_and_assigned_registers
+            .contains(&VirtualRegister::Virtual(reg.name.to_string()))
+        {
+            Some(CompileError::InitializedRegisterReassignment {
+                name: reg.name.to_string(),
+                span: reg.name.span(),
+            })
+        } else {
+            None
+        }
+    }) {
         handler.emit_err(err);
     }
 
