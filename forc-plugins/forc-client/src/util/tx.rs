@@ -24,7 +24,7 @@ use forc_wallet::{
     utils::default_wallet_path,
 };
 
-use crate::constants::BETA_4_FAUCET_URL;
+use crate::constants::BETA_FAUCET_URL;
 
 /// The maximum time to wait for a transaction to be included in a block by the node
 pub const TX_SUBMIT_TIMEOUT_MS: u64 = 30_000u64;
@@ -216,7 +216,7 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
                     let first_account = accounts
                         .get(&0)
                         .ok_or_else(|| anyhow::anyhow!("No account derived for this wallet"))?;
-                    let faucet_link = format!("{}/?address={first_account}", BETA_4_FAUCET_URL);
+                    let faucet_link = format!("{}/?address={first_account}", BETA_FAUCET_URL);
                     anyhow::bail!("Your wallet does not have any funds to pay for the transaction.\
                                       \n\nIf you are interacting with a testnet consider using the faucet.\
                                       \n-> beta-4 network faucet: {faucet_link}\
@@ -224,11 +224,23 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
                 }
                 print_account_balances(&accounts, &account_balances);
 
-                print!("\nPlease provide the index of account to use for signing: ");
-                std::io::stdout().flush()?;
-                let mut account_index = String::new();
-                std::io::stdin().read_line(&mut account_index)?;
-                let account_index = account_index.trim().parse::<usize>()?;
+                let mut account_index;
+                loop {
+                    print!("\nPlease provide the index of account to use for signing: ");
+                    std::io::stdout().flush()?;
+                    let mut input_account_index = String::new();
+                    std::io::stdin().read_line(&mut input_account_index)?;
+                    account_index = input_account_index.trim().parse::<usize>()?;
+                    if accounts.contains_key(&account_index) {
+                        break;
+                    }
+                    let options: Vec<String> = accounts.keys().map(|key| key.to_string()).collect();
+                    println_warning(&format!(
+                        "\"{}\" is not a valid account.\nPlease choose a valid option from {}",
+                        account_index,
+                        options.join(","),
+                    ));
+                }
 
                 let secret_key = derive_secret_key(&wallet_path, account_index, &password)
                     .map_err(|e| {
