@@ -15,7 +15,7 @@ pub fn get_node_url(
         node_target.target.clone(),
         node_target.node_url.clone(),
     ) {
-        (true, None, None) => Target::Beta4.target_url(),
+        (true, None, None) => Target::Beta5.target_url(),
         (false, Some(target), None) => target.target_url(),
         (false, None, Some(node_url)) => node_url,
         (false, None, None) => manifest_network
@@ -38,22 +38,22 @@ fn test_get_node_url_testnet() {
     };
 
     let actual = get_node_url(&input, &None).unwrap();
-    assert_eq!("https://beta-4.fuel.network", actual);
+    assert_eq!("https://beta-5.fuel.network", actual);
 }
 
 #[test]
-fn test_get_node_url_beta4() {
+fn test_get_node_url_beta5() {
     let input = NodeTarget {
-        target: Some(Target::Beta4),
+        target: Some(Target::Beta5),
         node_url: None,
         testnet: false,
     };
     let actual = get_node_url(&input, &None).unwrap();
-    assert_eq!("https://beta-4.fuel.network", actual);
+    assert_eq!("https://beta-5.fuel.network", actual);
 }
 
 #[test]
-fn test_get_node_url_beta4_url() {
+fn test_get_node_url_beta4() {
     let input = NodeTarget {
         target: None,
         node_url: Some("https://beta-4.fuel.network".to_string()),
