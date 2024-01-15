@@ -48,6 +48,7 @@ pub struct BuildConfig {
     pub(crate) include_tests: bool,
     pub time_phases: bool,
     pub metrics_outfile: Option<String>,
+    pub experimental: ExperimentalFlags,
 }
 
 impl BuildConfig {
@@ -92,52 +93,53 @@ impl BuildConfig {
             include_tests: false,
             time_phases: false,
             metrics_outfile: None,
+            experimental: ExperimentalFlags::default(),
         }
     }
 
-    pub fn print_dca_graph(self, a: Option<String>) -> Self {
+    pub fn with_print_dca_graph(self, a: Option<String>) -> Self {
         Self {
             print_dca_graph: a,
             ..self
         }
     }
 
-    pub fn print_dca_graph_url_format(self, a: Option<String>) -> Self {
+    pub fn with_print_dca_graph_url_format(self, a: Option<String>) -> Self {
         Self {
             print_dca_graph_url_format: a,
             ..self
         }
     }
 
-    pub fn print_intermediate_asm(self, a: bool) -> Self {
+    pub fn with_print_intermediate_asm(self, a: bool) -> Self {
         Self {
             print_intermediate_asm: a,
             ..self
         }
     }
 
-    pub fn print_finalized_asm(self, a: bool) -> Self {
+    pub fn with_print_finalized_asm(self, a: bool) -> Self {
         Self {
             print_finalized_asm: a,
             ..self
         }
     }
 
-    pub fn print_ir(self, a: bool) -> Self {
+    pub fn with_print_ir(self, a: bool) -> Self {
         Self {
             print_ir: a,
             ..self
         }
     }
 
-    pub fn time_phases(self, a: bool) -> Self {
+    pub fn with_time_phases(self, a: bool) -> Self {
         Self {
             time_phases: a,
             ..self
         }
     }
 
-    pub fn metrics(self, a: Option<String>) -> Self {
+    pub fn with_metrics(self, a: Option<String>) -> Self {
         Self {
             metrics_outfile: a,
             ..self
@@ -149,9 +151,16 @@ impl BuildConfig {
     /// This should be set to `true` by invocations like `forc test` or `forc check --tests`.
     ///
     /// Default: `false`
-    pub fn include_tests(self, include_tests: bool) -> Self {
+    pub fn with_include_tests(self, include_tests: bool) -> Self {
         Self {
             include_tests,
+            ..self
+        }
+    }
+
+    pub fn with_experimental(self, experimental: ExperimentalFlags) -> Self {
+        Self {
+            experimental,
             ..self
         }
     }
@@ -159,6 +168,11 @@ impl BuildConfig {
     pub fn canonical_root_module(&self) -> Arc<PathBuf> {
         self.canonical_root_module.clone()
     }
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+pub struct ExperimentalFlags {
+    pub new_encoding: bool,
 }
 
 #[cfg(test)]

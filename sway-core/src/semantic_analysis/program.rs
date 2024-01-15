@@ -8,7 +8,7 @@ use crate::{
         namespace::{self, Namespace},
         TypeCheckContext,
     },
-    Engines,
+    BuildConfig, Engines,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{Context, Module};
@@ -29,10 +29,18 @@ impl TyProgram {
         parsed: &ParseProgram,
         initial_namespace: namespace::Module,
         package_name: &str,
+        build_config: Option<&BuildConfig>,
     ) -> Result<Self, ErrorEmitted> {
         let mut namespace = Namespace::init_root(initial_namespace);
         let ctx =
             TypeCheckContext::from_root(&mut namespace, engines).with_kind(parsed.kind.clone());
+
+        let ctx = if let Some(build_config) = build_config {
+            ctx.with_experimental_flags(build_config.experimental)
+        } else {
+            ctx
+        };
+
         let ParseProgram { root, kind } = parsed;
 
         // Analyze the dependency order for the submodules.

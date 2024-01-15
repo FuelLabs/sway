@@ -1,10 +1,5 @@
 script;
 
-enum Result<T, E> {
-    Ok: T,
-    Err: E,
-}
-
 fn local_panic<T>() -> T {
     __revert(42)
 }
