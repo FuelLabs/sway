@@ -54,7 +54,7 @@ There are many ways in which you may contribute to the Sway project, some of whi
 
 Check out our [Help Wanted](https://github.com/FuelLabs/sway/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22), [Sway Book](https://github.com/FuelLabs/sway/issues?q=is%3Aopen+is%3Aissue+label%3A%22The+Sway+Book%22) or [Good First Issue](https://github.com/FuelLabs/sway/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) issues to find a suitable task.
 
-If you are planning something big, for example, related to multiple components or changes current behaviors, make sure to open an issue to discuss with us before starting on the implementation.
+If you are planning something big, for example, related to multiple components or changes in current behaviors, make sure to open an issue to discuss with us before starting on the implementation.
 
 ## Contribution flow
 

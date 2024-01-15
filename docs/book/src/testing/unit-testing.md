@@ -16,7 +16,7 @@ fn test_meaning_of_life() {
 }
 ```
 
-Each test function is ran as if it were the entry point for a
+Each test function is run as if it were the entry point for a
 [script](../sway-program-types/scripts.md). Tests "pass" if they return
 successfully, and "fail" if they revert or vice versa while [testing failure](#testing-failure).
 

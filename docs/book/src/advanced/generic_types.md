@@ -30,7 +30,7 @@ purely shorthand for the sake of ergonomics.
 
 ## Trait Constraints
 
-Important background to know before diving into trait constraints is that the `where` clause can be used to specify the required traits for the generic argument. So, when writing something like a `HashMap` you may
+An important background to know before diving into trait constraints is that the `where` clause can be used to specify the required traits for the generic argument. So, when writing something like a `HashMap` you may
 want to specify that the generic argument implements a `Hash` trait.
 
 ```sway
@@ -41,7 +41,7 @@ fn get_hashmap_key<T>(Key : T) -> b256
 }
 ```
 
-Of course, our `noop()` function is not useful. Often, a programmer will want to declare functions over types which satisfy certain traits.
+Of course, our `noop()` function is not useful. Often, a programmer will want to declare functions over types that satisfy certain traits.
 For example, let's try to implement the successor function, `successor()`, for all numeric types.
 
 ```sway
