@@ -4,6 +4,7 @@ use dap::responses::*;
 use dap::{events::OutputEventBody, types::Breakpoint};
 use forc_test::execute::TestExecutor;
 use serde::{Deserialize, Serialize};
+use std::fmt::format;
 use std::{
     cmp::min,
     collections::{HashMap, HashSet},
@@ -18,7 +19,7 @@ use sway_types::{span::Position, Span};
 // use sway_core::source_map::SourceMap;
 use crate::types::DynResult;
 use dap::prelude::*;
-use dap::types::StartDebuggingRequestKind;
+use dap::types::{PresentationHint, Scope, StartDebuggingRequestKind, Variable, VariablePresentationHint, Source};
 use forc_pkg::{
     self, manifest::ManifestFile, Built, BuiltPackage, PackageManifest, PackageManifestFile,
 };
@@ -26,6 +27,7 @@ use rand::Rng;
 use thiserror::Error;
 
 pub const THREAD_ID: i64 = 0;
+pub const REGISTERS_VARIABLE_REF: i64 = 1;
 
 #[derive(Error, Debug)]
 enum AdapterError {
@@ -53,7 +55,8 @@ pub struct DapServer {
     initialized_event_sent: bool,
     started_debugging: bool,
     configuration_done: bool,
-    test_executor: Option<TestExecutor>
+    test_executor: Option<TestExecutor>,
+    current_breakpoint_id: Option<i64>
 }
 
 pub type Line = i64;
@@ -74,6 +77,7 @@ impl DapServer {
             started_debugging: false,
             configuration_done: false,
             test_executor: None,
+            current_breakpoint_id: None
         }
     }
 
@@ -208,7 +212,7 @@ impl DapServer {
                 // supports_cancel_request: Some(true),
                 // supports_clipboard_context: Some(true),
                 // supports_stepping_granularity: Some(true),
-                // supports_instruction_breakpoints: None,
+                // supports_instruction_breakpoints: Some(true),
                 // supports_exception_filter_options: Some(true),
                 // supports_single_thread_execution_requests: Some(true),
                 ..Default::default()
@@ -227,7 +231,19 @@ impl DapServer {
             // Command::RestartFrame(_) => todo!(),
             // Command::ReverseContinue(_) => todo!(),
             Command::Scopes(ref args) => Ok(ResponseBody::Scopes(responses::ScopesResponse {
-                scopes: vec![],
+                scopes: vec![Scope {
+                    name: "Registers".into(),
+                    presentation_hint: Some(types::ScopePresentationhint::Registers),
+                    variables_reference: REGISTERS_VARIABLE_REF,
+                    named_variables: None,
+                    indexed_variables: None,
+                    expensive: false,
+                    source: None,
+                    line: None,
+                    column: None,
+                    end_line: None,
+                    end_column: None,
+                }],
             })),
             Command::SetBreakpoints(ref args) => {
                 let mut rng = rand::thread_rng();
@@ -237,7 +253,6 @@ impl DapServer {
                     .unwrap_or_default()
                     .iter()
                     .map(|source_bp| {
-
                         match self.breakpoints.iter().find(|bp| {
                             if let Some(source) = &bp.source {
                                 if let Some(line) = bp.line {
@@ -260,11 +275,9 @@ impl DapServer {
                                     source: Some(args.source.clone()),
                                     message: Some(format!("Breakpoint ID {}", id)),
                                     ..Default::default()
-                                }        
+                                }
                             }
                         }
-        
-
                     })
                     .collect::<Vec<_>>();
                 self.breakpoints = breakpoints.clone();
@@ -286,25 +299,45 @@ impl DapServer {
                     breakpoints: self.breakpoints.clone(),
                 },
             )),
-            Command::SetInstructionBreakpoints(_) => Ok(ResponseBody::SetInstructionBreakpoints(
+            Command::SetInstructionBreakpoints(ref args) => {
+                self.log(format!("set instruction breakpoints args: {:?}\n", args));
+                Ok(ResponseBody::SetInstructionBreakpoints(
                 responses::SetInstructionBreakpointsResponse {
                     breakpoints: self.breakpoints.clone(),
                 },
-            )),
-            // Command::SetVariable(_) => todo!(),
+            ))
+        }
+            // Command::SetVariable(ref args) => {
+            //     self.log(format!("set var args: {:?}\n", args));
+            //     Ok(ResponseBody::SetVariable(responses::SetVariableResponse {
+            //         type_field: None,
+            //         value: "new value".into(),
+            //         variables_reference: Some(REGISTERS_VARIABLE_REF),
+            //         named_variables: None,
+            //         indexed_variables: None,
+            //     }))
+            // }
             // Command::Source(_) => todo!(),
             Command::StackTrace(ref args) => {
-                Ok(ResponseBody::StackTrace(responses::StackTraceResponse {
-                    stack_frames: vec![],
+                let executor = self.test_executor.as_mut().unwrap();
 
-                    // stack_frames: vec![types::StackFrame {
-                    //     id: 0,
-                    //     name: "Some name".to_string(),
-                    //     source: None,
-                    //     line: 5,
-                    //     column: 0,
-                    //     ..Default::default()
-                    // }],
+                // For now, we only return 1 stack frame.
+                let stack_frames = self.current_breakpoint_id.map(|bp_id| {
+                    self.breakpoints.iter().find(|bp| bp.id == Some(bp_id)).map(|bp| {
+                        vec![types::StackFrame {
+                            id: 0,
+                            name: executor.name.clone().into(),
+                            source: bp.source.clone(),
+                            line: bp.line.unwrap(),
+                            column: 0,
+                            presentation_hint: Some(types::StackFramePresentationhint::Normal),
+                            ..Default::default()
+                        }]
+                    })
+                }).flatten().unwrap_or_default();
+                
+                Ok(ResponseBody::StackTrace(responses::StackTraceResponse {
+                    stack_frames,
                     total_frames: None,
                 }))
             }
@@ -325,7 +358,17 @@ impl DapServer {
             }
             Command::Variables(ref args) => {
                 Ok(ResponseBody::Variables(responses::VariablesResponse {
-                    variables: vec![],
+                    variables: vec![Variable {
+                        name: "reg 1".into(),
+                        value: "reg val".into(),
+                        type_field: None,
+                        presentation_hint: None,
+                        evaluate_name: None, //"reg 1",
+                        variables_reference: REGISTERS_VARIABLE_REF,
+                        named_variables: None,
+                        indexed_variables: None,
+                        memory_reference: None,
+                    }],
                 }))
             }
             // Command::WriteMemory(_) => todo!(),

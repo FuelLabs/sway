@@ -120,9 +120,6 @@ impl DapServer {
                     .unwrap()
                     .id
                     .unwrap();
-                ////
-                ///
-                ///
                 // let breakpoint_id: i64 =self.breakpoints.first().unwrap().id.unwrap();
                 // let breakpoint_id: i64 = 1;
 
@@ -130,6 +127,7 @@ impl DapServer {
                 //     "sending event for breakpoint: {}\n\n",
                 //     breakpoint_id
                 // ));
+                self.current_breakpoint_id = Some(breakpoint_id);
                 let _ = self.server.send_event(Event::Stopped(StoppedEventBody {
                     reason: types::StoppedEventReason::Breakpoint,
                     hit_breakpoint_ids: Some(vec![breakpoint_id]),

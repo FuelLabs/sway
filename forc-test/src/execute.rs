@@ -25,8 +25,8 @@ pub struct TestExecutor {
     pub interpreter: Interpreter<MemoryStorage, tx::Script, NotSupportedEcal>,
     pub tx_builder: tx::TransactionBuilder<tx::Script>,
     pub test_offset: u32,
-    test_entry: PkgTestEntry,
-    name: String,
+    pub test_entry: PkgTestEntry,
+    pub name: String,
 }
 
 /// The result of executing a test with breakpoints enabled.
