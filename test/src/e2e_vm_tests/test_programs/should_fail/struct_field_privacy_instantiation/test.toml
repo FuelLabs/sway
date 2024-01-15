@@ -185,22 +185,22 @@ category = "fail"
 #check: $()Struct instantiation has missing fields
 #check: $()Struct "MainStruct" is declared here, and has three fields.
 #check: $()let _ = MainStruct { };
-#nextln: $()Instantiation of "MainStruct" is missing the fields "x", "y", and one more.
+#nextln: $()Instantiation of struct "MainStruct" is missing the fields "x", "y", and one more.
 
 #check: $()Struct instantiation has missing fields
 #check: $()Struct "MainStruct" is declared here, and has three fields.
 #check: $()let _ = MainStruct { x: 0 };
-#nextln: $()Instantiation of "MainStruct" is missing the fields "y" and "z".
+#nextln: $()Instantiation of struct "MainStruct" is missing the fields "y" and "z".
 
 #check: $()Struct instantiation has missing fields
 #check: $()Struct "MainStruct" is declared here, and has three fields.
 #check: $()let _ = MainStruct { x: 0, y: 0 };
-#nextln: $()Instantiation of "MainStruct" is missing the field "z".
+#nextln: $()Instantiation of struct "MainStruct" is missing the field "z".
 
 #check: $()Struct instantiation has missing fields
 #check: $()Struct "MainStruct" is declared here, and has three fields.
 #check: $()let _ = MainStruct { nn: 0 };
-#nextln: $()Instantiation of "MainStruct" is missing the fields "x", "y", and one more.
+#nextln: $()Instantiation of struct "MainStruct" is missing the fields "x", "y", and one more.
 
 #check: $()let _ = MainStruct { nn: 0 };
 #nextln: $()Struct "MainStruct" does not have field "nn".
@@ -208,7 +208,7 @@ category = "fail"
 #check: $()Struct instantiation has missing fields
 #check: $()Struct "MainStruct" is declared here, and has three fields.
 #check: $()let _ = MainStruct { nn: 0, x: 0 };
-#nextln: $()Instantiation of "MainStruct" is missing the fields "y" and "z".
+#nextln: $()Instantiation of struct "MainStruct" is missing the fields "y" and "z".
 
 #check: $()let _ = MainStruct { nn: 0, x: 0 };
 #nextln: $()Struct "MainStruct" does not have field "nn".

@@ -563,20 +563,29 @@ pub enum CompileError {
         missing_patterns: String,
         span: Span,
     },
-    #[error("Struct pattern is missing {}{}: {}.",
+    #[error("Struct pattern is missing the {}field{} {}.",
         if *missing_fields_are_public { "public " } else { "" },
-        if missing_fields.len() == 1 { "field" } else { "fields" },
-        missing_fields.iter().map(|field| format!("\"{field}\"")).collect::<Vec<_>>().join(", "))]
+        plural_s(missing_fields.len()),
+        sequence_to_str(missing_fields, Enclosing::DoubleQuote, 2)
+    )]
     MatchStructPatternMissingFields {
         missing_fields: Vec<Ident>,
         missing_fields_are_public: bool,
+        /// Original, non-aliased struct name.
+        struct_name: Ident,
+        struct_decl_span: Span,
+        total_number_of_fields: usize,
         span: Span,
     },
-    #[error("Struct pattern requires `..` due to private {}: {}.",
-        if private_fields.len() == 1 { "field" } else { "fields" },
-        private_fields.iter().map(|field| format!("\"{field}\"")).collect::<Vec<_>>().join(", "))]
-    MatchStructPatternRequiresRest {
+    #[error("Struct pattern must ignore inaccessible private field{} {}.",
+        plural_s(private_fields.len()),
+        sequence_to_str(&private_fields, Enclosing::DoubleQuote, 2))]
+    MatchStructPatternMustIgnorePrivateFields {
         private_fields: Vec<Ident>,
+        /// Original, non-aliased struct name.
+        struct_name: Ident,
+        struct_decl_span: Span,
+        all_fields_are_private: bool,
         span: Span,
     },
     #[error("Variable \"{variable}\" is not defined in all alternatives.")]
@@ -931,7 +940,7 @@ impl Spanned for CompileError {
             GenericShadowsGeneric { name } => name.span(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
             MatchStructPatternMissingFields { span, .. } => span.clone(),
-            MatchStructPatternRequiresRest { span, .. } => span.clone(),
+            MatchStructPatternMustIgnorePrivateFields { span, .. } => span.clone(),
             MatchArmVariableNotDefinedInAllAlternatives { variable, .. } => variable.span(),
             MatchArmVariableMismatchedType { variable, .. } => variable.span(),
             NotAnEnum { span, .. } => span.clone(),
@@ -1193,6 +1202,81 @@ impl ToDiagnostic for CompileError {
                     format!("Consider removing the variable \"{variable}\" altogether, or adding it to all alternatives."),
                 ],
             },
+            MatchStructPatternMissingFields { missing_fields, missing_fields_are_public, struct_name, struct_decl_span, total_number_of_fields, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Struct pattern has missing fields".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("Struct pattern is missing the {}field{} {}.",
+                        if *missing_fields_are_public { "public " } else { "" },
+                        plural_s(missing_fields.len()),
+                        sequence_to_str(&missing_fields, Enclosing::DoubleQuote, 2)
+                    )
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        "Struct pattern must either contain or ignore each struct field.".to_string()
+                    ),
+                    Hint::info(
+                        source_engine,
+                        struct_decl_span.clone(),
+                        format!("Struct \"{struct_name}\" is declared here, and has {} field{}.",
+                            number_to_str(*total_number_of_fields),
+                            plural_s(*total_number_of_fields),
+                        )
+                    ),
+                ],
+                help: vec![
+                    // Consider ignoring the field "x_1" by using the `_` pattern: `x_1: _`.
+                    //  or
+                    // Consider ignoring individual fields by using the `_` pattern. E.g, `x_1: _`.
+                    format!("Consider ignoring {} field{} {}by using the `_` pattern{} `{}: _`.",
+                        singular_plural(missing_fields.len(), "the", "individual"),
+                        plural_s(missing_fields.len()),
+                        singular_plural(missing_fields.len(), &format!("\"{}\" ", missing_fields[0]), ""),
+                        singular_plural(missing_fields.len(), ":", ". E.g.,"),
+                        missing_fields[0]
+                    ),
+                    "Alternatively, consider ignoring all the missing fields by ending the struct pattern with `..`.".to_string(),
+                ],
+            },
+            MatchStructPatternMustIgnorePrivateFields { private_fields, struct_name, struct_decl_span, all_fields_are_private, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Struct pattern must ignore inaccessible private fields".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("Struct pattern must ignore inaccessible private field{} {}.",
+                        plural_s(private_fields.len()),
+                        sequence_to_str(&private_fields, Enclosing::DoubleQuote, 2)
+                    )
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        format!("To ignore the private field{}, end the struct pattern with `..`.",
+                            plural_s(private_fields.len()),
+                        )
+                    ),
+                    Hint::info(
+                        source_engine,
+                        struct_decl_span.clone(),
+                        format!("Struct \"{struct_name}\" is declared here, and has {}.",
+                            if *all_fields_are_private {
+                                "all private fields".to_string()
+                            } else {
+                                format!("private field{} {}",
+                                    plural_s(private_fields.len()),
+                                    sequence_to_str(&private_fields, Enclosing::DoubleQuote, 2)
+                                )
+                            }
+                        )
+                    ),
+                ],
+                help: vec![],
+            },
             TraitNotImportedAtFunctionApplication { trait_name, function_name, function_call_site_span, trait_constraint_span, trait_candidates } => {
                 // Make candidates order deterministic.
                 let mut trait_candidates = trait_candidates.clone();
@@ -1311,8 +1395,8 @@ impl ToDiagnostic for CompileError {
                 issue: Issue::error(
                     source_engine,
                     span.clone(),
-                    format!("Instantiation of \"{struct_name}\" is missing the {} {}.",
-                            if field_names.len() == 1 { "field" } else { "fields" },
+                    format!("Instantiation of struct \"{struct_name}\" is missing the field{} {}.",
+                            plural_s(field_names.len()),
                             sequence_to_str(&field_names, Enclosing::DoubleQuote, 2)
                         )
                 ),
@@ -1325,14 +1409,14 @@ impl ToDiagnostic for CompileError {
                     Hint::info(
                         source_engine,
                         struct_decl_span.clone(),
-                        format!("Struct \"{struct_name}\" is declared here, and has {} {}.",
+                        format!("Struct \"{struct_name}\" is declared here, and has {} field{}.",
                             number_to_str(*total_number_of_fields),
-                            if *total_number_of_fields == 1 { "field" } else { "fields" },
+                            plural_s(*total_number_of_fields),
                         )
                     ),
                 ],
                 help: vec![],
-            },            
+            },
             StructCannotBeInstantiated { struct_name, span, struct_decl_span, private_fields, constructors, all_fields_are_private, is_in_storage_declaration, struct_can_be_adapted } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Struct cannot be instantiated due to inaccessible private fields".to_string())),
                 issue: Issue::error(

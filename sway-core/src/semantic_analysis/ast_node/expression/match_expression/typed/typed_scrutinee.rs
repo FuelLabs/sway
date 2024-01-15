@@ -348,8 +348,11 @@ fn type_check_struct(
                 match (is_out_of_struct_decl_module_access, all_public_fields_are_matched, only_public_fields_are_matched) {
                     // Public access. Only all public fields are matched. All missing fields are private.
                     // -> Emit error for the mandatory ignore `..`.
-                    (true, true, true) => CompileError::MatchStructPatternRequiresRest {
+                    (true, true, true) => CompileError::MatchStructPatternMustIgnorePrivateFields {
                         private_fields: missing_fields(false),
+                        struct_name: struct_decl.call_path.suffix.clone(),
+                        struct_decl_span: struct_decl.span(),
+                        all_fields_are_private: struct_decl.fields.iter().all(|field| field.is_private()),
                         span,
                     },
 
@@ -360,17 +363,15 @@ fn type_check_struct(
                     // Public access. Some or non of the public fields are matched. Some or none of the private fields are matched.
                     // -> Emit error listing only missing public fields. Recommendation for mandatory use of `..` is already given
                     //    when reporting the inaccessible private field.
-                    (true, false, _) => CompileError::MatchStructPatternMissingFields {
-                        missing_fields: missing_fields(true),
-                        missing_fields_are_public: true,
-                        span,
-                    },
-
+                    //  or
                     // In struct decl module access. We do not distinguish between private and public fields here.
                     // -> Emit error listing all missing fields.
-                    (false, _, _) => CompileError::MatchStructPatternMissingFields {
-                        missing_fields: missing_fields(false),
-                        missing_fields_are_public: false,
+                    (true, false, _) | (false, _, _) => CompileError::MatchStructPatternMissingFields {
+                        missing_fields: missing_fields(is_out_of_struct_decl_module_access),
+                        missing_fields_are_public: is_out_of_struct_decl_module_access,
+                        struct_name: struct_decl.call_path.suffix.clone(),
+                        struct_decl_span: struct_decl.span(),
+                        total_number_of_fields: struct_decl.fields.len(),
                         span,
                     },
             }));
