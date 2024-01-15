@@ -18,7 +18,7 @@ use std::{
 use sway_core::source_map::PathIndex;
 use sway_types::{span::Position, Span};
 // use sway_core::source_map::SourceMap;
-use crate::server::AdapterError;
+use crate::server::{AdapterError, THREAD_ID};
 use crate::{server::DapServer, types::DynResult};
 use dap::prelude::*;
 use forc_pkg::{
@@ -88,7 +88,7 @@ impl DapServer {
         )
         .map_err(|_| AdapterError::BuildError)?;
 
-        self.log(format!("built!\n{:?}\n", built_packages));
+        // self.log(format!("built!\n{:?}\n", built_packages));
 
         let mut pkg_to_debug: Option<&BuiltPackage> = None;
 
@@ -217,7 +217,7 @@ impl DapServer {
             None
         });
 
-        self.log(format!("got entries length: {:?}\n", entries.size_hint()));
+        // self.log(format!("got entries length: {:?}\n", entries.size_hint()));
 
         let mut test_results = Vec::new();
         for (entry, test_entry) in entries {
@@ -226,7 +226,8 @@ impl DapServer {
                 u32::try_from(entry.finalized.imm).expect("test instruction offset out of range");
             let name = entry.finalized.fn_name.clone();
             let test_setup = pkg_tests.setup()?;
-            self.log(format!("executing test: {}\n", name));
+            // self.log(format!("executing test: {}\n", name));
+            // TODO: print test output to terminal
 
             let mut executor = TestExecutor::new(
                 &pkg_to_debug.bytecode.bytes,
@@ -240,7 +241,7 @@ impl DapServer {
             );
 
             // Set all breakpoints in the VM
-            self.log(format!("setting vm bps\n"));
+            // self.log(format!("setting vm bps\n"));
 
             let opcode_offset = offset as u64 / 4;
             let vm_bps = self.breakpoints.iter().map(|bp| {
@@ -254,14 +255,14 @@ impl DapServer {
                 bp.clone()
             });
 
-            self.log(format!("vm bps: {:?}\n", vm_bps.collect::<Vec<_>>()));
+            self.log(format!("vm bps: {:?}\n", vm_bps.collect::<Vec<_>>())); // TODO: removing this breaks?
 
-            self.log(format!("calling executor.debug \n"));
+            // self.log(format!("calling executor.debug \n"));
 
             let debug_res = executor.debug()?;
-            self.log(format!("opcode_offset: {:?}\n", opcode_offset));
-            self.log(format!("debug_res: {:?}\n", debug_res));
-            self.log(format!("source_map: {:?}\n", self.source_map));
+            // self.log(format!("opcode_offset: {:?}\n", opcode_offset));
+            // self.log(format!("debug_res: {:?}\n", debug_res));
+            // self.log(format!("source_map: {:?}\n", self.source_map));
             match debug_res {
                 DebugResult::TestComplete(result) => {
                     // self.log(format!("finished executing test: {}\n", name));
@@ -302,18 +303,18 @@ impl DapServer {
                     // let breakpoint_id: i64 =self.breakpoints.first().unwrap().id.unwrap();
                     // let breakpoint_id: i64 = 1;
 
-                    self.log(format!(
-                        "sending event for breakpoint: {}\n\n",
-                        breakpoint_id
-                    ));
+                    // self.log(format!(
+                    //     "sending event for breakpoint: {}\n\n",
+                    //     breakpoint_id
+                    // ));
                     let _ = self.server.send_event(Event::Stopped(StoppedEventBody {
                         reason: types::StoppedEventReason::Breakpoint,
                         hit_breakpoint_ids: Some(vec![breakpoint_id]),
-                        description: None,
-                        thread_id: Some(0),
-                        preserve_focus_hint: None,
-                        text: None,
-                        all_threads_stopped: None,
+                        description: Some(format!("Stopped at breakpoint {}", breakpoint_id)),
+                        thread_id: Some(THREAD_ID),
+                        preserve_focus_hint: None, //Some(true),
+                        text: Some(format!("Stopped at breakpoint {}", breakpoint_id)),
+                        all_threads_stopped: None,//Some(true),
                     }));
                     // self.log(format!("sent stopped bp event!\n\n"));
                     break;
