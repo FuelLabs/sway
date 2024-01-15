@@ -3400,6 +3400,7 @@ dependencies = [
  "fuel-vm",
  "fuels",
  "hex",
+ "paste",
  "pretty_assertions",
  "rand",
  "sha2",
