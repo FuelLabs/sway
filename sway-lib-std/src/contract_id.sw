@@ -87,7 +87,7 @@ impl ContractId {
     /// # Examples
     ///
     /// ```sway
-    /// use std::{constants::ZERO_B256, token::mint};
+    /// use std::{constants::ZERO_B256, asset::mint};
     ///
     /// fn foo() {
     ///     let this_contract = ContractId::this();

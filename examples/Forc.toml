@@ -17,7 +17,7 @@ members = [
   "liquidity_pool",
   "match_statements",
   "msg_sender",
-  "native_token",
+  "native_asset",
   "option",
   "ownership",
   "ref_mut_params",
