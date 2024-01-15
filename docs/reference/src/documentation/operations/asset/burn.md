@@ -2,7 +2,7 @@
 
 Burning an asset means to destroy an asset that a contract has [`minted`](./mint/index.md).
 
-The [standard library](https://github.com/FuelLabs/sway/tree/master/sway-lib-std) contains a [`module`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/token.sw) that can be used to burn an asset.
+The [standard library](https://github.com/FuelLabs/sway/tree/master/sway-lib-std) contains a [`module`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/asset.sw) that can be used to burn an asset.
 
 There is one function used to burn:
 

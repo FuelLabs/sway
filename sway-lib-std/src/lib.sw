@@ -37,7 +37,7 @@ pub mod r#storage;
 pub mod block;
 pub mod inputs;
 pub mod auth;
-pub mod token;
+pub mod asset;
 pub mod message;
 pub mod prelude;
 pub mod low_level_call;
