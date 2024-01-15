@@ -244,7 +244,8 @@ impl TyDecl {
                 )?;
                 impl_trait_decl
             }
-            parsed::Declaration::StructDeclaration(decl) => {
+            parsed::Declaration::StructDeclaration(decl_id) => {
+                let decl = engines.pe().get_struct(&decl_id).as_ref().clone();
                 let span = decl.span.clone();
                 let decl: ty::TyStructDecl =
                     match ty::TyStructDecl::type_check(handler, ctx.by_ref(), decl) {

@@ -13,7 +13,10 @@ where
                 let decl = engines.pe().get_function(decl_id);
                 callback(&decl.attributes)
             }
-            Declaration::StructDeclaration(decl) => callback(&decl.attributes),
+            Declaration::StructDeclaration(decl_id) => {
+                let decl = engines.pe().get_struct(decl_id);
+                callback(&decl.attributes)
+            }
             Declaration::ConstantDeclaration(decl) => callback(&decl.attributes),
             Declaration::StorageDeclaration(decl) => callback(&decl.attributes),
             Declaration::AbiDeclaration(decl) => callback(&decl.attributes),

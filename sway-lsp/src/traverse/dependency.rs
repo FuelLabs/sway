@@ -17,7 +17,10 @@ pub fn collect_parsed_declaration(node: &AstNode, ctx: &ParseContext) {
                 let variable = ctx.engines.pe().get_variable(decl_id);
                 (variable.name.clone(), SymbolKind::Variable)
             }
-            Declaration::StructDeclaration(decl) => (decl.name.clone(), SymbolKind::Struct),
+            Declaration::StructDeclaration(decl_id) => {
+                let decl = ctx.engines.pe().get_struct(decl_id);
+                (decl.name.clone(), SymbolKind::Struct)
+            }
             Declaration::TraitDeclaration(decl_id) => {
                 let decl = ctx.engines.pe().get_trait(decl_id);
                 (decl.name.clone(), SymbolKind::Trait)
