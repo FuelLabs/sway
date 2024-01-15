@@ -344,7 +344,7 @@ fn item_struct_to_struct_declaration(
     engines: &Engines,
     item_struct: ItemStruct,
     attributes: AttributesMap,
-) -> Result<StructDeclaration, ErrorEmitted> {
+) -> Result<ParsedDeclId<StructDeclaration>, ErrorEmitted> {
     // FIXME(Centril): We shoudln't be collecting into a temporary  `errors` here. Recover instead!
     let mut errors = Vec::new();
     let span = item_struct.span();
@@ -389,7 +389,7 @@ fn item_struct_to_struct_declaration(
         return Err(emitted);
     }
 
-    let struct_declaration = StructDeclaration {
+    let struct_declaration_id = engines.pe().insert(StructDeclaration {
         name: item_struct.name,
         attributes,
         fields,
@@ -402,8 +402,8 @@ fn item_struct_to_struct_declaration(
         )?,
         visibility: pub_token_opt_to_visibility(item_struct.visibility),
         span,
-    };
-    Ok(struct_declaration)
+    });
+    Ok(struct_declaration_id)
 }
 
 fn item_enum_to_enum_declaration(

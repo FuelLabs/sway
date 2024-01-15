@@ -123,7 +123,7 @@ impl Parse for Declaration {
             Declaration::VariableDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::FunctionDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::TraitDeclaration(decl_id) => decl_id.parse(ctx),
-            Declaration::StructDeclaration(decl) => decl.parse(ctx),
+            Declaration::StructDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::EnumDeclaration(decl) => decl.parse(ctx),
             Declaration::ImplTrait(decl) => decl.parse(ctx),
             Declaration::ImplSelf(decl) => decl.parse(ctx),
@@ -782,22 +782,26 @@ impl Parse for ParsedDeclId<TraitDeclaration> {
     }
 }
 
-impl Parse for StructDeclaration {
+impl Parse for ParsedDeclId<StructDeclaration> {
     fn parse(&self, ctx: &ParseContext) {
+        let struct_decl = ctx.engines.pe().get_struct(self);
         ctx.tokens.insert(
-            ctx.ident(&self.name),
+            ctx.ident(&struct_decl.name),
             Token::from_parsed(
-                AstToken::Declaration(Declaration::StructDeclaration(self.clone())),
+                AstToken::Declaration(Declaration::StructDeclaration(*self)),
                 SymbolKind::Struct,
             ),
         );
-        self.fields.par_iter().for_each(|field| {
+        struct_decl.fields.par_iter().for_each(|field| {
             field.parse(ctx);
         });
-        self.type_parameters.par_iter().for_each(|type_param| {
-            type_param.parse(ctx);
-        });
-        self.attributes.parse(ctx);
+        struct_decl
+            .type_parameters
+            .par_iter()
+            .for_each(|type_param| {
+                type_param.parse(ctx);
+            });
+        struct_decl.attributes.parse(ctx);
     }
 }
 

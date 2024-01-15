@@ -27,7 +27,7 @@ pub enum Declaration {
     VariableDeclaration(ParsedDeclId<VariableDeclaration>),
     FunctionDeclaration(ParsedDeclId<FunctionDeclaration>),
     TraitDeclaration(ParsedDeclId<TraitDeclaration>),
-    StructDeclaration(StructDeclaration),
+    StructDeclaration(ParsedDeclId<StructDeclaration>),
     EnumDeclaration(EnumDeclaration),
     ImplTrait(ImplTrait),
     ImplSelf(ImplSelf),

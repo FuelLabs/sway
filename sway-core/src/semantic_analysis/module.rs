@@ -313,6 +313,7 @@ impl ty::TyModule {
         mut ctx: TypeCheckContext,
         nodes: Vec<AstNode>,
     ) -> Result<Vec<ty::TyAstNode>, ErrorEmitted> {
+        let engines = ctx.engines();
         let all_abiencode_impls = Self::get_all_impls(ctx.by_ref(), &nodes, |decl| {
             decl.trait_name.suffix.as_str() == "AbiEncode"
         });
@@ -320,7 +321,8 @@ impl ty::TyModule {
         let mut typed_nodes = vec![];
         for node in nodes {
             let auto_impl_abiencode = match &node.content {
-                AstNodeContent::Declaration(Declaration::StructDeclaration(decl)) => {
+                AstNodeContent::Declaration(Declaration::StructDeclaration(decl_id)) => {
+                    let decl = ctx.engines().pe().get_struct(decl_id);
                     all_abiencode_impls.get(&decl.name).is_none()
                 }
                 AstNodeContent::Declaration(Declaration::EnumDeclaration(decl)) => {
@@ -337,7 +339,7 @@ impl ty::TyModule {
                 (true, Some(mut ctx)) => match &node.content {
                     TyAstNodeContent::Declaration(decl @ TyDecl::StructDecl(_))
                     | TyAstNodeContent::Declaration(decl @ TyDecl::EnumDecl(_)) => {
-                        ctx.auto_impl_abi_encode(decl)
+                        ctx.auto_impl_abi_encode(engines, decl)
                     }
                     _ => None,
                 },
