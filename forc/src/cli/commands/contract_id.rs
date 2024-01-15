@@ -20,6 +20,10 @@ pub struct Command {
     pub build_profile: BuildProfile,
     #[clap(flatten)]
     pub salt: Salt,
+
+    #[clap(long)]
+    /// Experimental flags for the "new encoding" feature
+    pub experimental_new_encoding: bool,
 }
 
 pub(crate) fn exec(cmd: Command) -> ForcResult<()> {

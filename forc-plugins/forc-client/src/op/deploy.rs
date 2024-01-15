@@ -18,7 +18,7 @@ use fuel_tx::{Output, Salt, TransactionBuilder};
 use fuel_vm::prelude::*;
 use fuels_accounts::provider::Provider;
 use futures::FutureExt;
-use pkg::BuiltPackage;
+use pkg::{manifest::ExperimentalFlags, BuiltPackage};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use std::{
@@ -348,6 +348,9 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
         build_target: BuildTarget::default(),
         tests: false,
         member_filter: pkg::MemberFilter::only_contracts(),
+        experimental: ExperimentalFlags {
+            new_encoding: cmd.experimental_new_encoding,
+        },
     }
 }
 

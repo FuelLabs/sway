@@ -19,6 +19,9 @@ library;
 ///     log("Fuel is blazingly fast");
 /// }
 /// ```
-pub fn log<T>(value: T) {
+pub fn log<T>(value: T)
+where
+    T: AbiEncode,
+{
     __log::<T>(value);
 }

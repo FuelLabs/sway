@@ -7,7 +7,7 @@ use std::{
     call_frames::msg_asset_id,
     constants::BASE_ASSET_ID,
     context::msg_amount,
-    token::transfer_to_address,
+    asset::transfer_to_address,
 };
 
 use wallet_abi::Wallet;

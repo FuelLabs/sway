@@ -30,6 +30,10 @@ pub struct Command {
     /// Also build all tests within the project.
     #[clap(long)]
     pub tests: bool,
+
+    #[clap(long)]
+    /// Experimental flags for the "new encoding" feature
+    pub experimental_new_encoding: bool,
 }
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {

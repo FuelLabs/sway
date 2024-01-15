@@ -57,7 +57,7 @@ pub fn assert(condition: bool) {
 /// ```
 pub fn assert_eq<T>(v1: T, v2: T)
 where
-    T: Eq,
+    T: Eq + AbiEncode,
 {
     if (v1 != v2) {
         log(v1);
@@ -88,7 +88,7 @@ where
 /// ```
 pub fn assert_ne<T>(v1: T, v2: T)
 where
-    T: Eq,
+    T: Eq + AbiEncode,
 {
     if (v1 == v2) {
         log(v1);
