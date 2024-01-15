@@ -19,7 +19,7 @@ use ::registers::balance;
 /// # Examples
 ///
 /// ```sway
-/// use std::{context::this_balance, constants::ZERO_B256, hash::sha256, token::mint, call_frames::contract_id};
+/// use std::{context::this_balance, constants::ZERO_B256, hash::sha256, asset::mint, call_frames::contract_id};
 ///
 /// fn foo() {
 ///     mint(ZERO_B256, 50);
@@ -44,7 +44,7 @@ pub fn this_balance(asset_id: AssetId) -> u64 {
 /// # Examples
 ///
 /// ```sway
-/// use std::{context::balance_of, constants::ZERO_B256, hash::sha256, token::mint, call_frames::contract_id};
+/// use std::{context::balance_of, constants::ZERO_B256, hash::sha256, asset::mint, call_frames::contract_id};
 ///
 /// fn foo() {
 ///     mint(ZERO_B256, 50);
@@ -52,8 +52,8 @@ pub fn this_balance(asset_id: AssetId) -> u64 {
 /// }
 /// ```
 pub fn balance_of(target: ContractId, asset_id: AssetId) -> u64 {
-    asm(balance, token: asset_id.value, id: target.value) {
-        bal balance token id;
+    asm(balance, asset: asset_id.value, id: target.value) {
+        bal balance asset id;
         balance: u64
     }
 }
@@ -62,7 +62,7 @@ pub fn balance_of(target: ContractId, asset_id: AssetId) -> u64 {
 ///
 /// # Returns
 ///
-/// * [u64] - The amount of tokens being sent.
+/// * [u64] - The amount of coins being sent.
 ///
 /// # Examples
 ///
