@@ -13,12 +13,13 @@ use sway_types::span::Span;
 
 pub(crate) use purity::{check_function_purity, PurityEnv};
 
-use crate::{language::ty, Engines};
+use crate::{language::ty, Engines, ExperimentalFlags};
 
 pub fn compile_program<'eng>(
     program: &ty::TyProgram,
     include_tests: bool,
     engines: &'eng Engines,
+    experimental: ExperimentalFlags,
 ) -> Result<Context<'eng>, Vec<CompileError>> {
     let declaration_engine = engines.de();
 
@@ -46,7 +47,12 @@ pub fn compile_program<'eng>(
         .map(|(message_id, type_id)| (*type_id, *message_id))
         .collect();
 
-    let mut ctx = Context::new(engines.se());
+    let mut ctx = Context::new(
+        engines.se(),
+        sway_ir::ExperimentalFlags {
+            new_encoding: experimental.new_encoding,
+        },
+    );
     ctx.program_kind = match kind {
         ty::TyProgramKind::Script { .. } => Kind::Script,
         ty::TyProgramKind::Predicate { .. } => Kind::Predicate,

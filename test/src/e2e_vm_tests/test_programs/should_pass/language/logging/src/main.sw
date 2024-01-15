@@ -1,50 +1,64 @@
 script;
 
-fn log<T>(value: T) {
-    __log::<T>(value);
+use core::codec::*;
+use core::codec::AbiEncode;
+use std::vec::*;
+
+struct SS<T> {
+    ss: T
 }
 
-struct TestStruct<T> {
-    field_1: bool,
-    field_2: T,
-    field_3: u64,
+struct S {
+    a: u64,
+    b: u32,
+    c: u16,
+    d: u8,
+    e: Vec<u64>,
+    f: str,
+    g: u256
 }
 
-enum TestEnum {
-    VariantOne: (),
-    VariantTwo: (),
+enum E {
+    A: SS<u64>,
+    B: ()
 }
 
-pub enum Option<T> {
-    None: (),
-    Some: T,
+enum F {
+    A: ()
 }
 
-fn main() -> bool {
-    let k: b256 = 0xef86afa9696cf0dc6385e2c407a6e159a1103cefb7e2ae0636fb33d3cb2a9e4a;
-    let a: str = "Fuel";
-    let b: [u8; 3] = [1u8, 2u8, 3u8];
-    let test_struct = TestStruct {
-        field_1: true,
-        field_2: k,
-        field_3: 11,
-    };
+struct CustomAbiEncode {
+}
 
-    let test_enum = TestEnum::VariantTwo;
-    log(k);
-    log(42);
-    log(42u32);
-    log(42u16);
-    log(42u8);
-    __log(a);
-    __log(b);
-    __log(test_struct);
-    __log(test_enum);
-    __log(Some(TestStruct {
-        field_1: true,
-        field_2: 42,
-        field_3: 42,
+impl AbiEncode for CustomAbiEncode {
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        buffer.push(77);
+    }
+}
+
+fn main() -> u64 {
+    let mut e = Vec::new();
+    e.push(1);
+    e.push(2);
+    e.push(3);
+
+    __log(S{
+        a: 1,
+        b: 2,
+        c: 3,
+        d: 4,
+        e,
+        f: "sway",
+        g: u256::max()
+    });
+    __log(SS{
+        ss: 1u64
+    });
+    __log(E::A(SS{
+        ss: 1u64
     }));
+    __log(E::B);
+    __log(CustomAbiEncode {});
 
-    true
+    1
 }
