@@ -2,6 +2,7 @@ mod handlers;
 use dap::events::ThreadEventBody;
 use dap::responses::*;
 use dap::{events::OutputEventBody, types::Breakpoint};
+use forc_test::execute::TestExecutor;
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::min,
@@ -52,6 +53,7 @@ pub struct DapServer {
     initialized_event_sent: bool,
     started_debugging: bool,
     configuration_done: bool,
+    test_executor: Option<TestExecutor>
 }
 
 pub type Line = i64;
@@ -71,6 +73,7 @@ impl DapServer {
             initialized_event_sent: false,
             started_debugging: false,
             configuration_done: false,
+            test_executor: None,
         }
     }
 
@@ -150,7 +153,17 @@ impl DapServer {
                 self.configuration_done = true;
                 Ok(ResponseBody::ConfigurationDone)
             }
-            // Command::Continue(_) => todo!(),
+            Command::Continue(_) => {
+                if self.handle_continue()? {
+                    // Another breakpoint was hit
+                    Ok(ResponseBody::Continue(responses::ContinueResponse {
+                        all_threads_continued: Some(true),
+                    }))
+                } else {
+                    // The tests finished executing
+                    process::exit(0)
+                }
+            }
             // Command::DataBreakpointInfo(_) => todo!(),
             // Command::Disassemble(_) => todo!(),
             Command::Disconnect(_) => process::exit(0),

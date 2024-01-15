@@ -229,13 +229,21 @@ impl DapServer {
             // self.log(format!("executing test: {}\n", name));
             // TODO: print test output to terminal
 
-            let mut executor = TestExecutor::new(
+            // let mut executor = TestExecutor::new(
+            //     &pkg_to_debug.bytecode.bytes,
+            //     offset,
+            //     test_setup,
+            //     test_entry,
+            //     name,
+            // );
+            self.test_executor = Some(TestExecutor::new(
                 &pkg_to_debug.bytecode.bytes,
                 offset,
                 test_setup,
                 test_entry,
                 name,
-            );
+            ));
+            let mut executor = self.test_executor.as_mut().unwrap();
             let src_path = PathBuf::from(
                 "/Users/sophiedankel/Development/sway-playground/projects/swaypad/src/main.sw",
             );
@@ -244,22 +252,32 @@ impl DapServer {
             // self.log(format!("setting vm bps\n"));
 
             let opcode_offset = offset as u64 / 4;
-            let vm_bps = self.breakpoints.iter().map(|bp| {
+            // let vm_bps = self.breakpoints.iter().map(|bp| {
 
+            //     // When the breakpoint is applied, $is is added. We only need to provide the index of the instruction
+            //     // from the beginning of the script.
+            //     let opcode_index = *self.source_map.get(&src_path).unwrap().get(&bp.line.unwrap()).unwrap();
+            //     let pc_1 = opcode_index + opcode_offset;
+            //     let bp = Breakpoint::script(pc_1); // instruction count.
+            //     executor.interpreter.set_breakpoint(bp);
+            //     bp.clone()
+            // });
+
+            // self.log(format!("vm bps: {:?}\n", vm_bps.collect::<Vec<_>>())); // TODO: removing this breaks?
+
+            self.breakpoints.iter().for_each(|bp| {
                 // When the breakpoint is applied, $is is added. We only need to provide the index of the instruction
                 // from the beginning of the script.
                 let opcode_index = *self.source_map.get(&src_path).unwrap().get(&bp.line.unwrap()).unwrap();
                 let pc_1 = opcode_index + opcode_offset;
                 let bp = Breakpoint::script(pc_1); // instruction count.
                 executor.interpreter.set_breakpoint(bp);
-                bp.clone()
             });
 
-            self.log(format!("vm bps: {:?}\n", vm_bps.collect::<Vec<_>>())); // TODO: removing this breaks?
 
             // self.log(format!("calling executor.debug \n"));
 
-            let debug_res = executor.debug()?;
+            let debug_res = executor.start_debugging()?;
             // self.log(format!("opcode_offset: {:?}\n", opcode_offset));
             // self.log(format!("debug_res: {:?}\n", debug_res));
             // self.log(format!("source_map: {:?}\n", self.source_map));
