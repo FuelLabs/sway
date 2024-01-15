@@ -265,7 +265,8 @@ impl TyDecl {
 
                 decl
             }
-            parsed::Declaration::AbiDeclaration(abi_decl) => {
+            parsed::Declaration::AbiDeclaration(decl_id) => {
+                let abi_decl = engines.pe().get_abi(&decl_id).as_ref().clone();
                 let span = abi_decl.span.clone();
                 let mut abi_decl = match ty::TyAbiDecl::type_check(handler, ctx.by_ref(), abi_decl)
                 {
