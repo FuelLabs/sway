@@ -746,6 +746,7 @@ fn item_impl_to_declaration(
                     items,
                     block_span,
                 };
+                let impl_self = engines.pe().insert(impl_self);
                 Ok(Declaration::ImplSelf(impl_self))
             }
         },

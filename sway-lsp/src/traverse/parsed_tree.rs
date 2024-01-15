@@ -126,7 +126,7 @@ impl Parse for Declaration {
             Declaration::StructDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::EnumDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::ImplTrait(decl_id) => decl_id.parse(ctx),
-            Declaration::ImplSelf(decl) => decl.parse(ctx),
+            Declaration::ImplSelf(decl_id) => decl_id.parse(ctx),
             Declaration::AbiDeclaration(decl) => decl.parse(ctx),
             Declaration::ConstantDeclaration(decl) => decl.parse(ctx),
             Declaration::StorageDeclaration(decl) => decl.parse(ctx),
@@ -856,18 +856,19 @@ impl Parse for ParsedDeclId<ImplTrait> {
     }
 }
 
-impl Parse for ImplSelf {
+impl Parse for ParsedDeclId<ImplSelf> {
     fn parse(&self, ctx: &ParseContext) {
+        let impl_self = ctx.engines.pe().get_impl_self(self);
         if let TypeInfo::Custom {
             qualified_call_path,
             type_arguments,
             root_type_id: _,
-        } = &&*ctx.engines.te().get(self.implementing_for.type_id)
+        } = &&*ctx.engines.te().get(impl_self.implementing_for.type_id)
         {
             ctx.tokens.insert(
                 ctx.ident(&qualified_call_path.call_path.suffix),
                 Token::from_parsed(
-                    AstToken::Declaration(Declaration::ImplSelf(self.clone())),
+                    AstToken::Declaration(Declaration::ImplSelf(*self)),
                     SymbolKind::Struct,
                 ),
             );
@@ -877,10 +878,13 @@ impl Parse for ImplSelf {
                 });
             }
         }
-        self.impl_type_parameters.par_iter().for_each(|type_param| {
-            type_param.parse(ctx);
-        });
-        self.items.par_iter().for_each(|item| match item {
+        impl_self
+            .impl_type_parameters
+            .par_iter()
+            .for_each(|type_param| {
+                type_param.parse(ctx);
+            });
+        impl_self.items.par_iter().for_each(|item| match item {
             ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
             ImplItem::Constant(const_decl) => const_decl.parse(ctx),
             ImplItem::Type(type_decl) => type_decl.parse(ctx),
