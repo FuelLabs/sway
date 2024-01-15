@@ -127,7 +127,7 @@ impl Parse for Declaration {
             Declaration::EnumDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::ImplTrait(decl_id) => decl_id.parse(ctx),
             Declaration::ImplSelf(decl_id) => decl_id.parse(ctx),
-            Declaration::AbiDeclaration(decl) => decl.parse(ctx),
+            Declaration::AbiDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::ConstantDeclaration(decl) => decl.parse(ctx),
             Declaration::StorageDeclaration(decl) => decl.parse(ctx),
             Declaration::TypeAliasDeclaration(decl) => decl.parse(ctx),
@@ -892,16 +892,18 @@ impl Parse for ParsedDeclId<ImplSelf> {
     }
 }
 
-impl Parse for AbiDeclaration {
+impl Parse for ParsedDeclId<AbiDeclaration> {
     fn parse(&self, ctx: &ParseContext) {
+        let abi_decl = ctx.engines.pe().get_abi(self);
         ctx.tokens.insert(
-            ctx.ident(&self.name),
+            ctx.ident(&abi_decl.name),
             Token::from_parsed(
-                AstToken::Declaration(Declaration::AbiDeclaration(self.clone())),
+                AstToken::Declaration(Declaration::AbiDeclaration(*self)),
                 SymbolKind::Trait,
             ),
         );
-        self.interface_surface
+        abi_decl
+            .interface_surface
             .par_iter()
             .for_each(|item| match item {
                 TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
@@ -909,10 +911,10 @@ impl Parse for AbiDeclaration {
                 TraitItem::Type(type_decl) => type_decl.parse(ctx),
                 TraitItem::Error(_, _) => {}
             });
-        self.supertraits.par_iter().for_each(|supertrait| {
+        abi_decl.supertraits.par_iter().for_each(|supertrait| {
             supertrait.parse(ctx);
         });
-        self.attributes.parse(ctx);
+        abi_decl.attributes.parse(ctx);
     }
 }
 

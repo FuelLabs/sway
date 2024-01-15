@@ -401,14 +401,15 @@ impl Dependencies {
                         ImplItem::Type(type_decl) => deps.gather_from_type_decl(engines, type_decl),
                     })
             }
+            Declaration::AbiDeclaration(decl_id) => {
+                let AbiDeclaration {
+                    interface_surface,
+                    methods,
+                    supertraits,
+                    ..
+                } = &*engines.pe().get_abi(decl_id);
 
-            Declaration::AbiDeclaration(AbiDeclaration {
-                interface_surface,
-                methods,
-                supertraits,
-                ..
-            }) => self
-                .gather_from_iter(supertraits.iter(), |deps, sup| {
+                self.gather_from_iter(supertraits.iter(), |deps, sup| {
                     deps.gather_from_call_path(&sup.name, false, false)
                 })
                 .gather_from_iter(interface_surface.iter(), |deps, item| match item {
@@ -426,7 +427,8 @@ impl Dependencies {
                 .gather_from_iter(methods.iter(), |deps, fn_decl_id| {
                     let fn_decl = engines.pe().get_function(fn_decl_id);
                     deps.gather_from_fn_decl(engines, &fn_decl)
-                }),
+                })
+            }
             Declaration::StorageDeclaration(StorageDeclaration { fields, .. }) => self
                 .gather_from_iter(
                     fields.iter(),
@@ -857,7 +859,10 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
             let decl = engines.pe().get_trait(decl_id);
             dep_sym(decl.name.clone())
         }
-        Declaration::AbiDeclaration(decl) => dep_sym(decl.name.clone()),
+        Declaration::AbiDeclaration(decl_id) => {
+            let decl = engines.pe().get_abi(decl_id);
+            dep_sym(decl.name.clone())
+        }
         Declaration::TypeAliasDeclaration(decl) => dep_sym(decl.name.clone()),
 
         // These have the added complexity of converting CallPath and/or TypeInfo into a name.

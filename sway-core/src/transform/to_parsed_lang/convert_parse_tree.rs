@@ -790,9 +790,9 @@ fn item_abi_to_abi_declaration(
     engines: &Engines,
     item_abi: ItemAbi,
     attributes: AttributesMap,
-) -> Result<AbiDeclaration, ErrorEmitted> {
+) -> Result<ParsedDeclId<AbiDeclaration>, ErrorEmitted> {
     let span = item_abi.span();
-    Ok(AbiDeclaration {
+    let abi_decl = AbiDeclaration {
         name: item_abi.name,
         interface_surface: {
             item_abi
@@ -875,7 +875,9 @@ fn item_abi_to_abi_declaration(
         },
         span,
         attributes,
-    })
+    };
+    let abi_decl = engines.pe().insert(abi_decl);
+    Ok(abi_decl)
 }
 
 pub(crate) fn item_const_to_constant_declaration(
