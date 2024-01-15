@@ -48,14 +48,14 @@ pub type ProgramsCacheMap = HashMap<ModulePath, ProgramsCacheEntry>;
 #[derive(Debug, Default)]
 pub struct QueryEngine {
     parse_module_cache: RwLock<ModuleCacheMap>,
-    programs_cache: RwLock<ProgramsCacheMap>,
+    programs_cache: Arc<RwLock<ProgramsCacheMap>>,
 }
 
 impl Clone for QueryEngine {
     fn clone(&self) -> Self {
         Self {
             parse_module_cache: RwLock::new(self.parse_module_cache.read().unwrap().clone()),
-            programs_cache: RwLock::new(self.programs_cache.read().unwrap().clone()),
+            programs_cache: self.programs_cache.clone(),
         }
     }
 }
