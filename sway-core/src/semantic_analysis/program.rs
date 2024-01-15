@@ -32,14 +32,9 @@ impl TyProgram {
         build_config: Option<&BuildConfig>,
     ) -> Result<Self, ErrorEmitted> {
         let mut namespace = Namespace::init_root(initial_namespace);
-        let ctx =
-            TypeCheckContext::from_root(&mut namespace, engines).with_kind(parsed.kind.clone());
-
-        let ctx = if let Some(build_config) = build_config {
-            ctx.with_experimental_flags(build_config.experimental)
-        } else {
-            ctx
-        };
+        let ctx = TypeCheckContext::from_root(&mut namespace, engines)
+            .with_kind(parsed.kind.clone())
+            .with_experimental_flags(build_config.map(|x| x.experimental));
 
         let ParseProgram { root, kind } = parsed;
 
