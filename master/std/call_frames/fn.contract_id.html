@@ -7,7 +7,7 @@ If called externally, will actually return a pointer to the transaction ID.</p>
 <li>[ContractId] - The contract id of this contract.</li>
 </ul>
 <h1>Examples</h1>
-<pre><code class="language-sway">use std::{call_frames::contract_id, constants::ZERO_B256, token::mint};
+<pre><code class="language-sway">use std::{call_frames::contract_id, constants::ZERO_B256, asset::mint};
 
 fn foo() {
     let this_contract = contract_id();

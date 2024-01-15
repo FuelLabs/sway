@@ -9,7 +9,7 @@
 <li>[u64] - The amount of the asset which the <code>target</code> holds.</li>
 </ul>
 <h1>Examples</h1>
-<pre><code class="language-sway">use std::{context::balance_of, constants::ZERO_B256, hash::sha256, token::mint, call_frames::contract_id};
+<pre><code class="language-sway">use std::{context::balance_of, constants::ZERO_B256, hash::sha256, asset::mint, call_frames::contract_id};
 
 fn foo() {
     mint(ZERO_B256, 50);
