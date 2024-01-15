@@ -17,6 +17,7 @@ env:
   REGISTRY: ghcr.io
   RUST_VERSION: 1.75.0
   NIGHTLY_RUST_VERSION: nightly-2023-12-27
+  FUEL_CORE_VERSION: 0.22.0
 
 jobs:
   build-sway-lib-core:
@@ -280,7 +281,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.22.0
+        image: ghcr.io/fuellabs/fuel-core:${{ env.FUEL_CORE_VERSION }}
         ports:
           - 4000:4000
     steps:
@@ -430,7 +431,7 @@ jobs:
         uses: baptiste0928/cargo-install@v2
         with:
           crate: fuel-core-bin
-          version: "0.22"
+          version: ${{ env.FUEL_CORE_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
         run: cargo test --locked --release
