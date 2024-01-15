@@ -218,7 +218,8 @@ impl TyDecl {
                 });
                 impl_trait_decl
             }
-            parsed::Declaration::ImplSelf(impl_self) => {
+            parsed::Declaration::ImplSelf(decl_id) => {
+                let impl_self = engines.pe().get_impl_self(&decl_id).as_ref().clone();
                 let span = impl_self.block_span.clone();
                 let impl_trait_decl =
                     match ty::TyImplTrait::type_check_impl_self(handler, ctx.by_ref(), impl_self) {

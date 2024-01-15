@@ -383,22 +383,25 @@ impl Dependencies {
                         ImplItem::Type(type_decl) => deps.gather_from_type_decl(engines, type_decl),
                     })
             }
-            Declaration::ImplSelf(ImplSelf {
-                implementing_for,
-                items,
-                ..
-            }) => self
-                .gather_from_type_argument(engines, implementing_for)
-                .gather_from_iter(items.iter(), |deps, item| match item {
-                    ImplItem::Fn(fn_decl_id) => {
-                        let fn_decl = engines.pe().get_function(fn_decl_id);
-                        deps.gather_from_fn_decl(engines, &fn_decl)
-                    }
-                    ImplItem::Constant(const_decl) => {
-                        deps.gather_from_constant_decl(engines, const_decl)
-                    }
-                    ImplItem::Type(type_decl) => deps.gather_from_type_decl(engines, type_decl),
-                }),
+            Declaration::ImplSelf(decl_id) => {
+                let ImplSelf {
+                    implementing_for,
+                    items,
+                    ..
+                } = &*engines.pe().get_impl_self(decl_id);
+                self.gather_from_type_argument(engines, implementing_for)
+                    .gather_from_iter(items.iter(), |deps, item| match item {
+                        ImplItem::Fn(fn_decl_id) => {
+                            let fn_decl = engines.pe().get_function(fn_decl_id);
+                            deps.gather_from_fn_decl(engines, &fn_decl)
+                        }
+                        ImplItem::Constant(const_decl) => {
+                            deps.gather_from_constant_decl(engines, const_decl)
+                        }
+                        ImplItem::Type(type_decl) => deps.gather_from_type_decl(engines, type_decl),
+                    })
+            }
+
             Declaration::AbiDeclaration(AbiDeclaration {
                 interface_surface,
                 methods,
@@ -858,7 +861,8 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
         Declaration::TypeAliasDeclaration(decl) => dep_sym(decl.name.clone()),
 
         // These have the added complexity of converting CallPath and/or TypeInfo into a name.
-        Declaration::ImplSelf(decl) => {
+        Declaration::ImplSelf(decl_id) => {
+            let decl = engines.pe().get_impl_self(decl_id);
             let trait_name = Ident::new_with_override("self".into(), decl.implementing_for.span());
             impl_sym(
                 trait_name,

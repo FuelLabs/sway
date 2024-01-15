@@ -4,9 +4,9 @@ use crate::{
     concurrent_slab::ConcurrentSlab,
     decl_engine::*,
     language::parsed::{
-        AbiDeclaration, ConstantDeclaration, EnumDeclaration, FunctionDeclaration, ImplTrait,
-        StorageDeclaration, StructDeclaration, TraitDeclaration, TraitFn, TraitTypeDeclaration,
-        TypeAliasDeclaration, VariableDeclaration,
+        AbiDeclaration, ConstantDeclaration, EnumDeclaration, FunctionDeclaration, ImplSelf,
+        ImplTrait, StorageDeclaration, StructDeclaration, TraitDeclaration, TraitFn,
+        TraitTypeDeclaration, TypeAliasDeclaration, VariableDeclaration,
     },
 };
 
@@ -21,6 +21,7 @@ pub struct ParsedDeclEngine {
     trait_fn_slab: ConcurrentSlab<TraitFn>,
     trait_type_slab: ConcurrentSlab<TraitTypeDeclaration>,
     impl_trait_slab: ConcurrentSlab<ImplTrait>,
+    impl_self_slab: ConcurrentSlab<ImplSelf>,
     struct_slab: ConcurrentSlab<StructDeclaration>,
     storage_slab: ConcurrentSlab<StorageDeclaration>,
     abi_slab: ConcurrentSlab<AbiDeclaration>,
@@ -65,6 +66,7 @@ decl_engine_get!(trait_slab, TraitDeclaration);
 decl_engine_get!(trait_fn_slab, TraitFn);
 decl_engine_get!(trait_type_slab, TraitTypeDeclaration);
 decl_engine_get!(impl_trait_slab, ImplTrait);
+decl_engine_get!(impl_self_slab, ImplSelf);
 decl_engine_get!(struct_slab, StructDeclaration);
 decl_engine_get!(storage_slab, StorageDeclaration);
 decl_engine_get!(abi_slab, AbiDeclaration);
@@ -93,6 +95,7 @@ decl_engine_insert!(trait_slab, TraitDeclaration);
 decl_engine_insert!(trait_fn_slab, TraitFn);
 decl_engine_insert!(trait_type_slab, TraitTypeDeclaration);
 decl_engine_insert!(impl_trait_slab, ImplTrait);
+decl_engine_insert!(impl_self_slab, ImplSelf);
 decl_engine_insert!(struct_slab, StructDeclaration);
 decl_engine_insert!(storage_slab, StorageDeclaration);
 decl_engine_insert!(abi_slab, AbiDeclaration);
@@ -173,6 +176,18 @@ impl ParsedDeclEngine {
     pub fn get_impl_trait<I>(&self, index: &I) -> Arc<ImplTrait>
     where
         ParsedDeclEngine: ParsedDeclEngineGet<I, ImplTrait>,
+    {
+        self.get(index)
+    }
+
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [ParsedDeclEngineGet] for [ParsedDeclEngine]
+    ///
+    /// Calling [ParsedDeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_impl_self<I>(&self, index: &I) -> Arc<ImplSelf>
+    where
+        ParsedDeclEngine: ParsedDeclEngineGet<I, ImplSelf>,
     {
         self.get(index)
     }
