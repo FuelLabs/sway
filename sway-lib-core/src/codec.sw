@@ -401,8 +401,6 @@ where
 {
     let len = __size_of::<SLICE>();
 
-    __log(len);
-
     if len == 0 {
         __revert(0);
     }
@@ -418,9 +416,6 @@ where
         meq result expected actual len;
         result: bool
     };
-
-    __log(actual);
-    __log(expected);
 
     if !result {
         __revert(0);
