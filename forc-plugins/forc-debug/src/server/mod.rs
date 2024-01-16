@@ -16,6 +16,7 @@ use std::{
 };
 use sway_core::source_map::PathIndex;
 use sway_types::{span::Position, Span};
+use crate::names::register_name;
 // use sway_core::source_map::SourceMap;
 use crate::types::DynResult;
 use dap::prelude::*;
@@ -24,6 +25,7 @@ use forc_pkg::{
     self, manifest::ManifestFile, Built, BuiltPackage, PackageManifest, PackageManifestFile,
 };
 use rand::Rng;
+use fuel_vm::consts::VM_REGISTER_COUNT;
 use thiserror::Error;
 
 pub const THREAD_ID: i64 = 0;
@@ -357,18 +359,30 @@ impl DapServer {
                 }))
             }
             Command::Variables(ref args) => {
+
+                let variables = self.test_executor.as_ref().map(|executor| {
+
+                    let mut i = 0;
+                    executor.interpreter.registers().iter().map(|value| {
+                        let variable = Variable {
+                            name: register_name(i),
+                            value: format!("{:<8}",value),
+                            type_field: None,
+                            presentation_hint: None,
+                            evaluate_name: None,
+                            variables_reference: REGISTERS_VARIABLE_REF,
+                            named_variables: None,
+                            indexed_variables: None,
+                            memory_reference: None,
+                        };
+                        i += 1;
+                        variable
+                    }).collect()
+                }).unwrap_or_default();
+
+        
                 Ok(ResponseBody::Variables(responses::VariablesResponse {
-                    variables: vec![Variable {
-                        name: "reg 1".into(),
-                        value: "reg val".into(),
-                        type_field: None,
-                        presentation_hint: None,
-                        evaluate_name: None, //"reg 1",
-                        variables_reference: REGISTERS_VARIABLE_REF,
-                        named_variables: None,
-                        indexed_variables: None,
-                        memory_reference: None,
-                    }],
+                    variables,
                 }))
             }
             // Command::WriteMemory(_) => todo!(),
