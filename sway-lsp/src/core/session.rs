@@ -430,6 +430,7 @@ pub fn compile(
     uri: &Url,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
+    enable_control_flow_analysis: bool,
 ) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
     let build_plan = build_plan(uri)?;
     let tests_enabled = true;
@@ -438,6 +439,7 @@ pub fn compile(
         BuildTarget::default(),
         true,
         tests_enabled,
+        enable_control_flow_analysis,
         engines,
         retrigger_compilation,
     )
@@ -532,9 +534,10 @@ pub fn parse_project(
     uri: &Url,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
+    enable_control_flow_analysis: bool,
     parse_result: &mut ParseResult,
 ) -> Result<(), LanguageServerError> {
-    let results = compile(uri, engines, retrigger_compilation)?;
+    let results = compile(uri, engines, retrigger_compilation, enable_control_flow_analysis)?;
     if results.last().is_none() {
         return Err(LanguageServerError::ProgramsIsNone);
     }
@@ -620,7 +623,7 @@ mod tests {
         let uri = get_url(&dir);
         let engines = Engines::default();
         let parse_result = &mut ParseResult::default();
-        let result = parse_project(&uri, &engines, None, parse_result)
+        let result = parse_project(&uri, &engines, None, true, parse_result)
             .expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,

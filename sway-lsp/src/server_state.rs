@@ -82,6 +82,7 @@ pub struct CompilationContext {
     pub session: Option<Arc<Session>>,
     pub uri: Option<Url>,
     pub version: Option<i32>,
+    pub enable_control_flow_analysis: bool,
 }
 
 impl ServerState {
@@ -109,7 +110,9 @@ impl ServerState {
                     TaskMessage::CompilationContext(ctx) => {
                         let uri = ctx.uri.as_ref().unwrap().clone();
                         let session = ctx.session.as_ref().unwrap().clone();
+                        let now = std::time::Instant::now();
                         let mut engines_clone = session.engines.read().clone();
+                        eprintln!("Cloning Engines took {:?}", now.elapsed());
 
                         if let Some(version) = ctx.version {
                             // Garbage collection is fairly expsensive so we only clear on every 10th keystroke.
@@ -132,6 +135,7 @@ impl ServerState {
                             &uri,
                             &engines_clone,
                             Some(retrigger_compilation.clone()),
+                            ctx.enable_control_flow_analysis,
                             &mut parse_result,
                         ) {
                             Ok(_) => {

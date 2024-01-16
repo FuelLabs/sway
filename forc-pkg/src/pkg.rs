@@ -2581,6 +2581,7 @@ pub fn check(
     build_target: BuildTarget,
     terse_mode: bool,
     include_tests: bool,
+    enable_control_flow_analysis: bool,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> anyhow::Result<Vec<(Option<Programs>, Handler)>> {
@@ -2627,10 +2628,12 @@ pub fn check(
             build_target,
             &profile,
         )?
-        .include_tests(include_tests);
+        .include_tests(include_tests)
+        .enable_control_flow_analysis(enable_control_flow_analysis);
 
         let input = manifest.entry_string()?;
         let handler = Handler::default();
+        let now = std::time::Instant::now();
         let programs_res = sway_core::compile_to_ast(
             &handler,
             engines,
@@ -2640,6 +2643,7 @@ pub fn check(
             &pkg.name,
             retrigger_compilation.clone(),
         );
+        eprintln!("compile_to_ast took {:?}", now.elapsed());
 
         if retrigger_compilation
             .as_ref()

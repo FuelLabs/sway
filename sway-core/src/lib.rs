@@ -470,6 +470,7 @@ pub fn parsed_to_ast(
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<ty::TyProgram, ErrorEmitted> {
+    let now = std::time::Instant::now();
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
         handler,
@@ -478,6 +479,7 @@ pub fn parsed_to_ast(
         initial_namespace,
         package_name,
     );
+    eprintln!("type_check took {:?}", now.elapsed());
 
     check_should_abort(handler, retrigger_compilation.clone())?;
 
@@ -486,8 +488,11 @@ pub fn parsed_to_ast(
         Err(e) => return Err(e),
     };
 
+    let now = std::time::Instant::now();
     typed_program.check_deprecated(engines, handler);
+    eprintln!("check_deprecated took {:?}", now.elapsed());
 
+    let now = std::time::Instant::now();
     match typed_program.check_recursive(engines, handler) {
         Ok(()) => {}
         Err(e) => {
@@ -495,8 +500,10 @@ pub fn parsed_to_ast(
             return Err(e);
         }
     };
+    eprintln!("check_recursive took {:?}", now.elapsed());
 
     // Collect information about the types used in this program
+    let now = std::time::Instant::now();
     let types_metadata_result = typed_program
         .collect_types_metadata(handler, &mut CollectTypesMetadataContext::new(engines));
     let types_metadata = match types_metadata_result {
@@ -506,7 +513,9 @@ pub fn parsed_to_ast(
             return Err(e);
         }
     };
+    eprintln!("collect_types_metadata took {:?}", now.elapsed());
 
+    let now = std::time::Instant::now();
     typed_program
         .logged_types
         .extend(types_metadata.iter().filter_map(|m| match m {
@@ -521,26 +530,34 @@ pub fn parsed_to_ast(
             _ => None,
         }));
 
-    let (print_graph, print_graph_url_format) = match build_config {
+    let (print_graph, print_graph_url_format, enable_control_flow_analysis) = match build_config {
         Some(cfg) => (
             cfg.print_dca_graph.clone(),
             cfg.print_dca_graph_url_format.clone(),
+            cfg.enable_control_flow_analysis.clone(),
         ),
-        None => (None, None),
+        None => (None, None, true),
     };
+    eprintln!("md extend {:?}", now.elapsed());
 
     check_should_abort(handler, retrigger_compilation.clone())?;
 
+    let now = std::time::Instant::now();
     // Perform control flow analysis and extend with any errors.
-    let _ = perform_control_flow_analysis(
-        handler,
-        engines,
-        &typed_program,
-        print_graph,
-        print_graph_url_format,
-    );
+    if enable_control_flow_analysis {
+        let _ = perform_control_flow_analysis(
+            handler,
+            engines,
+            &typed_program,
+            print_graph,
+            print_graph_url_format,
+        );
+    }
+    eprintln!("perform_control_flow_analysis took {:?}", now.elapsed());
+
 
     // Evaluate const declarations, to allow storage slots initialization with consts.
+    let now = std::time::Instant::now();
     let mut ctx = Context::new(engines.se());
     let mut md_mgr = MetadataManager::default();
     let module = Module::new(&mut ctx, Kind::Contract);
@@ -553,15 +570,19 @@ pub fn parsed_to_ast(
     ) {
         handler.emit_err(e);
     }
+    eprintln!("compile_constants took {:?}", now.elapsed());
 
     // CEI pattern analysis
+    let now = std::time::Instant::now();
     let cei_analysis_warnings =
         semantic_analysis::cei_pattern_analysis::analyze_program(engines, &typed_program);
     for warn in cei_analysis_warnings {
         handler.emit_warn(warn);
     }
+    eprintln!("cei_pattern_analysis took {:?}", now.elapsed());
 
     // Check that all storage initializers can be evaluated at compile time.
+    let now = std::time::Instant::now();
     let typed_wiss_res = typed_program.get_typed_program_with_initialized_storage_slots(
         handler,
         engines,
@@ -576,8 +597,12 @@ pub fn parsed_to_ast(
             return Err(e);
         }
     };
+    eprintln!(
+        "get_typed_program_with_initialized_storage_slots took {:?}",
+        now.elapsed());
 
     // All unresolved types lead to compile errors.
+    let now = std::time::Instant::now();
     for err in types_metadata.iter().filter_map(|m| match m {
         TypeMetadata::UnresolvedType(name, call_site_span_opt) => {
             Some(CompileError::UnableToInferGeneric {
@@ -589,6 +614,7 @@ pub fn parsed_to_ast(
     }) {
         handler.emit_err(err);
     }
+    eprintln!("types_metadata took {:?}", now.elapsed());
 
     // Check if a non-test function calls `#[test]` function.
 
@@ -653,6 +679,7 @@ pub fn compile_to_ast(
         parsed_program.exclude_tests();
     }
 
+    let now = std::time::Instant::now();
     // Type check (+ other static analysis) the CST to a typed AST.
     let typed_res = time_expr!(
         "parse the concrete syntax tree (CST) to a typed AST",
@@ -669,6 +696,7 @@ pub fn compile_to_ast(
         build_config,
         metrics
     );
+    eprintln!("parsed_to_ast took {:?}", now.elapsed());
 
     check_should_abort(handler, retrigger_compilation.clone())?;
 
@@ -880,7 +908,7 @@ fn perform_control_flow_analysis(
     if let Ok(graph) = dca_res.clone() {
         graph.visualize(engines, print_graph, print_graph_url_format);
     }
-    dca_res?;
+    // dca_res?;
     rpa_res
 }
 

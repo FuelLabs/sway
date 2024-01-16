@@ -46,6 +46,7 @@ pub struct BuildConfig {
     pub(crate) print_finalized_asm: bool,
     pub(crate) print_ir: bool,
     pub(crate) include_tests: bool,
+    pub(crate) enable_control_flow_analysis: bool,
     pub time_phases: bool,
     pub metrics_outfile: Option<String>,
 }
@@ -91,6 +92,7 @@ impl BuildConfig {
             print_ir: false,
             include_tests: false,
             time_phases: false,
+            enable_control_flow_analysis: true,
             metrics_outfile: None,
         }
     }
@@ -152,6 +154,13 @@ impl BuildConfig {
     pub fn include_tests(self, include_tests: bool) -> Self {
         Self {
             include_tests,
+            ..self
+        }
+    }
+
+    pub fn enable_control_flow_analysis(self, enable_control_flow_analysis: bool) -> Self {
+        Self {
+            enable_control_flow_analysis,
             ..self
         }
     }

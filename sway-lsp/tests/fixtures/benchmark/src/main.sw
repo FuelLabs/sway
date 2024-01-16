@@ -1,6 +1,7 @@
 script;
 use core::ops::*;
 
+
 /// I am a random doc comment.
 struct Struct1 {
     /// I am a random doc comment.
