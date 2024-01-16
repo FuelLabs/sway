@@ -29,7 +29,10 @@ pub fn collect_parsed_declaration(node: &AstNode, ctx: &ParseContext) {
                 let decl = ctx.engines.pe().get_function(decl_id);
                 (decl.name.clone(), SymbolKind::Function)
             }
-            Declaration::ConstantDeclaration(decl) => (decl.name.clone(), SymbolKind::Const),
+            Declaration::ConstantDeclaration(decl_id) => {
+                let decl = ctx.engines.pe().get_constant(decl_id);
+                (decl.name.clone(), SymbolKind::Const)
+            }
             Declaration::EnumDeclaration(decl_id) => {
                 let decl = ctx.engines.pe().get_enum(decl_id);
                 (decl.name.clone(), SymbolKind::Enum)

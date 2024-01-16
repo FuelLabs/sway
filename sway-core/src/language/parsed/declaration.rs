@@ -32,7 +32,7 @@ pub enum Declaration {
     ImplTrait(ParsedDeclId<ImplTrait>),
     ImplSelf(ParsedDeclId<ImplSelf>),
     AbiDeclaration(ParsedDeclId<AbiDeclaration>),
-    ConstantDeclaration(ConstantDeclaration),
+    ConstantDeclaration(ParsedDeclId<ConstantDeclaration>),
     StorageDeclaration(StorageDeclaration),
     TypeAliasDeclaration(TypeAliasDeclaration),
     TraitTypeDeclaration(TraitTypeDeclaration),

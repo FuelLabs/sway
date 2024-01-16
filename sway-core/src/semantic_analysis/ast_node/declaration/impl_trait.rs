@@ -391,15 +391,14 @@ impl TyImplTrait {
                         };
                         new_items.push(TyImplItem::Fn(decl_engine.insert(fn_decl)));
                     }
-                    ImplItem::Constant(const_decl) => {
-                        let const_decl = match ty::TyConstantDecl::type_check(
-                            handler,
-                            ctx.by_ref(),
-                            const_decl.clone(),
-                        ) {
-                            Ok(res) => res,
-                            Err(_) => continue,
-                        };
+                    ImplItem::Constant(decl_id) => {
+                        let const_decl = engines.pe().get_constant(decl_id).as_ref().clone();
+                        let const_decl =
+                            match ty::TyConstantDecl::type_check(handler, ctx.by_ref(), const_decl)
+                            {
+                                Ok(res) => res,
+                                Err(_) => continue,
+                            };
                         let decl_ref = decl_engine.insert(const_decl);
                         new_items.push(TyImplItem::Constant(decl_ref.clone()));
 
@@ -838,11 +837,12 @@ fn type_check_trait_implementation(
                 let decl_ref = decl_engine.insert(impl_method);
                 impld_item_refs.insert((name, implementing_for), TyTraitItem::Fn(decl_ref));
             }
-            ImplItem::Constant(const_decl) => {
+            ImplItem::Constant(decl_id) => {
+                let const_decl = engines.pe().get_constant(decl_id).as_ref().clone();
                 let mut const_decl = type_check_const_decl(
                     handler,
                     ctx.by_ref().with_type_subst(&trait_type_mapping),
-                    const_decl,
+                    &const_decl,
                     trait_name,
                     is_contract,
                     &impld_item_refs,
