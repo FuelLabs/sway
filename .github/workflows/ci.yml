@@ -17,9 +17,29 @@ env:
   REGISTRY: ghcr.io
   RUST_VERSION: 1.75.0
   NIGHTLY_RUST_VERSION: nightly-2023-12-27
-  FUEL_CORE_VERSION: 0.22.0
+  FUEL_CORE_VERSION: ${{ steps.get_fuel_core_ver.outputs.version }}
 
 jobs:
+  init-fuel-core-version-env:
+    runs-on: ubuntu-latest
+    outputs:
+      furl_core_version: ${{steps.get_fuel_core_ver.outputs.version}}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: get fuel core version
+        id: get_fuel_core_ver
+        run: |
+          cargo install toml-cli
+          version=$(toml get Cargo.toml workspace.dependencies.fuel-core-client.version | tr -d '"')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
   build-sway-lib-core:
     runs-on: ubuntu-latest
     steps:
