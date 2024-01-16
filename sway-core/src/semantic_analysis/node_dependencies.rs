@@ -614,6 +614,9 @@ impl Dependencies {
                 self.gather_from_expr(engines, &reassignment.rhs)
             }
             ExpressionKind::Return(expr) => self.gather_from_expr(engines, expr),
+            ExpressionKind::Ref(expr) | ExpressionKind::Deref(expr) => {
+                self.gather_from_expr(engines, expr)
+            }
         }
     }
 
@@ -907,6 +910,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Slice(..) => "__slice",
         TypeInfo::Alias { .. } => "alias",
         TypeInfo::TraitType { .. } => "trait type",
+        TypeInfo::Ref(..) => "reference type",
     }
     .to_string()
 }

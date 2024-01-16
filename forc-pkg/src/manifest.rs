@@ -260,6 +260,14 @@ pub struct BuildProfile {
     #[serde(default)]
     pub error_on_warnings: bool,
     pub reverse_results: bool,
+    #[serde(default)]
+    pub experimental: ExperimentalFlags,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
+#[serde(rename_all = "kebab-case")]
+pub struct ExperimentalFlags {
+    pub new_encoding: bool,
 }
 
 impl DependencyDetails {
@@ -745,6 +753,9 @@ impl BuildProfile {
             json_abi_with_callpaths: false,
             error_on_warnings: false,
             reverse_results: false,
+            experimental: ExperimentalFlags {
+                new_encoding: false,
+            },
         }
     }
 
@@ -763,6 +774,9 @@ impl BuildProfile {
             json_abi_with_callpaths: false,
             error_on_warnings: false,
             reverse_results: false,
+            experimental: ExperimentalFlags {
+                new_encoding: false,
+            },
         }
     }
 }

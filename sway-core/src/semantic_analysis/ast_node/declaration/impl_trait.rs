@@ -574,7 +574,7 @@ impl TyImplTrait {
             let _ = impl_self.type_check_analyze(handler, &mut analysis_ctx);
 
             // Build a sub graph that just contains the items for this impl trait.
-            let impl_trait_node_index = analysis_ctx.nodes.get(&impl_self.decl_id.inner());
+            let impl_trait_node_index = analysis_ctx.nodes.get(&impl_self.decl_id.unique_id());
             let sub_graph = analysis_ctx.get_sub_graph(
                 *impl_trait_node_index.expect("expected a valid impl trait node id"),
             );

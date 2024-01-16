@@ -28,6 +28,7 @@ pub(crate) enum GlobImport {
 }
 
 pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDecl>;
+// The final `bool` field of `UseSynonyms` is true if the `Vec<Ident>` path is absolute.
 pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport, ty::TyDecl, bool)>;
 pub(super) type UseAliases = im::HashMap<String, Ident>;
 

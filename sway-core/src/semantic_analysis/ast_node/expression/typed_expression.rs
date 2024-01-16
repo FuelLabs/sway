@@ -403,6 +403,10 @@ impl ty::TyExpression {
                 };
                 Ok(typed_expr)
             }
+            ExpressionKind::Ref(expr) => Self::type_check_ref(handler, ctx.by_ref(), expr, span),
+            ExpressionKind::Deref(expr) => {
+                Self::type_check_deref(handler, ctx.by_ref(), expr, span)
+            }
         };
         let mut typed_expression = match res {
             Ok(r) => r,
@@ -2014,6 +2018,74 @@ impl ty::TyExpression {
         }
     }
 
+    fn type_check_ref(
+        handler: &Handler,
+        mut ctx: TypeCheckContext<'_>,
+        expr: Box<Expression>,
+        span: Span,
+    ) -> Result<ty::TyExpression, ErrorEmitted> {
+        let engines = ctx.engines();
+        let type_engine = ctx.engines().te();
+
+        // We need to remove the type annotation, because the type expected from the context will
+        // be the reference type, and we are checking the referenced type.
+        let ctx = ctx
+            .by_ref()
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
+            .with_help_text("");
+        let expr_span = expr.span();
+        let expr = ty::TyExpression::type_check(handler, ctx, *expr)
+            .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span.clone(), engines));
+        let expr_type_argument: TypeArgument = expr.return_type.into();
+        let typed_expr = ty::TyExpression {
+            expression: ty::TyExpressionVariant::Ref(Box::new(expr)),
+            return_type: type_engine.insert(engines, TypeInfo::Ref(expr_type_argument), None),
+            span,
+        };
+
+        Ok(typed_expr)
+    }
+
+    fn type_check_deref(
+        handler: &Handler,
+        mut ctx: TypeCheckContext<'_>,
+        expr: Box<Expression>,
+        span: Span,
+    ) -> Result<ty::TyExpression, ErrorEmitted> {
+        let engines = ctx.engines();
+        let type_engine = ctx.engines().te();
+
+        // We need to remove the type annotation, because the type expected from the context will
+        // be the referenced type, and we are checking the reference type.
+        let ctx = ctx
+            .by_ref()
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
+            .with_help_text("");
+        let expr_span = expr.span();
+        let expr = ty::TyExpression::type_check(handler, ctx, *expr)
+            .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span.clone(), engines));
+
+        let expr_type = type_engine.get(expr.return_type);
+        let return_type = match *expr_type {
+            TypeInfo::ErrorRecovery(_) => Ok(expr.return_type), // Just forward the error return type.
+            TypeInfo::Ref(ref exp) => Ok(exp.type_id),          // Get the referenced type.
+            _ => Err(
+                handler.emit_err(CompileError::ExpressionCannotBeDereferenced {
+                    expression_type: engines.help_out(expr.return_type).to_string(),
+                    span: expr_span,
+                }),
+            ),
+        }?;
+
+        let typed_expr = ty::TyExpression {
+            expression: ty::TyExpressionVariant::Deref(Box::new(expr)),
+            return_type,
+            span,
+        };
+
+        Ok(typed_expr)
+    }
+
     fn resolve_numeric_literal(
         handler: &Handler,
         ctx: TypeCheckContext,
@@ -2133,26 +2205,26 @@ fn check_asm_block_validity(
 
     // Check #1: Disallow control flow instructions
     //
-    for err in opcodes
-        .iter()
-        .filter(|op| {
-            matches!(
-                op.0,
-                VirtualOp::JMP(_)
-                    | VirtualOp::JI(_)
-                    | VirtualOp::JNE(..)
-                    | VirtualOp::JNEI(..)
-                    | VirtualOp::JNZI(..)
-                    | VirtualOp::RET(_)
-                    | VirtualOp::RETD(..)
-                    | VirtualOp::RVRT(..)
-            )
-        })
-        .map(|op| CompileError::DisallowedControlFlowInstruction {
-            name: op.1.to_string(),
-            span: op.2.clone(),
-        })
-    {
+    for err in opcodes.iter().filter_map(|op| {
+        if matches!(
+            op.0,
+            VirtualOp::JMP(_)
+                | VirtualOp::JI(_)
+                | VirtualOp::JNE(..)
+                | VirtualOp::JNEI(..)
+                | VirtualOp::JNZI(..)
+                | VirtualOp::RET(_)
+                | VirtualOp::RETD(..)
+                | VirtualOp::RVRT(..)
+        ) {
+            Some(CompileError::DisallowedControlFlowInstruction {
+                name: op.1.to_string(),
+                span: op.2.clone(),
+            })
+        } else {
+            None
+        }
+    }) {
         handler.emit_err(err);
     }
 
@@ -2162,8 +2234,13 @@ fn check_asm_block_validity(
     let initialized_registers = asm
         .registers
         .iter()
-        .filter(|reg| reg.initializer.is_some())
-        .map(|reg| VirtualRegister::Virtual(reg.name.to_string()))
+        .filter_map(|reg| {
+            if reg.initializer.is_some() {
+                Some(VirtualRegister::Virtual(reg.name.to_string()))
+            } else {
+                None
+            }
+        })
         .collect::<FxHashSet<_>>();
 
     // 2. From the list of `VirtualOp`s, figure out what registers are assigned
@@ -2182,18 +2259,18 @@ fn check_asm_block_validity(
 
     // 4. Form all the compile errors given the violating registers above. Obtain span information
     //    from the original `asm.registers` vector.
-    for err in asm
-        .registers
-        .iter()
-        .filter(|reg| {
-            initialized_and_assigned_registers
-                .contains(&VirtualRegister::Virtual(reg.name.to_string()))
-        })
-        .map(|reg| CompileError::InitializedRegisterReassignment {
-            name: reg.name.to_string(),
-            span: reg.name.span(),
-        })
-    {
+    for err in asm.registers.iter().filter_map(|reg| {
+        if initialized_and_assigned_registers
+            .contains(&VirtualRegister::Virtual(reg.name.to_string()))
+        {
+            Some(CompileError::InitializedRegisterReassignment {
+                name: reg.name.to_string(),
+                span: reg.name.span(),
+            })
+        } else {
+            None
+        }
+    }) {
         handler.emit_err(err);
     }
 
@@ -2201,33 +2278,36 @@ fn check_asm_block_validity(
     let mut uninitialized_registers = asm
         .registers
         .iter()
-        .filter(|reg| reg.initializer.is_none())
-        .map(|reg| {
-            let span = reg.name.span();
+        .filter_map(|reg| {
+            if reg.initializer.is_none() {
+                let span = reg.name.span();
 
-            // Emit warning if this register shadows a variable
-            let temp_handler = Handler::default();
-            let decl = ctx.namespace.resolve_call_path(
-                &temp_handler,
-                ctx.engines,
-                &CallPath {
-                    prefixes: vec![],
-                    suffix: sway_types::BaseIdent::new(span.clone()),
-                    is_absolute: true,
-                },
-                None,
-            );
-
-            if let Ok(ty::TyDecl::VariableDecl(decl)) = decl {
-                handler.emit_warn(CompileWarning {
-                    span: span.clone(),
-                    warning_content: Warning::UninitializedAsmRegShadowsVariable {
-                        name: decl.name.clone(),
+                // Emit warning if this register shadows a variable
+                let temp_handler = Handler::default();
+                let decl = ctx.namespace.resolve_call_path(
+                    &temp_handler,
+                    ctx.engines,
+                    &CallPath {
+                        prefixes: vec![],
+                        suffix: sway_types::BaseIdent::new(span.clone()),
+                        is_absolute: true,
                     },
-                });
-            }
+                    None,
+                );
 
-            (VirtualRegister::Virtual(reg.name.to_string()), span)
+                if let Ok(ty::TyDecl::VariableDecl(decl)) = decl {
+                    handler.emit_warn(CompileWarning {
+                        span: span.clone(),
+                        warning_content: Warning::UninitializedAsmRegShadowsVariable {
+                            name: decl.name.clone(),
+                        },
+                    });
+                }
+
+                Some((VirtualRegister::Virtual(reg.name.to_string()), span))
+            } else {
+                None
+            }
         })
         .collect::<HashMap<_, _>>();
 

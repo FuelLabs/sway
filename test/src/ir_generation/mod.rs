@@ -14,8 +14,9 @@ use sway_core::{
 use sway_error::handler::Handler;
 
 use sway_ir::{
-    create_inline_in_module_pass, register_known_passes, PassGroup, PassManager, ARGDEMOTION_NAME,
-    CONSTDEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME, RETDEMOTION_NAME,
+    create_inline_in_module_pass, register_known_passes, ExperimentalFlags, PassGroup, PassManager,
+    ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME,
+    RETDEMOTION_NAME,
 };
 
 enum Checker {
@@ -162,7 +163,11 @@ fn pretty_print_error_report(error: &str) {
     }
 }
 
-pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> Result<()> {
+pub(super) async fn run(
+    filter_regex: Option<&regex::Regex>,
+    verbose: bool,
+    experimental: ExperimentalFlags,
+) -> Result<()> {
     // Compile core library and reuse it when compiling tests.
     let engines = Engines::default();
     let build_target = BuildTarget::default();
@@ -216,7 +221,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                     build_target,
                 );
                 // Include unit tests in the build.
-                let bld_cfg = bld_cfg.include_tests(true);
+                let bld_cfg = bld_cfg.with_include_tests(true);
 
                 let sway_str = String::from_utf8_lossy(&sway_str);
                 let handler = Handler::default(); let compile_res = compile_to_ast(
@@ -226,6 +231,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                     core_lib.clone(),
                     Some(&bld_cfg),
                     "test_lib",
+                    None,
                 );
                 let (errors, _warnings) = handler.consume();
                 if !errors.is_empty() {
@@ -247,7 +253,9 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
 
                 // Compile to IR.
                 let include_tests = true;
-                let mut ir = compile_program(typed_program, include_tests, &engines)
+                let mut ir = compile_program(typed_program, include_tests, &engines, sway_core::ExperimentalFlags {
+                    new_encoding: experimental.new_encoding,
+                })
                     .unwrap_or_else(|e| {
                         use sway_types::span::Spanned;
                         let e = e[0].clone();
@@ -342,7 +350,10 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                             // Parse the IR again avoiding mutating the original ir
                             let mut ir = sway_ir::parser::parse(
                                 &ir_output,
-                                 engines.se()
+                                 engines.se(),
+                                 sway_ir::ExperimentalFlags {
+                                    new_encoding: experimental.new_encoding,
+                                }
                                 )
                                 .unwrap_or_else(|e| panic!("{}: {e}\n{ir_output}", path.display()));
 
@@ -437,7 +448,9 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                 }
 
                 // Parse the IR again, and print it yet again to make sure that IR de/serialisation works.
-                let parsed_ir = sway_ir::parser::parse(&ir_output, engines.se())
+                let parsed_ir = sway_ir::parser::parse(&ir_output, engines.se(), sway_ir::ExperimentalFlags {
+                    new_encoding: experimental.new_encoding
+                })
                     .unwrap_or_else(|e| panic!("{}: {e}\n{ir_output}", path.display()));
                 let parsed_ir_output = sway_ir::printer::to_string(&parsed_ir);
                 if ir_output != parsed_ir_output {

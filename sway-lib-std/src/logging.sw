@@ -4,7 +4,7 @@ library;
 /// Log any stack type.
 ///
 /// # Additional Information
-/// 
+///
 /// If the type is a reference type, `log` is used.
 /// Otherwise `logd` is used.'
 ///
@@ -19,6 +19,9 @@ library;
 ///     log("Fuel is blazingly fast");
 /// }
 /// ```
-pub fn log<T>(value: T) {
+pub fn log<T>(value: T)
+where
+    T: AbiEncode,
+{
     __log::<T>(value);
 }

@@ -1382,6 +1382,10 @@ fn ty_to_type_info(
             let type_argument = ty_to_type_argument(context, handler, engines, *ty.into_inner())?;
             TypeInfo::Slice(type_argument)
         }
+        Ty::Ref { ty, .. } => {
+            let type_argument = ty_to_type_argument(context, handler, engines, *ty)?;
+            TypeInfo::Ref(type_argument)
+        }
     };
     Ok(type_info)
 }
@@ -1773,6 +1777,38 @@ fn expr_func_app_to_expression_kind(
 
     // Route intrinsic calls to different AST node.
     match Intrinsic::try_from_str(call_seg.name.as_str()) {
+        Some(Intrinsic::Log)
+            if context.experimental.new_encoding && last.is_none() && !is_absolute =>
+        {
+            let span = name_args_span(span, type_arguments_span);
+            return Ok(ExpressionKind::IntrinsicFunction(
+                IntrinsicFunctionExpression {
+                    name: call_seg.name,
+                    kind_binding: TypeBinding {
+                        inner: Intrinsic::Log,
+                        type_arguments: TypeArgs::Regular(vec![]),
+                        span: span.clone(),
+                    },
+                    arguments: vec![Expression {
+                        kind: ExpressionKind::FunctionApplication(Box::new(
+                            FunctionApplicationExpression {
+                                call_path_binding: TypeBinding {
+                                    inner: CallPath {
+                                        prefixes: vec![],
+                                        suffix: Ident::new_no_span("encode".into()),
+                                        is_absolute: false,
+                                    },
+                                    type_arguments: TypeArgs::Regular(type_arguments),
+                                    span: span.clone(),
+                                },
+                                arguments,
+                            },
+                        )),
+                        span: span.clone(),
+                    }],
+                },
+            ));
+        }
         Some(intrinsic) if last.is_none() && !is_absolute => {
             return Ok(ExpressionKind::IntrinsicFunction(
                 IntrinsicFunctionExpression {
@@ -2081,18 +2117,18 @@ fn expr_to_expression(
             }),
             span,
         },
-        Expr::Ref { ref_token, .. } => {
-            let error = ConvertParseTreeError::RefExprNotYetSupported {
-                span: ref_token.span(),
-            };
-            return Err(handler.emit_err(error.into()));
-        }
-        Expr::Deref { deref_token, .. } => {
-            let error = ConvertParseTreeError::DerefExprNotYetSupported {
-                span: deref_token.span(),
-            };
-            return Err(handler.emit_err(error.into()));
-        }
+        Expr::Ref { expr, .. } => Expression {
+            kind: ExpressionKind::Ref(Box::new(expr_to_expression(
+                context, handler, engines, *expr,
+            )?)),
+            span,
+        },
+        Expr::Deref { expr, .. } => Expression {
+            kind: ExpressionKind::Deref(Box::new(expr_to_expression(
+                context, handler, engines, *expr,
+            )?)),
+            span,
+        },
         Expr::Not { bang_token, expr } => {
             let expr = expr_to_expression(context, handler, engines, *expr)?;
             op_call("not", bang_token.span(), span, &[expr])?
@@ -3804,6 +3840,7 @@ fn ty_to_type_parameter(
         Ty::StringArray { .. } => panic!("str types are not allowed in this position"),
         Ty::Ptr { .. } => panic!("__ptr types are not allowed in this position"),
         Ty::Slice { .. } => panic!("__slice types are not allowed in this position"),
+        Ty::Ref { .. } => panic!("ref types are not allowed in this position"),
     };
     let custom_type = type_engine.insert(
         engines,

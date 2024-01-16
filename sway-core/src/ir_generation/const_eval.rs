@@ -622,6 +622,12 @@ fn const_eval_typed_expr(
                 }
             }
         }
+        ty::TyExpressionVariant::Ref(_) | ty::TyExpressionVariant::Deref(_) => {
+            return Err(ConstEvalError::CompileError(CompileError::Unimplemented(
+                "Constant references are currently not supported.",
+                expr.span.clone(),
+            )));
+        }
         ty::TyExpressionVariant::Reassignment(_)
         | ty::TyExpressionVariant::FunctionParameter
         | ty::TyExpressionVariant::AsmExpression { .. }
@@ -1123,7 +1129,7 @@ mod tests {
     fn assert_is_constant(is_constant: bool, prefix: &str, expr: &str) {
         let engines = Engines::default();
         let handler = Handler::default();
-        let mut context = Context::new(engines.se());
+        let mut context = Context::new(engines.se(), sway_ir::ExperimentalFlags::default());
         let mut md_mgr = MetadataManager::default();
         let core_lib = namespace::Module::default();
 
@@ -1134,6 +1140,7 @@ mod tests {
             core_lib,
             None,
             "test",
+            None,
         );
 
         let (errors, _warnings) = handler.consume();
