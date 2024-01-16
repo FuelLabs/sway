@@ -433,6 +433,28 @@ impl From<TestOpts> for pkg::BuildOpts {
             metrics_outfile: val.metrics_outfile,
             tests: true,
             member_filter: Default::default(),
+            experimental: val.experimental,
+        }
+    }
+}
+
+impl TestOpts {
+    /// Convert this set of test options into a set of build options.
+    pub fn into_build_opts(self) -> pkg::BuildOpts {
+        pkg::BuildOpts {
+            pkg: self.pkg,
+            print: self.print,
+            minify: self.minify,
+            binary_outfile: self.binary_outfile,
+            debug_outfile: self.debug_outfile,
+            build_target: self.build_target,
+            build_profile: self.build_profile,
+            release: self.release,
+            error_on_warnings: self.error_on_warnings,
+            time_phases: self.time_phases,
+            metrics_outfile: self.metrics_outfile,
+            tests: true,
+            member_filter: Default::default(),
             experimental: self.experimental,
         }
     }
