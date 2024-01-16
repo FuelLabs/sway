@@ -20,7 +20,7 @@ use vm::state::ProgramState;
 use vm::state::StateTransitionRef;
 
 /// An interface for executing a test within a VM [Interpreter] instance.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TestExecutor {
     pub interpreter: Interpreter<MemoryStorage, tx::Script, NotSupportedEcal>,
     pub tx_builder: tx::TransactionBuilder<tx::Script>,
@@ -143,13 +143,13 @@ impl TestExecutor {
         }))
     }
 
-    /// Execute the test with breakpoints enabled.
+    /// Continue executing the test with breakpoints enabled.
     pub fn continue_debugging(&mut self) -> anyhow::Result<DebugResult> {
         let start = std::time::Instant::now();
         let state = self
             .interpreter
             .resume()
-            .map_err(|err: InterpreterError<_>| anyhow::anyhow!(err))?;
+            .map_err(|err: InterpreterError<_>| anyhow::anyhow!("VM failed to resume. {:?}", err))?;
         if let ProgramState::RunProgram(DebugEval::Breakpoint(breakpoint)) = state {
             // A breakpoint was hit, so we tell the client to stop.
             return Ok(DebugResult::Breakpoint(breakpoint.pc()));

@@ -34,41 +34,48 @@ impl DapServer {
     pub(crate) fn handle_continue(&mut self) -> Result<bool, AdapterError> {
         self.log("continue!\n\n".into());
 
-        let mut test_results = Vec::new();
-
         // Set all breakpoints in the VM
         self.update_vm_breakpoints();
 
-        if let Some(executor) = &mut self.test_executor {
-            // let mut executor = self.test_executor.as_mut().unwrap();
+        self.log("BPs updated".into());
 
+        if let Some(executor) = self.executors.get_mut(0) {
             let program_path = self.program_path.clone().unwrap();
 
-            return match executor.continue_debugging()? {
+            // self.log(format!("executor {:?}\n\n", executor.name.clone()).into());
+            // self.log(format!("self.executors.count {:?}\n\n", self.executors.len()).into());
+            // self.log(format!("self.executors {:?}\n\n", self.executors.iter().map(|e| e.name.clone()).collect::<Vec<_>>()).into());
+
+            match executor.continue_debugging()? {
                 DebugResult::TestComplete(result) => {
-                    test_results.push(result);
-
-                    self.log(format!(
-                        "finished continue executing {} tests, results: {:?}\n\n",
-                        test_results.len(),
-                        test_results
-                    ));
-
-                    // print_tested_pkg(&tested_pkg, &test_print_opts)?; TODO
-
-                    return Ok(false);
+                    self.test_results.insert(executor.name.clone(), result);
                 }
 
                 DebugResult::Breakpoint(pc) => {
-                    let breakpoint_id = self.vm_pc_to_breakpoint_id(pc)?;
-                    self.current_breakpoint_id = Some(breakpoint_id);
-                    self.send_stopped_event(breakpoint_id);
-                    return Ok(true);
+                    return self.send_stopped_event(pc);
+                }
+            }
+            self.executors.remove(0);
+        }
+
+        // If there are tests remaning, we should start debugging those until another breakpoint is hit.
+        while let Some(next_test_executor) = self.executors.get_mut(0) {
+            match next_test_executor.start_debugging()? {
+                DebugResult::TestComplete(result) => {
+                    self.test_results.insert(next_test_executor.name.clone(), result);
+                }
+                DebugResult::Breakpoint(pc) => {
+                    return self.send_stopped_event(pc);
                 }
             };
+            self.executors.remove(0);
         }
-        Err(AdapterError::TestExecutionError {
-            source: anyhow::anyhow!("No test executor"),
-        })
+
+        self.log(format!(
+            "finished continue executing {} tests, results: {:?}\n\n",
+            self.test_results.len(),
+            self.test_results
+        ));
+        return Ok(false);
     }
 }

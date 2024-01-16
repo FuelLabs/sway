@@ -80,9 +80,10 @@ pub struct DapServer {
     initialized_event_sent: bool,
     started_debugging: bool,
     configuration_done: bool,
-    test_executor: Option<TestExecutor>,
     current_breakpoint_id: Option<i64>,
     program_path: Option<PathBuf>,
+    executors: Vec<TestExecutor>,
+    test_results: HashMap<String, forc_test::TestResult>,
 }
 
 pub type Line = i64;
@@ -102,9 +103,10 @@ impl DapServer {
             initialized_event_sent: false,
             started_debugging: false,
             configuration_done: false,
-            test_executor: None,
             current_breakpoint_id: None,
             program_path: None,
+            executors: Default::default(),
+            test_results: Default::default(),
         }
     }
 
@@ -197,9 +199,17 @@ impl DapServer {
                 Ok(ResponseBody::ConfigurationDone)
             }
             Command::Continue(_) => {
-                if !self.handle_continue()? {
-                    // The tests finished executing
-                    self.exit(0);
+                //  While there are more tests to execute, either start debugging or continue
+                match self.handle_continue() {
+                    Ok(true) => {}
+                    Ok(false) => {
+                        // The tests finished executing
+                        self.exit(0);
+                    }
+                    Err(e) => {
+                        self.error(format!("continue error: {:?}", e));
+                        self.exit(1);
+                    }
                 }
                 Ok(ResponseBody::Continue(responses::ContinueResponse {
                     all_threads_continued: Some(true),
@@ -295,7 +305,7 @@ impl DapServer {
                 ))
             }
             Command::StackTrace(ref args) => {
-                let executor = self.test_executor.as_mut().unwrap();
+                let executor = self.executors.get_mut(0).unwrap();
 
                 // For now, we only return 1 stack frame.
                 let stack_frames = self
@@ -343,7 +353,7 @@ impl DapServer {
             })),
             Command::Variables(ref args) => {
                 let variables = self
-                    .test_executor
+                    .executors.get_mut(0)
                     .as_ref()
                     .map(|executor| {
                         let mut i = 0;
@@ -412,7 +422,7 @@ impl DapServer {
 
     /// Updates the breakpoints in the VM.
     fn update_vm_breakpoints(&mut self) {
-        if let Some(executor) = &mut self.test_executor {
+        if let Some(executor) = self.executors.get_mut(0) {
             if let Some(program_path) = &self.program_path {
                 // Divide by 4 to get the opcode offset rather than the program counter offset.
                 let opcode_offset = (executor.test_offset as u64) / 4;
@@ -436,7 +446,7 @@ impl DapServer {
     }
 
     fn vm_pc_to_breakpoint_id(&mut self, pc: u64) -> Result<i64, AdapterError> {
-        if let Some(executor) = &mut self.test_executor {
+        if let Some(executor) = self.executors.get_mut(0) {
             if let Some(program_path) = &self.program_path {
                 if let Some(source_map) = &self.source_map.get(program_path) {
                     // Divide by 4 to get the opcode offset rather than the program counter offset.
@@ -462,7 +472,9 @@ impl DapServer {
         Err(AdapterError::UnknownBreakpointError)
     }
 
-    fn send_stopped_event(&mut self, breakpoint_id: i64) {
+    fn send_stopped_event(&mut self, pc: u64) -> Result<bool, AdapterError> {
+        let breakpoint_id = self.vm_pc_to_breakpoint_id(pc)?;
+        self.current_breakpoint_id = Some(breakpoint_id);
         let _ = self.server.send_event(Event::Stopped(StoppedEventBody {
             reason: types::StoppedEventReason::Breakpoint,
             hit_breakpoint_ids: Some(vec![breakpoint_id]),
@@ -472,5 +484,6 @@ impl DapServer {
             text: None,
             all_threads_stopped: None,
         }));
+        Ok(true)
     }
 }

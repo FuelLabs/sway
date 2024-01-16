@@ -152,56 +152,74 @@ impl DapServer {
 
         let entries = pkg_to_debug.bytecode.entries.iter().filter_map(|entry| {
             if let Some(test_entry) = entry.kind.test() {
-                // If a test filter is specified, only the tests containing the filter phrase in
-                // their name are going to be executed.
                 let name = entry.finalized.fn_name.clone();
                 return Some((entry, test_entry));
             }
             None
         });
 
-        // 3. Run the tests
-        let mut test_results = Vec::new();
-        for (entry, test_entry) in entries {
-            // Execute the test and return the result.
-            let offset =
-                u32::try_from(entry.finalized.imm).expect("test instruction offset out of range");
-            let name = entry.finalized.fn_name.clone();
-            let test_setup = pkg_tests.setup()?;
-            self.log(format!("executing test: {}\n", name.clone()));
-            // TODO: print test output to terminal
+        // 3. Construct a TestExecutor for each test and store it
+        let executors = entries
+            .filter_map(|(entry, test_entry)| {
+                // Execute the test and return the result.
+                let offset = u32::try_from(entry.finalized.imm)
+                    .expect("test instruction offset out of range");
+                let name = entry.finalized.fn_name.clone();
+                if let Ok(test_setup) = pkg_tests.setup() {
+                    self.log(format!("creating executor for test: {}\n", name.clone()));
+                    // TODO: print test output to terminal
 
-            self.test_executor = Some(TestExecutor::new(
-                &pkg_to_debug.bytecode.bytes,
-                offset,
-                test_setup,
-                test_entry,
-                name.clone(),
-            ));
+                    return Some(TestExecutor::new(
+                        &pkg_to_debug.bytecode.bytes,
+                        offset,
+                        test_setup,
+                        test_entry,
+                        name.clone(),
+                    ));
+                }
+                None
+            })
+            .collect();
 
-            // Set all breakpoints in the VM
-            self.update_vm_breakpoints();
+        self.executors = executors;
 
-            if let Some(executor) = &mut self.test_executor {
-                match executor.start_debugging()? {
-                    DebugResult::TestComplete(result) => {
-                        test_results.push(result);
+        // for (entry, test_entry) in entries {
+        //     // Execute the test and return the result.
+        //     let offset =
+        //         u32::try_from(entry.finalized.imm).expect("test instruction offset out of range");
+        //     let name = entry.finalized.fn_name.clone();
+        //     let test_setup = pkg_tests.setup()?;
+        //     self.log(format!("executing test: {}\n", name.clone()));
+        //     // TODO: print test output to terminal
 
-                        // print_tested_pkg(&tested_pkg, &test_print_opts)?; TODO
-                    }
-                    DebugResult::Breakpoint(pc) => {
-                        let breakpoint_id = self.vm_pc_to_breakpoint_id(pc)?;
-                        self.current_breakpoint_id = Some(breakpoint_id);
-                        self.send_stopped_event(breakpoint_id);
-                        return Ok(true);
-                    }
-                };
-            }
+        //     self.test_executor = Some(TestExecutor::new(
+        //         &pkg_to_debug.bytecode.bytes,
+        //         offset,
+        //         test_setup,
+        //         test_entry,
+        //         name.clone(),
+        //     ));
+
+        // Set all breakpoints in the VM
+        self.update_vm_breakpoints();
+
+        while let Some(executor) = self.executors.get_mut(0) {
+            // self.test_executor = Some(executor.clone());
+
+            match executor.start_debugging()? {
+                DebugResult::TestComplete(result) => {
+                    self.test_results.insert(executor.name.clone(), result);
+                }
+                DebugResult::Breakpoint(pc) => {
+                    return self.send_stopped_event(pc);
+                }
+            };
+            self.executors.remove(0);
         }
         self.log(format!(
             "finished executing {} tests, results: {:?}\n\n",
-            test_results.len(),
-            test_results
+            self.test_results.len(),
+            self.test_results
         ));
 
         return Ok(false);
