@@ -1835,11 +1835,7 @@ pub fn compile(
                     engines.te(),
                     engines.de(),
                     &mut types,
-                    if profile.experimental.new_encoding {
-                        "1"
-                    } else {
-                        "0"
-                    }.to_string()
+                    profile.experimental.new_encoding.then(|| "1".into()),
                 ),
                 Some(sway_build_config.clone()),
                 metrics

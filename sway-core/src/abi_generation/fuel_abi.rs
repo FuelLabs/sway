@@ -21,7 +21,7 @@ pub fn generate_program_abi(
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
     types: &mut Vec<program_abi::TypeDeclaration>,
-    encoding: String,
+    encoding: Option<program_abi::Version>,
 ) -> program_abi::ProgramABI {
     match &ctx.program.kind {
         TyProgramKind::Contract { abi_entries, .. } => {
