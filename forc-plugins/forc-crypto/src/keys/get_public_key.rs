@@ -6,8 +6,8 @@ use serde_json::json;
 
 forc_util::cli_examples! {
     [ Get the public key from a message and its signature => crypto r#"get-public-key \
-        0xb0b2f29b52d95c1cba47ea7c7edeec6c84a0bd196df489e219f6f388b69d760479b994f4bae2d5f2abef7d5faf7d9f5ee3ea47ada4d15b7a7ee2777dcd7b36bb \
-        "Blah blah blah""#]
+        0x1eff08081394b72239a0cf7ff6b499213dcb7a338bedbd75d072d504588ef27a1f74d5ceb2f111ec02ede097fb09ed00aa9867922ed39299dae0b1afc0fa8661 \
+        "This is a message that is signed""# ]
 }
 
 /// Parse a secret key to view the associated public key
