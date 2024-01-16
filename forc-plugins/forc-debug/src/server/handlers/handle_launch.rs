@@ -30,14 +30,14 @@ use fuel_vm::prelude::*;
 use thiserror::Error;
 
 impl DapServer {
-    pub(crate) fn handle_launch(&mut self) -> Result<ResponseBody, AdapterError> {
+    pub(crate) fn handle_launch(&mut self, program_path: String) -> Result<ResponseBody, AdapterError> {
         self.log("launch!\n\n".into());
 
         // let compiled_program = args.additional_data.
-        let program =
-            "/Users/sophiedankel/Development/sway-playground/projects/swaypad/src/main.sw";
-        let dir = PathBuf::from(program);
-        let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&dir)
+        // let program =
+        //     "/Users/sophiedankel/Development/sway-playground/projects/swaypad/src/main.sw";
+        let src_path = PathBuf::from(program_path);
+        let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&src_path)
             .map_err(|_| AdapterError::BuildError)?;
         // let pkg_manifest = if let ManifestFile::Package(manifest) = manifest_file {
         //     manifest
@@ -97,12 +97,7 @@ impl DapServer {
                 pkg_to_debug = Some(built_pkg);
             }
             let source_map = &built_pkg.source_map;
-            let pretty = serde_json::to_string_pretty(source_map).unwrap();
-            fs::write(
-                "/Users/sophiedankel/Development/sway-playground/projects/swaypad/src/tmp.txt",
-                pretty,
-            )
-            .expect("Unable to write file");
+
 
             let paths = &source_map.paths;
             // Cache the source code for every path in the map, since we'll need it later.
@@ -229,13 +224,6 @@ impl DapServer {
             // self.log(format!("executing test: {}\n", name));
             // TODO: print test output to terminal
 
-            // let mut executor = TestExecutor::new(
-            //     &pkg_to_debug.bytecode.bytes,
-            //     offset,
-            //     test_setup,
-            //     test_entry,
-            //     name,
-            // );
             self.test_executor = Some(TestExecutor::new(
                 &pkg_to_debug.bytecode.bytes,
                 offset,
@@ -244,9 +232,7 @@ impl DapServer {
                 name,
             ));
             let mut executor = self.test_executor.as_mut().unwrap();
-            let src_path = PathBuf::from(
-                "/Users/sophiedankel/Development/sway-playground/projects/swaypad/src/main.sw",
-            );
+            // let src_path = PathBuf::from(program_path);
 
             // Set all breakpoints in the VM
             // self.log(format!("setting vm bps\n"));

@@ -38,9 +38,6 @@ impl DapServer {
 
 
         let mut executor = self.test_executor.as_mut().unwrap();
-        let src_path = PathBuf::from(
-            "/Users/sophiedankel/Development/sway-playground/projects/swaypad/src/main.sw",
-        );
 
         // Set all breakpoints in the VM
         // self.log(format!("setting vm bps\n"));
