@@ -36,116 +36,41 @@ impl DapServer {
 
         let mut test_results = Vec::new();
 
-
-        let mut executor = self.test_executor.as_mut().unwrap();
-
         // Set all breakpoints in the VM
-        // self.log(format!("setting vm bps\n"));
+        self.update_vm_breakpoints();
 
-        
+        if let Some(executor) = &mut self.test_executor {
+            // let mut executor = self.test_executor.as_mut().unwrap();
 
-        let opcode_offset = executor.test_offset as u64 / 4;
-        // let vm_bps = self.breakpoints.iter().map(|bp| {
+            let opcode_offset = executor.test_offset as u64 / 4;
 
-        //     // When the breakpoint is applied, $is is added. We only need to provide the index of the instruction
-        //     // from the beginning of the script.
-        //     let opcode_index = *self.source_map.get(&src_path).unwrap().get(&bp.line.unwrap()).unwrap();
-        //     let pc_1 = opcode_index + opcode_offset;
-        //     let bp = Breakpoint::script(pc_1); // instruction count.
-        //     executor.interpreter.set_breakpoint(bp);
-        //     bp.clone()
-        // });
+            let program_path = self.program_path.clone().unwrap();
 
-        // self.log(format!("vm bps: {:?}\n", vm_bps.collect::<Vec<_>>())); // TODO: removing this breaks?
+            return match executor.continue_debugging()? {
+                DebugResult::TestComplete(result) => {
+                    test_results.push(result);
 
-        // TODO: refresh breakpoints
-        // self.breakpoints.iter().for_each(|bp| {
-        //     // When the breakpoint is applied, $is is added. We only need to provide the index of the instruction
-        //     // from the beginning of the script.
-        //     let opcode_index = *self.source_map.get(&src_path).unwrap().get(&bp.line.unwrap()).unwrap();
-        //     let pc_1 = opcode_index + opcode_offset;
-        //     let bp = Breakpoint::script(pc_1); // instruction count.
-        //     executor.interpreter.set_breakpoint(bp);
-        // });
+                    self.log(format!(
+                        "finished continue executing {} tests, results: {:?}\n\n",
+                        test_results.len(),
+                        test_results
+                    ));
 
-        // self.log(format!("calling executor.debug \n"));
+                    // print_tested_pkg(&tested_pkg, &test_print_opts)?; TODO
 
-        let debug_res = executor.continue_debugging()?;
-        // self.log(format!("opcode_offset: {:?}\n", opcode_offset));
-        // self.log(format!("debug_res: {:?}\n", debug_res));
-        // self.log(format!("source_map: {:?}\n", self.source_map));
-        match debug_res {
-            DebugResult::TestComplete(result) => {
-                // self.log(format!("finished executing test: {}\n", name));
-                test_results.push(result);
-            }
-            DebugResult::Breakpoint(pc) => {
-                // self.log(format!("stopped executing test: {}\n", name));
-                // let (line, _) = self.source_map.get(&src_path).unwrap().get_by_right(&pc).unwrap();
-                // let breakpoint_id = self.breakpoints.iter().find(|bp| bp.line == Some(*line)).unwrap().id.unwrap();
-                // let breakpoint_id = 1; //self.breakpoints.first().unwrap().id.unwrap_or(1);
-                // self.log(format!("breakpoints: {:?}\n", self.breakpoints));
-                ////
-                ///
-                // let opcode_index = *self.source_map.get(&src_path).unwrap().get(&bp.line.unwrap()).unwrap();
-                // let opcode_offset = offset as u64 / 4;
-                // let pc_1 = opcode_index + opcode_offset;
-                let to_look_up = pc / 4 - opcode_offset;
+                    return Ok(false);
+                }
 
-                // self.log(format!("to_look_up: {:?}\n", to_look_up));
-
-                let (line, _) = self
-                    .source_map
-                    .get(&src_path)
-                    .unwrap()
-                    .iter()
-                    .find(|(_, pc)| {
-                        // self.log(format!("pc: {}, to_look_up: {}\n", pc, to_look_up));
-                        **pc == to_look_up
-                    })
-                    .unwrap();
-                // let line = 12;
-
-                // self.log(format!("line: {:?}\n", line));
-
-                // self.log(format!("breakpoints: {:?}\n", self.breakpoints));
-
-                let breakpoint_id = self
-                    .breakpoints
-                    .iter()
-                    .find(|bp| bp.id.is_some() && bp.line == Some(*line))
-                    .unwrap()
-                    .id
-                    .unwrap();
-                // let breakpoint_id: i64 =self.breakpoints.first().unwrap().id.unwrap();
-                // let breakpoint_id: i64 = 1;
-
-                // self.log(format!(
-                //     "sending event for breakpoint: {}\n\n",
-                //     breakpoint_id
-                // ));
-                self.current_breakpoint_id = Some(breakpoint_id);
-                let _ = self.server.send_event(Event::Stopped(StoppedEventBody {
-                    reason: types::StoppedEventReason::Breakpoint,
-                    hit_breakpoint_ids: Some(vec![breakpoint_id]),
-                    description: Some(format!("Stopped at breakpoint {}", breakpoint_id)),
-                    thread_id: Some(THREAD_ID),
-                    preserve_focus_hint: None, //Some(true),
-                    text: Some(format!("Stopped at breakpoint {}", breakpoint_id)),
-                    all_threads_stopped: None, //Some(true),
-                }));
-                return Ok(true);
-            }
+                DebugResult::Breakpoint(pc) => {
+                    let breakpoint_id = self.vm_pc_to_breakpoint_id(pc)?;
+                    self.current_breakpoint_id = Some(breakpoint_id);
+                    self.send_stopped_event(breakpoint_id);
+                    return Ok(true);
+                }
+            };
         }
-
-        self.log(format!(
-            "finished continue executing {} tests, results: {:?}\n\n",
-            test_results.len(),
-            test_results
-        ));
-
-        // print_tested_pkg(&tested_pkg, &test_print_opts)?; TODO
-
-        Ok(false)
+        Err(AdapterError::TestExecutionError {
+            source: anyhow::anyhow!("No test executor"),
+        })
     }
 }

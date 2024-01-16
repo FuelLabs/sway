@@ -1,6 +1,6 @@
 mod handlers;
 use crate::names::register_name;
-use dap::events::ThreadEventBody;
+use dap::events::{ExitedEventBody, ThreadEventBody, StoppedEventBody};
 use dap::responses::*;
 use dap::{events::OutputEventBody, types::Breakpoint};
 use forc_test::execute::TestExecutor;
@@ -26,6 +26,8 @@ use dap::types::{
 use forc_pkg::{
     self, manifest::ManifestFile, Built, BuiltPackage, PackageManifest, PackageManifestFile,
 };
+use forc_test::execute::DebugResult;
+use fuel_core_client::client::schema::schema::__fields::Mutation::_set_breakpoint_arguments::breakpoint;
 use fuel_vm::consts::VM_REGISTER_COUNT;
 use rand::Rng;
 use thiserror::Error;
@@ -43,6 +45,12 @@ enum AdapterError {
 
     #[error("Missing configuration")]
     MissingConfigurationError,
+
+    #[error("Missing source map")]
+    MissingSourceMapError,
+
+    #[error("Unknown breakpoint")]
+    UnknownBreakpointError,
 
     #[error("Build failed")]
     BuildError,
@@ -71,7 +79,7 @@ pub struct DapServer {
     configuration_done: bool,
     test_executor: Option<TestExecutor>,
     current_breakpoint_id: Option<i64>,
-    program_path: Option<String>,
+    program_path: Option<PathBuf>,
 }
 
 pub type Line = i64;
@@ -112,7 +120,10 @@ impl DapServer {
                         if let Some(StartDebuggingRequestKind::Launch) = self.mode {
                             if let Some(program_path) = &self.program_path {
                                 self.started_debugging = true;
-                                let _ = self.handle_launch(program_path.clone());
+                                if !self.handle_launch(program_path.clone())? {
+                                    // The tests finished executing
+                                    self.exit(0);
+                                }
                             }
                         }
                     }
@@ -170,23 +181,25 @@ impl DapServer {
                     responses::BreakpointLocationsResponse { breakpoints },
                 ))
             }
-            // Command::Completions(_) => todo!(),
+            // Command::Cancel(_) => todo!(),
             Command::ConfigurationDone => {
                 self.configuration_done = true;
                 Ok(ResponseBody::ConfigurationDone)
             }
             Command::Continue(_) => {
-                if self.handle_continue()? {
-                    // Another breakpoint was hit
-                    Ok(ResponseBody::Continue(responses::ContinueResponse {
-                        all_threads_continued: Some(true),
-                    }))
-                } else {
+                if !self.handle_continue()? {
                     // The tests finished executing
-                    process::exit(0)
+                    self.exit(0);
                 }
+                Ok(ResponseBody::Continue(responses::ContinueResponse {
+                    all_threads_continued: Some(true),
+                }))
             }
-            Command::Disconnect(_) => process::exit(0),
+            Command::Disconnect(_) => {
+                self.exit(0);
+                Ok(ResponseBody::Disconnect)
+            }
+
             Command::Initialize(_) => Ok(ResponseBody::Initialize(types::Capabilities {
                 supports_breakpoint_locations_request: Some(true),
                 supports_configuration_done_request: Some(true),
@@ -201,7 +214,7 @@ impl DapServer {
                         .clone(),
                 )
                 .map_err(|_| AdapterError::MissingConfigurationError)?;
-                self.program_path = Some(data.program);
+                self.program_path = Some(PathBuf::from(data.program));
                 Ok(ResponseBody::Launch)
             }
             Command::Scopes(ref args) => Ok(ResponseBody::Scopes(responses::ScopesResponse {
@@ -247,7 +260,6 @@ impl DapServer {
                                     verified: true,
                                     line: Some(source_bp.line),
                                     source: Some(args.source.clone()),
-                                    message: Some(format!("Breakpoint ID {}", id)),
                                     ..Default::default()
                                 }
                             }
@@ -304,8 +316,15 @@ impl DapServer {
                     total_frames: None,
                 }))
             }
-            Command::Terminate(_) => process::exit(0),
-            Command::TerminateThreads(_) => process::exit(0),
+            Command::Terminate(_) => {
+                self.exit(0);
+                Ok(ResponseBody::Terminate)
+            }
+            Command::TerminateThreads(_) => {
+                self.exit(0);
+                Ok(ResponseBody::TerminateThreads)
+            }
+
             Command::Threads => Ok(ResponseBody::Threads(responses::ThreadsResponse {
                 threads: vec![types::Thread {
                     id: THREAD_ID,
@@ -345,7 +364,6 @@ impl DapServer {
                     variables,
                 }))
             }
-            Command::Cancel(_) => process::exit(0),
             _ => Err(AdapterError::UnhandledCommandError),
         };
 
@@ -357,11 +375,82 @@ impl DapServer {
         }
     }
 
-    /// Log a message to the client's debugger console output.
+    /// Logs a message to the client's debugger console output.
     fn log(&mut self, output: String) {
         let _ = self.server.send_event(Event::Output(OutputEventBody {
             output,
             ..Default::default()
+        }));
+    }
+
+    /// Sends the 'exited' event to the client and kills the server process.
+    fn exit(&mut self, exit_code: i64) {
+        let _ = self
+            .server
+            .send_event(Event::Exited(ExitedEventBody { exit_code }));
+        process::exit(exit_code as i32);
+    }
+
+    /// Updates the breakpoints in the VM.
+    fn update_vm_breakpoints(&mut self) {
+        if let Some(executor) = &mut self.test_executor {
+            if let Some(program_path) = &self.program_path {
+                // Divide by 4 to get the opcode offset rather than the program counter offset.
+                let opcode_offset = executor.test_offset as u64 / 4;
+
+                self.breakpoints.iter().for_each(|bp| {
+                    // When the breakpoint is applied, $is is added. We only need to provide the index of the instruction
+                    // from the beginning of the script.
+                    let opcode_index = *self
+                        .source_map
+                        .get(program_path)
+                        .unwrap()
+                        .get(&bp.line.unwrap())
+                        .unwrap();
+                    let bp = fuel_vm::state::Breakpoint::script(opcode_index + opcode_offset);
+
+                    // TODO: set all breakpoints in the VM
+                    executor.interpreter.set_breakpoint(bp);
+                });
+            }
+        }
+    }
+
+    fn vm_pc_to_breakpoint_id(&mut self, pc: u64) -> Result<i64, AdapterError> {
+        if let Some(executor) = &mut self.test_executor {
+            if let Some(program_path) = &self.program_path {
+                if let Some(source_map) = &self.source_map.get(program_path) {
+                    // Divide by 4 to get the opcode offset rather than the program counter offset.
+                    let instruction_offset = (pc - executor.test_offset as u64) / 4;
+
+                    let (line, _) = source_map
+                        .iter()
+                        .find(|(_, pc)| **pc == instruction_offset).ok_or(AdapterError::MissingSourceMapError)?;
+
+                    let breakpoint_id = self
+                        .breakpoints
+                        .iter()
+                        .find(|bp| bp.line == Some(*line))
+                        .ok_or(AdapterError::UnknownBreakpointError)?
+                        .id
+                        .ok_or(AdapterError::UnknownBreakpointError)?;
+
+                    return Ok(breakpoint_id);
+                }
+            }
+        }
+        Err(AdapterError::UnknownBreakpointError)
+    }
+
+    fn send_stopped_event(&mut self, breakpoint_id: i64) {
+        let _ = self.server.send_event(Event::Stopped(StoppedEventBody {
+            reason: types::StoppedEventReason::Breakpoint,
+            hit_breakpoint_ids: Some(vec![breakpoint_id]),
+            description: None,
+            thread_id: Some(THREAD_ID),
+            preserve_focus_hint: None,
+            text: None,
+            all_threads_stopped: None,
         }));
     }
 }
