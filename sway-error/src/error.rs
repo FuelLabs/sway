@@ -12,6 +12,8 @@ use sway_types::style::to_snake_case;
 use sway_types::{BaseIdent, Ident, SourceEngine, SourceId, Span, Spanned};
 use thiserror::Error;
 
+use self::StructFieldUsageContext::*;
+
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum InterfaceName {
     Abi(Ident),
@@ -257,6 +259,7 @@ pub enum CompileError {
         span: Span,
         field_decl_span: Span,
         struct_can_be_adapted: bool,
+        usage_context: StructFieldUsageContext,
     },
     #[error("No method named \"{method_name}\" found for type \"{type_name}\".")]
     MethodNotFound {
@@ -1014,6 +1017,10 @@ impl Spanned for CompileError {
     }
 }
 
+// When implementing diagnostics, follow these two guidelines outlined in the Expressive Diagnostics RFC:
+// - Guide-level explanation: https://github.com/FuelLabs/sway-rfcs/blob/master/rfcs/0011-expressive-diagnostics.md#guide-level-explanation
+// - Wording guidelines: https://github.com/FuelLabs/sway-rfcs/blob/master/rfcs/0011-expressive-diagnostics.md#wording-guidelines
+// For concrete examples, look at the existing diagnostics.
 impl ToDiagnostic for CompileError {
     fn to_diagnostic(&self, source_engine: &SourceEngine) -> Diagnostic {
         let code = Code::semantic_analysis;
@@ -1422,7 +1429,8 @@ impl ToDiagnostic for CompileError {
                 issue: Issue::error(
                     source_engine,
                     span.clone(),
-                    format!("\"{struct_name}\" cannot be instantiated in this {}, because it has {}inaccessible private field{}.",
+                    format!("\"{struct_name}\" cannot be {}instantiated in this {}, due to {}inaccessible private field{}.",
+                        if *is_in_storage_declaration { "" } else { "directly " },
                         if *is_in_storage_declaration { "storage declaration" } else { "module" },
                         singular_plural(private_fields.len(), "an ", ""),
                         plural_s(private_fields.len())
@@ -1443,6 +1451,15 @@ impl ToDiagnostic for CompileError {
                             source_engine,
                             span.clone(),
                             "They can still be stored in storage by using the `read` and `write` functions provided in the `std::storage::storage_api`.".to_string()
+                        )
+                    } else {
+                        Hint::none()
+                    },
+                    if !*is_in_storage_declaration && !constructors.is_empty() {
+                        Hint::help(
+                            source_engine,
+                            span.clone(),
+                            format!("\"{struct_name}\" can be instantiated via public constructors (see the suggestion below).")
                         )
                     } else {
                         Hint::none()
@@ -1509,14 +1526,14 @@ impl ToDiagnostic for CompileError {
                         };
 
                         help.push(
-                            // Alternatively, consider declaring field "f" as public, `pub f: ...,`, and use "Struct" in storage declaration.
+                            // Alternatively, consider declaring field "f" as public in "Struct", `pub f: ...,`, and use "Struct" in storage declaration.
                             //  or
-                            // Alternatively, consider declaring fields "f" and "g" as public, `pub <field>: ...,`, and use "Struct" in storage declaration.
+                            // Alternatively, consider declaring fields "f" and "g" as public in "Struct", `pub <field>: ...,`, and use "Struct" in storage declaration.
                             //  or
-                            // Consider declaring field "f" as public: `pub f: ...,`.
+                            // Consider declaring field "f" as public in "Struct": `pub f: ...,`.
                             //  or
-                            // Consider declaring fields "f" and "g" as public: `pub <field>: ...,`.
-                            format!("Alternatively, consider declaring {} as public{} `pub {}: ...,`{}.",
+                            // Consider declaring fields "f" and "g" as public in "Struct": `pub <field>: ...,`.
+                            format!("Alternatively, consider declaring {} as public in \"{struct_name}\"{} `pub {}: ...,`{}.",
                                 if *all_fields_are_private {
                                     "all fields".to_string()
                                 } else {
@@ -1550,32 +1567,74 @@ impl ToDiagnostic for CompileError {
                     help
                 }
             },            
-            StructFieldIsPrivate { field_name, struct_name, span, field_decl_span, struct_can_be_adapted } => Diagnostic {
+            StructFieldIsPrivate { field_name, struct_name, span, field_decl_span, struct_can_be_adapted, usage_context } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Private struct field is inaccessible".to_string())),
                 issue: Issue::error(
                     source_engine,
                     span.clone(),
-                    format!("Private field \"{field_name}\" of the struct \"{struct_name}\" is inaccessible in this module.")
+                    format!("Private field \"{field_name}\" {}is inaccessible in this module.",
+                        match usage_context {
+                            StructInstantiation | StorageDeclaration | PatternMatching { .. } => "".to_string(),
+                            StorageAccess | StructFieldAccess => format!("of the struct \"{struct_name}\" "),
+                        }
+                    )
                 ),
                 hints: vec![
                     Hint::help(
                         source_engine,
                         span.clone(),
-                        "Private struct fields can be accessed only within the module in which the struct is declared.".to_string()
+                        format!("Private fields can be {} only within the module in which their struct is declared.",
+                            match usage_context {
+                                StructInstantiation | StorageDeclaration => "initialized",
+                                StorageAccess | StructFieldAccess => "accessed",
+                                PatternMatching { .. } => "matched",
+                            }
+                        )
                     ),
+                    if matches!(usage_context, PatternMatching { has_rest_pattern } if !has_rest_pattern) {
+                        Hint::help(
+                            source_engine,
+                            span.clone(),
+                            "Otherwise, they must be ignored by ending the struct pattern with `..`.".to_string()
+                        )
+                    } else {
+                        Hint::none()
+                    },
                     Hint::info(
                         source_engine,
                         field_decl_span.clone(),
-                        format!("Field \"{field_name}\" is declared here as private.")
+                        format!("Field \"{field_name}\" {}is declared here as private.",
+                            match usage_context {
+                                StructInstantiation | StorageDeclaration | PatternMatching { .. } => format!("of the struct \"{struct_name}\" "),
+                                StorageAccess | StructFieldAccess => "".to_string(),
+                            }
+                        )
                     ),
                 ],
-                help: if !*struct_can_be_adapted {
-                    vec![]
-                } else {
-                    vec![
-                        format!("Consider declaring field \"{field_name}\" as public: `pub {field_name}: ...,`."),
-                    ]
-                } ,
+                help: vec![
+                    if matches!(usage_context, PatternMatching { has_rest_pattern } if !has_rest_pattern) {
+                        format!("Consider removing the field \"{field_name}\" from the struct pattern, and ending the pattern with `..`.")
+                    } else {
+                        Diagnostic::help_none()
+                    },
+                    if *struct_can_be_adapted {
+                        match usage_context {
+                            StorageAccess | StructFieldAccess | PatternMatching { .. } => {
+                                format!("{} declaring the field \"{field_name}\" as public in \"{struct_name}\": `pub {field_name}: ...,`.",
+                                    if matches!(usage_context, PatternMatching { has_rest_pattern } if !has_rest_pattern) {
+                                        "Alternatively, consider"
+                                    } else {
+                                        "Consider"
+                                    }
+                                )
+                            },
+                            // For all other usages, detailed instructions are already given in specific messages.
+                            _ => Diagnostic::help_none(),
+                        }
+                    } else {
+                        Diagnostic::help_none()
+                    },
+                ],
             },            
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
@@ -1611,6 +1670,19 @@ pub enum TypeNotAllowedReason {
 
     #[error("`str` or a type containing `str` on `const` is not allowed.")]
     StringSliceInConst,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum StructFieldUsageContext {
+    StructInstantiation,
+    StorageDeclaration,
+    StorageAccess,
+    PatternMatching { has_rest_pattern: bool },
+    StructFieldAccess,
+    // TODO: Distinguish between struct filed access and destructing
+    //       once https://github.com/FuelLabs/sway/issues/5478 is implemented
+    //       and provide specific suggestions for these two cases.
+    //       (Destructing desugars to plain struct field access.)
 }
 
 /// Returns the file name (with extension) for the provided `source_id`,

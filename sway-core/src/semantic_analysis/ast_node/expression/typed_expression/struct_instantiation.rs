@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use sway_error::{
-    error::CompileError,
+    error::{CompileError, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{Ident, Span, Spanned};
@@ -176,9 +176,8 @@ pub(crate) fn struct_instantiation(
                         struct_name: struct_name.clone(),
                         span: field.name.span(),
                         field_decl_span: ty_field.name.span(),
-                        // Suppress struct changing suggestions, because we already gave them in the
-                        // StructCannotBeInstantiated error.
-                        struct_can_be_adapted: false,
+                        struct_can_be_adapted,
+                        usage_context: StructFieldUsageContext::StructInstantiation,
                     });
                 }
             }

@@ -1,7 +1,7 @@
 use std::hash::{Hash, Hasher};
 
 use sway_error::{
-    error::CompileError,
+    error::{CompileError, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{state::StateIndex, Ident, Named, Span, Spanned};
@@ -125,6 +125,7 @@ impl TyStorageDecl {
                             span: field.span(),
                             field_decl_span: struct_field.name.span(),
                             struct_can_be_adapted,
+                            usage_context: StructFieldUsageContext::StorageAccess,
                         }));
                     }
 

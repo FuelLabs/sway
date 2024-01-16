@@ -6,7 +6,7 @@ use crate::{
     Ident, Namespace, error::module_can_be_adapted,
 };
 use sway_error::{
-    error::CompileError,
+    error::{CompileError, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{integer_bits::IntegerBits, span::Span, SourceId, Spanned};
@@ -1284,6 +1284,7 @@ impl TypeInfo {
                                 span: first.span(),
                                 field_decl_span: field.name.span(),
                                 struct_can_be_adapted,
+                                usage_context: StructFieldUsageContext::StructFieldAccess,
                             }));
                         }
 
