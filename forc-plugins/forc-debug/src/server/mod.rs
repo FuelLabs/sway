@@ -48,9 +48,7 @@ enum AdapterError {
     MissingConfigurationError,
 
     #[error("Missing source map")]
-    MissingSourceMapError {
-        pc: u64
-    },
+    MissingSourceMapError { pc: u64 },
 
     #[error("Unknown breakpoint")]
     UnknownBreakpointError,
@@ -83,7 +81,7 @@ pub struct DapServer {
     current_breakpoint_id: Option<i64>,
     program_path: Option<PathBuf>,
     executors: Vec<TestExecutor>,
-    test_results: HashMap<String, forc_test::TestResult>,
+    test_results: Vec< forc_test::TestResult>,
 }
 
 pub type Line = i64;
@@ -146,7 +144,7 @@ impl DapServer {
     }
 
     fn handle(&mut self, req: Request) -> DynResult<Response> {
-        self.log(format!("{:?}\n", req));
+        // self.log(format!("{:?}\n", req));
 
         let rsp = match req.command {
             Command::Attach(_) => {
@@ -154,23 +152,6 @@ impl DapServer {
                 Ok(ResponseBody::Attach)
             }
             Command::BreakpointLocations(ref args) => {
-                // Add this breakpoint if we don't already have it
-                match self.breakpoints.iter().find(|bp| {
-                    if let Some(source) = &bp.source {
-                        if let Some(line) = bp.line {
-                            if args.source.path == source.path && args.line == line {
-                                return true;
-                            }
-                        }
-                    }
-                    false
-                }) {
-                    Some(_) => {}
-                    None => {
-                        self.log(format!("bp locations bp did not exist!\n\n"));
-                    }
-                }
-
                 let breakpoints = self
                     .breakpoints
                     .iter()
@@ -353,7 +334,8 @@ impl DapServer {
             })),
             Command::Variables(ref args) => {
                 let variables = self
-                    .executors.get_mut(0)
+                    .executors
+                    .get_mut(0)
                     .as_ref()
                     .map(|executor| {
                         let mut i = 0;
@@ -387,7 +369,7 @@ impl DapServer {
             _ => Err(AdapterError::UnhandledCommandError),
         };
 
-        self.log(format!("{:?}\n", rsp));
+        // self.log(format!("{:?}\n", rsp));
 
         match rsp {
             Ok(rsp) => Ok(req.success(rsp)),
@@ -410,6 +392,32 @@ impl DapServer {
             category: Some(types::OutputEventCategory::Stderr),
             ..Default::default()
         }));
+    }
+
+    fn log_test_results(&mut self) {
+        let results = self
+            .test_results
+            .iter()
+            .map(|result| {
+                let outcome = match result.passed() {
+                    true => "ok",
+                    false => "failed",
+                };
+
+                format!("test {} ... {} ({}ms, {} gas)", result.name, outcome, result.duration.as_millis(), result.gas_used)
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        let final_outcome = match self.test_results.iter().any(|r| !r.passed()) {
+            true => "FAILED",
+            false => "OK",
+        };
+        let passed = self.test_results.iter().filter(|r| r.passed()).count();
+        let failed = self.test_results.iter().filter(|r| !r.passed()).count();
+        self.log(format!(
+            "{}\nResult: {}. {} passed. {} failed.\n",
+            results, final_outcome, passed, failed
+        ));
     }
 
     /// Sends the 'exited' event to the client and kills the server process.

@@ -32,23 +32,15 @@ use thiserror::Error;
 impl DapServer {
     /// Handle a `continue` request. Returns true if the server should continue running.
     pub(crate) fn handle_continue(&mut self) -> Result<bool, AdapterError> {
-        self.log("continue!\n\n".into());
-
         // Set all breakpoints in the VM
         self.update_vm_breakpoints();
-
-        self.log("BPs updated".into());
 
         if let Some(executor) = self.executors.get_mut(0) {
             let program_path = self.program_path.clone().unwrap();
 
-            // self.log(format!("executor {:?}\n\n", executor.name.clone()).into());
-            // self.log(format!("self.executors.count {:?}\n\n", self.executors.len()).into());
-            // self.log(format!("self.executors {:?}\n\n", self.executors.iter().map(|e| e.name.clone()).collect::<Vec<_>>()).into());
-
             match executor.continue_debugging()? {
                 DebugResult::TestComplete(result) => {
-                    self.test_results.insert(executor.name.clone(), result);
+                    self.test_results.push( result);
                 }
 
                 DebugResult::Breakpoint(pc) => {
@@ -62,7 +54,7 @@ impl DapServer {
         while let Some(next_test_executor) = self.executors.get_mut(0) {
             match next_test_executor.start_debugging()? {
                 DebugResult::TestComplete(result) => {
-                    self.test_results.insert(next_test_executor.name.clone(), result);
+                    self.test_results.push( result);
                 }
                 DebugResult::Breakpoint(pc) => {
                     return self.send_stopped_event(pc);
@@ -71,11 +63,7 @@ impl DapServer {
             self.executors.remove(0);
         }
 
-        self.log(format!(
-            "finished continue executing {} tests, results: {:?}\n\n",
-            self.test_results.len(),
-            self.test_results
-        ));
+             self.log_test_results();
         return Ok(false);
     }
 }

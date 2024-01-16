@@ -32,8 +32,6 @@ use thiserror::Error;
 impl DapServer {
     /// Handle a `launch` request. Returns true if the server should continue running.
     pub(crate) fn handle_launch(&mut self, program_path: PathBuf) -> Result<bool, AdapterError> {
-        self.log("launch!\n\n".into());
-
         // 1. Build the packages
         let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&program_path)
             .map_err(|_| AdapterError::BuildError)?;
@@ -166,8 +164,6 @@ impl DapServer {
                     .expect("test instruction offset out of range");
                 let name = entry.finalized.fn_name.clone();
                 if let Ok(test_setup) = pkg_tests.setup() {
-                    self.log(format!("creating executor for test: {}\n", name.clone()));
-                    // TODO: print test output to terminal
 
                     return Some(TestExecutor::new(
                         &pkg_to_debug.bytecode.bytes,
@@ -183,23 +179,6 @@ impl DapServer {
 
         self.executors = executors;
 
-        // for (entry, test_entry) in entries {
-        //     // Execute the test and return the result.
-        //     let offset =
-        //         u32::try_from(entry.finalized.imm).expect("test instruction offset out of range");
-        //     let name = entry.finalized.fn_name.clone();
-        //     let test_setup = pkg_tests.setup()?;
-        //     self.log(format!("executing test: {}\n", name.clone()));
-        //     // TODO: print test output to terminal
-
-        //     self.test_executor = Some(TestExecutor::new(
-        //         &pkg_to_debug.bytecode.bytes,
-        //         offset,
-        //         test_setup,
-        //         test_entry,
-        //         name.clone(),
-        //     ));
-
         // Set all breakpoints in the VM
         self.update_vm_breakpoints();
 
@@ -208,7 +187,7 @@ impl DapServer {
 
             match executor.start_debugging()? {
                 DebugResult::TestComplete(result) => {
-                    self.test_results.insert(executor.name.clone(), result);
+                    self.test_results.push( result);
                 }
                 DebugResult::Breakpoint(pc) => {
                     return self.send_stopped_event(pc);
@@ -216,12 +195,8 @@ impl DapServer {
             };
             self.executors.remove(0);
         }
-        self.log(format!(
-            "finished executing {} tests, results: {:?}\n\n",
-            self.test_results.len(),
-            self.test_results
-        ));
 
+        self.log_test_results();
         return Ok(false);
     }
 }
