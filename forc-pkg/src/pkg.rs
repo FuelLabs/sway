@@ -11,7 +11,7 @@ use forc_util::{
     default_output_directory, find_file_name, kebab_to_snake_case, print_compiling,
     print_on_failure, print_warnings,
 };
-use fuel_abi_types::program_abi;
+use fuel_abi_types::abi::program as program_abi;
 use petgraph::{
     self, dot,
     visit::{Bfs, Dfs, EdgeRef, Walker},
@@ -1834,7 +1834,12 @@ pub fn compile(
                     },
                     engines.te(),
                     engines.de(),
-                    &mut types
+                    &mut types,
+                    if profile.experimental.new_encoding {
+                        "1"
+                    } else {
+                        "0"
+                    }.to_string()
                 ),
                 Some(sway_build_config.clone()),
                 metrics
