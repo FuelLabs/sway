@@ -168,7 +168,7 @@ impl DapServer {
                 u32::try_from(entry.finalized.imm).expect("test instruction offset out of range");
             let name = entry.finalized.fn_name.clone();
             let test_setup = pkg_tests.setup()?;
-            // self.log(format!("executing test: {}\n", name));
+            self.log(format!("executing test: {}\n", name.clone()));
             // TODO: print test output to terminal
 
             self.test_executor = Some(TestExecutor::new(
@@ -176,28 +176,18 @@ impl DapServer {
                 offset,
                 test_setup,
                 test_entry,
-                name,
+                name.clone(),
             ));
 
             // Set all breakpoints in the VM
             self.update_vm_breakpoints();
 
             if let Some(executor) = &mut self.test_executor {
-                let opcode_offset = offset as u64 / 4;
-
-                return match executor.start_debugging()? {
+                match executor.start_debugging()? {
                     DebugResult::TestComplete(result) => {
                         test_results.push(result);
-                        self.log(format!(
-                            "finished executing {} tests, results: {:?}\n\n",
-                            test_results.len(),
-                            test_results
-                        ));
 
                         // print_tested_pkg(&tested_pkg, &test_print_opts)?; TODO
-
-                        return Ok(false);
-
                     }
                     DebugResult::Breakpoint(pc) => {
                         let breakpoint_id = self.vm_pc_to_breakpoint_id(pc)?;
@@ -208,6 +198,12 @@ impl DapServer {
                 };
             }
         }
-        return Ok(true);
+        self.log(format!(
+            "finished executing {} tests, results: {:?}\n\n",
+            test_results.len(),
+            test_results
+        ));
+
+        return Ok(false);
     }
 }

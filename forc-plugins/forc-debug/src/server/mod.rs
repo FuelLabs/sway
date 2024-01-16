@@ -1,9 +1,10 @@
 mod handlers;
 use crate::names::register_name;
-use dap::events::{ExitedEventBody, ThreadEventBody, StoppedEventBody};
+use dap::events::{ExitedEventBody, StoppedEventBody, ThreadEventBody};
 use dap::responses::*;
 use dap::{events::OutputEventBody, types::Breakpoint};
 use forc_test::execute::TestExecutor;
+use fuel_vm::fuel_asm::Word;
 use serde::{Deserialize, Serialize};
 use std::fmt::format;
 use std::{
@@ -47,7 +48,9 @@ enum AdapterError {
     MissingConfigurationError,
 
     #[error("Missing source map")]
-    MissingSourceMapError,
+    MissingSourceMapError {
+        pc: u64
+    },
 
     #[error("Unknown breakpoint")]
     UnknownBreakpointError,
@@ -120,9 +123,16 @@ impl DapServer {
                         if let Some(StartDebuggingRequestKind::Launch) = self.mode {
                             if let Some(program_path) = &self.program_path {
                                 self.started_debugging = true;
-                                if !self.handle_launch(program_path.clone())? {
-                                    // The tests finished executing
-                                    self.exit(0);
+                                match self.handle_launch(program_path.clone()) {
+                                    Ok(true) => {}
+                                    Ok(false) => {
+                                        // The tests finished executing
+                                        self.exit(0);
+                                    }
+                                    Err(e) => {
+                                        self.error(format!("launch error: {:?}", e));
+                                        self.exit(1);
+                                    }
                                 }
                             }
                         }
@@ -383,6 +393,15 @@ impl DapServer {
         }));
     }
 
+    /// Logs an error message to the client's debugger console output.
+    fn error(&mut self, output: String) {
+        let _ = self.server.send_event(Event::Output(OutputEventBody {
+            output,
+            category: Some(types::OutputEventCategory::Stderr),
+            ..Default::default()
+        }));
+    }
+
     /// Sends the 'exited' event to the client and kills the server process.
     fn exit(&mut self, exit_code: i64) {
         let _ = self
@@ -396,7 +415,7 @@ impl DapServer {
         if let Some(executor) = &mut self.test_executor {
             if let Some(program_path) = &self.program_path {
                 // Divide by 4 to get the opcode offset rather than the program counter offset.
-                let opcode_offset = executor.test_offset as u64 / 4;
+                let opcode_offset = (executor.test_offset as u64) / 4;
 
                 self.breakpoints.iter().for_each(|bp| {
                     // When the breakpoint is applied, $is is added. We only need to provide the index of the instruction
@@ -421,11 +440,12 @@ impl DapServer {
             if let Some(program_path) = &self.program_path {
                 if let Some(source_map) = &self.source_map.get(program_path) {
                     // Divide by 4 to get the opcode offset rather than the program counter offset.
-                    let instruction_offset = (pc - executor.test_offset as u64) / 4;
+                    let instruction_offset = (pc - executor.test_offset as u64) / 4; // TODO: fix offset for 2nd or 3rd test
 
                     let (line, _) = source_map
                         .iter()
-                        .find(|(_, pc)| **pc == instruction_offset).ok_or(AdapterError::MissingSourceMapError)?;
+                        .find(|(_, pc)| **pc == instruction_offset)
+                        .ok_or(AdapterError::MissingSourceMapError { pc })?;
 
                     let breakpoint_id = self
                         .breakpoints

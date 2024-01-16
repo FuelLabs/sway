@@ -42,8 +42,6 @@ impl DapServer {
         if let Some(executor) = &mut self.test_executor {
             // let mut executor = self.test_executor.as_mut().unwrap();
 
-            let opcode_offset = executor.test_offset as u64 / 4;
-
             let program_path = self.program_path.clone().unwrap();
 
             return match executor.continue_debugging()? {
