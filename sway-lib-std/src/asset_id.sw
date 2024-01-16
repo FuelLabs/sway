@@ -167,7 +167,7 @@ impl AssetId {
     /// # Examples
     ///
     /// ```sway
-    /// use std::{constants::ZERO_B256, token::transfer};
+    /// use std::{constants::ZERO_B256, asset::transfer};
     ///
     /// fn foo() {
     ///     let asset_id = AssetId::base_asset_id();

@@ -2,13 +2,14 @@
 
 use sway_types::SourceEngine;
 
-use crate::{context::Context, error::IrError};
+use crate::{context::Context, error::IrError, ExperimentalFlags};
 
 // -------------------------------------------------------------------------------------------------
 /// Parse a string produced by [`crate::printer::to_string`] into a new [`Context`].
 pub fn parse<'eng>(
     input: &str,
     source_engine: &'eng SourceEngine,
+    experimental: ExperimentalFlags,
 ) -> Result<Context<'eng>, IrError> {
     let irmod = ir_builder::parser::ir_descrs(input).map_err(|err| {
         let found = if input.len() - err.location.offset <= 20 {
@@ -18,7 +19,7 @@ pub fn parse<'eng>(
         };
         IrError::ParseFailure(err.to_string(), found.into())
     })?;
-    ir_builder::build_context(irmod, source_engine)?.verify()
+    ir_builder::build_context(irmod, source_engine, experimental)?.verify()
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -651,7 +652,7 @@ mod ir_builder {
         metadata::{MetadataIndex, Metadatum},
         module::{Kind, Module},
         value::Value,
-        BinaryOpKind, BlockArgument, Instruction, UnaryOpKind, B256,
+        BinaryOpKind, BlockArgument, ExperimentalFlags, Instruction, UnaryOpKind, B256,
     };
 
     #[derive(Debug)]
@@ -916,8 +917,9 @@ mod ir_builder {
     pub(super) fn build_context(
         ir_ast_mod: IrAstModule,
         source_engine: &SourceEngine,
+        experimental: ExperimentalFlags,
     ) -> Result<Context, IrError> {
-        let mut ctx = Context::new(source_engine);
+        let mut ctx = Context::new(source_engine, experimental);
         let md_map = build_metadata_map(&mut ctx, ir_ast_mod.metadata);
         let module = Module::new(&mut ctx, ir_ast_mod.kind);
         let mut builder = IrBuilder {

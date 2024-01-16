@@ -2205,26 +2205,26 @@ fn check_asm_block_validity(
 
     // Check #1: Disallow control flow instructions
     //
-    for err in opcodes
-        .iter()
-        .filter(|op| {
-            matches!(
-                op.0,
-                VirtualOp::JMP(_)
-                    | VirtualOp::JI(_)
-                    | VirtualOp::JNE(..)
-                    | VirtualOp::JNEI(..)
-                    | VirtualOp::JNZI(..)
-                    | VirtualOp::RET(_)
-                    | VirtualOp::RETD(..)
-                    | VirtualOp::RVRT(..)
-            )
-        })
-        .map(|op| CompileError::DisallowedControlFlowInstruction {
-            name: op.1.to_string(),
-            span: op.2.clone(),
-        })
-    {
+    for err in opcodes.iter().filter_map(|op| {
+        if matches!(
+            op.0,
+            VirtualOp::JMP(_)
+                | VirtualOp::JI(_)
+                | VirtualOp::JNE(..)
+                | VirtualOp::JNEI(..)
+                | VirtualOp::JNZI(..)
+                | VirtualOp::RET(_)
+                | VirtualOp::RETD(..)
+                | VirtualOp::RVRT(..)
+        ) {
+            Some(CompileError::DisallowedControlFlowInstruction {
+                name: op.1.to_string(),
+                span: op.2.clone(),
+            })
+        } else {
+            None
+        }
+    }) {
         handler.emit_err(err);
     }
 
@@ -2234,8 +2234,13 @@ fn check_asm_block_validity(
     let initialized_registers = asm
         .registers
         .iter()
-        .filter(|reg| reg.initializer.is_some())
-        .map(|reg| VirtualRegister::Virtual(reg.name.to_string()))
+        .filter_map(|reg| {
+            if reg.initializer.is_some() {
+                Some(VirtualRegister::Virtual(reg.name.to_string()))
+            } else {
+                None
+            }
+        })
         .collect::<FxHashSet<_>>();
 
     // 2. From the list of `VirtualOp`s, figure out what registers are assigned
@@ -2254,18 +2259,18 @@ fn check_asm_block_validity(
 
     // 4. Form all the compile errors given the violating registers above. Obtain span information
     //    from the original `asm.registers` vector.
-    for err in asm
-        .registers
-        .iter()
-        .filter(|reg| {
-            initialized_and_assigned_registers
-                .contains(&VirtualRegister::Virtual(reg.name.to_string()))
-        })
-        .map(|reg| CompileError::InitializedRegisterReassignment {
-            name: reg.name.to_string(),
-            span: reg.name.span(),
-        })
-    {
+    for err in asm.registers.iter().filter_map(|reg| {
+        if initialized_and_assigned_registers
+            .contains(&VirtualRegister::Virtual(reg.name.to_string()))
+        {
+            Some(CompileError::InitializedRegisterReassignment {
+                name: reg.name.to_string(),
+                span: reg.name.span(),
+            })
+        } else {
+            None
+        }
+    }) {
         handler.emit_err(err);
     }
 
@@ -2273,33 +2278,36 @@ fn check_asm_block_validity(
     let mut uninitialized_registers = asm
         .registers
         .iter()
-        .filter(|reg| reg.initializer.is_none())
-        .map(|reg| {
-            let span = reg.name.span();
+        .filter_map(|reg| {
+            if reg.initializer.is_none() {
+                let span = reg.name.span();
 
-            // Emit warning if this register shadows a variable
-            let temp_handler = Handler::default();
-            let decl = ctx.namespace.resolve_call_path(
-                &temp_handler,
-                ctx.engines,
-                &CallPath {
-                    prefixes: vec![],
-                    suffix: sway_types::BaseIdent::new(span.clone()),
-                    is_absolute: true,
-                },
-                None,
-            );
-
-            if let Ok(ty::TyDecl::VariableDecl(decl)) = decl {
-                handler.emit_warn(CompileWarning {
-                    span: span.clone(),
-                    warning_content: Warning::UninitializedAsmRegShadowsVariable {
-                        name: decl.name.clone(),
+                // Emit warning if this register shadows a variable
+                let temp_handler = Handler::default();
+                let decl = ctx.namespace.resolve_call_path(
+                    &temp_handler,
+                    ctx.engines,
+                    &CallPath {
+                        prefixes: vec![],
+                        suffix: sway_types::BaseIdent::new(span.clone()),
+                        is_absolute: true,
                     },
-                });
-            }
+                    None,
+                );
 
-            (VirtualRegister::Virtual(reg.name.to_string()), span)
+                if let Ok(ty::TyDecl::VariableDecl(decl)) = decl {
+                    handler.emit_warn(CompileWarning {
+                        span: span.clone(),
+                        warning_content: Warning::UninitializedAsmRegShadowsVariable {
+                            name: decl.name.clone(),
+                        },
+                    });
+                }
+
+                Some((VirtualRegister::Virtual(reg.name.to_string()), span))
+            } else {
+                None
+            }
         })
         .collect::<HashMap<_, _>>();
 

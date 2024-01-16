@@ -101,10 +101,12 @@ impl TyDecl {
                 let call_path = enum_decl.call_path.clone();
                 let decl: ty::TyDecl = decl_engine.insert(enum_decl).into();
                 ctx.insert_symbol(handler, call_path.suffix, decl.clone())?;
+
                 decl
             }
             parsed::Declaration::FunctionDeclaration(fn_decl) => {
                 let span = fn_decl.span.clone();
+
                 let mut ctx =
                     ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
                 let fn_decl = match ty::TyFunctionDecl::type_check(
@@ -117,6 +119,7 @@ impl TyDecl {
                     Ok(res) => res,
                     Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                 };
+
                 let name = fn_decl.name.clone();
                 let decl: ty::TyDecl = decl_engine.insert(fn_decl).into();
                 let _ = ctx.insert_symbol(handler, name, decl.clone());
@@ -187,6 +190,7 @@ impl TyDecl {
                 } else {
                     &emp_vec
                 };
+
                 ctx.insert_trait_implementation(
                     handler,
                     impl_trait.trait_name.clone(),
@@ -237,16 +241,19 @@ impl TyDecl {
             }
             parsed::Declaration::StructDeclaration(decl) => {
                 let span = decl.span.clone();
-                let decl = match ty::TyStructDecl::type_check(handler, ctx.by_ref(), decl) {
-                    Ok(res) => res,
-                    Err(err) => {
-                        return Ok(ty::TyDecl::ErrorRecovery(span, err));
-                    }
-                };
+                let decl: ty::TyStructDecl =
+                    match ty::TyStructDecl::type_check(handler, ctx.by_ref(), decl) {
+                        Ok(res) => res,
+                        Err(err) => {
+                            return Ok(ty::TyDecl::ErrorRecovery(span, err));
+                        }
+                    };
                 let call_path = decl.call_path.clone();
                 let decl: ty::TyDecl = decl_engine.insert(decl).into();
+
                 // insert the struct decl into namespace
                 ctx.insert_symbol(handler, call_path.suffix, decl.clone())?;
+
                 decl
             }
             parsed::Declaration::AbiDeclaration(abi_decl) => {

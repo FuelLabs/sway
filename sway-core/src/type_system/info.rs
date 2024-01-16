@@ -1486,6 +1486,10 @@ impl TypeInfo {
             })),
         }
     }
+
+    pub fn is_unknown_generic(&self) -> bool {
+        matches!(self, TypeInfo::UnknownGeneric { .. })
+    }
 }
 
 fn print_inner_types(

@@ -6,7 +6,7 @@ use anyhow::Result;
 use clap::Parser;
 use forc_tracing::init_tracing_subscriber;
 use std::str::FromStr;
-use sway_core::BuildTarget;
+use sway_core::{BuildTarget, ExperimentalFlags};
 use tracing::Instrument;
 
 #[derive(Parser)]
@@ -50,6 +50,10 @@ struct Cli {
     /// Build target.
     #[arg(long, visible_alias = "target")]
     build_target: Option<String>,
+
+    /// Experimental flag for new encoding
+    #[arg(long)]
+    experimental_new_encoding: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -68,6 +72,7 @@ pub struct RunConfig {
     pub locked: bool,
     pub verbose: bool,
     pub release: bool,
+    pub experimental: ExperimentalFlags,
 }
 
 #[tokio::main]
@@ -96,6 +101,9 @@ async fn main() -> Result<()> {
         verbose: cli.verbose,
         release: cli.release,
         build_target,
+        experimental: sway_core::ExperimentalFlags {
+            new_encoding: cli.experimental_new_encoding,
+        },
     };
 
     // Check that the tests are consistent
@@ -109,9 +117,15 @@ async fn main() -> Result<()> {
     // Run IR tests
     if !filter_config.first_only {
         println!("\n");
-        ir_generation::run(filter_config.include.as_ref(), cli.verbose)
-            .instrument(tracing::trace_span!("IR"))
-            .await?;
+        ir_generation::run(
+            filter_config.include.as_ref(),
+            cli.verbose,
+            sway_ir::ExperimentalFlags {
+                new_encoding: run_config.experimental.new_encoding,
+            },
+        )
+        .instrument(tracing::trace_span!("IR"))
+        .await?;
     }
 
     Ok(())

@@ -20,7 +20,7 @@ fn main() -> bool {
     }();
     assert(returned_contract_id.into() == other_contract_id.into());
 
-    // @todo set up a test contract to mint some tokens for testing balances.
+    // @todo set up a test contract to mint some assets for testing balances.
     // test Context::this_balance():
     let returned_this_balance = test_contract.get_this_balance {
         gas: gas,

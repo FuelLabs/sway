@@ -856,6 +856,12 @@ impl From<Vec<u8>> for Bytes {
     }
 }
 
+impl AbiEncode for Bytes {
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        buffer.push(self.as_raw_slice());
+    }
+}
+
 // Tests
 //
 fn setup() -> (Bytes, u8, u8, u8) {

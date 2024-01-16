@@ -18,7 +18,7 @@ abigen!(
     ),
     Contract(
         name = "FuelCoin",
-        abi = "test_projects/token_ops/out/debug/token_ops-abi.json"
+        abi = "test_projects/asset_ops/out/debug/asset_ops-abi.json"
     )
 );
 

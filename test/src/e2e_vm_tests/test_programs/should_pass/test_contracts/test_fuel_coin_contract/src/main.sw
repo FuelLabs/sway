@@ -1,6 +1,6 @@
 contract;
 
-use std::{constants::ZERO_B256, token::{burn, force_transfer_to_contract, mint}};
+use std::{constants::ZERO_B256, asset::{burn, force_transfer_to_contract, mint}};
 use test_fuel_coin_abi::*;
 
 impl TestFuelCoin for Contract {

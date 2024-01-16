@@ -78,4 +78,7 @@ pub struct Command {
     /// ]
     #[clap(long, verbatim_doc_comment, name = "JSON_FILE_PATH")]
     pub override_storage_slots: Option<String>,
+
+    #[clap(long)]
+    pub experimental_new_encoding: bool,
 }

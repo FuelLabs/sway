@@ -1,6 +1,9 @@
 use crate::{
     lock::Lock,
-    manifest::{BuildProfile, Dependency, ManifestFile, MemberManifestFiles, PackageManifestFile},
+    manifest::{
+        BuildProfile, Dependency, ExperimentalFlags, ManifestFile, MemberManifestFiles,
+        PackageManifestFile,
+    },
     source::{self, IPFSNode, Source},
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
@@ -308,6 +311,8 @@ pub struct BuildOpts {
     pub tests: bool,
     /// The set of options to filter by member project kind.
     pub member_filter: MemberFilter,
+    /// Set of experimental flags
+    pub experimental: ExperimentalFlags,
 }
 
 /// The set of options to filter type of projects to build in a workspace.
@@ -1551,15 +1556,18 @@ pub fn sway_build_config(
         manifest_dir.to_path_buf(),
         build_target,
     )
-    .print_dca_graph(build_profile.print_dca_graph.clone())
-    .print_dca_graph_url_format(build_profile.print_dca_graph_url_format.clone())
-    .print_finalized_asm(build_profile.print_finalized_asm)
-    .print_intermediate_asm(build_profile.print_intermediate_asm)
-    .print_ir(build_profile.print_ir)
-    .include_tests(build_profile.include_tests)
-    .time_phases(build_profile.time_phases)
-    .metrics(build_profile.metrics_outfile.clone())
-    .optimization_level(build_profile.optimization_level);
+    .with_print_dca_graph(build_profile.print_dca_graph.clone())
+    .with_print_dca_graph_url_format(build_profile.print_dca_graph_url_format.clone())
+    .with_print_finalized_asm(build_profile.print_finalized_asm)
+    .with_print_intermediate_asm(build_profile.print_intermediate_asm)
+    .with_print_ir(build_profile.print_ir)
+    .with_include_tests(build_profile.include_tests)
+    .with_time_phases(build_profile.time_phases)
+    .with_metrics(build_profile.metrics_outfile.clone())
+    .with_optimization_level(build_profile.optimization_level);
+    .with_experimental(sway_core::ExperimentalFlags {
+        new_encoding: build_profile.experimental.new_encoding,
+    });
     Ok(build_config)
 }
 
@@ -2032,6 +2040,7 @@ fn build_profile_from_opts(
         metrics_outfile,
         tests,
         error_on_warnings,
+        experimental,
         ..
     } = build_options;
     let mut selected_build_profile = BuildProfile::DEBUG;
@@ -2085,6 +2094,7 @@ fn build_profile_from_opts(
     profile.include_tests |= tests;
     profile.json_abi_with_callpaths |= pkg.json_abi_with_callpaths;
     profile.error_on_warnings |= error_on_warnings;
+    profile.experimental = experimental.clone();
 
     Ok((selected_build_profile.to_string(), profile))
 }
@@ -2628,7 +2638,7 @@ pub fn check(
             build_target,
             &profile,
         )?
-        .include_tests(include_tests);
+        .with_include_tests(include_tests);
 
         let input = manifest.entry_string()?;
         let handler = Handler::default();
