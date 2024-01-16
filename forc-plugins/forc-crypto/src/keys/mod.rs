@@ -1,8 +1,8 @@
 use clap::ValueEnum;
 
+pub mod get_public_key;
 pub mod new_key;
 pub mod parse_secret;
-pub mod recover;
 
 #[derive(Clone, Debug, Default, ValueEnum)]
 pub enum KeyType {

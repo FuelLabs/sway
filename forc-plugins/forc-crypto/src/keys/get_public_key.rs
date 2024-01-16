@@ -5,7 +5,7 @@ use fuels_core::types::bech32::Bech32Address;
 use serde_json::json;
 
 forc_util::cli_examples! {
-    [ Recovers a public key from a message and its signature => crypto r#"recover-public-key \
+    [ Get the public key from a message and its signature => crypto r#"get-public-key \
         0xb0b2f29b52d95c1cba47ea7c7edeec6c84a0bd196df489e219f6f388b69d760479b994f4bae2d5f2abef7d5faf7d9f5ee3ea47ada4d15b7a7ee2777dcd7b36bb \
         "Blah blah blah""#]
 }
@@ -15,7 +15,7 @@ forc_util::cli_examples! {
 #[clap(
     author,
     version,
-    about = "Recovers a public key from a message and its signature",
+    about = "Get the public key from a message and its signature",
     after_long_help = help(),
 )]
 pub struct Arg {

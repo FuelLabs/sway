@@ -26,7 +26,7 @@ fn help() -> &'static str {
             address::examples(),
             keys::new_key::examples(),
             keys::parse_secret::examples(),
-            keys::recover::examples(),
+            keys::get_public_key::examples(),
         )
         .into_boxed_str(),
     )
@@ -43,7 +43,7 @@ pub enum Command {
     Keccak256(args::HashArgs),
     Sha256(args::HashArgs),
     Address(address::Args),
-    RecoverPublicKey(keys::recover::Arg),
+    GetPublicKey(keys::get_public_key::Arg),
     NewKey(keys::new_key::Arg),
     ParseSecret(keys::parse_secret::Arg),
 }
@@ -60,7 +60,7 @@ fn run() -> Result<()> {
     let app = Command::parse();
     let content = match app {
         Command::Keccak256(arg) => keccak256::hash(arg)?,
-        Command::RecoverPublicKey(arg) => keys::recover::handler(arg)?,
+        Command::GetPublicKey(arg) => keys::get_public_key::handler(arg)?,
         Command::Sha256(arg) => sha256::hash(arg)?,
         Command::Address(arg) => address::dump_address(arg.address)?,
         Command::NewKey(arg) => keys::new_key::handler(arg)?,
