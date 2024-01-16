@@ -122,9 +122,10 @@ impl ty::TyAbiDecl {
                     ));
                     method.name.clone()
                 }
-                TraitItem::Constant(const_decl) => {
+                TraitItem::Constant(decl_id) => {
+                    let const_decl = engines.pe().get_constant(&decl_id).as_ref().clone();
                     let const_decl =
-                        ty::TyConstantDecl::type_check(handler, ctx.by_ref(), const_decl.clone())?;
+                        ty::TyConstantDecl::type_check(handler, ctx.by_ref(), const_decl)?;
                     let decl_ref = ctx.engines.de().insert(const_decl.clone());
                     new_interface_surface
                         .push(ty::TyTraitInterfaceItem::Constant(decl_ref.clone()));

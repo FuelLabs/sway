@@ -887,7 +887,7 @@ pub(crate) fn item_const_to_constant_declaration(
     item_const: ItemConst,
     attributes: AttributesMap,
     require_expression: bool,
-) -> Result<ConstantDeclaration, ErrorEmitted> {
+) -> Result<ParsedDeclId<ConstantDeclaration>, ErrorEmitted> {
     let span = item_const.span();
 
     let expr = match item_const.expr_opt {
@@ -917,7 +917,7 @@ pub(crate) fn item_const_to_constant_declaration(
         }
     };
 
-    Ok(ConstantDeclaration {
+    let const_decl = ConstantDeclaration {
         name: item_const.name,
         type_ascription,
         value: expr,
@@ -925,7 +925,10 @@ pub(crate) fn item_const_to_constant_declaration(
         is_configurable: false,
         attributes,
         span,
-    })
+    };
+    let const_decl = engines.pe().insert(const_decl);
+
+    Ok(const_decl)
 }
 
 pub(crate) fn trait_type_to_trait_type_declaration(
@@ -1008,7 +1011,7 @@ fn item_configurable_to_constant_declarations(
     engines: &Engines,
     item_configurable: ItemConfigurable,
     _attributes: AttributesMap,
-) -> Result<Vec<ConstantDeclaration>, ErrorEmitted> {
+) -> Result<Vec<ParsedDeclId<ConstantDeclaration>>, ErrorEmitted> {
     let mut errors = Vec::new();
 
     if context.module_has_configurable_block() {
@@ -1017,7 +1020,7 @@ fn item_configurable_to_constant_declarations(
         });
     }
 
-    let declarations: Vec<ConstantDeclaration> = item_configurable
+    let declarations: Vec<ParsedDeclId<ConstantDeclaration>> = item_configurable
         .fields
         .into_inner()
         .into_iter()
@@ -1040,7 +1043,8 @@ fn item_configurable_to_constant_declarations(
 
     // Make sure each configurable is declared once
     let mut names_of_declarations = std::collections::HashSet::new();
-    declarations.iter().for_each(|v| {
+    declarations.iter().for_each(|decl_id| {
+        let v = engines.pe().get_constant(decl_id);
         if !names_of_declarations.insert(v.name.clone()) {
             errors.push(ConvertParseTreeError::DuplicateConfigurable {
                 name: v.name.clone(),
@@ -2419,10 +2423,9 @@ fn configurable_field_to_constant_declaration(
     engines: &Engines,
     configurable_field: sway_ast::ConfigurableField,
     attributes: AttributesMap,
-) -> Result<ConstantDeclaration, ErrorEmitted> {
+) -> Result<ParsedDeclId<ConstantDeclaration>, ErrorEmitted> {
     let span = configurable_field.name.span();
-
-    Ok(ConstantDeclaration {
+    let const_decl = ConstantDeclaration {
         name: configurable_field.name,
         type_ascription: ty_to_type_argument(context, handler, engines, configurable_field.ty)?,
         value: Some(expr_to_expression(
@@ -2435,7 +2438,9 @@ fn configurable_field_to_constant_declaration(
         is_configurable: true,
         attributes,
         span,
-    })
+    };
+    let const_decl = engines.pe().insert(const_decl);
+    Ok(const_decl)
 }
 
 fn statement_to_ast_nodes(

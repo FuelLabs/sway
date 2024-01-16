@@ -75,7 +75,8 @@ impl TyDecl {
                 ctx.insert_symbol(handler, var_decl.name.clone(), typed_var_decl.clone())?;
                 typed_var_decl
             }
-            parsed::Declaration::ConstantDeclaration(decl) => {
+            parsed::Declaration::ConstantDeclaration(decl_id) => {
+                let decl = engines.pe().get_constant(&decl_id).as_ref().clone();
                 let span = decl.span.clone();
                 let const_decl = match ty::TyConstantDecl::type_check(handler, ctx.by_ref(), decl) {
                     Ok(res) => res,
