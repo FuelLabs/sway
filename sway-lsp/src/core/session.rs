@@ -24,7 +24,7 @@ use lsp_types::{
 };
 use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, BuildPlan};
-use rayon::iter::{ParallelBridge, ParallelIterator};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
     ops::Deref,
     path::PathBuf,
@@ -561,16 +561,19 @@ fn parse_ast_to_tokens(
     ctx: &ParseContext,
     f: impl Fn(&AstNode, &ParseContext) + Sync,
 ) {
-    let root_nodes = parse_program.root.tree.root_nodes.iter();
-    let sub_nodes = parse_program
+    let nodes = parse_program
         .root
-        .submodules_recursive()
-        .flat_map(|(_, submodule)| &submodule.module.tree.root_nodes);
-
-    root_nodes
-        .chain(sub_nodes)
-        .par_bridge()
-        .for_each(|n| f(n, ctx));
+        .tree
+        .root_nodes
+        .iter()
+        .chain(
+            parse_program
+                .root
+                .submodules_recursive()
+                .flat_map(|(_, submodule)| &submodule.module.tree.root_nodes),
+        )
+        .collect::<Vec<_>>();
+    nodes.par_iter().for_each(|n| f(n, ctx));
 }
 
 /// Parse the [ty::TyProgram] AST to populate the [TokenMap] with typed AST nodes.
@@ -579,13 +582,18 @@ fn parse_ast_to_typed_tokens(
     ctx: &ParseContext,
     f: impl Fn(&ty::TyAstNode, &ParseContext) + Sync,
 ) {
-    let root_nodes = typed_program.root.all_nodes.iter();
-    let sub_nodes = typed_program
+    let nodes = typed_program
         .root
-        .submodules_recursive()
-        .flat_map(|(_, submodule)| submodule.module.all_nodes.iter());
-
-    root_nodes.chain(sub_nodes).for_each(|n| f(n, ctx));
+        .all_nodes
+        .iter()
+        .chain(
+            typed_program
+                .root
+                .submodules_recursive()
+                .flat_map(|(_, submodule)| submodule.module.all_nodes.iter()),
+        )
+        .collect::<Vec<_>>();
+    nodes.par_iter().for_each(|n| f(n, ctx));
 }
 
 #[cfg(test)]
