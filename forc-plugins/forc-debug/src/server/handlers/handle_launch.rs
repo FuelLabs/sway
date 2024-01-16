@@ -1,5 +1,4 @@
 use crate::names::register_index;
-use bimap::BiMap;
 use dap::events::{BreakpointEventBody, OutputEventBody, StoppedEventBody};
 use dap::responses::*;
 use forc_test::execute::{DebugResult, TestExecutor};
@@ -21,13 +20,8 @@ use sway_types::{span::Position, Span};
 use crate::server::{AdapterError, THREAD_ID};
 use crate::{server::DapServer, types::DynResult};
 use dap::prelude::*;
-use forc_pkg::{
-    self, manifest::ManifestFile, BuildProfile, Built, BuiltPackage, PackageManifest,
-    PackageManifestFile,
-};
+use forc_pkg::{self, BuildProfile, Built, BuiltPackage, PackageManifestFile};
 use forc_test::BuiltTests;
-use fuel_vm::prelude::*;
-use thiserror::Error;
 
 impl DapServer {
     /// Handle a `launch` request. Returns true if the server should continue running.
@@ -150,7 +144,6 @@ impl DapServer {
 
         let entries = pkg_to_debug.bytecode.entries.iter().filter_map(|entry| {
             if let Some(test_entry) = entry.kind.test() {
-                let name = entry.finalized.fn_name.clone();
                 return Some((entry, test_entry));
             }
             None
@@ -164,7 +157,6 @@ impl DapServer {
                     .expect("test instruction offset out of range");
                 let name = entry.finalized.fn_name.clone();
                 if let Ok(test_setup) = pkg_tests.setup() {
-
                     return Some(TestExecutor::new(
                         &pkg_to_debug.bytecode.bytes,
                         offset,
@@ -187,7 +179,7 @@ impl DapServer {
 
             match executor.start_debugging()? {
                 DebugResult::TestComplete(result) => {
-                    self.test_results.push( result);
+                    self.test_results.push(result);
                 }
                 DebugResult::Breakpoint(pc) => {
                     return self.send_stopped_event(pc);

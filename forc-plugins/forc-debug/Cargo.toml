@@ -26,7 +26,6 @@ sway-core = { version = "0.48.1", path = "../../sway-core" }
 sway-types = { version = "0.48.1", path = "../../sway-types" }
 thiserror = "1.0"
 tokio = { version = "1.8", features = ["net", "io-util", "macros", "rt-multi-thread"] }
-bimap = {version ="0.6.3", features = ["serde"]}
 rand = "0.8.5"
 
 [dev-dependencies]

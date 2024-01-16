@@ -6,7 +6,7 @@ use forc_debug::{
 };
 use fuel_vm::consts::{VM_MAX_RAM, VM_REGISTER_COUNT, WORD_SIZE};
 use shellfish::{async_fn, Command as ShCommand, Shell};
-use std::{fs, error::Error};
+use std::error::Error;
 
 #[derive(Parser, Debug)]
 pub struct Opt {

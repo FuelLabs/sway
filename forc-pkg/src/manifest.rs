@@ -132,7 +132,9 @@ impl TryInto<PackageManifestFile> for ManifestFile {
     fn try_into(self) -> Result<PackageManifestFile> {
         match self {
             ManifestFile::Package(pkg_manifest_file) => Ok(*pkg_manifest_file),
-            ManifestFile::Workspace(_) => bail!("Cannot convert workspace manifest to package manifest"),
+            ManifestFile::Workspace(_) => {
+                bail!("Cannot convert workspace manifest to package manifest")
+            }
         }
     }
 }
@@ -142,7 +144,9 @@ impl TryInto<WorkspaceManifestFile> for ManifestFile {
 
     fn try_into(self) -> Result<WorkspaceManifestFile> {
         match self {
-            ManifestFile::Package(_) => bail!("Cannot convert package manifest to workspace manifest"),
+            ManifestFile::Package(_) => {
+                bail!("Cannot convert package manifest to workspace manifest")
+            }
             ManifestFile::Workspace(workspace_manifest_file) => Ok(workspace_manifest_file),
         }
     }
@@ -1066,7 +1070,6 @@ pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
 pub fn find_dir_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
     find_within(dir, pkg_name).and_then(|path| path.parent().map(Path::to_path_buf))
 }
-
 
 #[cfg(test)]
 mod tests {

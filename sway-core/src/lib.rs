@@ -38,11 +38,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_ast::AttributeDecl;
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_ir::{
-    create_o1_pass_group, register_known_passes, Context, Kind, Module, PassManager,
-    ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME,
-    MISCDEMOTION_NAME, MODULEPRINTER_NAME, RETDEMOTION_NAME, SIMPLIFYCFG_NAME, SROA_NAME,
-};
+use sway_ir::{register_known_passes, Context, Kind, Module, PassManager};
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
 use sway_types::SourceEngine;
 use sway_utils::{time_expr, PerformanceData, PerformanceMetric};
@@ -737,8 +733,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // errors and then hold as a runtime invariant that none of the types will be unresolved in the
     // IR phase.
 
-    let mut ir = match ir_generation::compile_program(program, build_config.include_tests, engines)
-    {
+    let ir = match ir_generation::compile_program(program, build_config.include_tests, engines) {
         Ok(ir) => ir,
         Err(errors) => {
             let mut last = None;

@@ -17,7 +17,7 @@ use rayon::prelude::*;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::BuildTarget;
 use sway_types::Span;
-use tx::input::contract;
+
 use vm::prelude::SecretKey;
 
 /// The result of a `forc test` invocation.
@@ -247,21 +247,27 @@ impl PackageWithDeploymentToTest {
 /// ordered by deployment order.
 ///
 /// Each dependency package needs to be deployed before executing the test for that package.
-fn get_contract_dependency_map(built: &Built, build_plan: &pkg::BuildPlan) -> ContractDependencyMap {
+fn get_contract_dependency_map(
+    built: &Built,
+    build_plan: &pkg::BuildPlan,
+) -> ContractDependencyMap {
     let built_members: HashMap<&pkg::Pinned, Arc<pkg::BuiltPackage>> =
         built.into_members().collect();
     // For each member node, collect their contract dependencies.
-    build_plan.member_nodes().map(|member_node| {
-        let graph = build_plan.graph();
-        let pinned_member = graph[member_node].clone();
-        let contract_dependencies = build_plan
-            .contract_dependencies(member_node)
-            .map(|contract_depency_node_ix| graph[contract_depency_node_ix].clone())
-            .filter_map(|pinned| built_members.get(&pinned))
-            .cloned()
-            .collect::<Vec<_>>();
-        (pinned_member, contract_dependencies)
-    }).collect()
+    build_plan
+        .member_nodes()
+        .map(|member_node| {
+            let graph = build_plan.graph();
+            let pinned_member = graph[member_node].clone();
+            let contract_dependencies = build_plan
+                .contract_dependencies(member_node)
+                .map(|contract_depency_node_ix| graph[contract_depency_node_ix].clone())
+                .filter_map(|pinned| built_members.get(&pinned))
+                .cloned()
+                .collect::<Vec<_>>();
+            (pinned_member, contract_dependencies)
+        })
+        .collect()
 }
 
 impl BuiltTests {
@@ -408,20 +414,20 @@ impl<'a> PackageTests {
     }
 }
 
-impl Into<pkg::BuildOpts> for TestOpts {
-    fn into(self) -> pkg::BuildOpts {
+impl From<TestOpts> for pkg::BuildOpts {
+    fn from(val: TestOpts) -> Self {
         pkg::BuildOpts {
-            pkg: self.pkg,
-            print: self.print,
-            minify: self.minify,
-            binary_outfile: self.binary_outfile,
-            debug_outfile: self.debug_outfile,
-            build_target: self.build_target,
-            build_profile: self.build_profile,
-            release: self.release,
-            error_on_warnings: self.error_on_warnings,
-            time_phases: self.time_phases,
-            metrics_outfile: self.metrics_outfile,
+            pkg: val.pkg,
+            print: val.print,
+            minify: val.minify,
+            binary_outfile: val.binary_outfile,
+            debug_outfile: val.debug_outfile,
+            build_target: val.build_target,
+            build_profile: val.build_profile,
+            release: val.release,
+            error_on_warnings: val.error_on_warnings,
+            time_phases: val.time_phases,
+            metrics_outfile: val.metrics_outfile,
             tests: true,
             member_filter: Default::default(),
         }
@@ -675,7 +681,7 @@ mod tests {
         match tested {
             crate::Tested::Package(tested_pkg) => Ok(tested_pkg.tests),
             crate::Tested::Workspace(_) => {
-                unreachable!("{test_library} is a package, not a workspace.")
+                unreachable!("test_library is a package, not a workspace.")
             }
         }
     }

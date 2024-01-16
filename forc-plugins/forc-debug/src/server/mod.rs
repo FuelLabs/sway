@@ -1,43 +1,27 @@
 mod handlers;
 use crate::names::register_name;
+use crate::types::DynResult;
 use dap::events::{ExitedEventBody, StoppedEventBody, ThreadEventBody};
+use dap::prelude::*;
 use dap::responses::*;
+use dap::types::{Scope, StartDebuggingRequestKind, Variable};
 use dap::{events::OutputEventBody, types::Breakpoint};
 use forc_test::execute::TestExecutor;
-use fuel_vm::fuel_asm::Word;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::fmt::format;
 use std::{
-    cmp::min,
-    collections::{HashMap, HashSet},
-    fs,
+    collections::HashMap,
     io::{BufReader, BufWriter, Stdin, Stdout},
     path::PathBuf,
     process,
-    sync::Arc,
 };
-use sway_core::source_map::PathIndex;
-use sway_types::{span::Position, Span};
-// use sway_core::source_map::SourceMap;
-use crate::types::DynResult;
-use dap::prelude::*;
-use dap::types::{
-    PresentationHint, Scope, Source, StartDebuggingRequestKind, Variable, VariablePresentationHint,
-};
-use forc_pkg::{
-    self, manifest::ManifestFile, Built, BuiltPackage, PackageManifest, PackageManifestFile,
-};
-use forc_test::execute::DebugResult;
-use fuel_core_client::client::schema::schema::__fields::Mutation::_set_breakpoint_arguments::breakpoint;
-use fuel_vm::consts::VM_REGISTER_COUNT;
-use rand::Rng;
 use thiserror::Error;
 
 pub const THREAD_ID: i64 = 0;
 pub const REGISTERS_VARIABLE_REF: i64 = 1;
 
 #[derive(Error, Debug)]
-enum AdapterError {
+pub(crate) enum AdapterError {
     #[error("Unhandled command")]
     UnhandledCommandError,
 
@@ -81,7 +65,7 @@ pub struct DapServer {
     current_breakpoint_id: Option<i64>,
     program_path: Option<PathBuf>,
     executors: Vec<TestExecutor>,
-    test_results: Vec< forc_test::TestResult>,
+    test_results: Vec<forc_test::TestResult>,
 }
 
 pub type Line = i64;
@@ -218,7 +202,7 @@ impl DapServer {
                 self.program_path = Some(PathBuf::from(data.program));
                 Ok(ResponseBody::Launch)
             }
-            Command::Scopes(ref args) => Ok(ResponseBody::Scopes(responses::ScopesResponse {
+            Command::Scopes(_) => Ok(ResponseBody::Scopes(responses::ScopesResponse {
                 scopes: vec![Scope {
                     name: "Registers".into(),
                     presentation_hint: Some(types::ScopePresentationhint::Registers),
@@ -285,7 +269,7 @@ impl DapServer {
                     },
                 ))
             }
-            Command::StackTrace(ref args) => {
+            Command::StackTrace(_) => {
                 let executor = self.executors.get_mut(0).unwrap();
 
                 // For now, we only return 1 stack frame.
@@ -332,7 +316,7 @@ impl DapServer {
                     name: "main".into(),
                 }],
             })),
-            Command::Variables(ref args) => {
+            Command::Variables(_) => {
                 let variables = self
                     .executors
                     .get_mut(0)
@@ -404,7 +388,13 @@ impl DapServer {
                     false => "failed",
                 };
 
-                format!("test {} ... {} ({}ms, {} gas)", result.name, outcome, result.duration.as_millis(), result.gas_used)
+                format!(
+                    "test {} ... {} ({}ms, {} gas)",
+                    result.name,
+                    outcome,
+                    result.duration.as_millis(),
+                    result.gas_used
+                )
             })
             .collect::<Vec<_>>()
             .join("\n");

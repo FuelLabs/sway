@@ -14,7 +14,7 @@ use fuel_vm::{
 };
 use rand::{Rng, SeedableRng};
 use tx::Receipt;
-use vm::interpreter::ExecutableTransaction;
+
 use vm::state::DebugEval;
 use vm::state::ProgramState;
 use vm::state::StateTransitionRef;
@@ -149,7 +149,9 @@ impl TestExecutor {
         let state = self
             .interpreter
             .resume()
-            .map_err(|err: InterpreterError<_>| anyhow::anyhow!("VM failed to resume. {:?}", err))?;
+            .map_err(|err: InterpreterError<_>| {
+                anyhow::anyhow!("VM failed to resume. {:?}", err)
+            })?;
         if let ProgramState::RunProgram(DebugEval::Breakpoint(breakpoint)) = state {
             // A breakpoint was hit, so we tell the client to stop.
             return Ok(DebugResult::Breakpoint(breakpoint.pc()));

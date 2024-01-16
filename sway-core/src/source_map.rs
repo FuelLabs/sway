@@ -19,7 +19,7 @@ pub struct SourceMap {
     pub dependency_paths: Vec<PathBuf>,
     /// Paths to source code files, defined separately to avoid repetition.
     pub paths: Vec<PathBuf>,
-    /// Mapping from opcode index to source location 
+    /// Mapping from opcode index to source location
     // count of instructions, multiply the opcode by 4 to get the byte offset
     pub map: HashMap<usize, SourceMapSpan>,
 }
