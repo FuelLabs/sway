@@ -13,7 +13,7 @@ For user documentation, including installing release builds, see the Sway Book: 
 
 For Sway Standard library documentation, see: <https://fuellabs.github.io/sway/master/std/>
 
-Also view the technical reference for the Sway programming language: <https://fuellabs.github.io/sway/master/reference/>
+Also view the technical reference for the Sway programming language: <https://docs.fuel.network/docs/sway/reference/>
 
 ## Building from Source
 
@@ -53,4 +53,4 @@ cargo run --bin forc -- --help
 
 We welcome contributions to Sway!
 
-Please see the [Contributing To Sway](https://fuellabs.github.io/sway/master/book/reference/contributing_to_sway.html) section of the Sway book for guidelines and instructions to help you get started.
+Please see the [Contributing To Sway](https://docs.fuel.network/docs/sway/reference/contributing_to_sway/) section of the Sway book for guidelines and instructions to help you get started.
