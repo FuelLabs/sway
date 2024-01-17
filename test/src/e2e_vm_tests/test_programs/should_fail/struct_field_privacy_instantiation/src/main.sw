@@ -65,6 +65,7 @@ fn main() {
 
     let _ = MainStruct { nn: 0, x: 0, y: 0, z: 0 };
     
+    
     MainStruct { x: 0, y: 0, z: 0 }.use_me();
 }
 

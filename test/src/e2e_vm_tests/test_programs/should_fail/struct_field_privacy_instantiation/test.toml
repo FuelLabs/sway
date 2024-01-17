@@ -2,205 +2,205 @@ category = "fail"
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #check: $()let _ = LibOnlyPrivateFields { };
-#nextln: $()"LibOnlyPrivateFields" cannot be instantiated in this module, because it has inaccessible private fields.
+#nextln: $()"LibOnlyPrivateFields" cannot be directly instantiated in this module, due to inaccessible private fields.
 #check: $()Inaccessible fields are "x" and "y".
 #check: $()Struct "LibOnlyPrivateFields" is declared here, and has all private fields.
 #check: $()Consider implementing a public constructor for "LibOnlyPrivateFields".
-#nextln: $()Alternatively, consider declaring all fields as public: `pub <field>: ...,`.
+#nextln: $()Alternatively, consider declaring all fields as public in "LibOnlyPrivateFields": `pub <field>: ...,`.
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #check: $()let _ = LibOnePrivateField { };
-#nextln: $()"LibOnePrivateField" cannot be instantiated in this module, because it has an inaccessible private field.
+#nextln: $()"LibOnePrivateField" cannot be directly instantiated in this module, due to an inaccessible private field.
 #check: $()Struct "LibOnePrivateField" is declared here, and has private field "y".
 #check: $()Consider implementing a public constructor for "LibOnePrivateField".
-#check: $()Alternatively, consider declaring field "y" as public: `pub y: ...,`.
+#check: $()Alternatively, consider declaring the field "y" as public in "LibOnePrivateField": `pub y: ...,`.
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #check: $()let _ = LibTwoPrivateFields { };
-#nextln: $()"LibTwoPrivateFields" cannot be instantiated in this module, because it has inaccessible private fields.
+#nextln: $()"LibTwoPrivateFields" cannot be directly instantiated in this module, due to inaccessible private fields.
 #check: $()Struct "LibTwoPrivateFields" is declared here, and has private fields "y" and "z".
-#check: $()Alternatively, consider declaring fields "y" and "z" as public: `pub <field>: ...,`.
+#check: $()Alternatively, consider declaring the fields "y" and "z" as public in "LibTwoPrivateFields": `pub <field>: ...,`.
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #check: $()let _ = LibThreePrivateFields { };
-#nextln: $()"LibThreePrivateFields" cannot be instantiated in this module, because it has inaccessible private fields.
+#nextln: $()"LibThreePrivateFields" cannot be directly instantiated in this module, due to inaccessible private fields.
 #check: $()Inaccessible fields are "y", "z", and "zz".
 #check: $()Struct "LibThreePrivateFields" is declared here, and has private fields "y", "z", and one more.
-#check: $()Alternatively, consider declaring fields "y", "z", and one more as public: `pub <field>: ...,`.
+#check: $()Alternatively, consider declaring the fields "y", "z", and one more as public in "LibThreePrivateFields": `pub <field>: ...,`.
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #check: $()let _ = LibStruct { };
-#nextln: $()"LibStruct" cannot be instantiated in this module, because it has inaccessible private fields.
+#nextln: $()"LibStruct" cannot be directly instantiated in this module, due to inaccessible private fields.
 #check: $()Inaccessible fields are "y" and "z".
 #check: $()Struct "LibStruct" is declared here, and has private fields "y" and "z".
-#check: $()Alternatively, consider declaring fields "y" and "z" as public: `pub <field>: ...,`.
+#check: $()Alternatively, consider declaring the fields "y" and "z" as public in "LibStruct": `pub <field>: ...,`.
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #check: $()let _ = LibStruct { x: 0 };
-#nextln: $()"LibStruct" cannot be instantiated in this module, because it has inaccessible private fields.
+#nextln: $()"LibStruct" cannot be directly instantiated in this module, due to inaccessible private fields.
 #check: $()Inaccessible fields are "y" and "z".
 #check: $()Struct "LibStruct" is declared here, and has private fields "y" and "z".
-#check: $()Alternatively, consider declaring fields "y" and "z" as public: `pub <field>: ...,`.
+#check: $()Alternatively, consider declaring the fields "y" and "z" as public in "LibStruct": `pub <field>: ...,`.
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #check: $()let _ = LibStruct { x: 0, y: 0, z: 0 };
-#nextln: $()"LibStruct" cannot be instantiated in this module, because it has inaccessible private fields.
+#nextln: $()"LibStruct" cannot be directly instantiated in this module, due to inaccessible private fields.
 #check: $()Inaccessible fields are "y" and "z".
 #check: $()Struct "LibStruct" is declared here, and has private fields "y" and "z".
-#check: $()Alternatively, consider declaring fields "y" and "z" as public: `pub <field>: ...,`.
+#check: $()Alternatively, consider declaring the fields "y" and "z" as public in "LibStruct": `pub <field>: ...,`.
 
 #check: $()Private struct field is inaccessible
 #check: $()let _ = LibStruct { x: 0, y: 0, z: 0 };
-#nextln: $()Private field "y" of the struct "LibStruct" is inaccessible in this module.
+#nextln: $()Private field "y" is inaccessible in this module.
 #check: $()y: u64,
-#nextln: $()Field "y" is declared here as private.
+#nextln: $()Field "y" of the struct "LibStruct" is declared here as private.
 
 #check: $()Private struct field is inaccessible
 #check: $()let _ = LibStruct { x: 0, y: 0, z: 0 };
-#nextln: $()Private field "z" of the struct "LibStruct" is inaccessible in this module.
+#nextln: $()Private field "z" is inaccessible in this module.
 #check: $()z: u64,
-#nextln: $()Field "z" is declared here as private.
+#nextln: $()Field "z" of the struct "LibStruct" is declared here as private.
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #check: $()let _ = LibStruct { nn: 0 };
-#nextln: $()"LibStruct" cannot be instantiated in this module, because it has inaccessible private fields.
+#nextln: $()"LibStruct" cannot be directly instantiated in this module, due to inaccessible private fields.
 #check: $()Inaccessible fields are "y" and "z".
 #check: $()Struct "LibStruct" is declared here, and has private fields "y" and "z".
-#check: $()Alternatively, consider declaring fields "y" and "z" as public: `pub <field>: ...,`.
+#check: $()Alternatively, consider declaring the fields "y" and "z" as public in "LibStruct": `pub <field>: ...,`.
 
 #check: $()let _ = LibStruct { nn: 0 };
 #nextln: $()Struct "LibStruct" does not have field "nn".
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #check: $()let _ = LibStruct { nn: 0, x: 0 };
-#nextln: $()"LibStruct" cannot be instantiated in this module, because it has inaccessible private fields.
+#nextln: $()"LibStruct" cannot be directly instantiated in this module, due to inaccessible private fields.
 #check: $()Inaccessible fields are "y" and "z".
 #check: $()Struct "LibStruct" is declared here, and has private fields "y" and "z".
-#check: $()Alternatively, consider declaring fields "y" and "z" as public: `pub <field>: ...,`.
+#check: $()Alternatively, consider declaring the fields "y" and "z" as public in "LibStruct": `pub <field>: ...,`.
 
 #check: $()let _ = LibStruct { nn: 0, x: 0 };
 #nextln: $()Struct "LibStruct" does not have field "nn".
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #check: $()let _ = LibStruct { nn: 0, x: 0, y: 0, z: 0 };
-#nextln: $()"LibStruct" cannot be instantiated in this module, because it has inaccessible private fields.
+#nextln: $()"LibStruct" cannot be directly instantiated in this module, due to inaccessible private fields.
 #check: $()Inaccessible fields are "y" and "z".
 #check: $()Struct "LibStruct" is declared here, and has private fields "y" and "z".
-#check: $()Alternatively, consider declaring fields "y" and "z" as public: `pub <field>: ...,`.
+#check: $()Alternatively, consider declaring the fields "y" and "z" as public in "LibStruct": `pub <field>: ...,`.
 
 #check: $()let _ = LibStruct { nn: 0, x: 0, y: 0, z: 0 };
 #nextln: $()Struct "LibStruct" does not have field "nn".
 
 #check: $()Private struct field is inaccessible
 #check: $()let _ = LibStruct { nn: 0, x: 0, y: 0, z: 0 };
-#nextln: $()Private field "y" of the struct "LibStruct" is inaccessible in this module.
+#nextln: $()Private field "y" is inaccessible in this module.
 #check: $()y: u64,
-#nextln: $()Field "y" is declared here as private.
+#nextln: $()Field "y" of the struct "LibStruct" is declared here as private.
 
 #check: $()Private struct field is inaccessible
 #check: $()let _ = LibStruct { nn: 0, x: 0, y: 0, z: 0 };
-#nextln: $()Private field "z" of the struct "LibStruct" is inaccessible in this module.
+#nextln: $()Private field "z" is inaccessible in this module.
 #check: $()z: u64,
-#nextln: $()Field "z" is declared here as private.
+#nextln: $()Field "z" of the struct "LibStruct" is declared here as private.
 
 # ---------------------------------------------------
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #check: $()let _ = LibStructAlias { };
-#nextln: $()"LibStruct" cannot be instantiated in this module, because it has inaccessible private fields.
+#nextln: $()"LibStruct" cannot be directly instantiated in this module, due to inaccessible private fields.
 #check: $()Inaccessible fields are "y" and "z".
 #check: $()Struct "LibStruct" is declared here, and has private fields "y" and "z".
-#check: $()Alternatively, consider declaring fields "y" and "z" as public: `pub <field>: ...,`.
+#check: $()Alternatively, consider declaring the fields "y" and "z" as public in "LibStruct": `pub <field>: ...,`.
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #check: $()let _ = LibStructAlias { x: 0 };
-#nextln: $()"LibStruct" cannot be instantiated in this module, because it has inaccessible private fields.
+#nextln: $()"LibStruct" cannot be directly instantiated in this module, due to inaccessible private fields.
 #check: $()Inaccessible fields are "y" and "z".
 #check: $()Struct "LibStruct" is declared here, and has private fields "y" and "z".
-#check: $()Alternatively, consider declaring fields "y" and "z" as public: `pub <field>: ...,`.
+#check: $()Alternatively, consider declaring the fields "y" and "z" as public in "LibStruct": `pub <field>: ...,`.
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #check: $()let _ = LibStructAlias { x: 0, y: 0, z: 0 };
-#nextln: $()"LibStruct" cannot be instantiated in this module, because it has inaccessible private fields.
+#nextln: $()"LibStruct" cannot be directly instantiated in this module, due to inaccessible private fields.
 #check: $()Inaccessible fields are "y" and "z".
 #check: $()Struct "LibStruct" is declared here, and has private fields "y" and "z".
-#check: $()Alternatively, consider declaring fields "y" and "z" as public: `pub <field>: ...,`.
+#check: $()Alternatively, consider declaring the fields "y" and "z" as public in "LibStruct": `pub <field>: ...,`.
 
 #check: $()Private struct field is inaccessible
 #check: $()let _ = LibStructAlias { x: 0, y: 0, z: 0 };
-#nextln: $()Private field "y" of the struct "LibStruct" is inaccessible in this module.
+#nextln: $()Private field "y" is inaccessible in this module.
 #check: $()y: u64,
-#nextln: $()Field "y" is declared here as private.
+#nextln: $()Field "y" of the struct "LibStruct" is declared here as private.
 
 #check: $()Private struct field is inaccessible
 #check: $()let _ = LibStructAlias { x: 0, y: 0, z: 0 };
-#nextln: $()Private field "z" of the struct "LibStruct" is inaccessible in this module.
+#nextln: $()Private field "z" is inaccessible in this module.
 #check: $()z: u64,
-#nextln: $()Field "z" is declared here as private.
+#nextln: $()Field "z" of the struct "LibStruct" is declared here as private.
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #check: $()let _ = LibStructAlias { nn: 0 };
-#nextln: $()"LibStruct" cannot be instantiated in this module, because it has inaccessible private fields.
+#nextln: $()"LibStruct" cannot be directly instantiated in this module, due to inaccessible private fields.
 #check: $()Inaccessible fields are "y" and "z".
 #check: $()Struct "LibStruct" is declared here, and has private fields "y" and "z".
-#check: $()Alternatively, consider declaring fields "y" and "z" as public: `pub <field>: ...,`.
+#check: $()Alternatively, consider declaring the fields "y" and "z" as public in "LibStruct": `pub <field>: ...,`.
 
 #check: $()let _ = LibStructAlias { nn: 0 };
 #nextln: $()Struct "LibStruct" does not have field "nn".
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #check: $()let _ = LibStructAlias { nn: 0, x: 0 };
-#nextln: $()"LibStruct" cannot be instantiated in this module, because it has inaccessible private fields.
+#nextln: $()"LibStruct" cannot be directly instantiated in this module, due to inaccessible private fields.
 #check: $()Inaccessible fields are "y" and "z".
 #check: $()Struct "LibStruct" is declared here, and has private fields "y" and "z".
-#check: $()Alternatively, consider declaring fields "y" and "z" as public: `pub <field>: ...,`.
+#check: $()Alternatively, consider declaring the fields "y" and "z" as public in "LibStruct": `pub <field>: ...,`.
 
 #check: $()let _ = LibStructAlias { nn: 0, x: 0 };
 #nextln: $()Struct "LibStruct" does not have field "nn".
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #check: $()let _ = LibStructAlias { nn: 0, x: 0, y: 0, z: 0 };
-#nextln: $()"LibStruct" cannot be instantiated in this module, because it has inaccessible private fields.
+#nextln: $()"LibStruct" cannot be directly instantiated in this module, due to inaccessible private fields.
 #check: $()Inaccessible fields are "y" and "z".
 #check: $()Struct "LibStruct" is declared here, and has private fields "y" and "z".
-#check: $()Alternatively, consider declaring fields "y" and "z" as public: `pub <field>: ...,`.
+#check: $()Alternatively, consider declaring the fields "y" and "z" as public in "LibStruct": `pub <field>: ...,`.
 
 #check: $()let _ = LibStructAlias { nn: 0, x: 0, y: 0, z: 0 };
 #nextln: $()Struct "LibStruct" does not have field "nn".
 
 #check: $()Private struct field is inaccessible
 #check: $()let _ = LibStructAlias { nn: 0, x: 0, y: 0, z: 0 };
-#nextln: $()Private field "y" of the struct "LibStruct" is inaccessible in this module.
+#nextln: $()Private field "y" is inaccessible in this module.
 #check: $()y: u64,
-#nextln: $()Field "y" is declared here as private.
+#nextln: $()Field "y" of the struct "LibStruct" is declared here as private.
 
 #check: $()Private struct field is inaccessible
 #check: $()let _ = LibStructAlias { nn: 0, x: 0, y: 0, z: 0 };
-#nextln: $()Private field "z" of the struct "LibStruct" is inaccessible in this module.
+#nextln: $()Private field "z" is inaccessible in this module.
 #check: $()z: u64,
-#nextln: $()Field "z" is declared here as private.
+#nextln: $()Field "z" of the struct "LibStruct" is declared here as private.
 
 # ---------------------------------------------------
 
 #check: $()Struct instantiation has missing fields
 #check: $()Struct "MainStruct" is declared here, and has three fields.
 #check: $()let _ = MainStruct { };
-#nextln: $()Instantiation of struct "MainStruct" is missing the fields "x", "y", and one more.
+#nextln: $()Instantiation of the struct "MainStruct" is missing the fields "x", "y", and one more.
 
 #check: $()Struct instantiation has missing fields
 #check: $()Struct "MainStruct" is declared here, and has three fields.
 #check: $()let _ = MainStruct { x: 0 };
-#nextln: $()Instantiation of struct "MainStruct" is missing the fields "y" and "z".
+#nextln: $()Instantiation of the struct "MainStruct" is missing the fields "y" and "z".
 
 #check: $()Struct instantiation has missing fields
 #check: $()Struct "MainStruct" is declared here, and has three fields.
 #check: $()let _ = MainStruct { x: 0, y: 0 };
-#nextln: $()Instantiation of struct "MainStruct" is missing the field "z".
+#nextln: $()Instantiation of the struct "MainStruct" is missing the field "z".
 
 #check: $()Struct instantiation has missing fields
 #check: $()Struct "MainStruct" is declared here, and has three fields.
 #check: $()let _ = MainStruct { nn: 0 };
-#nextln: $()Instantiation of struct "MainStruct" is missing the fields "x", "y", and one more.
+#nextln: $()Instantiation of the struct "MainStruct" is missing the fields "x", "y", and one more.
 
 #check: $()let _ = MainStruct { nn: 0 };
 #nextln: $()Struct "MainStruct" does not have field "nn".
@@ -208,7 +208,7 @@ category = "fail"
 #check: $()Struct instantiation has missing fields
 #check: $()Struct "MainStruct" is declared here, and has three fields.
 #check: $()let _ = MainStruct { nn: 0, x: 0 };
-#nextln: $()Instantiation of struct "MainStruct" is missing the fields "y" and "z".
+#nextln: $()Instantiation of the struct "MainStruct" is missing the fields "y" and "z".
 
 #check: $()let _ = MainStruct { nn: 0, x: 0 };
 #nextln: $()Struct "MainStruct" does not have field "nn".

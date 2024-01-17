@@ -6,7 +6,7 @@ category = "fail"
 #nextln: $()Private field "y" of the struct "LibStruct" is inaccessible in this module.
 #check: $()y: u64,
 #nextln: $()Field "y" is declared here as private.
-#check: $()Consider declaring field "y" as public: `pub y: ...,`.
+#check: $()Consider declaring the field "y" as public in "LibStruct": `pub y: ...,`.
 
 #check: $()Private struct field is inaccessible
 #not: $()let _ = ls.other.x;
@@ -14,7 +14,7 @@ category = "fail"
 #nextln: $()Private field "y" of the struct "LibOtherStruct" is inaccessible in this module.
 #check: $()y: u64,
 #nextln: $()Field "y" is declared here as private.
-#check: $()Consider declaring field "y" as public: `pub y: ...,`.
+#check: $()Consider declaring the field "y" as public in "LibOtherStruct": `pub y: ...,`.
 
 #not: Private field "y" of the struct "MainStruct" is inaccessible in this module.
 
@@ -24,4 +24,4 @@ category = "fail"
 #nextln: $()Private field "y" of the struct "LibOtherStruct" is inaccessible in this module.
 #check: $()y: u64,
 #nextln: $()Field "y" is declared here as private.
-#check: $()Consider declaring field "y" as public: `pub y: ...,`.
+#check: $()Consider declaring the field "y" as public in "LibOtherStruct": `pub y: ...,`.

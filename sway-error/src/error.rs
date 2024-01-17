@@ -211,17 +211,18 @@ pub enum CompileError {
          it?"
     )]
     EnumNotFound { name: Ident, span: Span },
-    // This error is used only for error recovery reporting and is not emitted as a compiler
-    // error to the users. The compiler emits a cumulative error given below and that also
-    // only if the struct can actually be instantiated.
-    #[error("Instantiation of struct \"{struct_name}\" is missing field \"{field_name}\".")]
+    /// This error is used only for error recovery and is not emitted as a compiler
+    /// error to the final compilation output. The compiler emits the cumulative error
+    /// [CompileError::StructInstantiationMissingFields] given below, and that one also
+    /// only if the struct can actually be instantiated.
+    #[error("Instantiation of the struct \"{struct_name}\" is missing field \"{field_name}\".")]
     StructInstantiationMissingFieldForErrorRecovery {
         field_name: Ident,
         /// Original, non-aliased struct name.
         struct_name: Ident,
         span: Span,
     },
-    #[error("Instantiation of struct \"{struct_name}\" is missing {} {}.",
+    #[error("Instantiation of the struct \"{struct_name}\" is missing {} {}.",
         if field_names.len() == 1 { "field" } else { "fields" },
         field_names.iter().map(|name| format!("\"{name}\"")).collect::<Vec::<_>>().join(", "))]
     StructInstantiationMissingFields {
@@ -1402,7 +1403,7 @@ impl ToDiagnostic for CompileError {
                 issue: Issue::error(
                     source_engine,
                     span.clone(),
-                    format!("Instantiation of struct \"{struct_name}\" is missing the field{} {}.",
+                    format!("Instantiation of the struct \"{struct_name}\" is missing the field{} {}.",
                             plural_s(field_names.len()),
                             sequence_to_str(&field_names, Enclosing::DoubleQuote, 2)
                         )
@@ -1526,19 +1527,19 @@ impl ToDiagnostic for CompileError {
                         };
 
                         help.push(
-                            // Alternatively, consider declaring field "f" as public in "Struct", `pub f: ...,`, and use "Struct" in storage declaration.
+                            // Alternatively, consider declaring the field "f" as public in "Struct", `pub f: ...,`, and use "Struct" in storage declaration.
                             //  or
-                            // Alternatively, consider declaring fields "f" and "g" as public in "Struct", `pub <field>: ...,`, and use "Struct" in storage declaration.
+                            // Alternatively, consider declaring the fields "f" and "g" as public in "Struct", `pub <field>: ...,`, and use "Struct" in storage declaration.
                             //  or
-                            // Consider declaring field "f" as public in "Struct": `pub f: ...,`.
+                            // Consider declaring the field "f" as public in "Struct": `pub f: ...,`.
                             //  or
-                            // Consider declaring fields "f" and "g" as public in "Struct": `pub <field>: ...,`.
+                            // Consider declaring the fields "f" and "g" as public in "Struct": `pub <field>: ...,`.
                             format!("Alternatively, consider declaring {} as public in \"{struct_name}\"{} `pub {}: ...,`{}.",
                                 if *all_fields_are_private {
                                     "all fields".to_string()
                                 } else {
                                     format!("{} {}",
-                                        if private_fields.len() == 1 { "field" } else { "fields" },
+                                        singular_plural(private_fields.len(), "the field", "the fields"),
                                         sequence_to_str(&private_fields, Enclosing::DoubleQuote, 2)
                                     )
                                 },
