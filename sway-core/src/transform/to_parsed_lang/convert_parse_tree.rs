@@ -937,10 +937,9 @@ pub(crate) fn trait_type_to_trait_type_declaration(
     engines: &Engines,
     trait_type: TraitType,
     attributes: AttributesMap,
-) -> Result<TraitTypeDeclaration, ErrorEmitted> {
+) -> Result<ParsedDeclId<TraitTypeDeclaration>, ErrorEmitted> {
     let span = trait_type.span();
-
-    Ok(TraitTypeDeclaration {
+    let trait_type_decl = TraitTypeDeclaration {
         name: trait_type.name.clone(),
         attributes,
         ty_opt: if let Some(ty) = trait_type.ty_opt {
@@ -949,7 +948,9 @@ pub(crate) fn trait_type_to_trait_type_declaration(
             None
         },
         span,
-    })
+    };
+    let trait_type_decl = engines.pe().insert(trait_type_decl);
+    Ok(trait_type_decl)
 }
 
 fn item_storage_to_storage_declaration(

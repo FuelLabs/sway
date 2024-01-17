@@ -10,7 +10,7 @@ use sway_types::span::Span;
 pub enum ImplItem {
     Fn(ParsedDeclId<FunctionDeclaration>),
     Constant(ParsedDeclId<ConstantDeclaration>),
-    Type(TraitTypeDeclaration),
+    Type(ParsedDeclId<TraitTypeDeclaration>),
 }
 
 #[derive(Debug, Clone)]

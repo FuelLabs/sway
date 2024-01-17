@@ -35,7 +35,7 @@ pub enum Declaration {
     ConstantDeclaration(ParsedDeclId<ConstantDeclaration>),
     StorageDeclaration(ParsedDeclId<StorageDeclaration>),
     TypeAliasDeclaration(ParsedDeclId<TypeAliasDeclaration>),
-    TraitTypeDeclaration(TraitTypeDeclaration),
+    TraitTypeDeclaration(ParsedDeclId<TraitTypeDeclaration>),
 }
 
 impl Declaration {

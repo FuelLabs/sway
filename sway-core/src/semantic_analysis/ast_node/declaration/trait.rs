@@ -88,7 +88,8 @@ impl TyTraitDecl {
             let decl_name = match item {
                 TraitItem::TraitFn(_) => None,
                 TraitItem::Constant(_) => None,
-                TraitItem::Type(type_decl) => {
+                TraitItem::Type(decl_id) => {
+                    let type_decl = engines.pe().get_trait_type(&decl_id).as_ref().clone();
                     let type_decl =
                         ty::TyTraitType::type_check(handler, ctx.by_ref(), type_decl.clone())?;
                     let decl_ref = decl_engine.insert(type_decl.clone());

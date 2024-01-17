@@ -131,7 +131,7 @@ impl Parse for Declaration {
             Declaration::ConstantDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::StorageDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::TypeAliasDeclaration(decl_id) => decl_id.parse(ctx),
-            Declaration::TraitTypeDeclaration(decl) => decl.parse(ctx),
+            Declaration::TraitTypeDeclaration(decl_id) => decl_id.parse(ctx),
         }
     }
 }
@@ -936,19 +936,20 @@ impl Parse for ParsedDeclId<ConstantDeclaration> {
     }
 }
 
-impl Parse for TraitTypeDeclaration {
+impl Parse for ParsedDeclId<TraitTypeDeclaration> {
     fn parse(&self, ctx: &ParseContext) {
+        let trait_type_decl = ctx.engines.pe().get_trait_type(self);
         ctx.tokens.insert(
-            ctx.ident(&self.name),
+            ctx.ident(&trait_type_decl.name),
             Token::from_parsed(
-                AstToken::Declaration(Declaration::TraitTypeDeclaration(self.clone())),
+                AstToken::Declaration(Declaration::TraitTypeDeclaration(*self)),
                 SymbolKind::TraitType,
             ),
         );
-        if let Some(ty) = &self.ty_opt {
+        if let Some(ty) = &trait_type_decl.ty_opt {
             ty.parse(ctx);
         }
-        self.attributes.parse(ctx);
+        trait_type_decl.attributes.parse(ctx);
     }
 }
 

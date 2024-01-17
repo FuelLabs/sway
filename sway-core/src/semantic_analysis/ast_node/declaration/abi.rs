@@ -143,7 +143,8 @@ impl ty::TyAbiDecl {
 
                     const_name
                 }
-                TraitItem::Type(type_decl) => {
+                TraitItem::Type(decl_id) => {
+                    let type_decl = engines.pe().get_trait_type(&decl_id).as_ref().clone();
                     handler.emit_err(CompileError::AssociatedTypeNotSupportedInAbi {
                         span: type_decl.span.clone(),
                     });
