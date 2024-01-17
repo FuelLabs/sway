@@ -22,13 +22,13 @@ impl<'a> TokenMap {
     }
 
     /// Attempts to get a mutable reference to a token with retries on lock.
-    /// Retries up to 7 times with increasing backoff (1us, 10us, 100us, 500us, 1ms, 10ms, 100ms).
+    /// Retries up to 8 times with increasing backoff (1ns, 10ns, 100ns, 500ns, 1µs, 10µs, 100µs, 1ms).
     pub fn try_get_mut_with_retry(
         &'a self,
         ident: &TokenIdent,
     ) -> Option<RefMut<TokenIdent, Token>> {
-        const MAX_RETRIES: usize = 7;
-        let backoff_times = [1, 10, 100, 500, 1_000, 10_000, 100_000]; // Backoff times in microseconds
+        const MAX_RETRIES: usize = 8;
+        let backoff_times = [1, 10, 100, 500, 1_000, 10_000, 100_000, 1_000_000]; // Backoff times in nanoseconds
         for (i, sleep) in backoff_times.iter().enumerate().take(MAX_RETRIES) {
             match self.try_get_mut(ident) {
                 TryResult::Present(token) => return Some(token),
@@ -40,7 +40,7 @@ impl<'a> TokenMap {
                         ident.name
                     );
                     // Wait for the specified backoff time before retrying
-                    let backoff_time = Duration::from_micros(*sleep);
+                    let backoff_time = Duration::from_nanos(*sleep);
                     thread::sleep(backoff_time);
                 }
             }
