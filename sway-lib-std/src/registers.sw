@@ -230,27 +230,6 @@ pub fn context_gas() -> u64 {
     }
 }
 
-/// Get the amount of units of `call_frames::msg_asset_id()` being sent.
-///
-/// # Returns
-///
-/// * [u64] - The forwarded coins in the context.
-///
-/// # Examples
-/// ```sway
-/// use std::register::balance;
-///
-/// fn foo() {
-///     let bal = balance();
-///     assert(bal == 0);
-/// }
-/// ```
-pub fn balance() -> u64 {
-    asm() {
-        bal
-    }
-}
-
 /// Pointer to the start of the currently-executing code.
 ///
 /// # Returns
