@@ -17,7 +17,6 @@ env:
   REGISTRY: ghcr.io
   RUST_VERSION: 1.75.0
   NIGHTLY_RUST_VERSION: nightly-2023-12-27
-  FUEL_CORE_VERSION: ${{ steps.get_fuel_core_ver.outputs.version }}
 
 jobs:
   init-fuel-core-version-env:
@@ -299,9 +298,10 @@ jobs:
 
   cargo-run-e2e-test:
     runs-on: ubuntu-latest
+    needs: init-fuel-core-version-env
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:${{ env.FUEL_CORE_VERSION }}
+        image: ghcr.io/fuellabs/fuel-core:${{ needs.init-fuel-core-version-env.outputs.furl_core_version }}
         ports:
           - 4000:4000
     steps:
@@ -441,6 +441,7 @@ jobs:
 
   cargo-test-workspace:
     runs-on: ubuntu-latest
+    needs: init-fuel-core-version-env
     steps:
       - uses: actions/checkout@v3
       - name: Install toolchain
@@ -451,7 +452,7 @@ jobs:
         uses: baptiste0928/cargo-install@v2
         with:
           crate: fuel-core-bin
-          version: ${{ env.FUEL_CORE_VERSION }}
+          version: ${{ needs.init-fuel-core-version-env.outputs.furl_core_version }}
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
         run: cargo test --locked --release
