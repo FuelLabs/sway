@@ -22,28 +22,33 @@ impl<'a> TokenMap {
     }
 
     /// Attempts to get a mutable reference to a token with retries on lock.
-    /// Retries up to 3 times with increasing backoff (1ms, 10ms, 100ms).
+    /// Retries up to 7 times with increasing backoff (1us, 10us, 100us, 500us, 1ms, 10ms, 100ms).
     pub fn try_get_mut_with_retry(
         &'a self,
         ident: &TokenIdent,
     ) -> Option<RefMut<TokenIdent, Token>> {
-        const MAX_RETRIES: usize = 3;
-        let backoff_times = [1, 10, 100]; // Backoff times in milliseconds for each retry
+        const MAX_RETRIES: usize = 7;
+        let backoff_times = [1, 10, 100, 500, 1_000, 10_000, 100_000]; // Backoff times in microseconds
         for (i, sleep) in backoff_times.iter().enumerate().take(MAX_RETRIES) {
             match self.try_get_mut(ident) {
                 TryResult::Present(token) => return Some(token),
                 TryResult::Absent => return None,
                 TryResult::Locked => {
-                    eprintln!("Failed to get token, retrying attmpt {}: {:#?}", i, ident);
+                    tracing::warn!(
+                        "Failed to get token, retrying attmpt {}: {:#?}",
+                        i,
+                        ident.name
+                    );
                     // Wait for the specified backoff time before retrying
-                    let backoff_time = Duration::from_millis(*sleep);
+                    let backoff_time = Duration::from_micros(*sleep);
                     thread::sleep(backoff_time);
                 }
             }
         }
-        eprintln!(
-            "UUHHH OOOOOHHH Failed to get token after {} retries: {:#?}",
-            MAX_RETRIES, ident
+        tracing::error!(
+            "Failed to get token after {} retries: {:#?}",
+            MAX_RETRIES,
+            ident
         );
         None // Return None if all retries are exhausted
     }
