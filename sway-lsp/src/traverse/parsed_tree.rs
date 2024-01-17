@@ -129,7 +129,7 @@ impl Parse for Declaration {
             Declaration::ImplSelf(decl_id) => decl_id.parse(ctx),
             Declaration::AbiDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::ConstantDeclaration(decl_id) => decl_id.parse(ctx),
-            Declaration::StorageDeclaration(decl) => decl.parse(ctx),
+            Declaration::StorageDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::TypeAliasDeclaration(decl) => decl.parse(ctx),
             Declaration::TraitTypeDeclaration(decl) => decl.parse(ctx),
         }
@@ -952,12 +952,13 @@ impl Parse for TraitTypeDeclaration {
     }
 }
 
-impl Parse for StorageDeclaration {
+impl Parse for ParsedDeclId<StorageDeclaration> {
     fn parse(&self, ctx: &ParseContext) {
-        self.fields.par_iter().for_each(|field| {
+        let storage_decl = ctx.engines.pe().get_storage(self);
+        storage_decl.fields.par_iter().for_each(|field| {
             field.parse(ctx);
         });
-        self.attributes.parse(ctx);
+        storage_decl.attributes.parse(ctx);
     }
 }
 
