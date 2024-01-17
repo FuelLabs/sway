@@ -299,8 +299,13 @@ fn match_or(
         for (variable, _) in variables.iter() {
             let missing_in_alternatives: Vec<Span> = variables_in_alternatives
                 .iter()
-                .filter(|(_, vars)| !vars.iter().any(|(ident, _)| ident == *variable))
-                .map(|(span, _)| span.clone())
+                .filter_map(|(span, vars)| {
+                    if !vars.iter().any(|(ident, _)| ident == *variable) {
+                        Some(span.clone())
+                    } else {
+                        None
+                    }
+                })
                 .collect();
 
             if missing_in_alternatives.is_empty() {
@@ -324,11 +329,13 @@ fn match_or(
 
         for (variable, type_id) in variables {
             let type_mismatched_vars = variables_in_alternatives.iter().flat_map(|(_, vars)| {
-                vars.iter()
-                    .filter(|(ident, var_type_id)| {
-                        ident == variable && !equality.check(type_id, *var_type_id)
-                    })
-                    .map(|(ident, var_type_id)| (ident.clone(), var_type_id))
+                vars.iter().filter_map(|(ident, var_type_id)| {
+                    if ident == variable && !equality.check(type_id, *var_type_id) {
+                        Some((ident.clone(), *var_type_id))
+                    } else {
+                        None
+                    }
+                })
             });
 
             for type_mismatched_var in type_mismatched_vars {

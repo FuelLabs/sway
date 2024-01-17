@@ -60,12 +60,15 @@ impl Documentation {
         let trait_decls = docs
             .0
             .iter()
-            .filter(|d| d.item_header.friendly_name == "trait")
-            .map(|d| {
-                (
-                    d.item_header.item_name.clone(),
-                    d.item_header.module_info.clone(),
-                )
+            .filter_map(|d| {
+                if d.item_header.friendly_name == "trait" {
+                    Some((
+                        d.item_header.item_name.clone(),
+                        d.item_header.module_info.clone(),
+                    ))
+                } else {
+                    None
+                }
             })
             .collect::<HashMap<BaseIdent, ModuleInfo>>();
 

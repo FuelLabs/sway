@@ -1007,12 +1007,15 @@ impl WorkspaceManifest {
         // Check for duplicate pkg name entries in member manifests of this workspace.
         let duplciate_pkg_lines = pkg_name_to_paths
             .iter()
-            .filter(|(_, paths)| paths.len() > 1)
-            .map(|(pkg_name, _)| {
-                let duplicate_paths = pkg_name_to_paths
-                    .get(pkg_name)
-                    .expect("missing duplicate paths");
-                format!("{pkg_name}: {duplicate_paths:#?}")
+            .filter_map(|(pkg_name, paths)| {
+                if paths.len() > 1 {
+                    let duplicate_paths = pkg_name_to_paths
+                        .get(pkg_name)
+                        .expect("missing duplicate paths");
+                    Some(format!("{pkg_name}: {duplicate_paths:#?}"))
+                } else {
+                    None
+                }
             })
             .collect::<Vec<_>>();
 
@@ -1040,8 +1043,14 @@ impl std::ops::Deref for WorkspaceManifestFile {
 pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
     walkdir::WalkDir::new(dir)
         .into_iter()
-        .filter_map(Result::ok)
-        .filter(|entry| entry.path().ends_with(constants::MANIFEST_FILE_NAME))
+        .filter_map(|entry| {
+            if let Ok(entry) = entry {
+                if entry.path().ends_with(constants::MANIFEST_FILE_NAME) {
+                    return Some(entry);
+                }
+            }
+            None
+        })
         .find_map(|entry| {
             let path = entry.path();
             let manifest = PackageManifest::from_file(path).ok()?;

@@ -48,13 +48,17 @@ fn filter_usable_locals(context: &mut Context, function: &Function) -> HashSet<S
     // types which can fit in 64-bits.
     let mut locals: HashSet<String> = function
         .locals_iter(context)
-        .filter(|(_, var)| {
+        .filter_map(|(name, var)| {
             let ty = var.get_inner_type(context);
-            ty.is_unit(context)
+            if ty.is_unit(context)
                 || ty.is_bool(context)
                 || (ty.is_uint(context) && ty.get_uint_width(context).unwrap() <= 64)
+            {
+                Some(name.clone())
+            } else {
+                None
+            }
         })
-        .map(|(name, _)| name.clone())
         .collect();
 
     for (_, inst) in function.instruction_iter(context) {

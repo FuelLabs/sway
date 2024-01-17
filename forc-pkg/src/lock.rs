@@ -90,13 +90,23 @@ impl PkgLock {
             .collect();
         let mut dependencies: Vec<String> = all_dependencies
             .iter()
-            .filter(|(_, dep_kind)| *dep_kind == DepKind::Library)
-            .map(|(dep_pkg, _)| dep_pkg.clone())
+            .filter_map(|(dep_pkg, dep_kind)| {
+                if *dep_kind == DepKind::Library {
+                    Some(dep_pkg.clone())
+                } else {
+                    None
+                }
+            })
             .collect();
         let mut contract_dependencies: Vec<String> = all_dependencies
             .iter()
-            .filter(|(_, dep_kind)| matches!(*dep_kind, DepKind::Contract { .. }))
-            .map(|(dep_pkg, _)| dep_pkg.clone())
+            .filter_map(|(dep_pkg, dep_kind)| {
+                if matches!(*dep_kind, DepKind::Contract { .. }) {
+                    Some(dep_pkg.clone())
+                } else {
+                    None
+                }
+            })
             .collect();
         dependencies.sort();
         contract_dependencies.sort();
