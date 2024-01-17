@@ -17,9 +17,28 @@ env:
   REGISTRY: ghcr.io
   RUST_VERSION: 1.75.0
   NIGHTLY_RUST_VERSION: nightly-2023-12-27
-  FUEL_CORE_VERSION: 0.22.0
 
 jobs:
+  init-fuel-core-version-env:
+    runs-on: ubuntu-latest
+    outputs:
+      furl_core_version: ${{steps.get_fuel_core_ver.outputs.version}}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: get fuel core version
+        id: get_fuel_core_ver
+        run: |
+          cargo install toml-cli
+          version=$(toml get Cargo.toml workspace.dependencies.fuel-core-client.version | tr -d '"')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
   build-sway-lib-core:
     runs-on: ubuntu-latest
     steps:
@@ -279,9 +298,10 @@ jobs:
 
   cargo-run-e2e-test:
     runs-on: ubuntu-latest
+    needs: init-fuel-core-version-env
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:${{ env.FUEL_CORE_VERSION }}
+        image: ghcr.io/fuellabs/fuel-core:${{ needs.init-fuel-core-version-env.outputs.furl_core_version }}
         ports:
           - 4000:4000
     steps:
@@ -421,6 +441,7 @@ jobs:
 
   cargo-test-workspace:
     runs-on: ubuntu-latest
+    needs: init-fuel-core-version-env
     steps:
       - uses: actions/checkout@v3
       - name: Install toolchain
@@ -431,7 +452,7 @@ jobs:
         uses: baptiste0928/cargo-install@v2
         with:
           crate: fuel-core-bin
-          version: ${{ env.FUEL_CORE_VERSION }}
+          version: ${{ needs.init-fuel-core-version-env.outputs.furl_core_version }}
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
         run: cargo test --locked --release
