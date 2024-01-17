@@ -308,12 +308,13 @@ impl TyDecl {
                 ctx.insert_symbol(handler, name, decl.clone())?;
                 decl
             }
-            parsed::Declaration::StorageDeclaration(parsed::StorageDeclaration {
-                span,
-                fields,
-                attributes,
-                storage_keyword,
-            }) => {
+            parsed::Declaration::StorageDeclaration(decl_id) => {
+                let parsed::StorageDeclaration {
+                    span,
+                    fields,
+                    attributes,
+                    storage_keyword,
+                } = engines.pe().get_storage(&decl_id).as_ref().clone();
                 let mut fields_buf = Vec::with_capacity(fields.len());
                 for parsed::StorageField {
                     name,

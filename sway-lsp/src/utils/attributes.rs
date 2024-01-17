@@ -24,7 +24,10 @@ where
                 let decl = engines.pe().get_constant(decl_id);
                 callback(&decl.attributes)
             }
-            Declaration::StorageDeclaration(decl) => callback(&decl.attributes),
+            Declaration::StorageDeclaration(decl_id) => {
+                let decl = engines.pe().get_storage(decl_id);
+                callback(&decl.attributes)
+            }
             Declaration::AbiDeclaration(decl_id) => {
                 let decl = engines.pe().get_abi(decl_id);
                 callback(&decl.attributes)

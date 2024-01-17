@@ -958,7 +958,7 @@ fn item_storage_to_storage_declaration(
     engines: &Engines,
     item_storage: ItemStorage,
     attributes: AttributesMap,
-) -> Result<StorageDeclaration, ErrorEmitted> {
+) -> Result<ParsedDeclId<StorageDeclaration>, ErrorEmitted> {
     let mut errors = Vec::new();
     let span = item_storage.span();
     let fields: Vec<StorageField> = item_storage
@@ -1002,6 +1002,7 @@ fn item_storage_to_storage_declaration(
         fields,
         storage_keyword: item_storage.storage_token.into(),
     };
+    let storage_declaration = engines.pe().insert(storage_declaration);
     Ok(storage_declaration)
 }
 

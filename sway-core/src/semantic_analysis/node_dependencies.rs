@@ -436,8 +436,9 @@ impl Dependencies {
                     deps.gather_from_fn_decl(engines, &fn_decl)
                 })
             }
-            Declaration::StorageDeclaration(StorageDeclaration { fields, .. }) => self
-                .gather_from_iter(
+            Declaration::StorageDeclaration(decl_id) => {
+                let StorageDeclaration { fields, .. } = &*engines.pe().get_storage(decl_id);
+                self.gather_from_iter(
                     fields.iter(),
                     |deps,
                      StorageField {
@@ -445,7 +446,8 @@ impl Dependencies {
                      }| {
                         deps.gather_from_type_argument(engines, type_argument)
                     },
-                ),
+                )
+            }
             Declaration::TypeAliasDeclaration(TypeAliasDeclaration { ty, .. }) => {
                 self.gather_from_type_argument(engines, ty)
             }
