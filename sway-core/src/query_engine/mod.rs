@@ -47,14 +47,14 @@ pub type ProgramsCacheMap = HashMap<ModulePath, ProgramsCacheEntry>;
 
 #[derive(Debug, Default)]
 pub struct QueryEngine {
-    parse_module_cache: RwLock<ModuleCacheMap>,
+    parse_module_cache: Arc<RwLock<ModuleCacheMap>>,
     programs_cache: Arc<RwLock<ProgramsCacheMap>>,
 }
 
 impl Clone for QueryEngine {
     fn clone(&self) -> Self {
         Self {
-            parse_module_cache: RwLock::new(self.parse_module_cache.read().unwrap().clone()),
+            parse_module_cache: self.parse_module_cache.clone(),
             programs_cache: self.programs_cache.clone(),
         }
     }
@@ -67,11 +67,10 @@ impl QueryEngine {
     }
 
     pub fn insert_parse_module_cache_entry(&self, entry: ModuleCacheEntry) {
-        let mut cache = self.parse_module_cache.write().unwrap();
         let path = entry.path.clone();
         let include_tests = entry.include_tests;
-
         let key = ModuleCacheKey::new(path, include_tests);
+        let mut cache = self.parse_module_cache.write().unwrap();
         cache.insert(key, entry);
     }
 
