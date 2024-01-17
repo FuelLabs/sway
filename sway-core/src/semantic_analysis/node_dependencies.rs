@@ -307,7 +307,10 @@ impl Dependencies {
                 let decl = engines.pe().get_constant(decl_id);
                 self.gather_from_constant_decl(engines, &decl)
             }
-            Declaration::TraitTypeDeclaration(decl) => self.gather_from_type_decl(engines, decl),
+            Declaration::TraitTypeDeclaration(decl_id) => {
+                let decl = engines.pe().get_trait_type(decl_id);
+                self.gather_from_type_decl(engines, &decl)
+            }
             Declaration::FunctionDeclaration(decl_id) => {
                 let fn_decl = engines.pe().get_function(decl_id);
                 self.gather_from_fn_decl(engines, &fn_decl)
@@ -351,8 +354,9 @@ impl Dependencies {
                             let const_decl = engines.pe().get_constant(decl_id);
                             deps.gather_from_constant_decl(engines, &const_decl)
                         }
-                        TraitItem::Type(type_decl) => {
-                            deps.gather_from_type_decl(engines, type_decl)
+                        TraitItem::Type(decl_id) => {
+                            let type_decl = engines.pe().get_trait_type(decl_id);
+                            deps.gather_from_type_decl(engines, &type_decl)
                         }
                         TraitItem::Error(_, _) => deps,
                     },
@@ -385,7 +389,10 @@ impl Dependencies {
                             let const_decl = engines.pe().get_constant(decl_id);
                             deps.gather_from_constant_decl(engines, &const_decl)
                         }
-                        ImplItem::Type(type_decl) => deps.gather_from_type_decl(engines, type_decl),
+                        ImplItem::Type(decl_id) => {
+                            let type_decl = engines.pe().get_trait_type(decl_id);
+                            deps.gather_from_type_decl(engines, &type_decl)
+                        }
                     })
             }
             Declaration::ImplSelf(decl_id) => {
@@ -404,7 +411,10 @@ impl Dependencies {
                             let const_decl = engines.pe().get_constant(decl_id);
                             deps.gather_from_constant_decl(engines, &const_decl)
                         }
-                        ImplItem::Type(type_decl) => deps.gather_from_type_decl(engines, type_decl),
+                        ImplItem::Type(decl_id) => {
+                            let type_decl = engines.pe().get_trait_type(decl_id);
+                            deps.gather_from_type_decl(engines, &type_decl)
+                        }
                     })
             }
             Declaration::AbiDeclaration(decl_id) => {
@@ -428,7 +438,10 @@ impl Dependencies {
                         let const_decl = engines.pe().get_constant(decl_id);
                         deps.gather_from_constant_decl(engines, &const_decl)
                     }
-                    TraitItem::Type(type_decl) => deps.gather_from_type_decl(engines, type_decl),
+                    TraitItem::Type(decl_id) => {
+                        let type_decl = engines.pe().get_trait_type(decl_id);
+                        deps.gather_from_type_decl(engines, &type_decl)
+                    }
                     TraitItem::Error(_, _) => deps,
                 })
                 .gather_from_iter(methods.iter(), |deps, fn_decl_id| {
@@ -859,7 +872,10 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
             let decl = engines.pe().get_constant(decl_id);
             dep_sym(decl.name.clone())
         }
-        Declaration::TraitTypeDeclaration(decl) => dep_sym(decl.name.clone()),
+        Declaration::TraitTypeDeclaration(decl_id) => {
+            let decl = engines.pe().get_trait_type(decl_id);
+            dep_sym(decl.name.clone())
+        }
         Declaration::StructDeclaration(decl_id) => {
             let decl = engines.pe().get_struct(decl_id);
             dep_sym(decl.name.clone())
@@ -899,7 +915,10 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
                             let const_decl = engines.pe().get_constant(decl_id);
                             const_decl.name.to_string()
                         }
-                        ImplItem::Type(type_decl) => type_decl.name.to_string(),
+                        ImplItem::Type(decl_id) => {
+                            let type_decl = engines.pe().get_trait_type(decl_id);
+                            type_decl.name.to_string()
+                        }
                     })
                     .collect::<Vec<String>>()
                     .join(""),
@@ -922,7 +941,10 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
                                 let const_decl = engines.pe().get_constant(decl_id);
                                 const_decl.name.to_string()
                             }
-                            ImplItem::Type(type_decl) => type_decl.name.to_string(),
+                            ImplItem::Type(decl_id) => {
+                                let type_decl = engines.pe().get_trait_type(decl_id);
+                                type_decl.name.to_string()
+                            }
                         })
                         .collect::<Vec<_>>()
                         .join(""),

@@ -412,7 +412,8 @@ impl TyImplTrait {
                             }),
                         )?;
                     }
-                    ImplItem::Type(type_decl) => {
+                    ImplItem::Type(decl_id) => {
+                        let type_decl = engines.pe().get_trait_type(decl_id).as_ref().clone();
                         let type_decl = match ty::TyTraitType::type_check(
                             handler,
                             ctx.by_ref(),
@@ -751,18 +752,21 @@ fn type_check_trait_implementation(
         match item {
             ImplItem::Fn(_) => {}
             ImplItem::Constant(_) => {}
-            ImplItem::Type(type_decl) => {
+            ImplItem::Type(decl_id) => {
+                let type_decl = engines.pe().get_trait_type(decl_id);
                 let mut type_decl = type_check_type_decl(
                     handler,
                     ctx.by_ref(),
-                    type_decl,
+                    &type_decl,
                     trait_name,
                     implementing_for,
                     is_contract,
                     &impld_item_refs,
                     &type_checklist,
                 )
-                .unwrap_or_else(|_| ty::TyTraitType::error(ctx.engines(), type_decl.clone()));
+                .unwrap_or_else(|_| {
+                    ty::TyTraitType::error(ctx.engines(), type_decl.as_ref().clone())
+                });
 
                 type_decl.subst(&trait_type_mapping, engines);
 

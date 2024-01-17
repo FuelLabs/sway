@@ -245,7 +245,7 @@ impl ParsedDeclEngine {
     ///
     /// Calling [ParsedDeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_type<I>(&self, index: &I) -> Arc<TraitTypeDeclaration>
+    pub fn get_trait_type<I>(&self, index: &I) -> Arc<TraitTypeDeclaration>
     where
         ParsedDeclEngine: ParsedDeclEngineGet<I, TraitTypeDeclaration>,
     {
