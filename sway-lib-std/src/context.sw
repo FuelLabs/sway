@@ -3,7 +3,6 @@ library;
 
 use ::asset_id::AssetId;
 use ::contract_id::ContractId;
-use ::registers::balance;
 
 /// Get the balance of coin `asset_id` for the current contract.
 ///
