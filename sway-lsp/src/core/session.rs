@@ -593,7 +593,9 @@ fn parse_ast_to_typed_tokens(
                 .flat_map(|(_, submodule)| &submodule.module.all_nodes),
         )
         .collect::<Vec<_>>();
+    let now = std::time::Instant::now();
     nodes.par_iter().for_each(|n| f(n, ctx));
+    eprintln!("parse_ast_to_typed_tokens took {:?}", now.elapsed());
 }
 
 #[cfg(test)]
