@@ -1069,15 +1069,17 @@ fn item_type_alias_to_type_alias_declaration(
     engines: &Engines,
     item_type_alias: ItemTypeAlias,
     attributes: AttributesMap,
-) -> Result<TypeAliasDeclaration, ErrorEmitted> {
+) -> Result<ParsedDeclId<TypeAliasDeclaration>, ErrorEmitted> {
     let span = item_type_alias.span();
-    Ok(TypeAliasDeclaration {
+    let type_alias_decl = TypeAliasDeclaration {
         name: item_type_alias.name.clone(),
         attributes,
         ty: ty_to_type_argument(context, handler, engines, item_type_alias.ty)?,
         visibility: pub_token_opt_to_visibility(item_type_alias.visibility),
         span,
-    })
+    };
+    let type_alias_decl = engines.pe().insert(type_alias_decl);
+    Ok(type_alias_decl)
 }
 
 fn type_field_to_struct_field(

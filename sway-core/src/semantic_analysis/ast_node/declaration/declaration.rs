@@ -360,10 +360,11 @@ impl TyDecl {
                     .set_storage_declaration(handler, decl_ref.clone())?;
                 decl_ref.into()
             }
-            parsed::Declaration::TypeAliasDeclaration(decl) => {
+            parsed::Declaration::TypeAliasDeclaration(decl_id) => {
+                let decl = engines.pe().get_type_alias(&decl_id);
                 let span = decl.name.span();
                 let name = decl.name.clone();
-                let ty = decl.ty;
+                let ty = &decl.ty;
 
                 // Resolve the type that the type alias replaces
                 let new_ty = ctx
@@ -376,12 +377,12 @@ impl TyDecl {
                 let decl = ty::TyTypeAliasDecl {
                     name: name.clone(),
                     call_path: CallPath::from(name.clone()).to_fullpath(ctx.namespace),
-                    attributes: decl.attributes,
+                    attributes: decl.attributes.clone(),
                     ty: TypeArgument {
                         initial_type_id: ty.initial_type_id,
                         type_id: new_ty,
-                        call_path_tree: ty.call_path_tree,
-                        span: ty.span,
+                        call_path_tree: ty.call_path_tree.clone(),
+                        span: ty.span.clone(),
                     },
                     visibility: decl.visibility,
                     span,
