@@ -130,7 +130,7 @@ impl Parse for Declaration {
             Declaration::AbiDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::ConstantDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::StorageDeclaration(decl_id) => decl_id.parse(ctx),
-            Declaration::TypeAliasDeclaration(decl) => decl.parse(ctx),
+            Declaration::TypeAliasDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::TraitTypeDeclaration(decl) => decl.parse(ctx),
         }
     }
@@ -1094,17 +1094,18 @@ impl Parse for TypeArgument {
     }
 }
 
-impl Parse for TypeAliasDeclaration {
+impl Parse for ParsedDeclId<TypeAliasDeclaration> {
     fn parse(&self, ctx: &ParseContext) {
+        let type_alias_decl = ctx.engines.pe().get_type_alias(self);
         ctx.tokens.insert(
-            ctx.ident(&self.name),
+            ctx.ident(&type_alias_decl.name),
             Token::from_parsed(
-                AstToken::Declaration(Declaration::TypeAliasDeclaration(self.clone())),
+                AstToken::Declaration(Declaration::TypeAliasDeclaration(*self)),
                 SymbolKind::TypeAlias,
             ),
         );
-        self.ty.parse(ctx);
-        self.attributes.parse(ctx);
+        type_alias_decl.ty.parse(ctx);
+        type_alias_decl.attributes.parse(ctx);
     }
 }
 

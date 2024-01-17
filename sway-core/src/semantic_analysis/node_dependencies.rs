@@ -448,7 +448,8 @@ impl Dependencies {
                     },
                 )
             }
-            Declaration::TypeAliasDeclaration(TypeAliasDeclaration { ty, .. }) => {
+            Declaration::TypeAliasDeclaration(decl_id) => {
+                let TypeAliasDeclaration { ty, .. } = &*engines.pe().get_type_alias(decl_id);
                 self.gather_from_type_argument(engines, ty)
             }
         }
@@ -875,7 +876,10 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
             let decl = engines.pe().get_abi(decl_id);
             dep_sym(decl.name.clone())
         }
-        Declaration::TypeAliasDeclaration(decl) => dep_sym(decl.name.clone()),
+        Declaration::TypeAliasDeclaration(decl_id) => {
+            let decl = engines.pe().get_type_alias(decl_id);
+            dep_sym(decl.name.clone())
+        }
 
         // These have the added complexity of converting CallPath and/or TypeInfo into a name.
         Declaration::ImplSelf(decl_id) => {
