@@ -22,14 +22,27 @@ impl<'a> TokenMap {
     }
 
     /// Attempts to get a mutable reference to a token with retries on lock.
-    /// Retries up to 10 times with increasing backoff (1ns, 10ns, 100ns, 500ns, 1µs, 10µs, 100µs, 1ms, 10ms, 50ms).
+    /// Retries up to 14 times with increasing backoff (1ns, 10ns, 100ns, 500ns, 1µs, 10µs, 100µs, 1ms, 10ms, 50ms, 100ms, 200ms, 500ms, 1s).
     pub fn try_get_mut_with_retry(
         &'a self,
         ident: &TokenIdent,
     ) -> Option<RefMut<TokenIdent, Token>> {
-        const MAX_RETRIES: usize = 10;
+        const MAX_RETRIES: usize = 14;
         let backoff_times = [
-            1, 10, 100, 500, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 50_000_000,
+            1,
+            10,
+            100,
+            500,
+            1_000,
+            10_000,
+            100_000,
+            1_000_000,
+            10_000_000,
+            50_000_000,
+            100_000_000,
+            200_000_000,
+            500_000_000,
+            1_000_000_000,
         ]; // Backoff times in nanoseconds
         for (i, sleep) in backoff_times.iter().enumerate().take(MAX_RETRIES) {
             match self.try_get_mut(ident) {
