@@ -590,7 +590,7 @@ fn parse_ast_to_typed_tokens(
             typed_program
                 .root
                 .submodules_recursive()
-                .flat_map(|(_, submodule)| submodule.module.all_nodes.iter()),
+                .flat_map(|(_, submodule)| &submodule.module.all_nodes),
         )
         .collect::<Vec<_>>();
     nodes.par_iter().for_each(|n| f(n, ctx));

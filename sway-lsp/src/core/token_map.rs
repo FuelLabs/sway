@@ -1,6 +1,10 @@
 use crate::core::token::{self, Token, TokenIdent, TypedAstToken};
-use dashmap::DashMap;
+use dashmap::{mapref::one::RefMut, try_result::TryResult, DashMap};
 use lsp_types::{Position, Url};
+use std::{
+    time::Duration,
+    thread,
+};
 use sway_core::{language::ty, type_system::TypeId, Engines};
 use sway_types::{Ident, SourceEngine, Spanned};
 
@@ -14,10 +18,36 @@ pub use crate::core::token_map_ext::TokenMapExt;
 #[derive(Debug, Default)]
 pub struct TokenMap(DashMap<TokenIdent, Token>);
 
-impl TokenMap {
+impl<'a> TokenMap {
     /// Create a new token map.
     pub fn new() -> TokenMap {
         TokenMap(DashMap::with_capacity(2048))
+    }
+
+    /// Attempts to get a mutable reference to a token with retries on lock. Retries up to 3 times with increasing backoff (1ms, 10ms, 100ms).
+    pub fn try_get_mut_with_retry(
+        &'a self,
+        ident: &TokenIdent,
+    ) -> Option<RefMut<TokenIdent, Token>> {
+        const MAX_RETRIES: usize = 3;
+        let backoff_times = [1, 10, 100]; // Backoff times in milliseconds for each retry
+        for i in 0..MAX_RETRIES {
+            match self.try_get_mut(ident) {
+                TryResult::Present(token) => return Some(token),
+                TryResult::Absent => return None,
+                TryResult::Locked => {
+                    eprintln!("Failed to get token, retrying attmpt {}: {:#?}", i, ident);
+                    // Wait for the specified backoff time before retrying
+                    let backoff_time = Duration::from_millis(backoff_times[i]);
+                    thread::sleep(backoff_time);
+                }
+            }
+        }
+        eprintln!(
+            "UUHHH OOOOOHHH Failed to get token after {} retries: {:#?}",
+            MAX_RETRIES, ident
+        );
+        None // Return None if all retries are exhausted
     }
 
     /// Create a custom iterator for the TokenMap.
