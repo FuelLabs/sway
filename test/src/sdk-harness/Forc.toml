@@ -47,6 +47,7 @@ members = [
   "test_artifacts/auth_testing_abi",
   "test_artifacts/auth_testing_contract",
   "test_artifacts/balance_contract",
+  "test_artifacts/barebones_predicate",
   "test_artifacts/block_test_abi",
   "test_artifacts/call_frames_test_abi",
   "test_artifacts/context_caller_contract",

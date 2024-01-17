@@ -7,9 +7,11 @@ abi TestFuelCoin {
     fn burn_coins(burn_amount: u64, sub_id: b256);
     fn force_transfer_coins(coins: u64, asset_id: b256, target: ContractId);
     fn transfer_coins_to_address(coins: u64, asset_id: b256, to: Address);
+    fn transfer_coins_to_predicate(coins: u64, asset_id: b256, to: Address);
     fn get_balance(asset_id: b256, target: ContractId) -> u64;
     fn mint_and_send_to_contract(amount: u64, to: ContractId, sub_id: b256);
     fn mint_and_send_to_address(amount: u64, to: Address, sub_id: b256);
+    fn mint_and_send_to_predicate(amount: u64, to: Address, sub_id: b256);
     fn generic_mint_to(amount: u64, to: Identity, sub_id: b256);
     fn generic_transfer(amount: u64, asset_id: b256, to: Identity);
     fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64);
@@ -34,6 +36,14 @@ impl TestFuelCoin for Contract {
         transfer_to_address(to, asset_id, coins);
     }
 
+    fn transfer_coins_to_predicate(coins: u64, asset_id: b256, to: Address) {
+        let asset_id = AssetId { value: asset_id };
+        // TODO: Converts an `Address` to a `PredicateId` until SDK supports the `PredicateId` type.
+        let result_b256: b256 = to.into();
+        let predicate_id = PredicateId::from(result_b256);
+        transfer_to_predicate(predicate_id, asset_id, coins);
+    }
+
     fn get_balance(asset_id: b256, target: ContractId) -> u64 {
         let asset_id = AssetId { value: asset_id };
         balance_of(target, asset_id)
@@ -45,6 +55,13 @@ impl TestFuelCoin for Contract {
 
     fn mint_and_send_to_address(amount: u64, to: Address, sub_id: b256) {
         mint_to_address(to, sub_id, amount);
+    }
+
+    fn mint_and_send_to_predicate(amount: u64, to: Address, sub_id: b256) {
+        // TODO: Converts an `Address` to a `PredicateId` until SDK supports the `PredicateId` type.
+        let result_b256: b256 = to.into();
+        let predicate_id = PredicateId::from(result_b256);
+        mint_to_predicate(predicate_id, sub_id, amount);
     }
 
     fn generic_mint_to(amount: u64, to: Identity, sub_id: b256) {

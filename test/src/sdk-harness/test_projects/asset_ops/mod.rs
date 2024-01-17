@@ -1,5 +1,8 @@
 use fuels::{
-    accounts::wallet::WalletUnlocked,
+    accounts::{
+        predicate::Predicate,
+        wallet::WalletUnlocked,
+    },
     prelude::*,
     tx::Bytes32,
     types::AssetId,
@@ -11,7 +14,12 @@ use std::str::FromStr;
 abigen!(Contract(
     name = "TestFuelCoinContract",
     abi = "test_projects/asset_ops/out/debug/asset_ops-abi.json"
-));
+    ),
+    Predicate(
+        name = "BarebonesPredicate",
+        abi = "test_artifacts/barebones_predicate/out/debug/barebones_predicate-abi.json"
+    ),
+);
 
 #[tokio::test]
 async fn can_mint() {
@@ -267,6 +275,37 @@ async fn can_mint_and_send_to_address() {
 }
 
 #[tokio::test]
+async fn can_mint_and_send_to_predicate() {
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
+    let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet.clone()).await;
+    let amount = 55u64;
+    let sub_id = Bytes32::zeroed();
+    let asset_id = get_asset_id(sub_id, fuelcontract_id).await;
+    let asset_id_array: [u8; 32] = *asset_id;
+
+    let predicate: Predicate =
+        Predicate::load_from("test_artifacts/barebones_predicate/out/debug/barebones_predicate.bin")
+            .unwrap()
+            .with_provider(wallet.try_provider().unwrap().clone());
+
+    let recipient = predicate.address();
+
+    fuelcontract_instance
+        .methods()
+        .mint_and_send_to_predicate(amount, recipient, Bits256(*sub_id))
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
+
+    let balance = predicate
+        .get_asset_balance(&AssetId::new(asset_id_array))
+        .await
+        .unwrap();
+    assert_eq!(balance, amount);
+}
+
+#[tokio::test]
 async fn can_perform_generic_mint_to_with_address() {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet.clone()).await;
@@ -332,6 +371,37 @@ async fn can_perform_generic_mint_to_with_contract_id() {
         .unwrap();
 
     assert_eq!(result.value, amount)
+}
+
+#[tokio::test]
+async fn can_perform_generic_mint_to_with_predicate() {
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
+    let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet.clone()).await;
+    let sub_id = Bytes32::zeroed();
+    let asset_id = get_asset_id(sub_id, fuelcontract_id).await;
+    let amount = 55u64;
+    let asset_id_array: [u8; 32] = *asset_id;
+
+    let predicate: Predicate =
+    Predicate::load_from("test_artifacts/barebones_predicate/out/debug/barebones_predicate.bin")
+        .unwrap()
+        .with_provider(wallet.try_provider().unwrap().clone());
+
+    let recipient = predicate.address();
+
+    fuelcontract_instance
+        .methods()
+        .generic_mint_to(amount, Identity::Address(recipient.into()), Bits256(*sub_id))
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
+
+    let balance = predicate
+        .get_asset_balance(&AssetId::new(asset_id_array))
+        .await
+        .unwrap();
+    assert_eq!(balance, amount);
 }
 
 #[tokio::test]
@@ -418,6 +488,48 @@ async fn can_perform_generic_transfer_to_contract() {
         .unwrap();
 
     assert_eq!(result.value, amount)
+}
+
+#[tokio::test]
+async fn can_perform_generic_transfer_to_predicate() {
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
+    let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet.clone()).await;
+    let sub_id = Bytes32::zeroed();
+    let asset_id = get_asset_id(sub_id, fuelcontract_id).await;
+    let amount = 33u64;
+    let asset_id_array: [u8; 32] = *asset_id;
+
+    fuelcontract_instance
+        .methods()
+        .mint_coins(amount, Bits256(*sub_id))
+        .call()
+        .await
+        .unwrap();
+
+    let predicate: Predicate =
+        Predicate::load_from("test_artifacts/barebones_predicate/out/debug/barebones_predicate.bin")
+            .unwrap()
+            .with_provider(wallet.try_provider().unwrap().clone());
+
+    let recipient = predicate.address();
+
+    fuelcontract_instance
+        .methods()
+        .generic_transfer(
+            amount,
+            Bits256(*asset_id),
+            Identity::Address(recipient.into()),
+        )
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
+
+    let balance = predicate
+        .get_asset_balance(&AssetId::new(asset_id_array))
+        .await
+        .unwrap();
+    assert_eq!(balance, amount);
 }
 
 #[tokio::test]

@@ -141,6 +141,11 @@
           "name": "ContractId",
           "type": 10,
           "typeArguments": null
+        },
+        {
+          "name": "PredicateId",
+          "type": 11,
+          "typeArguments": null
         }
       ],
       "type": "enum std::identity::Identity",
@@ -207,6 +212,18 @@
       ],
       "type": "struct std::contract_id::ContractId",
       "typeId": 10,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "value",
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct std::predicate_id::PredicateId",
+      "typeId": 11,
       "typeParameters": null
     }
   ]

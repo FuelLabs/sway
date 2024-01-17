@@ -47,6 +47,11 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
+name = "barebones_predicate"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "block"
 source = "member"
 dependencies = [
