@@ -7,6 +7,7 @@ use ::identity::Identity;
 use ::option::Option::{self, *};
 use ::result::Result::{self, *};
 use ::inputs::{Input, input_coin_owner, input_count, input_type};
+use ::predicate_id::PredicateId;
 
 /// The error type used when an `Identity` cannot be determined.
 pub enum AuthError {
@@ -182,7 +183,7 @@ pub fn caller_address() -> Result<Address, AuthError> {
 ///
 /// # Returns
 ///
-/// * [Address] - The address of this predicate.
+/// * [PredicateId] - The address of this predicate.
 ///
 /// # Reverts
 ///
@@ -198,7 +199,7 @@ pub fn caller_address() -> Result<Address, AuthError> {
 ///     log(this_predicate);
 /// }
 /// ```
-pub fn predicate_id() -> Address {
+pub fn predicate_id() -> PredicateId {
     // Get index of current predicate.
     // i3 = GM_GET_VERIFYING_PREDICATE
     let predicate_index = asm(r1) {
@@ -206,5 +207,6 @@ pub fn predicate_id() -> Address {
         r1: u64
     };
 
-    input_coin_owner(predicate_index).unwrap()
+    let result_b256: b256 = input_coin_owner(predicate_index).unwrap().into();
+    PredicateId::from(result_b256)
 }

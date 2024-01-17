@@ -8,6 +8,7 @@ use ::address::Address;
 use ::alias::SubId;
 use ::asset_id::AssetId;
 use ::contract_id::ContractId;
+use ::predicate_id::PredicateId;
 use ::identity::Identity;
 
 // `StorageKey` API

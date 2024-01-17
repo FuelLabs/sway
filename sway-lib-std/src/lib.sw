@@ -29,6 +29,7 @@ pub mod b512;
 pub mod tx;
 pub mod outputs;
 pub mod address;
+pub mod predicate_id;
 pub mod identity;
 pub mod ecr;
 pub mod vm;

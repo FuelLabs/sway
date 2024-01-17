@@ -10,6 +10,7 @@ use ::error_signals::FAILED_TRANSFER_TO_ADDRESS_SIGNAL;
 use ::identity::Identity;
 use ::revert::revert;
 use ::outputs::{Output, output_amount, output_count, output_type};
+use ::predicate_id::PredicateId;
 
 /// Mint `amount` coins of the current contract's `asset_id` and transfer them
 /// to `to` by calling either `force_transfer_to_contract` or
@@ -98,6 +99,30 @@ pub fn mint_to_address(to: Address, sub_id: SubId, amount: u64) {
     transfer_to_address(to, AssetId::new(contract_id(), sub_id), amount);
 }
 
+/// Mint `amount` coins of the current contract's `asset_id` and send them to
+/// the PredicateId `to`.
+///
+/// # Arguments
+///
+/// * `to`: [PredicateId] - The recipient predicate.
+/// * `sub_id`: [SubId] - The sub identifier of the asset which to mint.
+/// * `amount`: [u64] - The amount of coins to mint.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::{constants::ZERO_B256, asset::mint_to_predicate};
+///
+/// fn foo() {
+///     let to = PredicateId::from(ZERO_B256);
+///     mint_to_predicate(to, ZERO_B256, 500);
+/// }
+/// ```
+pub fn mint_to_predicate(to: PredicateId, sub_id: SubId, amount: u64) {
+    mint(sub_id, amount);
+    transfer_to_predicate(to, AssetId::new(contract_id(), sub_id), amount);
+}
+
 /// Mint `amount` coins of the current contract's `sub_id`. The newly minted assets are owned by the current contract.
 ///
 /// # Arguments
@@ -184,6 +209,7 @@ pub fn transfer(to: Identity, asset_id: AssetId, amount: u64) {
     match to {
         Identity::Address(addr) => transfer_to_address(addr, asset_id, amount),
         Identity::ContractId(id) => force_transfer_to_contract(id, asset_id, amount),
+        Identity::PredicateId(pred) => transfer_to_predicate(pred, asset_id, amount),
     };
 }
 
@@ -249,6 +275,54 @@ pub fn force_transfer_to_contract(to: ContractId, asset_id: AssetId, amount: u64
 /// }
 /// ```
 pub fn transfer_to_address(to: Address, asset_id: AssetId, amount: u64) {
+    // maintain a manual index as we only have `while` loops in sway atm:
+    let mut index = 0;
+
+    // If an output of type `OutputVariable` is found, check if its `amount` is
+    // zero. As one cannot transfer zero coins to an output without a panic, a
+    // variable output with a value of zero is by definition unused.
+    let number_of_outputs = output_count();
+    while index < number_of_outputs {
+        if let Output::Variable = output_type(index) {
+            if output_amount(index) == 0 {
+                asm(r1: to.value, r2: index, r3: amount, r4: asset_id) {
+                    tro r1 r2 r3 r4;
+                };
+                return;
+            }
+        }
+        index += 1;
+    }
+
+    revert(FAILED_TRANSFER_TO_ADDRESS_SIGNAL);
+}
+
+/// Transfer `amount` coins of type `asset_id` and send them to
+/// the `to` predicate.
+///
+/// # Arguments
+///
+/// * `to`: [PredicateId] - The recipient predicate.
+/// * `asset_id`: [AssetId] - The asset to transfer.
+/// * `amount`: [u64] - The amount of coins to transfer.
+///
+/// # Reverts
+///
+/// * When `amount` is greater than the contract balance for `asset_id`.
+/// * When `amount` is equal to zero.
+/// * When there are no free variable outputs.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, asset::transfer_to_predicate};
+///
+/// fn foo() {
+///     let to_predicate = Address::from(ZERO_B256);
+///     transfer_to_predicate(to_predicate, BASE_ASSET_ID, 500);
+/// }
+/// ```
+pub fn transfer_to_predicate(to: PredicateId, asset_id: AssetId, amount: u64) {
     // maintain a manual index as we only have `while` loops in sway atm:
     let mut index = 0;
 
