@@ -75,5 +75,7 @@ pub fn balance_of(target: ContractId, asset_id: AssetId) -> u64 {
 /// }
 /// ```
 pub fn msg_amount() -> u64 {
-    balance()
+    asm() {
+        bal
+    }
 }
