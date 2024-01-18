@@ -271,11 +271,7 @@ fn type_check_struct(
             .fields
             .iter()
             .filter_map(|f| {
-                if !typed_fields.iter().any(|tf| f.name == tf.field) {
-                    Some(f.name.to_string())
-                } else {
-                    None
-                }
+                (!typed_fields.iter().any(|tf| f.name == tf.field)).then_some(f.name.to_string())
             })
             .collect::<Vec<_>>();
 
