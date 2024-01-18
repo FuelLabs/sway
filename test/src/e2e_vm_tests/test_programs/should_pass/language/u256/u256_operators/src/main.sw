@@ -162,3 +162,17 @@ fn should_revert_on_div_zero() -> u256 {
     let a = 0x0000000000000000000000000000000000000000000000000000000000000000u256;
     a / 0x0000000000000000000000000000000000000000000000000000000000000000u256
 }
+
+#[test]
+fn type_inference_numeric_1() -> u256 {
+    let a = 1;
+    let b = 0x2u256;
+    b * a
+}
+
+#[test]
+fn type_inference_numeric_2() -> u256 {
+   let mut result = 0;
+   result = 3.as_u256();
+   result
+}
