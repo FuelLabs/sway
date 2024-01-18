@@ -300,11 +300,7 @@ fn match_or(
             let missing_in_alternatives: Vec<Span> = variables_in_alternatives
                 .iter()
                 .filter_map(|(span, vars)| {
-                    if !vars.iter().any(|(ident, _)| ident == *variable) {
-                        Some(span.clone())
-                    } else {
-                        None
-                    }
+                    (!vars.iter().any(|(ident, _)| ident == *variable)).then_some(span.clone())
                 })
                 .collect();
 
