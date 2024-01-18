@@ -1,4 +1,4 @@
-use crate::args::read_content_or_filepath;
+use crate::args::read_content_filepath_or_stdin;
 use anyhow::Result;
 use fuel_crypto::{fuel_types::Address, Message, Signature};
 use fuels_core::types::bech32::Bech32Address;
@@ -26,7 +26,7 @@ pub struct Arg {
 }
 
 pub fn handler(arg: Arg) -> Result<serde_json::Value> {
-    let message = Message::new(read_content_or_filepath(arg.message));
+    let message = Message::new(read_content_filepath_or_stdin(arg.message));
     let public_key = Signature::recover(&arg.signature, &message)?;
 
     let bytes = *public_key.hash();

@@ -71,22 +71,16 @@ fn read_as_binary(content: &Option<String>) -> Vec<u8> {
         .unwrap_or_default()
 }
 
-/// The HashArgs takes no or a single argument, it can be either a string or a
-/// path to a file. It can be consumed and converted to a Vec<u8> using the From
-/// trait.
+/// Reads the arg and returns a vector of bytes
 ///
-/// The usage is as follows:
-///  1. Zero or one argument is accepted
-///  2. If no argument is passed, `stdin` is being read
-///  3. The argument will be checked to be a file path, if it is the content
-///     will be ded from the file
-///  4. Otherwise, the content is treated as a string
-///  5. If the string is "-", `stdin` is being read
-///  6. If the string starts with "0x", it will be treated as a hex string. Only
+/// These are the rules
+///  1. If None, stdin is read.
+///  2. If it is an String and it happens to be a file path, its content will be returned
+///  3. If it is an String and it is "-", stdin is read
+///  4. If the string starts with "0x", it will be treated as a hex string. Only
 ///     fully valid hex strings are accepted.
-///  7. Any other string, or any malformed hex string will be treated as a
-///     vector of bytes
-pub fn read_content_or_filepath(arg: Option<String>) -> Vec<u8> {
+///  5. Otherwise the String will be converted to a vector of bytes
+pub fn read_content_filepath_or_stdin(arg: Option<String>) -> Vec<u8> {
     match checked_read_file(&arg) {
         Some(bytes) => bytes,
         None => match checked_read_stdin(&arg, io::stdin().lock()) {
@@ -96,9 +90,14 @@ pub fn read_content_or_filepath(arg: Option<String>) -> Vec<u8> {
     }
 }
 
+/// The HashArgs takes no or a single argument, it can be either a string or a
+/// path to a file. It can be consumed and converted to a Vec<u8> using the From
+/// trait.
+///
+/// This is a wrapper around `read_content_filepath_or_stdin`
 impl From<HashArgs> for Vec<u8> {
     fn from(value: HashArgs) -> Self {
-        read_content_or_filepath(value.content_or_filepath)
+        read_content_filepath_or_stdin(value.content_or_filepath)
     }
 }
 
