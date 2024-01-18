@@ -95,10 +95,6 @@ pub(crate) fn find_all() -> impl Iterator<Item = PathBuf> {
         .filter_map(Result::ok)
         .filter_map(|entry| {
             let path = entry.path().to_path_buf();
-            if is_plugin(&path) {
-                Some(path)
-            } else {
-                None
-            }
+            is_plugin(&path).then_some(path)
         })
 }
