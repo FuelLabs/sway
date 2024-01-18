@@ -45,7 +45,7 @@ pub fn collect_typed_declaration(node: &ty::TyAstNode, ctx: &ParseContext) {
         };
 
         let token_ident = ctx.ident(&ident);
-        if let Some(mut token) = ctx.tokens.try_get_mut(&token_ident).try_unwrap() {
+        if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&token_ident) {
             token.typed = Some(typed_token);
             token.type_def = Some(TypeDefinition::Ident(ident));
         }
