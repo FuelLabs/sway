@@ -23,7 +23,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       furl_core_version: ${{steps.get_fuel_core_ver.outputs.version}}
-      furl_core_version_with_v: ${{steps.get_fuel_core_ver.outputs.version_with_v}}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -39,7 +38,6 @@ jobs:
           cargo install toml-cli
           version=$(toml get Cargo.toml workspace.dependencies.fuel-core-client.version | tr -d '"')
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "version_with_v=v$version" >> "$GITHUB_OUTPUT"
 
   build-sway-lib-core:
     runs-on: ubuntu-latest
@@ -303,7 +301,7 @@ jobs:
     needs: get-fuel-core-version
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:${{ needs.get-fuel-core-version.outputs.furl_core_version_with_v }}
+        image: ghcr.io/fuellabs/fuel-core:v${{ needs.get-fuel-core-version.outputs.furl_core_version }}
         ports:
           - 4000:4000
     steps:
