@@ -1044,12 +1044,9 @@ pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
     walkdir::WalkDir::new(dir)
         .into_iter()
         .filter_map(|entry| {
-            if let Ok(entry) = entry {
-                if entry.path().ends_with(constants::MANIFEST_FILE_NAME) {
-                    return Some(entry);
-                }
-            }
-            None
+            entry
+                .ok()
+                .filter(|entry| entry.path().ends_with(constants::MANIFEST_FILE_NAME))
         })
         .find_map(|entry| {
             let path = entry.path();
