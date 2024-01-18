@@ -1,5 +1,6 @@
 use anyhow::{anyhow, bail, Result};
 use colored::Colorize;
+use forc::cli::shared::BuildProfile;
 use forc_client::{
     cmd::{Deploy as DeployCommand, Run as RunCommand},
     op::{deploy, run},
@@ -72,6 +73,10 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
         },
         signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
         default_salt: true,
+        build_profile: BuildProfile {
+            release: run_config.release,
+            ..Default::default()
+        },
         ..Default::default()
     })
     .await
