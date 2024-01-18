@@ -235,11 +235,7 @@ impl AbstractInstructionSet {
             .into_iter()
             .enumerate()
             .filter_map(|(idx, op)| {
-                if !dead_indices.contains(&idx) {
-                    Some(op)
-                } else {
-                    None
-                }
+                !dead_indices.contains(&idx).then_some(op)
             })
             .collect();
         std::mem::swap(&mut self.ops, &mut new_ops);
