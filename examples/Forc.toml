@@ -28,7 +28,6 @@ members = [
   "storage_variables",
   "storage_vec",
   "structs",
-  "subcurrency",
   "tuples",
   "type_aliases",
   "vec",

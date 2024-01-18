@@ -13,8 +13,6 @@ CLI
 Deserialization
 deserializing
 DApp
-subcurrency
-Subcurrency
 intrinsics
 Intrinsics
 workspace

@@ -9,7 +9,6 @@
   - [Standard Library](./introduction/standard_library.md)
 - [Examples](./examples/index.md)
   - [Counter](./examples/counter.md)
-  - [Subcurrency](./examples/subcurrency.md)
   - [`FizzBuzz`](./examples/fizzbuzz.md)
   - [Wallet Smart Contract](./examples/wallet_smart_contract.md)
 - [Program Types](./sway-program-types/index.md)

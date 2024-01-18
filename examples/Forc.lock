@@ -134,11 +134,6 @@ name = "structs"
 source = "member"
 
 [[package]]
-name = "subcurrency"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
 name = "tuples"
 source = "member"
 
