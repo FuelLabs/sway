@@ -36,7 +36,32 @@ pub fn handler(arg: Arg) -> Result<serde_json::Value> {
 
     Ok(json!({
         "PublicKey": public_key.to_string(),
-        "Bench32": bech32.to_string(),
+        "Bech32": bech32.to_string(),
         "Address": addr.to_string(),
     }))
+}
+
+#[cfg(test)]
+mod test {
+    use std::str::FromStr;
+
+    use super::*;
+
+    #[test]
+    fn expect_output() {
+        let arg = Arg {
+            signature: Signature::from_str("0x1eff08081394b72239a0cf7ff6b499213dcb7a338bedbd75d072d504588ef27a1f74d5ceb2f111ec02ede097fb09ed00aa9867922ed39299dae0b1afc0fa8661").unwrap(),
+            message: Some("This is a message that is signed".to_string()),
+        };
+        let json = handler(arg).unwrap();
+        assert_eq!(
+            "fuel1fmmfhjapeak3knq96arrvttwrtmzghe0w9gx79gkcl2jhaweakdqfqhzdr",
+            json.as_object()
+                .unwrap()
+                .get("Bech32")
+                .unwrap()
+                .as_str()
+                .unwrap(),
+        )
+    }
 }
