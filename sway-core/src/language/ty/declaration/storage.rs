@@ -107,17 +107,17 @@ impl TyStorageDecl {
         // get the initial field's type
         // make sure the next field exists in that type
         for field in fields.into_iter().rev() {
+            let decl = struct_decl.expect("If a field is found that means we have the struct declaration.");
+            assert!(decl.call_path.is_absolute, "The call path of the struct declaration must always be absolute.");
+
+            let struct_can_be_adapted = module_can_be_adapted(namespace, &decl.call_path.prefixes);
+            let is_out_of_struct_decl_module_access = !namespace.module_is_submodule_of(&decl.call_path.prefixes, true);
+
             match available_struct_fields
                 .iter()
                 .find(|x| x.name.as_str() == field.as_str())
             {
                 Some(struct_field) => {
-                    let decl = struct_decl.expect("If a field is found that means we have the struct declaration.");
-                    assert!(decl.call_path.is_absolute, "The call path of the struct declaration must always be absolute.");
-
-                    let struct_can_be_adapted = module_can_be_adapted(namespace, &decl.call_path.prefixes);
-                    let is_out_of_struct_decl_module_access = !namespace.module_is_submodule_of(&decl.call_path.prefixes, true);
-
                     if is_out_of_struct_decl_module_access && struct_field.is_private() {
                         return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
                             field_name: field.clone(),
@@ -138,15 +138,28 @@ impl TyStorageDecl {
                         update_struct_decl_and_available_struct_fields(struct_field.type_argument.type_id);
                 }
                 None => {
-                    let available_fields = available_struct_fields
-                        .iter()
-                        .map(|x| x.name.as_str())
-                        .collect::<Vec<_>>();
+                    // Since storage cannot be passed to other modules, the access
+                    // is always in the module of the storage declaration.
+                    // If the struct cannot be instantiated in this module at all,
+                    // we will just show the error, without any additional help lines
+                    // showing available fields or anything.
+                    // Note that if the struct is empty it can always be instantiated.
+                    let struct_can_be_instantiated = !is_out_of_struct_decl_module_access || !decl.has_private_fields();
+
+                    let available_fields = if struct_can_be_instantiated {
+                        decl.available_fields_names(is_out_of_struct_decl_module_access)
+                    } else {
+                        vec![]
+                    };
+
                     return Err(handler.emit_err(CompileError::FieldNotFound {
                         field_name: field.clone(),
-                        available_fields: available_fields.join(", "),
-                        struct_name: type_checked_buf.last().unwrap().name.clone(),
-                        span: field.span(),
+                        available_fields,
+                        is_public_struct_access: is_out_of_struct_decl_module_access,
+                        struct_name: decl.call_path.suffix.clone(),
+                        struct_decl_span: decl.span(),
+                        struct_is_empty: decl.is_empty(),
+                        usage_context: StructFieldUsageContext::StorageAccess,
                     }));
                 }
             }

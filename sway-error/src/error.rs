@@ -241,6 +241,7 @@ pub enum CompileError {
         struct_decl_span: Span,
         private_fields: Vec<Ident>,
         constructors: Vec<String>,
+        /// True if the struct has only private fields.
         all_fields_are_private: bool,
         is_in_storage_declaration: bool,
         struct_can_be_adapted: bool,
@@ -314,15 +315,24 @@ pub enum CompileError {
     DeclIsNotAConstant { actually: String, span: Span },
     #[error("This is a {actually}, not a type alias")]
     DeclIsNotATypeAlias { actually: String, span: Span },
-    #[error(
-        "Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n \
-         {available_fields}"
-    )]
+    #[error("Field \"{field_name}\" does not exist in struct \"{struct_name}\".")]
     FieldNotFound {
         field_name: Ident,
-        available_fields: String,
+        /// Only public fields if `is_public_struct_access` is true.
+        ///
+        /// Only remaining fields if the `usage_context` is
+        /// [StructFieldUsageContext::StructInstantiation] or
+        /// [StructFieldUsageContext::StorageDeclaration] or
+        /// [StructFieldUsageContext::PatternMatching].
+        /// In those cases we want to display only the
+        /// remaining, not used, fields.
+        available_fields: Vec<Ident>,
+        is_public_struct_access: bool,
+        /// Original, non-aliased struct name.
         struct_name: Ident,
-        span: Span,
+        struct_decl_span: Span,
+        struct_is_empty: bool,
+        usage_context: StructFieldUsageContext,
     },
     #[error("Could not find symbol \"{name}\" in this scope.")]
     SymbolNotFound { name: Ident, span: Span },
@@ -878,7 +888,7 @@ impl Spanned for CompileError {
             NotAStruct { span, .. } => span.clone(),
             NotIndexable { span, .. } => span.clone(),
             FieldAccessOnNonStruct { span, .. } => span.clone(),
-            FieldNotFound { span, .. } => span.clone(),
+            FieldNotFound { field_name, .. } => field_name.span(),
             SymbolNotFound { span, .. } => span.clone(),
             ImportPrivateSymbol { span, .. } => span.clone(),
             ImportPrivateModule { span, .. } => span.clone(),
@@ -1575,7 +1585,7 @@ impl ToDiagnostic for CompileError {
                     span.clone(),
                     format!("Private field \"{field_name}\" {}is inaccessible in this module.",
                         match usage_context {
-                            StructInstantiation | StorageDeclaration | PatternMatching { .. } => "".to_string(),
+                            StructInstantiation { .. } | StorageDeclaration { .. } | PatternMatching { .. } => "".to_string(),
                             StorageAccess | StructFieldAccess => format!("of the struct \"{struct_name}\" "),
                         }
                     )
@@ -1586,7 +1596,7 @@ impl ToDiagnostic for CompileError {
                         span.clone(),
                         format!("Private fields can be {} only within the module in which their struct is declared.",
                             match usage_context {
-                                StructInstantiation | StorageDeclaration => "initialized",
+                                StructInstantiation { .. } | StorageDeclaration { .. } => "initialized",
                                 StorageAccess | StructFieldAccess => "accessed",
                                 PatternMatching { .. } => "matched",
                             }
@@ -1606,7 +1616,7 @@ impl ToDiagnostic for CompileError {
                         field_decl_span.clone(),
                         format!("Field \"{field_name}\" {}is declared here as private.",
                             match usage_context {
-                                StructInstantiation | StorageDeclaration | PatternMatching { .. } => format!("of the struct \"{struct_name}\" "),
+                                StructInstantiation { .. } | StorageDeclaration { .. } | PatternMatching { .. } => format!("of the struct \"{struct_name}\" "),
                                 StorageAccess | StructFieldAccess => "".to_string(),
                             }
                         )
@@ -1637,6 +1647,63 @@ impl ToDiagnostic for CompileError {
                     },
                 ],
             },            
+            FieldNotFound { field_name, available_fields, is_public_struct_access, struct_name, struct_decl_span, struct_is_empty, usage_context } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Field does not exist in struct".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    field_name.span(),
+                    format!("Field \"{field_name}\" does not exist in the struct \"{struct_name}\".")
+                ),
+                hints: {
+                    let public = if *is_public_struct_access { "public " } else { "" };
+
+                    let (hint, show_struct_decl) = if *struct_is_empty {
+                        (Some(format!("\"{struct_name}\" is an empty struct. It doesn't have any fields.")), false)
+                    }
+                    // If the struct anyhow cannot be instantiated (in the struct instantiation or storage declaration),
+                    // we don't show any additional hints.
+                    // Showing any available fields would be inconsistent and misleading, because they anyhow cannot be used.
+                    // Besides, "Struct cannot be instantiated" error will provide all the explanations and suggestions.
+                    else if matches!(usage_context, StorageAccess) && *is_public_struct_access && available_fields.is_empty() {
+                        // If the struct anyhow cannot be instantiated in the storage, don't show any additional hint
+                        // if there is an attempt to access a non existing field of such non-instantiable struct.
+                        (None, false)
+                    } else if matches!(usage_context, StructInstantiation { struct_can_be_instantiated: false } | StorageDeclaration { struct_can_be_instantiated: false }) {
+                        (None, false)
+                    } else if !available_fields.is_empty() {
+                        // In all other cases, show the available fields.
+                        const NUM_OF_FIELDS_TO_DISPLAY: usize = 4;
+                        match &available_fields[..] {
+                            [field] => (Some(format!("Only available {public}field is \"{field}\".")), false),
+                            _ => (Some(format!("Available {public}fields are {}.", sequence_to_str(available_fields, Enclosing::DoubleQuote, NUM_OF_FIELDS_TO_DISPLAY))),
+                                    available_fields.len() > NUM_OF_FIELDS_TO_DISPLAY
+                                ),
+                        }
+                    }
+                    else {
+                        (None, false)
+                    };
+
+                    let mut hints = vec![];
+
+                    if let Some(hint) = hint {
+                        hints.push(Hint::help(source_engine, field_name.span(), hint));
+                    };
+
+                    if show_struct_decl {
+                        hints.push(Hint::info(
+                            source_engine,
+                            struct_decl_span.clone(),
+                            format!("Struct \"{struct_name}\" is declared here, and has {} {public}fields.",
+                                number_to_str(available_fields.len())
+                            )
+                        ));
+                    }
+
+                    hints
+                },
+                help: vec![],
+            },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we
@@ -1675,8 +1742,8 @@ pub enum TypeNotAllowedReason {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum StructFieldUsageContext {
-    StructInstantiation,
-    StorageDeclaration,
+    StructInstantiation { struct_can_be_instantiated: bool },
+    StorageDeclaration { struct_can_be_instantiated: bool },
     StorageAccess,
     PatternMatching { has_rest_pattern: bool },
     StructFieldAccess,

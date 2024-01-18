@@ -13,7 +13,7 @@ use crate::{
 use super::TraitMap;
 
 use sway_error::{
-    error::CompileError,
+    error::{CompileError, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{span::Span, Spanned};
@@ -330,12 +330,13 @@ impl Items {
         }
     }
 
-    /// Returns a tuple where the first element is the [ResolvedType] of the actual expression, and
-    /// the second is the [ResolvedType] of its parent, for control-flow analysis.
+    /// Returns a tuple where the first element is the [TypeId] of the actual expression, and
+    /// the second is the [TypeId] of its parent.
     pub(crate) fn find_subfield_type(
         &self,
         handler: &Handler,
         engines: &Engines,
+        namespace: &Namespace,
         base_name: &Ident,
         projections: &[ty::ProjectionKind],
     ) -> Result<(TypeId, TypeId), ErrorEmitted> {
@@ -369,6 +370,10 @@ impl Items {
                     ty::ProjectionKind::StructField { name: field_name },
                 ) => {
                     let struct_decl = decl_engine.get_struct(&decl_ref);
+                    assert!(struct_decl.call_path.is_absolute, "The call path of the struct declaration must always be absolute.");
+
+                    let is_out_of_struct_decl_module_access = !namespace.module_is_submodule_of(&struct_decl.call_path.prefixes, true);
+
                     let field_type_opt = {
                         struct_decl.fields.iter().find_map(
                             |ty::TyStructField {
@@ -387,18 +392,14 @@ impl Items {
                     let field_type = match field_type_opt {
                         Some(field_type) => field_type,
                         None => {
-                            // gather available fields for the error message
-                            let available_fields = struct_decl
-                                .fields
-                                .iter()
-                                .map(|field| field.name.as_str())
-                                .collect::<Vec<_>>();
-
                             return Err(handler.emit_err(CompileError::FieldNotFound {
                                 field_name: field_name.clone(),
+                                available_fields: struct_decl.available_fields_names(is_out_of_struct_decl_module_access),
+                                is_public_struct_access: is_out_of_struct_decl_module_access,
                                 struct_name: struct_decl.call_path.suffix.clone(),
-                                available_fields: available_fields.join(", "),
-                                span: field_name.span(),
+                                struct_decl_span: struct_decl.span(),
+                                struct_is_empty: struct_decl.is_empty(),
+                                usage_context: StructFieldUsageContext::StructFieldAccess,
                             }));
                         }
                     };

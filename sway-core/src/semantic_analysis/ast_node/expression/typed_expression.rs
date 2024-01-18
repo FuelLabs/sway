@@ -1994,6 +1994,7 @@ impl ty::TyExpression {
                 let (ty_of_field, _ty_of_parent) = ctx.namespace.find_subfield_type(
                     handler,
                     ctx.engines(),
+                    ctx.namespace,
                     &base_name,
                     &names_vec,
                 )?;

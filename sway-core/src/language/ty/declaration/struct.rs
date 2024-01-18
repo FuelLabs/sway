@@ -3,10 +3,6 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use sway_error::{
-    error::CompileError,
-    handler::{ErrorEmitted, Handler},
-};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
@@ -94,28 +90,25 @@ impl MonomorphizeHelper for TyStructDecl {
 }
 
 impl TyStructDecl {
-    pub(crate) fn expect_field(
-        &self,
-        handler: &Handler,
-        field_to_access: &Ident,
-    ) -> Result<&TyStructField, ErrorEmitted> {
-        match self.find_field(field_to_access)
-        {
-            Some(field) => Ok(field),
-            None => {
-                return Err(handler.emit_err(CompileError::FieldNotFound {
-                    available_fields: self
-                        .fields
-                        .iter()
-                        .map(|TyStructField { name, .. }| name.to_string())
-                        .collect::<Vec<_>>()
-                        .join("\n"),
-                    field_name: field_to_access.clone(),
-                    struct_name: self.call_path.suffix.clone(),
-                    span: field_to_access.span(),
-                }));
-            }
-        }
+    /// Returns [TyStructField]s available on the struct `self` in the given context.
+    /// If `is_public_struct_access` is true, only public fields are returned, otherwise
+    /// all fields.
+    pub(crate) fn available_fields(&self, is_public_struct_access: bool) -> impl Iterator<Item = &TyStructField> {
+        self
+            .fields
+            .iter()
+            .filter(move |field| !is_public_struct_access || (is_public_struct_access && field.is_public()))
+    }
+
+    /// Returns names of the [TyStructField]s available on the struct `self` in the given context.
+    /// If `is_public_struct_access` is true, only the names of the public fields are returned, otherwise
+    /// the names of all fields.
+    /// Suitable for error reporting.
+    pub(crate) fn available_fields_names(&self, is_public_struct_access: bool) -> Vec<Ident> {
+        self
+            .available_fields(is_public_struct_access)
+            .map(|field| field.name.clone())
+            .collect()
     }
 
     /// Returns [TyStructField] with the given `field_name`, or `None` if the field with the
@@ -138,6 +131,22 @@ impl TyStructDecl {
             .enumerate()
             .find(|(_, field)| field.name == *field_name)
             .map(|(idx, field)| (idx as u64, field.type_argument.type_id))
+    }
+
+    /// Returns true if the struct `self` has at least one private field.
+    pub(crate) fn has_private_fields(&self) -> bool {
+        self.fields.iter().any(|field| field.is_private())
+    }
+
+    /// Returns true if the struct `self` has fields (it is not empty)
+    /// and all fields are private.
+    pub(crate) fn has_only_private_fields(&self) -> bool {
+        !self.is_empty() && self.fields.iter().all(|field| field.is_private())
+    }
+
+    /// Returns true if the struct `self` does not have any fields.
+    pub(crate) fn is_empty(&self) -> bool {
+        self.fields.is_empty()
     }
 }
 

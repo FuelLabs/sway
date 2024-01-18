@@ -93,6 +93,8 @@ pub(crate) fn struct_instantiation(
     let type_info = type_engine.get(type_id);
     let struct_ref = type_info.expect_struct(handler, engines, &span)?;
     let struct_decl = (*decl_engine.get_struct(&struct_ref)).clone();
+    let struct_has_private_fields = struct_decl.has_private_fields();
+    let all_fields_are_private = struct_decl.has_only_private_fields();
     let struct_name = struct_decl.call_path.suffix;
     let struct_fields = struct_decl.fields;
     let mut struct_fields = struct_fields;
@@ -106,7 +108,6 @@ pub(crate) fn struct_instantiation(
     let struct_can_be_adapted = module_can_be_adapted(ctx.namespace, &struct_decl.call_path.prefixes);
 
     let is_out_of_decl_module_instantiation = !ctx.namespace.module_is_submodule_of(&struct_decl.call_path.prefixes, true);
-    let struct_has_private_fields = struct_fields.iter().any(|field| field.is_private());
     let struct_can_be_instantiated = !is_out_of_decl_module_instantiation || !struct_has_private_fields;
     
     let typed_fields = type_check_field_arguments(
@@ -134,7 +135,7 @@ pub(crate) fn struct_instantiation(
             struct_decl_span: struct_decl.span.clone(),
             private_fields: struct_fields.iter().filter(|field| field.is_private()).map(|field| field.name.clone()).collect(),
             constructors,
-            all_fields_are_private: struct_fields.iter().all(|field| field.is_private()),
+            all_fields_are_private,
             is_in_storage_declaration: ctx.storage_declaration(),
             struct_can_be_adapted,
         });
@@ -177,7 +178,11 @@ pub(crate) fn struct_instantiation(
                         span: field.name.span(),
                         field_decl_span: ty_field.name.span(),
                         struct_can_be_adapted,
-                        usage_context: StructFieldUsageContext::StructInstantiation,
+                        usage_context: if ctx.storage_declaration() {
+                            StructFieldUsageContext::StorageDeclaration { struct_can_be_instantiated: false }
+                        } else {
+                            StructFieldUsageContext::StructInstantiation { struct_can_be_instantiated: false }
+                        }
                     });
                 }
             }

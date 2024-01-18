@@ -1291,17 +1291,14 @@ impl TypeInfo {
                         field.clone()
                     },
                     None => {
-                        // gather available fields for the error message
-                        let available_fields = decl
-                            .fields
-                            .iter()
-                            .map(|x| x.name.as_str())
-                            .collect::<Vec<_>>();
                         return Err(handler.emit_err(CompileError::FieldNotFound {
                             field_name: first.clone(),
+                            available_fields: decl.available_fields_names(is_out_of_struct_decl_module_access),
+                            is_public_struct_access: is_out_of_struct_decl_module_access,
                             struct_name: decl.call_path.suffix.clone(),
-                            available_fields: available_fields.join(", "),
-                            span: first.span(),
+                            struct_decl_span: decl.span(),
+                            struct_is_empty: decl.is_empty(),
+                            usage_context: StructFieldUsageContext::StructFieldAccess,
                         }));
                     }
                 };

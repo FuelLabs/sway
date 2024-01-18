@@ -9,7 +9,7 @@ use crate::{
     decl_engine::DeclEngineInsert,
     language::{
         parsed::*,
-        ty::{self, TyDecl, TyScrutinee},
+        ty::{self, TyDecl, TyScrutinee, TyStructDecl, TyStructField},
         CallPath,
     },
     semantic_analysis::{
@@ -234,6 +234,11 @@ fn type_check_struct(
         &struct_name.span(),
     )?;
 
+    assert!(struct_decl.call_path.is_absolute, "The call path of the struct declaration must always be absolute.");
+
+    let struct_can_be_adapted = module_can_be_adapted(ctx.namespace, &struct_decl.call_path.prefixes);
+    let is_out_of_struct_decl_module_access = !ctx.namespace.module_is_submodule_of(&struct_decl.call_path.prefixes, true);
+
     let has_rest_pattern = fields.iter().any(|field| matches!(field, StructScrutineeField::Rest { .. }));
 
     // check for field existence and type check nested scrutinees; short-circuit if there are non-existing fields
@@ -249,7 +254,7 @@ fn type_check_struct(
                     span,
                 } => {
                     // ensure that the struct definition has this field
-                    let struct_field = match struct_decl.expect_field(handler, &field) {
+                    let struct_field = match expect_struct_field(&struct_decl, handler, field, has_rest_pattern, is_out_of_struct_decl_module_access) {
                         Ok(struct_field) => struct_field,
                         Err(_) => continue,
                     };
@@ -284,12 +289,6 @@ fn type_check_struct(
         // While we could check private field access immediately after finding the field and emit errors,
         // that would mean short-circuiting in case of privacy issues which we do not want to do.
         // The consequence is repeating the search for fields here, but the performance penalty is negligible.
-
-        assert!(struct_decl.call_path.is_absolute, "The call path of the struct declaration must always be absolute.");
-
-        let struct_can_be_adapted = module_can_be_adapted(ctx.namespace, &struct_decl.call_path.prefixes);
-        let is_out_of_struct_decl_module_access = !ctx.namespace.module_is_submodule_of(&struct_decl.call_path.prefixes, true);
-
         if is_out_of_struct_decl_module_access {
             for field in fields {
                 match field {
@@ -354,7 +353,7 @@ fn type_check_struct(
                             private_fields: missing_fields(false),
                             struct_name: struct_decl.call_path.suffix.clone(),
                             struct_decl_span: struct_decl.span(),
-                            all_fields_are_private: struct_decl.fields.iter().all(|field| field.is_private()),
+                            all_fields_are_private: struct_decl.has_only_private_fields(),
                             span: span.clone(),
                         },
 
@@ -402,7 +401,31 @@ fn type_check_struct(
         },
     };
 
-    Ok(typed_scrutinee)
+    return Ok(typed_scrutinee);
+
+    fn expect_struct_field<'a>(
+        struct_decl: &'a TyStructDecl,
+        handler: &Handler,
+        field_name: &Ident,
+        has_rest_pattern: bool,
+        is_public_struct_access: bool
+    ) -> Result<&'a TyStructField, ErrorEmitted> {
+        match struct_decl.find_field(field_name)
+        {
+            Some(field) => Ok(field),
+            None => {
+                Err(handler.emit_err(CompileError::FieldNotFound {
+                    field_name: field_name.clone(),
+                    available_fields: struct_decl.available_fields_names(is_public_struct_access),
+                    is_public_struct_access,
+                    struct_name: struct_decl.call_path.suffix.clone(),
+                    struct_decl_span: struct_decl.span(),
+                    struct_is_empty: struct_decl.is_empty(),
+                    usage_context: StructFieldUsageContext::PatternMatching { has_rest_pattern },
+                }))
+            }
+        }
+    }
 }
 
 impl TypeCheckFinalization for TyScrutinee {
