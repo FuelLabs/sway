@@ -22,7 +22,7 @@ jobs:
   get-fuel-core-version:
     runs-on: ubuntu-latest
     outputs:
-      furl_core_version: ${{steps.get_fuel_core_ver.outputs.version}}
+      fuel_core_version: ${{steps.get_fuel_core_ver.outputs.version}}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -301,7 +301,7 @@ jobs:
     needs: get-fuel-core-version
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v${{ needs.get-fuel-core-version.outputs.furl_core_version }}
+        image: ghcr.io/fuellabs/fuel-core:v${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
         ports:
           - 4000:4000
     steps:
@@ -452,7 +452,7 @@ jobs:
         uses: baptiste0928/cargo-install@v2
         with:
           crate: fuel-core-bin
-          version: ${{ needs.get-fuel-core-version.outputs.furl_core_version }}
+          version: ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
         run: cargo test --locked --release
