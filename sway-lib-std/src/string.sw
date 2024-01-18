@@ -2,7 +2,7 @@ library;
 
 use ::assert::assert;
 use ::bytes::Bytes;
-use ::convert::From;
+use ::convert::*;
 use ::hash::{Hash, Hasher};
 use ::option::Option;
 

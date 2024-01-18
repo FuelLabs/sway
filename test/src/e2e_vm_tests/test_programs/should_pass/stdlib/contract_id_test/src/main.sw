@@ -8,7 +8,7 @@ fn main() -> bool {
     assert(id.value == bits);
 
     // test into()
-    let new_bits = id.into();
+    let new_bits:b256 = id.into();
     assert(new_bits == bits);
 
     true
