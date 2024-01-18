@@ -1,7 +1,9 @@
-use crate::{language::parsed::TreeType, BuildTarget};
+use crate::{build_config::ExperimentalFlags, language::parsed::TreeType, BuildTarget};
 
 #[derive(Default)]
 pub struct Context {
+    pub experimental: ExperimentalFlags,
+
     /// Indicates whether the module being parsed has a `configurable` block.
     module_has_configurable_block: bool,
 
@@ -24,9 +26,10 @@ pub struct Context {
 
 impl Context {
     /// Create a new context.
-    pub fn new(build_target: BuildTarget) -> Self {
+    pub fn new(build_target: BuildTarget, experimental: ExperimentalFlags) -> Self {
         Self {
             build_target,
+            experimental,
             ..Default::default()
         }
     }

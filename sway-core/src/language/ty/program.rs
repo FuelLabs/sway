@@ -33,7 +33,7 @@ fn get_type_not_allowed_error(
     spanned: &impl Spanned,
     f: impl Fn(&TypeInfo) -> Option<TypeNotAllowedReason>,
 ) -> Option<CompileError> {
-    let types = type_id.extract_any_including_self(engines, &|t| f(t).is_some(), vec![]);
+    let types = type_id.extract_any_including_self(engines, &|t| f(t).is_some(), vec![], 0);
 
     let (id, _) = types.into_iter().next()?;
     let t = engines.te().get(id);

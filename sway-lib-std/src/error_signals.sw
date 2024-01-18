@@ -8,7 +8,7 @@ library;
 /// The value is: 18446744073709486080
 pub const FAILED_REQUIRE_SIGNAL = 0xffff_ffff_ffff_0000;
 
-/// A revert with this value signals that it was caused by a failing call to `std::token::transfer_to_address`.
+/// A revert with this value signals that it was caused by a failing call to `std::asset::transfer_to_address`.
 ///
 /// # Additional Information
 ///

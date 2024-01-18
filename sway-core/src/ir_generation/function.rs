@@ -27,6 +27,7 @@ use sway_types::{
     integer_bits::IntegerBits,
     span::{Span, Spanned},
     state::StateIndex,
+    u256::U256,
     Named,
 };
 
@@ -365,7 +366,13 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
                 let implied_lit = match &*self.engines.te().get(ast_expr.return_type) {
                     TypeInfo::UnsignedInteger(IntegerBits::Eight) => Literal::U8(*n as u8),
-                    _ => Literal::U64(*n),
+                    TypeInfo::UnsignedInteger(IntegerBits::V256) => Literal::U256(U256::from(*n)),
+                    _ =>
+                    // Anything more than a byte needs a u64 (except U256 of course).
+                    // (This is how convert_literal_to_value treats it too).
+                    {
+                        Literal::U64(*n)
+                    }
                 };
                 Ok(convert_literal_to_value(context, &implied_lit)
                     .add_metadatum(context, span_md_idx))
@@ -573,7 +580,7 @@ impl<'eng> FnCompiler<'eng> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ty::TyIntrinsicFunctionKind {
+        i @ ty::TyIntrinsicFunctionKind {
             kind,
             arguments,
             type_arguments,
@@ -897,7 +904,10 @@ impl<'eng> FnCompiler<'eng> {
 
                 // The log value and the log ID are just Value.
                 let log_val = self.compile_expression_to_value(context, md_mgr, &arguments[0])?;
-                let log_id = match self.logged_types_map.get(&arguments[0].return_type) {
+                let logged_type = i
+                    .get_logged_type(context.experimental.new_encoding)
+                    .expect("Could not return logged type.");
+                let log_id = match self.logged_types_map.get(&logged_type) {
                     None => {
                         return Err(CompileError::Internal(
                             "Unable to determine ID for log instance.",
