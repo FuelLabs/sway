@@ -50,14 +50,10 @@ fn filter_usable_locals(context: &mut Context, function: &Function) -> HashSet<S
         .locals_iter(context)
         .filter_map(|(name, var)| {
             let ty = var.get_inner_type(context);
-            if ty.is_unit(context)
+            (ty.is_unit(context)
                 || ty.is_bool(context)
-                || (ty.is_uint(context) && ty.get_uint_width(context).unwrap() <= 64)
-            {
-                Some(name.clone())
-            } else {
-                None
-            }
+                || (ty.is_uint(context) && ty.get_uint_width(context).unwrap() <= 64))
+                .then_some(name.clone())
         })
         .collect();
 
