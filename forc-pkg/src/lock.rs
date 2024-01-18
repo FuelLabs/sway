@@ -91,11 +91,7 @@ impl PkgLock {
         let mut dependencies: Vec<String> = all_dependencies
             .iter()
             .filter_map(|(dep_pkg, dep_kind)| {
-                if *dep_kind == DepKind::Library {
-                    Some(dep_pkg.clone())
-                } else {
-                    None
-                }
+                (*dep_kind == DepKind::Library).then_some(dep_pkg.clone())
             })
             .collect();
         let mut contract_dependencies: Vec<String> = all_dependencies
