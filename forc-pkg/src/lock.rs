@@ -97,11 +97,7 @@ impl PkgLock {
         let mut contract_dependencies: Vec<String> = all_dependencies
             .iter()
             .filter_map(|(dep_pkg, dep_kind)| {
-                if matches!(*dep_kind, DepKind::Contract { .. }) {
-                    Some(dep_pkg.clone())
-                } else {
-                    None
-                }
+                matches!(*dep_kind, DepKind::Contract { .. }).then_some(dep_pkg.clone())
             })
             .collect();
         dependencies.sort();
