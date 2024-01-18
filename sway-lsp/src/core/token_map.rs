@@ -1,6 +1,7 @@
 use crate::core::token::{self, Token, TokenIdent, TypedAstToken};
-use dashmap::DashMap;
+use dashmap::{mapref::one::RefMut, try_result::TryResult, DashMap};
 use lsp_types::{Position, Url};
+use std::{thread, time::Duration};
 use sway_core::{language::ty, type_system::TypeId, Engines};
 use sway_types::{Ident, SourceEngine, Spanned};
 
@@ -14,10 +15,57 @@ pub use crate::core::token_map_ext::TokenMapExt;
 #[derive(Debug, Default)]
 pub struct TokenMap(DashMap<TokenIdent, Token>);
 
-impl TokenMap {
+impl<'a> TokenMap {
     /// Create a new token map.
     pub fn new() -> TokenMap {
         TokenMap(DashMap::with_capacity(2048))
+    }
+
+    /// Attempts to get a mutable reference to a token with retries on lock.
+    /// Retries up to 14 times with increasing backoff (1ns, 10ns, 100ns, 500ns, 1µs, 10µs, 100µs, 1ms, 10ms, 50ms, 100ms, 200ms, 500ms, 1s).
+    pub fn try_get_mut_with_retry(
+        &'a self,
+        ident: &TokenIdent,
+    ) -> Option<RefMut<TokenIdent, Token>> {
+        const MAX_RETRIES: usize = 14;
+        let backoff_times = [
+            1,
+            10,
+            100,
+            500,
+            1_000,
+            10_000,
+            100_000,
+            1_000_000,
+            10_000_000,
+            50_000_000,
+            100_000_000,
+            200_000_000,
+            500_000_000,
+            1_000_000_000,
+        ]; // Backoff times in nanoseconds
+        for (i, sleep) in backoff_times.iter().enumerate().take(MAX_RETRIES) {
+            match self.try_get_mut(ident) {
+                TryResult::Present(token) => return Some(token),
+                TryResult::Absent => return None,
+                TryResult::Locked => {
+                    tracing::warn!(
+                        "Failed to get token, retrying attmpt {}: {:#?}",
+                        i,
+                        ident.name
+                    );
+                    // Wait for the specified backoff time before retrying
+                    let backoff_time = Duration::from_nanos(*sleep);
+                    thread::sleep(backoff_time);
+                }
+            }
+        }
+        tracing::error!(
+            "Failed to get token after {} retries: {:#?}",
+            MAX_RETRIES,
+            ident
+        );
+        None // Return None if all retries are exhausted
     }
 
     /// Create a custom iterator for the TokenMap.
