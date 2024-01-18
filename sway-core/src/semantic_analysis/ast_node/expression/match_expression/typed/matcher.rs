@@ -326,7 +326,8 @@ fn match_or(
         for (variable, type_id) in variables {
             let type_mismatched_vars = variables_in_alternatives.iter().flat_map(|(_, vars)| {
                 vars.iter().filter_map(|(ident, var_type_id)| {
-                    (ident == variable && !equality.check(type_id, *var_type_id)).then_some((ident.clone(), *var_type_id))
+                    (ident == variable && !equality.check(type_id, *var_type_id))
+                        .then_some((ident.clone(), *var_type_id))
                 })
             });
 
