@@ -61,14 +61,10 @@ impl Documentation {
             .0
             .iter()
             .filter_map(|d| {
-                if d.item_header.friendly_name == "trait" {
-                    Some((
-                        d.item_header.item_name.clone(),
-                        d.item_header.module_info.clone(),
-                    ))
-                } else {
-                    None
-                }
+                (d.item_header.friendly_name == "trait").then_some((
+                    d.item_header.item_name.clone(),
+                    d.item_header.module_info.clone(),
+                ))
             })
             .collect::<HashMap<BaseIdent, ModuleInfo>>();
 
