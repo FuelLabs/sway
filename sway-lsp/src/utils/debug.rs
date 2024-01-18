@@ -11,13 +11,8 @@ where
     I: Iterator<Item = (TokenIdent, Token)>,
 {
     tokens
-        .filter_map(|(ident, token)| {
-            if token.typed.is_none() {
-                Some(warning_from_ident(&ident))
-            } else {
-                None
-            }
-        })
+        .filter_map(|(ident, token)| token.typed.is_none().then_some(warning_from_ident(&ident)))
+
         .collect()
 }
 
