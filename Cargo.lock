@@ -99,7 +99,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77c3a9648d43b9cd48db467b3f87fdd6e146bcc88ab0180006cef2179fe11d01"
 dependencies = [
  "cfg-if 1.0.0",
- "getrandom 0.2.11",
+ "getrandom 0.2.12",
  "once_cell",
  "version_check",
  "zerocopy",
@@ -1161,14 +1161,14 @@ dependencies = [
 
 [[package]]
 name = "console"
-version = "0.15.7"
+version = "0.15.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c926e00cc70edefdc64d3a5ff31cc65bb97a3460097762bd23afb4d8145fccf8"
+checksum = "0e1f83fc076bd6dd27517eacdf25fef6c4dfe5f1d7448bafaaf3a26f13b5e4eb"
 dependencies = [
  "encode_unicode 0.3.6",
  "lazy_static",
  "libc",
- "windows-sys 0.45.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2336,7 +2336,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.48.1"
+version = "0.49.0"
 dependencies = [
  "annotate-snippets",
  "ansi_term",
@@ -2345,7 +2345,7 @@ dependencies = [
  "clap_complete 3.2.5",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.48.1",
+ "forc-tracing 0.49.0",
  "forc-util",
  "fs_extra",
  "fuel-asm",
@@ -2369,7 +2369,7 @@ dependencies = [
 
 [[package]]
 name = "forc-client"
-version = "0.48.1"
+version = "0.49.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2378,7 +2378,7 @@ dependencies = [
  "devault",
  "forc",
  "forc-pkg",
- "forc-tracing 0.48.1",
+ "forc-tracing 0.49.0",
  "forc-tx",
  "forc-util",
  "forc-wallet",
@@ -2404,13 +2404,13 @@ dependencies = [
 
 [[package]]
 name = "forc-crypto"
-version = "0.48.1"
+version = "0.49.0"
 dependencies = [
  "anyhow",
  "async-trait",
  "atty",
  "clap 3.2.25",
- "forc-tracing 0.48.1",
+ "forc-tracing 0.49.0",
  "forc-util",
  "fuel-core-types",
  "fuel-crypto",
@@ -2430,7 +2430,7 @@ dependencies = [
 
 [[package]]
 name = "forc-debug"
-version = "0.48.1"
+version = "0.49.0"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
@@ -2457,7 +2457,7 @@ dependencies = [
 
 [[package]]
 name = "forc-doc"
-version = "0.48.1"
+version = "0.49.0"
 dependencies = [
  "anyhow",
  "clap 4.4.14",
@@ -2482,12 +2482,12 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.48.1"
+version = "0.49.0"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
  "forc-pkg",
- "forc-tracing 0.48.1",
+ "forc-tracing 0.49.0",
  "forc-util",
  "prettydiff 0.5.1",
  "sway-core",
@@ -2499,7 +2499,7 @@ dependencies = [
 
 [[package]]
 name = "forc-lsp"
-version = "0.48.1"
+version = "0.49.0"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
@@ -2510,12 +2510,12 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.48.1"
+version = "0.49.0"
 dependencies = [
  "ansi_term",
  "anyhow",
  "cid",
- "forc-tracing 0.48.1",
+ "forc-tracing 0.49.0",
  "forc-util",
  "fuel-abi-types 0.1.0",
  "futures",
@@ -2546,7 +2546,7 @@ dependencies = [
 
 [[package]]
 name = "forc-test"
-version = "0.48.1"
+version = "0.49.0"
 dependencies = [
  "anyhow",
  "forc-pkg",
@@ -2572,7 +2572,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tracing"
-version = "0.48.1"
+version = "0.49.0"
 dependencies = [
  "ansi_term",
  "tracing",
@@ -2581,7 +2581,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tx"
-version = "0.48.1"
+version = "0.49.0"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
@@ -2596,7 +2596,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.48.1"
+version = "0.49.0"
 dependencies = [
  "annotate-snippets",
  "ansi_term",
@@ -2604,7 +2604,7 @@ dependencies = [
  "clap 3.2.25",
  "dirs 3.0.2",
  "fd-lock 4.0.2",
- "forc-tracing 0.48.1",
+ "forc-tracing 0.49.0",
  "fuel-tx",
  "hex",
  "paste",
@@ -3358,9 +3358,9 @@ dependencies = [
 
 [[package]]
 name = "getrandom"
-version = "0.2.11"
+version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe9006bed769170c11f845cf00c7c1e9092aeb3f268e007c3e760ac68008070f"
+checksum = "190092ea657667030ac6a35e305e62fc4dd69fd98ac98631e5d3a2b1575a12b5"
 dependencies = [
  "cfg-if 1.0.0",
  "libc",
@@ -3495,9 +3495,9 @@ dependencies = [
 
 [[package]]
 name = "h2"
-version = "0.3.22"
+version = "0.3.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d6250322ef6e60f93f9a2162799302cd6f68f79f6e5d85c8c16f14d1d958178"
+checksum = "b553656127a00601c8ae5590fcfdc118e4083a7924b6cf4ffc1ea4b99dc429d7"
 dependencies = [
  "bytes 1.5.0",
  "fnv",
@@ -4427,9 +4427,9 @@ dependencies = [
 
 [[package]]
 name = "libz-sys"
-version = "1.1.13"
+version = "1.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f526fdd09d99e19742883e43de41e1aa9e36db0c7ab7f935165d611c5cccc66"
+checksum = "295c17e837573c8c821dbaeb3cceb3d745ad082f7572191409e69cbc1b3fd050"
 dependencies = [
  "cc",
  "libc",
@@ -5940,7 +5940,7 @@ version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
 dependencies = [
- "getrandom 0.2.11",
+ "getrandom 0.2.12",
 ]
 
 [[package]]
@@ -6028,7 +6028,7 @@ version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a18479200779601e498ada4e8c1e1f50e3ee19deb0259c25825a98b5603b2cb4"
 dependencies = [
- "getrandom 0.2.11",
+ "getrandom 0.2.12",
  "libredox 0.0.1",
  "thiserror",
 ]
@@ -6207,7 +6207,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "688c63d65483050968b2a8937f7995f443e27041a0f7700aa59b0822aedebb74"
 dependencies = [
  "cc",
- "getrandom 0.2.11",
+ "getrandom 0.2.12",
  "libc",
  "spin 0.9.8",
  "untrusted 0.9.0",
@@ -7282,7 +7282,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ast"
-version = "0.48.1"
+version = "0.49.0"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -7294,7 +7294,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.48.1"
+version = "0.49.0"
 dependencies = [
  "clap 3.2.25",
  "derivative",
@@ -7337,7 +7337,7 @@ dependencies = [
 
 [[package]]
 name = "sway-error"
-version = "0.48.1"
+version = "0.49.0"
 dependencies = [
  "either",
  "num-traits",
@@ -7349,7 +7349,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.48.1"
+version = "0.49.0"
 dependencies = [
  "anyhow",
  "downcast-rs",
@@ -7367,7 +7367,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir-macros"
-version = "0.48.1"
+version = "0.49.0"
 dependencies = [
  "itertools 0.10.5",
  "proc-macro2",
@@ -7377,7 +7377,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.48.1"
+version = "0.49.0"
 dependencies = [
  "anyhow",
  "assert-json-diff",
@@ -7387,7 +7387,7 @@ dependencies = [
  "dirs 4.0.0",
  "fd-lock 4.0.2",
  "forc-pkg",
- "forc-tracing 0.48.1",
+ "forc-tracing 0.49.0",
  "forc-util",
  "futures",
  "lsp-types",
@@ -7438,7 +7438,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.48.1"
+version = "0.49.0"
 dependencies = [
  "assert_matches",
  "extension-trait",
@@ -7456,7 +7456,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.48.1"
+version = "0.49.0"
 dependencies = [
  "bytecount",
  "fuel-asm",
@@ -7472,7 +7472,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.48.1"
+version = "0.49.0"
 dependencies = [
  "serde",
  "walkdir",
@@ -7480,11 +7480,11 @@ dependencies = [
 
 [[package]]
 name = "swayfmt"
-version = "0.48.1"
+version = "0.49.0"
 dependencies = [
  "anyhow",
  "difference",
- "forc-tracing 0.48.1",
+ "forc-tracing 0.49.0",
  "paste",
  "prettydiff 0.6.4",
  "ropey",
@@ -7702,9 +7702,9 @@ dependencies = [
 
 [[package]]
 name = "termcolor"
-version = "1.4.0"
+version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff1bc3d3f05aff0403e8ac0d92ced918ec05b666a43f83297ccef5bea8a3d449"
+checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
 dependencies = [
  "winapi-util",
 ]
@@ -7745,7 +7745,7 @@ dependencies = [
  "forc-client",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.48.1",
+ "forc-tracing 0.49.0",
  "fuel-vm",
  "futures",
  "gag",
@@ -8473,7 +8473,7 @@ version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
 dependencies = [
- "getrandom 0.2.11",
+ "getrandom 0.2.12",
  "serde",
 ]
 
@@ -8925,9 +8925,9 @@ checksum = "dff9641d1cd4be8d1a070daf9e3773c5f67e78b4d9d42263020c057706765c04"
 
 [[package]]
 name = "winnow"
-version = "0.5.33"
+version = "0.5.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7520bbdec7211caa7c4e682eb1fbe07abe20cee6756b6e00f537c82c11816aa"
+checksum = "b7cf47b659b318dccbd69cc4797a39ae128f533dce7902a1096044d1967b9c16"
 dependencies = [
  "memchr",
 ]
