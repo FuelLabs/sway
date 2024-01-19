@@ -164,6 +164,22 @@ impl AbiEncode for str {
     }
 }
 
+impl AbiEncode for raw_slice {
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let len = self.number_of_bytes();
+        buffer.push(len);
+
+        let ptr = self.ptr();
+
+        let mut i = 0;
+        while i < len {
+            let byte = ptr.add::<u8>(i).read::<u8>();
+            buffer.push(byte);
+            i += 1;
+        }
+    }
+}
+
 // str arrays
 
 impl AbiEncode for str[0] {
