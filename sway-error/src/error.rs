@@ -246,13 +246,6 @@ pub enum CompileError {
         is_in_storage_declaration: bool,
         struct_can_be_adapted: bool,
     },
-    #[error("Struct \"{struct_name}\" does not have field \"{field_name}\".")]
-    StructDoesNotHaveField {
-        field_name: Ident,
-        /// Original, non-aliased struct name.
-        struct_name: Ident,
-        span: Span,
-    },
     #[error("Field \"{field_name}\" of the struct \"{struct_name}\" is private.")]
     StructFieldIsPrivate {
         field_name: Ident,
@@ -261,6 +254,18 @@ pub enum CompileError {
         span: Span,
         field_decl_span: Span,
         struct_can_be_adapted: bool,
+        usage_context: StructFieldUsageContext,
+    },
+    #[error("Field \"{field_name}\" does not exist in struct \"{struct_name}\".")]
+    StructFieldDoesNotExist {
+        field_name: Ident,
+        /// Only public fields if `is_public_struct_access` is true.
+        available_fields: Vec<Ident>,
+        is_public_struct_access: bool,
+        /// Original, non-aliased struct name.
+        struct_name: Ident,
+        struct_decl_span: Span,
+        struct_is_empty: bool,
         usage_context: StructFieldUsageContext,
     },
     #[error("No method named \"{method_name}\" found for type \"{type_name}\".")]
@@ -315,25 +320,6 @@ pub enum CompileError {
     DeclIsNotAConstant { actually: String, span: Span },
     #[error("This is a {actually}, not a type alias")]
     DeclIsNotATypeAlias { actually: String, span: Span },
-    #[error("Field \"{field_name}\" does not exist in struct \"{struct_name}\".")]
-    FieldNotFound {
-        field_name: Ident,
-        /// Only public fields if `is_public_struct_access` is true.
-        ///
-        /// Only remaining fields if the `usage_context` is
-        /// [StructFieldUsageContext::StructInstantiation] or
-        /// [StructFieldUsageContext::StorageDeclaration] or
-        /// [StructFieldUsageContext::PatternMatching].
-        /// In those cases we want to display only the
-        /// remaining, not used, fields.
-        available_fields: Vec<Ident>,
-        is_public_struct_access: bool,
-        /// Original, non-aliased struct name.
-        struct_name: Ident,
-        struct_decl_span: Span,
-        struct_is_empty: bool,
-        usage_context: StructFieldUsageContext,
-    },
     #[error("Could not find symbol \"{name}\" in this scope.")]
     SymbolNotFound { name: Ident, span: Span },
     #[error("Symbol \"{name}\" is private.")]
@@ -879,16 +865,15 @@ impl Spanned for CompileError {
             NeedsTypeArguments { span, .. } => span.clone(),
             StructInstantiationMissingFieldForErrorRecovery { span, .. } => span.clone(),
             StructInstantiationMissingFields { span, .. } => span.clone(),
-            StructDoesNotHaveField { span, .. } => span.clone(),
             StructCannotBeInstantiated { span, .. } => span.clone(),
             StructFieldIsPrivate { span, .. } => span.clone(),
+            StructFieldDoesNotExist { field_name, .. } => field_name.span(),
             MethodNotFound { span, .. } => span.clone(),
             ModuleNotFound { span, .. } => span.clone(),
             NotATuple { span, .. } => span.clone(),
             NotAStruct { span, .. } => span.clone(),
             NotIndexable { span, .. } => span.clone(),
             FieldAccessOnNonStruct { span, .. } => span.clone(),
-            FieldNotFound { field_name, .. } => field_name.span(),
             SymbolNotFound { span, .. } => span.clone(),
             ImportPrivateSymbol { span, .. } => span.clone(),
             ImportPrivateModule { span, .. } => span.clone(),
@@ -1647,8 +1632,8 @@ impl ToDiagnostic for CompileError {
                     },
                 ],
             },            
-            FieldNotFound { field_name, available_fields, is_public_struct_access, struct_name, struct_decl_span, struct_is_empty, usage_context } => Diagnostic {
-                reason: Some(Reason::new(code(1), "Field does not exist in struct".to_string())),
+            StructFieldDoesNotExist { field_name, available_fields, is_public_struct_access, struct_name, struct_decl_span, struct_is_empty, usage_context } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Struct field does not exist".to_string())),
                 issue: Issue::error(
                     source_engine,
                     field_name.span(),

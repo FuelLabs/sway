@@ -90,25 +90,12 @@ impl MonomorphizeHelper for TyStructDecl {
 }
 
 impl TyStructDecl {
-    /// Returns [TyStructField]s available on the struct `self` in the given context.
-    /// If `is_public_struct_access` is true, only public fields are returned, otherwise
-    /// all fields.
-    pub(crate) fn available_fields(&self, is_public_struct_access: bool) -> impl Iterator<Item = &TyStructField> {
-        self
-            .fields
-            .iter()
-            .filter(move |field| !is_public_struct_access || (is_public_struct_access && field.is_public()))
-    }
-
-    /// Returns names of the [TyStructField]s available on the struct `self` in the given context.
+    /// Returns names of the [TyStructField]s of the struct `self` accessible in the given context.
     /// If `is_public_struct_access` is true, only the names of the public fields are returned, otherwise
     /// the names of all fields.
     /// Suitable for error reporting.
-    pub(crate) fn available_fields_names(&self, is_public_struct_access: bool) -> Vec<Ident> {
-        self
-            .available_fields(is_public_struct_access)
-            .map(|field| field.name.clone())
-            .collect()
+    pub(crate) fn accessible_fields_names(&self, is_public_struct_access: bool) -> Vec<Ident> {
+        TyStructField::accessible_fields_names(&self.fields, is_public_struct_access)
     }
 
     /// Returns [TyStructField] with the given `field_name`, or `None` if the field with the
@@ -150,12 +137,6 @@ impl TyStructDecl {
     }
 }
 
-impl Spanned for TyStructField {
-    fn span(&self) -> Span {
-        self.span.clone()
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct TyStructField {
     pub visibility: Visibility,
@@ -169,8 +150,34 @@ impl TyStructField {
     pub fn is_private(&self) -> bool {
         matches!(self.visibility, Visibility::Private)
     }
+
     pub fn is_public(&self) -> bool {
         matches!(self.visibility, Visibility::Public)
+    }
+
+    /// Returns [TyStructField]s from the `fields` that are accessible in the given context.
+    /// If `is_public_struct_access` is true, only public fields are returned, otherwise
+    /// all fields.
+    pub(crate) fn accessible_fields(fields: &[TyStructField], is_public_struct_access: bool) -> impl Iterator<Item = &TyStructField> {
+        fields
+            .iter()
+            .filter(move |field| !is_public_struct_access || (is_public_struct_access && field.is_public()))
+    }
+
+    /// Returns names of the [TyStructField]s from the `fields` that are accessible in the given context.
+    /// If `is_public_struct_access` is true, only the names of the public fields are returned, otherwise
+    /// the names of all fields.
+    /// Suitable for error reporting.
+    pub(crate) fn accessible_fields_names(fields: &[TyStructField], is_public_struct_access: bool) -> Vec<Ident> {
+        Self::accessible_fields(fields, is_public_struct_access)
+            .map(|field| field.name.clone())
+            .collect()
+    }
+}
+
+impl Spanned for TyStructField {
+    fn span(&self) -> Span {
+        self.span.clone()
     }
 }
 

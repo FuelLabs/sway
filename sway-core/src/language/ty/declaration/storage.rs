@@ -147,12 +147,12 @@ impl TyStorageDecl {
                     let struct_can_be_instantiated = !is_out_of_struct_decl_module_access || !decl.has_private_fields();
 
                     let available_fields = if struct_can_be_instantiated {
-                        decl.available_fields_names(is_out_of_struct_decl_module_access)
+                        decl.accessible_fields_names(is_out_of_struct_decl_module_access)
                     } else {
                         vec![]
                     };
 
-                    return Err(handler.emit_err(CompileError::FieldNotFound {
+                    return Err(handler.emit_err(CompileError::StructFieldDoesNotExist {
                         field_name: field.clone(),
                         available_fields,
                         is_public_struct_access: is_out_of_struct_decl_module_access,

@@ -1291,9 +1291,9 @@ impl TypeInfo {
                         field.clone()
                     },
                     None => {
-                        return Err(handler.emit_err(CompileError::FieldNotFound {
+                        return Err(handler.emit_err(CompileError::StructFieldDoesNotExist {
                             field_name: first.clone(),
-                            available_fields: decl.available_fields_names(is_out_of_struct_decl_module_access),
+                            available_fields: decl.accessible_fields_names(is_out_of_struct_decl_module_access),
                             is_public_struct_access: is_out_of_struct_decl_module_access,
                             struct_name: decl.call_path.suffix.clone(),
                             struct_decl_span: decl.span(),
