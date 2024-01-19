@@ -437,12 +437,10 @@ impl TypeId {
         engines: &'a Engines,
     ) -> HashSet<WithEngines<'a, TypeInfo>> {
         let nested_types = (*self).extract_nested_types(engines);
-        HashSet::from_iter(
-            nested_types
-                .into_iter()
-                .filter(|x| matches!(x, TypeInfo::UnknownGeneric { .. }))
-                .map(|thing| WithEngines::new(thing, engines)),
-        )
+        HashSet::from_iter(nested_types.into_iter().filter_map(|x| match x {
+            TypeInfo::UnknownGeneric { .. } => Some(WithEngines::new(x, engines)),
+            _ => None,
+        }))
     }
 
     /// `check_type_parameter_bounds` does two types of checks. Lets use the example below for demonstrating the two checks:

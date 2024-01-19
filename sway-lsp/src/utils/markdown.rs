@@ -53,8 +53,10 @@ fn is_sway_fence(s: &str) -> bool {
     let tokens = s
         .trim()
         .split(|c| matches!(c, ',' | ' ' | '\t'))
-        .map(str::trim)
-        .filter(|t| !t.is_empty());
+        .filter_map(|t| {
+            let t = t.trim();
+            (!t.is_empty()).then_some(t)
+        });
 
     for token in tokens {
         match token {

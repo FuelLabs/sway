@@ -270,8 +270,9 @@ fn type_check_struct(
         let missing_fields = struct_decl
             .fields
             .iter()
-            .filter(|f| !typed_fields.iter().any(|tf| f.name == tf.field))
-            .map(|f| f.name.to_string())
+            .filter_map(|f| {
+                (!typed_fields.iter().any(|tf| f.name == tf.field)).then_some(f.name.to_string())
+            })
             .collect::<Vec<_>>();
 
         return Err(
