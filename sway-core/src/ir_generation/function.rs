@@ -1027,7 +1027,6 @@ impl<'eng> FnCompiler<'eng> {
                 if log_val.is_diverging() {
                     return Ok(log_val);
                 }
-                let log_id = match self.logged_types_map.get(&arguments[0].return_type) {
                 let logged_type = i
                     .get_logged_type(context.experimental.new_encoding)
                     .expect("Could not return logged type.");
