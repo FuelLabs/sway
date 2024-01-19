@@ -581,7 +581,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
 
       - name: Publish crate
-        uses: katyo/publish-crates@v2
+        uses: xgreenx/publish-crates@v1
         with:
           publish-delay: 30000
           registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
