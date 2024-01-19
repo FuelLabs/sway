@@ -177,7 +177,7 @@ impl<'eng> FnCompiler<'eng> {
                 match fn_compiler.compile_ast_node(context, md_mgr, ast_node) {
                     // 'Some' indicates an implicit return or a diverging expression, so break.
                     Ok(Some(val)) => break val,
-		    Ok(None) => (),
+                    Ok(None) => (),
                     Err(e) => {
                         errors.push(e);
                     }
@@ -252,13 +252,12 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyAstNodeContent::Expression(te) => {
                 // An expression with an ignored return value... I assume.
                 let value = self.compile_expression_to_value(context, md_mgr, te)?;
-		// Diverging values should terminate the compilation of the block
-		if value.is_diverging() {
+                // Diverging values should terminate the compilation of the block
+                if value.is_diverging() {
                     Ok(Some(value))
-		}
-		else {
-		    Ok(None)
-		}
+                } else {
+                    Ok(None)
+                }
             }
             ty::TyAstNodeContent::ImplicitReturnExpression(te) => self
                 .compile_expression_to_value(context, md_mgr, te)
@@ -1923,8 +1922,7 @@ impl<'eng> FnCompiler<'eng> {
             )
             .add_metadatum(context, cond_span_md_idx);
 
-        let return_type =
-	    convert_resolved_typeid_no_span(
+        let return_type = convert_resolved_typeid_no_span(
             self.engines.te(),
             self.engines.de(),
             context,
@@ -1934,30 +1932,26 @@ impl<'eng> FnCompiler<'eng> {
         let merge_block = self.function.create_block(context, None);
         // Add a single argument to merge_block that merges true_value and false_value.
         // Rely on the type of the ast node when creating that argument
-	// Corner case: If both branches diverge, then setting the return type to 'Unit' produces an
-	// illegally typed value. In that case we add a diverging dummy value to the merge branch
-	// and return it instead.
-	let val =
-	    if !true_value.is_diverging() || !false_value.is_diverging() {
-		let merge_val_arg_idx = merge_block.new_arg(context, return_type);
-		if !true_value.is_diverging() {
-		    true_block_end
-			.append(context)
-			.branch(merge_block, vec![true_value.get_value()]);
-		}
-		if !false_value.is_diverging() {
-		    false_block_end
-			.append(context)
-			.branch(merge_block, vec![false_value.get_value()]);
-		}
-		self.current_block = merge_block;
-		merge_block.get_arg(context, merge_val_arg_idx).unwrap()
-	    }
-	    else {
-		merge_block
-		    .append(context)
-		    .branch(cond_block, vec![])
-	    };
+        // Corner case: If both branches diverge, then setting the return type to 'Unit' produces an
+        // illegally typed value. In that case we add a diverging dummy value to the merge branch
+        // and return it instead.
+        let val = if !true_value.is_diverging() || !false_value.is_diverging() {
+            let merge_val_arg_idx = merge_block.new_arg(context, return_type);
+            if !true_value.is_diverging() {
+                true_block_end
+                    .append(context)
+                    .branch(merge_block, vec![true_value.get_value()]);
+            }
+            if !false_value.is_diverging() {
+                false_block_end
+                    .append(context)
+                    .branch(merge_block, vec![false_value.get_value()]);
+            }
+            self.current_block = merge_block;
+            merge_block.get_arg(context, merge_val_arg_idx).unwrap()
+        } else {
+            merge_block.append(context).branch(cond_block, vec![])
+        };
         Ok(ValueDivergence::mk_value_divergence(val, context))
     }
 
