@@ -19,6 +19,33 @@ pub struct TyIntrinsicFunctionKind {
     pub span: Span,
 }
 
+impl TyIntrinsicFunctionKind {
+    /// Returns the actual type being logged. When the "new_encoding" is off,
+    /// this is just the `__log` argument; but when it is on, it is actually the
+    /// type of the argument to fn `encode`.
+    pub fn get_logged_type(&self, new_encoding: bool) -> Option<TypeId> {
+        if new_encoding {
+            if matches!(self.kind, Intrinsic::Log) {
+                match &self.arguments[0].expression {
+                    TyExpressionVariant::FunctionApplication {
+                        call_path,
+                        arguments,
+                        ..
+                    } => {
+                        assert!(call_path.suffix.as_str() == "encode");
+                        Some(arguments[0].1.return_type)
+                    }
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        } else {
+            Some(self.arguments[0].return_type)
+        }
+    }
+}
+
 impl EqWithEngines for TyIntrinsicFunctionKind {}
 impl PartialEqWithEngines for TyIntrinsicFunctionKind {
     fn eq(&self, other: &Self, engines: &Engines) -> bool {
@@ -98,9 +125,10 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
 
         match self.kind {
             Intrinsic::Log => {
+                let logged_type = self.get_logged_type(ctx.experimental.new_encoding).unwrap();
                 types_metadata.push(TypeMetadata::LoggedType(
                     LogId::new(ctx.log_id_counter()),
-                    self.arguments[0].return_type,
+                    logged_type,
                 ));
                 *ctx.log_id_counter_mut() += 1;
             }

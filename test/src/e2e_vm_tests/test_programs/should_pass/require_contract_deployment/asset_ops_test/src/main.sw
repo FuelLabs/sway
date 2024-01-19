@@ -1,7 +1,7 @@
 script;
 
 use std::context::balance_of;
-use std::token::*;
+use std::asset::*;
 use std::contract_id::*;
 use std::constants::DEFAULT_SUB_ID;
 use test_fuel_coin_abi::*;

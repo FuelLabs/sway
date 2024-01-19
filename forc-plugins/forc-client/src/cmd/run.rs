@@ -58,4 +58,7 @@ pub struct Command {
     /// Arguments to pass into main function with forc run.
     #[clap(long)]
     pub args: Option<Vec<String>>,
+
+    #[clap(long)]
+    pub experimental_new_encoding: bool,
 }

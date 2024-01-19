@@ -1,8 +1,8 @@
 contract;
 
-use std::{constants::DEFAULT_SUB_ID, context::*, token::*};
+use std::{asset::*, constants::DEFAULT_SUB_ID, context::*};
 
-abi NativeAssetToken {
+abi NativeAsset {
     fn mint_coins(mint_amount: u64);
     fn burn_coins(burn_amount: u64);
     fn force_transfer_coins(coins: u64, asset_id: AssetId, target: ContractId);
@@ -13,7 +13,7 @@ abi NativeAssetToken {
     fn mint_and_send_to_address(amount: u64, recipient: Address);
 }
 
-impl NativeAssetToken for Contract {
+impl NativeAsset for Contract {
     /// Mint an amount of this contracts native asset to the contracts balance.
     fn mint_coins(mint_amount: u64) {
         mint(DEFAULT_SUB_ID, mint_amount);
@@ -39,17 +39,17 @@ impl NativeAssetToken for Contract {
         balance_of(target, asset_id)
     }
 
-    /// Deposit tokens back into the contract.
+    /// Deposit coins back into the contract.
     fn deposit() {
         assert(msg_amount() > 0);
     }
 
-    /// Mint and send this contracts native token to a destination contract.
+    /// Mint and send this contracts native asset to a destination contract.
     fn mint_and_send_to_contract(amount: u64, destination: ContractId) {
         mint_to_contract(destination, DEFAULT_SUB_ID, amount);
     }
 
-    /// Mind and send this contracts native token to a destination address.
+    /// Mind and send this contracts native asset to a destination address.
     fn mint_and_send_to_address(amount: u64, recipient: Address) {
         mint_to_address(recipient, DEFAULT_SUB_ID, amount);
     }

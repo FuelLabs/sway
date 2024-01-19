@@ -35,10 +35,17 @@ pub struct Context<'eng> {
     pub program_kind: Kind,
 
     next_unique_sym_tag: u64,
+
+    pub experimental: ExperimentalFlags,
+}
+
+#[derive(Default)]
+pub struct ExperimentalFlags {
+    pub new_encoding: bool,
 }
 
 impl<'eng> Context<'eng> {
-    pub fn new(source_engine: &'eng SourceEngine) -> Self {
+    pub fn new(source_engine: &'eng SourceEngine, experimental: ExperimentalFlags) -> Self {
         let mut def = Self {
             source_engine,
             modules: Default::default(),
@@ -51,6 +58,7 @@ impl<'eng> Context<'eng> {
             metadata: Default::default(),
             next_unique_sym_tag: Default::default(),
             program_kind: Kind::Contract,
+            experimental,
         };
         Type::create_basic_types(&mut def);
         def

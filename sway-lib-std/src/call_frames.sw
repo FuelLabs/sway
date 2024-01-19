@@ -34,7 +34,7 @@ const SECOND_PARAMETER_OFFSET: u64 = 74;
 /// # Examples
 ///
 /// ```sway
-/// use std::{call_frames::contract_id, constants::ZERO_B256, token::mint};
+/// use std::{call_frames::contract_id, constants::ZERO_B256, asset::mint};
 ///
 /// fn foo() {
 ///     let this_contract = contract_id();

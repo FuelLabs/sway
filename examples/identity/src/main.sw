@@ -7,13 +7,13 @@ use abi::IdentityExample;
 use errors::MyError;
 
 use std::{
+    asset::{
+        force_transfer_to_contract,
+        transfer_to_address,
+    },
     constants::{
         BASE_ASSET_ID,
         ZERO_B256,
-    },
-    token::{
-        force_transfer_to_contract,
-        transfer_to_address,
     },
 };
 
@@ -40,12 +40,12 @@ impl IdentityExample for Contract {
 
     fn different_executions(my_identity: Identity) {
         let amount = 1;
-        let token_id = BASE_ASSET_ID;
+        let asset_id = BASE_ASSET_ID;
 
         // ANCHOR: different_executions
         match my_identity {
-            Identity::Address(address) => transfer_to_address(address, token_id, amount),
-            Identity::ContractId(contract_id) => force_transfer_to_contract(contract_id, token_id, amount),
+            Identity::Address(address) => transfer_to_address(address, asset_id, amount),
+            Identity::ContractId(contract_id) => force_transfer_to_contract(contract_id, asset_id, amount),
         };
         // ANCHOR_END: different_executions
     }
