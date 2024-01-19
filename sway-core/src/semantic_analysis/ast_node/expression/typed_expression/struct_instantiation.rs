@@ -7,11 +7,11 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     decl_engine::DeclRefStruct,
-    language::{parsed::*, ty::{self, TyStructField}, CallPath, Visibility},
+    language::{parsed::*, ty::{self, TyStructField, StructAccessInfo}, CallPath, Visibility},
     semantic_analysis::{
         type_check_context::EnforceTypeArguments, GenericShadowingMode, TypeCheckContext,
     },
-    type_system::*, error::module_can_be_adapted, Namespace,
+    type_system::*, Namespace,
 };
 
 const UNIFY_STRUCT_FIELD_HELP_TEXT: &str =
@@ -93,23 +93,20 @@ pub(crate) fn struct_instantiation(
     let type_info = type_engine.get(type_id);
     let struct_ref = type_info.expect_struct(handler, engines, &span)?;
     let struct_decl = (*decl_engine.get_struct(&struct_ref)).clone();
+
+    let (struct_can_be_changed, is_public_struct_access) = StructAccessInfo::get_info(&struct_decl, ctx.namespace).into();
     let struct_has_private_fields = struct_decl.has_private_fields();
+    let struct_can_be_instantiated = !is_public_struct_access || !struct_has_private_fields;
     let all_fields_are_private = struct_decl.has_only_private_fields();
     let struct_is_empty = struct_decl.is_empty();
     let struct_name = struct_decl.call_path.suffix;
+
     let struct_fields = struct_decl.fields;
     let mut struct_fields = struct_fields;
 
     // To avoid conflicting and overlapping errors, we follow the Rust approach:
     // - Missing fields are reported only if the struct can actually be instantiated.
     // - Individual fields issues are always reported: private field access, non-existing fields.
-
-    assert!(struct_decl.call_path.is_absolute, "The call path of the struct declaration must always be absolute.");
-
-    let struct_can_be_adapted = module_can_be_adapted(ctx.namespace, &struct_decl.call_path.prefixes);
-
-    let is_out_of_decl_module_instantiation = !ctx.namespace.module_is_submodule_of(&struct_decl.call_path.prefixes, true);
-    let struct_can_be_instantiated = !is_out_of_decl_module_instantiation || !struct_has_private_fields;
     
     let typed_fields = type_check_field_arguments(
         handler,
@@ -138,7 +135,7 @@ pub(crate) fn struct_instantiation(
             constructors,
             all_fields_are_private,
             is_in_storage_declaration: ctx.storage_declaration(),
-            struct_can_be_adapted,
+            struct_can_be_changed,
         });
     }
 
@@ -161,8 +158,8 @@ pub(crate) fn struct_instantiation(
         if !struct_fields.iter().any(|x| x.name == field.name) {
             handler.emit_err(CompileError::StructFieldDoesNotExist {
                 field_name: field.name.clone(),
-                available_fields: TyStructField::accessible_fields_names(&struct_fields, is_out_of_decl_module_instantiation),
-                is_public_struct_access: is_out_of_decl_module_instantiation,
+                available_fields: TyStructField::accessible_fields_names(&struct_fields, is_public_struct_access),
+                is_public_struct_access,
                 struct_name: struct_name.clone(),
                 struct_decl_span: struct_decl.span.clone(),
                 struct_is_empty,
@@ -177,7 +174,7 @@ pub(crate) fn struct_instantiation(
 
     // If the current module being checked is not a submodule of the
     // module in which the struct is declared, check for private fields usage.
-    if is_out_of_decl_module_instantiation {
+    if is_public_struct_access {
         for field in fields {
             if let Some(ty_field) = struct_fields.iter().find(|x| x.name == field.name) {
                 if ty_field.is_private() {
@@ -186,7 +183,7 @@ pub(crate) fn struct_instantiation(
                         struct_name: struct_name.clone(),
                         span: field.name.span(),
                         field_decl_span: ty_field.name.span(),
-                        struct_can_be_adapted,
+                        struct_can_be_changed,
                         usage_context: if ctx.storage_declaration() {
                             StructFieldUsageContext::StorageDeclaration { struct_can_be_instantiated }
                         } else {

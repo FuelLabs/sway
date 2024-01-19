@@ -244,7 +244,7 @@ pub enum CompileError {
         /// True if the struct has only private fields.
         all_fields_are_private: bool,
         is_in_storage_declaration: bool,
-        struct_can_be_adapted: bool,
+        struct_can_be_changed: bool,
     },
     #[error("Field \"{field_name}\" of the struct \"{struct_name}\" is private.")]
     StructFieldIsPrivate {
@@ -253,7 +253,7 @@ pub enum CompileError {
         struct_name: Ident,
         span: Span,
         field_decl_span: Span,
-        struct_can_be_adapted: bool,
+        struct_can_be_changed: bool,
         usage_context: StructFieldUsageContext,
     },
     #[error("Field \"{field_name}\" does not exist in struct \"{struct_name}\".")]
@@ -1420,7 +1420,7 @@ impl ToDiagnostic for CompileError {
                 ],
                 help: vec![],
             },
-            StructCannotBeInstantiated { struct_name, span, struct_decl_span, private_fields, constructors, all_fields_are_private, is_in_storage_declaration, struct_can_be_adapted } => Diagnostic {
+            StructCannotBeInstantiated { struct_name, span, struct_decl_span, private_fields, constructors, all_fields_are_private, is_in_storage_declaration, struct_can_be_changed } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Struct cannot be instantiated due to inaccessible private fields".to_string())),
                 issue: Issue::error(
                     source_engine,
@@ -1496,7 +1496,7 @@ impl ToDiagnostic for CompileError {
                     }
                     else if !constructors.is_empty() {
                         help.push(format!("Consider instantiating \"{struct_name}\" by using one of the available constructors{}:",
-                            if *struct_can_be_adapted {
+                            if *struct_can_be_changed {
                                 ", or implement a new one"
                             } else {
                                 ""
@@ -1512,7 +1512,7 @@ impl ToDiagnostic for CompileError {
                         }
                     }
 
-                    if *struct_can_be_adapted {
+                    if *struct_can_be_changed {
                         if *is_in_storage_declaration || !constructors.is_empty() {
                             help.push(Diagnostic::help_empty_line());
                         }
@@ -1563,7 +1563,7 @@ impl ToDiagnostic for CompileError {
                     help
                 }
             },            
-            StructFieldIsPrivate { field_name, struct_name, span, field_decl_span, struct_can_be_adapted, usage_context } => Diagnostic {
+            StructFieldIsPrivate { field_name, struct_name, span, field_decl_span, struct_can_be_changed, usage_context } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Private struct field is inaccessible".to_string())),
                 issue: Issue::error(
                     source_engine,
@@ -1613,7 +1613,7 @@ impl ToDiagnostic for CompileError {
                     } else {
                         Diagnostic::help_none()
                     },
-                    if *struct_can_be_adapted {
+                    if *struct_can_be_changed {
                         match usage_context {
                             StorageAccess | StructFieldAccess | PatternMatching { .. } => {
                                 format!("{} declaring the field \"{field_name}\" as public in \"{struct_name}\": `pub {field_name}: ...,`.",

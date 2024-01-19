@@ -9,14 +9,14 @@ use crate::{
     decl_engine::DeclEngineInsert,
     language::{
         parsed::*,
-        ty::{self, TyDecl, TyScrutinee, TyStructDecl, TyStructField},
+        ty::{self, TyDecl, TyScrutinee, TyStructDecl, TyStructField, StructAccessInfo},
         CallPath,
     },
     semantic_analysis::{
         type_check_context::EnforceTypeArguments, TypeCheckContext, TypeCheckFinalization,
         TypeCheckFinalizationContext,
     },
-    type_system::*, error::module_can_be_adapted,
+    type_system::*,
 };
 
 impl TyScrutinee {
@@ -234,10 +234,7 @@ fn type_check_struct(
         &struct_name.span(),
     )?;
 
-    assert!(struct_decl.call_path.is_absolute, "The call path of the struct declaration must always be absolute.");
-
-    let struct_can_be_adapted = module_can_be_adapted(ctx.namespace, &struct_decl.call_path.prefixes);
-    let is_out_of_struct_decl_module_access = !ctx.namespace.module_is_submodule_of(&struct_decl.call_path.prefixes, true);
+    let (struct_can_be_changed, is_public_struct_access) = StructAccessInfo::get_info(&struct_decl, ctx.namespace).into();
 
     let has_rest_pattern = fields.iter().any(|field| matches!(field, StructScrutineeField::Rest { .. }));
 
@@ -254,7 +251,7 @@ fn type_check_struct(
                     span,
                 } => {
                     // ensure that the struct definition has this field
-                    let struct_field = match expect_struct_field(&struct_decl, handler, field, has_rest_pattern, is_out_of_struct_decl_module_access) {
+                    let struct_field = match expect_struct_field(&struct_decl, handler, field, has_rest_pattern, is_public_struct_access) {
                         Ok(struct_field) => struct_field,
                         Err(_) => continue,
                     };
@@ -289,7 +286,7 @@ fn type_check_struct(
         // While we could check private field access immediately after finding the field and emit errors,
         // that would mean short-circuiting in case of privacy issues which we do not want to do.
         // The consequence is repeating the search for fields here, but the performance penalty is negligible.
-        if is_out_of_struct_decl_module_access {
+        if is_public_struct_access {
             for field in fields {
                 match field {
                     StructScrutineeField::Field { field: field_name, .. } => {
@@ -303,7 +300,7 @@ fn type_check_struct(
                                 struct_name: struct_decl.call_path.suffix.clone(),
                                 span: field_name_span,
                                 field_decl_span: struct_field.name.span(),
-                                struct_can_be_adapted,
+                                struct_can_be_changed,
                                 usage_context: StructFieldUsageContext::PatternMatching { has_rest_pattern },
                             });
                         }
@@ -336,7 +333,7 @@ fn type_check_struct(
             // In the case of public access where all public fields are listed along with some private fields,
             // we already have an error emitted for those private fields with the detailed, pattern matching related
             // explanation that proposes using ignore `..`.
-            if !(is_out_of_struct_decl_module_access && all_public_fields_are_matched && !only_public_fields_are_matched) {
+            if !(is_public_struct_access && all_public_fields_are_matched && !only_public_fields_are_matched) {
                 let missing_fields = |only_public: bool| struct_decl
                     .fields
                     .iter()
@@ -346,7 +343,7 @@ fn type_check_struct(
                     .collect_vec();
 
                 handler.emit_err(
-                    match (is_out_of_struct_decl_module_access, all_public_fields_are_matched, only_public_fields_are_matched) {
+                    match (is_public_struct_access, all_public_fields_are_matched, only_public_fields_are_matched) {
                         // Public access. Only all public fields are matched. All missing fields are private.
                         // -> Emit error for the mandatory ignore `..`.
                         (true, true, true) => CompileError::MatchStructPatternMustIgnorePrivateFields {
@@ -368,8 +365,8 @@ fn type_check_struct(
                         // In struct decl module access. We do not distinguish between private and public fields here.
                         // -> Emit error listing all missing fields.
                         (true, false, _) | (false, _, _) => CompileError::MatchStructPatternMissingFields {
-                            missing_fields: missing_fields(is_out_of_struct_decl_module_access),
-                            missing_fields_are_public: is_out_of_struct_decl_module_access,
+                            missing_fields: missing_fields(is_public_struct_access),
+                            missing_fields_are_public: is_public_struct_access,
                             struct_name: struct_decl.call_path.suffix.clone(),
                             struct_decl_span: struct_decl.span(),
                             total_number_of_fields: struct_decl.fields.len(),

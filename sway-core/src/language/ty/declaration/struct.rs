@@ -10,7 +10,7 @@ use crate::{
     language::{CallPath, Visibility},
     semantic_analysis::type_check_context::MonomorphizeHelper,
     transform,
-    type_system::*,
+    type_system::*, Namespace, error::module_can_be_changed,
 };
 
 #[derive(Clone, Debug)]
@@ -134,6 +134,38 @@ impl TyStructDecl {
     /// Returns true if the struct `self` does not have any fields.
     pub(crate) fn is_empty(&self) -> bool {
         self.fields.is_empty()
+    }
+}
+
+/// Provides information about the struct access within a particular [Namespace].
+pub struct StructAccessInfo {
+    /// True if the programmer who can change the code in the [Namespace]
+    /// can also change the struct declaration.
+    struct_can_be_changed: bool,
+    /// True if the struct access is public, i.e., outside of the module in
+    /// which the struct is defined.
+    is_public_struct_access: bool,
+}
+
+impl StructAccessInfo {
+    pub fn get_info(struct_decl: &TyStructDecl, namespace: &Namespace) -> Self {
+        assert!(struct_decl.call_path.is_absolute, "The call path of the struct declaration must always be absolute.");
+
+        let struct_can_be_changed = module_can_be_changed(namespace, &struct_decl.call_path.prefixes);
+        let is_public_struct_access = !namespace.module_is_submodule_of(&struct_decl.call_path.prefixes, true);
+
+        Self {
+            struct_can_be_changed,
+            is_public_struct_access
+        }
+    }
+}
+
+impl From<StructAccessInfo> for (bool, bool) {
+    /// Deconstructs `struct_access_info` into (`struct_can_be_changed`, `is_public_struct_access`)
+    fn from(struct_access_info: StructAccessInfo) -> (bool, bool) {
+        let StructAccessInfo { struct_can_be_changed, is_public_struct_access } = struct_access_info;
+        (struct_can_be_changed, is_public_struct_access)
     }
 }
 

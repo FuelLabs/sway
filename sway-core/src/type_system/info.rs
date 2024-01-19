@@ -1,9 +1,9 @@
 use crate::{
     decl_engine::{DeclEngine, DeclRefEnum, DeclRefStruct},
     engine_threading::*,
-    language::{ty, CallPath, QualifiedCallPath},
+    language::{ty::{self, StructAccessInfo}, CallPath, QualifiedCallPath},
     type_system::priv_prelude::*,
-    Ident, Namespace, error::module_can_be_adapted,
+    Ident, Namespace,
 };
 use sway_error::{
     error::{CompileError, StructFieldUsageContext},
@@ -1265,11 +1265,7 @@ impl TypeInfo {
             }
             (TypeInfo::Struct(decl_ref), Some((first, rest))) => {
                 let decl = decl_engine.get_struct(decl_ref);
-
-                assert!(decl.call_path.is_absolute, "The call path of the struct declaration must always be absolute.");
-
-                let struct_can_be_adapted = module_can_be_adapted(namespace, &decl.call_path.prefixes);
-                let is_out_of_struct_decl_module_access = !namespace.module_is_submodule_of(&decl.call_path.prefixes, true);
+                let (struct_can_be_changed, is_public_struct_access) = StructAccessInfo::get_info(&decl, namespace).into();
 
                 let field = match decl
                     .fields
@@ -1277,13 +1273,13 @@ impl TypeInfo {
                     .find(|field| field.name.as_str() == first.as_str())
                 {
                     Some(field) => {
-                        if is_out_of_struct_decl_module_access && field.is_private() {
+                        if is_public_struct_access && field.is_private() {
                             return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
                                 field_name: field.name.clone(),
                                 struct_name: decl.call_path.suffix.clone(),
                                 span: first.span(),
                                 field_decl_span: field.name.span(),
-                                struct_can_be_adapted,
+                                struct_can_be_changed,
                                 usage_context: StructFieldUsageContext::StructFieldAccess,
                             }));
                         }
@@ -1293,8 +1289,8 @@ impl TypeInfo {
                     None => {
                         return Err(handler.emit_err(CompileError::StructFieldDoesNotExist {
                             field_name: first.clone(),
-                            available_fields: decl.accessible_fields_names(is_out_of_struct_decl_module_access),
-                            is_public_struct_access: is_out_of_struct_decl_module_access,
+                            available_fields: decl.accessible_fields_names(is_public_struct_access),
+                            is_public_struct_access,
                             struct_name: decl.call_path.suffix.clone(),
                             struct_decl_span: decl.span(),
                             struct_is_empty: decl.is_empty(),

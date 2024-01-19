@@ -2,7 +2,7 @@ use crate::{
     decl_engine::*,
     engine_threading::Engines,
     language::{
-        ty::{self, TyDecl, TyStorageDecl},
+        ty::{self, TyDecl, TyStorageDecl, StructAccessInfo},
         CallPath,
     },
     namespace::*,
@@ -370,9 +370,7 @@ impl Items {
                     ty::ProjectionKind::StructField { name: field_name },
                 ) => {
                     let struct_decl = decl_engine.get_struct(&decl_ref);
-                    assert!(struct_decl.call_path.is_absolute, "The call path of the struct declaration must always be absolute.");
-
-                    let is_out_of_struct_decl_module_access = !namespace.module_is_submodule_of(&struct_decl.call_path.prefixes, true);
+                    let (_, is_public_struct_access) = StructAccessInfo::get_info(&struct_decl, namespace).into();
 
                     let field_type_opt = {
                         struct_decl.fields.iter().find_map(
@@ -394,8 +392,8 @@ impl Items {
                         None => {
                             return Err(handler.emit_err(CompileError::StructFieldDoesNotExist {
                                 field_name: field_name.clone(),
-                                available_fields: struct_decl.accessible_fields_names(is_out_of_struct_decl_module_access),
-                                is_public_struct_access: is_out_of_struct_decl_module_access,
+                                available_fields: struct_decl.accessible_fields_names(is_public_struct_access),
+                                is_public_struct_access,
                                 struct_name: struct_decl.call_path.suffix.clone(),
                                 struct_decl_span: struct_decl.span(),
                                 struct_is_empty: struct_decl.is_empty(),

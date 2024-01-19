@@ -24,13 +24,13 @@ impl<T> ParserLifter<T> {
 
 /// When providing suggestions for errors and warnings, a solution for an issue can sometimes
 /// be changing the code in some other module. We want to provide such suggestions only if
-/// the programmer can actually adapt the code in that module.
+/// the programmer can actually change the code in that module.
 /// 
 /// Assuming that the issue occurs in the `issue_namespace` to which the programmer has access,
-/// and that fixing it means adapting the code in the module given by `absolute_module_path`
+/// and that fixing it means changing the code in the module given by the `absolute_module_path`
 /// this function returns true if the programmer can change that module.
-pub(crate) fn module_can_be_adapted(issue_namespace: &Namespace, absolute_module_path: &Path) -> bool {
-    // For now, we assume that the programmers can adapt the module
+pub(crate) fn module_can_be_changed(issue_namespace: &Namespace, absolute_module_path: &Path) -> bool {
+    // For now, we assume that the programmers can change the module
     // if the module is in the same package where the issue is.
     // A bit too restrictive, considering the same workspace might be more appropriate,
     // but it's a good start.
