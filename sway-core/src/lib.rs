@@ -27,7 +27,7 @@ use crate::source_map::SourceMap;
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
 pub use asm_generation::{CompiledBytecode, FinalizedEntry};
-pub use build_config::{BuildConfig, BuildTarget};
+pub use build_config::{BuildConfig, BuildTarget, OptLevel};
 use control_flow_analysis::ControlFlowGraph;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModulePath, ProgramsCacheEntry};
@@ -807,11 +807,14 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     register_known_passes(&mut pass_mgr);
     let mut pass_group = PassGroup::default();
 
-    if build_config.optimization_level != 0 {
-        pass_group.append_group(create_o1_pass_group());
-    } else {
-        // Inlining is necessary until #4899 is resolved.
-        pass_group.append_pass(INLINE_MODULE_NAME);
+    match build_config.optimization_level {
+        OptLevel::Opt1 => {
+            pass_group.append_group(create_o1_pass_group());
+        }
+        OptLevel::Opt0 => {
+            // Inlining is necessary until #4899 is resolved.
+            pass_group.append_pass(INLINE_MODULE_NAME);
+        }
     }
 
     // Target specific transforms should be moved into something more configured.
@@ -832,10 +835,13 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         pass_group.append_pass(DCE_NAME);
         pass_group.append_pass(SIMPLIFYCFG_NAME);
 
-        if build_config.optimization_level != 0 {
-            pass_group.append_pass(SROA_NAME);
-            pass_group.append_pass(MEM2REG_NAME);
-            pass_group.append_pass(DCE_NAME);
+        match build_config.optimization_level {
+            OptLevel::Opt1 => {
+                pass_group.append_pass(SROA_NAME);
+                pass_group.append_pass(MEM2REG_NAME);
+                pass_group.append_pass(DCE_NAME);
+            }
+            OptLevel::Opt0 => {}
         }
     }
 
