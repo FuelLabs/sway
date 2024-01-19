@@ -370,25 +370,22 @@ impl Items {
                     ty::ProjectionKind::StructField { name: field_name },
                 ) => {
                     let struct_decl = decl_engine.get_struct(&decl_ref);
-                    let (_, is_public_struct_access) = StructAccessInfo::get_info(&struct_decl, namespace).into();
+                    let (struct_can_be_changed, is_public_struct_access) = StructAccessInfo::get_info(&struct_decl, namespace).into();
 
-                    let field_type_opt = {
-                        struct_decl.fields.iter().find_map(
-                            |ty::TyStructField {
-                                 type_argument,
-                                 name,
-                                 ..
-                             }| {
-                                if name == field_name {
-                                    Some(type_argument.type_id)
-                                } else {
-                                    None
-                                }
-                            },
-                        )
-                    };
-                    let field_type = match field_type_opt {
-                        Some(field_type) => field_type,
+                    let field_type_id = match struct_decl.find_field(field_name) {
+                        Some(struct_field) => {
+                            if is_public_struct_access && struct_field.is_private() {
+                                return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
+                                    field_name: field_name.clone(),
+                                    struct_name: struct_decl.call_path.suffix.clone(),
+                                    span: field_name.span(),
+                                    field_decl_span: struct_field.name.span(),
+                                    struct_can_be_changed,
+                                    usage_context: StructFieldUsageContext::StructFieldAccess,
+                                }));
+                            }
+                            struct_field.type_argument.type_id
+                        },
                         None => {
                             return Err(handler.emit_err(CompileError::StructFieldDoesNotExist {
                                 field_name: field_name.clone(),
@@ -402,7 +399,7 @@ impl Items {
                         }
                     };
                     parent_rover = symbol;
-                    symbol = field_type;
+                    symbol = field_type_id;
                     symbol_span = field_name.span().clone();
                     full_name_for_error.push_str(field_name.as_str());
                     full_span_for_error =
