@@ -23,7 +23,7 @@ pub const REGISTERS_VARIABLE_REF: i64 = 1;
 #[derive(Error, Debug)]
 pub(crate) enum AdapterError {
     #[error("Unhandled command")]
-    UnhandledCommandError,
+    UnhandledCommandError { command: Command },
 
     #[error("Missing command")]
     MissingCommandError,
@@ -129,8 +129,9 @@ impl DapServer {
 
     fn handle(&mut self, req: Request) -> DynResult<Response> {
         // self.log(format!("{:?}\n", req));
+        let command = req.command.clone();
 
-        let rsp = match req.command {
+        let rsp = match command {
             Command::Attach(_) => {
                 self.mode = Some(StartDebuggingRequestKind::Attach);
                 Ok(ResponseBody::Attach)
@@ -301,6 +302,12 @@ impl DapServer {
                     total_frames: None,
                 }))
             }
+            Command::StepIn(_) => {
+                Ok(ResponseBody::StepIn)
+            }
+            Command::StepOut(_) => {
+                Ok(ResponseBody::StepOut)
+            }
             Command::Terminate(_) => {
                 self.exit(0);
                 Ok(ResponseBody::Terminate)
@@ -350,7 +357,7 @@ impl DapServer {
                     variables,
                 }))
             }
-            _ => Err(AdapterError::UnhandledCommandError),
+            _ => Err(AdapterError::UnhandledCommandError {command}),
         };
 
         // self.log(format!("{:?}\n", rsp));
@@ -422,9 +429,6 @@ impl DapServer {
     fn update_vm_breakpoints(&mut self) {
         if let Some(executor) = self.executors.get_mut(0) {
             if let Some(program_path) = &self.program_path {
-                // Divide by 4 to get the opcode offset rather than the program counter offset.
-                let opcode_offset = (executor.test_offset as u64) / 4;
-
                 self.breakpoints.iter().for_each(|bp| {
                     // When the breakpoint is applied, $is is added. We only need to provide the index of the instruction
                     // from the beginning of the script.
@@ -434,7 +438,7 @@ impl DapServer {
                         .unwrap()
                         .get(&bp.line.unwrap())
                         .unwrap();
-                    let bp = fuel_vm::state::Breakpoint::script(opcode_index + opcode_offset);
+                    let bp = fuel_vm::state::Breakpoint::script(opcode_index + executor.opcode_offset);
 
                     // TODO: set all breakpoints in the VM
                     executor.interpreter.set_breakpoint(bp);
@@ -448,7 +452,7 @@ impl DapServer {
             if let Some(program_path) = &self.program_path {
                 if let Some(source_map) = &self.source_map.get(program_path) {
                     // Divide by 4 to get the opcode offset rather than the program counter offset.
-                    let instruction_offset = (pc - executor.test_offset as u64) / 4; // TODO: fix offset for 2nd or 3rd test
+                    let instruction_offset = (pc/4 - (executor.opcode_offset)); // TODO: fix offset for 2nd or 3rd test
 
                     let (line, _) = source_map
                         .iter()

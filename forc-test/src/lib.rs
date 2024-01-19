@@ -357,7 +357,7 @@ impl<'a> PackageTests {
             pkg_with_tests
                 .bytecode
                 .entries
-                .par_iter()
+                .iter()
                 .filter_map(|entry| {
                     if let Some(test_entry) = entry.kind.test() {
                         // If a test filter is specified, only the tests containing the filter phrase in
@@ -371,8 +371,8 @@ impl<'a> PackageTests {
                         return Some((entry, test_entry));
                     }
                     None
-                })
-                .map(|(entry, test_entry)| {
+                }).enumerate()
+                .map(|(order, (entry, test_entry))| {
                     // Execute the test and return the result.
                     let offset = u32::try_from(entry.finalized.imm)
                         .expect("test instruction offset out of range");
@@ -384,6 +384,7 @@ impl<'a> PackageTests {
                         test_setup,
                         test_entry,
                         name,
+                        order as u64
                     )
                     .execute()
                 })

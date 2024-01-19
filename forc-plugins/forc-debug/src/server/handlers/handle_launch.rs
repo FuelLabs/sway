@@ -151,11 +151,36 @@ impl DapServer {
 
         // 3. Construct a TestExecutor for each test and store it
         let executors = entries
-            .filter_map(|(entry, test_entry)| {
+            .enumerate()
+            .filter_map(|(order, (entry, test_entry))| {
                 // Execute the test and return the result.
                 let offset = u32::try_from(entry.finalized.imm)
                     .expect("test instruction offset out of range");
                 let name = entry.finalized.fn_name.clone();
+
+                // let opcode_offset: u64 = (offset as u64) / 4 + order as u64;
+                // let path = self.program_path.clone().unwrap().clone();
+                // let source_map = self.source_map.get(&path).unwrap().clone();
+                // let pcs: Vec<u64> = self
+                //     .breakpoints
+                //     .clone()
+                //     .iter()
+                //     .map(|bp| {
+                //         // When the breakpoint is applied, $is is added. We only need to provide the index of the instruction
+                //         // from the beginning of the script.
+                //         let opcode_index = *source_map.get(&bp.line.unwrap()).unwrap();
+                //         opcode_index + opcode_offset
+                //     })
+                //     .collect();
+
+                // self.log(format!(
+                //     "opcode offset for {} is {:?}\n\n",
+                //     name, opcode_offset
+                // ));
+                // self.log(format!("jump offset for {} is {:?}\n\n", name, order));
+                // self.log(format!("bp pcs {:?}\n\n", pcs));
+                // self.log(format!("sourcemap {:?}\n\n", source_map));
+
                 if let Ok(test_setup) = pkg_tests.setup() {
                     return Some(TestExecutor::new(
                         &pkg_to_debug.bytecode.bytes,
@@ -163,6 +188,7 @@ impl DapServer {
                         test_setup,
                         test_entry,
                         name.clone(),
+                        order as u64,
                     ));
                 }
                 None
@@ -171,11 +197,24 @@ impl DapServer {
 
         self.executors = executors;
 
-        // Set all breakpoints in the VM
-        self.update_vm_breakpoints();
-
         while let Some(executor) = self.executors.get_mut(0) {
-            // self.test_executor = Some(executor.clone());
+            // Set all breakpoints in the VM
+            self.breakpoints.iter().for_each(|bp| {
+                // When the breakpoint is applied, $is is added. We only need to provide the index of the instruction
+                // from the beginning of the script.
+                let opcode_index = *self
+                    .source_map
+                    .get(&program_path)
+                    .unwrap()
+                    .get(&bp.line.unwrap())
+                    .unwrap();
+                let bp = fuel_vm::state::Breakpoint::script(opcode_index + executor.opcode_offset);
+
+                // TODO: set all breakpoints in the VM
+                executor.interpreter.set_breakpoint(bp);
+            });
+
+            // self.update_vm_breakpoints();
 
             match executor.start_debugging()? {
                 DebugResult::TestComplete(result) => {
