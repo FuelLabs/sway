@@ -151,7 +151,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     // allocates when an element is pushed
     ///     vec.push(5);
     /// }
@@ -187,7 +187,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::with_capacity(2);
+    ///     let mut vec = Vec::with_capacity(2);
     ///     // does not allocate
     ///     vec.push(5);
     ///     // does not re-allocate
@@ -215,7 +215,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     let last_element = vec.pop().unwrap();
     ///     assert(last_element == 5);
@@ -270,7 +270,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.clear()
     ///     assert(vec.is_empty());
@@ -296,7 +296,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.push(10);
     ///     vec.push(15);
@@ -332,7 +332,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     assert(vec.len() == 1);
     ///     vec.push(10);
@@ -355,7 +355,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     assert(vec.is_empty());
     ///     vec.push(5);
     ///     assert(!vec.is_empty());
@@ -386,7 +386,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.push(10);
     ///     vec.push(15);
@@ -440,7 +440,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.push(10);
     ///
@@ -491,7 +491,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///
     ///     let res = vec.pop();
     ///     assert(res.is_none());
@@ -527,7 +527,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.push(10);
     ///
@@ -570,7 +570,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.push(10);
     ///
