@@ -1918,7 +1918,8 @@ impl<'eng> FnCompiler<'eng> {
             )
             .add_metadatum(context, cond_span_md_idx);
 
-        let return_type = convert_resolved_typeid_no_span(
+        let return_type =
+	    convert_resolved_typeid_no_span(
             self.engines.te(),
             self.engines.de(),
             context,
@@ -1928,20 +1929,30 @@ impl<'eng> FnCompiler<'eng> {
         let merge_block = self.function.create_block(context, None);
         // Add a single argument to merge_block that merges true_value and false_value.
         // Rely on the type of the ast node when creating that argument
-        let merge_val_arg_idx = merge_block.new_arg(context, return_type);
-        if !true_value.is_diverging() {
-            true_block_end
-                .append(context)
-                .branch(merge_block, vec![true_value.get_value()]);
-        }
-        if !false_value.is_diverging() {
-            false_block_end
-                .append(context)
-                .branch(merge_block, vec![false_value.get_value()]);
-        }
-
-        self.current_block = merge_block;
-        let val = merge_block.get_arg(context, merge_val_arg_idx).unwrap();
+	// Corner case: If both branches diverge, then setting the return type to 'Unit' produces an
+	// illegally typed value. In that case we add a diverging dummy value to the merge branch
+	// and return it instead.
+	let val =
+	    if !true_value.is_diverging() || !false_value.is_diverging() {
+		let merge_val_arg_idx = merge_block.new_arg(context, return_type);
+		if !true_value.is_diverging() {
+		    true_block_end
+			.append(context)
+			.branch(merge_block, vec![true_value.get_value()]);
+		}
+		if !false_value.is_diverging() {
+		    false_block_end
+			.append(context)
+			.branch(merge_block, vec![false_value.get_value()]);
+		}
+		self.current_block = merge_block;
+		merge_block.get_arg(context, merge_val_arg_idx).unwrap()
+	    }
+	    else {
+		merge_block
+		    .append(context)
+		    .branch(cond_block, vec![])
+	    };
         Ok(ValueDivergence::mk_value_divergence(val, context))
     }
 
