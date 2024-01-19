@@ -1,35 +1,18 @@
-use crate::names::register_index;
-use dap::events::{BreakpointEventBody, OutputEventBody, StoppedEventBody};
-use dap::responses::*;
-use forc_test::execute::{DebugResult, TestExecutor};
-use fuel_core_client::client::schema::schema::__fields::Mutation::_set_breakpoint_arguments::breakpoint;
-use serde::{Deserialize, Serialize};
-use std::{
-    cmp::min,
-    collections::{HashMap, HashSet},
-    fs,
-    io::{BufReader, BufWriter, Stdin, Stdout},
-    ops::Deref,
-    path::PathBuf,
-    process,
-    sync::Arc,
-};
-use sway_core::source_map::PathIndex;
-use sway_types::{span::Position, Span};
-// use sway_core::source_map::SourceMap;
-use crate::server::{AdapterError, THREAD_ID};
-use crate::{server::DapServer, types::DynResult};
-use dap::prelude::*;
+use crate::server::AdapterError;
+use crate::server::DapServer;
 use forc_pkg::{self, BuildProfile, Built, BuiltPackage, PackageManifestFile};
+use forc_test::execute::{DebugResult, TestExecutor};
 use forc_test::BuiltTests;
+use std::{cmp::min, collections::HashMap, fs, path::PathBuf, sync::Arc};
+use sway_types::span::Position;
 
 impl DapServer {
     /// Handle a `launch` request. Returns true if the server should continue running.
     pub(crate) fn handle_launch(&mut self, program_path: PathBuf) -> Result<bool, AdapterError> {
+        
         // 1. Build the packages
         let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&program_path)
             .map_err(|_| AdapterError::BuildError)?;
-
         let pkg_manifest: PackageManifestFile = manifest_file
             .clone()
             .try_into()
@@ -70,9 +53,8 @@ impl DapServer {
         )
         .map_err(|_| AdapterError::BuildError)?;
 
-        let mut pkg_to_debug: Option<&BuiltPackage> = None;
-
         // 2. Store the source maps
+        let mut pkg_to_debug: Option<&BuiltPackage> = None;
         built_packages.iter().for_each(|(_, built_pkg)| {
             if built_pkg.descriptor.manifest_file == pkg_manifest {
                 pkg_to_debug = Some(built_pkg);
@@ -113,20 +95,20 @@ impl DapServer {
                             })
                             .or_insert(HashMap::from([(line, instruction)]));
                     } else {
-                        self.log(format!(
+                        self.error(format!(
                             "Couldn't get position: {:?} in file: {:?}",
                             sm_span.range.start, path_buf
                         ));
                     }
                 } else {
-                    self.log(format!("Couldn't read file: {:?}", path_buf));
+                    self.error(format!("Couldn't read file: {:?}", path_buf));
                 }
             });
         });
 
         // 3. Build the tests
         let pkg_to_debug = pkg_to_debug.ok_or_else(|| {
-            self.log(format!("Couldn't find built package for {}", project_name));
+            self.error(format!("Couldn't find built package for {}", project_name));
             AdapterError::BuildError
         })?;
 
@@ -149,37 +131,13 @@ impl DapServer {
             None
         });
 
-        // 3. Construct a TestExecutor for each test and store it
-        let executors = entries
+        // 4. Construct a TestExecutor for each test and store it
+        let executors: Vec<TestExecutor> = entries
             .enumerate()
             .filter_map(|(order, (entry, test_entry))| {
-                // Execute the test and return the result.
                 let offset = u32::try_from(entry.finalized.imm)
                     .expect("test instruction offset out of range");
                 let name = entry.finalized.fn_name.clone();
-
-                // let opcode_offset: u64 = (offset as u64) / 4 + order as u64;
-                // let path = self.program_path.clone().unwrap().clone();
-                // let source_map = self.source_map.get(&path).unwrap().clone();
-                // let pcs: Vec<u64> = self
-                //     .breakpoints
-                //     .clone()
-                //     .iter()
-                //     .map(|bp| {
-                //         // When the breakpoint is applied, $is is added. We only need to provide the index of the instruction
-                //         // from the beginning of the script.
-                //         let opcode_index = *source_map.get(&bp.line.unwrap()).unwrap();
-                //         opcode_index + opcode_offset
-                //     })
-                //     .collect();
-
-                // self.log(format!(
-                //     "opcode offset for {} is {:?}\n\n",
-                //     name, opcode_offset
-                // ));
-                // self.log(format!("jump offset for {} is {:?}\n\n", name, order));
-                // self.log(format!("bp pcs {:?}\n\n", pcs));
-                // self.log(format!("sourcemap {:?}\n\n", source_map));
 
                 if let Ok(test_setup) = pkg_tests.setup() {
                     return Some(TestExecutor::new(
@@ -195,33 +153,20 @@ impl DapServer {
             })
             .collect();
 
-        self.executors = executors;
+        self.executors = executors.clone();
+        self.original_executors = executors;
 
+        // 5. Start debugging
+        self.update_vm_breakpoints();
         while let Some(executor) = self.executors.get_mut(0) {
-            // Set all breakpoints in the VM
-            self.breakpoints.iter().for_each(|bp| {
-                // When the breakpoint is applied, $is is added. We only need to provide the index of the instruction
-                // from the beginning of the script.
-                let opcode_index = *self
-                    .source_map
-                    .get(&program_path)
-                    .unwrap()
-                    .get(&bp.line.unwrap())
-                    .unwrap();
-                let bp = fuel_vm::state::Breakpoint::script(opcode_index + executor.opcode_offset);
-
-                // TODO: set all breakpoints in the VM
-                executor.interpreter.set_breakpoint(bp);
-            });
-
-            // self.update_vm_breakpoints();
+            executor.interpreter.set_single_stepping(false);
 
             match executor.start_debugging()? {
                 DebugResult::TestComplete(result) => {
                     self.test_results.push(result);
                 }
                 DebugResult::Breakpoint(pc) => {
-                    return self.send_stopped_event(pc);
+                    return self.stop_on_breakpoint(pc);
                 }
             };
             self.executors.remove(0);

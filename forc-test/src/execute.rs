@@ -2,7 +2,6 @@ use crate::setup::TestSetup;
 use crate::TestResult;
 use crate::TEST_METADATA_SEED;
 use forc_pkg::PkgTestEntry;
-use fuel_tx::field::Script;
 use fuel_tx::{self as tx, output::contract::Contract, Chargeable, Finalizable};
 use fuel_vm::error::InterpreterError;
 use fuel_vm::{
@@ -112,7 +111,7 @@ impl TestExecutor {
             tx_builder,
             test_entry: test_entry.clone(),
             name,
-            opcode_offset
+            opcode_offset,
         }
     }
 

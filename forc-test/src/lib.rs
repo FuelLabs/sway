@@ -14,7 +14,6 @@ use pkg::manifest::ExperimentalFlags;
 use pkg::TestPassCondition;
 use pkg::{Built, BuiltPackage};
 use rand::{Rng, SeedableRng};
-use rayon::prelude::*;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::BuildTarget;
 use sway_types::Span;
@@ -371,7 +370,8 @@ impl<'a> PackageTests {
                         return Some((entry, test_entry));
                     }
                     None
-                }).enumerate()
+                })
+                .enumerate()
                 .map(|(order, (entry, test_entry))| {
                     // Execute the test and return the result.
                     let offset = u32::try_from(entry.finalized.imm)
@@ -384,7 +384,7 @@ impl<'a> PackageTests {
                         test_setup,
                         test_entry,
                         name,
-                        order as u64
+                        order as u64,
                     )
                     .execute()
                 })
