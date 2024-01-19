@@ -175,10 +175,9 @@ impl<'eng> FnCompiler<'eng> {
                     }
                 };
                 match fn_compiler.compile_ast_node(context, md_mgr, ast_node) {
-                    // If we've hit a diverging expression, then nothing more needs to be done.
-                    Ok(Some(val)) if val.is_diverging() => break val,
-                    // Non-diverging expressions are treated as statements, so their values are ignored and we continue.
-                    Ok(Some(_)) | Ok(None) => (),
+                    // 'Some' indicates an implicit return or a diverging expression, so break.
+                    Ok(Some(val)) => break val,
+		    Ok(None) => (),
                     Err(e) => {
                         errors.push(e);
                     }
@@ -253,7 +252,13 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyAstNodeContent::Expression(te) => {
                 // An expression with an ignored return value... I assume.
                 let value = self.compile_expression_to_value(context, md_mgr, te)?;
-                Ok(Some(value))
+		// Diverging values should terminate the compilation of the block
+		if value.is_diverging() {
+                    Ok(Some(value))
+		}
+		else {
+		    Ok(None)
+		}
             }
             ty::TyAstNodeContent::ImplicitReturnExpression(te) => self
                 .compile_expression_to_value(context, md_mgr, te)
