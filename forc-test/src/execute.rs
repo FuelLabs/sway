@@ -129,7 +129,7 @@ impl TestExecutor {
             return Ok(DebugResult::Breakpoint(breakpoint.pc()));
         }
         let duration = start.elapsed();
-        let (gas_used, logs) = Self::get_gas_and_receipts(transition)?;
+        let (gas_used, logs) = Self::get_gas_and_receipts(transition.receipts().to_vec())?;
         let span = self.test_entry.span.clone();
         let file_path = self.test_entry.file_path.clone();
         let condition = self.test_entry.pass_condition.clone();
@@ -160,9 +160,7 @@ impl TestExecutor {
             return Ok(DebugResult::Breakpoint(breakpoint.pc()));
         }
         let duration = start.elapsed();
-        //let (gas_used, logs) = Self::get_gas_and_receipts(transition)?; // TODO: calculate culumlative
-        let gas_used = 0;
-        let logs = vec![];
+        let (gas_used, logs) = Self::get_gas_and_receipts(self.interpreter.receipts().to_vec())?; // TODO: calculate culumlative
         let span = self.test_entry.span.clone();
         let file_path = self.test_entry.file_path.clone();
         let condition = self.test_entry.pass_condition.clone();
@@ -189,7 +187,7 @@ impl TestExecutor {
         let state = *transition.state();
 
         let duration = start.elapsed();
-        let (gas_used, logs) = Self::get_gas_and_receipts(transition)?;
+        let (gas_used, logs) = Self::get_gas_and_receipts(transition.receipts().to_vec())?;
         let span = self.test_entry.span.clone();
         let file_path = self.test_entry.file_path.clone();
         let condition = self.test_entry.pass_condition.clone();
@@ -207,9 +205,8 @@ impl TestExecutor {
     }
 
     fn get_gas_and_receipts(
-        transition: StateTransitionRef<'_, tx::Script>,
+        receipts: Vec<Receipt>
     ) -> anyhow::Result<(u64, Vec<Receipt>)> {
-        let receipts = transition.receipts().to_vec();
         let gas_used = *receipts
             .iter()
             .find_map(|receipt| match receipt {

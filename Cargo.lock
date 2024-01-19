@@ -7268,7 +7268,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "encoding_rs",
  "futures-util",
- "getrandom 0.2.11",
+ "getrandom 0.2.12",
  "http-client",
  "http-types",
  "log",
