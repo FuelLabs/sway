@@ -118,7 +118,6 @@ pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
     }
 }
 
-// TODO
 fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> ForcResult<()> {
     let succeeded = pkg.tests.iter().filter(|t| t.passed()).count();
     let failed = pkg.tests.len() - succeeded;

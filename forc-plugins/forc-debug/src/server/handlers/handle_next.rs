@@ -23,9 +23,9 @@ impl DapServer {
         }
 
         // All tests have finished
-        if self.executors.len() == 0 {
+        if self.executors.is_empty() {
             self.log_test_results();
         }
-        return Ok(false);
+        Ok(false)
     }
 }

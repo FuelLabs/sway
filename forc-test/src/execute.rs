@@ -16,7 +16,6 @@ use tx::Receipt;
 
 use vm::state::DebugEval;
 use vm::state::ProgramState;
-use vm::state::StateTransitionRef;
 
 /// An interface for executing a test within a VM [Interpreter] instance.
 #[derive(Debug, Clone)]
@@ -204,9 +203,7 @@ impl TestExecutor {
         })
     }
 
-    fn get_gas_and_receipts(
-        receipts: Vec<Receipt>
-    ) -> anyhow::Result<(u64, Vec<Receipt>)> {
+    fn get_gas_and_receipts(receipts: Vec<Receipt>) -> anyhow::Result<(u64, Vec<Receipt>)> {
         let gas_used = *receipts
             .iter()
             .find_map(|receipt| match receipt {

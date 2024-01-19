@@ -35,6 +35,6 @@ impl DapServer {
         }
 
         self.log_test_results();
-        return Ok(false);
+        Ok(false)
     }
 }

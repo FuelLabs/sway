@@ -17,7 +17,6 @@ use rand::{Rng, SeedableRng};
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::BuildTarget;
 use sway_types::Span;
-
 use vm::prelude::SecretKey;
 
 /// The result of a `forc test` invocation.
@@ -583,21 +582,6 @@ pub fn build(opts: TestOpts) -> anyhow::Result<BuiltTests> {
     let build_opts = opts.into();
     let build_plan = pkg::BuildPlan::from_build_opts(&build_opts)?;
     let built = pkg::build_with_options(build_opts)?;
-    // let built_members: HashMap<&pkg::Pinned, Arc<BuiltPackage>> = built.into_members().collect();
-
-    // // For each member node collect their contract dependencies.
-    // let member_contract_dependencies: HashMap<pkg::Pinned, Vec<Arc<pkg::BuiltPackage>>> =
-    //     build_plan.member_nodes().map(|member_node| {
-    //         let graph = build_plan.graph();
-    //         let pinned_member = graph[member_node].clone();
-    //         let contract_dependencies = build_plan
-    //             .contract_dependencies(member_node)
-    //             .map(|contract_depency_node_ix| graph[contract_depency_node_ix].clone())
-    //             .filter_map(|pinned| built_members.get(&pinned))
-    //             .cloned()
-    //             .collect();
-    //     });
-
     BuiltTests::from_built(built, &build_plan)
 }
 

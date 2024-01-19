@@ -9,20 +9,19 @@ use sway_types::span::Position;
 impl DapServer {
     /// Handle a `launch` request. Returns true if the server should continue running.
     pub(crate) fn handle_launch(&mut self, program_path: PathBuf) -> Result<bool, AdapterError> {
-        
         // 1. Build the packages
         let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&program_path)
-            .map_err(|_| AdapterError::BuildError)?;
+            .map_err(|_| AdapterError::BuildFailed)?;
         let pkg_manifest: PackageManifestFile = manifest_file
             .clone()
             .try_into()
-            .map_err(|_| AdapterError::BuildError)?;
+            .map_err(|_| AdapterError::BuildFailed)?;
         let mut member_manifests = manifest_file
             .member_manifests()
-            .map_err(|_| AdapterError::BuildError)?;
+            .map_err(|_| AdapterError::BuildFailed)?;
         let lock_path = manifest_file
             .lock_path()
-            .map_err(|_| AdapterError::BuildError)?;
+            .map_err(|_| AdapterError::BuildFailed)?;
         let build_plan = forc_pkg::BuildPlan::from_lock_and_manifests(
             &lock_path,
             &member_manifests,
@@ -30,7 +29,7 @@ impl DapServer {
             false,
             Default::default(),
         )
-        .map_err(|_| AdapterError::BuildError)?;
+        .map_err(|_| AdapterError::BuildFailed)?;
 
         let project_name = member_manifests
             .first_entry()
@@ -51,7 +50,7 @@ impl DapServer {
             },
             &outputs,
         )
-        .map_err(|_| AdapterError::BuildError)?;
+        .map_err(|_| AdapterError::BuildFailed)?;
 
         // 2. Store the source maps
         let mut pkg_to_debug: Option<&BuiltPackage> = None;
@@ -67,7 +66,7 @@ impl DapServer {
                 .iter()
                 .filter_map(|path_buf| {
                     if let Ok(source) = fs::read_to_string(path_buf) {
-                        return Some((path_buf, source));
+                        Some((path_buf, source))
                     } else {
                         None
                     }
@@ -78,7 +77,7 @@ impl DapServer {
                 let path_buf: &PathBuf = paths.get(sm_span.path.0).unwrap();
 
                 if let Some(source_code) = source_code.get(path_buf) {
-                    if let Some(start_pos) = Position::new(&source_code, sm_span.range.start) {
+                    if let Some(start_pos) = Position::new(source_code, sm_span.range.start) {
                         let (line, _) = start_pos.line_col();
                         let (line, instruction) = (line as i64, *instruction as u64);
 
@@ -86,7 +85,7 @@ impl DapServer {
                             .entry(path_buf.clone())
                             .and_modify(|new_map| {
                                 new_map
-                                    .entry(line as i64)
+                                    .entry(line)
                                     .and_modify(|val| {
                                         // Choose the first instruction that maps to this line
                                         *val = min(instruction, *val);
@@ -109,18 +108,18 @@ impl DapServer {
         // 3. Build the tests
         let pkg_to_debug = pkg_to_debug.ok_or_else(|| {
             self.error(format!("Couldn't find built package for {}", project_name));
-            AdapterError::BuildError
+            AdapterError::BuildFailed
         })?;
 
         let built = Built::Package(Arc::from(pkg_to_debug.clone()));
 
         let built_tests =
-            BuiltTests::from_built(built, &build_plan).map_err(|_| AdapterError::BuildError)?;
+            BuiltTests::from_built(built, &build_plan).map_err(|_| AdapterError::BuildFailed)?;
 
         let pkg_tests = match built_tests {
             BuiltTests::Package(pkg) => pkg,
             BuiltTests::Workspace(_) => {
-                return Err(AdapterError::BuildError);
+                return Err(AdapterError::BuildFailed);
             }
         };
 
@@ -173,6 +172,6 @@ impl DapServer {
         }
 
         self.log_test_results();
-        return Ok(false);
+        Ok(false)
     }
 }
