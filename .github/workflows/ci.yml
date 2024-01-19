@@ -316,6 +316,7 @@ jobs:
 
   cargo-run-e2e-test-release:
     runs-on: ubuntu-latest
+    needs: get-fuel-core-version
     services:
       fuel-core:
         image: ghcr.io/fuellabs/fuel-core:v${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
