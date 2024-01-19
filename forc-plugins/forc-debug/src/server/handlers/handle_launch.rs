@@ -81,7 +81,8 @@ impl DapServer {
                         let (line, _) = start_pos.line_col();
                         let (line, instruction) = (line as i64, *instruction as u64);
 
-                        self.source_map
+                        self.state
+                            .source_map
                             .entry(path_buf.clone())
                             .and_modify(|new_map| {
                                 new_map
@@ -152,23 +153,22 @@ impl DapServer {
             })
             .collect();
 
-        self.executors = executors.clone();
-        self.original_executors = executors;
+        self.state.init_executors(executors);
 
         // 5. Start debugging
-        self.update_vm_breakpoints();
-        while let Some(executor) = self.executors.get_mut(0) {
+        self.state.update_vm_breakpoints();
+        while let Some(executor) = self.state.executors.get_mut(0) {
             executor.interpreter.set_single_stepping(false);
 
             match executor.start_debugging()? {
                 DebugResult::TestComplete(result) => {
-                    self.test_results.push(result);
+                    self.state.test_results.push(result);
                 }
                 DebugResult::Breakpoint(pc) => {
                     return self.stop_on_breakpoint(pc);
                 }
             };
-            self.executors.remove(0);
+            self.state.executors.remove(0);
         }
 
         self.log_test_results();

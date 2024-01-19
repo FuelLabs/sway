@@ -1,15 +1,16 @@
 mod handlers;
+mod state;
+
+use self::state::ServerState;
 use crate::names::register_name;
 use crate::types::DynResult;
+use dap::events::OutputEventBody;
 use dap::events::{ExitedEventBody, StoppedEventBody};
 use dap::prelude::*;
 use dap::types::{Scope, StartDebuggingRequestKind, Variable};
-use dap::{events::OutputEventBody, types::Breakpoint};
-use forc_test::execute::TestExecutor;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
     io::{BufReader, BufWriter, Stdin, Stdout},
     path::PathBuf,
     process,
@@ -55,22 +56,8 @@ pub struct AdditionalData {
 
 pub struct DapServer {
     server: Server<Stdin, Stdout>,
-    source_map: SourceMap,
-    mode: Option<StartDebuggingRequestKind>,
-    breakpoints: Vec<Breakpoint>,
-    initialized_event_sent: bool,
-    started_debugging: bool,
-    configuration_done: bool,
-    current_breakpoint_id: Option<i64>,
-    program_path: Option<PathBuf>,
-    executors: Vec<TestExecutor>,
-    original_executors: Vec<TestExecutor>,
-    test_results: Vec<forc_test::TestResult>,
+    state: ServerState,
 }
-
-pub type Line = i64;
-pub type Instruction = u64;
-pub type SourceMap = HashMap<PathBuf, HashMap<Line, Instruction>>;
 
 impl Default for DapServer {
     fn default() -> Self {
@@ -85,17 +72,7 @@ impl DapServer {
         let server = Server::new(input, output);
         DapServer {
             server,
-            source_map: Default::default(),
-            mode: None,
-            breakpoints: Default::default(),
-            initialized_event_sent: false,
-            started_debugging: false,
-            configuration_done: false,
-            current_breakpoint_id: None,
-            program_path: None,
-            executors: Default::default(),
-            original_executors: Default::default(),
-            test_results: Default::default(),
+            state: Default::default(),
         }
     }
 
@@ -106,14 +83,14 @@ impl DapServer {
                     let rsp = self.handle(req)?;
                     self.server.respond(rsp)?;
 
-                    if !self.initialized_event_sent {
+                    if !self.state.initialized_event_sent {
                         let _ = self.server.send_event(Event::Initialized);
-                        self.initialized_event_sent = true;
+                        self.state.initialized_event_sent = true;
                     }
-                    if self.configuration_done && !self.started_debugging {
-                        if let Some(StartDebuggingRequestKind::Launch) = self.mode {
-                            if let Some(program_path) = &self.program_path {
-                                self.started_debugging = true;
+                    if self.state.configuration_done && !self.state.started_debugging {
+                        if let Some(StartDebuggingRequestKind::Launch) = self.state.mode {
+                            if let Some(program_path) = &self.state.program_path {
+                                self.state.started_debugging = true;
                                 match self.handle_launch(program_path.clone()) {
                                     Ok(true) => {}
                                     Ok(false) => {
@@ -139,11 +116,12 @@ impl DapServer {
 
         let rsp = match command {
             Command::Attach(_) => {
-                self.mode = Some(StartDebuggingRequestKind::Attach);
+                self.state.mode = Some(StartDebuggingRequestKind::Attach);
                 Ok(ResponseBody::Attach)
             }
             Command::BreakpointLocations(ref args) => {
                 let breakpoints = self
+                    .state
                     .breakpoints
                     .iter()
                     .filter_map(|bp| {
@@ -166,11 +144,10 @@ impl DapServer {
                 ))
             }
             Command::ConfigurationDone => {
-                self.configuration_done = true;
+                self.state.configuration_done = true;
                 Ok(ResponseBody::ConfigurationDone)
             }
             Command::Continue(_) => {
-                // While there are more tests to execute, either start debugging or continue
                 match self.handle_continue() {
                     Ok(true) => {}
                     Ok(false) => {
@@ -197,7 +174,7 @@ impl DapServer {
                 ..Default::default()
             })),
             Command::Launch(ref args) => {
-                self.mode = Some(StartDebuggingRequestKind::Launch);
+                self.state.mode = Some(StartDebuggingRequestKind::Launch);
                 let data = serde_json::from_value::<AdditionalData>(
                     args.additional_data
                         .as_ref()
@@ -205,7 +182,7 @@ impl DapServer {
                         .clone(),
                 )
                 .map_err(|_| AdapterError::MissingConfiguration)?;
-                self.program_path = Some(PathBuf::from(data.program));
+                self.state.program_path = Some(PathBuf::from(data.program));
                 Ok(ResponseBody::Launch)
             }
             Command::Next(_) => {
@@ -224,16 +201,13 @@ impl DapServer {
             }
             Command::Pause(_) => {
                 // TODO: interpreter pause function
-                if let Some(executor) = self.executors.get_mut(0) {
+                if let Some(executor) = self.state.executor() {
                     executor.interpreter.set_single_stepping(true);
                 }
                 Ok(ResponseBody::Pause)
             }
             Command::Restart(_) => {
-                self.started_debugging = false;
-                self.executors = self.original_executors.clone();
-                self.test_results = vec![];
-                self.current_breakpoint_id = None;
+                self.state.reset();
                 Ok(ResponseBody::Restart)
             }
             Command::Scopes(_) => Ok(ResponseBody::Scopes(responses::ScopesResponse {
@@ -241,14 +215,7 @@ impl DapServer {
                     name: "Registers".into(),
                     presentation_hint: Some(types::ScopePresentationhint::Registers),
                     variables_reference: REGISTERS_VARIABLE_REF,
-                    named_variables: None,
-                    indexed_variables: None,
-                    expensive: false,
-                    source: None,
-                    line: None,
-                    column: None,
-                    end_line: None,
-                    end_column: None,
+                    ..Default::default()
                 }],
             })),
             Command::SetBreakpoints(ref args) => {
@@ -259,7 +226,7 @@ impl DapServer {
                     .unwrap_or_default()
                     .iter()
                     .map(|source_bp| {
-                        match self.breakpoints.iter().find(|bp| {
+                        match self.state.breakpoints.iter().find(|bp| {
                             if let Some(source) = &bp.source {
                                 if let Some(line) = bp.line {
                                     if args.source.path == source.path && source_bp.line == line {
@@ -284,19 +251,21 @@ impl DapServer {
                         }
                     })
                     .collect::<Vec<_>>();
-                self.breakpoints = breakpoints.clone();
+                self.state.breakpoints = breakpoints.clone();
                 Ok(ResponseBody::SetBreakpoints(
                     responses::SetBreakpointsResponse { breakpoints },
                 ))
             }
             Command::StackTrace(_) => {
-                let executor = self.executors.get_mut(0).unwrap();
+                let executor = self.state.executors.first().unwrap(); // TODO
 
                 // For now, we only return 1 stack frame.
                 let stack_frames = self
+                    .state
                     .current_breakpoint_id
                     .and_then(|bp_id| {
-                        self.breakpoints
+                        self.state
+                            .breakpoints
                             .iter()
                             .find(|bp| bp.id == Some(bp_id))
                             .map(|bp| {
@@ -339,8 +308,8 @@ impl DapServer {
             })),
             Command::Variables(_) => {
                 let variables = self
-                    .executors
-                    .get_mut(0)
+                    .state
+                    .executor()
                     .as_ref()
                     .map(|executor| {
                         let mut i = 0;
@@ -399,6 +368,7 @@ impl DapServer {
 
     fn log_test_results(&mut self) {
         let results = self
+            .state
             .test_results
             .iter()
             .map(|result| {
@@ -417,12 +387,22 @@ impl DapServer {
             })
             .collect::<Vec<_>>()
             .join("\n");
-        let final_outcome = match self.test_results.iter().any(|r| !r.passed()) {
+        let final_outcome = match self.state.test_results.iter().any(|r| !r.passed()) {
             true => "FAILED",
             false => "OK",
         };
-        let passed = self.test_results.iter().filter(|r| r.passed()).count();
-        let failed = self.test_results.iter().filter(|r| !r.passed()).count();
+        let passed = self
+            .state
+            .test_results
+            .iter()
+            .filter(|r| r.passed())
+            .count();
+        let failed = self
+            .state
+            .test_results
+            .iter()
+            .filter(|r| !r.passed())
+            .count();
         self.log(format!(
             "{}\nResult: {}. {} passed. {} failed.\n",
             results, final_outcome, passed, failed
@@ -437,60 +417,9 @@ impl DapServer {
         process::exit(exit_code as i32);
     }
 
-    /// Updates the breakpoints in the VM for all executors.
-    fn update_vm_breakpoints(&mut self) {
-        if let Some(program_path) = &self.program_path {
-            let opcode_indexes = self.breakpoints.iter().map(|bp| {
-                // When the breakpoint is applied, $is is added. We only need to provide the index of the instruction
-                // from the beginning of the script.
-                *self
-                    .source_map
-                    .get(program_path)
-                    .unwrap()
-                    .get(&bp.line.unwrap())
-                    .unwrap()
-            });
-            self.executors.iter_mut().for_each(|executor| {
-                // TODO: use overwrite_breakpoints when released
-                opcode_indexes.clone().for_each(|opcode_index| {
-                    let bp =
-                        fuel_vm::state::Breakpoint::script(opcode_index + executor.opcode_offset);
-                    executor.interpreter.set_breakpoint(bp);
-                });
-            });
-        }
-    }
-
-    fn vm_pc_to_breakpoint_id(&mut self, pc: u64) -> Result<i64, AdapterError> {
-        if let Some(executor) = self.executors.get_mut(0) {
-            if let Some(program_path) = &self.program_path {
-                if let Some(source_map) = &self.source_map.get(program_path) {
-                    // Divide by 4 to get the opcode offset rather than the program counter offset.
-                    let instruction_offset = pc / 4 - (executor.opcode_offset); // TODO: fix offset for 2nd or 3rd test
-
-                    let (line, _) = source_map
-                        .iter()
-                        .find(|(_, pc)| **pc == instruction_offset)
-                        .ok_or(AdapterError::MissingSourceMap { pc })?;
-
-                    let breakpoint_id = self
-                        .breakpoints
-                        .iter()
-                        .find(|bp| bp.line == Some(*line))
-                        .ok_or(AdapterError::UnknownBreakpoint)?
-                        .id
-                        .ok_or(AdapterError::UnknownBreakpoint)?;
-
-                    return Ok(breakpoint_id);
-                }
-            }
-        }
-        Err(AdapterError::UnknownBreakpoint)
-    }
-
     fn stop_on_breakpoint(&mut self, pc: u64) -> Result<bool, AdapterError> {
-        let breakpoint_id = self.vm_pc_to_breakpoint_id(pc)?;
-        self.current_breakpoint_id = Some(breakpoint_id);
+        let breakpoint_id = self.state.vm_pc_to_breakpoint_id(pc)?;
+        self.state.current_breakpoint_id = Some(breakpoint_id);
         let _ = self.server.send_event(Event::Stopped(StoppedEventBody {
             reason: types::StoppedEventReason::Breakpoint,
             hit_breakpoint_ids: Some(vec![breakpoint_id]),
@@ -504,8 +433,8 @@ impl DapServer {
     }
 
     fn stop_on_step(&mut self, pc: u64) -> Result<bool, AdapterError> {
-        let hit_breakpoint_ids = if let Ok(breakpoint_id) = self.vm_pc_to_breakpoint_id(pc) {
-            self.current_breakpoint_id = Some(breakpoint_id);
+        let hit_breakpoint_ids = if let Ok(breakpoint_id) = self.state.vm_pc_to_breakpoint_id(pc) {
+            self.state.current_breakpoint_id = Some(breakpoint_id);
             Some(vec![breakpoint_id])
         } else {
             None

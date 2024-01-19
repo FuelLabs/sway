@@ -53,7 +53,7 @@ pub struct TestFilter<'a> {
 }
 
 /// The result of executing a single test within a single package.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TestResult {
     /// The name of the function.
     pub name: String,

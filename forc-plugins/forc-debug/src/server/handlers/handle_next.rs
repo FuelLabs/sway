@@ -5,13 +5,13 @@ use forc_test::execute::DebugResult;
 impl DapServer {
     /// Handle a `continue` request. Returns true if the server should continue running.
     pub(crate) fn handle_next(&mut self) -> Result<bool, AdapterError> {
-        self.update_vm_breakpoints();
-        if let Some(executor) = self.executors.get_mut(0) {
+        self.state.update_vm_breakpoints();
+        if let Some(executor) = self.state.executors.get_mut(0) {
             executor.interpreter.set_single_stepping(true);
 
             match executor.continue_debugging()? {
                 DebugResult::TestComplete(result) => {
-                    self.test_results.push(result);
+                    self.state.test_results.push(result);
                 }
 
                 DebugResult::Breakpoint(pc) => {
@@ -19,11 +19,11 @@ impl DapServer {
                     return self.stop_on_step(pc);
                 }
             }
-            self.executors.remove(0);
+            self.state.executors.remove(0);
         }
 
         // All tests have finished
-        if self.executors.is_empty() {
+        if self.state.executors.is_empty() {
             self.log_test_results();
         }
         Ok(false)
