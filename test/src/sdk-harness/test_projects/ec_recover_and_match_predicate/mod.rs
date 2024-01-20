@@ -7,7 +7,7 @@ use fuels::{
 abigen!(
     Predicate(
         name = "TestPredicate",
-        abi = "test_projects/ec_recover_and_match_predicate/out/debug/ec_recover_and_match_predicate-abi.json"
+        abi = "test_projects/ec_recover_and_match_predicate/out/release/ec_recover_and_match_predicate-abi.json"
     )
 );
 
@@ -73,7 +73,7 @@ async fn ec_recover_and_match_predicate_test() -> Result<()> {
 
     let predicate_data = TestPredicateEncoder::encode_data(signatures);
     let code_path =
-        "test_projects/ec_recover_and_match_predicate/out/debug/ec_recover_and_match_predicate.bin";
+        "test_projects/ec_recover_and_match_predicate/out/release/ec_recover_and_match_predicate.bin";
 
     let predicate = Predicate::load_from(code_path)?
         .with_data(predicate_data)
