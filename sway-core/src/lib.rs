@@ -27,7 +27,7 @@ use crate::source_map::SourceMap;
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
 pub use asm_generation::{CompiledBytecode, FinalizedEntry};
-pub use build_config::{BuildConfig, BuildTarget};
+pub use build_config::{BuildConfig, BuildTarget, OptLevel};
 use control_flow_analysis::ControlFlowGraph;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModulePath, ProgramsCacheEntry};
@@ -40,9 +40,10 @@ use std::sync::Arc;
 use sway_ast::AttributeDecl;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{
-    create_o1_pass_group, register_known_passes, Context, Kind, Module, PassManager,
-    ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME,
-    MISCDEMOTION_NAME, MODULEPRINTER_NAME, RETDEMOTION_NAME, SIMPLIFYCFG_NAME, SROA_NAME,
+    create_o1_pass_group, register_known_passes, Context, Kind, Module, PassGroup, PassManager,
+    ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, INLINE_MODULE_NAME, MEM2REG_NAME,
+    MEMCPYOPT_NAME, MISCDEMOTION_NAME, MODULEPRINTER_NAME, RETDEMOTION_NAME, SIMPLIFYCFG_NAME,
+    SROA_NAME,
 };
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
 use sway_types::SourceEngine;
@@ -804,7 +805,17 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // Initialize the pass manager and register known passes.
     let mut pass_mgr = PassManager::default();
     register_known_passes(&mut pass_mgr);
-    let mut pass_group = create_o1_pass_group();
+    let mut pass_group = PassGroup::default();
+
+    match build_config.optimization_level {
+        OptLevel::Opt1 => {
+            pass_group.append_group(create_o1_pass_group());
+        }
+        OptLevel::Opt0 => {
+            // Inlining is necessary until #4899 is resolved.
+            pass_group.append_pass(INLINE_MODULE_NAME);
+        }
+    }
 
     // Target specific transforms should be moved into something more configured.
     if build_config.build_target == BuildTarget::Fuel {
@@ -823,9 +834,15 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         // Run a DCE and simplify-cfg to clean up any obsolete instructions.
         pass_group.append_pass(DCE_NAME);
         pass_group.append_pass(SIMPLIFYCFG_NAME);
-        pass_group.append_pass(SROA_NAME);
-        pass_group.append_pass(MEM2REG_NAME);
-        pass_group.append_pass(DCE_NAME);
+
+        match build_config.optimization_level {
+            OptLevel::Opt1 => {
+                pass_group.append_pass(SROA_NAME);
+                pass_group.append_pass(MEM2REG_NAME);
+                pass_group.append_pass(DCE_NAME);
+            }
+            OptLevel::Opt0 => {}
+        }
     }
 
     if build_config.print_ir {
