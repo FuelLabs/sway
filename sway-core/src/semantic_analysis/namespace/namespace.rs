@@ -146,7 +146,6 @@ impl Namespace {
         }
     }
 
-    // TODO-IG: Check corner cases (modules without names, packages with the same names, ...).
     /// Returns true if the current module being checked is a direct or indirect submodule of
     /// the module given by the `absolute_module_path`.
     /// 
@@ -163,7 +162,7 @@ impl Namespace {
         // that the root name is equal to the module package name.
         let root_name = match &self.root.name {
             Some(name) => name,
-            None => return false,
+            None => panic!("Root module must always have a name."),
         };
 
         let (package_name, modules) = absolute_module_path.split_first().expect("Absolute module path must have at least one element, because it always contains the package name.");
@@ -189,13 +188,12 @@ impl Namespace {
         }
     }
 
-    // TODO-IG: Check corner cases (modules without names, packages with the same names, ...).
     /// Returns true if the module given by the `absolute_module_path` is external
     /// to the current package. External modules are imported in the `Forc.toml` file.
     pub(crate) fn module_is_external(&self, absolute_module_path: &Path) -> bool {
         let root_name = match &self.root.name {
             Some(name) => name,
-            None => return true, // If we don't have the package name, all other packages are external.
+            None => panic!("Root module must always have a name."),
         };
 
         assert!(absolute_module_path.len() > 0, "Absolute module path must have at least one element, because it always contains the package name.");
