@@ -120,7 +120,7 @@ impl Parse for AstNode {
 impl Parse for Declaration {
     fn parse(&self, ctx: &ParseContext) {
         match self {
-            Declaration::VariableDeclaration(decl) => decl.parse(ctx),
+            Declaration::VariableDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::FunctionDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::TraitDeclaration(decl) => decl.parse(ctx),
             Declaration::StructDeclaration(decl) => decl.parse(ctx),
@@ -690,14 +690,16 @@ impl Parse for FunctionApplicationExpression {
     }
 }
 
-impl Parse for VariableDeclaration {
+impl Parse for ParsedDeclId<VariableDeclaration> {
     fn parse(&self, ctx: &ParseContext) {
+        let var_decl = ctx.engines.pe().get_variable(self);
+
         // Don't collect tokens if the idents are generated tuple or match desugaring names.
         // The individual elements are handled in the subsequent VariableDeclaration's.
-        if !(is_generated_tuple_var_name(self.name.as_str())
-            || is_generated_any_match_expression_var_name(self.name.as_str()))
+        if !(is_generated_tuple_var_name(var_decl.name.as_str())
+            || is_generated_any_match_expression_var_name(var_decl.name.as_str()))
         {
-            let symbol_kind = if is_generated_destructured_struct_var_name(self.name.as_str()) {
+            let symbol_kind = if is_generated_destructured_struct_var_name(var_decl.name.as_str()) {
                 SymbolKind::Struct
             } else {
                 SymbolKind::Variable
@@ -705,21 +707,21 @@ impl Parse for VariableDeclaration {
             // We want to use the span from variable.name to construct a
             // new Ident as the name_override_opt can be set to one of the
             // const prefixes and not the actual token name.
-            let ident = if self.name.is_raw_ident() {
-                Ident::new_with_raw(self.name.span(), true)
+            let ident = if var_decl.name.is_raw_ident() {
+                Ident::new_with_raw(var_decl.name.span(), true)
             } else {
-                Ident::new(self.name.span())
+                Ident::new(var_decl.name.span())
             };
             ctx.tokens.insert(
                 ctx.ident(&ident),
                 Token::from_parsed(
-                    AstToken::Declaration(Declaration::VariableDeclaration(self.clone())),
+                    AstToken::Declaration(Declaration::VariableDeclaration(*self)),
                     symbol_kind,
                 ),
             );
-            self.type_ascription.parse(ctx);
+            var_decl.type_ascription.parse(ctx);
         }
-        self.body.parse(ctx);
+        var_decl.body.parse(ctx);
     }
 }
 

@@ -13,7 +13,8 @@ pub fn collect_parsed_declaration(node: &AstNode, ctx: &ParseContext) {
         let parsed_token = AstToken::Declaration(declaration.clone());
 
         let (ident, symbol_kind) = match declaration {
-            Declaration::VariableDeclaration(variable) => {
+            Declaration::VariableDeclaration(decl_id) => {
+                let variable = ctx.engines.pe().get_variable(decl_id);
                 (variable.name.clone(), SymbolKind::Variable)
             }
             Declaration::StructDeclaration(decl) => (decl.name.clone(), SymbolKind::Struct),
