@@ -1267,11 +1267,7 @@ impl TypeInfo {
                 let decl = decl_engine.get_struct(decl_ref);
                 let (struct_can_be_changed, is_public_struct_access) = StructAccessInfo::get_info(&decl, namespace).into();
 
-                let field = match decl
-                    .fields
-                    .iter()
-                    .find(|field| field.name.as_str() == first.as_str())
-                {
+                let field = match decl.find_field(first) {
                     Some(field) => {
                         if is_public_struct_access && field.is_private() {
                             return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
