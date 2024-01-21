@@ -1564,6 +1564,7 @@ pub fn sway_build_config(
     .with_include_tests(build_profile.include_tests)
     .with_time_phases(build_profile.time_phases)
     .with_metrics(build_profile.metrics_outfile.clone())
+    .with_optimization_level(build_profile.optimization_level)
     .with_experimental(sway_core::ExperimentalFlags {
         new_encoding: build_profile.experimental.new_encoding,
     });
