@@ -117,9 +117,8 @@ impl TyStorageDecl {
                 Some(struct_field) => {
                     if is_public_struct_access && struct_field.is_private() {
                         return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
-                            field_name: field.clone(),
+                            field_name: (&field).into(),
                             struct_name: decl.call_path.suffix.clone(),
-                            span: field.span(),
                             field_decl_span: struct_field.name.span(),
                             struct_can_be_changed,
                             usage_context: StructFieldUsageContext::StorageAccess,

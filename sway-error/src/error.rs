@@ -256,10 +256,9 @@ pub enum CompileError {
     },
     #[error("Field \"{field_name}\" of the struct \"{struct_name}\" is private.")]
     StructFieldIsPrivate {
-        field_name: Ident,
+        field_name: IdentUnique,
         /// Original, non-aliased struct name.
         struct_name: Ident,
-        span: Span,
         field_decl_span: Span,
         struct_can_be_changed: bool,
         usage_context: StructFieldUsageContext,
@@ -874,7 +873,7 @@ impl Spanned for CompileError {
             StructInstantiationMissingFieldForErrorRecovery { span, .. } => span.clone(),
             StructInstantiationMissingFields { span, .. } => span.clone(),
             StructCannotBeInstantiated { span, .. } => span.clone(),
-            StructFieldIsPrivate { span, .. } => span.clone(),
+            StructFieldIsPrivate { field_name, .. } => field_name.span(),
             StructFieldDoesNotExist { field_name, .. } => field_name.span(),
             MethodNotFound { span, .. } => span.clone(),
             ModuleNotFound { span, .. } => span.clone(),
@@ -1571,11 +1570,11 @@ impl ToDiagnostic for CompileError {
                     help
                 }
             },            
-            StructFieldIsPrivate { field_name, struct_name, span, field_decl_span, struct_can_be_changed, usage_context } => Diagnostic {
+            StructFieldIsPrivate { field_name, struct_name, field_decl_span, struct_can_be_changed, usage_context } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Private struct field is inaccessible".to_string())),
                 issue: Issue::error(
                     source_engine,
-                    span.clone(),
+                    field_name.span(),
                     format!("Private field \"{field_name}\" {}is inaccessible in this module.",
                         match usage_context {
                             StructInstantiation { .. } | StorageDeclaration { .. } | PatternMatching { .. } => "".to_string(),
@@ -1586,7 +1585,7 @@ impl ToDiagnostic for CompileError {
                 hints: vec![
                     Hint::help(
                         source_engine,
-                        span.clone(),
+                        field_name.span(),
                         format!("Private fields can be {} only within the module in which their struct is declared.",
                             match usage_context {
                                 StructInstantiation { .. } | StorageDeclaration { .. } => "initialized",
@@ -1598,7 +1597,7 @@ impl ToDiagnostic for CompileError {
                     if matches!(usage_context, PatternMatching { has_rest_pattern } if !has_rest_pattern) {
                         Hint::help(
                             source_engine,
-                            span.clone(),
+                            field_name.span(),
                             "Otherwise, they must be ignored by ending the struct pattern with `..`.".to_string()
                         )
                     } else {
@@ -1639,7 +1638,7 @@ impl ToDiagnostic for CompileError {
                         Diagnostic::help_none()
                     },
                 ],
-            },            
+            },
             StructFieldDoesNotExist { field_name, available_fields, is_public_struct_access, struct_name, struct_decl_span, struct_is_empty, usage_context } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Struct field does not exist".to_string())),
                 issue: Issue::error(

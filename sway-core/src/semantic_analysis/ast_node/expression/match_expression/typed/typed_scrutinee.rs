@@ -289,16 +289,13 @@ fn type_check_struct(
         if is_public_struct_access {
             for field in fields {
                 match field {
-                    StructScrutineeField::Field { field: field_name, .. } => {
-                        let struct_field = struct_decl.find_field(&field_name).expect("The struct field with the given field name must exist.");
+                    StructScrutineeField::Field { field: ref field_name, .. } => {
+                        let struct_field = struct_decl.find_field(field_name).expect("The struct field with the given field name must exist.");
 
                         if struct_field.is_private() {
-                            let field_name_span = field_name.span();
-
                             handler.emit_err(CompileError::StructFieldIsPrivate {
-                                field_name,
+                                field_name: field_name.into(),
                                 struct_name: struct_decl.call_path.suffix.clone(),
-                                span: field_name_span,
                                 field_decl_span: struct_field.name.span(),
                                 struct_can_be_changed,
                                 usage_context: StructFieldUsageContext::PatternMatching { has_rest_pattern },

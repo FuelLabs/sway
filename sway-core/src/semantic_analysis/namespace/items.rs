@@ -376,9 +376,8 @@ impl Items {
                         Some(struct_field) => {
                             if is_public_struct_access && struct_field.is_private() {
                                 return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
-                                    field_name: field_name.clone(),
+                                    field_name: field_name.into(),
                                     struct_name: struct_decl.call_path.suffix.clone(),
-                                    span: field_name.span(),
                                     field_decl_span: struct_field.name.span(),
                                     struct_can_be_changed,
                                     usage_context: StructFieldUsageContext::StructFieldAccess,

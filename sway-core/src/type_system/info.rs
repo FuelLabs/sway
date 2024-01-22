@@ -1271,9 +1271,8 @@ impl TypeInfo {
                     Some(field) => {
                         if is_public_struct_access && field.is_private() {
                             return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
-                                field_name: field.name.clone(),
+                                field_name: first.into(),
                                 struct_name: decl.call_path.suffix.clone(),
-                                span: first.span(),
                                 field_decl_span: field.name.span(),
                                 struct_can_be_changed,
                                 usage_context: StructFieldUsageContext::StructFieldAccess,

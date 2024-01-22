@@ -179,9 +179,8 @@ pub(crate) fn struct_instantiation(
             if let Some(ty_field) = struct_fields.iter().find(|x| x.name == field.name) {
                 if ty_field.is_private() {
                     handler.emit_err(CompileError::StructFieldIsPrivate {
-                        field_name: field.name.clone(),
+                        field_name: (&field.name).into(),
                         struct_name: struct_name.clone(),
-                        span: field.name.span(),
                         field_decl_span: ty_field.name.span(),
                         struct_can_be_changed,
                         usage_context: if ctx.storage_declaration() {
