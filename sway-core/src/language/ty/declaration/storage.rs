@@ -150,7 +150,7 @@ impl TyStorageDecl {
                     };
 
                     return Err(handler.emit_err(CompileError::StructFieldDoesNotExist {
-                        field_name: field.clone(),
+                        field_name: field.into(),
                         available_fields,
                         is_public_struct_access,
                         struct_name: decl.call_path.suffix.clone(),

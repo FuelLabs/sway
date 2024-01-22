@@ -9,7 +9,7 @@ use std::cmp;
 use std::fmt::Display;
 use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
 use sway_types::style::to_snake_case;
-use sway_types::{BaseIdent, Ident, SourceEngine, SourceId, Span, Spanned};
+use sway_types::{BaseIdent, Ident, SourceEngine, SourceId, Span, Spanned, IdentUnique};
 use thiserror::Error;
 
 use self::StructFieldUsageContext::*;
@@ -29,8 +29,16 @@ impl fmt::Display for InterfaceName {
     }
 }
 
-// TODO: since moving to using Idents instead of strings, there are a lot of redundant spans in
-// this type.
+// TODO: Since moving to using Idents instead of strings, there are a lot of redundant spans in
+//       this type.
+//       Beware!!! If we remove those redundant spans (and we should!) we can have a situation that
+//       deduplication of error messages might remove errors that are actually not duplicates because
+//       although they point to the same Ident (in terms of name), the span can be different.
+//       Deduplication works on hashes and Ident's hash contains only the name and not the span.
+//       That's why we should consider always using IdentUnique whenever we extract the span from
+//       the provided Ident. 
+//       Using IdentUnique will also clearly communicate that we are extracting the span from the
+//       provided identifier.
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CompileError {
     #[error(
@@ -258,7 +266,7 @@ pub enum CompileError {
     },
     #[error("Field \"{field_name}\" does not exist in struct \"{struct_name}\".")]
     StructFieldDoesNotExist {
-        field_name: Ident,
+        field_name: IdentUnique,
         /// Only public fields if `is_public_struct_access` is true.
         available_fields: Vec<Ident>,
         is_public_struct_access: bool,

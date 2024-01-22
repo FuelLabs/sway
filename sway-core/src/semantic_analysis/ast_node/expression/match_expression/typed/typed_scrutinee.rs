@@ -412,7 +412,7 @@ fn type_check_struct(
             Some(field) => Ok(field),
             None => {
                 Err(handler.emit_err(CompileError::StructFieldDoesNotExist {
-                    field_name: field_name.clone(),
+                    field_name: field_name.into(),
                     available_fields: struct_decl.accessible_fields_names(is_public_struct_access),
                     is_public_struct_access,
                     struct_name: struct_decl.call_path.suffix.clone(),

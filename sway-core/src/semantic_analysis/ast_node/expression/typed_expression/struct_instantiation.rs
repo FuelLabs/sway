@@ -157,7 +157,7 @@ pub(crate) fn struct_instantiation(
     for field in fields.iter() {
         if !struct_fields.iter().any(|x| x.name == field.name) {
             handler.emit_err(CompileError::StructFieldDoesNotExist {
-                field_name: field.name.clone(),
+                field_name: (&field.name).into(), // Explicit borrow to force the `From<&BaseIdent>` instead of `From<BaseIdent>`.
                 available_fields: TyStructField::accessible_fields_names(&struct_fields, is_public_struct_access),
                 is_public_struct_access,
                 struct_name: struct_name.clone(),

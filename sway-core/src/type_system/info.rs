@@ -1284,7 +1284,7 @@ impl TypeInfo {
                     },
                     None => {
                         return Err(handler.emit_err(CompileError::StructFieldDoesNotExist {
-                            field_name: first.clone(),
+                            field_name: first.into(),
                             available_fields: decl.accessible_fields_names(is_public_struct_access),
                             is_public_struct_access,
                             struct_name: decl.call_path.suffix.clone(),
