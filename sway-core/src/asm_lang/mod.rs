@@ -1044,6 +1044,12 @@ impl fmt::Display for VirtualOp {
             JNE(a, b, c) => write!(fmtr, "jne {a} {b} {c}"),
             JNEI(a, b, c) => write!(fmtr, "jnei {a} {b} {c}"),
             JNZI(a, b) => write!(fmtr, "jnzi {a} {b}"),
+            JMPB(a, b) => write!(fmtr, "jmpb {a} {b}"),
+            JMPF(a, b) => write!(fmtr, "jmpf {a} {b}"),
+            JNZB(a, b, c) => write!(fmtr, "jnzb {a} {b} {c}"),
+            JNZF(a, b, c) => write!(fmtr, "jnzf {a} {b} {c}"),
+            JNEB(a, b, c, d) => write!(fmtr, "jneb {a} {b} {c} {d}"),
+            JNEF(a, b, c, d) => write!(fmtr, "jnef {a} {b} {c} {d}"),
             RET(a) => write!(fmtr, "ret {a}"),
 
             /* Memory Instructions */

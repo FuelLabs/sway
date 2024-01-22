@@ -92,6 +92,22 @@ pub(crate) enum VirtualOp {
     JNE(VirtualRegister, VirtualRegister, VirtualRegister),
     JNEI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     JNZI(VirtualRegister, VirtualImmediate18),
+    JMPB(VirtualRegister, VirtualImmediate18),
+    JMPF(VirtualRegister, VirtualImmediate18),
+    JNZB(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    JNZF(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    JNEB(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualImmediate06,
+    ),
+    JNEF(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualImmediate06,
+    ),
     RET(VirtualRegister),
 
     /* Memory Instructions */
@@ -253,6 +269,12 @@ impl VirtualOp {
             JNE(r1, r2, r3) => vec![r1, r2, r3],
             JNEI(r1, r2, _i) => vec![r1, r2],
             JNZI(r1, _i) => vec![r1],
+            JMPB(r1, _i) => vec![r1],
+            JMPF(r1, _i) => vec![r1],
+            JNZB(r1, r2, _i) => vec![r1, r2],
+            JNZF(r1, r2, _i) => vec![r1, r2],
+            JNEB(r1, r2, r3, _i) => vec![r1, r2, r3],
+            JNEF(r1, r2, r3, _i) => vec![r1, r2, r3],
             RET(r1) => vec![r1],
 
             /* Memory Instructions */
@@ -385,6 +407,12 @@ impl VirtualOp {
             | JNE(_, _, _)
             | JNEI(_, _, _)
             | JNZI(_, _)
+            | JMPB(_, _)
+            | JMPF(_, _)
+            | JNZB(_, _, _)
+            | JNZF(_, _, _)
+            | JNEB(_, _, _, _)
+            | JNEF(_, _, _, _)
             | RET(_)
             | ALOC(_)
             | CFEI(_)
@@ -485,6 +513,12 @@ impl VirtualOp {
             | JNE(_, _, _)
             | JNEI(_, _, _)
             | JNZI(_, _)
+            | JMPB(_, _)
+            | JMPF(_, _)
+            | JNZB(_, _, _)
+            | JNZF(_, _, _)
+            | JNEB(_, _, _, _)
+            | JNEF(_, _, _, _)
             | RET(_)
             | ALOC(_)
             | CFEI(_)
@@ -585,6 +619,12 @@ impl VirtualOp {
             JNE(r1, r2, r3) => vec![r1, r2, r3],
             JNEI(r1, r2, _i) => vec![r1, r2],
             JNZI(r1, _i) => vec![r1],
+            JMPB(r1, _i) => vec![r1],
+            JMPF(r1, _i) => vec![r1],
+            JNZB(r1, r2, _i) => vec![r1, r2],
+            JNZF(r1, r2, _i) => vec![r1, r2],
+            JNEB(r1, r2, r3, _i) => vec![r1, r2, r3],
+            JNEF(r1, r2, r3, _i) => vec![r1, r2, r3],
             RET(r1) => vec![r1],
 
             /* Memory Instructions */
@@ -703,6 +743,12 @@ impl VirtualOp {
             JNE(_r1, _r2, _r3) => vec![],
             JNEI(_r1, _r2, _i) => vec![],
             JNZI(_r1, _i) => vec![],
+            JMPB(_r1, _i) => vec![],
+            JMPF(_r1, _i) => vec![],
+            JNZB(_r1, _r2, _i) => vec![],
+            JNZF(_r1, _r2, _i) => vec![],
+            JNEB(_r1, _r2, _r3, _i) => vec![],
+            JNEF(_r1, _r2, _r3, _i) => vec![],
             RET(_r1) => vec![],
 
             /* Memory Instructions */
@@ -990,6 +1036,30 @@ impl VirtualOp {
                 i.clone(),
             ),
             JNZI(r1, i) => Self::JNZI(update_reg(reg_to_reg_map, r1), i.clone()),
+            JMPB(r1, i) => Self::JMPB(update_reg(reg_to_reg_map, r1), i.clone()),
+            JMPF(r1, i) => Self::JMPF(update_reg(reg_to_reg_map, r1), i.clone()),
+            JNZB(r1, r2, i) => Self::JNZB(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+            JNZF(r1, r2, i) => Self::JNZF(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+            JNEB(r1, r2, r3, i) => Self::JNEB(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                i.clone(),
+            ),
+            JNEF(r1, r2, r3, i) => Self::JNEF(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                i.clone(),
+            ),
             RET(r1) => Self::RET(update_reg(reg_to_reg_map, r1)),
 
             /* Memory Instructions */
@@ -1455,6 +1525,26 @@ impl VirtualOp {
                 imm.clone(),
             ),
             JNZI(reg1, imm) => AllocatedOpcode::JNZI(map_reg(&mapping, reg1), imm.clone()),
+            JMPB(reg1, i) => AllocatedOpcode::JMPB(map_reg(&mapping, reg1), i.clone()),
+            JMPF(reg1, i) => AllocatedOpcode::JMPF(map_reg(&mapping, reg1), i.clone()),
+            JNZB(reg1, reg2, i) => {
+                AllocatedOpcode::JNZB(map_reg(&mapping, reg1), map_reg(&mapping, reg2), i.clone())
+            }
+            JNZF(reg1, reg2, i) => {
+                AllocatedOpcode::JNZF(map_reg(&mapping, reg1), map_reg(&mapping, reg2), i.clone())
+            }
+            JNEB(reg1, reg2, reg3, i) => AllocatedOpcode::JNEB(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                i.clone(),
+            ),
+            JNEF(reg1, reg2, reg3, i) => AllocatedOpcode::JNEF(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                i.clone(),
+            ),
             RET(reg) => AllocatedOpcode::RET(map_reg(&mapping, reg)),
 
             /* Memory Instructions */
