@@ -108,7 +108,7 @@ macro_rules! decl_engine_clear_module {
         impl ParsedDeclEngine {
             pub fn clear(&self) {
                 $(
-                    self.$slab.retain(|_k, _ty| false);
+                    self.$slab.clear();
                 )*
             }
         }
