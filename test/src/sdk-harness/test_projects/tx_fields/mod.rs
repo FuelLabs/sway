@@ -14,15 +14,15 @@ const MESSAGE_DATA: [u8; 3] = [1u8, 2u8, 3u8];
 abigen!(
     Contract(
         name = "TxContractTest",
-        abi = "test_artifacts/tx_contract/out/debug/tx_contract-abi.json",
+        abi = "test_artifacts/tx_contract/out/release/tx_contract-abi.json",
     ),
     Predicate(
         name = "TestPredicate",
-        abi = "test_projects/tx_fields/out/debug/tx_fields-abi.json"
+        abi = "test_projects/tx_fields/out/release/tx_fields-abi.json"
     ),
     Predicate(
         name = "TestOutputPredicate",
-        abi = "test_artifacts/tx_output_predicate/out/debug/tx_output_predicate-abi.json"
+        abi = "test_artifacts/tx_output_predicate/out/release/tx_output_predicate-abi.json"
     )
 );
 
@@ -71,7 +71,7 @@ async fn get_contracts(
     deployment_wallet.set_provider(provider);
 
     let contract_id = Contract::load_from(
-        "test_artifacts/tx_contract/out/debug/tx_contract.bin",
+        "test_artifacts/tx_contract/out/release/tx_contract.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
@@ -89,7 +89,7 @@ async fn generate_predicate_inputs(
     wallet: &WalletUnlocked,
 ) -> (Vec<u8>, SdkInput, TxInput) {
     let provider = wallet.provider().unwrap();
-    let predicate = Predicate::load_from("test_projects/tx_fields/out/debug/tx_fields.bin")
+    let predicate = Predicate::load_from("test_projects/tx_fields/out/release/tx_fields.bin")
         .unwrap()
         .with_provider(provider.clone());
 
@@ -167,7 +167,7 @@ async fn setup_output_predicate() -> (WalletUnlocked, WalletUnlocked, Predicate,
     );
 
     let predicate = Predicate::load_from(
-        "test_artifacts/tx_output_predicate/out/debug/tx_output_predicate.bin",
+        "test_artifacts/tx_output_predicate/out/release/tx_output_predicate.bin",
     )
     .unwrap()
     .with_data(predicate_data)
