@@ -595,20 +595,12 @@ impl AllocatedOp {
             JMPF(a, b) => op::JMPF::new(a.to_reg_id(), b.value.into()).into(),
             JNZB(a, b, c) => op::JNZB::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
             JNZF(a, b, c) => op::JNZF::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
-            JNEB(a, b, c, d) => op::JNEB::new(
-                a.to_reg_id(),
-                b.to_reg_id(),
-                c.to_reg_id(),
-                d.value.into(),
-            )
-            .into(),
-            JNEF(a, b, c, d) => op::JNEF::new(
-                a.to_reg_id(),
-                b.to_reg_id(),
-                c.to_reg_id(),
-                d.value.into(),
-            )
-            .into(),
+            JNEB(a, b, c, d) => {
+                op::JNEB::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
+            }
+            JNEF(a, b, c, d) => {
+                op::JNEF::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
+            }
             RET(a) => op::RET::new(a.to_reg_id()).into(),
 
             /* Memory Instructions */
