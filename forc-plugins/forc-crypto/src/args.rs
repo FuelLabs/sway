@@ -75,8 +75,8 @@ fn read_as_binary(content: &Option<String>) -> Vec<u8> {
 ///
 /// These are the rules
 ///  1. If None, stdin is read.
-///  2. If it is an String and it happens to be a file path, its content will be returned
-///  3. If it is an String and it is "-", stdin is read
+///  2. If it's a String and it happens to be a file path, its content will be returned
+///  3. If it's a String and it is "-", stdin is read
 ///  4. If the string starts with "0x", it will be treated as a hex string. Only
 ///     fully valid hex strings are accepted.
 ///  5. Otherwise the String will be converted to a vector of bytes
