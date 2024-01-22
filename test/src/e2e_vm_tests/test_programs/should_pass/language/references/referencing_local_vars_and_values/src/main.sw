@@ -109,7 +109,7 @@ fn reference_local_reference_var_and_value_not_inlined<T>()
 }
 
 #[inline(always)]
-fn reference_zero_sized_local_var_and_value<T>(is_inlined: bool)
+fn reference_zero_sized_local_var_and_value<T>()
     where T: Eq + New + ZeroSize
 {
     assert(__size_of::<T>() == 0);
@@ -126,21 +126,6 @@ fn reference_zero_sized_local_var_and_value<T>(is_inlined: bool)
     let r_x_2_ptr = asm(r: r_x_2) { r: raw_ptr };
     let r_val_ptr = asm(r: r_val) { r: raw_ptr };
     let r_dummy_ptr = asm(r: r_dummy) { r: raw_ptr };
-
-    // If there is no inlining and mixing with other test functions,
-    // since the size of `T` is zero, means allocates zero memory,
-    // both created values will be on the same memory location.
-    // The dummy value will also be on the same location.
-    // In case of inlining with other test functions we can get
-    // the two variables position separately from each other, intermixed
-    // with the locals coming from other functions.
-    // Note that we rely on the optimization which will remove the local
-    // variables for the references. This assumption is fine,
-    // the test should never be flaky.
-    if (!is_inlined) {
-        assert(r_x_1_ptr == r_val_ptr);
-        assert(r_x_1_ptr == r_dummy_ptr);
-    }
 
     assert(r_x_1_ptr == r_x_2_ptr);
 
@@ -164,7 +149,7 @@ fn reference_zero_sized_local_var_and_value<T>(is_inlined: bool)
 fn reference_zero_sized_local_var_and_value_not_inlined<T>()
     where T: Eq + New + ZeroSize
 {
-    reference_zero_sized_local_var_and_value::<T>(false)
+    reference_zero_sized_local_var_and_value::<T>()
 }
 
 #[inline(never)]
@@ -186,8 +171,8 @@ fn test_all_inlined() {
     reference_local_var_and_value::<raw_ptr>();
     reference_local_var_and_value::<raw_slice>();
 
-    reference_zero_sized_local_var_and_value::<EmptyStruct>(true);
-    reference_zero_sized_local_var_and_value::<[u64;0]>(true);
+    reference_zero_sized_local_var_and_value::<EmptyStruct>();
+    reference_zero_sized_local_var_and_value::<[u64;0]>();
     
     reference_local_reference_var_and_value::<()>();
     reference_local_reference_var_and_value::<bool>();

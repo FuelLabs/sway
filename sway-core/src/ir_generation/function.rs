@@ -810,6 +810,7 @@ impl<'eng> FnCompiler<'eng> {
                     None,
                     None,
                     &arguments[1],
+                    false,
                 )?;
                 let tx_field_id = match tx_field_id_constant.value {
                     ConstantValue::Uint(n) => n,
@@ -2568,6 +2569,7 @@ impl<'eng> FnCompiler<'eng> {
             None,
             Some(self),
             index_expr,
+            false,
         ) {
             let count = array_type.get_array_len(context).unwrap();
             if constant_value >= count {
