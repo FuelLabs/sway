@@ -38,7 +38,7 @@ pub(crate) enum AdapterError {
     UnknownBreakpoint,
 
     #[error("Build failed")]
-    BuildFailed,
+    BuildFailed { phase: String },
 
     #[error("Test execution failed")]
     TestExecutionFailed {

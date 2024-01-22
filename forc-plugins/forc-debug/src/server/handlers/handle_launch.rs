@@ -9,19 +9,33 @@ use sway_types::span::Position;
 impl DapServer {
     /// Handle a `launch` request. Returns true if the server should continue running.
     pub(crate) fn handle_launch(&mut self, program_path: PathBuf) -> Result<bool, AdapterError> {
+        self.log("launch!".into());
+
         // 1. Build the packages
-        let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&program_path)
-            .map_err(|_| AdapterError::BuildFailed)?;
-        let pkg_manifest: PackageManifestFile = manifest_file
-            .clone()
-            .try_into()
-            .map_err(|_| AdapterError::BuildFailed)?;
-        let mut member_manifests = manifest_file
-            .member_manifests()
-            .map_err(|_| AdapterError::BuildFailed)?;
+        let manifest_file =
+            forc_pkg::manifest::ManifestFile::from_dir(&program_path).map_err(|_| {
+                AdapterError::BuildFailed {
+                    phase: "read manifest file".into(),
+                }
+            })?;
+        let pkg_manifest: PackageManifestFile =
+            manifest_file
+                .clone()
+                .try_into()
+                .map_err(|_| AdapterError::BuildFailed {
+                    phase: "package manifest".into(),
+                })?;
+        let mut member_manifests =
+            manifest_file
+                .member_manifests()
+                .map_err(|_| AdapterError::BuildFailed {
+                    phase: "member manifests".into(),
+                })?;
         let lock_path = manifest_file
             .lock_path()
-            .map_err(|_| AdapterError::BuildFailed)?;
+            .map_err(|_| AdapterError::BuildFailed {
+                phase: "lock path".into(),
+            })?;
         let build_plan = forc_pkg::BuildPlan::from_lock_and_manifests(
             &lock_path,
             &member_manifests,
@@ -29,7 +43,9 @@ impl DapServer {
             false,
             Default::default(),
         )
-        .map_err(|_| AdapterError::BuildFailed)?;
+        .map_err(|_| AdapterError::BuildFailed {
+            phase: "build plan".into(),
+        })?;
 
         let project_name = member_manifests
             .first_entry()
@@ -45,12 +61,17 @@ impl DapServer {
             &build_plan,
             Default::default(),
             &BuildProfile {
+                optimization_level: sway_core::OptLevel::Opt0,
                 include_tests: true,
                 ..Default::default()
             },
             &outputs,
         )
-        .map_err(|_| AdapterError::BuildFailed)?;
+        .map_err(|_| AdapterError::BuildFailed {
+            phase: "build packages".into(),
+        })?;
+
+        self.log("built!".into());
 
         // 2. Store the source maps
         let mut pkg_to_debug: Option<&BuiltPackage> = None;
@@ -106,23 +127,34 @@ impl DapServer {
             });
         });
 
+        self.log("stored!\n".into());
+
         // 3. Build the tests
         let pkg_to_debug = pkg_to_debug.ok_or_else(|| {
             self.error(format!("Couldn't find built package for {}", project_name));
-            AdapterError::BuildFailed
+            AdapterError::BuildFailed {
+                phase: "find package".into(),
+            }
         })?;
 
         let built = Built::Package(Arc::from(pkg_to_debug.clone()));
 
         let built_tests =
-            BuiltTests::from_built(built, &build_plan).map_err(|_| AdapterError::BuildFailed)?;
+            BuiltTests::from_built(built, &build_plan).map_err(|_| AdapterError::BuildFailed {
+                phase: "build tests".into(),
+            })?;
 
         let pkg_tests = match built_tests {
             BuiltTests::Package(pkg) => pkg,
             BuiltTests::Workspace(_) => {
-                return Err(AdapterError::BuildFailed);
+                return Err(AdapterError::BuildFailed {
+                    phase: "package tests".into(),
+                });
             }
         };
+        let test_setup = pkg_tests.setup().map_err(|_| AdapterError::BuildFailed {
+            phase: "package tests".into(),
+        })?;
 
         let entries = pkg_to_debug.bytecode.entries.iter().filter_map(|entry| {
             if let Some(test_entry) = entry.kind.test() {
@@ -130,6 +162,11 @@ impl DapServer {
             }
             None
         });
+
+        self.log(format!(
+            "entries {:?}\n",
+            entries.clone().collect::<Vec<_>>()
+        ));
 
         // 4. Construct a TestExecutor for each test and store it
         let executors: Vec<TestExecutor> = entries
@@ -139,28 +176,36 @@ impl DapServer {
                     .expect("test instruction offset out of range");
                 let name = entry.finalized.fn_name.clone();
 
-                if let Ok(test_setup) = pkg_tests.setup() {
-                    return Some(TestExecutor::new(
-                        &pkg_to_debug.bytecode.bytes,
-                        offset,
-                        test_setup,
-                        test_entry,
-                        name.clone(),
-                        order as u64,
-                    ));
-                }
-                None
+                return Some(TestExecutor::new(
+                    &pkg_to_debug.bytecode.bytes,
+                    offset,
+                    test_setup.clone(),
+                    test_entry,
+                    name.clone(),
+                    order as u64,
+                ));
             })
             .collect();
 
+        self.log(format!("executors {:?}\n", self.state.executors.len()));
+
         self.state.init_executors(executors);
+
+        self.log("inited!\n".into());
 
         // 5. Start debugging
         self.state.update_vm_breakpoints();
+
+        self.log("updated bps!\n".into());
+
+        self.log(format!("self executors {:?}\n", self.state.executors.len()));
+
         while let Some(executor) = self.state.executors.get_mut(0) {
             executor.interpreter.set_single_stepping(false);
+            let debug_result = executor.start_debugging();
+            self.log(format!("debug_result {:?}", debug_result));
 
-            match executor.start_debugging()? {
+            match debug_result? {
                 DebugResult::TestComplete(result) => {
                     self.state.test_results.push(result);
                 }
