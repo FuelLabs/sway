@@ -491,6 +491,8 @@ pub fn parsed_to_ast(
         build_config,
     );
 
+    engines.pe().clear();
+
     check_should_abort(handler, retrigger_compilation.clone())?;
 
     let mut typed_program = match typed_program_opt {
