@@ -67,6 +67,7 @@ impl ty::TyStorageField {
             None,
             None,
             &self.initializer,
+            true,
         )
         .map(|constant| serialize_to_storage_slots(&constant, context, ix, &constant.ty, &[]))
     }

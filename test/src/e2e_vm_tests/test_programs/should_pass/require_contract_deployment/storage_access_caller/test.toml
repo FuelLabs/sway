@@ -1,3 +1,4 @@
 category = "run_on_node"
 expected_result = { action = "result", value = 1 }
 contracts = ["should_pass/test_contracts/storage_access_contract"]
+unsupported_profiles = ["debug"]
