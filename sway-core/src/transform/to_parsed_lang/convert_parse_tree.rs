@@ -364,7 +364,7 @@ fn item_struct_to_struct_declaration(
         .collect::<Result<Vec<_>, _>>()?;
 
     if fields.iter().any(
-        |field| matches!(&engines.te().get(field.type_argument.type_id), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_struct.name),
+        |field| matches!(&&*engines.te().get(field.type_argument.type_id), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_struct.name),
     ) {
         errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
@@ -433,7 +433,7 @@ fn item_enum_to_enum_declaration(
         .collect::<Result<Vec<_>, _>>()?;
 
     if variants.iter().any(|variant| {
-       matches!(&engines.te().get(variant.type_argument.type_id), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_enum.name)
+       matches!(&&*engines.te().get(variant.type_argument.type_id), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_enum.name)
     }) {
         errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
@@ -483,7 +483,11 @@ fn item_fn_to_function_declaration(
     let return_type = match item_fn.fn_signature.return_type_opt {
         Some((_right_arrow, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
         None => {
-            let type_id = engines.te().insert(engines, TypeInfo::Tuple(Vec::new()));
+            let type_id = engines.te().insert(
+                engines,
+                TypeInfo::Tuple(Vec::new()),
+                item_fn.fn_signature.span().source_id(),
+            );
             TypeArgument {
                 type_id,
                 initial_type_id: type_id,
@@ -723,7 +727,7 @@ fn item_impl_to_declaration(
             };
             Ok(Declaration::ImplTrait(impl_trait))
         }
-        None => match engines.te().get(implementing_for.type_id) {
+        None => match &*engines.te().get(implementing_for.type_id) {
             TypeInfo::Contract => Err(handler
                 .emit_err(ConvertParseTreeError::SelfImplForContract { span: block_span }.into())),
             _ => {
@@ -896,7 +900,7 @@ pub(crate) fn item_const_to_constant_declaration(
                     return Err(errors);
                 }
             }
-            engines.te().insert(engines, TypeInfo::Unknown).into()
+            engines.te().insert(engines, TypeInfo::Unknown, None).into()
         }
     };
 
@@ -1136,6 +1140,7 @@ fn generic_params_opt_to_type_parameters_with_parent(
                         type_arguments: None,
                         root_type_id: None,
                     },
+                    ident.span().source_id(),
                 );
                 TypeParameter {
                     type_id: custom_type,
@@ -1279,9 +1284,11 @@ fn fn_args_to_function_parameters(
                 (Some(reference), None) => reference.span(),
                 (Some(reference), Some(mutable)) => Span::join(reference.span(), mutable.span()),
             };
-            let type_id = engines
-                .te()
-                .insert(engines, TypeInfo::new_self_type(self_token.span()));
+            let type_id = engines.te().insert(
+                engines,
+                TypeInfo::new_self_type(self_token.span()),
+                self_token.span().source_id(),
+            );
             let mut function_parameters = vec![FunctionParameter {
                 name: Ident::new(self_token.span()),
                 is_reference: ref_self.is_some(),
@@ -1375,6 +1382,10 @@ fn ty_to_type_info(
             let type_argument = ty_to_type_argument(context, handler, engines, *ty.into_inner())?;
             TypeInfo::Slice(type_argument)
         }
+        Ty::Ref { ty, .. } => {
+            let type_argument = ty_to_type_argument(context, handler, engines, *ty)?;
+            TypeInfo::Ref(type_argument)
+        }
     };
     Ok(type_info)
 }
@@ -1452,8 +1463,11 @@ fn ty_to_type_argument(
     let type_engine = engines.te();
     let span = ty.span();
     let call_path_tree = ty_to_call_path_tree(context, handler, engines, ty.clone())?;
-    let initial_type_id =
-        type_engine.insert(engines, ty_to_type_info(context, handler, engines, ty)?);
+    let initial_type_id = type_engine.insert(
+        engines,
+        ty_to_type_info(context, handler, engines, ty.clone())?,
+        ty.span().source_id(),
+    );
 
     let type_argument = TypeArgument {
         type_id: initial_type_id,
@@ -1474,7 +1488,11 @@ fn fn_signature_to_trait_fn(
     let return_type = match &fn_signature.return_type_opt {
         Some((_right_arrow, ty)) => ty_to_type_argument(context, handler, engines, ty.clone())?,
         None => {
-            let type_id = engines.te().insert(engines, TypeInfo::Tuple(Vec::new()));
+            let type_id = engines.te().insert(
+                engines,
+                TypeInfo::Tuple(Vec::new()),
+                fn_signature.span().source_id(),
+            );
             TypeArgument {
                 type_id,
                 initial_type_id: type_id,
@@ -1759,6 +1777,38 @@ fn expr_func_app_to_expression_kind(
 
     // Route intrinsic calls to different AST node.
     match Intrinsic::try_from_str(call_seg.name.as_str()) {
+        Some(Intrinsic::Log)
+            if context.experimental.new_encoding && last.is_none() && !is_absolute =>
+        {
+            let span = name_args_span(span, type_arguments_span);
+            return Ok(ExpressionKind::IntrinsicFunction(
+                IntrinsicFunctionExpression {
+                    name: call_seg.name,
+                    kind_binding: TypeBinding {
+                        inner: Intrinsic::Log,
+                        type_arguments: TypeArgs::Regular(vec![]),
+                        span: span.clone(),
+                    },
+                    arguments: vec![Expression {
+                        kind: ExpressionKind::FunctionApplication(Box::new(
+                            FunctionApplicationExpression {
+                                call_path_binding: TypeBinding {
+                                    inner: CallPath {
+                                        prefixes: vec![],
+                                        suffix: Ident::new_no_span("encode".into()),
+                                        is_absolute: false,
+                                    },
+                                    type_arguments: TypeArgs::Regular(type_arguments),
+                                    span: span.clone(),
+                                },
+                                arguments,
+                            },
+                        )),
+                        span: span.clone(),
+                    }],
+                },
+            ));
+        }
         Some(intrinsic) if last.is_none() && !is_absolute => {
             return Ok(ExpressionKind::IntrinsicFunction(
                 IntrinsicFunctionExpression {
@@ -2067,18 +2117,18 @@ fn expr_to_expression(
             }),
             span,
         },
-        Expr::Ref { ref_token, .. } => {
-            let error = ConvertParseTreeError::RefExprNotYetSupported {
-                span: ref_token.span(),
-            };
-            return Err(handler.emit_err(error.into()));
-        }
-        Expr::Deref { deref_token, .. } => {
-            let error = ConvertParseTreeError::DerefExprNotYetSupported {
-                span: deref_token.span(),
-            };
-            return Err(handler.emit_err(error.into()));
-        }
+        Expr::Ref { expr, .. } => Expression {
+            kind: ExpressionKind::Ref(Box::new(expr_to_expression(
+                context, handler, engines, *expr,
+            )?)),
+            span,
+        },
+        Expr::Deref { expr, .. } => Expression {
+            kind: ExpressionKind::Deref(Box::new(expr_to_expression(
+                context, handler, engines, *expr,
+            )?)),
+            span,
+        },
         Expr::Not { bang_token, expr } => {
             let expr = expr_to_expression(context, handler, engines, *expr)?;
             op_call("not", bang_token.span(), span, &[expr])?
@@ -2776,7 +2826,7 @@ fn match_expr_to_expression(
                     content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
                         VariableDeclaration {
                             type_ascription: {
-                                let type_id = engines.te().insert(engines, TypeInfo::Unknown);
+                                let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
                                 TypeArgument {
                                     type_id,
                                     initial_type_id: type_id,
@@ -2852,6 +2902,7 @@ fn path_root_opt_to_bool_and_qualified_path_root(
                     as_trait: engines.te().insert(
                         engines,
                         path_type_to_type_info(context, handler, engines, *path_type.clone())?,
+                        path_type.span().source_id(),
                     ),
                     as_trait_span: path_type.span(),
                 })
@@ -3295,7 +3346,7 @@ fn statement_let_to_ast_nodes(
                 let type_ascription = match ty_opt {
                     Some(ty) => ty_to_type_argument(context, handler, engines, ty)?,
                     None => {
-                        let type_id = engines.te().insert(engines, TypeInfo::Unknown);
+                        let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
                         TypeArgument {
                             type_id,
                             initial_type_id: type_id,
@@ -3346,7 +3397,7 @@ fn statement_let_to_ast_nodes(
                 let type_ascription = match &ty_opt {
                     Some(ty) => ty_to_type_argument(context, handler, engines, ty.clone())?,
                     None => {
-                        let type_id = engines.te().insert(engines, TypeInfo::Unknown);
+                        let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
                         TypeArgument {
                             type_id,
                             initial_type_id: type_id,
@@ -3438,7 +3489,7 @@ fn statement_let_to_ast_nodes(
                 let type_ascription = match &ty_opt {
                     Some(ty) => ty_to_type_argument(context, handler, engines, ty.clone())?,
                     None => {
-                        let type_id = engines.te().insert(engines, TypeInfo::Unknown);
+                        let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
                         TypeArgument {
                             type_id,
                             initial_type_id: type_id,
@@ -3474,7 +3525,7 @@ fn statement_let_to_ast_nodes(
                                 .into_iter()
                                 .map(|_| {
                                     let initial_type_id =
-                                        engines.te().insert(engines, TypeInfo::Unknown);
+                                        engines.te().insert(engines, TypeInfo::Unknown, None);
                                     let dummy_type_param = TypeParameter {
                                         type_id: initial_type_id,
                                         initial_type_id,
@@ -3486,9 +3537,11 @@ fn statement_let_to_ast_nodes(
                                         trait_constraints_span: Span::dummy(),
                                         is_from_parent: false,
                                     };
-                                    let initial_type_id = engines
-                                        .te()
-                                        .insert(engines, TypeInfo::Placeholder(dummy_type_param));
+                                    let initial_type_id = engines.te().insert(
+                                        engines,
+                                        TypeInfo::Placeholder(dummy_type_param),
+                                        None,
+                                    );
                                     TypeArgument {
                                         type_id: initial_type_id,
                                         initial_type_id,
@@ -3498,6 +3551,7 @@ fn statement_let_to_ast_nodes(
                                 })
                                 .collect(),
                         ),
+                        tuple_name.span().source_id(),
                     );
                     TypeArgument {
                         type_id,
@@ -3770,7 +3824,7 @@ fn ty_to_type_parameter(
     let name_ident = match ty {
         Ty::Path(path_type) => path_type_to_ident(context, handler, path_type)?,
         Ty::Infer { underscore_token } => {
-            let unknown_type = type_engine.insert(engines, TypeInfo::Unknown);
+            let unknown_type = type_engine.insert(engines, TypeInfo::Unknown, None);
             return Ok(TypeParameter {
                 type_id: unknown_type,
                 initial_type_id: unknown_type,
@@ -3786,6 +3840,7 @@ fn ty_to_type_parameter(
         Ty::StringArray { .. } => panic!("str types are not allowed in this position"),
         Ty::Ptr { .. } => panic!("__ptr types are not allowed in this position"),
         Ty::Slice { .. } => panic!("__slice types are not allowed in this position"),
+        Ty::Ref { .. } => panic!("ref types are not allowed in this position"),
     };
     let custom_type = type_engine.insert(
         engines,
@@ -3794,6 +3849,7 @@ fn ty_to_type_parameter(
             type_arguments: None,
             root_type_id: None,
         },
+        name_ident.span().source_id(),
     );
     Ok(TypeParameter {
         type_id: custom_type,
@@ -4053,7 +4109,11 @@ fn path_type_to_type_info(
                 let mut root_type_id = None;
                 if name.as_str() == "Self" {
                     call_path.call_path.prefixes.remove(0);
-                    root_type_id = Some(engines.te().insert(engines, type_info));
+                    root_type_id = Some(engines.te().insert(
+                        engines,
+                        type_info,
+                        name.span().source_id(),
+                    ));
                 }
                 TypeInfo::Custom {
                     qualified_call_path: call_path,

@@ -357,5 +357,6 @@ pub fn pointee_size(context: &Context, ptr_val: Value) -> u64 {
         .unwrap()
         .get_pointee_type(context)
         .expect("Expected arg to be a pointer")
-        .size_in_bytes(context)
+        .size(context)
+        .in_bytes()
 }

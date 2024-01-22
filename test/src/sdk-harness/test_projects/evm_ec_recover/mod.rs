@@ -62,7 +62,9 @@ async fn setup_env() -> Result<(
         coins_per_asset,
         amount_per_coin,
     );
-    let provider = setup_test_provider(coins.clone(), vec![], None, None).await;
+    let provider = setup_test_provider(coins.clone(), vec![], None, None)
+        .await
+        .unwrap();
     wallet.set_provider(provider);
 
     let contract_id = Contract::load_from(
@@ -70,7 +72,7 @@ async fn setup_env() -> Result<(
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 

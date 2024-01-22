@@ -1,1 +1,1 @@
-# forc template
+# `forc template`

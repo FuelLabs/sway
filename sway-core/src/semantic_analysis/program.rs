@@ -8,7 +8,7 @@ use crate::{
         namespace::{self, Namespace},
         TypeCheckContext,
     },
-    Engines,
+    BuildConfig, Engines,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{Context, Module};
@@ -29,12 +29,25 @@ impl TyProgram {
         parsed: &ParseProgram,
         initial_namespace: namespace::Module,
         package_name: &str,
+        build_config: Option<&BuildConfig>,
     ) -> Result<Self, ErrorEmitted> {
         let mut namespace = Namespace::init_root(initial_namespace);
         let ctx =
             TypeCheckContext::from_root(&mut namespace, engines).with_kind(parsed.kind.clone());
+
+        let ctx = if let Some(build_config) = build_config {
+            ctx.with_experimental_flags(build_config.experimental)
+        } else {
+            ctx
+        };
+
         let ParseProgram { root, kind } = parsed;
-        ty::TyModule::type_check(handler, ctx, root).and_then(|root| {
+
+        // Analyze the dependency order for the submodules.
+        let modules_dep_graph = ty::TyModule::analyze(handler, root)?;
+        let module_eval_order = modules_dep_graph.compute_order(handler)?;
+
+        ty::TyModule::type_check(handler, ctx, root, module_eval_order).and_then(|root| {
             let res = Self::validate_root(handler, engines, &root, kind.clone(), package_name);
             res.map(|(kind, declarations, configurables)| Self {
                 kind,

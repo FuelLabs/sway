@@ -61,6 +61,7 @@ struct TestDescription {
     name: String,
     category: TestCategory,
     script_data: Option<Vec<u8>>,
+    witness_data: Option<Vec<Vec<u8>>>,
     expected_result: Option<TestResult>,
     expected_warnings: u32,
     contract_paths: Vec<String>,
@@ -76,12 +77,131 @@ struct TestContext {
     deployed_contracts: Arc<Mutex<HashMap<String, ContractId>>>,
 }
 
-fn print_receipt(receipt: &Receipt) {
-    if let Receipt::ReturnData {
-        data: Some(data), ..
-    } = receipt
-    {
-        println!("Data: {:?}", data);
+fn print_receipts(output: &mut String, receipts: &[Receipt]) {
+    use std::fmt::Write;
+    let _ = writeln!(output, "  {}", "Receipts".green().bold());
+    for (i, receipt) in receipts.iter().enumerate() {
+        let _ = write!(output, "    {}", format!("#{i}").bold());
+        match receipt {
+            Receipt::LogData {
+                id,
+                ra,
+                rb,
+                ptr,
+                len,
+                digest,
+                pc,
+                is,
+                data,
+            } => {
+                let _ = write!(output, " LogData\n      ID: {id:?}\n      RA: {ra:?}\n      RB: {rb:?}\n      Ptr: {ptr:?}\n      Len: {len:?}\n      Digest: {digest:?}\n      PC: {pc:?}\n      IS: {is:?}\n      Data: {data:?}\n");
+            }
+            Receipt::ReturnData {
+                id,
+                ptr,
+                len,
+                digest,
+                pc,
+                is,
+                data,
+            } => {
+                let _ = write!(output, " ReturnData\n      ID: {id:?}\n      Ptr: {ptr:?}\n      Len: {len:?}\n      Digest: {digest:?}\n      PC: {pc:?}\n      IS: {is:?}\n      Data: {data:?}\n");
+            }
+            Receipt::Call {
+                id,
+                to,
+                amount,
+                asset_id,
+                gas,
+                param1,
+                param2,
+                pc,
+                is,
+            } => {
+                let _ = write!(output, " Call\n      ID: {id:?}\n      To: {to:?}\n      Amount: {amount:?}\n      Asset ID: {asset_id:?}\n      Gas: {gas:?}\n      Param #1: {param1:?}\n      Param #2: {param2:?}\n      PC: {pc:?}\n      IS: {is:?}\n");
+            }
+            Receipt::Return { id, val, pc, is } => {
+                let _ = write!(output, " Return\n      ID: {id:?}\n      Value: {val:?}\n      PC: {pc:?}\n      IS: {is:?}\n");
+            }
+            Receipt::Panic {
+                id,
+                reason,
+                pc,
+                is,
+                contract_id,
+            } => {
+                let _ = write!(output, " Panic\n      ID: {id:?}\n      Reason: {reason:?}\n      PC: {pc:?}\n      IS: {is:?}\n      Contract ID: {contract_id:?}\n");
+            }
+            Receipt::Revert { id, ra, pc, is } => {
+                let _ = write!(output, " Revert\n      ID: {id:?}\n      RA: {ra:?}\n      PC: {pc:?}\n      IS: {is:?}\n");
+            }
+            Receipt::Log {
+                id,
+                ra,
+                rb,
+                rc,
+                rd,
+                pc,
+                is,
+            } => {
+                let _ = write!(output, " Log\n      ID: {id:?}\n      RA: {ra:?}\n      RB: {rb:?}\n      RC: {rc:?}\n      RD: {rd:?}\n      PC: {pc:?}\n      IS: {is:?}\n");
+            }
+            Receipt::Transfer {
+                id,
+                to,
+                amount,
+                asset_id,
+                pc,
+                is,
+            } => {
+                let _ = write!(output, " Transfer\n      ID: {id:?}\n      To: {to:?}\n      Amount: {amount:?}\n      Asset ID: {asset_id:?}\n      PC: {pc:?}\n      IS: {is:?}\n");
+            }
+            Receipt::TransferOut {
+                id,
+                to,
+                amount,
+                asset_id,
+                pc,
+                is,
+            } => {
+                let _ = write!(output, " TransferOut\n      ID: {id:?}\n      To: {to:?}\n      Amount: {amount:?}\n      Asset ID: {asset_id:?}\n      PC: {pc:?}\n      IS: {is:?}\n");
+            }
+            Receipt::ScriptResult { result, gas_used } => {
+                let _ = write!(
+                    output,
+                    " ScriptResult\n      Result: {result:?}\n      Gas Used: {gas_used:?}\n"
+                );
+            }
+            Receipt::MessageOut {
+                sender,
+                recipient,
+                amount,
+                nonce,
+                len,
+                digest,
+                data,
+            } => {
+                let _ = write!(output, " MessageOut\n      Sender: {sender:?}\n      Recipient: {recipient:?}\n      Amount: {amount:?}\n      Nonce: {nonce:?}\n      Len: {len:?}\n      Digest: {digest:?}\n      Data: {data:?}\n");
+            }
+            Receipt::Mint {
+                sub_id,
+                contract_id,
+                val,
+                pc,
+                is,
+            } => {
+                let _ = write!(output, " Mint\n      Sub ID: {sub_id:?}\n      Contract ID: {contract_id:?}\n      Val: {val:?}\n      PC: {pc:?}\n      IS: {is:?}\n");
+            }
+            Receipt::Burn {
+                sub_id,
+                contract_id,
+                val,
+                pc,
+                is,
+            } => {
+                let _ = write!(output, " Burn\n      Sub ID: {sub_id:?}\n      Contract ID: {contract_id:?}\n      Val: {val:?}\n      PC: {pc:?}\n      IS: {is:?}\n");
+            }
+        }
     }
 }
 
@@ -105,6 +225,7 @@ impl TestContext {
             name,
             category,
             script_data,
+            witness_data,
             expected_result,
             expected_warnings,
             contract_paths,
@@ -149,15 +270,10 @@ impl TestContext {
                     )));
                 }
 
-                let result = harness::runs_in_vm(compiled.clone(), script_data)?;
+                let result = harness::runs_in_vm(compiled.clone(), script_data, witness_data)?;
                 let result = match result {
                     harness::VMExecutionResult::Fuel(state, receipts) => {
-                        if verbose {
-                            for receipt in receipts.iter() {
-                                print_receipt(receipt);
-                            }
-                        }
-
+                        print_receipts(output, &receipts);
                         match state {
                             ProgramState::Return(v) => TestResult::Return(v),
                             ProgramState::ReturnData(digest) => {
@@ -171,6 +287,12 @@ impl TestContext {
                                 TestResult::ReturnData(data)
                             }
                             ProgramState::Revert(v) => TestResult::Revert(v),
+                            ProgramState::RunProgram(_) => {
+                                panic!("Execution is in a suspended state: RunProgram");
+                            }
+                            ProgramState::VerifyPredicate(_) => {
+                                panic!("Execution is in a suspended state: VerifyPredicate");
+                            }
                         }
                     }
                     harness::VMExecutionResult::Evm(state) => match state.exit_reason {
@@ -439,6 +561,8 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
             continue;
         }
 
+        use std::fmt::Write;
+        let _ = writeln!(output, " {}", "Verbose Output".green().bold());
         let result = if !filter_config.first_only {
             context
                 .run(test, &mut output, run_config.verbose)
@@ -458,7 +582,7 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
             println!(" {}", "ok".green().bold());
 
             // If verbosity is requested then print it out.
-            if run_config.verbose {
+            if run_config.verbose && !output.is_empty() {
                 println!("{}", textwrap::indent(&output, "     "));
             }
         }
@@ -640,6 +764,38 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
         | TestCategory::Disabled => None,
     };
 
+    let witness_data = match &category {
+        TestCategory::Runs | TestCategory::RunsWithContract => {
+            match toml_content.get("witness_data") {
+                Some(toml::Value::Array(items)) => {
+                    let mut data = vec![];
+
+                    for item in items {
+                        let decoded = item
+                            .as_str()
+                            .ok_or_else(|| anyhow!("witness data should be a hex string"))
+                            .and_then(|x| {
+                                hex::decode(x).map_err(|e| {
+                                    anyhow!("Invalid hex value for 'script_data': {}", e)
+                                })
+                            })?;
+                        data.push(decoded);
+                    }
+
+                    Some(data)
+                }
+                Some(_) => {
+                    bail!("Expected 'script_data' to be a hex string.");
+                }
+                _ => None,
+            }
+        }
+        TestCategory::Compiles
+        | TestCategory::FailsToCompile
+        | TestCategory::UnitTestsPass
+        | TestCategory::Disabled => None,
+    };
+
     let expected_result = match &category {
         TestCategory::Runs | TestCategory::RunsWithContract => {
             Some(get_expected_result(&toml_content)?)
@@ -720,6 +876,7 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
         name,
         category,
         script_data,
+        witness_data,
         expected_result,
         expected_warnings,
         contract_paths,

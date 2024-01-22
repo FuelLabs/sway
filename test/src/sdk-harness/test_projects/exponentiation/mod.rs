@@ -10,7 +10,7 @@ abigen!(Contract(
 #[tokio::test]
 #[should_panic(expected = "ArithmeticOverflow")]
 async fn overflowing_pow_u64_panics() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
     pow_instance
         .methods()
@@ -24,7 +24,7 @@ async fn overflowing_pow_u64_panics() {
 // TODO won't overflow until https://github.com/FuelLabs/fuel-specs/issues/90 lands
 // #[should_panic(expected = "ArithmeticOverflow")]
 async fn overflowing_pow_u32_panics() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
     pow_instance
         .methods()
@@ -37,7 +37,7 @@ async fn overflowing_pow_u32_panics() {
 #[tokio::test]
 #[should_panic(expected = "ArithmeticOverflow")]
 async fn overflowing_pow_u32_panics_max() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
     pow_instance
         .methods()
@@ -51,7 +51,7 @@ async fn overflowing_pow_u32_panics_max() {
 // TODO won't overflow until https://github.com/FuelLabs/fuel-specs/issues/90 lands
 // #[should_panic(expected = "ArithmeticOverflow")]
 async fn overflowing_pow_u16_panics() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
     pow_instance
         .methods()
@@ -64,7 +64,7 @@ async fn overflowing_pow_u16_panics() {
 #[tokio::test]
 #[should_panic(expected = "ArithmeticOverflow")]
 async fn overflowing_pow_u16_panics_max() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
     pow_instance
         .methods()
@@ -78,15 +78,20 @@ async fn overflowing_pow_u16_panics_max() {
 // TODO won't overflow until https://github.com/FuelLabs/fuel-specs/issues/90 lands
 // #[should_panic(expected = "ArithmeticOverflow")]
 async fn overflowing_pow_u8_panics() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
-    pow_instance.methods().u8_overflow(10u8, 3u32).call().await.unwrap();
+    pow_instance
+        .methods()
+        .u8_overflow(10u8, 3u32)
+        .call()
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
 #[should_panic(expected = "ArithmeticOverflow")]
 async fn overflowing_pow_u8_panics_max() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
     pow_instance
         .methods()
@@ -104,7 +109,7 @@ async fn get_pow_test_instance(
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 

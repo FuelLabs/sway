@@ -1,8 +1,4 @@
-use crate::{
-    asm_generation::from_ir::ir_type_size_in_bytes, size_bytes_round_up_to_word_alignment,
-};
-
-use sway_ir::{Constant, ConstantValue, Context};
+use sway_ir::{size_bytes_round_up_to_word_alignment, Constant, ConstantValue, Context, Padding};
 
 use std::{
     collections::BTreeMap,
@@ -29,26 +25,11 @@ pub enum Datum {
     Collection(Vec<Entry>),
 }
 
-#[derive(Clone, Debug)]
-pub(crate) enum Padding {
-    Left { target_size: usize },
-    Right { target_size: usize },
-}
-
-impl Padding {
-    pub fn target_size(&self) -> usize {
-        use Padding::*;
-        match self {
-            Left { target_size } | Right { target_size } => *target_size,
-        }
-    }
-}
-
 impl Entry {
     pub(crate) fn new_byte(value: u8, name: Option<String>, padding: Option<Padding>) -> Entry {
         Entry {
             value: Datum::Byte(value),
-            padding: padding.unwrap_or(Padding::Right { target_size: 1 }),
+            padding: padding.unwrap_or(Padding::default_for_u8(value)),
             name,
         }
     }
@@ -56,7 +37,7 @@ impl Entry {
     pub(crate) fn new_word(value: u64, name: Option<String>, padding: Option<Padding>) -> Entry {
         Entry {
             value: Datum::Word(value),
-            padding: padding.unwrap_or(Padding::Right { target_size: 8 }),
+            padding: padding.unwrap_or(Padding::default_for_u64(value)),
             name,
         }
     }
@@ -67,9 +48,7 @@ impl Entry {
         padding: Option<Padding>,
     ) -> Entry {
         Entry {
-            padding: padding.unwrap_or(Padding::Right {
-                target_size: bytes.len(),
-            }),
+            padding: padding.unwrap_or(Padding::default_for_byte_array(&bytes)),
             value: Datum::ByteArray(bytes),
             name,
         }
@@ -81,9 +60,9 @@ impl Entry {
         padding: Option<Padding>,
     ) -> Entry {
         Entry {
-            padding: padding.unwrap_or(Padding::Right {
-                target_size: elements.iter().map(|el| el.padding.target_size()).sum(),
-            }),
+            padding: padding.unwrap_or(Padding::default_for_aggregate(
+                elements.iter().map(|el| el.padding.target_size()).sum(),
+            )),
             value: Datum::Collection(elements),
             name,
         }
@@ -95,45 +74,19 @@ impl Entry {
         name: Option<String>,
         padding: Option<Padding>,
     ) -> Entry {
-        // We have to do some painful special handling here for enums, which are tagged unions.
-        // This really should be handled by the IR more explicitly and is something that will
-        // hopefully be addressed by https://github.com/FuelLabs/sway/issues/2819#issuecomment-1256930392
+        // We need a special handling in case of enums.
+        if constant.ty.is_enum(context) {
+            let (tag, value) = constant
+                .enum_tag_and_value_with_paddings(context)
+                .expect("Constant is an enum.");
 
-        // Is this constant a tagged union?
-        if constant.ty.is_struct(context) {
-            let field_tys = constant.ty.get_field_types(context);
-            if field_tys.len() == 2
-                && field_tys[0].is_uint(context)
-                && field_tys[1].is_union(context)
-            {
-                // OK, this looks very much like a tagged union enum, which is the only place
-                // we use unions (otherwise we should be generalising this a bit more).
-                if let ConstantValue::Struct(els) = &constant.value {
-                    if els.len() == 2 {
-                        let tag_entry = Entry::from_constant(context, &els[0], None, None);
+            let tag_entry = Entry::from_constant(context, tag.0, None, tag.1);
+            let value_entry = Entry::from_constant(context, value.0, None, value.1);
 
-                        // Here's the special case.  We need to get the size of the union and
-                        // attach it to this constant entry which will be one of the variants.
-                        let val_entry = {
-                            let target_size = size_bytes_round_up_to_word_alignment!(
-                                ir_type_size_in_bytes(context, &field_tys[1]) as usize
-                            );
-                            Entry::from_constant(
-                                context,
-                                &els[1],
-                                None,
-                                Some(Padding::Left { target_size }),
-                            )
-                        };
+            return Entry::new_collection(vec![tag_entry, value_entry], name, padding);
+        }
 
-                        // Return here from our special case.
-                        return Entry::new_collection(vec![tag_entry, val_entry], name, padding);
-                    }
-                }
-            }
-        };
-
-        // Not a tagged union, no trickiness required.
+        // Not an enum, no more special handling required.
         match &constant.value {
             ConstantValue::Undef | ConstantValue::Unit => Entry::new_byte(0, name, padding),
             ConstantValue::Bool(b) => Entry::new_byte(u8::from(*b), name, padding),
@@ -151,31 +104,29 @@ impl Entry {
                 Entry::new_byte_array(bs.to_be_bytes().to_vec(), name, padding)
             }
             ConstantValue::String(bs) => Entry::new_byte_array(bs.clone(), name, padding),
-
-            ConstantValue::Array(els) => Entry::new_collection(
-                els.iter()
-                    .map(|el| Entry::from_constant(context, el, None, None))
+            ConstantValue::Array(_) => Entry::new_collection(
+                constant
+                    .array_elements_with_padding(context)
+                    .expect("Constant is an array.")
+                    .into_iter()
+                    .map(|(elem, padding)| Entry::from_constant(context, elem, None, padding))
                     .collect(),
                 name,
                 padding,
             ),
-            ConstantValue::Struct(els) => Entry::new_collection(
-                els.iter()
-                    .map(|el| {
-                        let target_size = size_bytes_round_up_to_word_alignment!(
-                            ir_type_size_in_bytes(context, &el.ty) as usize
-                        );
-                        Entry::from_constant(
-                            context,
-                            el,
-                            None,
-                            Some(Padding::Right { target_size }),
-                        )
-                    })
+            ConstantValue::Struct(_) => Entry::new_collection(
+                constant
+                    .struct_fields_with_padding(context)
+                    .expect("Constant is a struct.")
+                    .into_iter()
+                    .map(|(elem, padding)| Entry::from_constant(context, elem, None, padding))
                     .collect(),
                 name,
                 padding,
             ),
+            ConstantValue::Reference(_) => {
+                todo!("Constant references are currently not supported.")
+            } // TODO-IG: Implement.
         }
     }
 
@@ -195,17 +146,10 @@ impl Entry {
             Datum::Collection(els) => els.iter().flat_map(|el| el.to_bytes()).collect(),
         };
 
+        let final_padding = self.padding.target_size().saturating_sub(bytes.len());
         match self.padding {
-            Padding::Left { target_size } => {
-                let target_size = size_bytes_round_up_to_word_alignment!(target_size);
-                let left_pad = target_size.saturating_sub(bytes.len());
-                [repeat(0u8).take(left_pad).collect(), bytes].concat()
-            }
-            Padding::Right { target_size } => {
-                let target_size = size_bytes_round_up_to_word_alignment!(target_size);
-                let right_pad = target_size.saturating_sub(bytes.len());
-                [bytes, repeat(0u8).take(right_pad).collect()].concat()
-            }
+            Padding::Left { .. } => [repeat(0u8).take(final_padding).collect(), bytes].concat(),
+            Padding::Right { .. } => [bytes, repeat(0u8).take(final_padding).collect()].concat(),
         }
     }
 
@@ -223,14 +167,12 @@ impl Entry {
                 (Datum::Byte(l), Datum::Byte(r)) => l == r,
                 (Datum::Word(l), Datum::Word(r)) => l == r,
                 (Datum::ByteArray(l), Datum::ByteArray(r)) => l == r,
-
                 (Datum::Collection(l), Datum::Collection(r)) => {
                     l.len() == r.len()
                         && l.iter()
                             .zip(r.iter())
                             .all(|(l, r)| equiv_data(&l.value, &r.value))
                 }
-
                 _ => false,
             }
         }
@@ -273,8 +215,10 @@ impl DataSection {
         self.value_pairs
             .iter()
             .take(id as usize)
-            .map(|x| x.to_bytes().len())
-            .sum()
+            .fold(0, |offset, entry| {
+                //entries must be word aligned
+                size_bytes_round_up_to_word_alignment!(offset + entry.to_bytes().len())
+            })
     }
 
     pub(crate) fn serialize_to_bytes(&self) -> Vec<u8> {
@@ -282,6 +226,10 @@ impl DataSection {
         let mut buf = Vec::with_capacity(self.value_pairs.len());
         for entry in &self.value_pairs {
             buf.append(&mut entry.to_bytes());
+
+            //entries must be word aligned
+            let aligned_len = size_bytes_round_up_to_word_alignment!(buf.len());
+            buf.extend(vec![0u8; aligned_len - buf.len()]);
         }
         buf
     }
@@ -328,6 +276,17 @@ impl DataSection {
                 DataId((self.value_pairs.len() - 1) as u32)
             }
         }
+    }
+
+    // If the stored data is Datum::Word, return the inner value.
+    pub(crate) fn get_data_word(&self, data_id: &DataId) -> Option<u64> {
+        self.value_pairs.get(data_id.0 as usize).and_then(|entry| {
+            if let Datum::Word(w) = entry.value {
+                Some(w)
+            } else {
+                None
+            }
+        })
     }
 }
 

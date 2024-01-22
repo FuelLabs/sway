@@ -7,13 +7,13 @@ abigen!(Contract(
 ));
 
 async fn setup() -> TestStorageStringContract<WalletUnlocked> {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/storage_string/out/debug/storage_string.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 
@@ -65,11 +65,11 @@ async fn stores_long_string() {
         0
     );
 
-    let tx_params = TxParameters::default().with_gas_limit(12_000_000);
+    let tx_policies = TxPolicies::default().with_script_gas_limit(12_000_000);
     instance
         .methods()
         .store_string(input.into())
-        .tx_params(tx_params)
+        .with_tx_policies(tx_policies)
         .call()
         .await
         .unwrap();

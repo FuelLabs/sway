@@ -50,8 +50,7 @@ pub fn hover_data(
         });
     }
 
-    let engines = session.engines.read();
-    let (decl_ident, decl_token) = match token.declared_token_ident(&engines) {
+    let (decl_ident, decl_token) = match token.declared_token_ident(&session.engines.read()) {
         Some(decl_ident) => {
             let decl_token = session
                 .token_map()
@@ -65,7 +64,12 @@ pub fn hover_data(
         None => (ident, token),
     };
 
-    let contents = hover_format(session.clone(), &engines, &decl_token, &decl_ident.name);
+    let contents = hover_format(
+        session.clone(),
+        &session.engines.read(),
+        &decl_token,
+        &decl_ident.name,
+    );
     Some(lsp_types::Hover {
         contents,
         range: Some(range),
@@ -88,13 +92,10 @@ fn extract_fn_signature(span: &Span) -> String {
 fn format_doc_attributes(token: &Token) -> String {
     let mut doc_comment = String::new();
     if let Some(attributes) = doc_comment_attributes(token) {
-        doc_comment = attributes
-            .iter()
-            .map(|attribute| {
-                let comment = attribute.args.first().unwrap().name.as_str();
-                format!("{comment}\n")
-            })
-            .collect()
+        doc_comment = attributes.iter().fold("".to_string(), |output, attribute| {
+            let comment = attribute.args.first().unwrap().name.as_str();
+            format!("{output}{comment}\n")
+        })
     }
     doc_comment
 }

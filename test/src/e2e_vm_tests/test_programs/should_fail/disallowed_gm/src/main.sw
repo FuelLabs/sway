@@ -1,8 +1,10 @@
 script;
 
-fn main() {
+fn main() -> bool {
   // GM should be disallowed
-  asm(r1) {
+  let is_caller_external = asm(r1) {
     gm r1 i1;
+    r1: bool
   };
+  is_caller_external
 }

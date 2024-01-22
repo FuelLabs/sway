@@ -233,6 +233,14 @@ pub struct BuildProfile {
     #[serde(default)]
     pub error_on_warnings: bool,
     pub reverse_results: bool,
+    #[serde(default)]
+    pub experimental: ExperimentalFlags,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
+#[serde(rename_all = "kebab-case")]
+pub struct ExperimentalFlags {
+    pub new_encoding: bool,
 }
 
 impl DependencyDetails {
@@ -718,6 +726,9 @@ impl BuildProfile {
             json_abi_with_callpaths: false,
             error_on_warnings: false,
             reverse_results: false,
+            experimental: ExperimentalFlags {
+                new_encoding: false,
+            },
         }
     }
 
@@ -736,6 +747,9 @@ impl BuildProfile {
             json_abi_with_callpaths: false,
             error_on_warnings: false,
             reverse_results: false,
+            experimental: ExperimentalFlags {
+                new_encoding: false,
+            },
         }
     }
 }
@@ -780,22 +794,22 @@ fn implicit_std_dep() -> Dependency {
         .unwrap_or_else(|| format!("v{}", env!("CARGO_PKG_VERSION")));
     const SWAY_GIT_REPO_URL: &str = "https://github.com/fuellabs/sway";
 
-    fn rev_from_build_metadata(build_metadata: &str) -> Option<String> {
-        // Nightlies are in the format v<version>+nightly.<date>.<hash>
-        build_metadata.split('.').last().map(|r| r.to_string())
-    }
+    // only use tag/rev if the branch is None
+    let branch = std::env::var("FORC_IMPLICIT_STD_GIT_BRANCH").ok();
+    let tag = branch.as_ref().map_or_else(|| Some(tag), |_| None);
 
     let mut det = DependencyDetails {
         git: std::env::var("FORC_IMPLICIT_STD_GIT")
             .ok()
             .or_else(|| Some(SWAY_GIT_REPO_URL.to_string())),
-        tag: Some(tag),
-        branch: std::env::var("FORC_IMPLICIT_STD_GIT_BRANCH").ok(),
+        tag,
+        branch,
         ..Default::default()
     };
 
-    if let Some((_, build_metadata)) = det.tag.as_ref().unwrap().split_once('+') {
-        let rev = rev_from_build_metadata(build_metadata);
+    if let Some((_, build_metadata)) = det.tag.as_ref().and_then(|tag| tag.split_once('+')) {
+        // Nightlies are in the format v<version>+nightly.<date>.<hash>
+        let rev = build_metadata.split('.').last().map(|r| r.to_string());
 
         // If some revision is available and parsed from the 'nightly' build metadata,
         // we always prefer the revision over the tag.
@@ -993,12 +1007,15 @@ impl WorkspaceManifest {
         // Check for duplicate pkg name entries in member manifests of this workspace.
         let duplciate_pkg_lines = pkg_name_to_paths
             .iter()
-            .filter(|(_, paths)| paths.len() > 1)
-            .map(|(pkg_name, _)| {
-                let duplicate_paths = pkg_name_to_paths
-                    .get(pkg_name)
-                    .expect("missing duplicate paths");
-                format!("{pkg_name}: {duplicate_paths:#?}")
+            .filter_map(|(pkg_name, paths)| {
+                if paths.len() > 1 {
+                    let duplicate_paths = pkg_name_to_paths
+                        .get(pkg_name)
+                        .expect("missing duplicate paths");
+                    Some(format!("{pkg_name}: {duplicate_paths:#?}"))
+                } else {
+                    None
+                }
             })
             .collect::<Vec<_>>();
 
@@ -1026,8 +1043,11 @@ impl std::ops::Deref for WorkspaceManifestFile {
 pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
     walkdir::WalkDir::new(dir)
         .into_iter()
-        .filter_map(Result::ok)
-        .filter(|entry| entry.path().ends_with(constants::MANIFEST_FILE_NAME))
+        .filter_map(|entry| {
+            entry
+                .ok()
+                .filter(|entry| entry.path().ends_with(constants::MANIFEST_FILE_NAME))
+        })
         .find_map(|entry| {
             let path = entry.path();
             let manifest = PackageManifest::from_file(path).ok()?;

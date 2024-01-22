@@ -91,7 +91,17 @@ impl Format for UseTree {
 
                         ord_vec.push(buf);
                     }
-                    ord_vec.sort_by_key(|x| x.to_lowercase());
+                    ord_vec.sort_by(|a, b| {
+                        if a == b {
+                            std::cmp::Ordering::Equal
+                        } else if a == "self" || b == "*" {
+                            std::cmp::Ordering::Less
+                        } else if b == "self" || a == "*" {
+                            std::cmp::Ordering::Greater
+                        } else {
+                            a.to_lowercase().cmp(&b.to_lowercase())
+                        }
+                    });
                     for (use_tree, comma) in ord_vec.iter_mut().zip(commas.iter()) {
                         write!(use_tree, "{}", comma.span().as_str())?;
                     }

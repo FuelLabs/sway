@@ -7,13 +7,13 @@ abigen!(Contract(
 ));
 
 async fn test_storage_vec_nested_instance() -> TestStorageVecNestedContract<WalletUnlocked> {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/storage_vec_nested/out/debug/storage_vec_nested.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 

@@ -60,7 +60,7 @@ impl ty::TyTraitFn {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         let trait_fn = ty::TyTraitFn {
             name,

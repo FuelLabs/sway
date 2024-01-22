@@ -6,13 +6,13 @@ abigen!(Contract(
 ));
 
 async fn test_storage_map_nested_instance() -> TestStorageMapNestedContract<WalletUnlocked> {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/storage_map_nested/out/debug/storage_map_nested.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 

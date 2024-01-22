@@ -1,4 +1,3 @@
-use fuel_core::chain_config::ChainConfig;
 use fuels::accounts::wallet::WalletUnlocked;
 use fuels::prelude::*;
 
@@ -7,26 +6,15 @@ abigen!(Contract(
     abi = "test_projects/storage_bytes/out/debug/storage_bytes-abi.json",
 ));
 
-const GAS_LIMIT: u64 = 1_000_000_000;
-
 async fn setup() -> TestStorageBytesContract<WalletUnlocked> {
-    let mut chain_config = ChainConfig::local_testnet();
-    chain_config.block_gas_limit = 10 * GAS_LIMIT;
-    chain_config.transaction_parameters.max_gas_per_tx = GAS_LIMIT;
-    let mut wallets = launch_custom_provider_and_get_wallets(
-        WalletsConfig::new(Some(1), None, None),
-        None,
-        Some(chain_config),
-    )
-    .await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
 
-    let wallet = wallets.pop().unwrap();
     let id = Contract::load_from(
         "test_projects/storage_bytes/out/debug/storage_bytes.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 
@@ -156,16 +144,14 @@ async fn stores_long_string_as_bytes() {
     let input = String::from("Nam quis nulla. Integer malesuada. In in enim a arcu imperdiet malesuada. Sed vel lectus. Donec odio urna, tempus molestie, porttitor ut, iaculis quis, sem. Phasellus rhoncus. Aenean id metus id velit ullamcorper pulvinar. Vestibulum fermentum tortor id mi. Pellentesque ipsum. Nulla non arcu lacinia neque faucibus fringilla. Nulla non lectus sed nisl molestie malesuada. Proin in tellus sit amet nibh dignissim sagittis. Vivamus luctus egestas leo. Maecenas sollicitudin. Nullam rhoncus aliquam metus. Etiam egestas wisi a erat.
 
     Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Nullam feugiat, turpis at pulvinar vulputate, erat libero tristique tellus, nec bibendum odio risus sit amet ante. Aliquam erat volutpat. Nunc auctor. Mauris pretium quam et urna. Fusce nibh. Duis risus. Curabitur sagittis hendrerit ante. Aliquam erat volutpat. Vestibulum erat nulla, ullamcorper nec, rutrum non, nonummy ac, erat. Duis condimentum augue id magna semper rutrum. Nullam justo enim, consectetuer nec, ullamcorper ac, vestibulum in, elit. Proin pede metus, vulputate nec, fermentum fringilla, vehicula vitae, justo. Fusce consectetuer risus a nunc. Aliquam ornare wisi eu metus. Integer pellentesque quam vel velit. Duis pulvinar.
-    
+
     Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Morbi gravida libero nec velit. Morbi scelerisque luctus velit. Etiam dui sem, fermentum vitae, sagittis id, malesuada in, quam. Proin mattis lacinia justo. Vestibulum facilisis auctor urna. Aliquam in lorem sit amet leo accumsan lacinia. Integer rutrum, orci vestibulum ullamcorper ultricies, lacus quam ultricies odio, vitae placerat pede sem sit amet enim. Phasellus et lorem id felis nonummy placerat. Fusce dui leo, imperdiet in, aliquam sit amet, feugiat eu, orci. Aenean vel massa quis mauris vehicula lacinia. Quisque tincidunt scelerisque libero. Maecenas libero. Etiam dictum tincidunt diam. Donec ipsum massa, ullamcorper in, auctor et, scelerisque sed, est. Suspendisse nisl. Sed convallis magna eu sem. Cras pede libero, dapibus nec, pretium");
 
     assert_eq!(instance.methods().len().call().await.unwrap().value, 0);
 
-    let tx_params = TxParameters::default().with_gas_limit(GAS_LIMIT);
     instance
         .methods()
         .store_bytes(input.clone().as_bytes().into())
-        .tx_params(tx_params)
         .call()
         .await
         .unwrap();
@@ -175,11 +161,9 @@ async fn stores_long_string_as_bytes() {
         input.clone().as_bytes().len() as u64
     );
 
-    let tx_params = TxParameters::default().with_gas_limit(GAS_LIMIT);
     instance
         .methods()
         .assert_stored_bytes(input.as_bytes().into())
-        .tx_params(tx_params)
         .call()
         .await
         .unwrap();

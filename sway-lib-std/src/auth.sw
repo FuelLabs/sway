@@ -6,7 +6,7 @@ use ::contract_id::ContractId;
 use ::identity::Identity;
 use ::option::Option::{self, *};
 use ::result::Result::{self, *};
-use ::inputs::{Input, input_count, input_owner, input_type};
+use ::inputs::{Input, input_coin_owner, input_count, input_type};
 
 /// The error type used when an `Identity` cannot be determined.
 pub enum AuthError {
@@ -18,20 +18,20 @@ pub enum AuthError {
 
 /// Returns `true` if the caller is external (i.e. a `script`).
 /// Otherwise, if the caller is a contract, returns `false`.
-/// 
+///
 /// # Additional Information
-/// 
+///
 /// For more information refer to the [VM Instruction Set](https://fuellabs.github.io/fuel-specs/master/vm/instruction_set#gm-get-metadata).
 ///
 /// # Returns
-///     
+///
 /// * [bool] - `true` if the caller is external, `false` otherwise.
-/// 
+///
 /// # Examples
 ///
 /// ```sway
 /// use std::auth::caller_is_external;
-/// 
+///
 /// fn foo() {
 ///     if caller_is_external() {
 ///         log("Caller is external.")
@@ -150,7 +150,7 @@ pub fn caller_address() -> Result<Address, AuthError> {
         }
 
         // type == InputCoin or InputMessage.
-        let owner_of_input = input_owner(i.as_u64());
+        let owner_of_input = input_coin_owner(i.as_u64());
         if candidate.is_none() {
             // This is the first input seen of the correct type.
             candidate = owner_of_input;
@@ -159,7 +159,7 @@ pub fn caller_address() -> Result<Address, AuthError> {
         }
 
         // Compare current input owner to candidate.
-        // `candidate` and `input_owner` must be `Some`.
+        // `candidate` and `input_coin_owner` must be `Some`.
         // at this point, so we can unwrap safely.
         if owner_of_input.unwrap() == candidate.unwrap() {
             // Owners are a match, continue looping.
@@ -176,4 +176,35 @@ pub fn caller_address() -> Result<Address, AuthError> {
         Some(address) => Ok(address),
         None => Err(AuthError::CallerIsInternal),
     }
+}
+
+/// Get the current predicate's id when called in an internal context.
+///
+/// # Returns
+///
+/// * [Address] - The address of this predicate.
+///
+/// # Reverts
+///
+/// * When called outside of a predicate program.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::auth::predicate_id;
+///
+/// fn main() {
+///     let this_predicate = predicate_id();
+///     log(this_predicate);
+/// }
+/// ```
+pub fn predicate_id() -> Address {
+    // Get index of current predicate.
+    // i3 = GM_GET_VERIFYING_PREDICATE
+    let predicate_index = asm(r1) {
+        gm r1 i3;
+        r1: u64
+    };
+
+    input_coin_owner(predicate_index).unwrap()
 }

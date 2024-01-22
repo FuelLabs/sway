@@ -15,7 +15,6 @@ pub mod decl_engine;
 pub mod ir_generation;
 pub mod language;
 mod metadata;
-mod monomorphize;
 pub mod query_engine;
 pub mod semantic_analysis;
 pub mod source_map;
@@ -32,11 +31,11 @@ pub use build_config::{BuildConfig, BuildTarget};
 use control_flow_analysis::ControlFlowGraph;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModulePath, ProgramsCacheEntry};
-use semantic_analysis::{TypeCheckAnalysis, TypeCheckAnalysisContext};
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use sway_ast::AttributeDecl;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -66,6 +65,7 @@ pub mod fuel_prelude {
     pub use fuel_vm::{self, fuel_asm, fuel_crypto, fuel_tx, fuel_types};
 }
 
+pub use build_config::ExperimentalFlags;
 pub use engine_threading::Engines;
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [lexed::LexedProgram] and [parsed::ParseProgram].
@@ -99,6 +99,7 @@ pub fn parse(
             None,
             config.build_target,
             config.include_tests,
+            config.experimental,
         )
         .map(
             |ParsedModuleTree {
@@ -231,6 +232,7 @@ pub struct Submodule {
 pub type Submodules = Vec<Submodule>;
 
 /// Parse all dependencies `deps` as submodules.
+#[allow(clippy::too_many_arguments)]
 fn parse_submodules(
     handler: &Handler,
     engines: &Engines,
@@ -239,6 +241,7 @@ fn parse_submodules(
     module_dir: &Path,
     build_target: BuildTarget,
     include_tests: bool,
+    experimental: ExperimentalFlags,
 ) -> Submodules {
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
     let mut submods = Vec::with_capacity(module.submodules().count());
@@ -271,6 +274,7 @@ fn parse_submodules(
             Some(submod.name.as_str()),
             build_target,
             include_tests,
+            experimental,
         ) {
             if !matches!(kind, parsed::TreeType::Library) {
                 let source_id = engines.se().get_source_id(submod_path.as_ref());
@@ -314,6 +318,7 @@ pub struct ParsedModuleTree {
 
 /// Given the source of the module along with its path,
 /// parse this module including all of its submodules.
+#[allow(clippy::too_many_arguments)]
 fn parse_module_tree(
     handler: &Handler,
     engines: &Engines,
@@ -322,6 +327,7 @@ fn parse_module_tree(
     module_name: Option<&str>,
     build_target: BuildTarget,
     include_tests: bool,
+    experimental: ExperimentalFlags,
 ) -> Result<ParsedModuleTree, ErrorEmitted> {
     let query_engine = engines.qe();
 
@@ -340,11 +346,12 @@ fn parse_module_tree(
         module_dir,
         build_target,
         include_tests,
+        experimental,
     );
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
-        &mut to_parsed_lang::Context::new(build_target),
+        &mut to_parsed_lang::Context::new(build_target, experimental),
         handler,
         engines,
         module.value.clone(),
@@ -469,7 +476,10 @@ pub fn parsed_to_ast(
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
     package_name: &str,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<ty::TyProgram, ErrorEmitted> {
+    let experimental = build_config.map(|x| x.experimental).unwrap_or_default();
+
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
         handler,
@@ -477,7 +487,10 @@ pub fn parsed_to_ast(
         parse_program,
         initial_namespace,
         package_name,
+        build_config,
     );
+
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     let mut typed_program = match typed_program_opt {
         Ok(typed_program) => typed_program,
@@ -486,13 +499,19 @@ pub fn parsed_to_ast(
 
     typed_program.check_deprecated(engines, handler);
 
-    // Analyze the AST for dependency information.
-    let mut ctx = TypeCheckAnalysisContext::new(engines);
-    typed_program.type_check_analyze(handler, &mut ctx)?;
+    match typed_program.check_recursive(engines, handler) {
+        Ok(()) => {}
+        Err(e) => {
+            handler.dedup();
+            return Err(e);
+        }
+    };
 
     // Collect information about the types used in this program
-    let types_metadata_result = typed_program
-        .collect_types_metadata(handler, &mut CollectTypesMetadataContext::new(engines));
+    let types_metadata_result = typed_program.collect_types_metadata(
+        handler,
+        &mut CollectTypesMetadataContext::new(engines, experimental),
+    );
     let types_metadata = match types_metadata_result {
         Ok(types_metadata) => types_metadata,
         Err(e) => {
@@ -522,6 +541,9 @@ pub fn parsed_to_ast(
         ),
         None => (None, None),
     };
+
+    check_should_abort(handler, retrigger_compilation.clone())?;
+
     // Perform control flow analysis and extend with any errors.
     let _ = perform_control_flow_analysis(
         handler,
@@ -532,7 +554,12 @@ pub fn parsed_to_ast(
     );
 
     // Evaluate const declarations, to allow storage slots initialization with consts.
-    let mut ctx = Context::new(engines.se());
+    let mut ctx = Context::new(
+        engines.se(),
+        sway_ir::ExperimentalFlags {
+            new_encoding: experimental.new_encoding,
+        },
+    );
     let mut md_mgr = MetadataManager::default();
     let module = Module::new(&mut ctx, Kind::Contract);
     if let Err(e) = ir_generation::compile::compile_constants(
@@ -594,7 +621,10 @@ pub fn compile_to_ast(
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
     package_name: &str,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<Programs, ErrorEmitted> {
+    check_should_abort(handler, retrigger_compilation.clone())?;
+
     let query_engine = engines.qe();
     let mut metrics = PerformanceData::default();
 
@@ -610,7 +640,6 @@ pub fn compile_to_ast(
             let (warnings, errors) = entry.handler_data;
             let new_handler = Handler::from_parts(warnings, errors);
             handler.append(new_handler);
-
             return Ok(entry.programs);
         };
     }
@@ -623,6 +652,8 @@ pub fn compile_to_ast(
         build_config,
         metrics
     );
+
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     let (lexed_program, mut parsed_program) = match parse_program_opt {
         Ok(modules) => modules,
@@ -651,10 +682,13 @@ pub fn compile_to_ast(
             initial_namespace,
             build_config,
             package_name,
+            retrigger_compilation.clone(),
         ),
         build_config,
         metrics
     );
+
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     handler.dedup();
 
@@ -662,7 +696,6 @@ pub fn compile_to_ast(
 
     if let Some(config) = build_config {
         let path = config.canonical_root_module();
-
         let cache_entry = ProgramsCacheEntry {
             path,
             programs: programs.clone(),
@@ -691,6 +724,7 @@ pub fn compile_to_asm(
         initial_namespace,
         Some(&build_config),
         package_name,
+        None,
     )?;
     ast_to_asm(handler, engines, &ast_res, &build_config)
 }
@@ -724,7 +758,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     program: &ty::TyProgram,
     build_config: &BuildConfig,
 ) -> Result<FinalizedAsm, ErrorEmitted> {
-    // the IR pipeline relies on type information being fully resolved.
+    // The IR pipeline relies on type information being fully resolved.
     // If type information is found to still be generic or unresolved inside of
     // IR, this is considered an internal compiler error. To resolve this situation,
     // we need to explicitly ensure all types are resolved before going into IR.
@@ -735,8 +769,12 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // errors and then hold as a runtime invariant that none of the types will be unresolved in the
     // IR phase.
 
-    let mut ir = match ir_generation::compile_program(program, build_config.include_tests, engines)
-    {
+    let mut ir = match ir_generation::compile_program(
+        program,
+        build_config.include_tests,
+        engines,
+        build_config.experimental,
+    ) {
         Ok(ir) => ir,
         Err(errors) => {
             let mut last = None;
@@ -938,6 +976,20 @@ fn module_return_path_analysis(
         Ok(graph) => errors.extend(graph.analyze_return_paths(engines)),
         Err(mut error) => errors.append(&mut error),
     }
+}
+
+/// Check if the retrigger compilation flag has been set to true in the language server.
+/// If it has, there is a new compilation request, so we should abort the current compilation.
+fn check_should_abort(
+    handler: &Handler,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
+) -> Result<(), ErrorEmitted> {
+    if let Some(ref retrigger_compilation) = retrigger_compilation {
+        if retrigger_compilation.load(Ordering::SeqCst) {
+            return Err(handler.cancel());
+        }
+    }
+    Ok(())
 }
 
 #[test]

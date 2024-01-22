@@ -4,12 +4,12 @@ Sway’s standard library includes a number of very useful data structures calle
 
 A vector on the heap allows you to store a variable number of values next to each other.
 
-A storage vector is similar to a vector on the heap but uses persistent storage.
+A `StorageVec` is similar to a vector on the heap but uses persistent storage.
 
-A storage map allows you to associate a value with a particular key.
+A `StorageMap` allows you to associate a value with a particular key.
 
-We’ll discuss how to create and update vectors, storage vectors, and storage maps, as well as what makes each special.
+We’ll discuss how to create and update a vector, `StorageVec`, and `StorageMap`, as well as what makes each special.
 
 - [Vectors on the Heap](./vec.md)
-- [Storage Vectors](./storage_vec.md)
-- [Storage Maps](./storage_map.md)
+- [`StorageVec`](./storage_vec.md)
+- [`StorageMap`](./storage_map.md)

@@ -5,12 +5,12 @@ use forc_client::{
     op::{deploy, run},
     NodeTarget,
 };
-use forc_pkg::{Built, BuiltPackage};
+use forc_pkg::{manifest::ExperimentalFlags, Built, BuiltPackage};
 use fuel_tx::TransactionBuilder;
-use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::fuel_tx;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
+use fuel_vm::{checked_transaction::builder::TransactionBuilderExt, interpreter::NotSupportedEcal};
 use futures::Future;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
@@ -137,6 +137,7 @@ pub(crate) enum VMExecutionResult {
 pub(crate) fn runs_in_vm(
     script: BuiltPackage,
     script_data: Option<Vec<u8>>,
+    witness_data: Option<Vec<Vec<u8>>>,
 ) -> Result<VMExecutionResult> {
     match script.descriptor.target {
         BuildTarget::Fuel => {
@@ -148,26 +149,47 @@ pub(crate) fn runs_in_vm(
             let block_height = (u32::MAX >> 1).into();
             let params = ConsensusParameters {
                 // The default max length is 1MB which isn't enough for the bigger tests.
-                max_script_length: 64 * 1024 * 1024,
-                ..ConsensusParameters::DEFAULT
+                script_params: ScriptParameters {
+                    max_script_length: 64 * 1024 * 1024,
+                    ..Default::default()
+                },
+                ..Default::default()
             };
 
-            let tx = TransactionBuilder::script(script.bytecode.bytes, script_data)
-                .with_params(params)
+            let mut tb = TransactionBuilder::script(script.bytecode.bytes, script_data);
+
+            tb.with_params(params)
                 .add_unsigned_coin_input(
-                    rng.gen(),
+                    SecretKey::random(rng),
                     rng.gen(),
                     1,
                     Default::default(),
                     rng.gen(),
                     0u32.into(),
                 )
-                .gas_limit(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
-                .maturity(maturity)
-                .finalize_checked(block_height, &GasCosts::default());
+                .maturity(maturity);
 
-            let mut i = Interpreter::with_storage(storage, Default::default(), GasCosts::default());
-            let transition = i.transact(tx)?;
+            if let Some(witnesses) = witness_data {
+                for witness in witnesses {
+                    tb.add_witness(witness.into());
+                }
+            }
+            let consensus_params = tb.get_params().clone();
+
+            // Temporarily finalize to calculate `script_gas_limit`
+            let tmp_tx = tb.clone().finalize();
+            // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
+            let max_gas =
+                tmp_tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
+            // Increase `script_gas_limit` to the maximum allowed value.
+            tb.script_gas_limit(consensus_params.tx_params().max_gas_per_tx - max_gas);
+
+            let tx = tb.finalize_checked(block_height);
+
+            let mut i: Interpreter<_, _, NotSupportedEcal> =
+                Interpreter::with_storage(storage, Default::default());
+            let transition = i.transact(tx).map_err(anyhow::Error::msg)?;
+
             Ok(VMExecutionResult::Fuel(
                 *transition.state(),
                 transition.receipts().to_vec(),
@@ -238,6 +260,9 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
             terse: false,
             json_abi_with_callpaths: true,
             ..Default::default()
+        },
+        experimental: ExperimentalFlags {
+            new_encoding: run_config.experimental.new_encoding,
         },
         ..Default::default()
     };

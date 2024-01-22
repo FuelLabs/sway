@@ -8,7 +8,7 @@ abigen!(Contract(
 
 #[tokio::test]
 async fn can_get_bytecode_root() {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
 
     let (contract_instance, id) = get_test_contract_instance(wallet).await;
 
@@ -23,7 +23,7 @@ async fn can_get_bytecode_root() {
 
     let contract_bytecode =
         std::fs::read("test_projects/contract_bytecode/out/debug/contract_bytecode.bin").unwrap();
-    let expected_bytecode_root = Bits256(*FuelsTxContract::root_from_code(&contract_bytecode));
+    let expected_bytecode_root = Bits256(*FuelsTxContract::root_from_code(contract_bytecode));
 
     assert_eq!(expected_bytecode_root, bytecode_root);
 }
@@ -36,7 +36,7 @@ async fn get_test_contract_instance(
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 

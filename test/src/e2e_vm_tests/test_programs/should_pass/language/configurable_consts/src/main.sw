@@ -31,6 +31,7 @@ configurable {
     C5: MyEnum = MyEnum::B(true),
     C6: str[4] = __to_str_array("fuel"),
     C7: [u64; 4] = [1, 2, 3, 4],
+    C7_2: [u8; 4] = [1, 2, 3, 4],
     C8: u64 = 0, // Unused - should not show up in the JSON file
     C9: u64 =  10 + 9 - 8 * 7 / 6 << 5 >> 4 ^ 3 | 2 & 1,
 }
@@ -66,6 +67,12 @@ fn test_second_use() {
     assert(C7[1] == 2);
     assert(C7[2] == 3);
     assert(C7[3] == 4);
+
+    assert(C7_2[0] == 1);
+    assert(C7_2[1] == 2);
+    assert(C7_2[2] == 3);
+    assert(C7_2[3] == 4);
+    
     assert(C9 == 23);
 }
 

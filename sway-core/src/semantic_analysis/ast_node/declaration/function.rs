@@ -1,6 +1,5 @@
 mod function_parameter;
 
-pub use function_parameter::*;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -8,9 +7,10 @@ use sway_error::{
 };
 
 use crate::{
+    decl_engine::{DeclId, DeclRefFunction},
     language::{
         parsed::*,
-        ty::{self, TyCodeBlock},
+        ty::{self, TyCodeBlock, TyFunctionDecl},
         CallPath, Visibility,
     },
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
@@ -115,7 +115,7 @@ impl ty::TyFunctionDecl {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         let (visibility, is_contract_call) = if is_method {
             if is_in_impl_self {
@@ -235,6 +235,48 @@ fn unify_return_statements(
     })
 }
 
+impl TypeCheckAnalysis for DeclId<TyFunctionDecl> {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            let node = ctx.get_node_for_fn_decl(self);
+            if let Some(node) = node {
+                ctx.node_stack.push(node);
+
+                let item_fn = ctx.engines.de().get_function(self);
+                let _ = item_fn.type_check_analyze(handler, ctx);
+
+                ctx.node_stack.pop();
+            }
+            Ok(())
+        })
+    }
+}
+
+impl TypeCheckAnalysis for DeclRefFunction {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            let node = ctx.get_node_for_fn_decl(self.id());
+            if let Some(node) = node {
+                ctx.node_stack.push(node);
+
+                let item_fn = ctx.engines.de().get_function(self);
+                let _ = item_fn.type_check_analyze(handler, ctx);
+
+                ctx.node_stack.pop();
+            }
+            Ok(())
+        })
+    }
+}
+
 impl TypeCheckAnalysis for ty::TyFunctionDecl {
     fn type_check_analyze(
         &self,
@@ -275,9 +317,9 @@ impl TypeCheckUnification for ty::TyFunctionDecl {
 
             return_type.type_id.check_type_parameter_bounds(
                 handler,
-                type_check_ctx,
+                type_check_ctx.by_ref(),
                 &return_type.span,
-                vec![],
+                None,
             )?;
 
             Ok(())
@@ -345,6 +387,7 @@ fn test_function_selector_behavior() {
                     .insert(
                         &engines,
                         TypeInfo::StringArray(Length::new(5, Span::dummy())),
+                        None,
                     )
                     .into(),
             },
@@ -354,12 +397,15 @@ fn test_function_selector_behavior() {
                 is_mutable: false,
                 mutability_span: Span::dummy(),
                 type_argument: TypeArgument {
-                    type_id: engines
-                        .te()
-                        .insert(&engines, TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
+                    type_id: engines.te().insert(
+                        &engines,
+                        TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
+                        None,
+                    ),
                     initial_type_id: engines.te().insert(
                         &engines,
                         TypeInfo::StringArray(Length::new(5, Span::dummy())),
+                        None,
                     ),
                     span: Span::dummy(),
                     call_path_tree: None,

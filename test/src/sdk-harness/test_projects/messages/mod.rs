@@ -20,24 +20,25 @@ async fn get_messages_contract_instance() -> (
         Some(amount_per_coin),
     );
 
-    let wallets = launch_custom_provider_and_get_wallets(config, None, None).await;
-
+    let wallets = launch_custom_provider_and_get_wallets(config, None, None)
+        .await
+        .unwrap();
     let messages_contract_id = Contract::load_from(
         "test_projects/messages/out/debug/messages.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallets[0], TxParameters::default())
+    .deploy(&wallets[0], TxPolicies::default())
     .await
     .unwrap();
 
-    // Send tokens to the contract to be able withdraw via `smo`.
+    // Send assets to the contract to be able withdraw via `smo`.
     wallets[0]
         .force_transfer_to_contract(
             &messages_contract_id,
             amount_per_coin >> 1,
             AssetId::BASE,
-            TxParameters::default(),
+            TxPolicies::default(),
         )
         .await
         .unwrap();

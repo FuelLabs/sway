@@ -448,7 +448,7 @@ fn local_copy_prop(
                             .get_pointee_type(context)
                             .unwrap();
                         if memcpy_src_sym_type == memcpy_dst_sym_type
-                            && memcpy_dst_sym_type.size_in_bytes(context) == copy_len
+                            && memcpy_dst_sym_type.size(context).in_bytes() == copy_len
                         {
                             replacements.insert(
                                 inst,
@@ -497,7 +497,7 @@ fn local_copy_prop(
                         .filter_map(|sym| {
                             sym.get_type(context)
                                 .get_pointee_type(context)
-                                .map(|pt| pt.size_in_bytes(context))
+                                .map(|pt| pt.size(context).in_bytes())
                         })
                         .max()
                         .unwrap_or(0);
@@ -690,7 +690,7 @@ fn local_copy_prop(
             }
 
             // Replace the basic block contents with what we just built.
-            let _ = std::mem::replace(&mut (context.blocks[block.0].instructions), new_insts);
+            block.take_body(context, new_insts);
         }
     }
 
@@ -822,7 +822,7 @@ fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bo
                 src_val_ptr,
             },
         );
-        block.replace_instruction(context, store_val, mem_copy_val)?;
+        block.replace_instruction(context, store_val, mem_copy_val, true)?;
     }
 
     Ok(true)

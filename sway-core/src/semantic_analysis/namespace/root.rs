@@ -212,7 +212,9 @@ impl Root {
             handler,
             engines,
             symbol,
-            engines.te().insert(engines, type_info),
+            engines
+                .te()
+                .insert(engines, type_info, symbol.span().source_id()),
             as_trait,
             self_type,
         )
@@ -233,7 +235,9 @@ impl Root {
             handler,
             engines,
             symbol,
-            engines.te().insert(engines, type_info),
+            engines
+                .te()
+                .insert(engines, type_info, symbol.span().source_id()),
             as_trait,
             self_type,
         )
@@ -259,7 +263,7 @@ impl Root {
             )),
             ty::TyDecl::TraitTypeDecl(type_decl) => {
                 let type_decl = engines.de().get_type(&type_decl.decl_id);
-                engines.te().get(type_decl.ty.unwrap().type_id)
+                (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
             }
             _ => {
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
@@ -338,8 +342,19 @@ impl Root {
         match module.use_synonyms.get(symbol) {
             Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. }, _)) => Ok(decl.clone()),
             Some((src_path, _, _, _)) if mod_path != src_path => {
-                // TODO: check that the symbol import is public?
-                self.resolve_symbol(handler, engines, src_path, true_symbol, self_type)
+                // If the symbol is imported, before resolving to it,
+                // we need to check if there is a local symbol withing the module with
+                // the same name, and if yes resolve to the local symbol, because it
+                // shadows the import.
+                // Note that we can have two situations here:
+                // - glob-import, in which case the local symbol simply shadows the glob-imported one.
+                // - non-glob import, in which case we will already have a name clash reported
+                //   as an error, but still have to resolve to the local module symbol
+                //   if it exists.
+                match module.symbols.get(true_symbol) {
+                    Some(decl) => Ok(decl.clone()),
+                    None => self.resolve_symbol(handler, engines, src_path, true_symbol, self_type),
+                }
             }
             _ => module
                 .check_symbol(true_symbol)

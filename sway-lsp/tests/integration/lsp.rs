@@ -12,6 +12,7 @@ use sway_lsp::{
     lsp_ext::{ShowAstParams, VisualizeParams},
     server_state::ServerState,
 };
+use sway_utils::PerformanceData;
 use tower::{Service, ServiceExt};
 use tower_lsp::{
     jsonrpc::{Id, Request, Response},
@@ -90,11 +91,12 @@ pub(crate) async fn did_open_notification(
 pub(crate) async fn did_change_request(
     service: &mut LspService<ServerState>,
     uri: &Url,
+    version: i32,
 ) -> Request {
     let params = json!({
         "textDocument": {
             "uri": uri,
-            "version": 2
+            "version": version,
         },
         "contentChanges": [
             {
@@ -117,6 +119,11 @@ pub(crate) async fn did_change_request(
         .params(params)
         .finish();
     let response = call_request(service, did_change.clone()).await;
+    // make sure to set is_compiling to true so the wait_for_parsing method can properly synchnonize
+    service
+        .inner()
+        .is_compiling
+        .store(true, std::sync::atomic::Ordering::SeqCst);
     assert_eq!(response, Ok(None));
     did_change
 }
@@ -139,7 +146,7 @@ pub(crate) async fn show_ast_request(
         save_path: save_path.clone(),
     };
 
-    let response = request::handle_show_ast(server, params);
+    let response = request::handle_show_ast(server, params).await;
     let expected = TextDocumentIdentifier {
         uri: Url::parse(&format!("{save_path}/{ast_kind}.rs")).unwrap(),
     };
@@ -162,31 +169,59 @@ pub(crate) async fn visualize_request(server: &ServerState, uri: &Url, graph_kin
     assert!(!re.find(response.as_str()).unwrap().is_empty());
 }
 
-pub(crate) fn semantic_tokens_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn metrics_request(
+    service: &mut LspService<ServerState>,
+    uri: &Url,
+) -> Vec<(String, PerformanceData)> {
+    let params = json!({
+        "textDocument": {
+            "uri": uri,
+        },
+    });
+    let request = build_request_with_id("sway/metrics", params, 1);
+    let result = call_request(service, request.clone())
+        .await
+        .unwrap()
+        .unwrap();
+    let value = result.result().unwrap().as_array();
+    let mut res = vec![];
+    for v in value.unwrap().iter() {
+        let path = v.get(0).unwrap().as_str().unwrap();
+        let metric = serde_json::from_value(v.get(1).unwrap().clone()).unwrap();
+        res.push((path.to_string(), metric));
+    }
+    res
+}
+
+pub(crate) async fn semantic_tokens_request(server: &ServerState, uri: &Url) {
     let params = SemanticTokensParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let response = request::handle_semantic_tokens_full(server, params).unwrap();
+    let response = request::handle_semantic_tokens_full(server, params)
+        .await
+        .unwrap();
     if let Some(SemanticTokensResult::Tokens(tokens)) = response {
         assert!(!tokens.data.is_empty());
     }
 }
 
-pub(crate) fn document_symbol_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn document_symbol_request(server: &ServerState, uri: &Url) {
     let params = DocumentSymbolParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let response = request::handle_document_symbol(server, params).unwrap();
+    let response = request::handle_document_symbol(server, params)
+        .await
+        .unwrap();
     if let Some(DocumentSymbolResponse::Flat(res)) = response {
         assert!(!res.is_empty());
     }
 }
 
-pub(crate) fn format_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn format_request(server: &ServerState, uri: &Url) {
     let params = DocumentFormattingParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         options: FormattingOptions {
@@ -196,11 +231,11 @@ pub(crate) fn format_request(server: &ServerState, uri: &Url) {
         },
         work_done_progress_params: Default::default(),
     };
-    let response = request::handle_formatting(server, params).unwrap();
+    let response = request::handle_formatting(server, params).await.unwrap();
     assert!(!response.unwrap().is_empty());
 }
 
-pub(crate) fn highlight_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn highlight_request(server: &ServerState, uri: &Url) {
     let params = DocumentHighlightParams {
         text_document_position_params: TextDocumentPositionParams {
             text_document: TextDocumentIdentifier { uri: uri.clone() },
@@ -212,7 +247,9 @@ pub(crate) fn highlight_request(server: &ServerState, uri: &Url) {
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let response = request::handle_document_highlight(server, params).unwrap();
+    let response = request::handle_document_highlight(server, params)
+        .await
+        .unwrap();
     let expected = vec![
         DocumentHighlight {
             range: Range {
@@ -244,23 +281,23 @@ pub(crate) fn highlight_request(server: &ServerState, uri: &Url) {
     assert_eq!(expected, response.unwrap());
 }
 
-pub(crate) fn code_lens_empty_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_lens_empty_request(server: &ServerState, uri: &Url) {
     let params = CodeLensParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let response = request::handle_code_lens(server, params).unwrap();
+    let response = request::handle_code_lens(server, params).await.unwrap();
     assert_eq!(response.unwrap().len(), 0);
 }
 
-pub(crate) fn code_lens_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_lens_request(server: &ServerState, uri: &Url) {
     let params = CodeLensParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let response = request::handle_code_lens(server, params).unwrap();
+    let response = request::handle_code_lens(server, params).await.unwrap();
     let expected = vec![
         CodeLens {
             range: Range {
@@ -324,7 +361,7 @@ pub(crate) fn code_lens_request(server: &ServerState, uri: &Url) {
     assert_eq!(expected, response.unwrap());
 }
 
-pub(crate) fn completion_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn completion_request(server: &ServerState, uri: &Url) {
     let params = CompletionParams {
         text_document_position: TextDocumentPositionParams {
             text_document: TextDocumentIdentifier { uri: uri.clone() },
@@ -340,7 +377,7 @@ pub(crate) fn completion_request(server: &ServerState, uri: &Url) {
             trigger_character: Some(".".to_string()),
         }),
     };
-    let res = request::handle_completion(server, params).unwrap();
+    let res = request::handle_completion(server, params).await.unwrap();
     let expected = CompletionResponse::Array(vec![
         CompletionItem {
             label: "a".to_string(),
@@ -377,7 +414,7 @@ pub(crate) fn completion_request(server: &ServerState, uri: &Url) {
     assert_eq!(expected, res.unwrap());
 }
 
-pub(crate) fn definition_check<'a>(server: &ServerState, go_to: &'a GotoDefinition<'a>) {
+pub(crate) async fn definition_check<'a>(server: &ServerState, go_to: &'a GotoDefinition<'a>) {
     let params = GotoDefinitionParams {
         text_document_position_params: TextDocumentPositionParams {
             text_document: TextDocumentIdentifier {
@@ -391,7 +428,9 @@ pub(crate) fn definition_check<'a>(server: &ServerState, go_to: &'a GotoDefiniti
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let res = request::handle_goto_definition(server, params.clone()).unwrap();
+    let res = request::handle_goto_definition(server, params.clone())
+        .await
+        .unwrap();
     let unwrapped_response = res.as_ref().unwrap_or_else(|| {
         panic!(
             "Failed to deserialize response: {:?} input: {:#?}",
@@ -427,7 +466,7 @@ pub(crate) fn definition_check<'a>(server: &ServerState, go_to: &'a GotoDefiniti
     }
 }
 
-pub(crate) fn definition_check_with_req_offset(
+pub(crate) async fn definition_check_with_req_offset(
     server: &ServerState,
     go_to: &mut GotoDefinition<'_>,
     req_line: u32,
@@ -435,10 +474,13 @@ pub(crate) fn definition_check_with_req_offset(
 ) {
     go_to.req_line = req_line;
     go_to.req_char = req_char;
-    definition_check(server, go_to);
+    definition_check(server, go_to).await;
 }
 
-pub(crate) fn hover_request<'a>(server: &ServerState, hover_docs: &'a HoverDocumentation<'a>) {
+pub(crate) async fn hover_request<'a>(
+    server: &ServerState,
+    hover_docs: &'a HoverDocumentation<'a>,
+) {
     let params = HoverParams {
         text_document_position_params: TextDocumentPositionParams {
             text_document: TextDocumentIdentifier {
@@ -451,7 +493,7 @@ pub(crate) fn hover_request<'a>(server: &ServerState, hover_docs: &'a HoverDocum
         },
         work_done_progress_params: Default::default(),
     };
-    let res = request::handle_hover(server, params.clone()).unwrap();
+    let res = request::handle_hover(server, params.clone()).await.unwrap();
     let unwrapped_response = res.as_ref().unwrap_or_else(|| {
         panic!(
             "Failed to deserialize hover: {:?} input: {:#?}",
@@ -473,7 +515,7 @@ pub(crate) fn hover_request<'a>(server: &ServerState, hover_docs: &'a HoverDocum
     }
 }
 
-pub(crate) fn prepare_rename_request<'a>(
+pub(crate) async fn prepare_rename_request<'a>(
     server: &ServerState,
     rename: &'a Rename<'a>,
 ) -> Option<PrepareRenameResponse> {
@@ -486,10 +528,15 @@ pub(crate) fn prepare_rename_request<'a>(
             character: rename.req_char,
         },
     };
-    request::handle_prepare_rename(server, params).unwrap()
+    request::handle_prepare_rename(server, params)
+        .await
+        .unwrap()
 }
 
-pub(crate) fn rename_request<'a>(server: &ServerState, rename: &'a Rename<'a>) -> WorkspaceEdit {
+pub(crate) async fn rename_request<'a>(
+    server: &ServerState,
+    rename: &'a Rename<'a>,
+) -> WorkspaceEdit {
     let params = RenameParams {
         text_document_position: TextDocumentPositionParams {
             text_document: TextDocumentIdentifier {
@@ -503,6 +550,6 @@ pub(crate) fn rename_request<'a>(server: &ServerState, rename: &'a Rename<'a>) -
         new_name: rename.new_name.to_string(),
         work_done_progress_params: Default::default(),
     };
-    let worspace_edit = request::handle_rename(server, params).unwrap();
+    let worspace_edit = request::handle_rename(server, params).await.unwrap();
     worspace_edit.unwrap()
 }

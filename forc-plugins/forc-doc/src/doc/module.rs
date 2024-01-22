@@ -10,7 +10,7 @@ pub(crate) type ModulePrefixes = Vec<String>;
 /// Information about a Sway module.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct ModuleInfo {
-    /// The preceeding module names, used in navigating between modules.
+    /// The preceding module names, used in navigating between modules.
     pub(crate) module_prefixes: ModulePrefixes,
     /// Doc attributes of a module.
     /// Renders into the module level docstrings.
@@ -121,6 +121,7 @@ impl ModuleInfo {
             .map(|file_path_str| file_path_str.to_string())
             .ok_or_else(|| anyhow::anyhow!("There will always be at least the item name"))
     }
+
     /// Compares the current `module_info` to the next `module_info` to determine how many directories to go back to make
     /// the next file path valid, and returns that path as a `String`.
     ///
@@ -169,6 +170,22 @@ impl ModuleInfo {
             Ok(new_path)
         }
     }
+
+    /// Returns the relative path to the root of the project.
+    ///
+    /// Example:
+    /// ```
+    /// current_location = "project_root/module/submodule1/submodule2/struct.Name.html"
+    /// result           = "../.."
+    /// ```
+    /// In this case the first module to match is "module", so we have no need to go back further than that.
+    pub(crate) fn path_to_root(&self) -> String {
+        (0..self.module_prefixes.len())
+            .map(|_| "..")
+            .collect::<Vec<_>>()
+            .join("/")
+    }
+
     /// Create a path `&str` for navigation from the `module.depth()` & `file_name`.
     ///
     /// This is only used for shorthand path syntax, e.g `../../file_name.html`.

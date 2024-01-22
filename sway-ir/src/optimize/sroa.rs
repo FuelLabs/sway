@@ -56,7 +56,7 @@ fn split_aggregate(
             }
         }
         if !super::target_fuel::is_demotable_type(context, &ty) {
-            let ty_size: u32 = ty.size_in_bytes(context).try_into().unwrap();
+            let ty_size: u32 = ty.size(context).in_bytes().try_into().unwrap();
             let name = aggr_base_name.clone() + &base_off.to_string();
             let scalarised_local =
                 function.new_unique_local_var(context, name, ty, initializer, false);
@@ -163,7 +163,7 @@ pub fn sroa(
                     base_index: &mut Vec<u32>,
                 ) {
                     if !super::target_fuel::is_demotable_type(context, &ty) {
-                        let ty_size: u32 = ty.size_in_bytes(context).try_into().unwrap();
+                        let ty_size: u32 = ty.size(context).in_bytes().try_into().unwrap();
                         details.push(ElmDetail {
                             offset: *base_off,
                             r#type: ty,
@@ -246,7 +246,7 @@ pub fn sroa(
                         let elm_index_values = indices
                             .iter()
                             .map(|&index| {
-                                let c = Constant::new_uint(context, 64, index.try_into().unwrap());
+                                let c = Constant::new_uint(context, 64, index.into());
                                 Value::new_constant(context, c)
                             })
                             .collect();
@@ -316,7 +316,7 @@ pub fn sroa(
                         let elm_index_values = indices
                             .iter()
                             .map(|&index| {
-                                let c = Constant::new_uint(context, 64, index.try_into().unwrap());
+                                let c = Constant::new_uint(context, 64, index.into());
                                 Value::new_constant(context, c)
                             })
                             .collect();
@@ -381,7 +381,7 @@ pub fn sroa(
             }
             new_insts.push(inst);
         }
-        context.blocks[block.0].instructions = new_insts;
+        block.take_body(context, new_insts);
     }
 
     function.replace_values(context, &scalar_replacements, None);
@@ -395,7 +395,7 @@ fn is_processable_aggregate(context: &Context, ty: Type) -> bool {
         match ty.get_content(context) {
             crate::TypeContent::Unit => true,
             crate::TypeContent::Bool => true,
-            crate::TypeContent::Uint(_) => true,
+            crate::TypeContent::Uint(width) => *width <= 64,
             crate::TypeContent::B256 => false,
             crate::TypeContent::Array(elm_ty, _) => check_sub_types(context, *elm_ty),
             crate::TypeContent::Union(_) => false,

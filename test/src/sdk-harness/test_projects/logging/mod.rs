@@ -1,5 +1,4 @@
 use fuels::prelude::*;
-use hex;
 
 #[tokio::test]
 async fn run_valid() -> Result<()> {
@@ -8,7 +7,7 @@ async fn run_valid() -> Result<()> {
         abi = "test_projects/logging/out/debug/logging-abi.json",
     ));
 
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let bin_path = "test_projects/logging/out/debug/logging.bin";
     let instance = Logging::new(wallet.clone(), bin_path);
 

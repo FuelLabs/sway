@@ -41,7 +41,7 @@ impl ty::TyConstantDecl {
                 EnforceTypeArguments::No,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         // this subst is required to replace associated types, namely TypeInfo::TraitType.
         type_ascription.type_id.subst(&ctx.type_subst(), engines);
@@ -79,7 +79,7 @@ impl ty::TyConstantDecl {
         // to get the type of the variable. The type of the variable *has* to follow
         // `type_ascription` if `type_ascription` is a concrete integer type that does not
         // conflict with the type of `expression` (i.e. passes the type checking above).
-        let return_type = match type_engine.get(type_ascription.type_id) {
+        let return_type = match &*type_engine.get(type_ascription.type_id) {
             TypeInfo::UnsignedInteger(_) => type_ascription.type_id,
             _ => match &value {
                 Some(value) => value.return_type,
@@ -121,7 +121,7 @@ impl ty::TyConstantDecl {
             call_path,
             span,
             attributes: Default::default(),
-            return_type: type_engine.insert(engines, TypeInfo::Unknown),
+            return_type: type_engine.insert(engines, TypeInfo::Unknown, None),
             type_ascription,
             is_configurable: false,
             value: None,

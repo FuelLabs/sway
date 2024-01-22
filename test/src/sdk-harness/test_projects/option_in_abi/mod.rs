@@ -7,13 +7,13 @@ abigen!(Contract(
 ));
 
 async fn get_option_in_abi_instance() -> (OptionInAbiTestContract<WalletUnlocked>, ContractId) {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/option_in_abi/out/debug/option_in_abi.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
     let instance = OptionInAbiTestContract::new(id.clone(), wallet);
@@ -162,15 +162,15 @@ async fn test_tuple() -> Result<()> {
         ),
         42,
     ));
-    let response = contract_methods.tuple_test(input.clone()).call().await?;
+    let response = contract_methods.tuple_test(input).call().await?;
     assert_eq!(input, response.value);
 
     let input = Some((None, 42));
-    let response = contract_methods.tuple_test(input.clone()).call().await?;
+    let response = contract_methods.tuple_test(input).call().await?;
     assert_eq!(input, response.value);
 
     let input = None;
-    let response = contract_methods.tuple_test(input.clone()).call().await?;
+    let response = contract_methods.tuple_test(input).call().await?;
     assert_eq!(input, response.value);
 
     Ok(())
@@ -222,7 +222,7 @@ async fn test_array() -> Result<()> {
                 .unwrap(),
         ),
     ]);
-    let response = contract_methods.array_test(input.clone()).call().await?;
+    let response = contract_methods.array_test(input).call().await?;
     assert_eq!(input, response.value);
 
     let input = Some([
@@ -233,15 +233,15 @@ async fn test_array() -> Result<()> {
         ),
         None,
     ]);
-    let response = contract_methods.array_test(input.clone()).call().await?;
+    let response = contract_methods.array_test(input).call().await?;
     assert_eq!(input, response.value);
 
     let input = Some([None, None, None]);
-    let response = contract_methods.array_test(input.clone()).call().await?;
+    let response = contract_methods.array_test(input).call().await?;
     assert_eq!(input, response.value);
 
     let input = None;
-    let response = contract_methods.array_test(input.clone()).call().await?;
+    let response = contract_methods.array_test(input).call().await?;
     assert_eq!(input, response.value);
 
     Ok(())

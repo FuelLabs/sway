@@ -38,9 +38,11 @@ pub trait Ownable : StorageHelpers {
         assert(new_owner != std::constants::ZERO_B256);
         let old_owner = Self::get_owner();
         Self::set_owner(new_owner);
-        std::logging::log(OwnershipTransferred {
+
+        // log does not work here
+        log(OwnershipTransferred {
             previous_owner: old_owner,
             new_owner: new_owner,
-        });
+        })
     }
 }

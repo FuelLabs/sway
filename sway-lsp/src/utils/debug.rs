@@ -11,8 +11,7 @@ where
     I: Iterator<Item = (TokenIdent, Token)>,
 {
     tokens
-        .filter(|(_, token)| token.typed.is_none())
-        .map(|(ident, _)| warning_from_ident(&ident))
+        .filter_map(|(ident, token)| token.typed.is_none().then_some(warning_from_ident(&ident)))
         .collect()
 }
 
@@ -30,8 +29,7 @@ where
     I: Iterator<Item = (TokenIdent, Token)>,
 {
     tokens
-        .filter(|(_, token)| token.typed.is_some())
-        .map(|(ident, _)| warning_from_ident(&ident))
+        .filter_map(|(ident, token)| token.typed.is_some().then_some(warning_from_ident(&ident)))
         .collect()
 }
 
@@ -106,6 +104,5 @@ pub(crate) fn print_decl_engine_types(
             ty::TyAstNodeContent::SideEffect(side_effect) => format!("{side_effect:#?}"),
             ty::TyAstNodeContent::Error(_, _) => "error".to_string(),
         })
-        .map(|s| format!("{s}\n"))
-        .collect()
+        .fold("".to_string(), |output, s| format!("{output}{s}\n"))
 }

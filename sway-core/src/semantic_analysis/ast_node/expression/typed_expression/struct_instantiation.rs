@@ -7,7 +7,9 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     decl_engine::DeclRefStruct,
     language::{parsed::*, ty, CallPath},
-    semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
+    semantic_analysis::{
+        type_check_context::EnforceTypeArguments, GenericShadowingMode, TypeCheckContext,
+    },
     type_system::*,
 };
 
@@ -58,12 +60,12 @@ pub(crate) fn struct_instantiation(
             }));
         }
         (_, true) => TypeInfo::Custom {
-            qualified_call_path: suffix.into(),
+            qualified_call_path: suffix.clone().into(),
             type_arguments: None,
             root_type_id: None,
         },
         (_, false) => TypeInfo::Custom {
-            qualified_call_path: suffix.into(),
+            qualified_call_path: suffix.clone().into(),
             type_arguments: Some(type_arguments),
             root_type_id: None,
         },
@@ -79,17 +81,17 @@ pub(crate) fn struct_instantiation(
     let type_id = ctx
         .resolve_type(
             handler,
-            type_engine.insert(engines, type_info),
+            type_engine.insert(engines, type_info, suffix.span().source_id()),
             &inner_span,
             EnforceTypeArguments::No,
             Some(&type_info_prefix),
         )
-        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
     // extract the struct name and fields from the type info
     let type_info = type_engine.get(type_id);
     let struct_ref = type_info.expect_struct(handler, engines, &span)?;
-    let struct_decl = decl_engine.get_struct(&struct_ref);
+    let struct_decl = (*decl_engine.get_struct(&struct_ref)).clone();
     let struct_name = struct_decl.call_path.suffix;
     let struct_fields = struct_decl.fields;
     let mut struct_fields = struct_fields;
@@ -128,7 +130,18 @@ pub(crate) fn struct_instantiation(
         }
     }
 
-    type_id.check_type_parameter_bounds(handler, &ctx, &span, vec![])?;
+    let mut struct_namespace = ctx.namespace.clone();
+    let mut struct_ctx = ctx
+        .scoped(&mut struct_namespace)
+        .with_generic_shadowing_mode(GenericShadowingMode::Allow);
+
+    // Insert struct type parameter into namespace.
+    // This is required so check_type_parameter_bounds can resolve generic trait type parameters.
+    for type_parameter in struct_decl.type_parameters {
+        type_parameter.insert_into_namespace_self(handler, struct_ctx.by_ref())?;
+    }
+
+    type_id.check_type_parameter_bounds(handler, struct_ctx, &span, None)?;
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::StructExpression {
@@ -186,7 +199,11 @@ fn type_check_field_arguments(
                     name: struct_field.name.clone(),
                     value: ty::TyExpression {
                         expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
-                        return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery(err)),
+                        return_type: type_engine.insert(
+                            engines,
+                            TypeInfo::ErrorRecovery(err),
+                            None,
+                        ),
                         span: span.clone(),
                     },
                 });
