@@ -175,7 +175,7 @@ impl Session {
             .token_map
             .tokens_for_file(url)
             .all_references_of_token(
-                &self.token_map.token_at_position(url, position)?.value(),
+                self.token_map.token_at_position(url, position)?.value(),
                 &self.engines.read(),
             )
             .map(|item| item.key().range)
@@ -228,7 +228,7 @@ impl Session {
             return Some(capabilities::completion::to_completion_items(
                 &program.root.namespace,
                 &self.engines.read(),
-                &ident_to_complete,
+                ident_to_complete,
                 &fn_decl,
                 position,
             ));

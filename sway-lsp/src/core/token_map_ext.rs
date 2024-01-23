@@ -51,7 +51,7 @@ where
     type Item = RefMulti<'s, TokenIdent, Token>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(entry) = self.iter.next() {
+        for entry in self.iter.by_ref() {
             let (ident, token) = entry.pair();
             let decl_ident_to_match = self.token_to_match.declared_token_ident(self.engines);
             let is_same_type = decl_ident_to_match == token.declared_token_ident(self.engines);

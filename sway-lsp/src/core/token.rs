@@ -171,7 +171,7 @@ impl Token {
     }
 
     /// Return the [TokenIdent] of the declaration of the provided token.
-    pub fn declared_token_ident<'a>(&'a self, engines: &Engines) -> Option<TokenIdent> {
+    pub fn declared_token_ident(&self, engines: &Engines) -> Option<TokenIdent> {
         self.type_def.as_ref().and_then(|type_def| match type_def {
             TypeDefinition::TypeId(type_id) => ident_of_type_id(engines, type_id),
             TypeDefinition::Ident(ident) => Some(TokenIdent::new(ident, engines.se())),

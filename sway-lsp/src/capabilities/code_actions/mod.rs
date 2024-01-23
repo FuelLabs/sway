@@ -57,7 +57,7 @@ pub fn code_actions(
     let ctx = CodeActionContext {
         engines: &session.engines.read(),
         tokens: session.token_map(),
-        token: &token,
+        token,
         uri,
         temp_uri,
         diagnostics,

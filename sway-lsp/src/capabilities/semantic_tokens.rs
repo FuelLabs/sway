@@ -40,7 +40,7 @@ pub fn semantic_tokens_range(
     Some(semantic_tokens(&sorted_tokens_refs[..]).into())
 }
 
-pub fn semantic_tokens<'a>(tokens_sorted: &[&RefMulti<'a, TokenIdent, Token>]) -> SemanticTokens {
+pub fn semantic_tokens(tokens_sorted: &[&RefMulti<TokenIdent, Token>]) -> SemanticTokens {
     static TOKEN_RESULT_COUNTER: AtomicU32 = AtomicU32::new(1);
     let id = TOKEN_RESULT_COUNTER
         .fetch_add(1, Ordering::SeqCst)

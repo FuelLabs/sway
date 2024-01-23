@@ -58,7 +58,7 @@ pub fn rename(
         session
             .token_map()
             .iter()
-            .all_references_of_token(&token, &session.engines.read())
+            .all_references_of_token(token, &session.engines.read())
             .map(|item| item.key().clone())
             .collect::<Vec<TokenIdent>>()
     })
@@ -74,7 +74,7 @@ pub fn rename(
             range.start.character -= RAW_IDENTIFIER.len() as u32;
         }
         if let Some(path) = &ident.path {
-            let url = get_url_from_path(&path).ok()?;
+            let url = get_url_from_path(path).ok()?;
             if let Some(url) = session.sync.to_workspace_url(url) {
                 let edit = TextEdit::new(range, new_name.clone());
                 return Some((url, vec![edit]));
@@ -110,7 +110,7 @@ pub fn prepare_rename(
 
     // Only let through tokens that are in the users workspace.
     // tokens that are external to the users workspace cannot be renamed.
-    let _ = is_token_in_workspace(&session, &session.engines.read(), &token)?;
+    let _ = is_token_in_workspace(&session, &session.engines.read(), token)?;
 
     // Make sure we don't allow renaming of tokens that
     // are keywords or intrinsics.
@@ -130,7 +130,7 @@ pub fn prepare_rename(
 
     Ok(PrepareRenameResponse::RangeWithPlaceholder {
         range: ident.range,
-        placeholder: formatted_name(&ident),
+        placeholder: formatted_name(ident),
     })
 }
 
@@ -198,7 +198,7 @@ fn find_all_methods_for_decl<'a>(
     let idents = session
         .token_map()
         .iter()
-        .all_references_of_token(&decl_token, engines)
+        .all_references_of_token(decl_token, engines)
         .filter_map(|item| {
             let token = item.value();
             token.typed.as_ref().and_then(|typed| match typed {
