@@ -87,11 +87,11 @@ impl ValueDivergence {
 // Otherwise extract the embedded Value.
 macro_rules! return_on_divergence_or_extract {
     ($value:expr) => {{
-	let val = $value;
-	if val.is_diverging() {
-	    return Ok(val)
-	};
-	val.value()
+        let val = $value;
+        if val.is_diverging() {
+            return Ok(val);
+        };
+        val.value()
     }};
 }
 
@@ -157,9 +157,7 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         ast_block: &ty::TyCodeBlock,
     ) -> Result<Value, Vec<CompileError>> {
-        Ok(self
-            .compile_code_block(context, md_mgr, ast_block)?
-            .value())
+        Ok(self.compile_code_block(context, md_mgr, ast_block)?.value())
     }
 
     fn compile_code_block(
@@ -175,12 +173,7 @@ impl<'eng> FnCompiler<'eng> {
             let v = loop {
                 let ast_node = match ast_nodes.next() {
                     Some(ast_node) => ast_node,
-                    None => {
-                        break ValueDivergence::new(
-                            Constant::get_unit(context),
-                            context,
-                        )
-                    }
+                    None => break ValueDivergence::new(Constant::get_unit(context), context),
                 };
                 match fn_compiler.compile_ast_node(context, md_mgr, ast_node) {
                     // 'Some' indicates an implicit return or a diverging expression, so break.
@@ -289,7 +282,11 @@ impl<'eng> FnCompiler<'eng> {
         // though, so add a `load` to it.
         self.compile_expression(context, md_mgr, ast_expr)
             .map(|val| {
-                if val.value().get_type(context).map_or(false, |ty| ty.is_ptr(context)) {
+                if val
+                    .value()
+                    .get_type(context)
+                    .map_or(false, |ty| ty.is_ptr(context))
+                {
                     let load_val = self.current_block.append(context).load(val.value());
                     ValueDivergence::new(load_val, context)
                 } else {
@@ -306,7 +303,8 @@ impl<'eng> FnCompiler<'eng> {
     ) -> Result<ValueDivergence, CompileError> {
         // Compile expression which *may* be a pointer.  We can't return a value so create a
         // temporary here, store the value and return its pointer.
-	let val = return_on_divergence_or_extract!(self.compile_expression(context, md_mgr, ast_expr)?);
+        let val =
+            return_on_divergence_or_extract!(self.compile_expression(context, md_mgr, ast_expr)?);
         let ty = match val.get_type(context) {
             Some(ty) if !ty.is_ptr(context) => ty,
             _ => return Ok(ValueDivergence::new(val, context)),
@@ -319,9 +317,7 @@ impl<'eng> FnCompiler<'eng> {
             .new_local_var(context, temp_name, ty, None, false)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
         let tmp_val = self.current_block.append(context).get_local(tmp_var);
-        self.current_block
-            .append(context)
-            .store(tmp_val, val);
+        self.current_block.append(context).store(tmp_val, val);
 
         Ok(ValueDivergence::new(tmp_val, context))
     }
@@ -781,24 +777,31 @@ impl<'eng> FnCompiler<'eng> {
             Intrinsic::Eq | Intrinsic::Gt | Intrinsic::Lt => {
                 let lhs = &arguments[0];
                 let rhs = &arguments[1];
-                let lhs_value = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, lhs)?);
-                let rhs_value = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, rhs)?);
+                let lhs_value = return_on_divergence_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, lhs)?
+                );
+                let rhs_value = return_on_divergence_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, rhs)?
+                );
                 let pred = match kind {
                     Intrinsic::Eq => Predicate::Equal,
                     Intrinsic::Gt => Predicate::GreaterThan,
                     Intrinsic::Lt => Predicate::LessThan,
                     _ => unreachable!(),
                 };
-                let val = self.current_block.append(context).cmp(
-                    pred,
-                    lhs_value,
-                    rhs_value,
-                );
+                let val = self
+                    .current_block
+                    .append(context)
+                    .cmp(pred, lhs_value, rhs_value);
                 Ok(ValueDivergence::new(val, context))
             }
             Intrinsic::Gtf => {
                 // The index is just a Value
-                let index = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, &arguments[0])?);
+                let index = return_on_divergence_or_extract!(self.compile_expression_to_value(
+                    context,
+                    md_mgr,
+                    &arguments[0]
+                )?);
 
                 // The tx field ID has to be a compile-time constant because it becomes an
                 // immediate
@@ -867,7 +870,9 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::AddrOf => {
                 let exp = &arguments[0];
-                let value = return_on_divergence_or_extract!(self.compile_expression(context, md_mgr, exp)?);
+                let value = return_on_divergence_or_extract!(
+                    self.compile_expression(context, md_mgr, exp)?
+                );
                 let int_ty = Type::new_uint(context, 64);
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let val = self
@@ -880,13 +885,14 @@ impl<'eng> FnCompiler<'eng> {
             Intrinsic::StateClear => {
                 let key_exp = arguments[0].clone();
                 let number_of_slots_exp = arguments[1].clone();
-                let key_value = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, &key_exp)?);
-                let number_of_slots_value =
-		    return_on_divergence_or_extract!(
-			self.compile_expression_to_value(context, md_mgr, &number_of_slots_exp)?);
+                let key_value = return_on_divergence_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, &key_exp)?
+                );
+                let number_of_slots_value = return_on_divergence_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, &number_of_slots_exp)?
+                );
                 let span_md_idx = md_mgr.span_to_md(context, &span);
-                let key_var =
-                    store_key_in_local_mem(self, context, key_value, span_md_idx)?;
+                let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
                 let val = self
                     .current_block
                     .append(context)
@@ -896,10 +902,11 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::StateLoadWord => {
                 let exp = &arguments[0];
-                let value = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, exp)?);
+                let value = return_on_divergence_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, exp)?
+                );
                 let span_md_idx = md_mgr.span_to_md(context, &span);
-                let key_var =
-                    store_key_in_local_mem(self, context, value, span_md_idx)?;
+                let key_var = store_key_in_local_mem(self, context, value, span_md_idx)?;
                 let val = self
                     .current_block
                     .append(context)
@@ -920,11 +927,14 @@ impl<'eng> FnCompiler<'eng> {
                         hint: "This argument must be a copy type".to_string(),
                     });
                 }
-                let key_value = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, key_exp)?);
-                let val_value = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, val_exp)?);
+                let key_value = return_on_divergence_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, key_exp)?
+                );
+                let val_value = return_on_divergence_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, val_exp)?
+                );
                 let span_md_idx = md_mgr.span_to_md(context, &span);
-                let key_var =
-                    store_key_in_local_mem(self, context, key_value, span_md_idx)?;
+                let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
                 let val = self
                     .current_block
                     .append(context)
@@ -946,14 +956,17 @@ impl<'eng> FnCompiler<'eng> {
                         hint: "This argument must be raw_ptr".to_string(),
                     });
                 }
-                let key_value = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, &key_exp)?);
-                let val_value = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, &val_exp)?);
-                let number_of_slots_value =
-		    return_on_divergence_or_extract!(
-			self.compile_expression_to_value(context, md_mgr, &number_of_slots_exp)?);
+                let key_value = return_on_divergence_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, &key_exp)?
+                );
+                let val_value = return_on_divergence_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, &val_exp)?
+                );
+                let number_of_slots_value = return_on_divergence_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, &number_of_slots_exp)?
+                );
                 let span_md_idx = md_mgr.span_to_md(context, &span);
-                let key_var =
-                    store_key_in_local_mem(self, context, key_value, span_md_idx)?;
+                let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
                 let b256_ty = Type::get_b256(context);
                 let b256_ptr_ty = Type::new_ptr(context, b256_ty);
                 // For quad word, the IR instructions take in a pointer rather than a raw u64.
@@ -967,11 +980,7 @@ impl<'eng> FnCompiler<'eng> {
                         let val = self
                             .current_block
                             .append(context)
-                            .state_load_quad_word(
-                                val_ptr,
-                                key_var,
-                                number_of_slots_value,
-                            )
+                            .state_load_quad_word(val_ptr, key_var, number_of_slots_value)
                             .add_metadatum(context, span_md_idx);
                         Ok(ValueDivergence::new(val, context))
                     }
@@ -979,11 +988,7 @@ impl<'eng> FnCompiler<'eng> {
                         let val = self
                             .current_block
                             .append(context)
-                            .state_store_quad_word(
-                                val_ptr,
-                                key_var,
-                                number_of_slots_value,
-                            )
+                            .state_store_quad_word(val_ptr, key_var, number_of_slots_value)
                             .add_metadatum(context, span_md_idx);
                         Ok(ValueDivergence::new(val, context))
                     }
@@ -999,7 +1004,11 @@ impl<'eng> FnCompiler<'eng> {
                 }
 
                 // The log value and the log ID are just Value.
-                let log_val = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, &arguments[0])?);
+                let log_val = return_on_divergence_or_extract!(self.compile_expression_to_value(
+                    context,
+                    md_mgr,
+                    &arguments[0]
+                )?);
                 let logged_type = i
                     .get_logged_type(context.experimental.new_encoding)
                     .expect("Could not return logged type.");
@@ -1058,19 +1067,22 @@ impl<'eng> FnCompiler<'eng> {
                 };
                 let lhs = &arguments[0];
                 let rhs = &arguments[1];
-                let lhs_value = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, lhs)?);
-                let rhs_value = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, rhs)?);
-                let val = self.current_block.append(context).binary_op(
-                    op,
-                    lhs_value,
-                    rhs_value,
+                let lhs_value = return_on_divergence_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, lhs)?
                 );
+                let rhs_value = return_on_divergence_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, rhs)?
+                );
+                let val = self
+                    .current_block
+                    .append(context)
+                    .binary_op(op, lhs_value, rhs_value);
                 Ok(ValueDivergence::new(val, context))
             }
             Intrinsic::Revert => {
-                let revert_code_val =
-		    return_on_divergence_or_extract!(
-			self.compile_expression_to_value(context, md_mgr, &arguments[0])?);
+                let revert_code_val = return_on_divergence_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, &arguments[0])?
+                );
 
                 // The `revert` instruction
                 let span_md_idx = md_mgr.span_to_md(context, &span);
@@ -1100,40 +1112,39 @@ impl<'eng> FnCompiler<'eng> {
 
                 let lhs = &arguments[0];
                 let count = &arguments[1];
-                let lhs_value = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, lhs)?);
-                let count_value = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, count)?);
+                let lhs_value = return_on_divergence_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, lhs)?
+                );
+                let count_value = return_on_divergence_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, count)?
+                );
                 let rhs_value = self.current_block.append(context).binary_op(
                     BinaryOpKind::Mul,
                     len_value,
                     count_value,
                 );
-                let val = self.current_block.append(context).binary_op(
-                    op,
-                    lhs_value,
-                    rhs_value,
-                );
+                let val = self
+                    .current_block
+                    .append(context)
+                    .binary_op(op, lhs_value, rhs_value);
                 Ok(ValueDivergence::new(val, context))
             }
             Intrinsic::Smo => {
                 let span_md_idx = md_mgr.span_to_md(context, &span);
 
                 /* First operand: recipient */
-                let recipient_value =
-		    return_on_divergence_or_extract!(
-			self.compile_expression_to_value(context, md_mgr, &arguments[0])?);
+                let recipient_value = return_on_divergence_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, &arguments[0])?
+                );
                 let recipient_md_idx = md_mgr.span_to_md(context, &span);
-                let recipient_var = store_key_in_local_mem(
-                    self,
-                    context,
-                    recipient_value,
-                    recipient_md_idx,
-                )?;
+                let recipient_var =
+                    store_key_in_local_mem(self, context, recipient_value, recipient_md_idx)?;
 
                 /* Second operand: message data */
                 // Step 1: compile the user data and get its type
-                let user_message =
-		    return_on_divergence_or_extract!(
-			self.compile_expression_to_value(context, md_mgr, &arguments[1])?);
+                let user_message = return_on_divergence_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, &arguments[1])?
+                );
 
                 let user_message_type = user_message.get_type(context).ok_or_else(|| {
                     CompileError::Internal(
@@ -1208,17 +1219,16 @@ impl<'eng> FnCompiler<'eng> {
                 let user_message_size_val = Constant::get_uint(context, 64, user_message_size);
 
                 /* Fourth operand: the amount of coins to send */
-                let coins = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, &arguments[2])?);
+                let coins = return_on_divergence_or_extract!(self.compile_expression_to_value(
+                    context,
+                    md_mgr,
+                    &arguments[2]
+                )?);
 
                 let val = self
                     .current_block
                     .append(context)
-                    .smo(
-                        recipient_var,
-                        message,
-                        user_message_size_val,
-                        coins,
-                    )
+                    .smo(recipient_var, message, user_message_size_val, coins)
                     .add_metadatum(context, span_md_idx);
                 Ok(ValueDivergence::new(val, context))
             }
@@ -1226,7 +1236,9 @@ impl<'eng> FnCompiler<'eng> {
                 assert!(arguments.len() == 1);
 
                 let op = &arguments[0];
-                let value = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, op)?);
+                let value = return_on_divergence_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, op)?
+                );
 
                 let val = self
                     .current_block
@@ -1250,7 +1262,9 @@ impl<'eng> FnCompiler<'eng> {
             return Ok(ValueDivergence::new(val, context));
         }
 
-        let ret_value = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, ast_expr)?);
+        let ret_value = return_on_divergence_or_extract!(
+            self.compile_expression_to_value(context, md_mgr, ast_expr)?
+        );
 
         ret_value
             .get_type(context)
@@ -1277,7 +1291,9 @@ impl<'eng> FnCompiler<'eng> {
         ast_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<ValueDivergence, CompileError> {
-        let value = return_on_divergence_or_extract!(self.compile_expression_to_ptr(context, md_mgr, ast_expr)?);
+        let value = return_on_divergence_or_extract!(
+            self.compile_expression_to_ptr(context, md_mgr, ast_expr)?
+        );
 
         // TODO-IG: Do we need to convert to `u64` here? Can we use `Ptr` directly? Investigate.
         let int_ty = Type::get_uint64(context);
@@ -1296,7 +1312,8 @@ impl<'eng> FnCompiler<'eng> {
         ast_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<ValueDivergence, CompileError> {
-        let ref_value = return_on_divergence_or_extract!(self.compile_expression(context, md_mgr, ast_expr)?);
+        let ref_value =
+            return_on_divergence_or_extract!(self.compile_expression(context, md_mgr, ast_expr)?);
 
         let ptr_as_int = if ref_value
             .get_type(context)
@@ -1304,9 +1321,7 @@ impl<'eng> FnCompiler<'eng> {
         {
             // We are dereferencing a reference variable and we got a pointer to it.
             // To get the address the reference is pointing to we need to load the value.
-            self.current_block
-                .append(context)
-                .load(ref_value)
+            self.current_block.append(context).load(ref_value)
         } else {
             // The value itself is the address.
             ref_value
@@ -1361,7 +1376,9 @@ impl<'eng> FnCompiler<'eng> {
         ast_rhs: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<ValueDivergence, CompileError> {
-        let lhs_val = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, ast_lhs)?);
+        let lhs_val = return_on_divergence_or_extract!(
+            self.compile_expression_to_value(context, md_mgr, ast_lhs)?
+        );
         // Short-circuit: if LHS is true for AND we still must eval the RHS block; for OR we can
         // skip the RHS block, and vice-versa.
         let cond_block_end = self.current_block;
@@ -1422,7 +1439,9 @@ impl<'eng> FnCompiler<'eng> {
         // Compile each user argument
         let mut compiled_args = Vec::<Value>::new();
         for (_, arg) in ast_args.iter() {
-            let val = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, arg)?);
+            let val = return_on_divergence_or_extract!(
+                self.compile_expression_to_value(context, md_mgr, arg)?
+            );
             compiled_args.push(val)
         }
 
@@ -1547,9 +1566,11 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         // Insert the contract address
-        let addr =
-	    return_on_divergence_or_extract!(
-		self.compile_expression_to_value(context, md_mgr, &call_params.contract_address)?);
+        let addr = return_on_divergence_or_extract!(self.compile_expression_to_value(
+            context,
+            md_mgr,
+            &call_params.contract_address
+        )?);
         let gep_val =
             self.current_block
                 .append(context)
@@ -1592,7 +1613,9 @@ impl<'eng> FnCompiler<'eng> {
             .get(&constants::CONTRACT_CALL_COINS_PARAMETER_NAME.to_string())
         {
             Some(coins_expr) => {
-		return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, coins_expr)?)
+                return_on_divergence_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, coins_expr)?
+                )
             }
             None => convert_literal_to_value(
                 context,
@@ -1607,7 +1630,11 @@ impl<'eng> FnCompiler<'eng> {
             .get(&constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME.to_string())
         {
             Some(asset_id_expr) => {
-		return_on_divergence_or_extract!(self.compile_expression_to_ptr(context, md_mgr, asset_id_expr)?)
+                return_on_divergence_or_extract!(self.compile_expression_to_ptr(
+                    context,
+                    md_mgr,
+                    asset_id_expr
+                )?)
             }
             None => {
                 let asset_id_val = convert_literal_to_value(
@@ -1635,7 +1662,9 @@ impl<'eng> FnCompiler<'eng> {
             .get(&constants::CONTRACT_CALL_GAS_PARAMETER_NAME.to_string())
         {
             Some(gas_expr) => {
-		return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, gas_expr)?)
+                return_on_divergence_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, gas_expr)?
+                )
             }
             None => self
                 .current_block
@@ -1756,13 +1785,11 @@ impl<'eng> FnCompiler<'eng> {
         let mut args = Vec::with_capacity(ast_args.len());
         for ((_, expr), param) in ast_args.iter().zip(callee.parameters.iter()) {
             self.current_fn_param = Some(param.clone());
-            let arg =
-		return_on_divergence_or_extract!(
-		    if param.is_reference && param.is_mutable {
-			self.compile_expression_to_ptr(context, md_mgr, expr)
-		    } else {
-			self.compile_expression_to_value(context, md_mgr, expr)
-		    }?);
+            let arg = return_on_divergence_or_extract!(if param.is_reference && param.is_mutable {
+                self.compile_expression_to_ptr(context, md_mgr, expr)
+            } else {
+                self.compile_expression_to_value(context, md_mgr, expr)
+            }?);
             self.current_fn_param = None;
             args.push(arg);
         }
@@ -1788,7 +1815,11 @@ impl<'eng> FnCompiler<'eng> {
         // Compile the condition expression in the entry block.  Then save the current block so we
         // can jump to the true and false blocks after we've created them.
         let cond_span_md_idx = md_mgr.span_to_md(context, &ast_condition.span);
-        let cond_value = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, ast_condition)?);
+        let cond_value = return_on_divergence_or_extract!(self.compile_expression_to_value(
+            context,
+            md_mgr,
+            ast_condition
+        )?);
         let cond_block = self.current_block;
 
         // To keep the blocks in a nice order we create them only as we populate them.  It's
@@ -1886,7 +1917,8 @@ impl<'eng> FnCompiler<'eng> {
         };
 
         // Compile the struct expression.
-        let compiled_value = return_on_divergence_or_extract!(self.compile_expression_to_ptr(context, md_mgr, exp)?);
+        let compiled_value =
+            return_on_divergence_or_extract!(self.compile_expression_to_ptr(context, md_mgr, exp)?);
 
         // Get the variant type.
         let variant_type = enum_type
@@ -1914,7 +1946,9 @@ impl<'eng> FnCompiler<'eng> {
         exp: Box<ty::TyExpression>,
     ) -> Result<ValueDivergence, CompileError> {
         let tag_span_md_idx = md_mgr.span_to_md(context, &exp.span);
-        let struct_val = return_on_divergence_or_extract!(self.compile_expression_to_ptr(context, md_mgr, &exp)?);
+        let struct_val = return_on_divergence_or_extract!(
+            self.compile_expression_to_ptr(context, md_mgr, &exp)?
+        );
 
         let u64_ty = Type::get_uint64(context);
         let val = self
@@ -1953,7 +1987,9 @@ impl<'eng> FnCompiler<'eng> {
 
         // Compile the condition
         self.current_block = cond_block;
-        let cond_value = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, condition)?);
+        let cond_value = return_on_divergence_or_extract!(
+            self.compile_expression_to_value(context, md_mgr, condition)?
+        );
 
         // Create the break block.
         let break_block = self
@@ -2036,8 +2072,10 @@ impl<'eng> FnCompiler<'eng> {
             .or(self.compile_const_decl(context, md_mgr, const_decl, span_md_idx, true))?;
 
         // String slices are not allowed in constants
-        if let Some(TypeContent::StringSlice) =
-            result.value().get_type(context).map(|t| t.get_content(context))
+        if let Some(TypeContent::StringSlice) = result
+            .value()
+            .get_type(context)
+            .map(|t| t.get_content(context))
         {
             return Err(CompileError::TypeNotAllowed {
                 reason: sway_error::error::TypeNotAllowedReason::StringSliceInConst,
@@ -2180,10 +2218,7 @@ impl<'eng> FnCompiler<'eng> {
             )?;
 
             if is_const_expression {
-                Ok(ValueDivergence::new(
-                    const_expr_val,
-                    context,
-                ))
+                Ok(ValueDivergence::new(const_expr_val, context))
             } else {
                 let local_name = self
                     .lexical_map
@@ -2267,9 +2302,11 @@ impl<'eng> FnCompiler<'eng> {
                 )
             })?;
 
-        let reassign_val =
-	    return_on_divergence_or_extract!(
-		self.compile_expression_to_value(context, md_mgr, &ast_reassignment.rhs)?);
+        let reassign_val = return_on_divergence_or_extract!(self.compile_expression_to_value(
+            context,
+            md_mgr,
+            &ast_reassignment.rhs
+        )?);
 
         let lhs_ptr = if ast_reassignment.lhs_indices.is_empty() {
             // A non-aggregate; use a direct `store`.
@@ -2312,7 +2349,9 @@ impl<'eng> FnCompiler<'eng> {
                     }
                     (ProjectionKind::ArrayIndex { index, .. }, TypeInfo::Array(elem_ty, _)) => {
                         cur_type_id = elem_ty.type_id;
-                        let val = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, index)?);
+                        let val = return_on_divergence_or_extract!(
+                            self.compile_expression_to_value(context, md_mgr, index)?
+                        );
                         gep_indices.push(val);
                     }
                     _ => {
@@ -2362,9 +2401,9 @@ impl<'eng> FnCompiler<'eng> {
         // so we can't use the normal compilation scheme. Instead just generate code for
         // the first element and return.
         let first_elem_value = if !contents.is_empty() {
-            let first_elem_value =
-		return_on_divergence_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, &contents[0])?);
+            let first_elem_value = return_on_divergence_or_extract!(
+                self.compile_expression_to_value(context, md_mgr, &contents[0])?
+            );
             Some(first_elem_value)
         } else {
             None
@@ -2396,7 +2435,7 @@ impl<'eng> FnCompiler<'eng> {
             return Ok(ValueDivergence::new(array_value, context));
         }
 
-	// The array is not empty, so it's safe to unwrap the first element
+        // The array is not empty, so it's safe to unwrap the first element
         let first_elem_value = first_elem_value.unwrap();
 
         // If all elements are the same constant, then we can initialize the array
@@ -2512,14 +2551,13 @@ impl<'eng> FnCompiler<'eng> {
 
         // Compile each element and insert it immediately.
         for (idx, elem_expr) in contents.iter().enumerate() {
-            let elem_value =
-		if idx == 0 {
-		    first_elem_value
-		}
-     	        else {
-		    return_on_divergence_or_extract!(
-			self.compile_expression_to_value(context, md_mgr, elem_expr)?)
-		};
+            let elem_value = if idx == 0 {
+                first_elem_value
+            } else {
+                return_on_divergence_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, elem_expr)?
+                )
+            };
             let gep_val = self.current_block.append(context).get_elem_ptr_with_idx(
                 array_value,
                 elem_type,
@@ -2541,7 +2579,9 @@ impl<'eng> FnCompiler<'eng> {
         index_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<ValueDivergence, CompileError> {
-        let array_val = return_on_divergence_or_extract!(self.compile_expression_to_ptr(context, md_mgr, array_expr)?);
+        let array_val = return_on_divergence_or_extract!(
+            self.compile_expression_to_ptr(context, md_mgr, array_expr)?
+        );
 
         // Get the array type and confirm it's an array.
         let array_type = array_val
@@ -2581,7 +2621,9 @@ impl<'eng> FnCompiler<'eng> {
             }
         }
 
-        let index_val = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, index_expr)?);
+        let index_val = return_on_divergence_or_extract!(
+            self.compile_expression_to_value(context, md_mgr, index_expr)?
+        );
 
         let elem_type = array_type.get_array_elem_type(context).ok_or_else(|| {
             CompileError::Internal(
@@ -2593,11 +2635,7 @@ impl<'eng> FnCompiler<'eng> {
         let val = self
             .current_block
             .append(context)
-            .get_elem_ptr(
-                array_val,
-                elem_type,
-                vec![index_val],
-            )
+            .get_elem_ptr(array_val, elem_type, vec![index_val])
             .add_metadatum(context, span_md_idx);
         Ok(ValueDivergence::new(val, context))
     }
@@ -2620,9 +2658,11 @@ impl<'eng> FnCompiler<'eng> {
         let mut insert_values = Vec::with_capacity(fields.len());
         let mut field_types = Vec::with_capacity(fields.len());
         for struct_field in fields.iter() {
-            let insert_val =
-		return_on_divergence_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, &struct_field.value)?);
+            let insert_val = return_on_divergence_or_extract!(self.compile_expression_to_value(
+                context,
+                md_mgr,
+                &struct_field.value
+            )?);
             insert_values.push(insert_val);
 
             let field_type = convert_resolved_typeid_no_span(
@@ -2678,7 +2718,11 @@ impl<'eng> FnCompiler<'eng> {
         ast_field: &ty::TyStructField,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<ValueDivergence, CompileError> {
-        let struct_val = return_on_divergence_or_extract!(self.compile_expression_to_ptr(context, md_mgr, ast_struct_expr)?);
+        let struct_val = return_on_divergence_or_extract!(self.compile_expression_to_ptr(
+            context,
+            md_mgr,
+            ast_struct_expr
+        )?);
 
         // Get the struct type info, with field names.
         let decl = self.engines.te().get_unaliased(struct_type_id);
@@ -2773,9 +2817,9 @@ impl<'eng> FnCompiler<'eng> {
         if field_tys.len() != 1 && contents.is_some() {
             // Insert the value too.
             // Only store if the value does not diverge.
-            let contents_value =
-		return_on_divergence_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, contents.unwrap())?);
+            let contents_value = return_on_divergence_or_extract!(
+                self.compile_expression_to_value(context, md_mgr, contents.unwrap())?
+            );
             let contents_type = contents_value.get_type(context).ok_or_else(|| {
                 CompileError::Internal(
                     "Unable to get type for enum contents.",
@@ -2813,7 +2857,9 @@ impl<'eng> FnCompiler<'eng> {
             let mut init_values = Vec::with_capacity(fields.len());
             let mut init_types = Vec::with_capacity(fields.len());
             for field_expr in fields {
-                let init_value = return_on_divergence_or_extract!(self.compile_expression_to_value(context, md_mgr, field_expr)?);
+                let init_value = return_on_divergence_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, field_expr)?
+                );
                 let init_type = convert_resolved_typeid_no_span(
                     self.engines.te(),
                     self.engines.de(),
@@ -2867,7 +2913,9 @@ impl<'eng> FnCompiler<'eng> {
         idx: usize,
         span: Span,
     ) -> Result<ValueDivergence, CompileError> {
-        let tuple_value = return_on_divergence_or_extract!(self.compile_expression_to_ptr(context, md_mgr, tuple)?);
+        let tuple_value = return_on_divergence_or_extract!(
+            self.compile_expression_to_ptr(context, md_mgr, tuple)?
+        );
         let tuple_type = convert_resolved_typeid(
             self.engines.te(),
             self.engines.de(),
@@ -2954,7 +3002,9 @@ impl<'eng> FnCompiler<'eng> {
                     // *or* the value of the copy-type value.
                     let init_expr = initializer.as_ref().unwrap();
                     // I'm not sure if a register declaration can diverge, but check just to be safe
-                    let initializer_val = return_on_divergence_or_extract!(self.compile_expression(context, md_mgr, init_expr)?);
+                    let initializer_val = return_on_divergence_or_extract!(
+                        self.compile_expression(context, md_mgr, init_expr)?
+                    );
                     let init_type = self.engines.te().get_unaliased(init_expr.return_type);
                     if initializer_val
                         .get_type(context)
@@ -2966,11 +3016,7 @@ impl<'eng> FnCompiler<'eng> {
                         // By "reference" we mean th `u64` value that represents the memory address of the referenced
                         // value.
                         (
-                            Some(
-                                self.current_block
-                                    .append(context)
-                                    .load(initializer_val),
-                            ),
+                            Some(self.current_block.append(context).load(initializer_val)),
                             name,
                         )
                     } else {
