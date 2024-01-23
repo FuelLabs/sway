@@ -4398,8 +4398,7 @@ pub fn cfg_eval(
                         }
                     }
                     CFG_EXPERIMENTAL_NEW_ENCODING => match &arg.value {
-                        Some(sway_ast::Literal::Bool(v)) =>
-                        {
+                        Some(sway_ast::Literal::Bool(v)) => {
                             let is_true = matches!(v.kind, sway_ast::literal::LitBoolType::True);
                             return Ok(experimental.new_encoding == is_true);
                         }

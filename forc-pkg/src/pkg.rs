@@ -1821,6 +1821,8 @@ pub fn compile(
         metrics
     );
 
+    const NEW_ENCODING_VERSION: &str = "1";
+
     let mut program_abi = match pkg.target {
         BuildTarget::Fuel => {
             let mut types = vec![];
@@ -1835,7 +1837,10 @@ pub fn compile(
                     engines.te(),
                     engines.de(),
                     &mut types,
-                    profile.experimental.new_encoding.then(|| "1".into()),
+                    profile
+                        .experimental
+                        .new_encoding
+                        .then(|| NEW_ENCODING_VERSION.into()),
                 ),
                 Some(sway_build_config.clone()),
                 metrics

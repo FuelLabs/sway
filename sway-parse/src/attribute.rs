@@ -127,26 +127,22 @@ impl Parse for AttributeArg {
         let name = parser.parse()?;
         match parser.take::<EqToken>() {
             Some(_) => {
-              let value = match parser.take::<Ident>() {
-                Some(ident) if ident.as_str() == "true" => {
-                  Literal::Bool(LitBool {
-                      span: ident.span(),
-                      kind: sway_ast::literal::LitBoolType::True,
-                  })
-                }
-                Some(ident) if ident.as_str() == "false" => {
-                  Literal::Bool(LitBool {
-                      span: ident.span(),
-                      kind: sway_ast::literal::LitBoolType::False,
-                  })
-                }
-                _ => parser.parse()?,
-              };
-              
-              Ok(AttributeArg {
-                  name,
-                  value: Some(value),
-              })
+                let value = match parser.take::<Ident>() {
+                    Some(ident) if ident.as_str() == "true" => Literal::Bool(LitBool {
+                        span: ident.span(),
+                        kind: sway_ast::literal::LitBoolType::True,
+                    }),
+                    Some(ident) if ident.as_str() == "false" => Literal::Bool(LitBool {
+                        span: ident.span(),
+                        kind: sway_ast::literal::LitBoolType::False,
+                    }),
+                    _ => parser.parse()?,
+                };
+
+                Ok(AttributeArg {
+                    name,
+                    value: Some(value),
+                })
             }
             None => Ok(AttributeArg { name, value: None }),
         }
