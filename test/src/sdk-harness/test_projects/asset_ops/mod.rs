@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 abigen!(Contract(
     name = "TestFuelCoinContract",
-    abi = "test_projects/asset_ops/out/debug/asset_ops-abi.json"
+    abi = "test_projects/asset_ops/out/release/asset_ops-abi.json"
 ));
 
 #[tokio::test]
@@ -505,7 +505,7 @@ async fn get_fuelcoin_instance(
     wallet: WalletUnlocked,
 ) -> (TestFuelCoinContract<WalletUnlocked>, ContractId) {
     let fuelcontract_id = Contract::load_from(
-        "test_projects/asset_ops/out/debug/asset_ops.bin",
+        "test_projects/asset_ops/out/release/asset_ops.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
@@ -524,7 +524,7 @@ async fn get_fuelcoin_instance(
 
 async fn get_balance_contract_id(wallet: WalletUnlocked) -> ContractId {
     let balance_id = Contract::load_from(
-        "test_artifacts/balance_contract/out/debug/balance_contract.bin",
+        "test_artifacts/balance_contract/out/release/balance_contract.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

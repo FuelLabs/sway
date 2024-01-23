@@ -3483,36 +3483,6 @@ fn statement_let_to_ast_nodes(
 
                 let tuple_name = Ident::new_with_override(tuple_name, span.clone());
 
-                // Parse the type ascription and the type ascription span.
-                // In the event that the user did not provide a type ascription,
-                // it is set to TypeInfo::Unknown and the span to None.
-                let type_ascription = match &ty_opt {
-                    Some(ty) => ty_to_type_argument(context, handler, engines, ty.clone())?,
-                    None => {
-                        let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
-                        TypeArgument {
-                            type_id,
-                            initial_type_id: type_id,
-                            span: tuple_name.span(),
-                            call_path_tree: None,
-                        }
-                    }
-                };
-
-                // Save the tuple to the new name as a new variable declaration.
-                let save_body_first = VariableDeclaration {
-                    name: tuple_name.clone(),
-                    type_ascription,
-                    body: expression,
-                    is_mutable: false,
-                };
-                ast_nodes.push(AstNode {
-                    content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
-                        save_body_first,
-                    )),
-                    span: span.clone(),
-                });
-
                 // Acript a second declaration to a tuple of placeholders to check that the tuple
                 // is properly sized to the pattern
                 let placeholders_type_ascription = {
@@ -3560,6 +3530,28 @@ fn statement_let_to_ast_nodes(
                         call_path_tree: None,
                     }
                 };
+
+                // Parse the type ascription and the type ascription span.
+                // In the event that the user did not provide a type ascription,
+                // it is set to TypeInfo::Unknown and the span to None.
+                let type_ascription = match &ty_opt {
+                    Some(ty) => ty_to_type_argument(context, handler, engines, ty.clone())?,
+                    None => placeholders_type_ascription.clone(),
+                };
+
+                // Save the tuple to the new name as a new variable declaration.
+                let save_body_first = VariableDeclaration {
+                    name: tuple_name.clone(),
+                    type_ascription,
+                    body: expression,
+                    is_mutable: false,
+                };
+                ast_nodes.push(AstNode {
+                    content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
+                        save_body_first,
+                    )),
+                    span: span.clone(),
+                });
 
                 // create a variable expression that points to the new tuple name that we just created
                 let new_expr = Expression {

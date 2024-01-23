@@ -206,6 +206,7 @@ pub(super) fn compile_constant_expression(
         module_ns,
         function_compiler,
         const_expr,
+        is_configurable,
     )?;
 
     if !is_configurable {
@@ -227,6 +228,7 @@ pub(crate) fn compile_constant_expression_to_constant(
     module_ns: Option<&namespace::Module>,
     function_compiler: Option<&FnCompiler>,
     const_expr: &ty::TyExpression,
+    allow_configurables: bool,
 ) -> Result<Constant, CompileError> {
     let lookup = &mut LookupEnv {
         engines,
@@ -252,7 +254,7 @@ pub(crate) fn compile_constant_expression_to_constant(
     };
     let mut known_consts = MappedStack::<Ident, Constant>::new();
 
-    match const_eval_typed_expr(lookup, &mut known_consts, const_expr) {
+    match const_eval_typed_expr(lookup, &mut known_consts, const_expr, allow_configurables) {
         Ok(Some(constant)) => Ok(constant),
         _ => err,
     }
@@ -264,6 +266,7 @@ fn const_eval_typed_expr(
     lookup: &mut LookupEnv,
     known_consts: &mut MappedStack<Ident, Constant>,
     expr: &ty::TyExpression,
+    allow_configurables: bool,
 ) -> Result<Option<Constant>, ConstEvalError> {
     Ok(match &expr.expression {
         ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
@@ -284,7 +287,8 @@ fn const_eval_typed_expr(
 
             for arg in arguments {
                 let (name, sub_expr) = arg;
-                let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, sub_expr)?;
+                let eval_expr_opt =
+                    const_eval_typed_expr(lookup, known_consts, sub_expr, allow_configurables)?;
                 if let Some(sub_const) = eval_expr_opt {
                     actuals_const.push((name, sub_const));
                 } else {
@@ -303,7 +307,12 @@ fn const_eval_typed_expr(
             }
 
             let function_decl = lookup.engines.de().get_function(fn_ref);
-            let res = const_eval_codeblock(lookup, known_consts, &function_decl.body);
+            let res = const_eval_codeblock(
+                lookup,
+                known_consts,
+                &function_decl.body,
+                allow_configurables,
+            );
 
             for (name, _) in arguments {
                 known_consts.pop(name);
@@ -323,7 +332,13 @@ fn const_eval_typed_expr(
                     (lookup.lookup)(lookup, call_path, &Some(*const_decl.clone()))
                         .ok()
                         .flatten()
-                        .and_then(|v| v.get_constant_or_configurable(lookup.context).cloned())
+                        .and_then(|v| {
+                            if allow_configurables {
+                                v.get_constant_or_configurable(lookup.context).cloned()
+                            } else {
+                                v.get_constant(lookup.context).cloned()
+                            }
+                        })
                 }
             }
         }
@@ -353,7 +368,8 @@ fn const_eval_typed_expr(
 
             for field in fields {
                 let ty::TyStructExpressionField { name: _, value, .. } = field;
-                let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, value)?;
+                let eval_expr_opt =
+                    const_eval_typed_expr(lookup, known_consts, value, allow_configurables)?;
                 if let Some(cv) = eval_expr_opt {
                     field_typs.push(value.return_type);
                     field_vals.push(cv);
@@ -385,7 +401,8 @@ fn const_eval_typed_expr(
             let (mut field_typs, mut field_vals): (Vec<_>, Vec<_>) = (vec![], vec![]);
 
             for value in fields {
-                let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, value)?;
+                let eval_expr_opt =
+                    const_eval_typed_expr(lookup, known_consts, value, allow_configurables)?;
                 if let Some(cv) = eval_expr_opt {
                     field_typs.push(value.return_type);
                     field_vals.push(cv);
@@ -420,7 +437,8 @@ fn const_eval_typed_expr(
             let (mut element_typs, mut element_vals): (Vec<_>, Vec<_>) = (vec![], vec![]);
 
             for value in contents {
-                let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, value)?;
+                let eval_expr_opt =
+                    const_eval_typed_expr(lookup, known_consts, value, allow_configurables)?;
                 if let Some(cv) = eval_expr_opt {
                     element_typs.push(value.return_type);
                     element_vals.push(cv);
@@ -479,7 +497,12 @@ fn const_eval_typed_expr(
 
                 match contents {
                     None => fields.push(Constant::new_unit(lookup.context)),
-                    Some(subexpr) => match const_eval_typed_expr(lookup, known_consts, subexpr)? {
+                    Some(subexpr) => match const_eval_typed_expr(
+                        lookup,
+                        known_consts,
+                        subexpr,
+                        allow_configurables,
+                    )? {
                         Some(constant) => fields.push(constant),
                         None => {
                             return Err(ConstEvalError::CannotBeEvaluatedToConst {
@@ -502,7 +525,7 @@ fn const_eval_typed_expr(
             field_to_access,
             resolved_type_of_parent,
             ..
-        } => match const_eval_typed_expr(lookup, known_consts, prefix)? {
+        } => match const_eval_typed_expr(lookup, known_consts, prefix, allow_configurables)? {
             Some(Constant {
                 value: ConstantValue::Struct(fields),
                 ..
@@ -531,7 +554,7 @@ fn const_eval_typed_expr(
             prefix,
             elem_to_access_num,
             ..
-        } => match const_eval_typed_expr(lookup, known_consts, prefix)? {
+        } => match const_eval_typed_expr(lookup, known_consts, prefix, allow_configurables)? {
             Some(Constant {
                 value: ConstantValue::Struct(fields),
                 ..
@@ -552,25 +575,25 @@ fn const_eval_typed_expr(
             })
         }
         ty::TyExpressionVariant::MatchExp { desugared, .. } => {
-            const_eval_typed_expr(lookup, known_consts, desugared)?
+            const_eval_typed_expr(lookup, known_consts, desugared, allow_configurables)?
         }
         ty::TyExpressionVariant::IntrinsicFunction(kind) => {
-            const_eval_intrinsic(lookup, known_consts, kind)?
+            const_eval_intrinsic(lookup, known_consts, kind, allow_configurables)?
         }
         ty::TyExpressionVariant::IfExp {
             condition,
             then,
             r#else,
         } => {
-            match const_eval_typed_expr(lookup, known_consts, condition)? {
+            match const_eval_typed_expr(lookup, known_consts, condition, allow_configurables)? {
                 Some(Constant {
                     value: ConstantValue::Bool(cond),
                     ..
                 }) => {
                     if cond {
-                        const_eval_typed_expr(lookup, known_consts, then)?
+                        const_eval_typed_expr(lookup, known_consts, then, allow_configurables)?
                     } else if let Some(r#else) = r#else {
-                        const_eval_typed_expr(lookup, known_consts, r#else)?
+                        const_eval_typed_expr(lookup, known_consts, r#else, allow_configurables)?
                     } else {
                         // missing 'else' branch:
                         // we probably don't really care about evaluating
@@ -586,11 +609,11 @@ fn const_eval_typed_expr(
             }
         }
         ty::TyExpressionVariant::CodeBlock(codeblock) => {
-            const_eval_codeblock(lookup, known_consts, codeblock)?
+            const_eval_codeblock(lookup, known_consts, codeblock, allow_configurables)?
         }
         ty::TyExpressionVariant::ArrayIndex { prefix, index } => {
-            let prefix = const_eval_typed_expr(lookup, known_consts, prefix)?;
-            let index = const_eval_typed_expr(lookup, known_consts, index)?;
+            let prefix = const_eval_typed_expr(lookup, known_consts, prefix, allow_configurables)?;
+            let index = const_eval_typed_expr(lookup, known_consts, index, allow_configurables)?;
             match (prefix, index) {
                 (
                     Some(Constant {
@@ -654,6 +677,7 @@ fn const_eval_codeblock(
     lookup: &mut LookupEnv,
     known_consts: &mut MappedStack<Ident, Constant>,
     codeblock: &ty::TyCodeBlock,
+    allow_configurables: bool,
 ) -> Result<Option<Constant>, ConstEvalError> {
     // the current result
     let mut result: Result<Option<Constant>, ConstEvalError> = Ok(None);
@@ -663,7 +687,9 @@ fn const_eval_codeblock(
     for ast_node in &codeblock.contents {
         result = match &ast_node.content {
             ty::TyAstNodeContent::Declaration(decl @ ty::TyDecl::VariableDecl(var_decl)) => {
-                if let Ok(Some(rhs)) = const_eval_typed_expr(lookup, known_consts, &var_decl.body) {
+                if let Ok(Some(rhs)) =
+                    const_eval_typed_expr(lookup, known_consts, &var_decl.body, allow_configurables)
+                {
                     known_consts.push(var_decl.name.clone(), rhs);
                     bindings.push(var_decl.name.clone());
                     Ok(None)
@@ -678,7 +704,9 @@ fn const_eval_codeblock(
                 if let Some(constant) = ty_const_decl
                     .value
                     .clone()
-                    .and_then(|expr| const_eval_typed_expr(lookup, known_consts, &expr).ok())
+                    .and_then(|expr| {
+                        const_eval_typed_expr(lookup, known_consts, &expr, allow_configurables).ok()
+                    })
                     .flatten()
                 {
                     known_consts.push(const_decl.name.clone(), constant);
@@ -692,7 +720,7 @@ fn const_eval_codeblock(
             }
             ty::TyAstNodeContent::Declaration(_) => Ok(None),
             ty::TyAstNodeContent::Expression(e) => {
-                if const_eval_typed_expr(lookup, known_consts, e).is_err() {
+                if const_eval_typed_expr(lookup, known_consts, e, allow_configurables).is_err() {
                     Err(ConstEvalError::CannotBeEvaluatedToConst {
                         span: e.span.clone(),
                     })
@@ -701,7 +729,9 @@ fn const_eval_codeblock(
                 }
             }
             ty::TyAstNodeContent::ImplicitReturnExpression(e) => {
-                if let Ok(Some(constant)) = const_eval_typed_expr(lookup, known_consts, e) {
+                if let Ok(Some(constant)) =
+                    const_eval_typed_expr(lookup, known_consts, e, allow_configurables)
+                {
                     Ok(Some(constant))
                 } else {
                     Err(ConstEvalError::CannotBeEvaluatedToConst {
@@ -734,10 +764,13 @@ fn const_eval_intrinsic(
     lookup: &mut LookupEnv,
     known_consts: &mut MappedStack<Ident, Constant>,
     intrinsic: &TyIntrinsicFunctionKind,
+    allow_configurables: bool,
 ) -> Result<Option<Constant>, ConstEvalError> {
     let mut args = vec![];
     for arg in intrinsic.arguments.iter() {
-        if let Ok(Some(constant)) = const_eval_typed_expr(lookup, known_consts, arg) {
+        if let Ok(Some(constant)) =
+            const_eval_typed_expr(lookup, known_consts, arg, allow_configurables)
+        {
             args.push(constant);
         } else {
             return Err(ConstEvalError::CannotBeEvaluatedToConst {
@@ -1182,6 +1215,7 @@ mod tests {
             None,
             None,
             &expr_under_test,
+            false,
         );
 
         match (is_constant, actual_constant) {

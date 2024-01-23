@@ -10,6 +10,7 @@ use anyhow::{anyhow, bail, Result};
 use assert_matches::assert_matches;
 use colored::*;
 use core::fmt;
+use forc_pkg::BuildProfile;
 use fuel_vm::fuel_tx;
 use fuel_vm::prelude::*;
 use regex::Regex;
@@ -68,6 +69,7 @@ struct TestDescription {
     validate_abi: bool,
     validate_storage_slots: bool,
     supported_targets: HashSet<BuildTarget>,
+    unsupported_profiles: Vec<&'static str>,
     checker: filecheck::Checker,
 }
 
@@ -539,6 +541,12 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     if filter_config.first_only && !tests.is_empty() {
         tests = vec![tests.remove(0)];
     }
+    let cur_profile = if run_config.release {
+        BuildProfile::RELEASE
+    } else {
+        BuildProfile::DEBUG
+    };
+    tests.retain(|t| !t.unsupported_profiles.contains(&cur_profile));
 
     // Run tests
     let context = TestContext {
@@ -866,6 +874,15 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
         .map(get_test_abi_from_value)
         .collect::<Result<Vec<BuildTarget>>>()?;
 
+    // Check for not supported build profiles. Default is empty.
+    let unsupported_profiles = toml_content
+        .get("unsupported_profiles")
+        .map(|v| v.as_array().cloned().unwrap_or_default())
+        .unwrap_or_default()
+        .iter()
+        .map(get_build_profile_from_value)
+        .collect::<Result<Vec<&'static str>>>()?;
+
     let supported_targets = HashSet::from_iter(if supported_targets.is_empty() {
         vec![BuildTarget::Fuel]
     } else {
@@ -883,6 +900,7 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
         validate_abi,
         validate_storage_slots,
         supported_targets,
+        unsupported_profiles,
         checker,
     })
 }
@@ -892,6 +910,17 @@ fn get_test_abi_from_value(value: &toml::Value) -> Result<BuildTarget> {
         Some(target) => match BuildTarget::from_str(target) {
             Ok(target) => Ok(target),
             _ => Err(anyhow!(format!("Unknown build target: {target}"))),
+        },
+        None => Err(anyhow!("Invalid TOML value")),
+    }
+}
+
+fn get_build_profile_from_value(value: &toml::Value) -> Result<&'static str> {
+    match value.as_str() {
+        Some(profile) => match profile {
+            BuildProfile::DEBUG => Ok(BuildProfile::DEBUG),
+            BuildProfile::RELEASE => Ok(BuildProfile::RELEASE),
+            _ => Err(anyhow!(format!("Unknown build profile"))),
         },
         None => Err(anyhow!("Invalid TOML value")),
     }
