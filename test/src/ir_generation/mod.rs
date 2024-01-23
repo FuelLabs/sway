@@ -179,34 +179,35 @@ pub(super) async fn run(
     let mut run_test_count = 0;
     all_tests
         .into_iter()
-        .filter(|path| {
+        .filter_map(|path|  {
             // Filter against the regex.
-            path.to_str()
+            if path.to_str()
                 .and_then(|path_str| filter_regex.map(|regex| regex.is_match(path_str)))
-                .unwrap_or(true)
-        })
-        .map(|path| {
-            // Read entire file.
-            let input_bytes = fs::read(&path).expect("Read entire Sway source.");
-            let input = String::from_utf8_lossy(&input_bytes);
+                .unwrap_or(true)  {
+                // Read entire file.
+                let input_bytes = fs::read(&path).expect("Read entire Sway source.");
+                let input = String::from_utf8_lossy(&input_bytes);
 
-            let checkers = Checker::new(&input);
+                let checkers = Checker::new(&input);
 
-            let mut optimisation_inline = false;
-            let mut target_fuelvm = false;
+                let mut optimisation_inline = false;
+                let mut target_fuelvm = false;
 
-            if let Some(first_line) = input.lines().next() {
-                optimisation_inline = first_line.contains("optimisation-inline");
-                target_fuelvm = first_line.contains("target-fuelvm");
+                if let Some(first_line) = input.lines().next() {
+                    optimisation_inline = first_line.contains("optimisation-inline");
+                    target_fuelvm = first_line.contains("target-fuelvm");
+                }
+
+                Some((
+                    path,
+                    input_bytes,
+                    checkers,
+                    optimisation_inline,
+                    target_fuelvm,
+                ))
+            } else {
+                None
             }
-
-            (
-                path,
-                input_bytes,
-                checkers,
-                optimisation_inline,
-                target_fuelvm,
-            )
         })
         .for_each(
             |(path, sway_str, checkers, optimisation_inline, target_fuelvm)| {
