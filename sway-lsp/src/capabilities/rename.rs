@@ -62,11 +62,10 @@ pub fn rename(
             .collect::<Vec<TokenIdent>>()
     })
     .into_iter()
-    .filter(|ident| {
-        // we want to rename the type that self refers to, not the self ident itself
-        ident.name != "self"
-    })
     .filter_map(|ident| {
+        if ident.name == "self" {
+            return None;
+        }
         let mut range = ident.range;
         if ident.is_raw_ident() {
             // Make sure the start char starts at the begining,

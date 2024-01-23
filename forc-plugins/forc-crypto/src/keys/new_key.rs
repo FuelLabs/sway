@@ -1,29 +1,28 @@
-//! This file will be hosted here until
-//! https://github.com/FuelLabs/sway/issues/5170 is fixed
 use super::KeyType;
 use anyhow::Result;
-use fuel_core_types::{fuel_crypto::SecretKey, fuel_tx::Input};
+use fuel_core_types::{
+    fuel_crypto::{
+        rand::{prelude::StdRng, SeedableRng},
+        SecretKey,
+    },
+    fuel_tx::Input,
+};
 use libp2p_identity::{secp256k1, Keypair, PeerId};
 use serde_json::json;
-use std::{ops::Deref, str::FromStr};
+use std::ops::Deref;
 
-const ABOUT: &str = "Parses a private key to view the associated public key";
+const ABOUT: &str = "Creates a new key for use with fuel-core";
 
 forc_util::cli_examples! {
-    [ Parses the secret of a block production  => crypto "parse-secret \"f5204427d0ab9a311266c96a377f7c329cb8a41b9088225b6fcf40eefb423e28\"" ]
-    [ Parses the secret of a peering  => crypto "parse-secret -k peering \"f5204427d0ab9a311266c96a377f7c329cb8a41b9088225b6fcf40eefb423e28\"" ]
+    [ Creates a new key default for block production => crypto "new-key" ]
+    [ Creates a new key for peering => crypto "new-key -k peering" ]
+    [ Creates a new key for block production => crypto "new-key -k block-production" ]
 }
 
-/// Parse a secret key to view the associated public key
+/// Generate a random new secret & public key in the format expected by fuel-core
 #[derive(Debug, clap::Args)]
-#[clap(
-    version,
-    about = ABOUT,
-    after_help = help(),
-)]
+#[clap(version, about = ABOUT, after_help = help())]
 pub struct Arg {
-    /// A private key in hex format
-    secret: String,
     /// Key type to generate. It can either be `block-production` or `peering`.
     #[clap(
         long = "key-type",
@@ -35,15 +34,19 @@ pub struct Arg {
 }
 
 pub fn handler(arg: Arg) -> Result<serde_json::Value> {
-    let secret = SecretKey::from_str(&arg.secret)?;
+    let mut rng = StdRng::from_entropy();
+    let secret = SecretKey::random(&mut rng);
+    let public_key = secret.public_key();
+    let secret_str = secret.to_string();
+
     let output = match arg.key_type {
         KeyType::BlockProduction => {
-            let address = Input::owner(&secret.public_key());
-            let output = json!({
-                "address": address.to_string(),
+            let address = Input::owner(&public_key);
+            json!({
+                "secret": secret_str,
+                "address": address,
                 "type": <KeyType as std::convert::Into<&'static str>>::into(KeyType::BlockProduction),
-            });
-            output
+            })
         }
         KeyType::Peering => {
             let mut bytes = *secret.deref();
@@ -52,11 +55,11 @@ pub fn handler(arg: Arg) -> Result<serde_json::Value> {
             let p2p_keypair = secp256k1::Keypair::from(p2p_secret);
             let libp2p_keypair = Keypair::from(p2p_keypair);
             let peer_id = PeerId::from_public_key(&libp2p_keypair.public());
-            let output = json!({
+            json!({
+                "secret": secret_str,
                 "peer_id": peer_id.to_string(),
                 "type": <KeyType as std::convert::Into<&'static str>>::into(KeyType::Peering),
-            });
-            output
+            })
         }
     };
     Ok(output)

@@ -27,6 +27,7 @@ use sway_types::{
     integer_bits::IntegerBits,
     span::{Span, Spanned},
     state::StateIndex,
+    u256::U256,
     Named,
 };
 
@@ -365,7 +366,13 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
                 let implied_lit = match &*self.engines.te().get(ast_expr.return_type) {
                     TypeInfo::UnsignedInteger(IntegerBits::Eight) => Literal::U8(*n as u8),
-                    _ => Literal::U64(*n),
+                    TypeInfo::UnsignedInteger(IntegerBits::V256) => Literal::U256(U256::from(*n)),
+                    _ =>
+                    // Anything more than a byte needs a u64 (except U256 of course).
+                    // (This is how convert_literal_to_value treats it too).
+                    {
+                        Literal::U64(*n)
+                    }
                 };
                 Ok(convert_literal_to_value(context, &implied_lit)
                     .add_metadatum(context, span_md_idx))
@@ -734,6 +741,7 @@ impl<'eng> FnCompiler<'eng> {
                     None,
                     None,
                     &arguments[1],
+                    false,
                 )?;
                 let tx_field_id = match tx_field_id_constant.value {
                     ConstantValue::Uint(n) => n,
@@ -2437,6 +2445,7 @@ impl<'eng> FnCompiler<'eng> {
             None,
             Some(self),
             index_expr,
+            false,
         ) {
             let count = array_type.get_array_len(context).unwrap();
             if constant_value >= count {
