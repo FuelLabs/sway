@@ -61,7 +61,9 @@ pub fn semantic_tokens<'a>(tokens_sorted: &[&RefMulti<'a, TokenIdent, Token>]) -
 /// Sort tokens by their span so each token is sequential.
 ///
 /// If this step isn't done, then the bit offsets used for the lsp_types::SemanticToken are incorrect.
-fn sort_tokens<'a>(tokens: &'a [RefMulti<'a, TokenIdent, Token>]) -> Vec<&'a RefMulti<'a, TokenIdent, Token>> {
+fn sort_tokens<'a>(
+    tokens: &'a [RefMulti<'a, TokenIdent, Token>],
+) -> Vec<&'a RefMulti<'a, TokenIdent, Token>> {
     let mut refs: Vec<_> = tokens.iter().collect();
     // Sort the vector of references based on the spans of the tokens
     refs.sort_by(|a, b| {

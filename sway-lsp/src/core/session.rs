@@ -174,7 +174,10 @@ impl Session {
         let mut token_ranges: Vec<_> = self
             .token_map
             .tokens_for_file(url)
-            .all_references_of_token(&self.token_map.token_at_position(url, position)?.value(), &self.engines.read())
+            .all_references_of_token(
+                &self.token_map.token_at_position(url, position)?.value(),
+                &self.engines.read(),
+            )
             .map(|item| item.key().range)
             .collect();
 
@@ -215,12 +218,9 @@ impl Session {
         let t = self.token_map.token_at_position(uri, shifted_position)?;
         let ident_to_complete = t.key();
         let engines = self.engines.read();
-        let fn_tokens = self.token_map.tokens_at_position(
-            engines.se(),
-            uri,
-            shifted_position,
-            Some(true),
-        );
+        let fn_tokens =
+            self.token_map
+                .tokens_at_position(engines.se(), uri, shifted_position, Some(true));
         let fn_token = fn_tokens.first()?.value();
         let compiled_program = &*self.compiled_program.read();
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.typed.clone() {

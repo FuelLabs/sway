@@ -40,21 +40,19 @@ pub(crate) fn import_code_action(
     let mut include_statements = Vec::<TyIncludeStatement>::new();
     let mut program_type_keyword = None;
 
-    ctx.tokens
-        .tokens_for_file(ctx.temp_uri)
-        .for_each(|item| {
-            // TODO remove this clone
-            let token = item.value().clone();
-            if let Some(TypedAstToken::TypedUseStatement(use_stmt)) = token.typed {
-                use_statements.push(use_stmt);
-            } else if let Some(TypedAstToken::TypedIncludeStatement(include_stmt)) = token.typed {
-                include_statements.push(include_stmt);
-            } else if token.kind == SymbolKind::ProgramTypeKeyword {
-                if let AstToken::Keyword(ident) = token.parsed {
-                    program_type_keyword = Some(ident);
-                }
+    ctx.tokens.tokens_for_file(ctx.temp_uri).for_each(|item| {
+        // TODO remove this clone
+        let token = item.value().clone();
+        if let Some(TypedAstToken::TypedUseStatement(use_stmt)) = token.typed {
+            use_statements.push(use_stmt);
+        } else if let Some(TypedAstToken::TypedIncludeStatement(include_stmt)) = token.typed {
+            include_statements.push(include_stmt);
+        } else if token.kind == SymbolKind::ProgramTypeKeyword {
+            if let AstToken::Keyword(ident) = token.parsed {
+                program_type_keyword = Some(ident);
             }
-        });
+        }
+    });
 
     // Create a list of code actions, one for each potential call path.
     let actions = call_paths

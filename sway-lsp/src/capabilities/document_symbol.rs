@@ -2,11 +2,7 @@ use crate::core::token::{SymbolKind, Token, TokenIdent};
 use dashmap::mapref::multiple::RefMulti;
 use lsp_types::{self, Location, SymbolInformation, Url};
 
-
-pub fn to_symbol_information<'a, I>(
-    tokens: I,
-    url: Url,
-) -> Vec<SymbolInformation>
+pub fn to_symbol_information<'a, I>(tokens: I, url: Url) -> Vec<SymbolInformation>
 where
     I: Iterator<Item = RefMulti<'a, TokenIdent, Token>>,
 {

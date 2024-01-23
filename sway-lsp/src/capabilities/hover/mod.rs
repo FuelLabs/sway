@@ -53,21 +53,18 @@ pub fn hover_data(
 
     let contents = match &token.declared_token_ident(&session.engines.read()) {
         Some(decl_ident) => {
-            let t = session
-                .token_map()
-                .try_get(decl_ident)
-                .try_unwrap()?;
+            let t = session.token_map().try_get(decl_ident).try_unwrap()?;
             let decl_token = t.value();
-            hover_format(session.clone(), &session.engines.read(), decl_token, &decl_ident.name)
+            hover_format(
+                session.clone(),
+                &session.engines.read(),
+                decl_token,
+                &decl_ident.name,
+            )
         }
         // The `TypeInfo` of the token does not contain an `Ident`. In this case,
         // we use the `Ident` of the token itself, directly using references.
-        None => hover_format(
-            session.clone(),
-            &session.engines.read(),
-            token,
-            &ident.name,
-        ),
+        None => hover_format(session.clone(), &session.engines.read(), token, &ident.name),
     };
 
     Some(lsp_types::Hover {

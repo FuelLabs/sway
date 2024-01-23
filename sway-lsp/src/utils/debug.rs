@@ -28,9 +28,7 @@ where
     I: Iterator<Item = RefMulti<'s, TokenIdent, Token>>,
 {
     tokens
-        .map(|entry| {
-            warning_from_ident(entry.key())
-        })
+        .map(|entry| warning_from_ident(entry.key()))
         .collect()
 }
 

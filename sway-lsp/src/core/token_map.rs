@@ -1,6 +1,12 @@
 use crate::core::token::{self, Token, TokenIdent, TypedAstToken};
-use dashmap::{mapref::{
-    multiple::RefMulti,one::{RefMut, Ref}}, try_result::TryResult, DashMap};
+use dashmap::{
+    mapref::{
+        multiple::RefMulti,
+        one::{Ref, RefMut},
+    },
+    try_result::TryResult,
+    DashMap,
+};
 use lsp_types::{Position, Url};
 use std::{thread, time::Duration};
 use sway_core::{language::ty, type_system::TypeId, Engines};
@@ -113,9 +119,9 @@ impl<'a> TokenMap {
     /// Given a cursor [Position], return the [TokenIdent] of a token in the
     /// Iterator if one exists at that position.
     pub fn idents_at_position<'s, I>(
-        &'s self, 
-        cursor_position: Position, 
-        tokens: I
+        &'s self,
+        cursor_position: Position,
+        tokens: I,
     ) -> Vec<TokenIdent>
     where
         I: Iterator<Item = RefMulti<'s, TokenIdent, Token>>,
@@ -131,7 +137,7 @@ impl<'a> TokenMap {
             })
             .collect()
     }
-    
+
     /// Returns the first parent declaration found at the given cursor position.
     ///
     /// For example, if the cursor is inside a function body, this function returns the function declaration.
@@ -193,7 +199,7 @@ impl<'a> TokenMap {
                     }
                     _ => ident.clone(),
                 };
-    
+
                 if position >= token_ident.range.start && position <= token_ident.range.end {
                     if functions_only == Some(true) {
                         if let Some(TypedAstToken::TypedFunctionDeclaration(_)) = &token.typed {
@@ -271,7 +277,6 @@ impl std::ops::Deref for TokenMap {
 //     }
 // }
 
-
 pub struct TokenMapIter<'s> {
     inner_iter: dashmap::iter::Iter<'s, TokenIdent, Token>,
 }
@@ -287,4 +292,3 @@ impl<'s> Iterator for TokenMapIter<'s> {
         self.inner_iter.next()
     }
 }
-
