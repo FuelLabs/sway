@@ -1262,12 +1262,6 @@ impl<'eng> FnCompiler<'eng> {
         ast_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValueWrapper, CompileError> {
-        // Nothing to do if the current block already has a terminator
-        if self.current_block.is_terminated(context) {
-            let val = Constant::get_unit(context);
-            return Ok(terminator_value_wrap!(val, context));
-        }
-
         let ret_value = return_on_termination_or_extract!(
             self.compile_expression_to_value(context, md_mgr, ast_expr)?
         );
