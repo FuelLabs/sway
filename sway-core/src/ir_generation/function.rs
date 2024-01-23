@@ -1856,7 +1856,7 @@ impl<'eng> FnCompiler<'eng> {
             self.current_block = merge_block;
             merge_block.get_arg(context, merge_val_arg_idx).unwrap()
         } else {
-            merge_block.append(context).branch(cond_block, vec![])
+            merge_block.append(context).branch(true_block_begin, vec![])
         };
         Ok(ValueDivergence::new(val, context))
     }
