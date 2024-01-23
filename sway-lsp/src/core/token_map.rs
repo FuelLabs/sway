@@ -75,15 +75,6 @@ impl<'a> TokenMap {
         None // Return None if all retries are exhausted
     }
 
-    /// Create a custom iterator for the TokenMap.
-    ///
-    /// The iterator returns ([Ident], [Token]) pairs.
-    pub fn iter(&self) -> TokenMapIter {
-        TokenMapIter {
-            inner_iter: self.0.iter(),
-        }
-    }
-
     /// Return an Iterator of tokens belonging to the provided [Url].
     pub fn tokens_for_file<'s>(
         &'s self,
@@ -199,7 +190,6 @@ impl<'a> TokenMap {
                     }
                     _ => ident.clone(),
                 };
-
                 if position >= token_ident.range.start && position <= token_ident.range.end {
                     if functions_only == Some(true) {
                         if let Some(TypedAstToken::TypedFunctionDeclaration(_)) = &token.typed {
@@ -255,40 +245,5 @@ impl std::ops::Deref for TokenMap {
     type Target = DashMap<TokenIdent, Token>;
     fn deref(&self) -> &Self::Target {
         &self.0
-    }
-}
-
-// /// A custom iterator for [TokenMap] that yields [TokenIdent] and [Token] pairs.
-// pub struct TokenMapIter<'s> {
-//     inner_iter: dashmap::iter::Iter<'s, TokenIdent, Token>,
-// }
-
-// impl<'s> Iterator for TokenMapIter<'s> {
-//     type Item = (TokenIdent, Token);
-
-//     /// Returns the next TokenIdent in the [TokenMap].
-//     ///
-//     /// If there are no more items, returns `None`.
-//     fn next(&mut self) -> Option<Self::Item> {
-//         self.inner_iter.next().map(|item| {
-//             let (span, token) = item.pair();
-//             (span.clone(), token.clone())
-//         })
-//     }
-// }
-
-pub struct TokenMapIter<'s> {
-    inner_iter: dashmap::iter::Iter<'s, TokenIdent, Token>,
-}
-
-impl<'s> Iterator for TokenMapIter<'s> {
-    // Change the item type to return multiple references
-    type Item = RefMulti<'s, TokenIdent, Token>;
-
-    /// Returns the next TokenIdent in the [TokenMap].
-    ///
-    /// If there are no more items, returns `None`.
-    fn next(&mut self) -> Option<Self::Item> {
-        self.inner_iter.next()
     }
 }

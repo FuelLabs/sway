@@ -63,7 +63,7 @@ pub fn hover_data(
             )
         }
         // The `TypeInfo` of the token does not contain an `Ident`. In this case,
-        // we use the `Ident` of the token itself, directly using references.
+        // we use the `Ident` of the token itself.
         None => hover_format(session.clone(), &session.engines.read(), token, &ident.name),
     };
 

@@ -9,7 +9,7 @@ where
     tokens
         .map(|entry| {
             let (ident, token) = entry.pair();
-            symbol_info(ident, token, url.clone()) // Assuming symbol_info can take &TokenIdent and &Token
+            symbol_info(ident, token, url.clone())
         })
         .collect()
 }
