@@ -1,4 +1,4 @@
-category = "fail"
+category = "disabled" # Until struct field privacy warnings do not become hard errors.
 
 #check: $()Private struct field is inaccessible
 #check: $()let LibStruct { x_1, x_2, y_1 } = ls;

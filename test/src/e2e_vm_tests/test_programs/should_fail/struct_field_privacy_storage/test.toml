@@ -1,4 +1,4 @@
-category = "fail"
+category = "disabled" # Until struct field privacy warnings do not become hard errors.
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #check: $()ls: LibStruct = LibStruct { },

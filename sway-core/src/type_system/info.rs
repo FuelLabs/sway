@@ -6,8 +6,7 @@ use crate::{
     Ident, Namespace,
 };
 use sway_error::{
-    error::{CompileError, StructFieldUsageContext},
-    handler::{ErrorEmitted, Handler},
+    error::{CompileError, StructFieldUsageContext}, handler::{ErrorEmitted, Handler}, warning::{CompileWarning, Warning}
 };
 use sway_types::{integer_bits::IntegerBits, span::Span, SourceId, Spanned};
 
@@ -1270,13 +1269,24 @@ impl TypeInfo {
                 let field = match decl.find_field(first) {
                     Some(field) => {
                         if is_public_struct_access && field.is_private() {
-                            return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
-                                field_name: first.into(),
-                                struct_name: decl.call_path.suffix.clone(),
-                                field_decl_span: field.name.span(),
-                                struct_can_be_changed,
-                                usage_context: StructFieldUsageContext::StructFieldAccess,
-                            }));
+                            // TODO: Uncomment this code and delete the one with warnings once struct field privacy becomes a hard error.
+                            // return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
+                            //     field_name: first.into(),
+                            //     struct_name: decl.call_path.suffix.clone(),
+                            //     field_decl_span: field.name.span(),
+                            //     struct_can_be_changed,
+                            //     usage_context: StructFieldUsageContext::StructFieldAccess,
+                            // }));
+                            handler.emit_warn(CompileWarning {
+                                span: first.span(),
+                                warning_content: Warning::StructFieldIsPrivate {
+                                    field_name: first.into(),
+                                    struct_name: decl.call_path.suffix.clone(),
+                                    field_decl_span: field.name.span(),
+                                    struct_can_be_changed,
+                                    usage_context: StructFieldUsageContext::StructFieldAccess,
+                                }
+                            });
                         }
 
                         field.clone()
