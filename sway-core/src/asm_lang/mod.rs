@@ -384,6 +384,32 @@ impl Op {
                 let (r1, imm) = single_reg_imm_18(handler, args, immediate, whole_op_span)?;
                 VirtualOp::JNZI(r1, imm)
             }
+            "jmpb" => {
+                let (r1, imm) = single_reg_imm_18(handler, args, immediate, whole_op_span)?;
+                VirtualOp::JMPB(r1, imm)
+            }
+            "jmpf" => {
+                let (r1, imm) = single_reg_imm_18(handler, args, immediate, whole_op_span)?;
+                VirtualOp::JMPF(r1, imm)
+            }
+            "jnzb" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::JNZB(r1, r2, imm)
+            }
+            "jnzf" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::JNZF(r1, r2, imm)
+            }
+            "jneb" => {
+                let (r1, r2, r3, imm) =
+                    three_regs_imm_06(handler, args, immediate, whole_op_span)?;
+                VirtualOp::JNEB(r1, r2, r3, imm)
+            }
+            "jnef" => {
+                let (r1, r2, r3, imm) =
+                    three_regs_imm_06(handler, args, immediate, whole_op_span)?;
+                VirtualOp::JNEF(r1, r2, r3, imm)
+            }
             "ret" => {
                 let r1 = single_reg(handler, args, immediate, whole_op_span)?;
                 VirtualOp::RET(r1)
@@ -978,6 +1004,56 @@ fn two_regs_imm_12(
     };
 
     Ok((reg.clone(), reg2.clone(), imm))
+}
+fn three_regs_imm_06(
+    handler: &Handler,
+    args: &[VirtualRegister],
+    immediate: &Option<Ident>,
+    whole_op_span: Span,
+) -> Result<(VirtualRegister, VirtualRegister, VirtualRegister, VirtualImmediate06), ErrorEmitted> {
+    if args.len() > 3 {
+        handler.emit_err(CompileError::IncorrectNumberOfAsmRegisters {
+            span: whole_op_span.clone(),
+            expected: 3,
+            received: args.len(),
+        });
+    }
+    let (reg, reg2, reg3) = match (args.first(), args.get(1), args.get(2)) {
+        (Some(reg), Some(reg2), Some(reg3)) => (reg, reg2, reg3),
+        _ => {
+            return Err(
+                handler.emit_err(CompileError::IncorrectNumberOfAsmRegisters {
+                    span: whole_op_span,
+                    expected: 3,
+                    received: args.len(),
+                }),
+            );
+        }
+    };
+    let (imm, imm_span): (u64, _) = match immediate {
+        None => {
+            return Err(handler.emit_err(CompileError::MissingImmediate {
+                span: whole_op_span,
+            }));
+        }
+        Some(i) => match i.as_str()[1..].parse() {
+            Ok(o) => (o, i.span()),
+            Err(_) => {
+                return Err(
+                    handler.emit_err(CompileError::InvalidImmediateValue { span: i.span() })
+                );
+            }
+        },
+    };
+
+    let imm = match VirtualImmediate06::new(imm, imm_span) {
+        Ok(o) => o,
+        Err(e) => {
+            return Err(handler.emit_err(e));
+        }
+    };
+
+    Ok((reg.clone(), reg2.clone(), reg3.clone(), imm))
 }
 
 impl fmt::Display for Op {
