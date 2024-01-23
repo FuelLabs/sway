@@ -7,7 +7,7 @@ use sway_error::{
 use sway_types::{state::StateIndex, Ident, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::DeclEngine, engine_threading::*, language::{ty::*, Visibility}, transform, type_system::*, Namespace,
+    engine_threading::*, language::{ty::*, Visibility}, transform, type_system::*, Namespace,
 };
 
 #[derive(Clone, Debug)]
@@ -52,26 +52,39 @@ impl Spanned for TyStorageDecl {
 }
 
 impl TyStorageDecl {
-    /// Given a field, find its type information in the declaration and return it. If the field has not
-    /// been declared as a part of storage, return an error.
+    /// Given a path that consists of `fields`, where the first field is one of the storage fields,
+    /// find the type information of all the elements in the path and return it as a [TyStorageAccess].
+    /// 
+    /// The first element in the `fields` must be one of the storage fields.
+    /// The last element in the `fields` can, but must not be, a struct.
+    /// All the elements in between must be structs.
+    /// 
+    /// An error is returned if the above constraints are violated or if the access to the struct fields
+    /// fails. E.g, if the struct field does not exists or is an inaccessible private field.
     pub fn apply_storage_load(
         &self,
         handler: &Handler,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         namespace: &Namespace,
         fields: Vec<Ident>,
         storage_fields: &[TyStorageField],
         storage_keyword_span: Span,
     ) -> Result<(TyStorageAccess, TypeId), ErrorEmitted> {
-        let mut type_checked_buf = vec![];
-        let mut fields: Vec<_> = fields.into_iter().rev().collect();
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
 
-        let first_field = fields.pop().expect("guaranteed by grammar");
+        // The resulting storage access descriptors, built on the go as we move through the `fields`.
+        let mut access_descriptors = vec![];
+        // The field we've analyzed before the current field we are on, and its type id.
+        let mut previous_field: &Ident;
+        let mut previous_field_type_id: TypeId;
+
+        let (first_field, remaining_fields) = fields.split_first().expect("Having at least one element in the storage load is guaranteed by the grammar.");
+
         let (ix, initial_field_type) = match storage_fields
             .iter()
             .enumerate()
-            .find(|(_, TyStorageField { name, .. })| name == &first_field)
+            .find(|(_, sf)| &sf.name == first_field)
         {
             Some((ix, TyStorageField { type_argument, .. })) => {
                 (StateIndex::new(ix), type_argument.type_id)
@@ -84,88 +97,93 @@ impl TyStorageDecl {
             }
         };
 
-        type_checked_buf.push(TyStorageAccessDescriptor {
+        access_descriptors.push(TyStorageAccessDescriptor {
             name: first_field.clone(),
             type_id: initial_field_type,
             span: first_field.span(),
         });
 
-        let update_struct_decl_and_available_struct_fields = |id: TypeId| match &*type_engine.get(id) {
-            TypeInfo::Struct(decl_ref) => {
-                let struct_decl = decl_engine.get_struct(decl_ref);
-                let fields = struct_decl.fields.clone();
+        previous_field = first_field;
+        previous_field_type_id = initial_field_type;
 
-                (Some(struct_decl), fields)
+
+        let get_struct_decl = |type_id: TypeId| match &*type_engine.get(type_id) {
+            TypeInfo::Struct(decl_ref) => {
+                Some(decl_engine.get_struct(decl_ref))
             },
-            _ => (None, vec![]),
+            _ => None,
         };
 
-        // if the previously iterated type was a struct, put its fields here so we know that,
-        // in the case of a subfield, we can type check the that the subfield exists and its type.
-        let (mut struct_decl, mut available_struct_fields) = update_struct_decl_and_available_struct_fields(initial_field_type);
+        for field in remaining_fields {
+            match get_struct_decl(previous_field_type_id) {
+                Some(struct_decl) => {
+                    let (struct_can_be_changed, is_public_struct_access) = StructAccessInfo::get_info(&struct_decl, namespace).into();
 
-        // get the initial field's type
-        // make sure the next field exists in that type
-        for field in fields.into_iter().rev() {
-            let decl = struct_decl.expect("If a field is found that means we have the struct declaration.");
-            let (struct_can_be_changed, is_public_struct_access) = StructAccessInfo::get_info(&decl, namespace).into();
+                    match struct_decl.find_field(field)
+                    {
+                        Some(struct_field) => {
+                            if is_public_struct_access && struct_field.is_private() {
+                                return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
+                                    field_name: field.into(),
+                                    struct_name: struct_decl.call_path.suffix.clone(),
+                                    field_decl_span: struct_field.name.span(),
+                                    struct_can_be_changed,
+                                    usage_context: StructFieldUsageContext::StorageAccess,
+                                }));
+                            }
 
-            match available_struct_fields
-                .iter()
-                .find(|x| x.name.as_str() == field.as_str())
-            {
-                Some(struct_field) => {
-                    if is_public_struct_access && struct_field.is_private() {
-                        return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
-                            field_name: (&field).into(),
-                            struct_name: decl.call_path.suffix.clone(),
-                            field_decl_span: struct_field.name.span(),
-                            struct_can_be_changed,
-                            usage_context: StructFieldUsageContext::StorageAccess,
-                        }));
+                            // Everything is fine. Push the storage access descriptor and move to the next field.
+
+                            let current_field_type_id = struct_field.type_argument.type_id;
+
+                            access_descriptors.push(TyStorageAccessDescriptor {
+                                name: field.clone(),
+                                type_id: current_field_type_id,
+                                span: field.span(),
+                            });
+
+                            previous_field = field;
+                            previous_field_type_id = current_field_type_id;
+                        }
+                        None => {
+                            // Since storage cannot be passed to other modules, the access
+                            // is always in the module of the storage declaration.
+                            // If the struct cannot be instantiated in this module at all,
+                            // we will just show the error, without any additional help lines
+                            // showing available fields or anything.
+                            // Note that if the struct is empty it can always be instantiated.
+                            let struct_can_be_instantiated = !is_public_struct_access || !struct_decl.has_private_fields();
+
+                            let available_fields = if struct_can_be_instantiated {
+                                struct_decl.accessible_fields_names(is_public_struct_access)
+                            } else {
+                                vec![]
+                            };
+
+                            return Err(handler.emit_err(CompileError::StructFieldDoesNotExist {
+                                field_name: field.into(),
+                                available_fields,
+                                is_public_struct_access,
+                                struct_name: struct_decl.call_path.suffix.clone(),
+                                struct_decl_span: struct_decl.span(),
+                                struct_is_empty: struct_decl.is_empty(),
+                                usage_context: StructFieldUsageContext::StorageAccess,
+                            }));
+                        }
                     }
-
-                    type_checked_buf.push(TyStorageAccessDescriptor {
-                        name: field.clone(),
-                        type_id: struct_field.type_argument.type_id,
-                        span: field.span().clone(),
-                    });
-                    (struct_decl, available_struct_fields) =
-                        update_struct_decl_and_available_struct_fields(struct_field.type_argument.type_id);
-                }
-                None => {
-                    // Since storage cannot be passed to other modules, the access
-                    // is always in the module of the storage declaration.
-                    // If the struct cannot be instantiated in this module at all,
-                    // we will just show the error, without any additional help lines
-                    // showing available fields or anything.
-                    // Note that if the struct is empty it can always be instantiated.
-                    let struct_can_be_instantiated = !is_public_struct_access || !decl.has_private_fields();
-
-                    let available_fields = if struct_can_be_instantiated {
-                        decl.accessible_fields_names(is_public_struct_access)
-                    } else {
-                        vec![]
-                    };
-
-                    return Err(handler.emit_err(CompileError::StructFieldDoesNotExist {
-                        field_name: field.into(),
-                        available_fields,
-                        is_public_struct_access,
-                        struct_name: decl.call_path.suffix.clone(),
-                        struct_decl_span: decl.span(),
-                        struct_is_empty: decl.is_empty(),
-                        usage_context: StructFieldUsageContext::StorageAccess,
-                    }));
-                }
-            }
+                },
+                None => return Err(handler.emit_err(CompileError::FieldAccessOnNonStruct {
+                    span: previous_field.span(),
+                    actually: engines.help_out(previous_field_type_id).to_string(),
+                })),
+            };
         }
 
-        let return_type = type_checked_buf[type_checked_buf.len() - 1].type_id;
+        let return_type = access_descriptors[access_descriptors.len() - 1].type_id;
 
         Ok((
             TyStorageAccess {
-                fields: type_checked_buf,
+                fields: access_descriptors,
                 ix,
                 storage_keyword_span,
             },

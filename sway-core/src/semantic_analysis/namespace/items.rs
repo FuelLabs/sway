@@ -67,15 +67,12 @@ impl Items {
         storage_fields: &[ty::TyStorageField],
         storage_keyword_span: Span,
     ) -> Result<(ty::TyStorageAccess, TypeId), ErrorEmitted> {
-        let type_engine = engines.te();
-        let decl_engine = engines.de();
         match self.declared_storage {
             Some(ref decl_ref) => {
-                let storage = decl_engine.get_storage(&decl_ref.id().clone());
+                let storage = engines.de().get_storage(&decl_ref.id().clone());
                 storage.apply_storage_load(
                     handler,
-                    type_engine,
-                    decl_engine,
+                    engines,
                     namespace,
                     fields,
                     storage_fields,

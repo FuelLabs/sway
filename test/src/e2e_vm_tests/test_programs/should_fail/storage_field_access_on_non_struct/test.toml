@@ -1,0 +1,36 @@
+category = "fail"
+
+#check: $()error
+#check: $()let _ = storage.not_in_storage.read();
+#check: $()Storage field not_in_storage does not exist
+
+#check: $()error
+#check: $()let _ = storage.b.prev_not_a_struct.read();
+#check: $()This is a bool, not a struct. Fields can only be accessed on structs.
+
+#check: $()error
+#check: $()let _ = storage.s_01.x.prev_not_a_struct.read();
+#check: $()This is a u8, not a struct. Fields can only be accessed on structs.
+
+#check: $()Struct field does not exist
+#check: $()let _ = storage.s_01.non_existing_field.read();
+#check: $()Field "non_existing_field" does not exist in the struct "Struct01".
+#check: $()Available fields are "x" and "second".
+
+#check: $()error
+#check: $()let _ = storage.s_01.second.x.prev_not_a_struct.read();
+#check: $()This is a u32, not a struct. Fields can only be accessed on structs.
+
+#check: $()Struct field does not exist
+#check: $()let _ = storage.s_01.second.non_existing_field.read();
+#check: $()Field "non_existing_field" does not exist in the struct "Struct02".
+#check: $()Available fields are "x" and "third".
+
+#check: $()error
+#check: $()let _ = storage.s_01.second.third.x.prev_not_a_struct.read();
+#check: $()This is a u64, not a struct. Fields can only be accessed on structs.
+
+#check: $()Struct field does not exist
+#check: $()let _ = storage.s_01.second.third.non_existing_field.read();
+#check: $()Field "non_existing_field" does not exist in the struct "Struct03".
+#check: $()Only available field is "x".
