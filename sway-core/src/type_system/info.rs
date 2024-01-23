@@ -1,12 +1,17 @@
 use crate::{
     decl_engine::{DeclEngine, DeclRefEnum, DeclRefStruct},
     engine_threading::*,
-    language::{ty::{self, StructAccessInfo}, CallPath, QualifiedCallPath},
+    language::{
+        ty::{self, StructAccessInfo},
+        CallPath, QualifiedCallPath,
+    },
     type_system::priv_prelude::*,
     Ident, Namespace,
 };
 use sway_error::{
-    error::{CompileError, StructFieldUsageContext}, handler::{ErrorEmitted, Handler}, warning::{CompileWarning, Warning}
+    error::{CompileError, StructFieldUsageContext},
+    handler::{ErrorEmitted, Handler},
+    warning::{CompileWarning, Warning},
 };
 use sway_types::{integer_bits::IntegerBits, span::Span, SourceId, Spanned};
 
@@ -1264,7 +1269,8 @@ impl TypeInfo {
             }
             (TypeInfo::Struct(decl_ref), Some((first, rest))) => {
                 let decl = decl_engine.get_struct(decl_ref);
-                let (struct_can_be_changed, is_public_struct_access) = StructAccessInfo::get_info(&decl, namespace).into();
+                let (struct_can_be_changed, is_public_struct_access) =
+                    StructAccessInfo::get_info(&decl, namespace).into();
 
                 let field = match decl.find_field(first) {
                     Some(field) => {
@@ -1285,12 +1291,12 @@ impl TypeInfo {
                                     field_decl_span: field.name.span(),
                                     struct_can_be_changed,
                                     usage_context: StructFieldUsageContext::StructFieldAccess,
-                                }
+                                },
                             });
                         }
 
                         field.clone()
-                    },
+                    }
                     None => {
                         return Err(handler.emit_err(CompileError::StructFieldDoesNotExist {
                             field_name: first.into(),

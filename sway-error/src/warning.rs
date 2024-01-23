@@ -302,7 +302,7 @@ impl fmt::Display for Warning {
             MatchStructPatternMustIgnorePrivateFields { private_fields, .. } => write!(f,
                 "Struct pattern must ignore inaccessible private field{} {}.",
                 plural_s(private_fields.len()),
-                sequence_to_str(&private_fields, Enclosing::DoubleQuote, 2)
+                sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
             ),
             StructFieldIsPrivate { field_name, struct_name, .. } => write!(f,
                 "Field \"{field_name}\" of the struct \"{struct_name}\" is private."
@@ -315,7 +315,8 @@ impl fmt::Display for Warning {
 }
 
 #[allow(dead_code)]
-const FUTURE_HARD_ERROR_HELP: &str = "*** In the upcoming versions of Sway this warning will become a hard error. ***";
+const FUTURE_HARD_ERROR_HELP: &str =
+    "*** In the upcoming versions of Sway this warning will become a hard error. ***";
 
 impl ToDiagnostic for CompileWarning {
     fn to_diagnostic(&self, source_engine: &sway_types::SourceEngine) -> Diagnostic {
@@ -406,7 +407,7 @@ impl ToDiagnostic for CompileWarning {
                     span.clone(),
                     format!("Struct pattern must ignore inaccessible private field{} {}.",
                         plural_s(private_fields.len()),
-                        sequence_to_str(&private_fields, Enclosing::DoubleQuote, 2)
+                        sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
                     )
                 ),
                 hints: vec![
@@ -431,7 +432,7 @@ impl ToDiagnostic for CompileWarning {
                             } else {
                                 format!("private field{} {}",
                                     plural_s(private_fields.len()),
-                                    sequence_to_str(&private_fields, Enclosing::DoubleQuote, 2)
+                                    sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
                                 )
                             }
                         )
@@ -559,7 +560,7 @@ impl ToDiagnostic for CompileWarning {
                         format!("Inaccessible field{} {} {}.",
                             plural_s(private_fields.len()),
                             is_are(private_fields.len()),
-                            sequence_to_str(&private_fields, Enclosing::DoubleQuote, 5)
+                            sequence_to_str(private_fields, Enclosing::DoubleQuote, 5)
                         )
                     ),
                     Hint::warning(
@@ -576,7 +577,7 @@ impl ToDiagnostic for CompileWarning {
                             } else {
                                 format!("private field{} {}",
                                     plural_s(private_fields.len()),
-                                    sequence_to_str(&private_fields, Enclosing::DoubleQuote, 2)
+                                    sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
                                 )
                             }
                         )
@@ -587,8 +588,8 @@ impl ToDiagnostic for CompileWarning {
 
                     if *is_in_storage_declaration {
                         help.push(format!("If you need to store instances of \"{struct_name}\" in the contract storage, use the `std::storage::storage_api`:"));
-                        help.push(format!("  use std::storage::storage_api::{{read, write}};"));
-                        help.push(format!("  ..."));
+                        help.push("  use std::storage::storage_api::{{read, write}};".to_string());
+                        help.push("  ...".to_string());
                         help.push(format!("  write(STORAGE_KEY, 0, my_{});", to_snake_case(struct_name.as_str())));
                         help.push(format!("  let my_{}_option = read::<{struct_name}>(STORAGE_KEY, 0);", to_snake_case(struct_name.as_str())));
                     }
@@ -605,7 +606,7 @@ impl ToDiagnostic for CompileWarning {
                         for constructor in to_display {
                             help.push(format!("  - {}", constructor.clone()));
                         }
-                        if remaining.len() > 0 {
+                        if !remaining.is_empty() {
                             help.push(format!("  - and {} more", number_to_str(remaining.len())));
                         }
                     }
@@ -633,7 +634,7 @@ impl ToDiagnostic for CompileWarning {
                                 } else {
                                     format!("{} {}",
                                         singular_plural(private_fields.len(), "the field", "the fields"),
-                                        sequence_to_str(&private_fields, Enclosing::DoubleQuote, 2)
+                                        sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
                                     )
                                 },
                                 if *is_in_storage_declaration {
@@ -660,7 +661,7 @@ impl ToDiagnostic for CompileWarning {
 
                     help
                 }
-            },            
+            },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we

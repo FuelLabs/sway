@@ -73,7 +73,9 @@ impl Diagnostic {
     const HELP_NONE: &'static str = "__$$_^^__HELP__NONE__^^_$$__";
 
     pub fn help(&self) -> impl Iterator<Item = &String> + '_ {
-        self.help.iter().filter(|help| help.as_str() != Self::HELP_NONE)
+        self.help
+            .iter()
+            .filter(|help| help.as_str() != Self::HELP_NONE)
     }
 
     /// A help text that will never be displayed. Convenient when defining help lines
@@ -331,7 +333,7 @@ impl Hint {
     /// are displayed only if a condition is met.
     pub fn none() -> Self {
         Self {
-            label: Label::default()
+            label: Label::default(),
         }
     }
 }

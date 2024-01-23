@@ -2,7 +2,7 @@ use crate::{
     decl_engine::*,
     engine_threading::Engines,
     language::{
-        ty::{self, TyDecl, TyStorageDecl, StructAccessInfo},
+        ty::{self, StructAccessInfo, TyDecl, TyStorageDecl},
         CallPath,
     },
     namespace::*,
@@ -13,7 +13,9 @@ use crate::{
 use super::TraitMap;
 
 use sway_error::{
-    error::{CompileError, StructFieldUsageContext}, handler::{ErrorEmitted, Handler}, warning::{CompileWarning, Warning}
+    error::{CompileError, StructFieldUsageContext},
+    handler::{ErrorEmitted, Handler},
+    warning::{CompileWarning, Warning},
 };
 use sway_types::{span::Span, Spanned};
 
@@ -366,7 +368,8 @@ impl Items {
                     ty::ProjectionKind::StructField { name: field_name },
                 ) => {
                     let struct_decl = decl_engine.get_struct(&decl_ref);
-                    let (struct_can_be_changed, is_public_struct_access) = StructAccessInfo::get_info(&struct_decl, namespace).into();
+                    let (struct_can_be_changed, is_public_struct_access) =
+                        StructAccessInfo::get_info(&struct_decl, namespace).into();
 
                     let field_type_id = match struct_decl.find_field(field_name) {
                         Some(struct_field) => {
@@ -387,15 +390,16 @@ impl Items {
                                         field_decl_span: struct_field.name.span(),
                                         struct_can_be_changed,
                                         usage_context: StructFieldUsageContext::StructFieldAccess,
-                                    }
+                                    },
                                 });
                             }
                             struct_field.type_argument.type_id
-                        },
+                        }
                         None => {
                             return Err(handler.emit_err(CompileError::StructFieldDoesNotExist {
                                 field_name: field_name.into(),
-                                available_fields: struct_decl.accessible_fields_names(is_public_struct_access),
+                                available_fields: struct_decl
+                                    .accessible_fields_names(is_public_struct_access),
                                 is_public_struct_access,
                                 struct_name: struct_decl.call_path.suffix.clone(),
                                 struct_decl_span: struct_decl.span(),

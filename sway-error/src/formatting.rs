@@ -1,14 +1,20 @@
 //! This module contains various helper functions for easier formatting and creation of user-friendly
 //! diagnostic messages.
 
-use std::{fmt::{Display, self}, cmp};
+use std::{
+    cmp,
+    fmt::{self, Display},
+};
 
 use sway_types::{SourceEngine, SourceId};
 
 /// Returns the file name (with extension) for the provided `source_id`,
 /// or `None` if the `source_id` is `None` or the file name cannot be
 /// obtained.
-pub(crate) fn get_file_name(source_engine: &SourceEngine, source_id: Option<&SourceId>) -> Option<String> {
+pub(crate) fn get_file_name(
+    source_engine: &SourceEngine,
+    source_id: Option<&SourceId>,
+) -> Option<String> {
     match source_id {
         Some(source_id) => source_engine.get_file_name(source_id),
         None => None,
@@ -66,10 +72,17 @@ impl Display for Enclosing {
 ///
 /// Panics if the `sequence` is empty, or `max_items` is zero.
 pub(crate) fn sequence_to_str<T>(sequence: &[T], enclosing: Enclosing, max_items: usize) -> String
-    where T: Display
+where
+    T: Display,
 {
-    assert!(!sequence.is_empty(), "Sequence to display must not be empty.");
-    assert!(max_items > 0, "Maximum number of items to display must be greater than zero.");
+    assert!(
+        !sequence.is_empty(),
+        "Sequence to display must not be empty."
+    );
+    assert!(
+        max_items > 0,
+        "Maximum number of items to display must be greater than zero."
+    );
 
     let max_items = cmp::min(max_items, sequence.len());
 
@@ -77,19 +90,35 @@ pub(crate) fn sequence_to_str<T>(sequence: &[T], enclosing: Enclosing, max_items
 
     let fmt_item = |item: &T| format!("{enclosing}{item}{enclosing}");
 
-    if remaining.len() > 0 {
-        format!("{}, and {} more",
-            to_display.iter().map(|item| fmt_item(item)).collect::<Vec<_>>().join(", "),
+    if !remaining.is_empty() {
+        format!(
+            "{}, and {} more",
+            to_display
+                .iter()
+                .map(fmt_item)
+                .collect::<Vec<_>>()
+                .join(", "),
             number_to_str(remaining.len())
         )
     } else {
         match to_display {
             [] => unreachable!("There must be at least one item in the sequence."),
             [item] => fmt_item(item),
-            [first_item, second_item] => format!("{} and {}", fmt_item(first_item), fmt_item(second_item)),
-            _ => format!("{}, and {}",
-                    to_display.split_last().unwrap().1.iter().map(|item| fmt_item(item)).collect::<Vec::<_>>().join(", "),
-                    fmt_item(&to_display.last().unwrap()))
+            [first_item, second_item] => {
+                format!("{} and {}", fmt_item(first_item), fmt_item(second_item))
+            }
+            _ => format!(
+                "{}, and {}",
+                to_display
+                    .split_last()
+                    .unwrap()
+                    .1
+                    .iter()
+                    .map(fmt_item)
+                    .collect::<Vec::<_>>()
+                    .join(", "),
+                fmt_item(to_display.last().unwrap())
+            ),
         }
     }
 }
@@ -97,15 +126,27 @@ pub(crate) fn sequence_to_str<T>(sequence: &[T], enclosing: Enclosing, max_items
 /// Returns "s" if `count` is different than 1, otherwise empty string.
 /// Convenient for building simple plural of words.
 pub(crate) fn plural_s(count: usize) -> &'static str {
-    if count == 1 { "" } else { "s" }
+    if count == 1 {
+        ""
+    } else {
+        "s"
+    }
 }
 
 /// Returns "is" if `count` is 1, otherwise "are".
 pub(crate) fn is_are(count: usize) -> &'static str {
-    if count == 1 { "is" } else { "are" }
+    if count == 1 {
+        "is"
+    } else {
+        "are"
+    }
 }
 
 /// Returns `singular` if `count` is 1, otherwise `plural`.
 pub(crate) fn singular_plural<'a>(count: usize, singular: &'a str, plural: &'a str) -> &'a str {
-    if count == 1 { singular } else { plural }
+    if count == 1 {
+        singular
+    } else {
+        plural
+    }
 }

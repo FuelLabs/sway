@@ -928,7 +928,14 @@ impl ty::TyExpression {
             .with_help_text("")
             .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
         let parent = ty::TyExpression::type_check(handler, ctx.by_ref(), prefix)?;
-        let exp = instantiate_struct_field_access(handler, engines, ctx.namespace, parent, field_to_access, span)?;
+        let exp = instantiate_struct_field_access(
+            handler,
+            engines,
+            ctx.namespace,
+            parent,
+            field_to_access,
+            span,
+        )?;
         Ok(exp)
     }
 

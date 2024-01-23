@@ -1,15 +1,15 @@
 use crate::convert_parse_tree_error::ConvertParseTreeError;
 use crate::diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic};
+use crate::formatting::*;
 use crate::lex_error::LexError;
 use crate::parser_error::ParseError;
 use crate::type_error::TypeError;
-use crate::formatting::*;
 
 use core::fmt;
 use std::cmp;
 use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
 use sway_types::style::to_snake_case;
-use sway_types::{BaseIdent, Ident, SourceEngine, Span, Spanned, IdentUnique};
+use sway_types::{BaseIdent, Ident, IdentUnique, SourceEngine, Span, Spanned};
 use thiserror::Error;
 
 use self::StructFieldUsageContext::*;
@@ -36,7 +36,7 @@ impl fmt::Display for InterfaceName {
 //       although they point to the same Ident (in terms of name), the span can be different.
 //       Deduplication works on hashes and Ident's hash contains only the name and not the span.
 //       That's why we should consider always using IdentUnique whenever we extract the span from
-//       the provided Ident. 
+//       the provided Ident.
 //       Using IdentUnique will also clearly communicate that we are extracting the span from the
 //       provided identifier.
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
@@ -586,7 +586,7 @@ pub enum CompileError {
     },
     #[error("Struct pattern must ignore inaccessible private field{} {}.",
         plural_s(private_fields.len()),
-        sequence_to_str(&private_fields, Enclosing::DoubleQuote, 2))]
+        sequence_to_str(private_fields, Enclosing::DoubleQuote, 2))]
     MatchStructPatternMustIgnorePrivateFields {
         private_fields: Vec<Ident>,
         /// Original, non-aliased struct name.
@@ -1220,7 +1220,7 @@ impl ToDiagnostic for CompileError {
                     format!("Struct pattern is missing the {}field{} {}.",
                         if *missing_fields_are_public { "public " } else { "" },
                         plural_s(missing_fields.len()),
-                        sequence_to_str(&missing_fields, Enclosing::DoubleQuote, 2)
+                        sequence_to_str(missing_fields, Enclosing::DoubleQuote, 2)
                     )
                 ),
                 hints: vec![
@@ -1259,7 +1259,7 @@ impl ToDiagnostic for CompileError {
                     span.clone(),
                     format!("Struct pattern must ignore inaccessible private field{} {}.",
                         plural_s(private_fields.len()),
-                        sequence_to_str(&private_fields, Enclosing::DoubleQuote, 2)
+                        sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
                     )
                 ),
                 hints: vec![
@@ -1279,7 +1279,7 @@ impl ToDiagnostic for CompileError {
                             } else {
                                 format!("private field{} {}",
                                     plural_s(private_fields.len()),
-                                    sequence_to_str(&private_fields, Enclosing::DoubleQuote, 2)
+                                    sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
                                 )
                             }
                         )
@@ -1407,7 +1407,7 @@ impl ToDiagnostic for CompileError {
                     span.clone(),
                     format!("Instantiation of the struct \"{struct_name}\" is missing the field{} {}.",
                             plural_s(field_names.len()),
-                            sequence_to_str(&field_names, Enclosing::DoubleQuote, 2)
+                            sequence_to_str(field_names, Enclosing::DoubleQuote, 2)
                         )
                 ),
                 hints: vec![
@@ -1473,7 +1473,7 @@ impl ToDiagnostic for CompileError {
                         format!("Inaccessible field{} {} {}.",
                             plural_s(private_fields.len()),
                             is_are(private_fields.len()),
-                            sequence_to_str(&private_fields, Enclosing::DoubleQuote, 5)
+                            sequence_to_str(private_fields, Enclosing::DoubleQuote, 5)
                         )
                     ),
                     Hint::info(
@@ -1485,7 +1485,7 @@ impl ToDiagnostic for CompileError {
                             } else {
                                 format!("private field{} {}",
                                     plural_s(private_fields.len()),
-                                    sequence_to_str(&private_fields, Enclosing::DoubleQuote, 2)
+                                    sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
                                 )
                             }
                         )
@@ -1496,8 +1496,8 @@ impl ToDiagnostic for CompileError {
 
                     if *is_in_storage_declaration {
                         help.push(format!("If you need to store instances of \"{struct_name}\" in the contract storage, use the `std::storage::storage_api`:"));
-                        help.push(format!("  use std::storage::storage_api::{{read, write}};"));
-                        help.push(format!("  ..."));
+                        help.push("  use std::storage::storage_api::{{read, write}};".to_string());
+                        help.push("  ...".to_string());
                         help.push(format!("  write(STORAGE_KEY, 0, my_{});", to_snake_case(struct_name.as_str())));
                         help.push(format!("  let my_{}_option = read::<{struct_name}>(STORAGE_KEY, 0);", to_snake_case(struct_name.as_str())));
                     }
@@ -1514,7 +1514,7 @@ impl ToDiagnostic for CompileError {
                         for constructor in to_display {
                             help.push(format!("  - {}", constructor.clone()));
                         }
-                        if remaining.len() > 0 {
+                        if !remaining.is_empty() {
                             help.push(format!("  - and {} more", number_to_str(remaining.len())));
                         }
                     }
@@ -1542,7 +1542,7 @@ impl ToDiagnostic for CompileError {
                                 } else {
                                     format!("{} {}",
                                         singular_plural(private_fields.len(), "the field", "the fields"),
-                                        sequence_to_str(&private_fields, Enclosing::DoubleQuote, 2)
+                                        sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
                                     )
                                 },
                                 if *is_in_storage_declaration {
@@ -1569,7 +1569,7 @@ impl ToDiagnostic for CompileError {
 
                     help
                 }
-            },            
+            },
             StructFieldIsPrivate { field_name, struct_name, field_decl_span, struct_can_be_changed, usage_context } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Private struct field is inaccessible".to_string())),
                 issue: Issue::error(
@@ -1656,11 +1656,14 @@ impl ToDiagnostic for CompileError {
                     // we don't show any additional hints.
                     // Showing any available fields would be inconsistent and misleading, because they anyhow cannot be used.
                     // Besides, "Struct cannot be instantiated" error will provide all the explanations and suggestions.
-                    else if matches!(usage_context, StorageAccess) && *is_public_struct_access && available_fields.is_empty() {
+                    else if (matches!(usage_context, StorageAccess) && *is_public_struct_access && available_fields.is_empty())
+                            ||
+                            (matches!(usage_context, StructInstantiation { struct_can_be_instantiated: false } | StorageDeclaration { struct_can_be_instantiated: false })) {
                         // If the struct anyhow cannot be instantiated in the storage, don't show any additional hint
                         // if there is an attempt to access a non existing field of such non-instantiable struct.
-                        (None, false)
-                    } else if matches!(usage_context, StructInstantiation { struct_can_be_instantiated: false } | StorageDeclaration { struct_can_be_instantiated: false }) {
+                        //   or
+                        // Likewise, if we are in the struct instantiation or storage declaration and the struct
+                        // cannot be instantiated.
                         (None, false)
                     } else if !available_fields.is_empty() {
                         // In all other cases, show the available fields.

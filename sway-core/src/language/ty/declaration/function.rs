@@ -411,11 +411,16 @@ impl TyFunctionDecl {
     }
 
     /// Whether or not this function is a constructor for the type given by `type_id`.
-    /// 
+    ///
     /// Returns `Some(true)` if the function is surely the constructor and `Some(false)` if
     /// it is surely not a constructor, and `None` if it cannot decide.
     pub fn is_constructor(&self, engines: &Engines, type_id: TypeId) -> Option<bool> {
-        if self.parameters.first().map(|param| param.is_self()).unwrap_or_default() {
+        if self
+            .parameters
+            .first()
+            .map(|param| param.is_self())
+            .unwrap_or_default()
+        {
             return Some(false);
         };
 
@@ -430,13 +435,14 @@ impl TyFunctionDecl {
                 //       That would be too much effort at the moment for the immediate practical need of
                 //       error reporting where we suggest obvious most common constructors
                 //       that will be found using this simple check.
-                if unify_check.check(type_id, implementing_for) &&
-                    unify_check.check(type_id, self.return_type.type_id) {
-                        Some(true)
+                if unify_check.check(type_id, implementing_for)
+                    && unify_check.check(type_id, self.return_type.type_id)
+                {
+                    Some(true)
                 } else {
                     None
                 }
-            },
+            }
             _ => Some(false),
         }
     }

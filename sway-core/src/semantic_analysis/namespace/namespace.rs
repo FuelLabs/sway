@@ -148,7 +148,7 @@ impl Namespace {
 
     /// Returns true if the current module being checked is a direct or indirect submodule of
     /// the module given by the `absolute_module_path`.
-    /// 
+    ///
     /// The current module being checked is determined by `mod_path`.
     ///
     /// E.g., the `mod_path` `[fist, second, third]` of the root `foo` is a submodule of the module
@@ -157,7 +157,11 @@ impl Namespace {
     ///
     /// If the current module being checked is the same as the module given by the `absolute_module_path`,
     /// the `true_if_same` is returned.
-    pub(crate) fn module_is_submodule_of(&self, absolute_module_path: &Path, true_if_same: bool) -> bool {
+    pub(crate) fn module_is_submodule_of(
+        &self,
+        absolute_module_path: &Path,
+        true_if_same: bool,
+    ) -> bool {
         // `mod_path` does not contain the root name, so we have to separately check
         // that the root name is equal to the module package name.
         let root_name = match &self.root.name {
@@ -175,7 +179,10 @@ impl Namespace {
             return false;
         }
 
-        let is_submodule = modules.iter().zip(self.mod_path.iter()).all(|(left, right)| left == right);
+        let is_submodule = modules
+            .iter()
+            .zip(self.mod_path.iter())
+            .all(|(left, right)| left == right);
 
         if is_submodule {
             if self.mod_path.len() == modules.len() {
@@ -196,7 +203,7 @@ impl Namespace {
             None => panic!("Root module must always have a name."),
         };
 
-        assert!(absolute_module_path.len() > 0, "Absolute module path must have at least one element, because it always contains the package name.");
+        assert!(!absolute_module_path.is_empty(), "Absolute module path must have at least one element, because it always contains the package name.");
 
         root_name != &absolute_module_path[0]
     }

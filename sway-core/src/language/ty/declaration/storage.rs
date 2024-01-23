@@ -1,12 +1,18 @@
 use std::hash::{Hash, Hasher};
 
 use sway_error::{
-    error::{CompileError, StructFieldUsageContext}, handler::{ErrorEmitted, Handler}, warning::{CompileWarning, Warning}
+    error::{CompileError, StructFieldUsageContext},
+    handler::{ErrorEmitted, Handler},
+    warning::{CompileWarning, Warning},
 };
 use sway_types::{state::StateIndex, Ident, Named, Span, Spanned};
 
 use crate::{
-    engine_threading::*, language::{ty::*, Visibility}, transform, type_system::*, Namespace,
+    engine_threading::*,
+    language::{ty::*, Visibility},
+    transform,
+    type_system::*,
+    Namespace,
 };
 
 #[derive(Clone, Debug)]
@@ -53,11 +59,11 @@ impl Spanned for TyStorageDecl {
 impl TyStorageDecl {
     /// Given a path that consists of `fields`, where the first field is one of the storage fields,
     /// find the type information of all the elements in the path and return it as a [TyStorageAccess].
-    /// 
+    ///
     /// The first element in the `fields` must be one of the storage fields.
     /// The last element in the `fields` can, but must not be, a struct.
     /// All the elements in between must be structs.
-    /// 
+    ///
     /// An error is returned if the above constraints are violated or if the access to the struct fields
     /// fails. E.g, if the struct field does not exists or is an inaccessible private field.
     pub fn apply_storage_load(
@@ -78,7 +84,9 @@ impl TyStorageDecl {
         let mut previous_field: &Ident;
         let mut previous_field_type_id: TypeId;
 
-        let (first_field, remaining_fields) = fields.split_first().expect("Having at least one element in the storage load is guaranteed by the grammar.");
+        let (first_field, remaining_fields) = fields.split_first().expect(
+            "Having at least one element in the storage load is guaranteed by the grammar.",
+        );
 
         let (ix, initial_field_type) = match storage_fields
             .iter()
@@ -105,21 +113,18 @@ impl TyStorageDecl {
         previous_field = first_field;
         previous_field_type_id = initial_field_type;
 
-
         let get_struct_decl = |type_id: TypeId| match &*type_engine.get(type_id) {
-            TypeInfo::Struct(decl_ref) => {
-                Some(decl_engine.get_struct(decl_ref))
-            },
+            TypeInfo::Struct(decl_ref) => Some(decl_engine.get_struct(decl_ref)),
             _ => None,
         };
 
         for field in remaining_fields {
             match get_struct_decl(previous_field_type_id) {
                 Some(struct_decl) => {
-                    let (struct_can_be_changed, is_public_struct_access) = StructAccessInfo::get_info(&struct_decl, namespace).into();
+                    let (struct_can_be_changed, is_public_struct_access) =
+                        StructAccessInfo::get_info(&struct_decl, namespace).into();
 
-                    match struct_decl.find_field(field)
-                    {
+                    match struct_decl.find_field(field) {
                         Some(struct_field) => {
                             if is_public_struct_access && struct_field.is_private() {
                                 // TODO: Uncomment this code and delete the one with warnings once struct field privacy becomes a hard error.
@@ -138,7 +143,7 @@ impl TyStorageDecl {
                                         field_decl_span: struct_field.name.span(),
                                         struct_can_be_changed,
                                         usage_context: StructFieldUsageContext::StorageAccess,
-                                    }
+                                    },
                                 });
                             }
 
@@ -162,7 +167,8 @@ impl TyStorageDecl {
                             // we will just show the error, without any additional help lines
                             // showing available fields or anything.
                             // Note that if the struct is empty it can always be instantiated.
-                            let struct_can_be_instantiated = !is_public_struct_access || !struct_decl.has_private_fields();
+                            let struct_can_be_instantiated =
+                                !is_public_struct_access || !struct_decl.has_private_fields();
 
                             let available_fields = if struct_can_be_instantiated {
                                 struct_decl.accessible_fields_names(is_public_struct_access)
@@ -181,11 +187,13 @@ impl TyStorageDecl {
                             }));
                         }
                     }
-                },
-                None => return Err(handler.emit_err(CompileError::FieldAccessOnNonStruct {
-                    span: previous_field.span(),
-                    actually: engines.help_out(previous_field_type_id).to_string(),
-                })),
+                }
+                None => {
+                    return Err(handler.emit_err(CompileError::FieldAccessOnNonStruct {
+                        span: previous_field.span(),
+                        actually: engines.help_out(previous_field_type_id).to_string(),
+                    }))
+                }
             };
         }
 

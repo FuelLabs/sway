@@ -1165,7 +1165,9 @@ mod tests {
         let mut context = Context::new(engines.se(), sway_ir::ExperimentalFlags::default());
         let mut md_mgr = MetadataManager::default();
         let mut core_lib = namespace::Module::default();
-        core_lib.name = Some(sway_types::Ident::new_no_span("assert_is_constant_test".to_string()));
+        core_lib.name = Some(sway_types::Ident::new_no_span(
+            "assert_is_constant_test".to_string(),
+        ));
 
         let r = crate::compile_to_ast(
             &handler,

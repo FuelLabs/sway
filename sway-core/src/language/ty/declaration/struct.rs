@@ -7,10 +7,12 @@ use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
+    error::module_can_be_changed,
     language::{CallPath, Visibility},
     semantic_analysis::type_check_context::MonomorphizeHelper,
     transform,
-    type_system::*, Namespace, error::module_can_be_changed,
+    type_system::*,
+    Namespace,
 };
 
 #[derive(Clone, Debug)]
@@ -101,9 +103,7 @@ impl TyStructDecl {
     /// Returns [TyStructField] with the given `field_name`, or `None` if the field with the
     /// name `field_name` does not exist.
     pub(crate) fn find_field(&self, field_name: &Ident) -> Option<&TyStructField> {
-        self.fields
-            .iter()
-            .find(|field| field.name == *field_name)
+        self.fields.iter().find(|field| field.name == *field_name)
     }
 
     /// For the given `field_name` returns the zero-based index and the type of the field
@@ -149,14 +149,19 @@ pub struct StructAccessInfo {
 
 impl StructAccessInfo {
     pub fn get_info(struct_decl: &TyStructDecl, namespace: &Namespace) -> Self {
-        assert!(struct_decl.call_path.is_absolute, "The call path of the struct declaration must always be absolute.");
+        assert!(
+            struct_decl.call_path.is_absolute,
+            "The call path of the struct declaration must always be absolute."
+        );
 
-        let struct_can_be_changed = module_can_be_changed(namespace, &struct_decl.call_path.prefixes);
-        let is_public_struct_access = !namespace.module_is_submodule_of(&struct_decl.call_path.prefixes, true);
+        let struct_can_be_changed =
+            module_can_be_changed(namespace, &struct_decl.call_path.prefixes);
+        let is_public_struct_access =
+            !namespace.module_is_submodule_of(&struct_decl.call_path.prefixes, true);
 
         Self {
             struct_can_be_changed,
-            is_public_struct_access
+            is_public_struct_access,
         }
     }
 }
@@ -164,7 +169,10 @@ impl StructAccessInfo {
 impl From<StructAccessInfo> for (bool, bool) {
     /// Deconstructs `struct_access_info` into (`struct_can_be_changed`, `is_public_struct_access`)
     fn from(struct_access_info: StructAccessInfo) -> (bool, bool) {
-        let StructAccessInfo { struct_can_be_changed, is_public_struct_access } = struct_access_info;
+        let StructAccessInfo {
+            struct_can_be_changed,
+            is_public_struct_access,
+        } = struct_access_info;
         (struct_can_be_changed, is_public_struct_access)
     }
 }
@@ -190,17 +198,23 @@ impl TyStructField {
     /// Returns [TyStructField]s from the `fields` that are accessible in the given context.
     /// If `is_public_struct_access` is true, only public fields are returned, otherwise
     /// all fields.
-    pub(crate) fn accessible_fields(fields: &[TyStructField], is_public_struct_access: bool) -> impl Iterator<Item = &TyStructField> {
+    pub(crate) fn accessible_fields(
+        fields: &[TyStructField],
+        is_public_struct_access: bool,
+    ) -> impl Iterator<Item = &TyStructField> {
         fields
             .iter()
-            .filter(move |field| !is_public_struct_access || (is_public_struct_access && field.is_public()))
+            .filter(move |field| !is_public_struct_access || field.is_public())
     }
 
     /// Returns names of the [TyStructField]s from the `fields` that are accessible in the given context.
     /// If `is_public_struct_access` is true, only the names of the public fields are returned, otherwise
     /// the names of all fields.
     /// Suitable for error reporting.
-    pub(crate) fn accessible_fields_names(fields: &[TyStructField], is_public_struct_access: bool) -> Vec<Ident> {
+    pub(crate) fn accessible_fields_names(
+        fields: &[TyStructField],
+        is_public_struct_access: bool,
+    ) -> Vec<Ident> {
         Self::accessible_fields(fields, is_public_struct_access)
             .map(|field| field.name.clone())
             .collect()

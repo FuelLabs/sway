@@ -1,16 +1,23 @@
 use itertools::Itertools;
 use sway_error::{
-    error::{CompileError, StructFieldUsageContext}, handler::{ErrorEmitted, Handler}, warning::{CompileWarning, Warning}
+    error::{CompileError, StructFieldUsageContext},
+    handler::{ErrorEmitted, Handler},
+    warning::{CompileWarning, Warning},
 };
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     decl_engine::DeclRefStruct,
-    language::{parsed::*, ty::{self, TyStructField, StructAccessInfo}, CallPath, Visibility},
+    language::{
+        parsed::*,
+        ty::{self, StructAccessInfo, TyStructField},
+        CallPath, Visibility,
+    },
     semantic_analysis::{
         type_check_context::EnforceTypeArguments, GenericShadowingMode, TypeCheckContext,
     },
-    type_system::*, Namespace,
+    type_system::*,
+    Namespace,
 };
 
 const UNIFY_STRUCT_FIELD_HELP_TEXT: &str =
@@ -93,7 +100,8 @@ pub(crate) fn struct_instantiation(
     let struct_ref = type_info.expect_struct(handler, engines, &span)?;
     let struct_decl = (*decl_engine.get_struct(&struct_ref)).clone();
 
-    let (struct_can_be_changed, is_public_struct_access) = StructAccessInfo::get_info(&struct_decl, ctx.namespace).into();
+    let (struct_can_be_changed, is_public_struct_access) =
+        StructAccessInfo::get_info(&struct_decl, ctx.namespace).into();
     let struct_has_private_fields = struct_decl.has_private_fields();
     let struct_can_be_instantiated = !is_public_struct_access || !struct_has_private_fields;
     let all_fields_are_private = struct_decl.has_only_private_fields();
@@ -106,7 +114,7 @@ pub(crate) fn struct_instantiation(
     // To avoid conflicting and overlapping errors, we follow the Rust approach:
     // - Missing fields are reported only if the struct can actually be instantiated.
     // - Individual fields issues are always reported: private field access, non-existing fields.
-    
+
     let typed_fields = type_check_field_arguments(
         handler,
         ctx.by_ref(),
@@ -116,7 +124,7 @@ pub(crate) fn struct_instantiation(
         &span,
         &struct_decl.span,
         // Emit the missing fields error only if the struct can actually be instantiated.
-        struct_can_be_instantiated
+        struct_can_be_instantiated,
     )?;
 
     if !struct_can_be_instantiated {
@@ -143,12 +151,16 @@ pub(crate) fn struct_instantiation(
                 struct_name: struct_name.clone(),
                 span: inner_span.clone(),
                 struct_decl_span: struct_decl.span.clone(),
-                private_fields: struct_fields.iter().filter(|field| field.is_private()).map(|field| field.name.clone()).collect(),
+                private_fields: struct_fields
+                    .iter()
+                    .filter(|field| field.is_private())
+                    .map(|field| field.name.clone())
+                    .collect(),
                 constructors,
                 all_fields_are_private,
                 is_in_storage_declaration: ctx.storage_declaration(),
                 struct_can_be_changed,
-            }
+            },
         });
     }
 
@@ -171,16 +183,23 @@ pub(crate) fn struct_instantiation(
         if !struct_fields.iter().any(|x| x.name == field.name) {
             handler.emit_err(CompileError::StructFieldDoesNotExist {
                 field_name: (&field.name).into(), // Explicit borrow to force the `From<&BaseIdent>` instead of `From<BaseIdent>`.
-                available_fields: TyStructField::accessible_fields_names(&struct_fields, is_public_struct_access),
+                available_fields: TyStructField::accessible_fields_names(
+                    &struct_fields,
+                    is_public_struct_access,
+                ),
                 is_public_struct_access,
                 struct_name: struct_name.clone(),
                 struct_decl_span: struct_decl.span.clone(),
                 struct_is_empty,
                 usage_context: if ctx.storage_declaration() {
-                    StructFieldUsageContext::StorageDeclaration { struct_can_be_instantiated }
+                    StructFieldUsageContext::StorageDeclaration {
+                        struct_can_be_instantiated,
+                    }
                 } else {
-                    StructFieldUsageContext::StructInstantiation { struct_can_be_instantiated }
-                }
+                    StructFieldUsageContext::StructInstantiation {
+                        struct_can_be_instantiated,
+                    }
+                },
             });
         }
     }
@@ -211,11 +230,15 @@ pub(crate) fn struct_instantiation(
                             field_decl_span: ty_field.name.span(),
                             struct_can_be_changed,
                             usage_context: if ctx.storage_declaration() {
-                                StructFieldUsageContext::StorageDeclaration { struct_can_be_instantiated }
+                                StructFieldUsageContext::StorageDeclaration {
+                                    struct_can_be_instantiated,
+                                }
                             } else {
-                                StructFieldUsageContext::StructInstantiation { struct_can_be_instantiated }
-                            }
-                        }
+                                StructFieldUsageContext::StructInstantiation {
+                                    struct_can_be_instantiated,
+                                }
+                            },
+                        },
                     });
                 }
             }
@@ -248,7 +271,11 @@ pub(crate) fn struct_instantiation(
 
     return Ok(exp);
 
-    fn collect_struct_constructors(namespace: &Namespace, engines: &crate::Engines, struct_type_id: TypeId) -> Vec<String> {
+    fn collect_struct_constructors(
+        namespace: &Namespace,
+        engines: &crate::Engines,
+        struct_type_id: TypeId,
+    ) -> Vec<String> {
         // Searching only for public constructors is a bit too restrictive because we can also have them in local private impls.
         // Checking that would be a questionable additional effort considering that this search gives good suggestions for
         // common patterns in which constructors can be found.
@@ -261,8 +288,19 @@ pub(crate) fn struct_instantiation(
                 _ => None,
             })
             .map(|fn_decl_id| engines.de().get_function(fn_decl_id))
-            .filter(|fn_decl| matches!(fn_decl.visibility, Visibility::Public) && fn_decl.is_constructor(engines, struct_type_id).unwrap_or_default())
-            .map(|fn_decl| format!("{}", engines.help_out((*fn_decl).clone())).rsplit_once(" -> ").unwrap().0.to_string())
+            .filter(|fn_decl| {
+                matches!(fn_decl.visibility, Visibility::Public)
+                    && fn_decl
+                        .is_constructor(engines, struct_type_id)
+                        .unwrap_or_default()
+            })
+            .map(|fn_decl| {
+                format!("{}", engines.help_out((*fn_decl).clone()))
+                    .rsplit_once(" -> ")
+                    .unwrap()
+                    .0
+                    .to_string()
+            })
             .sorted()
             .dedup()
             .collect_vec()
@@ -270,6 +308,7 @@ pub(crate) fn struct_instantiation(
 }
 
 /// Type checks the field arguments.
+#[allow(clippy::too_many_arguments)]
 fn type_check_field_arguments(
     handler: &Handler,
     mut ctx: TypeCheckContext,
@@ -278,7 +317,7 @@ fn type_check_field_arguments(
     struct_fields: &mut [ty::TyStructField],
     span: &Span,
     struct_decl_span: &Span,
-    emit_missing_fields_error: bool
+    emit_missing_fields_error: bool,
 ) -> Result<Vec<ty::TyStructExpressionField>, ErrorEmitted> {
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
@@ -307,11 +346,13 @@ fn type_check_field_arguments(
             None => {
                 missing_fields.push(struct_field.name.clone());
 
-                let err = Handler::default().emit_err(CompileError::StructInstantiationMissingFieldForErrorRecovery {
-                    field_name: struct_field.name.clone(),
-                    struct_name: struct_name.clone(),
-                    span: span.clone(),
-                });
+                let err = Handler::default().emit_err(
+                    CompileError::StructInstantiationMissingFieldForErrorRecovery {
+                        field_name: struct_field.name.clone(),
+                        struct_name: struct_name.clone(),
+                        span: span.clone(),
+                    },
+                );
 
                 typed_fields.push(ty::TyStructExpressionField {
                     name: struct_field.name.clone(),

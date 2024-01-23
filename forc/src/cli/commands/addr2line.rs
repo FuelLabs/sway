@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use clap::Parser;
-use forc_util::{ForcResult, create_diagnostics_renderer};
+use forc_util::{create_diagnostics_renderer, ForcResult};
 use std::collections::VecDeque;
 use std::fs::{self, File};
 use std::io::{self, prelude::*, BufReader};

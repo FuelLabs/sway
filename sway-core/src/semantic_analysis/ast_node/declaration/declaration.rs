@@ -321,7 +321,8 @@ impl TyDecl {
                         None,
                     )?;
 
-                    let mut ctx = ctx.by_ref()
+                    let mut ctx = ctx
+                        .by_ref()
                         .with_type_annotation(type_argument.type_id)
                         .with_storage_declaration();
                     let initializer =

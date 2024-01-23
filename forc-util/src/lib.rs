@@ -1,6 +1,9 @@
 //! Utility items shared between forc crates.
 
-use annotate_snippets::{Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation, renderer::{AnsiColor, Style} };
+use annotate_snippets::{
+    renderer::{AnsiColor, Style},
+    Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation,
+};
 use ansi_term::Colour;
 use anyhow::{bail, Context, Result};
 use forc_tracing::{println_red_err, println_yellow_err};
@@ -432,16 +435,24 @@ pub fn print_on_failure(
 }
 
 /// Creates [Renderer] for printing warnings and errors.
-/// 
+///
 /// To ensure the same styling of printed warnings and errors across all the tools,
-/// always use this function to create [Renderer]s, 
+/// always use this function to create [Renderer]s,
 pub fn create_diagnostics_renderer() -> Renderer {
     // For the diagnostic messages we use bold and bright colors.
     // Note that for the summaries of warnings and errors we use
     // their regular equivalents which are defined in `forc-tracing` package.
     Renderer::styled()
-        .warning(Style::new().bold().fg_color(Some(AnsiColor::BrightYellow.into())))
-        .error(Style::new().bold().fg_color(Some(AnsiColor::BrightRed.into())))
+        .warning(
+            Style::new()
+                .bold()
+                .fg_color(Some(AnsiColor::BrightYellow.into())),
+        )
+        .error(
+            Style::new()
+                .bold()
+                .fg_color(Some(AnsiColor::BrightRed.into())),
+        )
 }
 
 fn format_diagnostic(diagnostic: &Diagnostic) {

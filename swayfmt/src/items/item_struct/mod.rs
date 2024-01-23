@@ -18,7 +18,8 @@ use sway_types::{ast::Delimiter, Spanned};
 mod tests;
 
 impl Format for ItemStruct {
-    fn format( // TODO-IG: Add support for `pub` keyword.
+    fn format(
+        // TODO-IG: Add support for `pub` keyword.
         &self,
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
