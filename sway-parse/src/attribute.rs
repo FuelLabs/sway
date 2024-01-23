@@ -4,11 +4,13 @@ use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed
 use sway_ast::attribute::{Annotated, Attribute, AttributeArg, AttributeDecl, AttributeHashKind};
 use sway_ast::brackets::{Parens, SquareBrackets};
 use sway_ast::keywords::{EqToken, HashBangToken, HashToken, StorageToken, Token};
+use sway_ast::literal::LitBool;
 use sway_ast::punctuated::Punctuated;
 use sway_ast::token::{DocComment, DocStyle};
+use sway_ast::Literal;
 use sway_error::parser_error::ParseErrorKind;
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
-use sway_types::Ident;
+use sway_types::{Ident, Spanned};
 
 impl Peek for DocComment {
     fn peek(peeker: Peeker<'_>) -> Option<DocComment> {
@@ -125,11 +127,26 @@ impl Parse for AttributeArg {
         let name = parser.parse()?;
         match parser.take::<EqToken>() {
             Some(_) => {
-                let value = parser.parse()?;
-                Ok(AttributeArg {
-                    name,
-                    value: Some(value),
-                })
+              let value = match parser.take::<Ident>() {
+                Some(ident) if ident.as_str() == "true" => {
+                  Literal::Bool(LitBool {
+                      span: ident.span(),
+                      kind: sway_ast::literal::LitBoolType::True,
+                  })
+                }
+                Some(ident) if ident.as_str() == "false" => {
+                  Literal::Bool(LitBool {
+                      span: ident.span(),
+                      kind: sway_ast::literal::LitBoolType::False,
+                  })
+                }
+                _ => parser.parse()?,
+              };
+              
+              Ok(AttributeArg {
+                  name,
+                  value: Some(value),
+              })
             }
             None => Ok(AttributeArg { name, value: None }),
         }
