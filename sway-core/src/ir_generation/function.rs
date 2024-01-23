@@ -57,41 +57,47 @@ use std::collections::HashMap;
 /// forced, into a value if that is desired. All the temporary values are manipulated with simple
 /// loads and stores, rather than anything more complicated like `mem_copy`s.
 
-// Wrapper around Value to quickly distinguish between diverging and non-diverging values.
-enum ValueDivergence {
-    Diverging(Value),
-    NotDiverging(Value),
+// Wrapper around Value to enforce distinction between terminating and non-terminating values.
+enum TerminatorValueWrapper {
+    Terminator(Value),
+    NotTerminator(Value),
 }
 
-impl ValueDivergence {
+impl TerminatorValueWrapper {
     pub fn new(value: Value, context: &Context) -> Self {
-        if value.is_diverging(context) {
-            Self::Diverging(value)
+        if value.is_terminator(context) {
+            Self::Terminator(value)
         } else {
-            Self::NotDiverging(value)
+            Self::NotTerminator(value)
         }
     }
 
-    pub fn is_diverging(&self) -> bool {
-        matches!(self, Self::Diverging(_))
+    pub fn is_terminator(&self) -> bool {
+        matches!(self, Self::Terminator(_))
     }
 
     pub fn value(&self) -> Value {
         match self {
-            Self::Diverging(value) | Self::NotDiverging(value) => *value,
+            Self::Terminator(value) | Self::NotTerminator(value) => *value,
         }
     }
 }
 
-// If the provided ValueDivergence is Diverging, then return from the current function immediately.
+// If the provided TerminatorValueWrapper is Terminator, then return from the current function immediately.
 // Otherwise extract the embedded Value.
-macro_rules! return_on_divergence_or_extract {
+macro_rules! return_on_termination_or_extract {
     ($value:expr) => {{
         let val = $value;
-        if val.is_diverging() {
+        if val.is_terminator() {
             return Ok(val);
         };
         val.value()
+    }};
+}
+
+macro_rules! terminator_value_wrap {
+    ($value:expr, $context:expr) => {{
+        TerminatorValueWrapper::new($value, $context)
     }};
 }
 
@@ -165,7 +171,7 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_block: &ty::TyCodeBlock,
-    ) -> Result<ValueDivergence, Vec<CompileError>> {
+    ) -> Result<TerminatorValueWrapper, Vec<CompileError>> {
         self.compile_with_new_scope(|fn_compiler| {
             let mut errors = vec![];
 
@@ -173,7 +179,7 @@ impl<'eng> FnCompiler<'eng> {
             let v = loop {
                 let ast_node = match ast_nodes.next() {
                     Some(ast_node) => ast_node,
-                    None => break ValueDivergence::new(Constant::get_unit(context), context),
+                    None => break terminator_value_wrap!(Constant::get_unit(context), context),
                 };
                 match fn_compiler.compile_ast_node(context, md_mgr, ast_node) {
                     // 'Some' indicates an implicit return or a diverging expression, so break.
@@ -198,7 +204,7 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_node: &ty::TyAstNode,
-    ) -> Result<Option<ValueDivergence>, CompileError> {
+    ) -> Result<Option<TerminatorValueWrapper>, CompileError> {
         let unexpected_decl = |decl_type: &'static str| {
             Err(CompileError::UnexpectedDeclaration {
                 decl_type,
@@ -253,8 +259,8 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyAstNodeContent::Expression(te) => {
                 // An expression with an ignored return value... I assume.
                 let value = self.compile_expression_to_value(context, md_mgr, te)?;
-                // Diverging values should terminate the compilation of the block
-                if value.is_diverging() {
+                // Terminating values should end the compilation of the block
+                if value.is_terminator() {
                     Ok(Some(value))
                 } else {
                     Ok(None)
@@ -277,7 +283,7 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         // Compile expression which *may* be a pointer.  We can't return a pointer value here
         // though, so add a `load` to it.
         self.compile_expression(context, md_mgr, ast_expr)
@@ -288,7 +294,7 @@ impl<'eng> FnCompiler<'eng> {
                     .map_or(false, |ty| ty.is_ptr(context))
                 {
                     let load_val = self.current_block.append(context).load(val.value());
-                    ValueDivergence::new(load_val, context)
+                    terminator_value_wrap!(load_val, context)
                 } else {
                     val
                 }
@@ -300,14 +306,14 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         // Compile expression which *may* be a pointer.  We can't return a value so create a
         // temporary here, store the value and return its pointer.
         let val =
-            return_on_divergence_or_extract!(self.compile_expression(context, md_mgr, ast_expr)?);
+            return_on_termination_or_extract!(self.compile_expression(context, md_mgr, ast_expr)?);
         let ty = match val.get_type(context) {
             Some(ty) if !ty.is_ptr(context) => ty,
-            _ => return Ok(ValueDivergence::new(val, context)),
+            _ => return Ok(terminator_value_wrap!(val, context)),
         };
 
         // Create a temporary.
@@ -319,7 +325,7 @@ impl<'eng> FnCompiler<'eng> {
         let tmp_val = self.current_block.append(context).get_local(tmp_var);
         self.current_block.append(context).store(tmp_val, val);
 
-        Ok(ValueDivergence::new(tmp_val, context))
+        Ok(terminator_value_wrap!(tmp_val, context))
     }
 
     fn compile_string_slice(
@@ -328,7 +334,7 @@ impl<'eng> FnCompiler<'eng> {
         span_md_idx: Option<MetadataIndex>,
         string_data: Value,
         string_len: u64,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         let int_ty = Type::get_uint64(context);
 
         // build field values of the slice
@@ -402,7 +408,7 @@ impl<'eng> FnCompiler<'eng> {
             .mem_copy_bytes(slice_val, struct_val, 16);
 
         // return the slice
-        Ok(ValueDivergence::new(slice_val, context))
+        Ok(terminator_value_wrap!(slice_val, context))
     }
 
     fn compile_expression(
@@ -410,7 +416,7 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
         match &ast_expr.expression {
             ty::TyExpressionVariant::Literal(Literal::String(s)) => {
@@ -431,11 +437,11 @@ impl<'eng> FnCompiler<'eng> {
                 };
                 let val = convert_literal_to_value(context, &implied_lit)
                     .add_metadatum(context, span_md_idx);
-                Ok(ValueDivergence::new(val, context))
+                Ok(terminator_value_wrap!(val, context))
             }
             ty::TyExpressionVariant::Literal(l) => {
                 let val = convert_literal_to_value(context, l).add_metadatum(context, span_md_idx);
-                Ok(ValueDivergence::new(val, context))
+                Ok(terminator_value_wrap!(val, context))
             }
             ty::TyExpressionVariant::FunctionApplication {
                 call_path: name,
@@ -570,7 +576,7 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::AbiCast { span, .. } => {
                 let span_md_idx = md_mgr.span_to_md(context, span);
                 let val = Constant::get_unit(context).add_metadatum(context, span_md_idx);
-                Ok(ValueDivergence::new(val, context))
+                Ok(terminator_value_wrap!(val, context))
             }
             ty::TyExpressionVariant::StorageAccess(access) => {
                 let span_md_idx = md_mgr.span_to_md(context, &access.span());
@@ -581,7 +587,7 @@ impl<'eng> FnCompiler<'eng> {
             }
             ty::TyExpressionVariant::AbiName(_) => {
                 let val = Value::new_constant(context, Constant::new_unit(context));
-                Ok(ValueDivergence::new(val, context))
+                Ok(terminator_value_wrap!(val, context))
             }
             ty::TyExpressionVariant::UnsafeDowncast {
                 exp,
@@ -604,7 +610,7 @@ impl<'eng> FnCompiler<'eng> {
                             .current_block
                             .append(context)
                             .branch(block_to_break_to, vec![]);
-                        Ok(ValueDivergence::new(val, context))
+                        Ok(terminator_value_wrap!(val, context))
                     }
                     None => Err(CompileError::BreakOutsideLoop {
                         span: ast_expr.span.clone(),
@@ -620,7 +626,7 @@ impl<'eng> FnCompiler<'eng> {
                         .current_block
                         .append(context)
                         .branch(block_to_continue_to, vec![]);
-                    Ok(ValueDivergence::new(val, context))
+                    Ok(terminator_value_wrap!(val, context))
                 }
                 None => Err(CompileError::ContinueOutsideLoop {
                     span: ast_expr.span.clone(),
@@ -652,7 +658,7 @@ impl<'eng> FnCompiler<'eng> {
             span: _,
         }: &ty::TyIntrinsicFunctionKind,
         span: Span,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         fn store_key_in_local_mem(
             compiler: &mut FnCompiler,
             context: &mut Context,
@@ -703,7 +709,7 @@ impl<'eng> FnCompiler<'eng> {
                 )?;
                 self.compile_expression_to_value(context, md_mgr, exp)?;
                 let val = Constant::get_uint(context, 64, ir_type.size(context).in_bytes());
-                Ok(ValueDivergence::new(val, context))
+                Ok(terminator_value_wrap!(val, context))
             }
             Intrinsic::SizeOfType => {
                 let targ = type_arguments[0].clone();
@@ -715,7 +721,7 @@ impl<'eng> FnCompiler<'eng> {
                     &targ.span,
                 )?;
                 let val = Constant::get_uint(context, 64, ir_type.size(context).in_bytes());
-                Ok(ValueDivergence::new(val, context))
+                Ok(terminator_value_wrap!(val, context))
             }
             Intrinsic::SizeOfStr => {
                 let targ = type_arguments[0].clone();
@@ -731,13 +737,13 @@ impl<'eng> FnCompiler<'eng> {
                     64,
                     ir_type.get_string_len(context).unwrap_or_default(),
                 );
-                Ok(ValueDivergence::new(val, context))
+                Ok(terminator_value_wrap!(val, context))
             }
             Intrinsic::IsReferenceType => {
                 let targ = type_arguments[0].clone();
                 let is_val = !engines.te().get_unaliased(targ.type_id).is_copy_type();
                 let val = Constant::get_bool(context, is_val);
-                Ok(ValueDivergence::new(val, context))
+                Ok(terminator_value_wrap!(val, context))
             }
             Intrinsic::IsStrArray => {
                 let targ = type_arguments[0].clone();
@@ -746,7 +752,7 @@ impl<'eng> FnCompiler<'eng> {
                     TypeInfo::StringArray(_) | TypeInfo::StringSlice
                 );
                 let val = Constant::get_bool(context, is_val);
-                Ok(ValueDivergence::new(val, context))
+                Ok(terminator_value_wrap!(val, context))
             }
             Intrinsic::AssertIsStrArray => {
                 let targ = type_arguments[0].clone();
@@ -760,7 +766,7 @@ impl<'eng> FnCompiler<'eng> {
                 match ir_type.get_content(context) {
                     TypeContent::StringSlice | TypeContent::StringArray(_) => {
                         let val = Constant::get_unit(context);
-                        Ok(ValueDivergence::new(val, context))
+                        Ok(terminator_value_wrap!(val, context))
                     }
                     _ => Err(CompileError::NonStrGenericType {
                         span: targ.span.clone(),
@@ -770,17 +776,17 @@ impl<'eng> FnCompiler<'eng> {
             Intrinsic::ToStrArray => match arguments[0].expression.extract_literal_value() {
                 Some(Literal::String(span)) => {
                     let val = Constant::get_string(context, span.as_str().as_bytes().to_vec());
-                    Ok(ValueDivergence::new(val, context))
+                    Ok(terminator_value_wrap!(val, context))
                 }
                 _ => unreachable!(),
             },
             Intrinsic::Eq | Intrinsic::Gt | Intrinsic::Lt => {
                 let lhs = &arguments[0];
                 let rhs = &arguments[1];
-                let lhs_value = return_on_divergence_or_extract!(
+                let lhs_value = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, lhs)?
                 );
-                let rhs_value = return_on_divergence_or_extract!(
+                let rhs_value = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, rhs)?
                 );
                 let pred = match kind {
@@ -793,11 +799,11 @@ impl<'eng> FnCompiler<'eng> {
                     .current_block
                     .append(context)
                     .cmp(pred, lhs_value, rhs_value);
-                Ok(ValueDivergence::new(val, context))
+                Ok(terminator_value_wrap!(val, context))
             }
             Intrinsic::Gtf => {
                 // The index is just a Value
-                let index = return_on_divergence_or_extract!(self.compile_expression_to_value(
+                let index = return_on_termination_or_extract!(self.compile_expression_to_value(
                     context,
                     md_mgr,
                     &arguments[0]
@@ -857,7 +863,7 @@ impl<'eng> FnCompiler<'eng> {
                         .append(context)
                         .bitcast(gtf_reg, target_ir_type)
                         .add_metadatum(context, span_md_idx);
-                    Ok(ValueDivergence::new(val, context))
+                    Ok(terminator_value_wrap!(val, context))
                 } else {
                     let ptr_ty = Type::new_ptr(context, target_ir_type);
                     let val = self
@@ -865,12 +871,12 @@ impl<'eng> FnCompiler<'eng> {
                         .append(context)
                         .int_to_ptr(gtf_reg, ptr_ty)
                         .add_metadatum(context, span_md_idx);
-                    Ok(ValueDivergence::new(val, context))
+                    Ok(terminator_value_wrap!(val, context))
                 }
             }
             Intrinsic::AddrOf => {
                 let exp = &arguments[0];
-                let value = return_on_divergence_or_extract!(
+                let value = return_on_termination_or_extract!(
                     self.compile_expression(context, md_mgr, exp)?
                 );
                 let int_ty = Type::new_uint(context, 64);
@@ -880,15 +886,15 @@ impl<'eng> FnCompiler<'eng> {
                     .append(context)
                     .ptr_to_int(value, int_ty)
                     .add_metadatum(context, span_md_idx);
-                Ok(ValueDivergence::new(val, context))
+                Ok(terminator_value_wrap!(val, context))
             }
             Intrinsic::StateClear => {
                 let key_exp = arguments[0].clone();
                 let number_of_slots_exp = arguments[1].clone();
-                let key_value = return_on_divergence_or_extract!(
+                let key_value = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, &key_exp)?
                 );
-                let number_of_slots_value = return_on_divergence_or_extract!(
+                let number_of_slots_value = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, &number_of_slots_exp)?
                 );
                 let span_md_idx = md_mgr.span_to_md(context, &span);
@@ -898,11 +904,11 @@ impl<'eng> FnCompiler<'eng> {
                     .append(context)
                     .state_clear(key_var, number_of_slots_value)
                     .add_metadatum(context, span_md_idx);
-                Ok(ValueDivergence::new(val, context))
+                Ok(terminator_value_wrap!(val, context))
             }
             Intrinsic::StateLoadWord => {
                 let exp = &arguments[0];
-                let value = return_on_divergence_or_extract!(
+                let value = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, exp)?
                 );
                 let span_md_idx = md_mgr.span_to_md(context, &span);
@@ -912,7 +918,7 @@ impl<'eng> FnCompiler<'eng> {
                     .append(context)
                     .state_load_word(key_var)
                     .add_metadatum(context, span_md_idx);
-                Ok(ValueDivergence::new(val, context))
+                Ok(terminator_value_wrap!(val, context))
             }
             Intrinsic::StateStoreWord => {
                 let key_exp = &arguments[0];
@@ -927,10 +933,10 @@ impl<'eng> FnCompiler<'eng> {
                         hint: "This argument must be a copy type".to_string(),
                     });
                 }
-                let key_value = return_on_divergence_or_extract!(
+                let key_value = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, key_exp)?
                 );
-                let val_value = return_on_divergence_or_extract!(
+                let val_value = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, val_exp)?
                 );
                 let span_md_idx = md_mgr.span_to_md(context, &span);
@@ -940,7 +946,7 @@ impl<'eng> FnCompiler<'eng> {
                     .append(context)
                     .state_store_word(val_value, key_var)
                     .add_metadatum(context, span_md_idx);
-                Ok(ValueDivergence::new(val, context))
+                Ok(terminator_value_wrap!(val, context))
             }
             Intrinsic::StateLoadQuad | Intrinsic::StateStoreQuad => {
                 let key_exp = arguments[0].clone();
@@ -956,13 +962,13 @@ impl<'eng> FnCompiler<'eng> {
                         hint: "This argument must be raw_ptr".to_string(),
                     });
                 }
-                let key_value = return_on_divergence_or_extract!(
+                let key_value = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, &key_exp)?
                 );
-                let val_value = return_on_divergence_or_extract!(
+                let val_value = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, &val_exp)?
                 );
-                let number_of_slots_value = return_on_divergence_or_extract!(
+                let number_of_slots_value = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, &number_of_slots_exp)?
                 );
                 let span_md_idx = md_mgr.span_to_md(context, &span);
@@ -982,7 +988,7 @@ impl<'eng> FnCompiler<'eng> {
                             .append(context)
                             .state_load_quad_word(val_ptr, key_var, number_of_slots_value)
                             .add_metadatum(context, span_md_idx);
-                        Ok(ValueDivergence::new(val, context))
+                        Ok(terminator_value_wrap!(val, context))
                     }
                     Intrinsic::StateStoreQuad => {
                         let val = self
@@ -990,7 +996,7 @@ impl<'eng> FnCompiler<'eng> {
                             .append(context)
                             .state_store_quad_word(val_ptr, key_var, number_of_slots_value)
                             .add_metadatum(context, span_md_idx);
-                        Ok(ValueDivergence::new(val, context))
+                        Ok(terminator_value_wrap!(val, context))
                     }
                     _ => unreachable!(),
                 }
@@ -1004,7 +1010,7 @@ impl<'eng> FnCompiler<'eng> {
                 }
 
                 // The log value and the log ID are just Value.
-                let log_val = return_on_divergence_or_extract!(self.compile_expression_to_value(
+                let log_val = return_on_termination_or_extract!(self.compile_expression_to_value(
                     context,
                     md_mgr,
                     &arguments[0]
@@ -1038,7 +1044,7 @@ impl<'eng> FnCompiler<'eng> {
                             .append(context)
                             .log(log_val, log_ty, log_id)
                             .add_metadatum(context, span_md_idx);
-                        Ok(ValueDivergence::new(val, context))
+                        Ok(terminator_value_wrap!(val, context))
                     }
                 }
             }
@@ -1067,20 +1073,20 @@ impl<'eng> FnCompiler<'eng> {
                 };
                 let lhs = &arguments[0];
                 let rhs = &arguments[1];
-                let lhs_value = return_on_divergence_or_extract!(
+                let lhs_value = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, lhs)?
                 );
-                let rhs_value = return_on_divergence_or_extract!(
+                let rhs_value = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, rhs)?
                 );
                 let val = self
                     .current_block
                     .append(context)
                     .binary_op(op, lhs_value, rhs_value);
-                Ok(ValueDivergence::new(val, context))
+                Ok(terminator_value_wrap!(val, context))
             }
             Intrinsic::Revert => {
-                let revert_code_val = return_on_divergence_or_extract!(
+                let revert_code_val = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, &arguments[0])?
                 );
 
@@ -1091,7 +1097,7 @@ impl<'eng> FnCompiler<'eng> {
                     .append(context)
                     .revert(revert_code_val)
                     .add_metadatum(context, span_md_idx);
-                Ok(ValueDivergence::new(val, context))
+                Ok(terminator_value_wrap!(val, context))
             }
             Intrinsic::PtrAdd | Intrinsic::PtrSub => {
                 let op = match kind {
@@ -1112,10 +1118,10 @@ impl<'eng> FnCompiler<'eng> {
 
                 let lhs = &arguments[0];
                 let count = &arguments[1];
-                let lhs_value = return_on_divergence_or_extract!(
+                let lhs_value = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, lhs)?
                 );
-                let count_value = return_on_divergence_or_extract!(
+                let count_value = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, count)?
                 );
                 let rhs_value = self.current_block.append(context).binary_op(
@@ -1127,13 +1133,13 @@ impl<'eng> FnCompiler<'eng> {
                     .current_block
                     .append(context)
                     .binary_op(op, lhs_value, rhs_value);
-                Ok(ValueDivergence::new(val, context))
+                Ok(terminator_value_wrap!(val, context))
             }
             Intrinsic::Smo => {
                 let span_md_idx = md_mgr.span_to_md(context, &span);
 
                 /* First operand: recipient */
-                let recipient_value = return_on_divergence_or_extract!(
+                let recipient_value = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, &arguments[0])?
                 );
                 let recipient_md_idx = md_mgr.span_to_md(context, &span);
@@ -1142,7 +1148,7 @@ impl<'eng> FnCompiler<'eng> {
 
                 /* Second operand: message data */
                 // Step 1: compile the user data and get its type
-                let user_message = return_on_divergence_or_extract!(
+                let user_message = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, &arguments[1])?
                 );
 
@@ -1219,7 +1225,7 @@ impl<'eng> FnCompiler<'eng> {
                 let user_message_size_val = Constant::get_uint(context, 64, user_message_size);
 
                 /* Fourth operand: the amount of coins to send */
-                let coins = return_on_divergence_or_extract!(self.compile_expression_to_value(
+                let coins = return_on_termination_or_extract!(self.compile_expression_to_value(
                     context,
                     md_mgr,
                     &arguments[2]
@@ -1230,13 +1236,13 @@ impl<'eng> FnCompiler<'eng> {
                     .append(context)
                     .smo(recipient_var, message, user_message_size_val, coins)
                     .add_metadatum(context, span_md_idx);
-                Ok(ValueDivergence::new(val, context))
+                Ok(terminator_value_wrap!(val, context))
             }
             Intrinsic::Not => {
                 assert!(arguments.len() == 1);
 
                 let op = &arguments[0];
-                let value = return_on_divergence_or_extract!(
+                let value = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, op)?
                 );
 
@@ -1244,7 +1250,7 @@ impl<'eng> FnCompiler<'eng> {
                     .current_block
                     .append(context)
                     .unary_op(UnaryOpKind::Not, value);
-                Ok(ValueDivergence::new(val, context))
+                Ok(terminator_value_wrap!(val, context))
             }
         }
     }
@@ -1255,14 +1261,14 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         // Nothing to do if the current block already has a terminator
         if self.current_block.is_terminated(context) {
             let val = Constant::get_unit(context);
-            return Ok(ValueDivergence::new(val, context));
+            return Ok(terminator_value_wrap!(val, context));
         }
 
-        let ret_value = return_on_divergence_or_extract!(
+        let ret_value = return_on_termination_or_extract!(
             self.compile_expression_to_value(context, md_mgr, ast_expr)?
         );
 
@@ -1274,7 +1280,7 @@ impl<'eng> FnCompiler<'eng> {
                     .append(context)
                     .ret(ret_value, ret_ty)
                     .add_metadatum(context, span_md_idx);
-                ValueDivergence::new(val, context)
+                terminator_value_wrap!(val, context)
             })
             .ok_or_else(|| {
                 CompileError::Internal(
@@ -1290,8 +1296,8 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<ValueDivergence, CompileError> {
-        let value = return_on_divergence_or_extract!(
+    ) -> Result<TerminatorValueWrapper, CompileError> {
+        let value = return_on_termination_or_extract!(
             self.compile_expression_to_ptr(context, md_mgr, ast_expr)?
         );
 
@@ -1302,7 +1308,7 @@ impl<'eng> FnCompiler<'eng> {
             .append(context)
             .ptr_to_int(value, int_ty)
             .add_metadatum(context, span_md_idx);
-        Ok(ValueDivergence::new(val, context))
+        Ok(terminator_value_wrap!(val, context))
     }
 
     fn compile_deref(
@@ -1311,9 +1317,9 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         let ref_value =
-            return_on_divergence_or_extract!(self.compile_expression(context, md_mgr, ast_expr)?);
+            return_on_termination_or_extract!(self.compile_expression(context, md_mgr, ast_expr)?);
 
         let ptr_as_int = if ref_value
             .get_type(context)
@@ -1364,7 +1370,7 @@ impl<'eng> FnCompiler<'eng> {
             ptr
         };
 
-        Ok(ValueDivergence::new(result, context))
+        Ok(terminator_value_wrap!(result, context))
     }
 
     fn compile_lazy_op(
@@ -1375,8 +1381,8 @@ impl<'eng> FnCompiler<'eng> {
         ast_lhs: &ty::TyExpression,
         ast_rhs: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<ValueDivergence, CompileError> {
-        let lhs_val = return_on_divergence_or_extract!(
+    ) -> Result<TerminatorValueWrapper, CompileError> {
+        let lhs_val = return_on_termination_or_extract!(
             self.compile_expression_to_value(context, md_mgr, ast_lhs)?
         );
         // Short-circuit: if LHS is true for AND we still must eval the RHS block; for OR we can
@@ -1409,7 +1415,7 @@ impl<'eng> FnCompiler<'eng> {
         self.current_block = rhs_block;
         let rhs_val = self.compile_expression_to_value(context, md_mgr, ast_rhs)?;
 
-        if !self.current_block.is_terminated(context) {
+        if !rhs_val.is_terminator() {
             self.current_block
                 .append(context)
                 .branch(final_block, vec![rhs_val.value()])
@@ -1418,7 +1424,7 @@ impl<'eng> FnCompiler<'eng> {
 
         self.current_block = final_block;
         let val = final_block.get_arg(context, merge_val_arg_idx).unwrap();
-        Ok(ValueDivergence::new(val, context))
+        Ok(terminator_value_wrap!(val, context))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1432,14 +1438,14 @@ impl<'eng> FnCompiler<'eng> {
         ast_args: &[(Ident, ty::TyExpression)],
         ast_return_type: TypeId,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         // XXX This is very FuelVM specific and needs to be broken out of here and called
         // conditionally based on the target.
 
         // Compile each user argument
         let mut compiled_args = Vec::<Value>::new();
         for (_, arg) in ast_args.iter() {
-            let val = return_on_divergence_or_extract!(
+            let val = return_on_termination_or_extract!(
                 self.compile_expression_to_value(context, md_mgr, arg)?
             );
             compiled_args.push(val)
@@ -1566,7 +1572,7 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         // Insert the contract address
-        let addr = return_on_divergence_or_extract!(self.compile_expression_to_value(
+        let addr = return_on_termination_or_extract!(self.compile_expression_to_value(
             context,
             md_mgr,
             &call_params.contract_address
@@ -1613,7 +1619,7 @@ impl<'eng> FnCompiler<'eng> {
             .get(&constants::CONTRACT_CALL_COINS_PARAMETER_NAME.to_string())
         {
             Some(coins_expr) => {
-                return_on_divergence_or_extract!(
+                return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, coins_expr)?
                 )
             }
@@ -1630,7 +1636,7 @@ impl<'eng> FnCompiler<'eng> {
             .get(&constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME.to_string())
         {
             Some(asset_id_expr) => {
-                return_on_divergence_or_extract!(self.compile_expression_to_ptr(
+                return_on_termination_or_extract!(self.compile_expression_to_ptr(
                     context,
                     md_mgr,
                     asset_id_expr
@@ -1662,7 +1668,7 @@ impl<'eng> FnCompiler<'eng> {
             .get(&constants::CONTRACT_CALL_GAS_PARAMETER_NAME.to_string())
         {
             Some(gas_expr) => {
-                return_on_divergence_or_extract!(
+                return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, gas_expr)?
                 )
             }
@@ -1711,7 +1717,7 @@ impl<'eng> FnCompiler<'eng> {
         } else {
             self.current_block.append(context).load(call_val)
         };
-        Ok(ValueDivergence::new(res, context))
+        Ok(terminator_value_wrap!(res, context))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1722,7 +1728,7 @@ impl<'eng> FnCompiler<'eng> {
         ast_args: &[(Ident, ty::TyExpression)],
         callee: &ty::TyFunctionDecl,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         // The compiler inlines everything very lazily.  Function calls include the body of the
         // callee (i.e., the callee_body arg above). Library functions are provided in an initial
         // namespace from Forc and when the parser builds the AST (or is it during type checking?)
@@ -1785,11 +1791,12 @@ impl<'eng> FnCompiler<'eng> {
         let mut args = Vec::with_capacity(ast_args.len());
         for ((_, expr), param) in ast_args.iter().zip(callee.parameters.iter()) {
             self.current_fn_param = Some(param.clone());
-            let arg = return_on_divergence_or_extract!(if param.is_reference && param.is_mutable {
-                self.compile_expression_to_ptr(context, md_mgr, expr)
-            } else {
-                self.compile_expression_to_value(context, md_mgr, expr)
-            }?);
+            let arg =
+                return_on_termination_or_extract!(if param.is_reference && param.is_mutable {
+                    self.compile_expression_to_ptr(context, md_mgr, expr)
+                } else {
+                    self.compile_expression_to_value(context, md_mgr, expr)
+                }?);
             self.current_fn_param = None;
             args.push(arg);
         }
@@ -1800,7 +1807,7 @@ impl<'eng> FnCompiler<'eng> {
             .call(new_callee, &args)
             .add_metadatum(context, span_md_idx);
 
-        Ok(ValueDivergence::new(val, context))
+        Ok(terminator_value_wrap!(val, context))
     }
 
     fn compile_if(
@@ -1811,11 +1818,11 @@ impl<'eng> FnCompiler<'eng> {
         ast_then: &ty::TyExpression,
         ast_else: Option<&ty::TyExpression>,
         return_type: TypeId,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         // Compile the condition expression in the entry block.  Then save the current block so we
         // can jump to the true and false blocks after we've created them.
         let cond_span_md_idx = md_mgr.span_to_md(context, &ast_condition.span);
-        let cond_value = return_on_divergence_or_extract!(self.compile_expression_to_value(
+        let cond_value = return_on_termination_or_extract!(self.compile_expression_to_value(
             context,
             md_mgr,
             ast_condition
@@ -1843,7 +1850,7 @@ impl<'eng> FnCompiler<'eng> {
         let false_block_begin = self.function.create_block(context, None);
         self.current_block = false_block_begin;
         let false_value = match ast_else {
-            None => ValueDivergence::new(Constant::get_unit(context), context),
+            None => terminator_value_wrap!(Constant::get_unit(context), context),
             Some(expr) => self.compile_expression_to_value(context, md_mgr, expr)?,
         };
         let false_block_end = self.current_block;
@@ -1872,14 +1879,14 @@ impl<'eng> FnCompiler<'eng> {
         // Corner case: If both branches diverge, then setting the return type to 'Unit' produces an
         // illegally typed value. In that case we add a diverging dummy value to the merge branch
         // and return it instead.
-        let val = if !true_value.is_diverging() || !false_value.is_diverging() {
+        let val = if !true_value.is_terminator() || !false_value.is_terminator() {
             let merge_val_arg_idx = merge_block.new_arg(context, return_type);
-            if !true_value.is_diverging() {
+            if !true_value.is_terminator() {
                 true_block_end
                     .append(context)
                     .branch(merge_block, vec![true_value.value()]);
             }
-            if !false_value.is_diverging() {
+            if !false_value.is_terminator() {
                 false_block_end
                     .append(context)
                     .branch(merge_block, vec![false_value.value()]);
@@ -1889,7 +1896,7 @@ impl<'eng> FnCompiler<'eng> {
         } else {
             merge_block.append(context).branch(true_block_begin, vec![])
         };
-        Ok(ValueDivergence::new(val, context))
+        Ok(terminator_value_wrap!(val, context))
     }
 
     fn compile_unsafe_downcast(
@@ -1898,7 +1905,7 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         exp: &ty::TyExpression,
         variant: &ty::TyEnumVariant,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         // Retrieve the type info for the enum.
         let enum_type = match convert_resolved_typeid(
             self.engines.te(),
@@ -1917,8 +1924,9 @@ impl<'eng> FnCompiler<'eng> {
         };
 
         // Compile the struct expression.
-        let compiled_value =
-            return_on_divergence_or_extract!(self.compile_expression_to_ptr(context, md_mgr, exp)?);
+        let compiled_value = return_on_termination_or_extract!(
+            self.compile_expression_to_ptr(context, md_mgr, exp)?
+        );
 
         // Get the variant type.
         let variant_type = enum_type
@@ -1936,7 +1944,7 @@ impl<'eng> FnCompiler<'eng> {
             variant_type,
             &[1, variant.tag as u64],
         );
-        Ok(ValueDivergence::new(val, context))
+        Ok(terminator_value_wrap!(val, context))
     }
 
     fn compile_enum_tag(
@@ -1944,9 +1952,9 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         exp: Box<ty::TyExpression>,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         let tag_span_md_idx = md_mgr.span_to_md(context, &exp.span);
-        let struct_val = return_on_divergence_or_extract!(
+        let struct_val = return_on_termination_or_extract!(
             self.compile_expression_to_ptr(context, md_mgr, &exp)?
         );
 
@@ -1956,7 +1964,7 @@ impl<'eng> FnCompiler<'eng> {
             .append(context)
             .get_elem_ptr_with_idx(struct_val, u64_ty, 0)
             .add_metadatum(context, tag_span_md_idx);
-        Ok(ValueDivergence::new(val, context))
+        Ok(terminator_value_wrap!(val, context))
     }
 
     fn compile_while_loop(
@@ -1966,7 +1974,7 @@ impl<'eng> FnCompiler<'eng> {
         body: &ty::TyCodeBlock,
         condition: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         // We're dancing around a bit here to make the blocks sit in the right order.  Ideally we
         // have the cond block, followed by the body block which may contain other blocks, and the
         // final block comes after any body block(s).
@@ -1987,7 +1995,7 @@ impl<'eng> FnCompiler<'eng> {
 
         // Compile the condition
         self.current_block = cond_block;
-        let cond_value = return_on_divergence_or_extract!(
+        let cond_value = return_on_termination_or_extract!(
             self.compile_expression_to_value(context, md_mgr, condition)?
         );
 
@@ -2011,9 +2019,9 @@ impl<'eng> FnCompiler<'eng> {
             .function
             .create_block(context, Some("while_body".into()));
         self.current_block = body_block;
-        self.compile_code_block(context, md_mgr, body)
+        let body_block_val = self.compile_code_block(context, md_mgr, body)
             .map_err(|mut x| x.pop().unwrap())?;
-        if !self.current_block.is_terminated(context) {
+        if !body_block_val.is_terminator() {
             self.current_block
                 .append(context)
                 .branch(cond_block, vec![]);
@@ -2042,7 +2050,7 @@ impl<'eng> FnCompiler<'eng> {
 
         self.current_block = final_block;
         let val = Constant::get_unit(context).add_metadatum(context, span_md_idx);
-        Ok(ValueDivergence::new(val, context))
+        Ok(terminator_value_wrap!(val, context))
     }
 
     pub(crate) fn get_function_var(&self, context: &mut Context, name: &str) -> Option<LocalVar> {
@@ -2061,7 +2069,7 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         const_decl: &TyConstantDecl,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         let result = self
             .compile_var_expr(
                 context,
@@ -2092,7 +2100,7 @@ impl<'eng> FnCompiler<'eng> {
         call_path: &Option<CallPath>,
         name: &Ident,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         let call_path = call_path
             .clone()
             .unwrap_or_else(|| CallPath::from(name.clone()));
@@ -2105,19 +2113,19 @@ impl<'eng> FnCompiler<'eng> {
                 .append(context)
                 .get_local(var)
                 .add_metadatum(context, span_md_idx);
-            Ok(ValueDivergence::new(val, context))
+            Ok(terminator_value_wrap!(val, context))
         } else if let Some(val) = self.function.get_arg(context, name.as_str()) {
-            Ok(ValueDivergence::new(val, context))
+            Ok(terminator_value_wrap!(val, context))
         } else if let Some(const_val) = self
             .module
             .get_global_constant(context, &call_path.as_vec_string())
         {
-            Ok(ValueDivergence::new(const_val, context))
+            Ok(terminator_value_wrap!(const_val, context))
         } else if let Some(config_val) = self
             .module
             .get_global_configurable(context, &call_path.as_vec_string())
         {
-            Ok(ValueDivergence::new(config_val, context))
+            Ok(terminator_value_wrap!(config_val, context))
         } else {
             Err(CompileError::InternalOwned(
                 format!("Unable to resolve variable '{}'.", name.as_str()),
@@ -2132,7 +2140,7 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         ast_var_decl: &ty::TyVariableDecl,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<Option<ValueDivergence>, CompileError> {
+    ) -> Result<Option<TerminatorValueWrapper>, CompileError> {
         let ty::TyVariableDecl {
             name,
             body,
@@ -2151,7 +2159,7 @@ impl<'eng> FnCompiler<'eng> {
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
         let init_val = self.compile_expression_to_value(context, md_mgr, body)?;
-        if init_val.is_diverging() {
+        if init_val.is_terminator() {
             return Ok(Some(init_val));
         }
 
@@ -2194,7 +2202,7 @@ impl<'eng> FnCompiler<'eng> {
         ast_const_decl: &ty::TyConstantDecl,
         span_md_idx: Option<MetadataIndex>,
         is_const_expression: bool,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
         // `is_configurable` should be `false` here.
@@ -2218,7 +2226,7 @@ impl<'eng> FnCompiler<'eng> {
             )?;
 
             if is_const_expression {
-                Ok(ValueDivergence::new(const_expr_val, context))
+                Ok(terminator_value_wrap!(const_expr_val, context))
             } else {
                 let local_name = self
                     .lexical_map
@@ -2258,9 +2266,9 @@ impl<'eng> FnCompiler<'eng> {
                         .append(context)
                         .store(local_val, const_expr_val)
                         .add_metadatum(context, span_md_idx);
-                    ValueDivergence::new(val, context)
+                    terminator_value_wrap!(val, context)
                 } else {
-                    ValueDivergence::new(const_expr_val, context)
+                    terminator_value_wrap!(const_expr_val, context)
                 })
             }
         } else {
@@ -2274,7 +2282,7 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         ast_reassignment: &ty::TyReassignment,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         let name = self
             .lexical_map
             .get(ast_reassignment.lhs_base_name.as_str())
@@ -2302,7 +2310,7 @@ impl<'eng> FnCompiler<'eng> {
                 )
             })?;
 
-        let reassign_val = return_on_divergence_or_extract!(self.compile_expression_to_value(
+        let reassign_val = return_on_termination_or_extract!(self.compile_expression_to_value(
             context,
             md_mgr,
             &ast_reassignment.rhs
@@ -2349,7 +2357,7 @@ impl<'eng> FnCompiler<'eng> {
                     }
                     (ProjectionKind::ArrayIndex { index, .. }, TypeInfo::Array(elem_ty, _)) => {
                         cur_type_id = elem_ty.type_id;
-                        let val = return_on_divergence_or_extract!(
+                        let val = return_on_termination_or_extract!(
                             self.compile_expression_to_value(context, md_mgr, index)?
                         );
                         gep_indices.push(val);
@@ -2386,7 +2394,7 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         let val = Constant::get_unit(context).add_metadatum(context, span_md_idx);
-        Ok(ValueDivergence::new(val, context))
+        Ok(terminator_value_wrap!(val, context))
     }
 
     fn compile_array_expr(
@@ -2396,12 +2404,12 @@ impl<'eng> FnCompiler<'eng> {
         elem_type: &TypeId,
         contents: &[ty::TyExpression],
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         // If the first element diverges, then the element type has not been determined,
         // so we can't use the normal compilation scheme. Instead just generate code for
         // the first element and return.
         let first_elem_value = if !contents.is_empty() {
-            let first_elem_value = return_on_divergence_or_extract!(
+            let first_elem_value = return_on_termination_or_extract!(
                 self.compile_expression_to_value(context, md_mgr, &contents[0])?
             );
             Some(first_elem_value)
@@ -2432,7 +2440,7 @@ impl<'eng> FnCompiler<'eng> {
 
         // Nothing more to do if the array is empty
         if contents.is_empty() {
-            return Ok(ValueDivergence::new(array_value, context));
+            return Ok(terminator_value_wrap!(array_value, context));
         }
 
         // The array is not empty, so it's safe to unwrap the first element
@@ -2546,7 +2554,7 @@ impl<'eng> FnCompiler<'eng> {
                         .add_metadatum(context, span_md_idx);
                 }
             }
-            return Ok(ValueDivergence::new(array_value, context));
+            return Ok(terminator_value_wrap!(array_value, context));
         }
 
         // Compile each element and insert it immediately.
@@ -2554,7 +2562,7 @@ impl<'eng> FnCompiler<'eng> {
             let elem_value = if idx == 0 {
                 first_elem_value
             } else {
-                return_on_divergence_or_extract!(
+                return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, elem_expr)?
                 )
             };
@@ -2568,7 +2576,7 @@ impl<'eng> FnCompiler<'eng> {
                 .store(gep_val, elem_value)
                 .add_metadatum(context, span_md_idx);
         }
-        Ok(ValueDivergence::new(array_value, context))
+        Ok(terminator_value_wrap!(array_value, context))
     }
 
     fn compile_array_index(
@@ -2578,8 +2586,8 @@ impl<'eng> FnCompiler<'eng> {
         array_expr: &ty::TyExpression,
         index_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<ValueDivergence, CompileError> {
-        let array_val = return_on_divergence_or_extract!(
+    ) -> Result<TerminatorValueWrapper, CompileError> {
+        let array_val = return_on_termination_or_extract!(
             self.compile_expression_to_ptr(context, md_mgr, array_expr)?
         );
 
@@ -2621,7 +2629,7 @@ impl<'eng> FnCompiler<'eng> {
             }
         }
 
-        let index_val = return_on_divergence_or_extract!(
+        let index_val = return_on_termination_or_extract!(
             self.compile_expression_to_value(context, md_mgr, index_expr)?
         );
 
@@ -2637,7 +2645,7 @@ impl<'eng> FnCompiler<'eng> {
             .append(context)
             .get_elem_ptr(array_val, elem_type, vec![index_val])
             .add_metadatum(context, span_md_idx);
-        Ok(ValueDivergence::new(val, context))
+        Ok(terminator_value_wrap!(val, context))
     }
 
     fn compile_struct_expr(
@@ -2646,7 +2654,7 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         fields: &[ty::TyStructExpressionField],
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         // NOTE: This is a struct instantiation with initialisers for each field of a named struct.
         // We don't know the actual type of the struct, but the AST guarantees that the fields are
         // in the declared order (regardless of how they are initialised in source) so we can
@@ -2658,7 +2666,7 @@ impl<'eng> FnCompiler<'eng> {
         let mut insert_values = Vec::with_capacity(fields.len());
         let mut field_types = Vec::with_capacity(fields.len());
         for struct_field in fields.iter() {
-            let insert_val = return_on_divergence_or_extract!(self.compile_expression_to_value(
+            let insert_val = return_on_termination_or_extract!(self.compile_expression_to_value(
                 context,
                 md_mgr,
                 &struct_field.value
@@ -2706,7 +2714,7 @@ impl<'eng> FnCompiler<'eng> {
             });
 
         // Return the pointer.
-        Ok(ValueDivergence::new(struct_val, context))
+        Ok(terminator_value_wrap!(struct_val, context))
     }
 
     fn compile_struct_field_expr(
@@ -2717,8 +2725,8 @@ impl<'eng> FnCompiler<'eng> {
         struct_type_id: TypeId,
         ast_field: &ty::TyStructField,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<ValueDivergence, CompileError> {
-        let struct_val = return_on_divergence_or_extract!(self.compile_expression_to_ptr(
+    ) -> Result<TerminatorValueWrapper, CompileError> {
+        let struct_val = return_on_termination_or_extract!(self.compile_expression_to_ptr(
             context,
             md_mgr,
             ast_struct_expr
@@ -2761,7 +2769,7 @@ impl<'eng> FnCompiler<'eng> {
             .append(context)
             .get_elem_ptr_with_idx(struct_val, field_type, field_idx)
             .add_metadatum(context, span_md_idx);
-        Ok(ValueDivergence::new(val, context))
+        Ok(terminator_value_wrap!(val, context))
     }
 
     fn compile_enum_expr(
@@ -2771,7 +2779,7 @@ impl<'eng> FnCompiler<'eng> {
         enum_decl: &ty::TyEnumDecl,
         tag: usize,
         contents: Option<&ty::TyExpression>,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         // XXX The enum instantiation AST node includes the full declaration.  If the enum was
         // declared in a different module then it seems for now there's no easy way to pre-analyse
         // it and add its type/aggregate to the context.  We can re-use them here if we recognise
@@ -2817,7 +2825,7 @@ impl<'eng> FnCompiler<'eng> {
         if field_tys.len() != 1 && contents.is_some() {
             // Insert the value too.
             // Only store if the value does not diverge.
-            let contents_value = return_on_divergence_or_extract!(
+            let contents_value = return_on_termination_or_extract!(
                 self.compile_expression_to_value(context, md_mgr, contents.unwrap())?
             );
             let contents_type = contents_value.get_type(context).ok_or_else(|| {
@@ -2838,7 +2846,7 @@ impl<'eng> FnCompiler<'eng> {
         }
 
         // Return the pointer.
-        Ok(ValueDivergence::new(enum_ptr, context))
+        Ok(terminator_value_wrap!(enum_ptr, context))
     }
 
     fn compile_tuple_expr(
@@ -2847,17 +2855,17 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         fields: &[ty::TyExpression],
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         if fields.is_empty() {
             // This is a Unit.  We're still debating whether Unit should just be an empty tuple in
             // the IR or not... it is a special case for now.
             let val = Constant::get_unit(context).add_metadatum(context, span_md_idx);
-            Ok(ValueDivergence::new(val, context))
+            Ok(terminator_value_wrap!(val, context))
         } else {
             let mut init_values = Vec::with_capacity(fields.len());
             let mut init_types = Vec::with_capacity(fields.len());
             for field_expr in fields {
-                let init_value = return_on_divergence_or_extract!(
+                let init_value = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, field_expr)?
                 );
                 let init_type = convert_resolved_typeid_no_span(
@@ -2900,7 +2908,7 @@ impl<'eng> FnCompiler<'eng> {
                         .add_metadatum(context, span_md_idx);
                 });
 
-            Ok(ValueDivergence::new(tuple_val, context))
+            Ok(terminator_value_wrap!(tuple_val, context))
         }
     }
 
@@ -2912,8 +2920,8 @@ impl<'eng> FnCompiler<'eng> {
         tuple_type: TypeId,
         idx: usize,
         span: Span,
-    ) -> Result<ValueDivergence, CompileError> {
-        let tuple_value = return_on_divergence_or_extract!(
+    ) -> Result<TerminatorValueWrapper, CompileError> {
+        let tuple_value = return_on_termination_or_extract!(
             self.compile_expression_to_ptr(context, md_mgr, tuple)?
         );
         let tuple_type = convert_resolved_typeid(
@@ -2939,7 +2947,7 @@ impl<'eng> FnCompiler<'eng> {
                     span,
                 )
             })?;
-        Ok(ValueDivergence::new(val, context))
+        Ok(terminator_value_wrap!(val, context))
     }
 
     fn compile_storage_access(
@@ -2948,7 +2956,7 @@ impl<'eng> FnCompiler<'eng> {
         fields: &[ty::TyStorageAccessDescriptor],
         ix: &StateIndex,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         // Get the list of indices used to access the storage field. This will be empty
         // if the storage field type is not a struct.
         // FIXME: shouldn't have to extract the first field like this.
@@ -2983,7 +2991,7 @@ impl<'eng> FnCompiler<'eng> {
         return_type: TypeId,
         returns: Option<&(AsmRegister, Span)>,
         whole_block_span_md_idx: Option<MetadataIndex>,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         let mut compiled_registers = Vec::<AsmArg>::new();
         for reg in registers.iter() {
             let (init, name) = match reg {
@@ -2993,8 +3001,8 @@ impl<'eng> FnCompiler<'eng> {
                 ty::TyAsmRegisterDeclaration {
                     initializer, name, ..
                 } => {
-                    // Take the optional initialiser, map it to an Option<Result<ValueDivergence>>,
-                    // transpose that to Result<Option<ValueDivergence>> and map that to an AsmArg.
+                    // Take the optional initialiser, map it to an Option<Result<TerminatorValueWrapper>>,
+                    // transpose that to Result<Option<TerminatorValueWrapper>> and map that to an AsmArg.
                     //
                     // Here we need to compile based on the Sway 'copy-type' vs 'ref-type' since
                     // ASM args aren't explicitly typed, and if we send in a temporary it might
@@ -3002,7 +3010,7 @@ impl<'eng> FnCompiler<'eng> {
                     // *or* the value of the copy-type value.
                     let init_expr = initializer.as_ref().unwrap();
                     // I'm not sure if a register declaration can diverge, but check just to be safe
-                    let initializer_val = return_on_divergence_or_extract!(
+                    let initializer_val = return_on_termination_or_extract!(
                         self.compile_expression(context, md_mgr, init_expr)?
                     );
                     let init_type = self.engines.te().get_unaliased(init_expr.return_type);
@@ -3063,7 +3071,7 @@ impl<'eng> FnCompiler<'eng> {
             .append(context)
             .asm_block(compiled_registers, body, return_type, returns)
             .add_metadatum(context, whole_block_span_md_idx);
-        Ok(ValueDivergence::new(val, context))
+        Ok(terminator_value_wrap!(val, context))
     }
 
     fn compile_storage_read(
@@ -3073,7 +3081,7 @@ impl<'eng> FnCompiler<'eng> {
         indices: &[u64],
         base_type: &Type,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<ValueDivergence, CompileError> {
+    ) -> Result<TerminatorValueWrapper, CompileError> {
         // Get the actual storage key as a `Bytes32` as well as the offset, in words,
         // within the slot. The offset depends on what field of the top level storage
         // variable is being accessed.
@@ -3173,6 +3181,6 @@ impl<'eng> FnCompiler<'eng> {
             .store(gep_2_val, field_id)
             .add_metadatum(context, span_md_idx);
 
-        Ok(ValueDivergence::new(storage_key, context))
+        Ok(terminator_value_wrap!(storage_key, context))
     }
 }
