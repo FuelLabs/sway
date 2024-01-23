@@ -42,7 +42,9 @@ pub(crate) fn import_code_action(
 
     ctx.tokens
         .tokens_for_file(ctx.temp_uri)
-        .for_each(|(_, token)| {
+        .for_each(|item| {
+            // TODO remove this clone
+            let token = item.value().clone();
             if let Some(TypedAstToken::TypedUseStatement(use_stmt)) = token.typed {
                 use_statements.push(use_stmt);
             } else if let Some(TypedAstToken::TypedIncludeStatement(include_stmt)) = token.typed {
@@ -95,9 +97,9 @@ pub(crate) fn get_call_paths_for_name<'s>(
     let mut call_paths = ctx
         .tokens
         .tokens_for_name(symbol_name)
-        .filter_map(move |(_, token)| {
+        .filter_map(move |item| {
             // If the typed token is a declaration, then we can import it.
-            match token.typed.as_ref() {
+            match item.value().typed.as_ref() {
                 Some(TypedAstToken::TypedDeclaration(ty_decl)) => {
                     return match ty_decl {
                         TyDecl::StructDecl(decl) => {

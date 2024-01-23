@@ -1,35 +1,52 @@
 #![allow(dead_code)]
 use crate::core::token::{Token, TokenIdent};
+use dashmap::mapref::multiple::RefMulti;
 use lsp_types::{Diagnostic, DiagnosticSeverity};
 use sway_core::{
     decl_engine::DeclEngine,
     language::{ty, Literal},
 };
 
-pub(crate) fn generate_warnings_non_typed_tokens<I>(tokens: I) -> Vec<Diagnostic>
+pub(crate) fn generate_warnings_non_typed_tokens<'s, I>(tokens: I) -> Vec<Diagnostic>
 where
-    I: Iterator<Item = (TokenIdent, Token)>,
+    I: Iterator<Item = RefMulti<'s, TokenIdent, Token>>,
 {
     tokens
-        .filter_map(|(ident, token)| token.typed.is_none().then_some(warning_from_ident(&ident)))
+        .filter_map(|entry| {
+            let (ident, token) = entry.pair();
+            if token.typed.is_none() {
+                Some(warning_from_ident(ident))
+            } else {
+                None
+            }
+        })
         .collect()
 }
 
-pub(crate) fn generate_warnings_for_parsed_tokens<I>(tokens: I) -> Vec<Diagnostic>
+pub(crate) fn generate_warnings_for_parsed_tokens<'s, I>(tokens: I) -> Vec<Diagnostic>
 where
-    I: Iterator<Item = (TokenIdent, Token)>,
+    I: Iterator<Item = RefMulti<'s, TokenIdent, Token>>,
 {
     tokens
-        .map(|(ident, _)| warning_from_ident(&ident))
+        .map(|entry| {
+            warning_from_ident(entry.key())
+        })
         .collect()
 }
 
-pub(crate) fn generate_warnings_for_typed_tokens<I>(tokens: I) -> Vec<Diagnostic>
+pub(crate) fn generate_warnings_for_typed_tokens<'s, I>(tokens: I) -> Vec<Diagnostic>
 where
-    I: Iterator<Item = (TokenIdent, Token)>,
+    I: Iterator<Item = RefMulti<'s, TokenIdent, Token>>,
 {
     tokens
-        .filter_map(|(ident, token)| token.typed.is_some().then_some(warning_from_ident(&ident)))
+        .filter_map(|entry| {
+            let (ident, token) = entry.pair();
+            if token.typed.is_some() {
+                Some(warning_from_ident(ident))
+            } else {
+                None
+            }
+        })
         .collect()
 }
 

@@ -49,9 +49,10 @@ pub fn code_actions(
     temp_uri: &Url,
     diagnostics: &Vec<Diagnostic>,
 ) -> Option<CodeActionResponse> {
-    let (_, token) = session
+    let t = session
         .token_map()
         .token_at_position(temp_uri, range.start)?;
+    let token = t.value();
 
     let ctx = CodeActionContext {
         engines: &session.engines.read(),
