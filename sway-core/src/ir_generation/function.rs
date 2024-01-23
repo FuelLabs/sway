@@ -2013,7 +2013,8 @@ impl<'eng> FnCompiler<'eng> {
             .function
             .create_block(context, Some("while_body".into()));
         self.current_block = body_block;
-        let body_block_val = self.compile_code_block(context, md_mgr, body)
+        let body_block_val = self
+            .compile_code_block(context, md_mgr, body)
             .map_err(|mut x| x.pop().unwrap())?;
         if !body_block_val.is_terminator() {
             self.current_block
