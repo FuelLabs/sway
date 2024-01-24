@@ -9,7 +9,9 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type, BuildTarget};
+use sway_core::{
+    fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type, BuildTarget, OptLevel,
+};
 use sway_error::handler::Handler;
 use sway_utils::{
     constants, find_nested_manifest_dir, find_parent_manifest_dir,
@@ -260,6 +262,7 @@ pub struct BuildProfile {
     #[serde(default)]
     pub error_on_warnings: bool,
     pub reverse_results: bool,
+    pub optimization_level: OptLevel,
     #[serde(default)]
     pub experimental: ExperimentalFlags,
 }
@@ -753,6 +756,7 @@ impl BuildProfile {
             json_abi_with_callpaths: false,
             error_on_warnings: false,
             reverse_results: false,
+            optimization_level: OptLevel::Opt0,
             experimental: ExperimentalFlags {
                 new_encoding: false,
             },
@@ -774,6 +778,7 @@ impl BuildProfile {
             json_abi_with_callpaths: false,
             error_on_warnings: false,
             reverse_results: false,
+            optimization_level: OptLevel::Opt1,
             experimental: ExperimentalFlags {
                 new_encoding: false,
             },

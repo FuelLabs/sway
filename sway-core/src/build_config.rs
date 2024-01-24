@@ -32,6 +32,12 @@ pub enum BuildTarget {
     MidenVM,
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum OptLevel {
+    Opt0,
+    Opt1,
+}
+
 /// Configuration for the overall build and compilation process.
 #[derive(Clone)]
 pub struct BuildConfig {
@@ -46,6 +52,7 @@ pub struct BuildConfig {
     pub(crate) print_finalized_asm: bool,
     pub(crate) include_tests: bool,
     pub print_ir: bool,
+    pub(crate) optimization_level: OptLevel,
     pub time_phases: bool,
     pub metrics_outfile: Option<String>,
     pub experimental: ExperimentalFlags,
@@ -93,6 +100,7 @@ impl BuildConfig {
             include_tests: false,
             time_phases: false,
             metrics_outfile: None,
+            optimization_level: OptLevel::Opt0,
             experimental: ExperimentalFlags::default(),
         }
     }
@@ -142,6 +150,13 @@ impl BuildConfig {
     pub fn with_metrics(self, a: Option<String>) -> Self {
         Self {
             metrics_outfile: a,
+            ..self
+        }
+    }
+
+    pub fn with_optimization_level(self, optimization_level: OptLevel) -> Self {
+        Self {
+            optimization_level,
             ..self
         }
     }

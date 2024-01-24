@@ -3,7 +3,7 @@ use fuels::{accounts::wallet::WalletUnlocked, prelude::*, types::Bits256};
 
 abigen!(Contract(
     name = "ContractBytecodeTest",
-    abi = "test_projects/contract_bytecode/out/debug/contract_bytecode-abi.json"
+    abi = "test_projects/contract_bytecode/out/release/contract_bytecode-abi.json"
 ));
 
 #[tokio::test]
@@ -22,7 +22,7 @@ async fn can_get_bytecode_root() {
         .value;
 
     let contract_bytecode =
-        std::fs::read("test_projects/contract_bytecode/out/debug/contract_bytecode.bin").unwrap();
+        std::fs::read("test_projects/contract_bytecode/out/release/contract_bytecode.bin").unwrap();
     let expected_bytecode_root = Bits256(*FuelsTxContract::root_from_code(contract_bytecode));
 
     assert_eq!(expected_bytecode_root, bytecode_root);
@@ -32,7 +32,7 @@ async fn get_test_contract_instance(
     wallet: WalletUnlocked,
 ) -> (ContractBytecodeTest<WalletUnlocked>, Bech32ContractId) {
     let id = Contract::load_from(
-        "test_projects/contract_bytecode/out/debug/contract_bytecode.bin",
+        "test_projects/contract_bytecode/out/release/contract_bytecode.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

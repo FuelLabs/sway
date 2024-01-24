@@ -4,7 +4,7 @@ use fuels::types::ContractId;
 
 abigen!(Contract(
     name = "TestPowContract",
-    abi = "test_artifacts/pow/out/debug/pow-abi.json"
+    abi = "test_artifacts/pow/out/release/pow-abi.json"
 ));
 
 #[tokio::test]
@@ -105,7 +105,7 @@ async fn get_pow_test_instance(
     wallet: WalletUnlocked,
 ) -> (TestPowContract<WalletUnlocked>, ContractId) {
     let pow_id = Contract::load_from(
-        "test_artifacts/pow/out/debug/pow.bin",
+        "test_artifacts/pow/out/release/pow.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
