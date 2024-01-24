@@ -42,7 +42,7 @@ fuel-asm = "0.43.1"
 fuel-crypto = "0.43.1"
 fuel-types = "0.43.1"
 fuel-tx = "0.43.1"
-fuel-vm = "0.43.2"
+fuel-vm = "0.43.1"
 
 # Dependencies from the `fuels-rs` repository:
 fuels-core = "0.54.0"

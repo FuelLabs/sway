@@ -25,7 +25,6 @@ sway-core = { version = "0.49.0", path = "../../sway-core" }
 sway-types = { version = "0.49.0", path = "../../sway-types" }
 thiserror = "1.0"
 tokio = { version = "1.8", features = ["net", "io-util", "macros", "rt-multi-thread"] }
-rand = "0.8.5"
 
 [dev-dependencies]
 escargot = "0.5.7"
