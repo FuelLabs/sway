@@ -370,8 +370,7 @@ impl<'a> PackageTests {
                     }
                     None
                 })
-                .enumerate()
-                .map(|(order, (entry, test_entry))| {
+                .map(|(entry, test_entry)| {
                     // Execute the test and return the result.
                     let offset = u32::try_from(entry.finalized.imm)
                         .expect("test instruction offset out of range");
@@ -383,7 +382,6 @@ impl<'a> PackageTests {
                         test_setup,
                         test_entry,
                         name,
-                        order as u64,
                     )
                     .execute()
                 })

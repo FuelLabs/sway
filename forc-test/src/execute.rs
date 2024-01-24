@@ -24,7 +24,6 @@ pub struct TestExecutor {
     pub tx_builder: tx::TransactionBuilder<tx::Script>,
     pub test_entry: PkgTestEntry,
     pub name: String,
-    pub opcode_offset: u64,
 }
 
 /// The result of executing a test with breakpoints enabled.
@@ -43,7 +42,6 @@ impl TestExecutor {
         test_setup: TestSetup,
         test_entry: &PkgTestEntry,
         name: String,
-        order: u64,
     ) -> Self {
         let storage = test_setup.storage().clone();
 
@@ -102,15 +100,11 @@ impl TestExecutor {
         // Increase `script_gas_limit` to the maximum allowed value.
         tx_builder.script_gas_limit(consensus_params.tx_params().max_gas_per_tx - max_gas);
 
-        // Divide by 4 to get the opcode offset rather than the program counter offset.
-        let opcode_offset: u64 = (test_offset as u64 / 4) + order;
-
         TestExecutor {
             interpreter: Interpreter::with_storage(storage, consensus_params.into()),
             tx_builder,
             test_entry: test_entry.clone(),
             name,
-            opcode_offset,
         }
     }
 

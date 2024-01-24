@@ -7,8 +7,9 @@ impl DapServer {
     pub(crate) fn handle_continue(&mut self) -> Result<bool, AdapterError> {
         self.state.update_vm_breakpoints();
 
-        if let Some(executor) = self.state.executors.get_mut(0) {
+        if let Some(executor) = self.state.executors.first_mut() {
             executor.interpreter.set_single_stepping(false);
+            
             match executor.continue_debugging()? {
                 DebugResult::TestComplete(result) => {
                     self.state.test_results.push(result);
@@ -22,7 +23,7 @@ impl DapServer {
         }
 
         // If there are tests remaning, we should start debugging those until another breakpoint is hit.
-        while let Some(next_test_executor) = self.state.executors.get_mut(0) {
+        while let Some(next_test_executor) = self.state.executors.first_mut() {
             match next_test_executor.start_debugging()? {
                 DebugResult::TestComplete(result) => {
                     self.state.test_results.push(result);

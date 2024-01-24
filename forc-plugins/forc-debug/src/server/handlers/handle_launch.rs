@@ -21,8 +21,7 @@ impl DapServer {
 
         // Construct a TestExecutor for each test and store it
         let executors: Vec<TestExecutor> = entries
-            .enumerate()
-            .map(|(order, (entry, test_entry))| {
+            .map(|(entry, test_entry)| {
                 let offset = u32::try_from(entry.finalized.imm)
                     .expect("test instruction offset out of range");
                 let name = entry.finalized.fn_name.clone();
@@ -33,7 +32,6 @@ impl DapServer {
                     test_setup.clone(),
                     test_entry,
                     name.clone(),
-                    order as u64,
                 )
             })
             .collect();
@@ -41,8 +39,9 @@ impl DapServer {
 
         // Start debugging
         self.state.update_vm_breakpoints();
-        while let Some(executor) = self.state.executors.get_mut(0) {
+        while let Some(executor) = self.state.executors.first_mut() {
             executor.interpreter.set_single_stepping(false);
+            
             match executor.start_debugging()? {
                 DebugResult::TestComplete(result) => {
                     self.state.test_results.push(result);
@@ -68,26 +67,30 @@ impl DapServer {
 
         // 1. Build the packages
         let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&self.state.program_path)
-            .map_err(|_| AdapterError::BuildFailed {
+            .map_err(|err| AdapterError::BuildFailed {
                 phase: "read manifest file".into(),
+                reason: err.to_string(),
             })?;
         let pkg_manifest: PackageManifestFile =
             manifest_file
                 .clone()
                 .try_into()
-                .map_err(|_| AdapterError::BuildFailed {
+                .map_err(|err: anyhow::Error| AdapterError::BuildFailed {
                     phase: "package manifest".into(),
+                    reason: err.to_string(),
                 })?;
         let mut member_manifests =
             manifest_file
                 .member_manifests()
-                .map_err(|_| AdapterError::BuildFailed {
+                .map_err(|err| AdapterError::BuildFailed {
                     phase: "member manifests".into(),
+                    reason: err.to_string(),
                 })?;
         let lock_path = manifest_file
             .lock_path()
-            .map_err(|_| AdapterError::BuildFailed {
+            .map_err(|err| AdapterError::BuildFailed {
                 phase: "lock path".into(),
+                reason: err.to_string(),
             })?;
         let build_plan = forc_pkg::BuildPlan::from_lock_and_manifests(
             &lock_path,
@@ -96,8 +99,9 @@ impl DapServer {
             false,
             Default::default(),
         )
-        .map_err(|_| AdapterError::BuildFailed {
+        .map_err(|err| AdapterError::BuildFailed {
             phase: "build plan".into(),
+            reason: err.to_string(),
         })?;
 
         let project_name = member_manifests
@@ -120,8 +124,9 @@ impl DapServer {
             },
             &outputs,
         )
-        .map_err(|_| AdapterError::BuildFailed {
+        .map_err(|err| AdapterError::BuildFailed {
             phase: "build packages".into(),
+            reason: err.to_string(),
         })?;
 
         // 2. Store the source maps
@@ -183,26 +188,31 @@ impl DapServer {
             self.error(format!("Couldn't find built package for {}", project_name));
             AdapterError::BuildFailed {
                 phase: "find package".into(),
+                reason: "Package not found".into(),
             }
         })?;
 
         let built = Built::Package(Arc::from(built_package.clone()));
 
-        let built_tests =
-            BuiltTests::from_built(built, &build_plan).map_err(|_| AdapterError::BuildFailed {
+        let built_tests = BuiltTests::from_built(built, &build_plan).map_err(|err| {
+            AdapterError::BuildFailed {
                 phase: "build tests".into(),
-            })?;
+                reason: err.to_string(),
+            }
+        })?;
 
         let pkg_tests = match built_tests {
             BuiltTests::Package(pkg_tests) => pkg_tests,
             BuiltTests::Workspace(_) => {
                 return Err(AdapterError::BuildFailed {
                     phase: "package tests".into(),
+                    reason: "Workspace tests not supported".into(),
                 })
             }
         };
-        let test_setup = pkg_tests.setup().map_err(|_| AdapterError::BuildFailed {
+        let test_setup = pkg_tests.setup().map_err(|err| AdapterError::BuildFailed {
             phase: "test setup".into(),
+            reason: err.to_string(),
         })?;
         self.state.built_package = Some(built_package.clone());
         self.state.test_setup = Some(test_setup.clone());

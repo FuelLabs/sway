@@ -54,8 +54,6 @@ impl ServerState {
 
     /// Finds the breakpoint matching a VM program counter.
     pub fn vm_pc_to_breakpoint_id(&mut self, pc: u64) -> Result<i64, AdapterError> {
-        let opcode_offset = self.executors.first().map(|e| e.opcode_offset).unwrap_or(0);
-
         // First, try to find the source location by looking for the program counter in the source map.
         let (source_path, source_line) = self
             .source_map
@@ -63,7 +61,7 @@ impl ServerState {
             .find_map(|(source_path, source_map)| {
                 let line = source_map.iter().find_map(|(&line, &instruction)| {
                     // Divide by 4 to get the opcode offset rather than the program counter offset.
-                    let instruction_offset = pc / 4 - opcode_offset; // TODO: fix offset for 2nd or 3rd test
+                    let instruction_offset = pc / 4;
                     if instruction_offset == instruction {
                         return Some(line);
                     }
@@ -112,10 +110,10 @@ impl ServerState {
             });
 
         self.executors.iter_mut().for_each(|executor| {
-            // TODO: use overwrite_breakpoints when released
+            // TODO: use `overwrite_breakpoints` when released
             opcode_indexes.clone().for_each(|opcode_index| {
                 let bp: fuel_vm::prelude::Breakpoint =
-                    fuel_vm::state::Breakpoint::script(*opcode_index + executor.opcode_offset); // TODO: debug offset
+                    fuel_vm::state::Breakpoint::script(*opcode_index);
                 executor.interpreter.set_breakpoint(bp);
             });
         });

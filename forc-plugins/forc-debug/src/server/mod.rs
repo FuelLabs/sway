@@ -1,7 +1,9 @@
+mod error;
 mod handlers;
 mod state;
 mod util;
 
+use self::error::AdapterError;
 use self::state::ServerState;
 use self::util::IdGenerator;
 use crate::names::register_name;
@@ -16,40 +18,9 @@ use std::{
     path::PathBuf,
     process,
 };
-use thiserror::Error;
 
 pub const THREAD_ID: i64 = 0;
 pub const REGISTERS_VARIABLE_REF: i64 = 1;
-
-#[derive(Error, Debug)]
-pub(crate) enum AdapterError {
-    #[error("Unhandled command")]
-    UnhandledCommand { command: Command },
-
-    #[error("Missing command")]
-    MissingCommand,
-
-    #[error("Missing configuration")]
-    MissingConfiguration,
-
-    #[error("Missing breakpoint location")]
-    MissingBreakpointLocation,
-
-    #[error("Missing source map")]
-    MissingSourceMap { pc: u64 },
-
-    #[error("Unknown breakpoint")]
-    UnknownBreakpoint { pc: u64 },
-
-    #[error("Build failed")]
-    BuildFailed { phase: String },
-
-    #[error("Test execution failed")]
-    TestExecutionFailed {
-        #[from]
-        source: anyhow::Error,
-    },
-}
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AdditionalData {
