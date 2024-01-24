@@ -1,4 +1,7 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    collections::HashSet,
+    hash::{Hash, Hasher},
+};
 
 use super::{ConstantDeclaration, FunctionDeclaration, FunctionParameter};
 
@@ -57,10 +60,15 @@ impl PartialEqWithEngines for Supertrait {
 }
 
 impl HashWithEngines for Supertrait {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let Supertrait { name, decl_ref } = self;
         name.hash(state);
-        decl_ref.hash(state, engines);
+        decl_ref.hash(state, engines, already_hashed);
     }
 }
 

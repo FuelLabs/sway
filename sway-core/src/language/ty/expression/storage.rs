@@ -1,4 +1,7 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    collections::HashSet,
+    hash::{Hash, Hasher},
+};
 
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
@@ -22,13 +25,18 @@ impl PartialEqWithEngines for TyStorageAccess {
 }
 
 impl HashWithEngines for TyStorageAccess {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TyStorageAccess {
             fields,
             ix,
             storage_keyword_span,
         } = self;
-        fields.hash(state, engines);
+        fields.hash(state, engines, already_hashed);
         ix.hash(state);
         storage_keyword_span.hash(state);
     }
@@ -71,7 +79,12 @@ impl PartialEqWithEngines for TyStorageAccessDescriptor {
 }
 
 impl HashWithEngines for TyStorageAccessDescriptor {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TyStorageAccessDescriptor {
             name,
             type_id,
@@ -81,6 +94,8 @@ impl HashWithEngines for TyStorageAccessDescriptor {
         } = self;
         let type_engine = engines.te();
         name.hash(state);
-        type_engine.get(*type_id).hash(state, engines);
+        type_engine
+            .get(*type_id)
+            .hash(state, engines, already_hashed);
     }
 }

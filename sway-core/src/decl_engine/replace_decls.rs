@@ -1,4 +1,7 @@
+use std::collections::HashMap;
+
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::Span;
 
 use crate::{
     engine_threading::Engines,
@@ -14,6 +17,7 @@ pub trait ReplaceDecls {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
+        already_replaced: &mut HashMap<(usize, std::any::TypeId), (usize, Span)>,
     ) -> Result<(), ErrorEmitted>;
 
     fn replace_decls(
@@ -21,9 +25,10 @@ pub trait ReplaceDecls {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
+        already_replaced: &mut HashMap<(usize, std::any::TypeId), (usize, Span)>,
     ) -> Result<(), ErrorEmitted> {
         if !decl_mapping.is_empty() {
-            self.replace_decls_inner(decl_mapping, handler, ctx)?;
+            self.replace_decls_inner(decl_mapping, handler, ctx, already_replaced)?;
         }
 
         Ok(())

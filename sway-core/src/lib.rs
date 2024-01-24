@@ -32,7 +32,7 @@ use control_flow_analysis::ControlFlowGraph;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModulePath, ProgramsCacheEntry};
 use std::collections::hash_map::DefaultHasher;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -511,6 +511,7 @@ pub fn parsed_to_ast(
     let types_metadata_result = typed_program.collect_types_metadata(
         handler,
         &mut CollectTypesMetadataContext::new(engines, experimental),
+        &mut HashSet::<(usize, std::any::TypeId)>::new(),
     );
     let types_metadata = match types_metadata_result {
         Ok(types_metadata) => types_metadata,

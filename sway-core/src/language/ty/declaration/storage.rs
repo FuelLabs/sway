@@ -1,4 +1,7 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    collections::HashSet,
+    hash::{Hash, Hasher},
+};
 
 use sway_error::{
     error::CompileError,
@@ -32,7 +35,12 @@ impl PartialEqWithEngines for TyStorageDecl {
 }
 
 impl HashWithEngines for TyStorageDecl {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TyStorageDecl {
             fields,
             // these fields are not hashed because they aren't relevant/a
@@ -41,7 +49,7 @@ impl HashWithEngines for TyStorageDecl {
             attributes: _,
             storage_keyword: _,
         } = self;
-        fields.hash(state, engines);
+        fields.hash(state, engines, already_hashed);
     }
 }
 
@@ -187,7 +195,12 @@ impl PartialEqWithEngines for TyStorageField {
 }
 
 impl HashWithEngines for TyStorageField {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TyStorageField {
             name,
             type_argument,
@@ -198,7 +211,7 @@ impl HashWithEngines for TyStorageField {
             attributes: _,
         } = self;
         name.hash(state);
-        type_argument.hash(state, engines);
-        initializer.hash(state, engines);
+        type_argument.hash(state, engines, already_hashed);
+        initializer.hash(state, engines, already_hashed);
     }
 }

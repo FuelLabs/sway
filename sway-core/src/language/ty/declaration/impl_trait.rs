@@ -1,4 +1,7 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    collections::HashSet,
+    hash::{Hash, Hasher},
+};
 
 use sway_types::{Ident, Named, Span, Spanned};
 
@@ -50,7 +53,12 @@ impl PartialEqWithEngines for TyImplTrait {
 }
 
 impl HashWithEngines for TyImplTrait {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TyImplTrait {
             impl_type_parameters,
             trait_name,
@@ -63,11 +71,11 @@ impl HashWithEngines for TyImplTrait {
             span: _,
         } = self;
         trait_name.hash(state);
-        impl_type_parameters.hash(state, engines);
-        trait_type_arguments.hash(state, engines);
-        items.hash(state, engines);
-        implementing_for.hash(state, engines);
-        trait_decl_ref.hash(state, engines);
+        impl_type_parameters.hash(state, engines, already_hashed);
+        trait_type_arguments.hash(state, engines, already_hashed);
+        items.hash(state, engines, already_hashed);
+        implementing_for.hash(state, engines, already_hashed);
+        trait_decl_ref.hash(state, engines, already_hashed);
     }
 }
 

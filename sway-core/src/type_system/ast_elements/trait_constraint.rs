@@ -1,5 +1,6 @@
 use std::{
     cmp::Ordering,
+    collections::HashSet,
     fmt,
     hash::{Hash, Hasher},
 };
@@ -12,7 +13,11 @@ use sway_types::Spanned;
 
 use crate::{
     engine_threading::*,
-    language::{parsed::Supertrait, ty, CallPath},
+    language::{
+        parsed::Supertrait,
+        ty::{self},
+        CallPath,
+    },
     semantic_analysis::{
         declaration::{insert_supertraits_into_namespace, SupertraitOf},
         type_check_context::EnforceTypeArguments,
@@ -29,9 +34,14 @@ pub struct TraitConstraint {
 }
 
 impl HashWithEngines for TraitConstraint {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         self.trait_name.hash(state);
-        self.type_arguments.hash(state, engines);
+        self.type_arguments.hash(state, engines, already_hashed);
     }
 }
 
@@ -105,12 +115,16 @@ impl CollectTypesMetadata for TraitConstraint {
         &self,
         handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
+        already_collected: &mut HashSet<(usize, std::any::TypeId)>,
     ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         let mut res = vec![];
         handler.scope(|handler| {
             for type_arg in self.type_arguments.iter() {
                 res.extend(
-                    match type_arg.type_id.collect_types_metadata(handler, ctx) {
+                    match type_arg
+                        .type_id
+                        .collect_types_metadata(handler, ctx, already_collected)
+                    {
                         Ok(res) => res,
                         Err(_) => continue,
                     },

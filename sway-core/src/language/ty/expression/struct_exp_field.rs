@@ -1,7 +1,10 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    collections::{HashMap, HashSet},
+    hash::{Hash, Hasher},
+};
 
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::Ident;
+use sway_types::{Ident, Span};
 
 use crate::{
     decl_engine::*,
@@ -25,10 +28,15 @@ impl PartialEqWithEngines for TyStructExpressionField {
 }
 
 impl HashWithEngines for TyStructExpressionField {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TyStructExpressionField { name, value } = self;
         name.hash(state);
-        value.hash(state, engines);
+        value.hash(state, engines, already_hashed);
     }
 }
 
@@ -44,8 +52,10 @@ impl ReplaceDecls for TyStructExpressionField {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
+        already_replaced: &mut HashMap<(usize, std::any::TypeId), (usize, Span)>,
     ) -> Result<(), ErrorEmitted> {
-        self.value.replace_decls(decl_mapping, handler, ctx)
+        self.value
+            .replace_decls(decl_mapping, handler, ctx, already_replaced)
     }
 }
 

@@ -1,5 +1,6 @@
 use std::{
     cmp::Ordering,
+    collections::HashSet,
     fmt,
     hash::{Hash, Hasher},
     sync::Arc,
@@ -28,13 +29,18 @@ pub struct CallPathTree {
 }
 
 impl HashWithEngines for CallPathTree {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let CallPathTree {
             qualified_call_path,
             children,
         } = self;
-        qualified_call_path.hash(state, engines);
-        children.hash(state, engines);
+        qualified_call_path.hash(state, engines, already_hashed);
+        children.hash(state, engines, already_hashed);
     }
 }
 
@@ -109,13 +115,18 @@ impl QualifiedCallPath {
 }
 
 impl HashWithEngines for QualifiedCallPath {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let QualifiedCallPath {
             call_path,
             qualified_path_root,
         } = self;
         call_path.hash(state);
-        qualified_path_root.hash(state, engines);
+        qualified_path_root.hash(state, engines, already_hashed);
     }
 }
 

@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-52814126C16198E0"
+
+[[package]]
+name = "std"
+source = "path+from-root-52814126C16198E0"
+dependencies = ["core"]
+
+[[package]]
+name = "trait_recursive"
+source = "member"
+dependencies = ["std"]

@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     fmt,
     hash::{Hash, Hasher},
 };
@@ -105,7 +106,12 @@ impl PartialEqWithEngines for TyTraitDecl {
 }
 
 impl HashWithEngines for TyTraitDecl {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TyTraitDecl {
             name,
             type_parameters,
@@ -121,11 +127,11 @@ impl HashWithEngines for TyTraitDecl {
             call_path: _,
         } = self;
         name.hash(state);
-        type_parameters.hash(state, engines);
-        self_type.hash(state, engines);
-        interface_surface.hash(state, engines);
-        items.hash(state, engines);
-        supertraits.hash(state, engines);
+        type_parameters.hash(state, engines, already_hashed);
+        self_type.hash(state, engines, already_hashed);
+        interface_surface.hash(state, engines, already_hashed);
+        items.hash(state, engines, already_hashed);
+        supertraits.hash(state, engines, already_hashed);
         visibility.hash(state);
     }
 }
@@ -159,21 +165,33 @@ impl PartialEqWithEngines for TyTraitItem {
 }
 
 impl HashWithEngines for TyTraitInterfaceItem {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         match self {
-            TyTraitInterfaceItem::TraitFn(fn_decl) => fn_decl.hash(state, engines),
-            TyTraitInterfaceItem::Constant(const_decl) => const_decl.hash(state, engines),
-            TyTraitInterfaceItem::Type(type_decl) => type_decl.hash(state, engines),
+            TyTraitInterfaceItem::TraitFn(fn_decl) => fn_decl.hash(state, engines, already_hashed),
+            TyTraitInterfaceItem::Constant(const_decl) => {
+                const_decl.hash(state, engines, already_hashed)
+            }
+            TyTraitInterfaceItem::Type(type_decl) => type_decl.hash(state, engines, already_hashed),
         }
     }
 }
 
 impl HashWithEngines for TyTraitItem {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         match self {
-            TyTraitItem::Fn(fn_decl) => fn_decl.hash(state, engines),
-            TyTraitItem::Constant(const_decl) => const_decl.hash(state, engines),
-            TyTraitItem::Type(type_decl) => type_decl.hash(state, engines),
+            TyTraitItem::Fn(fn_decl) => fn_decl.hash(state, engines, already_hashed),
+            TyTraitItem::Constant(const_decl) => const_decl.hash(state, engines, already_hashed),
+            TyTraitItem::Type(type_decl) => type_decl.hash(state, engines, already_hashed),
         }
     }
 }

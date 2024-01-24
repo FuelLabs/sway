@@ -1,5 +1,5 @@
 use crate::{engine_threading::*, language::CallPathTree, type_system::priv_prelude::*};
-use std::{cmp::Ordering, fmt, hash::Hasher};
+use std::{cmp::Ordering, collections::HashSet, fmt, hash::Hasher};
 use sway_types::{Span, Spanned};
 
 #[derive(Debug, Clone)]
@@ -28,7 +28,12 @@ impl Spanned for TypeArgument {
 }
 
 impl HashWithEngines for TypeArgument {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TypeArgument {
             type_id,
             // these fields are not hashed because they aren't relevant/a
@@ -38,7 +43,9 @@ impl HashWithEngines for TypeArgument {
             call_path_tree: _,
         } = self;
         let type_engine = engines.te();
-        type_engine.get(*type_id).hash(state, engines);
+        type_engine
+            .get(*type_id)
+            .hash(state, engines, already_hashed);
     }
 }
 

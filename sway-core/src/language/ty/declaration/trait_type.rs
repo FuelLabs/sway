@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     fmt,
     hash::{Hash, Hasher},
 };
@@ -38,7 +39,12 @@ impl PartialEqWithEngines for TyTraitType {
 }
 
 impl HashWithEngines for TyTraitType {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TyTraitType {
             name,
             ty,
@@ -49,7 +55,7 @@ impl HashWithEngines for TyTraitType {
             attributes: _,
         } = self;
         name.hash(state);
-        ty.hash(state, engines);
+        ty.hash(state, engines, already_hashed);
         implementing_type.hash(state);
     }
 }

@@ -1,4 +1,7 @@
-use std::hash::Hasher;
+use std::{
+    collections::{HashMap, HashSet},
+    hash::Hasher,
+};
 
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
@@ -31,9 +34,14 @@ impl PartialEqWithEngines for TyCodeBlock {
 }
 
 impl HashWithEngines for TyCodeBlock {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TyCodeBlock { contents, .. } = self;
-        contents.hash(state, engines);
+        contents.hash(state, engines, already_hashed);
     }
 }
 
@@ -51,10 +59,11 @@ impl ReplaceDecls for TyCodeBlock {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
+        already_replaced: &mut HashMap<(usize, std::any::TypeId), (usize, Span)>,
     ) -> Result<(), ErrorEmitted> {
         handler.scope(|handler| {
             for x in self.contents.iter_mut() {
-                match x.replace_decls(decl_mapping, handler, ctx) {
+                match x.replace_decls(decl_mapping, handler, ctx, already_replaced) {
                     Ok(res) => res,
                     Err(_) => {
                         continue;

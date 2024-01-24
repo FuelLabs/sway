@@ -1,5 +1,8 @@
 use crate::{engine_threading::*, language::parsed, transform, type_system::*};
-use std::hash::{Hash, Hasher};
+use std::{
+    collections::HashSet,
+    hash::{Hash, Hasher},
+};
 
 use sway_types::{Ident, Named, Span, Spanned};
 
@@ -47,7 +50,12 @@ impl PartialEqWithEngines for TyAbiDecl {
 }
 
 impl HashWithEngines for TyAbiDecl {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TyAbiDecl {
             name,
             interface_surface,
@@ -59,9 +67,9 @@ impl HashWithEngines for TyAbiDecl {
             span: _,
         } = self;
         name.hash(state);
-        interface_surface.hash(state, engines);
-        items.hash(state, engines);
-        supertraits.hash(state, engines);
+        interface_surface.hash(state, engines, already_hashed);
+        items.hash(state, engines, already_hashed);
+        supertraits.hash(state, engines, already_hashed);
     }
 }
 

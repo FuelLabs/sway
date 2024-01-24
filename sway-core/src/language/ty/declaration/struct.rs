@@ -1,5 +1,6 @@
 use std::{
     cmp::Ordering,
+    collections::HashSet,
     hash::{Hash, Hasher},
 };
 
@@ -44,7 +45,12 @@ impl PartialEqWithEngines for TyStructDecl {
 }
 
 impl HashWithEngines for TyStructDecl {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TyStructDecl {
             call_path,
             fields,
@@ -56,8 +62,8 @@ impl HashWithEngines for TyStructDecl {
             attributes: _,
         } = self;
         call_path.suffix.hash(state);
-        fields.hash(state, engines);
-        type_parameters.hash(state, engines);
+        fields.hash(state, engines, already_hashed);
+        type_parameters.hash(state, engines, already_hashed);
         visibility.hash(state);
     }
 }
@@ -151,7 +157,12 @@ pub struct TyStructField {
 }
 
 impl HashWithEngines for TyStructField {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TyStructField {
             name,
             type_argument,
@@ -161,7 +172,7 @@ impl HashWithEngines for TyStructField {
             attributes: _,
         } = self;
         name.hash(state);
-        type_argument.hash(state, engines);
+        type_argument.hash(state, engines, already_hashed);
     }
 }
 

@@ -72,7 +72,12 @@ pub(crate) fn instantiate_function_application(
         function_decl.name.as_str(),
         &call_path_binding.span(),
     )?;
-    function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
+    function_decl.replace_decls(
+        &decl_mapping,
+        handler,
+        &mut ctx,
+        &mut HashMap::<(usize, std::any::TypeId), (usize, Span)>::new(),
+    )?;
     let return_type = function_decl.return_type.clone();
     let new_decl_ref = decl_engine
         .insert(function_decl)

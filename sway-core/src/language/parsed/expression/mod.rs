@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, fmt, hash::Hasher};
+use std::{cmp::Ordering, collections::HashSet, fmt, hash::Hasher};
 
 use crate::{
     engine_threading::{
@@ -119,15 +119,23 @@ pub struct QualifiedPathRootTypes {
 }
 
 impl HashWithEngines for QualifiedPathRootTypes {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let QualifiedPathRootTypes {
             ty,
             as_trait,
             // ignored fields
             as_trait_span: _,
         } = self;
-        ty.hash(state, engines);
-        engines.te().get(*as_trait).hash(state, engines);
+        ty.hash(state, engines, already_hashed);
+        engines
+            .te()
+            .get(*as_trait)
+            .hash(state, engines, already_hashed);
     }
 }
 

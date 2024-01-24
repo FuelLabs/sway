@@ -1,5 +1,6 @@
 use std::{
     cmp::Ordering,
+    collections::HashSet,
     hash::{Hash, Hasher},
 };
 
@@ -44,7 +45,12 @@ impl PartialEqWithEngines for TyEnumDecl {
 }
 
 impl HashWithEngines for TyEnumDecl {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TyEnumDecl {
             call_path,
             type_parameters,
@@ -56,8 +62,8 @@ impl HashWithEngines for TyEnumDecl {
             attributes: _,
         } = self;
         call_path.suffix.hash(state);
-        variants.hash(state, engines);
-        type_parameters.hash(state, engines);
+        variants.hash(state, engines, already_hashed);
+        type_parameters.hash(state, engines, already_hashed);
         visibility.hash(state);
     }
 }
@@ -130,9 +136,14 @@ pub struct TyEnumVariant {
 }
 
 impl HashWithEngines for TyEnumVariant {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         self.name.hash(state);
-        self.type_argument.hash(state, engines);
+        self.type_argument.hash(state, engines, already_hashed);
         self.tag.hash(state);
     }
 }

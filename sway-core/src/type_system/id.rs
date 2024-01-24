@@ -42,6 +42,7 @@ impl CollectTypesMetadata for TypeId {
         &self,
         _handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
+        _already_collected: &mut HashSet<(usize, std::any::TypeId)>,
     ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         fn filter_fn(type_info: &TypeInfo) -> bool {
             matches!(type_info, TypeInfo::UnknownGeneric { .. })

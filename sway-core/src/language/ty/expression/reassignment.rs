@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    collections::{HashMap, HashSet},
     hash::{Hash, Hasher},
 };
 
@@ -41,7 +42,12 @@ impl PartialEqWithEngines for TyReassignment {
 }
 
 impl HashWithEngines for TyReassignment {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TyReassignment {
             lhs_base_name,
             lhs_type,
@@ -50,9 +56,11 @@ impl HashWithEngines for TyReassignment {
         } = self;
         let type_engine = engines.te();
         lhs_base_name.hash(state);
-        type_engine.get(*lhs_type).hash(state, engines);
-        lhs_indices.hash(state, engines);
-        rhs.hash(state, engines);
+        type_engine
+            .get(*lhs_type)
+            .hash(state, engines, already_hashed);
+        lhs_indices.hash(state, engines, already_hashed);
+        rhs.hash(state, engines, already_hashed);
     }
 }
 
@@ -69,8 +77,10 @@ impl ReplaceDecls for TyReassignment {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
+        already_replaced: &mut HashMap<(usize, std::any::TypeId), (usize, Span)>,
     ) -> Result<(), ErrorEmitted> {
-        self.rhs.replace_decls(decl_mapping, handler, ctx)
+        self.rhs
+            .replace_decls(decl_mapping, handler, ctx, already_replaced)
     }
 }
 
@@ -150,7 +160,12 @@ impl PartialEqWithEngines for ProjectionKind {
 }
 
 impl HashWithEngines for ProjectionKind {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         use ProjectionKind::*;
         std::mem::discriminant(self).hash(state);
         match self {
@@ -167,7 +182,7 @@ impl HashWithEngines for ProjectionKind {
                 // reliable source of obj v. obj distinction
                 index_span: _,
             } => {
-                index.hash(state, engines);
+                index.hash(state, engines, already_hashed);
             }
         }
     }
