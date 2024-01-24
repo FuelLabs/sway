@@ -1,14 +1,15 @@
 mod handlers;
 mod state;
+mod util;
 
 use self::state::ServerState;
+use self::util::IdGenerator;
 use crate::names::register_name;
 use crate::types::DynResult;
 use dap::events::OutputEventBody;
 use dap::events::{ExitedEventBody, StoppedEventBody};
 use dap::prelude::*;
 use dap::types::{Scope, StartDebuggingRequestKind, Variable};
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::{
     io::{BufReader, BufWriter, Stdin, Stdout},
@@ -31,11 +32,14 @@ pub(crate) enum AdapterError {
     #[error("Missing configuration")]
     MissingConfiguration,
 
+    #[error("Missing breakpoint location")]
+    MissingBreakpointLocation,
+
     #[error("Missing source map")]
     MissingSourceMap { pc: u64 },
 
     #[error("Unknown breakpoint")]
-    UnknownBreakpoint,
+    UnknownBreakpoint { pc: u64 },
 
     #[error("Build failed")]
     BuildFailed { phase: String },
@@ -57,6 +61,7 @@ pub struct AdditionalData {
 pub struct DapServer {
     server: Server<Stdin, Stdout>,
     state: ServerState,
+    breakpoint_id_gen: IdGenerator,
 }
 
 impl Default for DapServer {
@@ -73,6 +78,7 @@ impl DapServer {
         DapServer {
             server,
             state: Default::default(),
+            breakpoint_id_gen: Default::default(),
         }
     }
 
@@ -89,18 +95,16 @@ impl DapServer {
                     }
                     if self.state.configuration_done && !self.state.started_debugging {
                         if let Some(StartDebuggingRequestKind::Launch) = self.state.mode {
-                            if let Some(program_path) = &self.state.program_path {
-                                self.state.started_debugging = true;
-                                match self.handle_launch(program_path.clone()) {
-                                    Ok(true) => {}
-                                    Ok(false) => {
-                                        // The tests finished executing
-                                        self.exit(0);
-                                    }
-                                    Err(e) => {
-                                        self.error(format!("Launch error: {:?}", e));
-                                        self.exit(1);
-                                    }
+                            self.state.started_debugging = true;
+                            match self.handle_launch() {
+                                Ok(true) => {}
+                                Ok(false) => {
+                                    // The tests finished executing
+                                    self.exit(0);
+                                }
+                                Err(e) => {
+                                    self.error(format!("Launch error: {:?}", e));
+                                    self.exit(1);
                                 }
                             }
                         }
@@ -113,6 +117,7 @@ impl DapServer {
 
     fn handle(&mut self, req: Request) -> DynResult<Response> {
         let command = req.command.clone();
+        let mut exit_code = None;
 
         let rsp = match command {
             Command::Attach(_) => {
@@ -120,20 +125,26 @@ impl DapServer {
                 Ok(ResponseBody::Attach)
             }
             Command::BreakpointLocations(ref args) => {
-                let breakpoints = self
+                let source_path = args
+                    .source
+                    .path
+                    .as_ref()
+                    .ok_or(AdapterError::MissingBreakpointLocation)?;
+
+                let existing_breakpoints = self
                     .state
                     .breakpoints
+                    .get(&PathBuf::from(source_path))
+                    .ok_or(AdapterError::MissingBreakpointLocation)?;
+
+                let breakpoints = existing_breakpoints
                     .iter()
                     .filter_map(|bp| {
-                        if let Some(source) = &bp.source {
-                            if let Some(line) = bp.line {
-                                if args.source.path == source.path {
-                                    return Some(types::BreakpointLocation {
-                                        line,
-                                        ..Default::default()
-                                    });
-                                }
-                            }
+                        if let Some(line) = bp.line {
+                            return Some(types::BreakpointLocation {
+                                line,
+                                ..Default::default()
+                            });
                         }
                         None
                     })
@@ -149,19 +160,21 @@ impl DapServer {
             }
             Command::Continue(_) => {
                 match self.handle_continue() {
-                    Ok(true) => {}
+                    Ok(true) => Ok(ResponseBody::Continue(responses::ContinueResponse {
+                        all_threads_continued: Some(true),
+                    })),
                     Ok(false) => {
                         // The tests finished executing
-                        self.exit(0);
+                        exit_code = Some(0);
+                        Ok(ResponseBody::Continue(responses::ContinueResponse {
+                            all_threads_continued: Some(true),
+                        }))
                     }
                     Err(e) => {
-                        self.error(format!("Continue error: {:?}", e));
-                        self.exit(1);
+                        exit_code = Some(1);
+                        Err(e)
                     }
                 }
-                Ok(ResponseBody::Continue(responses::ContinueResponse {
-                    all_threads_continued: Some(true),
-                }))
             }
             Command::Disconnect(_) => {
                 self.exit(0);
@@ -182,22 +195,22 @@ impl DapServer {
                         .clone(),
                 )
                 .map_err(|_| AdapterError::MissingConfiguration)?;
-                self.state.program_path = Some(PathBuf::from(data.program));
+                self.state.program_path = PathBuf::from(data.program);
                 Ok(ResponseBody::Launch)
             }
             Command::Next(_) => {
                 match self.handle_next() {
-                    Ok(true) => {}
+                    Ok(true) => Ok(ResponseBody::Next),
                     Ok(false) => {
                         // The tests finished executing
-                        self.exit(0);
+                        exit_code = Some(0);
+                        Ok(ResponseBody::Next)
                     }
                     Err(e) => {
-                        self.error(format!("Next error: {:?}", e));
-                        self.exit(1);
+                        exit_code = Some(1);
+                        Err(e)
                     }
                 }
-                Ok(ResponseBody::Next)
             }
             Command::Pause(_) => {
                 // TODO: interpreter pause function
@@ -218,72 +231,43 @@ impl DapServer {
                     ..Default::default()
                 }],
             })),
-            Command::SetBreakpoints(ref args) => {
-                let mut rng = rand::thread_rng();
-                let breakpoints = args
-                    .breakpoints
-                    .clone()
-                    .unwrap_or_default()
-                    .iter()
-                    .map(|source_bp| {
-                        match self.state.breakpoints.iter().find(|bp| {
-                            if let Some(source) = &bp.source {
-                                if let Some(line) = bp.line {
-                                    if args.source.path == source.path && source_bp.line == line {
-                                        return true;
-                                    }
-                                }
-                            }
-                            false
-                        }) {
-                            Some(existing_bp) => existing_bp.clone(),
-
-                            None => {
-                                let id = rng.gen_range(0..1000000); // TODO: unique
-                                types::Breakpoint {
-                                    id: Some(id),
-                                    verified: true,
-                                    line: Some(source_bp.line),
-                                    source: Some(args.source.clone()),
-                                    ..Default::default()
-                                }
-                            }
-                        }
-                    })
-                    .collect::<Vec<_>>();
-                self.state.breakpoints = breakpoints.clone();
-                Ok(ResponseBody::SetBreakpoints(
+            Command::SetBreakpoints(ref args) => match self.handle_set_breakpoints(args) {
+                Ok(breakpoints) => Ok(ResponseBody::SetBreakpoints(
                     responses::SetBreakpointsResponse { breakpoints },
-                ))
-            }
+                )),
+                Err(e) => Err(e),
+            },
             Command::StackTrace(_) => {
-                let executor = self.state.executors.first().unwrap(); // TODO
-
-                // For now, we only return 1 stack frame.
-                let stack_frames = self
+                let name = self
                     .state
-                    .current_breakpoint_id
-                    .and_then(|bp_id| {
-                        self.state
-                            .breakpoints
-                            .iter()
-                            .find(|bp| bp.id == Some(bp_id))
-                            .map(|bp| {
-                                vec![types::StackFrame {
-                                    id: 0,
-                                    name: executor.name.clone(),
-                                    source: bp.source.clone(),
-                                    line: bp.line.unwrap(),
-                                    column: 0,
-                                    presentation_hint: Some(
-                                        types::StackFramePresentationhint::Normal,
-                                    ),
-                                    ..Default::default()
-                                }]
-                            })
-                    })
+                    .executors
+                    .first()
+                    .map(|exec| exec.name.clone())
                     .unwrap_or_default();
 
+                // For now, we only return 1 stack frame.
+                let stack_frames = match self.state.stopped_on_breakpoint_id {
+                    Some(breakpoint_id) => self
+                        .state
+                        .breakpoints
+                        .iter()
+                        .find_map(|(_, breakpoints)| {
+                            breakpoints.iter().find(|bp| Some(breakpoint_id) == bp.id)
+                        })
+                        .map(|current_bp| {
+                            vec![types::StackFrame {
+                                id: 0,
+                                name,
+                                source: current_bp.source.clone(),
+                                line: current_bp.line.unwrap(),
+                                column: 0,
+                                presentation_hint: Some(types::StackFramePresentationhint::Normal),
+                                ..Default::default()
+                            }]
+                        })
+                        .unwrap_or_default(),
+                    None => vec![],
+                };
                 Ok(ResponseBody::StackTrace(responses::StackTraceResponse {
                     stack_frames,
                     total_frames: None,
@@ -343,10 +327,17 @@ impl DapServer {
             _ => Err(AdapterError::UnhandledCommand { command }),
         };
 
-        match rsp {
+        let result = match rsp {
             Ok(rsp) => Ok(req.success(rsp)),
-            Err(e) => Ok(req.error(&format!("{:?}", e))),
+            Err(e) => {
+                self.error(format!("{:?}", e));
+                Ok(req.error(&format!("{:?}", e)))
+            }
+        };
+        if let Some(exit_code) = exit_code {
+            self.exit(exit_code);
         }
+        result
     }
 
     /// Logs a message to the client's debugger console output.
@@ -419,7 +410,7 @@ impl DapServer {
 
     fn stop_on_breakpoint(&mut self, pc: u64) -> Result<bool, AdapterError> {
         let breakpoint_id = self.state.vm_pc_to_breakpoint_id(pc)?;
-        self.state.current_breakpoint_id = Some(breakpoint_id);
+        self.state.stopped_on_breakpoint_id = Some(breakpoint_id);
         let _ = self.server.send_event(Event::Stopped(StoppedEventBody {
             reason: types::StoppedEventReason::Breakpoint,
             hit_breakpoint_ids: Some(vec![breakpoint_id]),
@@ -434,7 +425,7 @@ impl DapServer {
 
     fn stop_on_step(&mut self, pc: u64) -> Result<bool, AdapterError> {
         let hit_breakpoint_ids = if let Ok(breakpoint_id) = self.state.vm_pc_to_breakpoint_id(pc) {
-            self.state.current_breakpoint_id = Some(breakpoint_id);
+            self.state.stopped_on_breakpoint_id = Some(breakpoint_id);
             Some(vec![breakpoint_id])
         } else {
             None

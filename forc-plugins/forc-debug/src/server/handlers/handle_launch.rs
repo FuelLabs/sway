@@ -2,21 +2,74 @@ use crate::server::AdapterError;
 use crate::server::DapServer;
 use forc_pkg::{self, BuildProfile, Built, BuiltPackage, PackageManifestFile};
 use forc_test::execute::{DebugResult, TestExecutor};
+use forc_test::setup::TestSetup;
 use forc_test::BuiltTests;
 use std::{cmp::min, collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_types::span::Position;
 
 impl DapServer {
-    /// Handle a `launch` request. Returns true if the server should continue running.
-    pub(crate) fn handle_launch(&mut self, program_path: PathBuf) -> Result<bool, AdapterError> {
-        self.log("launch!".into());
+    /// Handles a `launch` request. Returns true if the server should continue running.
+    pub(crate) fn handle_launch(&mut self) -> Result<bool, AdapterError> {
+        // Build tests for the given path.
+        let (pkg_to_debug, test_setup) = self.build_tests()?;
+        let entries = pkg_to_debug.bytecode.entries.iter().filter_map(|entry| {
+            if let Some(test_entry) = entry.kind.test() {
+                return Some((entry, test_entry));
+            }
+            None
+        });
+
+        // Construct a TestExecutor for each test and store it
+        let executors: Vec<TestExecutor> = entries
+            .enumerate()
+            .map(|(order, (entry, test_entry))| {
+                let offset = u32::try_from(entry.finalized.imm)
+                    .expect("test instruction offset out of range");
+                let name = entry.finalized.fn_name.clone();
+
+                TestExecutor::new(
+                    &pkg_to_debug.bytecode.bytes,
+                    offset,
+                    test_setup.clone(),
+                    test_entry,
+                    name.clone(),
+                    order as u64,
+                )
+            })
+            .collect();
+        self.state.init_executors(executors);
+
+        // Start debugging
+        self.state.update_vm_breakpoints();
+        while let Some(executor) = self.state.executors.get_mut(0) {
+            executor.interpreter.set_single_stepping(false);
+            match executor.start_debugging()? {
+                DebugResult::TestComplete(result) => {
+                    self.state.test_results.push(result);
+                }
+                DebugResult::Breakpoint(pc) => {
+                    return self.stop_on_breakpoint(pc);
+                }
+            };
+            self.state.executors.remove(0);
+        }
+
+        self.log_test_results();
+        Ok(false)
+    }
+
+    /// Builds the tests at the given [PathBuf] and stores the source maps.
+    pub(crate) fn build_tests(&mut self) -> Result<(BuiltPackage, TestSetup), AdapterError> {
+        if let Some(pkg) = &self.state.built_package {
+            if let Some(setup) = &self.state.test_setup {
+                return Ok((pkg.clone(), setup.clone()));
+            }
+        }
 
         // 1. Build the packages
-        let manifest_file =
-            forc_pkg::manifest::ManifestFile::from_dir(&program_path).map_err(|_| {
-                AdapterError::BuildFailed {
-                    phase: "read manifest file".into(),
-                }
+        let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&self.state.program_path)
+            .map_err(|_| AdapterError::BuildFailed {
+                phase: "read manifest file".into(),
             })?;
         let pkg_manifest: PackageManifestFile =
             manifest_file
@@ -70,8 +123,6 @@ impl DapServer {
         .map_err(|_| AdapterError::BuildFailed {
             phase: "build packages".into(),
         })?;
-
-        self.log("built!".into());
 
         // 2. Store the source maps
         let mut pkg_to_debug: Option<&BuiltPackage> = None;
@@ -127,17 +178,15 @@ impl DapServer {
             });
         });
 
-        self.log("stored!\n".into());
-
         // 3. Build the tests
-        let pkg_to_debug = pkg_to_debug.ok_or_else(|| {
+        let built_package = pkg_to_debug.ok_or_else(|| {
             self.error(format!("Couldn't find built package for {}", project_name));
             AdapterError::BuildFailed {
                 phase: "find package".into(),
             }
         })?;
 
-        let built = Built::Package(Arc::from(pkg_to_debug.clone()));
+        let built = Built::Package(Arc::from(built_package.clone()));
 
         let built_tests =
             BuiltTests::from_built(built, &build_plan).map_err(|_| AdapterError::BuildFailed {
@@ -145,78 +194,18 @@ impl DapServer {
             })?;
 
         let pkg_tests = match built_tests {
-            BuiltTests::Package(pkg) => pkg,
+            BuiltTests::Package(pkg_tests) => pkg_tests,
             BuiltTests::Workspace(_) => {
                 return Err(AdapterError::BuildFailed {
                     phase: "package tests".into(),
-                });
+                })
             }
         };
         let test_setup = pkg_tests.setup().map_err(|_| AdapterError::BuildFailed {
-            phase: "package tests".into(),
+            phase: "test setup".into(),
         })?;
-
-        let entries = pkg_to_debug.bytecode.entries.iter().filter_map(|entry| {
-            if let Some(test_entry) = entry.kind.test() {
-                return Some((entry, test_entry));
-            }
-            None
-        });
-
-        self.log(format!(
-            "entries {:?}\n",
-            entries.clone().collect::<Vec<_>>()
-        ));
-
-        // 4. Construct a TestExecutor for each test and store it
-        let executors: Vec<TestExecutor> = entries
-            .enumerate()
-            .filter_map(|(order, (entry, test_entry))| {
-                let offset = u32::try_from(entry.finalized.imm)
-                    .expect("test instruction offset out of range");
-                let name = entry.finalized.fn_name.clone();
-
-                return Some(TestExecutor::new(
-                    &pkg_to_debug.bytecode.bytes,
-                    offset,
-                    test_setup.clone(),
-                    test_entry,
-                    name.clone(),
-                    order as u64,
-                ));
-            })
-            .collect();
-
-        self.log(format!("executors {:?}\n", self.state.executors.len()));
-
-        self.state.init_executors(executors);
-
-        self.log("inited!\n".into());
-
-        // 5. Start debugging
-        self.state.update_vm_breakpoints();
-
-        self.log("updated bps!\n".into());
-
-        self.log(format!("self executors {:?}\n", self.state.executors.len()));
-
-        while let Some(executor) = self.state.executors.get_mut(0) {
-            executor.interpreter.set_single_stepping(false);
-            let debug_result = executor.start_debugging();
-            self.log(format!("debug_result {:?}", debug_result));
-
-            match debug_result? {
-                DebugResult::TestComplete(result) => {
-                    self.state.test_results.push(result);
-                }
-                DebugResult::Breakpoint(pc) => {
-                    return self.stop_on_breakpoint(pc);
-                }
-            };
-            self.state.executors.remove(0);
-        }
-
-        self.log_test_results();
-        Ok(false)
+        self.state.built_package = Some(built_package.clone());
+        self.state.test_setup = Some(test_setup.clone());
+        Ok((built_package.clone(), test_setup))
     }
 }
