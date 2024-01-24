@@ -21,18 +21,21 @@ impl DapServer {
 
         // Construct a TestExecutor for each test and store it
         let executors: Vec<TestExecutor> = entries
-            .map(|(entry, test_entry)| {
+            .filter_map(|(entry, test_entry)| {
                 let offset = u32::try_from(entry.finalized.imm)
                     .expect("test instruction offset out of range");
                 let name = entry.finalized.fn_name.clone();
+                if test_entry.file_path.as_path() != self.state.program_path.as_path() {
+                    return None;
+                }
 
-                TestExecutor::new(
+                Some(TestExecutor::new(
                     &pkg_to_debug.bytecode.bytes,
                     offset,
                     test_setup.clone(),
                     test_entry,
                     name.clone(),
-                )
+                ))
             })
             .collect();
         self.state.init_executors(executors);
@@ -41,7 +44,7 @@ impl DapServer {
         self.state.update_vm_breakpoints();
         while let Some(executor) = self.state.executors.first_mut() {
             executor.interpreter.set_single_stepping(false);
-            
+
             match executor.start_debugging()? {
                 DebugResult::TestComplete(result) => {
                     self.state.test_results.push(result);

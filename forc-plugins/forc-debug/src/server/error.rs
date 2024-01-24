@@ -24,6 +24,9 @@ pub(crate) enum AdapterError {
     #[error("Build failed")]
     BuildFailed { phase: String, reason: String },
 
+    #[error("No active test executor")]
+    NoActiveTestExecutor,
+
     #[error("Test execution failed")]
     TestExecutionFailed {
         #[from]

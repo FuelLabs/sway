@@ -208,42 +208,13 @@ impl DapServer {
                 )),
                 Err(e) => Err(e),
             },
-            Command::StackTrace(_) => {
-                let name = self
-                    .state
-                    .executors
-                    .first()
-                    .map(|exec| exec.name.clone())
-                    .unwrap_or_default();
-
-                // For now, we only return 1 stack frame.
-                let stack_frames = match self.state.stopped_on_breakpoint_id {
-                    Some(breakpoint_id) => self
-                        .state
-                        .breakpoints
-                        .iter()
-                        .find_map(|(_, breakpoints)| {
-                            breakpoints.iter().find(|bp| Some(breakpoint_id) == bp.id)
-                        })
-                        .map(|current_bp| {
-                            vec![types::StackFrame {
-                                id: 0,
-                                name,
-                                source: current_bp.source.clone(),
-                                line: current_bp.line.unwrap(),
-                                column: 0,
-                                presentation_hint: Some(types::StackFramePresentationhint::Normal),
-                                ..Default::default()
-                            }]
-                        })
-                        .unwrap_or_default(),
-                    None => vec![],
-                };
-                Ok(ResponseBody::StackTrace(responses::StackTraceResponse {
+            Command::StackTrace(_) => match self.handle_stack_trace() {
+                Ok(stack_frames) => Ok(ResponseBody::StackTrace(responses::StackTraceResponse {
                     stack_frames,
                     total_frames: None,
-                }))
-            }
+                })),
+                Err(e) => Err(e),
+            },
             Command::StepIn(_) => Ok(ResponseBody::StepIn),
             Command::StepOut(_) => Ok(ResponseBody::StepOut),
             Command::Terminate(_) => {
@@ -399,6 +370,7 @@ impl DapServer {
             self.state.stopped_on_breakpoint_id = Some(breakpoint_id);
             Some(vec![breakpoint_id])
         } else {
+            self.state.stopped_on_breakpoint_id = None;
             None
         };
 

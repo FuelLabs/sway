@@ -1,3 +1,7 @@
+use dap::types::Source;
+use fuel_vm::fuel_asm::RegId;
+use std::path::PathBuf;
+
 #[derive(Debug, Clone)]
 pub(crate) struct IdGenerator {
     next_id: i64,
@@ -19,4 +23,17 @@ impl IdGenerator {
         self.next_id += 1;
         id
     }
+}
+
+pub(crate) fn path_into_source(path: &PathBuf) -> Source {
+    Source {
+        path: Some(path.to_string_lossy().into_owned()),
+        ..Default::default()
+    }
+}
+
+pub(crate) fn current_instruction(registers: &[u64]) -> u64 {
+    let pc = registers[RegId::PC];
+    let is = registers[RegId::IS];
+    pc - is
 }

@@ -52,11 +52,10 @@ impl ServerState {
         self.executors.first_mut()
     }
 
-    /// Finds the breakpoint matching a VM program counter.
-    pub fn vm_pc_to_breakpoint_id(&mut self, pc: u64) -> Result<i64, AdapterError> {
-        // First, try to find the source location by looking for the program counter in the source map.
-        let (source_path, source_line) = self
-            .source_map
+    /// Finds the source location matching a VM program counter.
+    pub fn vm_pc_to_source_location(&self, pc: u64) -> Result<(&PathBuf, i64), AdapterError> {
+        // FTry to find the source location by looking for the program counter in the source map.
+        self.source_map
             .iter()
             .find_map(|(source_path, source_map)| {
                 let line = source_map.iter().find_map(|(&line, &instruction)| {
@@ -72,9 +71,14 @@ impl ServerState {
                 }
                 None
             })
-            .ok_or(AdapterError::MissingSourceMap { pc })?;
+            .ok_or(AdapterError::MissingSourceMap { pc })
+    }
 
-        // Next, find the breakpoint ID matching the source location.
+    /// Finds the breakpoint matching a VM program counter.
+    pub fn vm_pc_to_breakpoint_id(&self, pc: u64) -> Result<i64, AdapterError> {
+        let (source_path, source_line) = self.vm_pc_to_source_location(pc)?;
+
+        // Find the breakpoint ID matching the source location.
         let source_bps = self
             .breakpoints
             .get(source_path)

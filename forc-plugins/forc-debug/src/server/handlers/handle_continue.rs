@@ -9,7 +9,7 @@ impl DapServer {
 
         if let Some(executor) = self.state.executors.first_mut() {
             executor.interpreter.set_single_stepping(false);
-            
+
             match executor.continue_debugging()? {
                 DebugResult::TestComplete(result) => {
                     self.state.test_results.push(result);
