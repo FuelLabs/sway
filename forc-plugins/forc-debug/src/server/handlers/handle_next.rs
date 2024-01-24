@@ -3,7 +3,7 @@ use crate::server::DapServer;
 use forc_test::execute::DebugResult;
 
 impl DapServer {
-    /// Handle a `continue` request. Returns true if the server should continue running.
+    /// Handles a `next` request. Returns true if the server should continue running.
     pub(crate) fn handle_next(&mut self) -> Result<bool, AdapterError> {
         self.state.update_vm_breakpoints();
         if let Some(executor) = self.state.executors.get_mut(0) {
