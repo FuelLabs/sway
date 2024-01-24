@@ -832,7 +832,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         pass_group.append_pass(MEMCPYOPT_NAME);
 
         // Run a DCE and simplify-cfg to clean up any obsolete instructions.
-        // pass_group.append_pass(DCE_NAME); // TODO
+        pass_group.append_pass(DCE_NAME);
         pass_group.append_pass(SIMPLIFYCFG_NAME);
 
         match build_config.optimization_level {
