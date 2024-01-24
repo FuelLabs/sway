@@ -401,13 +401,11 @@ impl Op {
                 VirtualOp::JNZF(r1, r2, imm)
             }
             "jneb" => {
-                let (r1, r2, r3, imm) =
-                    three_regs_imm_06(handler, args, immediate, whole_op_span)?;
+                let (r1, r2, r3, imm) = three_regs_imm_06(handler, args, immediate, whole_op_span)?;
                 VirtualOp::JNEB(r1, r2, r3, imm)
             }
             "jnef" => {
-                let (r1, r2, r3, imm) =
-                    three_regs_imm_06(handler, args, immediate, whole_op_span)?;
+                let (r1, r2, r3, imm) = three_regs_imm_06(handler, args, immediate, whole_op_span)?;
                 VirtualOp::JNEF(r1, r2, r3, imm)
             }
             "ret" => {
@@ -1010,7 +1008,15 @@ fn three_regs_imm_06(
     args: &[VirtualRegister],
     immediate: &Option<Ident>,
     whole_op_span: Span,
-) -> Result<(VirtualRegister, VirtualRegister, VirtualRegister, VirtualImmediate06), ErrorEmitted> {
+) -> Result<
+    (
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualImmediate06,
+    ),
+    ErrorEmitted,
+> {
     if args.len() > 3 {
         handler.emit_err(CompileError::IncorrectNumberOfAsmRegisters {
             span: whole_op_span.clone(),
