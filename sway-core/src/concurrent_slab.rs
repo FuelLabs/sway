@@ -94,10 +94,4 @@ where
         let mut inner = self.inner.write().unwrap();
         inner.retain(predicate);
     }
-
-    pub fn clear(&self) {
-        let mut inner = self.inner.write().unwrap();
-        inner.clear();
-        inner.shrink_to(0);
-    }
 }

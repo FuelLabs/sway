@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::{
     concurrent_slab::ConcurrentSlab,
     decl_engine::*,
@@ -9,6 +7,8 @@ use crate::{
         TraitTypeDeclaration, TypeAliasDeclaration, VariableDeclaration,
     },
 };
+use std::sync::Arc;
+use sway_types::{ModuleId, Spanned};
 
 use super::parsed_id::ParsedDeclId;
 
@@ -104,11 +104,17 @@ decl_engine_insert!(enum_slab, EnumDeclaration);
 decl_engine_insert!(type_alias_slab, TypeAliasDeclaration);
 
 macro_rules! decl_engine_clear_module {
-    ($($slab:ident, $decl:ty);* $(;)?) => {
+    ($(($slab:ident, $getter:expr)),* $(,)?) => {
         impl ParsedDeclEngine {
-            pub fn clear(&self) {
+            pub fn clear_module(&mut self, module_id: &ModuleId) {
                 $(
-                    self.$slab.clear();
+                    self.$slab.retain(|_k, item| {
+                        let span = $getter(item);
+                        match span.source_id() {
+                            Some(source_id) => &source_id.module_id() != module_id,
+                            None => false,
+                        }
+                    });
                 )*
             }
         }
@@ -116,19 +122,19 @@ macro_rules! decl_engine_clear_module {
 }
 
 decl_engine_clear_module!(
-    variable_slab, VariableDeclaration;
-    function_slab, FunctionDeclaration;
-    trait_slab, TraitDeclaration;
-    trait_fn_slab, TraitFn;
-    trait_type_slab, TraitTypeDeclaration;
-    impl_trait_slab, ImplTrait;
-    impl_self_slab, ImplSelf;
-    struct_slab, StructDeclaration;
-    storage_slab, StorageDeclaration;
-    abi_slab, AbiDeclaration;
-    constant_slab, ConstantDeclaration;
-    enum_slab, EnumDeclaration;
-    type_alias_slab, TypeAliasDeclaration;
+    (variable_slab, |item: &VariableDeclaration| item.name.span()),
+    (function_slab, |item: &FunctionDeclaration| item.name.span()),
+    (trait_slab, |item: &TraitDeclaration| item.name.span()),
+    (trait_fn_slab, |item: &TraitFn| item.name.span()),
+    (trait_type_slab, |item: &TraitTypeDeclaration| item.name.span()),
+    (struct_slab, |item: &StructDeclaration| item.name.span()),
+    (abi_slab, |item: &AbiDeclaration| item.name.span()),
+    (constant_slab, |item: &ConstantDeclaration| item.name.span()),
+    (enum_slab, |item: &EnumDeclaration| item.name.span()),
+    (type_alias_slab, |item: &TypeAliasDeclaration| item.name.span()),
+    (impl_trait_slab, |item: &ImplTrait| item.block_span.clone()),
+    (impl_self_slab, |item: &ImplSelf| item.block_span.clone()),
+    (storage_slab, |item: &StorageDeclaration| item.span.clone()),
 );
 
 impl ParsedDeclEngine {
