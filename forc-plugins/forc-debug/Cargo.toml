@@ -10,8 +10,8 @@ repository.workspace = true
 
 [dependencies]
 anyhow = "1.0" # Used by the examples and for conversion only
-dap = "0.4.1-alpha1"
 clap = { version = "3", features = ["env", "derive"] }
+dap = "0.4.1-alpha1"
 forc-pkg = { version = "0.49.0", path = "../../forc-pkg" }
 forc-test = { version = "0.49.0", path = "../../forc-test" }
 fuel-core-client = { workspace = true }
@@ -24,7 +24,12 @@ shellfish = { version = "0.6.0", features = ["rustyline", "async", "tokio"] }
 sway-core = { version = "0.49.0", path = "../../sway-core" }
 sway-types = { version = "0.49.0", path = "../../sway-types" }
 thiserror = "1.0"
-tokio = { version = "1.8", features = ["net", "io-util", "macros", "rt-multi-thread"] }
+tokio = { version = "1.8", features = [
+    "net",
+    "io-util",
+    "macros",
+    "rt-multi-thread",
+] }
 
 [dev-dependencies]
 escargot = "0.5.7"

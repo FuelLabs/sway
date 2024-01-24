@@ -82,7 +82,7 @@ impl DapServer {
                     phase: "package manifest".into(),
                     reason: err.to_string(),
                 })?;
-        let mut member_manifests =
+        let member_manifests =
             manifest_file
                 .member_manifests()
                 .map_err(|err| AdapterError::BuildFailed {
@@ -107,13 +107,8 @@ impl DapServer {
             reason: err.to_string(),
         })?;
 
-        let project_name = member_manifests
-            .first_entry()
-            .unwrap()
-            .get()
-            .project
-            .name
-            .clone();
+        let project_name = pkg_manifest.project_name();
+
         let outputs =
             std::iter::once(build_plan.find_member_index(&project_name).unwrap()).collect();
 
@@ -188,10 +183,9 @@ impl DapServer {
 
         // 3. Build the tests
         let built_package = pkg_to_debug.ok_or_else(|| {
-            self.error(format!("Couldn't find built package for {}", project_name));
             AdapterError::BuildFailed {
                 phase: "find package".into(),
-                reason: "Package not found".into(),
+                reason: format!("Couldn't find built package for {}", project_name),
             }
         })?;
 

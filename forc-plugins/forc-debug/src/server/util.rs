@@ -1,6 +1,6 @@
 use dap::types::Source;
 use fuel_vm::fuel_asm::RegId;
-use std::path::PathBuf;
+use std::path::Path;
 
 #[derive(Debug, Clone)]
 pub(crate) struct IdGenerator {
@@ -25,7 +25,7 @@ impl IdGenerator {
     }
 }
 
-pub(crate) fn path_into_source(path: &PathBuf) -> Source {
+pub(crate) fn path_into_source(path: &Path) -> Source {
     Source {
         path: Some(path.to_string_lossy().into_owned()),
         ..Default::default()
