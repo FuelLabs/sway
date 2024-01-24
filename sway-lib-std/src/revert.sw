@@ -54,8 +54,7 @@ pub fn revert(code: u64) {
 /// }
 /// ```
 #[cfg(experimental_new_encoding = false)]
-pub fn require<T>(condition: bool, value: T)
-{
+pub fn require<T>(condition: bool, value: T) {
     if !condition {
         log(value);
         revert(FAILED_REQUIRE_SIGNAL)

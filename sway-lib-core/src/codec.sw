@@ -395,9 +395,9 @@ where
     buffer.as_raw_slice()
 }
 
-fn assert_encoding<T, SLICE>(value: T, expected: SLICE) 
-where 
-    T: AbiEncode
+fn assert_encoding<T, SLICE>(value: T, expected: SLICE)
+where
+    T: AbiEncode,
 {
     let len = __size_of::<SLICE>();
 
@@ -412,7 +412,12 @@ where
         __revert(0);
     }
 
-    let result = asm(result, expected: expected.ptr(), actual: actual.ptr(), len: len) {
+    let result = asm(
+        result,
+        expected: expected.ptr(),
+        actual: actual.ptr(),
+        len: len,
+    ) {
         meq result expected actual len;
         result: bool
     };
@@ -437,19 +442,64 @@ fn ok_encode() {
     assert_encoding(4294967295u32, [255u8; 4]);
     assert_encoding(0u64, [0u8; 8]);
     assert_encoding(18446744073709551615u64, [255u8; 8]);
-    assert_encoding(0x0000000000000000000000000000000000000000000000000000000000000000u256, [0u8; 32]);
-    assert_encoding(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFu256, [255u8; 32]);
-    assert_encoding(0x0000000000000000000000000000000000000000000000000000000000000000, [0u8; 32]);
-    assert_encoding(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF, [255u8; 32]);
+    assert_encoding(
+        0x0000000000000000000000000000000000000000000000000000000000000000u256,
+        [0u8; 32],
+    );
+    assert_encoding(
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFu256,
+        [255u8; 32],
+    );
+    assert_encoding(
+        0x0000000000000000000000000000000000000000000000000000000000000000,
+        [0u8; 32],
+    );
+    assert_encoding(
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF,
+        [255u8; 32],
+    );
 
     // strings
-    assert_encoding("Hello", [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 5u8, 72u8, 101u8, 108u8, 108u8, 111u8]);
+    assert_encoding(
+        "Hello",
+        [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 5u8, 72u8, 101u8, 108u8, 108u8, 111u8],
+    );
 
-    assert_encoding({ let a: str[1] = __to_str_array("a"); a }, [97u8]);
-    assert_encoding({ let a: str[2] = __to_str_array("aa"); a }, [97u8, 97u8]);
-    assert_encoding({ let a: str[3] = __to_str_array("aaa"); a }, [97u8, 97u8, 97u8]);
-    assert_encoding({ let a: str[4] = __to_str_array("aaaa"); a }, [97u8, 97u8, 97u8, 97u8]);
-    assert_encoding({ let a: str[5] = __to_str_array("aaaaa"); a }, [97u8, 97u8, 97u8, 97u8, 97u8]);
+    assert_encoding(
+        {
+            let a: str[1] = __to_str_array("a");
+            a
+        },
+        [97u8],
+    );
+    assert_encoding(
+        {
+            let a: str[2] = __to_str_array("aa");
+            a
+        },
+        [97u8, 97u8],
+    );
+    assert_encoding(
+        {
+            let a: str[3] = __to_str_array("aaa");
+            a
+        },
+        [97u8, 97u8, 97u8],
+    );
+    assert_encoding(
+        {
+            let a: str[4] = __to_str_array("aaaa");
+            a
+        },
+        [97u8, 97u8, 97u8, 97u8],
+    );
+    assert_encoding(
+        {
+            let a: str[5] = __to_str_array("aaaaa");
+            a
+        },
+        [97u8, 97u8, 97u8, 97u8, 97u8],
+    );
 
     // arrays
     assert_encoding([255u8; 1], [255u8; 1]);

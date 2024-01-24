@@ -20,8 +20,7 @@ library;
 /// }
 /// ```
 #[cfg(experimental_new_encoding = false)]
-pub fn log<T>(value: T)
-{
+pub fn log<T>(value: T) {
     __log::<T>(value);
 }
 
