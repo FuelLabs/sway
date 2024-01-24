@@ -1995,7 +1995,7 @@ dependencies = [
  "forc-tx",
  "forc-util",
  "forc-wallet",
- "fuel-abi-types",
+ "fuel-abi-types 0.4.0",
  "fuel-core-client 0.22.0",
  "fuel-crypto",
  "fuel-tx",
@@ -2121,7 +2121,7 @@ dependencies = [
  "cid",
  "forc-tracing 0.49.1",
  "forc-util",
- "fuel-abi-types",
+ "fuel-abi-types 0.4.0",
  "futures",
  "git2",
  "gix-url",
@@ -2154,7 +2154,7 @@ version = "0.49.1"
 dependencies = [
  "anyhow",
  "forc-pkg",
- "fuel-abi-types",
+ "fuel-abi-types 0.4.0",
  "fuel-tx",
  "fuel-vm",
  "rand",
@@ -2293,6 +2293,25 @@ dependencies = [
 [[package]]
 name = "fuel-abi-types"
 version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8118789261e77d67569859a06a886d53dbf7bd00ea23a18a2dfae26a1f5be25"
+dependencies = [
+ "itertools 0.10.5",
+ "lazy_static",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "serde",
+ "serde_json",
+ "syn 2.0.48",
+ "thiserror",
+]
+
+[[package]]
+name = "fuel-abi-types"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2351bb0b743c23ac13ac2559756b3929502cd6e29091f2e5302fb9a1bdddaf35"
 dependencies = [
  "itertools 0.10.5",
  "lazy_static",
@@ -2714,7 +2733,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aa5acfe0ef24e12137786072a182dc5f0de9d51e79a6023183466f4eaecf7512"
 dependencies = [
  "Inflector",
- "fuel-abi-types",
+ "fuel-abi-types 0.3.0",
  "itertools 0.12.0",
  "proc-macro2",
  "quote",
@@ -2732,7 +2751,7 @@ dependencies = [
  "async-trait",
  "bech32",
  "chrono",
- "fuel-abi-types",
+ "fuel-abi-types 0.3.0",
  "fuel-asm",
  "fuel-core-chain-config",
  "fuel-core-client 0.22.0",
@@ -2773,7 +2792,7 @@ checksum = "2401c796ced3e64ef58156d3c1aeeb61937d5078b87abccbafe1fc60f25faeca"
 dependencies = [
  "async-trait",
  "bytes",
- "fuel-abi-types",
+ "fuel-abi-types 0.3.0",
  "fuel-asm",
  "fuel-tx",
  "fuel-types",
@@ -6459,7 +6478,7 @@ dependencies = [
  "derivative",
  "dirs 3.0.2",
  "either",
- "fuel-abi-types",
+ "fuel-abi-types 0.4.0",
  "fuel-ethabi",
  "fuel-etk-asm",
  "fuel-etk-dasm",
