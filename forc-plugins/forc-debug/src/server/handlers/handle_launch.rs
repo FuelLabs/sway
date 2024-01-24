@@ -110,7 +110,7 @@ impl DapServer {
         let project_name = pkg_manifest.project_name();
 
         let outputs =
-            std::iter::once(build_plan.find_member_index(&project_name).unwrap()).collect();
+            std::iter::once(build_plan.find_member_index(project_name).unwrap()).collect();
 
         let built_packages = forc_pkg::build(
             &build_plan,
@@ -182,11 +182,9 @@ impl DapServer {
         });
 
         // 3. Build the tests
-        let built_package = pkg_to_debug.ok_or_else(|| {
-            AdapterError::BuildFailed {
-                phase: "find package".into(),
-                reason: format!("Couldn't find built package for {}", project_name),
-            }
+        let built_package = pkg_to_debug.ok_or_else(|| AdapterError::BuildFailed {
+            phase: "find package".into(),
+            reason: format!("Couldn't find built package for {}", project_name),
         })?;
 
         let built = Built::Package(Arc::from(built_package.clone()));

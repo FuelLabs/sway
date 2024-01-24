@@ -6,12 +6,11 @@ mod util;
 use self::error::AdapterError;
 use self::state::ServerState;
 use self::util::IdGenerator;
-use crate::names::register_name;
 use crate::types::DynResult;
 use dap::events::OutputEventBody;
 use dap::events::{ExitedEventBody, StoppedEventBody};
 use dap::prelude::*;
-use dap::types::{Scope, StartDebuggingRequestKind, Variable};
+use dap::types::{Scope, StartDebuggingRequestKind};
 use serde::{Deserialize, Serialize};
 use std::{
     io::{BufReader, BufWriter, Stdin, Stdout},
@@ -96,59 +95,33 @@ impl DapServer {
                 Ok(ResponseBody::Attach)
             }
             Command::BreakpointLocations(ref args) => {
-                let source_path = args
-                    .source
-                    .path
-                    .as_ref()
-                    .ok_or(AdapterError::MissingBreakpointLocation)?;
-
-                let existing_breakpoints = self
-                    .state
-                    .breakpoints
-                    .get(&PathBuf::from(source_path))
-                    .ok_or(AdapterError::MissingBreakpointLocation)?;
-
-                let breakpoints = existing_breakpoints
-                    .iter()
-                    .filter_map(|bp| {
-                        if let Some(line) = bp.line {
-                            return Some(types::BreakpointLocation {
-                                line,
-                                ..Default::default()
-                            });
-                        }
-                        None
-                    })
-                    .collect();
-
-                Ok(ResponseBody::BreakpointLocations(
-                    responses::BreakpointLocationsResponse { breakpoints },
-                ))
+                match self.handle_breakpoint_locations(args) {
+                    Ok(breakpoints) => Ok(ResponseBody::BreakpointLocations(
+                        responses::BreakpointLocationsResponse { breakpoints },
+                    )),
+                    Err(e) => Err(e),
+                }
             }
             Command::ConfigurationDone => {
                 self.state.configuration_done = true;
                 Ok(ResponseBody::ConfigurationDone)
             }
-            Command::Continue(_) => {
-                match self.handle_continue() {
-                    Ok(true) => Ok(ResponseBody::Continue(responses::ContinueResponse {
-                        all_threads_continued: Some(true),
-                    })),
-                    Ok(false) => {
-                        // The tests finished executing
+            Command::Continue(_) => match self.handle_continue() {
+                Ok(still_running) => {
+                    if !still_running {
                         exit_code = Some(0);
-                        Ok(ResponseBody::Continue(responses::ContinueResponse {
-                            all_threads_continued: Some(true),
-                        }))
                     }
-                    Err(e) => {
-                        exit_code = Some(1);
-                        Err(e)
-                    }
+                    Ok(ResponseBody::Continue(responses::ContinueResponse {
+                        all_threads_continued: Some(true),
+                    }))
                 }
-            }
+                Err(e) => {
+                    exit_code = Some(1);
+                    Err(e)
+                }
+            },
             Command::Disconnect(_) => {
-                self.exit(0);
+                exit_code = Some(0);
                 Ok(ResponseBody::Disconnect)
             }
 
@@ -218,11 +191,11 @@ impl DapServer {
             Command::StepIn(_) => Ok(ResponseBody::StepIn),
             Command::StepOut(_) => Ok(ResponseBody::StepOut),
             Command::Terminate(_) => {
-                self.exit(0);
+                exit_code = Some(0);
                 Ok(ResponseBody::Terminate)
             }
             Command::TerminateThreads(_) => {
-                self.exit(0);
+                exit_code = Some(0);
                 Ok(ResponseBody::TerminateThreads)
             }
 
@@ -232,40 +205,12 @@ impl DapServer {
                     name: "main".into(),
                 }],
             })),
-            Command::Variables(_) => {
-                let variables = self
-                    .state
-                    .executor()
-                    .as_ref()
-                    .map(|executor| {
-                        let mut i = 0;
-                        executor
-                            .interpreter
-                            .registers()
-                            .iter()
-                            .map(|value| {
-                                let variable = Variable {
-                                    name: register_name(i),
-                                    value: format!("{:<8}", value),
-                                    type_field: None,
-                                    presentation_hint: None,
-                                    evaluate_name: None,
-                                    variables_reference: REGISTERS_VARIABLE_REF,
-                                    named_variables: None,
-                                    indexed_variables: None,
-                                    memory_reference: None,
-                                };
-                                i += 1;
-                                variable
-                            })
-                            .collect()
-                    })
-                    .unwrap_or_default();
-
-                Ok(ResponseBody::Variables(responses::VariablesResponse {
+            Command::Variables(_) => match self.handle_variables() {
+                Ok(variables) => Ok(ResponseBody::Variables(responses::VariablesResponse {
                     variables,
-                }))
-            }
+                })),
+                Err(e) => Err(e),
+            },
             _ => Err(AdapterError::UnhandledCommand { command }),
         };
 
@@ -277,7 +222,7 @@ impl DapServer {
             }
         };
         if let Some(exit_code) = exit_code {
-            self.exit(exit_code);
+            self.exit(exit_code)
         }
         result
     }
