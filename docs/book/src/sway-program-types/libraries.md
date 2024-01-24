@@ -194,7 +194,6 @@ Some Sway Libraries to try out:
 - [Signed Integers](https://github.com/FuelLabs/sway-libs/tree/master/libs/signed_integers)
 - [Unsigned Fixed Point Number](https://github.com/FuelLabs/sway-libs/tree/master/libs/fixed_point)
 - [Ownership](https://github.com/FuelLabs/sway-libs/tree/master/libs/ownership)
-- [Token](https://github.com/FuelLabs/sway-libs/tree/master/libs/token)
 
 ### Example
 
