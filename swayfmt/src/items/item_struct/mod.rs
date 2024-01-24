@@ -11,7 +11,7 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::ItemStruct;
+use sway_ast::{keywords::Keyword, ItemStruct, PubToken};
 use sway_types::{ast::Delimiter, Spanned};
 
 #[cfg(test)]
@@ -19,7 +19,6 @@ mod tests;
 
 impl Format for ItemStruct {
     fn format(
-        // TODO-IG: Add support for `pub` keyword.
         &self,
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
@@ -70,9 +69,17 @@ impl Format for ItemStruct {
                             .map(|(type_field, comma_token)| (&type_field.value, comma_token))
                             .collect::<Vec<_>>();
                         // In first iteration we are going to be collecting the lengths of the struct variants.
+                        // We need to include the `pub` keyword in the length, if the field is public,
+                        // together with one space character between the `pub` and the name.
                         let variant_length: Vec<usize> = value_pairs
                             .iter()
-                            .map(|(type_field, _)| type_field.name.as_str().len())
+                            .map(|(type_field, _)| {
+                                type_field
+                                    .visibility
+                                    .as_ref()
+                                    .map_or(0, |_| PubToken::AS_STR.len() + 1)
+                                    + type_field.name.as_str().len()
+                            })
                             .collect();
 
                         // Find the maximum length in the variant_length vector that is still smaller than struct_field_align_threshold.
@@ -88,6 +95,10 @@ impl Format for ItemStruct {
                         let value_pairs_iter = value_pairs.iter().enumerate();
                         for (var_index, (type_field, comma_token)) in value_pairs_iter.clone() {
                             write!(formatted_code, "{}", formatter.indent_to_str()?)?;
+                            // If there is a visibility token add it to the formatted_code with a ` ` after it.
+                            if let Some(visibility) = &type_field.visibility {
+                                write!(formatted_code, "{} ", visibility.span().as_str())?;
+                            }
                             // Add name
                             type_field.name.format(formatted_code, formatter)?;
                             let current_variant_length = variant_length[var_index];
