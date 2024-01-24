@@ -58,46 +58,29 @@ use std::collections::HashMap;
 /// loads and stores, rather than anything more complicated like `mem_copy`s.
 
 // Wrapper around Value to enforce distinction between terminating and non-terminating values.
-enum TerminatorValueWrapper {
-    Terminator(Value),
-    NotTerminator(Value),
+struct TerminatorValue {
+    value: Value,
+    is_terminator: bool,
 }
 
-impl TerminatorValueWrapper {
+impl TerminatorValue {
     pub fn new(value: Value, context: &Context) -> Self {
-        if value.is_terminator(context) {
-            Self::Terminator(value)
-        } else {
-            Self::NotTerminator(value)
-        }
-    }
-
-    pub fn is_terminator(&self) -> bool {
-        matches!(self, Self::Terminator(_))
-    }
-
-    pub fn value(&self) -> Value {
-        match self {
-            Self::Terminator(value) | Self::NotTerminator(value) => *value,
+        Self {
+            value,
+            is_terminator: value.is_terminator(context),
         }
     }
 }
 
-// If the provided TerminatorValueWrapper is Terminator, then return from the current function immediately.
-// Otherwise extract the embedded Value.
+// If the provided TerminatorValue::is_terminator is true, then return from the current function
+// immediately. Otherwise extract the embedded Value.
 macro_rules! return_on_termination_or_extract {
     ($value:expr) => {{
         let val = $value;
-        if val.is_terminator() {
+        if val.is_terminator {
             return Ok(val);
         };
-        val.value()
-    }};
-}
-
-macro_rules! terminator_value_wrap {
-    ($value:expr, $context:expr) => {{
-        TerminatorValueWrapper::new($value, $context)
+        val.value
     }};
 }
 
@@ -163,7 +146,7 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         ast_block: &ty::TyCodeBlock,
     ) -> Result<Value, Vec<CompileError>> {
-        Ok(self.compile_code_block(context, md_mgr, ast_block)?.value())
+        Ok(self.compile_code_block(context, md_mgr, ast_block)?.value)
     }
 
     fn compile_code_block(
@@ -171,7 +154,7 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_block: &ty::TyCodeBlock,
-    ) -> Result<TerminatorValueWrapper, Vec<CompileError>> {
+    ) -> Result<TerminatorValue, Vec<CompileError>> {
         self.compile_with_new_scope(|fn_compiler| {
             let mut errors = vec![];
 
@@ -179,7 +162,7 @@ impl<'eng> FnCompiler<'eng> {
             let v = loop {
                 let ast_node = match ast_nodes.next() {
                     Some(ast_node) => ast_node,
-                    None => break terminator_value_wrap!(Constant::get_unit(context), context),
+                    None => break TerminatorValue::new(Constant::get_unit(context), context),
                 };
                 match fn_compiler.compile_ast_node(context, md_mgr, ast_node) {
                     // 'Some' indicates an implicit return or a diverging expression, so break.
@@ -204,7 +187,7 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_node: &ty::TyAstNode,
-    ) -> Result<Option<TerminatorValueWrapper>, CompileError> {
+    ) -> Result<Option<TerminatorValue>, CompileError> {
         let unexpected_decl = |decl_type: &'static str| {
             Err(CompileError::UnexpectedDeclaration {
                 decl_type,
@@ -260,7 +243,7 @@ impl<'eng> FnCompiler<'eng> {
                 // An expression with an ignored return value... I assume.
                 let value = self.compile_expression_to_value(context, md_mgr, te)?;
                 // Terminating values should end the compilation of the block
-                if value.is_terminator() {
+                if value.is_terminator {
                     Ok(Some(value))
                 } else {
                     Ok(None)
@@ -283,18 +266,18 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         // Compile expression which *may* be a pointer.  We can't return a pointer value here
         // though, so add a `load` to it.
         self.compile_expression(context, md_mgr, ast_expr)
             .map(|val| {
                 if val
-                    .value()
+                    .value
                     .get_type(context)
                     .map_or(false, |ty| ty.is_ptr(context))
                 {
-                    let load_val = self.current_block.append(context).load(val.value());
-                    terminator_value_wrap!(load_val, context)
+                    let load_val = self.current_block.append(context).load(val.value);
+                    TerminatorValue::new(load_val, context)
                 } else {
                     val
                 }
@@ -306,14 +289,14 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         // Compile expression which *may* be a pointer.  We can't return a value so create a
         // temporary here, store the value and return its pointer.
         let val =
             return_on_termination_or_extract!(self.compile_expression(context, md_mgr, ast_expr)?);
         let ty = match val.get_type(context) {
             Some(ty) if !ty.is_ptr(context) => ty,
-            _ => return Ok(terminator_value_wrap!(val, context)),
+            _ => return Ok(TerminatorValue::new(val, context)),
         };
 
         // Create a temporary.
@@ -325,7 +308,7 @@ impl<'eng> FnCompiler<'eng> {
         let tmp_val = self.current_block.append(context).get_local(tmp_var);
         self.current_block.append(context).store(tmp_val, val);
 
-        Ok(terminator_value_wrap!(tmp_val, context))
+        Ok(TerminatorValue::new(tmp_val, context))
     }
 
     fn compile_string_slice(
@@ -334,7 +317,7 @@ impl<'eng> FnCompiler<'eng> {
         span_md_idx: Option<MetadataIndex>,
         string_data: Value,
         string_len: u64,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         let int_ty = Type::get_uint64(context);
 
         // build field values of the slice
@@ -408,7 +391,7 @@ impl<'eng> FnCompiler<'eng> {
             .mem_copy_bytes(slice_val, struct_val, 16);
 
         // return the slice
-        Ok(terminator_value_wrap!(slice_val, context))
+        Ok(TerminatorValue::new(slice_val, context))
     }
 
     fn compile_expression(
@@ -416,7 +399,7 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
         match &ast_expr.expression {
             ty::TyExpressionVariant::Literal(Literal::String(s)) => {
@@ -437,11 +420,11 @@ impl<'eng> FnCompiler<'eng> {
                 };
                 let val = convert_literal_to_value(context, &implied_lit)
                     .add_metadatum(context, span_md_idx);
-                Ok(terminator_value_wrap!(val, context))
+                Ok(TerminatorValue::new(val, context))
             }
             ty::TyExpressionVariant::Literal(l) => {
                 let val = convert_literal_to_value(context, l).add_metadatum(context, span_md_idx);
-                Ok(terminator_value_wrap!(val, context))
+                Ok(TerminatorValue::new(val, context))
             }
             ty::TyExpressionVariant::FunctionApplication {
                 call_path: name,
@@ -576,7 +559,7 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::AbiCast { span, .. } => {
                 let span_md_idx = md_mgr.span_to_md(context, span);
                 let val = Constant::get_unit(context).add_metadatum(context, span_md_idx);
-                Ok(terminator_value_wrap!(val, context))
+                Ok(TerminatorValue::new(val, context))
             }
             ty::TyExpressionVariant::StorageAccess(access) => {
                 let span_md_idx = md_mgr.span_to_md(context, &access.span());
@@ -587,7 +570,7 @@ impl<'eng> FnCompiler<'eng> {
             }
             ty::TyExpressionVariant::AbiName(_) => {
                 let val = Value::new_constant(context, Constant::new_unit(context));
-                Ok(terminator_value_wrap!(val, context))
+                Ok(TerminatorValue::new(val, context))
             }
             ty::TyExpressionVariant::UnsafeDowncast {
                 exp,
@@ -610,7 +593,7 @@ impl<'eng> FnCompiler<'eng> {
                             .current_block
                             .append(context)
                             .branch(block_to_break_to, vec![]);
-                        Ok(terminator_value_wrap!(val, context))
+                        Ok(TerminatorValue::new(val, context))
                     }
                     None => Err(CompileError::BreakOutsideLoop {
                         span: ast_expr.span.clone(),
@@ -626,7 +609,7 @@ impl<'eng> FnCompiler<'eng> {
                         .current_block
                         .append(context)
                         .branch(block_to_continue_to, vec![]);
-                    Ok(terminator_value_wrap!(val, context))
+                    Ok(TerminatorValue::new(val, context))
                 }
                 None => Err(CompileError::ContinueOutsideLoop {
                     span: ast_expr.span.clone(),
@@ -658,7 +641,7 @@ impl<'eng> FnCompiler<'eng> {
             span: _,
         }: &ty::TyIntrinsicFunctionKind,
         span: Span,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         fn store_key_in_local_mem(
             compiler: &mut FnCompiler,
             context: &mut Context,
@@ -709,7 +692,7 @@ impl<'eng> FnCompiler<'eng> {
                 )?;
                 self.compile_expression_to_value(context, md_mgr, exp)?;
                 let val = Constant::get_uint(context, 64, ir_type.size(context).in_bytes());
-                Ok(terminator_value_wrap!(val, context))
+                Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::SizeOfType => {
                 let targ = type_arguments[0].clone();
@@ -721,7 +704,7 @@ impl<'eng> FnCompiler<'eng> {
                     &targ.span,
                 )?;
                 let val = Constant::get_uint(context, 64, ir_type.size(context).in_bytes());
-                Ok(terminator_value_wrap!(val, context))
+                Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::SizeOfStr => {
                 let targ = type_arguments[0].clone();
@@ -737,13 +720,13 @@ impl<'eng> FnCompiler<'eng> {
                     64,
                     ir_type.get_string_len(context).unwrap_or_default(),
                 );
-                Ok(terminator_value_wrap!(val, context))
+                Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::IsReferenceType => {
                 let targ = type_arguments[0].clone();
                 let is_val = !engines.te().get_unaliased(targ.type_id).is_copy_type();
                 let val = Constant::get_bool(context, is_val);
-                Ok(terminator_value_wrap!(val, context))
+                Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::IsStrArray => {
                 let targ = type_arguments[0].clone();
@@ -752,7 +735,7 @@ impl<'eng> FnCompiler<'eng> {
                     TypeInfo::StringArray(_) | TypeInfo::StringSlice
                 );
                 let val = Constant::get_bool(context, is_val);
-                Ok(terminator_value_wrap!(val, context))
+                Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::AssertIsStrArray => {
                 let targ = type_arguments[0].clone();
@@ -766,7 +749,7 @@ impl<'eng> FnCompiler<'eng> {
                 match ir_type.get_content(context) {
                     TypeContent::StringSlice | TypeContent::StringArray(_) => {
                         let val = Constant::get_unit(context);
-                        Ok(terminator_value_wrap!(val, context))
+                        Ok(TerminatorValue::new(val, context))
                     }
                     _ => Err(CompileError::NonStrGenericType {
                         span: targ.span.clone(),
@@ -776,7 +759,7 @@ impl<'eng> FnCompiler<'eng> {
             Intrinsic::ToStrArray => match arguments[0].expression.extract_literal_value() {
                 Some(Literal::String(span)) => {
                     let val = Constant::get_string(context, span.as_str().as_bytes().to_vec());
-                    Ok(terminator_value_wrap!(val, context))
+                    Ok(TerminatorValue::new(val, context))
                 }
                 _ => unreachable!(),
             },
@@ -799,7 +782,7 @@ impl<'eng> FnCompiler<'eng> {
                     .current_block
                     .append(context)
                     .cmp(pred, lhs_value, rhs_value);
-                Ok(terminator_value_wrap!(val, context))
+                Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::Gtf => {
                 // The index is just a Value
@@ -863,7 +846,7 @@ impl<'eng> FnCompiler<'eng> {
                         .append(context)
                         .bitcast(gtf_reg, target_ir_type)
                         .add_metadatum(context, span_md_idx);
-                    Ok(terminator_value_wrap!(val, context))
+                    Ok(TerminatorValue::new(val, context))
                 } else {
                     let ptr_ty = Type::new_ptr(context, target_ir_type);
                     let val = self
@@ -871,7 +854,7 @@ impl<'eng> FnCompiler<'eng> {
                         .append(context)
                         .int_to_ptr(gtf_reg, ptr_ty)
                         .add_metadatum(context, span_md_idx);
-                    Ok(terminator_value_wrap!(val, context))
+                    Ok(TerminatorValue::new(val, context))
                 }
             }
             Intrinsic::AddrOf => {
@@ -886,7 +869,7 @@ impl<'eng> FnCompiler<'eng> {
                     .append(context)
                     .ptr_to_int(value, int_ty)
                     .add_metadatum(context, span_md_idx);
-                Ok(terminator_value_wrap!(val, context))
+                Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::StateClear => {
                 let key_exp = arguments[0].clone();
@@ -904,7 +887,7 @@ impl<'eng> FnCompiler<'eng> {
                     .append(context)
                     .state_clear(key_var, number_of_slots_value)
                     .add_metadatum(context, span_md_idx);
-                Ok(terminator_value_wrap!(val, context))
+                Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::StateLoadWord => {
                 let exp = &arguments[0];
@@ -918,7 +901,7 @@ impl<'eng> FnCompiler<'eng> {
                     .append(context)
                     .state_load_word(key_var)
                     .add_metadatum(context, span_md_idx);
-                Ok(terminator_value_wrap!(val, context))
+                Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::StateStoreWord => {
                 let key_exp = &arguments[0];
@@ -946,7 +929,7 @@ impl<'eng> FnCompiler<'eng> {
                     .append(context)
                     .state_store_word(val_value, key_var)
                     .add_metadatum(context, span_md_idx);
-                Ok(terminator_value_wrap!(val, context))
+                Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::StateLoadQuad | Intrinsic::StateStoreQuad => {
                 let key_exp = arguments[0].clone();
@@ -988,7 +971,7 @@ impl<'eng> FnCompiler<'eng> {
                             .append(context)
                             .state_load_quad_word(val_ptr, key_var, number_of_slots_value)
                             .add_metadatum(context, span_md_idx);
-                        Ok(terminator_value_wrap!(val, context))
+                        Ok(TerminatorValue::new(val, context))
                     }
                     Intrinsic::StateStoreQuad => {
                         let val = self
@@ -996,7 +979,7 @@ impl<'eng> FnCompiler<'eng> {
                             .append(context)
                             .state_store_quad_word(val_ptr, key_var, number_of_slots_value)
                             .add_metadatum(context, span_md_idx);
-                        Ok(terminator_value_wrap!(val, context))
+                        Ok(TerminatorValue::new(val, context))
                     }
                     _ => unreachable!(),
                 }
@@ -1044,7 +1027,7 @@ impl<'eng> FnCompiler<'eng> {
                             .append(context)
                             .log(log_val, log_ty, log_id)
                             .add_metadatum(context, span_md_idx);
-                        Ok(terminator_value_wrap!(val, context))
+                        Ok(TerminatorValue::new(val, context))
                     }
                 }
             }
@@ -1083,7 +1066,7 @@ impl<'eng> FnCompiler<'eng> {
                     .current_block
                     .append(context)
                     .binary_op(op, lhs_value, rhs_value);
-                Ok(terminator_value_wrap!(val, context))
+                Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::Revert => {
                 let revert_code_val = return_on_termination_or_extract!(
@@ -1097,7 +1080,7 @@ impl<'eng> FnCompiler<'eng> {
                     .append(context)
                     .revert(revert_code_val)
                     .add_metadatum(context, span_md_idx);
-                Ok(terminator_value_wrap!(val, context))
+                Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::PtrAdd | Intrinsic::PtrSub => {
                 let op = match kind {
@@ -1133,7 +1116,7 @@ impl<'eng> FnCompiler<'eng> {
                     .current_block
                     .append(context)
                     .binary_op(op, lhs_value, rhs_value);
-                Ok(terminator_value_wrap!(val, context))
+                Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::Smo => {
                 let span_md_idx = md_mgr.span_to_md(context, &span);
@@ -1236,7 +1219,7 @@ impl<'eng> FnCompiler<'eng> {
                     .append(context)
                     .smo(recipient_var, message, user_message_size_val, coins)
                     .add_metadatum(context, span_md_idx);
-                Ok(terminator_value_wrap!(val, context))
+                Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::Not => {
                 assert!(arguments.len() == 1);
@@ -1250,7 +1233,7 @@ impl<'eng> FnCompiler<'eng> {
                     .current_block
                     .append(context)
                     .unary_op(UnaryOpKind::Not, value);
-                Ok(terminator_value_wrap!(val, context))
+                Ok(TerminatorValue::new(val, context))
             }
         }
     }
@@ -1261,7 +1244,7 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         let ret_value = return_on_termination_or_extract!(
             self.compile_expression_to_value(context, md_mgr, ast_expr)?
         );
@@ -1274,7 +1257,7 @@ impl<'eng> FnCompiler<'eng> {
                     .append(context)
                     .ret(ret_value, ret_ty)
                     .add_metadatum(context, span_md_idx);
-                terminator_value_wrap!(val, context)
+                TerminatorValue::new(val, context)
             })
             .ok_or_else(|| {
                 CompileError::Internal(
@@ -1290,7 +1273,7 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         let value = return_on_termination_or_extract!(
             self.compile_expression_to_ptr(context, md_mgr, ast_expr)?
         );
@@ -1302,7 +1285,7 @@ impl<'eng> FnCompiler<'eng> {
             .append(context)
             .ptr_to_int(value, int_ty)
             .add_metadatum(context, span_md_idx);
-        Ok(terminator_value_wrap!(val, context))
+        Ok(TerminatorValue::new(val, context))
     }
 
     fn compile_deref(
@@ -1311,7 +1294,7 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         let ref_value =
             return_on_termination_or_extract!(self.compile_expression(context, md_mgr, ast_expr)?);
 
@@ -1364,7 +1347,7 @@ impl<'eng> FnCompiler<'eng> {
             ptr
         };
 
-        Ok(terminator_value_wrap!(result, context))
+        Ok(TerminatorValue::new(result, context))
     }
 
     fn compile_lazy_op(
@@ -1375,7 +1358,7 @@ impl<'eng> FnCompiler<'eng> {
         ast_lhs: &ty::TyExpression,
         ast_rhs: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         let lhs_val = return_on_termination_or_extract!(
             self.compile_expression_to_value(context, md_mgr, ast_lhs)?
         );
@@ -1409,16 +1392,16 @@ impl<'eng> FnCompiler<'eng> {
         self.current_block = rhs_block;
         let rhs_val = self.compile_expression_to_value(context, md_mgr, ast_rhs)?;
 
-        if !rhs_val.is_terminator() {
+        if !rhs_val.is_terminator {
             self.current_block
                 .append(context)
-                .branch(final_block, vec![rhs_val.value()])
+                .branch(final_block, vec![rhs_val.value])
                 .add_metadatum(context, span_md_idx);
         }
 
         self.current_block = final_block;
         let val = final_block.get_arg(context, merge_val_arg_idx).unwrap();
-        Ok(terminator_value_wrap!(val, context))
+        Ok(TerminatorValue::new(val, context))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1432,7 +1415,7 @@ impl<'eng> FnCompiler<'eng> {
         ast_args: &[(Ident, ty::TyExpression)],
         ast_return_type: TypeId,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         // XXX This is very FuelVM specific and needs to be broken out of here and called
         // conditionally based on the target.
 
@@ -1711,7 +1694,7 @@ impl<'eng> FnCompiler<'eng> {
         } else {
             self.current_block.append(context).load(call_val)
         };
-        Ok(terminator_value_wrap!(res, context))
+        Ok(TerminatorValue::new(res, context))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1722,7 +1705,7 @@ impl<'eng> FnCompiler<'eng> {
         ast_args: &[(Ident, ty::TyExpression)],
         callee: &ty::TyFunctionDecl,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         // The compiler inlines everything very lazily.  Function calls include the body of the
         // callee (i.e., the callee_body arg above). Library functions are provided in an initial
         // namespace from Forc and when the parser builds the AST (or is it during type checking?)
@@ -1801,7 +1784,7 @@ impl<'eng> FnCompiler<'eng> {
             .call(new_callee, &args)
             .add_metadatum(context, span_md_idx);
 
-        Ok(terminator_value_wrap!(val, context))
+        Ok(TerminatorValue::new(val, context))
     }
 
     fn compile_if(
@@ -1812,7 +1795,7 @@ impl<'eng> FnCompiler<'eng> {
         ast_then: &ty::TyExpression,
         ast_else: Option<&ty::TyExpression>,
         return_type: TypeId,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         // Compile the condition expression in the entry block.  Then save the current block so we
         // can jump to the true and false blocks after we've created them.
         let cond_span_md_idx = md_mgr.span_to_md(context, &ast_condition.span);
@@ -1844,7 +1827,7 @@ impl<'eng> FnCompiler<'eng> {
         let false_block_begin = self.function.create_block(context, None);
         self.current_block = false_block_begin;
         let false_value = match ast_else {
-            None => terminator_value_wrap!(Constant::get_unit(context), context),
+            None => TerminatorValue::new(Constant::get_unit(context), context),
             Some(expr) => self.compile_expression_to_value(context, md_mgr, expr)?,
         };
         let false_block_end = self.current_block;
@@ -1860,37 +1843,39 @@ impl<'eng> FnCompiler<'eng> {
             )
             .add_metadatum(context, cond_span_md_idx);
 
-        let return_type = convert_resolved_typeid_no_span(
-            self.engines.te(),
-            self.engines.de(),
-            context,
-            &return_type,
-        )
-        .unwrap_or_else(|_| Type::get_unit(context));
         let merge_block = self.function.create_block(context, None);
         // Add a single argument to merge_block that merges true_value and false_value.
-        // Rely on the type of the ast node when creating that argument
-        // Corner case: If both branches diverge, then setting the return type to 'Unit' produces an
-        // illegally typed value. In that case we add a diverging dummy value to the merge branch
-        // and return it instead.
-        let val = if !true_value.is_terminator() || !false_value.is_terminator() {
+        // Rely on the type of the ast node when creating that argument.
+        let val = if true_value.is_terminator && false_value.is_terminator {
+            // Corner case: If both branches diverge, then the return type is 'Unknown', which we can't
+            // compile. We also cannot add a block parameter of 'Unit' type or similar, since the
+            // parameter may be used by dead code after the 'if' causing a potentially illegally typed
+            // program. In this case we do not add a block parameter. Instead we add a diverging dummy
+            // value to the merge branch to signal that the expression diverges.
+            merge_block.append(context).branch(true_block_begin, vec![])
+        } else {
+            let return_type = convert_resolved_typeid_no_span(
+                self.engines.te(),
+                self.engines.de(),
+                context,
+                &return_type,
+            )
+            .unwrap_or_else(|_| Type::get_unit(context));
             let merge_val_arg_idx = merge_block.new_arg(context, return_type);
-            if !true_value.is_terminator() {
+            if !true_value.is_terminator {
                 true_block_end
                     .append(context)
-                    .branch(merge_block, vec![true_value.value()]);
+                    .branch(merge_block, vec![true_value.value]);
             }
-            if !false_value.is_terminator() {
+            if !false_value.is_terminator {
                 false_block_end
                     .append(context)
-                    .branch(merge_block, vec![false_value.value()]);
+                    .branch(merge_block, vec![false_value.value]);
             }
             self.current_block = merge_block;
             merge_block.get_arg(context, merge_val_arg_idx).unwrap()
-        } else {
-            merge_block.append(context).branch(true_block_begin, vec![])
         };
-        Ok(terminator_value_wrap!(val, context))
+        Ok(TerminatorValue::new(val, context))
     }
 
     fn compile_unsafe_downcast(
@@ -1899,7 +1884,7 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         exp: &ty::TyExpression,
         variant: &ty::TyEnumVariant,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         // Retrieve the type info for the enum.
         let enum_type = match convert_resolved_typeid(
             self.engines.te(),
@@ -1938,7 +1923,7 @@ impl<'eng> FnCompiler<'eng> {
             variant_type,
             &[1, variant.tag as u64],
         );
-        Ok(terminator_value_wrap!(val, context))
+        Ok(TerminatorValue::new(val, context))
     }
 
     fn compile_enum_tag(
@@ -1946,7 +1931,7 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         exp: Box<ty::TyExpression>,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         let tag_span_md_idx = md_mgr.span_to_md(context, &exp.span);
         let struct_val = return_on_termination_or_extract!(
             self.compile_expression_to_ptr(context, md_mgr, &exp)?
@@ -1958,7 +1943,7 @@ impl<'eng> FnCompiler<'eng> {
             .append(context)
             .get_elem_ptr_with_idx(struct_val, u64_ty, 0)
             .add_metadatum(context, tag_span_md_idx);
-        Ok(terminator_value_wrap!(val, context))
+        Ok(TerminatorValue::new(val, context))
     }
 
     fn compile_while_loop(
@@ -1968,7 +1953,7 @@ impl<'eng> FnCompiler<'eng> {
         body: &ty::TyCodeBlock,
         condition: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         // We're dancing around a bit here to make the blocks sit in the right order.  Ideally we
         // have the cond block, followed by the body block which may contain other blocks, and the
         // final block comes after any body block(s).
@@ -2016,7 +2001,7 @@ impl<'eng> FnCompiler<'eng> {
         let body_block_val = self
             .compile_code_block(context, md_mgr, body)
             .map_err(|mut x| x.pop().unwrap())?;
-        if !body_block_val.is_terminator() {
+        if !body_block_val.is_terminator {
             self.current_block
                 .append(context)
                 .branch(cond_block, vec![]);
@@ -2045,7 +2030,7 @@ impl<'eng> FnCompiler<'eng> {
 
         self.current_block = final_block;
         let val = Constant::get_unit(context).add_metadatum(context, span_md_idx);
-        Ok(terminator_value_wrap!(val, context))
+        Ok(TerminatorValue::new(val, context))
     }
 
     pub(crate) fn get_function_var(&self, context: &mut Context, name: &str) -> Option<LocalVar> {
@@ -2064,7 +2049,7 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         const_decl: &TyConstantDecl,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         let result = self
             .compile_var_expr(
                 context,
@@ -2076,7 +2061,7 @@ impl<'eng> FnCompiler<'eng> {
 
         // String slices are not allowed in constants
         if let Some(TypeContent::StringSlice) = result
-            .value()
+            .value
             .get_type(context)
             .map(|t| t.get_content(context))
         {
@@ -2095,7 +2080,7 @@ impl<'eng> FnCompiler<'eng> {
         call_path: &Option<CallPath>,
         name: &Ident,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         let call_path = call_path
             .clone()
             .unwrap_or_else(|| CallPath::from(name.clone()));
@@ -2108,19 +2093,19 @@ impl<'eng> FnCompiler<'eng> {
                 .append(context)
                 .get_local(var)
                 .add_metadatum(context, span_md_idx);
-            Ok(terminator_value_wrap!(val, context))
+            Ok(TerminatorValue::new(val, context))
         } else if let Some(val) = self.function.get_arg(context, name.as_str()) {
-            Ok(terminator_value_wrap!(val, context))
+            Ok(TerminatorValue::new(val, context))
         } else if let Some(const_val) = self
             .module
             .get_global_constant(context, &call_path.as_vec_string())
         {
-            Ok(terminator_value_wrap!(const_val, context))
+            Ok(TerminatorValue::new(const_val, context))
         } else if let Some(config_val) = self
             .module
             .get_global_configurable(context, &call_path.as_vec_string())
         {
-            Ok(terminator_value_wrap!(config_val, context))
+            Ok(TerminatorValue::new(config_val, context))
         } else {
             Err(CompileError::InternalOwned(
                 format!("Unable to resolve variable '{}'.", name.as_str()),
@@ -2135,7 +2120,7 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         ast_var_decl: &ty::TyVariableDecl,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<Option<TerminatorValueWrapper>, CompileError> {
+    ) -> Result<Option<TerminatorValue>, CompileError> {
         let ty::TyVariableDecl {
             name,
             body,
@@ -2154,7 +2139,7 @@ impl<'eng> FnCompiler<'eng> {
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
         let init_val = self.compile_expression_to_value(context, md_mgr, body)?;
-        if init_val.is_terminator() {
+        if init_val.is_terminator {
             return Ok(Some(init_val));
         }
 
@@ -2184,7 +2169,7 @@ impl<'eng> FnCompiler<'eng> {
                 .add_metadatum(context, span_md_idx);
             self.current_block
                 .append(context)
-                .store(local_ptr, init_val.value())
+                .store(local_ptr, init_val.value)
                 .add_metadatum(context, span_md_idx);
         }
         Ok(None)
@@ -2197,7 +2182,7 @@ impl<'eng> FnCompiler<'eng> {
         ast_const_decl: &ty::TyConstantDecl,
         span_md_idx: Option<MetadataIndex>,
         is_const_expression: bool,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
         // `is_configurable` should be `false` here.
@@ -2221,7 +2206,7 @@ impl<'eng> FnCompiler<'eng> {
             )?;
 
             if is_const_expression {
-                Ok(terminator_value_wrap!(const_expr_val, context))
+                Ok(TerminatorValue::new(const_expr_val, context))
             } else {
                 let local_name = self
                     .lexical_map
@@ -2261,9 +2246,9 @@ impl<'eng> FnCompiler<'eng> {
                         .append(context)
                         .store(local_val, const_expr_val)
                         .add_metadatum(context, span_md_idx);
-                    terminator_value_wrap!(val, context)
+                    TerminatorValue::new(val, context)
                 } else {
-                    terminator_value_wrap!(const_expr_val, context)
+                    TerminatorValue::new(const_expr_val, context)
                 })
             }
         } else {
@@ -2277,7 +2262,7 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         ast_reassignment: &ty::TyReassignment,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         let name = self
             .lexical_map
             .get(ast_reassignment.lhs_base_name.as_str())
@@ -2389,7 +2374,7 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         let val = Constant::get_unit(context).add_metadatum(context, span_md_idx);
-        Ok(terminator_value_wrap!(val, context))
+        Ok(TerminatorValue::new(val, context))
     }
 
     fn compile_array_expr(
@@ -2399,7 +2384,7 @@ impl<'eng> FnCompiler<'eng> {
         elem_type: &TypeId,
         contents: &[ty::TyExpression],
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         // If the first element diverges, then the element type has not been determined,
         // so we can't use the normal compilation scheme. Instead just generate code for
         // the first element and return.
@@ -2435,7 +2420,7 @@ impl<'eng> FnCompiler<'eng> {
 
         // Nothing more to do if the array is empty
         if contents.is_empty() {
-            return Ok(terminator_value_wrap!(array_value, context));
+            return Ok(TerminatorValue::new(array_value, context));
         }
 
         // The array is not empty, so it's safe to unwrap the first element
@@ -2464,7 +2449,7 @@ impl<'eng> FnCompiler<'eng> {
                         Ok::<Value, CompileError>(first_elem_value)
                     } else {
                         let val = self.compile_expression_to_value(context, md_mgr, e)?;
-                        Ok(val.value())
+                        Ok(val.value)
                     }
                 })
                 .collect::<Result<Vec<_>, _>>()?;
@@ -2549,7 +2534,7 @@ impl<'eng> FnCompiler<'eng> {
                         .add_metadatum(context, span_md_idx);
                 }
             }
-            return Ok(terminator_value_wrap!(array_value, context));
+            return Ok(TerminatorValue::new(array_value, context));
         }
 
         // Compile each element and insert it immediately.
@@ -2571,7 +2556,7 @@ impl<'eng> FnCompiler<'eng> {
                 .store(gep_val, elem_value)
                 .add_metadatum(context, span_md_idx);
         }
-        Ok(terminator_value_wrap!(array_value, context))
+        Ok(TerminatorValue::new(array_value, context))
     }
 
     fn compile_array_index(
@@ -2581,7 +2566,7 @@ impl<'eng> FnCompiler<'eng> {
         array_expr: &ty::TyExpression,
         index_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         let array_val = return_on_termination_or_extract!(
             self.compile_expression_to_ptr(context, md_mgr, array_expr)?
         );
@@ -2640,7 +2625,7 @@ impl<'eng> FnCompiler<'eng> {
             .append(context)
             .get_elem_ptr(array_val, elem_type, vec![index_val])
             .add_metadatum(context, span_md_idx);
-        Ok(terminator_value_wrap!(val, context))
+        Ok(TerminatorValue::new(val, context))
     }
 
     fn compile_struct_expr(
@@ -2649,7 +2634,7 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         fields: &[ty::TyStructExpressionField],
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         // NOTE: This is a struct instantiation with initialisers for each field of a named struct.
         // We don't know the actual type of the struct, but the AST guarantees that the fields are
         // in the declared order (regardless of how they are initialised in source) so we can
@@ -2709,7 +2694,7 @@ impl<'eng> FnCompiler<'eng> {
             });
 
         // Return the pointer.
-        Ok(terminator_value_wrap!(struct_val, context))
+        Ok(TerminatorValue::new(struct_val, context))
     }
 
     fn compile_struct_field_expr(
@@ -2720,7 +2705,7 @@ impl<'eng> FnCompiler<'eng> {
         struct_type_id: TypeId,
         ast_field: &ty::TyStructField,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         let struct_val = return_on_termination_or_extract!(self.compile_expression_to_ptr(
             context,
             md_mgr,
@@ -2764,7 +2749,7 @@ impl<'eng> FnCompiler<'eng> {
             .append(context)
             .get_elem_ptr_with_idx(struct_val, field_type, field_idx)
             .add_metadatum(context, span_md_idx);
-        Ok(terminator_value_wrap!(val, context))
+        Ok(TerminatorValue::new(val, context))
     }
 
     fn compile_enum_expr(
@@ -2774,7 +2759,7 @@ impl<'eng> FnCompiler<'eng> {
         enum_decl: &ty::TyEnumDecl,
         tag: usize,
         contents: Option<&ty::TyExpression>,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         // XXX The enum instantiation AST node includes the full declaration.  If the enum was
         // declared in a different module then it seems for now there's no easy way to pre-analyse
         // it and add its type/aggregate to the context.  We can re-use them here if we recognise
@@ -2841,7 +2826,7 @@ impl<'eng> FnCompiler<'eng> {
         }
 
         // Return the pointer.
-        Ok(terminator_value_wrap!(enum_ptr, context))
+        Ok(TerminatorValue::new(enum_ptr, context))
     }
 
     fn compile_tuple_expr(
@@ -2850,12 +2835,12 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         fields: &[ty::TyExpression],
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         if fields.is_empty() {
             // This is a Unit.  We're still debating whether Unit should just be an empty tuple in
             // the IR or not... it is a special case for now.
             let val = Constant::get_unit(context).add_metadatum(context, span_md_idx);
-            Ok(terminator_value_wrap!(val, context))
+            Ok(TerminatorValue::new(val, context))
         } else {
             let mut init_values = Vec::with_capacity(fields.len());
             let mut init_types = Vec::with_capacity(fields.len());
@@ -2903,7 +2888,7 @@ impl<'eng> FnCompiler<'eng> {
                         .add_metadatum(context, span_md_idx);
                 });
 
-            Ok(terminator_value_wrap!(tuple_val, context))
+            Ok(TerminatorValue::new(tuple_val, context))
         }
     }
 
@@ -2915,7 +2900,7 @@ impl<'eng> FnCompiler<'eng> {
         tuple_type: TypeId,
         idx: usize,
         span: Span,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         let tuple_value = return_on_termination_or_extract!(
             self.compile_expression_to_ptr(context, md_mgr, tuple)?
         );
@@ -2942,7 +2927,7 @@ impl<'eng> FnCompiler<'eng> {
                     span,
                 )
             })?;
-        Ok(terminator_value_wrap!(val, context))
+        Ok(TerminatorValue::new(val, context))
     }
 
     fn compile_storage_access(
@@ -2951,7 +2936,7 @@ impl<'eng> FnCompiler<'eng> {
         fields: &[ty::TyStorageAccessDescriptor],
         ix: &StateIndex,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         // Get the list of indices used to access the storage field. This will be empty
         // if the storage field type is not a struct.
         // FIXME: shouldn't have to extract the first field like this.
@@ -2986,7 +2971,7 @@ impl<'eng> FnCompiler<'eng> {
         return_type: TypeId,
         returns: Option<&(AsmRegister, Span)>,
         whole_block_span_md_idx: Option<MetadataIndex>,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         let mut compiled_registers = Vec::<AsmArg>::new();
         for reg in registers.iter() {
             let (init, name) = match reg {
@@ -2996,8 +2981,8 @@ impl<'eng> FnCompiler<'eng> {
                 ty::TyAsmRegisterDeclaration {
                     initializer, name, ..
                 } => {
-                    // Take the optional initialiser, map it to an Option<Result<TerminatorValueWrapper>>,
-                    // transpose that to Result<Option<TerminatorValueWrapper>> and map that to an AsmArg.
+                    // Take the optional initialiser, map it to an Option<Result<TerminatorValue>>,
+                    // transpose that to Result<Option<TerminatorValue>> and map that to an AsmArg.
                     //
                     // Here we need to compile based on the Sway 'copy-type' vs 'ref-type' since
                     // ASM args aren't explicitly typed, and if we send in a temporary it might
@@ -3066,7 +3051,7 @@ impl<'eng> FnCompiler<'eng> {
             .append(context)
             .asm_block(compiled_registers, body, return_type, returns)
             .add_metadatum(context, whole_block_span_md_idx);
-        Ok(terminator_value_wrap!(val, context))
+        Ok(TerminatorValue::new(val, context))
     }
 
     fn compile_storage_read(
@@ -3076,7 +3061,7 @@ impl<'eng> FnCompiler<'eng> {
         indices: &[u64],
         base_type: &Type,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<TerminatorValueWrapper, CompileError> {
+    ) -> Result<TerminatorValue, CompileError> {
         // Get the actual storage key as a `Bytes32` as well as the offset, in words,
         // within the slot. The offset depends on what field of the top level storage
         // variable is being accessed.
@@ -3176,6 +3161,6 @@ impl<'eng> FnCompiler<'eng> {
             .store(gep_2_val, field_id)
             .add_metadatum(context, span_md_idx);
 
-        Ok(terminator_value_wrap!(storage_key, context))
+        Ok(TerminatorValue::new(storage_key, context))
     }
 }
