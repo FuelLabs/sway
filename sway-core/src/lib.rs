@@ -491,7 +491,13 @@ pub fn parsed_to_ast(
         build_config,
     );
 
-    engines.pe().clear();
+    // Only clear the parsed AST nodes if we are running a regular compilation pipeline.
+    // LSP needs these to build its token map, and they are cleared by `clear_module` as
+    // part of the LSP garbage collection functionality instead.
+    let lsp_mode = build_config.map(|x| x.lsp_mode).unwrap_or_default();
+    if !lsp_mode {
+        engines.pe().clear();
+    }
 
     check_should_abort(handler, retrigger_compilation.clone())?;
 

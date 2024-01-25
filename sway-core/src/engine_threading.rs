@@ -61,6 +61,7 @@ impl Engines {
     pub fn clear_module(&mut self, module_id: &sway_types::ModuleId) {
         self.type_engine.clear_module(module_id);
         self.decl_engine.clear_module(module_id);
+        self.parsed_decl_engine.clear_module(module_id);
     }
 
     /// Helps out some `thing: T` by adding `self` as context.
