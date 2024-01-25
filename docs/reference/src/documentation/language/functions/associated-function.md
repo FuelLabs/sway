@@ -4,6 +4,10 @@ Associated functions are similar to methods in that they are also defined in the
 
 Associated functions could be standalone functions, but they are included in a specific type for organizational or semantic reasons.
 
+## Constructors
+
+A distinguished family of associated functions of a specific type are _type constructors_. Constructors are associated functions that construct, or in other words instantiate, new instances of a type. Their return type is always the type itself. E.g., public [structs](../built-ins/structs.md) that have private fields must provide a public constructor, or otherwise they cannot be instantiated outside of the module in which they are declared.
+
 ## Declaration
 
 In this example we will take a look at a struct; however, an enum will work in the same way.
