@@ -335,6 +335,64 @@ where
     }
 }
 
+// Tuples
+
+impl<A, B> AbiEncode for (A, B)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+    }
+}
+
+impl<A, B, C> AbiEncode for (A, B, C)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+    }
+}
+
+impl<A, B, C, D> AbiEncode for (A, B, C, D)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+    }
+}
+
+impl<A, B, C, D, E> AbiEncode for (A, B, C, D, E)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+        self.4.abi_encode(buffer);
+    }
+}
+
 pub fn encode<T>(item: T) -> raw_slice
 where
     T: AbiEncode,
