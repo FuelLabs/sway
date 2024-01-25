@@ -47,7 +47,7 @@ pub struct Module {
     items: Items,
     /// Name of the module, package name for root module, module name for other modules.
     /// Module name used is the same as declared in `mod name;`.
-    pub name: Option<Ident>,
+    pub name: Ident,
     /// Whether or not this is a `pub` module
     pub visibility: Visibility,
     /// Empty span at the beginning of the file implementing the module
@@ -62,21 +62,20 @@ pub struct Module {
     pub mod_path: PathBuf,
 }
 
-impl Default for Module {
-    fn default() -> Self {
-        Self {
-            visibility: Visibility::Private,
-            submodules: Default::default(),
-            items: Default::default(),
-            name: Default::default(),
-            span: Default::default(),
-            is_external: Default::default(),
-            mod_path: Default::default(),
-        }
-    }
-}
-
 impl Module {
+
+    pub fn new(name: Ident, visibility: Visibility, is_external: bool) -> Self {
+	Self {
+	    visibility: visibility,
+	    submodules: Default::default(),
+	    items: Default::default(),
+	    name: name,
+	    span: Default::default(),
+	    is_external: is_external,
+	    mod_path: Default::default(),
+	}
+    }
+    
     /// `contract_id_value` is injected here via forc-pkg when producing the `dependency_namespace` for a contract which has tests enabled.
     /// This allows us to provide a contract's `CONTRACT_ID` constant to its own unit tests.
     ///
@@ -84,7 +83,7 @@ impl Module {
     /// `CONTRACT_ID`-containing modules: https://github.com/FuelLabs/sway/issues/3077
     pub fn default_with_contract_id(
         engines: &Engines,
-        name: Option<Ident>,
+        name: Ident,
         contract_id_value: String,
     ) -> Result<Self, vec1::Vec1<CompileError>> {
         let handler = <_>::default();
@@ -102,7 +101,7 @@ impl Module {
     fn default_with_contract_id_inner(
         handler: &Handler,
         engines: &Engines,
-        ns_name: Option<Ident>,
+        ns_name: Ident,
         contract_id_value: String,
     ) -> Result<Self, ErrorEmitted> {
         // it would be nice to one day maintain a span from the manifest file, but
@@ -151,9 +150,9 @@ impl Module {
             content: AstNodeContent::Declaration(Declaration::ConstantDeclaration(const_decl)),
             span: const_item_span.clone(),
         };
-        let mut ns = Namespace::init_root(Default::default());
+        let mut ns = Namespace::init_root(Self::new(ns_name.clone(), Visibility::Private, false));
         // This is pretty hacky but that's okay because of this code is being removed pretty soon
-        ns.root.module.name = ns_name;
+        ns.root.module.name = ns_name.clone();
         ns.root.module.is_external = true;
         ns.root.module.visibility = Visibility::Public;
         let type_check_ctx = TypeCheckContext::from_root(&mut ns, engines);
@@ -174,7 +173,7 @@ impl Module {
         };
         compiled_constants.insert(name, typed_decl);
 
-        let mut ret = Self::default();
+        let mut ret = Self::new(ns_name.clone(), Visibility::Private, false);
         ret.items.symbols = compiled_constants;
         Ok(ret)
     }

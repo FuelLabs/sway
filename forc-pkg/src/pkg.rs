@@ -1596,11 +1596,11 @@ pub fn dependency_namespace(
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
-    let name = Some(Ident::new_no_span(node_idx.name.clone()));
+    let name = Ident::new_no_span(node_idx.name.clone());
     let mut namespace = if let Some(contract_id_value) = contract_id_value {
         namespace::Module::default_with_contract_id(engines, name.clone(), contract_id_value)?
     } else {
-        namespace::Module::default()
+        namespace::Module::new(name.clone(), Visibility::Private, false)
     };
 
     namespace.is_external = true;
@@ -1627,7 +1627,7 @@ pub fn dependency_namespace(
                 // Construct namespace with contract id
                 let contract_id_value = format!("0x{dep_contract_id}");
                 let node_idx = &graph[dep_node];
-                let name = Some(Ident::new_no_span(node_idx.name.clone()));
+                let name = Ident::new_no_span(node_idx.name.clone());
                 let mut ns = namespace::Module::default_with_contract_id(
                     engines,
                     name.clone(),
@@ -2425,7 +2425,7 @@ pub fn build(
 
         if let TreeType::Library = compiled.tree_type {
             let mut namespace = namespace::Module::from(compiled.namespace);
-            namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
+            namespace.name = Ident::new_no_span(pkg.name.clone());
             lib_namespace_map.insert(node, namespace);
         }
         source_map.insert_dependency(descriptor.manifest_file.dir());
@@ -2672,7 +2672,7 @@ pub fn check(
             Ok(typed_program) => {
                 if let TreeType::Library = typed_program.kind.tree_type() {
                     let mut namespace = typed_program.root.namespace.clone();
-                    namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
+                    namespace.name = Ident::new_no_span(pkg.name.clone());
                     namespace.span = Some(
                         Span::new(
                             manifest.entry_string()?,

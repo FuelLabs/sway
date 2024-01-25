@@ -531,8 +531,11 @@ fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Modu
         Some(typed_program) => {
             // Create a module for core and copy the compiled modules into it.  Unfortunately we
             // can't get mutable access to move them out so they're cloned.
+            use sway_types::BaseIdent;
+	    use sway_core::language::Visibility;
+	    let core_name = BaseIdent::new_no_span("core".to_string());
             let core_module = typed_program.root.namespace.submodules().into_iter().fold(
-                namespace::Module::default(),
+                namespace::Module::new(core_name.clone(), Visibility::Private, false),
                 |mut core_mod, (name, sub_mod)| {
                     core_mod.insert_submodule(name.clone(), sub_mod.clone());
                     core_mod
@@ -540,8 +543,9 @@ fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Modu
             );
 
             // Create a module for std and insert the core module.
-            let mut std_module = namespace::Module::default();
-            std_module.insert_submodule("core".to_owned(), core_module);
+	    let std_name = BaseIdent::new_no_span("std".to_string());
+            let mut std_module = namespace::Module::new(std_name, Visibility::Private, false);
+            std_module.insert_submodule(core_name.as_str().to_owned(), core_module);
             std_module
         }
         _ => {

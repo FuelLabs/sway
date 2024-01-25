@@ -136,7 +136,7 @@ impl Namespace {
             .chain(Some(mod_name.clone()))
             .collect();
         let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
-        self.name = Some(mod_name);
+        self.name = mod_name;
         self.span = Some(module_span);
         self.visibility = visibility;
         self.is_external = false;

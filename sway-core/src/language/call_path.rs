@@ -325,9 +325,7 @@ impl CallPath {
             let mut prefixes: Vec<Ident> = vec![];
 
             if !is_external {
-                if let Some(pkg_name) = &namespace.root().module.name {
-                    prefixes.push(pkg_name.clone());
-                }
+                prefixes.push((&namespace.root().module.name).clone());
 
                 if !is_absolute {
                     for mod_path in namespace.mod_path() {
@@ -357,9 +355,7 @@ impl CallPath {
                 }
             } else {
                 let mut prefixes: Vec<Ident> = vec![];
-                if let Some(pkg_name) = &namespace.root().module.name {
-                    prefixes.push(pkg_name.clone());
-                }
+                prefixes.push((&namespace.root().module.name).clone());
                 for mod_path in namespace.mod_path() {
                     prefixes.push(mod_path.clone());
                 }
@@ -391,7 +387,7 @@ impl CallPath {
         let converted = self.to_fullpath(namespace);
 
         if let Some(first) = converted.prefixes.first() {
-            if namespace.root().name == Some(first.clone()) {
+            if namespace.root().name == *first {
                 return converted.lshift();
             }
         }
