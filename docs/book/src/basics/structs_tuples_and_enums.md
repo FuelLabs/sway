@@ -20,7 +20,6 @@ In a similar way, we define the structs `Point`, `Line`, and `TupleInStruct`. Si
 
 On the other hand, the struct `StructWithPrivateFields` can be instantiated only within the _data_structures_ module, because it contains private fields. To be able to create instances of such structs outside of the module in which they are declared, the struct must offer [constructor associated functions](methods_and_associated_functions.md#constructors).
 
-
 ```sway
 {{#include ../../../../examples/structs/src/data_structures.sw}}
 ```

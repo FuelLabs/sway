@@ -60,7 +60,7 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
-name = "match_statements"
+name = "match_expressions"
 source = "member"
 dependencies = ["std"]
 
