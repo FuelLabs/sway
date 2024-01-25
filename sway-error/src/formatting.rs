@@ -183,7 +183,10 @@ where
         result.push(format!("{indent}- {item}"));
     }
     if !remaining.is_empty() {
-        result.push(format!("{indent}- and {} more", number_to_str(remaining.len())));
+        result.push(format!(
+            "{indent}- and {} more",
+            number_to_str(remaining.len())
+        ));
     }
 
     result

@@ -128,7 +128,12 @@ pub(crate) fn struct_instantiation(
     )?;
 
     if !struct_can_be_instantiated {
-        let constructors = collect_struct_constructors(ctx.namespace, ctx.engines, type_id, ctx.storage_declaration());
+        let constructors = collect_struct_constructors(
+            ctx.namespace,
+            ctx.engines,
+            type_id,
+            ctx.storage_declaration(),
+        );
 
         // TODO: Uncomment this code and delete the one with warnings once struct field privacy becomes a hard error.
         // handler.emit_err(CompileError::StructCannotBeInstantiated {
