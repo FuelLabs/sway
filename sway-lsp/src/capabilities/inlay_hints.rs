@@ -41,7 +41,8 @@ pub fn inlay_hints(
     let hints: Vec<lsp_types::InlayHint> = session
         .token_map()
         .tokens_for_file(uri)
-        .filter_map(|(_, token)| {
+        .filter_map(|item| {
+            let token = item.value();
             token.typed.as_ref().and_then(|t| match t {
                 TypedAstToken::TypedDeclaration(TyDecl::VariableDecl(var_decl)) => {
                     match var_decl.type_ascription.call_path_tree {
