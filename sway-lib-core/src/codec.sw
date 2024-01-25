@@ -337,9 +337,10 @@ where
 
 // Tuples
 
-impl<T> AbiEncode for (T, T)
+impl<A, B> AbiEncode for (A, B)
 where
-    T: AbiEncode,
+    A: AbiEncode,
+    B: AbiEncode,
 {
     fn abi_encode(self, ref mut buffer: Buffer) {
         self.0.abi_encode(buffer);
@@ -347,9 +348,11 @@ where
     }
 }
 
-impl<T> AbiEncode for (T, T, T)
+impl<A, B, C> AbiEncode for (A, B, C)
 where
-    T: AbiEncode,
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
 {
     fn abi_encode(self, ref mut buffer: Buffer) {
         self.0.abi_encode(buffer);
@@ -358,9 +361,12 @@ where
     }
 }
 
-impl<T> AbiEncode for (T, T, T, T)
+impl<A, B, C, D> AbiEncode for (A, B, C, D)
 where
-    T: AbiEncode,
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
 {
     fn abi_encode(self, ref mut buffer: Buffer) {
         self.0.abi_encode(buffer);
@@ -370,9 +376,13 @@ where
     }
 }
 
-impl<T> AbiEncode for (T, T, T, T, T)
+impl<A, B, C, D, E> AbiEncode for (A, B, C, D, E)
 where
-    T: AbiEncode,
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
 {
     fn abi_encode(self, ref mut buffer: Buffer) {
         self.0.abi_encode(buffer);
