@@ -6,7 +6,7 @@ use crate::{
     language::parsed::{
         AbiDeclaration, ConstantDeclaration, EnumDeclaration, FunctionDeclaration, ImplTrait,
         StorageDeclaration, StructDeclaration, TraitDeclaration, TraitFn, TraitTypeDeclaration,
-        TypeAliasDeclaration,
+        TypeAliasDeclaration, VariableDeclaration,
     },
 };
 
@@ -15,6 +15,7 @@ use super::parsed_id::ParsedDeclId;
 /// Used inside of type inference to store declarations.
 #[derive(Clone, Debug, Default)]
 pub struct ParsedDeclEngine {
+    variable_slab: ConcurrentSlab<VariableDeclaration>,
     function_slab: ConcurrentSlab<FunctionDeclaration>,
     trait_slab: ConcurrentSlab<TraitDeclaration>,
     trait_fn_slab: ConcurrentSlab<TraitFn>,
@@ -58,6 +59,7 @@ macro_rules! decl_engine_get {
         }
     };
 }
+decl_engine_get!(variable_slab, VariableDeclaration);
 decl_engine_get!(function_slab, FunctionDeclaration);
 decl_engine_get!(trait_slab, TraitDeclaration);
 decl_engine_get!(trait_fn_slab, TraitFn);
@@ -84,6 +86,8 @@ macro_rules! decl_engine_insert {
         }
     };
 }
+
+decl_engine_insert!(variable_slab, VariableDeclaration);
 decl_engine_insert!(function_slab, FunctionDeclaration);
 decl_engine_insert!(trait_slab, TraitDeclaration);
 decl_engine_insert!(trait_fn_slab, TraitFn);

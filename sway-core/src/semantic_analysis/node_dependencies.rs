@@ -294,13 +294,15 @@ impl Dependencies {
 
     fn gather_from_decl(self, engines: &Engines, decl: &Declaration) -> Self {
         match decl {
-            Declaration::VariableDeclaration(VariableDeclaration {
-                type_ascription,
-                body,
-                ..
-            }) => self
-                .gather_from_type_argument(engines, type_ascription)
-                .gather_from_expr(engines, body),
+            Declaration::VariableDeclaration(decl_id) => {
+                let VariableDeclaration {
+                    type_ascription,
+                    body,
+                    ..
+                } = &*engines.pe().get_variable(decl_id);
+                self.gather_from_type_argument(engines, type_ascription)
+                    .gather_from_expr(engines, body)
+            }
             Declaration::ConstantDeclaration(decl) => self.gather_from_constant_decl(engines, decl),
             Declaration::TraitTypeDeclaration(decl) => self.gather_from_type_decl(engines, decl),
             Declaration::FunctionDeclaration(decl_id) => {

@@ -27,12 +27,10 @@ impl TyDecl {
         let engines = ctx.engines();
 
         let decl = match decl {
-            parsed::Declaration::VariableDeclaration(parsed::VariableDeclaration {
-                name,
-                mut type_ascription,
-                body,
-                is_mutable,
-            }) => {
+            parsed::Declaration::VariableDeclaration(decl_id) => {
+                let var_decl = engines.pe().get_variable(&decl_id);
+                let mut type_ascription = var_decl.type_ascription.clone();
+
                 type_ascription.type_id = ctx
                     .resolve_type(
                         handler,
@@ -50,9 +48,11 @@ impl TyDecl {
                         "Variable declaration's type annotation does not match up \
                         with the assigned expression's type.",
                     );
-                let result = ty::TyExpression::type_check(handler, ctx.by_ref(), body);
-                let body =
-                    result.unwrap_or_else(|err| ty::TyExpression::error(err, name.span(), engines));
+                let result =
+                    ty::TyExpression::type_check(handler, ctx.by_ref(), var_decl.body.clone());
+                let body = result.unwrap_or_else(|err| {
+                    ty::TyExpression::error(err, var_decl.name.span(), engines)
+                });
 
                 // Integers are special in the sense that we can't only rely on the type of `body`
                 // to get the type of the variable. The type of the variable *has* to follow
@@ -63,13 +63,16 @@ impl TyDecl {
                     _ => body.return_type,
                 };
                 let typed_var_decl = ty::TyDecl::VariableDecl(Box::new(ty::TyVariableDecl {
-                    name: name.clone(),
+                    name: var_decl.name.clone(),
                     body,
-                    mutability: ty::VariableMutability::new_from_ref_mut(false, is_mutable),
+                    mutability: ty::VariableMutability::new_from_ref_mut(
+                        false,
+                        var_decl.is_mutable,
+                    ),
                     return_type,
                     type_ascription,
                 }));
-                ctx.insert_symbol(handler, name, typed_var_decl.clone())?;
+                ctx.insert_symbol(handler, var_decl.name.clone(), typed_var_decl.clone())?;
                 typed_var_decl
             }
             parsed::Declaration::ConstantDeclaration(decl) => {

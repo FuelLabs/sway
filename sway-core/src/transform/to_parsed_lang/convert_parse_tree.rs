@@ -2827,25 +2827,27 @@ fn match_expr_to_expression(
         span: var_decl_span,
     };
 
+    let var_decl = engines.pe().insert(VariableDeclaration {
+        type_ascription: {
+            let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
+            TypeArgument {
+                type_id,
+                initial_type_id: type_id,
+                span: var_decl_name.span(),
+                call_path_tree: None,
+            }
+        },
+        name: var_decl_name,
+        is_mutable: false,
+        body: value,
+    });
+
     Ok(Expression {
         kind: ExpressionKind::CodeBlock(CodeBlock {
             contents: vec![
                 AstNode {
                     content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
-                        VariableDeclaration {
-                            type_ascription: {
-                                let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
-                                TypeArgument {
-                                    type_id,
-                                    initial_type_id: type_id,
-                                    span: var_decl_name.span(),
-                                    call_path_tree: None,
-                                }
-                            },
-                            name: var_decl_name,
-                            is_mutable: false,
-                            body: value,
-                        },
+                        var_decl,
                     )),
                     span: span.clone(),
                 },
@@ -3363,14 +3365,15 @@ fn statement_let_to_ast_nodes(
                         }
                     }
                 };
+                let var_decl = engines.pe().insert(VariableDeclaration {
+                    name,
+                    type_ascription,
+                    body: expression,
+                    is_mutable: mutable.is_some(),
+                });
                 let ast_node = AstNode {
                     content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
-                        VariableDeclaration {
-                            name,
-                            type_ascription,
-                            body: expression,
-                            is_mutable: mutable.is_some(),
-                        },
+                        var_decl,
                     )),
                     span,
                 };
@@ -3416,12 +3419,12 @@ fn statement_let_to_ast_nodes(
                 };
 
                 // Save the destructure to the new name as a new variable declaration
-                let save_body_first = VariableDeclaration {
+                let save_body_first = engines.pe().insert(VariableDeclaration {
                     name: destructured_struct_name.clone(),
                     type_ascription,
                     body: expression,
                     is_mutable: false,
-                };
+                });
                 ast_nodes.push(AstNode {
                     content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
                         save_body_first,
@@ -3548,12 +3551,12 @@ fn statement_let_to_ast_nodes(
                 };
 
                 // Save the tuple to the new name as a new variable declaration.
-                let save_body_first = VariableDeclaration {
+                let save_body_first = engines.pe().insert(VariableDeclaration {
                     name: tuple_name.clone(),
                     type_ascription,
                     body: expression,
                     is_mutable: false,
-                };
+                });
                 ast_nodes.push(AstNode {
                     content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
                         save_body_first,
@@ -3569,12 +3572,12 @@ fn statement_let_to_ast_nodes(
 
                 // Override the previous declaration with a tuple of placeholders to check the
                 // shape of the tuple
-                let check_tuple_shape_second = VariableDeclaration {
+                let check_tuple_shape_second = engines.pe().insert(VariableDeclaration {
                     name: tuple_name,
                     type_ascription: placeholders_type_ascription,
                     body: new_expr.clone(),
                     is_mutable: false,
-                };
+                });
                 ast_nodes.push(AstNode {
                     content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
                         check_tuple_shape_second,
