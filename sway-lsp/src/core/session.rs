@@ -26,7 +26,6 @@ use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, BuildPlan};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
-    ops::Deref,
     path::PathBuf,
     sync::{atomic::AtomicBool, Arc},
 };
@@ -46,6 +45,7 @@ use sway_utils::{helpers::get_sway_files, PerformanceData};
 use tokio::{fs::File, io::AsyncWriteExt};
 
 pub type Documents = DashMap<String, TextDocument>;
+pub type RunnableMap = DashMap<PathBuf, Vec<Box<dyn Runnable>>>;
 pub type ProjectDirectory = PathBuf;
 
 #[derive(Default, Debug)]
@@ -53,16 +53,6 @@ pub struct CompiledProgram {
     pub lexed: Option<LexedProgram>,
     pub parsed: Option<ParseProgram>,
     pub typed: Option<ty::TyProgram>,
-}
-
-/// Used to write the result of compiling into so we can update
-/// the types in [Session] after successfully parsing.
-#[derive(Debug, Default)]
-pub struct ParseResult {
-    pub(crate) diagnostics: (Vec<CompileError>, Vec<CompileWarning>),
-    pub(crate) token_map: TokenMap,
-    pub(crate) compiled_program: CompiledProgram,
-    pub(crate) metrics: DashMap<SourceId, PerformanceData>,
 }
 
 /// A `Session` is used to store information about a single member in a workspace.
@@ -73,7 +63,7 @@ pub struct ParseResult {
 pub struct Session {
     token_map: TokenMap,
     pub documents: Documents,
-    pub runnables: DashMap<PathBuf, Vec<Box<dyn Runnable>>>,
+    pub runnables: RunnableMap,
     pub compiled_program: RwLock<CompiledProgram>,
     pub engines: RwLock<Engines>,
     pub sync: SyncWorkspace,
@@ -138,36 +128,6 @@ impl Session {
             engines.clear_module(&module_id);
         }
         Ok(())
-    }
-
-    /// Write the result of parsing to the session.
-    /// This function should only be called after successfully parsing.
-    pub fn write_parse_result(&self, res: &mut ParseResult) {
-        self.token_map.clear();
-        self.runnables.clear();
-        self.metrics.clear();
-
-        res.token_map.deref().iter().for_each(|item| {
-            let (i, t) = item.pair();
-            self.token_map.insert(i.clone(), t.clone());
-        });
-
-        res.metrics.iter().for_each(|item| {
-            let (s, t) = item.pair();
-            self.metrics.insert(*s, t.clone());
-        });
-
-        let (errors, warnings) = &res.diagnostics;
-        *self.diagnostics.write() =
-            capabilities::diagnostic::get_diagnostics(warnings, errors, self.engines.read().se());
-
-        if let Some(typed) = &res.compiled_program.typed {
-            self.create_runnables(typed, self.engines.read().de(), self.engines.read().se());
-        }
-        std::mem::swap(
-            &mut *self.compiled_program.write(),
-            &mut res.compiled_program,
-        );
     }
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
@@ -348,49 +308,6 @@ impl Session {
             })
     }
 
-    /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
-    fn create_runnables(
-        &self,
-        typed_program: &ty::TyProgram,
-        decl_engine: &DeclEngine,
-        source_engine: &SourceEngine,
-    ) {
-        // Insert runnable test functions.
-        for (decl, _) in typed_program.test_fns(decl_engine) {
-            // Get the span of the first attribute if it exists, otherwise use the span of the function name.
-            let span = decl
-                .attributes
-                .first()
-                .map_or_else(|| decl.name.span(), |(_, attr)| attr.span.clone());
-            if let Some(source_id) = span.source_id() {
-                let path = source_engine.get_path(source_id);
-                let runnable = Box::new(RunnableTestFn {
-                    range: token::get_range_from_span(&span.clone()),
-                    tree_type: typed_program.kind.tree_type(),
-                    test_name: Some(decl.name.to_string()),
-                });
-                self.runnables.entry(path).or_default().push(runnable);
-            }
-        }
-
-        // Insert runnable main function if the program is a script.
-        if let ty::TyProgramKind::Script {
-            ref main_function, ..
-        } = typed_program.kind
-        {
-            let main_function = decl_engine.get_function(main_function);
-            let span = main_function.name.span();
-            if let Some(source_id) = span.source_id() {
-                let path = source_engine.get_path(source_id);
-                let runnable = Box::new(RunnableMainFn {
-                    range: token::get_range_from_span(&span.clone()),
-                    tree_type: typed_program.kind.tree_type(),
-                });
-                self.runnables.entry(path).or_default().push(runnable);
-            }
-        }
-    }
-
     /// Populate [Documents] with sway files found in the workspace.
     async fn store_sway_files(&self) -> Result<(), LanguageServerError> {
         let temp_dir = self.sync.temp_dir()?;
@@ -445,21 +362,16 @@ pub fn compile(
     .map_err(LanguageServerError::FailedToCompile)
 }
 
-pub struct TraversalResult {
-    pub diagnostics: (Vec<CompileError>, Vec<CompileWarning>),
-    pub programs: Option<(LexedProgram, ParseProgram, ty::TyProgram)>,
-    pub token_map: TokenMap,
-    pub metrics: DashMap<SourceId, PerformanceData>,
-}
+type CompileResults = (Vec<CompileError>, Vec<CompileWarning>);
 
 pub fn traverse(
     results: Vec<(Option<Programs>, Handler)>,
     engines: &Engines,
-) -> Result<TraversalResult, LanguageServerError> {
-    let token_map = TokenMap::new();
-    let metrics_map = DashMap::new();
-    let mut diagnostics = (Vec::<CompileError>::new(), Vec::<CompileWarning>::new());
-    let mut programs = None;
+    session: Arc<Session>,
+) -> Result<Option<CompileResults>, LanguageServerError> {
+    session.token_map.clear();
+    session.metrics.clear();
+    let mut diagnostics: CompileResults = (Default::default(), Default::default());
     let results_len = results.len();
     for (i, (value, handler)) in results.into_iter().enumerate() {
         // We can convert these destructured elements to a Vec<Diagnostic> later on.
@@ -478,7 +390,7 @@ pub fn traverse(
 
         let source_id = lexed.root.tree.span().source_id().cloned();
         if let Some(source_id) = source_id {
-            metrics_map.insert(source_id, metrics.clone());
+            session.metrics.insert(source_id, metrics.clone());
         }
 
         // Get a reference to the typed program AST.
@@ -489,7 +401,7 @@ pub fn traverse(
 
         // Create context with write guards to make readers wait until the update to token_map is complete.
         // This operation is fast because we already have the compile results.
-        let ctx = ParseContext::new(&token_map, engines, &typed_program.root.namespace);
+        let ctx = ParseContext::new(&session.token_map, engines, &typed_program.root.namespace);
 
         // The final element in the results is the main program.
         if i == results_len - 1 {
@@ -508,7 +420,10 @@ pub fn traverse(
                 typed_tree.traverse_node(node)
             });
 
-            programs = Some((lexed, parsed, typed_program.clone()));
+            let compiled_program = &mut *session.compiled_program.write();
+            compiled_program.lexed = Some(lexed);
+            compiled_program.parsed = Some(parsed);
+            compiled_program.typed = Some(typed_program.clone());
         } else {
             // Collect tokens from dependencies and the standard library prelude.
             parse_ast_to_tokens(&parsed, &ctx, |an, ctx| {
@@ -520,12 +435,8 @@ pub fn traverse(
             });
         }
     }
-    Ok(TraversalResult {
-        diagnostics,
-        programs,
-        token_map,
-        metrics: metrics_map,
-    })
+
+    Ok(Some(diagnostics))
 }
 
 /// Parses the project and returns true if the compiler diagnostics are new and should be published.
@@ -533,26 +444,21 @@ pub fn parse_project(
     uri: &Url,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
-    parse_result: &mut ParseResult,
+    session: Arc<Session>,
 ) -> Result<(), LanguageServerError> {
     let results = compile(uri, engines, retrigger_compilation)?;
     if results.last().is_none() {
         return Err(LanguageServerError::ProgramsIsNone);
     }
-    let TraversalResult {
-        diagnostics,
-        programs,
-        token_map,
-        metrics,
-    } = traverse(results, engines)?;
-    let (lexed, parsed, typed) = programs.ok_or(LanguageServerError::ProgramsIsNone)?;
-
-    parse_result.diagnostics = diagnostics;
-    parse_result.token_map = token_map;
-    parse_result.compiled_program.lexed = Some(lexed);
-    parse_result.compiled_program.parsed = Some(parsed);
-    parse_result.compiled_program.typed = Some(typed);
-    parse_result.metrics = metrics;
+    let diagnostics = traverse(results, engines, session.clone())?;
+    if let Some((errors, warnings)) = &diagnostics {
+        *session.diagnostics.write() =
+            capabilities::diagnostic::get_diagnostics(warnings, errors, engines.se());
+    }
+    if let Some(typed) = &session.compiled_program.read().typed {
+        session.runnables.clear();
+        create_runnables(&session.runnables, typed, engines.de(), engines.se());
+    }
     Ok(())
 }
 
@@ -597,6 +503,49 @@ fn parse_ast_to_typed_tokens(
     nodes.par_iter().for_each(|n| f(n, ctx));
 }
 
+/// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
+fn create_runnables(
+    runnables: &RunnableMap,
+    typed_program: &ty::TyProgram,
+    decl_engine: &DeclEngine,
+    source_engine: &SourceEngine,
+) {
+    // Insert runnable test functions.
+    for (decl, _) in typed_program.test_fns(decl_engine) {
+        // Get the span of the first attribute if it exists, otherwise use the span of the function name.
+        let span = decl
+            .attributes
+            .first()
+            .map_or_else(|| decl.name.span(), |(_, attr)| attr.span.clone());
+        if let Some(source_id) = span.source_id() {
+            let path = source_engine.get_path(source_id);
+            let runnable = Box::new(RunnableTestFn {
+                range: token::get_range_from_span(&span.clone()),
+                tree_type: typed_program.kind.tree_type(),
+                test_name: Some(decl.name.to_string()),
+            });
+            runnables.entry(path).or_default().push(runnable);
+        }
+    }
+
+    // Insert runnable main function if the program is a script.
+    if let ty::TyProgramKind::Script {
+        ref main_function, ..
+    } = typed_program.kind
+    {
+        let main_function = decl_engine.get_function(main_function);
+        let span = main_function.name.span();
+        if let Some(source_id) = span.source_id() {
+            let path = source_engine.get_path(source_id);
+            let runnable = Box::new(RunnableMainFn {
+                range: token::get_range_from_span(&span.clone()),
+                tree_type: typed_program.kind.tree_type(),
+            });
+            runnables.entry(path).or_default().push(runnable);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -628,8 +577,8 @@ mod tests {
         let dir = get_absolute_path("sway-lsp/tests/fixtures");
         let uri = get_url(&dir);
         let engines = Engines::default();
-        let parse_result = &mut ParseResult::default();
-        let result = parse_project(&uri, &engines, None, parse_result)
+        let session = Arc::new(Session::new());
+        let result = parse_project(&uri, &engines, None, session)
             .expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
