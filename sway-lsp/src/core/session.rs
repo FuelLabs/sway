@@ -361,14 +361,16 @@ pub fn compile(
     .map_err(LanguageServerError::FailedToCompile)
 }
 
+type CompileResults = (Vec<CompileError>, Vec<CompileWarning>);
+
 pub fn traverse(
     results: Vec<(Option<Programs>, Handler)>,
     engines: &Engines,
     session: Arc<Session>,
-) -> Result<Option<(Vec<CompileError>, Vec<CompileWarning>)>, LanguageServerError> {
+) -> Result<Option<CompileResults>, LanguageServerError> {
     session.token_map.clear();
     session.metrics.clear();
-    let mut diagnostics = (Vec::<CompileError>::new(), Vec::<CompileWarning>::new());
+    let mut diagnostics: CompileResults = (Default::default(), Default::default());
     let results_len = results.len();
     for (i, (value, handler)) in results.into_iter().enumerate() {
         // We can convert these destructured elements to a Vec<Diagnostic> later on.

@@ -1,7 +1,6 @@
-use std::sync::Arc;
-
 use criterion::{black_box, criterion_group, Criterion};
 use lsp_types::Url;
+use std::sync::Arc;
 use sway_core::Engines;
 use sway_lsp::core::session;
 
