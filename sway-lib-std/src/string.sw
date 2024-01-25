@@ -265,12 +265,6 @@ impl Hash for String {
     }
 }
 
-impl AbiEncode for String {
-    fn abi_encode(self, ref mut buffer: Buffer) {
-        self.bytes.abi_encode(buffer);
-    }
-}
-
 // Tests
 
 #[test]
