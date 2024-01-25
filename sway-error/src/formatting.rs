@@ -59,9 +59,31 @@ impl Display for Enclosing {
     }
 }
 
-/// Returns reading-friendly textual representation of the `sequence`, with each item
-/// optionally enclosed in the specified `enclosing`. If the sequence has more than
-/// `max_items` the remaining items are replaced with the text "and <number> more".
+pub(crate) enum Indent {
+    #[allow(dead_code)]
+    None,
+    Single,
+    Double,
+}
+
+impl Display for Indent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::None => "",
+                Self::Single => "  ",
+                Self::Double => "    ",
+            },
+        )
+    }
+}
+
+/// Returns reading-friendly textual representation of the `sequence`, with comma-separated
+/// items and each item optionally enclosed in the specified `enclosing`.
+/// If the sequence has more than `max_items` the remaining items are replaced
+/// with the text "and <number> more".
 ///
 /// E.g.:
 /// [a] => "a"
@@ -121,6 +143,50 @@ where
             ),
         }
     }
+}
+
+/// Returns reading-friendly textual representation of the `sequence`, with vertically
+/// listed items and each item indented for the `indent` and preceded with the dash (-).
+/// If the sequence has more than `max_items` the remaining items are replaced
+/// with the text "and <number> more".
+///
+/// E.g.:
+/// [a] =>
+///   - a
+/// [a, b] =>
+///   - a
+///   - b
+/// [a, b, c, d, e] =>
+///   - a
+///   - b
+///   - and three more
+///
+/// Panics if the `sequence` is empty, or `max_items` is zero.
+pub(crate) fn sequence_to_list<T>(sequence: &[T], indent: Indent, max_items: usize) -> Vec<String>
+where
+    T: Display,
+{
+    assert!(
+        !sequence.is_empty(),
+        "Sequence to display must not be empty."
+    );
+    assert!(
+        max_items > 0,
+        "Maximum number of items to display must be greater than zero."
+    );
+
+    let mut result = vec![];
+
+    let max_items = cmp::min(max_items, sequence.len());
+    let (to_display, remaining) = sequence.split_at(max_items);
+    for item in to_display {
+        result.push(format!("{indent}- {item}"));
+    }
+    if !remaining.is_empty() {
+        result.push(format!("{indent}- and {} more", number_to_str(remaining.len())));
+    }
+
+    result
 }
 
 /// Returns "s" if `count` is different than 1, otherwise empty string.

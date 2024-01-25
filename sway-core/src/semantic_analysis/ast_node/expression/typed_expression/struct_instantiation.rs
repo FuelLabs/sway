@@ -128,11 +128,7 @@ pub(crate) fn struct_instantiation(
     )?;
 
     if !struct_can_be_instantiated {
-        let constructors = if !ctx.storage_declaration() {
-            collect_struct_constructors(ctx.namespace, ctx.engines, type_id)
-        } else {
-            vec![]
-        };
+        let constructors = collect_struct_constructors(ctx.namespace, ctx.engines, type_id, ctx.storage_declaration());
 
         // TODO: Uncomment this code and delete the one with warnings once struct field privacy becomes a hard error.
         // handler.emit_err(CompileError::StructCannotBeInstantiated {
@@ -275,11 +271,14 @@ pub(crate) fn struct_instantiation(
         namespace: &Namespace,
         engines: &crate::Engines,
         struct_type_id: TypeId,
+        is_in_storage_declaration: bool,
     ) -> Vec<String> {
         // Searching only for public constructors is a bit too restrictive because we can also have them in local private impls.
         // Checking that would be a questionable additional effort considering that this search gives good suggestions for
         // common patterns in which constructors can be found.
-        // Removing return type from the signature by searching for last `->` will work as long as we don't have something like `Fn`.
+        // Also, strictly speaking, we could also have public module functions that create structs,
+        // but that would be a way too much of suggestions, and moreover, it is also not a design pattern/guideline
+        // that we wish to encourage.
         namespace
             .get_items_for_type(engines, struct_type_id)
             .iter()
@@ -293,8 +292,14 @@ pub(crate) fn struct_instantiation(
                     && fn_decl
                         .is_constructor(engines, struct_type_id)
                         .unwrap_or_default()
+                    // For suggestions in storage declarations, we go for the simplest heuristics possible -
+                    // returning only parameterless constructors. Doing the const evaluation here would be
+                    // a questionable additional effort considering that this simple heuristics will give
+                    // us all the most common constructors like `default()` or `new()`.
+                    && (!is_in_storage_declaration || fn_decl.parameters.is_empty())
             })
             .map(|fn_decl| {
+                // Removing the return type from the signature by searching for last `->` will work as long as we don't have something like `Fn`.
                 format!("{}", engines.help_out((*fn_decl).clone()))
                     .rsplit_once(" -> ")
                     .unwrap()

@@ -6,7 +6,6 @@ use crate::error::StructFieldUsageContext::*;
 use crate::formatting::*;
 
 use core::fmt;
-use std::cmp;
 
 use either::Either;
 
@@ -530,8 +529,17 @@ impl ToDiagnostic for CompileWarning {
                     Hint::help(
                         source_engine,
                         span.clone(),
+                        format!("Inaccessible field{} {} {}.",
+                            plural_s(private_fields.len()),
+                            is_are(private_fields.len()),
+                            sequence_to_str(private_fields, Enclosing::DoubleQuote, 5)
+                        )
+                    ),
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
                         if *is_in_storage_declaration {
-                            "Structs with private fields can be used in storage declarations only if they are declared in the same module as the storage.".to_string()
+                            "Structs with private fields can be instantiated in storage declarations only if they are declared in the same module as the storage.".to_string()
                         } else {
                             "Structs with private fields can be instantiated only within the module in which they are declared.".to_string()
                         }
@@ -540,7 +548,16 @@ impl ToDiagnostic for CompileWarning {
                         Hint::help(
                             source_engine,
                             span.clone(),
-                            "They can still be stored in storage by using the `read` and `write` functions provided in the `std::storage::storage_api`.".to_string()
+                            "They can still be initialized in storage declarations if they have public constructors that evaluate to a constant.".to_string()
+                        )
+                    } else {
+                        Hint::none()
+                    },
+                    if *is_in_storage_declaration {
+                        Hint::help(
+                            source_engine,
+                            span.clone(),
+                            "They can always be stored in storage by using the `read` and `write` functions provided in the `std::storage::storage_api`.".to_string()
                         )
                     } else {
                         Hint::none()
@@ -549,25 +566,11 @@ impl ToDiagnostic for CompileWarning {
                         Hint::help(
                             source_engine,
                             span.clone(),
-                            format!("\"{struct_name}\" can be instantiated via public constructors (see the suggestion below).")
+                            format!("\"{struct_name}\" can be instantiated via public constructors suggested below.")
                         )
                     } else {
                         Hint::none()
                     },
-                    Hint::help(
-                        source_engine,
-                        span.clone(),
-                        format!("Inaccessible field{} {} {}.",
-                            plural_s(private_fields.len()),
-                            is_are(private_fields.len()),
-                            sequence_to_str(private_fields, Enclosing::DoubleQuote, 5)
-                        )
-                    ),
-                    Hint::warning(
-                        source_engine,
-                        span.clone(),
-                        FUTURE_HARD_ERROR_HELP.to_string()
-                    ),
                     Hint::info(
                         source_engine,
                         struct_decl_span.clone(),
@@ -587,11 +590,28 @@ impl ToDiagnostic for CompileWarning {
                     let mut help = vec![];
 
                     if *is_in_storage_declaration {
-                        help.push(format!("If you need to store instances of \"{struct_name}\" in the contract storage, use the `std::storage::storage_api`:"));
-                        help.push("  use std::storage::storage_api::{{read, write}};".to_string());
-                        help.push("  ...".to_string());
-                        help.push(format!("  write(STORAGE_KEY, 0, my_{});", to_snake_case(struct_name.as_str())));
-                        help.push(format!("  let my_{}_option = read::<{struct_name}>(STORAGE_KEY, 0);", to_snake_case(struct_name.as_str())));
+                        help.push(format!("Consider initializing \"{struct_name}\" by finding an available constructor that evaluates to a constant{}.",
+                            if *struct_can_be_changed {
+                                ", or implement a new one"
+                            } else {
+                                ""
+                            }
+                        ));
+
+                        if !constructors.is_empty() {
+                            help.push("Check these already available constructors. They might evaluate to a constant:".to_string());
+                            // We always expect a very few candidates here. So let's list all of them by using `usize::MAX`.
+                            for constructor in sequence_to_list(constructors, Indent::Single, usize::MAX) {
+                                help.push(constructor);
+                            }
+                        };
+
+                        help.push(Diagnostic::help_empty_line());
+
+                        help.push(format!("Or you can always store instances of \"{struct_name}\" in the contract storage, by using the `std::storage::storage_api`:"));
+                        help.push(format!("{}use std::storage::storage_api::{{read, write}};", Indent::Single));
+                        help.push(format!("{}write(STORAGE_KEY, 0, my_{});", Indent::Single, to_snake_case(struct_name.as_str())));
+                        help.push(format!("{}let my_{}_option = read::<{struct_name}>(STORAGE_KEY, 0);", Indent::Single, to_snake_case(struct_name.as_str())));
                     }
                     else if !constructors.is_empty() {
                         help.push(format!("Consider instantiating \"{struct_name}\" by using one of the available constructors{}:",
@@ -601,13 +621,8 @@ impl ToDiagnostic for CompileWarning {
                                 ""
                             }
                         ));
-                        let max_items = cmp::min(5, constructors.len());
-                        let (to_display, remaining) = constructors.split_at(max_items);
-                        for constructor in to_display {
-                            help.push(format!("  - {}", constructor.clone()));
-                        }
-                        if !remaining.is_empty() {
-                            help.push(format!("  - and {} more", number_to_str(remaining.len())));
+                        for constructor in sequence_to_list(constructors, Indent::Single, 5) {
+                            help.push(constructor);
                         }
                     }
 
@@ -621,14 +636,12 @@ impl ToDiagnostic for CompileWarning {
                         };
 
                         help.push(
-                            // Alternatively, consider declaring the field "f" as public in "Struct", `pub f: ...,`, and use "Struct" in storage declaration.
+                            // Alternatively, consider declaring the field "f" as public in "Struct": `pub f: ...,`.
                             //  or
-                            // Alternatively, consider declaring the fields "f" and "g" as public in "Struct", `pub <field>: ...,`, and use "Struct" in storage declaration.
+                            // Alternatively, consider declaring the fields "f" and "g" as public in "Struct": `pub <field>: ...,`.
                             //  or
-                            // Consider declaring the field "f" as public in "Struct": `pub f: ...,`.
-                            //  or
-                            // Consider declaring the fields "f" and "g" as public in "Struct": `pub <field>: ...,`.
-                            format!("Alternatively, consider declaring {} as public in \"{struct_name}\"{} `pub {}: ...,`{}.",
+                            // Alternatively, consider declaring all fields as public in "Struct": `pub <field>: ...,`.
+                            format!("Alternatively, consider declaring {} as public in \"{struct_name}\": `pub {}: ...,`.",
                                 if *all_fields_are_private {
                                     "all fields".to_string()
                                 } else {
@@ -637,11 +650,6 @@ impl ToDiagnostic for CompileWarning {
                                         sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
                                     )
                                 },
-                                if *is_in_storage_declaration {
-                                    ","
-                                } else {
-                                    ":"
-                                },
                                 if *all_fields_are_private {
                                     "<field>".to_string()
                                 } else {
@@ -649,11 +657,6 @@ impl ToDiagnostic for CompileWarning {
                                         [field] => format!("{field}"),
                                         _ => "<field>".to_string(),
                                     }
-                                },
-                                if *is_in_storage_declaration {
-                                    format!(", and use \"{struct_name}\" in storage declaration")
-                                } else {
-                                    "".to_string()
                                 },
                             )
                         )
