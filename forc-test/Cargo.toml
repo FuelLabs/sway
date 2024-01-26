@@ -11,7 +11,7 @@ repository.workspace = true
 [dependencies]
 anyhow = "1"
 forc-pkg = { version = "0.49.1", path = "../forc-pkg" }
-fuel-abi-types = "0.2"
+fuel-abi-types = { workspace = true }
 fuel-tx = { workspace = true, features = ["builder"] }
 fuel-vm = { workspace = true, features = ["random"] }
 rand = "0.8"
