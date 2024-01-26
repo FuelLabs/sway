@@ -1,5 +1,6 @@
 use criterion::{black_box, criterion_group, Criterion};
 use lsp_types::Url;
+use std::sync::Arc;
 use sway_core::Engines;
 use sway_lsp::core::session;
 
@@ -18,8 +19,10 @@ fn benchmarks(c: &mut Criterion) {
     c.bench_function("traverse", |b| {
         let engines = Engines::default();
         let results = black_box(session::compile(&uri, &engines, None).unwrap());
+        let session = Arc::new(session::Session::new());
         b.iter(|| {
-            let _ = black_box(session::traverse(results.clone(), &engines).unwrap());
+            let _ =
+                black_box(session::traverse(results.clone(), &engines, session.clone()).unwrap());
         })
     });
 
