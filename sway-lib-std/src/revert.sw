@@ -53,6 +53,15 @@ pub fn revert(code: u64) {
 ///     log("The require function did not revert");
 /// }
 /// ```
+#[cfg(experimental_new_encoding = false)]
+pub fn require<T>(condition: bool, value: T) {
+    if !condition {
+        log(value);
+        revert(FAILED_REQUIRE_SIGNAL)
+    }
+}
+
+#[cfg(experimental_new_encoding = true)]
 pub fn require<T>(condition: bool, value: T)
 where
     T: AbiEncode,

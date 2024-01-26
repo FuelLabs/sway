@@ -6,7 +6,7 @@ use crate::{
     language::{parsed::*, *},
     transform::{attribute::*, to_parsed_lang::context::Context},
     type_system::*,
-    BuildTarget, Engines,
+    BuildTarget, Engines, ExperimentalFlags,
 };
 
 use itertools::Itertools;
@@ -28,11 +28,11 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{
     constants::{
-        ALLOW_ATTRIBUTE_NAME, CFG_ATTRIBUTE_NAME, CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME,
-        DEPRECATED_ATTRIBUTE_NAME, DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME,
-        INLINE_ATTRIBUTE_NAME, PAYABLE_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME,
-        STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME,
-        VALID_ATTRIBUTE_NAMES,
+        ALLOW_ATTRIBUTE_NAME, CFG_ATTRIBUTE_NAME, CFG_EXPERIMENTAL_NEW_ENCODING,
+        CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME, DEPRECATED_ATTRIBUTE_NAME,
+        DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME, INLINE_ATTRIBUTE_NAME,
+        PAYABLE_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME,
+        STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME, VALID_ATTRIBUTE_NAMES,
     },
     integer_bits::IntegerBits,
 };
@@ -108,7 +108,7 @@ fn item_to_ast_nodes(
     prev_item: Option<Annotated<ItemKind>>,
 ) -> Result<Vec<AstNode>, ErrorEmitted> {
     let attributes = item_attrs_to_map(context, handler, &item.attribute_list)?;
-    if !cfg_eval(context, handler, &attributes)? {
+    if !cfg_eval(context, handler, &attributes, context.experimental)? {
         return Ok(vec![]);
     }
 
@@ -349,7 +349,7 @@ fn item_struct_to_struct_declaration(
         .into_iter()
         .map(|type_field| {
             let attributes = item_attrs_to_map(context, handler, &type_field.attribute_list)?;
-            if !cfg_eval(context, handler, &attributes)? {
+            if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
             Ok(Some(type_field_to_struct_field(
@@ -417,7 +417,7 @@ fn item_enum_to_enum_declaration(
         .enumerate()
         .map(|(tag, type_field)| {
             let attributes = item_attrs_to_map(context, handler, &type_field.attribute_list)?;
-            if !cfg_eval(context, handler, &attributes)? {
+            if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
             Ok(Some(type_field_to_enum_variant(
@@ -603,7 +603,7 @@ fn item_trait_to_trait_declaration(
         .into_iter()
         .map(|annotated| {
             let attributes = item_attrs_to_map(context, handler, &annotated.attribute_list)?;
-            if !cfg_eval(context, handler, &attributes)? {
+            if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
             Ok(Some(match annotated.value {
@@ -631,7 +631,7 @@ fn item_trait_to_trait_declaration(
             .into_iter()
             .map(|item_fn| {
                 let attributes = item_attrs_to_map(context, handler, &item_fn.attribute_list)?;
-                if !cfg_eval(context, handler, &attributes)? {
+                if !cfg_eval(context, handler, &attributes, context.experimental)? {
                     return Ok(None);
                 }
                 Ok(Some(item_fn_to_function_declaration(
@@ -678,7 +678,7 @@ fn item_impl_to_declaration(
         .into_iter()
         .map(|item| {
             let attributes = item_attrs_to_map(context, handler, &item.attribute_list)?;
-            if !cfg_eval(context, handler, &attributes)? {
+            if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
             Ok(Some(match item.value {
@@ -792,7 +792,7 @@ fn item_abi_to_abi_declaration(
                 .map(|annotated| {
                     let attributes =
                         item_attrs_to_map(context, handler, &annotated.attribute_list)?;
-                    if !cfg_eval(context, handler, &attributes)? {
+                    if !cfg_eval(context, handler, &attributes, context.experimental)? {
                         return Ok(None);
                     }
                     Ok(Some(match annotated.value {
@@ -838,7 +838,7 @@ fn item_abi_to_abi_declaration(
                 .into_iter()
                 .map(|item_fn| {
                     let attributes = item_attrs_to_map(context, handler, &item_fn.attribute_list)?;
-                    if !cfg_eval(context, handler, &attributes)? {
+                    if !cfg_eval(context, handler, &attributes, context.experimental)? {
                         return Ok(None);
                     }
                     let function_declaration = item_fn_to_function_declaration(
@@ -951,7 +951,7 @@ fn item_storage_to_storage_declaration(
         .into_iter()
         .map(|storage_field| {
             let attributes = item_attrs_to_map(context, handler, &storage_field.attribute_list)?;
-            if !cfg_eval(context, handler, &attributes)? {
+            if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
             Ok(Some(storage_field_to_storage_field(
@@ -1011,7 +1011,7 @@ fn item_configurable_to_constant_declarations(
         .map(|configurable_field| {
             let attributes =
                 item_attrs_to_map(context, handler, &configurable_field.attribute_list)?;
-            if !cfg_eval(context, handler, &attributes)? {
+            if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
             Ok(Some(configurable_field_to_constant_declaration(
@@ -4339,6 +4339,7 @@ pub fn cfg_eval(
     context: &Context,
     handler: &Handler,
     attrs_map: &AttributesMap,
+    experimental: ExperimentalFlags,
 ) -> Result<bool, ErrorEmitted> {
     if let Some(cfg_attrs) = attrs_map.get(&AttributeKind::Cfg) {
         for cfg_attr in cfg_attrs {
@@ -4404,6 +4405,19 @@ pub fn cfg_eval(
                             return Err(handler.emit_err(error.into()));
                         }
                     }
+                    CFG_EXPERIMENTAL_NEW_ENCODING => match &arg.value {
+                        Some(sway_ast::Literal::Bool(v)) => {
+                            let is_true = matches!(v.kind, sway_ast::literal::LitBoolType::True);
+                            return Ok(experimental.new_encoding == is_true);
+                        }
+                        _ => {
+                            let error =
+                                ConvertParseTreeError::ExpectedExperimentalNewEncodingArgValue {
+                                    span: arg.span(),
+                                };
+                            return Err(handler.emit_err(error.into()));
+                        }
+                    },
                     _ => {
                         // Already checked with `AttributeKind::expected_args_*`
                         unreachable!("cfg attribute should only have the `target` or the `program_type` argument");
