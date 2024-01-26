@@ -6,7 +6,9 @@ Associated functions could be standalone functions, but they are included in a s
 
 ## Constructors
 
-A distinguished family of associated functions of a specific type are _type constructors_. Constructors are associated functions that construct, or in other words instantiate, new instances of a type. Their return type is always the type itself. E.g., public [structs](../built-ins/structs.md) that have private fields must provide a public constructor, or otherwise they cannot be instantiated outside of the module in which they are declared.
+A distinguished family of associated functions of a specific type are _type constructors_. Constructors are associated functions that construct, or in other words instantiate, new instances of a type. Their return type always includes the type itself, and is often just the type itself.
+
+Public [structs](../built-ins/structs.md) that have private fields must provide a public constructor, or otherwise cannot be instantiated outside of the module in which they are declared.
 
 ## Declaration
 

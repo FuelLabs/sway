@@ -1276,6 +1276,7 @@ impl TypeInfo {
                     Some(field) => {
                         if is_public_struct_access && field.is_private() {
                             // TODO: Uncomment this code and delete the one with warnings once struct field privacy becomes a hard error.
+                            //       https://github.com/FuelLabs/sway/issues/5520
                             // return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
                             //     field_name: first.into(),
                             //     struct_name: decl.call_path.suffix.clone(),

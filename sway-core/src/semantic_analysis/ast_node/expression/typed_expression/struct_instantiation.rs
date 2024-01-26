@@ -136,6 +136,7 @@ pub(crate) fn struct_instantiation(
         );
 
         // TODO: Uncomment this code and delete the one with warnings once struct field privacy becomes a hard error.
+        //       https://github.com/FuelLabs/sway/issues/5520
         // handler.emit_err(CompileError::StructCannotBeInstantiated {
         //     struct_name: struct_name.clone(),
         //     span: inner_span.clone(),
@@ -212,6 +213,7 @@ pub(crate) fn struct_instantiation(
             if let Some(ty_field) = struct_fields.iter().find(|x| x.name == field.name) {
                 if ty_field.is_private() {
                     // TODO: Uncomment this code and delete the one with warnings once struct field privacy becomes a hard error.
+                    //       https://github.com/FuelLabs/sway/issues/5520
                     // handler.emit_err(CompileError::StructFieldIsPrivate {
                     //     field_name: (&field.name).into(),
                     //     struct_name: struct_name.clone(),

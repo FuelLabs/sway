@@ -309,6 +309,7 @@ fn type_check_struct(
 
                         if struct_field.is_private() {
                             // TODO: Uncomment this code and delete the one with warnings once struct field privacy becomes a hard error.
+                            //       https://github.com/FuelLabs/sway/issues/5520
                             // handler.emit_err(CompileError::StructFieldIsPrivate {
                             //     field_name: field_name.into(),
                             //     struct_name: struct_decl.call_path.suffix.clone(),
@@ -377,6 +378,7 @@ fn type_check_struct(
                 };
 
                 // TODO: Uncomment this code and delete the one with warnings once struct field privacy becomes a hard error.
+                //       https://github.com/FuelLabs/sway/issues/5520
                 // handler.emit_err(
                 //     match (is_public_struct_access, all_public_fields_are_matched, only_public_fields_are_matched) {
                 //         // Public access. Only all public fields are matched. All missing fields are private.

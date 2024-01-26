@@ -70,7 +70,7 @@ impl Diagnostic {
         self.labels_in_source(self.issue.source_path().unwrap())
     }
 
-    const HELP_NONE: &'static str = "__$$_^^__HELP__NONE__^^_$$__";
+    const HELP_NONE: &'static str = "";
 
     pub fn help(&self) -> impl Iterator<Item = &String> + '_ {
         self.help
