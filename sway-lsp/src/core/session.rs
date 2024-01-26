@@ -131,12 +131,14 @@ impl Session {
     }
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
-        let (_, token) = self.token_map.token_at_position(url, position)?;
         let mut token_ranges: Vec<_> = self
             .token_map
             .tokens_for_file(url)
-            .all_references_of_token(&token, &self.engines.read())
-            .map(|(ident, _)| ident.range)
+            .all_references_of_token(
+                self.token_map.token_at_position(url, position)?.value(),
+                &self.engines.read(),
+            )
+            .map(|item| item.key().range)
             .collect();
 
         token_ranges.sort_by(|a, b| a.start.line.cmp(&b.start.line));
@@ -150,7 +152,7 @@ impl Session {
     ) -> Option<GotoDefinitionResponse> {
         self.token_map
             .token_at_position(&uri, position)
-            .and_then(|(_, token)| token.declared_token_ident(&self.engines.read()))
+            .and_then(|item| item.value().declared_token_ident(&self.engines.read()))
             .and_then(|decl_ident| {
                 decl_ident.path.and_then(|path| {
                     // We use ok() here because we don't care about propagating the error from from_file_path
@@ -173,21 +175,20 @@ impl Session {
             line: position.line,
             character: position.character - trigger_char.len() as u32 - 1,
         };
-        let (ident_to_complete, _) = self.token_map.token_at_position(uri, shifted_position)?;
-        let fn_tokens = self.token_map.tokens_at_position(
-            self.engines.read().se(),
-            uri,
-            shifted_position,
-            Some(true),
-        );
-        let (_, fn_token) = fn_tokens.first()?;
+        let t = self.token_map.token_at_position(uri, shifted_position)?;
+        let ident_to_complete = t.key();
+        let engines = self.engines.read();
+        let fn_tokens =
+            self.token_map
+                .tokens_at_position(engines.se(), uri, shifted_position, Some(true));
+        let fn_token = fn_tokens.first()?.value();
         let compiled_program = &*self.compiled_program.read();
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.typed.clone() {
             let program = compiled_program.typed.clone()?;
             return Some(capabilities::completion::to_completion_items(
                 &program.root.namespace,
                 &self.engines.read(),
-                &ident_to_complete,
+                ident_to_complete,
                 &fn_decl,
                 position,
             ));
