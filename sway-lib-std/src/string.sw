@@ -251,7 +251,9 @@ impl From<raw_slice> for String {
 
 impl From<String> for raw_slice {
     fn from(s: String) -> raw_slice {
-        asm(ptr: (s.bytes.buf.ptr(), s.bytes.len)) { ptr: raw_slice }
+        asm(ptr: (s.bytes.buf.ptr(), s.bytes.len)) {
+            ptr: raw_slice
+        }
     }
 }
 

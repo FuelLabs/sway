@@ -15,9 +15,9 @@ pub trait Into<T> {
     fn into(self) -> T;
 }
 
-impl<T, U> Into<U> for T 
+impl<T, U> Into<U> for T
 where
-    U: From<T>
+    U: From<T>,
 {
     fn into(self) -> U {
         U::from(self)
@@ -42,9 +42,9 @@ pub trait TryInto<T> {
     fn try_into(self) -> Option<T>;
 }
 
-impl<T, U> TryInto<U> for T 
+impl<T, U> TryInto<U> for T
 where
-    U: TryFrom<T>
+    U: TryFrom<T>,
 {
     fn try_into(self) -> Option<U> {
         U::try_from(self)

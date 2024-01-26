@@ -785,11 +785,11 @@ impl From<Bytes> for raw_slice {
     /// assert(slice.number_of_bytes() == 3);
     /// ```
     fn from(bytes: Bytes) -> raw_slice {
-        asm(ptr: (bytes.buf.ptr(), bytes.len)) { ptr: raw_slice }
-    }   
+        asm(ptr: (bytes.buf.ptr(), bytes.len)) {
+            ptr: raw_slice
+        }
+    }
 }
-
-
 
 impl From<Vec<u8>> for Bytes {
     /// Creates a `Bytes` from a `Vec<u8>`.
