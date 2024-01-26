@@ -12,6 +12,7 @@ macro_rules! cli_examples {
                 #[allow(unreachable_code)]
                 fn [<$($description:lower _)*:snake example>] () {
                     let mut proc = std::process::Command::new("cargo");
+                    proc.env("CLI_TEST", "true");
                     proc.arg("run");
                     proc.arg("--bin");
                     proc.arg(if stringify!($command) == "forc" {
