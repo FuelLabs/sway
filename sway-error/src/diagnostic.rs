@@ -70,18 +70,16 @@ impl Diagnostic {
         self.labels_in_source(self.issue.source_path().unwrap())
     }
 
-    const HELP_NONE: &'static str = "";
-
     pub fn help(&self) -> impl Iterator<Item = &String> + '_ {
         self.help
             .iter()
-            .filter(|help| help.as_str() != Self::HELP_NONE)
+            .filter(|help| !help.is_empty())
     }
 
     /// A help text that will never be displayed. Convenient when defining help lines
     /// that are displayed only when a condition is met.
     pub fn help_none() -> String {
-        String::from(Self::HELP_NONE)
+        String::new()
     }
 
     /// Displays an empty line in the help footer.
