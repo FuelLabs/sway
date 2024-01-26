@@ -2,6 +2,7 @@ use crate::core::{
     session::Session,
     token::{SymbolKind, Token, TokenIdent},
 };
+use dashmap::mapref::multiple::RefMulti;
 use lsp_types::{
     Range, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
     SemanticTokensRangeResult, SemanticTokensResult, Url,
@@ -15,9 +16,9 @@ use std::sync::{
 
 /// Get the semantic tokens for the entire file.
 pub fn semantic_tokens_full(session: Arc<Session>, url: &Url) -> Option<SemanticTokensResult> {
-    let mut tokens: Vec<_> = session.token_map().tokens_for_file(url).collect();
-    sort_tokens(&mut tokens);
-    Some(semantic_tokens(&tokens).into())
+    let tokens: Vec<_> = session.token_map().tokens_for_file(url).collect();
+    let sorted_tokens_refs = sort_tokens(&tokens);
+    Some(semantic_tokens(&sorted_tokens_refs[..]).into())
 }
 
 /// Get the semantic tokens within a range.
@@ -26,30 +27,52 @@ pub fn semantic_tokens_range(
     url: &Url,
     range: &Range,
 ) -> Option<SemanticTokensRangeResult> {
-    let mut tokens: Vec<_> = session
+    let tokens: Vec<_> = session
         .token_map()
         .tokens_for_file(url)
-        .filter(|t| {
+        .filter(|item| {
             // make sure the token_ident range is within the range that was passed in
-            let token_range = t.0.range;
+            let token_range = item.key().range;
             token_range.start >= range.start && token_range.end <= range.end
         })
         .collect();
-    sort_tokens(&mut tokens);
-    Some(semantic_tokens(&tokens).into())
+    let sorted_tokens_refs = sort_tokens(&tokens);
+    Some(semantic_tokens(&sorted_tokens_refs[..]).into())
+}
+
+pub fn semantic_tokens(tokens_sorted: &[&RefMulti<TokenIdent, Token>]) -> SemanticTokens {
+    static TOKEN_RESULT_COUNTER: AtomicU32 = AtomicU32::new(1);
+    let id = TOKEN_RESULT_COUNTER
+        .fetch_add(1, Ordering::SeqCst)
+        .to_string();
+    let mut builder = SemanticTokensBuilder::new(id);
+
+    for entry in tokens_sorted.iter() {
+        let (ident, token) = entry.pair();
+        let ty = semantic_token_type(&token.kind);
+        let token_index = type_index(ty);
+        // TODO - improve with modifiers
+        let modifier_bitset = 0;
+        builder.push(ident.range, token_index, modifier_bitset);
+    }
+    builder.build()
 }
 
 /// Sort tokens by their span so each token is sequential.
 ///
 /// If this step isn't done, then the bit offsets used for the lsp_types::SemanticToken are incorrect.
-fn sort_tokens(tokens: &mut [(TokenIdent, Token)]) {
-    tokens.sort_by(|(a_span, _), (b_span, _)| {
-        let a = (a_span.range.start, a_span.range.end);
-        let b = (b_span.range.start, b_span.range.end);
-        a.cmp(&b)
+fn sort_tokens<'a>(
+    tokens: &'a [RefMulti<'a, TokenIdent, Token>],
+) -> Vec<&'a RefMulti<'a, TokenIdent, Token>> {
+    let mut refs: Vec<_> = tokens.iter().collect();
+    // Sort the vector of references based on the spans of the tokens
+    refs.sort_by(|a, b| {
+        let a_span = a.key().range;
+        let b_span = b.key().range;
+        (a_span.start, a_span.end).cmp(&(b_span.start, b_span.end))
     });
+    refs
 }
-
 //-------------------------------
 /// Tokens are encoded relative to each other.
 ///
@@ -106,23 +129,6 @@ impl SemanticTokensBuilder {
             data: self.data,
         }
     }
-}
-
-pub fn semantic_tokens(tokens_sorted: &[(TokenIdent, Token)]) -> SemanticTokens {
-    static TOKEN_RESULT_COUNTER: AtomicU32 = AtomicU32::new(1);
-    let id = TOKEN_RESULT_COUNTER
-        .fetch_add(1, Ordering::SeqCst)
-        .to_string();
-    let mut builder = SemanticTokensBuilder::new(id);
-
-    for (ident, token) in tokens_sorted.iter() {
-        let ty = semantic_token_type(&token.kind);
-        let token_index = type_index(ty);
-        // TODO - improve with modifiers
-        let modifier_bitset = 0;
-        builder.push(ident.range, token_index, modifier_bitset);
-    }
-    builder.build()
 }
 
 pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[

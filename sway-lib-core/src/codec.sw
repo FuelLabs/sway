@@ -164,6 +164,22 @@ impl AbiEncode for str {
     }
 }
 
+impl AbiEncode for raw_slice {
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let len = self.number_of_bytes();
+        buffer.push(len);
+
+        let ptr = self.ptr();
+
+        let mut i = 0;
+        while i < len {
+            let byte = ptr.add::<u8>(i).read::<u8>();
+            buffer.push(byte);
+            i += 1;
+        }
+    }
+}
+
 // str arrays
 
 impl AbiEncode for str[0] {
@@ -316,6 +332,64 @@ where
         self[2].abi_encode(buffer);
         self[3].abi_encode(buffer);
         self[4].abi_encode(buffer);
+    }
+}
+
+// Tuples
+
+impl<A, B> AbiEncode for (A, B)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+    }
+}
+
+impl<A, B, C> AbiEncode for (A, B, C)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+    }
+}
+
+impl<A, B, C, D> AbiEncode for (A, B, C, D)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+    }
+}
+
+impl<A, B, C, D, E> AbiEncode for (A, B, C, D, E)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+        self.4.abi_encode(buffer);
     }
 }
 
