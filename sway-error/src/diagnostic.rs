@@ -71,9 +71,7 @@ impl Diagnostic {
     }
 
     pub fn help(&self) -> impl Iterator<Item = &String> + '_ {
-        self.help
-            .iter()
-            .filter(|help| !help.is_empty())
+        self.help.iter().filter(|help| !help.is_empty())
     }
 
     /// A help text that will never be displayed. Convenient when defining help lines
