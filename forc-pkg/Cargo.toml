@@ -14,7 +14,7 @@ anyhow = "1"
 cid = "0.10"
 forc-tracing = { version = "0.49.1", path = "../forc-tracing" }
 forc-util = { version = "0.49.1", path = "../forc-util" }
-fuel-abi-types = "0.1"
+fuel-abi-types = { workspace = true }
 futures = "0.3"
 git2 = { version = "0.17.2", features = [
     "vendored-libgit2",
