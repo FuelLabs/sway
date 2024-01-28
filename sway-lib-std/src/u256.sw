@@ -2,9 +2,9 @@
 library;
 
 use ::assert::*;
-use ::convert::From;
+use ::convert::{From, Into, *};
 use ::result::Result::{self, *};
-use ::u128::U128;
+use ::u128::*;
 use ::math::Power;
 
 /// Left shift a `u64` and preserve the overflow amount if any.
@@ -56,11 +56,13 @@ impl From<(u64, u64, u64, u64)> for U256 {
             d: components.3,
         }
     }
+}
 
+impl From<U256> for (u64, u64, u64, u64) {
     /// Function for extracting 4 `u64`s from a `U256`.
     #[allow(deprecated)]
-    fn into(self) -> (u64, u64, u64, u64) {
-        (self.a, self.b, self.c, self.d)
+    fn from(val: U256) -> (u64, u64, u64, u64) {
+        (val.a, val.b, val.c, val.d)
     }
 }
 
@@ -331,8 +333,8 @@ fn test_u256_ord() {
 impl core::ops::BitwiseAnd for U256 {
     #[allow(deprecated)]
     fn binary_and(self, other: Self) -> Self {
-        let (value_word_1, value_word_2, value_word_3, value_word_4) = self.into();
-        let (other_word_1, other_word_2, other_word_3, other_word_4) = other.into();
+        let (value_word_1, value_word_2, value_word_3, value_word_4): (u64, u64, u64, u64) = self.into();
+        let (other_word_1, other_word_2, other_word_3, other_word_4): (u64, u64, u64, u64) = other.into();
         let word_1 = value_word_1 & other_word_1;
         let word_2 = value_word_2 & other_word_2;
         let word_3 = value_word_3 & other_word_3;
@@ -344,8 +346,8 @@ impl core::ops::BitwiseAnd for U256 {
 impl core::ops::BitwiseOr for U256 {
     #[allow(deprecated)]
     fn binary_or(self, other: Self) -> Self {
-        let (value_word_1, value_word_2, value_word_3, value_word_4) = self.into();
-        let (other_word_1, other_word_2, other_word_3, other_word_4) = other.into();
+        let (value_word_1, value_word_2, value_word_3, value_word_4): (u64, u64, u64, u64) = self.into();
+        let (other_word_1, other_word_2, other_word_3, other_word_4): (u64, u64, u64, u64) = other.into();
         let word_1 = value_word_1 | other_word_1;
         let word_2 = value_word_2 | other_word_2;
         let word_3 = value_word_3 | other_word_3;
@@ -357,8 +359,8 @@ impl core::ops::BitwiseOr for U256 {
 impl core::ops::BitwiseXor for U256 {
     #[allow(deprecated)]
     fn binary_xor(self, other: Self) -> Self {
-        let (value_word_1, value_word_2, value_word_3, value_word_4) = self.into();
-        let (other_word_1, other_word_2, other_word_3, other_word_4) = other.into();
+        let (value_word_1, value_word_2, value_word_3, value_word_4): (u64, u64, u64, u64) = self.into();
+        let (other_word_1, other_word_2, other_word_3, other_word_4): (u64, u64, u64, u64) = other.into();
         let word_1 = value_word_1 ^ other_word_1;
         let word_2 = value_word_2 ^ other_word_2;
         let word_3 = value_word_3 ^ other_word_3;
@@ -370,7 +372,7 @@ impl core::ops::BitwiseXor for U256 {
 impl core::ops::Shift for U256 {
     #[allow(deprecated)]
     fn lsh(self, shift_amount: u64) -> Self {
-        let (word_1, word_2, word_3, word_4) = self.into();
+        let (word_1, word_2, word_3, word_4): (u64, u64, u64, u64) = self.into();
         let mut w1 = 0;
         let mut w2 = 0;
         let mut w3 = 0;
@@ -405,7 +407,7 @@ impl core::ops::Shift for U256 {
 
     #[allow(deprecated)]
     fn rsh(self, shift_amount: u64) -> Self {
-        let (word_1, word_2, word_3, word_4) = self.into();
+        let (word_1, word_2, word_3, word_4): (u64, u64, u64, u64) = self.into();
         let mut w1 = 0;
         let mut w2 = 0;
         let mut w3 = 0;
@@ -455,8 +457,8 @@ impl core::ops::Add for U256 {
     /// Add a `U256` to a `U256`. Reverts on overflow.
     #[allow(deprecated)]
     fn add(self, other: Self) -> Self {
-        let (word_1, word_2, word_3, word_4) = self.into();
-        let (other_word_1, other_word_2, other_word_3, other_word_4) = other.into();
+        let (word_1, word_2, word_3, word_4): (u64, u64, u64, u64) = self.into();
+        let (other_word_1, other_word_2, other_word_3, other_word_4): (u64, u64, u64, u64) = other.into();
 
         let mut overflow = 0;
         let mut local_res = U128::from((0, word_4)) + U128::from((0, other_word_4));
@@ -492,8 +494,8 @@ impl core::ops::Subtract for U256 {
         }
         // If trying to subtract a larger number, panic.
         assert(self > other);
-        let (word_1, word_2, word_3, word_4) = self.into();
-        let (other_word_1, other_word_2, other_word_3, other_word_4) = other.into();
+        let (word_1, word_2, word_3, word_4): (u64, u64, u64, u64) = self.into();
+        let (other_word_1, other_word_2, other_word_3, other_word_4): (u64, u64, u64, u64) = other.into();
 
         let mut result_a = word_1 - other_word_1;
         let mut result_b = 0;
@@ -571,14 +573,14 @@ impl core::ops::Multiply for U256 {
                 let result_d_c = self.d.overflowing_mul(other.c);
                 let result_d_d = self.d.overflowing_mul(other.d);
 
-                let (overflow_of_c_to_b_1, mut c) = result_d_d.upper.overflowing_add(result_c_d.lower).into();
-                let (mut overflow_of_c_to_b_2, c) = c.overflowing_add(result_d_c.lower).into();
+                let (overflow_of_c_to_b_1, mut c): (u64, u64) = result_d_d.upper.overflowing_add(result_c_d.lower).into();
+                let (mut overflow_of_c_to_b_2, c): (u64, u64) = c.overflowing_add(result_d_c.lower).into();
 
-                let (overflow_of_b_to_a_0, overflow_of_c_to_b_2) = overflow_of_c_to_b_1.overflowing_add(overflow_of_c_to_b_2).into();
+                let (overflow_of_b_to_a_0, overflow_of_c_to_b_2): (u64, u64) = overflow_of_c_to_b_1.overflowing_add(overflow_of_c_to_b_2).into();
 
-                let (overflow_of_b_to_a_1, mut b) = result_b_d.lower.overflowing_add(result_c_d.upper).into();
-                let (overflow_of_b_to_a_2, b) = b.overflowing_add(result_d_c.upper).into();
-                let (overflow_of_b_to_a_3, b) = b.overflowing_add(overflow_of_c_to_b_2).into();
+                let (overflow_of_b_to_a_1, mut b): (u64, u64) = result_b_d.lower.overflowing_add(result_c_d.upper).into();
+                let (overflow_of_b_to_a_2, b): (u64, u64) = b.overflowing_add(result_d_c.upper).into();
+                let (overflow_of_b_to_a_3, b): (u64, u64) = b.overflowing_add(overflow_of_c_to_b_2).into();
 
                 Self::from((
                     self.b * other.c + result_b_d.upper + overflow_of_b_to_a_3 + overflow_of_b_to_a_2 + overflow_of_b_to_a_1 + overflow_of_b_to_a_0,
@@ -596,14 +598,14 @@ impl core::ops::Multiply for U256 {
                 let result_d_c = other.d.overflowing_mul(self.c);
                 let result_d_d = other.d.overflowing_mul(self.d);
 
-                let (overflow_of_c_to_b_1, mut c) = result_d_d.upper.overflowing_add(result_c_d.lower).into();
-                let (mut overflow_of_c_to_b_2, c) = c.overflowing_add(result_d_c.lower).into();
+                let (overflow_of_c_to_b_1, mut c): (u64, u64) = result_d_d.upper.overflowing_add(result_c_d.lower).into();
+                let (mut overflow_of_c_to_b_2, c): (u64, u64) = c.overflowing_add(result_d_c.lower).into();
 
-                let (overflow_of_b_to_a_0, overflow_of_c_to_b_2) = overflow_of_c_to_b_1.overflowing_add(overflow_of_c_to_b_2).into();
+                let (overflow_of_b_to_a_0, overflow_of_c_to_b_2): (u64, u64) = overflow_of_c_to_b_1.overflowing_add(overflow_of_c_to_b_2).into();
 
-                let (overflow_of_b_to_a_1, mut b) = result_b_d.lower.overflowing_add(result_c_d.upper).into();
-                let (overflow_of_b_to_a_2, b) = b.overflowing_add(result_d_c.upper).into();
-                let (overflow_of_b_to_a_3, b) = b.overflowing_add(overflow_of_c_to_b_2).into();
+                let (overflow_of_b_to_a_1, mut b): (u64, u64) = result_b_d.lower.overflowing_add(result_c_d.upper).into();
+                let (overflow_of_b_to_a_2, b): (u64, u64) = b.overflowing_add(result_d_c.upper).into();
+                let (overflow_of_b_to_a_3, b): (u64, u64) = b.overflowing_add(overflow_of_c_to_b_2).into();
 
                 Self::from((
                     other.b * self.c + result_b_d.upper + overflow_of_b_to_a_3 + overflow_of_b_to_a_2 + overflow_of_b_to_a_1 + overflow_of_b_to_a_0,
@@ -618,15 +620,15 @@ impl core::ops::Multiply for U256 {
                 let result_d_c = self.d.overflowing_mul(other.c);
                 let result_d_d = self.d.overflowing_mul(other.d);
 
-                let (overflow_of_c_to_b_1, mut c) = result_d_d.upper.overflowing_add(result_c_d.lower).into();
+                let (overflow_of_c_to_b_1, mut c): (u64, u64) = result_d_d.upper.overflowing_add(result_c_d.lower).into();
 
-                let (mut overflow_of_c_to_b_2, c) = c.overflowing_add(result_d_c.lower).into();
+                let (mut overflow_of_c_to_b_2, c): (u64, u64) = c.overflowing_add(result_d_c.lower).into();
 
-                let (overflow_of_b_to_a_0, overflow_of_c_to_b_2) = overflow_of_c_to_b_1.overflowing_add(overflow_of_c_to_b_2).into();
+                let (overflow_of_b_to_a_0, overflow_of_c_to_b_2): (u64, u64) = overflow_of_c_to_b_1.overflowing_add(overflow_of_c_to_b_2).into();
 
-                let (overflow_of_b_to_a_1, mut b) = result_c_c.lower.overflowing_add(result_c_d.upper).into();
-                let (overflow_of_b_to_a_2, b) = b.overflowing_add(result_d_c.upper).into();
-                let (overflow_of_b_to_a_3, b) = b.overflowing_add(overflow_of_c_to_b_2).into();
+                let (overflow_of_b_to_a_1, mut b): (u64, u64) = result_c_c.lower.overflowing_add(result_c_d.upper).into();
+                let (overflow_of_b_to_a_2, b): (u64, u64) = b.overflowing_add(result_d_c.upper).into();
+                let (overflow_of_b_to_a_3, b): (u64, u64) = b.overflowing_add(overflow_of_c_to_b_2).into();
 
                 Self::from((
                     // as overflow for a means overflow for the whole number, we are adding as is, not using `overflowing_add`
