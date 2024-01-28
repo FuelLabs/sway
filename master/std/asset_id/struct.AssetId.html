@@ -51,18 +51,4 @@ fn foo() {
    let asset_id = AssetId::from(ZERO_B256);
 }
 </code></pre>
-</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.into" class="method trait-impl"><a href="#method.into" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.into">into</a>(self) -&gt; b256</h4></div></summary><div class="doc-block"><p>Casts an <code>AssetId</code> to raw <code>b256</code> data.</p>
-<h1>Returns</h1>
-<ul>
-<li>[b256] - The underlying raw <code>b256</code> data of the <code>AssetId</code>.</li>
-</ul>
-<h1>Examples</h1>
-<pre><code class="language-sway">use std::constants::ZERO_B256;
-
-fn foo() {
-    let asset_id = AssetId::from(ZERO_B256);
-    let b256_data = asset_id.into();
-    assert(b256_data == ZERO_B256);
-}
-</code></pre>
 </div></details></div></details></div></section><section id="search" class="search-results"></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>

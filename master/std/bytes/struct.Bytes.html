@@ -36,7 +36,7 @@ fn foo() {
 }
 </code></pre>
 </div></details></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-AsRawSlice" class="impl has-srclink"><a href="#impl-AsRawSlice" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../core/raw_slice/trait.AsRawSlice.html">AsRawSlice</a> for Bytes</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.as_raw_slice" class="method trait-impl"><a href="#method.as_raw_slice" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.as_raw_slice">as_raw_slice</a>(self) -&gt; raw_slice</h4></div></summary><div class="doc-block"><p>Returns a raw slice of all of the elements in the type.</p>
-</div></details></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-From" class="impl has-srclink"><a href="#impl-From" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a> for Bytes</h3></div></summary><div class="impl-items"><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(b: b256) -&gt; Self</h4></div><div id="method.into" class="method trait-impl"><a href="#method.into" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.into">into</a>(self) -&gt; b256</h4></div></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-From" class="impl has-srclink"><a href="#impl-From" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a> for Bytes</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(slice: raw_slice) -&gt; Self</h4></div></summary><div class="doc-block"><p>Creates a <code>Bytes</code> from a <code>raw_slice</code>.</p>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-From" class="impl has-srclink"><a href="#impl-From" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a> for Bytes</h3></div></summary><div class="impl-items"><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(b: b256) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-From" class="impl has-srclink"><a href="#impl-From" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a> for Bytes</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(slice: raw_slice) -&gt; Self</h4></div></summary><div class="doc-block"><p>Creates a <code>Bytes</code> from a <code>raw_slice</code>.</p>
 <h3>Examples</h3>
 <pre><code class="language-sway">use std:bytes::Bytes;
 
@@ -56,24 +56,6 @@ assert(bytes.len == 3);
 assert(bytes.get(0).unwrap() == a);
 assert(bytes.get(1).unwrap() == b);
 assert(bytes.get(2).unwrap() == c);
-</code></pre>
-</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.into" class="method trait-impl"><a href="#method.into" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.into">into</a>(self) -&gt; raw_slice</h4></div></summary><div class="doc-block"><p>Creates a <code>raw_slice</code> from a <code>Bytes</code>.</p>
-<h3>Examples</h3>
-<pre><code class="language-sway">use std:bytes::Bytes;
-
-let mut bytes = Bytes::new();
-let a = 5u8;
-let b = 7u8;
-let c = 9u8
-bytes.push(a);
-bytes.push(b);
-bytes.push(c);
-
-assert(bytes.len() == 3);
-
-let slice: raw_slice = bytes.into();
-
-assert(slice.number_of_bytes() == 3);
 </code></pre>
 </div></details></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-From" class="impl has-srclink"><a href="#impl-From" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a> for Bytes</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(vec: Vec&lt;u8&gt;) -&gt; Self</h4></div></summary><div class="doc-block"><p>Creates a <code>Bytes</code> from a <code>Vec&lt;u8&gt;</code>.</p>
 <h3>Examples</h3>
@@ -95,25 +77,4 @@ assert(bytes.get(0).unwrap() == a);
 assert(bytes.get(1).unwrap() == b);
 assert(bytes.get(2).unwrap() == c);
 </code></pre>
-</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.into" class="method trait-impl"><a href="#method.into" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.into">into</a>(self) -&gt; Vec&lt;u8&gt;</h4></div></summary><div class="doc-block"><p>Creates a <code>Vec&lt;u8&gt;</code> from a <code>Bytes</code>.</p>
-<h3>Examples</h3>
-<pre><code class="language-sway">use std:bytes::Bytes;
-
-let mut bytes = Bytes::new();
-let a = 5u8;
-let b = 7u8;
-let c = 9u8
-bytes.push(a);
-bytes.push(b);
-bytes.push(c);
-
-assert(bytes.len() == 3);
-
-let vec: Vec&lt;u8&gt; = bytes.into();
-
-assert(vec.len() == 3);
-assert(vec.get(0).unwrap() == a);
-assert(vec.get(1).unwrap() == b);
-assert(vec.get(2).unwrap() == c);
-</code></pre>
-</div></details></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-AbiEncode" class="impl has-srclink"><a href="#impl-AbiEncode" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../core/codec/trait.AbiEncode.html">AbiEncode</a> for Bytes</h3></div></summary><div class="impl-items"><div id="method.abi_encode" class="method trait-impl"><a href="#method.abi_encode" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.abi_encode">abi_encode</a>(<br>    self,<br>    refmut buffer: Buffer,<br>)</h4></div></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-Hash" class="impl has-srclink"><a href="#impl-Hash" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../hash/trait.Hash.html">Hash</a> for Bytes</h3></div></summary><div class="impl-items"><div id="method.hash" class="method trait-impl"><a href="#method.hash" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.hash">hash</a>(<br>    self,<br>    refmut state: Hasher,<br>)</h4></div></div></details></div></section><section id="search" class="search-results"></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-AbiEncode" class="impl has-srclink"><a href="#impl-AbiEncode" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../core/codec/trait.AbiEncode.html">AbiEncode</a> for Bytes</h3></div></summary><div class="impl-items"><div id="method.abi_encode" class="method trait-impl"><a href="#method.abi_encode" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.abi_encode">abi_encode</a>(<br>    self,<br>    refmut buffer: Buffer,<br>)</h4></div></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-Hash" class="impl has-srclink"><a href="#impl-Hash" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../hash/trait.Hash.html">Hash</a> for Bytes</h3></div></summary><div class="impl-items"><div id="method.hash" class="method trait-impl"><a href="#method.hash" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.hash">hash</a>(<br>    self,<br>    refmut state: Hasher,<br>)</h4></div></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-From" class="impl has-srclink"><a href="#impl-From" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a> for Bytes</h3></div></summary><div class="impl-items"><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(s: String) -&gt; Bytes</h4></div></div></details></div></section><section id="search" class="search-results"></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
