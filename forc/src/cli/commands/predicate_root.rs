@@ -20,7 +20,7 @@ pub struct Command {
     pub build_profile: BuildProfile,
 
     #[clap(long)]
-    /// Experimental flags for the "new encoding" feature
+    /// Experimental flag for the "new encoding" feature
     pub experimental_new_encoding: bool,
 }
 

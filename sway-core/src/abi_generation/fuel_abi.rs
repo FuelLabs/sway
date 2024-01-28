@@ -1,4 +1,4 @@
-use fuel_abi_types::program_abi;
+use fuel_abi_types::abi::program as program_abi;
 use sway_types::integer_bits::IntegerBits;
 
 use crate::{
@@ -21,6 +21,7 @@ pub fn generate_program_abi(
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
     types: &mut Vec<program_abi::TypeDeclaration>,
+    encoding: Option<program_abi::Version>,
 ) -> program_abi::ProgramABI {
     match &ctx.program.kind {
         TyProgramKind::Contract { abi_entries, .. } => {
@@ -35,6 +36,7 @@ pub fn generate_program_abi(
             let messages_types = generate_messages_types(ctx, type_engine, decl_engine, types);
             let configurables = generate_configurables(ctx, type_engine, decl_engine, types);
             program_abi::ProgramABI {
+                encoding,
                 types: types.to_vec(),
                 functions,
                 logged_types: Some(logged_types),
@@ -51,6 +53,7 @@ pub fn generate_program_abi(
             let messages_types = generate_messages_types(ctx, type_engine, decl_engine, types);
             let configurables = generate_configurables(ctx, type_engine, decl_engine, types);
             program_abi::ProgramABI {
+                encoding,
                 types: types.to_vec(),
                 functions,
                 logged_types: Some(logged_types),
@@ -59,6 +62,7 @@ pub fn generate_program_abi(
             }
         }
         _ => program_abi::ProgramABI {
+            encoding,
             types: vec![],
             functions: vec![],
             logged_types: None,

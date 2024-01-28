@@ -1538,7 +1538,11 @@ impl<'a> TypeCheckContext<'a> {
             .insert_for_type(self.engines, type_id);
     }
 
-    pub(crate) fn with_experimental_flags(self, experimental: ExperimentalFlags) -> Self {
+    pub(crate) fn with_experimental_flags(self, experimental: Option<ExperimentalFlags>) -> Self {
+        let Some(experimental) = experimental else {
+            return self;
+        };
+
         Self {
             experimental,
             ..self
