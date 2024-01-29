@@ -236,6 +236,11 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
+name = "result_option_expect"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "script_bytecode"
 source = "member"
 dependencies = ["std"]
