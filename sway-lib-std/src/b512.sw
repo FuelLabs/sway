@@ -25,9 +25,11 @@ impl From<(b256, b256)> for B512 {
             bytes: [components.0, components.1],
         }
     }
+}
 
-    fn into(self) -> (b256, b256) {
-        ((self.bytes)[0], (self.bytes)[1])
+impl From<B512> for (b256, b256) {
+    fn from(val: B512) -> (b256, b256) {
+        ((val.bytes)[0], (val.bytes)[1])
     }
 }
 
