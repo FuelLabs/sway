@@ -13,9 +13,9 @@ fn main() -> bool {
     }
     ();
 
-    let balance = asm(token_bal, token: BASE_ASSET_ID, id: balance_test_contract_id) {
-        bal token_bal token id;
-        token_bal: u64
+    let balance = asm(asset_bal, asset: BASE_ASSET_ID, id: balance_test_contract_id) {
+        bal asset_bal asset id;
+        asset_bal: u64
     };
     assert(balance == 0);
     assert(number == 42);

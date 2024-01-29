@@ -606,10 +606,29 @@ impl<T> From<raw_slice> for Vec<T> {
             len: buf.cap,
         }
     }
+}
 
-    fn into(self) -> raw_slice {
-        asm(ptr: (self.buf.ptr(), self.len)) {
+impl<T> From<Vec<T>> for raw_slice {
+    fn from(vec: Vec<T>) -> Self {
+        asm(ptr: (vec.buf.ptr(), vec.len)) {
             ptr: raw_slice
+        }
+    }
+}
+
+impl<T> AbiEncode for Vec<T>
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let len = self.len();
+        buffer.push(len);
+
+        let mut i = 0;
+        while i < len {
+            let item = self.get(i).unwrap();
+            item.abi_encode(buffer);
+            i += 1;
         }
     }
 }

@@ -5,7 +5,7 @@ use ::{alloc::{alloc_bytes, realloc_bytes}, vec::Vec};
 use ::assert::assert;
 use ::intrinsics::size_of_val;
 use ::option::Option::{self, *};
-use ::convert::From;
+use ::convert::{From, Into, *};
 
 struct RawBytes {
     ptr: raw_ptr,
@@ -709,15 +709,17 @@ impl From<b256> for Bytes {
 
         bytes
     }
+}
 
+impl From<Bytes> for b256 {
     // NOTE: this cas be lossy! Added here as the From trait currently requires it,
     // but the conversion from `Bytes` ->`b256` should be implemented as
     // `impl TryFrom<Bytes> for b256` when the `TryFrom` trait lands:
     // https://github.com/FuelLabs/sway/pull/3881
-    fn into(self) -> b256 {
+    fn from(bytes: Bytes) -> b256 {
         let mut value = 0x0000000000000000000000000000000000000000000000000000000000000000;
         let ptr = __addr_of(value);
-        self.buf.ptr().copy_to::<b256>(ptr, 1);
+        bytes.buf.ptr().copy_to::<b256>(ptr, 1);
 
         value
     }
@@ -758,7 +760,9 @@ impl From<raw_slice> for Bytes {
             len: number_of_bytes,
         }
     }
+}
 
+impl From<Bytes> for raw_slice {
     /// Creates a `raw_slice` from a `Bytes`.
     ///
     /// ### Examples
@@ -780,8 +784,8 @@ impl From<raw_slice> for Bytes {
     ///
     /// assert(slice.number_of_bytes() == 3);
     /// ```
-    fn into(self) -> raw_slice {
-        asm(ptr: (self.buf.ptr(), self.len)) {
+    fn from(bytes: Bytes) -> raw_slice {
+        asm(ptr: (bytes.buf.ptr(), bytes.len)) {
             ptr: raw_slice
         }
     }
@@ -820,7 +824,9 @@ impl From<Vec<u8>> for Bytes {
         };
         bytes
     }
+}
 
+impl From<Bytes> for Vec<u8> {
     /// Creates a `Vec<u8>` from a `Bytes`.
     ///
     /// ### Examples
@@ -845,14 +851,27 @@ impl From<Vec<u8>> for Bytes {
     /// assert(vec.get(1).unwrap() == b);
     /// assert(vec.get(2).unwrap() == c);
     /// ```
-    fn into(self) -> Vec<u8> {
-        let mut vec = Vec::with_capacity(self.len);
+    fn from(bytes: Bytes) -> Vec<u8> {
+        let mut vec = Vec::with_capacity(bytes.len);
         let mut i = 0;
-        while i < self.len {
-            vec.push(self.get(i).unwrap());
+        while i < bytes.len {
+            vec.push(bytes.get(i).unwrap());
             i += 1;
         };
         vec
+    }
+}
+
+impl AbiEncode for Bytes {
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        buffer.push(self.len);
+
+        let mut i = 0;
+        while i < self.len {
+            let item = self.get(i).unwrap();
+            item.abi_encode(buffer);
+            i += 1;
+        }
     }
 }
 

@@ -64,13 +64,17 @@ pub fn find_nested_dir_with_file(starter_path: &Path, file_name: &str) -> Option
     };
     WalkDir::new(starter_path)
         .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|entry| entry.path() != starter_dir.join(file_name))
-        .filter(|entry| entry.file_name().to_string_lossy() == file_name)
-        .map(|entry| {
-            let mut entry = entry.path().to_path_buf();
-            entry.pop();
-            entry
+        .filter_map(|e| {
+            let entry = e.ok()?;
+            if entry.path() != starter_dir.join(file_name)
+                && entry.file_name().to_string_lossy() == file_name
+            {
+                let mut entry = entry.path().to_path_buf();
+                entry.pop();
+                Some(entry)
+            } else {
+                None
+            }
         })
         .next()
 }

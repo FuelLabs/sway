@@ -10,6 +10,7 @@ use fuel_abi_types::error_codes::ErrorSignal;
 use fuel_tx as tx;
 use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::{self as vm};
+use pkg::manifest::ExperimentalFlags;
 use pkg::TestPassCondition;
 use pkg::{Built, BuiltPackage};
 use rand::{Rng, SeedableRng};
@@ -147,6 +148,8 @@ pub struct Opts {
     pub time_phases: bool,
     /// Output compilation metrics into file.
     pub metrics_outfile: Option<String>,
+    /// Set of experimental flags
+    pub experimental: ExperimentalFlags,
 }
 
 /// The set of options provided for controlling logs printed for each test.
@@ -405,6 +408,7 @@ impl Opts {
             metrics_outfile: self.metrics_outfile,
             tests: true,
             member_filter: Default::default(),
+            experimental: self.experimental,
         }
     }
 }

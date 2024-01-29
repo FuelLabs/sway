@@ -1,6 +1,7 @@
 use std::collections::{HashMap, VecDeque};
 
 use crate::{
+    build_config::ExperimentalFlags,
     decl_engine::{DeclEngineInsert, DeclRefFunction},
     engine_threading::*,
     language::{
@@ -14,7 +15,7 @@ use crate::{
         Namespace,
     },
     type_system::{SubstTypes, TypeArgument, TypeId, TypeInfo},
-    CreateTypeId, TypeParameter, TypeSubstMap, UnifyCheck,
+    CreateTypeId, TraitConstraint, TypeParameter, TypeSubstMap, UnifyCheck,
 };
 use sway_error::{
     error::CompileError,
@@ -91,6 +92,9 @@ pub struct TypeCheckContext<'a> {
     /// case of impl trait methods after the initial type checked AST is constructed, and
     /// after we perform a dependency analysis on the tree.
     defer_monomorphization: bool,
+
+    /// Set of experimental flags
+    pub experimental: ExperimentalFlags,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -122,6 +126,7 @@ impl<'a> TypeCheckContext<'a> {
             kind: TreeType::Contract,
             disallow_functions: false,
             defer_monomorphization: false,
+            experimental: ExperimentalFlags::default(),
         }
     }
 
@@ -149,6 +154,7 @@ impl<'a> TypeCheckContext<'a> {
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             defer_monomorphization: self.defer_monomorphization,
+            experimental: self.experimental,
         }
     }
 
@@ -169,6 +175,7 @@ impl<'a> TypeCheckContext<'a> {
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             defer_monomorphization: self.defer_monomorphization,
+            experimental: self.experimental,
         }
     }
 
@@ -1180,6 +1187,7 @@ impl<'a> TypeCheckContext<'a> {
                     TryInsertingTraitImplOnFailure::No,
                 );
             }
+
             let type_name = if let Some(call_path) = qualified_call_path {
                 format!(
                     "{} as {}",
@@ -1528,6 +1536,37 @@ impl<'a> TypeCheckContext<'a> {
         self.namespace
             .implemented_traits
             .insert_for_type(self.engines, type_id);
+    }
+
+    pub(crate) fn with_experimental_flags(self, experimental: Option<ExperimentalFlags>) -> Self {
+        let Some(experimental) = experimental else {
+            return self;
+        };
+
+        Self {
+            experimental,
+            ..self
+        }
+    }
+
+    pub fn check_type_impls_traits(
+        &mut self,
+        type_id: TypeId,
+        constraints: &[TraitConstraint],
+    ) -> bool {
+        let handler = Handler::default();
+
+        self.namespace
+            .implemented_traits
+            .check_if_trait_constraints_are_satisfied_for_type(
+                &handler,
+                type_id,
+                constraints,
+                &Span::dummy(),
+                self.engines,
+                crate::namespace::TryInsertingTraitImplOnFailure::Yes,
+            )
+            .is_ok()
     }
 }
 

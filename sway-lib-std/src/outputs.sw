@@ -2,7 +2,8 @@
 //! This includes `Output::Coins`, `Input::Messages` and `Input::Contracts`.
 library;
 
-use ::contract_id::{AssetId, ContractId};
+use ::asset_id::AssetId;
+use ::contract_id::ContractId;
 use ::revert::revert;
 use ::tx::{
     GTF_CREATE_OUTPUT_AT_INDEX,

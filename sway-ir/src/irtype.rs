@@ -643,7 +643,7 @@ mod tests {
     /// Unit tests in this module document and assert decisions on memory layout.
     mod memory_layout {
         use super::*;
-        use crate::Context;
+        use crate::{Context, ExperimentalFlags};
         use once_cell::sync::Lazy;
         use sway_types::SourceEngine;
 
@@ -927,7 +927,7 @@ mod tests {
         static SOURCE_ENGINE: Lazy<SourceEngine> = Lazy::new(SourceEngine::default);
 
         fn create_context() -> Context<'static> {
-            Context::new(&SOURCE_ENGINE)
+            Context::new(&SOURCE_ENGINE, ExperimentalFlags::default())
         }
 
         /// Creates sample types that are not aggregates and do not point to

@@ -2,7 +2,8 @@
 //! [Call frames](https://fuellabs.github.io/fuel-specs/master/vm#call-frames) store metadata across untrusted inter-contract calls.
 library;
 
-use ::contract_id::{AssetId, ContractId};
+use ::asset_id::AssetId;
+use ::contract_id::ContractId;
 use ::intrinsics::is_reference_type;
 use ::registers::frame_ptr;
 
@@ -33,7 +34,7 @@ const SECOND_PARAMETER_OFFSET: u64 = 74;
 /// # Examples
 ///
 /// ```sway
-/// use std::{call_frames::contract_id, constants::ZERO_B256, token::mint};
+/// use std::{call_frames::contract_id, constants::ZERO_B256, asset::mint};
 ///
 /// fn foo() {
 ///     let this_contract = contract_id();

@@ -1,6 +1,6 @@
 contract;
 
-use std::{b512::B512, ecr::{ec_recover, ec_recover_address}};
+use std::{b512::*, ecr::{ec_recover, ec_recover_address}};
 
 abi EcRecover {
     fn recover_address(sig_r: b256, sig_v_s: b256, hash: b256) -> Address;

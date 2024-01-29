@@ -1,6 +1,7 @@
 // Add test modules here:
 
 mod abi_impl_methods_callable;
+mod asset_ops;
 mod auth;
 mod block;
 mod call_frames;
@@ -40,7 +41,6 @@ mod storage_vec_nested;
 mod storage_vec_to_vec;
 mod superabi;
 mod superabi_supertrait;
-mod token_ops;
 mod tx_fields;
 mod type_aliases;
 mod vec_in_abi;
