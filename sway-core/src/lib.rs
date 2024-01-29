@@ -491,6 +491,14 @@ pub fn parsed_to_ast(
         build_config,
     );
 
+    // Only clear the parsed AST nodes if we are running a regular compilation pipeline.
+    // LSP needs these to build its token map, and they are cleared by `clear_module` as
+    // part of the LSP garbage collection functionality instead.
+    let lsp_mode = build_config.map(|x| x.lsp_mode).unwrap_or_default();
+    if !lsp_mode {
+        engines.pe().clear();
+    }
+
     check_should_abort(handler, retrigger_compilation.clone())?;
 
     let mut typed_program = match typed_program_opt {
@@ -669,7 +677,7 @@ pub fn compile_to_ast(
         .map(|config| !config.include_tests)
         .unwrap_or(true)
     {
-        parsed_program.exclude_tests();
+        parsed_program.exclude_tests(engines);
     }
 
     // Type check (+ other static analysis) the CST to a typed AST.
@@ -1143,12 +1151,11 @@ fn test_unary_ordering() {
     // expression should be `&&`
     if let parsed::AstNode {
         content:
-            parsed::AstNodeContent::Declaration(parsed::Declaration::FunctionDeclaration(
-                parsed::FunctionDeclaration { body, .. },
-            )),
+            parsed::AstNodeContent::Declaration(parsed::Declaration::FunctionDeclaration(decl_id)),
         ..
     } = &prog.root.tree.root_nodes[0]
     {
+        let fn_decl = engines.pe().get_function(decl_id);
         if let parsed::AstNode {
             content:
                 parsed::AstNodeContent::Expression(parsed::Expression {
@@ -1159,7 +1166,7 @@ fn test_unary_ordering() {
                     ..
                 }),
             ..
-        } = &body.contents[2]
+        } = &fn_decl.body.contents[2]
         {
             assert_eq!(op, &language::LazyOp::And)
         } else {

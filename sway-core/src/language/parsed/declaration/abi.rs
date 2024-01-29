@@ -1,4 +1,4 @@
-use crate::transform;
+use crate::{decl_engine::parsed_id::ParsedDeclId, transform};
 
 use super::{FunctionDeclaration, Supertrait, TraitItem};
 
@@ -14,7 +14,7 @@ pub struct AbiDeclaration {
     pub interface_surface: Vec<TraitItem>,
     pub supertraits: Vec<Supertrait>,
     /// The methods provided to a contract "for free" upon opting in to this interface
-    pub methods: Vec<FunctionDeclaration>,
+    pub methods: Vec<ParsedDeclId<FunctionDeclaration>>,
     pub(crate) span: Span,
     pub attributes: transform::AttributesMap,
 }

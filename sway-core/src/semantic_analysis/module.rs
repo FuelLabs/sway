@@ -274,13 +274,15 @@ impl ty::TyModule {
         nodes: &[AstNode],
         predicate: fn(&ImplTrait) -> bool,
     ) -> HashMap<BaseIdent, HashSet<CallPath>> {
+        let engines = ctx.engines();
         // Check which structs and enums needs to have auto impl for AbiEncode
         // We need to do this before type checking, because the impls must be right after
         // the declarations
         let mut impls = HashMap::<BaseIdent, HashSet<CallPath>>::new();
 
         for node in nodes.iter() {
-            if let AstNodeContent::Declaration(Declaration::ImplTrait(decl)) = &node.content {
+            if let AstNodeContent::Declaration(Declaration::ImplTrait(decl_id)) = &node.content {
+                let decl = &*engines.pe().get_impl_trait(decl_id);
                 let implementing_for = ctx.engines.te().get(decl.implementing_for.type_id);
                 let implementing_for = match &*implementing_for {
                     TypeInfo::Struct(decl) => {
@@ -313,6 +315,7 @@ impl ty::TyModule {
         mut ctx: TypeCheckContext,
         nodes: Vec<AstNode>,
     ) -> Result<Vec<ty::TyAstNode>, ErrorEmitted> {
+        let engines = ctx.engines();
         let all_abiencode_impls = Self::get_all_impls(ctx.by_ref(), &nodes, |decl| {
             decl.trait_name.suffix.as_str() == "AbiEncode"
         });
@@ -320,10 +323,12 @@ impl ty::TyModule {
         let mut typed_nodes = vec![];
         for node in nodes {
             let auto_impl_abiencode = match &node.content {
-                AstNodeContent::Declaration(Declaration::StructDeclaration(decl)) => {
+                AstNodeContent::Declaration(Declaration::StructDeclaration(decl_id)) => {
+                    let decl = ctx.engines().pe().get_struct(decl_id);
                     all_abiencode_impls.get(&decl.name).is_none()
                 }
-                AstNodeContent::Declaration(Declaration::EnumDeclaration(decl)) => {
+                AstNodeContent::Declaration(Declaration::EnumDeclaration(decl_id)) => {
+                    let decl = ctx.engines().pe().get_enum(decl_id);
                     all_abiencode_impls.get(&decl.name).is_none()
                 }
                 _ => false,
@@ -337,7 +342,7 @@ impl ty::TyModule {
                 (true, Some(mut ctx)) => match &node.content {
                     TyAstNodeContent::Declaration(decl @ TyDecl::StructDecl(_))
                     | TyAstNodeContent::Declaration(decl @ TyDecl::EnumDecl(_)) => {
-                        ctx.auto_impl_abi_encode(decl)
+                        ctx.auto_impl_abi_encode(engines, decl)
                     }
                     _ => None,
                 },
