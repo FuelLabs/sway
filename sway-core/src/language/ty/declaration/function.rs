@@ -249,7 +249,7 @@ impl TyFunctionDecl {
 
     /// Used to create a stubbed out function when the function fails to
     /// compile, preventing cascading namespace errors.
-    pub(crate) fn error(decl: parsed::FunctionDeclaration) -> TyFunctionDecl {
+    pub(crate) fn error(decl: &parsed::FunctionDeclaration) -> TyFunctionDecl {
         let parsed::FunctionDeclaration {
             name,
             return_type,
@@ -260,19 +260,19 @@ impl TyFunctionDecl {
             ..
         } = decl;
         TyFunctionDecl {
-            purity,
-            name,
+            purity: *purity,
+            name: name.clone(),
             body: TyCodeBlock::default(),
             implementing_type: None,
-            span,
+            span: span.clone(),
             call_path: CallPath::from(Ident::dummy()),
             attributes: Default::default(),
             is_contract_call: false,
             parameters: Default::default(),
-            visibility,
-            return_type,
+            visibility: *visibility,
+            return_type: return_type.clone(),
             type_parameters: Default::default(),
-            where_clause,
+            where_clause: where_clause.clone(),
             is_trait_method_dummy: false,
         }
     }

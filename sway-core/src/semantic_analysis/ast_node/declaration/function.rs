@@ -22,24 +22,19 @@ impl ty::TyFunctionDecl {
     pub fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        fn_decl: FunctionDeclaration,
+        fn_decl: &FunctionDeclaration,
         is_method: bool,
         is_in_impl_self: bool,
     ) -> Result<Self, ErrorEmitted> {
-        let mut ty_fn_decl = Self::type_check_signature(
-            handler,
-            ctx.by_ref(),
-            fn_decl.clone(),
-            is_method,
-            is_in_impl_self,
-        )?;
-        Self::type_check_body(handler, ctx, &fn_decl, &mut ty_fn_decl)
+        let mut ty_fn_decl =
+            Self::type_check_signature(handler, ctx.by_ref(), fn_decl, is_method, is_in_impl_self)?;
+        Self::type_check_body(handler, ctx, fn_decl, &mut ty_fn_decl)
     }
 
     pub fn type_check_signature(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        fn_decl: FunctionDeclaration,
+        fn_decl: &FunctionDeclaration,
         is_method: bool,
         is_in_impl_self: bool,
     ) -> Result<Self, ErrorEmitted> {
@@ -49,12 +44,13 @@ impl ty::TyFunctionDecl {
             parameters,
             span,
             attributes,
-            mut return_type,
             type_parameters,
             visibility,
             purity,
             where_clause,
+            ..
         } = fn_decl;
+        let mut return_type = fn_decl.return_type.clone();
 
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
@@ -63,7 +59,7 @@ impl ty::TyFunctionDecl {
         if ctx.functions_disallowed() {
             return Err(handler.emit_err(CompileError::Unimplemented(
                 "Nested function definitions are not allowed at this time.",
-                span,
+                span.clone(),
             )));
         }
 
@@ -80,25 +76,31 @@ impl ty::TyFunctionDecl {
         let mut ctx = ctx
             .by_ref()
             .scoped(&mut fn_namespace)
-            .with_purity(purity)
+            .with_purity(*purity)
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions();
 
         // Type check the type parameters.
-        let new_type_parameters =
-            TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters, None)?;
+        let new_type_parameters = TypeParameter::type_check_type_params(
+            handler,
+            ctx.by_ref(),
+            type_parameters.clone(),
+            None,
+        )?;
 
         // type check the function parameters, which will also insert them into the namespace
         let mut new_parameters = vec![];
         handler.scope(|handler| {
-            for parameter in parameters.into_iter() {
+            for parameter in parameters.iter() {
                 new_parameters.push({
-                    let param =
-                        match ty::TyFunctionParameter::type_check(handler, ctx.by_ref(), parameter)
-                        {
-                            Ok(val) => val,
-                            Err(_) => continue,
-                        };
+                    let param = match ty::TyFunctionParameter::type_check(
+                        handler,
+                        ctx.by_ref(),
+                        parameter.clone(),
+                    ) {
+                        Ok(val) => val,
+                        Err(_) => continue,
+                    };
                     param.insert_into_namespace(handler, ctx.by_ref());
                     param
                 });
@@ -119,30 +121,33 @@ impl ty::TyFunctionDecl {
 
         let (visibility, is_contract_call) = if is_method {
             if is_in_impl_self {
-                (visibility, false)
+                (*visibility, false)
             } else {
                 (Visibility::Public, false)
             }
         } else {
-            (visibility, matches!(ctx.abi_mode(), AbiMode::ImplAbiFn(..)))
+            (
+                *visibility,
+                matches!(ctx.abi_mode(), AbiMode::ImplAbiFn(..)),
+            )
         };
 
         let call_path = CallPath::from(name.clone()).to_fullpath(ctx.namespace);
 
         let function_decl = ty::TyFunctionDecl {
-            name,
+            name: name.clone(),
             body: TyCodeBlock::default(),
             parameters: new_parameters,
             implementing_type: None,
-            span,
+            span: span.clone(),
             call_path,
-            attributes,
+            attributes: attributes.clone(),
             return_type,
             type_parameters: new_type_parameters,
             visibility,
             is_contract_call,
-            purity,
-            where_clause,
+            purity: *purity,
+            where_clause: where_clause.clone(),
             is_trait_method_dummy: false,
         };
 

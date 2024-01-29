@@ -56,6 +56,7 @@ pub struct BuildConfig {
     pub time_phases: bool,
     pub metrics_outfile: Option<String>,
     pub experimental: ExperimentalFlags,
+    pub lsp_mode: bool,
 }
 
 impl BuildConfig {
@@ -102,6 +103,7 @@ impl BuildConfig {
             metrics_outfile: None,
             optimization_level: OptLevel::Opt0,
             experimental: ExperimentalFlags::default(),
+            lsp_mode: false,
         }
     }
 
@@ -178,6 +180,10 @@ impl BuildConfig {
             experimental,
             ..self
         }
+    }
+
+    pub fn with_lsp_mode(self, lsp_mode: bool) -> Self {
+        Self { lsp_mode, ..self }
     }
 
     pub fn canonical_root_module(&self) -> Arc<PathBuf> {
