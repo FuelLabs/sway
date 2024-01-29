@@ -6,7 +6,7 @@ pub trait MyFrom<T> {
 
 
 pub trait MyInto<T> {
-    fn into(self) -> T;
+    fn my_into(self) -> T;
 }
 
 
@@ -14,7 +14,7 @@ impl<T, U> MyInto<U> for T
 where
     U: MyFrom<T>,
 {
-    fn into(self) -> U {
+    fn my_into(self) -> U {
         U::from(self)
     }
 }
@@ -26,7 +26,7 @@ impl MyFrom<u256> for (u64, u64, u64, u64) {
 }
 
 fn main() -> bool {
-    let (_a, _b, _c, _d) = u256::min().into();
+    let (_a, _b, _c, _d) = u256::min().my_into();
 
     true
 }

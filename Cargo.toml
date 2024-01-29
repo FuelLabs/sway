@@ -51,6 +51,9 @@ fuels-accounts = "0.54.0"
 # Dependencies from the `forc-wallet` repository:
 forc-wallet = "0.4.2"
 
+# Dependencies from the `fuel-abi-types` repository:
+fuel-abi-types = "0.4.0"
+
 [workspace.package]
 edition = "2021"
 authors = ["Fuel Labs <contact@fuel.sh>"]

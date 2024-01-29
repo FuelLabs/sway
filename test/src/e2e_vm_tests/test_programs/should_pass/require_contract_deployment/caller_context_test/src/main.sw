@@ -8,9 +8,10 @@ fn main() -> bool {
     let gas: u64 = u64::max();
     let amount: u64 = 11;
     let other_contract_id = ContractId::from(0xa38576787f8900d66e6620548b6da8142b8bb4d129b2338609acd121ca126c10);
+    let other_contract_id_b256: b256 = other_contract_id.into();
     let base_asset_id = BASE_ASSET_ID;
 
-    let test_contract = abi(ContextTesting, other_contract_id.into());
+    let test_contract = abi(ContextTesting, other_contract_id_b256);
 
     // test Context::contract_id():
     let returned_contract_id = test_contract.get_id {
@@ -18,7 +19,8 @@ fn main() -> bool {
         coins: 0,
         asset_id: BASE_ASSET_ID.value,
     }();
-    assert(returned_contract_id.into() == other_contract_id.into());
+    let returned_contract_id_b256: b256 = returned_contract_id.into();
+    assert(returned_contract_id_b256 == other_contract_id_b256);
 
     // @todo set up a test contract to mint some assets for testing balances.
     // test Context::this_balance():
