@@ -1,0 +1,4 @@
+category = "run"
+expected_result = { action = "return", value = 1 }
+validate_abi = false
+expected_warnings = 3

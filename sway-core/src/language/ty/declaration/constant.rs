@@ -1,4 +1,5 @@
 use std::{
+    collections::{HashMap, HashSet},
     fmt,
     hash::{Hash, Hasher},
 };
@@ -54,7 +55,12 @@ impl PartialEqWithEngines for TyConstantDecl {
 }
 
 impl HashWithEngines for TyConstantDecl {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let type_engine = engines.te();
         let TyConstantDecl {
             call_path,
@@ -70,13 +76,15 @@ impl HashWithEngines for TyConstantDecl {
             span: _,
         } = self;
         call_path.hash(state);
-        value.hash(state, engines);
+        value.hash(state, engines, already_hashed);
         visibility.hash(state);
-        type_engine.get(*return_type).hash(state, engines);
-        type_ascription.hash(state, engines);
+        type_engine
+            .get(*return_type)
+            .hash(state, engines, already_hashed);
+        type_ascription.hash(state, engines, already_hashed);
         is_configurable.hash(state);
         if let Some(implementing_type) = implementing_type {
-            (*implementing_type).hash(state, engines);
+            (*implementing_type).hash(state, engines, already_hashed);
         }
     }
 }
@@ -109,9 +117,10 @@ impl ReplaceDecls for TyConstantDecl {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
+        already_replaced: &mut HashMap<(usize, std::any::TypeId), (usize, Span)>,
     ) -> Result<(), ErrorEmitted> {
         if let Some(expr) = &mut self.value {
-            expr.replace_decls(decl_mapping, handler, ctx)
+            expr.replace_decls(decl_mapping, handler, ctx, already_replaced)
         } else {
             Ok(())
         }

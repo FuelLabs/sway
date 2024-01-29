@@ -622,7 +622,12 @@ pub(crate) fn monomorphize_method_application(
         )?;
 
         if !ctx.defer_monomorphization() {
-            method.replace_decls(&decl_mapping, handler, &mut ctx)?;
+            method.replace_decls(
+                &decl_mapping,
+                handler,
+                &mut ctx,
+                &mut HashMap::<(usize, std::any::TypeId), (usize, Span)>::new(),
+            )?;
         }
 
         decl_engine.replace(*fn_ref.id(), method);

@@ -914,7 +914,12 @@ fn type_check_trait_implementation(
                         .collect::<Vec<_>>(),
                 );
 
-                method.replace_decls(&decl_mapping, handler, &mut ctx)?;
+                method.replace_decls(
+                    &decl_mapping,
+                    handler,
+                    &mut ctx,
+                    &mut HashMap::<(usize, std::any::TypeId), (usize, Span)>::new(),
+                )?;
                 method.subst(&type_mapping, engines);
                 all_items_refs.push(TyImplItem::Fn(
                     decl_engine
@@ -924,7 +929,12 @@ fn type_check_trait_implementation(
             }
             TyImplItem::Constant(decl_ref) => {
                 let mut const_decl = (*decl_engine.get_constant(decl_ref)).clone();
-                const_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
+                const_decl.replace_decls(
+                    &decl_mapping,
+                    handler,
+                    &mut ctx,
+                    &mut HashMap::<(usize, std::any::TypeId), (usize, Span)>::new(),
+                )?;
                 const_decl.subst(&type_mapping, engines);
                 all_items_refs.push(TyImplItem::Constant(decl_engine.insert(const_decl)));
             }

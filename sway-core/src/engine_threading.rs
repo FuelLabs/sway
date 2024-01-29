@@ -1,6 +1,11 @@
-use crate::{decl_engine::DeclEngine, query_engine::QueryEngine, type_system::TypeEngine};
+use crate::{
+    decl_engine::{DeclEngine, DeclIdIndexType},
+    query_engine::QueryEngine,
+    type_system::TypeEngine,
+};
 use std::{
     cmp::Ordering,
+    collections::HashSet,
     fmt,
     hash::{BuildHasher, Hash, Hasher},
 };
@@ -89,7 +94,11 @@ impl<T: DebugWithEngines> fmt::Debug for WithEngines<'_, T> {
 
 impl<T: HashWithEngines> Hash for WithEngines<'_, T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.thing.hash(state, self.engines)
+        self.thing.hash(
+            state,
+            self.engines,
+            &mut HashSet::<(DeclIdIndexType, std::any::TypeId)>::new(),
+        )
     }
 }
 
@@ -194,35 +203,60 @@ impl<T: DebugWithEngines> DebugWithEngines for Vec<T> {
 }
 
 pub trait HashWithEngines {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines);
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    );
 }
 
 impl<T: HashWithEngines + ?Sized> HashWithEngines for &T {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
-        (*self).hash(state, engines)
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
+        (*self).hash(state, engines, already_hashed)
     }
 }
 
 impl<T: HashWithEngines> HashWithEngines for Option<T> {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         match self {
             None => state.write_u8(0),
-            Some(x) => x.hash(state, engines),
+            Some(x) => x.hash(state, engines, already_hashed),
         }
     }
 }
 
 impl<T: HashWithEngines> HashWithEngines for [T] {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         for x in self {
-            x.hash(state, engines)
+            x.hash(state, engines, already_hashed)
         }
     }
 }
 
 impl<T: HashWithEngines> HashWithEngines for Box<T> {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
-        (**self).hash(state, engines)
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
+        (**self).hash(state, engines, already_hashed)
     }
 }
 
@@ -308,7 +342,11 @@ where
 {
     move |key: &K| {
         let mut state = hash_builder.build_hasher();
-        key.hash(&mut state, engines);
+        key.hash(
+            &mut state,
+            engines,
+            &mut HashSet::<(DeclIdIndexType, std::any::TypeId)>::new(),
+        );
         state.finish()
     }
 }

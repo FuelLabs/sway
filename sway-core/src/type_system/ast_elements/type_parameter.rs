@@ -18,7 +18,7 @@ use sway_types::{ident::Ident, span::Span, Spanned};
 
 use std::{
     cmp::Ordering,
-    collections::BTreeMap,
+    collections::{BTreeMap, HashSet},
     fmt,
     hash::{Hash, Hasher},
 };
@@ -34,7 +34,12 @@ pub struct TypeParameter {
 }
 
 impl HashWithEngines for TypeParameter {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TypeParameter {
             type_id,
             name_ident,
@@ -46,9 +51,11 @@ impl HashWithEngines for TypeParameter {
             is_from_parent: _,
         } = self;
         let type_engine = engines.te();
-        type_engine.get(*type_id).hash(state, engines);
+        type_engine
+            .get(*type_id)
+            .hash(state, engines, already_hashed);
         name_ident.hash(state);
-        trait_constraints.hash(state, engines);
+        trait_constraints.hash(state, engines, already_hashed);
     }
 }
 

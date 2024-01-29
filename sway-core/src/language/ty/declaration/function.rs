@@ -1,5 +1,5 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     fmt,
     hash::{Hash, Hasher},
 };
@@ -111,7 +111,12 @@ impl PartialEqWithEngines for TyFunctionDecl {
 }
 
 impl HashWithEngines for TyFunctionDecl {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TyFunctionDecl {
             name,
             body,
@@ -131,10 +136,10 @@ impl HashWithEngines for TyFunctionDecl {
             is_trait_method_dummy: _,
         } = self;
         name.hash(state);
-        body.hash(state, engines);
-        parameters.hash(state, engines);
-        return_type.hash(state, engines);
-        type_parameters.hash(state, engines);
+        body.hash(state, engines, already_hashed);
+        parameters.hash(state, engines, already_hashed);
+        return_type.hash(state, engines, already_hashed);
+        type_parameters.hash(state, engines, already_hashed);
         visibility.hash(state);
         is_contract_call.hash(state);
         purity.hash(state);
@@ -160,8 +165,10 @@ impl ReplaceDecls for TyFunctionDecl {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
+        already_replaced: &mut HashMap<(usize, std::any::TypeId), (usize, Span)>,
     ) -> Result<(), ErrorEmitted> {
-        self.body.replace_decls(decl_mapping, handler, ctx)
+        self.body
+            .replace_decls(decl_mapping, handler, ctx, already_replaced)
     }
 }
 
@@ -216,27 +223,30 @@ impl CollectTypesMetadata for TyFunctionDecl {
         &self,
         handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
+        already_collected: &mut HashSet<(usize, std::any::TypeId)>,
     ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         let mut body = vec![];
         for content in self.body.contents.iter() {
-            body.append(&mut content.collect_types_metadata(handler, ctx)?);
+            body.append(&mut content.collect_types_metadata(handler, ctx, already_collected)?);
         }
-        body.append(
-            &mut self
-                .return_type
-                .type_id
-                .collect_types_metadata(handler, ctx)?,
-        );
+        body.append(&mut self.return_type.type_id.collect_types_metadata(
+            handler,
+            ctx,
+            already_collected,
+        )?);
         for type_param in self.type_parameters.iter() {
-            body.append(&mut type_param.type_id.collect_types_metadata(handler, ctx)?);
+            body.append(&mut type_param.type_id.collect_types_metadata(
+                handler,
+                ctx,
+                already_collected,
+            )?);
         }
         for param in self.parameters.iter() {
-            body.append(
-                &mut param
-                    .type_argument
-                    .type_id
-                    .collect_types_metadata(handler, ctx)?,
-            );
+            body.append(&mut param.type_argument.type_id.collect_types_metadata(
+                handler,
+                ctx,
+                already_collected,
+            )?);
         }
         Ok(body)
     }
@@ -399,7 +409,12 @@ impl PartialEqWithEngines for TyFunctionParameter {
 }
 
 impl HashWithEngines for TyFunctionParameter {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TyFunctionParameter {
             name,
             is_reference,
@@ -410,7 +425,7 @@ impl HashWithEngines for TyFunctionParameter {
             mutability_span: _,
         } = self;
         name.hash(state);
-        type_argument.hash(state, engines);
+        type_argument.hash(state, engines, already_hashed);
         is_reference.hash(state);
         is_mutable.hash(state);
     }

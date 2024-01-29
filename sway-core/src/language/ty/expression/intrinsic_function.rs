@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     fmt,
     hash::{Hash, Hasher},
 };
@@ -56,7 +57,12 @@ impl PartialEqWithEngines for TyIntrinsicFunctionKind {
 }
 
 impl HashWithEngines for TyIntrinsicFunctionKind {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TyIntrinsicFunctionKind {
             kind,
             arguments,
@@ -66,8 +72,8 @@ impl HashWithEngines for TyIntrinsicFunctionKind {
             span: _,
         } = self;
         kind.hash(state);
-        arguments.hash(state, engines);
-        type_arguments.hash(state, engines);
+        arguments.hash(state, engines, already_hashed);
+        type_arguments.hash(state, engines, already_hashed);
     }
 }
 
@@ -114,13 +120,22 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
         &self,
         handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
+        already_collected: &mut HashSet<(usize, std::any::TypeId)>,
     ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         let mut types_metadata = vec![];
         for type_arg in self.type_arguments.iter() {
-            types_metadata.append(&mut type_arg.type_id.collect_types_metadata(handler, ctx)?);
+            types_metadata.append(&mut type_arg.type_id.collect_types_metadata(
+                handler,
+                ctx,
+                already_collected,
+            )?);
         }
         for arg in self.arguments.iter() {
-            types_metadata.append(&mut arg.collect_types_metadata(handler, ctx)?);
+            types_metadata.append(&mut arg.collect_types_metadata(
+                handler,
+                ctx,
+                already_collected,
+            )?);
         }
 
         match self.kind {

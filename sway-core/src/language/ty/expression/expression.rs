@@ -1,4 +1,8 @@
-use std::{fmt, hash::Hasher};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt,
+    hash::Hasher,
+};
 
 use sway_error::{
     handler::{ErrorEmitted, Handler},
@@ -38,7 +42,12 @@ impl PartialEqWithEngines for TyExpression {
 }
 
 impl HashWithEngines for TyExpression {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TyExpression {
             expression,
             return_type,
@@ -47,8 +56,16 @@ impl HashWithEngines for TyExpression {
             span: _,
         } = self;
         let type_engine = engines.te();
-        expression.hash(state, engines);
-        type_engine.get(*return_type).hash(state, engines);
+        expression.hash(state, engines, already_hashed);
+        let key = (return_type.index(), std::any::TypeId::of::<TypeInfo>());
+        if already_hashed.contains(&key) {
+            return;
+        }
+        let mut already_hashed_updated = already_hashed.clone();
+        already_hashed_updated.insert(key);
+        type_engine
+            .get(*return_type)
+            .hash(state, engines, &mut already_hashed_updated);
     }
 }
 
@@ -65,8 +82,10 @@ impl ReplaceDecls for TyExpression {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
+        already_replaced: &mut HashMap<(usize, std::any::TypeId), (usize, Span)>,
     ) -> Result<(), ErrorEmitted> {
-        self.expression.replace_decls(decl_mapping, handler, ctx)
+        self.expression
+            .replace_decls(decl_mapping, handler, ctx, already_replaced)
     }
 }
 
@@ -129,10 +148,13 @@ impl CollectTypesMetadata for TyExpression {
         &self,
         handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
+        already_collected: &mut HashSet<(usize, std::any::TypeId)>,
     ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         use TyExpressionVariant::*;
         let decl_engine = ctx.engines.de();
-        let mut res = self.return_type.collect_types_metadata(handler, ctx)?;
+        let mut res = self
+            .return_type
+            .collect_types_metadata(handler, ctx, already_collected)?;
         match &self.expression {
             FunctionApplication {
                 arguments,
@@ -141,29 +163,54 @@ impl CollectTypesMetadata for TyExpression {
                 ..
             } => {
                 for arg in arguments.iter() {
-                    res.append(&mut arg.1.collect_types_metadata(handler, ctx)?);
+                    res.append(&mut arg.1.collect_types_metadata(
+                        handler,
+                        ctx,
+                        already_collected,
+                    )?);
                 }
-                let function_decl = decl_engine.get_function(fn_ref);
+                let key = (
+                    fn_ref.id().inner(),
+                    std::any::TypeId::of::<TyFunctionDecl>(),
+                );
+                if !already_collected.contains(&key) {
+                    let mut already_collected_updated = already_collected.clone();
+                    already_collected_updated.insert(key);
 
-                ctx.call_site_push();
-                for type_parameter in &function_decl.type_parameters {
-                    ctx.call_site_insert(type_parameter.type_id, call_path.span())
-                }
+                    let function_decl = decl_engine.get_function(fn_ref);
 
-                for content in function_decl.body.contents.iter() {
-                    res.append(&mut content.collect_types_metadata(handler, ctx)?);
+                    ctx.call_site_push();
+                    for type_parameter in &function_decl.type_parameters {
+                        ctx.call_site_insert(type_parameter.type_id, call_path.span())
+                    }
+
+                    for content in function_decl.body.contents.iter() {
+                        res.append(&mut content.collect_types_metadata(
+                            handler,
+                            ctx,
+                            &mut already_collected_updated,
+                        )?);
+                    }
+                    ctx.call_site_pop();
                 }
-                ctx.call_site_pop();
             }
             Tuple { fields } => {
                 for field in fields.iter() {
-                    res.append(&mut field.collect_types_metadata(handler, ctx)?);
+                    res.append(&mut field.collect_types_metadata(
+                        handler,
+                        ctx,
+                        already_collected,
+                    )?);
                 }
             }
             AsmExpression { registers, .. } => {
                 for register in registers.iter() {
                     if let Some(init) = register.initializer.as_ref() {
-                        res.append(&mut init.collect_types_metadata(handler, ctx)?);
+                        res.append(&mut init.collect_types_metadata(
+                            handler,
+                            ctx,
+                            already_collected,
+                        )?);
                     }
                 }
             }
@@ -184,42 +231,72 @@ impl CollectTypesMetadata for TyExpression {
                     }
                 }
                 for field in fields.iter() {
-                    res.append(&mut field.value.collect_types_metadata(handler, ctx)?);
+                    res.append(&mut field.value.collect_types_metadata(
+                        handler,
+                        ctx,
+                        already_collected,
+                    )?);
                 }
             }
             LazyOperator { lhs, rhs, .. } => {
-                res.append(&mut lhs.collect_types_metadata(handler, ctx)?);
-                res.append(&mut rhs.collect_types_metadata(handler, ctx)?);
+                res.append(&mut lhs.collect_types_metadata(handler, ctx, already_collected)?);
+                res.append(&mut rhs.collect_types_metadata(handler, ctx, already_collected)?);
             }
             Array {
                 elem_type: _,
                 contents,
             } => {
                 for content in contents.iter() {
-                    res.append(&mut content.collect_types_metadata(handler, ctx)?);
+                    res.append(&mut content.collect_types_metadata(
+                        handler,
+                        ctx,
+                        already_collected,
+                    )?);
                 }
             }
             ArrayIndex { prefix, index } => {
-                res.append(&mut (**prefix).collect_types_metadata(handler, ctx)?);
-                res.append(&mut (**index).collect_types_metadata(handler, ctx)?);
+                res.append(&mut (**prefix).collect_types_metadata(
+                    handler,
+                    ctx,
+                    already_collected,
+                )?);
+                res.append(&mut (**index).collect_types_metadata(
+                    handler,
+                    ctx,
+                    already_collected,
+                )?);
             }
             CodeBlock(block) => {
                 for content in block.contents.iter() {
-                    res.append(&mut content.collect_types_metadata(handler, ctx)?);
+                    res.append(&mut content.collect_types_metadata(
+                        handler,
+                        ctx,
+                        already_collected,
+                    )?);
                 }
             }
-            MatchExp { desugared, .. } => {
-                res.append(&mut desugared.collect_types_metadata(handler, ctx)?)
-            }
+            MatchExp { desugared, .. } => res.append(&mut desugared.collect_types_metadata(
+                handler,
+                ctx,
+                already_collected,
+            )?),
             IfExp {
                 condition,
                 then,
                 r#else,
             } => {
-                res.append(&mut condition.collect_types_metadata(handler, ctx)?);
-                res.append(&mut then.collect_types_metadata(handler, ctx)?);
+                res.append(&mut condition.collect_types_metadata(
+                    handler,
+                    ctx,
+                    already_collected,
+                )?);
+                res.append(&mut then.collect_types_metadata(handler, ctx, already_collected)?);
                 if let Some(r#else) = r#else {
-                    res.append(&mut r#else.collect_types_metadata(handler, ctx)?);
+                    res.append(&mut r#else.collect_types_metadata(
+                        handler,
+                        ctx,
+                        already_collected,
+                    )?);
                 }
             }
             StructFieldAccess {
@@ -227,16 +304,24 @@ impl CollectTypesMetadata for TyExpression {
                 resolved_type_of_parent,
                 ..
             } => {
-                res.append(&mut prefix.collect_types_metadata(handler, ctx)?);
-                res.append(&mut resolved_type_of_parent.collect_types_metadata(handler, ctx)?);
+                res.append(&mut prefix.collect_types_metadata(handler, ctx, already_collected)?);
+                res.append(&mut resolved_type_of_parent.collect_types_metadata(
+                    handler,
+                    ctx,
+                    already_collected,
+                )?);
             }
             TupleElemAccess {
                 prefix,
                 resolved_type_of_parent,
                 ..
             } => {
-                res.append(&mut prefix.collect_types_metadata(handler, ctx)?);
-                res.append(&mut resolved_type_of_parent.collect_types_metadata(handler, ctx)?);
+                res.append(&mut prefix.collect_types_metadata(handler, ctx, already_collected)?);
+                res.append(&mut resolved_type_of_parent.collect_types_metadata(
+                    handler,
+                    ctx,
+                    already_collected,
+                )?);
             }
             EnumInstantiation {
                 enum_ref,
@@ -249,50 +334,68 @@ impl CollectTypesMetadata for TyExpression {
                     ctx.call_site_insert(type_param.type_id, call_path_binding.inner.suffix.span())
                 }
                 if let Some(contents) = contents {
-                    res.append(&mut contents.collect_types_metadata(handler, ctx)?);
+                    res.append(&mut contents.collect_types_metadata(
+                        handler,
+                        ctx,
+                        already_collected,
+                    )?);
                 }
                 for variant in enum_decl.variants.iter() {
-                    res.append(
-                        &mut variant
-                            .type_argument
-                            .type_id
-                            .collect_types_metadata(handler, ctx)?,
-                    );
+                    res.append(&mut variant.type_argument.type_id.collect_types_metadata(
+                        handler,
+                        ctx,
+                        already_collected,
+                    )?);
                 }
                 for type_param in enum_decl.type_parameters.iter() {
-                    res.append(&mut type_param.type_id.collect_types_metadata(handler, ctx)?);
+                    res.append(&mut type_param.type_id.collect_types_metadata(
+                        handler,
+                        ctx,
+                        already_collected,
+                    )?);
                 }
             }
             AbiCast { address, .. } => {
-                res.append(&mut address.collect_types_metadata(handler, ctx)?);
+                res.append(&mut address.collect_types_metadata(handler, ctx, already_collected)?);
             }
             IntrinsicFunction(kind) => {
-                res.append(&mut kind.collect_types_metadata(handler, ctx)?);
+                res.append(&mut kind.collect_types_metadata(handler, ctx, already_collected)?);
             }
             EnumTag { exp } => {
-                res.append(&mut exp.collect_types_metadata(handler, ctx)?);
+                res.append(&mut exp.collect_types_metadata(handler, ctx, already_collected)?);
             }
             UnsafeDowncast {
                 exp,
                 variant,
                 call_path_decl: _,
             } => {
-                res.append(&mut exp.collect_types_metadata(handler, ctx)?);
-                res.append(
-                    &mut variant
-                        .type_argument
-                        .type_id
-                        .collect_types_metadata(handler, ctx)?,
-                );
+                res.append(&mut exp.collect_types_metadata(handler, ctx, already_collected)?);
+                res.append(&mut variant.type_argument.type_id.collect_types_metadata(
+                    handler,
+                    ctx,
+                    already_collected,
+                )?);
             }
             WhileLoop { condition, body } => {
-                res.append(&mut condition.collect_types_metadata(handler, ctx)?);
+                res.append(&mut condition.collect_types_metadata(
+                    handler,
+                    ctx,
+                    already_collected,
+                )?);
                 for content in body.contents.iter() {
-                    res.append(&mut content.collect_types_metadata(handler, ctx)?);
+                    res.append(&mut content.collect_types_metadata(
+                        handler,
+                        ctx,
+                        already_collected,
+                    )?);
                 }
             }
-            Return(exp) => res.append(&mut exp.collect_types_metadata(handler, ctx)?),
-            Ref(exp) | Deref(exp) => res.append(&mut exp.collect_types_metadata(handler, ctx)?),
+            Return(exp) => {
+                res.append(&mut exp.collect_types_metadata(handler, ctx, already_collected)?)
+            }
+            Ref(exp) | Deref(exp) => {
+                res.append(&mut exp.collect_types_metadata(handler, ctx, already_collected)?)
+            }
             // storage access can never be generic
             // variable expressions don't ever have return types themselves, they're stored in
             // `TyExpression::return_type`. Variable expressions are just names of variables.
@@ -305,7 +408,11 @@ impl CollectTypesMetadata for TyExpression {
             | Continue
             | FunctionParameter => {}
             Reassignment(reassignment) => {
-                res.append(&mut reassignment.rhs.collect_types_metadata(handler, ctx)?);
+                res.append(&mut reassignment.rhs.collect_types_metadata(
+                    handler,
+                    ctx,
+                    already_collected,
+                )?);
             }
         }
         Ok(res)

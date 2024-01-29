@@ -1,4 +1,7 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    collections::HashSet,
+    hash::{Hash, Hasher},
+};
 
 use sway_types::{Ident, Named, Span, Spanned};
 
@@ -35,7 +38,12 @@ impl PartialEqWithEngines for TyTypeAliasDecl {
 }
 
 impl HashWithEngines for TyTypeAliasDecl {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TyTypeAliasDecl {
             name,
             ty,
@@ -47,7 +55,7 @@ impl HashWithEngines for TyTypeAliasDecl {
             attributes: _,
         } = self;
         name.hash(state);
-        ty.hash(state, engines);
+        ty.hash(state, engines, already_hashed);
         visibility.hash(state);
     }
 }

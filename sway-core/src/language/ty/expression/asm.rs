@@ -1,4 +1,7 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    collections::HashSet,
+    hash::{Hash, Hasher},
+};
 
 use sway_types::Ident;
 
@@ -22,11 +25,16 @@ impl PartialEqWithEngines for TyAsmRegisterDeclaration {
 }
 
 impl HashWithEngines for TyAsmRegisterDeclaration {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TyAsmRegisterDeclaration { initializer, name } = self;
         name.hash(state);
         if let Some(x) = initializer.as_ref() {
-            x.hash(state, engines)
+            x.hash(state, engines, already_hashed)
         }
     }
 }

@@ -1,4 +1,5 @@
 use std::{
+    collections::{HashMap, HashSet},
     fmt::{self, Debug},
     hash::{Hash, Hasher},
 };
@@ -37,14 +38,19 @@ impl PartialEqWithEngines for TyAstNode {
 }
 
 impl HashWithEngines for TyAstNode {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let TyAstNode {
             content,
             // the span is not hashed because it isn't relevant/a reliable
             // source of obj v. obj distinction
             span: _,
         } = self;
-        content.hash(state, engines);
+        content.hash(state, engines, already_hashed);
     }
 }
 
@@ -81,17 +87,18 @@ impl ReplaceDecls for TyAstNode {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
+        already_replaced: &mut HashMap<(usize, std::any::TypeId), (usize, Span)>,
     ) -> Result<(), ErrorEmitted> {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.replace_decls(decl_mapping, handler, ctx)
+                exp.replace_decls(decl_mapping, handler, ctx, already_replaced)
             }
-            TyAstNodeContent::Declaration(TyDecl::VariableDecl(ref mut decl)) => {
-                decl.body.replace_decls(decl_mapping, handler, ctx)
-            }
+            TyAstNodeContent::Declaration(TyDecl::VariableDecl(ref mut decl)) => decl
+                .body
+                .replace_decls(decl_mapping, handler, ctx, already_replaced),
             TyAstNodeContent::Declaration(_) => Ok(()),
             TyAstNodeContent::Expression(ref mut expr) => {
-                expr.replace_decls(decl_mapping, handler, ctx)
+                expr.replace_decls(decl_mapping, handler, ctx, already_replaced)
             }
             TyAstNodeContent::SideEffect(_) => Ok(()),
             TyAstNodeContent::Error(_, _) => Ok(()),
@@ -140,8 +147,10 @@ impl CollectTypesMetadata for TyAstNode {
         &self,
         handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
+        already_collected: &mut HashSet<(usize, std::any::TypeId)>,
     ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
-        self.content.collect_types_metadata(handler, ctx)
+        self.content
+            .collect_types_metadata(handler, ctx, already_collected)
     }
 }
 
@@ -472,15 +481,20 @@ impl PartialEqWithEngines for TyAstNodeContent {
 }
 
 impl HashWithEngines for TyAstNodeContent {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         use TyAstNodeContent::*;
         std::mem::discriminant(self).hash(state);
         match self {
             Declaration(decl) => {
-                decl.hash(state, engines);
+                decl.hash(state, engines, already_hashed);
             }
             Expression(exp) | ImplicitReturnExpression(exp) => {
-                exp.hash(state, engines);
+                exp.hash(state, engines, already_hashed);
             }
             SideEffect(effect) => {
                 effect.hash(state);
@@ -533,12 +547,15 @@ impl CollectTypesMetadata for TyAstNodeContent {
         &self,
         handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
+        already_collected: &mut HashSet<(usize, std::any::TypeId)>,
     ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         use TyAstNodeContent::*;
         match self {
-            Declaration(decl) => decl.collect_types_metadata(handler, ctx),
-            Expression(expr) => expr.collect_types_metadata(handler, ctx),
-            ImplicitReturnExpression(expr) => expr.collect_types_metadata(handler, ctx),
+            Declaration(decl) => decl.collect_types_metadata(handler, ctx, already_collected),
+            Expression(expr) => expr.collect_types_metadata(handler, ctx, already_collected),
+            ImplicitReturnExpression(expr) => {
+                expr.collect_types_metadata(handler, ctx, already_collected)
+            }
             SideEffect(_) => Ok(vec![]),
             Error(_, _) => Ok(vec![]),
         }

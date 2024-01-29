@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     fmt,
     hash::{Hash, Hasher},
 };
@@ -240,55 +241,82 @@ impl PartialEqWithEngines for TyDecl {
 }
 
 impl HashWithEngines for TyDecl {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let decl_engine = engines.de();
         let type_engine = engines.te();
         std::mem::discriminant(self).hash(state);
         match self {
             TyDecl::VariableDecl(decl) => {
-                decl.hash(state, engines);
+                decl.hash(state, engines, already_hashed);
             }
             TyDecl::ConstantDecl(ConstantDecl { decl_id, .. }) => {
-                decl_engine.get(decl_id).hash(state, engines);
+                decl_engine
+                    .get(decl_id)
+                    .hash(state, engines, already_hashed);
             }
             TyDecl::TraitTypeDecl(TraitTypeDecl { decl_id, .. }) => {
-                decl_engine.get(decl_id).hash(state, engines);
+                decl_engine
+                    .get(decl_id)
+                    .hash(state, engines, already_hashed);
             }
             TyDecl::FunctionDecl(FunctionDecl { decl_id, .. }) => {
-                decl_engine.get(decl_id).hash(state, engines);
+                decl_engine
+                    .get(decl_id)
+                    .hash(state, engines, already_hashed);
             }
             TyDecl::TraitDecl(TraitDecl { decl_id, .. }) => {
-                decl_engine.get(decl_id).hash(state, engines);
+                decl_engine
+                    .get(decl_id)
+                    .hash(state, engines, already_hashed);
             }
             TyDecl::StructDecl(StructDecl { decl_id, .. }) => {
-                decl_engine.get(decl_id).hash(state, engines);
+                decl_engine
+                    .get(decl_id)
+                    .hash(state, engines, already_hashed);
             }
             TyDecl::EnumDecl(EnumDecl { decl_id, .. }) => {
-                decl_engine.get(decl_id).hash(state, engines);
+                decl_engine
+                    .get(decl_id)
+                    .hash(state, engines, already_hashed);
             }
             TyDecl::EnumVariantDecl(EnumVariantDecl {
                 enum_ref,
                 variant_name,
                 ..
             }) => {
-                enum_ref.hash(state, engines);
+                enum_ref.hash(state, engines, already_hashed);
                 variant_name.hash(state);
             }
             TyDecl::ImplTrait(ImplTrait { decl_id, .. }) => {
-                decl_engine.get(decl_id).hash(state, engines);
+                decl_engine
+                    .get(decl_id)
+                    .hash(state, engines, already_hashed);
             }
             TyDecl::AbiDecl(AbiDecl { decl_id, .. }) => {
-                decl_engine.get(decl_id).hash(state, engines);
+                decl_engine
+                    .get(decl_id)
+                    .hash(state, engines, already_hashed);
             }
             TyDecl::TypeAliasDecl(TypeAliasDecl { decl_id, .. }) => {
-                decl_engine.get(decl_id).hash(state, engines);
+                decl_engine
+                    .get(decl_id)
+                    .hash(state, engines, already_hashed);
             }
             TyDecl::StorageDecl(StorageDecl { decl_id, .. }) => {
-                decl_engine.get(decl_id).hash(state, engines);
+                decl_engine
+                    .get(decl_id)
+                    .hash(state, engines, already_hashed);
             }
             TyDecl::GenericTypeForFunctionScope(GenericTypeForFunctionScope { name, type_id }) => {
                 name.hash(state);
-                type_engine.get(*type_id).hash(state, engines);
+                type_engine
+                    .get(*type_id)
+                    .hash(state, engines, already_hashed);
             }
             TyDecl::ErrorRecovery(..) => {}
         }
@@ -514,28 +542,30 @@ impl CollectTypesMetadata for TyDecl {
         &self,
         handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
+        already_collected: &mut HashSet<(usize, std::any::TypeId)>,
     ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         let decl_engine = ctx.engines.de();
         let metadata = match self {
             TyDecl::VariableDecl(decl) => {
-                let mut body = decl.body.collect_types_metadata(handler, ctx)?;
-                body.append(
-                    &mut decl
-                        .type_ascription
-                        .type_id
-                        .collect_types_metadata(handler, ctx)?,
-                );
+                let mut body = decl
+                    .body
+                    .collect_types_metadata(handler, ctx, already_collected)?;
+                body.append(&mut decl.type_ascription.type_id.collect_types_metadata(
+                    handler,
+                    ctx,
+                    already_collected,
+                )?);
                 body
             }
             TyDecl::FunctionDecl(FunctionDecl { decl_id, .. }) => {
                 let decl = decl_engine.get_function(decl_id);
-                decl.collect_types_metadata(handler, ctx)?
+                decl.collect_types_metadata(handler, ctx, already_collected)?
             }
             TyDecl::ConstantDecl(ConstantDecl { decl_id, .. }) => {
                 let const_decl = decl_engine.get_constant(decl_id);
                 let TyConstantDecl { value, .. } = &*const_decl;
                 if let Some(value) = value {
-                    value.collect_types_metadata(handler, ctx)?
+                    value.collect_types_metadata(handler, ctx, already_collected)?
                 } else {
                     return Ok(vec![]);
                 }

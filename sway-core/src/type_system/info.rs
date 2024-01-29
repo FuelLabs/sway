@@ -13,6 +13,7 @@ use sway_types::{integer_bits::IntegerBits, span::Span, SourceId, Spanned};
 
 use std::{
     cmp::Ordering,
+    collections::HashSet,
     fmt,
     hash::{Hash, Hasher},
     sync::Arc,
@@ -77,8 +78,13 @@ pub struct TypeSourceInfo {
 }
 
 impl HashWithEngines for TypeSourceInfo {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
-        self.type_info.hash(state, engines);
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
+        self.type_info.hash(state, engines, already_hashed);
         self.source_id.hash(state);
     }
 }
@@ -188,7 +194,12 @@ pub enum TypeInfo {
 }
 
 impl HashWithEngines for TypeInfo {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         self.discriminant_value().hash(state);
         match self {
             TypeInfo::StringArray(len) => {
@@ -198,13 +209,13 @@ impl HashWithEngines for TypeInfo {
                 bits.hash(state);
             }
             TypeInfo::Tuple(fields) => {
-                fields.hash(state, engines);
+                fields.hash(state, engines, already_hashed);
             }
             TypeInfo::Enum(decl_ref) => {
-                decl_ref.hash(state, engines);
+                decl_ref.hash(state, engines, already_hashed);
             }
             TypeInfo::Struct(decl_ref) => {
-                decl_ref.hash(state, engines);
+                decl_ref.hash(state, engines, already_hashed);
             }
             TypeInfo::ContractCaller { abi_name, address } => {
                 abi_name.hash(state);
@@ -222,39 +233,41 @@ impl HashWithEngines for TypeInfo {
                 // Do not hash trait_constraints as those can point back to this type_info
                 // This avoids infinite hash loop. More collisions should occur but
                 // Eq implementations can disambiguate.
-                //trait_constraints.hash(state, engines);
+                //trait_constraints.hash(state, engines, already_hashed);
             }
             TypeInfo::Custom {
                 qualified_call_path: call_path,
                 type_arguments,
                 root_type_id,
             } => {
-                call_path.hash(state, engines);
-                type_arguments.as_deref().hash(state, engines);
+                call_path.hash(state, engines, already_hashed);
+                type_arguments
+                    .as_deref()
+                    .hash(state, engines, already_hashed);
                 root_type_id.hash(state);
             }
             TypeInfo::Storage { fields } => {
-                fields.hash(state, engines);
+                fields.hash(state, engines, already_hashed);
             }
             TypeInfo::Array(elem_ty, count) => {
-                elem_ty.hash(state, engines);
+                elem_ty.hash(state, engines, already_hashed);
                 count.hash(state);
             }
             TypeInfo::Placeholder(ty) => {
-                ty.hash(state, engines);
+                ty.hash(state, engines, already_hashed);
             }
             TypeInfo::TypeParam(n) => {
                 n.hash(state);
             }
             TypeInfo::Alias { name, ty } => {
                 name.hash(state);
-                ty.hash(state, engines);
+                ty.hash(state, engines, already_hashed);
             }
             TypeInfo::Ptr(ty) => {
-                ty.hash(state, engines);
+                ty.hash(state, engines, already_hashed);
             }
             TypeInfo::Slice(ty) => {
-                ty.hash(state, engines);
+                ty.hash(state, engines, already_hashed);
             }
             TypeInfo::TraitType {
                 name,
@@ -264,7 +277,7 @@ impl HashWithEngines for TypeInfo {
                 trait_type_id.hash(state);
             }
             TypeInfo::Ref(ty) => {
-                ty.hash(state, engines);
+                ty.hash(state, engines, already_hashed);
             }
             TypeInfo::StringSlice
             | TypeInfo::Numeric

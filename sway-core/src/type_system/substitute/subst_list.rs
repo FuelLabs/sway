@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     hash::Hasher,
     slice::{Iter, IterMut},
     vec::IntoIter,
@@ -66,8 +67,13 @@ impl PartialEqWithEngines for SubstList {
 }
 
 impl HashWithEngines for SubstList {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
-        self.list.hash(state, engines);
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
+        self.list.hash(state, engines, already_hashed);
     }
 }
 

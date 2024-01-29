@@ -20,7 +20,10 @@
 //! `fn my_function() { .. }`, and to use [DeclRef] for cases like function
 //! application `my_function()`.
 
-use std::hash::{Hash, Hasher};
+use std::{
+    collections::{HashMap, HashSet},
+    hash::{Hash, Hasher},
+};
 
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Span, Spanned};
@@ -159,20 +162,37 @@ impl<T> DeclRef<DeclId<T>>
 where
     AssociatedItemDeclId: From<DeclId<T>>,
     DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + ReplaceDecls + std::fmt::Debug + Clone,
+    T: Named + Spanned + ReplaceDecls + std::fmt::Debug + Clone + 'static,
 {
     pub(crate) fn replace_decls_and_insert_new_with_parent(
         &self,
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
+        already_replaced: &mut HashMap<(usize, std::any::TypeId), (usize, Span)>,
     ) -> Result<Self, ErrorEmitted> {
         let decl_engine = ctx.engines().de();
+        let key = (self.id.inner(), std::any::TypeId::of::<T>());
+        if let Some((ref_id, ref_span)) = already_replaced.get(&key) {
+            return Ok(DeclRef::new(
+                Ident::new(ref_span.clone()),
+                DeclId::<T>::new(*ref_id),
+                ref_span.clone(),
+            ));
+        }
         let mut decl = (*decl_engine.get(&self.id)).clone();
-        decl.replace_decls(decl_mapping, handler, ctx)?;
-        Ok(decl_engine
-            .insert(decl)
-            .with_parent(decl_engine, self.id.into()))
+        let decl_replacement_ref = decl_engine
+            .insert(decl.clone())
+            .with_parent(decl_engine, self.id.into());
+
+        let mut already_replaced_updated = already_replaced.clone();
+        already_replaced_updated.insert(key, (decl_replacement_ref.id().inner(), self.span()));
+
+        decl.replace_decls(decl_mapping, handler, ctx, &mut already_replaced_updated)?;
+
+        decl_engine.replace(*decl_replacement_ref.id(), decl);
+
+        Ok(decl_replacement_ref)
     }
 }
 
@@ -214,9 +234,14 @@ where
 impl<T> HashWithEngines for DeclRef<DeclId<T>>
 where
     DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + HashWithEngines,
+    T: Named + Spanned + HashWithEngines + 'static,
 {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         let decl_engine = engines.de();
         let DeclRef {
             name,
@@ -228,7 +253,15 @@ where
             subst_list: _,
         } = self;
         name.hash(state);
-        decl_engine.get(id).hash(state, engines);
+        let key = (id.inner(), std::any::TypeId::of::<T>());
+        if already_hashed.contains(&key) {
+            return;
+        }
+        let mut already_hashed_updated = already_hashed.clone();
+        already_hashed_updated.insert(key);
+        decl_engine
+            .get(id)
+            .hash(state, engines, &mut already_hashed_updated);
     }
 }
 
@@ -253,19 +286,24 @@ impl PartialEqWithEngines for DeclRefMixedInterface {
 }
 
 impl HashWithEngines for DeclRefMixedInterface {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+    fn hash<H: Hasher>(
+        &self,
+        state: &mut H,
+        engines: &Engines,
+        already_hashed: &mut HashSet<(usize, std::any::TypeId)>,
+    ) {
         match self.id {
             InterfaceDeclId::Abi(id) => {
                 state.write_u8(0);
                 let decl_engine = engines.de();
                 let decl = decl_engine.get(&id);
-                decl.hash(state, engines);
+                decl.hash(state, engines, already_hashed);
             }
             InterfaceDeclId::Trait(id) => {
                 state.write_u8(1);
                 let decl_engine = engines.de();
                 let decl = decl_engine.get(&id);
-                decl.hash(state, engines);
+                decl.hash(state, engines, already_hashed);
             }
         }
     }
@@ -296,6 +334,7 @@ impl ReplaceDecls for DeclRefFunction {
         decl_mapping: &DeclMapping,
         _handler: &Handler,
         ctx: &mut TypeCheckContext,
+        _already_replaced: &mut HashMap<(usize, std::any::TypeId), (usize, Span)>,
     ) -> Result<(), ErrorEmitted> {
         let engines = ctx.engines();
         let decl_engine = engines.de();
