@@ -20,6 +20,7 @@ use std::{
 
 pub const THREAD_ID: i64 = 0;
 pub const REGISTERS_VARIABLE_REF: i64 = 1;
+pub const INSTRUCTIONS_VARIABLE_REF: i64 = 2;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AdditionalData {
@@ -124,7 +125,10 @@ impl DapServer {
                 exit_code = Some(0);
                 Ok(ResponseBody::Disconnect)
             }
-
+            Command::Evaluate(_) => Ok(ResponseBody::Evaluate(responses::EvaluateResponse {
+                result: "Evaluate expressions not supported".into(),
+                ..Default::default()
+            })),
             Command::Initialize(_) => Ok(ResponseBody::Initialize(types::Capabilities {
                 supports_breakpoint_locations_request: Some(true),
                 supports_configuration_done_request: Some(true),
@@ -168,7 +172,14 @@ impl DapServer {
                 Ok(ResponseBody::Restart)
             }
             Command::Scopes(_) => Ok(ResponseBody::Scopes(responses::ScopesResponse {
-                scopes: vec![Scope {
+                scopes: vec![
+                    Scope {
+                        name: "Current VM Instruction".into(),
+                        presentation_hint: Some(types::ScopePresentationhint::Registers),
+                        variables_reference: INSTRUCTIONS_VARIABLE_REF,
+                        ..Default::default()
+                    },
+                    Scope {
                     name: "Registers".into(),
                     presentation_hint: Some(types::ScopePresentationhint::Registers),
                     variables_reference: REGISTERS_VARIABLE_REF,
@@ -205,7 +216,7 @@ impl DapServer {
                     name: "main".into(),
                 }],
             })),
-            Command::Variables(_) => match self.handle_variables() {
+            Command::Variables(ref args) => match self.handle_variables(args) {
                 Ok(variables) => Ok(ResponseBody::Variables(responses::VariablesResponse {
                     variables,
                 })),
