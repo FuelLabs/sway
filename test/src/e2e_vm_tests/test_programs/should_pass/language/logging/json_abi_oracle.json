@@ -7,7 +7,7 @@
       "name": "main",
       "output": {
         "name": "",
-        "type": 13,
+        "type": 14,
         "typeArguments": null
       }
     }
@@ -17,7 +17,7 @@
       "logId": 0,
       "loggedType": {
         "name": "",
-        "type": 6,
+        "type": 7,
         "typeArguments": []
       }
     },
@@ -25,11 +25,11 @@
       "logId": 1,
       "loggedType": {
         "name": "",
-        "type": 7,
+        "type": 8,
         "typeArguments": [
           {
             "name": "",
-            "type": 13,
+            "type": 14,
             "typeArguments": null
           }
         ]
@@ -58,6 +58,22 @@
         "type": 5,
         "typeArguments": []
       }
+    },
+    {
+      "logId": 5,
+      "loggedType": {
+        "name": "",
+        "type": 6,
+        "typeArguments": []
+      }
+    },
+    {
+      "logId": 6,
+      "loggedType": {
+        "name": "",
+        "type": 6,
+        "typeArguments": []
+      }
     }
   ],
   "messagesTypes": [],
@@ -72,11 +88,11 @@
       "components": [
         {
           "name": "A",
-          "type": 7,
+          "type": 8,
           "typeArguments": [
             {
               "name": "",
-              "type": 13,
+              "type": 14,
               "typeArguments": null
             }
           ]
@@ -118,32 +134,44 @@
     {
       "components": [
         {
+          "name": "p",
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct NotAutoEncodable",
+      "typeId": 6,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
           "name": "a",
-          "type": 13,
-          "typeArguments": null
-        },
-        {
-          "name": "b",
-          "type": 12,
-          "typeArguments": null
-        },
-        {
-          "name": "c",
-          "type": 10,
-          "typeArguments": null
-        },
-        {
-          "name": "d",
           "type": 14,
           "typeArguments": null
         },
         {
+          "name": "b",
+          "type": 13,
+          "typeArguments": null
+        },
+        {
+          "name": "c",
+          "type": 11,
+          "typeArguments": null
+        },
+        {
+          "name": "d",
+          "type": 15,
+          "typeArguments": null
+        },
+        {
           "name": "e",
-          "type": 9,
+          "type": 10,
           "typeArguments": [
             {
               "name": "",
-              "type": 13,
+              "type": 14,
               "typeArguments": null
             }
           ]
@@ -155,12 +183,12 @@
         },
         {
           "name": "g",
-          "type": 11,
+          "type": 12,
           "typeArguments": null
         }
       ],
       "type": "struct S",
-      "typeId": 6,
+      "typeId": 7,
       "typeParameters": null
     },
     {
@@ -172,7 +200,7 @@
         }
       ],
       "type": "struct SS",
-      "typeId": 7,
+      "typeId": 8,
       "typeParameters": [
         2
       ]
@@ -186,12 +214,12 @@
         },
         {
           "name": "cap",
-          "type": 13,
+          "type": 14,
           "typeArguments": null
         }
       ],
       "type": "struct std::vec::RawVec",
-      "typeId": 8,
+      "typeId": 9,
       "typeParameters": [
         2
       ]
@@ -200,7 +228,7 @@
       "components": [
         {
           "name": "buf",
-          "type": 8,
+          "type": 9,
           "typeArguments": [
             {
               "name": "",
@@ -211,12 +239,12 @@
         },
         {
           "name": "len",
-          "type": 13,
+          "type": 14,
           "typeArguments": null
         }
       ],
       "type": "struct std::vec::Vec",
-      "typeId": 9,
+      "typeId": 10,
       "typeParameters": [
         2
       ]
@@ -224,31 +252,31 @@
     {
       "components": null,
       "type": "u16",
-      "typeId": 10,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u256",
       "typeId": 11,
       "typeParameters": null
     },
     {
       "components": null,
-      "type": "u32",
+      "type": "u256",
       "typeId": 12,
       "typeParameters": null
     },
     {
       "components": null,
-      "type": "u64",
+      "type": "u32",
       "typeId": 13,
       "typeParameters": null
     },
     {
       "components": null,
-      "type": "u8",
+      "type": "u64",
       "typeId": 14,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u8",
+      "typeId": 15,
       "typeParameters": null
     }
   ]

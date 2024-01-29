@@ -606,9 +606,11 @@ impl<T> From<raw_slice> for Vec<T> {
             len: buf.cap,
         }
     }
+}
 
-    fn into(self) -> raw_slice {
-        asm(ptr: (self.buf.ptr(), self.len)) {
+impl<T> From<Vec<T>> for raw_slice {
+    fn from(vec: Vec<T>) -> Self {
+        asm(ptr: (vec.buf.ptr(), vec.len)) {
             ptr: raw_slice
         }
     }

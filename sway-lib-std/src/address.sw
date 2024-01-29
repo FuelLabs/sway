@@ -40,7 +40,9 @@ impl From<b256> for Address {
     fn from(bits: b256) -> Self {
         Self { value: bits }
     }
+}
 
+impl From<Address> for b256 {
     /// Casts an `Address` to raw `b256` data.
     ///
     /// # Returns
@@ -58,8 +60,8 @@ impl From<b256> for Address {
     ///     assert(b256_data == ZERO_B256);
     /// }
     /// ```
-    fn into(self) -> b256 {
-        self.value
+    fn from(address: Address) -> b256 {
+        address.value
     }
 }
 

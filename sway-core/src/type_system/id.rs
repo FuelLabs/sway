@@ -15,6 +15,8 @@ use std::{
     fmt,
 };
 
+const EXTRACT_ANY_MAX_DEPTH: usize = 128;
+
 /// A identifier to uniquely refer to our type terms
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug)]
 pub struct TypeId(usize);
@@ -190,8 +192,8 @@ impl TypeId {
     where
         F: Fn(&TypeInfo) -> bool,
     {
-        if depth >= 128 {
-            panic!("possible infinite recursion at extract_any");
+        if depth >= EXTRACT_ANY_MAX_DEPTH {
+            panic!("Possible infinite recursion at extract_any");
         }
 
         fn extend(

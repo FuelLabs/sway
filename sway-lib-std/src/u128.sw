@@ -32,9 +32,11 @@ impl From<(u64, u64)> for U128 {
             lower: components.1,
         }
     }
+}
 
-    fn into(self) -> (u64, u64) {
-        (self.upper, self.lower)
+impl From<U128> for (u64, u64) {
+    fn from(val: U128) -> (u64, u64) {
+        (val.upper, val.lower)
     }
 }
 
