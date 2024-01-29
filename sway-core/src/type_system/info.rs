@@ -1092,6 +1092,10 @@ impl TypeInfo {
         matches!(self, TypeInfo::Ref(_))
     }
 
+    pub fn is_array(&self) -> bool {
+        matches!(self, TypeInfo::Array(_, _))
+    }
+
     pub(crate) fn apply_type_arguments(
         self,
         handler: &Handler,
@@ -1409,7 +1413,6 @@ impl TypeInfo {
         &self,
         handler: &Handler,
         engines: &Engines,
-        debug_string: impl Into<String>,
         debug_span: &Span,
     ) -> Result<Vec<TypeArgument>, ErrorEmitted> {
         match self {
@@ -1421,13 +1424,12 @@ impl TypeInfo {
                 engines
                     .te()
                     .get(*type_id)
-                    .expect_tuple(handler, engines, debug_string, debug_span)
+                    .expect_tuple(handler, engines, debug_span)
             }
             TypeInfo::ErrorRecovery(err) => Err(*err),
             a => Err(handler.emit_err(CompileError::NotATuple {
-                name: debug_string.into(),
-                span: debug_span.clone(),
                 actually: engines.help_out(a).to_string(),
+                span: debug_span.clone(),
             })),
         }
     }

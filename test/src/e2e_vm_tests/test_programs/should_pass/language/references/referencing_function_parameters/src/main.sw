@@ -64,6 +64,9 @@ fn array_parameter(p: [u64;2]) {
     assert(p_ptr.read::<[u64;2]>() == p);
 
     assert(*r_p_1 == *r_p_2);
+    
+    assert(r_p_1[0] == r_p_2[0]);
+    assert(r_p_1[1] == r_p_2[1]);
 }
 
 #[inline(never)]
