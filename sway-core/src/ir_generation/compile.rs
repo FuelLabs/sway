@@ -499,7 +499,7 @@ fn compile_fn(
         logged_types_map,
         messages_types_map,
     );
-    let mut ret_val = compiler.compile_code_block(context, md_mgr, body)?;
+    let mut ret_val = compiler.compile_code_block_to_value(context, md_mgr, body)?;
 
     // Special case: sometimes the returned value at the end of the function block is hacked
     // together and is invalid.  This can happen with diverging control flow or with implicit
