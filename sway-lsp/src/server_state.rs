@@ -137,7 +137,7 @@ impl ServerState {
                         match session::parse_project(
                             &uri,
                             &engines_clone,
-                            Some(retrigger_compilation.clone()),
+                            // Some(retrigger_compilation.clone()),
                             lsp_mode,
                             session.clone(),
                         ) {

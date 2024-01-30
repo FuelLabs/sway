@@ -232,7 +232,6 @@ pub(super) async fn run(
                     core_lib.clone(),
                     Some(&bld_cfg),
                     "test_lib",
-                    None,
                 );
                 let (errors, _warnings) = handler.consume();
                 if !errors.is_empty() {

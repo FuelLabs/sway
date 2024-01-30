@@ -238,7 +238,6 @@ pub struct BuildProfile {
     pub optimization_level: OptLevel,
     #[serde(default)]
     pub experimental: ExperimentalFlags,
-    // pub lsp_mode: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
@@ -734,7 +733,6 @@ impl BuildProfile {
             experimental: ExperimentalFlags {
                 new_encoding: false,
             },
-            // lsp_mode: false,
         }
     }
 
@@ -757,7 +755,6 @@ impl BuildProfile {
             experimental: ExperimentalFlags {
                 new_encoding: false,
             },
-            // lsp_mode: false,
         }
     }
 }

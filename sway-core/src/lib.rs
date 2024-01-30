@@ -477,7 +477,6 @@ pub fn parsed_to_ast(
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
     package_name: &str,
-    retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<ty::TyProgram, ErrorEmitted> {
     let experimental = build_config.map(|x| x.experimental).unwrap_or_default();
     let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
@@ -643,8 +642,12 @@ pub fn compile_to_ast(
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
     package_name: &str,
-    retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<Programs, ErrorEmitted> {
+    let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
+    let retrigger_compilation = lsp_config.as_ref()
+        .map(|config| config.retrigger_compilation.clone())
+        .unwrap_or(None);
+    
     check_should_abort(handler, retrigger_compilation.clone())?;
 
     let query_engine = engines.qe();
@@ -704,7 +707,6 @@ pub fn compile_to_ast(
             initial_namespace,
             build_config,
             package_name,
-            retrigger_compilation.clone(),
         ),
         build_config,
         metrics
@@ -726,6 +728,8 @@ pub fn compile_to_ast(
         query_engine.insert_programs_cache_entry(cache_entry);
     }
 
+    check_should_abort(handler, retrigger_compilation.clone())?;
+
     Ok(programs)
 }
 
@@ -746,7 +750,6 @@ pub fn compile_to_asm(
         initial_namespace,
         Some(&build_config),
         package_name,
-        None,
     )?;
     ast_to_asm(handler, engines, &ast_res, &build_config)
 }

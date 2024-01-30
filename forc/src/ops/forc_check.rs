@@ -41,7 +41,6 @@ pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<ty::TyP
         None,
         tests_enabled,
         engines,
-        None,
     )?;
     let (res, handler) = v
         .pop()
