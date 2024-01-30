@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-83DF59C0B66FBC0B"
+
+[[package]]
+name = "std"
+source = "path+from-root-83DF59C0B66FBC0B"
+dependencies = ["core"]
+
+[[package]]
+name = "struct_field_privacy_pattern_matching"
+source = "member"
+dependencies = ["std"]

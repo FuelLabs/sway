@@ -348,7 +348,7 @@ impl CallPath {
             // package name and the path to the current submodule.
             //
             // If the path starts with an external module (i.e. a module that is imported in
-            // `Forc.toml`, then do not change it since it's a complete path already.
+            // `Forc.toml`), then do not change it since it's a complete path already.
             if m.is_external {
                 CallPath {
                     prefixes: self.prefixes.clone(),

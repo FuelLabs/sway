@@ -1,0 +1,8 @@
+[[package]]
+name = "test_lib"
+source = "member"
+
+[[package]]
+name = "test_script"
+source = "member"
+dependencies = ["test_lib"]

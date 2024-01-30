@@ -1,13 +1,17 @@
 use crate::convert_parse_tree_error::ConvertParseTreeError;
 use crate::diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic};
+use crate::formatting::*;
 use crate::lex_error::LexError;
 use crate::parser_error::ParseError;
 use crate::type_error::TypeError;
 
 use core::fmt;
 use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
-use sway_types::{BaseIdent, Ident, SourceEngine, SourceId, Span, Spanned};
+use sway_types::style::to_snake_case;
+use sway_types::{BaseIdent, Ident, IdentUnique, SourceEngine, Span, Spanned};
 use thiserror::Error;
+
+use self::StructFieldUsageContext::*;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum InterfaceName {
@@ -24,8 +28,16 @@ impl fmt::Display for InterfaceName {
     }
 }
 
-// TODO: since moving to using Idents instead of strings, there are a lot of redundant spans in
-// this type.
+// TODO: Since moving to using Idents instead of strings, there are a lot of redundant spans in
+//       this type.
+//       Beware!!! If we remove those redundant spans (and we should!) we can have a situation that
+//       deduplication of error messages might remove errors that are actually not duplicates because
+//       although they point to the same Ident (in terms of name), the span can be different.
+//       Deduplication works on hashes and Ident's hash contains only the name and not the span.
+//       That's why we should consider always using IdentUnique whenever we extract the span from
+//       the provided Ident.
+//       Using IdentUnique will also clearly communicate that we are extracting the span from the
+//       provided identifier.
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CompileError {
     #[error(
@@ -206,17 +218,64 @@ pub enum CompileError {
          it?"
     )]
     EnumNotFound { name: Ident, span: Span },
-    #[error("Initialization of struct \"{struct_name}\" is missing field \"{field_name}\".")]
-    StructMissingField {
+    /// This error is used only for error recovery and is not emitted as a compiler
+    /// error to the final compilation output. The compiler emits the cumulative error
+    /// [CompileError::StructInstantiationMissingFields] given below, and that one also
+    /// only if the struct can actually be instantiated.
+    #[error("Instantiation of the struct \"{struct_name}\" is missing field \"{field_name}\".")]
+    StructInstantiationMissingFieldForErrorRecovery {
         field_name: Ident,
+        /// Original, non-aliased struct name.
         struct_name: Ident,
         span: Span,
     },
-    #[error("Struct \"{struct_name}\" does not have field \"{field_name}\".")]
-    StructDoesNotHaveField {
-        field_name: Ident,
+    #[error("Instantiation of the struct \"{struct_name}\" is missing {} {}.",
+        if field_names.len() == 1 { "field" } else { "fields" },
+        field_names.iter().map(|name| format!("\"{name}\"")).collect::<Vec::<_>>().join(", "))]
+    StructInstantiationMissingFields {
+        field_names: Vec<Ident>,
+        /// Original, non-aliased struct name.
         struct_name: Ident,
         span: Span,
+        struct_decl_span: Span,
+        total_number_of_fields: usize,
+    },
+    #[error("Struct \"{struct_name}\" cannot be instantiated here because it has private fields.")]
+    StructCannotBeInstantiated {
+        /// Original, non-aliased struct name.
+        struct_name: Ident,
+        span: Span,
+        struct_decl_span: Span,
+        private_fields: Vec<Ident>,
+        /// All available public constructors if `is_in_storage_declaration` is false,
+        /// or only the public constructors that potentially evaluate to a constant
+        /// if `is_in_storage_declaration` is true.
+        constructors: Vec<String>,
+        /// True if the struct has only private fields.
+        all_fields_are_private: bool,
+        is_in_storage_declaration: bool,
+        struct_can_be_changed: bool,
+    },
+    #[error("Field \"{field_name}\" of the struct \"{struct_name}\" is private.")]
+    StructFieldIsPrivate {
+        field_name: IdentUnique,
+        /// Original, non-aliased struct name.
+        struct_name: Ident,
+        field_decl_span: Span,
+        struct_can_be_changed: bool,
+        usage_context: StructFieldUsageContext,
+    },
+    #[error("Field \"{field_name}\" does not exist in struct \"{struct_name}\".")]
+    StructFieldDoesNotExist {
+        field_name: IdentUnique,
+        /// Only public fields if `is_public_struct_access` is true.
+        available_fields: Vec<Ident>,
+        is_public_struct_access: bool,
+        /// Original, non-aliased struct name.
+        struct_name: Ident,
+        struct_decl_span: Span,
+        struct_is_empty: bool,
+        usage_context: StructFieldUsageContext,
     },
     #[error("No method named \"{method_name}\" found for type \"{type_name}\".")]
     MethodNotFound {
@@ -270,16 +329,6 @@ pub enum CompileError {
     DeclIsNotAConstant { actually: String, span: Span },
     #[error("This is a {actually}, not a type alias")]
     DeclIsNotATypeAlias { actually: String, span: Span },
-    #[error(
-        "Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n \
-         {available_fields}"
-    )]
-    FieldNotFound {
-        field_name: Ident,
-        available_fields: String,
-        struct_name: Ident,
-        span: Span,
-    },
     #[error("Could not find symbol \"{name}\" in this scope.")]
     SymbolNotFound { name: Ident, span: Span },
     #[error("Symbol \"{name}\" is private.")]
@@ -523,11 +572,29 @@ pub enum CompileError {
         missing_patterns: String,
         span: Span,
     },
-    #[error("Pattern does not mention {}: {}",
-        if missing_fields.len() == 1 { "field" } else { "fields" },
-        missing_fields.join(", "))]
+    #[error("Struct pattern is missing the {}field{} {}.",
+        if *missing_fields_are_public { "public " } else { "" },
+        plural_s(missing_fields.len()),
+        sequence_to_str(missing_fields, Enclosing::DoubleQuote, 2)
+    )]
     MatchStructPatternMissingFields {
-        missing_fields: Vec<String>,
+        missing_fields: Vec<Ident>,
+        missing_fields_are_public: bool,
+        /// Original, non-aliased struct name.
+        struct_name: Ident,
+        struct_decl_span: Span,
+        total_number_of_fields: usize,
+        span: Span,
+    },
+    #[error("Struct pattern must ignore inaccessible private field{} {}.",
+        plural_s(private_fields.len()),
+        sequence_to_str(private_fields, Enclosing::DoubleQuote, 2))]
+    MatchStructPatternMustIgnorePrivateFields {
+        private_fields: Vec<Ident>,
+        /// Original, non-aliased struct name.
+        struct_name: Ident,
+        struct_decl_span: Span,
+        all_fields_are_private: bool,
         span: Span,
     },
     #[error("Variable \"{variable}\" is not defined in all alternatives.")]
@@ -805,15 +872,17 @@ impl Spanned for CompileError {
             DoesNotTakeTypeArgumentsAsPrefix { span, .. } => span.clone(),
             TypeArgumentsNotAllowed { span } => span.clone(),
             NeedsTypeArguments { span, .. } => span.clone(),
-            StructMissingField { span, .. } => span.clone(),
-            StructDoesNotHaveField { span, .. } => span.clone(),
+            StructInstantiationMissingFieldForErrorRecovery { span, .. } => span.clone(),
+            StructInstantiationMissingFields { span, .. } => span.clone(),
+            StructCannotBeInstantiated { span, .. } => span.clone(),
+            StructFieldIsPrivate { field_name, .. } => field_name.span(),
+            StructFieldDoesNotExist { field_name, .. } => field_name.span(),
             MethodNotFound { span, .. } => span.clone(),
             ModuleNotFound { span, .. } => span.clone(),
             NotATuple { span, .. } => span.clone(),
             NotAStruct { span, .. } => span.clone(),
             NotIndexable { span, .. } => span.clone(),
             FieldAccessOnNonStruct { span, .. } => span.clone(),
-            FieldNotFound { span, .. } => span.clone(),
             SymbolNotFound { span, .. } => span.clone(),
             ImportPrivateSymbol { span, .. } => span.clone(),
             ImportPrivateModule { span, .. } => span.clone(),
@@ -879,6 +948,7 @@ impl Spanned for CompileError {
             GenericShadowsGeneric { name } => name.span(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
             MatchStructPatternMissingFields { span, .. } => span.clone(),
+            MatchStructPatternMustIgnorePrivateFields { span, .. } => span.clone(),
             MatchArmVariableNotDefinedInAllAlternatives { variable, .. } => variable.span(),
             MatchArmVariableMismatchedType { variable, .. } => variable.span(),
             NotAnEnum { span, .. } => span.clone(),
@@ -952,6 +1022,10 @@ impl Spanned for CompileError {
     }
 }
 
+// When implementing diagnostics, follow these two guidelines outlined in the Expressive Diagnostics RFC:
+// - Guide-level explanation: https://github.com/FuelLabs/sway-rfcs/blob/master/rfcs/0011-expressive-diagnostics.md#guide-level-explanation
+// - Wording guidelines: https://github.com/FuelLabs/sway-rfcs/blob/master/rfcs/0011-expressive-diagnostics.md#wording-guidelines
+// For concrete examples, look at the existing diagnostics.
 impl ToDiagnostic for CompileError {
     fn to_diagnostic(&self, source_engine: &SourceEngine) -> Diagnostic {
         let code = Code::semantic_analysis;
@@ -1140,8 +1214,83 @@ impl ToDiagnostic for CompileError {
                     format!("Consider removing the variable \"{variable}\" altogether, or adding it to all alternatives."),
                 ],
             },
-            TraitNotImportedAtFunctionApplication { trait_name, function_name, function_call_site_span, trait_constraint_span, trait_candidates }=> {
-                // Make candidates order deterministic
+            MatchStructPatternMissingFields { missing_fields, missing_fields_are_public, struct_name, struct_decl_span, total_number_of_fields, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Struct pattern has missing fields".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("Struct pattern is missing the {}field{} {}.",
+                        if *missing_fields_are_public { "public " } else { "" },
+                        plural_s(missing_fields.len()),
+                        sequence_to_str(missing_fields, Enclosing::DoubleQuote, 2)
+                    )
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        "Struct pattern must either contain or ignore each struct field.".to_string()
+                    ),
+                    Hint::info(
+                        source_engine,
+                        struct_decl_span.clone(),
+                        format!("Struct \"{struct_name}\" is declared here, and has {} field{}.",
+                            number_to_str(*total_number_of_fields),
+                            plural_s(*total_number_of_fields),
+                        )
+                    ),
+                ],
+                help: vec![
+                    // Consider ignoring the field "x_1" by using the `_` pattern: `x_1: _`.
+                    //  or
+                    // Consider ignoring individual fields by using the `_` pattern. E.g, `x_1: _`.
+                    format!("Consider ignoring {} field{} {}by using the `_` pattern{} `{}: _`.",
+                        singular_plural(missing_fields.len(), "the", "individual"),
+                        plural_s(missing_fields.len()),
+                        singular_plural(missing_fields.len(), &format!("\"{}\" ", missing_fields[0]), ""),
+                        singular_plural(missing_fields.len(), ":", ". E.g.,"),
+                        missing_fields[0]
+                    ),
+                    "Alternatively, consider ignoring all the missing fields by ending the struct pattern with `..`.".to_string(),
+                ],
+            },
+            MatchStructPatternMustIgnorePrivateFields { private_fields, struct_name, struct_decl_span, all_fields_are_private, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Struct pattern must ignore inaccessible private fields".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("Struct pattern must ignore inaccessible private field{} {}.",
+                        plural_s(private_fields.len()),
+                        sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
+                    )
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        format!("To ignore the private field{}, end the struct pattern with `..`.",
+                            plural_s(private_fields.len()),
+                        )
+                    ),
+                    Hint::info(
+                        source_engine,
+                        struct_decl_span.clone(),
+                        format!("Struct \"{struct_name}\" is declared here, and has {}.",
+                            if *all_fields_are_private {
+                                "all private fields".to_string()
+                            } else {
+                                format!("private field{} {}",
+                                    plural_s(private_fields.len()),
+                                    sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
+                                )
+                            }
+                        )
+                    ),
+                ],
+                help: vec![],
+            },
+            TraitNotImportedAtFunctionApplication { trait_name, function_name, function_call_site_span, trait_constraint_span, trait_candidates } => {
+                // Make candidates order deterministic.
                 let mut trait_candidates = trait_candidates.clone();
                 trait_candidates.sort();
                 let trait_candidates = &trait_candidates; // Remove mutability.
@@ -1206,25 +1355,28 @@ impl ToDiagnostic for CompileError {
                         let mut help = vec![];
 
                         if trait_candidates.len() > 1 {
-                            help.push(format!("There are these {} traits with the name \"{trait_name}\" available in the modules:", trait_candidates.len()));
+                            help.push(format!("There are these {} traits with the name \"{trait_name}\" available in the modules:", number_to_str(trait_candidates.len())));
                             for trait_candidate in trait_candidates.iter() {
-                                help.push(format!("  - {trait_candidate}"));
+                                help.push(format!("{}- {trait_candidate}", Indent::Single));
                             }
                             help.push("To import the proper one follow these steps:".to_string());
                             help.push(format!(
-                                "  1. Look at the definition of the \"{function_name}\"{}.",
+                                "{}1. Look at the definition of the \"{function_name}\"{}.",
+                                    Indent::Single,
                                     get_file_name(source_engine, trait_constraint_span.source_id())
                                         .map_or("".to_string(), |file_name| format!(" in the \"{file_name}\""))
                             ));
                             help.push(format!(
-                                "  2. Detect which exact \"{trait_name}\" is used in the trait constraint in the \"{function_name}\"."
+                                "{}2. Detect which exact \"{trait_name}\" is used in the trait constraint in the \"{function_name}\".",
+                                Indent::Single
                             ));
                             help.push(format!(
-                                "  3. Import that \"{trait_name}\"{}.",
+                                "{}3. Import that \"{trait_name}\"{}.",
+                                Indent::Single,
                                 get_file_name(source_engine, function_call_site_span.source_id())
                                     .map_or("".to_string(), |file_name| format!(" into \"{file_name}\""))
                             ));
-                            help.push(format!("     E.g., assuming it is the first one on the list, use: `use {};`", trait_candidates[0]));
+                            help.push(format!("{} E.g., assuming it is the first one on the list, use: `use {};`", Indent::Double, trait_candidates[0]));
                         }
 
                         help
@@ -1253,6 +1405,314 @@ impl ToDiagnostic for CompileError {
                 ],
                 help: vec![],
             },
+            StructInstantiationMissingFields { field_names, struct_name, span, struct_decl_span, total_number_of_fields } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Struct instantiation has missing fields".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("Instantiation of the struct \"{struct_name}\" is missing the field{} {}.",
+                            plural_s(field_names.len()),
+                            sequence_to_str(field_names, Enclosing::DoubleQuote, 2)
+                        )
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        "Struct instantiation must initialize all the fields of the struct.".to_string()
+                    ),
+                    Hint::info(
+                        source_engine,
+                        struct_decl_span.clone(),
+                        format!("Struct \"{struct_name}\" is declared here, and has {} field{}.",
+                            number_to_str(*total_number_of_fields),
+                            plural_s(*total_number_of_fields),
+                        )
+                    ),
+                ],
+                help: vec![],
+            },
+            StructCannotBeInstantiated { struct_name, span, struct_decl_span, private_fields, constructors, all_fields_are_private, is_in_storage_declaration, struct_can_be_changed } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Struct cannot be instantiated due to inaccessible private fields".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("\"{struct_name}\" cannot be {}instantiated in this {}, due to {}inaccessible private field{}.",
+                        if *is_in_storage_declaration { "" } else { "directly " },
+                        if *is_in_storage_declaration { "storage declaration" } else { "module" },
+                        singular_plural(private_fields.len(), "an ", ""),
+                        plural_s(private_fields.len())
+                    )
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        format!("Inaccessible field{} {} {}.",
+                            plural_s(private_fields.len()),
+                            is_are(private_fields.len()),
+                            sequence_to_str(private_fields, Enclosing::DoubleQuote, 5)
+                        )
+                    ),
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        if *is_in_storage_declaration {
+                            "Structs with private fields can be instantiated in storage declarations only if they are declared in the same module as the storage.".to_string()
+                        } else {
+                            "Structs with private fields can be instantiated only within the module in which they are declared.".to_string()
+                        }
+                    ),
+                    if *is_in_storage_declaration {
+                        Hint::help(
+                            source_engine,
+                            span.clone(),
+                            "They can still be initialized in storage declarations if they have public constructors that evaluate to a constant.".to_string()
+                        )
+                    } else {
+                        Hint::none()
+                    },
+                    if *is_in_storage_declaration {
+                        Hint::help(
+                            source_engine,
+                            span.clone(),
+                            "They can always be stored in storage by using the `read` and `write` functions provided in the `std::storage::storage_api`.".to_string()
+                        )
+                    } else {
+                        Hint::none()
+                    },
+                    if !*is_in_storage_declaration && !constructors.is_empty() {
+                        Hint::help(
+                            source_engine,
+                            span.clone(),
+                            format!("\"{struct_name}\" can be instantiated via public constructors suggested below.")
+                        )
+                    } else {
+                        Hint::none()
+                    },
+                    Hint::info(
+                        source_engine,
+                        struct_decl_span.clone(),
+                        format!("Struct \"{struct_name}\" is declared here, and has {}.",
+                            if *all_fields_are_private {
+                                "all private fields".to_string()
+                            } else {
+                                format!("private field{} {}",
+                                    plural_s(private_fields.len()),
+                                    sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
+                                )
+                            }
+                        )
+                    ),
+                ],
+                help: {
+                    let mut help = vec![];
+
+                    if *is_in_storage_declaration {
+                        help.push(format!("Consider initializing \"{struct_name}\" by finding an available constructor that evaluates to a constant{}.",
+                            if *struct_can_be_changed {
+                                ", or implement a new one"
+                            } else {
+                                ""
+                            }
+                        ));
+
+                        if !constructors.is_empty() {
+                            help.push("Check these already available constructors. They might evaluate to a constant:".to_string());
+                            // We always expect a very few candidates here. So let's list all of them by using `usize::MAX`.
+                            for constructor in sequence_to_list(constructors, Indent::Single, usize::MAX) {
+                                help.push(constructor);
+                            }
+                        };
+
+                        help.push(Diagnostic::help_empty_line());
+
+                        help.push(format!("Or you can always store instances of \"{struct_name}\" in the contract storage, by using the `std::storage::storage_api`:"));
+                        help.push(format!("{}use std::storage::storage_api::{{read, write}};", Indent::Single));
+                        help.push(format!("{}write(STORAGE_KEY, 0, my_{});", Indent::Single, to_snake_case(struct_name.as_str())));
+                        help.push(format!("{}let my_{}_option = read::<{struct_name}>(STORAGE_KEY, 0);", Indent::Single, to_snake_case(struct_name.as_str())));
+                    }
+                    else if !constructors.is_empty() {
+                        help.push(format!("Consider instantiating \"{struct_name}\" by using one of the available constructors{}:",
+                            if *struct_can_be_changed {
+                                ", or implement a new one"
+                            } else {
+                                ""
+                            }
+                        ));
+                        for constructor in sequence_to_list(constructors, Indent::Single, 5) {
+                            help.push(constructor);
+                        }
+                    }
+
+                    if *struct_can_be_changed {
+                        if *is_in_storage_declaration || !constructors.is_empty() {
+                            help.push(Diagnostic::help_empty_line());
+                        }
+
+                        if !*is_in_storage_declaration && constructors.is_empty() {
+                            help.push(format!("Consider implementing a public constructor for \"{struct_name}\"."));
+                        };
+
+                        help.push(
+                            // Alternatively, consider declaring the field "f" as public in "Struct": `pub f: ...,`.
+                            //  or
+                            // Alternatively, consider declaring the fields "f" and "g" as public in "Struct": `pub <field>: ...,`.
+                            //  or
+                            // Alternatively, consider declaring all fields as public in "Struct": `pub <field>: ...,`.
+                            format!("Alternatively, consider declaring {} as public in \"{struct_name}\": `pub {}: ...,`.",
+                                if *all_fields_are_private {
+                                    "all fields".to_string()
+                                } else {
+                                    format!("{} {}",
+                                        singular_plural(private_fields.len(), "the field", "the fields"),
+                                        sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
+                                    )
+                                },
+                                if *all_fields_are_private {
+                                    "<field>".to_string()
+                                } else {
+                                    match &private_fields[..] {
+                                        [field] => format!("{field}"),
+                                        _ => "<field>".to_string(),
+                                    }
+                                },
+                            )
+                        )
+                    };
+
+                    help
+                }
+            },
+            StructFieldIsPrivate { field_name, struct_name, field_decl_span, struct_can_be_changed, usage_context } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Private struct field is inaccessible".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    field_name.span(),
+                    format!("Private field \"{field_name}\" {}is inaccessible in this module.",
+                        match usage_context {
+                            StructInstantiation { .. } | StorageDeclaration { .. } | PatternMatching { .. } => "".to_string(),
+                            StorageAccess | StructFieldAccess => format!("of the struct \"{struct_name}\" "),
+                        }
+                    )
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        field_name.span(),
+                        format!("Private fields can be {} only within the module in which their struct is declared.",
+                            match usage_context {
+                                StructInstantiation { .. } | StorageDeclaration { .. } => "initialized",
+                                StorageAccess | StructFieldAccess => "accessed",
+                                PatternMatching { .. } => "matched",
+                            }
+                        )
+                    ),
+                    if matches!(usage_context, PatternMatching { has_rest_pattern } if !has_rest_pattern) {
+                        Hint::help(
+                            source_engine,
+                            field_name.span(),
+                            "Otherwise, they must be ignored by ending the struct pattern with `..`.".to_string()
+                        )
+                    } else {
+                        Hint::none()
+                    },
+                    Hint::info(
+                        source_engine,
+                        field_decl_span.clone(),
+                        format!("Field \"{field_name}\" {}is declared here as private.",
+                            match usage_context {
+                                StructInstantiation { .. } | StorageDeclaration { .. } | PatternMatching { .. } => format!("of the struct \"{struct_name}\" "),
+                                StorageAccess | StructFieldAccess => "".to_string(),
+                            }
+                        )
+                    ),
+                ],
+                help: vec![
+                    if matches!(usage_context, PatternMatching { has_rest_pattern } if !has_rest_pattern) {
+                        format!("Consider removing the field \"{field_name}\" from the struct pattern, and ending the pattern with `..`.")
+                    } else {
+                        Diagnostic::help_none()
+                    },
+                    if *struct_can_be_changed {
+                        match usage_context {
+                            StorageAccess | StructFieldAccess | PatternMatching { .. } => {
+                                format!("{} declaring the field \"{field_name}\" as public in \"{struct_name}\": `pub {field_name}: ...,`.",
+                                    if matches!(usage_context, PatternMatching { has_rest_pattern } if !has_rest_pattern) {
+                                        "Alternatively, consider"
+                                    } else {
+                                        "Consider"
+                                    }
+                                )
+                            },
+                            // For all other usages, detailed instructions are already given in specific messages.
+                            _ => Diagnostic::help_none(),
+                        }
+                    } else {
+                        Diagnostic::help_none()
+                    },
+                ],
+            },
+            StructFieldDoesNotExist { field_name, available_fields, is_public_struct_access, struct_name, struct_decl_span, struct_is_empty, usage_context } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Struct field does not exist".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    field_name.span(),
+                    format!("Field \"{field_name}\" does not exist in the struct \"{struct_name}\".")
+                ),
+                hints: {
+                    let public = if *is_public_struct_access { "public " } else { "" };
+
+                    let (hint, show_struct_decl) = if *struct_is_empty {
+                        (Some(format!("\"{struct_name}\" is an empty struct. It doesn't have any fields.")), false)
+                    }
+                    // If the struct anyhow cannot be instantiated (in the struct instantiation or storage declaration),
+                    // we don't show any additional hints.
+                    // Showing any available fields would be inconsistent and misleading, because they anyhow cannot be used.
+                    // Besides, "Struct cannot be instantiated" error will provide all the explanations and suggestions.
+                    else if (matches!(usage_context, StorageAccess) && *is_public_struct_access && available_fields.is_empty())
+                            ||
+                            (matches!(usage_context, StructInstantiation { struct_can_be_instantiated: false } | StorageDeclaration { struct_can_be_instantiated: false })) {
+                        // If the struct anyhow cannot be instantiated in the storage, don't show any additional hint
+                        // if there is an attempt to access a non existing field of such non-instantiable struct.
+                        //   or
+                        // Likewise, if we are in the struct instantiation or storage declaration and the struct
+                        // cannot be instantiated.
+                        (None, false)
+                    } else if !available_fields.is_empty() {
+                        // In all other cases, show the available fields.
+                        const NUM_OF_FIELDS_TO_DISPLAY: usize = 4;
+                        match &available_fields[..] {
+                            [field] => (Some(format!("Only available {public}field is \"{field}\".")), false),
+                            _ => (Some(format!("Available {public}fields are {}.", sequence_to_str(available_fields, Enclosing::DoubleQuote, NUM_OF_FIELDS_TO_DISPLAY))),
+                                    available_fields.len() > NUM_OF_FIELDS_TO_DISPLAY
+                                ),
+                        }
+                    }
+                    else {
+                        (None, false)
+                    };
+
+                    let mut hints = vec![];
+
+                    if let Some(hint) = hint {
+                        hints.push(Hint::help(source_engine, field_name.span(), hint));
+                    };
+
+                    if show_struct_decl {
+                        hints.push(Hint::info(
+                            source_engine,
+                            struct_decl_span.clone(),
+                            format!("Struct \"{struct_name}\" is declared here, and has {} {public}fields.",
+                                number_to_str(available_fields.len())
+                            )
+                        ));
+                    }
+
+                    hints
+                },
+                help: vec![],
+            },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we
@@ -1260,7 +1720,7 @@ impl ToDiagnostic for CompileError {
                     //       of a diagnostic must come from the enum variant parameters.
                     issue: Issue::error(source_engine, self.span(), format!("{}", self)),
                     ..Default::default()
-                }
+            }
         }
     }
 }
@@ -1289,12 +1749,15 @@ pub enum TypeNotAllowedReason {
     StringSliceInConst,
 }
 
-/// Returns the file name (with extension) for the provided `source_id`,
-/// or `None` if the `source_id` is `None` or the file name cannot be
-/// obtained.
-fn get_file_name(source_engine: &SourceEngine, source_id: Option<&SourceId>) -> Option<String> {
-    match source_id {
-        Some(source_id) => source_engine.get_file_name(source_id),
-        None => None,
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum StructFieldUsageContext {
+    StructInstantiation { struct_can_be_instantiated: bool },
+    StorageDeclaration { struct_can_be_instantiated: bool },
+    StorageAccess,
+    PatternMatching { has_rest_pattern: bool },
+    StructFieldAccess,
+    // TODO: Distinguish between struct filed access and destructing
+    //       once https://github.com/FuelLabs/sway/issues/5478 is implemented
+    //       and provide specific suggestions for these two cases.
+    //       (Destructing desugars to plain struct field access.)
 }

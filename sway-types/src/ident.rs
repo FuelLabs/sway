@@ -200,3 +200,15 @@ impl PartialOrd for IdentUnique {
 }
 
 impl Eq for IdentUnique {}
+
+impl Spanned for IdentUnique {
+    fn span(&self) -> Span {
+        self.0.span()
+    }
+}
+
+impl fmt::Display for IdentUnique {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(formatter, "{}", self.0.as_str())
+    }
+}

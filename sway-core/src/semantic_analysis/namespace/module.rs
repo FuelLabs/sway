@@ -162,7 +162,7 @@ impl Module {
         // get the decl out of the typed node:
         // we know as an invariant this must be a const decl, as we hardcoded a const decl in
         // the above `format!`.  if it isn't we report an
-        // error that only constant items are alowed, defensive programming etc...
+        // error that only constant items are allowed, defensive programming etc...
         let typed_decl = match typed_node.content {
             ty::TyAstNodeContent::Declaration(decl) => decl,
             _ => {

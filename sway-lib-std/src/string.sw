@@ -15,7 +15,7 @@ use ::option::Option;
 /// implemented, codepoints are *not* guaranteed to fall on byte boundaries
 pub struct String {
     /// The bytes representing the characters of the string.
-    bytes: Bytes,
+    pub bytes: Bytes,
 }
 
 impl String {
