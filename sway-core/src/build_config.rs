@@ -1,4 +1,4 @@
-use std::{path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::{atomic::AtomicBool, Arc}};
 
 use serde::{Deserialize, Serialize};
 use strum::EnumString;
@@ -56,7 +56,7 @@ pub struct BuildConfig {
     pub time_phases: bool,
     pub metrics_outfile: Option<String>,
     pub experimental: ExperimentalFlags,
-    pub lsp_mode: bool,
+    pub lsp_mode: Option<LspConfig>,
 }
 
 impl BuildConfig {
@@ -103,7 +103,7 @@ impl BuildConfig {
             metrics_outfile: None,
             optimization_level: OptLevel::Opt0,
             experimental: ExperimentalFlags::default(),
-            lsp_mode: false,
+            lsp_mode: None,
         }
     }
 
@@ -182,7 +182,7 @@ impl BuildConfig {
         }
     }
 
-    pub fn with_lsp_mode(self, lsp_mode: bool) -> Self {
+    pub fn with_lsp_mode(self, lsp_mode: Option<LspConfig>) -> Self {
         Self { lsp_mode, ..self }
     }
 
@@ -194,6 +194,17 @@ impl BuildConfig {
 #[derive(Debug, Default, Clone, Copy)]
 pub struct ExperimentalFlags {
     pub new_encoding: bool,
+}
+
+
+#[derive(Clone, Debug, Default)]
+pub struct LspConfig {
+    pub retrigger_compilation: Option<Arc<AtomicBool>>,
+    // This is set to true if compilation was triggered by a didChange LSP event. In this case, we
+    // bypass collecting type metadata and skip DCA.
+    // 
+    // This is set to false if compilation was triggered by a didSave or didOpen LSP event.
+	pub optimised_build: bool,
 }
 
 #[cfg(test)]

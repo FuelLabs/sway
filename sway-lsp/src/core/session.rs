@@ -30,14 +30,12 @@ use std::{
     sync::{atomic::AtomicBool, Arc},
 };
 use sway_core::{
-    decl_engine::DeclEngine,
-    language::{
+    decl_engine::DeclEngine, language::{
         lexed::LexedProgram,
         parsed::{AstNode, ParseProgram},
         ty::{self},
         HasSubmodules,
-    },
-    BuildTarget, Engines, Namespace, Programs,
+    }, BuildTarget, Engines, LspConfig, Namespace, Programs
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::{SourceEngine, SourceId, Spanned};
@@ -348,6 +346,7 @@ pub fn compile(
     uri: &Url,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
+    lsp_mode: Option<LspConfig>,
 ) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
     let build_plan = build_plan(uri)?;
     let tests_enabled = true;
@@ -355,7 +354,7 @@ pub fn compile(
         &build_plan,
         BuildTarget::default(),
         true,
-        true,
+        lsp_mode,
         tests_enabled,
         engines,
         retrigger_compilation,
@@ -445,9 +444,10 @@ pub fn parse_project(
     uri: &Url,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
+    lsp_mode: Option<LspConfig>,
     session: Arc<Session>,
 ) -> Result<(), LanguageServerError> {
-    let results = compile(uri, engines, retrigger_compilation)?;
+    let results = compile(uri, engines, retrigger_compilation, lsp_mode)?;
     if results.last().is_none() {
         return Err(LanguageServerError::ProgramsIsNone);
     }
@@ -579,7 +579,7 @@ mod tests {
         let uri = get_url(&dir);
         let engines = Engines::default();
         let session = Arc::new(Session::new());
-        let result = parse_project(&uri, &engines, None, session)
+        let result = parse_project(&uri, &engines, None, None, session)
             .expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,

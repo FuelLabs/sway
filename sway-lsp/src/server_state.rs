@@ -12,6 +12,7 @@ use dashmap::DashMap;
 use forc_pkg::PackageManifestFile;
 use lsp_types::{Diagnostic, Url};
 use parking_lot::RwLock;
+use sway_core::LspConfig;
 use std::{
     mem,
     path::PathBuf,
@@ -82,6 +83,7 @@ pub struct CompilationContext {
     pub session: Option<Arc<Session>>,
     pub uri: Option<Url>,
     pub version: Option<i32>,
+    pub optimised_build: bool,
 }
 
 impl ServerState {
@@ -125,12 +127,18 @@ impl ServerState {
                             }
                         }
 
+                        let lsp_mode = Some(LspConfig {
+                            retrigger_compilation: Some(retrigger_compilation.clone()),
+                            optimised_build: ctx.optimised_build,
+                        });
+
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
                         is_compiling.store(true, Ordering::SeqCst);
                         match session::parse_project(
                             &uri,
                             &engines_clone,
                             Some(retrigger_compilation.clone()),
+                            lsp_mode,
                             session.clone(),
                         ) {
                             Ok(_) => {

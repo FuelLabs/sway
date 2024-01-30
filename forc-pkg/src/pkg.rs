@@ -33,18 +33,10 @@ use sway_core::{
     abi_generation::{
         evm_abi,
         fuel_abi::{self, AbiContext},
-    },
-    asm_generation::ProgramABI,
-    decl_engine::DeclRefFunction,
-    fuel_prelude::{
+    }, asm_generation::ProgramABI, decl_engine::DeclRefFunction, fuel_prelude::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
-    },
-    language::{parsed::TreeType, Visibility},
-    semantic_analysis::namespace,
-    source_map::SourceMap,
-    transform::AttributeKind,
-    BuildTarget, Engines, FinalizedEntry,
+    }, language::{parsed::TreeType, Visibility}, semantic_analysis::namespace, source_map::SourceMap, transform::AttributeKind, BuildTarget, Engines, FinalizedEntry, LspConfig
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::constants::{CORE, PRELUDE, STD};
@@ -1567,8 +1559,8 @@ pub fn sway_build_config(
     .with_optimization_level(build_profile.optimization_level)
     .with_experimental(sway_core::ExperimentalFlags {
         new_encoding: build_profile.experimental.new_encoding,
-    })
-    .with_lsp_mode(build_profile.lsp_mode);
+    });
+    // .with_lsp_mode(build_profile.lsp_mode);
     Ok(build_config)
 }
 
@@ -2598,7 +2590,7 @@ pub fn check(
     plan: &BuildPlan,
     build_target: BuildTarget,
     terse_mode: bool,
-    lsp_mode: bool,
+    lsp_mode: Option<LspConfig>,
     include_tests: bool,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
@@ -2647,7 +2639,7 @@ pub fn check(
             &profile,
         )?
         .with_include_tests(include_tests)
-        .with_lsp_mode(lsp_mode);
+        .with_lsp_mode(lsp_mode.clone());
 
         let input = manifest.entry_string()?;
         let handler = Handler::default();
