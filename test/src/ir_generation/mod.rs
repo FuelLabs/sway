@@ -543,7 +543,7 @@ fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Modu
             );
 
             // Create a module for std and insert the core module.
-	    let std_name = BaseIdent::new_no_span("std".to_string());
+	    let std_name = BaseIdent::new_no_span("".to_string());
             let mut std_module = namespace::Module::new(std_name, Visibility::Private, false);
             std_module.insert_submodule(core_name.as_str().to_owned(), core_module);
             std_module
