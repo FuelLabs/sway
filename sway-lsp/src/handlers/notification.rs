@@ -31,7 +31,7 @@ pub async fn handle_did_open_text_document(
                 session: Some(session.clone()),
                 uri: Some(uri.clone()),
                 version: None,
-                optimised_build: false,
+                optimized_build: false,
             }));
         state.is_compiling.store(true, Ordering::SeqCst);
 
@@ -48,7 +48,7 @@ fn send_new_compilation_request(
     session: Arc<Session>,
     uri: &Url,
     version: Option<i32>,
-    optimised_build: bool,
+    optimized_build: bool,
 ) {
     if state.is_compiling.load(Ordering::SeqCst) {
         // If we are already compiling, then we need to retrigger compilation
@@ -70,7 +70,7 @@ fn send_new_compilation_request(
             session: Some(session.clone()),
             uri: Some(uri.clone()),
             version,
-            optimised_build,
+            optimized_build,
         }));
 }
 

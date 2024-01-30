@@ -83,7 +83,7 @@ pub struct CompilationContext {
     pub session: Option<Arc<Session>>,
     pub uri: Option<Url>,
     pub version: Option<i32>,
-    pub optimised_build: bool,
+    pub optimized_build: bool,
 }
 
 impl ServerState {
@@ -129,7 +129,7 @@ impl ServerState {
 
                         let lsp_mode = Some(LspConfig {
                             retrigger_compilation: Some(retrigger_compilation.clone()),
-                            optimised_build: ctx.optimised_build,
+                            optimized_build: ctx.optimized_build,
                         });
 
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling

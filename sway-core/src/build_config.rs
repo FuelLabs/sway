@@ -206,7 +206,7 @@ pub struct LspConfig {
     // bypass collecting type metadata and skip DCA.
     //
     // This is set to false if compilation was triggered by a didSave or didOpen LSP event.
-    pub optimised_build: bool,
+    pub optimized_build: bool,
 }
 
 #[cfg(test)]

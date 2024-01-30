@@ -480,14 +480,10 @@ pub fn parsed_to_ast(
 ) -> Result<ty::TyProgram, ErrorEmitted> {
     let experimental = build_config.map(|x| x.experimental).unwrap_or_default();
     let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
-    let retrigger_compilation = lsp_config
+    let (retrigger_compilation, optimized_build) = lsp_config
         .as_ref()
-        .map(|config| config.retrigger_compilation.clone())
-        .unwrap_or(None);
-    let optimised_build = lsp_config
-        .as_ref()
-        .map(|x| x.optimised_build)
-        .unwrap_or(false);
+        .map(|lsp| (lsp.retrigger_compilation.clone(), lsp.optimized_build))
+        .unwrap_or((None, false));
 
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
@@ -524,7 +520,7 @@ pub fn parsed_to_ast(
     };
 
     // Skip collecting metadata if we triggered an optimised build from LSP.
-    let types_metadata = if !optimised_build {
+    let types_metadata = if !optimized_build {
         // Collect information about the types used in this program
         let types_metadata_result = typed_program.collect_types_metadata(
             handler,
@@ -618,7 +614,7 @@ pub fn parsed_to_ast(
         }
     };
 
-    if !optimised_build {
+    if !optimized_build {
         // All unresolved types lead to compile errors.
         for err in types_metadata.iter().filter_map(|m| match m {
             TypeMetadata::UnresolvedType(name, call_site_span_opt) => {
@@ -650,8 +646,7 @@ pub fn compile_to_ast(
     let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
     let retrigger_compilation = lsp_config
         .as_ref()
-        .map(|config| config.retrigger_compilation.clone())
-        .unwrap_or(None);
+        .map_or(None, |config| config.retrigger_compilation.clone());
 
     check_should_abort(handler, retrigger_compilation.clone())?;
 
