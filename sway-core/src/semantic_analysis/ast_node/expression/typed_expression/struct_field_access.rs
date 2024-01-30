@@ -1,11 +1,12 @@
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{language::ty, Engines};
+use crate::{language::ty, Engines, Namespace};
 
 pub(crate) fn instantiate_struct_field_access(
     handler: &Handler,
     engines: &Engines,
+    namespace: &Namespace,
     parent: ty::TyExpression,
     field_to_access: Ident,
     span: Span,
@@ -15,6 +16,7 @@ pub(crate) fn instantiate_struct_field_access(
     let field = type_engine.get(parent.return_type).apply_subfields(
         handler,
         engines,
+        namespace,
         &[field_to_access],
         &parent.span,
     )?;

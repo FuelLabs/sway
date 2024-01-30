@@ -2,7 +2,7 @@ use crate::{
     decl_engine::*,
     engine_threading::Engines,
     language::{
-        ty::{self, TyDecl, TyStorageDecl},
+        ty::{self, StructAccessInfo, TyDecl, TyStorageDecl},
         CallPath,
     },
     namespace::*,
@@ -13,8 +13,9 @@ use crate::{
 use super::TraitMap;
 
 use sway_error::{
-    error::CompileError,
+    error::{CompileError, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
+    warning::{CompileWarning, Warning},
 };
 use sway_types::{span::Span, Spanned};
 
@@ -62,19 +63,18 @@ impl Items {
         &self,
         handler: &Handler,
         engines: &Engines,
+        namespace: &Namespace,
         fields: Vec<Ident>,
         storage_fields: &[ty::TyStorageField],
         storage_keyword_span: Span,
     ) -> Result<(ty::TyStorageAccess, TypeId), ErrorEmitted> {
-        let type_engine = engines.te();
-        let decl_engine = engines.de();
         match self.declared_storage {
             Some(ref decl_ref) => {
-                let storage = decl_engine.get_storage(&decl_ref.id().clone());
+                let storage = engines.de().get_storage(&decl_ref.id().clone());
                 storage.apply_storage_load(
                     handler,
-                    type_engine,
-                    decl_engine,
+                    engines,
+                    namespace,
                     fields,
                     storage_fields,
                     storage_keyword_span,
@@ -328,12 +328,13 @@ impl Items {
         }
     }
 
-    /// Returns a tuple where the first element is the [ResolvedType] of the actual expression, and
-    /// the second is the [ResolvedType] of its parent, for control-flow analysis.
+    /// Returns a tuple where the first element is the [TypeId] of the actual expression, and
+    /// the second is the [TypeId] of its parent.
     pub(crate) fn find_subfield_type(
         &self,
         handler: &Handler,
         engines: &Engines,
+        namespace: &Namespace,
         base_name: &Ident,
         projections: &[ty::ProjectionKind],
     ) -> Result<(TypeId, TypeId), ErrorEmitted> {
@@ -367,41 +368,49 @@ impl Items {
                     ty::ProjectionKind::StructField { name: field_name },
                 ) => {
                     let struct_decl = decl_engine.get_struct(&decl_ref);
-                    let field_type_opt = {
-                        struct_decl.fields.iter().find_map(
-                            |ty::TyStructField {
-                                 type_argument,
-                                 name,
-                                 ..
-                             }| {
-                                if name == field_name {
-                                    Some(type_argument.type_id)
-                                } else {
-                                    None
-                                }
-                            },
-                        )
-                    };
-                    let field_type = match field_type_opt {
-                        Some(field_type) => field_type,
-                        None => {
-                            // gather available fields for the error message
-                            let available_fields = struct_decl
-                                .fields
-                                .iter()
-                                .map(|field| field.name.as_str())
-                                .collect::<Vec<_>>();
+                    let (struct_can_be_changed, is_public_struct_access) =
+                        StructAccessInfo::get_info(&struct_decl, namespace).into();
 
-                            return Err(handler.emit_err(CompileError::FieldNotFound {
-                                field_name: field_name.clone(),
+                    let field_type_id = match struct_decl.find_field(field_name) {
+                        Some(struct_field) => {
+                            if is_public_struct_access && struct_field.is_private() {
+                                // TODO: Uncomment this code and delete the one with warnings once struct field privacy becomes a hard error.
+                                //       https://github.com/FuelLabs/sway/issues/5520
+                                // return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
+                                //     field_name: field_name.into(),
+                                //     struct_name: struct_decl.call_path.suffix.clone(),
+                                //     field_decl_span: struct_field.name.span(),
+                                //     struct_can_be_changed,
+                                //     usage_context: StructFieldUsageContext::StructFieldAccess,
+                                // }));
+                                handler.emit_warn(CompileWarning {
+                                    span: field_name.span(),
+                                    warning_content: Warning::StructFieldIsPrivate {
+                                        field_name: field_name.into(),
+                                        struct_name: struct_decl.call_path.suffix.clone(),
+                                        field_decl_span: struct_field.name.span(),
+                                        struct_can_be_changed,
+                                        usage_context: StructFieldUsageContext::StructFieldAccess,
+                                    },
+                                });
+                            }
+                            struct_field.type_argument.type_id
+                        }
+                        None => {
+                            return Err(handler.emit_err(CompileError::StructFieldDoesNotExist {
+                                field_name: field_name.into(),
+                                available_fields: struct_decl
+                                    .accessible_fields_names(is_public_struct_access),
+                                is_public_struct_access,
                                 struct_name: struct_decl.call_path.suffix.clone(),
-                                available_fields: available_fields.join(", "),
-                                span: field_name.span(),
+                                struct_decl_span: struct_decl.span(),
+                                struct_is_empty: struct_decl.is_empty(),
+                                usage_context: StructFieldUsageContext::StructFieldAccess,
                             }));
                         }
                     };
                     parent_rover = symbol;
-                    symbol = field_type;
+                    symbol = field_type_id;
                     symbol_span = field_name.span().clone();
                     full_name_for_error.push_str(field_name.as_str());
                     full_span_for_error =

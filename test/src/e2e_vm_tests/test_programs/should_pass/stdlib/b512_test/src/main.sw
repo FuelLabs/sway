@@ -1,6 +1,6 @@
 script;
 
-use std::b512::B512;
+use std::b512::*;
 
 // helper to prove contiguity of memory in B512 type's hi & lo fields.
 fn are_fields_contiguous(big_value: B512) -> bool {
@@ -52,10 +52,10 @@ fn main() -> bool {
     assert(one != three);
     assert(one != four);
 
-    let one_tuple = one.into();
-    let two_tuple = two.into();
-    let three_tuple = three.into();
-    let four_tuple = four.into();
+    let one_tuple:(b256,b256) = one.into();
+    let two_tuple:(b256,b256) = two.into();
+    let three_tuple:(b256,b256) = three.into();
+    let four_tuple:(b256,b256) = four.into();
 
     assert(one_tuple.0 == hi_bits);
     assert(one_tuple.1 == modified);

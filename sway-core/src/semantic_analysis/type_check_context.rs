@@ -93,6 +93,9 @@ pub struct TypeCheckContext<'a> {
     /// after we perform a dependency analysis on the tree.
     defer_monomorphization: bool,
 
+    /// Indicates when semantic analysis is type checking storage declaration.
+    storage_declaration: bool,
+
     /// Set of experimental flags
     pub experimental: ExperimentalFlags,
 }
@@ -126,6 +129,7 @@ impl<'a> TypeCheckContext<'a> {
             kind: TreeType::Contract,
             disallow_functions: false,
             defer_monomorphization: false,
+            storage_declaration: false,
             experimental: ExperimentalFlags::default(),
         }
     }
@@ -154,6 +158,7 @@ impl<'a> TypeCheckContext<'a> {
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             defer_monomorphization: self.defer_monomorphization,
+            storage_declaration: self.storage_declaration,
             experimental: self.experimental,
         }
     }
@@ -175,6 +180,7 @@ impl<'a> TypeCheckContext<'a> {
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             defer_monomorphization: self.defer_monomorphization,
+            storage_declaration: self.storage_declaration,
             experimental: self.experimental,
         }
     }
@@ -191,8 +197,7 @@ impl<'a> TypeCheckContext<'a> {
         with_submod_ctx: impl FnOnce(TypeCheckContext) -> T,
     ) -> T {
         // We're checking a submodule, so no need to pass through anything other than the
-        // namespace. However, we will likely want to pass through the type engine and declaration
-        // engine here once they're added.
+        // namespace and the engines.
         let Self { namespace, .. } = self;
         let mut submod_ns = namespace.enter_submodule(mod_name, visibility, module_span);
         let submod_ctx = TypeCheckContext::from_module_namespace(&mut submod_ns, self.engines);
@@ -297,6 +302,15 @@ impl<'a> TypeCheckContext<'a> {
         }
     }
 
+    /// Map this `TypeCheckContext` instance to a new one with
+    /// `storage_declaration` set to `true`.
+    pub(crate) fn with_storage_declaration(self) -> Self {
+        Self {
+            storage_declaration: true,
+            ..self
+        }
+    }
+
     // A set of accessor methods. We do this rather than making the fields `pub` in order to ensure
     // that these are only updated via the `with_*` methods that produce a new `TypeCheckContext`.
 
@@ -347,6 +361,10 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn defer_monomorphization(&self) -> bool {
         self.defer_monomorphization
+    }
+
+    pub(crate) fn storage_declaration(&self) -> bool {
+        self.storage_declaration
     }
 
     // Provide some convenience functions around the inner context.
@@ -1537,7 +1555,11 @@ impl<'a> TypeCheckContext<'a> {
             .insert_for_type(self.engines, type_id);
     }
 
-    pub(crate) fn with_experimental_flags(self, experimental: ExperimentalFlags) -> Self {
+    pub(crate) fn with_experimental_flags(self, experimental: Option<ExperimentalFlags>) -> Self {
+        let Some(experimental) = experimental else {
+            return self;
+        };
+
         Self {
             experimental,
             ..self

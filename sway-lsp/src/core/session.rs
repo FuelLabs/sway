@@ -355,6 +355,7 @@ pub fn compile(
         &build_plan,
         BuildTarget::default(),
         true,
+        true,
         tests_enabled,
         engines,
         retrigger_compilation,

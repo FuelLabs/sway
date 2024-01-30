@@ -3,7 +3,11 @@ use std::hash::{Hash, Hasher};
 use super::{ConstantDeclaration, FunctionDeclaration, FunctionParameter};
 
 use crate::{
-    decl_engine::DeclRefTrait, engine_threading::*, language::*, transform, type_system::*,
+    decl_engine::{parsed_id::ParsedDeclId, DeclRefTrait},
+    engine_threading::*,
+    language::*,
+    transform,
+    type_system::*,
 };
 use sway_error::handler::ErrorEmitted;
 use sway_types::{ident::Ident, span::Span, Spanned};
@@ -11,8 +15,8 @@ use sway_types::{ident::Ident, span::Span, Spanned};
 #[derive(Debug, Clone)]
 pub enum TraitItem {
     TraitFn(TraitFn),
-    Constant(ConstantDeclaration),
-    Type(TraitTypeDeclaration),
+    Constant(ParsedDeclId<ConstantDeclaration>),
+    Type(ParsedDeclId<TraitTypeDeclaration>),
     // to handle parser recovery: Error represents an incomplete trait item
     Error(Box<[Span]>, ErrorEmitted),
 }
@@ -23,7 +27,7 @@ pub struct TraitDeclaration {
     pub(crate) type_parameters: Vec<TypeParameter>,
     pub attributes: transform::AttributesMap,
     pub interface_surface: Vec<TraitItem>,
-    pub methods: Vec<FunctionDeclaration>,
+    pub methods: Vec<ParsedDeclId<FunctionDeclaration>>,
     pub supertraits: Vec<Supertrait>,
     pub visibility: Visibility,
     pub span: Span,

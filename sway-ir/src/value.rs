@@ -124,19 +124,6 @@ impl Value {
                     | InstOp::Ret(_, _)
                     | InstOp::FuelVm(FuelVmInstruction::Revert(_))
             ),
-            _ => false,
-        }
-    }
-
-    pub fn is_diverging(&self, context: &Context) -> bool {
-        match &context.values[self.0].value {
-            ValueDatum::Instruction(Instruction { op, .. }) => matches!(
-                op,
-                InstOp::Branch(..)
-                    | InstOp::ConditionalBranch { .. }
-                    | InstOp::Ret(..)
-                    | InstOp::FuelVm(FuelVmInstruction::Revert(..))
-            ),
             ValueDatum::Argument(..) | ValueDatum::Configurable(..) | ValueDatum::Constant(..) => {
                 false
             }

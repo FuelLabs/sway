@@ -485,6 +485,9 @@ impl Parse for UseTree {
 
 impl Parse for TypeField {
     fn parse(&self, ctx: &ParseContext) {
+        if let Some(visibility) = &self.visibility {
+            insert_keyword(ctx, visibility.span());
+        }
         self.ty.parse(ctx);
     }
 }
