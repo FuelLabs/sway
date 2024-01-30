@@ -25,10 +25,7 @@ use lsp_types::{
 use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, BuildPlan};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use std::{
-    path::PathBuf,
-    sync::{atomic::AtomicBool, Arc},
-};
+use std::{path::PathBuf, sync::Arc};
 use sway_core::{
     decl_engine::DeclEngine,
     language::{
