@@ -463,7 +463,6 @@ impl<'a> TypeCheckContext<'a> {
             } => {
                 let type_decl_opt = if let Some(root_type_id) = root_type_id {
                     self.namespace
-                        .root
                         .resolve_call_path_and_root_type_id(
                             handler,
                             self.engines,
