@@ -6,7 +6,7 @@
 <!-- structs:example:start -->
 Structs in Sway are a named grouping of types. You may also be familiar with structs via another name: _product types_. Sway does not make any significantly unique usages of structs; they are similar to most other languages which have structs. If you're coming from an object-oriented background, a struct is like the data attributes of an object.
 
-Those data attributes are called _fields_ and can be public and private.
+Those data attributes are called _fields_ and can be either public or private.
 
 Private struct fields can be accessed only within the module in which their struct is declared. Public fields are accessible everywhere where the struct is accessible. This access control on the field level allows more fine grained encapsulation of data.
 

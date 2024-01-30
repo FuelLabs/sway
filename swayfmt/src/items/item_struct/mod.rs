@@ -11,7 +11,7 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{keywords::Keyword, ItemStruct, PubToken};
+use sway_ast::ItemStruct;
 use sway_types::{ast::Delimiter, Spanned};
 
 #[cfg(test)]
@@ -77,7 +77,9 @@ impl Format for ItemStruct {
                                 type_field
                                     .visibility
                                     .as_ref()
-                                    .map_or(0, |_| PubToken::AS_STR.len() + 1)
+                                    // We don't want to hard code the token here to `pub` or just hardcode 4.
+                                    // This is in case we introduce e.g. `pub(crate)` one day.
+                                    .map_or(0, |token| token.span().as_str().len() + 1)
                                     + type_field.name.as_str().len()
                             })
                             .collect();

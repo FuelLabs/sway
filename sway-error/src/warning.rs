@@ -127,6 +127,7 @@ pub enum Warning {
         message: String,
     },
     // TODO: Remove all these warnings once private struct fields violations become a hard error.
+    //       https://github.com/FuelLabs/sway/issues/5520
     MatchStructPatternMustIgnorePrivateFields {
         private_fields: Vec<Ident>,
         /// Original, non-aliased struct name.
@@ -315,7 +316,7 @@ impl fmt::Display for Warning {
 
 #[allow(dead_code)]
 const FUTURE_HARD_ERROR_HELP: &str =
-    "*** In the upcoming versions of Sway this warning will become a hard error. ***";
+    "In future versions of Sway this warning will become a hard error.";
 
 impl ToDiagnostic for CompileWarning {
     fn to_diagnostic(&self, source_engine: &sway_types::SourceEngine) -> Diagnostic {
@@ -417,7 +418,7 @@ impl ToDiagnostic for CompileWarning {
                             plural_s(private_fields.len()),
                         )
                     ),
-                    Hint::warning(
+                    Hint::error(
                         source_engine,
                         span.clone(),
                         FUTURE_HARD_ERROR_HELP.to_string()
@@ -472,7 +473,7 @@ impl ToDiagnostic for CompileWarning {
                     } else {
                         Hint::none()
                     },
-                    Hint::warning(
+                    Hint::error(
                         source_engine,
                         field_name.span(),
                         FUTURE_HARD_ERROR_HELP.to_string()
@@ -571,6 +572,11 @@ impl ToDiagnostic for CompileWarning {
                     } else {
                         Hint::none()
                     },
+                    Hint::error(
+                        source_engine,
+                        span.clone(),
+                        FUTURE_HARD_ERROR_HELP.to_string()
+                    ),
                     Hint::info(
                         source_engine,
                         struct_decl_span.clone(),
