@@ -443,17 +443,19 @@ pub fn parse_project(
     lsp_mode: Option<LspConfig>,
     session: Arc<Session>,
 ) -> Result<(), LanguageServerError> {
-    let results = compile(uri, engines, lsp_mode)?;
+    let results = compile(uri, engines, lsp_mode.clone())?;
     if results.last().is_none() {
         return Err(LanguageServerError::ProgramsIsNone);
     }
     let diagnostics = traverse(results, engines, session.clone())?;
     // Only write the diagnostics results on didSave or didOpen.
-    if let Some(config) = lsp_mode
-        && !config.optimized_build
-        && let Some((errors, warnings)) = &diagnostics {
-        *session.diagnostics.write() =
-            capabilities::diagnostic::get_diagnostics(warnings, errors, engines.se());
+    if let Some(config) = &lsp_mode {
+        if !config.optimized_build {
+            if let Some((errors, warnings)) = &diagnostics {
+                *session.diagnostics.write() =
+                    capabilities::diagnostic::get_diagnostics(warnings, errors, engines.se());
+            }
+        }
     }
     if let Some(typed) = &session.compiled_program.read().typed {
         session.runnables.clear();
