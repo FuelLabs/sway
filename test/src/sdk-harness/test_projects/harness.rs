@@ -35,6 +35,7 @@ mod storage_bytes;
 mod storage_init;
 mod storage_map;
 mod storage_map_nested;
+mod private_struct_fields_in_storage_and_abi;
 mod storage_string;
 mod storage_vec;
 mod storage_vec_nested;

@@ -124,7 +124,7 @@ impl Module {
         let name = const_item.name.clone();
         let attributes = Default::default();
         // convert to const decl
-        let const_decl = to_parsed_lang::item_const_to_constant_declaration(
+        let const_decl_id = to_parsed_lang::item_const_to_constant_declaration(
             &mut to_parsed_lang::Context::default(),
             handler,
             engines,
@@ -134,6 +134,7 @@ impl Module {
         )?;
 
         // Temporarily disallow non-literals. See https://github.com/FuelLabs/sway/issues/2647.
+        let const_decl = engines.pe().get_constant(&const_decl_id);
         let has_literal = match &const_decl.value {
             Some(value) => {
                 matches!(value.kind, ExpressionKind::Literal(_))
@@ -148,7 +149,7 @@ impl Module {
         }
 
         let ast_node = AstNode {
-            content: AstNodeContent::Declaration(Declaration::ConstantDeclaration(const_decl)),
+            content: AstNodeContent::Declaration(Declaration::ConstantDeclaration(const_decl_id)),
             span: const_item_span.clone(),
         };
         let mut ns = Namespace::init_root(Default::default());
@@ -161,7 +162,7 @@ impl Module {
         // get the decl out of the typed node:
         // we know as an invariant this must be a const decl, as we hardcoded a const decl in
         // the above `format!`.  if it isn't we report an
-        // error that only constant items are alowed, defensive programming etc...
+        // error that only constant items are allowed, defensive programming etc...
         let typed_decl = match typed_node.content {
             ty::TyAstNodeContent::Declaration(decl) => decl,
             _ => {

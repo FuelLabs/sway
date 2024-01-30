@@ -3,6 +3,7 @@ use crate::{
         generate_destructured_struct_var_name, generate_matched_value_var_name,
         generate_tuple_var_name,
     },
+    decl_engine::{parsed_engine::ParsedDeclEngineInsert, parsed_id::ParsedDeclId},
     language::{parsed::*, *},
     transform::{attribute::*, to_parsed_lang::context::Context},
     type_system::*,
@@ -90,8 +91,9 @@ pub fn module_to_sway_parse_tree(
     Ok(ParseTree { span, root_nodes })
 }
 
-fn ast_node_is_test_fn(node: &AstNode) -> bool {
-    if let AstNodeContent::Declaration(Declaration::FunctionDeclaration(ref decl)) = node.content {
+fn ast_node_is_test_fn(engines: &Engines, node: &AstNode) -> bool {
+    if let AstNodeContent::Declaration(Declaration::FunctionDeclaration(decl_id)) = node.content {
+        let decl = engines.pe().get_function(&decl_id);
         if decl.attributes.contains_key(&AttributeKind::Test) {
             return true;
         }
@@ -172,9 +174,10 @@ fn item_to_ast_nodes(
             item_enum_to_enum_declaration(context, handler, engines, item_enum, attributes)?,
         )),
         ItemKind::Fn(item_fn) => {
-            let function_declaration = item_fn_to_function_declaration(
+            let function_declaration_decl_id = item_fn_to_function_declaration(
                 context, handler, engines, item_fn, attributes, None, None,
             )?;
+            let function_declaration = engines.pe().get_function(&function_declaration_decl_id);
             error_if_self_param_is_not_allowed(
                 context,
                 handler,
@@ -182,7 +185,9 @@ fn item_to_ast_nodes(
                 &function_declaration.parameters,
                 "a free function",
             )?;
-            decl(Declaration::FunctionDeclaration(function_declaration))
+            decl(Declaration::FunctionDeclaration(
+                function_declaration_decl_id,
+            ))
         }
         ItemKind::Trait(item_trait) => decl(Declaration::TraitDeclaration(
             item_trait_to_trait_declaration(context, handler, engines, item_trait, attributes)?,
@@ -339,7 +344,7 @@ fn item_struct_to_struct_declaration(
     engines: &Engines,
     item_struct: ItemStruct,
     attributes: AttributesMap,
-) -> Result<StructDeclaration, ErrorEmitted> {
+) -> Result<ParsedDeclId<StructDeclaration>, ErrorEmitted> {
     // FIXME(Centril): We shoudln't be collecting into a temporary  `errors` here. Recover instead!
     let mut errors = Vec::new();
     let span = item_struct.span();
@@ -384,7 +389,7 @@ fn item_struct_to_struct_declaration(
         return Err(emitted);
     }
 
-    let struct_declaration = StructDeclaration {
+    let struct_declaration_id = engines.pe().insert(StructDeclaration {
         name: item_struct.name,
         attributes,
         fields,
@@ -397,8 +402,8 @@ fn item_struct_to_struct_declaration(
         )?,
         visibility: pub_token_opt_to_visibility(item_struct.visibility),
         span,
-    };
-    Ok(struct_declaration)
+    });
+    Ok(struct_declaration_id)
 }
 
 fn item_enum_to_enum_declaration(
@@ -407,7 +412,7 @@ fn item_enum_to_enum_declaration(
     engines: &Engines,
     item_enum: ItemEnum,
     attributes: AttributesMap,
-) -> Result<EnumDeclaration, ErrorEmitted> {
+) -> Result<ParsedDeclId<EnumDeclaration>, ErrorEmitted> {
     let mut errors = Vec::new();
     let span = item_enum.span();
     let variants = item_enum
@@ -453,7 +458,7 @@ fn item_enum_to_enum_declaration(
         return Err(emitted);
     }
 
-    let enum_declaration = EnumDeclaration {
+    let enum_declaration_id = engines.pe().insert(EnumDeclaration {
         name: item_enum.name,
         type_parameters: generic_params_opt_to_type_parameters(
             context,
@@ -466,8 +471,8 @@ fn item_enum_to_enum_declaration(
         span,
         visibility: pub_token_opt_to_visibility(item_enum.visibility),
         attributes,
-    };
-    Ok(enum_declaration)
+    });
+    Ok(enum_declaration_id)
 }
 
 fn item_fn_to_function_declaration(
@@ -478,7 +483,7 @@ fn item_fn_to_function_declaration(
     attributes: AttributesMap,
     parent_generic_params_opt: Option<GenericParams>,
     parent_where_clause_opt: Option<WhereClause>,
-) -> Result<FunctionDeclaration, ErrorEmitted> {
+) -> Result<ParsedDeclId<FunctionDeclaration>, ErrorEmitted> {
     let span = item_fn.span();
     let return_type = match item_fn.fn_signature.return_type_opt {
         Some((_right_arrow, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
@@ -496,7 +501,7 @@ fn item_fn_to_function_declaration(
             }
         }
     };
-    Ok(FunctionDeclaration {
+    let fn_decl = FunctionDeclaration {
         purity: get_attributed_purity(context, handler, &attributes)?,
         attributes,
         name: item_fn.fn_signature.name,
@@ -527,7 +532,9 @@ fn item_fn_to_function_declaration(
             })
             .transpose()?
             .unwrap_or(vec![]),
-    })
+    };
+    let decl_id = engines.pe().insert(fn_decl);
+    Ok(decl_id)
 }
 
 fn get_attributed_purity(
@@ -588,7 +595,7 @@ fn item_trait_to_trait_declaration(
     engines: &Engines,
     item_trait: ItemTrait,
     attributes: AttributesMap,
-) -> Result<TraitDeclaration, ErrorEmitted> {
+) -> Result<ParsedDeclId<TraitDeclaration>, ErrorEmitted> {
     let span = item_trait.span();
     let type_parameters = generic_params_opt_to_type_parameters(
         context,
@@ -652,7 +659,7 @@ fn item_trait_to_trait_declaration(
         Some((_colon_token, traits)) => traits_to_supertraits(context, handler, traits)?,
     };
     let visibility = pub_token_opt_to_visibility(item_trait.visibility);
-    Ok(TraitDeclaration {
+    let trait_decl_id = engines.pe().insert(TraitDeclaration {
         name: item_trait.name,
         type_parameters,
         interface_surface,
@@ -661,7 +668,8 @@ fn item_trait_to_trait_declaration(
         visibility,
         attributes,
         span,
-    })
+    });
+    Ok(trait_decl_id)
 }
 
 fn item_impl_to_declaration(
@@ -725,6 +733,7 @@ fn item_impl_to_declaration(
                 items,
                 block_span,
             };
+            let impl_trait = engines.pe().insert(impl_trait);
             Ok(Declaration::ImplTrait(impl_trait))
         }
         None => match &*engines.te().get(implementing_for.type_id) {
@@ -737,6 +746,7 @@ fn item_impl_to_declaration(
                     items,
                     block_span,
                 };
+                let impl_self = engines.pe().insert(impl_self);
                 Ok(Declaration::ImplSelf(impl_self))
             }
         },
@@ -780,9 +790,9 @@ fn item_abi_to_abi_declaration(
     engines: &Engines,
     item_abi: ItemAbi,
     attributes: AttributesMap,
-) -> Result<AbiDeclaration, ErrorEmitted> {
+) -> Result<ParsedDeclId<AbiDeclaration>, ErrorEmitted> {
     let span = item_abi.span();
-    Ok(AbiDeclaration {
+    let abi_decl = AbiDeclaration {
         name: item_abi.name,
         interface_surface: {
             item_abi
@@ -841,7 +851,7 @@ fn item_abi_to_abi_declaration(
                     if !cfg_eval(context, handler, &attributes, context.experimental)? {
                         return Ok(None);
                     }
-                    let function_declaration = item_fn_to_function_declaration(
+                    let function_declaration_id = item_fn_to_function_declaration(
                         context,
                         handler,
                         engines,
@@ -850,6 +860,7 @@ fn item_abi_to_abi_declaration(
                         None,
                         None,
                     )?;
+                    let function_declaration = engines.pe().get_function(&function_declaration_id);
                     error_if_self_param_is_not_allowed(
                         context,
                         handler,
@@ -857,14 +868,16 @@ fn item_abi_to_abi_declaration(
                         &function_declaration.parameters,
                         "a method provided by ABI",
                     )?;
-                    Ok(Some(function_declaration))
+                    Ok(Some(function_declaration_id))
                 })
                 .filter_map_ok(|fn_decl| fn_decl)
                 .collect::<Result<_, _>>()?,
         },
         span,
         attributes,
-    })
+    };
+    let abi_decl = engines.pe().insert(abi_decl);
+    Ok(abi_decl)
 }
 
 pub(crate) fn item_const_to_constant_declaration(
@@ -874,7 +887,7 @@ pub(crate) fn item_const_to_constant_declaration(
     item_const: ItemConst,
     attributes: AttributesMap,
     require_expression: bool,
-) -> Result<ConstantDeclaration, ErrorEmitted> {
+) -> Result<ParsedDeclId<ConstantDeclaration>, ErrorEmitted> {
     let span = item_const.span();
 
     let expr = match item_const.expr_opt {
@@ -904,7 +917,7 @@ pub(crate) fn item_const_to_constant_declaration(
         }
     };
 
-    Ok(ConstantDeclaration {
+    let const_decl = ConstantDeclaration {
         name: item_const.name,
         type_ascription,
         value: expr,
@@ -912,7 +925,10 @@ pub(crate) fn item_const_to_constant_declaration(
         is_configurable: false,
         attributes,
         span,
-    })
+    };
+    let const_decl = engines.pe().insert(const_decl);
+
+    Ok(const_decl)
 }
 
 pub(crate) fn trait_type_to_trait_type_declaration(
@@ -921,10 +937,9 @@ pub(crate) fn trait_type_to_trait_type_declaration(
     engines: &Engines,
     trait_type: TraitType,
     attributes: AttributesMap,
-) -> Result<TraitTypeDeclaration, ErrorEmitted> {
+) -> Result<ParsedDeclId<TraitTypeDeclaration>, ErrorEmitted> {
     let span = trait_type.span();
-
-    Ok(TraitTypeDeclaration {
+    let trait_type_decl = TraitTypeDeclaration {
         name: trait_type.name.clone(),
         attributes,
         ty_opt: if let Some(ty) = trait_type.ty_opt {
@@ -933,7 +948,9 @@ pub(crate) fn trait_type_to_trait_type_declaration(
             None
         },
         span,
-    })
+    };
+    let trait_type_decl = engines.pe().insert(trait_type_decl);
+    Ok(trait_type_decl)
 }
 
 fn item_storage_to_storage_declaration(
@@ -942,7 +959,7 @@ fn item_storage_to_storage_declaration(
     engines: &Engines,
     item_storage: ItemStorage,
     attributes: AttributesMap,
-) -> Result<StorageDeclaration, ErrorEmitted> {
+) -> Result<ParsedDeclId<StorageDeclaration>, ErrorEmitted> {
     let mut errors = Vec::new();
     let span = item_storage.span();
     let fields: Vec<StorageField> = item_storage
@@ -986,6 +1003,7 @@ fn item_storage_to_storage_declaration(
         fields,
         storage_keyword: item_storage.storage_token.into(),
     };
+    let storage_declaration = engines.pe().insert(storage_declaration);
     Ok(storage_declaration)
 }
 
@@ -995,7 +1013,7 @@ fn item_configurable_to_constant_declarations(
     engines: &Engines,
     item_configurable: ItemConfigurable,
     _attributes: AttributesMap,
-) -> Result<Vec<ConstantDeclaration>, ErrorEmitted> {
+) -> Result<Vec<ParsedDeclId<ConstantDeclaration>>, ErrorEmitted> {
     let mut errors = Vec::new();
 
     if context.module_has_configurable_block() {
@@ -1004,7 +1022,7 @@ fn item_configurable_to_constant_declarations(
         });
     }
 
-    let declarations: Vec<ConstantDeclaration> = item_configurable
+    let declarations: Vec<ParsedDeclId<ConstantDeclaration>> = item_configurable
         .fields
         .into_inner()
         .into_iter()
@@ -1027,7 +1045,8 @@ fn item_configurable_to_constant_declarations(
 
     // Make sure each configurable is declared once
     let mut names_of_declarations = std::collections::HashSet::new();
-    declarations.iter().for_each(|v| {
+    declarations.iter().for_each(|decl_id| {
+        let v = engines.pe().get_constant(decl_id);
         if !names_of_declarations.insert(v.name.clone()) {
             errors.push(ConvertParseTreeError::DuplicateConfigurable {
                 name: v.name.clone(),
@@ -1051,15 +1070,17 @@ fn item_type_alias_to_type_alias_declaration(
     engines: &Engines,
     item_type_alias: ItemTypeAlias,
     attributes: AttributesMap,
-) -> Result<TypeAliasDeclaration, ErrorEmitted> {
+) -> Result<ParsedDeclId<TypeAliasDeclaration>, ErrorEmitted> {
     let span = item_type_alias.span();
-    Ok(TypeAliasDeclaration {
+    let type_alias_decl = TypeAliasDeclaration {
         name: item_type_alias.name.clone(),
         attributes,
         ty: ty_to_type_argument(context, handler, engines, item_type_alias.ty)?,
         visibility: pub_token_opt_to_visibility(item_type_alias.visibility),
         span,
-    })
+    };
+    let type_alias_decl = engines.pe().insert(type_alias_decl);
+    Ok(type_alias_decl)
 }
 
 fn type_field_to_struct_field(
@@ -1071,6 +1092,7 @@ fn type_field_to_struct_field(
 ) -> Result<StructField, ErrorEmitted> {
     let span = type_field.span();
     let struct_field = StructField {
+        visibility: pub_token_opt_to_visibility(type_field.visibility),
         name: type_field.name,
         attributes,
         type_argument: ty_to_type_argument(context, handler, engines, type_field.ty)?,
@@ -2406,10 +2428,9 @@ fn configurable_field_to_constant_declaration(
     engines: &Engines,
     configurable_field: sway_ast::ConfigurableField,
     attributes: AttributesMap,
-) -> Result<ConstantDeclaration, ErrorEmitted> {
+) -> Result<ParsedDeclId<ConstantDeclaration>, ErrorEmitted> {
     let span = configurable_field.name.span();
-
-    Ok(ConstantDeclaration {
+    let const_decl = ConstantDeclaration {
         name: configurable_field.name,
         type_ascription: ty_to_type_argument(context, handler, engines, configurable_field.ty)?,
         value: Some(expr_to_expression(
@@ -2422,7 +2443,9 @@ fn configurable_field_to_constant_declaration(
         is_configurable: true,
         attributes,
         span,
-    })
+    };
+    let const_decl = engines.pe().insert(const_decl);
+    Ok(const_decl)
 }
 
 fn statement_to_ast_nodes(
@@ -2438,7 +2461,7 @@ fn statement_to_ast_nodes(
         Statement::Item(item) => {
             let nodes = item_to_ast_nodes(context, handler, engines, item, false, None)?;
             nodes.iter().try_fold((), |res, node| {
-                if ast_node_is_test_fn(node) {
+                if ast_node_is_test_fn(engines, node) {
                     let span = node.span.clone();
                     let error = ConvertParseTreeError::TestFnOnlyAllowedAtModuleLevel { span };
                     Err(handler.emit_err(error.into()))
@@ -2819,25 +2842,27 @@ fn match_expr_to_expression(
         span: var_decl_span,
     };
 
+    let var_decl = engines.pe().insert(VariableDeclaration {
+        type_ascription: {
+            let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
+            TypeArgument {
+                type_id,
+                initial_type_id: type_id,
+                span: var_decl_name.span(),
+                call_path_tree: None,
+            }
+        },
+        name: var_decl_name,
+        is_mutable: false,
+        body: value,
+    });
+
     Ok(Expression {
         kind: ExpressionKind::CodeBlock(CodeBlock {
             contents: vec![
                 AstNode {
                     content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
-                        VariableDeclaration {
-                            type_ascription: {
-                                let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
-                                TypeArgument {
-                                    type_id,
-                                    initial_type_id: type_id,
-                                    span: var_decl_name.span(),
-                                    call_path_tree: None,
-                                }
-                            },
-                            name: var_decl_name,
-                            is_mutable: false,
-                            body: value,
-                        },
+                        var_decl,
                     )),
                     span: span.clone(),
                 },
@@ -3203,13 +3228,12 @@ fn expr_struct_field_to_struct_expression_field(
         Some((_colon_token, expr)) => expr_to_expression(context, handler, engines, *expr)?,
         None => Expression {
             kind: ExpressionKind::Variable(expr_struct_field.field_name.clone()),
-            span: span.clone(),
+            span,
         },
     };
     Ok(StructExpressionField {
         name: expr_struct_field.field_name,
         value,
-        span,
     })
 }
 
@@ -3355,14 +3379,15 @@ fn statement_let_to_ast_nodes(
                         }
                     }
                 };
+                let var_decl = engines.pe().insert(VariableDeclaration {
+                    name,
+                    type_ascription,
+                    body: expression,
+                    is_mutable: mutable.is_some(),
+                });
                 let ast_node = AstNode {
                     content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
-                        VariableDeclaration {
-                            name,
-                            type_ascription,
-                            body: expression,
-                            is_mutable: mutable.is_some(),
-                        },
+                        var_decl,
                     )),
                     span,
                 };
@@ -3408,12 +3433,12 @@ fn statement_let_to_ast_nodes(
                 };
 
                 // Save the destructure to the new name as a new variable declaration
-                let save_body_first = VariableDeclaration {
+                let save_body_first = engines.pe().insert(VariableDeclaration {
                     name: destructured_struct_name.clone(),
                     type_ascription,
                     body: expression,
                     is_mutable: false,
-                };
+                });
                 ast_nodes.push(AstNode {
                     content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
                         save_body_first,
@@ -3540,12 +3565,12 @@ fn statement_let_to_ast_nodes(
                 };
 
                 // Save the tuple to the new name as a new variable declaration.
-                let save_body_first = VariableDeclaration {
+                let save_body_first = engines.pe().insert(VariableDeclaration {
                     name: tuple_name.clone(),
                     type_ascription,
                     body: expression,
                     is_mutable: false,
-                };
+                });
                 ast_nodes.push(AstNode {
                     content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
                         save_body_first,
@@ -3561,12 +3586,12 @@ fn statement_let_to_ast_nodes(
 
                 // Override the previous declaration with a tuple of placeholders to check the
                 // shape of the tuple
-                let check_tuple_shape_second = VariableDeclaration {
+                let check_tuple_shape_second = engines.pe().insert(VariableDeclaration {
                     name: tuple_name,
                     type_ascription: placeholders_type_ascription,
                     body: new_expr.clone(),
                     is_mutable: false,
-                };
+                });
                 ast_nodes.push(AstNode {
                     content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
                         check_tuple_shape_second,

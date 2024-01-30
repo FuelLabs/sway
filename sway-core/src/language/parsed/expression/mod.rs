@@ -321,7 +321,6 @@ pub enum ReassignmentTarget {
 pub struct StructExpressionField {
     pub name: Ident,
     pub value: Expression,
-    pub(crate) span: Span,
 }
 
 impl Spanned for Expression {

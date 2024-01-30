@@ -79,6 +79,69 @@ pub struct Foo<T, P> {
         &mut formatter,
     );
 }
+
+#[test]
+fn struct_alignment_with_public_fields() {
+    let mut formatter = Formatter::default();
+    formatter.config.structures.field_alignment = FieldAlignment::AlignFields(40);
+
+    check_with_formatter(
+        r#"contract;
+pub struct Foo<T, P> {
+   barbazfoo: u64,
+   pub baz     : bool,
+}
+"#,
+        r#"contract;
+pub struct Foo<T, P> {
+    barbazfoo : u64,
+    pub baz   : bool,
+}
+"#,
+        &mut formatter,
+    );
+
+    check_with_formatter(
+        r#"contract;
+pub struct Foo<T, P> {
+   pub barbazfoo: u64,
+   baz     : bool,
+}
+"#,
+        r#"contract;
+pub struct Foo<T, P> {
+    pub barbazfoo : u64,
+    baz           : bool,
+}
+"#,
+        &mut formatter,
+    );
+}
+
+#[test]
+fn struct_public_fields() {
+    let mut formatter = Formatter::default();
+    formatter.config.structures.field_alignment = FieldAlignment::Off;
+
+    check_with_formatter(
+        r#"contract;
+pub struct Foo<T, P> {
+   pub  barbaz:   T,
+   foo: u64,
+     pub  baz  : bool,
+}
+"#,
+        r#"contract;
+pub struct Foo<T, P> {
+    pub barbaz: T,
+    foo: u64,
+    pub baz: bool,
+}
+"#,
+        &mut formatter,
+    );
+}
+
 #[test]
 fn struct_ending_comma() {
     check(
