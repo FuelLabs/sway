@@ -28,5 +28,11 @@ sway-types = { version = "0.49.1", path = "../../sway-types" }
 swayfmt = { version = "0.49.1", path = "../../swayfmt" }
 
 [dev-dependencies]
+criterion = "0.5"
 dir_indexer = "0.0.2"
 expect-test = "1.4.1"
+tikv-jemallocator = "0.5"
+
+[[bench]]
+name = "bench_main"
+harness = false
