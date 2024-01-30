@@ -1,13 +1,16 @@
 use super::{ConstantDeclaration, FunctionDeclaration, TraitTypeDeclaration};
-use crate::{language::CallPath, type_system::TypeArgument, TypeParameter};
+use crate::{
+    decl_engine::parsed_id::ParsedDeclId, language::CallPath, type_system::TypeArgument,
+    TypeParameter,
+};
 
 use sway_types::span::Span;
 
 #[derive(Debug, Clone)]
 pub enum ImplItem {
-    Fn(FunctionDeclaration),
-    Constant(ConstantDeclaration),
-    Type(TraitTypeDeclaration),
+    Fn(ParsedDeclId<FunctionDeclaration>),
+    Constant(ParsedDeclId<ConstantDeclaration>),
+    Type(ParsedDeclId<TraitTypeDeclaration>),
 }
 
 #[derive(Debug, Clone)]

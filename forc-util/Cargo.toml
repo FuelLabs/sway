@@ -9,7 +9,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-annotate-snippets = { version = "0.9", features = ["color"] }
+annotate-snippets = { version = "0.10.1" }
 ansi_term = "0.12"
 anyhow = "1"
 clap = { version = "3.1", features = ["cargo", "derive", "env"] }

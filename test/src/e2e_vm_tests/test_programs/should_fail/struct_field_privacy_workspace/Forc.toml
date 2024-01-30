@@ -1,0 +1,2 @@
+[workspace]
+members = ["test_script", "test_lib"] 
