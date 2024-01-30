@@ -448,7 +448,10 @@ pub fn parse_project(
         return Err(LanguageServerError::ProgramsIsNone);
     }
     let diagnostics = traverse(results, engines, session.clone())?;
-    if let Some((errors, warnings)) = &diagnostics {
+    // Only write the diagnostics results on didSave or didOpen.
+    if let Some(config) = lsp_mode
+        && !config.optimized_build
+        && let Some((errors, warnings)) = &diagnostics {
         *session.diagnostics.write() =
             capabilities::diagnostic::get_diagnostics(warnings, errors, engines.se());
     }
