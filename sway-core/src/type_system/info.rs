@@ -1420,12 +1420,10 @@ impl TypeInfo {
             TypeInfo::Alias {
                 ty: TypeArgument { type_id, .. },
                 ..
-            } => {
-                engines
-                    .te()
-                    .get(*type_id)
-                    .expect_tuple(handler, engines, debug_span)
-            }
+            } => engines
+                .te()
+                .get(*type_id)
+                .expect_tuple(handler, engines, debug_span),
             TypeInfo::ErrorRecovery(err) => Err(*err),
             a => Err(handler.emit_err(CompileError::NotATuple {
                 actually: engines.help_out(a).to_string(),

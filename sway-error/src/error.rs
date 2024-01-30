@@ -288,15 +288,9 @@ pub enum CompileError {
     #[error("This is a {actually}, not a struct. Fields can only be accessed on structs.")]
     FieldAccessOnNonStruct { actually: String, span: Span },
     #[error("This is a {actually}, not a tuple. Elements can only be access on tuples.")]
-    NotATuple {
-        actually: String,
-        span: Span,
-    },
+    NotATuple { actually: String, span: Span },
     #[error("This expression has type \"{actually}\", which is not an indexable type.")]
-    NotIndexable {
-        actually: String,
-        span: Span,
-    },
+    NotIndexable { actually: String, span: Span },
     #[error("\"{name}\" is a {actually}, not an enum.")]
     NotAnEnum {
         name: String,
