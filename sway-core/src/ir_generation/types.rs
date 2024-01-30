@@ -99,7 +99,7 @@ pub(super) fn get_struct_name_field_index_and_type(
                 decl.fields
                     .iter()
                     .enumerate()
-                    .find(|(_, field)| field.name == field_name.clone())
+                    .find(|(_, field)| field.name == *field_name)
                     .map(|(idx, field)| (idx as u64, field.type_argument.type_id)),
             ))
         }

@@ -73,6 +73,7 @@ impl ty::TyStructField {
                 type_engine.insert(ctx.engines(), TypeInfo::ErrorRecovery(err), None)
             });
         let field = ty::TyStructField {
+            visibility: field.visibility,
             name: field.name,
             span: field.span,
             type_argument,

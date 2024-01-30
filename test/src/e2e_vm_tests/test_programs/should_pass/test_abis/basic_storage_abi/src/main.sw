@@ -1,10 +1,10 @@
 library;
 
 pub struct Quad {
-    v1: u64,
-    v2: u64,
-    v3: u64,
-    v4: u64,
+    pub v1: u64,
+    pub v2: u64,
+    pub v3: u64,
+    pub v4: u64,
 }
 
 abi BasicStorage {
