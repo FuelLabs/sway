@@ -27,7 +27,7 @@ use crate::source_map::SourceMap;
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
 pub use asm_generation::{CompiledBytecode, FinalizedEntry};
-pub use build_config::{BuildConfig, BuildTarget, OptLevel, LspConfig};
+pub use build_config::{BuildConfig, BuildTarget, LspConfig, OptLevel};
 use control_flow_analysis::ControlFlowGraph;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModulePath, ProgramsCacheEntry};
@@ -480,10 +480,12 @@ pub fn parsed_to_ast(
 ) -> Result<ty::TyProgram, ErrorEmitted> {
     let experimental = build_config.map(|x| x.experimental).unwrap_or_default();
     let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
-    let retrigger_compilation = lsp_config.as_ref()
+    let retrigger_compilation = lsp_config
+        .as_ref()
         .map(|config| config.retrigger_compilation.clone())
         .unwrap_or(None);
-    let optimised_build = lsp_config.as_ref()
+    let optimised_build = lsp_config
+        .as_ref()
         .map(|x| x.optimised_build)
         .unwrap_or(false);
 
@@ -549,7 +551,7 @@ pub fn parsed_to_ast(
                 TypeMetadata::MessageType(message_id, type_id) => Some((*message_id, *type_id)),
                 _ => None,
             }));
-        
+
         let (print_graph, print_graph_url_format) = match build_config {
             Some(cfg) => (
                 cfg.print_dca_graph.clone(),
@@ -557,9 +559,9 @@ pub fn parsed_to_ast(
             ),
             None => (None, None),
         };
-    
+
         check_should_abort(handler, retrigger_compilation.clone())?;
-    
+
         // Perform control flow analysis and extend with any errors.
         let _ = perform_control_flow_analysis(
             handler,
@@ -570,8 +572,10 @@ pub fn parsed_to_ast(
         );
 
         types_metadata
-    } else { vec![] };
-    
+    } else {
+        vec![]
+    };
+
     // Evaluate const declarations, to allow storage slots initialization with consts.
     let mut ctx = Context::new(
         engines.se(),
@@ -644,10 +648,11 @@ pub fn compile_to_ast(
     package_name: &str,
 ) -> Result<Programs, ErrorEmitted> {
     let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
-    let retrigger_compilation = lsp_config.as_ref()
+    let retrigger_compilation = lsp_config
+        .as_ref()
         .map(|config| config.retrigger_compilation.clone())
         .unwrap_or(None);
-    
+
     check_should_abort(handler, retrigger_compilation.clone())?;
 
     let query_engine = engines.qe();

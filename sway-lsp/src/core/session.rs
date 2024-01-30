@@ -30,12 +30,14 @@ use std::{
     sync::{atomic::AtomicBool, Arc},
 };
 use sway_core::{
-    decl_engine::DeclEngine, language::{
+    decl_engine::DeclEngine,
+    language::{
         lexed::LexedProgram,
         parsed::{AstNode, ParseProgram},
         ty::{self},
         HasSubmodules,
-    }, BuildTarget, Engines, LspConfig, Namespace, Programs
+    },
+    BuildTarget, Engines, LspConfig, Namespace, Programs,
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::{SourceEngine, SourceId, Spanned};

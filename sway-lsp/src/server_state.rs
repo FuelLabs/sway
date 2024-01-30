@@ -12,7 +12,6 @@ use dashmap::DashMap;
 use forc_pkg::PackageManifestFile;
 use lsp_types::{Diagnostic, Url};
 use parking_lot::RwLock;
-use sway_core::LspConfig;
 use std::{
     mem,
     path::PathBuf,
@@ -21,6 +20,7 @@ use std::{
         Arc,
     },
 };
+use sway_core::LspConfig;
 use tokio::sync::Notify;
 use tower_lsp::{jsonrpc, Client};
 
@@ -137,7 +137,6 @@ impl ServerState {
                         match session::parse_project(
                             &uri,
                             &engines_clone,
-                            // Some(retrigger_compilation.clone()),
                             lsp_mode,
                             session.clone(),
                         ) {

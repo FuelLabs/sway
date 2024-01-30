@@ -1,4 +1,7 @@
-use std::{path::PathBuf, sync::{atomic::AtomicBool, Arc}};
+use std::{
+    path::PathBuf,
+    sync::{atomic::AtomicBool, Arc},
+};
 
 use serde::{Deserialize, Serialize};
 use strum::EnumString;
@@ -196,15 +199,14 @@ pub struct ExperimentalFlags {
     pub new_encoding: bool,
 }
 
-
 #[derive(Clone, Debug, Default)]
 pub struct LspConfig {
     pub retrigger_compilation: Option<Arc<AtomicBool>>,
     // This is set to true if compilation was triggered by a didChange LSP event. In this case, we
     // bypass collecting type metadata and skip DCA.
-    // 
+    //
     // This is set to false if compilation was triggered by a didSave or didOpen LSP event.
-	pub optimised_build: bool,
+    pub optimised_build: bool,
 }
 
 #[cfg(test)]
