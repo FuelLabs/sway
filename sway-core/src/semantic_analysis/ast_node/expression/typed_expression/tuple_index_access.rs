@@ -14,7 +14,7 @@ pub(crate) fn instantiate_tuple_index_access(
     let type_engine = engines.te();
     let mut tuple_type_arg_to_access = None;
     let type_info = type_engine.get(parent.return_type);
-    let type_args = type_info.expect_tuple(handler, engines, parent.span.as_str(), &parent.span)?;
+    let type_args = type_info.expect_tuple(handler, engines, &parent.span)?;
     for (pos, type_arg) in type_args.iter().enumerate() {
         if pos == index {
             tuple_type_arg_to_access = Some(type_arg.clone());
