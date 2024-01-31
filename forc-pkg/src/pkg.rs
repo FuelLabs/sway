@@ -2679,9 +2679,9 @@ pub fn check(
         match programs.typed.as_ref() {
             Ok(typed_program) => {
                 if let TreeType::Library = typed_program.kind.tree_type() {
-                    let mut namespace = typed_program.root.namespace.clone();
-                    namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
-                    namespace.span = Some(
+                    let mut module = typed_program.root.namespace.module().clone();
+                    module.name = Some(Ident::new_no_span(pkg.name.clone()));
+                    module.span = Some(
                         Span::new(
                             manifest.entry_string()?,
                             0,
@@ -2690,7 +2690,7 @@ pub fn check(
                         )
                         .unwrap(),
                     );
-                    lib_namespace_map.insert(node, namespace.module().clone());
+                    lib_namespace_map.insert(node, module);
                 }
 
                 source_map.insert_dependency(manifest.dir());

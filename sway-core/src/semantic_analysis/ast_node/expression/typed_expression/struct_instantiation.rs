@@ -287,6 +287,7 @@ pub(crate) fn struct_instantiation(
         // but that would be a way too much of suggestions, and moreover, it is also not a design pattern/guideline
         // that we wish to encourage.
         namespace
+	    .module()
             .get_items_for_type(engines, struct_type_id)
             .iter()
             .filter_map(|item| match item {

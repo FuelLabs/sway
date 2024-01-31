@@ -587,7 +587,7 @@ pub fn parsed_to_ast(
         &mut ctx,
         &mut md_mgr,
         module,
-        &typed_program.root.namespace,
+        &typed_program.root.namespace.module(),
     ) {
         handler.emit_err(e);
     }

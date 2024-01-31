@@ -313,10 +313,10 @@ impl CallPath {
             let mut is_external = false;
             let mut is_absolute = false;
 
-            if let Some(use_synonym) = namespace.use_synonyms.get(&self.suffix) {
+            if let Some(use_synonym) = namespace.module().use_synonyms.get(&self.suffix) {
                 synonym_prefixes = use_synonym.0.clone();
                 is_absolute = use_synonym.3;
-                let submodule = namespace.submodule(&[use_synonym.0[0].clone()]);
+                let submodule = namespace.module().submodule(&[use_synonym.0[0].clone()]);
                 if let Some(submodule) = submodule {
                     is_external = submodule.is_external;
                 }
@@ -343,7 +343,7 @@ impl CallPath {
                 suffix: self.suffix.clone(),
                 is_absolute: true,
             }
-        } else if let Some(m) = namespace.submodule(&[self.prefixes[0].clone()]) {
+        } else if let Some(m) = namespace.module().submodule(&[self.prefixes[0].clone()]) {
             // If some prefixes are already present, attempt to complete the path by adding the
             // package name and the path to the current submodule.
             //

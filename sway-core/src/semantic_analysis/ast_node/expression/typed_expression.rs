@@ -1031,16 +1031,16 @@ impl ty::TyExpression {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
-        if !ctx.namespace.has_storage_declared() {
+        if !ctx.namespace.module().has_storage_declared() {
             return Err(handler.emit_err(CompileError::NoDeclaredStorage { span: span.clone() }));
         }
 
         let storage_fields = ctx
-            .namespace
+            .namespace.module()
             .get_storage_field_descriptors(handler, decl_engine)?;
 
         // Do all namespace checking here!
-        let (storage_access, mut access_type) = ctx.namespace.apply_storage_load(
+        let (storage_access, mut access_type) = ctx.namespace.module().apply_storage_load(
             handler,
             ctx.engines,
             ctx.namespace,
@@ -1262,7 +1262,7 @@ impl ty::TyExpression {
         path.push(before.inner.clone());
         let not_module = {
             let h = Handler::default();
-            ctx.namespace.check_submodule(&h, &path).is_err()
+            ctx.namespace.module().check_submodule(&h, &path).is_err()
         };
 
         // Not a module? Not a `Enum::Variant` either?
@@ -1380,7 +1380,7 @@ impl ty::TyExpression {
             // Check if this could be a module
             is_module = {
                 let call_path_binding = unknown_call_path_binding.clone();
-                ctx.namespace
+                ctx.namespace.module()
                     .check_submodule(
                         &module_probe_handler,
                         &[
@@ -2022,7 +2022,7 @@ impl ty::TyExpression {
                     }
                 };
                 let names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
-                let (ty_of_field, _ty_of_parent) = ctx.namespace.find_subfield_type(
+                let (ty_of_field, _ty_of_parent) = ctx.namespace.module().find_subfield_type(
                     handler,
                     ctx.engines(),
                     ctx.namespace,
