@@ -230,8 +230,9 @@ impl Items {
                         _,
                         GenericShadowingMode::Disallow,
                     ) => {
-                        handler
-                            .emit_err(CompileError::GenericShadowsGeneric { name: (&name).into() });
+                        handler.emit_err(CompileError::GenericShadowsGeneric {
+                            name: (&name).into(),
+                        });
                     }
                     _ => {}
                 }

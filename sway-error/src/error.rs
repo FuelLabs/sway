@@ -571,7 +571,10 @@ pub enum CompileError {
         is_alias: bool,
     },
     #[error("Constants cannot shadow variables. The constant \"{name}\" shadows variable with the same name.")]
-    ConstantShadowsVariable { name: IdentUnique, variable_span: Span },
+    ConstantShadowsVariable {
+        name: IdentUnique,
+        variable_span: Span,
+    },
     #[error("The imported symbol \"{name}\" shadows another symbol with the same name.")]
     ShadowsOtherSymbol { name: IdentUnique },
     #[error("The name \"{name}\" is already used for a generic parameter in this scope.")]
