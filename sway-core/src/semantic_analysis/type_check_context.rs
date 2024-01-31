@@ -545,7 +545,7 @@ impl<'a> TypeCheckContext<'a> {
             } => {
                 let item_ref = self
                     .namespace
-                    .root
+                    .root.module
 		    .items()
                     .implemented_traits
                     .get_trait_item_for_type(handler, self.engines, &name, trait_type_id, None)?;
@@ -659,7 +659,7 @@ impl<'a> TypeCheckContext<'a> {
         mod_path: &Path,
         call_path: &CallPath,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-        let (decl, mod_path) = self.namespace.root.resolve_call_path_and_mod_path(
+        let (decl, mod_path) = self.namespace.root.module.resolve_call_path_and_mod_path(
             handler,
             self.engines,
             mod_path,
@@ -680,7 +680,7 @@ impl<'a> TypeCheckContext<'a> {
         // check the visibility of the call path elements
         // we don't check the first prefix because direct children are always accessible
         for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
-            let module = self.namespace.root.check_submodule(handler, prefix)?;
+            let module = self.namespace.root.module.check_submodule(handler, prefix)?;
             if module.visibility.is_private() {
                 let prefix_last = prefix[prefix.len() - 1].clone();
                 handler.emit_err(CompileError::ImportPrivateModule {
@@ -758,7 +758,7 @@ impl<'a> TypeCheckContext<'a> {
                 _ => None,
             };
 
-            self.namespace.root.resolve_call_path_and_root_type_id(
+            self.namespace.root.module.resolve_call_path_and_root_type_id(
                 handler,
                 self.engines,
                 root_type_id,
@@ -915,7 +915,7 @@ impl<'a> TypeCheckContext<'a> {
         // grab the local module
         let local_module = self
             .namespace
-            .root()
+            .root().module
             .check_submodule(handler, &self.namespace.mod_path)?;
 
         // grab the local items from the local module
@@ -938,7 +938,7 @@ impl<'a> TypeCheckContext<'a> {
         // grab the module where the type itself is declared
         let type_module = self
             .namespace
-            .root()
+            .root().module
             .check_submodule(handler, item_prefix)?;
 
         // grab the items from where the type is declared
@@ -1231,7 +1231,7 @@ impl<'a> TypeCheckContext<'a> {
         src: &Path,
         is_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
-        self.namespace.root.star_import(
+        self.namespace.root.module.star_import(
             handler,
             src,
             &self.namespace.mod_path,
@@ -1248,7 +1248,7 @@ impl<'a> TypeCheckContext<'a> {
         enum_name: &Ident,
         is_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
-        self.namespace.root.variant_star_import(
+        self.namespace.root.module.variant_star_import(
             handler,
             src,
             &self.namespace.mod_path,
@@ -1266,7 +1266,7 @@ impl<'a> TypeCheckContext<'a> {
         alias: Option<Ident>,
         is_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
-        self.namespace.root.self_import(
+        self.namespace.root.module.self_import(
             handler,
             self.engines,
             src,
@@ -1285,7 +1285,7 @@ impl<'a> TypeCheckContext<'a> {
         alias: Option<Ident>,
         is_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
-        self.namespace.root.item_import(
+        self.namespace.root.module.item_import(
             handler,
             self.engines,
             src,
@@ -1307,7 +1307,7 @@ impl<'a> TypeCheckContext<'a> {
         alias: Option<Ident>,
         is_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
-        self.namespace.root.variant_import(
+        self.namespace.root.module.variant_import(
             handler,
             self.engines,
             src,

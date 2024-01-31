@@ -85,6 +85,7 @@ impl ty::TyCodeBlock {
                     let never_decl_opt = ctx
                         .namespace
                         .root()
+			.module
                         .resolve_symbol(
                             &Handler::default(),
                             engines,

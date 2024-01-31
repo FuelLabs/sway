@@ -99,7 +99,7 @@ impl Namespace {
         symbol: &Ident,
         self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-        self.root
+        self.root.module
             .resolve_symbol(handler, engines, &self.mod_path, symbol, self_type)
     }
 
@@ -111,7 +111,7 @@ impl Namespace {
         call_path: &CallPath,
         self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-        self.root
+        self.root.module
             .resolve_call_path(handler, engines, &self.mod_path, call_path, self_type)
     }
 
@@ -166,7 +166,7 @@ impl Namespace {
     ) -> bool {
         // `mod_path` does not contain the root name, so we have to separately check
         // that the root name is equal to the module package name.
-        let root_name = match &self.root.name {
+        let root_name = match &self.root.module.name {
             Some(name) => name,
             None => panic!("Root module must always have a name."),
         };
@@ -200,7 +200,7 @@ impl Namespace {
     /// Returns true if the module given by the `absolute_module_path` is external
     /// to the current package. External modules are imported in the `Forc.toml` file.
     pub(crate) fn module_is_external(&self, absolute_module_path: &Path) -> bool {
-        let root_name = match &self.root.name {
+        let root_name = match &self.root.module.name {
             Some(name) => name,
             None => panic!("Root module must always have a name."),
         };
