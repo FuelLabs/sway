@@ -172,7 +172,7 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
         // find the module that the symbol is in
         let type_info_prefix = ctx.namespace.find_module_path(&self.inner.prefixes);
         ctx.namespace
-            .root()
+            .root().module
             .check_submodule(handler, &type_info_prefix)?;
 
         // create the type info object

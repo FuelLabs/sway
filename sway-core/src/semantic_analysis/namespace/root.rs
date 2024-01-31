@@ -190,7 +190,7 @@ impl Root {
             return Ok((decl, current_mod_path));
         }
 
-        self.check_submodule(handler, mod_path).and_then(|module| {
+        self.module.check_submodule(handler, mod_path).and_then(|module| {
             let decl =
                 self.resolve_symbol_helper(handler, engines, mod_path, symbol, module, self_type)?;
             Ok((decl, mod_path.to_vec()))
@@ -316,7 +316,7 @@ impl Root {
         } else {
             type_id
         };
-        let item_ref = self
+        let item_ref = self.module
 	    .items()
             .implemented_traits
             .get_trait_item_for_type(handler, engines, symbol, type_id, as_trait)?;
@@ -336,7 +336,7 @@ impl Root {
         module: &Module,
         self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-        let true_symbol = self[mod_path].items()
+        let true_symbol = self.module[mod_path].items()
             .use_aliases
             .get(symbol.as_str())
             .unwrap_or(symbol);
@@ -362,19 +362,6 @@ impl Root {
                 .map_err(|e| handler.emit_err(e))
                 .cloned(),
         }
-    }
-}
-
-impl std::ops::Deref for Root {
-    type Target = Module;
-    fn deref(&self) -> &Self::Target {
-        &self.module
-    }
-}
-
-impl std::ops::DerefMut for Root {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.module
     }
 }
 

@@ -497,7 +497,7 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
         // skip module "core"
         // Because of ordering, we cannot guarantee auto impl
         // for structs inside "core"
-        if self.ctx.namespace.root().name.as_str() == "core" {
+        if self.ctx.namespace.root().module.name.as_str() == "core" {
             return false;
         }
 

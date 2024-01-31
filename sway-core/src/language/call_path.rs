@@ -387,7 +387,7 @@ impl CallPath {
         let converted = self.to_fullpath(namespace);
 
         if let Some(first) = converted.prefixes.first() {
-            if namespace.root().name == *first {
+            if namespace.root().module.name == *first {
                 return converted.lshift();
             }
         }

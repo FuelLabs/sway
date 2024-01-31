@@ -439,7 +439,7 @@ pub(crate) fn resolve_method_name(
                 .namespace
                 .find_module_path(&call_path_binding.inner.prefixes);
             ctx.namespace
-                .root()
+                .root().module
                 .check_submodule(handler, &type_info_prefix)?;
 
             // find the method
@@ -463,7 +463,7 @@ pub(crate) fn resolve_method_name(
             } else {
                 let mut module_path = call_path.prefixes.clone();
                 if let Some(root_mod) = module_path.first().cloned() {
-                    if root_mod.as_str() == ctx.namespace.root().name.as_str() {
+                    if root_mod.as_str() == ctx.namespace.root().module.name.as_str() {
                         module_path.remove(0);
                     }
                 }
