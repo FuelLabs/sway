@@ -12,7 +12,8 @@ use forc_wallet::{
 };
 use fuel_crypto::{Message, PublicKey, SecretKey, Signature};
 use fuel_tx::{
-    field, Address, AssetId, Buildable, ContractId, Input, Output, TransactionBuilder, Witness,
+    field, Address, AssetId, Buildable, Bytes32, Bytes64, ContractId, Input, Output,
+    TransactionBuilder, Witness,
 };
 use fuels_accounts::{provider::Provider, wallet::Wallet, ViewOnlyAccount};
 use fuels_core::types::{
@@ -41,6 +42,9 @@ pub enum WalletSelectionMode {
 fn prompt_address() -> Result<Bech32Address> {
     print!("Please provide the address of the wallet you are going to sign this transaction with:");
     std::io::stdout().flush()?;
+    if option_env!("CLI_TEST").is_some() {
+        return Ok(Bech32Address::new("test", *Bytes32::default()));
+    }
     let mut buf = String::new();
     std::io::stdin().read_line(&mut buf)?;
     Bech32Address::from_str(buf.trim()).map_err(Error::msg)
@@ -49,6 +53,9 @@ fn prompt_address() -> Result<Bech32Address> {
 fn prompt_signature(tx_id: fuel_tx::Bytes32) -> Result<Signature> {
     println!("Transaction id to sign: {tx_id}");
     print!("Please provide the signature:");
+    if option_env!("CLI_TEST").is_some() {
+        return Ok(Signature::from_bytes(*Bytes64::default()));
+    }
     std::io::stdout().flush()?;
     let mut buf = String::new();
     std::io::stdin().read_line(&mut buf)?;
