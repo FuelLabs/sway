@@ -128,7 +128,7 @@ impl Namespace {
         module_span: Span,
     ) -> SubmoduleNamespace {
         let init = self.init.clone();
-        self.submodules.entry(mod_name.to_string()).or_insert(init);
+        self.module_mut().submodules.entry(mod_name.to_string()).or_insert(init);
         let submod_path: Vec<_> = self
             .mod_path
             .iter()
@@ -136,26 +136,15 @@ impl Namespace {
             .chain(Some(mod_name.clone()))
             .collect();
         let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
-        self.name = mod_name;
-        self.span = Some(module_span);
-        self.visibility = visibility;
-        self.is_external = false;
+	// self.module() now refers to a different module, so refetch
+	let new_module = self.module_mut();
+        new_module.name = mod_name;
+        new_module.span = Some(module_span);
+        new_module.visibility = visibility;
+        new_module.is_external = false;
         SubmoduleNamespace {
             namespace: self,
             parent_mod_path,
         }
-    }
-}
-
-impl std::ops::Deref for Namespace {
-    type Target = Module;
-    fn deref(&self) -> &Self::Target {
-        self.module()
-    }
-}
-
-impl std::ops::DerefMut for Namespace {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.module_mut()
     }
 }

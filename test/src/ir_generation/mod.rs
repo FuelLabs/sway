@@ -534,7 +534,7 @@ fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Modu
             use sway_types::BaseIdent;
 	    use sway_core::language::Visibility;
 	    let core_name = BaseIdent::new_no_span("core".to_string());
-            let core_module = typed_program.root.namespace.submodules().into_iter().fold(
+            let core_module = typed_program.root.namespace.module().submodules().into_iter().fold(
                 namespace::Module::new(core_name.clone(), Visibility::Private, false),
                 |mut core_mod, (name, sub_mod)| {
                     core_mod.insert_submodule(name.clone(), sub_mod.clone());

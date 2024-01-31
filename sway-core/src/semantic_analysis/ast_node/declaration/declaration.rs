@@ -344,7 +344,7 @@ impl TyDecl {
                 // if there already was one, return an error that duplicate storage
 
                 // declarations are not allowed
-                ctx.namespace
+                ctx.namespace.module_mut()
                     .set_storage_declaration(handler, decl_ref.clone())?;
                 decl_ref.into()
             }

@@ -225,7 +225,7 @@ impl Session {
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.typed.clone() {
             let program = compiled_program.typed.clone()?;
             return Some(capabilities::completion::to_completion_items(
-                &program.root.namespace,
+                &program.root.namespace.module(),
                 &self.engines.read(),
                 &ident_to_complete,
                 &fn_decl,
@@ -488,7 +488,7 @@ pub fn traverse(
 
         // Create context with write guards to make readers wait until the update to token_map is complete.
         // This operation is fast because we already have the compile results.
-        let ctx = ParseContext::new(&token_map, engines, &typed_program.root.namespace);
+        let ctx = ParseContext::new(&token_map, engines, &typed_program.root.namespace.module());
 
         // The final element in the results is the main program.
         if i == results_len - 1 {

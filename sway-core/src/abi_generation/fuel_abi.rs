@@ -867,7 +867,7 @@ fn call_path_display(ctx: &mut AbiContext, call_path: &CallPath) -> String {
     for (index, prefix) in call_path.prefixes.iter().enumerate() {
         let mut skip_prefix = false;
         if index == 0 {
-            if prefix.as_str() == ctx.program.root.namespace.name.as_str() {
+            if prefix.as_str() == ctx.program.root.namespace.module().name.as_str() {
                 skip_prefix = true;
             }
         }
