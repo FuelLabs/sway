@@ -34,7 +34,7 @@ Important background to know before diving into trait constraints is that the `w
 want to specify that the generic argument implements a `Hash` trait.
 
 ```sway
-fn get_hashmap_key<T>(Key : T) -> b256
+fn get_hashmap_key<T>(key: T) -> b256
     where T: Hash
 {
     // Code within here can then call methods associated with the Hash trait on Key
