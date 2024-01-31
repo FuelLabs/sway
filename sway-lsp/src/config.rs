@@ -63,7 +63,7 @@ pub struct LoggingConfig {
 impl Default for LoggingConfig {
     fn default() -> Self {
         Self {
-            level: LevelFilter::OFF,
+            level: LevelFilter::TRACE,//OFF,
         }
     }
 }

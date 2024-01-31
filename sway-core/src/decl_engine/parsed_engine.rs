@@ -108,6 +108,7 @@ macro_rules! decl_engine_clear {
     ($($slab:ident, $decl:ty);* $(;)?) => {
         impl ParsedDeclEngine {
             pub fn clear(&self) {
+                eprintln!("ALERT!!!!!!!!!!!! Clearing decl engine");
                 $(
                     self.$slab.clear();
                 )*

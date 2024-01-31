@@ -447,10 +447,14 @@ pub fn parse_project(
     retrigger_compilation: Option<Arc<AtomicBool>>,
     session: Arc<Session>,
 ) -> Result<(), LanguageServerError> {
+    tracing::debug!("Starting compilation");
     let results = compile(uri, engines, retrigger_compilation)?;
+    tracing::debug!("Finished compilation");
+
     if results.last().is_none() {
         return Err(LanguageServerError::ProgramsIsNone);
     }
+    tracing::debug!("Starting traversal");
     let diagnostics = traverse(results, engines, session.clone())?;
     if let Some((errors, warnings)) = &diagnostics {
         *session.diagnostics.write() =

@@ -56,11 +56,11 @@ impl<'a> TokenMap {
                 TryResult::Present(token) => return Some(token),
                 TryResult::Absent => return None,
                 TryResult::Locked => {
-                    tracing::warn!(
-                        "Failed to get token, retrying attmpt {}: {:#?}",
-                        i,
-                        ident.name
-                    );
+                    // tracing::warn!(
+                    //     "Failed to get token, retrying attmpt {}: {:#?}",
+                    //     i,
+                    //     ident.name
+                    // );
                     // Wait for the specified backoff time before retrying
                     let backoff_time = Duration::from_nanos(*sleep);
                     thread::sleep(backoff_time);

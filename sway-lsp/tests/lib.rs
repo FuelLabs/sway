@@ -139,6 +139,56 @@ async fn did_change_stress_test() {
 }
 
 #[tokio::test]
+#[allow(dead_code)]
+async fn did_change_stress_test_random() {
+    set_panic_hook();
+
+    let (mut service, _) = LspService::build(ServerState::new)
+        .custom_method("sway/metrics", ServerState::metrics)
+        .finish();
+    let bench_dir = sway_workspace_dir().join("sway-lsp/tests/fixtures/benchmark");
+    let uri = init_and_open(&mut service, bench_dir.join("src/main.sw")).await;
+    let times = 40000;
+    for version in 0..times {
+        eprintln!("version: {}", version);
+        let _ = lsp::did_change_request(&mut service, &uri, version + 1).await;
+        if version == 0 {
+            service.inner().wait_for_parsing().await;
+        }
+        let metrics = lsp::metrics_request(&mut service, &uri).await;
+        for (path, metrics) in metrics {
+            if path.contains("sway-lib-core") || path.contains("sway-lib-std") {
+                assert!(metrics.reused_modules >= 1);
+            }
+        }
+        // wait for a random amount of time between 1-30ms
+        let wait_time = rand::random::<u64>() % 30 + 1;
+        tokio::time::sleep(tokio::time::Duration::from_millis(wait_time)).await;
+
+        // there is a 10% chance that a longer 300-1000ms wait will be added
+        if rand::random::<u64>() % 10 < 1 {
+            let wait_time = rand::random::<u64>() % 700 + 300;
+            tokio::time::sleep(tokio::time::Duration::from_millis(wait_time)).await;
+        }
+    }
+    shutdown_and_exit(&mut service).await;
+}
+
+fn set_panic_hook() {
+    std::env::set_var("RUST_BACKTRACE", "1");
+    let default_panic = std::panic::take_hook();
+
+    std::panic::set_hook(Box::new(move |panic_info| {
+        eprintln!("PANIC!!!!!!!!!!!!!!!");
+        // Print the panic message
+        default_panic(panic_info);
+
+        eprintln!("exiting");
+        std::process::exit(1);
+    }));
+}
+
+#[tokio::test]
 async fn lsp_syncs_with_workspace_edits() {
     let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;

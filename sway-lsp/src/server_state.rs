@@ -113,7 +113,7 @@ impl ServerState {
 
                         if let Some(version) = ctx.version {
                             // Garbage collection is fairly expsensive so we only clear on every 10th keystroke.
-                            if version % 10 == 0 {
+                            if version % 1 == 0 {
                                 // Call this on the engines clone so we don't clear types that are still in use
                                 // and might be needed in the case cancel compilation was triggered.
                                 if let Err(err) = session.garbage_collect(&mut engines_clone) {
@@ -122,6 +122,7 @@ impl ServerState {
                                         err.to_string()
                                     );
                                 }
+                                tracing::debug!("Garbage collection complete: version {:?}", version);
                             }
                         }
 
@@ -136,9 +137,11 @@ impl ServerState {
                             Ok(_) => {
                                 mem::swap(&mut *session.engines.write(), &mut engines_clone);
                                 *last_compilation_state.write() = LastCompilationState::Success;
+                                tracing::debug!("Successfully compiled: version {:?}", ctx.version);
                             }
                             Err(_err) => {
                                 *last_compilation_state.write() = LastCompilationState::Failed;
+                                tracing::debug!("Failed to compile: version {:?}", ctx.version);
                             }
                         }
 
