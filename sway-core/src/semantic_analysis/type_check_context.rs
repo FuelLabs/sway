@@ -426,7 +426,7 @@ impl<'a> TypeCheckContext<'a> {
         name: Ident,
         item: TyDecl,
     ) -> Result<(), ErrorEmitted> {
-        self.namespace.module_mut().insert_symbol(
+        self.namespace.module_mut().items_mut().insert_symbol(
             handler,
             name,
             item,
@@ -546,6 +546,7 @@ impl<'a> TypeCheckContext<'a> {
                 let item_ref = self
                     .namespace
                     .root
+		    .items()
                     .implemented_traits
                     .get_trait_item_for_type(handler, self.engines, &name, trait_type_id, None)?;
                 if let TyTraitItem::Type(type_ref) = item_ref {
@@ -918,7 +919,7 @@ impl<'a> TypeCheckContext<'a> {
             .check_submodule(handler, &self.namespace.mod_path)?;
 
         // grab the local items from the local module
-        let local_items = local_module.get_items_for_type(self.engines, type_id);
+        let local_items = local_module.items().get_items_for_type(self.engines, type_id);
 
         // resolve the type
         let type_id = self
@@ -941,7 +942,7 @@ impl<'a> TypeCheckContext<'a> {
             .check_submodule(handler, item_prefix)?;
 
         // grab the items from where the type is declared
-        let mut type_items = type_module.get_items_for_type(self.engines, type_id);
+        let mut type_items = type_module.items().get_items_for_type(self.engines, type_id);
 
         let mut items = local_items;
         items.append(&mut type_items);
@@ -1335,7 +1336,7 @@ impl<'a> TypeCheckContext<'a> {
         // this inserting and getting in `get_methods_for_type_and_trait_name`.
         let full_trait_name = trait_name.to_fullpath(self.namespace);
 
-        self.namespace.module_mut().implemented_traits.insert(
+        self.namespace.module_mut().items_mut().implemented_traits.insert(
             handler,
             full_trait_name,
             trait_type_args,
@@ -1367,7 +1368,7 @@ impl<'a> TypeCheckContext<'a> {
         // this get and inserting in `insert_trait_implementation`.
         let trait_name = trait_name.to_fullpath(self.namespace);
 
-        self.namespace.module()
+        self.namespace.module().items()
             .implemented_traits
             .get_items_for_type_and_trait_name_and_trait_type_arguments(
                 self.engines,
@@ -1551,7 +1552,7 @@ impl<'a> TypeCheckContext<'a> {
     }
 
     pub(crate) fn insert_trait_implementation_for_type(&mut self, type_id: TypeId) {
-        self.namespace.module_mut()
+        self.namespace.module_mut().items_mut()
             .implemented_traits
             .insert_for_type(self.engines, type_id);
     }
@@ -1574,7 +1575,7 @@ impl<'a> TypeCheckContext<'a> {
     ) -> bool {
         let handler = Handler::default();
 
-        self.namespace.module_mut()
+        self.namespace.module_mut().items_mut()
             .implemented_traits
             .check_if_trait_constraints_are_satisfied_for_type(
                 &handler,

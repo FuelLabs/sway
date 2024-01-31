@@ -288,6 +288,7 @@ pub(crate) fn struct_instantiation(
         // that we wish to encourage.
         namespace
 	    .module()
+	    .items()
             .get_items_for_type(engines, struct_type_id)
             .iter()
             .filter_map(|item| match item {
