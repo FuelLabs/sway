@@ -59,6 +59,10 @@ fn in_structs() {
     assert((*&array)[0] == (*a.r_array)[0]);
     assert((*&array)[1] == (*a.r_array)[1]);
     assert((*&array)[2] == (*a.r_array)[2]);
+    
+    assert((&array)[0] == a.r_array[0]);
+    assert((&array)[1] == a.r_array[1]);
+    assert((&array)[2] == a.r_array[2]);
 
     let b_r_a_ptr = asm(r: b.r_a) { r: raw_ptr };
 
@@ -81,6 +85,10 @@ fn in_structs() {
     assert((*((*(*b.r_array)[0]).r_array))[0] == (*a.r_array)[0]);
     assert((*((*(*b.r_array)[0]).r_array))[1] == (*a.r_array)[1]);
     assert((*((*(*b.r_array)[0]).r_array))[2] == (*a.r_array)[2]);
+    
+    assert(((*(b.r_array)[0]).r_array)[0] == a.r_array[0]);
+    assert(((*(b.r_array)[0]).r_array)[1] == a.r_array[1]);
+    assert(((*(b.r_array)[0]).r_array)[2] == a.r_array[2]);
 }
 
 #[inline(never)]
@@ -121,6 +129,10 @@ fn in_enums() {
             assert((*(*local_r_a).r_array)[0] == (*&array)[0]);
             assert((*(*local_r_a).r_array)[1] == (*&array)[1]);
             assert((*(*local_r_a).r_array)[2] == (*&array)[2]);
+            
+            assert((*local_r_a).r_array[0] == (&array)[0]);
+            assert((*local_r_a).r_array[1] == (&array)[1]);
+            assert((*local_r_a).r_array[2] == (&array)[2]);
         }
         _ => assert(false),
     }
@@ -137,6 +149,10 @@ fn in_enums() {
             assert((*(*(*(*local_r_b).r_array)[0]).r_array)[0] == (*&array)[0]);
             assert((*(*(*(*local_r_b).r_array)[0]).r_array)[1] == (*&array)[1]);
             assert((*(*(*(*local_r_b).r_array)[0]).r_array)[2] == (*&array)[2]);
+            
+            assert((*(*local_r_b).r_array[0]).r_array[0] == (&array)[0]);
+            assert((*(*local_r_b).r_array[0]).r_array[1] == (&array)[1]);
+            assert((*(*local_r_b).r_array[0]).r_array[2] == (&array)[2]);
         }
         _ => assert(false),
     }
@@ -172,6 +188,10 @@ fn in_arrays() {
     assert((*(*((*(*arr[1]).r_array)[2])).r_array)[0] == (*&array)[0]);
     assert((*(*((*(*arr[1]).r_array)[2])).r_array)[1] == (*&array)[1]);
     assert((*(*((*(*arr[1]).r_array)[2])).r_array)[2] == (*&array)[2]);
+    
+    assert((*((*arr[1]).r_array[2])).r_array[0] == (&array)[0]);
+    assert((*((*arr[1]).r_array[2])).r_array[1] == (&array)[1]);
+    assert((*((*arr[1]).r_array[2])).r_array[2] == (&array)[2]);
 }
 
 #[inline(never)]
@@ -204,6 +224,10 @@ fn in_tuples() {
     assert((*(*((*(*tuple.1).r_array)[2])).r_array)[0] == (*&array)[0]);
     assert((*(*((*(*tuple.1).r_array)[2])).r_array)[1] == (*&array)[1]);
     assert((*(*((*(*tuple.1).r_array)[2])).r_array)[2] == (*&array)[2]);
+    
+    assert((*((*tuple.1).r_array[2])).r_array[0] == (&array)[0]);
+    assert((*((*tuple.1).r_array[2])).r_array[1] == (&array)[1]);
+    assert((*((*tuple.1).r_array[2])).r_array[2] == (&array)[2]);
 }
 
 #[inline(never)]
