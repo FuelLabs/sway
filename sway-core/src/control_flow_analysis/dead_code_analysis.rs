@@ -1848,13 +1848,10 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 exp.span.clone(),
                 options,
             )?;
-            // TODO: is this right? Shouldn't we connect the return_contents leaves to the exit
-            // node?
             for leaf in return_contents {
-                graph.add_edge(this_index, leaf, "".into());
-            }
-            if let Some(exit_node) = exit_node {
-                graph.add_edge(this_index, exit_node, "return".into());
+                if let Some(exit_node) = exit_node {
+                    graph.add_edge(leaf, exit_node, "return".into());
+                }
             }
             Ok(vec![])
         }
