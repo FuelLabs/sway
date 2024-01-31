@@ -5,6 +5,7 @@ use ::alloc::{alloc, realloc};
 use ::assert::assert;
 use ::option::Option::{self, *};
 use ::convert::From;
+use ::iter::iterator::*;
 
 struct RawVec<T> {
     pub ptr: raw_ptr,
@@ -587,6 +588,10 @@ impl<T> Vec<T> {
 
         index_ptr.write::<T>(value);
     }
+
+    pub fn iter(self) -> VecIter<T> {
+        VecIter { values: self, index: 0 }
+    }
 }
 
 impl<T> AsRawSlice for Vec<T> {
@@ -630,6 +635,24 @@ where
             item.abi_encode(buffer);
             i += 1;
         }
+    }
+}
+
+pub struct VecIter<T> {
+    values: Vec<T>,
+    index: u64,
+}
+
+impl<T> Iterator for VecIter<T> {
+    type Item = T;
+
+    fn next(ref mut self) -> Option<Self::Item> {
+        if self.index >= self.values.len() {
+            return None
+        }
+
+        self.index += 1;
+        self.values.get(self.index - 1)
     }
 }
 
