@@ -317,6 +317,7 @@ impl Root {
             type_id
         };
         let item_ref = self
+	    .items()
             .implemented_traits
             .get_trait_item_for_type(handler, engines, symbol, type_id, as_trait)?;
         match item_ref {
@@ -335,11 +336,11 @@ impl Root {
         module: &Module,
         self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-        let true_symbol = self[mod_path]
+        let true_symbol = self[mod_path].items()
             .use_aliases
             .get(symbol.as_str())
             .unwrap_or(symbol);
-        match module.use_synonyms.get(symbol) {
+        match module.items().use_synonyms.get(symbol) {
             Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. }, _)) => Ok(decl.clone()),
             Some((src_path, _, _, _)) if mod_path != src_path => {
                 // If the symbol is imported, before resolving to it,
@@ -351,12 +352,12 @@ impl Root {
                 // - non-glob import, in which case we will already have a name clash reported
                 //   as an error, but still have to resolve to the local module symbol
                 //   if it exists.
-                match module.symbols.get(true_symbol) {
+                match module.items().symbols.get(true_symbol) {
                     Some(decl) => Ok(decl.clone()),
                     None => self.resolve_symbol(handler, engines, src_path, true_symbol, self_type),
                 }
             }
-            _ => module
+            _ => module.items()
                 .check_symbol(true_symbol)
                 .map_err(|e| handler.emit_err(e))
                 .cloned(),

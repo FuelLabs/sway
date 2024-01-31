@@ -1006,16 +1006,16 @@ impl ty::TyExpression {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
-        if !ctx.namespace.module().has_storage_declared() {
+        if !ctx.namespace.module().items().has_storage_declared() {
             return Err(handler.emit_err(CompileError::NoDeclaredStorage { span: span.clone() }));
         }
 
         let storage_fields = ctx
-            .namespace.module()
+            .namespace.module().items()
             .get_storage_field_descriptors(handler, decl_engine)?;
 
         // Do all namespace checking here!
-        let (storage_access, mut access_type) = ctx.namespace.module().apply_storage_load(
+        let (storage_access, mut access_type) = ctx.namespace.module().items().apply_storage_load(
             handler,
             ctx.engines,
             checkee,
@@ -1990,7 +1990,7 @@ impl ty::TyExpression {
                     }
                 };
                 let names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
-                let (ty_of_field, _ty_of_parent) = ctx.namespace.module().find_subfield_type(
+                let (ty_of_field, _ty_of_parent) = ctx.namespace.module().items().find_subfield_type(
                     handler,
                     ctx.engines(),
                     &base_name,

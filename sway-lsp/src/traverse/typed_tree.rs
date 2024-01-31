@@ -130,7 +130,7 @@ impl Parse for ty::TySideEffect {
                             if let Some(decl_ident) = ctx
                                 .namespace
                                 .submodule(call_path)
-                                .and_then(|module| module.symbols().get(item))
+                                .and_then(|module| module.items().symbols().get(item))
                                 .and_then(|decl| decl.get_decl_ident())
                             {
                                 // Update the symbol kind to match the declarations symbol kind
@@ -466,7 +466,7 @@ impl Parse for ty::TyExpression {
                     if let Some(abi_def_ident) = ctx
                         .namespace
                         .submodule(&abi_name.prefixes)
-                        .and_then(|module| module.symbols().get(&abi_name.suffix))
+                        .and_then(|module| module.items().symbols().get(&abi_name.suffix))
                         .and_then(|decl| decl.get_decl_ident())
                     {
                         token.type_def = Some(TypeDefinition::Ident(abi_def_ident));
@@ -480,7 +480,7 @@ impl Parse for ty::TyExpression {
                     &ctx.ident(&Ident::new(storage_access.storage_keyword_span.clone())),
                 ) {
                     token.typed = Some(TypedAstToken::TypedStorageAccess(storage_access.clone()));
-                    if let Some(storage) = ctx.namespace.get_declared_storage(ctx.engines.de()) {
+                    if let Some(storage) = ctx.namespace.items().get_declared_storage(ctx.engines.de()) {
                         token.type_def =
                             Some(TypeDefinition::Ident(storage.storage_keyword.clone()));
                     }
@@ -495,7 +495,7 @@ impl Parse for ty::TyExpression {
                             head_field.clone(),
                         ));
                         if let Some(storage_field) = ctx
-                            .namespace
+                            .namespace.items()
                             .get_declared_storage(ctx.engines.de())
                             .and_then(|storage| {
                                 storage
@@ -1192,7 +1192,7 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ty
                     if let Some(abi_def_ident) = ctx
                         .namespace
                         .submodule(&abi_call_path.call_path.prefixes)
-                        .and_then(|module| module.symbols().get(&abi_call_path.call_path.suffix))
+                        .and_then(|module| module.items().symbols().get(&abi_call_path.call_path.suffix))
                         .and_then(|decl| decl.get_decl_ident())
                     {
                         token.type_def = Some(TypeDefinition::Ident(abi_def_ident));
@@ -1370,7 +1370,7 @@ fn collect_trait_constraint(
         if let Some(trait_def_ident) = ctx
             .namespace
             .submodule(&trait_name.prefixes)
-            .and_then(|module| module.symbols().get(&trait_name.suffix))
+            .and_then(|module| module.items().symbols().get(&trait_name.suffix))
             .and_then(|decl| decl.get_decl_ident())
         {
             token.type_def = Some(TypeDefinition::Ident(trait_def_ident));

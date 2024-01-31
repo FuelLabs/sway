@@ -164,14 +164,14 @@ impl TypeParameter {
         let name_b = Ident::new_with_override("Self".into(), self.name_ident.span());
         let const_shadowing_mode = ctx.const_shadowing_mode();
         let generic_shadowing_mode = ctx.generic_shadowing_mode();
-        let _ = ctx.namespace.module_mut().insert_symbol(
+        let _ = ctx.namespace.module_mut().items_mut().insert_symbol(
             handler,
             name_a,
             type_parameter_decl.clone(),
             const_shadowing_mode,
             generic_shadowing_mode,
         );
-        let _ = ctx.namespace.module_mut().insert_symbol(
+        let _ = ctx.namespace.module_mut().items_mut().insert_symbol(
             handler,
             name_b,
             type_parameter_decl,
@@ -348,7 +348,7 @@ impl TypeParameter {
         // When type parameter is from parent then it was already inserted.
         // Instead of inserting a type with same name we unify them.
         if type_parameter.is_from_parent {
-            if let Some(sy) = ctx.namespace.module().symbols.get(&type_parameter.name_ident) {
+            if let Some(sy) = ctx.namespace.module().items().symbols.get(&type_parameter.name_ident) {
                 match sy {
                     ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
                         type_id: sy_type_id,
@@ -458,7 +458,7 @@ impl TypeParameter {
 
                 // Check to see if the trait constraints are satisfied.
                 match ctx
-                    .namespace.module_mut()
+                    .namespace.module_mut().items_mut()
                     .implemented_traits
                     .check_if_trait_constraints_are_satisfied_for_type(
                         handler,
