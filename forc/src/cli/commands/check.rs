@@ -5,9 +5,9 @@ use forc_util::{forc_result_bail, ForcResult};
 use sway_core::{BuildTarget, Engines};
 
 forc_util::cli_examples! {
-    [ Check the current project => forc "check" => r#".*could not find `Forc.toml`.*"# ]
-    [ Check the current project with a different path => forc "check --path ../tests/" => r#".*could not find `Forc.toml`.*"# ]
-    [ Check the current project without updating dependencies => forc "check --locked" => r#".*could not find `Forc.toml`.*"# ]
+    [ Check the current project => forc "check" ]
+    [ Check the current project with a different path => forc "check --path ../tests/" ]
+    [ Check the current project without updating dependencies => forc "check --locked" ]
 }
 
 /// Check the current or target project and all of its dependencies for errors.

@@ -5,8 +5,14 @@ use crate::{
 use clap::Parser;
 use forc_util::{tx_utils::Salt, ForcResult};
 
-/// Determine contract-id for a contract. For workspaces outputs all contract ids in the workspace.
+forc_util::cli_examples! {
+    [Get contract id => forc "contract-id"]
+}
+
+/// Determine contract-id for a contract. For workspaces outputs all contract
+/// ids in the workspace.
 #[derive(Debug, Parser)]
+#[clap(bin_name = "forc contract-id", version, after_help = help())]
 pub struct Command {
     #[clap(flatten)]
     pub pkg: Pkg,

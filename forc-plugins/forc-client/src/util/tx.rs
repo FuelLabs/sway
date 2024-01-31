@@ -25,8 +25,7 @@ use std::{io::Write, str::FromStr};
 
 use crate::constants::BETA_FAUCET_URL;
 
-/// The maximum time to wait for a transaction to be included in a block by the
-/// node
+/// The maximum time to wait for a transaction to be included in a block by the node
 pub const TX_SUBMIT_TIMEOUT_MS: u64 = 30_000u64;
 
 /// Default PrivateKey to sign transactions submitted to local node.
@@ -173,7 +172,6 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
 
         Ok(self)
     }
-
     async fn finalize_signed(
         &mut self,
         provider: Provider,
@@ -295,8 +293,8 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
             (WalletSelectionMode::Manual, None, false) => None,
             (WalletSelectionMode::Manual, Some(key), false) => Some(key),
             (_, None, true) => {
-                // Generate a `SecretKey` to sign this transaction from a default private key
-                // used by fuel-core.
+                // Generate a `SecretKey` to sign this transaction from a default private key used
+                // by fuel-core.
                 let secret_key = SecretKey::from_str(DEFAULT_PRIVATE_KEY)?;
                 Some(secret_key)
             }

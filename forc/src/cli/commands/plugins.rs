@@ -20,7 +20,7 @@ forc_util::cli_examples! {
 ///
 /// Prints information about each discovered plugin.
 #[derive(Debug, Parser)]
-#[clap(name = "plugins", about = "List all forc plugins", version, after_help = help())]
+#[clap(name = "forc plugins", about = "List all forc plugins", version, after_help = help())]
 pub struct Command {
     /// Prints the absolute path to each discovered plugin.
     #[clap(long = "paths", short = 'p')]

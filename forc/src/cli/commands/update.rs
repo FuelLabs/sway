@@ -3,8 +3,15 @@ use clap::Parser;
 use forc_pkg::source::IPFSNode;
 use forc_util::ForcResult;
 
+forc_util::cli_examples! {
+    [Update dependencies => forc "update"]
+    [Update a specific dependency => forc "update -d std"]
+    [Check if dependencies have newer versions => forc "update --check"]
+}
+
 /// Update dependencies in the Forc dependencies directory.
 #[derive(Debug, Parser)]
+#[clap(bin_name = "forc update", version, after_help = help())]
 pub struct Command {
     /// Path to the project, if not specified, current working directory will be used.
     #[clap(short, long)]

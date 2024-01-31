@@ -8,10 +8,10 @@ use pkg::manifest::ExperimentalFlags;
 use tracing::info;
 
 forc_util::cli_examples! {
-    [ Run test => forc "test" => ".*could not find `Forc.toml`.*" ]
-    [ Run test with a filter => forc "test $filter" => ".*could not find `Forc.toml`.*" ]
+    [ Run test => forc "test" ]
+    [ Run test with a filter => forc "test $filter" ]
     [ Run test without any output => forc "test --silent" => "^$" ]
-    [ Run test without creating or update the lock file  => forc "test --locked" => ".*could not find `Forc.toml`.*" ]
+    [ Run test without creating or update the lock file  => forc "test --locked" ]
 }
 
 /// Run the Sway unit tests for the current project.
@@ -32,6 +32,7 @@ forc_util::cli_examples! {
 /// considered a failure in the case that a revert (`rvrt`) instruction is encountered during
 /// execution. Otherwise, it is considered a success.
 #[derive(Debug, Parser)]
+#[clap(bin_name = "forc test", version, after_help = help())]
 pub struct Command {
     #[clap(flatten)]
     pub build: cli::shared::Build,

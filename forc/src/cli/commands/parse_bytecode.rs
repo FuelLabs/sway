@@ -7,8 +7,13 @@ use term_table::row::Row;
 use term_table::table_cell::{Alignment, TableCell};
 use tracing::info;
 
+forc_util::cli_examples! {
+    [Parse bytecode => forc "parse-bytecode ./out/debug/tests.bin"]
+}
+
 /// Parse bytecode file into a debug format.
 #[derive(Debug, Parser)]
+#[clap(bin_name = "forc parse-bytecode", version, after_help = help())]
 pub(crate) struct Command {
     file_path: String,
 }
