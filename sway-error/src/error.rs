@@ -296,18 +296,10 @@ pub enum CompileError {
     ModuleNotFound { span: Span, name: String },
     #[error("This is a {actually}, not a struct. Fields can only be accessed on structs.")]
     FieldAccessOnNonStruct { actually: String, span: Span },
-    #[error("\"{name}\" is a {actually}, not a tuple. Elements can only be access on tuples.")]
-    NotATuple {
-        name: String,
-        span: Span,
-        actually: String,
-    },
-    #[error("\"{name}\" is a {actually}, which is not an indexable expression.")]
-    NotIndexable {
-        name: String,
-        span: Span,
-        actually: String,
-    },
+    #[error("This is a {actually}, not a tuple. Elements can only be access on tuples.")]
+    NotATuple { actually: String, span: Span },
+    #[error("This expression has type \"{actually}\", which is not an indexable type.")]
+    NotIndexable { actually: String, span: Span },
     #[error("\"{name}\" is a {actually}, not an enum.")]
     NotAnEnum {
         name: String,
@@ -1724,6 +1716,21 @@ impl ToDiagnostic for CompileError {
                     hints
                 },
                 help: vec![],
+            },
+            NotIndexable { actually, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Type is not indexable".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("This expression has type \"{actually}\", which is not an indexable type.")
+                ),
+                hints: vec![],
+                help: vec![
+                    "Index operator `[]` can be used only on indexable types.".to_string(),
+                    "In Sway, indexable types are:".to_string(),
+                    format!("{}- arrays. E.g., `[u64;3]`.", Indent::Single),
+                    format!("{}- references, direct or indirect, to arrays. E.g., `&[u64;3]` or `&&&[u64;3]`.", Indent::Single),
+                ],
             },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.

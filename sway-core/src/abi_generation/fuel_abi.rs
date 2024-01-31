@@ -304,7 +304,7 @@ impl TypeId {
                     )
                 }
                 _ => type_engine
-                    .get(*self)
+                    .get(resolved_type_id)
                     .abi_str(ctx, type_engine, decl_engine),
             }
         }
@@ -524,6 +524,7 @@ impl TypeId {
                             ),
                         })
                         .collect::<Vec<_>>();
+
                     types.extend(fields_types);
 
                     // Generate the JSON data for the tuple. This is basically a list of
@@ -611,7 +612,20 @@ impl TypeId {
                     None
                 }
             }
-
+            TypeInfo::UnknownGeneric { .. } => {
+                // avoid infinite recursion
+                if *self == resolved_type_id {
+                    None
+                } else {
+                    resolved_type_id.get_abi_type_components(
+                        ctx,
+                        type_engine,
+                        decl_engine,
+                        types,
+                        resolved_type_id,
+                    )
+                }
+            }
             _ => None,
         }
     }
