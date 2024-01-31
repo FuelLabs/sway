@@ -1,3 +1,4 @@
+// This test proves that https://github.com/FuelLabs/sway/issues/5502 is fixed.
 use crate::convert_parse_tree_error::ConvertParseTreeError;
 use crate::diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic};
 use crate::formatting::*;
@@ -29,15 +30,23 @@ impl fmt::Display for InterfaceName {
 }
 
 // TODO: Since moving to using Idents instead of strings, there are a lot of redundant spans in
-//       this type.
-//       Beware!!! If we remove those redundant spans (and we should!) we can have a situation that
-//       deduplication of error messages might remove errors that are actually not duplicates because
-//       although they point to the same Ident (in terms of name), the span can be different.
-//       Deduplication works on hashes and Ident's hash contains only the name and not the span.
-//       That's why we should consider always using IdentUnique whenever we extract the span from
-//       the provided Ident.
-//       Using IdentUnique will also clearly communicate that we are extracting the span from the
-//       provided identifier.
+//       this type. When replacing Strings + Spans with Idents, be aware of the rule explained below.
+
+// When defining error structures that display identifiers, we prefer passing Idents over Strings.
+// The error span can come from that same Ident or can be a different span.
+// We handle those two cases in the following way:
+//   - If the error span equals Ident's span, we use IdentUnique and never the plain Ident.
+//   - If the error span is different then Ident's span, we pass Ident and Span as two separate fields.
+//
+// The reason for this rule is clearly communicating the difference of the two cases in every error,
+// as well as avoiding issues with the error message deduplication explained below.
+//
+// Deduplication of error messages might remove errors that are actually not duplicates because
+// although they point to the same Ident (in terms of the identifier's name), the span can be different.
+// Deduplication works on hashes and Ident's hash contains only the name and not the span.
+// That's why we always use IdentUnique whenever we extract the span from the provided Ident.
+// Using IdentUnique also clearly communicates that we are extracting the span from the
+// provided identifier.
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CompileError {
     #[error(
@@ -556,17 +565,17 @@ pub enum CompileError {
     #[error("Constants cannot be shadowed. {variable_or_constant} \"{name}\" shadows constant with the same name.")]
     ConstantsCannotBeShadowed {
         variable_or_constant: String,
-        name: Ident,
+        name: IdentUnique,
         constant_span: Span,
         constant_decl: Span,
         is_alias: bool,
     },
     #[error("Constants cannot shadow variables. The constant \"{name}\" shadows variable with the same name.")]
-    ConstantShadowsVariable { name: Ident, variable_span: Span },
+    ConstantShadowsVariable { name: IdentUnique, variable_span: Span },
     #[error("The imported symbol \"{name}\" shadows another symbol with the same name.")]
-    ShadowsOtherSymbol { name: Ident },
+    ShadowsOtherSymbol { name: IdentUnique },
     #[error("The name \"{name}\" is already used for a generic parameter in this scope.")]
-    GenericShadowsGeneric { name: Ident },
+    GenericShadowsGeneric { name: IdentUnique },
     #[error("Non-exhaustive match expression. Missing patterns {missing_patterns}")]
     MatchExpressionNonExhaustive {
         missing_patterns: String,

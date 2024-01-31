@@ -141,7 +141,7 @@ impl Items {
                     ) => {
                         handler.emit_err(CompileError::ConstantsCannotBeShadowed {
                             variable_or_constant: "Variable".to_string(),
-                            name: name.clone(),
+                            name: (&name).into(),
                             constant_span: constant_ident.span(),
                             constant_decl: if is_imported_constant {
                                 constant_decl.decl_span.clone()
@@ -163,7 +163,7 @@ impl Items {
                     ) => {
                         handler.emit_err(CompileError::ConstantsCannotBeShadowed {
                             variable_or_constant: "Constant".to_string(),
-                            name: name.clone(),
+                            name: (&name).into(),
                             constant_span: constant_ident.span(),
                             constant_decl: if is_imported_constant {
                                 constant_decl.decl_span.clone()
@@ -176,7 +176,7 @@ impl Items {
                     // constant shadowing a variable
                     (_, VariableDecl(variable_decl), _, _, ConstantDecl { .. }, _, _) => {
                         handler.emit_err(CompileError::ConstantShadowsVariable {
-                            name: name.clone(),
+                            name: (&name).into(),
                             variable_span: variable_decl.name.span(),
                         });
                     }
@@ -231,7 +231,7 @@ impl Items {
                         GenericShadowingMode::Disallow,
                     ) => {
                         handler
-                            .emit_err(CompileError::GenericShadowsGeneric { name: name.clone() });
+                            .emit_err(CompileError::GenericShadowsGeneric { name: (&name).into() });
                     }
                     _ => {}
                 }

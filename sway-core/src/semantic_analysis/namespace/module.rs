@@ -427,7 +427,7 @@ impl Module {
                 let dst_ns = &mut self[dst];
                 let add_synonym = |name| {
                     if let Some((_, GlobImport::No, _, _)) = dst_ns.use_synonyms.get(name) {
-                        handler.emit_err(CompileError::ShadowsOtherSymbol { name: name.clone() });
+                        handler.emit_err(CompileError::ShadowsOtherSymbol { name: name.into() });
                     }
                     dst_ns.use_synonyms.insert(
                         name.clone(),
@@ -508,7 +508,7 @@ impl Module {
                         let mut add_synonym = |name| {
                             if let Some((_, GlobImport::No, _, _)) = dst_ns.use_synonyms.get(name) {
                                 handler.emit_err(CompileError::ShadowsOtherSymbol {
-                                    name: name.clone(),
+                                    name: name.into(),
                                 });
                             }
                             dst_ns.use_synonyms.insert(
