@@ -1,15 +1,23 @@
 #[macro_export]
 // Let the user format the help and parse it from that string into arguments to create the unit test
 macro_rules! cli_examples {
-    ($( [ $($description:ident)* => $command:tt $args:expr $( => $output:expr )? ] )* $( setup { $($code:tt)* } )?) => {
+    ($( [ $($description:ident)* => $command:tt $args:expr $( => $output:expr )? ] )* $( setup { $($setup:tt)* } )? $(teardown { $($teardown:tt)* } )?) => {
             #[cfg(test)]
             mod cli_examples {
             use $crate::serial_test;
 
-            fn setup_test() {
+            fn test_setup() {
                 $(
                     {
-                        $($code)*
+                        $($setup)*
+                    }
+                )?
+            }
+
+            fn test_destroy() {
+                $(
+                    {
+                        $($teardown)*
                     }
                 )?
             }
@@ -20,8 +28,6 @@ macro_rules! cli_examples {
                 #[serial_test::serial]
                 #[allow(unreachable_code)]
                 fn [<$($description:lower _)*:snake example>] () {
-                    setup_test();
-
                     let mut proc = std::process::Command::new("cargo");
                     proc.env("CLI_TEST", "true");
                     proc.arg("run");
@@ -44,8 +50,9 @@ macro_rules! cli_examples {
                         // run the cmd should be stored
                         proc.current_dir(path);
                     }
+                    test_setup();
                     let output = proc.output().expect(stringify!($command));
-
+                    test_destroy();
                     $(
                         let expected_output = $crate::Regex::new($output).expect("valid regex");
                         let stdout = String::from_utf8_lossy(&output.stdout);

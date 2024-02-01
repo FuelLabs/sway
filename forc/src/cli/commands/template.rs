@@ -7,6 +7,9 @@ forc_util::cli_examples! {
     setup {
         let _ = std::fs::remove_dir_all("tests/demo");
     }
+    teardown {
+        let _ = std::fs::remove_dir_all("tests/demo");
+    }
 }
 
 /// Create a new Forc project from a git template.
