@@ -696,8 +696,12 @@ pub enum CompileError {
     UnrecognizedContractParam { param_name: String, span: Span },
     #[error("Attempting to specify a contract method parameter for a non-contract function call")]
     CallParamForNonContractCallMethod { span: Span },
-    #[error("Storage field {name} does not exist")]
-    StorageFieldDoesNotExist { name: Ident, span: Span },
+    #[error("Storage field \"{field_name}\" does not exist.")]
+    StorageFieldDoesNotExist {
+        field_name: IdentUnique,
+        available_fields: Vec<Ident>,
+        storage_decl_span: Span,
+    },
     #[error("No storage has been declared")]
     NoDeclaredStorage { span: Span },
     #[error("Multiple storage declarations were found")]
@@ -989,7 +993,7 @@ impl Spanned for CompileError {
             ContractCallParamRepeated { span, .. } => span.clone(),
             UnrecognizedContractParam { span, .. } => span.clone(),
             CallParamForNonContractCallMethod { span, .. } => span.clone(),
-            StorageFieldDoesNotExist { span, .. } => span.clone(),
+            StorageFieldDoesNotExist { field_name, .. } => field_name.span(),
             InvalidStorageOnlyTypeDecl { span, .. } => span.clone(),
             NoDeclaredStorage { span, .. } => span.clone(),
             MultipleStorageDeclarations { span, .. } => span.clone(),
@@ -1776,6 +1780,44 @@ impl ToDiagnostic for CompileError {
                         format!("{}- references, direct or indirect, to structs. E.g., `(&my_struct).field` or `(&&&my_struct).field`.", Indent::Single),
                     ]
                 }
+            },
+            StorageFieldDoesNotExist { field_name, available_fields, storage_decl_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Storage field does not exist".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    field_name.span(),
+                    format!("Storage field \"{field_name}\" does not exist in the storage.")
+                ),
+                hints: {
+                    let (hint, show_storage_decl) = if available_fields.is_empty() {
+                        ("The storage is empty. It doesn't have any fields.".to_string(), false)
+                    } else {
+                        const NUM_OF_FIELDS_TO_DISPLAY: usize = 4;
+                        match &available_fields[..] {
+                            [field] => (format!("Only available storage field is \"{field}\"."), false),
+                            _ => (format!("Available storage fields are {}.", sequence_to_str(available_fields, Enclosing::DoubleQuote, NUM_OF_FIELDS_TO_DISPLAY)),
+                                    available_fields.len() > NUM_OF_FIELDS_TO_DISPLAY
+                                ),
+                        }
+                    };
+
+                    let mut hints = vec![];
+
+                    hints.push(Hint::help(source_engine, field_name.span(), hint));
+
+                    if show_storage_decl {
+                        hints.push(Hint::info(
+                            source_engine,
+                            storage_decl_span.clone(),
+                            format!("Storage is declared here, and has {} fields.",
+                                number_to_str(available_fields.len())
+                            )
+                        ));
+                    }
+
+                    hints
+                },
+                help: vec![],
             },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.

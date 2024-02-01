@@ -1,7 +1,14 @@
-use sway_error::{error::{CompileError, StructFieldUsageContext}, handler::{ErrorEmitted, Handler}, warning::{CompileWarning, Warning}};
+use sway_error::{
+    error::{CompileError, StructFieldUsageContext},
+    handler::{ErrorEmitted, Handler},
+    warning::{CompileWarning, Warning},
+};
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{language::ty::{self, StructAccessInfo}, Engines, Namespace, TypeInfo};
+use crate::{
+    language::ty::{self, StructAccessInfo},
+    Engines, Namespace, TypeInfo,
+};
 
 pub(crate) fn instantiate_struct_field_access(
     handler: &Handler,
@@ -56,7 +63,8 @@ pub(crate) fn instantiate_struct_field_access(
     };
 
     let decl = engines.de().get_struct(struct_decl_ref);
-    let (struct_can_be_changed, is_public_struct_access) = StructAccessInfo::get_info(&decl, namespace).into();
+    let (struct_can_be_changed, is_public_struct_access) =
+        StructAccessInfo::get_info(&decl, namespace).into();
 
     let field = match decl.find_field(&field_to_access) {
         Some(field) => {

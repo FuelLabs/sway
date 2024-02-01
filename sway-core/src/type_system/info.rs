@@ -1,10 +1,7 @@
 use crate::{
     decl_engine::{DeclEngine, DeclRefEnum, DeclRefStruct},
     engine_threading::*,
-    language::{
-        ty,
-        CallPath, QualifiedCallPath,
-    },
+    language::{ty, CallPath, QualifiedCallPath},
     type_system::priv_prelude::*,
     Ident,
 };

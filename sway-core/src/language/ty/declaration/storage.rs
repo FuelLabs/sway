@@ -98,8 +98,9 @@ impl TyStorageDecl {
             }
             None => {
                 return Err(handler.emit_err(CompileError::StorageFieldDoesNotExist {
-                    name: first_field.clone(),
-                    span: first_field.span(),
+                    field_name: first_field.into(),
+                    available_fields: storage_fields.iter().map(|sf| sf.name.clone()).collect(),
+                    storage_decl_span: self.span(),
                 }));
             }
         };

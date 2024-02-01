@@ -1,8 +1,9 @@
 category = "fail"
 
-#check: $()error
+#check: $()Storage field does not exist
 #check: $()let _ = storage.not_in_storage.read();
-#check: $()Storage field not_in_storage does not exist
+#nextln: $()Storage field "not_in_storage" does not exist in the storage.
+#nextln: $()Available storage fields are "b" and "s_01".
 
 #check: $()Field access requires a struct
 #check: $()let _ = storage.b.prev_not_a_struct.read();
