@@ -150,11 +150,9 @@ impl Module {
             content: AstNodeContent::Declaration(Declaration::ConstantDeclaration(const_decl)),
             span: const_item_span.clone(),
         };
-        let mut ns = Namespace::init_root(Self::new(ns_name.clone(), Visibility::Private, false));
+	let root_module = Self::new(ns_name.clone(), Visibility::Public, true);
+        let mut ns = Namespace::init_root(root_module);
         // This is pretty hacky but that's okay because of this code is being removed pretty soon
-        ns.root.module.name = ns_name.clone();
-        ns.root.module.is_external = true;
-        ns.root.module.visibility = Visibility::Public;
         let type_check_ctx = TypeCheckContext::from_root(&mut ns, engines);
         let typed_node = ty::TyAstNode::type_check(handler, type_check_ctx, ast_node).unwrap();
         // get the decl out of the typed node:
@@ -245,9 +243,9 @@ impl Module {
     pub(crate) fn star_import(
         &mut self,
         handler: &Handler,
+        engines: &Engines,
         src: &Path,
         dst: &Path,
-        engines: &Engines,
         is_src_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
         self.check_module_privacy(handler, src, dst)?;
@@ -358,8 +356,7 @@ impl Module {
 
     /// Pull a single item from a `src` module and import it into the `dst` module.
     ///
-    /// The item we want to import is basically the last item in path because this is a `self`
-    /// import.
+    /// The item we want to import is the last item in path because this is a `self` import.
     pub(crate) fn self_import(
         &mut self,
         handler: &Handler,
@@ -572,9 +569,9 @@ impl Module {
     pub(crate) fn variant_star_import(
         &mut self,
         handler: &Handler,
+        engines: &Engines,
         src: &Path,
         dst: &Path,
-        engines: &Engines,
         enum_name: &Ident,
         is_src_absolute: bool,
     ) -> Result<(), ErrorEmitted> {

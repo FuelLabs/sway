@@ -1807,7 +1807,7 @@ pub fn compile(
     let storage_slots = typed_program.storage_slots.clone();
     let tree_type = typed_program.kind.tree_type();
 
-    let namespace = typed_program.root.namespace.clone().into();
+    let namespace = typed_program.root.namespace.root().clone();
 
     if handler.has_errors() {
         return fail(handler);

@@ -445,7 +445,6 @@ impl<'a> TypeCheckContext<'a> {
             } => {
                 let type_decl_opt = if let Some(root_type_id) = root_type_id {
                     self.namespace
-                        .root
                         .resolve_call_path_and_root_type_id(
                             handler,
                             self.engines,
@@ -527,7 +526,7 @@ impl<'a> TypeCheckContext<'a> {
             } => {
                 let item_ref = self
                     .namespace
-                    .root.module
+                    .root_module()
 		    .items()
                     .implemented_traits
                     .get_trait_item_for_type(handler, self.engines, &name, trait_type_id, None)?;
@@ -641,7 +640,7 @@ impl<'a> TypeCheckContext<'a> {
         mod_path: &Path,
         call_path: &CallPath,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-        let (decl, mod_path) = self.namespace.root.resolve_call_path_and_mod_path(
+        let (decl, mod_path) = self.namespace.resolve_call_path_and_mod_path(
             handler,
             self.engines,
             mod_path,
@@ -662,7 +661,7 @@ impl<'a> TypeCheckContext<'a> {
         // check the visibility of the call path elements
         // we don't check the first prefix because direct children are always accessible
         for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
-            let module = self.namespace.root.module.check_submodule(handler, prefix)?;
+            let module = self.namespace.root_module().check_submodule(handler, prefix)?;
             if module.visibility.is_private() {
                 let prefix_last = prefix[prefix.len() - 1].clone();
                 handler.emit_err(CompileError::ImportPrivateModule {
@@ -740,7 +739,7 @@ impl<'a> TypeCheckContext<'a> {
                 _ => None,
             };
 
-            self.namespace.root.resolve_call_path_and_root_type_id(
+            self.namespace.resolve_call_path_and_root_type_id(
                 handler,
                 self.engines,
                 root_type_id,
@@ -1206,18 +1205,17 @@ impl<'a> TypeCheckContext<'a> {
         }
     }
 
-    /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.
+    /// Short-hand for performing a [Namespace::star_import].
     pub(crate) fn star_import(
         &mut self,
         handler: &Handler,
         src: &Path,
         is_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
-        self.namespace.root.module.star_import(
+        self.namespace.star_import(
             handler,
-            src,
-            &self.namespace.mod_path,
             self.engines,
+            src,
             is_absolute,
         )
     }
@@ -1230,11 +1228,10 @@ impl<'a> TypeCheckContext<'a> {
         enum_name: &Ident,
         is_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
-        self.namespace.root.module.variant_star_import(
+        self.namespace.variant_star_import(
             handler,
-            src,
-            &self.namespace.mod_path,
             self.engines,
+            src,
             enum_name,
             is_absolute,
         )
@@ -1248,11 +1245,10 @@ impl<'a> TypeCheckContext<'a> {
         alias: Option<Ident>,
         is_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
-        self.namespace.root.module.self_import(
+        self.namespace.self_import(
             handler,
             self.engines,
             src,
-            &self.namespace.mod_path,
             alias,
             is_absolute,
         )
@@ -1267,12 +1263,11 @@ impl<'a> TypeCheckContext<'a> {
         alias: Option<Ident>,
         is_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
-        self.namespace.root.module.item_import(
+        self.namespace.item_import(
             handler,
             self.engines,
             src,
             item,
-            &self.namespace.mod_path,
             alias,
             is_absolute,
         )
@@ -1289,13 +1284,12 @@ impl<'a> TypeCheckContext<'a> {
         alias: Option<Ident>,
         is_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
-        self.namespace.root.module.variant_import(
+        self.namespace.variant_import(
             handler,
             self.engines,
             src,
             enum_name,
             variant_name,
-            &self.namespace.mod_path,
             alias,
             is_absolute,
         )

@@ -13,7 +13,7 @@ use crate::{
     Engines, Ident, TypeId, TypeInfo,
 };
 
-use super::{module::Module, namespace::Namespace, Path};
+use super::{module::Module, Path};
 
 /// The root module, from which all other modules can be accessed.
 ///
@@ -29,45 +29,6 @@ pub struct Root {
 }
 
 impl Root {
-    /// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
-    ///
-    /// This is short-hand for concatenating the `mod_path` with the `call_path`'s prefixes and
-    /// then calling `resolve_symbol` with the resulting path and call_path's suffix.
-    pub(crate) fn resolve_call_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &Path,
-        call_path: &CallPath,
-        self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
-        let (decl, _) =
-            self.resolve_call_path_and_mod_path(handler, engines, mod_path, call_path, self_type)?;
-        Ok(decl)
-    }
-
-    pub(crate) fn resolve_call_path_and_mod_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &Path,
-        call_path: &CallPath,
-        self_type: Option<TypeId>,
-    ) -> Result<(ty::TyDecl, Vec<Ident>), ErrorEmitted> {
-        let symbol_path: Vec<_> = mod_path
-            .iter()
-            .chain(&call_path.prefixes)
-            .cloned()
-            .collect();
-        self.resolve_symbol_and_mod_path(
-            handler,
-            engines,
-            &symbol_path,
-            &call_path.suffix,
-            self_type,
-        )
-    }
-
     pub(crate) fn resolve_call_path_and_root_type_id(
         &self,
         handler: &Handler,
@@ -148,7 +109,7 @@ impl Root {
         Ok(decl)
     }
 
-    fn resolve_symbol_and_mod_path(
+    pub(crate) fn resolve_symbol_and_mod_path(
         &self,
         handler: &Handler,
         engines: &Engines,
@@ -368,11 +329,5 @@ impl Root {
 impl From<Module> for Root {
     fn from(module: Module) -> Self {
         Root { module }
-    }
-}
-
-impl From<Namespace> for Root {
-    fn from(namespace: Namespace) -> Self {
-        namespace.root
     }
 }
