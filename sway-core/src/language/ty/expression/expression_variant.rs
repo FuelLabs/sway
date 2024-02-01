@@ -91,6 +91,13 @@ pub enum TyExpressionVariant {
         prefix: Box<TyExpression>,
         field_to_access: TyStructField,
         field_instantiation_span: Span,
+        /// Final resolved type of the `prefix` part
+        /// of the expression. This will always be
+        /// a [TypeId] of a struct, never an alias
+        /// or a reference to a struct.
+        /// The original parent might be an alias
+        /// or a direct or indirect reference to a
+        /// struct.
         resolved_type_of_parent: TypeId,
     },
     TupleElemAccess {

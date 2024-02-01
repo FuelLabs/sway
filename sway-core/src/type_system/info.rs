@@ -2,16 +2,15 @@ use crate::{
     decl_engine::{DeclEngine, DeclRefEnum, DeclRefStruct},
     engine_threading::*,
     language::{
-        ty::{self, StructAccessInfo},
+        ty,
         CallPath, QualifiedCallPath,
     },
     type_system::priv_prelude::*,
-    Ident, Namespace,
+    Ident,
 };
 use sway_error::{
-    error::{CompileError, StructFieldUsageContext},
+    error::CompileError,
     handler::{ErrorEmitted, Handler},
-    warning::{CompileWarning, Warning},
 };
 use sway_types::{integer_bits::IntegerBits, span::Span, SourceId, Spanned};
 
@@ -1096,6 +1095,10 @@ impl TypeInfo {
         matches!(self, TypeInfo::Array(_, _))
     }
 
+    pub fn is_struct(&self) -> bool {
+        matches!(self, TypeInfo::Struct(_))
+    }
+
     pub(crate) fn apply_type_arguments(
         self,
         handler: &Handler,
@@ -1242,102 +1245,6 @@ impl TypeInfo {
                 span.clone(),
             ))),
             TypeInfo::ErrorRecovery(err) => Err(*err),
-        }
-    }
-
-    /// Given a [TypeInfo] `self` and a list of [Ident]'s `subfields`,
-    /// iterate through the elements of `subfields` as `subfield`,
-    /// and recursively apply `subfield` to `self`.
-    ///
-    /// Returns a [ty::TyStructField] when all `subfields` could be
-    /// applied without error.
-    ///
-    /// Returns an error when subfields could not be applied:
-    /// 1) in the case where `self` is not a [TypeInfo::Struct]
-    /// 2) in the case where `subfields` is empty
-    /// 3) in the case where a `subfield` does not exist on `self`
-    /// 4) in the case where a `subfield` is private and only public subfields can be accessed
-    pub(crate) fn apply_subfields(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        namespace: &Namespace,
-        subfields: &[Ident],
-        span: &Span,
-    ) -> Result<ty::TyStructField, ErrorEmitted> {
-        let type_engine = engines.te();
-        let decl_engine = engines.de();
-        match (self, subfields.split_first()) {
-            (TypeInfo::Struct { .. } | TypeInfo::Alias { .. }, None) => {
-                panic!("Trying to apply an empty list of subfields");
-            }
-            (TypeInfo::Struct(decl_ref), Some((first, rest))) => {
-                let decl = decl_engine.get_struct(decl_ref);
-                let (struct_can_be_changed, is_public_struct_access) =
-                    StructAccessInfo::get_info(&decl, namespace).into();
-
-                let field = match decl.find_field(first) {
-                    Some(field) => {
-                        if is_public_struct_access && field.is_private() {
-                            // TODO: Uncomment this code and delete the one with warnings once struct field privacy becomes a hard error.
-                            //       https://github.com/FuelLabs/sway/issues/5520
-                            // return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
-                            //     field_name: first.into(),
-                            //     struct_name: decl.call_path.suffix.clone(),
-                            //     field_decl_span: field.name.span(),
-                            //     struct_can_be_changed,
-                            //     usage_context: StructFieldUsageContext::StructFieldAccess,
-                            // }));
-                            handler.emit_warn(CompileWarning {
-                                span: first.span(),
-                                warning_content: Warning::StructFieldIsPrivate {
-                                    field_name: first.into(),
-                                    struct_name: decl.call_path.suffix.clone(),
-                                    field_decl_span: field.name.span(),
-                                    struct_can_be_changed,
-                                    usage_context: StructFieldUsageContext::StructFieldAccess,
-                                },
-                            });
-                        }
-
-                        field.clone()
-                    }
-                    None => {
-                        return Err(handler.emit_err(CompileError::StructFieldDoesNotExist {
-                            field_name: first.into(),
-                            available_fields: decl.accessible_fields_names(is_public_struct_access),
-                            is_public_struct_access,
-                            struct_name: decl.call_path.suffix.clone(),
-                            struct_decl_span: decl.span(),
-                            struct_is_empty: decl.is_empty(),
-                            usage_context: StructFieldUsageContext::StructFieldAccess,
-                        }));
-                    }
-                };
-                let field = if rest.is_empty() {
-                    field
-                } else {
-                    type_engine
-                        .get(field.type_argument.type_id)
-                        .apply_subfields(handler, engines, namespace, rest, span)?
-                };
-                Ok(field)
-            }
-            (
-                TypeInfo::Alias {
-                    ty: TypeArgument { type_id, .. },
-                    ..
-                },
-                _,
-            ) => type_engine
-                .get(*type_id)
-                .apply_subfields(handler, engines, namespace, subfields, span),
-            (TypeInfo::ErrorRecovery(err), _) => Err(*err),
-            // TODO-IG: Take a close look on this when implementing dereferencing.
-            (type_info, _) => Err(handler.emit_err(CompileError::FieldAccessOnNonStruct {
-                actually: format!("{:?}", engines.help_out(type_info)),
-                span: span.clone(),
-            })),
         }
     }
 

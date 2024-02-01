@@ -294,8 +294,16 @@ pub enum CompileError {
     },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span, name: String },
-    #[error("This is a {actually}, not a struct. Fields can only be accessed on structs.")]
-    FieldAccessOnNonStruct { actually: String, span: Span },
+    #[error("This expression has type \"{actually}\", which is not a struct. Fields can be accessed only on structs.")]
+    FieldAccessOnNonStruct {
+        actually: String,
+        /// Name of the storage variable, if the field access
+        /// happens within the access to a storage variable.
+        storage_variable: Option<String>,
+        /// Name of the field that is tried to be accessed.
+        field_name: IdentUnique,
+        span: Span,
+    },
     #[error("This is a {actually}, not a tuple. Elements can only be access on tuples.")]
     NotATuple { actually: String, span: Span },
     #[error("This expression has type \"{actually}\", which is not an indexable type.")]
@@ -1731,6 +1739,43 @@ impl ToDiagnostic for CompileError {
                     format!("{}- arrays. E.g., `[u64;3]`.", Indent::Single),
                     format!("{}- references, direct or indirect, to arrays. E.g., `&[u64;3]` or `&&&[u64;3]`.", Indent::Single),
                 ],
+            },
+            FieldAccessOnNonStruct { actually, storage_variable, field_name, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Field access requires a struct".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("{} has type \"{actually}\", which is not a struct{}.",
+                        if let Some(storage_variable) = storage_variable {
+                            format!("Storage variable \"{storage_variable}\"")
+                        } else {
+                            "This expression".to_string()
+                        },
+                        if storage_variable.is_some() {
+                            ""
+                        } else {
+                            " or a reference to a struct"
+                        }
+                    )
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        field_name.span(),
+                        format!("Field access happens here, on \"{field_name}\".")
+                    )
+                ],
+                help: if storage_variable.is_some() {
+                    vec![
+                        "Fields can be accessed only on storage variables that are structs.".to_string(),
+                    ]
+                } else {
+                    vec![
+                        "In Sway, fields can be accessed on:".to_string(),
+                        format!("{}- structs. E.g., `my_struct.field`.", Indent::Single),
+                        format!("{}- references, direct or indirect, to structs. E.g., `(&my_struct).field` or `(&&&my_struct).field`.", Indent::Single),
+                    ]
+                }
             },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
