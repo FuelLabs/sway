@@ -8,7 +8,7 @@ use term_table::table_cell::{Alignment, TableCell};
 use tracing::info;
 
 forc_util::cli_examples! {
-    [Parse bytecode => forc "parse-bytecode ./out/debug/tests.bin"]
+    [Parse bytecode => forc "parse-bytecode ./tests.bin"]
 }
 
 /// Parse bytecode file into a debug format.

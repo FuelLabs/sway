@@ -1,16 +1,27 @@
 #[macro_export]
 // Let the user format the help and parse it from that string into arguments to create the unit test
 macro_rules! cli_examples {
-    ($( [ $($description:ident)* => $command:tt $args:expr $( => $output:expr )? ] )*) => {
+    ($( [ $($description:ident)* => $command:tt $args:expr $( => $output:expr )? ] )* $( setup { $($code:tt)* } )?) => {
             #[cfg(test)]
             mod cli_examples {
             use $crate::serial_test;
+
+            fn setup_test() {
+                $(
+                    {
+                        $($code)*
+                    }
+                )?
+            }
+
             $(
             $crate::paste::paste! {
                 #[test]
                 #[serial_test::serial]
                 #[allow(unreachable_code)]
                 fn [<$($description:lower _)*:snake example>] () {
+                    setup_test();
+
                     let mut proc = std::process::Command::new("cargo");
                     proc.env("CLI_TEST", "true");
                     proc.arg("run");

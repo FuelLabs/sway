@@ -4,8 +4,18 @@ use clap::Parser;
 use forc_util::{forc_result_bail, validate_name, ForcResult};
 use std::path::{Path, PathBuf};
 
+forc_util::cli_examples! {
+    [Create a new project => forc "new --contract --name my_project /tmp/project"]
+    [Create a new workspace => forc "new --workspace --name my_workspace /tmp/workspace"]
+    setup {
+        let _ = std::fs::remove_dir_all("/tmp/project");
+        let _ = std::fs::remove_dir_all("/tmp/workspace");
+    }
+}
+
 /// Create a new Forc project at `<path>`.
 #[derive(Debug, Parser)]
+#[clap(bin_name = "forc new", version, after_help = help())]
 pub struct Command {
     /// The default program type. Excluding all flags or adding this flag creates a basic contract
     /// program.
