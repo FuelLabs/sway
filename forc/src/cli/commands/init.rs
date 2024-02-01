@@ -2,8 +2,19 @@ use crate::ops::forc_init;
 use clap::Parser;
 use forc_util::ForcResult;
 
+forc_util::cli_examples! {
+    [Initialize a new Forc project => forc "init --path /tmp/path-to-contract"]
+    [Initialize a new Forc project as workspace => forc "init --path /tmp/path-to-contract --workspace"]
+    setup {
+        // make sure that /tmp/path-to-contract exists and it is empty
+        let _ = std::fs::remove_dir_all("/tmp/path-to-contract");
+        std::fs::create_dir("/tmp/path-to-contract").unwrap();
+    }
+}
+
 /// Create a new Forc project in an existing directory.
 #[derive(Debug, Parser)]
+#[clap(bin_name = "forc init", version, after_help = help())]
 pub struct Command {
     /// The directory in which the forc project will be initialized.
     #[clap(long)]
