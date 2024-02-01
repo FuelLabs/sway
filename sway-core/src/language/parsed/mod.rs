@@ -52,12 +52,6 @@ pub enum AstNodeContent {
     Declaration(Declaration),
     /// Any type of expression, of which there are quite a few. See [Expression] for more details.
     Expression(Expression),
-    /// An implicit return expression is different from a [Expression::Return] because
-    /// it is not a control flow item. Therefore it is a different variant.
-    ///
-    /// An implicit return expression is an [Expression] at the end of a code block which has no
-    /// semicolon, denoting that it is the [Expression] to be returned from that block.
-    ImplicitReturnExpression(Expression),
     /// A statement of the form `mod foo::bar;` which imports/includes another source file.
     IncludeStatement(IncludeStatement),
     /// A malformed statement.
