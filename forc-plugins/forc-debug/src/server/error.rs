@@ -12,6 +12,9 @@ pub(crate) enum AdapterError {
     #[error("Missing configuration")]
     MissingConfiguration,
 
+    #[error("Missing source path argument")]
+    MissingSourcePathArgument,
+
     #[error("Missing breakpoint location")]
     MissingBreakpointLocation,
 

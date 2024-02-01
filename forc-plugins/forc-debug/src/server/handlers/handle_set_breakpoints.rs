@@ -19,7 +19,7 @@ impl DapServer {
             .source
             .path
             .as_ref()
-            .ok_or(AdapterError::MissingBreakpointLocation)?;
+            .ok_or(AdapterError::MissingSourcePathArgument)?;
 
         let source_path_buf = PathBuf::from(source_path);
 
@@ -72,5 +72,100 @@ impl DapServer {
             .insert(source_path_buf, breakpoints.clone());
 
         Ok(breakpoints)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{collections::HashMap, iter};
+
+    use super::*;
+
+    const MOCK_SOURCE_PATH: &str = "some/path";
+    const MOCK_BP_ID: i64 = 1;
+    const MOCK_LINE: i64 = 1;
+    const MOCK_INSTRUCTION: u64 = 1;
+
+    fn get_mock_server(source_map: bool, existing_bp: bool) -> DapServer {
+        let mut server = DapServer::default();
+        if source_map {
+            server.state.source_map.insert(
+                PathBuf::from(MOCK_SOURCE_PATH),
+                HashMap::from_iter(iter::once((MOCK_LINE, MOCK_INSTRUCTION))),
+            );
+        }
+        if existing_bp {
+            server.state.breakpoints.insert(
+                PathBuf::from(MOCK_SOURCE_PATH),
+                vec![dap::types::Breakpoint {
+                    id: Some(MOCK_BP_ID),
+                    line: Some(MOCK_LINE),
+                    verified: false,
+                    source: Some(dap::types::Source {
+                        path: Some(MOCK_SOURCE_PATH.into()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }],
+            );
+        }
+        server
+    }
+
+    fn get_mock_args() -> SetBreakpointsArguments {
+        SetBreakpointsArguments {
+            source: dap::types::Source {
+                path: Some(MOCK_SOURCE_PATH.into()),
+                ..Default::default()
+            },
+            breakpoints: Some(vec![dap::types::SourceBreakpoint {
+                line: MOCK_LINE,
+                ..Default::default()
+            }]),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn test_handle_set_breakpoints_existing_verified() {
+        let mut server = get_mock_server(true, true);
+        let args = get_mock_args();
+        let result = server.handle_set_breakpoints(&args).expect("success");
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].line, Some(MOCK_LINE));
+        assert_eq!(result[0].id, Some(MOCK_BP_ID));
+        assert_eq!(result[0].source.clone().expect("source").path, Some(MOCK_SOURCE_PATH.into()));
+        assert_eq!(result[0].verified, true);
+    }
+
+    #[test]
+    fn test_handle_set_breakpoints_existing_unverified() {
+        let mut server = get_mock_server(false, true);
+        let args = get_mock_args();
+        let result = server.handle_set_breakpoints(&args).expect("success");
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].line, Some(MOCK_LINE));
+        assert_eq!(result[0].id, Some(MOCK_BP_ID));
+        assert_eq!(result[0].source.clone().expect("source").path, Some(MOCK_SOURCE_PATH.into()));
+        assert_eq!(result[0].verified, false);
+    }
+
+    #[test]
+    fn test_handle_set_breakpoints_new() {
+        let mut server = get_mock_server(true, false);
+        let args = get_mock_args();
+        let result = server.handle_set_breakpoints(&args).expect("success");
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].line, Some(MOCK_LINE));
+        assert_eq!(result[0].source.clone().expect("source").path, Some(MOCK_SOURCE_PATH.into()));
+        assert_eq!(result[0].verified, true);
+    }
+
+    #[test]
+    #[should_panic(expected = "MissingSourcePathArgument")]
+    fn test_handle_breakpoint_locations_missing_argument() {
+        let mut server = get_mock_server(true, true);
+        let args = SetBreakpointsArguments::default();
+        server.handle_set_breakpoints(&args).unwrap();
     }
 }

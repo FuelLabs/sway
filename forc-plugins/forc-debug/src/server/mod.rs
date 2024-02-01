@@ -180,11 +180,12 @@ impl DapServer {
                         ..Default::default()
                     },
                     Scope {
-                    name: "Registers".into(),
-                    presentation_hint: Some(types::ScopePresentationhint::Registers),
-                    variables_reference: REGISTERS_VARIABLE_REF,
-                    ..Default::default()
-                }],
+                        name: "Registers".into(),
+                        presentation_hint: Some(types::ScopePresentationhint::Registers),
+                        variables_reference: REGISTERS_VARIABLE_REF,
+                        ..Default::default()
+                    },
+                ],
             })),
             Command::SetBreakpoints(ref args) => match self.handle_set_breakpoints(args) {
                 Ok(breakpoints) => Ok(ResponseBody::SetBreakpoints(
