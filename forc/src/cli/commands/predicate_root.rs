@@ -4,9 +4,14 @@ use forc_util::ForcResult;
 pub use crate::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
 use crate::ops::forc_predicate_root;
 
+forc_util::cli_examples! {
+    [Get predicate root => forc "predicate-root"]
+}
+
 /// Determine predicate-root for a predicate. For workspaces outputs all predicate roots in the
 /// workspace.
 #[derive(Debug, Parser)]
+#[clap(bin_name = "forc predicate-root", version, after_help = help())]
 pub struct Command {
     #[clap(flatten)]
     pub pkg: Pkg,

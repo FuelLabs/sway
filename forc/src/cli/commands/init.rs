@@ -5,6 +5,7 @@ use forc_util::ForcResult;
 forc_util::cli_examples! {
     [Initialize a new Forc project => forc "init --path /tmp/path-to-contract"]
     [Initialize a new Forc project as workspace => forc "init --path /tmp/path-to-contract --workspace"]
+    [Initialize a new Forc project with a predicate => forc "init --path /tmp/path-to-contract --predicate"]
     setup {
         // make sure that /tmp/path-to-contract exists and it is empty
         let _ = std::fs::remove_dir_all("/tmp/path-to-contract");
