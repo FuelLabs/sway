@@ -8,6 +8,7 @@ forc_util::cli_examples! {
     [Create a new project => forc "new --contract --name my_project /tmp/path-to-contract"]
     [Create a new workspace => forc "new --workspace --name my_workspace /tmp/path-to-contract"]
     [Create a new Forc project with a predicate => forc "new /tmp/path-to-contract --predicate"]
+    [Create a new Forc library project => forc "new /tmp/path-to-contract --library"]
     setup {
         let _ = std::fs::remove_dir_all("/tmp/path-to-contract");
     }
