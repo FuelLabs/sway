@@ -16,7 +16,7 @@ use ::hash::{Hash, Hasher};
 ///
 /// The SubId is used to differentiate between different assets that are created by the same contract.
 pub struct AssetId {
-    value: b256,
+    pub value: b256,
 }
 
 impl Hash for AssetId {
@@ -55,7 +55,9 @@ impl From<b256> for AssetId {
     fn from(bits: b256) -> Self {
         Self { value: bits }
     }
+}
 
+impl From<AssetId> for b256 {
     /// Casts an `AssetId` to raw `b256` data.
     ///
     /// # Returns
@@ -73,8 +75,8 @@ impl From<b256> for AssetId {
     ///     assert(b256_data == ZERO_B256);
     /// }
     /// ```
-    fn into(self) -> b256 {
-        self.value
+    fn from(id: AssetId) -> b256 {
+        id.value
     }
 }
 

@@ -1,6 +1,6 @@
 library;
 
-use ::convert::TryFrom;
+use ::convert::{TryFrom, TryInto, *};
 use ::option::Option::{self, *};
 
 impl u64 {

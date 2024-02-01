@@ -439,6 +439,7 @@ fn match_struct(
         let subfield = instantiate_struct_field_access(
             handler,
             ctx.engines(),
+            ctx.namespace,
             exp.clone(),
             field.clone(),
             field_span,

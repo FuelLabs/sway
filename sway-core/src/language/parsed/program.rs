@@ -1,5 +1,7 @@
 use strum::EnumString;
 
+use crate::Engines;
+
 use super::ParseModule;
 
 /// A parsed, but not yet type-checked, Sway program.
@@ -43,7 +45,7 @@ impl std::fmt::Display for TreeType {
 
 impl ParseProgram {
     /// Excludes all test functions from the parse tree.
-    pub(crate) fn exclude_tests(&mut self) {
-        self.root.tree.exclude_tests()
+    pub(crate) fn exclude_tests(&mut self, engines: &Engines) {
+        self.root.tree.exclude_tests(engines)
     }
 }

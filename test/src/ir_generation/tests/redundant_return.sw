@@ -23,5 +23,5 @@ fn main() -> u64 {
 // check: ret u64 $else_val
 
 // check: $(merge_block=$ID)
-// check: ret
+// check: br $(entry=$ID)()
 // nextln: } 

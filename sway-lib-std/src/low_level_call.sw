@@ -12,11 +12,11 @@ use ::vec::Vec;
 /// A struct representing the call parameters of a function call.
 pub struct CallParams {
     /// Amount of the asset to transfer.
-    coins: u64,
+    pub coins: u64,
     /// AssetId of the asset to transfer.
-    asset_id: AssetId,
+    pub asset_id: AssetId,
     /// Gas to forward.
-    gas: u64,
+    pub gas: u64,
 }
 
 // TODO : Replace with `from` when implemented

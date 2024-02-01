@@ -14,9 +14,9 @@ use ::result::Result::{self, *};
 /// Represented as two 64-bit components: `(upper, lower)`, where `value = (upper << 64) + lower`.
 pub struct U128 {
     /// The most significant 64 bits of the `U128`.
-    upper: u64,
+    pub upper: u64,
     /// The least significant 64 bits of the `U128`.
-    lower: u64,
+    pub lower: u64,
 }
 
 /// The error type used for `U128` type errors.
@@ -32,9 +32,11 @@ impl From<(u64, u64)> for U128 {
             lower: components.1,
         }
     }
+}
 
-    fn into(self) -> (u64, u64) {
-        (self.upper, self.lower)
+impl From<U128> for (u64, u64) {
+    fn from(val: U128) -> (u64, u64) {
+        (val.upper, val.lower)
     }
 }
 

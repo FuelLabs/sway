@@ -159,9 +159,6 @@ impl TraitMap {
         is_extending_existing_impl: IsExtendingExistingImpl,
         engines: &Engines,
     ) -> Result<(), ErrorEmitted> {
-        let type_engine = engines.te();
-        let _decl_engine = engines.de();
-
         handler.scope(|handler| {
             let mut trait_items: TraitItems = im::HashMap::new();
             for item in items.iter() {
@@ -188,19 +185,6 @@ impl TraitMap {
             }
 
             // check to see if adding this trait will produce a conflicting definition
-            let trait_type_id = type_engine.insert(
-                engines,
-                TypeInfo::Custom {
-                    qualified_call_path: trait_name.suffix.clone().into(),
-                    type_arguments: if trait_type_args.is_empty() {
-                        None
-                    } else {
-                        Some(trait_type_args.clone())
-                    },
-                    root_type_id: None,
-                },
-                trait_name.suffix.span().source_id(),
-            );
             for TraitEntry {
                 key:
                     TraitKey {
@@ -223,23 +207,23 @@ impl TraitMap {
                         },
                     ..
                 } = map_trait_name;
-                let map_trait_type_id = type_engine.insert(
-                    engines,
-                    TypeInfo::Custom {
-                        qualified_call_path: map_trait_name_suffix.clone().into(),
-                        type_arguments: if map_trait_type_args.is_empty() {
-                            None
-                        } else {
-                            Some(map_trait_type_args.to_vec())
-                        },
-                        root_type_id: None,
-                    },
-                    map_trait_name_suffix.span().source_id(),
-                );
 
                 let unify_checker = UnifyCheck::non_generic_constraint_subset(engines);
                 let types_are_subset = unify_checker.check(type_id, *map_type_id);
-                let traits_are_subset = unify_checker.check(trait_type_id, map_trait_type_id);
+                let mut traits_are_subset = true;
+                if *map_trait_name_suffix != trait_name.suffix
+                    || map_trait_type_args.len() != trait_type_args.len()
+                {
+                    traits_are_subset = false;
+                } else {
+                    for (map_arg_type, arg_type) in
+                        map_trait_type_args.iter().zip(trait_type_args.iter())
+                    {
+                        if !unify_checker.check(arg_type.type_id, map_arg_type.type_id) {
+                            traits_are_subset = false;
+                        }
+                    }
+                }
 
                 if matches!(is_extending_existing_impl, IsExtendingExistingImpl::No)
                     && types_are_subset

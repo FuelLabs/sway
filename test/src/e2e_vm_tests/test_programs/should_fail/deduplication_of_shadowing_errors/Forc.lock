@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-4CB50D8895EED260"
+
+[[package]]
+name = "deduplication_of_shadowing_errors"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-4CB50D8895EED260"
+dependencies = ["core"]
