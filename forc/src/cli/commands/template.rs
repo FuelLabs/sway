@@ -2,8 +2,16 @@ use crate::ops::forc_template;
 use clap::Parser;
 use forc_util::ForcResult;
 
+forc_util::cli_examples! {
+    [Create a new Forc project from an option template => forc "template demo --template-name option"]
+    setup {
+        let _ = std::fs::remove_dir_all("tests/demo");
+    }
+}
+
 /// Create a new Forc project from a git template.
 #[derive(Debug, Parser)]
+#[clap(bin_name = "forc template", version, after_help = help())]
 pub struct Command {
     /// The template url, should be a git repo.
     #[clap(long, short, default_value = "https://github.com/fuellabs/sway")]
