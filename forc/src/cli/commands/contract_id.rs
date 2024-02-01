@@ -6,7 +6,22 @@ use clap::Parser;
 use forc_util::{tx_utils::Salt, ForcResult};
 
 forc_util::cli_examples! {
-    [Get contract id => forc "contract-id"]
+    [Get contract id => forc "contract-id --path /tmp/contract-id"]
+    setup {
+        use crate::cli::commands::new::{exec, Command};
+        exec(Command {
+            path: "/tmp/contract-id".to_owned(),
+            contract: true,
+            script: false,
+            predicate: false,
+            library: false,
+            workspace: false,
+            name: None,
+        }).unwrap();
+    }
+    teardown {
+       std::fs::remove_dir_all("/tmp/contract-id").unwrap();
+    }
 }
 
 /// Determine contract-id for a contract. For workspaces outputs all contract
