@@ -623,8 +623,8 @@ impl<'eng> FnCompiler<'eng> {
                 self.compile_reassignment(context, md_mgr, reassignment, span_md_idx)
             }
             ty::TyExpressionVariant::ImplicitReturn(_exp) => {
-                // TODO: This is currently handled at the top-level handler, `compile_ast_node`.
-                todo!();
+                // This is currently handled at the top-level handler, `compile_ast_node`.
+                unreachable!();
             }
             ty::TyExpressionVariant::Return(exp) => {
                 self.compile_return(context, md_mgr, exp, span_md_idx)

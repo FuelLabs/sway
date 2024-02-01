@@ -1421,7 +1421,10 @@ impl DebugWithEngines for TyExpressionVariant {
                 }
                 format!("reassignment to {place}")
             }
-            TyExpressionVariant::ImplicitReturn(exp) | TyExpressionVariant::Return(exp) => {
+            TyExpressionVariant::ImplicitReturn(exp) => {
+                format!("implicit return {:?}", engines.help_out(&**exp))
+            }
+            TyExpressionVariant::Return(exp) => {
                 format!("return {:?}", engines.help_out(&**exp))
             }
             TyExpressionVariant::Ref(exp) => {
