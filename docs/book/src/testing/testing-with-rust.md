@@ -173,10 +173,13 @@ following:
 ```rust,ignore
 use fuels::{prelude::*, types::ContractId};
 
-// Load ABI from JSON
-abigen!(TestContract, "out/debug/my-fuel-project-abi.json");
+// Load abi from json
+abigen!(Contract(
+    name = "MyContract",
+    abi = "out/debug/my-fuel-project-abi.json"
+));
 
-async fn get_contract_instance() -> (TestContract, ContractId) {
+async fn get_contract_instance() -> (MyContract<WalletUnlocked>, ContractId) {
     // Launch a local network and deploy the contract
     let mut wallets = launch_custom_provider_and_get_wallets(
         WalletsConfig::new(
@@ -185,25 +188,22 @@ async fn get_contract_instance() -> (TestContract, ContractId) {
             Some(1_000_000_000), /* Amount per coin */
         ),
         None,
+        None,
     )
-    .await;
+    .await
+    .unwrap();
     let wallet = wallets.pop().unwrap();
 
     let id = Contract::load_from(
         "./out/debug/my-fuel-project.bin",
-        LoadConfiguration::default().set_storage_configuration(
-            StorageConfiguration::load_from(
-                "./out/debug/my-fuel-project-storage_slots.json",
-            )
-            .unwrap(),
-        ),
+        LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 
-    let instance = TestContract::new(id.to_string(), wallet);
+    let instance = MyContract::new(id.clone(), wallet);
 
     (instance, id.into())
 }
