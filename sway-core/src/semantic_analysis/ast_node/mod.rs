@@ -169,7 +169,7 @@ impl ty::TyAstNode {
         if let ty::TyAstNode {
             content: ty::TyAstNodeContent::Expression(ty::TyExpression { expression, .. }),
             ..
-        } = node.clone()
+        } = &node
         {
             match expression {
                 ty::TyExpressionVariant::ImplicitReturn(_) => {}

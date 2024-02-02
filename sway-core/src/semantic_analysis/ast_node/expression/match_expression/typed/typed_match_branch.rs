@@ -126,23 +126,18 @@ impl ty::TyMatchBranch {
         // of that code block to the block of code statements that we are already
         // generating. if the typed branch result is not a code block, then add
         // the typed branch result as an ast node to the block of code statements
-        let ty::TyExpression {
-            expression: typed_result_expression_variant,
-            return_type: typed_result_return_type,
-            span: typed_result_span,
-        } = typed_result.clone();
-        match typed_result_expression_variant {
+        let typed_result_return_type = typed_result.return_type;
+        let typed_result_span = typed_result.span.clone();
+        match typed_result.expression {
             ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock { mut contents, .. }) => {
                 code_block_contents.append(&mut contents);
             }
             _ => {
                 code_block_contents.push(ty::TyAstNode {
                     content: ty::TyAstNodeContent::Expression(TyExpression {
-                        expression: ty::TyExpressionVariant::ImplicitReturn(Box::new(
-                            typed_result.clone(),
-                        )),
                         return_type: typed_result_return_type,
                         span: typed_result_span.clone(),
+                        expression: ty::TyExpressionVariant::ImplicitReturn(Box::new(typed_result)),
                     }),
                     span: typed_result_span.clone(),
                 });
@@ -156,7 +151,7 @@ impl ty::TyMatchBranch {
                 contents: code_block_contents,
                 whole_block_span: sway_types::Span::dummy(),
             }),
-            return_type: typed_result.return_type,
+            return_type: typed_result_return_type,
             span: typed_result_span,
         };
 
