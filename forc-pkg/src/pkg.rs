@@ -769,30 +769,6 @@ impl BuildPlan {
             .filter(|&n| self.graph[n].source == source::Pinned::MEMBER)
     }
 
-    // /// Returns a [HashMap] of contract dependencies, indexed by the member node.
-    // ///
-    // /// In the case that this [BuildPlan] was constructed for a single package,
-    // /// only that package's node will be yielded.
-    // pub fn member_contract_dependencies(
-    //     &self,
-    // ) -> HashMap<Pinned, Vec<Arc<BuiltPackage>>> {
-    //     build_plan
-    //         .member_nodes()
-    //         .map(|member_node| {
-    //             let graph = build_plan.graph();
-    //             let pinned_member = graph[member_node].clone();
-    //             let contract_dependencies = build_plan
-    //                 .contract_dependencies(member_node)
-    //                 .map(|contract_depency_node_ix| graph[contract_depency_node_ix].clone())
-    //                 .filter_map(|pinned| built_members.get(&pinned))
-    //                 .cloned()
-    //                 .collect();
-
-    //             (pinned_member, contract_dependencies)
-    //         })
-    //         .collect()
-    // }
-
     /// Produce an iterator yielding all workspace member pinned pkgs in order of compilation.
     ///
     /// In the case that this `BuildPlan` was constructed for a single package,
