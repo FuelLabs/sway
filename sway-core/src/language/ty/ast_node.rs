@@ -54,7 +54,6 @@ impl DebugWithEngines for TyAstNode {
         match &self.content {
             Declaration(typed_decl) => DebugWithEngines::fmt(typed_decl, f, engines),
             Expression(exp) => DebugWithEngines::fmt(exp, f, engines),
-            ImplicitReturnExpression(exp) => write!(f, "return {:?}", engines.help_out(exp)),
             SideEffect(_) => f.write_str(""),
             Error(_, _) => f.write_str("error"),
         }
@@ -64,9 +63,6 @@ impl DebugWithEngines for TyAstNode {
 impl SubstTypes for TyAstNode {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         match self.content {
-            TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.subst(type_mapping, engines)
-            }
             TyAstNodeContent::Declaration(ref mut decl) => decl.subst(type_mapping, engines),
             TyAstNodeContent::Expression(ref mut expr) => expr.subst(type_mapping, engines),
             TyAstNodeContent::SideEffect(_) => (),
@@ -83,9 +79,6 @@ impl ReplaceDecls for TyAstNode {
         ctx: &mut TypeCheckContext,
     ) -> Result<(), ErrorEmitted> {
         match self.content {
-            TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.replace_decls(decl_mapping, handler, ctx)
-            }
             TyAstNodeContent::Declaration(TyDecl::VariableDecl(ref mut decl)) => {
                 decl.body.replace_decls(decl_mapping, handler, ctx)
             }
@@ -102,9 +95,6 @@ impl ReplaceDecls for TyAstNode {
 impl UpdateConstantExpression for TyAstNode {
     fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
         match self.content {
-            TyAstNodeContent::ImplicitReturnExpression(ref mut expr) => {
-                expr.update_constant_expression(engines, implementing_type)
-            }
             TyAstNodeContent::Declaration(_) => {}
             TyAstNodeContent::Expression(ref mut expr) => {
                 expr.update_constant_expression(engines, implementing_type)
@@ -150,9 +140,7 @@ impl DeterministicallyAborts for TyAstNode {
         use TyAstNodeContent::*;
         match &self.content {
             Declaration(_) => false,
-            Expression(exp) | ImplicitReturnExpression(exp) => {
-                exp.deterministically_aborts(decl_engine, check_call_body)
-            }
+            Expression(exp) => exp.deterministically_aborts(decl_engine, check_call_body),
             SideEffect(_) => false,
             Error(_, _) => false,
         }
@@ -172,7 +160,6 @@ impl TyAstNode {
     /// _only_ for explicit returns.
     pub(crate) fn gather_return_statements(&self) -> Vec<&TyExpression> {
         match &self.content {
-            TyAstNodeContent::ImplicitReturnExpression(ref exp) => exp.gather_return_statements(),
             // assignments and  reassignments can happen during control flow and can abort
             TyAstNodeContent::Declaration(TyDecl::VariableDecl(decl)) => {
                 decl.body.gather_return_statements()
@@ -189,8 +176,7 @@ impl TyAstNode {
             TyAstNodeContent::Declaration(decl) => decl.visibility(decl_engine).is_public(),
             TyAstNodeContent::Expression(_)
             | TyAstNodeContent::SideEffect(_)
-            | TyAstNodeContent::Error(_, _)
-            | TyAstNodeContent::ImplicitReturnExpression(_) => false,
+            | TyAstNodeContent::Error(_, _) => false,
         }
     }
 
@@ -325,9 +311,6 @@ impl TyAstNode {
             TyAstNodeContent::Expression(TyExpression { return_type, .. }) => {
                 (*type_engine.get(*return_type)).clone()
             }
-            TyAstNodeContent::ImplicitReturnExpression(TyExpression { return_type, .. }) => {
-                (*type_engine.get(*return_type)).clone()
-            }
             TyAstNodeContent::SideEffect(_) => TypeInfo::Tuple(Vec::new()),
             TyAstNodeContent::Error(_, error) => TypeInfo::ErrorRecovery(*error),
         }
@@ -395,9 +378,6 @@ impl TyAstNode {
             TyAstNodeContent::Expression(node) => {
                 node.check_deprecated(engines, handler, allow_deprecated);
             }
-            TyAstNodeContent::ImplicitReturnExpression(node) => {
-                node.check_deprecated(engines, handler, allow_deprecated);
-            }
             TyAstNodeContent::SideEffect(_) | TyAstNodeContent::Error(_, _) => {}
         }
     }
@@ -438,7 +418,6 @@ impl TyAstNode {
                     | TyDecl::TypeAliasDecl(_) => {}
                 },
                 TyAstNodeContent::Expression(_node) => {}
-                TyAstNodeContent::ImplicitReturnExpression(_node) => {}
                 TyAstNodeContent::SideEffect(_) | TyAstNodeContent::Error(_, _) => {}
             };
             Ok(())
@@ -450,7 +429,6 @@ impl TyAstNode {
 pub enum TyAstNodeContent {
     Declaration(TyDecl),
     Expression(TyExpression),
-    ImplicitReturnExpression(TyExpression),
     // a no-op node used for something that just issues a side effect, like an import statement.
     SideEffect(TySideEffect),
     Error(Box<[Span]>, ErrorEmitted),
@@ -462,9 +440,6 @@ impl PartialEqWithEngines for TyAstNodeContent {
         match (self, other) {
             (Self::Declaration(x), Self::Declaration(y)) => x.eq(y, engines),
             (Self::Expression(x), Self::Expression(y)) => x.eq(y, engines),
-            (Self::ImplicitReturnExpression(x), Self::ImplicitReturnExpression(y)) => {
-                x.eq(y, engines)
-            }
             (Self::SideEffect(_), Self::SideEffect(_)) => true,
             _ => false,
         }
@@ -479,7 +454,7 @@ impl HashWithEngines for TyAstNodeContent {
             Declaration(decl) => {
                 decl.hash(state, engines);
             }
-            Expression(exp) | ImplicitReturnExpression(exp) => {
+            Expression(exp) => {
                 exp.hash(state, engines);
             }
             SideEffect(effect) => {
@@ -499,9 +474,6 @@ impl TypeCheckAnalysis for TyAstNodeContent {
         match self {
             TyAstNodeContent::Declaration(node) => node.type_check_analyze(handler, ctx)?,
             TyAstNodeContent::Expression(node) => node.type_check_analyze(handler, ctx)?,
-            TyAstNodeContent::ImplicitReturnExpression(node) => {
-                node.type_check_analyze(handler, ctx)?
-            }
             TyAstNodeContent::SideEffect(_) => {}
             TyAstNodeContent::Error(_, _) => {}
         }
@@ -518,9 +490,6 @@ impl TypeCheckFinalization for TyAstNodeContent {
         match self {
             TyAstNodeContent::Declaration(node) => node.type_check_finalize(handler, ctx)?,
             TyAstNodeContent::Expression(node) => node.type_check_finalize(handler, ctx)?,
-            TyAstNodeContent::ImplicitReturnExpression(node) => {
-                node.type_check_finalize(handler, ctx)?
-            }
             TyAstNodeContent::SideEffect(_) => {}
             TyAstNodeContent::Error(_, _) => {}
         }
@@ -538,7 +507,6 @@ impl CollectTypesMetadata for TyAstNodeContent {
         match self {
             Declaration(decl) => decl.collect_types_metadata(handler, ctx),
             Expression(expr) => expr.collect_types_metadata(handler, ctx),
-            ImplicitReturnExpression(expr) => expr.collect_types_metadata(handler, ctx),
             SideEffect(_) => Ok(vec![]),
             Error(_, _) => Ok(vec![]),
         }
@@ -550,7 +518,6 @@ impl GetDeclIdent for TyAstNodeContent {
         match self {
             TyAstNodeContent::Declaration(decl) => decl.get_decl_ident(),
             TyAstNodeContent::Expression(_expr) => None, //expr.get_decl_ident(),
-            TyAstNodeContent::ImplicitReturnExpression(_expr) => None, //expr.get_decl_ident(),
             TyAstNodeContent::SideEffect(_) => None,
             TyAstNodeContent::Error(_, _) => None,
         }

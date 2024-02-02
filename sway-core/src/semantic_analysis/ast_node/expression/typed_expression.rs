@@ -145,6 +145,7 @@ impl ty::TyExpression {
         let engines = ctx.engines();
         let expr_span = expr.span();
         let span = expr_span.clone();
+        let should_unify = !matches!(expr.kind, ExpressionKind::ImplicitReturn(_));
         let res = match expr.kind {
             // We've already emitted an error for the `::Error` case.
             ExpressionKind::Error(_, err) => Ok(ty::TyExpression::error(err, span, engines)),
@@ -376,6 +377,21 @@ impl ty::TyExpression {
             ExpressionKind::Reassignment(ReassignmentExpression { lhs, rhs }) => {
                 Self::type_check_reassignment(handler, ctx.by_ref(), lhs, *rhs, span)
             }
+            ExpressionKind::ImplicitReturn(expr) => {
+                let ctx = ctx
+                    .by_ref()
+                    .with_help_text("Implicit return must match up with block's type.");
+                let expr_span = expr.span();
+                let expr = ty::TyExpression::type_check(handler, ctx, *expr)
+                    .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span, engines));
+
+                let typed_expr = ty::TyExpression {
+                    return_type: expr.return_type,
+                    expression: ty::TyExpressionVariant::ImplicitReturn(Box::new(expr)),
+                    span,
+                };
+                Ok(typed_expr)
+            }
             ExpressionKind::Return(expr) => {
                 let ctx = ctx
                     // we use "unknown" here because return statements do not
@@ -413,8 +429,10 @@ impl ty::TyExpression {
             Err(e) => return Err(e),
         };
 
-        // if the return type cannot be cast into the annotation type then it is a type error
-        ctx.unify_with_type_annotation(handler, typed_expression.return_type, &expr_span);
+        if should_unify {
+            // if the return type cannot be cast into the annotation type then it is a type error
+            ctx.unify_with_type_annotation(handler, typed_expression.return_type, &expr_span);
+        }
 
         // The annotation may result in a cast, which is handled in the type engine.
         typed_expression.return_type = ctx
