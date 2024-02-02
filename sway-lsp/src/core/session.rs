@@ -123,9 +123,13 @@ impl Session {
     /// Clean up memory in the [TypeEngine] and [DeclEngine] for the user's workspace.
     pub fn garbage_collect(&self, engines: &mut Engines) -> Result<(), LanguageServerError> {
         let path = self.sync.temp_dir()?;
+        tracing::info!("Garbage collecting workspace at {:?}", path);
         let module_id = { engines.se().get_module_id(&path) };
+        tracing::info!("Module ID: {:?}", module_id);
         if let Some(module_id) = module_id {
             engines.clear_module(&module_id);
+        } else {
+            tracing::warn!("OOHH NO Module ID not found for path: {:?}", path);
         }
         Ok(())
     }
@@ -454,8 +458,13 @@ pub fn parse_project(
     if results.last().is_none() {
         return Err(LanguageServerError::ProgramsIsNone);
     }
+
+    tracing::info!("TE num inserts: {:?}", engines.te().num_inserts());
+    tracing::info!("PDE num inserts: {:?}", engines.pe().num_inserts());
+
     tracing::debug!("Starting traversal");
     let diagnostics = traverse(results, engines, session.clone())?;
+    tracing::debug!("Traversal complete");
     if let Some((errors, warnings)) = &diagnostics {
         *session.diagnostics.write() =
             capabilities::diagnostic::get_diagnostics(warnings, errors, engines.se());

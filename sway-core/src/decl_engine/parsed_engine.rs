@@ -104,6 +104,34 @@ decl_engine_insert!(constant_slab, ConstantDeclaration);
 decl_engine_insert!(enum_slab, EnumDeclaration);
 decl_engine_insert!(type_alias_slab, TypeAliasDeclaration);
 
+macro_rules! decl_engine_num_inserted {
+    ($($slab:ident, $decl:ty);* $(;)?) => {
+        impl ParsedDeclEngine {
+            pub fn num_inserts(&self) {
+                $(
+                    eprintln!("PDE {} num_inserts: {:?}", stringify!($slab), self.$slab.num_inserts());
+                )*
+            }
+        }
+    };
+}
+
+decl_engine_num_inserted!(
+    variable_slab, VariableDeclaration;
+    function_slab, FunctionDeclaration;
+    trait_slab, TraitDeclaration;
+    trait_fn_slab, TraitFn;
+    trait_type_slab, TraitTypeDeclaration;
+    impl_trait_slab, ImplTrait;
+    impl_self_slab, ImplSelf;
+    struct_slab, StructDeclaration;
+    storage_slab, StorageDeclaration;
+    abi_slab, AbiDeclaration;
+    constant_slab, ConstantDeclaration;
+    enum_slab, EnumDeclaration;
+    type_alias_slab, TypeAliasDeclaration;
+);
+
 macro_rules! decl_engine_clear {
     ($($slab:ident, $decl:ty);* $(;)?) => {
         impl ParsedDeclEngine {
@@ -138,6 +166,9 @@ macro_rules! decl_engine_clear_module {
         impl ParsedDeclEngine {
             pub fn clear_module(&mut self, module_id: &ModuleId) {
                 $(
+                    // Store the initial count before the retain operation
+                    let initial_count = self.$slab.len();
+                    self.$slab.clear_last_inserted();
                     self.$slab.retain(|_k, item| {
                         #[allow(clippy::redundant_closure_call)]
                         let span = $getter(item);
@@ -146,11 +177,35 @@ macro_rules! decl_engine_clear_module {
                             None => false,
                         }
                     });
+                    // Calculate and print the number of removed and retained items
+                    let removed_count = initial_count - self.$slab.len();
+                    let retained_count = self.$slab.len();
+                    eprintln!("PDE In {}, {} items were retained and {} items were removed.", stringify!($slab), retained_count, removed_count);
                 )*
             }
         }
     };
 }
+
+
+// macro_rules! decl_engine_clear_module {
+//     ($(($slab:ident, $getter:expr)),* $(,)?) => {
+//         impl ParsedDeclEngine {
+//             pub fn clear_module(&mut self, module_id: &ModuleId) {
+//                 $(
+//                     self.$slab.retain(|_k, item| {
+//                         #[allow(clippy::redundant_closure_call)]
+//                         let span = $getter(item);
+//                         match span.source_id() {
+//                             Some(source_id) => &source_id.module_id() != module_id,
+//                             None => false,
+//                         }
+//                     });
+//                 )*
+//             }
+//         }
+//     };
+// }
 
 decl_engine_clear_module!(
     (variable_slab, |item: &VariableDeclaration| item.name.span()),

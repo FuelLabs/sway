@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fmt,
     sync::{Arc, RwLock},
 };
@@ -10,6 +10,9 @@ use itertools::Itertools;
 pub(crate) struct ConcurrentSlab<T> {
     inner: RwLock<HashMap<usize, Arc<T>>>,
     last_id: Arc<RwLock<usize>>,
+
+    last_inserted: RwLock<HashSet<usize>>,
+    pub num_inserts: RwLock<usize>,
 }
 
 impl<T> Clone for ConcurrentSlab<T>
@@ -21,6 +24,8 @@ where
         Self {
             inner: RwLock::new(inner.clone()),
             last_id: self.last_id.clone(),
+            last_inserted: Default::default(),
+            num_inserts: Default::default(),
         }
     }
 }
@@ -30,6 +35,8 @@ impl<T> Default for ConcurrentSlab<T> {
         Self {
             inner: Default::default(),
             last_id: Default::default(),
+            last_inserted: Default::default(),
+            num_inserts: Default::default(),
         }
     }
 }
@@ -58,6 +65,15 @@ impl<T> ConcurrentSlab<T>
 where
     T: Clone,
 {
+    pub fn len(&self) -> usize {
+        let inner = self.inner.read().unwrap();
+        inner.len()
+    }
+
+    pub fn num_inserts(&self) -> usize {
+        *self.num_inserts.read().unwrap()
+    }
+
     pub fn values(&self) -> Vec<Arc<T>> {
         let inner = self.inner.read().unwrap();
         inner.values().cloned().collect_vec()
@@ -68,6 +84,8 @@ where
         let mut last_id = self.last_id.write().unwrap();
         *last_id += 1;
         inner.insert(*last_id, Arc::new(value));
+        self.last_inserted.write().unwrap().insert(*last_id);
+        *self.num_inserts.write().unwrap() += 1;
         *last_id
     }
 
@@ -76,6 +94,9 @@ where
         let mut last_id = self.last_id.write().unwrap();
         *last_id += 1;
         inner.insert(*last_id, value);
+
+        self.last_inserted.write().unwrap().insert(*last_id);
+        *self.num_inserts.write().unwrap() += 1;
         *last_id
     }
 
@@ -87,7 +108,19 @@ where
 
     pub fn get(&self, index: usize) -> Arc<T> {
         let inner = self.inner.read().unwrap();
-        inner[&index].clone()
+//        inner[&index].clone()
+        match inner.get(&index).cloned() {
+            Some(value) => {
+                //tracing::info!("Index {} found in slab :) Current slab size: {} | keys {:?}", index, inner.len(), inner.keys());
+                //tracing::error!("last_id {:?} | last_inserted_len {:?} | last_inserted_keys {:?}", self.last_id, self.last_inserted.read().unwrap().len(), self.last_inserted.read().unwrap());
+                //tracing::info!("last inserted len: {:?}", self.last_inserted.read().unwrap().len());
+                value
+            },
+            None => {
+                tracing::error!("Index {} not found in slab. Current slab size: {} | keys {:?} | last_id {:?} | num_inserts: {:?} | last_inserted_len {:?} | last_inserted_keys {:?}", index, inner.len(), inner.keys(), self.last_id, self.num_inserts.read().unwrap(), self.last_inserted.read().unwrap().len(), self.last_inserted.read().unwrap());
+                panic!("");
+            },
+        }
     }
 
     pub fn retain(&self, predicate: impl Fn(&usize, &mut Arc<T>) -> bool) {
@@ -99,5 +132,10 @@ where
         let mut inner = self.inner.write().unwrap();
         inner.clear();
         inner.shrink_to(0);
+    }
+
+    pub fn clear_last_inserted(&self) {
+        let mut last_inserted = self.last_inserted.write().unwrap();
+        last_inserted.clear();
     }
 }

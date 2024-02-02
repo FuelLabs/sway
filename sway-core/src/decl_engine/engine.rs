@@ -187,6 +187,8 @@ macro_rules! decl_engine_clear_module {
     ($($slab:ident, $decl:ty);* $(;)?) => {
         impl DeclEngine {
             pub fn clear_module(&mut self, module_id: &ModuleId) {
+                // Store the initial count before the retain operation for parents
+                let initial_parents_count = self.parents.read().unwrap().len();
                 self.parents.write().unwrap().retain(|key, _| {
                     match key {
                         AssociatedItemDeclId::TraitFn(decl_id) => {
@@ -203,17 +205,61 @@ macro_rules! decl_engine_clear_module {
                         },
                     }
                 });
+                // Calculate and print the number of removed and retained items for parents
+                let removed_from_parents = initial_parents_count - self.parents.read().unwrap().len();
+                let retained_in_parents = self.parents.read().unwrap().len();
+                eprintln!("DE In parents, {} items were retained and {} items were removed.", retained_in_parents, removed_from_parents);
 
                 $(
+                    // Store the initial count before the retain operation for each slab
+                    let initial_count = self.$slab.len();
+                    self.$slab.clear_last_inserted();
                     self.$slab.retain(|_k, ty| match ty.span().source_id() {
                         Some(source_id) => &source_id.module_id() != module_id,
                         None => false,
                     });
+                    // Calculate and print the number of removed and retained items for each slab
+                    let removed_count = initial_count - self.$slab.len();
+                    let retained_count = self.$slab.len();
+                    eprintln!("DE In {}, {} items were retained and {} items were removed.", stringify!($slab), retained_count, removed_count);
                 )*
             }
         }
     };
 }
+
+
+// macro_rules! decl_engine_clear_module {
+//     ($($slab:ident, $decl:ty);* $(;)?) => {
+//         impl DeclEngine {
+//             pub fn clear_module(&mut self, module_id: &ModuleId) {
+//                 self.parents.write().unwrap().retain(|key, _| {
+//                     match key {
+//                         AssociatedItemDeclId::TraitFn(decl_id) => {
+//                             self.get_trait_fn(decl_id).span().source_id().map_or(false, |src_id| &src_id.module_id() != module_id)
+//                         },
+//                         AssociatedItemDeclId::Function(decl_id) => {
+//                             self.get_function(decl_id).span().source_id().map_or(false, |src_id| &src_id.module_id() != module_id)
+//                         },
+//                         AssociatedItemDeclId::Type(decl_id) => {
+//                             self.get_type(decl_id).span().source_id().map_or(false, |src_id| &src_id.module_id() != module_id)
+//                         },
+//                         AssociatedItemDeclId::Constant(decl_id) => {
+//                             self.get_constant(decl_id).span().source_id().map_or(false, |src_id| &src_id.module_id() != module_id)
+//                         },
+//                     }
+//                 });
+
+//                 $(
+//                     self.$slab.retain(|_k, ty| match ty.span().source_id() {
+//                         Some(source_id) => &source_id.module_id() != module_id,
+//                         None => false,
+//                     });
+//                 )*
+//             }
+//         }
+//     };
+// }
 
 decl_engine_clear_module!(
     function_slab, ty::TyFunctionDecl;

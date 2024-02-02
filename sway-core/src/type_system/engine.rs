@@ -68,20 +68,55 @@ impl TypeEngine {
         }
     }
 
-    /// Removes all data associated with `module_id` from the type engine.
+    pub fn num_inserts(&self) -> usize {
+        *self.slab.num_inserts.read().unwrap()
+    }
+
     pub fn clear_module(&mut self, module_id: &ModuleId) {
+        self.slab.clear_last_inserted();
+
+        // Count the initial number of items in slab and id_map
+        let initial_slab_count = self.slab.len();
+        let initial_id_map_count = self.id_map.read().unwrap().len();
+        
+        // Retain operation for slab
         self.slab.retain(|_, tsi| match tsi.source_id {
             Some(source_id) => &source_id.module_id() != module_id,
             None => false,
         });
-        self.id_map
-            .write()
-            .unwrap()
-            .retain(|tsi, _| match tsi.source_id {
-                Some(source_id) => &source_id.module_id() != module_id,
-                None => false,
-            });
+        
+        // Retain operation for id_map
+        self.id_map.write().unwrap().retain(|tsi, _| match tsi.source_id {
+            Some(source_id) => &source_id.module_id() != module_id,
+            None => false,
+        });
+    
+        // Calculate the number of items removed for slab and id_map
+        let removed_from_slab = initial_slab_count - self.slab.len();
+        let retained_in_slab = self.slab.len();
+        let removed_from_id_map = initial_id_map_count - self.id_map.read().unwrap().len();
+        let retained_in_id_map = self.id_map.read().unwrap().len();
+        
+        // Print the results
+        eprintln!("TE In slab, {} items were retained and {} items were removed.", retained_in_slab, removed_from_slab);
+        eprintln!("TE In id_map, {} items were retained and {} items were removed.", retained_in_id_map, removed_from_id_map);
     }
+    
+
+    // /// Removes all data associated with `module_id` from the type engine.
+    // pub fn clear_module(&mut self, module_id: &ModuleId) {
+    //     self.slab.retain(|_, tsi| match tsi.source_id {
+    //         Some(source_id) => &source_id.module_id() != module_id,
+    //         None => false,
+    //     });
+    //     self.id_map
+    //         .write()
+    //         .unwrap()
+    //         .retain(|tsi, _| match tsi.source_id {
+    //             Some(source_id) => &source_id.module_id() != module_id,
+    //             None => false,
+    //         });
+    // }
 
     pub fn replace(&self, id: TypeId, new_value: TypeSourceInfo) {
         self.slab.replace(id.index(), new_value);

@@ -109,13 +109,16 @@ impl ServerState {
                     TaskMessage::CompilationContext(ctx) => {
                         let uri = ctx.uri.as_ref().unwrap().clone();
                         let session = ctx.session.as_ref().unwrap().clone();
+                        tracing::debug!("New compilation msg: cloning engines.. : version {:?}", ctx.version);
                         let mut engines_clone = session.engines.read().clone();
+                        tracing::debug!("Cloned engines: version {:?}", ctx.version);
 
                         if let Some(version) = ctx.version {
                             // Garbage collection is fairly expsensive so we only clear on every 10th keystroke.
                             if version % 1 == 0 {
                                 // Call this on the engines clone so we don't clear types that are still in use
                                 // and might be needed in the case cancel compilation was triggered.
+                                tracing::debug!("Starting Garbage collection: version {:?}", version);
                                 if let Err(err) = session.garbage_collect(&mut engines_clone) {
                                     tracing::error!(
                                         "Unable to perform garbage collection: {}",
@@ -124,10 +127,13 @@ impl ServerState {
                                 }
                                 tracing::debug!("Garbage collection complete: version {:?}", version);
                             }
+                        } else {
+                            tracing::debug!("Version is None");
                         }
 
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
                         is_compiling.store(true, Ordering::SeqCst);
+                        tracing::debug!("call parse project: version {:?}", ctx.version);
                         match session::parse_project(
                             &uri,
                             &engines_clone,
@@ -135,7 +141,9 @@ impl ServerState {
                             session.clone(),
                         ) {
                             Ok(_) => {
+                                eprintln!("writing to engines: version {:?}", ctx.version);
                                 mem::swap(&mut *session.engines.write(), &mut engines_clone);
+                                eprintln!("wrote to engines: version {:?}", ctx.version);
                                 *last_compilation_state.write() = LastCompilationState::Success;
                                 tracing::debug!("Successfully compiled: version {:?}", ctx.version);
                             }
@@ -153,6 +161,9 @@ impl ServerState {
                         if rx.is_empty() {
                             // finished compilation, notify waiters
                             finished_compilation.notify_waiters();
+                            tracing::debug!("Notifying waiters: version {:?}", ctx.version);
+                        } else {
+                            tracing::debug!("rx is not empty, lets go around again: version {:?}", ctx.version);
                         }
                     }
                     TaskMessage::Terminate => {

@@ -54,7 +54,13 @@ impl<'a> TokenMap {
         for (i, sleep) in backoff_times.iter().enumerate().take(MAX_RETRIES) {
             match self.try_get_mut(ident) {
                 TryResult::Present(token) => return Some(token),
-                TryResult::Absent => return None,
+                TryResult::Absent => {
+                    // tracing::error!(
+                    //     "Failed to get token, absent: {:#?}",
+                    //     ident.name
+                    // );
+                    return None
+                },
                 TryResult::Locked => {
                     // tracing::warn!(
                     //     "Failed to get token, retrying attmpt {}: {:#?}",
