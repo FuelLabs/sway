@@ -64,8 +64,7 @@ impl Parse for ty::TyAstNode {
     fn parse(&self, ctx: &ParseContext) {
         match &self.content {
             ty::TyAstNodeContent::Declaration(declaration) => declaration.parse(ctx),
-            ty::TyAstNodeContent::Expression(expression)
-            | ty::TyAstNodeContent::ImplicitReturnExpression(expression) => expression.parse(ctx),
+            ty::TyAstNodeContent::Expression(expression) => expression.parse(ctx),
             ty::TyAstNodeContent::SideEffect(side_effect) => side_effect.parse(ctx),
             ty::TyAstNodeContent::Error(_, _) => {}
         };
@@ -573,7 +572,9 @@ impl Parse for ty::TyExpression {
             ty::TyExpressionVariant::Reassignment(reassignment) => {
                 reassignment.parse(ctx);
             }
-            ty::TyExpressionVariant::Return(exp) => exp.parse(ctx),
+            ty::TyExpressionVariant::ImplicitReturn(exp) | ty::TyExpressionVariant::Return(exp) => {
+                exp.parse(ctx)
+            }
             ty::TyExpressionVariant::Ref(exp) | ty::TyExpressionVariant::Deref(exp) => {
                 exp.parse(ctx)
             }

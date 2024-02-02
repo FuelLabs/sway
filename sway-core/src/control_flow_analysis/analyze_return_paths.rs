@@ -148,7 +148,10 @@ fn connect_node<'eng: 'cfg, 'cfg>(
             expression: ty::TyExpressionVariant::Return(..),
             ..
         })
-        | ty::TyAstNodeContent::ImplicitReturnExpression(_) => {
+        | ty::TyAstNodeContent::Expression(ty::TyExpression {
+            expression: ty::TyExpressionVariant::ImplicitReturn(..),
+            ..
+        }) => {
             let this_index = graph.add_node(ControlFlowGraphNode::from_node(node));
             for leaf_ix in leaves {
                 graph.add_edge(*leaf_ix, this_index, "".into());

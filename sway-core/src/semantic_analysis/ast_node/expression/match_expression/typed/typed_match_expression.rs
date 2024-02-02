@@ -3,7 +3,10 @@ use sway_types::{Span, Spanned};
 
 use crate::{
     compiler_generated::INVALID_DESUGARED_MATCHED_EXPRESSION_SIGNAL,
-    language::{parsed::*, ty},
+    language::{
+        parsed::*,
+        ty::{self, TyExpression},
+    },
     semantic_analysis::{
         ast_node::expression::typed_expression::instantiate_if_expression,
         expression::match_expression::typed::instantiate::Instantiate, TypeCheckContext,
@@ -150,7 +153,11 @@ impl ty::TyMatchExpression {
                     }
 
                     code_block_contents.push(ty::TyAstNode {
-                        content: ty::TyAstNodeContent::ImplicitReturnExpression(if_exp),
+                        content: ty::TyAstNodeContent::Expression(TyExpression {
+                            return_type: if_exp.return_type,
+                            span: if_exp.span.clone(),
+                            expression: ty::TyExpressionVariant::ImplicitReturn(Box::new(if_exp)),
+                        }),
                         span: result_span.clone(),
                     });
 

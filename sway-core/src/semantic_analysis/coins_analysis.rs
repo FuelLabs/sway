@@ -81,6 +81,7 @@ pub fn possibly_nonzero_u64_expression(
         | Break
         | Continue
         | Reassignment(_)
+        | ImplicitReturn(_)
         | Return(_)
         | Ref(_)
         | Deref(_) => true,
