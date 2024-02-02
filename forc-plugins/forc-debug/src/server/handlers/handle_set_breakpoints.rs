@@ -86,7 +86,7 @@ mod tests {
     const MOCK_LINE: i64 = 1;
     const MOCK_INSTRUCTION: u64 = 1;
 
-    fn get_mock_server(source_map: bool, existing_bp: bool) -> DapServer {
+    fn get_test_server(source_map: bool, existing_bp: bool) -> DapServer {
         let mut server = DapServer::default();
         if source_map {
             server.state.source_map.insert(
@@ -112,7 +112,7 @@ mod tests {
         server
     }
 
-    fn get_mock_args() -> SetBreakpointsArguments {
+    fn get_test_args() -> SetBreakpointsArguments {
         SetBreakpointsArguments {
             source: dap::types::Source {
                 path: Some(MOCK_SOURCE_PATH.into()),
@@ -128,8 +128,8 @@ mod tests {
 
     #[test]
     fn test_handle_set_breakpoints_existing_verified() {
-        let mut server = get_mock_server(true, true);
-        let args = get_mock_args();
+        let mut server = get_test_server(true, true);
+        let args = get_test_args();
         let result = server.handle_set_breakpoints(&args).expect("success");
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].line, Some(MOCK_LINE));
@@ -140,8 +140,8 @@ mod tests {
 
     #[test]
     fn test_handle_set_breakpoints_existing_unverified() {
-        let mut server = get_mock_server(false, true);
-        let args = get_mock_args();
+        let mut server = get_test_server(false, true);
+        let args = get_test_args();
         let result = server.handle_set_breakpoints(&args).expect("success");
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].line, Some(MOCK_LINE));
@@ -152,8 +152,8 @@ mod tests {
 
     #[test]
     fn test_handle_set_breakpoints_new() {
-        let mut server = get_mock_server(true, false);
-        let args = get_mock_args();
+        let mut server = get_test_server(true, false);
+        let args = get_test_args();
         let result = server.handle_set_breakpoints(&args).expect("success");
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].line, Some(MOCK_LINE));
@@ -164,7 +164,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "MissingSourcePathArgument")]
     fn test_handle_breakpoint_locations_missing_argument() {
-        let mut server = get_mock_server(true, true);
+        let mut server = get_test_server(true, true);
         let args = SetBreakpointsArguments::default();
         server.handle_set_breakpoints(&args).unwrap();
     }

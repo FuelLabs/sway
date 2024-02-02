@@ -32,6 +32,7 @@ tokio = { version = "1.8", features = [
 ] }
 
 [dev-dependencies]
+dap = { version = "0.4.1-alpha1", features = ["client"] }
 escargot = "0.5.7"
 portpicker = "0.1.1"
 rexpect = "0.4"

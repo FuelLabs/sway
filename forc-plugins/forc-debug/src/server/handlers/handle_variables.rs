@@ -49,28 +49,28 @@ impl DapServer {
                     ..Default::default()
                 },
                 Variable {
-                    name: "rA".to_string(),
+                    name: "ra".to_string(),
                     value: ra(instruction)
                         .map(|arg| format!("{:?}", arg))
                         .unwrap_or_default(),
                     ..Default::default()
                 },
                 Variable {
-                    name: "rB".to_string(),
+                    name: "rb".to_string(),
                     value: rb(instruction)
                         .map(|arg| format!("{:?}", arg))
                         .unwrap_or_default(),
                     ..Default::default()
                 },
                 Variable {
-                    name: "rC".to_string(),
+                    name: "rc".to_string(),
                     value: rc(instruction)
                         .map(|arg| format!("{:?}", arg))
                         .unwrap_or_default(),
                     ..Default::default()
                 },
                 Variable {
-                    name: "rD".to_string(),
+                    name: "rd".to_string(),
                     value: rd(instruction)
                         .map(|arg| format!("{:?}", arg))
                         .unwrap_or_default(),

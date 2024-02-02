@@ -23,7 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Opt::parse();
 
     if config.serve {
-        return DapServer::new().start();
+        return DapServer::default().start();
     }
 
     let mut shell = Shell::new_async(

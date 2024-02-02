@@ -9,7 +9,7 @@ use sway_types::span::Position;
 
 impl DapServer {
     /// Handles a `launch` request. Returns true if the server should continue running.
-    pub(crate) fn handle_launch(&mut self) -> Result<bool, AdapterError> {
+    pub fn handle_launch(&mut self) -> Result<bool, AdapterError> {
         // Build tests for the given path.
         let (pkg_to_debug, test_setup) = self.build_tests()?;
         let entries = pkg_to_debug.bytecode.entries.iter().filter_map(|entry| {

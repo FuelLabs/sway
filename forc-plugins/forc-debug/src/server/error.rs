@@ -2,7 +2,7 @@ use dap::requests::Command;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub(crate) enum AdapterError {
+pub enum AdapterError {
     #[error("Unhandled command")]
     UnhandledCommand { command: Command },
 
