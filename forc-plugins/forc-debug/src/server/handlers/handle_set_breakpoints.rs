@@ -134,8 +134,11 @@ mod tests {
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].line, Some(MOCK_LINE));
         assert_eq!(result[0].id, Some(MOCK_BP_ID));
-        assert_eq!(result[0].source.clone().expect("source").path, Some(MOCK_SOURCE_PATH.into()));
-        assert_eq!(result[0].verified, true);
+        assert_eq!(
+            result[0].source.clone().expect("source").path,
+            Some(MOCK_SOURCE_PATH.into())
+        );
+        assert!(result[0].verified);
     }
 
     #[test]
@@ -146,8 +149,11 @@ mod tests {
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].line, Some(MOCK_LINE));
         assert_eq!(result[0].id, Some(MOCK_BP_ID));
-        assert_eq!(result[0].source.clone().expect("source").path, Some(MOCK_SOURCE_PATH.into()));
-        assert_eq!(result[0].verified, false);
+        assert_eq!(
+            result[0].source.clone().expect("source").path,
+            Some(MOCK_SOURCE_PATH.into())
+        );
+        assert!(!result[0].verified);
     }
 
     #[test]
@@ -157,8 +163,11 @@ mod tests {
         let result = server.handle_set_breakpoints(&args).expect("success");
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].line, Some(MOCK_LINE));
-        assert_eq!(result[0].source.clone().expect("source").path, Some(MOCK_SOURCE_PATH.into()));
-        assert_eq!(result[0].verified, true);
+        assert_eq!(
+            result[0].source.clone().expect("source").path,
+            Some(MOCK_SOURCE_PATH.into())
+        );
+        assert!(result[0].verified);
     }
 
     #[test]

@@ -41,9 +41,9 @@ impl EventCapture {
         let mut lock = self.output.lock().unwrap();
         while !lock.is_empty() {
             let cloned = lock.clone();
-            let (line, rest) = cloned.split_once("\n")?;
+            let (line, rest) = cloned.split_once('\n')?;
             *lock = rest.to_string();
-            if let Ok(event) = serde_json::from_str::<Event>(&line) {
+            if let Ok(event) = serde_json::from_str::<Event>(line) {
                 return Some(event);
             }
         }
@@ -116,7 +116,7 @@ fn test_server_launch_mode() {
 
     // Launch, should hit first breakpoint
     let keep_running = server.handle_launch().expect("launched without error");
-    assert!(keep_running == true);
+    assert!(keep_running);
     assert_stopped_breakpoint_event(output_capture.take_event(), 0);
 
     // Threads request
