@@ -379,7 +379,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: boa-dev/criterion-compare-action@v3.2.4
         with:
-          package: "sway-lsp"
+          cwd: "./sway-lsp"
           branchName: ${{ github.base_ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
