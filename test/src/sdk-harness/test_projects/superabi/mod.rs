@@ -3,17 +3,17 @@ use fuels::prelude::*;
 
 abigen!(Contract(
     name = "SuperAbiTestContract",
-    abi = "test_projects/superabi/out/debug/superabi-abi.json"
+    abi = "test_projects/superabi/out/release/superabi-abi.json"
 ));
 
 async fn get_superabi_instance() -> SuperAbiTestContract<WalletUnlocked> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "test_projects/superabi/out/debug/superabi.bin",
+        "test_projects/superabi/out/release/superabi.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
     SuperAbiTestContract::new(id.clone(), wallet)

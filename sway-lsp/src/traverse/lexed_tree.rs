@@ -207,12 +207,10 @@ impl Parse for Expr {
             Expr::TupleFieldProjection { target, .. } => {
                 target.parse(ctx);
             }
-            Expr::Ref { ref_token, expr } => {
-                insert_keyword(ctx, ref_token.span());
+            Expr::Ref { expr, .. } => {
                 expr.parse(ctx);
             }
-            Expr::Deref { deref_token, expr } => {
-                insert_keyword(ctx, deref_token.span());
+            Expr::Deref { expr, .. } => {
                 expr.parse(ctx);
             }
             Expr::Not { expr, .. } => {
@@ -487,6 +485,9 @@ impl Parse for UseTree {
 
 impl Parse for TypeField {
     fn parse(&self, ctx: &ParseContext) {
+        if let Some(visibility) = &self.visibility {
+            insert_keyword(ctx, visibility.span());
+        }
         self.ty.parse(ctx);
     }
 }

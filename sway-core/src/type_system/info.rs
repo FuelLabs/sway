@@ -1,13 +1,17 @@
 use crate::{
     decl_engine::{DeclEngine, DeclRefEnum, DeclRefStruct},
     engine_threading::*,
-    language::{ty, CallPath, QualifiedCallPath},
+    language::{
+        ty::{self, StructAccessInfo},
+        CallPath, QualifiedCallPath,
+    },
     type_system::priv_prelude::*,
-    Ident,
+    Ident, Namespace,
 };
 use sway_error::{
-    error::CompileError,
+    error::{CompileError, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
+    warning::{CompileWarning, Warning},
 };
 use sway_types::{integer_bits::IntegerBits, span::Span, SourceId, Spanned};
 
@@ -15,6 +19,7 @@ use std::{
     cmp::Ordering,
     fmt,
     hash::{Hash, Hasher},
+    sync::Arc,
 };
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, PartialOrd, Ord)]
@@ -70,7 +75,7 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for VecSet<T> {
 /// Encapsulates type information and its optional source identifier.
 #[derive(Debug, Default, Clone)]
 pub struct TypeSourceInfo {
-    pub(crate) type_info: TypeInfo,
+    pub(crate) type_info: Arc<TypeInfo>,
     /// The source id that created this type.
     pub(crate) source_id: Option<SourceId>,
 }
@@ -183,6 +188,7 @@ pub enum TypeInfo {
         name: Ident,
         trait_type_id: TypeId,
     },
+    Ref(TypeArgument),
 }
 
 impl HashWithEngines for TypeInfo {
@@ -261,6 +267,9 @@ impl HashWithEngines for TypeInfo {
                 name.hash(state);
                 trait_type_id.hash(state);
             }
+            TypeInfo::Ref(ty) => {
+                ty.hash(state, engines);
+            }
             TypeInfo::StringSlice
             | TypeInfo::Numeric
             | TypeInfo::Boolean
@@ -333,9 +342,10 @@ impl PartialEqWithEngines for TypeInfo {
                 .iter()
                 .zip(r.iter())
                 .map(|(l, r)| {
-                    type_engine
-                        .get(l.type_id)
-                        .eq(&type_engine.get(r.type_id), engines)
+                    (l.type_id == r.type_id)
+                        || type_engine
+                            .get(l.type_id)
+                            .eq(&type_engine.get(r.type_id), engines)
                 })
                 .all(|x| x),
             (
@@ -351,9 +361,10 @@ impl PartialEqWithEngines for TypeInfo {
                 l_abi_name == r_abi_name && l_address.as_deref().eq(&r_address.as_deref(), engines)
             }
             (Self::Array(l0, l1), Self::Array(r0, r1)) => {
-                type_engine
-                    .get(l0.type_id)
-                    .eq(&type_engine.get(r0.type_id), engines)
+                ((l0.type_id == r0.type_id)
+                    || type_engine
+                        .get(l0.type_id)
+                        .eq(&type_engine.get(r0.type_id), engines))
                     && l1.val() == r1.val()
             }
             (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
@@ -370,9 +381,10 @@ impl PartialEqWithEngines for TypeInfo {
                 },
             ) => {
                 l_name == r_name
-                    && type_engine
-                        .get(l_ty.type_id)
-                        .eq(&type_engine.get(r_ty.type_id), engines)
+                    && ((l_ty.type_id == r_ty.type_id)
+                        || type_engine
+                            .get(l_ty.type_id)
+                            .eq(&type_engine.get(r_ty.type_id), engines))
             }
             (
                 TypeInfo::TraitType {
@@ -385,10 +397,18 @@ impl PartialEqWithEngines for TypeInfo {
                 },
             ) => {
                 l_name == r_name
-                    && type_engine
-                        .get(*l_trait_type_id)
-                        .eq(&type_engine.get(*r_trait_type_id), engines)
+                    && ((*l_trait_type_id == *r_trait_type_id)
+                        || type_engine
+                            .get(*l_trait_type_id)
+                            .eq(&type_engine.get(*r_trait_type_id), engines))
             }
+            (Self::Ref(l_ty), Self::Ref(r_ty)) => {
+                (l_ty.type_id == r_ty.type_id)
+                    || type_engine
+                        .get(l_ty.type_id)
+                        .eq(&type_engine.get(r_ty.type_id), engines)
+            }
+
             (l, r) => l.discriminant_value() == r.discriminant_value(),
         }
     }
@@ -500,6 +520,9 @@ impl OrdWithEngines for TypeInfo {
             ) => l_trait_type_id
                 .cmp(r_trait_type_id)
                 .then_with(|| l_name.cmp(r_name)),
+            (Self::Ref(l_ty), Self::Ref(r_ty)) => type_engine
+                .get(l_ty.type_id)
+                .cmp(&type_engine.get(r_ty.type_id), engines),
 
             (l, r) => l.discriminant_value().cmp(&r.discriminant_value()),
         }
@@ -574,6 +597,9 @@ impl DisplayWithEngines for TypeInfo {
                 name,
                 trait_type_id,
             } => format!("trait type {}::{}", engines.help_out(trait_type_id), name),
+            Ref(ty) => {
+                format!("&{}", engines.help_out(ty))
+            }
         };
         write!(f, "{s}")
     }
@@ -674,6 +700,9 @@ impl DebugWithEngines for TypeInfo {
                 name,
                 trait_type_id,
             } => format!("trait type {}::{}", engines.help_out(trait_type_id), name),
+            Ref(ty) => {
+                format!("&{:?}", engines.help_out(ty))
+            }
         };
         write!(f, "{s}")
     }
@@ -711,6 +740,7 @@ impl TypeInfo {
             TypeInfo::Slice(..) => 22,
             TypeInfo::StringSlice => 23,
             TypeInfo::TraitType { .. } => 24,
+            TypeInfo::Ref { .. } => 25,
         }
     }
 
@@ -917,6 +947,8 @@ impl TypeInfo {
                         .to_selector_name(handler, engines, error_msg_span);
                 name?
             }
+            // TODO-IG: No references in ABIs according to the RFC. Or we want to have them?
+            // TODO-IG: Depending on that, we need to handle `Ref` here as well.
             _ => {
                 return Err(handler.emit_err(CompileError::InvalidAbiType {
                     span: error_msg_span.clone(),
@@ -953,7 +985,7 @@ impl TypeInfo {
             TypeInfo::Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
                 let mut found_unit_variant = false;
-                for variant_type in decl.variants {
+                for variant_type in decl.variants.iter() {
                     let type_info = type_engine.get(variant_type.type_argument.type_id);
                     if type_info.is_uninhabited(type_engine, decl_engine) {
                         continue;
@@ -969,7 +1001,7 @@ impl TypeInfo {
             TypeInfo::Struct(decl_ref) => {
                 let decl = decl_engine.get_struct(decl_ref);
                 let mut all_zero_sized = true;
-                for field in decl.fields {
+                for field in decl.fields.iter() {
                     let type_info = type_engine.get(field.type_argument.type_id);
                     if type_info.is_uninhabited(type_engine, decl_engine) {
                         return true;
@@ -1032,6 +1064,7 @@ impl TypeInfo {
         }
     }
 
+    // TODO-IG: Check all the usages of `is_copy_type`.
     pub fn is_copy_type(&self) -> bool {
         // XXX This is FuelVM specific.  We need to find the users of this method and determine
         // whether they're actually asking 'is_aggregate()` or something else.
@@ -1043,7 +1076,7 @@ impl TypeInfo {
                 | TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)
                 | TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
                 | TypeInfo::RawUntypedPtr
-                | TypeInfo::Numeric
+                | TypeInfo::Numeric // TODO-IG: Should Ptr and Ref also be a copy type?
         ) || self.is_unit()
     }
 
@@ -1053,6 +1086,14 @@ impl TypeInfo {
             TypeInfo::Tuple { .. } => !self.is_unit(),
             _ => false,
         }
+    }
+
+    pub fn is_reference_type(&self) -> bool {
+        matches!(self, TypeInfo::Ref(_))
+    }
+
+    pub fn is_array(&self) -> bool {
+        matches!(self, TypeInfo::Array(_, _))
     }
 
     pub(crate) fn apply_type_arguments(
@@ -1100,8 +1141,8 @@ impl TypeInfo {
             | TypeInfo::Numeric
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
-            | TypeInfo::Ptr(..)
-            | TypeInfo::Slice(..)
+            | TypeInfo::Ptr(_)
+            | TypeInfo::Slice(_)
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery(_)
             | TypeInfo::Array(_, _)
@@ -1109,13 +1150,14 @@ impl TypeInfo {
             | TypeInfo::Placeholder(_)
             | TypeInfo::TypeParam(_)
             | TypeInfo::Alias { .. }
-            | TypeInfo::TraitType { .. } => {
+            | TypeInfo::TraitType { .. }
+            | TypeInfo::Ref(_) => {
                 Err(handler.emit_err(CompileError::TypeArgumentsNotAllowed { span: span.clone() }))
             }
         }
     }
 
-    /// Given a `TypeInfo` `self`, check to see if `self` is currently
+    /// Given a [TypeInfo] `self`, check to see if `self` is currently
     /// supported in match expressions, and return an error if it is not.
     pub(crate) fn expect_is_supported_in_match_expressions(
         &self,
@@ -1147,14 +1189,19 @@ impl TypeInfo {
             | TypeInfo::Placeholder(_)
             | TypeInfo::TypeParam(_)
             | TypeInfo::TraitType { .. } => Err(handler.emit_err(CompileError::Unimplemented(
-                "matching on this type is unsupported right now",
+                "Matching on this type is currently not supported.",
+                span.clone(),
+            ))),
+            TypeInfo::Ref(_) => Err(handler.emit_err(CompileError::Unimplemented(
+                // TODO-IG: Implement.
+                "Using references in match expressions is currently not supported.",
                 span.clone(),
             ))),
             TypeInfo::ErrorRecovery(err) => Err(*err),
         }
     }
 
-    /// Given a `TypeInfo` `self`, check to see if `self` is currently
+    /// Given a [TypeInfo] `self`, check to see if `self` is currently
     /// supported in `impl` blocks in the "type implementing for" position.
     pub(crate) fn expect_is_supported_in_impl_blocks_self(
         &self,
@@ -1184,7 +1231,8 @@ impl TypeInfo {
             | TypeInfo::Numeric
             | TypeInfo::Alias { .. }
             | TypeInfo::UnknownGeneric { .. }
-            | TypeInfo::TraitType { .. } => Ok(()),
+            | TypeInfo::TraitType { .. }
+            | TypeInfo::Ref(_) => Ok(()),
             TypeInfo::Unknown
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Storage { .. }
@@ -1197,7 +1245,7 @@ impl TypeInfo {
         }
     }
 
-    /// Given a `TypeInfo` `self` and a list of `Ident`'s `subfields`,
+    /// Given a [TypeInfo] `self` and a list of [Ident]'s `subfields`,
     /// iterate through the elements of `subfields` as `subfield`,
     /// and recursively apply `subfield` to `self`.
     ///
@@ -1205,13 +1253,15 @@ impl TypeInfo {
     /// applied without error.
     ///
     /// Returns an error when subfields could not be applied:
-    /// 1) in the case where `self` is not a `TypeInfo::Struct`
+    /// 1) in the case where `self` is not a [TypeInfo::Struct]
     /// 2) in the case where `subfields` is empty
     /// 3) in the case where a `subfield` does not exist on `self`
+    /// 4) in the case where a `subfield` is private and only public subfields can be accessed
     pub(crate) fn apply_subfields(
         &self,
         handler: &Handler,
         engines: &Engines,
+        namespace: &Namespace,
         subfields: &[Ident],
         span: &Span,
     ) -> Result<ty::TyStructField, ErrorEmitted> {
@@ -1223,24 +1273,44 @@ impl TypeInfo {
             }
             (TypeInfo::Struct(decl_ref), Some((first, rest))) => {
                 let decl = decl_engine.get_struct(decl_ref);
-                let field = match decl
-                    .fields
-                    .iter()
-                    .find(|field| field.name.as_str() == first.as_str())
-                {
-                    Some(field) => field.clone(),
+                let (struct_can_be_changed, is_public_struct_access) =
+                    StructAccessInfo::get_info(&decl, namespace).into();
+
+                let field = match decl.find_field(first) {
+                    Some(field) => {
+                        if is_public_struct_access && field.is_private() {
+                            // TODO: Uncomment this code and delete the one with warnings once struct field privacy becomes a hard error.
+                            //       https://github.com/FuelLabs/sway/issues/5520
+                            // return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
+                            //     field_name: first.into(),
+                            //     struct_name: decl.call_path.suffix.clone(),
+                            //     field_decl_span: field.name.span(),
+                            //     struct_can_be_changed,
+                            //     usage_context: StructFieldUsageContext::StructFieldAccess,
+                            // }));
+                            handler.emit_warn(CompileWarning {
+                                span: first.span(),
+                                warning_content: Warning::StructFieldIsPrivate {
+                                    field_name: first.into(),
+                                    struct_name: decl.call_path.suffix.clone(),
+                                    field_decl_span: field.name.span(),
+                                    struct_can_be_changed,
+                                    usage_context: StructFieldUsageContext::StructFieldAccess,
+                                },
+                            });
+                        }
+
+                        field.clone()
+                    }
                     None => {
-                        // gather available fields for the error message
-                        let available_fields = decl
-                            .fields
-                            .iter()
-                            .map(|x| x.name.as_str())
-                            .collect::<Vec<_>>();
-                        return Err(handler.emit_err(CompileError::FieldNotFound {
-                            field_name: first.clone(),
+                        return Err(handler.emit_err(CompileError::StructFieldDoesNotExist {
+                            field_name: first.into(),
+                            available_fields: decl.accessible_fields_names(is_public_struct_access),
+                            is_public_struct_access,
                             struct_name: decl.call_path.suffix.clone(),
-                            available_fields: available_fields.join(", "),
-                            span: first.span(),
+                            struct_decl_span: decl.span(),
+                            struct_is_empty: decl.is_empty(),
+                            usage_context: StructFieldUsageContext::StructFieldAccess,
                         }));
                     }
                 };
@@ -1249,7 +1319,7 @@ impl TypeInfo {
                 } else {
                     type_engine
                         .get(field.type_argument.type_id)
-                        .apply_subfields(handler, engines, rest, span)?
+                        .apply_subfields(handler, engines, namespace, rest, span)?
                 };
                 Ok(field)
             }
@@ -1261,8 +1331,9 @@ impl TypeInfo {
                 _,
             ) => type_engine
                 .get(*type_id)
-                .apply_subfields(handler, engines, subfields, span),
+                .apply_subfields(handler, engines, namespace, subfields, span),
             (TypeInfo::ErrorRecovery(err), _) => Err(*err),
+            // TODO-IG: Take a close look on this when implementing dereferencing.
             (type_info, _) => Err(handler.emit_err(CompileError::FieldAccessOnNonStruct {
                 actually: format!("{:?}", engines.help_out(type_info)),
                 span: span.clone(),
@@ -1289,8 +1360,8 @@ impl TypeInfo {
             | TypeInfo::B256
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
-            | TypeInfo::Ptr(..)
-            | TypeInfo::Slice(..)
+            | TypeInfo::Ptr(_)
+            | TypeInfo::Slice(_)
             | TypeInfo::ErrorRecovery(_)
             | TypeInfo::TraitType { .. } => false,
             TypeInfo::Unknown
@@ -1304,7 +1375,8 @@ impl TypeInfo {
             | TypeInfo::Numeric
             | TypeInfo::Placeholder(_)
             | TypeInfo::TypeParam(_)
-            | TypeInfo::Alias { .. } => true,
+            | TypeInfo::Alias { .. }
+            | TypeInfo::Ref(_) => true,
         }
     }
 
@@ -1320,8 +1392,8 @@ impl TypeInfo {
         }
     }
 
-    /// Given a `TypeInfo` `self`, expect that `self` is a `TypeInfo::Tuple`, or a
-    /// `TypeInfo::Alias` of a tuple type. Also, return the contents of the tuple.
+    /// Given a [TypeInfo] `self`, expect that `self` is a [TypeInfo::Tuple], or a
+    /// [TypeInfo::Alias] of a tuple type. Also, return the contents of the tuple.
     ///
     /// Note that this works recursively. That is, it supports situations where a tuple has a chain
     /// of aliases such as:
@@ -1335,13 +1407,12 @@ impl TypeInfo {
     /// }
     /// ```
     ///
-    /// Returns an error if `self` is not a `TypeInfo::Tuple` or a `TypeInfo::Alias` of a tuple
+    /// Returns an error if `self` is not a [TypeInfo::Tuple] or a [TypeInfo::Alias] of a tuple
     /// type, transitively.
     pub(crate) fn expect_tuple(
         &self,
         handler: &Handler,
         engines: &Engines,
-        debug_string: impl Into<String>,
         debug_span: &Span,
     ) -> Result<Vec<TypeArgument>, ErrorEmitted> {
         match self {
@@ -1349,22 +1420,19 @@ impl TypeInfo {
             TypeInfo::Alias {
                 ty: TypeArgument { type_id, .. },
                 ..
-            } => {
-                engines
-                    .te()
-                    .get(*type_id)
-                    .expect_tuple(handler, engines, debug_string, debug_span)
-            }
+            } => engines
+                .te()
+                .get(*type_id)
+                .expect_tuple(handler, engines, debug_span),
             TypeInfo::ErrorRecovery(err) => Err(*err),
             a => Err(handler.emit_err(CompileError::NotATuple {
-                name: debug_string.into(),
-                span: debug_span.clone(),
                 actually: engines.help_out(a).to_string(),
+                span: debug_span.clone(),
             })),
         }
     }
 
-    /// Given a `TypeInfo` `self`, expect that `self` is a `TypeInfo::Enum`, or a `TypeInfo::Alias`
+    /// Given a [TypeInfo] `self`, expect that `self` is a [TypeInfo::Enum], or a [TypeInfo::Alias]
     /// of a enum type. Also, return the contents of the enum.
     ///
     /// Note that this works recursively. That is, it supports situations where a enum has a chain
@@ -1378,7 +1446,7 @@ impl TypeInfo {
     /// let e = Alias2::X;
     /// ```
     ///
-    /// Returns an error if `self` is not a `TypeInfo::Enum` or a `TypeInfo::Alias` of a enum type,
+    /// Returns an error if `self` is not a [TypeInfo::Enum] or a [TypeInfo::Alias] of a enum type,
     /// transitively.
     pub(crate) fn expect_enum(
         &self,
@@ -1405,8 +1473,8 @@ impl TypeInfo {
         }
     }
 
-    /// Given a `TypeInfo` `self`, expect that `self` is a `TypeInfo::Struct`, or a
-    /// `TypeInfo::Alias` of a struct type. Also, return the contents of the struct.
+    /// Given a [TypeInfo] `self`, expect that `self` is a [TypeInfo::Struct], or a
+    /// [TypeInfo::Alias] of a struct type. Also, return the contents of the struct.
     ///
     /// Note that this works recursively. That is, it supports situations where a struct has a
     /// chain of aliases such as:
@@ -1419,7 +1487,7 @@ impl TypeInfo {
     /// let s = Alias2 { x: 0 };
     /// ```
     ///
-    /// Returns an error if `self` is not a `TypeInfo::Struct` or a `TypeInfo::Alias` of a struct
+    /// Returns an error if `self` is not a [TypeInfo::Struct] or a [TypeInfo::Alias] of a struct
     /// type, transitively.
     #[allow(dead_code)]
     pub(crate) fn expect_struct(
@@ -1443,6 +1511,10 @@ impl TypeInfo {
                 actually: engines.help_out(a).to_string(),
             })),
         }
+    }
+
+    pub fn is_unknown_generic(&self) -> bool {
+        matches!(self, TypeInfo::UnknownGeneric { .. })
     }
 }
 

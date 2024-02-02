@@ -5,7 +5,7 @@ use sway_ir::{
     create_dce_pass, create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass,
     create_mem2reg_pass, create_memcpyopt_pass, create_misc_demotion_pass, create_postorder_pass,
     create_ret_demotion_pass, create_simplify_cfg_pass, optimize as opt, register_known_passes,
-    Context, PassGroup, PassManager, DCE_NAME, MEM2REG_NAME, SROA_NAME,
+    Context, ExperimentalFlags, PassGroup, PassManager, DCE_NAME, MEM2REG_NAME, SROA_NAME,
 };
 use sway_types::SourceEngine;
 
@@ -22,10 +22,11 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
         let input_bytes = std::fs::read(&path).unwrap();
         let input = String::from_utf8_lossy(&input_bytes);
 
-        let mut ir = sway_ir::parser::parse(&input, &source_engine).unwrap_or_else(|parse_err| {
-            println!("{}: {parse_err}", path.display());
-            panic!()
-        });
+        let mut ir = sway_ir::parser::parse(&input, &source_engine, ExperimentalFlags::default())
+            .unwrap_or_else(|parse_err| {
+                println!("{}: {parse_err}", path.display());
+                panic!()
+            });
 
         let first_line = input.split('\n').next().unwrap();
 

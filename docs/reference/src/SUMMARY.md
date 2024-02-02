@@ -89,6 +89,7 @@
   - [require](./documentation/operations/assertions/require.md)
   - [revert](./documentation/operations/assertions/revert.md)
   - [assert_eq](./documentation/operations/assertions/assert-eq.md)
+  - [assert_ne](./documentation/operations/assertions/assert-ne.md)
 - [Address Namespace](./documentation/operations/namespace/index.md)
   - [Address](./documentation/operations/namespace/address.md)
   - [ContractId](./documentation/operations/namespace/contract-id.md)

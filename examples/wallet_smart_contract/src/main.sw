@@ -2,18 +2,16 @@
 contract;
 
 use std::{
+    asset::transfer_to_address,
     call_frames::msg_asset_id,
     constants::BASE_ASSET_ID,
     context::msg_amount,
-    token::transfer_to_address,
 };
 
 // ANCHOR: abi_import
 use wallet_abi::Wallet;
 // ANCHOR_END: abi_import
-const OWNER_ADDRESS = Address::from(
-    0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861,
-);
+const OWNER_ADDRESS = Address::from(0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861);
 
 storage {
     balance: u64 = 0,
@@ -26,7 +24,7 @@ impl Wallet for Contract {
         if msg_asset_id() == BASE_ASSET_ID {
             // If we received `BASE_ASSET_ID` then keep track of the balance.
             // Otherwise, we're receiving other native assets and don't care
-            // about our balance of tokens.
+            // about our balance of coins.
             storage.balance.write(storage.balance.read() + msg_amount());
         }
     }

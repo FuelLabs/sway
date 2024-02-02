@@ -4,7 +4,7 @@ category = "fail"
 #check: $()let _ = sha256(123u8);
 #nextln: $()Trait "Hash" is not imported into "main.sw" when calling "sha256".
 #check: $()Import the "Hash" trait into "main.sw" by using: `use std::hash::Hash;`.
-#check: $()pub fn sha256<T>(s: T) -> b256 where T: Hash {
+#check: $()T: Hash,
 #nextln: $()In the definition of "sha256", "Hash" is used in this trait constraint.
 
 #check: $()Trait is not imported
@@ -62,7 +62,7 @@ category = "fail"
 #check: $()To import the proper "DuplicatedTrait" into "main.sw" follow the detailed instructions given below.
 #check: $()pub fn function_with_duplicated_trait<T>(t: T) where T: DuplicatedTrait { }
 #nextln: $()In the definition of "function_with_duplicated_trait", "DuplicatedTrait" is used in this trait constraint.
-#check: $()There are these 2 traits with the name "DuplicatedTrait" available in the modules:
+#check: $()There are these two traits with the name "DuplicatedTrait" available in the modules:
 #check: $()  - ::lib::DuplicatedTrait
 #check: $()  - ::other_lib::DuplicatedTrait
 #check: $()  1. Look at the definition of the "function_with_duplicated_trait" in the "trait_impls.sw".

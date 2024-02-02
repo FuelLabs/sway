@@ -14,9 +14,9 @@ use sway_types::{integer_bits::IntegerBits, span::Span};
 pub(super) fn convert_literal_to_value(context: &mut Context, ast_literal: &Literal) -> Value {
     match ast_literal {
         // In Sway for now we don't have `as` casting and for integers which may be implicitly cast
-        // between widths we just emit a warning, and essentially ignore it.  We also assume a
-        // 'Numeric' integer of undetermined width is 'u64`.  The IR would like to be type
-        // consistent and doesn't tolerate mising integers of different width, so for now, until we
+        // between widths we just emit a warning, and essentially ignore it. We also assume a
+        // 'Numeric' integer of undetermined width is 'u64`. The IR would like to be type
+        // consistent and doesn't tolerate missing integers of different width, so for now, until we
         // do introduce explicit `as` casting, all integers are `u64` as far as the IR is
         // concerned.
         //
@@ -158,6 +158,7 @@ fn convert_resolved_type(
         TypeInfo::Alias { ty, .. } => {
             convert_resolved_typeid(type_engine, decl_engine, context, &ty.type_id, span)?
         }
+        TypeInfo::Ref(_) => Type::get_uint64(context),
 
         // Unsupported types which shouldn't exist in the AST after type checking and
         // monomorphisation.

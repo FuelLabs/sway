@@ -217,7 +217,9 @@ pub fn compile_html(
         BuildTarget::default(),
         build_instructions.silent,
         tests_enabled,
+        false,
         &engines,
+        None,
     )?;
 
     let raw_docs = if !build_instructions.no_deps {

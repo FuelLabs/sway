@@ -1,13 +1,13 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-7A6EE51863736987'
+name = "core"
+source = "path+from-root-3A4875D7645CAB22"
 
 [[package]]
-name = 'std'
-source = 'path+from-root-7A6EE51863736987'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-3A4875D7645CAB22"
+dependencies = ["core"]
 
 [[package]]
-name = 'u128_div_test_pass'
-source = 'member'
-dependencies = ['std']
+name = "u128_div_test"
+source = "member"
+dependencies = ["std"]

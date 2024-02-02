@@ -1,28 +1,28 @@
 library;
 
 // ANCHOR: mint_import
-use std::token::mint;
+use std::asset::mint;
 // ANCHOR_END: mint_import
 // ANCHOR: mint_to_import
-use std::token::mint_to;
+use std::asset::mint_to;
 // ANCHOR_END: mint_to_import
 // ANCHOR: mint_to_address_import
-use std::token::mint_to_address;
+use std::asset::mint_to_address;
 // ANCHOR_END: mint_to_address_import
 // ANCHOR: mint_to_contract_import
-use std::token::mint_to_contract;
+use std::asset::mint_to_contract;
 // ANCHOR_END: mint_to_contract_import
 // ANCHOR: burn_import
-use std::token::burn;
+use std::asset::burn;
 // ANCHOR_END: burn_import
 // ANCHOR: transfer_import
-use std::token::transfer;
+use std::asset::transfer;
 // ANCHOR_END: transfer_import
 // ANCHOR: transfer_to_address_import
-use std::token::transfer_to_address;
+use std::asset::transfer_to_address;
 // ANCHOR_END: transfer_to_address_import
 // ANCHOR: force_transfer_to_contract_import
-use std::token::force_transfer_to_contract;
+use std::asset::force_transfer_to_contract;
 // ANCHOR_END: force_transfer_to_contract_import
 
 use std::constants::{BASE_ASSET_ID, ZERO_B256};

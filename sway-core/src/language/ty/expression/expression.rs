@@ -146,7 +146,7 @@ impl CollectTypesMetadata for TyExpression {
                 let function_decl = decl_engine.get_function(fn_ref);
 
                 ctx.call_site_push();
-                for type_parameter in function_decl.type_parameters {
+                for type_parameter in &function_decl.type_parameters {
                     ctx.call_site_insert(type_parameter.type_id, call_path.span())
                 }
 
@@ -174,12 +174,12 @@ impl CollectTypesMetadata for TyExpression {
                 ..
             } => {
                 let struct_decl = decl_engine.get_struct(struct_ref);
-                for type_parameter in struct_decl.type_parameters {
+                for type_parameter in &struct_decl.type_parameters {
                     ctx.call_site_insert(type_parameter.type_id, instantiation_span.clone());
                 }
-                if let TypeInfo::Struct(decl_ref) = ctx.engines.te().get(self.return_type) {
-                    let decl = decl_engine.get_struct(&decl_ref);
-                    for type_parameter in decl.type_parameters {
+                if let TypeInfo::Struct(decl_ref) = &*ctx.engines.te().get(self.return_type) {
+                    let decl = decl_engine.get_struct(decl_ref);
+                    for type_parameter in &decl.type_parameters {
                         ctx.call_site_insert(type_parameter.type_id, instantiation_span.clone());
                     }
                 }
@@ -292,6 +292,7 @@ impl CollectTypesMetadata for TyExpression {
                 }
             }
             Return(exp) => res.append(&mut exp.collect_types_metadata(handler, ctx)?),
+            Ref(exp) | Deref(exp) => res.append(&mut exp.collect_types_metadata(handler, ctx)?),
             // storage access can never be generic
             // variable expressions don't ever have return types themselves, they're stored in
             // `TyExpression::return_type`. Variable expressions are just names of variables.
@@ -404,7 +405,8 @@ impl DeterministicallyAborts for TyExpression {
             // Also, is it necessary to check the expression to see if avoids the return? eg.
             // someone could write `return break;` in a loop, which would mean the return never
             // gets executed.
-            Return(..) => true,
+            Return(_) => true,
+            Ref(exp) | Deref(exp) => exp.deterministically_aborts(decl_engine, check_call_body),
         }
     }
 }
@@ -500,9 +502,9 @@ impl TyExpression {
             TyExpressionVariant::FunctionApplication {
                 call_path, fn_ref, ..
             } => {
-                if let Some(TyDecl::ImplTrait(t)) = engines.de().get(fn_ref).implementing_type {
-                    let t = engines.de().get(&t.decl_id).implementing_for;
-                    if let TypeInfo::Struct(struct_ref) = engines.te().get(t.type_id) {
+                if let Some(TyDecl::ImplTrait(t)) = &engines.de().get(fn_ref).implementing_type {
+                    let t = &engines.de().get(&t.decl_id).implementing_for;
+                    if let TypeInfo::Struct(struct_ref) = &*engines.te().get(t.type_id) {
                         let s = engines.de().get(struct_ref.id());
                         emit_warning_if_deprecated(
                             &s.attributes,

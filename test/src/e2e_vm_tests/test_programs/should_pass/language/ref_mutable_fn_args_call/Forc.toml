@@ -1,7 +1,7 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
-name = "ref_mutable_fn_args_struct_assign"
+name = "ref_mutable_fn_args_call"
 entry = "main.sw"
 implicit-std = false
 

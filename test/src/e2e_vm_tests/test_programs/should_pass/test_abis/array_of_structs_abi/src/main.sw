@@ -1,11 +1,11 @@
 library;
 
 pub struct Id {
-    number: u64,
+    pub number: u64,
 }
 
 pub struct Wrapper {
-    id: Id,
+    pub id: Id,
 }
 
 abi TestContract {

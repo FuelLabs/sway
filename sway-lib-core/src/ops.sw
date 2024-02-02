@@ -34,7 +34,7 @@ pub trait Add {
     ///     let struct1 = MyStruct { val: 1 };
     ///     let struct2 = MyStruct { val: 2 };
     ///     let result_struct = struct1 + struct2;
-    ///     assert(result_struct.val == 3); 
+    ///     assert(result_struct.val == 3);
     /// }
     /// ```
     fn add(self, other: Self) -> Self;
@@ -81,11 +81,22 @@ impl Add for u16 {
 
 impl Add for u8 {
     fn add(self, other: Self) -> Self {
-        let res = __add(self, other);
-        if __gt(res, Self::max()) {
+        let self_u64 = asm(input: self) {
+            input: u64
+        };
+        let other_u64 = asm(input: other) {
+            input: u64
+        };
+        let res_u64 = __add(self_u64, other_u64);
+        let max_u8_u64 = asm(input: Self::max()) {
+            input: u64
+        };
+        if __gt(res_u64, max_u8_u64) {
             __revert(0)
         } else {
-            res
+            asm(input: res_u64) {
+                input: u8
+            }
         }
     }
 }
@@ -122,7 +133,7 @@ pub trait Subtract {
     ///     let struct1 = MyStruct { val: 3 };
     ///     let struct2 = MyStruct { val: 1 };
     ///     let result_struct = struct1 - struct2;
-    ///     assert(result_struct.val == 2); 
+    ///     assert(result_struct.val == 2);
     /// }
     /// ```
     fn subtract(self, other: Self) -> Self;
@@ -192,7 +203,7 @@ pub trait Multiply {
     ///     let struct1 = MyStruct { val: 3 };
     ///     let struct2 = MyStruct { val: 2 };
     ///     let result_struct = struct1 * struct2;
-    ///     assert(result_struct.val == 6); 
+    ///     assert(result_struct.val == 6);
     /// }
     /// ```
     fn multiply(self, other: Self) -> Self;
@@ -239,11 +250,22 @@ impl Multiply for u16 {
 
 impl Multiply for u8 {
     fn multiply(self, other: Self) -> Self {
-        let res = __mul(self, other);
-        if __gt(res, Self::max()) {
+        let self_u64 = asm(input: self) {
+            input: u64
+        };
+        let other_u64 = asm(input: other) {
+            input: u64
+        };
+        let res_u64 = __mul(self_u64, other_u64);
+        let max_u8_u64 = asm(input: Self::max()) {
+            input: u64
+        };
+        if __gt(res_u64, max_u8_u64) {
             __revert(0)
         } else {
-            res
+            asm(input: res_u64) {
+                input: u8
+            }
         }
     }
 }
@@ -280,7 +302,7 @@ pub trait Divide {
     ///     let struct1 = MyStruct { val: 10 };
     ///     let struct2 = MyStruct { val: 2 };
     ///     let result_struct = struct1 / struct2;
-    ///     assert(result_struct.val == 5); 
+    ///     assert(result_struct.val == 5);
     /// }
     /// ```
     fn divide(self, other: Self) -> Self;
@@ -352,7 +374,7 @@ pub trait Mod {
     ///     let struct1 = MyStruct { val: 10 };
     ///     let struct2 = MyStruct { val: 2 };
     ///     let result_struct = struct1 % struct2;
-    ///     assert(result_struct.val == 0); 
+    ///     assert(result_struct.val == 0);
     /// }
     /// ```
     fn modulo(self, other: Self) -> Self;
@@ -414,7 +436,7 @@ pub trait Not {
     /// fn foo() {
     ///     let struct = MyStruct { val: true };
     ///     let result_struct = !struct;
-    ///     assert(!result_struct.val); 
+    ///     assert(!result_struct.val);
     /// }
     /// ```
     fn not(self) -> Self;
@@ -494,7 +516,7 @@ pub trait Eq {
     ///     let struct1 = MyStruct { val: 2 };
     ///     let struct2 = MyStruct { val: 2 };
     ///     let result = struct1 == struct2;
-    ///     assert(result); 
+    ///     assert(result);
     /// }
     /// ```
     fn eq(self, other: Self) -> bool;
@@ -530,7 +552,7 @@ pub trait Eq {
     ///     let struct1 = MyStruct { val: 10 };
     ///     let struct2 = MyStruct { val: 2 };
     ///     let result = struct1 != struct2;
-    ///     assert(result); 
+    ///     assert(result);
     /// }
     /// ```
     fn neq(self, other: Self) -> bool {
@@ -615,7 +637,7 @@ pub trait Ord {
     ///     let struct1 = MyStruct { val: 10 };
     ///     let struct2 = MyStruct { val: 2 };
     ///     let result = struct1 > struct2;
-    ///     assert(result); 
+    ///     assert(result);
     /// }
     /// ```
     fn gt(self, other: Self) -> bool;
@@ -647,7 +669,7 @@ pub trait Ord {
     ///     let struct1 = MyStruct { val: 10 };
     ///     let struct2 = MyStruct { val: 2 };
     ///     let result = struct1 < struct2;
-    ///     assert(!result); 
+    ///     assert(!result);
     /// }
     /// ```
     fn lt(self, other: Self) -> bool;
@@ -741,7 +763,7 @@ pub trait BitwiseAnd {
     ///     let struct1 = MyStruct { val: 10 };
     ///     let struct2 = MyStruct { val: 11 };
     ///     let result_struct = struct1 & struct2;
-    ///     assert(result_struct.val == 10); 
+    ///     assert(result_struct.val == 10);
     /// }
     /// ```
     fn binary_and(self, other: Self) -> Self;
@@ -815,7 +837,7 @@ pub trait BitwiseOr {
     ///     let struct1 = MyStruct { val: 10 };
     ///     let struct2 = MyStruct { val: 11 };
     ///     let result_struct = struct1 | struct2;
-    ///     assert(result_struct.val == 11); 
+    ///     assert(result_struct.val == 11);
     /// }
     /// ```
     fn binary_or(self, other: Self) -> Self;
@@ -889,7 +911,7 @@ pub trait BitwiseXor {
     ///     let struct1 = MyStruct { val: 10 };
     ///     let struct2 = MyStruct { val: 11 };
     ///     let result_struct = struct1 ^ struct2;
-    ///     assert(result_struct.val == 1); 
+    ///     assert(result_struct.val == 1);
     /// }
     /// ```
     fn binary_xor(self, other: Self) -> Self;
@@ -903,7 +925,7 @@ impl BitwiseXor for u256 {
 
 impl BitwiseXor for b256 {
     fn binary_xor(self, other: Self) -> Self {
-         __xor(self, other)
+        __xor(self, other)
     }
 }
 
@@ -973,13 +995,12 @@ trait OrdEq: Ord + Eq {
     ///     let struct1 = MyStruct { val: 10 };
     ///     let struct2 = MyStruct { val: 10 };
     ///     let result = struct1 >= struct2;
-    ///     assert(result); 
+    ///     assert(result);
     /// }
     /// ```
     fn ge(self, other: Self) -> bool {
         self.gt(other) || self.eq(other)
     }
-
     /// Evaluates if one value of the same type is less or equal to than another.
     ///
     /// # Additional Information
@@ -1019,7 +1040,7 @@ trait OrdEq: Ord + Eq {
     ///     let struct1 = MyStruct { val: 10 };
     ///     let struct2 = MyStruct { val: 10 };
     ///     let result = struct1 <= struct2;
-    ///     assert(result); 
+    ///     assert(result);
     /// }
     /// ```
     fn le(self, other: Self) -> bool {
@@ -1065,7 +1086,7 @@ pub trait Shift {
     /// fn foo() {
     ///     let struct1 = MyStruct { val: 10 };
     ///     let result_struct = struct1 << 3;
-    ///     assert(result_struct.val == 80); 
+    ///     assert(result_struct.val == 80);
     /// }
     /// ```
     fn lsh(self, other: u64) -> Self;
@@ -1099,7 +1120,7 @@ pub trait Shift {
     /// fn foo() {
     ///     let struct1 = MyStruct { val: 10 };
     ///     let result_struct = struct1 >> 1;
-    ///     assert(result_struct.val == 5); 
+    ///     assert(result_struct.val == 5);
     /// }
     /// ```
     fn rsh(self, other: u64) -> Self;
@@ -1168,12 +1189,16 @@ impl Shift for u8 {
 
 /// Build a single b256 value from a tuple of 4 u64 values.
 fn compose(words: (u64, u64, u64, u64)) -> b256 {
-    asm(r1: words) { r1: b256 }
+    asm(r1: words) {
+        r1: b256
+    }
 }
 
 /// Get a tuple of 4 u64 values from a single b256 value.
 fn decompose(val: b256) -> (u64, u64, u64, u64) {
-    asm(r1: val) { r1: (u64, u64, u64, u64) }
+    asm(r1: val) {
+        r1: (u64, u64, u64, u64)
+    }
 }
 
 #[test]

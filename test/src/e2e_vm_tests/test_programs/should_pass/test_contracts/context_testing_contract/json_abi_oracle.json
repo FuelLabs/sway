@@ -106,7 +106,7 @@
           "typeArguments": null
         }
       ],
-      "type": "struct std::contract_id::AssetId",
+      "type": "struct std::asset_id::AssetId",
       "typeId": 1,
       "typeParameters": null
     },

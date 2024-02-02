@@ -17,8 +17,10 @@ use std::{
 abi TxContractTest {
     fn get_tx_type() -> Transaction;
     fn get_tx_gas_price() -> u64;
-    fn get_tx_gas_limit() -> u64;
+    fn get_script_gas_limit() -> u64;
     fn get_tx_maturity() -> u32;
+    fn get_tx_witness_limit() -> u64;
+    fn get_tx_max_fee() -> u64;
     fn get_tx_script_length() -> u64;
     fn get_tx_script_data_length() -> u64;
     fn get_tx_inputs_count() -> u64;
@@ -35,7 +37,7 @@ abi TxContractTest {
 
     fn get_input_type(index: u64) -> Input;
     fn get_tx_input_pointer(index: u64) -> u64;
-    fn get_input_owner(index: u64) -> Address;
+    fn get_input_coin_owner(index: u64) -> Address;
     fn get_input_amount(index: u64) -> u64;
     fn get_tx_input_predicate_data_pointer(index: u64) -> u64;
     fn get_input_message_sender(index: u64) -> Address;
@@ -58,13 +60,19 @@ impl TxContractTest for Contract {
         tx_type()
     }
     fn get_tx_gas_price() -> u64 {
-        tx_gas_price()
+        tx_gas_price().unwrap()
     }
-    fn get_tx_gas_limit() -> u64 {
-        tx_gas_limit()
+    fn get_script_gas_limit() -> u64 {
+        script_gas_limit()
     }
     fn get_tx_maturity() -> u32 {
-        tx_maturity()
+        tx_maturity().unwrap()
+    }
+    fn get_tx_witness_limit() -> u64 {
+        tx_witness_limit().unwrap()
+    }
+    fn get_tx_max_fee() -> u64 {
+        tx_max_fee().unwrap()
     }
     fn get_tx_script_length() -> u64 {
         tx_script_length()
@@ -111,8 +119,8 @@ impl TxContractTest for Contract {
     fn get_input_type(index: u64) -> Input {
         input_type(index)
     }
-    fn get_input_owner(index: u64) -> Address {
-        input_owner(index).unwrap()
+    fn get_input_coin_owner(index: u64) -> Address {
+        input_coin_owner(index).unwrap()
     }
     fn get_input_amount(index: u64) -> u64 {
         input_amount(index).unwrap()

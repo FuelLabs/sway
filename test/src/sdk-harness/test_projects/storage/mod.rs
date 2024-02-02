@@ -6,17 +6,17 @@ use fuels::{
 
 abigen!(Contract(
     name = "TestStorageContract",
-    abi = "test_projects/storage/out/debug/storage-abi.json",
+    abi = "test_projects/storage/out/release/storage-abi.json",
 ));
 
 async fn get_test_storage_instance() -> TestStorageContract<WalletUnlocked> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "test_projects/storage/out/debug/storage.bin",
+        "test_projects/storage/out/release/storage.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 
@@ -206,12 +206,7 @@ async fn can_store_tuple() {
     let t = (Bits256([7; 32]), 8, Bits256([6; 32]));
 
     // Test store
-    instance
-        .methods()
-        .store_tuple(t.clone())
-        .call()
-        .await
-        .unwrap();
+    instance.methods().store_tuple(t).call().await.unwrap();
     let result = instance.methods().get_tuple().call().await.unwrap();
     assert_eq!(result.value, Some(t));
 }

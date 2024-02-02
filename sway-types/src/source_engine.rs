@@ -24,6 +24,19 @@ pub struct SourceEngine {
     module_to_sources_map: RwLock<HashMap<ModuleId, BTreeSet<SourceId>>>,
 }
 
+impl Clone for SourceEngine {
+    fn clone(&self) -> Self {
+        SourceEngine {
+            next_source_id: RwLock::new(*self.next_source_id.read().unwrap()),
+            path_to_source_map: RwLock::new(self.path_to_source_map.read().unwrap().clone()),
+            source_to_path_map: RwLock::new(self.source_to_path_map.read().unwrap().clone()),
+            next_module_id: RwLock::new(*self.next_module_id.read().unwrap()),
+            path_to_module_map: RwLock::new(self.path_to_module_map.read().unwrap().clone()),
+            module_to_sources_map: RwLock::new(self.module_to_sources_map.read().unwrap().clone()),
+        }
+    }
+}
+
 impl SourceEngine {
     /// This function retrieves an integer-based source ID for a provided path buffer.
     /// If an ID already exists for the given path, the function will return that
@@ -59,10 +72,7 @@ impl SourceEngine {
         }
 
         let mut module_map = self.module_to_sources_map.write().unwrap();
-        module_map
-            .entry(module_id)
-            .or_insert_with(BTreeSet::new)
-            .insert(source_id);
+        module_map.entry(module_id).or_default().insert(source_id);
 
         source_id
     }

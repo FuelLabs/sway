@@ -336,10 +336,9 @@ fn block_to_doc(
         ),
     )
     .append(Doc::List(
-        block_content
-            .instructions
-            .iter()
-            .map(|ins| instruction_to_doc(context, md_namer, namer, block, ins))
+        block
+            .instruction_iter(context)
+            .map(|ins| instruction_to_doc(context, md_namer, namer, block, &ins))
             .collect(),
     ))
 }
@@ -1098,6 +1097,7 @@ impl Constant {
                     .collect::<Vec<String>>()
                     .join(", ")
             ),
+            ConstantValue::Reference(constant) => format!("&({})", constant.as_lit_string(context)),
         }
     }
 }

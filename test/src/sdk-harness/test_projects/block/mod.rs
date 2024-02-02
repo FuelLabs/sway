@@ -4,18 +4,18 @@ use tokio::time::{sleep, Duration};
 
 abigen!(Contract(
     name = "BlockTestContract",
-    abi = "test_projects/block/out/debug/block-abi.json"
+    abi = "test_projects/block/out/release/block-abi.json"
 ));
 
 async fn get_block_instance() -> (BlockTestContract<WalletUnlocked>, ContractId, Provider) {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let provider = wallet.provider().unwrap();
     let id = Contract::load_from(
-        "test_projects/block/out/debug/block.bin",
+        "test_projects/block/out/release/block.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
     let instance = BlockTestContract::new(id.clone(), wallet.clone());

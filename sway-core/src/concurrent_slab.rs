@@ -1,10 +1,15 @@
-use crate::{decl_engine::*, engine_threading::*, type_system::*};
-use std::{fmt, sync::RwLock};
-use sway_types::{Named, Spanned};
+use std::{
+    collections::HashMap,
+    fmt,
+    sync::{Arc, RwLock},
+};
+
+use itertools::Itertools;
 
 #[derive(Debug)]
 pub(crate) struct ConcurrentSlab<T> {
-    inner: RwLock<Vec<T>>,
+    inner: RwLock<HashMap<usize, Arc<T>>>,
+    last_id: Arc<RwLock<usize>>,
 }
 
 impl<T> Clone for ConcurrentSlab<T>
@@ -15,6 +20,7 @@ where
         let inner = self.inner.read().unwrap();
         Self {
             inner: RwLock::new(inner.clone()),
+            last_id: self.last_id.clone(),
         }
     }
 }
@@ -23,13 +29,8 @@ impl<T> Default for ConcurrentSlab<T> {
     fn default() -> Self {
         Self {
             inner: Default::default(),
+            last_id: Default::default(),
         }
-    }
-}
-
-impl<T> ConcurrentSlab<T> {
-    pub fn with_slice<R>(&self, run: impl FnOnce(&[T]) -> R) -> R {
-        run(&self.inner.read().unwrap())
     }
 }
 
@@ -57,63 +58,46 @@ impl<T> ConcurrentSlab<T>
 where
     T: Clone,
 {
+    pub fn values(&self) -> Vec<Arc<T>> {
+        let inner = self.inner.read().unwrap();
+        inner.values().cloned().collect_vec()
+    }
+
     pub fn insert(&self, value: T) -> usize {
         let mut inner = self.inner.write().unwrap();
-        let ret = inner.len();
-        inner.push(value);
-        ret
+        let mut last_id = self.last_id.write().unwrap();
+        *last_id += 1;
+        inner.insert(*last_id, Arc::new(value));
+        *last_id
     }
 
-    pub fn get(&self, index: usize) -> T {
+    pub fn insert_arc(&self, value: Arc<T>) -> usize {
+        let mut inner = self.inner.write().unwrap();
+        let mut last_id = self.last_id.write().unwrap();
+        *last_id += 1;
+        inner.insert(*last_id, value);
+        *last_id
+    }
+
+    pub fn replace(&self, index: usize, new_value: T) -> Option<T> {
+        let mut inner = self.inner.write().unwrap();
+        inner.insert(index, Arc::new(new_value));
+        None
+    }
+
+    pub fn get(&self, index: usize) -> Arc<T> {
         let inner = self.inner.read().unwrap();
-        inner[index].clone()
+        inner[&index].clone()
     }
 
-    pub fn retain(&self, predicate: impl Fn(&T) -> bool) {
+    pub fn retain(&self, predicate: impl Fn(&usize, &mut Arc<T>) -> bool) {
         let mut inner = self.inner.write().unwrap();
         inner.retain(predicate);
     }
-}
 
-impl ConcurrentSlab<TypeSourceInfo> {
-    pub fn replace(
-        &self,
-        index: TypeId,
-        prev_value: &TypeSourceInfo,
-        new_value: TypeSourceInfo,
-        engines: &Engines,
-    ) -> Option<TypeSourceInfo> {
-        let index = index.index();
-        // The comparison below ends up calling functions in the slab, which
-        // can lead to deadlocks if we used a single read/write lock.
-        // So we split the operation: we do the read only operations with
-        // a single scoped read lock below, and only after the scope do
-        // we get a write lock for writing into the slab.
-        {
-            let inner = self.inner.read().unwrap();
-            let actual_prev_value = &inner[index];
-            if !actual_prev_value
-                .type_info
-                .eq(&prev_value.type_info, engines)
-            {
-                return Some(actual_prev_value.clone());
-            }
-        }
-
+    pub fn clear(&self) {
         let mut inner = self.inner.write().unwrap();
-        inner[index] = new_value;
-        None
-    }
-}
-
-impl<T> ConcurrentSlab<T>
-where
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned,
-{
-    pub fn replace(&self, index: DeclId<T>, new_value: T) -> Option<T> {
-        let mut inner = self.inner.write().unwrap();
-        inner[index.inner()] = new_value;
-        None
+        inner.clear();
+        inner.shrink_to(0);
     }
 }

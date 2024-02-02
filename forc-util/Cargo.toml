@@ -1,6 +1,6 @@
 [package]
 name = "forc-util"
-version = "0.47.0"
+version = "0.49.1"
 description = "Utility items shared between forc crates."
 authors.workspace = true
 edition.workspace = true
@@ -9,23 +9,30 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-annotate-snippets = { version = "0.9", features = ["color"] }
+annotate-snippets = { version = "0.10.1" }
 ansi_term = "0.12"
 anyhow = "1"
 clap = { version = "3.1", features = ["cargo", "derive", "env"] }
 dirs = "3.0.2"
 fd-lock = "4.0"
-forc-tracing = { version = "0.47.0", path = "../forc-tracing" }
+forc-tracing = { version = "0.49.1", path = "../forc-tracing" }
 fuel-tx = { workspace = true, features = ["serde"], optional = true }
 hex = "0.4.3"
+paste = "1.0.14"
+regex = "1.10.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.73"
-sway-core = { version = "0.47.0", path = "../sway-core" }
-sway-error = { version = "0.47.0", path = "../sway-error" }
-sway-types = { version = "0.47.0", path = "../sway-types" }
-sway-utils = { version = "0.47.0", path = "../sway-utils" }
+serial_test = "3.0.0"
+sway-core = { version = "0.49.1", path = "../sway-core" }
+sway-error = { version = "0.49.1", path = "../sway-error" }
+sway-types = { version = "0.49.1", path = "../sway-types" }
+sway-utils = { version = "0.49.1", path = "../sway-utils" }
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["ansi", "env-filter", "json"] }
+tracing-subscriber = { version = "0.3", features = [
+    "ansi",
+    "env-filter",
+    "json",
+] }
 unicode-xid = "0.2.2"
 
 [features]

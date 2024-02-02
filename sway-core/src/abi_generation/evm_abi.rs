@@ -40,7 +40,10 @@ fn get_type_str(
             abi_str(&type_engine.get(*type_id), type_engine, decl_engine)
         )
     } else {
-        match (type_engine.get(*type_id), type_engine.get(resolved_type_id)) {
+        match (
+            &*type_engine.get(*type_id),
+            &*type_engine.get(resolved_type_id),
+        ) {
             (TypeInfo::Custom { .. }, TypeInfo::Struct { .. }) => {
                 format!(
                     "struct {}",
@@ -141,6 +144,9 @@ pub fn abi_str(type_info: &TypeInfo, type_engine: &TypeEngine, decl_engine: &Dec
             name,
             trait_type_id: _,
         } => format!("trait type {}", name),
+        Ref(ty) => {
+            format!("__ref {}", abi_str_type_arg(ty, type_engine, decl_engine)) // TODO-IG: No references in ABIs according to the RFC. Or we want to have them?
+        }
     }
 }
 

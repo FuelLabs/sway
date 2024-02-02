@@ -4,7 +4,7 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineInsert, DeclId},
+    decl_engine::{DeclEngineInsert, DeclEngineInsertArc, DeclId},
     language::ty::TyAbiDecl,
     namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
     semantic_analysis::{
@@ -34,6 +34,7 @@ impl ty::TyAbiDecl {
         ctx: TypeCheckContext,
         abi_decl: AbiDeclaration,
     ) -> Result<Self, ErrorEmitted> {
+        let engines = ctx.engines();
         let AbiDeclaration {
             name,
             interface_surface,
@@ -91,11 +92,11 @@ impl ty::TyAbiDecl {
                     let superabi_impl_method =
                         ctx.engines.de().get_function(&superabi_impl_method_ref);
                     if let Some(ty::TyDecl::AbiDecl(abi_decl)) =
-                        superabi_impl_method.implementing_type
+                        &superabi_impl_method.implementing_type
                     {
                         handler.emit_err(CompileError::AbiShadowsSuperAbiMethod {
                             span: method_name.span(),
-                            superabi: abi_decl.name,
+                            superabi: abi_decl.name.clone(),
                         });
                     }
                 }
@@ -121,9 +122,10 @@ impl ty::TyAbiDecl {
                     ));
                     method.name.clone()
                 }
-                TraitItem::Constant(const_decl) => {
+                TraitItem::Constant(decl_id) => {
+                    let const_decl = engines.pe().get_constant(&decl_id).as_ref().clone();
                     let const_decl =
-                        ty::TyConstantDecl::type_check(handler, ctx.by_ref(), const_decl.clone())?;
+                        ty::TyConstantDecl::type_check(handler, ctx.by_ref(), const_decl)?;
                     let decl_ref = ctx.engines.de().insert(const_decl.clone());
                     new_interface_surface
                         .push(ty::TyTraitInterfaceItem::Constant(decl_ref.clone()));
@@ -141,7 +143,8 @@ impl ty::TyAbiDecl {
 
                     const_name
                 }
-                TraitItem::Type(type_decl) => {
+                TraitItem::Type(decl_id) => {
+                    let type_decl = engines.pe().get_trait_type(&decl_id).as_ref().clone();
                     handler.emit_err(CompileError::AssociatedTypeNotSupportedInAbi {
                         span: type_decl.span.clone(),
                     });
@@ -167,10 +170,11 @@ impl ty::TyAbiDecl {
 
         // Type check the items.
         let mut new_items = vec![];
-        for method in methods.into_iter() {
+        for method_id in methods.into_iter() {
+            let method = engines.pe().get_function(&method_id);
             let method =
-                ty::TyFunctionDecl::type_check(handler, ctx.by_ref(), method.clone(), false, false)
-                    .unwrap_or_else(|_| ty::TyFunctionDecl::error(method.clone()));
+                ty::TyFunctionDecl::type_check(handler, ctx.by_ref(), &method, false, false)
+                    .unwrap_or_else(|_| ty::TyFunctionDecl::error(&method));
             error_on_shadowing_superabi_method(&method.name, &mut ctx);
             for param in &method.parameters {
                 if param.is_reference || param.is_mutable {
@@ -342,17 +346,19 @@ impl ty::TyAbiDecl {
                         all_items.push(TyImplItem::Fn(
                             ctx.engines
                                 .de()
-                                .insert(method)
+                                .insert_arc(method)
                                 .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
                         ));
                     }
                     ty::TyTraitItem::Constant(decl_ref) => {
                         let const_decl = decl_engine.get_constant(decl_ref);
-                        all_items.push(TyImplItem::Constant(ctx.engines.de().insert(const_decl)));
+                        all_items.push(TyImplItem::Constant(
+                            ctx.engines.de().insert_arc(const_decl),
+                        ));
                     }
                     ty::TyTraitItem::Type(decl_ref) => {
                         let type_decl = decl_engine.get_type(decl_ref);
-                        all_items.push(TyImplItem::Type(ctx.engines.de().insert(type_decl)));
+                        all_items.push(TyImplItem::Type(ctx.engines.de().insert_arc(type_decl)));
                     }
                 }
             }
