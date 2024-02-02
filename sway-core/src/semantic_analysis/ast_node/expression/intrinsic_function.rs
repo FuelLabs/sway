@@ -116,7 +116,8 @@ fn type_check_not(
     let operand = arguments[0].clone();
     let operand_expr = ty::TyExpression::type_check(handler, ctx.by_ref(), operand)?;
 
-    let t = engines.te().get(operand_expr.return_type);
+    let t_arc = engines.te().get(operand_expr.return_type);
+    let t = &*t_arc;
     match t {
         TypeInfo::B256 | TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => Ok((
             ty::TyIntrinsicFunctionKind {
@@ -748,7 +749,7 @@ fn type_check_state_store_word(
         TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
         None,
     ));
-    let type_argument = type_arguments.get(0).map(|targ| {
+    let type_argument = type_arguments.first().map(|targ| {
         let mut ctx =
             ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
         let initial_type_info = type_engine
@@ -842,7 +843,7 @@ fn type_check_state_quad(
     ));
     let number_of_slots_exp =
         ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[2].clone())?;
-    let type_argument = type_arguments.get(0).map(|targ| {
+    let type_argument = type_arguments.first().map(|targ| {
         let mut ctx =
             ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
         let initial_type_info = type_engine
@@ -1023,7 +1024,8 @@ fn type_check_bitwise_binary_op(
     let rhs = arguments[1].clone();
     let rhs = ty::TyExpression::type_check(handler, ctx, rhs)?;
 
-    let t = engines.te().get(lhs.return_type);
+    let t_arc = engines.te().get(lhs.return_type);
+    let t = &*t_arc;
     match t {
         TypeInfo::B256 | TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => Ok((
             ty::TyIntrinsicFunctionKind {
@@ -1096,7 +1098,8 @@ fn type_check_shift_binary_op(
         rhs,
     )?;
 
-    let t = engines.te().get(lhs.return_type);
+    let t_arc = engines.te().get(lhs.return_type);
+    let t = &*t_arc;
     match t {
         TypeInfo::B256 | TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => Ok((
             ty::TyIntrinsicFunctionKind {
@@ -1295,7 +1298,7 @@ fn type_check_smo(
     }
 
     // Type check the type argument
-    let type_argument = type_arguments.get(0).map(|targ| {
+    let type_argument = type_arguments.first().map(|targ| {
         let mut ctx = ctx
             .by_ref()
             .with_help_text("")

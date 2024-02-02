@@ -6,8 +6,8 @@
 /// An extra argument pointer is added to the function and this pointer is also returned.  The
 /// return value is mem_copied to the new argument instead of being returned by value.
 use crate::{
-    AnalysisResults, BlockArgument, Context, Function, InstOp, Instruction, IrError, Pass,
-    PassMutability, ScopedPass, Type, Value,
+    AnalysisResults, BlockArgument, Context, Function, InstOp, Instruction, InstructionInserter,
+    IrError, Pass, PassMutability, ScopedPass, Type, Value,
 };
 
 pub const RETDEMOTION_NAME: &str = "retdemotion";
@@ -46,9 +46,7 @@ pub fn ret_val_demotion(
 
         // Insert the return value pointer at the start of the entry block.
         let get_ret_var = Value::new_instruction(context, entry_block, InstOp::GetLocal(ret_var));
-        context.blocks[entry_block.0]
-            .instructions
-            .insert(0, get_ret_var);
+        entry_block.prepend_instructions(context, vec![get_ret_var]);
         get_ret_var
     } else {
         let ptr_arg_val = Value::new_argument(
@@ -82,17 +80,17 @@ pub fn ret_val_demotion(
     for (ret_block, ret_val) in ret_blocks {
         // This is a special case where we're replacing the terminator.  We can just pop it off the
         // end of the block and add new instructions.
-        let block_instrs = &mut context.blocks[ret_block.0].instructions;
-        let orig_ret_val = block_instrs.last().copied();
-        block_instrs.pop();
+        let last_instr_pos = ret_block.num_instructions(context) - 1;
+        let orig_ret_val = ret_block.get_instruction_at(context, last_instr_pos);
+        ret_block.remove_instruction_at(context, last_instr_pos);
         let md_idx = orig_ret_val.and_then(|val| val.get_metadata(context));
 
         ret_block
-            .ins(context)
+            .append(context)
             .store(ptr_arg_val, ret_val)
             .add_metadatum(context, md_idx);
         ret_block
-            .ins(context)
+            .append(context)
             .ret(ptr_arg_val, ptr_ret_type)
             .add_metadatum(context, md_idx);
     }
@@ -170,19 +168,15 @@ fn update_callers(context: &mut Context, function: Function, ret_type: Type) {
         // And finally load the value from the new local var.
         let load_val = Value::new_instruction(context, calling_block, InstOp::Load(new_call_val));
 
-        // We don't have an actual instruction _inserter_ yet, just an appender, so we need to do
-        // this manually.
-        let block_instrs = &mut context.blocks[calling_block.0].instructions;
-        let call_inst_idx = block_instrs
-            .iter()
-            .position(|&instr_val| instr_val == call_val)
+        calling_block
+            .replace_instruction(context, call_val, get_loc_val, false)
             .unwrap();
-
-        // Replace the call with the new `get_local` then insert the `call` and the `load` after
-        // it.
-        block_instrs[call_inst_idx] = get_loc_val;
-        block_instrs.insert(call_inst_idx + 1, new_call_val);
-        block_instrs.insert(call_inst_idx + 2, load_val);
+        let mut inserter = InstructionInserter::new(
+            context,
+            calling_block,
+            crate::InsertionPosition::After(get_loc_val),
+        );
+        inserter.insert_slice(&[new_call_val, load_val]);
 
         // Replace the old call with the new load.
         calling_func.replace_value(context, call_val, load_val, None);

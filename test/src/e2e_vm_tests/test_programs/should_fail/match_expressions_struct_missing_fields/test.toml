@@ -1,4 +1,8 @@
 category = "fail"
 
-# check: Point { x } => { x },
-# nextln: $()Pattern does not mention field: y
+#check: $()Struct pattern has missing fields
+#check: $()Struct "Point" is declared here, and has two fields.
+#check: $()Point { x } => { x },
+#nextln: $()Struct pattern is missing the field "y".
+#check: $()Consider ignoring the field "y" by using the `_` pattern: `y: _`.
+#nextln: $()Alternatively, consider ignoring all the missing fields by ending the struct pattern with `..`.

@@ -1,7 +1,7 @@
 contract;
 
 use context_testing_abi::ContextTesting;
-use std::{call_frames::contract_id, constants::ZERO_B256, token::mint, hash::*};
+use std::{call_frames::contract_id, constants::ZERO_B256, asset::mint, hash::*};
 
 abi ContextCaller {
     fn call_get_this_balance_with_coins(send_amount: u64, context_id: ContractId) -> u64;
@@ -19,24 +19,26 @@ impl ContextCaller for Contract {
         let id = target.value;
         let context_contract = abi(ContextTesting, id);
         let asset_id = AssetId::default();
+        let asset_id_b256: b256 = asset_id.into();
 
         context_contract.get_this_balance {
             gas: 500_000,
             coins: send_amount,
             asset_id: asset_id.into(),
-        }(asset_id.into())
+        }(asset_id_b256)
     }
 
     fn call_get_balance_of_contract_with_coins(send_amount: u64, target: ContractId) -> u64 {
         let id = target.value;
         let context_contract = abi(ContextTesting, id);
         let asset_id = AssetId::default();
+        let asset_id_b256: b256 = asset_id.into();
 
         context_contract.get_balance_of_contract {
             gas: 500_000,
             coins: send_amount,
             asset_id: asset_id.into(),
-        }(asset_id.into(), target)
+        }(asset_id_b256, target)
     }
 
     fn call_get_amount_with_coins(send_amount: u64, target: ContractId) -> u64 {

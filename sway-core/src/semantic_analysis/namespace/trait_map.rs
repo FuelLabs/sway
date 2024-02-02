@@ -159,9 +159,6 @@ impl TraitMap {
         is_extending_existing_impl: IsExtendingExistingImpl,
         engines: &Engines,
     ) -> Result<(), ErrorEmitted> {
-        let type_engine = engines.te();
-        let _decl_engine = engines.de();
-
         handler.scope(|handler| {
             let mut trait_items: TraitItems = im::HashMap::new();
             for item in items.iter() {
@@ -188,19 +185,6 @@ impl TraitMap {
             }
 
             // check to see if adding this trait will produce a conflicting definition
-            let trait_type_id = type_engine.insert(
-                engines,
-                TypeInfo::Custom {
-                    qualified_call_path: trait_name.suffix.clone().into(),
-                    type_arguments: if trait_type_args.is_empty() {
-                        None
-                    } else {
-                        Some(trait_type_args.clone())
-                    },
-                    root_type_id: None,
-                },
-                trait_name.suffix.span().source_id(),
-            );
             for TraitEntry {
                 key:
                     TraitKey {
@@ -223,23 +207,23 @@ impl TraitMap {
                         },
                     ..
                 } = map_trait_name;
-                let map_trait_type_id = type_engine.insert(
-                    engines,
-                    TypeInfo::Custom {
-                        qualified_call_path: map_trait_name_suffix.clone().into(),
-                        type_arguments: if map_trait_type_args.is_empty() {
-                            None
-                        } else {
-                            Some(map_trait_type_args.to_vec())
-                        },
-                        root_type_id: None,
-                    },
-                    map_trait_name_suffix.span().source_id(),
-                );
 
                 let unify_checker = UnifyCheck::non_generic_constraint_subset(engines);
                 let types_are_subset = unify_checker.check(type_id, *map_type_id);
-                let traits_are_subset = unify_checker.check(trait_type_id, map_trait_type_id);
+                let mut traits_are_subset = true;
+                if *map_trait_name_suffix != trait_name.suffix
+                    || map_trait_type_args.len() != trait_type_args.len()
+                {
+                    traits_are_subset = false;
+                } else {
+                    for (map_arg_type, arg_type) in
+                        map_trait_type_args.iter().zip(trait_type_args.iter())
+                    {
+                        if !unify_checker.check(arg_type.type_id, map_arg_type.type_id) {
+                            traits_are_subset = false;
+                        }
+                    }
+                }
 
                 if matches!(is_extending_existing_impl, IsExtendingExistingImpl::No)
                     && types_are_subset
@@ -735,7 +719,7 @@ impl TraitMap {
                         .into_iter()
                         .map(|(name, item)| match &item {
                             ty::TyTraitItem::Fn(decl_ref) => {
-                                let mut decl = decl_engine.get(decl_ref.id());
+                                let mut decl = (*decl_engine.get(decl_ref.id())).clone();
                                 decl.subst(&type_mapping, engines);
                                 let new_ref = decl_engine
                                     .insert(decl)
@@ -743,13 +727,13 @@ impl TraitMap {
                                 (name, TyImplItem::Fn(new_ref))
                             }
                             ty::TyTraitItem::Constant(decl_ref) => {
-                                let mut decl = decl_engine.get(decl_ref.id());
+                                let mut decl = (*decl_engine.get(decl_ref.id())).clone();
                                 decl.subst(&type_mapping, engines);
                                 let new_ref = decl_engine.insert(decl);
                                 (name, TyImplItem::Constant(new_ref))
                             }
                             ty::TyTraitItem::Type(decl_ref) => {
-                                let mut decl = decl_engine.get(decl_ref.id());
+                                let mut decl = (*decl_engine.get(decl_ref.id())).clone();
                                 decl.subst(&type_mapping, engines);
                                 let new_ref = decl_engine.insert(decl);
                                 (name, TyImplItem::Type(new_ref))
@@ -800,7 +784,7 @@ impl TraitMap {
 
         let mut items = vec![];
         // small performance gain in bad case
-        if matches!(type_engine.get(type_id), TypeInfo::ErrorRecovery(_)) {
+        if matches!(&*type_engine.get(type_id), TypeInfo::ErrorRecovery(_)) {
             return items;
         }
         for entry in self.trait_impls.iter() {
@@ -833,7 +817,7 @@ impl TraitMap {
 
         let mut spans = vec![];
         // small performance gain in bad case
-        if matches!(type_engine.get(*type_id), TypeInfo::ErrorRecovery(_)) {
+        if matches!(&*type_engine.get(*type_id), TypeInfo::ErrorRecovery(_)) {
             return spans;
         }
         for entry in self.trait_impls.iter() {
@@ -884,7 +868,7 @@ impl TraitMap {
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
         let mut items = vec![];
         // small performance gain in bad case
-        if matches!(type_engine.get(type_id), TypeInfo::ErrorRecovery(_)) {
+        if matches!(&*type_engine.get(type_id), TypeInfo::ErrorRecovery(_)) {
             return items;
         }
         for e in self.trait_impls.iter() {
@@ -917,7 +901,7 @@ impl TraitMap {
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
         let mut trait_names = vec![];
         // small performance gain in bad case
-        if matches!(type_engine.get(type_id), TypeInfo::ErrorRecovery(_)) {
+        if matches!(&*type_engine.get(type_id), TypeInfo::ErrorRecovery(_)) {
             return trait_names;
         }
         for entry in self.trait_impls.iter() {
@@ -1106,7 +1090,7 @@ impl TraitMap {
                         qualified_call_path: _,
                         type_arguments: Some(type_arguments),
                         root_type_id: _,
-                    } = type_engine.get(*constraint_type_id)
+                    } = &*type_engine.get(*constraint_type_id)
                     {
                         type_arguments_string = format!("<{}>", engines.help_out(type_arguments));
                     }

@@ -1,6 +1,7 @@
 use crate::cli::BuildCommand;
 use forc_pkg as pkg;
 use forc_util::ForcResult;
+use pkg::manifest::ExperimentalFlags;
 
 pub fn build(cmd: BuildCommand) -> ForcResult<pkg::Built> {
     let opts = opts_from_cmd(cmd);
@@ -42,5 +43,8 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
         build_target: cmd.build.build_target,
         tests: cmd.tests,
         member_filter: Default::default(),
+        experimental: ExperimentalFlags {
+            new_encoding: cmd.experimental_new_encoding,
+        },
     }
 }

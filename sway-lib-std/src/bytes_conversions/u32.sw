@@ -7,7 +7,7 @@ use ::option::Option;
 
 impl u32 {
     /// Converts the `u32` to a sequence of little-endian bytes.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [Bytes] - The 4 bytes that compose the `u32`.
@@ -20,7 +20,7 @@ impl u32 {
     /// fn foo() {
     ///     let x: u32 = 67305985;
     ///     let result = x.to_le_bytes();
-    /// 
+    ///
     ///     assert(result.get(0).unwrap() == 1_u8);
     ///     assert(result.get(1).unwrap() == 2_u8);
     ///     assert(result.get(2).unwrap() == 3_u8);
@@ -28,10 +28,19 @@ impl u32 {
     /// }
     /// ```
     pub fn to_le_bytes(self) -> Bytes {
-        let ptr = asm(input: self, off: 0xFF, i: 0x8, j: 0x10, k: 0x18, size: 4, ptr, r1) {
+        let ptr = asm(
+            input: self,
+            off: 0xFF,
+            i: 0x8,
+            j: 0x10,
+            k: 0x18,
+            size: 4,
+            ptr,
+            r1,
+        ) {
             aloc size;
             move ptr hp;
-            
+
             and r1 input off;
             sb ptr r1 i0;
 
@@ -60,7 +69,7 @@ impl u32 {
     /// Converts a sequence of little-endian bytes to a `u32`.
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `bytes`: [Bytes] - The 4 bytes that compose the `u32`.
     ///
     /// # Returns
@@ -92,18 +101,18 @@ impl u32 {
         let d = (ptr.add_uint_offset(3)).read_byte();
 
         asm(a: a, b: b, c: c, d: d, i: 0x8, j: 0x10, k: 0x18, r1, r2, r3) {
-            sll  r1 c j;
-            sll  r2 d k;
-            or   r3 r1 r2;
-            sll  r1 b i;
-            or   r2 a r1;
-            or   r1 r2 r3;
+            sll r1 c j;
+            sll r2 d k;
+            or r3 r1 r2;
+            sll r1 b i;
+            or r2 a r1;
+            or r1 r2 r3;
             r1: u32
         }
     }
 
     /// Converts the `u32` to a sequence of big-endian bytes.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [Bytes] - The 4 bytes that compose the `u32`.
@@ -124,24 +133,33 @@ impl u32 {
     /// }
     /// ```
     pub fn to_be_bytes(self) -> Bytes {
-        let ptr = asm(input: self, off: 0xFF, i: 0x8, j: 0x10, k: 0x18, size: 4, ptr, r1) {
+        let ptr = asm(
+            input: self,
+            off: 0xFF,
+            i: 0x8,
+            j: 0x10,
+            k: 0x18,
+            size: 4,
+            ptr,
+            r1,
+        ) {
             aloc size;
             move ptr hp;
-            
-            srl  r1 input k;
-            and  r1 r1 off;
-            sb   ptr r1 i0;
 
-            srl  r1 input j;
-            and  r1 r1 off;
-            sb   ptr r1 i1;
+            srl r1 input k;
+            and r1 r1 off;
+            sb ptr r1 i0;
 
-            srl  r1 input i;
-            and  r1 r1 off;
-            sb   ptr r1 i2;
+            srl r1 input j;
+            and r1 r1 off;
+            sb ptr r1 i1;
 
-            and  r1 input off;
-            sb   ptr r1 i3;
+            srl r1 input i;
+            and r1 r1 off;
+            sb ptr r1 i2;
+
+            and r1 input off;
+            sb ptr r1 i3;
 
             ptr: raw_ptr
         };
@@ -149,14 +167,14 @@ impl u32 {
         let rs = asm(parts: (ptr, 4)) {
             parts: raw_slice
         };
-        
+
         Bytes::from(rs)
     }
 
     /// Converts a sequence of big-endian bytes to a `u32`.
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `bytes`: [Bytes] - The 4 bytes that compose the `u32`.
     ///
     /// # Returns
@@ -188,12 +206,12 @@ impl u32 {
         let d = (ptr.add_uint_offset(3)).read_byte();
 
         asm(a: a, b: b, c: c, d: d, i: 0x8, j: 0x10, k: 0x18, r1, r2, r3) {
-            sll  r1 a k;
-            sll  r2 b j;
-            or   r3 r1 r2;
-            sll  r1 c i;
-            or   r2 r3 r1;
-            or   r1 r2 d;
+            sll r1 a k;
+            sll r2 b j;
+            or r3 r1 r2;
+            sll r1 c i;
+            or r2 r3 r1;
+            or r1 r2 d;
             r1: u32
         }
     }

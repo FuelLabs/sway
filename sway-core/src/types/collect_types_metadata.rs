@@ -8,7 +8,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::{type_system::TypeId, Engines};
+use crate::{type_system::TypeId, Engines, ExperimentalFlags};
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Span};
 
@@ -70,6 +70,8 @@ pub struct CollectTypesMetadataContext<'cx> {
 
     call_site_spans: Vec<Arc<Mutex<HashMap<TypeId, Span>>>>,
     pub(crate) engines: &'cx Engines,
+
+    pub experimental: ExperimentalFlags,
 }
 
 impl<'cx> CollectTypesMetadataContext<'cx> {
@@ -117,12 +119,13 @@ impl<'cx> CollectTypesMetadataContext<'cx> {
         None
     }
 
-    pub fn new(engines: &'cx Engines) -> Self {
+    pub fn new(engines: &'cx Engines, experimental: ExperimentalFlags) -> Self {
         let mut ctx = Self {
             engines,
             log_id_counter: 0,
             message_id_counter: 0,
             call_site_spans: vec![],
+            experimental,
         };
         ctx.call_site_push();
         ctx

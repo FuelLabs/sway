@@ -288,7 +288,7 @@ impl<'a, 'e> Parser<'a, 'e> {
     /// To calculate lines the original source code needs to be transversed.
     pub fn consume_while_line_equals(&mut self, line: usize) {
         loop {
-            let Some(current_token) = self.token_trees.get(0) else {
+            let Some(current_token) = self.token_trees.first() else {
                 break;
             };
 
@@ -444,7 +444,7 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
         } else {
             self.last_consumed_token()
                 .map(|x| x.span())
-                .or_else(|| self.fork_token_trees.get(0).map(|x| x.span()))
+                .or_else(|| self.fork_token_trees.first().map(|x| x.span()))
                 .map(|x| x.start_pos().line_col().0)
         };
 
@@ -483,7 +483,7 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
     /// This is the last consumed token of the forked parser. This the token
     /// immediately before the forked parser head.
     pub fn last_consumed_token(&self) -> Option<&GenericTokenTree<TokenStream>> {
-        let fork_head_span = self.fork_token_trees.get(0)?.span();
+        let fork_head_span = self.fork_token_trees.first()?.span();
 
         // find the last token consumed by the fork
         let original = self.original.borrow();
@@ -504,7 +504,7 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
         let original = self.original.borrow_mut();
 
         // collect all tokens trees that were consumed by the fork
-        let qty = if let Some(first_fork_tt) = p.token_trees.get(0) {
+        let qty = if let Some(first_fork_tt) = p.token_trees.first() {
             original
                 .token_trees
                 .iter()
@@ -528,7 +528,7 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
         let mut original = self.original.borrow_mut();
 
         // collect all tokens trees that were consumed by the fork
-        let qty = if let Some(first_fork_tt) = p.token_trees.get(0) {
+        let qty = if let Some(first_fork_tt) = p.token_trees.first() {
             original
                 .token_trees
                 .iter()

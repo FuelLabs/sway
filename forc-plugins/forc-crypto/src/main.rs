@@ -13,21 +13,39 @@ use termion::screen::IntoAlternateScreen;
 mod address;
 mod args;
 mod keccak256;
-mod keygen;
+mod keys;
 mod sha256;
+
+const ABOUT: &str = "Forc plugin for hashing arbitrary data.";
+
+fn help() -> &'static str {
+    Box::leak(
+        format!(
+            "EXAMPLES:\n{}{}{}{}{}",
+            args::examples(),
+            address::examples(),
+            keys::new_key::examples(),
+            keys::parse_secret::examples(),
+            keys::get_public_key::examples(),
+        )
+        .into_boxed_str(),
+    )
+}
 
 #[derive(Debug, Parser)]
 #[clap(
     name = "forc-crypto",
-    about = "Forc plugin for hashing arbitrary data.",
+    about = ABOUT,
+    after_help = help(),
     version
 )]
 pub enum Command {
     Keccak256(args::HashArgs),
     Sha256(args::HashArgs),
     Address(address::Args),
-    NewKey(keygen::new_key::Arg),
-    ParseSecret(keygen::parse_secret::Arg),
+    GetPublicKey(keys::get_public_key::Arg),
+    NewKey(keys::new_key::Arg),
+    ParseSecret(keys::parse_secret::Arg),
 }
 
 fn main() {
@@ -42,10 +60,11 @@ fn run() -> Result<()> {
     let app = Command::parse();
     let content = match app {
         Command::Keccak256(arg) => keccak256::hash(arg)?,
+        Command::GetPublicKey(arg) => keys::get_public_key::handler(arg)?,
         Command::Sha256(arg) => sha256::hash(arg)?,
         Command::Address(arg) => address::dump_address(arg.address)?,
-        Command::NewKey(arg) => keygen::new_key::handler(arg)?,
-        Command::ParseSecret(arg) => keygen::parse_secret::handler(arg)?,
+        Command::NewKey(arg) => keys::new_key::handler(arg)?,
+        Command::ParseSecret(arg) => keys::parse_secret::handler(arg)?,
     };
 
     display_output(content)

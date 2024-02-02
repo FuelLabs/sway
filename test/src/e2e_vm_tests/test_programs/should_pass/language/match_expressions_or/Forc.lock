@@ -1,16 +1,16 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-ECD36C05270985BF'
+name = "core"
+source = "path+from-root-8E70EE42097BE3E5"
 
 [[package]]
-name = 'or-patterns'
-source = 'member'
+name = "match_expressions_or"
+source = "member"
 dependencies = [
-    'core',
-    'std',
+    "core",
+    "std",
 ]
 
 [[package]]
-name = 'std'
-source = 'path+from-root-ECD36C05270985BF'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-8E70EE42097BE3E5"
+dependencies = ["core"]

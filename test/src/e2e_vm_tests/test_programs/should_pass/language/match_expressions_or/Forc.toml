@@ -1,7 +1,7 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
-name = "or-patterns"
+name = "match_expressions_or"
 entry = "main.sw"
 
 [dependencies]

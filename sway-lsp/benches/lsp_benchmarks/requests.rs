@@ -4,9 +4,12 @@ use lsp_types::{
     TextDocumentIdentifier,
 };
 use sway_lsp::{capabilities, lsp_ext::OnEnterParams, utils::keyword_docs::KeywordDocs};
+use tokio::runtime::Runtime;
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, session) = black_box(super::compile_test_project());
+    let (uri, session) = Runtime::new()
+        .unwrap()
+        .block_on(async { black_box(super::compile_test_project().await) });
     let config = sway_lsp::config::Config::default();
     let keyword_docs = KeywordDocs::new();
     let position = Position::new(1717, 24);

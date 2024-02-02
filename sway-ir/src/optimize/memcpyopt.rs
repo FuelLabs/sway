@@ -690,7 +690,7 @@ fn local_copy_prop(
             }
 
             // Replace the basic block contents with what we just built.
-            let _ = std::mem::replace(&mut (context.blocks[block.0].instructions), new_insts);
+            block.take_body(context, new_insts);
         }
     }
 
@@ -822,7 +822,7 @@ fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bo
                 src_val_ptr,
             },
         );
-        block.replace_instruction(context, store_val, mem_copy_val)?;
+        block.replace_instruction(context, store_val, mem_copy_val, true)?;
     }
 
     Ok(true)

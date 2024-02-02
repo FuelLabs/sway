@@ -112,12 +112,12 @@ impl ty::TyExpression {
         let method = decl_engine.get_function(&decl_ref);
         // check that the number of parameters and the number of the arguments is the same
         check_function_arguments_arity(handler, arguments.len(), &method, &call_path, false)?;
-        let return_type = method.return_type;
+        let return_type = &method.return_type;
         let args_and_names = method
             .parameters
-            .into_iter()
+            .iter()
             .zip(arguments)
-            .map(|(param, arg)| (param.name, arg))
+            .map(|(param, arg)| (param.name.clone(), arg))
             .collect::<Vec<(_, _)>>();
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::FunctionApplication {
@@ -145,6 +145,7 @@ impl ty::TyExpression {
         let engines = ctx.engines();
         let expr_span = expr.span();
         let span = expr_span.clone();
+        let should_unify = !matches!(expr.kind, ExpressionKind::ImplicitReturn(_));
         let res = match expr.kind {
             // We've already emitted an error for the `::Error` case.
             ExpressionKind::Error(_, err) => Ok(ty::TyExpression::error(err, span, engines)),
@@ -376,6 +377,21 @@ impl ty::TyExpression {
             ExpressionKind::Reassignment(ReassignmentExpression { lhs, rhs }) => {
                 Self::type_check_reassignment(handler, ctx.by_ref(), lhs, *rhs, span)
             }
+            ExpressionKind::ImplicitReturn(expr) => {
+                let ctx = ctx
+                    .by_ref()
+                    .with_help_text("Implicit return must match up with block's type.");
+                let expr_span = expr.span();
+                let expr = ty::TyExpression::type_check(handler, ctx, *expr)
+                    .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span, engines));
+
+                let typed_expr = ty::TyExpression {
+                    return_type: expr.return_type,
+                    expression: ty::TyExpressionVariant::ImplicitReturn(Box::new(expr)),
+                    span,
+                };
+                Ok(typed_expr)
+            }
             ExpressionKind::Return(expr) => {
                 let ctx = ctx
                     // we use "unknown" here because return statements do not
@@ -403,14 +419,20 @@ impl ty::TyExpression {
                 };
                 Ok(typed_expr)
             }
+            ExpressionKind::Ref(expr) => Self::type_check_ref(handler, ctx.by_ref(), expr, span),
+            ExpressionKind::Deref(expr) => {
+                Self::type_check_deref(handler, ctx.by_ref(), expr, span)
+            }
         };
         let mut typed_expression = match res {
             Ok(r) => r,
             Err(e) => return Err(e),
         };
 
-        // if the return type cannot be cast into the annotation type then it is a type error
-        ctx.unify_with_type_annotation(handler, typed_expression.return_type, &expr_span);
+        if should_unify {
+            // if the return type cannot be cast into the annotation type then it is a type error
+            ctx.unify_with_type_annotation(handler, typed_expression.return_type, &expr_span);
+        }
 
         // The annotation may result in a cast, which is handled in the type engine.
         typed_expression.return_type = ctx
@@ -427,7 +449,7 @@ impl ty::TyExpression {
         // an UnsignedInteger or a Numeric
         if let ty::TyExpressionVariant::Literal(lit) = typed_expression.clone().expression {
             if let Literal::Numeric(_) = lit {
-                match type_engine.get(typed_expression.return_type) {
+                match &*type_engine.get(typed_expression.return_type) {
                     TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => {
                         typed_expression = Self::resolve_numeric_literal(
                             handler,
@@ -501,7 +523,7 @@ impl ty::TyExpression {
                 }
             }
             Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) => {
-                let const_decl = decl_engine.get_constant(&decl_id);
+                let const_decl = (*decl_engine.get_constant(&decl_id)).clone();
                 let decl_name = const_decl.name().clone();
                 ty::TyExpression {
                     return_type: const_decl.return_type,
@@ -517,7 +539,9 @@ impl ty::TyExpression {
                 let decl = decl_engine.get_abi(&decl_id);
                 ty::TyExpression {
                     return_type: decl.create_type_id(engines),
-                    expression: ty::TyExpressionVariant::AbiName(AbiName::Known(decl.name.into())),
+                    expression: ty::TyExpressionVariant::AbiName(AbiName::Known(
+                        decl.name.clone().into(),
+                    )),
                     span,
                 }
             }
@@ -918,11 +942,18 @@ impl ty::TyExpression {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
-        let ctx = ctx
+        let mut ctx = ctx
             .with_help_text("")
             .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
-        let parent = ty::TyExpression::type_check(handler, ctx, prefix)?;
-        let exp = instantiate_struct_field_access(handler, engines, parent, field_to_access, span)?;
+        let parent = ty::TyExpression::type_check(handler, ctx.by_ref(), prefix)?;
+        let exp = instantiate_struct_field_access(
+            handler,
+            engines,
+            ctx.namespace,
+            parent,
+            field_to_access,
+            span,
+        )?;
         Ok(exp)
     }
 
@@ -935,7 +966,8 @@ impl ty::TyExpression {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
-        let field_type_opt = match type_engine.get(ctx.type_annotation()) {
+        let t_arc = type_engine.get(ctx.type_annotation());
+        let field_type_opt = match &*t_arc {
             TypeInfo::Tuple(field_type_ids) if field_type_ids.len() == fields.len() => {
                 Some(field_type_ids)
             }
@@ -1011,6 +1043,7 @@ impl ty::TyExpression {
         let (storage_access, mut access_type) = ctx.namespace.apply_storage_load(
             handler,
             ctx.engines,
+            ctx.namespace,
             checkee,
             &storage_fields,
             storage_keyword_span,
@@ -1033,7 +1066,8 @@ impl ty::TyExpression {
             None,
         )?;
         let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_ref(handler, engines)?;
-        let mut storage_key_struct_decl = decl_engine.get_struct(&storage_key_struct_decl_ref);
+        let mut storage_key_struct_decl =
+            (*decl_engine.get_struct(&storage_key_struct_decl_ref)).clone();
 
         // Set the type arguments to `StorageKey` to the `access_type`, which is represents the
         // type of the data that the `StorageKey` "points" to.
@@ -1568,7 +1602,7 @@ impl ty::TyExpression {
             ty::TyDecl::VariableDecl(ref decl) => {
                 let ty::TyVariableDecl { body: expr, .. } = &**decl;
                 let ret_ty = type_engine.get(expr.return_type);
-                let abi_name = match ret_ty {
+                let abi_name = match &*ret_ty {
                     TypeInfo::ContractCaller { abi_name, .. } => abi_name,
                     _ => {
                         return Err(handler.emit_err(CompileError::NotAnAbi {
@@ -1583,7 +1617,7 @@ impl ty::TyExpression {
                         let unknown_decl = ctx.namespace.resolve_call_path(
                             handler,
                             engines,
-                            &abi_name,
+                            abi_name,
                             ctx.self_type(),
                         )?;
                         unknown_decl.to_abi_ref(handler)?
@@ -1611,13 +1645,14 @@ impl ty::TyExpression {
                 }));
             }
         };
+        let abi_decl = decl_engine.get_abi(abi_ref.id());
         let ty::TyAbiDecl {
             interface_surface,
             items,
             supertraits,
             span,
             ..
-        } = decl_engine.get_abi(abi_ref.id());
+        } = &*abi_decl;
 
         let return_type = type_engine.insert(
             engines,
@@ -1631,10 +1666,10 @@ impl ty::TyExpression {
         // Retrieve the interface surface for this abi.
         let mut abi_items = vec![];
 
-        for item in interface_surface.into_iter() {
+        for item in interface_surface.iter() {
             match item {
                 ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
-                    let method = decl_engine.get_trait_fn(&decl_ref);
+                    let method = decl_engine.get_trait_fn(decl_ref);
                     abi_items.push(TyImplItem::Fn(
                         decl_engine
                             .insert(method.to_dummy_func(AbiMode::ImplAbiFn(
@@ -1645,18 +1680,18 @@ impl ty::TyExpression {
                     ));
                 }
                 ty::TyTraitInterfaceItem::Constant(decl_ref) => {
-                    let const_decl = decl_engine.get_constant(&decl_ref);
-                    abi_items.push(TyImplItem::Constant(decl_engine.insert(const_decl)));
+                    let const_decl = decl_engine.get_constant(decl_ref);
+                    abi_items.push(TyImplItem::Constant(decl_engine.insert_arc(const_decl)));
                 }
                 ty::TyTraitInterfaceItem::Type(decl_ref) => {
-                    let type_decl = decl_engine.get_type(&decl_ref);
-                    abi_items.push(TyImplItem::Type(decl_engine.insert(type_decl)));
+                    let type_decl = decl_engine.get_type(decl_ref);
+                    abi_items.push(TyImplItem::Type(decl_engine.insert_arc(type_decl)));
                 }
             }
         }
 
         // Retrieve the items for this abi.
-        abi_items.append(&mut items.into_iter().collect::<Vec<_>>());
+        abi_items.append(&mut items.to_vec());
 
         // Recursively make the interface surfaces and methods of the
         // supertraits available to this abi cast.
@@ -1664,7 +1699,7 @@ impl ty::TyExpression {
             handler,
             ctx.by_ref(),
             return_type,
-            &supertraits,
+            supertraits,
             &SupertraitOf::Abi(span.clone()),
         )?;
 
@@ -1675,7 +1710,7 @@ impl ty::TyExpression {
             vec![],
             return_type,
             &abi_items,
-            &span,
+            span,
             Some(span.clone()),
             IsImplSelf::No,
             IsExtendingExistingImpl::No,
@@ -1688,7 +1723,7 @@ impl ty::TyExpression {
                 span: span.clone(),
             },
             return_type,
-            span,
+            span: span.clone(),
         };
         Ok(exp)
     }
@@ -1727,8 +1762,10 @@ impl ty::TyExpression {
         };
 
         // start each element with the known array element type
-        let initial_type = match ctx.engines().te().get(ctx.type_annotation()) {
-            TypeInfo::Array(element_type, _) => ctx.engines().te().get(element_type.type_id),
+        let initial_type = match &*ctx.engines().te().get(ctx.type_annotation()) {
+            TypeInfo::Array(element_type, _) => {
+                (*ctx.engines().te().get(element_type.type_id)).clone()
+            }
             _ => TypeInfo::Unknown,
         };
 
@@ -1780,65 +1817,70 @@ impl ty::TyExpression {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
-        let prefix_te = {
+        let mut current_prefix_te = Box::new({
             let ctx = ctx
                 .by_ref()
                 .with_help_text("")
                 .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
-            ty::TyExpression::type_check(handler, ctx, prefix.clone())?
-        };
 
-        fn get_array_type(ty: TypeId, type_engine: &TypeEngine) -> Option<TypeInfo> {
-            match &type_engine.get(ty) {
-                TypeInfo::Array(..) => Some(type_engine.get(ty)),
-                TypeInfo::Alias { ty, .. } => get_array_type(ty.type_id, type_engine),
-                _ => None,
-            }
+            ty::TyExpression::type_check(handler, ctx, prefix)?
+        });
+
+        let mut current_type = type_engine.get_unaliased(current_prefix_te.return_type);
+
+        let prefix_type_id = current_prefix_te.return_type;
+        let prefix_span = current_prefix_te.span.clone();
+
+        // Create the prefix part of the final array index expression.
+        // This might be an expression that directly evaluates to an array type,
+        // or an arbitrary number of dereferencing expressions where the last one
+        // dereference to an array type.
+        //
+        // We will either hit an array at the end or return an error, so the
+        // loop cannot be endless.
+        while !current_type.is_array() {
+            match &*current_type {
+                TypeInfo::Ref(referenced_type) => {
+                    let referenced_type_id = referenced_type.type_id;
+
+                    current_prefix_te = Box::new(ty::TyExpression {
+                        expression: ty::TyExpressionVariant::Deref(current_prefix_te),
+                        return_type: referenced_type_id,
+                        span: prefix_span.clone(),
+                    });
+
+                    current_type = type_engine.get_unaliased(referenced_type_id);
+                }
+                _ => {
+                    return Err(handler.emit_err(CompileError::NotIndexable {
+                        actually: engines.help_out(prefix_type_id).to_string(),
+                        span: prefix_span.clone(),
+                    }))
+                }
+            };
         }
 
-        // If the return type is a static array then create a `ty::TyExpressionVariant::ArrayIndex`.
-        if let Some(TypeInfo::Array(elem_type, _)) =
-            get_array_type(prefix_te.return_type, type_engine)
-        {
+        let TypeInfo::Array(array_type_argument, _) = &*current_type else {
+            panic!("The current type must be an array.");
+        };
+
+        let index_te = {
             let type_info_u64 = TypeInfo::UnsignedInteger(IntegerBits::SixtyFour);
             let ctx = ctx
                 .with_help_text("")
                 .with_type_annotation(type_engine.insert(engines, type_info_u64, None));
-            let index_te = ty::TyExpression::type_check(handler, ctx, index)?;
 
-            Ok(ty::TyExpression {
-                expression: ty::TyExpressionVariant::ArrayIndex {
-                    prefix: Box::new(prefix_te),
-                    index: Box::new(index_te),
-                },
-                return_type: elem_type.type_id,
-                span,
-            })
-        } else {
-            // Otherwise convert into a method call 'index(self, index)' via the std::ops::Index trait.
-            let method_name = TypeBinding {
-                inner: MethodName::FromTrait {
-                    call_path: CallPath {
-                        prefixes: vec![
-                            Ident::new_with_override("core".into(), span.clone()),
-                            Ident::new_with_override("ops".into(), span.clone()),
-                        ],
-                        suffix: Ident::new_with_override("index".into(), span.clone()),
-                        is_absolute: true,
-                    },
-                },
-                type_arguments: TypeArgs::Regular(vec![]),
-                span: span.clone(),
-            };
-            type_check_method_application(
-                handler,
-                ctx,
-                method_name,
-                vec![],
-                vec![prefix, index],
-                span,
-            )
-        }
+            ty::TyExpression::type_check(handler, ctx, index)?
+        };
+
+        Ok(ty::TyExpression {
+            expression: ty::TyExpressionVariant::ArrayIndex {
+                prefix: current_prefix_te,
+                index: Box::new(index_te),
+            },
+            return_type: array_type_argument.type_id,
+            span,
+        })
     }
 
     fn type_check_intrinsic_function(
@@ -1982,6 +2024,7 @@ impl ty::TyExpression {
                 let (ty_of_field, _ty_of_parent) = ctx.namespace.find_subfield_type(
                     handler,
                     ctx.engines(),
+                    ctx.namespace,
                     &base_name,
                     &names_vec,
                 )?;
@@ -2007,6 +2050,74 @@ impl ty::TyExpression {
         }
     }
 
+    fn type_check_ref(
+        handler: &Handler,
+        mut ctx: TypeCheckContext<'_>,
+        expr: Box<Expression>,
+        span: Span,
+    ) -> Result<ty::TyExpression, ErrorEmitted> {
+        let engines = ctx.engines();
+        let type_engine = ctx.engines().te();
+
+        // We need to remove the type annotation, because the type expected from the context will
+        // be the reference type, and we are checking the referenced type.
+        let ctx = ctx
+            .by_ref()
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
+            .with_help_text("");
+        let expr_span = expr.span();
+        let expr = ty::TyExpression::type_check(handler, ctx, *expr)
+            .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span.clone(), engines));
+        let expr_type_argument: TypeArgument = expr.return_type.into();
+        let typed_expr = ty::TyExpression {
+            expression: ty::TyExpressionVariant::Ref(Box::new(expr)),
+            return_type: type_engine.insert(engines, TypeInfo::Ref(expr_type_argument), None),
+            span,
+        };
+
+        Ok(typed_expr)
+    }
+
+    fn type_check_deref(
+        handler: &Handler,
+        mut ctx: TypeCheckContext<'_>,
+        expr: Box<Expression>,
+        span: Span,
+    ) -> Result<ty::TyExpression, ErrorEmitted> {
+        let engines = ctx.engines();
+        let type_engine = ctx.engines().te();
+
+        // We need to remove the type annotation, because the type expected from the context will
+        // be the referenced type, and we are checking the reference type.
+        let ctx = ctx
+            .by_ref()
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
+            .with_help_text("");
+        let expr_span = expr.span();
+        let expr = ty::TyExpression::type_check(handler, ctx, *expr)
+            .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span.clone(), engines));
+
+        let expr_type = type_engine.get(expr.return_type);
+        let return_type = match *expr_type {
+            TypeInfo::ErrorRecovery(_) => Ok(expr.return_type), // Just forward the error return type.
+            TypeInfo::Ref(ref exp) => Ok(exp.type_id),          // Get the referenced type.
+            _ => Err(
+                handler.emit_err(CompileError::ExpressionCannotBeDereferenced {
+                    expression_type: engines.help_out(expr.return_type).to_string(),
+                    span: expr_span,
+                }),
+            ),
+        }?;
+
+        let typed_expr = ty::TyExpression {
+            expression: ty::TyExpressionVariant::Deref(Box::new(expr)),
+            return_type,
+            span,
+        };
+
+        Ok(typed_expr)
+    }
+
     fn resolve_numeric_literal(
         handler: &Handler,
         ctx: TypeCheckContext,
@@ -2019,7 +2130,7 @@ impl ty::TyExpression {
 
         // Parse and resolve a Numeric(span) based on new_type.
         let (val, new_integer_type) = match lit {
-            Literal::Numeric(num) => match type_engine.get(new_type) {
+            Literal::Numeric(num) => match &*type_engine.get(new_type) {
                 TypeInfo::UnsignedInteger(n) => match n {
                     IntegerBits::Eight => (
                         num.to_string().parse().map(Literal::U8).map_err(|e| {
@@ -2095,6 +2206,163 @@ impl ty::TyExpression {
             }
         }
     }
+}
+
+fn check_asm_block_validity(
+    handler: &Handler,
+    asm: &AsmExpression,
+    ctx: &TypeCheckContext,
+) -> Result<(), ErrorEmitted> {
+    // Collect all asm block instructions in the form of `VirtualOp`s
+    let mut opcodes = vec![];
+    for op in &asm.body {
+        let registers = op
+            .op_args
+            .iter()
+            .map(|reg_name| VirtualRegister::Virtual(reg_name.to_string()))
+            .collect::<Vec<VirtualRegister>>();
+
+        opcodes.push((
+            crate::asm_lang::Op::parse_opcode(
+                handler,
+                &op.op_name,
+                &registers,
+                &op.immediate,
+                op.span.clone(),
+            )?,
+            op.op_name.clone(),
+            op.span.clone(),
+        ));
+    }
+
+    // Check #1: Disallow control flow instructions
+    //
+    for err in opcodes.iter().filter_map(|op| {
+        if matches!(
+            op.0,
+            VirtualOp::JMP(_)
+                | VirtualOp::JI(_)
+                | VirtualOp::JNE(..)
+                | VirtualOp::JNEI(..)
+                | VirtualOp::JNZI(..)
+                | VirtualOp::RET(_)
+                | VirtualOp::RETD(..)
+                | VirtualOp::RVRT(..)
+        ) {
+            Some(CompileError::DisallowedControlFlowInstruction {
+                name: op.1.to_string(),
+                span: op.2.clone(),
+            })
+        } else {
+            None
+        }
+    }) {
+        handler.emit_err(err);
+    }
+
+    // Check #2: Disallow initialized registers from being reassigned in the asm block
+    //
+    // 1. Collect all registers that have initializers in the list of arguments
+    let initialized_registers = asm
+        .registers
+        .iter()
+        .filter_map(|reg| {
+            if reg.initializer.is_some() {
+                Some(VirtualRegister::Virtual(reg.name.to_string()))
+            } else {
+                None
+            }
+        })
+        .collect::<FxHashSet<_>>();
+
+    // 2. From the list of `VirtualOp`s, figure out what registers are assigned
+    let assigned_registers: FxHashSet<VirtualRegister> =
+        opcodes.iter().fold(FxHashSet::default(), |mut acc, op| {
+            for u in op.0.def_registers() {
+                acc.insert(u.clone());
+            }
+            acc
+        });
+
+    // 3. Intersect the list of assigned registers with the list of initialized registers
+    let initialized_and_assigned_registers = assigned_registers
+        .intersection(&initialized_registers)
+        .collect::<FxHashSet<_>>();
+
+    // 4. Form all the compile errors given the violating registers above. Obtain span information
+    //    from the original `asm.registers` vector.
+    for err in asm.registers.iter().filter_map(|reg| {
+        if initialized_and_assigned_registers
+            .contains(&VirtualRegister::Virtual(reg.name.to_string()))
+        {
+            Some(CompileError::InitializedRegisterReassignment {
+                name: reg.name.to_string(),
+                span: reg.name.span(),
+            })
+        } else {
+            None
+        }
+    }) {
+        handler.emit_err(err);
+    }
+
+    // Check #3: Check if there are uninitialized registers that are read before being written
+    let mut uninitialized_registers = asm
+        .registers
+        .iter()
+        .filter_map(|reg| {
+            if reg.initializer.is_none() {
+                let span = reg.name.span();
+
+                // Emit warning if this register shadows a variable
+                let temp_handler = Handler::default();
+                let decl = ctx.namespace.resolve_call_path(
+                    &temp_handler,
+                    ctx.engines,
+                    &CallPath {
+                        prefixes: vec![],
+                        suffix: sway_types::BaseIdent::new(span.clone()),
+                        is_absolute: true,
+                    },
+                    None,
+                );
+
+                if let Ok(ty::TyDecl::VariableDecl(decl)) = decl {
+                    handler.emit_warn(CompileWarning {
+                        span: span.clone(),
+                        warning_content: Warning::UninitializedAsmRegShadowsVariable {
+                            name: decl.name.clone(),
+                        },
+                    });
+                }
+
+                Some((VirtualRegister::Virtual(reg.name.to_string()), span))
+            } else {
+                None
+            }
+        })
+        .collect::<HashMap<_, _>>();
+
+    for (op, _, _) in opcodes.iter() {
+        for being_read in op.use_registers() {
+            if let Some(span) = uninitialized_registers.remove(being_read) {
+                handler.emit_err(CompileError::UninitRegisterInAsmBlockBeingRead { span });
+            }
+        }
+
+        for being_written in op.def_registers() {
+            uninitialized_registers.remove(being_written);
+        }
+    }
+
+    if let Some((reg, _)) = asm.returns.as_ref() {
+        let reg = VirtualRegister::Virtual(reg.name.to_string());
+        if let Some(span) = uninitialized_registers.remove(&reg) {
+            handler.emit_err(CompileError::UninitRegisterInAsmBlockBeingRead { span });
+        }
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -2286,153 +2554,4 @@ mod tests {
         assert!(comp_res.is_ok());
         assert!(warnings.is_empty() && errors.is_empty());
     }
-}
-
-fn check_asm_block_validity(
-    handler: &Handler,
-    asm: &AsmExpression,
-    ctx: &TypeCheckContext,
-) -> Result<(), ErrorEmitted> {
-    // Collect all asm block instructions in the form of `VirtualOp`s
-    let mut opcodes = vec![];
-    for op in &asm.body {
-        let registers = op
-            .op_args
-            .iter()
-            .map(|reg_name| VirtualRegister::Virtual(reg_name.to_string()))
-            .collect::<Vec<VirtualRegister>>();
-
-        opcodes.push((
-            crate::asm_lang::Op::parse_opcode(
-                handler,
-                &op.op_name,
-                &registers,
-                &op.immediate,
-                op.span.clone(),
-            )?,
-            op.op_name.clone(),
-            op.span.clone(),
-        ));
-    }
-
-    // Check #1: Disallow control flow instructions
-    //
-    for err in opcodes
-        .iter()
-        .filter(|op| {
-            matches!(
-                op.0,
-                VirtualOp::JMP(_)
-                    | VirtualOp::JI(_)
-                    | VirtualOp::JNE(..)
-                    | VirtualOp::JNEI(..)
-                    | VirtualOp::JNZI(..)
-                    | VirtualOp::RET(_)
-                    | VirtualOp::RETD(..)
-                    | VirtualOp::RVRT(..)
-            )
-        })
-        .map(|op| CompileError::DisallowedControlFlowInstruction {
-            name: op.1.to_string(),
-            span: op.2.clone(),
-        })
-    {
-        handler.emit_err(err);
-    }
-
-    // Check #2: Disallow initialized registers from being reassigned in the asm block
-    //
-    // 1. Collect all registers that have initializers in the list of arguments
-    let initialized_registers = asm
-        .registers
-        .iter()
-        .filter(|reg| reg.initializer.is_some())
-        .map(|reg| VirtualRegister::Virtual(reg.name.to_string()))
-        .collect::<FxHashSet<_>>();
-
-    // 2. From the list of `VirtualOp`s, figure out what registers are assigned
-    let assigned_registers: FxHashSet<VirtualRegister> =
-        opcodes.iter().fold(FxHashSet::default(), |mut acc, op| {
-            for u in op.0.def_registers() {
-                acc.insert(u.clone());
-            }
-            acc
-        });
-
-    // 3. Intersect the list of assigned registers with the list of initialized registers
-    let initialized_and_assigned_registers = assigned_registers
-        .intersection(&initialized_registers)
-        .collect::<FxHashSet<_>>();
-
-    // 4. Form all the compile errors given the violating registers above. Obtain span information
-    //    from the original `asm.registers` vector.
-    for err in asm
-        .registers
-        .iter()
-        .filter(|reg| {
-            initialized_and_assigned_registers
-                .contains(&VirtualRegister::Virtual(reg.name.to_string()))
-        })
-        .map(|reg| CompileError::InitializedRegisterReassignment {
-            name: reg.name.to_string(),
-            span: reg.name.span(),
-        })
-    {
-        handler.emit_err(err);
-    }
-
-    // Check #3: Check if there are uninitialized registers that are read before being written
-    let mut uninitialized_registers = asm
-        .registers
-        .iter()
-        .filter(|reg| reg.initializer.is_none())
-        .map(|reg| {
-            let span = reg.name.span();
-
-            // Emit warning if this register shadows a variable
-            let temp_handler = Handler::default();
-            let decl = ctx.namespace.resolve_call_path(
-                &temp_handler,
-                ctx.engines,
-                &CallPath {
-                    prefixes: vec![],
-                    suffix: sway_types::BaseIdent::new(span.clone()),
-                    is_absolute: true,
-                },
-                None,
-            );
-
-            if let Ok(ty::TyDecl::VariableDecl(decl)) = decl {
-                handler.emit_warn(CompileWarning {
-                    span: span.clone(),
-                    warning_content: Warning::UninitializedAsmRegShadowsVariable {
-                        name: decl.name.clone(),
-                    },
-                });
-            }
-
-            (VirtualRegister::Virtual(reg.name.to_string()), span)
-        })
-        .collect::<HashMap<_, _>>();
-
-    for (op, _, _) in opcodes.iter() {
-        for being_read in op.use_registers() {
-            if let Some(span) = uninitialized_registers.remove(being_read) {
-                handler.emit_err(CompileError::UninitRegisterInAsmBlockBeingRead { span });
-            }
-        }
-
-        for being_written in op.def_registers() {
-            uninitialized_registers.remove(being_written);
-        }
-    }
-
-    if let Some((reg, _)) = asm.returns.as_ref() {
-        let reg = VirtualRegister::Virtual(reg.name.to_string());
-        if let Some(span) = uninitialized_registers.remove(&reg) {
-            handler.emit_err(CompileError::UninitRegisterInAsmBlockBeingRead { span });
-        }
-    }
-
-    Ok(())
 }

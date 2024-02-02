@@ -87,6 +87,19 @@ pub enum Option<T> {
 }
 // ANCHOR_END: docs_option
 
+impl<T> core::ops::Eq for Option<T>
+where
+    T: Eq,
+{
+    fn eq(self, other: Self) -> bool {
+        match (self, other) {
+            (Option::Some(a), Option::Some(b)) => a == b,
+            (Option::None, Option::None) => true,
+            _ => false,
+        }
+    }
+}
+
 // Type implementation
 //
 impl<T> Option<T> {
@@ -97,7 +110,7 @@ impl<T> Option<T> {
     /// # Returns
     ///
     /// * [bool] - Returns `true` if the option is `Some`, otherwise `false`.
-    /// 
+    ///
     /// # Examples
     ///
     /// ```sway
@@ -145,7 +158,7 @@ impl<T> Option<T> {
     /// Returns the contained `Some` value, consuming the `self` value.
     ///
     /// # Additional Information
-    /// 
+    ///
     /// Because this function may revert, its use is generally discouraged.
     /// Instead, use pattern matching and handle the `None`
     /// case explicitly, or call `unwrap_or`.
@@ -218,7 +231,7 @@ impl<T> Option<T> {
     /// `ok_or`  : `Option::ok_or`
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `err`: [E] - The error value if the option is `None`.
     ///
     /// # Returns

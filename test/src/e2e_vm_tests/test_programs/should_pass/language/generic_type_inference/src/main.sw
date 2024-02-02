@@ -8,6 +8,12 @@ struct CustomType {
     name: str,
 }
 
+impl CustomType {
+    fn use_me(self) {
+        poke(self.name);
+    }
+}
+
 enum MyResult<T, E> {
     Ok: T,
     Err: E,
@@ -56,12 +62,15 @@ fn test_try_from() {
 }
 
 fn main() {
-    sell_product();
+    let _ = sell_product();
     simple_vec_test();
     complex_vec_test();
     simple_option_generics_test();
     test_assert_eq_u64();
     test_try_from();
+
+    // Suppress DCA warnings.
+    CustomType { name: "" }.use_me();
 }
 
 fn sell_product() -> MyResult<bool, CustomType> {
@@ -73,3 +82,5 @@ fn sell_product() -> MyResult<bool, CustomType> {
 
     return MyResult::Ok(false);
 }
+
+fn poke<T>(_x: T) { }

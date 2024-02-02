@@ -658,6 +658,7 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
             String(_) => todo!(),
             Array(_) => todo!(),
             Struct(_) => todo!(),
+            Reference(_) => todo!(),
         }
     }
 }

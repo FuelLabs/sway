@@ -15,19 +15,21 @@ use std::{
     fmt,
 };
 
+const EXTRACT_ANY_MAX_DEPTH: usize = 128;
+
 /// A identifier to uniquely refer to our type terms
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug)]
 pub struct TypeId(usize);
 
 impl DisplayWithEngines for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        write!(f, "{}", engines.help_out(engines.te().get(*self)))
+        write!(f, "{}", engines.help_out(&*engines.te().get(*self)))
     }
 }
 
 impl DebugWithEngines for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        write!(f, "{:?}", engines.help_out(engines.te().get(*self)))
+        write!(f, "{:?}", engines.help_out(&*engines.te().get(*self)))
     }
 }
 
@@ -48,19 +50,19 @@ impl CollectTypesMetadata for TypeId {
                 || matches!(type_info, TypeInfo::Placeholder(_))
         }
         let engines = ctx.engines;
-        let possible = self.extract_any_including_self(engines, &filter_fn, vec![]);
+        let possible = self.extract_any_including_self(engines, &filter_fn, vec![], 0);
         let mut res = vec![];
         for (type_id, _) in possible.into_iter() {
-            match ctx.engines.te().get(type_id) {
+            match &*ctx.engines.te().get(type_id) {
                 TypeInfo::UnknownGeneric { name, .. } => {
                     res.push(TypeMetadata::UnresolvedType(
-                        name,
+                        name.clone(),
                         ctx.call_site_get(&type_id),
                     ));
                 }
                 TypeInfo::Placeholder(type_param) => {
                     res.push(TypeMetadata::UnresolvedType(
-                        type_param.name_ident,
+                        type_param.name_ident.clone(),
                         ctx.call_site_get(self),
                     ));
                 }
@@ -75,7 +77,7 @@ impl SubstTypes for TypeId {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let type_engine = engines.te();
         if let Some(matching_id) = type_mapping.find_match(*self, engines) {
-            if !matches!(type_engine.get(matching_id), TypeInfo::ErrorRecovery(_)) {
+            if !matches!(&*type_engine.get(matching_id), TypeInfo::ErrorRecovery(_)) {
                 *self = matching_id;
             }
         }
@@ -113,14 +115,14 @@ impl TypeId {
         type_engine: &TypeEngine,
         decl_engine: &DeclEngine,
     ) -> Option<Vec<TypeParameter>> {
-        match type_engine.get(*self) {
+        match &*type_engine.get(*self) {
             TypeInfo::Enum(decl_ref) => {
-                let decl = decl_engine.get_enum(&decl_ref);
-                (!decl.type_parameters.is_empty()).then_some(decl.type_parameters)
+                let decl = decl_engine.get_enum(decl_ref);
+                (!decl.type_parameters.is_empty()).then_some(decl.type_parameters.clone())
             }
             TypeInfo::Struct(decl_ref) => {
-                let decl = decl_engine.get_struct(&decl_ref);
-                (!decl.type_parameters.is_empty()).then_some(decl.type_parameters)
+                let decl = decl_engine.get_struct(decl_ref);
+                (!decl.type_parameters.is_empty()).then_some(decl.type_parameters.clone())
             }
             _ => None,
         }
@@ -135,28 +137,28 @@ impl TypeId {
         decl_engine: &DeclEngine,
         resolved_type_id: TypeId,
     ) -> bool {
-        match (type_engine.get(self), type_engine.get(resolved_type_id)) {
+        match (&*type_engine.get(self), &*type_engine.get(resolved_type_id)) {
             (
                 TypeInfo::Custom {
                     qualified_call_path: call_path,
                     ..
                 },
                 TypeInfo::Enum(decl_ref),
-            ) => call_path.call_path.suffix != decl_engine.get_enum(&decl_ref).call_path.suffix,
+            ) => call_path.call_path.suffix != decl_engine.get_enum(decl_ref).call_path.suffix,
             (
                 TypeInfo::Custom {
                     qualified_call_path: call_path,
                     ..
                 },
                 TypeInfo::Struct(decl_ref),
-            ) => call_path.call_path.suffix != decl_engine.get_struct(&decl_ref).call_path.suffix,
+            ) => call_path.call_path.suffix != decl_engine.get_struct(decl_ref).call_path.suffix,
             (
                 TypeInfo::Custom {
                     qualified_call_path: call_path,
                     ..
                 },
                 TypeInfo::Alias { name, .. },
-            ) => call_path.call_path.suffix != name,
+            ) => call_path.call_path.suffix != name.clone(),
             (TypeInfo::Custom { .. }, _) => true,
             _ => false,
         }
@@ -167,13 +169,14 @@ impl TypeId {
         engines: &Engines,
         filter_fn: &F,
         trait_constraints: Vec<TraitConstraint>,
+        depth: usize,
     ) -> HashMap<TypeId, Vec<TraitConstraint>>
     where
         F: Fn(&TypeInfo) -> bool,
     {
         let type_engine = engines.te();
         let type_info = type_engine.get(*self);
-        let mut found = self.extract_any(engines, filter_fn);
+        let mut found = self.extract_any(engines, filter_fn, depth + 1);
         if filter_fn(&type_info) {
             found.insert(*self, trait_constraints);
         }
@@ -184,10 +187,15 @@ impl TypeId {
         &self,
         engines: &Engines,
         filter_fn: &F,
+        depth: usize,
     ) -> HashMap<TypeId, Vec<TraitConstraint>>
     where
         F: Fn(&TypeInfo) -> bool,
     {
+        if depth >= EXTRACT_ANY_MAX_DEPTH {
+            panic!("Possible infinite recursion at extract_any");
+        }
+
         fn extend(
             hashmap: &mut HashMap<TypeId, Vec<TraitConstraint>>,
             hashmap_other: HashMap<TypeId, Vec<TraitConstraint>>,
@@ -203,7 +211,7 @@ impl TypeId {
 
         let decl_engine = engines.de();
         let mut found: HashMap<TypeId, Vec<TraitConstraint>> = HashMap::new();
-        match engines.te().get(*self) {
+        match &*engines.te().get(*self) {
             TypeInfo::Unknown
             | TypeInfo::Placeholder(_)
             | TypeInfo::TypeParam(_)
@@ -219,7 +227,7 @@ impl TypeId {
             | TypeInfo::ErrorRecovery(_)
             | TypeInfo::TraitType { .. } => {}
             TypeInfo::Enum(enum_ref) => {
-                let enum_decl = decl_engine.get_enum(&enum_ref);
+                let enum_decl = decl_engine.get_enum(enum_ref);
                 for type_param in enum_decl.type_parameters.iter() {
                     extend(
                         &mut found,
@@ -227,6 +235,7 @@ impl TypeId {
                             engines,
                             filter_fn,
                             type_param.trait_constraints.clone(),
+                            depth + 1,
                         ),
                     );
                 }
@@ -237,12 +246,13 @@ impl TypeId {
                             engines,
                             filter_fn,
                             vec![],
+                            depth + 1,
                         ),
                     );
                 }
             }
             TypeInfo::Struct(struct_ref) => {
-                let struct_decl = decl_engine.get_struct(&struct_ref);
+                let struct_decl = decl_engine.get_struct(struct_ref);
                 for type_param in struct_decl.type_parameters.iter() {
                     extend(
                         &mut found,
@@ -250,6 +260,7 @@ impl TypeId {
                             engines,
                             filter_fn,
                             type_param.trait_constraints.clone(),
+                            depth + 1,
                         ),
                     );
                 }
@@ -260,6 +271,7 @@ impl TypeId {
                             engines,
                             filter_fn,
                             vec![],
+                            depth + 1,
                         ),
                     );
                 }
@@ -268,8 +280,12 @@ impl TypeId {
                 for elem in elems.iter() {
                     extend(
                         &mut found,
-                        elem.type_id
-                            .extract_any_including_self(engines, filter_fn, vec![]),
+                        elem.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                            depth + 1,
+                        ),
                     );
                 }
             }
@@ -280,9 +296,12 @@ impl TypeId {
                 if let Some(address) = address {
                     extend(
                         &mut found,
-                        address
-                            .return_type
-                            .extract_any_including_self(engines, filter_fn, vec![]),
+                        address.return_type.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                            depth + 1,
+                        ),
                     );
                 }
             }
@@ -295,9 +314,12 @@ impl TypeId {
                     for type_arg in type_arguments.iter() {
                         extend(
                             &mut found,
-                            type_arg
-                                .type_id
-                                .extract_any_including_self(engines, filter_fn, vec![]),
+                            type_arg.type_id.extract_any_including_self(
+                                engines,
+                                filter_fn,
+                                vec![],
+                                depth + 1,
+                            ),
                         );
                     }
                 }
@@ -306,7 +328,7 @@ impl TypeId {
                 extend(
                     &mut found,
                     ty.type_id
-                        .extract_any_including_self(engines, filter_fn, vec![]),
+                        .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
                 );
             }
             TypeInfo::Storage { fields } => {
@@ -317,6 +339,7 @@ impl TypeId {
                             engines,
                             filter_fn,
                             vec![],
+                            depth + 1,
                         ),
                     );
                 }
@@ -325,7 +348,7 @@ impl TypeId {
                 extend(
                     &mut found,
                     ty.type_id
-                        .extract_any_including_self(engines, filter_fn, vec![]),
+                        .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
                 );
             }
             TypeInfo::UnknownGeneric {
@@ -344,6 +367,7 @@ impl TypeId {
                                     engines,
                                     filter_fn,
                                     vec![],
+                                    depth + 1,
                                 ),
                             );
                         }
@@ -354,14 +378,21 @@ impl TypeId {
                 extend(
                     &mut found,
                     ty.type_id
-                        .extract_any_including_self(engines, filter_fn, vec![]),
+                        .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
                 );
             }
             TypeInfo::Slice(ty) => {
                 extend(
                     &mut found,
                     ty.type_id
-                        .extract_any_including_self(engines, filter_fn, vec![]),
+                        .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
+                );
+            }
+            TypeInfo::Ref(ty) => {
+                extend(
+                    &mut found,
+                    ty.type_id
+                        .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
                 );
             }
         }
@@ -374,7 +405,7 @@ impl TypeId {
         fn filter_fn(_type_info: &TypeInfo) -> bool {
             true
         }
-        self.extract_any(engines, &filter_fn)
+        self.extract_any(engines, &filter_fn, 0)
             .keys()
             .cloned()
             .collect()
@@ -387,7 +418,7 @@ impl TypeId {
         fn filter_fn(_type_info: &TypeInfo) -> bool {
             true
         }
-        self.extract_any(engines, &filter_fn)
+        self.extract_any(engines, &filter_fn, 0)
     }
 
     /// Given a `TypeId` `self`, analyze `self` and return all nested
@@ -397,9 +428,9 @@ impl TypeId {
         let mut inner_types: Vec<TypeInfo> = self
             .extract_inner_types(engines)
             .into_iter()
-            .map(|type_id| type_engine.get(type_id))
+            .map(|type_id| (*type_engine.get(type_id)).clone())
             .collect();
-        inner_types.push(type_engine.get(self));
+        inner_types.push((*type_engine.get(self)).clone());
         inner_types
     }
 
@@ -408,12 +439,10 @@ impl TypeId {
         engines: &'a Engines,
     ) -> HashSet<WithEngines<'a, TypeInfo>> {
         let nested_types = (*self).extract_nested_types(engines);
-        HashSet::from_iter(
-            nested_types
-                .into_iter()
-                .filter(|x| matches!(x, TypeInfo::UnknownGeneric { .. }))
-                .map(|thing| WithEngines::new(thing, engines)),
-        )
+        HashSet::from_iter(nested_types.into_iter().filter_map(|x| match x {
+            TypeInfo::UnknownGeneric { .. } => Some(WithEngines::new(x, engines)),
+            _ => None,
+        }))
     }
 
     /// `check_type_parameter_bounds` does two types of checks. Lets use the example below for demonstrating the two checks:
@@ -465,11 +494,10 @@ impl TypeId {
                     .decay_numeric(handler, engines, *structure_type_id, span)?;
 
                 let structure_type_info = engines.te().get(*structure_type_id);
-                let structure_type_info_with_engines =
-                    engines.help_out(structure_type_info.clone());
+                let structure_type_info_with_engines = engines.help_out(&*structure_type_info);
                 if let TypeInfo::UnknownGeneric {
                     trait_constraints, ..
-                } = &structure_type_info
+                } = &*structure_type_info
                 {
                     let mut generic_trait_constraints_trait_names: Vec<CallPath<BaseIdent>> =
                         vec![];

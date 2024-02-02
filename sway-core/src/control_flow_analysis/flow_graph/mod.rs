@@ -143,7 +143,7 @@ impl<'cfg> DebugWithEngines for ControlFlowGraphNode<'cfg> {
             } => {
                 let decl_engines = engines.de();
                 let method = decl_engines.get_function(method_decl_ref);
-                if let Some(implementing_type) = method.implementing_type {
+                if let Some(implementing_type) = &method.implementing_type {
                     format!(
                         "Method {}.{}",
                         implementing_type.friendly_name(engines),

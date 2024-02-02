@@ -7,8 +7,14 @@ pub use forc_util::tx_utils::Salt;
 
 use crate::NodeTarget;
 
+forc_util::cli_examples! {
+    [ Deploy a single contract => deploy "bc09bfa7a11a04ce42b0a5abf04fd437387ee49bf4561d575177e2946468b408" => r#".*Error making HTTP request.*"# ]
+    [ Deploy a single contract from a different path => deploy "bc09bfa7a11a04ce42b0a5abf04fd437387ee49bf4561d575177e2946468b408 --path ../tests/" => r#".*Error making HTTP request.*"# ]
+    [ Deploy to a custom network => deploy "--node-url https://beta-5.fuel.network/graphql" => ".*Refused to create a new wallet.*" ]
+}
+
 #[derive(Debug, Default, Parser)]
-#[clap(bin_name = "forc deploy", version)]
+#[clap(bin_name = "forc deploy", version, after_help = help())]
 pub struct Command {
     #[clap(flatten)]
     pub pkg: Pkg,
@@ -52,4 +58,27 @@ pub struct Command {
     /// Sign the deployment transaction manually.
     #[clap(long)]
     pub manual_signing: bool,
+    /// Override storage slot initialization.
+    ///
+    /// By default, storage slots are initialized with the values defined in the storage block in
+    /// the contract. You can override the initialization by providing the file path to a JSON file
+    /// containing the overriden values.
+    ///
+    /// The file format and key values should match the compiler-generated `*-storage_slots.json` file in the output
+    /// directory of the compiled contract.
+    ///
+    /// Example: `forc deploy --override-storage-slots my_override.json`
+    ///
+    /// my_override.json:
+    /// [
+    ///   {
+    ///     "key": "<key from out/debug/storage_slots.json>",
+    ///     "value": "0000000000000000000000000000000000000000000000000000000000000001"
+    ///   }
+    /// ]
+    #[clap(long, verbatim_doc_comment, name = "JSON_FILE_PATH")]
+    pub override_storage_slots: Option<String>,
+
+    #[clap(long)]
+    pub experimental_new_encoding: bool,
 }

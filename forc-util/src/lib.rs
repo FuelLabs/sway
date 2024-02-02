@@ -1,8 +1,8 @@
 //! Utility items shared between forc crates.
 
 use annotate_snippets::{
-    display_list::{DisplayList, FormatOptions},
-    snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
+    renderer::{AnsiColor, Style},
+    Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation,
 };
 use ansi_term::Colour;
 use anyhow::{bail, Context, Result};
@@ -27,6 +27,13 @@ use sway_utils::constants;
 use tracing::error;
 
 pub mod restricted;
+
+#[macro_use]
+pub mod cli;
+
+pub use paste;
+pub use regex::Regex;
+pub use serial_test;
 
 pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
 pub const DEFAULT_ERROR_EXIT_CODE: u8 = 1;
@@ -427,6 +434,27 @@ pub fn print_on_failure(
     }
 }
 
+/// Creates [Renderer] for printing warnings and errors.
+///
+/// To ensure the same styling of printed warnings and errors across all the tools,
+/// always use this function to create [Renderer]s,
+pub fn create_diagnostics_renderer() -> Renderer {
+    // For the diagnostic messages we use bold and bright colors.
+    // Note that for the summaries of warnings and errors we use
+    // their regular equivalents which are defined in `forc-tracing` package.
+    Renderer::styled()
+        .warning(
+            Style::new()
+                .bold()
+                .fg_color(Some(AnsiColor::BrightYellow.into())),
+        )
+        .error(
+            Style::new()
+                .bold()
+                .fg_color(Some(AnsiColor::BrightRed.into())),
+        )
+}
+
 fn format_diagnostic(diagnostic: &Diagnostic) {
     /// Temporary switch for testing the feature.
     /// Keep it false until we decide to fully support the diagnostic codes.
@@ -475,15 +503,12 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
         title: snippet_title,
         slices: snippet_slices,
         footer: snippet_footer,
-        opt: FormatOptions {
-            color: true,
-            ..Default::default()
-        },
     };
 
+    let renderer = create_diagnostics_renderer();
     match diagnostic.level() {
-        Level::Warning => tracing::warn!("{}\n____\n", DisplayList::from(snippet)),
-        Level::Error => tracing::error!("{}\n____\n", DisplayList::from(snippet)),
+        Level::Warning => tracing::warn!("{}\n____\n", renderer.render(snippet)),
+        Level::Error => tracing::error!("{}\n____\n", renderer.render(snippet)),
     }
 
     fn format_old_style_diagnostic(issue: &Issue) {
@@ -528,13 +553,10 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
             title: snippet_title,
             footer: vec![],
             slices: snippet_slices,
-            opt: FormatOptions {
-                color: true,
-                ..Default::default()
-            },
         };
 
-        tracing::error!("{}\n____\n", DisplayList::from(snippet));
+        let renderer = create_diagnostics_renderer();
+        tracing::error!("{}\n____\n", renderer.render(snippet));
     }
 
     fn get_title_label(diagnostics: &Diagnostic, label: &mut String) {
@@ -568,7 +590,7 @@ fn construct_slice(labels: Vec<&Label>) -> Slice {
         "Slices can be constructed only for labels that are related to places in the same source code."
     );
 
-    let soruce_file = labels[0].source_path().map(|path| path.as_str());
+    let source_file = labels[0].source_path().map(|path| path.as_str());
     let source_code = labels[0].span().input();
 
     // Joint span of the code snippet that covers all the labels.
@@ -589,7 +611,7 @@ fn construct_slice(labels: Vec<&Label>) -> Slice {
     return Slice {
         source,
         line_start,
-        origin: soruce_file,
+        origin: source_file,
         fold: true,
         annotations,
     };
@@ -630,7 +652,7 @@ fn label_type_to_annotation_type(label_type: LabelType) -> AnnotationType {
 /// to show in the snippet.
 ///
 /// Returns the source to be shown, the line start, and the offset of the snippet in bytes relative
-/// to the begining of the input code.
+/// to the beginning of the input code.
 ///
 /// The library we use doesn't handle auto-windowing and line numbers, so we must manually
 /// calculate the line numbers and match them up with the input window. It is a bit fiddly.

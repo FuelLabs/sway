@@ -617,6 +617,13 @@ impl Op {
         }
     }
 
+    pub(crate) fn def_const_registers(&self) -> BTreeSet<&VirtualRegister> {
+        match &self.opcode {
+            Either::Left(virt_op) => virt_op.def_const_registers(),
+            Either::Right(org_op) => org_op.def_const_registers(),
+        }
+    }
+
     pub(crate) fn successors(
         &self,
         index: usize,
@@ -668,7 +675,7 @@ fn single_reg(
         });
     }
 
-    let reg = match args.get(0) {
+    let reg = match args.first() {
         Some(reg) => reg,
         _ => {
             return Err(
@@ -704,7 +711,7 @@ fn two_regs(
         });
     }
 
-    let (reg, reg2) = match (args.get(0), args.get(1)) {
+    let (reg, reg2) = match (args.first(), args.get(1)) {
         (Some(reg), Some(reg2)) => (reg, reg2),
         _ => {
             return Err(
@@ -748,7 +755,7 @@ fn four_regs(
         });
     }
 
-    let (reg, reg2, reg3, reg4) = match (args.get(0), args.get(1), args.get(2), args.get(3)) {
+    let (reg, reg2, reg3, reg4) = match (args.first(), args.get(1), args.get(2), args.get(3)) {
         (Some(reg), Some(reg2), Some(reg3), Some(reg4)) => (reg, reg2, reg3, reg4),
         _ => {
             return Err(
@@ -813,7 +820,7 @@ fn three_regs(
         });
     }
 
-    let (reg, reg2, reg3) = match (args.get(0), args.get(1), args.get(2)) {
+    let (reg, reg2, reg3) = match (args.first(), args.get(1), args.get(2)) {
         (Some(reg), Some(reg2), Some(reg3)) => (reg, reg2, reg3),
         _ => {
             return Err(
@@ -885,7 +892,7 @@ fn single_reg_imm_18(
             received: args.len(),
         });
     }
-    let reg = match args.get(0) {
+    let reg = match args.first() {
         Some(reg) => reg,
         _ => {
             return Err(
@@ -935,7 +942,7 @@ fn two_regs_imm_12(
             received: args.len(),
         });
     }
-    let (reg, reg2) = match (args.get(0), args.get(1)) {
+    let (reg, reg2) = match (args.first(), args.get(1)) {
         (Some(reg), Some(reg2)) => (reg, reg2),
         _ => {
             return Err(
@@ -1225,6 +1232,10 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
         })
         .into_iter()
         .collect()
+    }
+
+    pub(crate) fn def_const_registers(&self) -> BTreeSet<&VirtualRegister> {
+        BTreeSet::new()
     }
 
     pub(crate) fn update_register(&self, reg_to_reg_map: &HashMap<&Reg, &Reg>) -> Self {

@@ -2,7 +2,7 @@ use fuels::{accounts::wallet::WalletUnlocked, prelude::*};
 
 abigen!(Contract(
     name = "MyContract",
-    abi = "test_projects/option_field_order/out/debug/option_field_order-abi.json"
+    abi = "test_projects/option_field_order/out/release/option_field_order-abi.json"
 ));
 
 #[tokio::test]
@@ -15,15 +15,13 @@ async fn setup() -> MyContract<WalletUnlocked> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
 
     let id = Contract::load_from(
-        "test_projects/option_field_order/out/debug/option_field_order.bin",
+        "test_projects/option_field_order/out/release/option_field_order.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 
-    let instance = MyContract::new(id.clone(), wallet);
-
-    instance
+    MyContract::new(id.clone(), wallet)
 }

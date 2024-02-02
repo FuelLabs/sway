@@ -3,12 +3,12 @@ use crate::{
     engine_threading::Engines,
     language::{
         parsed::*,
-        ty::{self, TyDecl},
-        Visibility,
+        ty::{self, TyDecl, TyTraitItem},
+        CallPath, Visibility,
     },
     semantic_analysis::*,
     transform::to_parsed_lang,
-    Ident, Namespace,
+    Ident, Namespace, TypeId, TypeInfo,
 };
 
 use super::{
@@ -124,7 +124,7 @@ impl Module {
         let name = const_item.name.clone();
         let attributes = Default::default();
         // convert to const decl
-        let const_decl = to_parsed_lang::item_const_to_constant_declaration(
+        let const_decl_id = to_parsed_lang::item_const_to_constant_declaration(
             &mut to_parsed_lang::Context::default(),
             handler,
             engines,
@@ -134,6 +134,7 @@ impl Module {
         )?;
 
         // Temporarily disallow non-literals. See https://github.com/FuelLabs/sway/issues/2647.
+        let const_decl = engines.pe().get_constant(&const_decl_id);
         let has_literal = match &const_decl.value {
             Some(value) => {
                 matches!(value.kind, ExpressionKind::Literal(_))
@@ -148,7 +149,7 @@ impl Module {
         }
 
         let ast_node = AstNode {
-            content: AstNodeContent::Declaration(Declaration::ConstantDeclaration(const_decl)),
+            content: AstNodeContent::Declaration(Declaration::ConstantDeclaration(const_decl_id)),
             span: const_item_span.clone(),
         };
         let mut ns = Namespace::init_root(Default::default());
@@ -161,7 +162,7 @@ impl Module {
         // get the decl out of the typed node:
         // we know as an invariant this must be a const decl, as we hardcoded a const decl in
         // the above `format!`.  if it isn't we report an
-        // error that only constant items are alowed, defensive programming etc...
+        // error that only constant items are allowed, defensive programming etc...
         let typed_decl = match typed_node.content {
             ty::TyAstNodeContent::Declaration(decl) => decl,
             _ => {
@@ -426,7 +427,7 @@ impl Module {
                 let dst_ns = &mut self[dst];
                 let add_synonym = |name| {
                     if let Some((_, GlobImport::No, _, _)) = dst_ns.use_synonyms.get(name) {
-                        handler.emit_err(CompileError::ShadowsOtherSymbol { name: name.clone() });
+                        handler.emit_err(CompileError::ShadowsOtherSymbol { name: name.into() });
                     }
                     dst_ns.use_synonyms.insert(
                         name.clone(),
@@ -507,7 +508,7 @@ impl Module {
                         let mut add_synonym = |name| {
                             if let Some((_, GlobImport::No, _, _)) = dst_ns.use_synonyms.get(name) {
                                 handler.emit_err(CompileError::ShadowsOtherSymbol {
-                                    name: name.clone(),
+                                    name: name.into(),
                                 });
                             }
                             dst_ns.use_synonyms.insert(
@@ -596,8 +597,8 @@ impl Module {
                         enum_decl.span(),
                     );
 
-                    for variant_decl in enum_decl.variants {
-                        let variant_name = variant_decl.name;
+                    for variant_decl in enum_decl.variants.iter() {
+                        let variant_name = &variant_decl.name;
 
                         // import it this way.
                         let dst_ns = &mut self[dst];
@@ -608,7 +609,7 @@ impl Module {
                                 GlobImport::Yes,
                                 TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
                                     enum_ref: enum_ref.clone(),
-                                    variant_name,
+                                    variant_name: variant_name.clone(),
                                     variant_decl_span: variant_decl.span.clone(),
                                 }),
                                 is_src_absolute,
@@ -654,6 +655,340 @@ impl Module {
             }
         }
         Ok(())
+    }
+
+    /// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
+    ///
+    /// This is short-hand for concatenating the `mod_path` with the `call_path`'s prefixes and
+    /// then calling `resolve_symbol` with the resulting path and call_path's suffix.
+    pub(crate) fn resolve_call_path(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        mod_path: &Path,
+        call_path: &CallPath,
+        self_type: Option<TypeId>,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        let (decl, _) =
+            self.resolve_call_path_and_mod_path(handler, engines, mod_path, call_path, self_type)?;
+        Ok(decl)
+    }
+
+    pub(crate) fn resolve_call_path_and_mod_path(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        mod_path: &Path,
+        call_path: &CallPath,
+        self_type: Option<TypeId>,
+    ) -> Result<(ty::TyDecl, Vec<Ident>), ErrorEmitted> {
+        let symbol_path: Vec<_> = mod_path
+            .iter()
+            .chain(&call_path.prefixes)
+            .cloned()
+            .collect();
+        self.resolve_symbol_and_mod_path(
+            handler,
+            engines,
+            &symbol_path,
+            &call_path.suffix,
+            self_type,
+        )
+    }
+
+    pub(crate) fn resolve_call_path_and_root_type_id(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        root_type_id: TypeId,
+        mut as_trait: Option<CallPath>,
+        call_path: &CallPath,
+        self_type: Option<TypeId>,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        // This block tries to resolve associated types
+        let mut decl_opt = None;
+        let mut type_id_opt = Some(root_type_id);
+        for ident in call_path.prefixes.iter() {
+            if let Some(type_id) = type_id_opt {
+                type_id_opt = None;
+                decl_opt = Some(self.resolve_associated_type_from_type_id(
+                    handler,
+                    engines,
+                    ident,
+                    type_id,
+                    as_trait.clone(),
+                    self_type,
+                )?);
+                as_trait = None;
+            } else if let Some(decl) = decl_opt {
+                decl_opt = Some(self.resolve_associated_type(
+                    handler,
+                    engines,
+                    ident,
+                    decl,
+                    as_trait.clone(),
+                    self_type,
+                )?);
+                as_trait = None;
+            }
+        }
+        if let Some(type_id) = type_id_opt {
+            let decl = self.resolve_associated_type_from_type_id(
+                handler,
+                engines,
+                &call_path.suffix,
+                type_id,
+                as_trait,
+                self_type,
+            )?;
+            return Ok(decl);
+        }
+        if let Some(decl) = decl_opt {
+            let decl = self.resolve_associated_item(
+                handler,
+                engines,
+                &call_path.suffix,
+                decl,
+                as_trait,
+                self_type,
+            )?;
+            Ok(decl)
+        } else {
+            Err(handler.emit_err(CompileError::Internal("Unexpected error", call_path.span())))
+        }
+    }
+
+    /// Given a path to a module and the identifier of a symbol within that module, resolve its
+    /// declaration.
+    ///
+    /// If the symbol is within the given module's namespace via import, we recursively traverse
+    /// imports until we find the original declaration.
+    pub(crate) fn resolve_symbol(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        mod_path: &Path,
+        symbol: &Ident,
+        self_type: Option<TypeId>,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        let (decl, _) =
+            self.resolve_symbol_and_mod_path(handler, engines, mod_path, symbol, self_type)?;
+        Ok(decl)
+    }
+
+    fn resolve_symbol_and_mod_path(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        mod_path: &Path,
+        symbol: &Ident,
+        self_type: Option<TypeId>,
+    ) -> Result<(ty::TyDecl, Vec<Ident>), ErrorEmitted> {
+        // This block tries to resolve associated types
+        let mut module = self;
+        let mut current_mod_path = vec![];
+        let mut decl_opt = None;
+        for ident in mod_path.iter() {
+            if let Some(decl) = decl_opt {
+                decl_opt = Some(
+                    self.resolve_associated_type(handler, engines, ident, decl, None, self_type)?,
+                );
+            } else {
+                match module.submodules.get(ident.as_str()) {
+                    Some(ns) => {
+                        module = ns;
+                        current_mod_path.push(ident.clone());
+                    }
+                    None => {
+                        decl_opt = Some(self.resolve_symbol_helper(
+                            handler,
+                            engines,
+                            &current_mod_path,
+                            ident,
+                            module,
+                            self_type,
+                        )?);
+                    }
+                }
+            }
+        }
+        if let Some(decl) = decl_opt {
+            let decl =
+                self.resolve_associated_item(handler, engines, symbol, decl, None, self_type)?;
+            return Ok((decl, current_mod_path));
+        }
+
+        self.check_submodule(handler, mod_path).and_then(|module| {
+            let decl =
+                self.resolve_symbol_helper(handler, engines, mod_path, symbol, module, self_type)?;
+            Ok((decl, mod_path.to_vec()))
+        })
+    }
+
+    fn resolve_associated_type(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        symbol: &Ident,
+        decl: ty::TyDecl,
+        as_trait: Option<CallPath>,
+        self_type: Option<TypeId>,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
+
+        self.resolve_associated_type_from_type_id(
+            handler,
+            engines,
+            symbol,
+            engines
+                .te()
+                .insert(engines, type_info, symbol.span().source_id()),
+            as_trait,
+            self_type,
+        )
+    }
+
+    fn resolve_associated_item(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        symbol: &Ident,
+        decl: ty::TyDecl,
+        as_trait: Option<CallPath>,
+        self_type: Option<TypeId>,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
+
+        self.resolve_associated_item_from_type_id(
+            handler,
+            engines,
+            symbol,
+            engines
+                .te()
+                .insert(engines, type_info, symbol.span().source_id()),
+            as_trait,
+            self_type,
+        )
+    }
+
+    fn decl_to_type_info(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        symbol: &Ident,
+        decl: ty::TyDecl,
+    ) -> Result<TypeInfo, ErrorEmitted> {
+        Ok(match decl.clone() {
+            ty::TyDecl::StructDecl(struct_decl) => TypeInfo::Struct(DeclRef::new(
+                struct_decl.name.clone(),
+                struct_decl.decl_id,
+                struct_decl.name.span(),
+            )),
+            ty::TyDecl::EnumDecl(enum_decl) => TypeInfo::Enum(DeclRef::new(
+                enum_decl.name.clone(),
+                enum_decl.decl_id,
+                enum_decl.name.span(),
+            )),
+            ty::TyDecl::TraitTypeDecl(type_decl) => {
+                let type_decl = engines.de().get_type(&type_decl.decl_id);
+                (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
+            }
+            _ => {
+                return Err(handler.emit_err(CompileError::SymbolNotFound {
+                    name: symbol.clone(),
+                    span: symbol.span(),
+                }))
+            }
+        })
+    }
+
+    fn resolve_associated_type_from_type_id(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        symbol: &Ident,
+        type_id: TypeId,
+        as_trait: Option<CallPath>,
+        self_type: Option<TypeId>,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        let item_decl = self.resolve_associated_item_from_type_id(
+            handler, engines, symbol, type_id, as_trait, self_type,
+        )?;
+        if !matches!(item_decl, ty::TyDecl::TraitTypeDecl(_)) {
+            return Err(handler.emit_err(CompileError::Internal(
+                "Expecting associated type",
+                item_decl.span(),
+            )));
+        }
+        Ok(item_decl)
+    }
+
+    fn resolve_associated_item_from_type_id(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        symbol: &Ident,
+        type_id: TypeId,
+        as_trait: Option<CallPath>,
+        self_type: Option<TypeId>,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        let type_id = if engines.te().get(type_id).is_self_type() {
+            if let Some(self_type) = self_type {
+                self_type
+            } else {
+                return Err(handler.emit_err(CompileError::Internal(
+                    "Self type not provided.",
+                    symbol.span(),
+                )));
+            }
+        } else {
+            type_id
+        };
+        let item_ref = self
+            .implemented_traits
+            .get_trait_item_for_type(handler, engines, symbol, type_id, as_trait)?;
+        match item_ref {
+            TyTraitItem::Fn(fn_ref) => Ok(fn_ref.into()),
+            TyTraitItem::Constant(const_ref) => Ok(const_ref.into()),
+            TyTraitItem::Type(type_ref) => Ok(type_ref.into()),
+        }
+    }
+
+    fn resolve_symbol_helper(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        mod_path: &Path,
+        symbol: &Ident,
+        module: &Module,
+        self_type: Option<TypeId>,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        let true_symbol = self[mod_path]
+            .use_aliases
+            .get(symbol.as_str())
+            .unwrap_or(symbol);
+        match module.use_synonyms.get(symbol) {
+            Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. }, _)) => Ok(decl.clone()),
+            Some((src_path, _, _, _)) if mod_path != src_path => {
+                // If the symbol is imported, before resolving to it,
+                // we need to check if there is a local symbol withing the module with
+                // the same name, and if yes resolve to the local symbol, because it
+                // shadows the import.
+                // Note that we can have two situations here:
+                // - glob-import, in which case the local symbol simply shadows the glob-imported one.
+                // - non-glob import, in which case we will already have a name clash reported
+                //   as an error, but still have to resolve to the local module symbol
+                //   if it exists.
+                match module.symbols.get(true_symbol) {
+                    Some(decl) => Ok(decl.clone()),
+                    None => self.resolve_symbol(handler, engines, src_path, true_symbol, self_type),
+                }
+            }
+            _ => module
+                .check_symbol(true_symbol)
+                .map_err(|e| handler.emit_err(e))
+                .cloned(),
+        }
     }
 }
 

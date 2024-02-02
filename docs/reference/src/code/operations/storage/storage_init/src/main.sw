@@ -7,6 +7,7 @@ struct Owner {
 }
 
 impl Owner {
+    // a constructor that can be evaluated to a constant `Owner` during compilation
     fn default() -> Self {
         Self {
             maximum_owners: 10,

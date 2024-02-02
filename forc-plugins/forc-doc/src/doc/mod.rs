@@ -60,12 +60,11 @@ impl Documentation {
         let trait_decls = docs
             .0
             .iter()
-            .filter(|d| d.item_header.friendly_name == "trait")
-            .map(|d| {
-                (
+            .filter_map(|d| {
+                (d.item_header.friendly_name == "trait").then_some((
                     d.item_header.item_name.clone(),
                     d.item_header.module_info.clone(),
-                )
+                ))
             })
             .collect::<HashMap<BaseIdent, ModuleInfo>>();
 
@@ -122,7 +121,7 @@ impl Documentation {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
                 if let TyDecl::ImplTrait(impl_trait) = decl {
                     impl_traits.push((
-                        decl_engine.get_impl_trait(&impl_trait.decl_id),
+                        (*decl_engine.get_impl_trait(&impl_trait.decl_id)).clone(),
                         module_info.clone(),
                     ))
                 } else {

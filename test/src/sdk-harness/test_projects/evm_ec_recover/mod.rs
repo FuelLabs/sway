@@ -13,7 +13,7 @@ use sha3::{Digest, Keccak256};
 
 abigen!(Contract(
     name = "EvmEcRecoverContract",
-    abi = "test_projects/evm_ec_recover/out/debug/evm_ec_recover-abi.json"
+    abi = "test_projects/evm_ec_recover/out/release/evm_ec_recover-abi.json"
 ));
 
 fn keccak_hash<B>(data: B) -> Bytes32
@@ -68,11 +68,11 @@ async fn setup_env() -> Result<(
     wallet.set_provider(provider);
 
     let contract_id = Contract::load_from(
-        "test_projects/evm_ec_recover/out/debug/evm_ec_recover.bin",
+        "test_projects/evm_ec_recover/out/release/evm_ec_recover.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 

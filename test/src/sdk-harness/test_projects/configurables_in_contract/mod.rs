@@ -5,17 +5,17 @@ async fn contract_uses_default_configurables() -> Result<()> {
     abigen!(Contract(
         name = "MyContract",
         abi =
-            "test_projects/configurables_in_contract/out/debug/configurables_in_contract-abi.json"
+            "test_projects/configurables_in_contract/out/release/configurables_in_contract-abi.json"
     ));
 
     let wallet = launch_provider_and_get_wallet().await.unwrap();
 
     let contract_id = Contract::load_from(
-        "test_projects/configurables_in_contract/out/debug/configurables_in_contract.bin",
+        "test_projects/configurables_in_contract/out/release/configurables_in_contract.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await?;
 
     let contract_instance = MyContract::new(contract_id, wallet.clone());
@@ -48,7 +48,7 @@ async fn contract_configurables() -> Result<()> {
     abigen!(Contract(
         name = "MyContract",
         abi =
-            "test_projects/configurables_in_contract/out/debug/configurables_in_contract-abi.json"
+            "test_projects/configurables_in_contract/out/release/configurables_in_contract-abi.json"
     ));
 
     let wallet = launch_provider_and_get_wallet().await.unwrap();
@@ -66,10 +66,10 @@ async fn contract_configurables() -> Result<()> {
         .with_ENUM(new_enum.clone());
 
     let contract_id = Contract::load_from(
-        "test_projects/configurables_in_contract/out/debug/configurables_in_contract.bin",
+        "test_projects/configurables_in_contract/out/release/configurables_in_contract.bin",
         LoadConfiguration::default().with_configurables(configurables),
     )?
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await?;
 
     let contract_instance = MyContract::new(contract_id, wallet.clone());

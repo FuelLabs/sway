@@ -1,0 +1,25 @@
+[package]
+name = "forc-debug"
+version = "0.49.1"
+description = "Supports debugging Sway code via CLI and DAP server."
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+clap = { version = "3.1", features = ["env", "derive"] }
+fuel-core-client = { version = "0.21" }
+fuel-types = { version = "0.43", features = ["serde"] }
+fuel-vm = { version = "0.43", features = ["serde"] }
+serde_json = "1.0"
+shellfish = { version = "0.6.0", features = ["rustyline", "async", "tokio"] }
+thiserror = "1.0"
+tokio = { version = "1.19", features = ["net", "io-util", "macros", "rt-multi-thread"] }
+
+[dev-dependencies]
+anyhow = "1.0" # Used by the examples only
+escargot = "0.5.7"
+portpicker = "0.1.1"
+rexpect = "0.4"

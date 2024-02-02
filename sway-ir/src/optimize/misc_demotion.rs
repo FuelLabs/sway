@@ -13,7 +13,8 @@ use std::ops::Not;
 /// - Fuel WIde binary operators: Demote binary operands bigger than 64 bits.
 use crate::{
     asm::AsmArg, AnalysisResults, BinaryOpKind, Constant, Context, FuelVmInstruction, Function,
-    InstOp, IrError, Pass, PassMutability, Predicate, ScopedPass, Type, UnaryOpKind, Value,
+    InstOp, InstructionInserter, IrError, Pass, PassMutability, Predicate, ScopedPass, Type,
+    UnaryOpKind, Value,
 };
 
 use rustc_hash::FxHashMap;
@@ -108,21 +109,19 @@ fn log_demotion(context: &mut Context, function: Function) -> Result<bool, IrErr
             }),
         );
 
-        // We don't have an actual instruction _inserter_ yet, just an appender, so we need to find the
-        // log instruction index and insert instructions manually.
-        let block_instrs = &mut context.blocks[block.0].instructions;
-        let log_inst_idx = block_instrs
-            .iter()
-            .position(|&instr_val| instr_val == log_instr_val)
-            .unwrap();
-        block_instrs[log_inst_idx] = new_log_instr_val;
-
-        // Put these two _before_ it.
-        block_instrs.insert(log_inst_idx, get_loc_val);
-        block_instrs.insert(log_inst_idx + 1, store_val);
-
         // NOTE: We don't need to replace the uses of the old log instruction as it doesn't return a
         // value.  (It's a 'statement' rather than an 'expression'.)
+        block
+            .replace_instruction(context, log_instr_val, new_log_instr_val, false)
+            .unwrap();
+
+        // Put these two _before_ it.
+        let mut inserter = InstructionInserter::new(
+            context,
+            block,
+            crate::InsertionPosition::Before(new_log_instr_val),
+        );
+        inserter.insert_slice(&[get_loc_val, store_val]);
     }
 
     Ok(true)
@@ -166,54 +165,45 @@ fn asm_block_arg_demotion(context: &mut Context, function: Function) -> Result<b
     }
 
     for (block, asm_block_instr_val, ref_args) in candidates {
-        let temporaries = ref_args
-            .iter()
-            .map(|(ref_arg_val, ref_arg_ty)| {
-                // Create temporaries for each of the by-reference args.
-                let loc_var = function.new_unique_local_var(
-                    context,
-                    "__asm_arg".to_owned(),
-                    *ref_arg_ty,
-                    None,
-                    false,
-                );
+        let mut replace_map = FxHashMap::default();
+        let mut temporaries = Vec::new();
 
-                // Create `get_local`s and `store`s for each one.
-                let get_loc_val = Value::new_instruction(context, block, InstOp::GetLocal(loc_var));
-                let store_val = Value::new_instruction(
-                    context,
-                    block,
-                    InstOp::Store {
-                        dst_val_ptr: get_loc_val,
-                        stored_val: *ref_arg_val,
-                    },
-                );
+        for (ref_arg_val, ref_arg_ty) in ref_args {
+            // Create temporaries for each of the by-reference args.
+            let loc_var = function.new_unique_local_var(
+                context,
+                "__asm_arg".to_owned(),
+                ref_arg_ty,
+                None,
+                false,
+            );
 
-                (*ref_arg_val, get_loc_val, store_val)
-            })
-            .collect::<Vec<(Value, Value, Value)>>();
+            // Create `get_local`s and `store`s for each one.
+            let get_loc_val = Value::new_instruction(context, block, InstOp::GetLocal(loc_var));
+            let store_val = Value::new_instruction(
+                context,
+                block,
+                InstOp::Store {
+                    dst_val_ptr: get_loc_val,
+                    stored_val: ref_arg_val,
+                },
+            );
 
-        // Insert the temporaries into the block. Again, we don't have an actual instruction
-        // _inserter_ yet.
-        let block_instrs = &mut context.blocks[block.0].instructions;
-        let asm_inst_idx = block_instrs
-            .iter()
-            .position(|&instr_val| instr_val == asm_block_instr_val)
-            .unwrap();
-        for (idx, (_ref_arg_val, get_loc_val, store_val)) in temporaries.iter().enumerate() {
-            block_instrs.insert(asm_inst_idx + idx * 2, *get_loc_val);
-            block_instrs.insert(asm_inst_idx + idx * 2 + 1, *store_val);
+            replace_map.insert(ref_arg_val, get_loc_val);
+            temporaries.push(get_loc_val);
+            temporaries.push(store_val);
         }
 
-        // Replace the args with the `get_local`s in the ASM block.
-        asm_block_instr_val.replace_instruction_values(
+        // Insert the temporaries into the block.
+        let mut inserter = InstructionInserter::new(
             context,
-            &FxHashMap::from_iter(
-                temporaries
-                    .into_iter()
-                    .map(|(ref_arg_val, get_loc_val, _store_val)| (ref_arg_val, get_loc_val)),
-            ),
+            block,
+            crate::InsertionPosition::Before(asm_block_instr_val),
         );
+        inserter.insert_slice(&temporaries);
+
+        // Replace the args with the `get_local`s in the ASM block.
+        asm_block_instr_val.replace_instruction_values(context, &replace_map);
     }
 
     Ok(true)
@@ -254,16 +244,17 @@ fn asm_block_ret_demotion(context: &mut Context, function: Function) -> Result<b
         let new_asm_block =
             Value::new_instruction(context, block, InstOp::AsmBlock(asm_block, asm_args));
 
-        // Insert a load after the block.  Still no instruction inserter...
+        // Insert a load after the block.
         let load_val = Value::new_instruction(context, block, InstOp::Load(new_asm_block));
-        let block_instrs = &mut context.blocks[block.0].instructions;
-        let asm_inst_idx = block_instrs
-            .iter()
-            .position(|&instr_val| instr_val == asm_block_instr_val)
+        block
+            .replace_instruction(context, asm_block_instr_val, new_asm_block, false)
             .unwrap();
-
-        block_instrs[asm_inst_idx] = new_asm_block;
-        block_instrs.insert(asm_inst_idx + 1, load_val);
+        let mut inserter = InstructionInserter::new(
+            context,
+            block,
+            crate::InsertionPosition::After(new_asm_block),
+        );
+        inserter.insert(load_val);
 
         // Replace uses of the old ASM block with the new load.
         replace_map.insert(asm_block_instr_val, load_val);
@@ -317,17 +308,13 @@ fn ptr_to_int_demotion(context: &mut Context, function: Function) -> Result<bool
             },
         );
 
-        // We don't have an actual instruction _inserter_ yet, just an appender, so we need to find
-        // the ptr_to_int instruction index and insert instructions manually.
-        let block_instrs = &mut context.blocks[block.0].instructions;
-        let ptr_to_int_inst_idx = block_instrs
-            .iter()
-            .position(|&instr_val| instr_val == ptr_to_int_instr_val)
-            .unwrap();
-
-        // Put these two _before_ it.
-        block_instrs.insert(ptr_to_int_inst_idx, get_loc_val);
-        block_instrs.insert(ptr_to_int_inst_idx + 1, store_val);
+        // Put these two _before_ ptr_to_int_instr_val.
+        let mut inserter = InstructionInserter::new(
+            context,
+            block,
+            crate::InsertionPosition::Before(ptr_to_int_instr_val),
+        );
+        inserter.insert_slice(&[get_loc_val, store_val]);
 
         // Replace the argument to ptr_to_int.
         ptr_to_int_instr_val.replace_instruction_value(context, ptr_val, get_loc_val);
@@ -530,47 +517,44 @@ fn wide_binary_op_demotion(context: &mut Context, function: Function) -> Result<
             assert!(get_local_zero.get_type(context).unwrap().is_ptr(context));
         }
 
-        // We don't have an actual instruction _inserter_ yet, just an appender, so we need to find
-        // the ptr_to_int instruction index and insert instructions manually.
-        let block_instrs = &mut context.blocks[block.0].instructions;
-        let idx = block_instrs
-            .iter()
-            .position(|&instr_val| instr_val == binary_op_instr_val)
-            .unwrap();
-
         block
-            .replace_instruction(context, binary_op_instr_val, load_result_local)
+            .replace_instruction(context, binary_op_instr_val, load_result_local, true)
             .unwrap();
 
-        let block_instrs = &mut context.blocks[block.0].instructions;
+        let mut additional_instrs = Vec::new();
 
-        block_instrs.insert(idx, wide_op);
-        block_instrs.insert(idx, get_result_local);
-
-        if arg2_needs_insert {
-            block_instrs.insert(idx, get_arg2);
+        // lhs
+        if let Some((get_lhs_local, store_lhs_local)) = lhs_store {
+            additional_instrs.push(get_lhs_local);
+            additional_instrs.push(store_lhs_local);
         }
-
-        if arg1_needs_insert {
-            block_instrs.insert(idx, get_arg1);
+        // Only for MOD
+        if let Some(get_local_zero) = get_local_zero {
+            additional_instrs.push(get_local_zero);
         }
 
         //rhs
         if let Some((get_rhs_local, store_rhs_local)) = rhs_store {
-            block_instrs.insert(idx, store_rhs_local);
-            block_instrs.insert(idx, get_rhs_local);
+            additional_instrs.push(get_rhs_local);
+            additional_instrs.push(store_rhs_local);
+        }
+        if arg1_needs_insert {
+            additional_instrs.push(get_arg1);
         }
 
-        // Only for MOD
-        if let Some(get_local_zero) = get_local_zero {
-            block_instrs.insert(idx, get_local_zero);
+        if arg2_needs_insert {
+            additional_instrs.push(get_arg2);
         }
 
-        // lhs
-        if let Some((get_lhs_local, store_lhs_local)) = lhs_store {
-            block_instrs.insert(idx, store_lhs_local);
-            block_instrs.insert(idx, get_lhs_local);
-        }
+        additional_instrs.push(get_result_local);
+        additional_instrs.push(wide_op);
+
+        let mut inserter = InstructionInserter::new(
+            context,
+            block,
+            crate::InsertionPosition::Before(load_result_local),
+        );
+        inserter.insert_slice(&additional_instrs);
     }
 
     Ok(true)
@@ -704,37 +688,35 @@ fn wide_cmp_demotion(context: &mut Context, function: Function) -> Result<bool, 
         )
         .add_metadatum(context, cmp_op_metadata);
 
-        // We don't have an actual instruction _inserter_ yet, just an appender, so we need to find
-        // the ptr_to_int instruction index and insert instructions manually.
-        let block_instrs = &mut context.blocks[block.0].instructions;
-        let idx = block_instrs
-            .iter()
-            .position(|&instr_val| instr_val == cmp_instr_val)
-            .unwrap();
         block
-            .replace_instruction(context, cmp_instr_val, wide_op)
+            .replace_instruction(context, cmp_instr_val, wide_op, true)
             .unwrap();
-        let block_instrs = &mut context.blocks[block.0].instructions;
 
-        if arg2_needs_insert {
-            block_instrs.insert(idx, get_arg2);
-        }
+        let mut additional_instrs = Vec::new();
 
-        if arg1_needs_insert {
-            block_instrs.insert(idx, get_arg1);
+        // lhs
+        if let Some((get_lhs_local, store_lhs_local)) = lhs_store {
+            additional_instrs.push(get_lhs_local);
+            additional_instrs.push(store_lhs_local);
         }
 
         //rhs
         if let Some((get_rhs_local, store_rhs_local)) = rhs_store {
-            block_instrs.insert(idx, store_rhs_local);
-            block_instrs.insert(idx, get_rhs_local);
+            additional_instrs.push(get_rhs_local);
+            additional_instrs.push(store_rhs_local);
         }
 
-        // lhs
-        if let Some((get_lhs_local, store_lhs_local)) = lhs_store {
-            block_instrs.insert(idx, store_lhs_local);
-            block_instrs.insert(idx, get_lhs_local);
+        if arg1_needs_insert {
+            additional_instrs.push(get_arg1);
         }
+
+        if arg2_needs_insert {
+            additional_instrs.push(get_arg2);
+        }
+
+        let mut inserter =
+            InstructionInserter::new(context, block, crate::InsertionPosition::Before(wide_op));
+        inserter.insert_slice(&additional_instrs);
     }
 
     Ok(true)
@@ -840,32 +822,31 @@ fn wide_unary_op_demotion(context: &mut Context, function: Function) -> Result<b
         )
         .add_metadatum(context, unary_op_metadata);
 
-        // We don't have an actual instruction _inserter_ yet, just an appender, so we need to find
-        // the ptr_to_int instruction index and insert instructions manually.
-        let block_instrs = &mut context.blocks[block.0].instructions;
-        let idx = block_instrs
-            .iter()
-            .position(|&instr_val| instr_val == binary_op_instr_val)
-            .unwrap();
-
         block
-            .replace_instruction(context, binary_op_instr_val, load_result_local)
+            .replace_instruction(context, binary_op_instr_val, load_result_local, true)
             .unwrap();
 
-        let block_instrs = &mut context.blocks[block.0].instructions;
-
-        block_instrs.insert(idx, wide_op);
-        block_instrs.insert(idx, get_result_local);
-
-        if arg1_needs_insert {
-            block_instrs.insert(idx, get_arg);
-        }
+        let mut additional_instrs = Vec::new();
 
         // lhs
         if let Some((get_lhs_local, store_lhs_local)) = lhs_store {
-            block_instrs.insert(idx, store_lhs_local);
-            block_instrs.insert(idx, get_lhs_local);
+            additional_instrs.push(get_lhs_local);
+            additional_instrs.push(store_lhs_local);
         }
+
+        if arg1_needs_insert {
+            additional_instrs.push(get_arg);
+        }
+
+        additional_instrs.push(get_result_local);
+        additional_instrs.push(wide_op);
+
+        let mut inserter = InstructionInserter::new(
+            context,
+            block,
+            crate::InsertionPosition::Before(load_result_local),
+        );
+        inserter.insert_slice(&additional_instrs);
     }
 
     Ok(true)
@@ -997,32 +978,31 @@ fn wide_shift_op_demotion(context: &mut Context, function: Function) -> Result<b
         )
         .add_metadatum(context, binary_op_metadata);
 
-        // We don't have an actual instruction _inserter_ yet, just an appender, so we need to find
-        // the ptr_to_int instruction index and insert instructions manually.
-        let block_instrs = &mut context.blocks[block.0].instructions;
-        let idx = block_instrs
-            .iter()
-            .position(|&instr_val| instr_val == binary_op_instr_val)
-            .unwrap();
-
         block
-            .replace_instruction(context, binary_op_instr_val, load_result_local)
+            .replace_instruction(context, binary_op_instr_val, load_result_local, true)
             .unwrap();
 
-        let block_instrs = &mut context.blocks[block.0].instructions;
-
-        block_instrs.insert(idx, wide_op);
-        block_instrs.insert(idx, get_result_local);
-
-        if arg1_needs_insert {
-            block_instrs.insert(idx, get_arg1);
-        }
+        let mut additional_instrs = Vec::new();
 
         // lhs
         if let Some((get_lhs_local, store_lhs_local)) = lhs_store {
-            block_instrs.insert(idx, store_lhs_local);
-            block_instrs.insert(idx, get_lhs_local);
+            additional_instrs.push(get_lhs_local);
+            additional_instrs.push(store_lhs_local);
         }
+
+        if arg1_needs_insert {
+            additional_instrs.push(get_arg1);
+        }
+
+        additional_instrs.push(get_result_local);
+        additional_instrs.push(wide_op);
+
+        let mut inserter = InstructionInserter::new(
+            context,
+            block,
+            crate::InsertionPosition::Before(load_result_local),
+        );
+        inserter.insert_slice(&additional_instrs);
     }
 
     Ok(true)

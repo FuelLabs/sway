@@ -106,14 +106,19 @@ impl Instantiate {
     /// Instantiates a [ty::TyExpressionVariant::CodeBlock] with a single
     /// [ty::TyAstNodeContent::ImplicitReturnExpression] that returns the `value`.
     pub(super) fn code_block_with_implicit_return_u64(&self, value: u64) -> ty::TyExpression {
+        let ret_expr = ty::TyExpression {
+            expression: ty::TyExpressionVariant::Literal(Literal::U64(value)),
+            return_type: self.u64_type,
+            span: self.dummy_span(),
+        };
         ty::TyExpression {
             expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
                 whole_block_span: self.dummy_span(),
                 contents: vec![ty::TyAstNode {
-                    content: ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
-                        expression: ty::TyExpressionVariant::Literal(Literal::U64(value)),
-                        return_type: self.u64_type,
-                        span: self.dummy_span(),
+                    content: ty::TyAstNodeContent::Expression(ty::TyExpression {
+                        return_type: ret_expr.return_type,
+                        span: ret_expr.span.clone(),
+                        expression: ty::TyExpressionVariant::ImplicitReturn(Box::new(ret_expr)),
                     }),
                     span: self.dummy_span(),
                 }],
@@ -129,27 +134,28 @@ impl Instantiate {
         &self,
         revert_code: u64,
     ) -> ty::TyExpression {
+        let ret_expr = ty::TyExpression {
+            expression: ty::TyExpressionVariant::IntrinsicFunction(ty::TyIntrinsicFunctionKind {
+                kind: sway_ast::Intrinsic::Revert,
+                arguments: vec![ty::TyExpression {
+                    expression: ty::TyExpressionVariant::Literal(Literal::U64(revert_code)),
+                    return_type: self.u64_type,
+                    span: self.dummy_span(),
+                }],
+                type_arguments: vec![],
+                span: self.dummy_span(),
+            }),
+            return_type: self.revert_type,
+            span: self.dummy_span(),
+        };
         ty::TyExpression {
             expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
                 whole_block_span: self.dummy_span(),
                 contents: vec![ty::TyAstNode {
-                    content: ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
-                        expression: ty::TyExpressionVariant::IntrinsicFunction(
-                            ty::TyIntrinsicFunctionKind {
-                                kind: sway_ast::Intrinsic::Revert,
-                                arguments: vec![ty::TyExpression {
-                                    expression: ty::TyExpressionVariant::Literal(Literal::U64(
-                                        revert_code,
-                                    )),
-                                    return_type: self.u64_type,
-                                    span: self.dummy_span(),
-                                }],
-                                type_arguments: vec![],
-                                span: self.dummy_span(),
-                            },
-                        ),
-                        return_type: self.revert_type,
-                        span: self.dummy_span(),
+                    content: ty::TyAstNodeContent::Expression(ty::TyExpression {
+                        return_type: ret_expr.return_type,
+                        span: ret_expr.span.clone(),
+                        expression: ty::TyExpressionVariant::ImplicitReturn(Box::new(ret_expr)),
                     }),
                     span: self.dummy_span(),
                 }],
