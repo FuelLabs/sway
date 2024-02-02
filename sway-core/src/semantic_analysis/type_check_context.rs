@@ -896,7 +896,7 @@ impl<'a> TypeCheckContext<'a> {
         // grab the local module
         let local_module = self
             .namespace
-            .root().module
+            .root_module()
             .check_submodule(handler, &self.namespace.mod_path)?;
 
         // grab the local items from the local module
@@ -919,7 +919,7 @@ impl<'a> TypeCheckContext<'a> {
         // grab the module where the type itself is declared
         let type_module = self
             .namespace
-            .root().module
+            .root_module()
             .check_submodule(handler, item_prefix)?;
 
         // grab the items from where the type is declared

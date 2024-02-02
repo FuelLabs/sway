@@ -70,9 +70,9 @@ impl Namespace {
         &self.root
     }
 
-    /// A mutable reference to the root of the project namespace.
-    pub fn root_mut(&mut self) -> &mut Root {
-        &mut self.root
+    /// A reference to the root module of the project namespace.
+    pub fn root_module(&self) -> &Module {
+        &self.root.module
     }
 
     /// Access to the current [Module], i.e. the module at the inner `mod_path`.
@@ -196,7 +196,7 @@ impl Namespace {
         src: &Path,
         is_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
-	self.root.module.star_import(
+	self.root.module.tar_import(
             handler,
             engines,
             src,
