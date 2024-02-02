@@ -427,7 +427,10 @@ impl Items {
                             return Err(handler.emit_err(CompileError::TupleIndexOutOfBounds {
                                 index: *index,
                                 count: fields.len(),
-                                span: Span::join(full_span_for_error, index_span.clone()),
+                                tuple_type: engines.help_out(symbol).to_string(),
+                                referencing_level: type_engine.get_referencing_level(symbol),
+                                span:  index_span.clone(),
+                                prefix_span: full_span_for_error.clone(),
                             }));
                         }
                     };
@@ -460,10 +463,12 @@ impl Items {
                         span: full_span_for_error,
                     }));
                 }
-                (actually, ty::ProjectionKind::TupleField { .. }) => {
-                    return Err(handler.emit_err(CompileError::NotATuple {
+                (actually, ty::ProjectionKind::TupleField { index, index_span, .. }) => {
+                    return Err(handler.emit_err(CompileError::TupleElementAccessOnNonTuple {
                         actually: engines.help_out(actually).to_string(),
                         span: full_span_for_error,
+                        index: *index,
+                        index_span: index_span.clone(),
                     }));
                 }
                 (actually, ty::ProjectionKind::ArrayIndex { .. }) => {

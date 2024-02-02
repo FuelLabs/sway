@@ -303,8 +303,13 @@ pub enum CompileError {
         field_name: IdentUnique,
         span: Span,
     },
-    #[error("This is a {actually}, not a tuple. Elements can only be access on tuples.")]
-    NotATuple { actually: String, span: Span },
+    #[error("This expression has type \"{actually}\", which is not a tuple. Elements can be access only on tuples.")]
+    TupleElementAccessOnNonTuple {
+        actually: String,
+        span: Span,
+        index: usize,
+        index_span: Span,
+    },
     #[error("This expression has type \"{actually}\", which is not an indexable type.")]
     NotIndexable { actually: String, span: Span },
     #[error("\"{name}\" is a {actually}, not an enum.")]
@@ -555,11 +560,19 @@ pub enum CompileError {
     InvalidOpcodeFromPredicate { opcode: String, span: Span },
     #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
     ArrayOutOfBounds { index: u64, count: u64, span: Span },
-    #[error("Tuple index out of bounds; the arity is {count} but the index is {index}.")]
+    #[error("Tuple index {index} is out of bounds. The tuple has {count} element{}.", plural_s(*count))]
     TupleIndexOutOfBounds {
         index: usize,
         count: usize,
+        tuple_type: String,
+        /// Denotes if the tuple element access occurs over
+        /// references. The meaning of the `referencing_level` is:
+        ///   0 - no referencing. Element access directly on a tuple type.
+        ///   1 - single referencing. Element access over a reference to a tuple type.
+        ///   n - n levels of referencing. Element access over a reference to a reference ... to a tuple type.
+        referencing_level: usize,
         span: Span,
+        prefix_span: Span,
     },
     #[error("Constants cannot be shadowed. {variable_or_constant} \"{name}\" shadows constant with the same name.")]
     ConstantsCannotBeShadowed {
@@ -894,7 +907,7 @@ impl Spanned for CompileError {
             StructFieldDoesNotExist { field_name, .. } => field_name.span(),
             MethodNotFound { span, .. } => span.clone(),
             ModuleNotFound { span, .. } => span.clone(),
-            NotATuple { span, .. } => span.clone(),
+            TupleElementAccessOnNonTuple { span, .. } => span.clone(),
             NotAStruct { span, .. } => span.clone(),
             NotIndexable { span, .. } => span.clone(),
             FieldAccessOnNonStruct { span, .. } => span.clone(),
@@ -1818,6 +1831,62 @@ impl ToDiagnostic for CompileError {
                 },
                 help: vec![],
             },
+            TupleIndexOutOfBounds { index, count, tuple_type, referencing_level, span, prefix_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Tuple index is out of bounds".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("Tuple index {index} is out of bounds. The {}tuple has only {count} element{}.",
+                        if *referencing_level > 0 {
+                            "referenced "
+                        } else {
+                            ""
+                        },
+                        plural_s(*count)
+                    )
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        prefix_span.clone(),
+                        format!("This expression has type \"{tuple_type}\".")
+                    ),
+                    Hint::info(
+                        source_engine,
+                        prefix_span.clone(),
+                        format!("That is {} tuple of only {} element{}.",
+                            match *referencing_level {
+                                0 => "a",
+                                1 => "a reference to a",
+                                _ => "an indirect reference to a",
+                            },
+                            number_to_str(*count),
+                            plural_s(*count)
+                        )
+                    )
+                ],
+                help: vec![],
+            },
+            TupleElementAccessOnNonTuple { actually, span, index, index_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Tuple element access requires a tuple".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("This expression has type \"{actually}\", which is not a tuple or a reference to a tuple.")
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        index_span.clone(),
+                        format!("Tuple element access happens here, on the index {index}.")
+                    )
+                ],
+                help: vec![
+                    "In Sway, tuple elements can be accessed on:".to_string(),
+                    format!("{}- tuples. E.g., `my_tuple.1`.", Indent::Single),
+                    format!("{}- references, direct or indirect, to tuples. E.g., `(&my_tuple).1` or `(&&&my_tuple).1`.", Indent::Single),
+                ],
+            },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we
@@ -1861,7 +1930,7 @@ pub enum StructFieldUsageContext {
     StorageAccess,
     PatternMatching { has_rest_pattern: bool },
     StructFieldAccess,
-    // TODO: Distinguish between struct filed access and destructing
+    // TODO: Distinguish between struct field access and destructing
     //       once https://github.com/FuelLabs/sway/issues/5478 is implemented
     //       and provide specific suggestions for these two cases.
     //       (Destructing desugars to plain struct field access.)

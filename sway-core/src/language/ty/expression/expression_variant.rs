@@ -103,6 +103,13 @@ pub enum TyExpressionVariant {
     TupleElemAccess {
         prefix: Box<TyExpression>,
         elem_to_access_num: usize,
+        /// Final resolved type of the `prefix` part
+        /// of the expression. This will always be
+        /// a [TypeId] of a tuple, never an alias
+        /// or a reference to a tuple.
+        /// The original parent might be an alias
+        /// or a direct or indirect reference to a
+        /// tuple.
         resolved_type_of_parent: TypeId,
         elem_to_access_span: Span,
     },

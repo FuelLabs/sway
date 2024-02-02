@@ -1855,7 +1855,7 @@ impl ty::TyExpression {
                 _ => {
                     return Err(handler.emit_err(CompileError::NotIndexable {
                         actually: engines.help_out(prefix_type_id).to_string(),
-                        span: prefix_span.clone(),
+                        span: prefix_span,
                     }))
                 }
             };
