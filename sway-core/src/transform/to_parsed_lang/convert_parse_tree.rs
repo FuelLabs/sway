@@ -1626,7 +1626,10 @@ fn expr_to_ast_node(
         let expression = expr_to_expression(context, handler, engines, expr)?;
         if !is_statement {
             AstNode {
-                content: AstNodeContent::ImplicitReturnExpression(expression),
+                content: AstNodeContent::Expression(Expression {
+                    kind: ExpressionKind::ImplicitReturn(Box::new(expression)),
+                    span: span.clone(),
+                }),
                 span,
             }
         } else {
@@ -2867,11 +2870,14 @@ fn match_expr_to_expression(
                     span: span.clone(),
                 },
                 AstNode {
-                    content: AstNodeContent::ImplicitReturnExpression(Expression {
-                        kind: ExpressionKind::Match(MatchExpression {
-                            value: Box::new(var_decl_exp),
-                            branches,
-                        }),
+                    content: AstNodeContent::Expression(Expression {
+                        kind: ExpressionKind::ImplicitReturn(Box::new(Expression {
+                            kind: ExpressionKind::Match(MatchExpression {
+                                value: Box::new(var_decl_exp),
+                                branches,
+                            }),
+                            span: span.clone(),
+                        })),
                         span: span.clone(),
                     }),
                     span: span.clone(),
