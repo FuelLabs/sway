@@ -70,9 +70,9 @@ impl Namespace {
         &self.root
     }
 
-    /// A mutable reference to the root of the project namespace.
-    pub fn root_mut(&mut self) -> &mut Root {
-        &mut self.root
+    /// A reference to the root module of the project namespace.
+    pub fn root_module(&self) -> &Module {
+        &self.root.module
     }
 
     /// Access to the current [Module], i.e. the module at the inner `mod_path`.
@@ -196,6 +196,23 @@ impl Namespace {
             false
         }
     }
+
+//    /// Import into this namespace a path that contains an asterisk.
+//    pub(crate) fn star_import(
+//        &mut self,
+//        handler: &Handler,
+//        engines: &Engines,
+//        src: &Path,
+//        is_absolute: bool,
+//    ) -> Result<(), ErrorEmitted> {
+//	self.root.module.star_import(
+//            handler,
+//            engines,
+//            src,
+//            &self.mod_path,
+//            is_absolute,
+//	)
+//    }
 
     /// Returns true if the module given by the `absolute_module_path` is external
     /// to the current package. External modules are imported in the `Forc.toml` file.

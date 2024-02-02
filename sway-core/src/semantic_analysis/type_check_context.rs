@@ -915,7 +915,7 @@ impl<'a> TypeCheckContext<'a> {
         // grab the local module
         let local_module = self
             .namespace
-            .root().module
+            .root_module()
             .check_submodule(handler, &self.namespace.mod_path)?;
 
         // grab the local items from the local module
@@ -938,7 +938,7 @@ impl<'a> TypeCheckContext<'a> {
         // grab the module where the type itself is declared
         let type_module = self
             .namespace
-            .root().module
+            .root_module()
             .check_submodule(handler, item_prefix)?;
 
         // grab the items from where the type is declared
@@ -1233,9 +1233,9 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Result<(), ErrorEmitted> {
         self.namespace.root.module.star_import(
             handler,
+            self.engines,
             src,
             &self.namespace.mod_path,
-            self.engines,
             is_absolute,
         )
     }
@@ -1250,9 +1250,9 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Result<(), ErrorEmitted> {
         self.namespace.root.module.variant_star_import(
             handler,
+            self.engines,
             src,
             &self.namespace.mod_path,
-            self.engines,
             enum_name,
             is_absolute,
         )

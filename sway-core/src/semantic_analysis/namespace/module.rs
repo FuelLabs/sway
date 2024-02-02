@@ -247,9 +247,9 @@ impl Module {
     pub(crate) fn star_import(
         &mut self,
         handler: &Handler,
+        engines: &Engines,
         src: &Path,
         dst: &Path,
-        engines: &Engines,
         is_src_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
         self.check_module_privacy(handler, src, dst)?;
@@ -294,9 +294,9 @@ impl Module {
     pub fn star_import_with_reexports(
         &mut self,
         handler: &Handler,
+        engines: &Engines,
         src: &Path,
         dst: &Path,
-        engines: &Engines,
         is_src_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
         self.check_module_privacy(handler, src, dst)?;
@@ -574,9 +574,9 @@ impl Module {
     pub(crate) fn variant_star_import(
         &mut self,
         handler: &Handler,
+        engines: &Engines,
         src: &Path,
         dst: &Path,
-        engines: &Engines,
         enum_name: &Ident,
         is_src_absolute: bool,
     ) -> Result<(), ErrorEmitted> {

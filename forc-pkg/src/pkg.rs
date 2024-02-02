@@ -1656,18 +1656,18 @@ pub fn dependency_namespace(
 
     let _ = namespace.star_import_with_reexports(
         &Handler::default(),
+        engines,
         &[CORE, PRELUDE].map(|s| Ident::new_no_span(s.into())),
         &[],
-        engines,
         true,
     );
 
     if has_std_dep(graph, node) {
         let _ = namespace.star_import_with_reexports(
             &Handler::default(),
+            engines,
             &[STD, PRELUDE].map(|s| Ident::new_no_span(s.into())),
             &[],
-            engines,
             true,
         );
     }
