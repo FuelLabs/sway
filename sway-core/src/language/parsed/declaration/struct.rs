@@ -13,6 +13,7 @@ pub struct StructDeclaration {
 
 #[derive(Debug, Clone)]
 pub struct StructField {
+    pub visibility: Visibility,
     pub name: Ident,
     pub attributes: transform::AttributesMap,
     pub(crate) span: Span,

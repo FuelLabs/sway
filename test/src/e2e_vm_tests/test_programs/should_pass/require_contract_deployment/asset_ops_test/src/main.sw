@@ -6,12 +6,6 @@ use std::contract_id::*;
 use std::constants::DEFAULT_SUB_ID;
 use test_fuel_coin_abi::*;
 
-struct Opts {
-    gas: u64,
-    coins: u64,
-    id: ContractId,
-}
-
 fn main() -> bool {
     let default_gas = 1_000_000_000_000;
 

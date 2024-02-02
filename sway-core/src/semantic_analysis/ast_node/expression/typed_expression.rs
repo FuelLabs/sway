@@ -924,11 +924,18 @@ impl ty::TyExpression {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
-        let ctx = ctx
+        let mut ctx = ctx
             .with_help_text("")
             .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
-        let parent = ty::TyExpression::type_check(handler, ctx, prefix)?;
-        let exp = instantiate_struct_field_access(handler, engines, parent, field_to_access, span)?;
+        let parent = ty::TyExpression::type_check(handler, ctx.by_ref(), prefix)?;
+        let exp = instantiate_struct_field_access(
+            handler,
+            engines,
+            ctx.namespace,
+            parent,
+            field_to_access,
+            span,
+        )?;
         Ok(exp)
     }
 
@@ -1018,6 +1025,7 @@ impl ty::TyExpression {
         let (storage_access, mut access_type) = ctx.namespace.apply_storage_load(
             handler,
             ctx.engines,
+            ctx.namespace,
             checkee,
             &storage_fields,
             storage_keyword_span,
@@ -1791,65 +1799,70 @@ impl ty::TyExpression {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
-        let prefix_te = {
+        let mut current_prefix_te = Box::new({
             let ctx = ctx
                 .by_ref()
                 .with_help_text("")
                 .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
-            ty::TyExpression::type_check(handler, ctx, prefix.clone())?
-        };
 
-        fn get_array_type(ty: TypeId, type_engine: &TypeEngine) -> Option<TypeInfo> {
-            match &*type_engine.get(ty) {
-                TypeInfo::Array(..) => Some((*type_engine.get(ty)).clone()),
-                TypeInfo::Alias { ty, .. } => get_array_type(ty.type_id, type_engine),
-                _ => None,
-            }
+            ty::TyExpression::type_check(handler, ctx, prefix)?
+        });
+
+        let mut current_type = type_engine.get_unaliased(current_prefix_te.return_type);
+
+        let prefix_type_id = current_prefix_te.return_type;
+        let prefix_span = current_prefix_te.span.clone();
+
+        // Create the prefix part of the final array index expression.
+        // This might be an expression that directly evaluates to an array type,
+        // or an arbitrary number of dereferencing expressions where the last one
+        // dereference to an array type.
+        //
+        // We will either hit an array at the end or return an error, so the
+        // loop cannot be endless.
+        while !current_type.is_array() {
+            match &*current_type {
+                TypeInfo::Ref(referenced_type) => {
+                    let referenced_type_id = referenced_type.type_id;
+
+                    current_prefix_te = Box::new(ty::TyExpression {
+                        expression: ty::TyExpressionVariant::Deref(current_prefix_te),
+                        return_type: referenced_type_id,
+                        span: prefix_span.clone(),
+                    });
+
+                    current_type = type_engine.get_unaliased(referenced_type_id);
+                }
+                _ => {
+                    return Err(handler.emit_err(CompileError::NotIndexable {
+                        actually: engines.help_out(prefix_type_id).to_string(),
+                        span: prefix_span.clone(),
+                    }))
+                }
+            };
         }
 
-        // If the return type is a static array then create a `ty::TyExpressionVariant::ArrayIndex`.
-        if let Some(TypeInfo::Array(elem_type, _)) =
-            get_array_type(prefix_te.return_type, type_engine)
-        {
+        let TypeInfo::Array(array_type_argument, _) = &*current_type else {
+            panic!("The current type must be an array.");
+        };
+
+        let index_te = {
             let type_info_u64 = TypeInfo::UnsignedInteger(IntegerBits::SixtyFour);
             let ctx = ctx
                 .with_help_text("")
                 .with_type_annotation(type_engine.insert(engines, type_info_u64, None));
-            let index_te = ty::TyExpression::type_check(handler, ctx, index)?;
 
-            Ok(ty::TyExpression {
-                expression: ty::TyExpressionVariant::ArrayIndex {
-                    prefix: Box::new(prefix_te),
-                    index: Box::new(index_te),
-                },
-                return_type: elem_type.type_id,
-                span,
-            })
-        } else {
-            // Otherwise convert into a method call 'index(self, index)' via the std::ops::Index trait.
-            let method_name = TypeBinding {
-                inner: MethodName::FromTrait {
-                    call_path: CallPath {
-                        prefixes: vec![
-                            Ident::new_with_override("core".into(), span.clone()),
-                            Ident::new_with_override("ops".into(), span.clone()),
-                        ],
-                        suffix: Ident::new_with_override("index".into(), span.clone()),
-                        is_absolute: true,
-                    },
-                },
-                type_arguments: TypeArgs::Regular(vec![]),
-                span: span.clone(),
-            };
-            type_check_method_application(
-                handler,
-                ctx,
-                method_name,
-                vec![],
-                vec![prefix, index],
-                span,
-            )
-        }
+            ty::TyExpression::type_check(handler, ctx, index)?
+        };
+
+        Ok(ty::TyExpression {
+            expression: ty::TyExpressionVariant::ArrayIndex {
+                prefix: current_prefix_te,
+                index: Box::new(index_te),
+            },
+            return_type: array_type_argument.type_id,
+            span,
+        })
     }
 
     fn type_check_intrinsic_function(
@@ -1993,6 +2006,7 @@ impl ty::TyExpression {
                 let (ty_of_field, _ty_of_parent) = ctx.namespace.find_subfield_type(
                     handler,
                     ctx.engines(),
+                    ctx.namespace,
                     &base_name,
                     &names_vec,
                 )?;

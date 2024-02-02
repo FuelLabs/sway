@@ -5,9 +5,20 @@
 <!-- This section should explain structs in Sway -->
 <!-- structs:example:start -->
 Structs in Sway are a named grouping of types. You may also be familiar with structs via another name: _product types_. Sway does not make any significantly unique usages of structs; they are similar to most other languages which have structs. If you're coming from an object-oriented background, a struct is like the data attributes of an object.
+
+Those data attributes are called _fields_ and can be either public or private.
+
+Private struct fields can be accessed only within the module in which their struct is declared. Public fields are accessible everywhere where the struct is accessible. This access control on the field level allows more fine grained encapsulation of data.
+
 <!-- structs:example:end -->
 
-Firstly, we declare a struct named `Foo` with two fields. The first field is named `bar` and it accepts values of type `u64`, the second field is named `baz` and it accepts `bool` values.
+To explain these concepts, let's take a look at the following example, in which we have a module called _data_structures_.
+
+In that module, we declare a struct named `Foo` with two fields. The first field is named `bar`, it is public and it accepts values of type `u64`. The second field is named `baz`, it is also public and it accepts `bool` values.
+
+In a similar way, we define the structs `Point`, `Line`, and `TupleInStruct`. Since all those structs are public, and all their fields are public, they can be instantiated in other modules using the _struct instantiation syntax_ as shown below.
+
+On the other hand, the struct `StructWithPrivateFields` can be instantiated only within the _data_structures_ module, because it contains private fields. To be able to create instances of such structs outside of the module in which they are declared, the struct must offer [constructor associated functions](methods_and_associated_functions.md#constructors).
 
 ```sway
 {{#include ../../../../examples/structs/src/data_structures.sw}}

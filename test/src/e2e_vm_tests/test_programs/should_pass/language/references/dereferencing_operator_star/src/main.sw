@@ -258,10 +258,7 @@ fn test_all_inlined() {
     dereference_array::<u16>();
     dereference_array::<u32>();
     dereference_array::<u64>();
-    // TODO-IG: Uncomment once this issue is solved: https://github.com/FuelLabs/sway/issues/5377 
-    // thread 'main' panicked at sway-ir/src/optimize/sroa.rs:174:25:
-    // assertion failed: ty.is_aggregate(context)
-    //dereference_array::<u256>();
+    dereference_array::<u256>();
     dereference_array::<[u64;2]>();
     dereference_array::<[u64;0]>();
     dereference_array::<Struct>();
@@ -280,8 +277,7 @@ fn test_all_inlined() {
     dereference_tuple::<u16>();
     dereference_tuple::<u32>();
     dereference_tuple::<u64>();
-    // TODO-IG: Uncomment once this issue is solved: https://github.com/FuelLabs/sway/issues/5377 
-    //dereference_tuple::<u256>();
+    dereference_tuple::<u256>();
     dereference_tuple::<[u64;2]>();
     dereference_tuple::<[u64;0]>();
     dereference_tuple::<Struct>();
@@ -300,8 +296,7 @@ fn test_all_inlined() {
     dereference_struct::<u16>();
     dereference_struct::<u32>();
     dereference_struct::<u64>();
-    // TODO-IG: Uncomment once this issue is solved: https://github.com/FuelLabs/sway/issues/5377 
-    //dereference_struct::<u256>();
+    dereference_struct::<u256>();
     dereference_struct::<[u64;2]>();
     dereference_struct::<[u64;0]>();
     dereference_struct::<Struct>();
@@ -361,8 +356,7 @@ fn test_not_inlined() {
     dereference_array_not_inlined::<u16>();
     dereference_array_not_inlined::<u32>();
     dereference_array_not_inlined::<u64>();
-    // TODO-IG: Uncomment once this issue is solved: https://github.com/FuelLabs/sway/issues/5377 
-    //dereference_array_not_inlined::<u256>();
+    dereference_array_not_inlined::<u256>();
     dereference_array_not_inlined::<[u64;2]>();
     dereference_array_not_inlined::<[u64;0]>();
     dereference_array_not_inlined::<Struct>();
@@ -381,8 +375,7 @@ fn test_not_inlined() {
     dereference_tuple_not_inlined::<u16>();
     dereference_tuple_not_inlined::<u32>();
     dereference_tuple_not_inlined::<u64>();
-    // TODO-IG: Uncomment once this issue is solved: https://github.com/FuelLabs/sway/issues/5377 
-    //dereference_tuple_not_inlined::<u256>();
+    dereference_tuple_not_inlined::<u256>();
     dereference_tuple_not_inlined::<[u64;2]>();
     dereference_tuple_not_inlined::<[u64;0]>();
     dereference_tuple_not_inlined::<Struct>();
@@ -401,8 +394,7 @@ fn test_not_inlined() {
     dereference_struct_not_inlined::<u16>();
     dereference_struct_not_inlined::<u32>();
     dereference_struct_not_inlined::<u64>();
-    // TODO-IG: Uncomment once this issue is solved: https://github.com/FuelLabs/sway/issues/5377 
-    //dereference_struct_not_inlined::<u256>();
+    dereference_struct_not_inlined::<u256>();
     dereference_struct_not_inlined::<[u64;2]>();
     dereference_struct_not_inlined::<[u64;0]>();
     dereference_struct_not_inlined::<Struct>();

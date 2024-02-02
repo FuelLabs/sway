@@ -410,7 +410,7 @@ where
 ///
 /// fn foo() {
 ///     let result = sha256("Fuel");
-///     assert(result = 0xa80f942f4112036dfc2da86daf6d2ef6ede3164dd56d1000eb82fa87c992450f);
+///     assert(result == 0xa80f942f4112036dfc2da86daf6d2ef6ede3164dd56d1000eb82fa87c992450f);
 /// }
 /// ```
 #[inline(never)]
@@ -433,7 +433,7 @@ where
 ///
 /// fn foo() {
 ///     let result = sha256_str_array(__to_str_array("Fuel"));
-///     assert(result = 0xa80f942f4112036dfc2da86daf6d2ef6ede3164dd56d1000eb82fa87c992450f);
+///     assert(result == 0xa80f942f4112036dfc2da86daf6d2ef6ede3164dd56d1000eb82fa87c992450f);
 /// }
 /// ```
 #[inline(never)]
@@ -469,7 +469,7 @@ pub fn sha256_str_array<S>(param: S) -> b256 {
 ///
 /// fn foo() {
 ///     let result = keccak256("Fuel");
-///     assert(result = 0x4375c8bcdc904e5f51752581202ae9ae2bb6eddf8de05d5567d9a6b0ae4789ad);
+///     assert(result == 0x4375c8bcdc904e5f51752581202ae9ae2bb6eddf8de05d5567d9a6b0ae4789ad);
 /// }
 /// ```
 #[inline(never)]

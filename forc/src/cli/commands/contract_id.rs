@@ -22,7 +22,7 @@ pub struct Command {
     pub salt: Salt,
 
     #[clap(long)]
-    /// Experimental flags for the "new encoding" feature
+    /// Experimental flag for the "new encoding" feature
     pub experimental_new_encoding: bool,
 }
 

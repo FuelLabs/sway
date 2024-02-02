@@ -14,6 +14,8 @@ pub(crate) mod engine;
 pub mod id;
 pub(crate) mod interface_decl_id;
 pub(crate) mod mapping;
+pub(crate) mod parsed_engine;
+pub mod parsed_id;
 pub(crate) mod r#ref;
 pub(crate) mod replace_decls;
 pub(crate) mod template;

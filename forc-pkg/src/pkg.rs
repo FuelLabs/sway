@@ -11,7 +11,7 @@ use forc_util::{
     default_output_directory, find_file_name, kebab_to_snake_case, print_compiling,
     print_on_failure, print_warnings,
 };
-use fuel_abi_types::program_abi;
+use fuel_abi_types::abi::program as program_abi;
 use petgraph::{
     self, dot,
     visit::{Bfs, Dfs, EdgeRef, Walker},
@@ -1596,7 +1596,8 @@ pub fn sway_build_config(
     .with_optimization_level(build_profile.optimization_level)
     .with_experimental(sway_core::ExperimentalFlags {
         new_encoding: build_profile.experimental.new_encoding,
-    });
+    })
+    .with_lsp_mode(build_profile.lsp_mode);
     Ok(build_config)
 }
 
@@ -1850,6 +1851,8 @@ pub fn compile(
         metrics
     );
 
+    const NEW_ENCODING_VERSION: &str = "1";
+
     let mut program_abi = match pkg.target {
         BuildTarget::Fuel => {
             let mut types = vec![];
@@ -1863,7 +1866,11 @@ pub fn compile(
                     },
                     engines.te(),
                     engines.de(),
-                    &mut types
+                    &mut types,
+                    profile
+                        .experimental
+                        .new_encoding
+                        .then(|| NEW_ENCODING_VERSION.into()),
                 ),
                 Some(sway_build_config.clone()),
                 metrics
@@ -2620,6 +2627,7 @@ pub fn check(
     plan: &BuildPlan,
     build_target: BuildTarget,
     terse_mode: bool,
+    lsp_mode: bool,
     include_tests: bool,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
@@ -2667,7 +2675,8 @@ pub fn check(
             build_target,
             &profile,
         )?
-        .with_include_tests(include_tests);
+        .with_include_tests(include_tests)
+        .with_lsp_mode(lsp_mode);
 
         let input = manifest.entry_string()?;
         let handler = Handler::default();

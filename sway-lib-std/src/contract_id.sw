@@ -7,7 +7,7 @@ use ::hash::{Hash, Hasher};
 /// The `ContractId` type, a struct wrapper around the inner `b256` value.
 pub struct ContractId {
     /// The underlying raw `b256` data of the contract id.
-    value: b256,
+    pub value: b256,
 }
 
 impl core::ops::Eq for ContractId {
@@ -40,7 +40,9 @@ impl From<b256> for ContractId {
     fn from(bits: b256) -> Self {
         Self { value: bits }
     }
+}
 
+impl From<ContractId> for b256 {
     /// Casts a `ContractId` to raw `b256` data.
     ///
     /// # Returns
@@ -58,8 +60,8 @@ impl From<b256> for ContractId {
     ///     assert(b256_data == ZERO_B256);
     /// }
     /// ```
-    fn into(self) -> b256 {
-        self.value
+    fn from(id: ContractId) -> b256 {
+        id.value
     }
 }
 
