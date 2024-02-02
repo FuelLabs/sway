@@ -29,7 +29,7 @@ pub(crate) fn instantiate_struct_field_access(
     // Create the prefix part of the final struct field access expression.
     // This might be an expression that directly evaluates to a struct type,
     // or an arbitrary number of dereferencing expressions where the last one
-    // dereference to a struct type.
+    // dereferences to a struct type.
     //
     // We will either hit a struct at the end or return an error, so the
     // loop cannot be endless.

@@ -85,7 +85,7 @@ pub(super) fn get_struct_for_types(
 /// For the [TypeInfo::Struct] given by `struct_type_id` and the
 /// [ty::ProjectionKind::StructField] given by `field_kind`
 /// returns the name of the struct, and the field index within
-/// the struct together with the filed [TypeId] if the field exists
+/// the struct together with the field [TypeId] if the field exists
 /// on the struct.
 ///
 /// Returns `None` if the `struct_type_id` is not a [TypeInfo::Struct]

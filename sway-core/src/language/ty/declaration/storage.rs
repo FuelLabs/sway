@@ -117,7 +117,7 @@ impl TyStorageDecl {
         // Storage cannot contain references, so there is no need for checking
         // if the declaration is a reference to a struct. References can still
         // be erroneously declared in the storage, and the type behind a concrete
-        // filed access might be a reference to struct, but we do not treat that
+        // field access might be a reference to struct, but we do not treat that
         // as a special case but just another one "not a struct".
         // The FieldAccessOnNonStruct error message will explain that in the case
         // of storage access, fields can be accessed only on structs.
