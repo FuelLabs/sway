@@ -65,3 +65,6 @@ tower = { version = "0.4.12", default-features = false, features = ["util"] }
 [[bench]]
 name = "bench_main"
 harness = false
+
+[lib]
+bench = false

@@ -307,26 +307,16 @@ jobs:
       - name: Cargo Test sway-lib-std
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 
-  compare-benchmarks:
-    name: Compare benchmarks against master
+  benchmark-sway-lsp:
+    name: Compare sway-lsp benchmarks against master
     runs-on: ubuntu-latest
     steps:
       - uses: Swatinem/rust-cache@v2
       - uses: actions/checkout@v3
       - uses: boa-dev/criterion-compare-action@v3.2.4
         with:
-          # cwd: "subDirectory (optional)"
-          # # Optional. Compare only this package
-          # package: "example-package"
-          # # Optional. Compare only this benchmark target
-          # benchName: "example-bench-target"
-          # # Optional. Disables the default features of a crate
-          # defaultFeatures: false
-          # Optional. Features activated in the benchmark
-          # features: "async,tokio-support"
-          # Needed. The name of the branch to compare with. This default uses the branch which is being pulled against
+          package: "sway-lsp"
           branchName: ${{ github.base_ref }}
-          # Optional. Default is `${{ github.token }}`.
           token: ${{ secrets.GITHUB_TOKEN }}
 
   forc-run-benchmarks:
