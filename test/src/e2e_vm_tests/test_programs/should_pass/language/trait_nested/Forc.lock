@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-7AAE81D36BEAEB00"
+
+[[package]]
+name = "std"
+source = "path+from-root-7AAE81D36BEAEB00"
+dependencies = ["core"]
+
+[[package]]
+name = "trait_nested"
+source = "member"
+dependencies = ["std"]

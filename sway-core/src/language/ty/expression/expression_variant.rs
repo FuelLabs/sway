@@ -618,6 +618,7 @@ impl SubstTypes for TyExpressionVariant {
             FunctionApplication {
                 arguments,
                 ref mut fn_ref,
+                ref mut call_path_typeid,
                 ..
             } => {
                 arguments
@@ -627,6 +628,9 @@ impl SubstTypes for TyExpressionVariant {
                     .clone()
                     .subst_types_and_insert_new_with_parent(type_mapping, engines);
                 fn_ref.replace_id(*new_decl_ref.id());
+                if let Some(call_path_typeid) = call_path_typeid {
+                    call_path_typeid.subst(type_mapping, engines);
+                }
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).subst(type_mapping, engines);
@@ -771,15 +775,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     ref mut arguments,
                     ..
                 } => {
-                    let filter_type_opt = arguments.first().map(|(_, arg)| arg.return_type);
-
-                    if let Some(filter_type) = filter_type_opt {
-                        let filtered_decl_mapping =
-                            decl_mapping.filter_functions_by_self_type(filter_type, ctx.engines());
-                        fn_ref.replace_decls(&filtered_decl_mapping, handler, ctx)?;
-                    } else {
-                        fn_ref.replace_decls(decl_mapping, handler, ctx)?;
-                    };
+                    fn_ref.replace_decls(decl_mapping, handler, ctx)?;
 
                     let new_decl_ref = fn_ref.clone().replace_decls_and_insert_new_with_parent(
                         decl_mapping,
