@@ -27,6 +27,7 @@ sway-core = { version = "0.50.0", path = "../sway-core" }
 sway-error = { version = "0.50.0", path = "../sway-error" }
 sway-types = { version = "0.50.0", path = "../sway-types" }
 sway-utils = { version = "0.50.0", path = "../sway-utils" }
+thread-id = "4.2.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = [
     "ansi",

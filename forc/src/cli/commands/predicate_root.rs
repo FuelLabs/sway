@@ -7,7 +7,7 @@ use crate::ops::forc_predicate_root;
 forc_util::cli_examples! {
     [Get predicate root => forc "predicate-root"]
     setup {
-        crate::cli::create_project_and_compile("/tmp/predicate-root", true);
+        crate::cli::create_project_and_compile(&forc_util::cli::get_cwd(), true);
     }
 }
 

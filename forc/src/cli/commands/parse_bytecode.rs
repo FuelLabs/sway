@@ -8,9 +8,9 @@ use term_table::table_cell::{Alignment, TableCell};
 use tracing::info;
 
 forc_util::cli_examples! {
-    [Parse bytecode => forc "parse-bytecode /tmp/path-to-contract/out/debug/path-to-contract.bin"]
+    [Parse bytecode => forc "parse-bytecode {path}/out/debug/name.bin"]
     setup {
-        crate::cli::create_project_and_compile("/tmp/path-to-contract", false);
+        crate::cli::create_project_and_compile(&forc_util::cli::get_cwd(), false);
     }
 }
 

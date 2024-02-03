@@ -4,9 +4,9 @@ use forc_util::ForcResult;
 
 forc_util::cli_examples! {
     [Clean project => forc "clean"]
-    [Clean project with a custom path => forc "clean --path /tmp/path-to-contract"]
+    [Clean project with a custom path => forc "clean --path {path}"]
     setup {
-        crate::cli::create_project_and_compile("/tmp/path-to-contract", false);
+        crate::cli::create_project_and_compile(&forc_util::cli::get_cwd(), false);
     }
 }
 

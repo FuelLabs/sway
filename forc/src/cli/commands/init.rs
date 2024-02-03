@@ -3,15 +3,10 @@ use clap::Parser;
 use forc_util::ForcResult;
 
 forc_util::cli_examples! {
-    [Initialize a new Forc project => forc "init --path /tmp/path-to-contract"]
-    [Initialize a new Forc project as workspace => forc "init --path /tmp/path-to-contract --workspace"]
-    [Initialize a new Forc project with a predicate => forc "init --path /tmp/path-to-contract --predicate"]
-    [Initialize a new Forc library project => forc "init --path /tmp/path-to-contract --library"]
-    setup {
-        // make sure that /tmp/path-to-contract exists and it is empty
-        let _ = std::fs::remove_dir_all("/tmp/path-to-contract");
-        std::fs::create_dir("/tmp/path-to-contract").unwrap();
-    }
+    [Initialize a new Forc project => forc "init --path {path}"]
+    [Initialize a new Forc project as workspace => forc "init --path {path} --workspace"]
+    [Initialize a new Forc project with a predicate => forc "init --path {path} --predicate"]
+    [Initialize a new Forc library project => forc "init --path {path} --library"]
 }
 
 /// Create a new Forc project in an existing directory.
@@ -21,7 +16,8 @@ pub struct Command {
     /// The directory in which the forc project will be initialized.
     #[clap(long)]
     pub path: Option<String>,
-    /// The default program type, excluding all flags or adding this flag creates a basic contract program.
+    /// The default program type, excluding all flags or adding this flag creates a basic contract
+    /// program.
     #[clap(long)]
     pub contract: bool,
     /// Create a package with a script target (src/main.sw).

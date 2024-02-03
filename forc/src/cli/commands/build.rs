@@ -4,10 +4,10 @@ use forc_util::ForcResult;
 
 forc_util::cli_examples! {
     [ Compile the current projectx => forc "build" ]
-    [ Compile the current project from a different path => forc "build --path /tmp/path-to-contract" ]
-    [ Compile the current project without updating dependencies => forc "build --path /tmp/path-to-contract --locked" ]
+    [ Compile the current project from a different path => forc "build --path {path}" ]
+    [ Compile the current project without updating dependencies => forc "build --path {path} --locked" ]
     setup {
-        crate::cli::create_project_and_compile("/tmp/path-to-contract", false);
+        crate::cli::create_project_and_compile(&forc_util::cli::get_cwd(), false);
     }
 }
 

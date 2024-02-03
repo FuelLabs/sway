@@ -8,7 +8,7 @@ forc_util::cli_examples! {
     [Update a specific dependency => forc "update -d std"]
     [Check if dependencies have newer versions => forc "update --check"]
     setup {
-        crate::cli::create_project_and_compile("/tmp/path-to-contract", false);
+        crate::cli::create_project_and_compile(&forc_util::cli::get_cwd(), false);
     }
 }
 

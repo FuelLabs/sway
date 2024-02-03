@@ -2220,6 +2220,7 @@ dependencies = [
  "sway-error",
  "sway-types",
  "sway-utils",
+ "thread-id",
  "tracing",
  "tracing-subscriber",
  "unicode-xid",
@@ -6998,6 +6999,16 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.48",
+]
+
+[[package]]
+name = "thread-id"
+version = "4.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f0ec81c46e9eb50deaa257be2f148adf052d1fb7701cfd55ccfab2525280b70b"
+dependencies = [
+ "libc",
+ "winapi",
 ]
 
 [[package]]

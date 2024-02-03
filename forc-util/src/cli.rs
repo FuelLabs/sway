@@ -12,6 +12,10 @@ struct BuildTarget {
 
 static BUILD_PATH: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
 
+pub fn get_cwd() -> String {
+    format!("/tmp/forc-build-{}", thread_id::get())
+}
+
 /// Builds the binaries from a rust project *once* to reuse the compiled binaries. The binaries
 /// won't change until the process is restarted.
 ///
@@ -73,7 +77,6 @@ macro_rules! cli_examples {
             mod cli_examples {
             use $crate::serial_test;
 
-
             fn test_setup() {
                 $(
                     {
@@ -93,7 +96,6 @@ macro_rules! cli_examples {
             $(
             $crate::paste::paste! {
                 #[test]
-                #[serial_test::serial]
                 #[allow(unreachable_code)]
                 fn [<$($description:lower _)*:snake example>] () {
                     let bin = if stringify!($command) == "forc" {
@@ -102,21 +104,19 @@ macro_rules! cli_examples {
                         format!("forc-{}", stringify!($command))
                     };
 
+                    let tmp_dir = forc_util::cli::get_cwd();
                     let mut proc = std::process::Command::new(&forc_util::cli::build_project(&bin));
                     super::parse_args($args).into_iter().for_each(|arg| {
-                        proc.arg(arg);
+                        proc.arg(arg.replace("{path}", &tmp_dir));
                     });
 
-
+                    let _ = std::fs::remove_dir_all(&tmp_dir);
+                    std::fs::create_dir(&tmp_dir).unwrap();
                     test_setup();
-                    if let Ok(custom_path) = std::env::var("CLI_PATH") {
-                        if !custom_path.is_empty() {
-                            proc.current_dir(custom_path);
-                        }
-                        std::env::set_var("CLI_PATH", "");
-                    }
+                    proc.current_dir(&tmp_dir);
                     let output = proc.output();
                     test_destroy();
+                    let _ = std::fs::remove_dir_all(&tmp_dir);
                     let output = output.expect("failed to run command");
 
                     $(

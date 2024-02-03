@@ -35,6 +35,7 @@ pub fn create_project_and_compile(path: &str, predicate: bool) {
     let _ = std::fs::remove_dir_all(path);
     let command = NewCommand {
         path: path.to_owned(),
+        name: Some("name".to_owned()),
         predicate,
         ..Default::default()
     };

@@ -7,9 +7,9 @@ use forc_util::{tx_utils::Salt, ForcResult};
 
 forc_util::cli_examples! {
     [Get contract id => forc "contract-id"]
-    [Get contract id from a different path => forc "contract-id --path /tmp/contract-id"]
+    [Get contract id from a different path => forc "contract-id --path {path}"]
     setup {
-        crate::cli::create_project_and_compile("/tmp/contract-id", false);
+        crate::cli::create_project_and_compile(&forc_util::cli::get_cwd(), false);
     }
 }
 

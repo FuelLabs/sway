@@ -6,10 +6,10 @@ use sway_core::{BuildTarget, Engines};
 
 forc_util::cli_examples! {
     [ Check the current project => forc "check" ]
-    [ Check the current project with a different path => forc "check --path /tmp/path-to-contract/" ]
+    [ Check the current project with a different path => forc "check --path {path}" ]
     [ Check the current project without updating dependencies => forc "check --locked" ]
     setup {
-        crate::cli::create_project_and_compile("/tmp/path-to-contract", false);
+        crate::cli::create_project_and_compile(&forc_util::cli::get_cwd(), false);
     }
 }
 

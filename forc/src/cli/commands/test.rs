@@ -13,7 +13,7 @@ forc_util::cli_examples! {
     [ Run test without any output => forc "test --silent" => "^$" ]
     [ Run test without creating or update the lock file  => forc "test --locked" ]
     setup {
-        crate::cli::create_project_and_compile("/tmp/path-to-contract", false);
+        crate::cli::create_project_and_compile(&forc_util::cli::get_cwd(), false);
     }
 }
 
