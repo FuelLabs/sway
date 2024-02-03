@@ -1,3 +1,70 @@
+#[derive(Debug, serde::Deserialize)]
+struct BuildMessage {
+    reason: String,
+    target: BuildTarget,
+    executable: String,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct BuildTarget {
+    kind: Vec<String>,
+}
+
+static BUILD_PATH: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+
+/// Builds the binaries from a rust project *once* to reuse the compiled binaries. The binaries
+/// won't change until the process is restarted.
+///
+/// The compilation passes the special CLI_TEST env variable so the code may take a default beviour
+/// when user input is required
+pub fn build_project(bin_name: &str) -> String {
+    let mut build_path = BUILD_PATH.lock().unwrap();
+
+    if let Some(build_path) = build_path.as_ref() {
+        format!("{}/{}", build_path, bin_name)
+    } else {
+        let new_build_path = std::process::Command::new("cargo")
+            .env("CLI_TEST", "true")
+            .args(["build", "--message-format=json"])
+            .output()
+            .and_then(|output| {
+                let stdout_str = String::from_utf8_lossy(&output.stdout);
+                let build_messages: Vec<_> = stdout_str
+                    .lines()
+                    .filter_map(|line| serde_json::from_str::<BuildMessage>(line).ok())
+                    .collect();
+
+                let binary_paths: Vec<_> = build_messages
+                    .iter()
+                    .filter(|message| {
+                        message.reason == "compiler-artifact"
+                            && message.target.kind.iter().any(|kind| kind == "bin")
+                    })
+                    .map(|message| message.executable.clone())
+                    .collect();
+
+                binary_paths
+                    .first()
+                    .cloned()
+                    .map(|p| {
+                        std::path::PathBuf::from(p)
+                            .parent()
+                            .unwrap()
+                            .to_str()
+                            .unwrap()
+                            .to_owned()
+                    })
+                    .ok_or_else(|| {
+                        std::io::Error::new(std::io::ErrorKind::Other, "Binary path not found")
+                    })
+            })
+            .unwrap();
+
+        *build_path = Some(new_build_path.clone());
+        format!("{}/{}", new_build_path, bin_name)
+    }
+}
+
 #[macro_export]
 // Let the user format the help and parse it from that string into arguments to create the unit test
 macro_rules! cli_examples {
@@ -6,17 +73,6 @@ macro_rules! cli_examples {
             mod cli_examples {
             use $crate::serial_test;
 
-            #[derive(Debug, serde::Deserialize)]
-            struct BuildMessage {
-                reason: String,
-                target: BuildTarget,
-                executable: String,
-            }
-
-            #[derive(Debug, serde::Deserialize)]
-            struct BuildTarget {
-                kind: Vec<String>,
-            }
 
             fn test_setup() {
                 $(
@@ -46,33 +102,7 @@ macro_rules! cli_examples {
                         format!("forc-{}", stringify!($command))
                     };
 
-                    let cli_path = std::process::Command::new("cargo")
-                        .env("CLI_TEST", "true")
-                        .args([
-                            "build",
-                            "--message-format=json",
-                        ]).output()
-                        .and_then(|output| {
-                            let stdout_str = String::from_utf8_lossy(&output.stdout);
-                            let build_messages: Vec<_> = stdout_str.lines()
-                                .filter_map(|line| serde_json::from_str::<BuildMessage>(line).ok())
-                                .collect();
-
-                            let binary_paths: Vec<_> = build_messages.iter()
-                                .filter(|message| message.reason == "compiler-artifact" && message.target.kind.iter().any(|kind| kind == "bin"))
-                                .map(|message| message.executable.clone())
-                                .collect();
-
-                            binary_paths
-                                .into_iter()
-                                .filter(|path| path.ends_with(&bin))
-                                .collect::<Vec<_>>()
-                                .first()
-                                .cloned()
-                                .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "Binary path not found"))
-                        }).unwrap();
-
-                    let mut proc = std::process::Command::new(&cli_path);
+                    let mut proc = std::process::Command::new(&forc_util::cli::build_project(&bin));
                     super::parse_args($args).into_iter().for_each(|arg| {
                         proc.arg(arg);
                     });

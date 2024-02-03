@@ -155,7 +155,8 @@ pub mod tx_utils {
     pub struct Salt {
         /// Added salt used to derive the contract ID.
         ///
-        /// By default, this is `0x0000000000000000000000000000000000000000000000000000000000000000`.
+        /// By default, this is
+        /// `0x0000000000000000000000000000000000000000000000000000000000000000`.
         #[clap(long = "salt")]
         pub salt: Option<fuel_tx::Salt>,
     }
