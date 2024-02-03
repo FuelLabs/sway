@@ -6,6 +6,9 @@ use crate::ops::forc_predicate_root;
 
 forc_util::cli_examples! {
     [Get predicate root => forc "predicate-root"]
+    setup {
+        crate::cli::create_project_and_compile("/tmp/predicate-root", true);
+    }
 }
 
 /// Determine predicate-root for a predicate. For workspaces outputs all predicate roots in the

@@ -4,7 +4,10 @@ use forc_util::ForcResult;
 
 forc_util::cli_examples! {
     [Clean project => forc "clean"]
-    [Clean project with a custom path => forc "clean --path ../tests/"]
+    [Clean project with a custom path => forc "clean --path /tmp/path-to-contract"]
+    setup {
+        crate::cli::create_project_and_compile("/tmp/path-to-contract", false);
+    }
 }
 
 /// Removes the default forc compiler output artifact directory, i.e. `<project-name>/out`.

@@ -4,7 +4,7 @@ pub mod utils;
 
 #[cfg(feature = "test")]
 pub mod test {
-    pub use crate::cli::BuildCommand;
+    pub use crate::cli::{create_project_and_compile, BuildCommand};
     pub use crate::ops::{forc_build, forc_check};
 }
 

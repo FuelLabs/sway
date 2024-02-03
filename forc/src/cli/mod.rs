@@ -28,6 +28,31 @@ mod commands;
 mod plugin;
 pub mod shared;
 
+/// Creates a new project and install their dependencies
+#[cfg(any(feature = "test", test))]
+pub fn create_project_and_compile(path: &str, predicate: bool) {
+    use crate::cli::shared::{Build, Pkg};
+    let _ = std::fs::remove_dir_all(path);
+    let command = NewCommand {
+        path: path.to_owned(),
+        predicate,
+        ..Default::default()
+    };
+    crate::cli::new::exec(command).unwrap();
+    let command = BuildCommand {
+        build: Build {
+            pkg: Pkg {
+                path: Some(path.to_owned()),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    crate::cli::build::exec(command).unwrap();
+    std::env::set_var("CLI_PATH", path);
+}
+
 fn help() -> &'static str {
     Box::leak(
         format!(

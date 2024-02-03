@@ -12,6 +12,9 @@ forc_util::cli_examples! {
     [ Run test with a filter => forc "test $filter" ]
     [ Run test without any output => forc "test --silent" => "^$" ]
     [ Run test without creating or update the lock file  => forc "test --locked" ]
+    setup {
+        crate::cli::create_project_and_compile("/tmp/path-to-contract", false);
+    }
 }
 
 /// Run the Sway unit tests for the current project.

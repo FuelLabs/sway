@@ -6,21 +6,10 @@ use clap::Parser;
 use forc_util::{tx_utils::Salt, ForcResult};
 
 forc_util::cli_examples! {
-    [Get contract id => forc "contract-id --path /tmp/contract-id"]
+    [Get contract id => forc "contract-id"]
+    [Get contract id from a different path => forc "contract-id --path /tmp/contract-id"]
     setup {
-        use crate::cli::commands::new::{exec, Command};
-        exec(Command {
-            path: "/tmp/contract-id".to_owned(),
-            contract: true,
-            script: false,
-            predicate: false,
-            library: false,
-            workspace: false,
-            name: None,
-        }).unwrap();
-    }
-    teardown {
-       std::fs::remove_dir_all("/tmp/contract-id").unwrap();
+        crate::cli::create_project_and_compile("/tmp/contract-id", false);
     }
 }
 

@@ -6,6 +6,18 @@ macro_rules! cli_examples {
             mod cli_examples {
             use $crate::serial_test;
 
+            #[derive(Debug, serde::Deserialize)]
+            struct BuildMessage {
+                reason: String,
+                target: BuildTarget,
+                executable: String,
+            }
+
+            #[derive(Debug, serde::Deserialize)]
+            struct BuildTarget {
+                kind: Vec<String>,
+            }
+
             fn test_setup() {
                 $(
                     {
@@ -28,31 +40,55 @@ macro_rules! cli_examples {
                 #[serial_test::serial]
                 #[allow(unreachable_code)]
                 fn [<$($description:lower _)*:snake example>] () {
-                    let mut proc = std::process::Command::new("cargo");
-                    proc.env("CLI_TEST", "true");
-                    proc.arg("run");
-                    proc.arg("--bin");
-                    proc.arg(if stringify!($command) == "forc" {
+                    let bin = if stringify!($command) == "forc" {
                         "forc".to_owned()
                     } else {
                         format!("forc-{}", stringify!($command))
-                    });
-                    proc.arg("--");
+                    };
 
+                    let cli_path = std::process::Command::new("cargo")
+                        .env("CLI_TEST", "true")
+                        .args([
+                            "build",
+                            "--message-format=json",
+                        ]).output()
+                        .and_then(|output| {
+                            let stdout_str = String::from_utf8_lossy(&output.stdout);
+                            let build_messages: Vec<_> = stdout_str.lines()
+                                .filter_map(|line| serde_json::from_str::<BuildMessage>(line).ok())
+                                .collect();
+
+                            let binary_paths: Vec<_> = build_messages.iter()
+                                .filter(|message| message.reason == "compiler-artifact" && message.target.kind.iter().any(|kind| kind == "bin"))
+                                .map(|message| message.executable.clone())
+                                .collect();
+
+                            binary_paths
+                                .into_iter()
+                                .filter(|path| path.ends_with(&bin))
+                                .collect::<Vec<_>>()
+                                .first()
+                                .cloned()
+                                .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "Binary path not found"))
+                        }).unwrap();
+
+                    let mut proc = std::process::Command::new(&cli_path);
                     super::parse_args($args).into_iter().for_each(|arg| {
                         proc.arg(arg);
                     });
 
-                    let path = std::path::Path::new("tests");
-                    if path.is_dir() {
-                        // a tests folder exists, move the cwd of the process to
-                        // be executed there. In that folder all files needed to
-                        // run the cmd should be stored
-                        proc.current_dir(path);
-                    }
+
                     test_setup();
-                    let output = proc.output().expect(stringify!($command));
+                    if let Ok(custom_path) = std::env::var("CLI_PATH") {
+                        if !custom_path.is_empty() {
+                            proc.current_dir(custom_path);
+                        }
+                        std::env::set_var("CLI_PATH", "");
+                    }
+                    let output = proc.output();
                     test_destroy();
+                    let output = output.expect("failed to run command");
+
                     $(
                         let expected_output = $crate::Regex::new($output).expect("valid regex");
                         let stdout = String::from_utf8_lossy(&output.stdout);

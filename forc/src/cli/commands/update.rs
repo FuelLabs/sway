@@ -7,10 +7,13 @@ forc_util::cli_examples! {
     [Update dependencies => forc "update"]
     [Update a specific dependency => forc "update -d std"]
     [Check if dependencies have newer versions => forc "update --check"]
+    setup {
+        crate::cli::create_project_and_compile("/tmp/path-to-contract", false);
+    }
 }
 
 /// Update dependencies in the Forc dependencies directory.
-#[derive(Debug, Parser)]
+#[derive(Debug, Default, Parser)]
 #[clap(bin_name = "forc update", version, after_help = help())]
 pub struct Command {
     /// Path to the project, if not specified, current working directory will be used.

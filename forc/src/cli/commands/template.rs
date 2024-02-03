@@ -3,12 +3,10 @@ use clap::Parser;
 use forc_util::ForcResult;
 
 forc_util::cli_examples! {
-    [Create a new Forc project from an option template => forc "template demo --template-name option"]
+    [Create a new Forc project from an option template => forc "template new-path --template-name option"]
     setup {
-        let _ = std::fs::remove_dir_all("tests/demo");
-    }
-    teardown {
-        let _ = std::fs::remove_dir_all("tests/demo");
+        let _ = std::fs::remove_dir_all("/tmp/new-path");
+        std::env::set_var("CLI_PATH", "/tmp/");
     }
 }
 

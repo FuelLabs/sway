@@ -15,7 +15,7 @@ forc_util::cli_examples! {
 }
 
 /// Create a new Forc project at `<path>`.
-#[derive(Debug, Parser)]
+#[derive(Debug, Default, Parser)]
 #[clap(bin_name = "forc new", version, after_help = help())]
 pub struct Command {
     /// The default program type. Excluding all flags or adding this flag creates a basic contract
@@ -58,8 +58,8 @@ pub(crate) fn exec(command: Command) -> ForcResult<()> {
     match &name {
         Some(name) => validate_name(name, "project name")?,
         None => {
-            // If there is no name specified for the project, the last component of the `path` (directory name)
-            // will be used by default so we should also check that.
+            // If there is no name specified for the project, the last component of the `path`
+            // (directory name) will be used by default so we should also check that.
             let project_path = PathBuf::from(&path);
             let directory_name = project_path
                 .file_name()
