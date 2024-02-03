@@ -13,7 +13,7 @@ struct BuildTarget {
 static BUILD_PATH: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
 
 pub fn get_cwd() -> String {
-    format!("/tmp/forc-build-{}", thread_id::get())
+    format!("/tmp/forc-cli/build-{}", thread_id::get())
 }
 
 /// Builds the binaries from a rust project *once* to reuse the compiled binaries. The binaries
@@ -111,7 +111,7 @@ macro_rules! cli_examples {
                     });
 
                     let _ = std::fs::remove_dir_all(&tmp_dir);
-                    std::fs::create_dir(&tmp_dir).unwrap();
+                    std::fs::create_dir_all(&tmp_dir).unwrap();
                     test_setup();
                     proc.current_dir(&tmp_dir);
                     let output = proc.output();

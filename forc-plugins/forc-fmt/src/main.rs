@@ -21,10 +21,13 @@ use swayfmt::Formatter;
 forc_util::cli_examples! {
     [ Run the formatter in check mode on the current directory => fmt "--check"]
     [ Run the formatter in check mode on the current directory with short format => fmt "-c"]
-    [ Run formatter against a given file => fmt "--file src/main.sw"]
-    [ Run formatter against a given file with short format => fmt "-f src/main.sw"]
-    [ Run formatter against a given dir => fmt "--path ../tests/"]
-    [ Run formatter against a given dir with short format => fmt "-p ../tests"]
+    [ Run formatter against a given file => fmt "--file {path}/src/main.sw"]
+    [ Run formatter against a given file with short format => fmt "-f {path}/src/main.sw"]
+    [ Run formatter against a given dir => fmt "--path {path}"]
+    [ Run formatter against a given dir with short format => fmt "-p {path}"]
+    setup {
+        forc::cli::create_project_and_compile(&forc_util::cli::get_cwd(), false);
+    }
 }
 
 #[derive(Debug, Parser)]
@@ -46,7 +49,8 @@ pub struct App {
     pub path: Option<String>,
     #[clap(short, long)]
     /// Formats a single .sw file with the default settings.
-    /// If not specified, current working directory will be formatted using a Forc.toml configuration.
+    /// If not specified, current working directory will be formatted using a Forc.toml
+    /// configuration.
     pub file: Option<String>,
 }
 

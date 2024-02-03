@@ -2069,6 +2069,7 @@ dependencies = [
  "comrak",
  "dir_indexer",
  "expect-test",
+ "forc",
  "forc-pkg",
  "forc-util",
  "horrorshow",
@@ -2090,6 +2091,7 @@ version = "0.50.0"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
+ "forc",
  "forc-pkg",
  "forc-tracing 0.50.0",
  "forc-util",
@@ -2190,6 +2192,7 @@ dependencies = [
  "anyhow",
  "clap 3.2.25",
  "devault",
+ "forc",
  "forc-util",
  "fuel-tx",
  "fuel-types",

@@ -25,3 +25,6 @@ fuel-types = { workspace = true, features = ["serde"] }
 serde = "1.0"
 serde_json = { version = "1" }
 thiserror = "1"
+
+[dev-dependencies]
+forc = { version = "0.49.1", path = "../../forc", features = ["test"] }

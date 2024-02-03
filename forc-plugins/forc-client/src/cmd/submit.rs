@@ -3,11 +3,18 @@ use devault::Devault;
 use std::path::PathBuf;
 
 forc_util::cli_examples! {
-    [ Submit a transaction from a json file => submit "./mint.json" ]
-    [ Submit a transaction from a json file and wait for confirmation => submit "./mint.json --await true" ]
-    [ Submit a transaction from a json file and get output in json => submit "./mint.json --tx-status-json true" ]
-    [ Submit a transaction from a json file to testnet => submit "./mint.json --testnet" ]
-    [ Submit a transaction from a json file to a local net => submit "./mint.json --target local" ]
+    [ Submit a transaction from a json file => submit "{path}/mint.json" ]
+    [ Submit a transaction from a json file and wait for confirmation => submit "{path}/mint.json --await true" ]
+    [ Submit a transaction from a json file and get output in json => submit "{path}/mint.json --tx-status-json true" ]
+    [ Submit a transaction from a json file to testnet => submit "{path}/mint.json --testnet" ]
+    [ Submit a transaction from a json file to a local net => submit "{path}/mint.json --target local" ]
+    setup {
+        use std::fs::File;
+        use std::io::Write;
+
+        let mut f = File::create(format!("{}/mint.json", forc_util::cli::get_cwd())).unwrap();
+        f.write_all(include_bytes!("../../mint.json")).unwrap();
+    }
 }
 
 /// Submit a transaction to the specified fuel node.

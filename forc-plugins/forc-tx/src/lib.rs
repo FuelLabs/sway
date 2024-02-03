@@ -13,10 +13,10 @@ use std::path::PathBuf;
 use thiserror::Error;
 
 forc_util::cli_examples! {
-    [ Script example => tx r#"script --bytecode "out/debug/tests.bin" --data "data.bin"  \
+    [ Script example => tx r#"script --bytecode "{path}/out/debug/name.bin" --data "{path}/data.bin"  \
         --receipts-root 0x2222222222222222222222222222222222222222222222222222222222222222"# ]
-    [ Multiple inputs => tx r#"create --bytecode "out/debug/tests.bin"
-        --storage-slots out/debug/tests-storage_slots.json
+    [ Multiple inputs => tx r#"create --bytecode "{name}/out/debug/name.bin"
+        --storage-slots "{path}/out/debug/name-storage_slots.json"
         --script-gas-limit 100 \
         --gas-price 0 \
         --maturity 0 \
@@ -59,9 +59,9 @@ forc_util::cli_examples! {
             --state-root 0x0000000000000000000000000000000000000000000000000000000000000000
         "#
     ]
-    [ An example constructing a create transaction => tx "create \
-        --bytecode ./my-contract/out/debug/my-contract.bin \
-        --storage-slots out/debug/tests-storage_slots.json
+    [ An example constructing a create transaction => tx r#"create \
+        --bytecode {path}/out/debug/name.bin \
+        --storage-slots {path}/out/debug/name-storage_slots.json \
         --script-gas-limit 100 \
         --gas-price 0 \
         --maturity 0 \
@@ -88,9 +88,9 @@ forc_util::cli_examples! {
             --recipient 0x2222222222222222222222222222222222222222222222222222222222222222 \
             --amount 1 \
             --nonce 0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB \
-            --msg-data ./message.dat \
-            --predicate ./my-predicate2.bin \
-            --predicate-data ./my-predicate2.dat \
+            --msg-data {path}/message.dat \
+            --predicate {path}/my-predicate2.bin \
+            --predicate-data {path}/my-predicate2.dat \
         output coin \
             --to 0x2222222222222222222222222222222222222222222222222222222222222222 \
             --amount 100 \
@@ -109,8 +109,20 @@ forc_util::cli_examples! {
             --asset-id 0x0000000000000000000000000000000000000000000000000000000000000000 \
         output contract-created \
             --contract-id 0xCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC \
-            --state-root 0x0000000000000000000000000000000000000000000000000000000000000000"
+            --state-root 0x0000000000000000000000000000000000000000000000000000000000000000"#
     ]
+    setup {
+        use std::fs::{copy, File};
+
+        let cwd = forc_util::cli::get_cwd();
+        forc::cli::create_project_and_compile(&cwd, false);
+        copy(format!("{}/out/debug/name.bin", cwd), format!("{}/data.bin", cwd)).unwrap();
+
+        ["message.dat", "my-predicate2.bin", "my-predicate2.dat"].into_iter().for_each(|name|  {
+            File::create(format!("{}/{}", cwd, name)).unwrap();
+        });
+
+    }
 }
 
 /// The top-level `forc tx` command.
@@ -720,7 +732,8 @@ impl TryFrom<Script> for fuel_tx::Script {
             script_tx.set_script_gas_limit(script_gas_limit)
         } else {
             let consensus_params = ConsensusParameters::default();
-            // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
+            // Get `max_gas` used by everything except the script execution. Add `1` because of
+            // rounding.
             let max_gas =
                 script_tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
             // Increase `script_gas_limit` to the maximum allowed value.
