@@ -81,6 +81,8 @@ fn struct_fields() {
 
     assert(*r_c_b_a_x == x);
     assert(**r_c_b_a_r_x == x);
+
+    assert(*c.r_b.r_a.r_x == x);
 }
 
 #[inline(never)]
@@ -170,6 +172,8 @@ fn array_elements() {
     assert(*(& &a_r3)[0][1][0] == x1);
     assert(*(& & &a_r3)[0][0][1] == x2);
     assert(*(& & & &a_r3)[0][1][1] == x2);
+
+    assert(a3[0][1][0] == x1);
 }
 
 #[inline(never)]

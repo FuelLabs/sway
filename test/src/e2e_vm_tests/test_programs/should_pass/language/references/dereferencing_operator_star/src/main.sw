@@ -49,31 +49,43 @@ fn dereference_not_inlined<T>()
 fn dereference_array<T>()
     where T: TestInstance + Eq
 {
-    let mut x = [T::new(), T::new()];
+    let mut x = [T::new(), T::different()];
     let r_x = &x;
     let r_r_x = &r_x;
     let r_r_r_x = &r_r_x;
 
     assert((*r_x)[0] == T::new());
-    assert((*r_x)[1] == T::new());
+    assert((*r_x)[1] == T::different());
+    assert((*r_x)[0] == r_x[0]);
+    assert((*r_x)[1] == r_x[1]);
 
     assert((**r_r_x)[0] == T::new());
-    assert((**r_r_x)[1] == T::new());
+    assert((**r_r_x)[1] == T::different());
+    assert((**r_r_x)[0] == r_r_x[0]);
+    assert((**r_r_x)[1] == r_r_x[1]);
 
     assert((***r_r_r_x)[0] == T::new());
-    assert((***r_r_r_x)[1] == T::new());
+    assert((***r_r_r_x)[1] == T::different());
+    assert((***r_r_r_x)[0] == r_r_r_x[0]);
+    assert((***r_r_r_x)[1] == r_r_r_x[1]);
 
     x[0] = T::different();
-    x[1] = T::different();
+    x[1] = T::new();
 
     assert((*r_x)[0] == T::different());
-    assert((*r_x)[1] == T::different());
+    assert((*r_x)[1] == T::new());
+    assert((*r_x)[0] == r_x[0]);
+    assert((*r_x)[1] == r_x[1]);
 
     assert((**r_r_x)[0] == T::different());
-    assert((**r_r_x)[1] == T::different());
+    assert((**r_r_x)[1] == T::new());
+    assert((**r_r_x)[0] == r_r_x[0]);
+    assert((**r_r_x)[1] == r_r_x[1]);
 
     assert((***r_r_r_x)[0] == T::different());
-    assert((***r_r_r_x)[1] == T::different());
+    assert((***r_r_r_x)[1] == T::new());
+    assert((***r_r_r_x)[0] == r_r_r_x[0]);
+    assert((***r_r_r_x)[1] == r_r_r_x[1]);
 }
 
 #[inline(never)]
@@ -87,31 +99,31 @@ fn dereference_array_not_inlined<T>()
 fn dereference_tuple<T>()
     where T: TestInstance + Eq
 {
-    let mut x = (T::new(), T::new());
+    let mut x = (T::new(), T::different());
     let r_x = &x;
     let r_r_x = &r_x;
     let r_r_r_x = &r_r_x;
 
     assert((*r_x).0 == T::new());
-    assert((*r_x).1 == T::new());
-
-    assert((**r_r_x).0 == T::new());
-    assert((**r_r_x).1 == T::new());
-
-    assert((***r_r_r_x).0 == T::new());
-    assert((***r_r_r_x).1 == T::new());
-
-    x.0 = T::different();
-    x.1 = T::different();
-
-    assert((*r_x).0 == T::different());
     assert((*r_x).1 == T::different());
 
-    assert((**r_r_x).0 == T::different());
+    assert((**r_r_x).0 == T::new());
     assert((**r_r_x).1 == T::different());
 
-    assert((***r_r_r_x).0 == T::different());
+    assert((***r_r_r_x).0 == T::new());
     assert((***r_r_r_x).1 == T::different());
+
+    x.0 = T::different();
+    x.1 = T::new();
+
+    assert((*r_x).0 == T::different());
+    assert((*r_x).1 == T::new());
+
+    assert((**r_r_x).0 == T::different());
+    assert((**r_r_x).1 == T::new());
+
+    assert((***r_r_r_x).0 == T::different());
+    assert((***r_r_r_x).1 == T::new());
 }
 
 #[inline(never)]
@@ -132,31 +144,43 @@ struct S<T>
 fn dereference_struct<T>()
     where T: TestInstance + Eq
 {
-    let mut x = S { x: T::new(), y: T::new() };
+    let mut x = S { x: T::new(), y: T::different() };
     let r_x = &x;
     let r_r_x = &r_x;
     let r_r_r_x = &r_r_x;
 
     assert((*r_x).x == T::new());
-    assert((*r_x).y == T::new());
+    assert((*r_x).y == T::different());
+    assert((*r_x).x == r_x.x);
+    assert((*r_x).y == r_x.y);
 
     assert((**r_r_x).x == T::new());
-    assert((**r_r_x).y == T::new());
+    assert((**r_r_x).y == T::different());
+    assert((**r_r_x).x == r_r_x.x);
+    assert((**r_r_x).y == r_r_x.y);
 
     assert((***r_r_r_x).x == T::new());
-    assert((***r_r_r_x).y == T::new());
+    assert((***r_r_r_x).y == T::different());
+    assert((***r_r_r_x).x == r_r_r_x.x);
+    assert((***r_r_r_x).y == r_r_r_x.y);
 
     x.x = T::different();
-    x.y = T::different();
+    x.y = T::new();
 
     assert((*r_x).x == T::different());
-    assert((*r_x).y == T::different());
+    assert((*r_x).y == T::new());
+    assert((*r_x).x == r_x.x);
+    assert((*r_x).y == r_x.y);
 
     assert((**r_r_x).x == T::different());
-    assert((**r_r_x).y == T::different());
+    assert((**r_r_x).y == T::new());
+    assert((**r_r_x).x == r_r_x.x);
+    assert((**r_r_x).y == r_r_x.y);
 
     assert((***r_r_r_x).x == T::different());
-    assert((***r_r_r_x).y == T::different());
+    assert((***r_r_r_x).y == T::new());
+    assert((***r_r_r_x).x == r_r_r_x.x);
+    assert((***r_r_r_x).y == r_r_r_x.y);
 }
 
 #[inline(never)]

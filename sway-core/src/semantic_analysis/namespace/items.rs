@@ -452,10 +452,12 @@ impl Items {
                     // TODO: Include the closing square bracket into the error span.
                     full_span_for_error = Span::join(full_span_for_error, index_span.clone());
                 }
-                (actually, ty::ProjectionKind::StructField { .. }) => {
+                (actually, ty::ProjectionKind::StructField { name }) => {
                     return Err(handler.emit_err(CompileError::FieldAccessOnNonStruct {
-                        span: full_span_for_error,
                         actually: engines.help_out(actually).to_string(),
+                        storage_variable: None,
+                        field_name: name.into(),
+                        span: full_span_for_error,
                     }));
                 }
                 (actually, ty::ProjectionKind::TupleField { .. }) => {
