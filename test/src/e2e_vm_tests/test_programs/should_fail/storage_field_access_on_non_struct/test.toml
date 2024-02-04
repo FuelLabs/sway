@@ -9,13 +9,13 @@ category = "fail"
 #check: $()let _ = storage.b.prev_not_a_struct.read();
 #nextln: $()Storage variable "b" has type "bool", which is not a struct.
 #nextln: $()Field access happens here, on "prev_not_a_struct".
-#check: $()Fields can be accessed only on storage variables that are structs.
+#check: $()Fields can only be accessed on storage variables that are structs.
 
 #check: $()Field access requires a struct
 #check: $()let _ = storage.s_01.x.prev_not_a_struct.read();
 #nextln: $()Storage variable "x" has type "u8", which is not a struct.
 #nextln: $()Field access happens here, on "prev_not_a_struct".
-#check: $()Fields can be accessed only on storage variables that are structs.
+#check: $()Fields can only be accessed on storage variables that are structs.
 
 #check: $()Struct field does not exist
 #check: $()let _ = storage.s_01.non_existing_field.read();
@@ -26,7 +26,7 @@ category = "fail"
 #check: $()let _ = storage.s_01.second.x.prev_not_a_struct.read();
 #nextln: $()Storage variable "x" has type "u32", which is not a struct.
 #nextln: $()Field access happens here, on "prev_not_a_struct".
-#check: $()Fields can be accessed only on storage variables that are structs.
+#check: $()Fields can only be accessed on storage variables that are structs.
 
 #check: $()Struct field does not exist
 #check: $()let _ = storage.s_01.second.non_existing_field.read();
@@ -37,7 +37,7 @@ category = "fail"
 #check: $()let _ = storage.s_01.second.third.x.prev_not_a_struct.read();
 #nextln: $()Storage variable "x" has type "u64", which is not a struct.
 #nextln: $()Field access happens here, on "prev_not_a_struct".
-#check: $()Fields can be accessed only on storage variables that are structs.
+#check: $()Fields can only be accessed on storage variables that are structs.
 
 #check: $()Struct field does not exist
 #check: $()let _ = storage.s_01.second.third.non_existing_field.read();

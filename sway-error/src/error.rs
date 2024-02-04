@@ -1,4 +1,3 @@
-// This test proves that https://github.com/FuelLabs/sway/issues/5502 is fixed.
 use crate::convert_parse_tree_error::ConvertParseTreeError;
 use crate::diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic};
 use crate::formatting::*;
@@ -294,7 +293,7 @@ pub enum CompileError {
     },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span, name: String },
-    #[error("This expression has type \"{actually}\", which is not a struct. Fields can be accessed only on structs.")]
+    #[error("This expression has type \"{actually}\", which is not a struct. Fields can only be accessed on structs.")]
     FieldAccessOnNonStruct {
         actually: String,
         /// Name of the storage variable, if the field access
@@ -1616,7 +1615,7 @@ impl ToDiagnostic for CompileError {
                     Hint::help(
                         source_engine,
                         field_name.span(),
-                        format!("Private fields can be {} only within the module in which their struct is declared.",
+                        format!("Private fields can only be {} within the module in which their struct is declared.",
                             match usage_context {
                                 StructInstantiation { .. } | StorageDeclaration { .. } => "initialized",
                                 StorageAccess | StructFieldAccess => "accessed",
@@ -1771,7 +1770,7 @@ impl ToDiagnostic for CompileError {
                 ],
                 help: if storage_variable.is_some() {
                     vec![
-                        "Fields can be accessed only on storage variables that are structs.".to_string(),
+                        "Fields can only be accessed on storage variables that are structs.".to_string(),
                     ]
                 } else {
                     vec![

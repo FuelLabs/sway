@@ -13,7 +13,7 @@ category = "disabled" # Until struct field privacy warnings do not become hard e
 #nextln: $()test.sw
 #check: $()let _ = Lib01PublicStruct { x: 0, y: 0 };
 #check: $()Private field "y" is inaccessible in this module.
-#nextln: $()Private fields can be initialized only within the module in which their struct is declared.
+#nextln: $()Private fields can only be initialized within the module in which their struct is declared.
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #nextln: $()test.sw
@@ -28,7 +28,7 @@ category = "disabled" # Until struct field privacy warnings do not become hard e
 #nextln: $()test.sw
 #check: $()let _ = Lib01PublicNestedStruct { x: 0, y: 0 };
 #check: $()Private field "y" is inaccessible in this module.
-#nextln: $()Private fields can be initialized only within the module in which their struct is declared.
+#nextln: $()Private fields can only be initialized within the module in which their struct is declared.
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #nextln: $()test.sw
@@ -43,7 +43,7 @@ category = "disabled" # Until struct field privacy warnings do not become hard e
 #nextln: $()test.sw
 #check: $()let _ = ExternalLib01PublicStruct { x: 0, y: 0 };
 #check: $()Private field "y" is inaccessible in this module.
-#nextln: $()Private fields can be initialized only within the module in which their struct is declared.
+#nextln: $()Private fields can only be initialized within the module in which their struct is declared.
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #nextln: $()test.sw
@@ -58,7 +58,7 @@ category = "disabled" # Until struct field privacy warnings do not become hard e
 #nextln: $()test.sw
 #check: $()let _ = ExternalLib01PublicNestedStruct { x: 0, y: 0 };
 #check: $()Private field "y" is inaccessible in this module.
-#nextln: $()Private fields can be initialized only within the module in which their struct is declared.
+#nextln: $()Private fields can only be initialized within the module in which their struct is declared.
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #nextln: $()main.sw
@@ -73,7 +73,7 @@ category = "disabled" # Until struct field privacy warnings do not become hard e
 #nextln: $()main.sw
 #check: $()let _ = Lib01PublicStruct { x: 0, y: 0 };
 #check: $()Private field "y" is inaccessible in this module.
-#nextln: $()Private fields can be initialized only within the module in which their struct is declared.
+#nextln: $()Private fields can only be initialized within the module in which their struct is declared.
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #nextln: $()main.sw
@@ -88,7 +88,7 @@ category = "disabled" # Until struct field privacy warnings do not become hard e
 #nextln: $()main.sw
 #check: $()let _ = Lib01PublicNestedStruct { x: 0, y: 0 };
 #check: $()Private field "y" is inaccessible in this module.
-#nextln: $()Private fields can be initialized only within the module in which their struct is declared.
+#nextln: $()Private fields can only be initialized within the module in which their struct is declared.
 
 #not: $()ScriptLocalStruct
 
@@ -105,7 +105,7 @@ category = "disabled" # Until struct field privacy warnings do not become hard e
 #nextln: $()main.sw
 #check: $()let _ = ExternalLib01PublicStruct { x: 0, y: 0 };
 #check: $()Private field "y" is inaccessible in this module.
-#nextln: $()Private fields can be initialized only within the module in which their struct is declared.
+#nextln: $()Private fields can only be initialized within the module in which their struct is declared.
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #nextln: $()main.sw
@@ -120,4 +120,4 @@ category = "disabled" # Until struct field privacy warnings do not become hard e
 #nextln: $()main.sw
 #check: $()let _ = ExternalLib01PublicNestedStruct { x: 0, y: 0 };
 #check: $()Private field "y" is inaccessible in this module.
-#nextln: $()Private fields can be initialized only within the module in which their struct is declared.
+#nextln: $()Private fields can only be initialized within the module in which their struct is declared.
