@@ -565,6 +565,17 @@ fn const_eval_typed_expr(
                 })
             }
         },
+        ty::TyExpressionVariant::ImplicitReturn(e) => {
+            if let Ok(Some(constant)) =
+                const_eval_typed_expr(lookup, known_consts, e, allow_configurables)
+            {
+                Some(constant)
+            } else {
+                return Err(ConstEvalError::CannotBeEvaluatedToConst {
+                    span: e.span.clone(),
+                });
+            }
+        }
         // we could allow non-local control flow in pure functions, but it would
         // require some more work and at this point it's not clear if it is too useful
         // for constant initializers -- the user can always refactor their pure functions
@@ -719,26 +730,29 @@ fn const_eval_codeblock(
                 }
             }
             ty::TyAstNodeContent::Declaration(_) => Ok(None),
-            ty::TyAstNodeContent::Expression(e) => {
-                if const_eval_typed_expr(lookup, known_consts, e, allow_configurables).is_err() {
-                    Err(ConstEvalError::CannotBeEvaluatedToConst {
-                        span: e.span.clone(),
-                    })
-                } else {
-                    Ok(None)
+            ty::TyAstNodeContent::Expression(e) => match e.expression {
+                ty::TyExpressionVariant::ImplicitReturn(_) => {
+                    if let Ok(Some(constant)) =
+                        const_eval_typed_expr(lookup, known_consts, e, allow_configurables)
+                    {
+                        Ok(Some(constant))
+                    } else {
+                        Err(ConstEvalError::CannotBeEvaluatedToConst {
+                            span: e.span.clone(),
+                        })
+                    }
                 }
-            }
-            ty::TyAstNodeContent::ImplicitReturnExpression(e) => {
-                if let Ok(Some(constant)) =
-                    const_eval_typed_expr(lookup, known_consts, e, allow_configurables)
-                {
-                    Ok(Some(constant))
-                } else {
-                    Err(ConstEvalError::CannotBeEvaluatedToConst {
-                        span: e.span.clone(),
-                    })
+                _ => {
+                    if const_eval_typed_expr(lookup, known_consts, e, allow_configurables).is_err()
+                    {
+                        Err(ConstEvalError::CannotBeEvaluatedToConst {
+                            span: e.span.clone(),
+                        })
+                    } else {
+                        Ok(None)
+                    }
                 }
-            }
+            },
             ty::TyAstNodeContent::SideEffect(_) => Err(ConstEvalError::CannotBeEvaluatedToConst {
                 span: ast_node.span.clone(),
             }),

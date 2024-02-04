@@ -13,7 +13,7 @@ use crate::{
     },
     language::{
         parsed::MatchBranch,
-        ty::{self, MatchBranchCondition, MatchedOrVariantIndexVars},
+        ty::{self, MatchBranchCondition, MatchedOrVariantIndexVars, TyExpression},
     },
     semantic_analysis::*,
     types::DeterministicallyAborts,
@@ -126,21 +126,18 @@ impl ty::TyMatchBranch {
         // of that code block to the block of code statements that we are already
         // generating. if the typed branch result is not a code block, then add
         // the typed branch result as an ast node to the block of code statements
-        let ty::TyExpression {
-            expression: typed_result_expression_variant,
-            return_type: typed_result_return_type,
-            span: typed_result_span,
-        } = typed_result;
-        match typed_result_expression_variant {
+        let typed_result_return_type = typed_result.return_type;
+        let typed_result_span = typed_result.span.clone();
+        match typed_result.expression {
             ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock { mut contents, .. }) => {
                 code_block_contents.append(&mut contents);
             }
-            typed_result_expression_variant => {
+            _ => {
                 code_block_contents.push(ty::TyAstNode {
-                    content: ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
-                        expression: typed_result_expression_variant,
+                    content: ty::TyAstNodeContent::Expression(TyExpression {
                         return_type: typed_result_return_type,
                         span: typed_result_span.clone(),
+                        expression: ty::TyExpressionVariant::ImplicitReturn(Box::new(typed_result)),
                     }),
                     span: typed_result_span.clone(),
                 });
@@ -154,7 +151,7 @@ impl ty::TyMatchBranch {
                 contents: code_block_contents,
                 whole_block_span: sway_types::Span::dummy(),
             }),
-            return_type: typed_result.return_type,
+            return_type: typed_result_return_type,
             span: typed_result_span,
         };
 
@@ -638,16 +635,21 @@ fn instantiate_branch_condition_result_var_declarations_and_matched_or_variant_i
                 }
 
                 // Add the implicit return tuple that captures the values of the variables.
+                let ret_expr = ty::TyExpression {
+                    expression: ty::TyExpressionVariant::Tuple {
+                        fields: vars_in_alternative
+                            .into_iter()
+                            .map(|(_, exp)| exp)
+                            .collect(),
+                    },
+                    return_type: tuple_type,
+                    span: instantiate.dummy_span(),
+                };
                 code_block_contents.push(ty::TyAstNode {
-                    content: ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
-                        expression: ty::TyExpressionVariant::Tuple {
-                            fields: vars_in_alternative
-                                .into_iter()
-                                .map(|(_, exp)| exp)
-                                .collect(),
-                        },
-                        return_type: tuple_type,
-                        span: instantiate.dummy_span(),
+                    content: ty::TyAstNodeContent::Expression(ty::TyExpression {
+                        return_type: ret_expr.return_type,
+                        span: ret_expr.span.clone(),
+                        expression: ty::TyExpressionVariant::ImplicitReturn(Box::new(ret_expr)),
                     }),
                     span: instantiate.dummy_span(),
                 });
