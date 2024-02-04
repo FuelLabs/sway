@@ -240,18 +240,22 @@ impl<'eng> FnCompiler<'eng> {
                 ty::TyDecl::TraitTypeDecl { .. } => unexpected_decl("trait type"),
             },
             ty::TyAstNodeContent::Expression(te) => {
-                // An expression with an ignored return value... I assume.
-                let value = self.compile_expression_to_value(context, md_mgr, te)?;
-                // Terminating values should end the compilation of the block
-                if value.is_terminator {
-                    Ok(Some(value))
-                } else {
-                    Ok(None)
+                match &te.expression {
+                    TyExpressionVariant::ImplicitReturn(exp) => self
+                        .compile_expression_to_value(context, md_mgr, exp)
+                        .map(Some),
+                    _ => {
+                        // An expression with an ignored return value... I assume.
+                        let value = self.compile_expression_to_value(context, md_mgr, te)?;
+                        // Terminating values should end the compilation of the block
+                        if value.is_terminator {
+                            Ok(Some(value))
+                        } else {
+                            Ok(None)
+                        }
+                    }
                 }
             }
-            ty::TyAstNodeContent::ImplicitReturnExpression(te) => self
-                .compile_expression_to_value(context, md_mgr, te)
-                .map(Some),
             // a side effect can be () because it just impacts the type system/namespacing.
             // There should be no new IR generated.
             ty::TyAstNodeContent::SideEffect(_) => Ok(None),
@@ -617,6 +621,10 @@ impl<'eng> FnCompiler<'eng> {
             },
             ty::TyExpressionVariant::Reassignment(reassignment) => {
                 self.compile_reassignment(context, md_mgr, reassignment, span_md_idx)
+            }
+            ty::TyExpressionVariant::ImplicitReturn(_exp) => {
+                // This is currently handled at the top-level handler, `compile_ast_node`.
+                unreachable!();
             }
             ty::TyExpressionVariant::Return(exp) => {
                 self.compile_return(context, md_mgr, exp, span_md_idx)
