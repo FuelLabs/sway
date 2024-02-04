@@ -1851,6 +1851,7 @@ impl ty::TyExpression {
 
                     current_type = type_engine.get_unaliased(referenced_type_id);
                 }
+                TypeInfo::ErrorRecovery(err) => return Err(*err),
                 _ => {
                     return Err(handler.emit_err(CompileError::NotIndexable {
                         actually: engines.help_out(prefix_type_id).to_string(),
