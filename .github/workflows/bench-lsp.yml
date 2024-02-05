@@ -3,9 +3,16 @@ name: Benchmark LSP
 on:
   pull_request:
     paths:
-      - sway-core/**
-      - sway-lsp/**
       - forc-plugins/forc-lsp/**
+      - sway-lsp/**
+      # Dependencies of sway-lsp that could affect performance
+      - sway-ast/**
+      - sway-core/**
+      - sway-error/**
+      - sway-parse/**
+      - sway-types/**
+      - sway-utils/**
+      - swayfmt/**
 
 jobs:
   compare-master:
