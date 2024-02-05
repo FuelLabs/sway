@@ -5,7 +5,10 @@ on:
     paths:
       - forc-plugins/forc-lsp/**
       - sway-lsp/**
-      # Dependencies of sway-lsp that could affect performance
+      # Dependencies of sway-lsp in this repository
+      - forc-pkg/**
+      - forc-tracing/**
+      - forc-util/**
       - sway-ast/**
       - sway-core/**
       - sway-error/**
@@ -13,6 +16,9 @@ on:
       - sway-types/**
       - sway-utils/**
       - swayfmt/**
+      # Changes to std and core could also affect performance
+      - sway-lib-core/**
+      - sway-lib-std/**
 
 jobs:
   compare-master:
