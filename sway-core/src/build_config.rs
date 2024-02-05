@@ -1,4 +1,7 @@
-use std::{path::PathBuf, sync::{atomic::AtomicBool, Arc}};
+use std::{
+    path::PathBuf,
+    sync::{atomic::AtomicBool, Arc},
+};
 
 use serde::{Deserialize, Serialize};
 use strum::EnumString;
@@ -195,7 +198,6 @@ impl BuildConfig {
 pub struct ExperimentalFlags {
     pub new_encoding: bool,
 }
-
 
 #[derive(Clone, Debug, Default)]
 pub struct LspConfig {

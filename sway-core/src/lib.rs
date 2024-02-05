@@ -27,7 +27,7 @@ use crate::source_map::SourceMap;
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
 pub use asm_generation::{CompiledBytecode, FinalizedEntry};
-pub use build_config::{BuildConfig, BuildTarget, OptLevel, LspConfig};
+pub use build_config::{BuildConfig, BuildTarget, LspConfig, OptLevel};
 use control_flow_analysis::ControlFlowGraph;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModulePath, ProgramsCacheEntry};
@@ -480,6 +480,11 @@ pub fn parsed_to_ast(
     retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<ty::TyProgram, ErrorEmitted> {
     let experimental = build_config.map(|x| x.experimental).unwrap_or_default();
+    let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
+    let (retrigger_compilation, optimized_build) = lsp_config
+        .as_ref()
+        .map(|lsp| (lsp.retrigger_compilation.clone(), lsp.optimized_build))
+        .unwrap_or((None, false));
 
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
@@ -491,15 +496,14 @@ pub fn parsed_to_ast(
         build_config,
     );
 
+    check_should_abort(handler, retrigger_compilation.clone())?;
+
     // Only clear the parsed AST nodes if we are running a regular compilation pipeline.
     // LSP needs these to build its token map, and they are cleared by `clear_module` as
     // part of the LSP garbage collection functionality instead.
-    let lsp_mode = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
-    if lsp_mode.is_none() {
+    if lsp_config.is_none() {
         engines.pe().clear();
     }
-
-    check_should_abort(handler, retrigger_compilation.clone())?;
 
     let mut typed_program = match typed_program_opt {
         Ok(typed_program) => typed_program,
@@ -516,51 +520,58 @@ pub fn parsed_to_ast(
         }
     };
 
-    // Collect information about the types used in this program
-    let types_metadata_result = typed_program.collect_types_metadata(
-        handler,
-        &mut CollectTypesMetadataContext::new(engines, experimental),
-    );
-    let types_metadata = match types_metadata_result {
-        Ok(types_metadata) => types_metadata,
-        Err(e) => {
-            handler.dedup();
-            return Err(e);
-        }
+    // Skip collecting metadata if we triggered an optimised build from LSP.
+    let types_metadata = if !optimized_build {
+        // Collect information about the types used in this program
+        let types_metadata_result = typed_program.collect_types_metadata(
+            handler,
+            &mut CollectTypesMetadataContext::new(engines, experimental),
+        );
+        let types_metadata = match types_metadata_result {
+            Ok(types_metadata) => types_metadata,
+            Err(e) => {
+                handler.dedup();
+                return Err(e);
+            }
+        };
+
+        typed_program
+            .logged_types
+            .extend(types_metadata.iter().filter_map(|m| match m {
+                TypeMetadata::LoggedType(log_id, type_id) => Some((*log_id, *type_id)),
+                _ => None,
+            }));
+
+        typed_program
+            .messages_types
+            .extend(types_metadata.iter().filter_map(|m| match m {
+                TypeMetadata::MessageType(message_id, type_id) => Some((*message_id, *type_id)),
+                _ => None,
+            }));
+
+        let (print_graph, print_graph_url_format) = match build_config {
+            Some(cfg) => (
+                cfg.print_dca_graph.clone(),
+                cfg.print_dca_graph_url_format.clone(),
+            ),
+            None => (None, None),
+        };
+
+        check_should_abort(handler, retrigger_compilation.clone())?;
+
+        // Perform control flow analysis and extend with any errors.
+        let _ = perform_control_flow_analysis(
+            handler,
+            engines,
+            &typed_program,
+            print_graph,
+            print_graph_url_format,
+        );
+
+        types_metadata
+    } else {
+        vec![]
     };
-
-    typed_program
-        .logged_types
-        .extend(types_metadata.iter().filter_map(|m| match m {
-            TypeMetadata::LoggedType(log_id, type_id) => Some((*log_id, *type_id)),
-            _ => None,
-        }));
-
-    typed_program
-        .messages_types
-        .extend(types_metadata.iter().filter_map(|m| match m {
-            TypeMetadata::MessageType(message_id, type_id) => Some((*message_id, *type_id)),
-            _ => None,
-        }));
-
-    let (print_graph, print_graph_url_format) = match build_config {
-        Some(cfg) => (
-            cfg.print_dca_graph.clone(),
-            cfg.print_dca_graph_url_format.clone(),
-        ),
-        None => (None, None),
-    };
-
-    check_should_abort(handler, retrigger_compilation.clone())?;
-
-    // Perform control flow analysis and extend with any errors.
-    let _ = perform_control_flow_analysis(
-        handler,
-        engines,
-        &typed_program,
-        print_graph,
-        print_graph_url_format,
-    );
 
     // Evaluate const declarations, to allow storage slots initialization with consts.
     let mut ctx = Context::new(
@@ -632,6 +643,11 @@ pub fn compile_to_ast(
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<Programs, ErrorEmitted> {
+    let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
+    let retrigger_compilation = lsp_config
+        .as_ref()
+        .map_or(None, |config| config.retrigger_compilation.clone());
+
     check_should_abort(handler, retrigger_compilation.clone())?;
 
     let query_engine = engines.qe();
@@ -712,6 +728,8 @@ pub fn compile_to_ast(
         };
         query_engine.insert_programs_cache_entry(cache_entry);
     }
+
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     Ok(programs)
 }

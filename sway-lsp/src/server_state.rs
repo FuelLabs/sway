@@ -12,7 +12,6 @@ use dashmap::DashMap;
 use forc_pkg::PackageManifestFile;
 use lsp_types::{Diagnostic, Url};
 use parking_lot::RwLock;
-use sway_core::LspConfig;
 use std::{
     mem,
     path::PathBuf,
@@ -21,6 +20,7 @@ use std::{
         Arc,
     },
 };
+use sway_core::LspConfig;
 use tokio::sync::Notify;
 use tower_lsp::{jsonrpc, Client};
 
@@ -105,9 +105,7 @@ impl ServerState {
         let finished_compilation = self.finished_compilation.clone();
         let rx = self.cb_rx.clone();
         let last_compilation_state = self.last_compilation_state.clone();
-        // Create a new thread with a 4MB stack size
-        let builder = std::thread::Builder::new().stack_size(4 * 1024 * 1024);
-        builder.spawn(move || {
+        std::thread::spawn(move || {
             while let Ok(msg) = rx.recv() {
                 match msg {
                     TaskMessage::CompilationContext(ctx) => {
@@ -116,8 +114,9 @@ impl ServerState {
                         let mut engines_clone = session.engines.read().clone();
 
                         if let Some(version) = ctx.version {
-                            // Garbage collection is fairly expsensive so we only clear on every 10th keystroke.
-                            if version % 10 == 0 {
+                            // Garbage collection is fairly expsensive so we only clear on every 4th keystroke.
+                            // Waiting too long to clear can cause a stack overflow to occur.
+                            if version % 4 == 0 {
                                 // Call this on the engines clone so we don't clear types that are still in use
                                 // and might be needed in the case cancel compilation was triggered.
                                 if let Err(err) = session.garbage_collect(&mut engines_clone) {
@@ -168,7 +167,7 @@ impl ServerState {
                     }
                 }
             }
-        }).unwrap();
+        });
     }
 
     /// Waits asynchronously for the `is_compiling` flag to become false.

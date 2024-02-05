@@ -138,7 +138,6 @@ async fn did_change_stress_test() {
     shutdown_and_exit(&mut service).await;
 }
 
-
 #[tokio::test]
 #[allow(dead_code)]
 async fn did_change_stress_test_random() {

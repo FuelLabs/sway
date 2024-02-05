@@ -30,12 +30,14 @@ use std::{
     sync::{atomic::AtomicBool, Arc},
 };
 use sway_core::{
-    decl_engine::DeclEngine, language::{
+    decl_engine::DeclEngine,
+    language::{
         lexed::LexedProgram,
         parsed::{AstNode, ParseProgram},
         ty::{self},
         HasSubmodules,
-    }, BuildTarget, Engines, LspConfig, Namespace, Programs
+    },
+    BuildTarget, Engines, LspConfig, Namespace, Programs,
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::{SourceEngine, SourceId, Spanned};
@@ -452,15 +454,9 @@ pub fn parse_project(
         return Err(LanguageServerError::ProgramsIsNone);
     }
     let diagnostics = traverse(results, engines, session.clone())?;
-    // if let Some((errors, warnings)) = &diagnostics {
-    //     *session.diagnostics.write() =
-    //         capabilities::diagnostic::get_diagnostics(warnings, errors, engines.se());
-    // }
-    // Only write the diagnostics results on didSave or didOpen.
     if let Some(config) = &lsp_mode {
-        eprintln!("optimization: {}", config.optimized_build);
+        // Only write the diagnostics results on didSave or didOpen.
         if !config.optimized_build {
-            eprintln!("Publishing diagnostics");
             if let Some((errors, warnings)) = &diagnostics {
                 *session.diagnostics.write() =
                     capabilities::diagnostic::get_diagnostics(warnings, errors, engines.se());

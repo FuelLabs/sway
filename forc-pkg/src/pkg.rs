@@ -33,10 +33,18 @@ use sway_core::{
     abi_generation::{
         evm_abi,
         fuel_abi::{self, AbiContext},
-    }, asm_generation::ProgramABI, decl_engine::DeclRefFunction, fuel_prelude::{
+    },
+    asm_generation::ProgramABI,
+    decl_engine::DeclRefFunction,
+    fuel_prelude::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
-    }, language::{parsed::TreeType, Visibility}, semantic_analysis::namespace, source_map::SourceMap, transform::AttributeKind, BuildTarget, Engines, FinalizedEntry, LspConfig
+    },
+    language::{parsed::TreeType, Visibility},
+    semantic_analysis::namespace,
+    source_map::SourceMap,
+    transform::AttributeKind,
+    BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::constants::{CORE, PRELUDE, STD};
