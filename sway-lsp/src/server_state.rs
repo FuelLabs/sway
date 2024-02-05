@@ -105,7 +105,9 @@ impl ServerState {
         let finished_compilation = self.finished_compilation.clone();
         let rx = self.cb_rx.clone();
         let last_compilation_state = self.last_compilation_state.clone();
-        std::thread::spawn(move || {
+        // Create a new thread with a 4MB stack size
+        let builder = std::thread::Builder::new().stack_size(4 * 1024 * 1024);
+        builder.spawn(move || {
             while let Ok(msg) = rx.recv() {
                 match msg {
                     TaskMessage::CompilationContext(ctx) => {
@@ -166,7 +168,7 @@ impl ServerState {
                     }
                 }
             }
-        });
+        }).unwrap();
     }
 
     /// Waits asynchronously for the `is_compiling` flag to become false.
