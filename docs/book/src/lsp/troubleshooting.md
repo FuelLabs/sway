@@ -14,7 +14,7 @@ Second, confirm that your `$PATH` resolves to the `forc-lsp` binary in `$HOME/.f
 which forc-lsp
 ```
 
-## Logs
+## Server Logs
 
 You can you enable verbose logging of the LSP server. 
 
