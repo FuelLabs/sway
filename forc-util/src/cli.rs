@@ -12,6 +12,8 @@ struct BuildTarget {
 
 static BUILD_PATH: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
 
+/// Gives the current working directory for the each unit-test. Each unit-test have their own CWD,
+/// this is done to let the unit tests run in parallel
 pub fn get_cwd() -> String {
     format!("/tmp/forc-cli/build-{}", thread_id::get())
 }
@@ -70,7 +72,25 @@ pub fn build_project(bin_name: &str) -> String {
 }
 
 #[macro_export]
-// Let the user format the help and parse it from that string into arguments to create the unit test
+/// Let the user format the help and parse it from that string into arguments to create the unit
+/// test.
+///
+/// The list of examples is a list of tuples where the first element is the description of the test
+/// (in plain English) followed by the command to be executed and the arguments to be passed to the
+/// command. Optionally, the expected output of the command can be passed as well. This examples are
+/// part of the help message of the CLI.
+///
+/// Each example is also converted into a unit test. The test invokes the CLI command externall
+/// (there is no `#[cfg(test)]` since the command is an external process and unaware of the test
+/// context). The `option_env!("CLI_TEST").is_some()` macro can be used to detect if the command is
+/// being executed from the CLI_TEST environment and take a different path (for instance to mock a
+/// user given input response).
+///
+/// This macro also takes a list of examples and a setup and teardown block. The setup code block is
+/// executed once *before* and it is responsible to set the state of the system to the initial state
+/// that is expected for the CLI command to be executed, and teardown is executed once *after* all
+/// the tests are executed, and it is responsible to clean up the state of the system. Both blocks
+/// are optional.
 macro_rules! cli_examples {
     ($( [ $($description:ident)* => $command:tt $args:expr $( => $output:expr )? ] )* $( setup { $($setup:tt)* } )? $(teardown { $($teardown:tt)* } )?) => {
             #[cfg(test)]
