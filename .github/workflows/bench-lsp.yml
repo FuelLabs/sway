@@ -2,6 +2,7 @@ name: Benchmark LSP
 
 on:
   pull_request:
+    types: [ready_for_review]
     paths:
       - forc-plugins/forc-lsp/**
       - sway-lsp/**
