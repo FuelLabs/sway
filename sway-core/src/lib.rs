@@ -27,7 +27,7 @@ use crate::source_map::SourceMap;
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
 pub use asm_generation::{CompiledBytecode, FinalizedEntry};
-pub use build_config::{BuildConfig, BuildTarget, OptLevel};
+pub use build_config::{BuildConfig, BuildTarget, OptLevel, LspConfig};
 use control_flow_analysis::ControlFlowGraph;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModulePath, ProgramsCacheEntry};
@@ -494,8 +494,8 @@ pub fn parsed_to_ast(
     // Only clear the parsed AST nodes if we are running a regular compilation pipeline.
     // LSP needs these to build its token map, and they are cleared by `clear_module` as
     // part of the LSP garbage collection functionality instead.
-    let lsp_mode = build_config.map(|x| x.lsp_mode).unwrap_or_default();
-    if !lsp_mode {
+    let lsp_mode = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
+    if lsp_mode.is_none() {
         engines.pe().clear();
     }
 

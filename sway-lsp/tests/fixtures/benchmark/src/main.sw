@@ -8,7 +8,7 @@ struct Struct1 {
     /// I am a random doc comment.
     field2: u16,
     /// I am a random doc comment.
-    field3: u32,
+    field3: u16,
     /// I am a random doc comment.
     field4: u64,
 }
