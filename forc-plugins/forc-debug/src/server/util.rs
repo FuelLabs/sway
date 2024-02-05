@@ -3,6 +3,7 @@ use fuel_vm::fuel_asm::RegId;
 use std::path::Path;
 
 #[derive(Debug, Clone)]
+/// Utility for generating unique, incremental IDs.
 pub(crate) struct IdGenerator {
     next_id: i64,
 }

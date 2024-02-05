@@ -11,6 +11,7 @@ use dap::events::OutputEventBody;
 use dap::events::{ExitedEventBody, StoppedEventBody};
 use dap::prelude::*;
 use dap::types::{Scope, StartDebuggingRequestKind};
+use forc_test::execute::DebugResult;
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 use std::{
@@ -28,9 +29,18 @@ pub struct AdditionalData {
     pub program: String,
 }
 
+/// This struct is a stateful representation of a Debug Adapter Protocol (DAP) server. It holds everything
+/// needed to implement (DAP)[https://microsoft.github.io/debug-adapter-protocol/].
+///
+/// It is responsible for handling requests and sending responses and events to the client. It manages
+/// the state of the server and the underlying VM instances used for debugging sway tests. It builds sway code
+/// and generates source maps for debugging. It also manages the test setup and reports results back to the client.
 pub struct DapServer {
+    /// The DAP server transport.
     server: Server<Box<dyn Read>, Box<dyn Write>>,
+    /// Used to generate unique breakpoint IDs.
     breakpoint_id_gen: IdGenerator,
+    /// The server state.
     state: ServerState,
 }
 
@@ -270,6 +280,10 @@ impl DapServer {
     }
 
     fn log_test_results(&mut self) {
+        if !self.state.executors.is_empty() {
+            return;
+        }
+
         let results = self
             .state
             .test_results
@@ -320,12 +334,22 @@ impl DapServer {
         process::exit(exit_code as i32);
     }
 
-    fn stop_on_breakpoint(&mut self, pc: u64) -> Result<bool, AdapterError> {
-        let breakpoint_id = self.state.vm_pc_to_breakpoint_id(pc)?;
-        self.state.stopped_on_breakpoint_id = Some(breakpoint_id);
+    fn stop(&mut self, pc: u64) -> Result<bool, AdapterError> {
+        let (hit_breakpoint_ids, reason) =
+            if let Ok(breakpoint_id) = self.state.vm_pc_to_breakpoint_id(pc) {
+                self.state.stopped_on_breakpoint_id = Some(breakpoint_id);
+                (
+                    Some(vec![breakpoint_id]),
+                    types::StoppedEventReason::Breakpoint,
+                )
+            } else {
+                self.state.stopped_on_breakpoint_id = None;
+                (None, types::StoppedEventReason::Step)
+            };
+
         let _ = self.server.send_event(Event::Stopped(StoppedEventBody {
-            reason: types::StoppedEventReason::Breakpoint,
-            hit_breakpoint_ids: Some(vec![breakpoint_id]),
+            reason,
+            hit_breakpoint_ids,
             description: None,
             thread_id: Some(THREAD_ID),
             preserve_focus_hint: None,
@@ -335,24 +359,52 @@ impl DapServer {
         Ok(true)
     }
 
-    fn stop_on_step(&mut self, pc: u64) -> Result<bool, AdapterError> {
-        let hit_breakpoint_ids = if let Ok(breakpoint_id) = self.state.vm_pc_to_breakpoint_id(pc) {
-            self.state.stopped_on_breakpoint_id = Some(breakpoint_id);
-            Some(vec![breakpoint_id])
-        } else {
-            self.state.stopped_on_breakpoint_id = None;
-            None
-        };
+    /// Starts debugging all tests.
+    /// `single_stepping` indicates whether the VM should break after one instruction.
+    ///
+    /// Returns true if it has stopped on a breakpoint or false if all tests have finished.
+    fn start_debugging_tests(&mut self, single_stepping: bool) -> Result<bool, AdapterError> {
+        self.state.update_vm_breakpoints();
 
-        let _ = self.server.send_event(Event::Stopped(StoppedEventBody {
-            reason: types::StoppedEventReason::Step,
-            hit_breakpoint_ids,
-            description: None,
-            thread_id: Some(THREAD_ID),
-            preserve_focus_hint: None,
-            text: None,
-            all_threads_stopped: None,
-        }));
-        Ok(true)
+        while let Some(executor) = self.state.executors.first_mut() {
+            executor.interpreter.set_single_stepping(single_stepping);
+            match executor.start_debugging()? {
+                DebugResult::TestComplete(result) => {
+                    self.state.test_complete(result);
+                }
+                DebugResult::Breakpoint(pc) => {
+                    executor.interpreter.set_single_stepping(false);
+                    return self.stop(pc);
+                }
+            };
+        }
+        self.log_test_results();
+        Ok(false)
+    }
+
+    /// Continues debugging the current test and starts the next one if no breakpoint is hit.
+    /// `single_stepping` indicates whether the VM should break after one instruction.
+    ///
+    /// Returns true if it has stopped on a breakpoint or false if all tests have finished.
+    fn continue_debugging_tests(&mut self, single_stepping: bool) -> Result<bool, AdapterError> {
+        self.state.update_vm_breakpoints();
+
+        if let Some(executor) = self.state.executors.first_mut() {
+            executor.interpreter.set_single_stepping(single_stepping);
+            match executor.continue_debugging()? {
+                DebugResult::TestComplete(result) => {
+                    self.state.test_complete(result);
+                    // The current test has finished, but there could be more tests to run. Start debugging the
+                    // remaining tests.
+                    return self.start_debugging_tests(single_stepping);
+                }
+                DebugResult::Breakpoint(pc) => {
+                    executor.interpreter.set_single_stepping(false);
+                    return self.stop(pc);
+                }
+            }
+        }
+        self.log_test_results();
+        Ok(false)
     }
 }

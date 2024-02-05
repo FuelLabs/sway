@@ -4,11 +4,13 @@ use dap::types::StartDebuggingRequestKind;
 use forc_pkg::BuiltPackage;
 use forc_test::execute::TestExecutor;
 use forc_test::setup::TestSetup;
+use forc_test::TestResult;
 use std::path::PathBuf;
 
 use super::AdapterError;
 
 #[derive(Default, Debug, Clone)]
+/// The state of the DAP server.
 pub struct ServerState {
     // DAP state
     pub program_path: PathBuf,
@@ -16,6 +18,7 @@ pub struct ServerState {
     pub initialized_event_sent: bool,
     pub started_debugging: bool,
     pub configuration_done: bool,
+    pub breakpoints_need_update: bool,
     pub stopped_on_breakpoint_id: Option<i64>,
     pub breakpoints: Breakpoints,
 
@@ -39,6 +42,7 @@ impl ServerState {
         self.test_setup = None;
         self.test_results = vec![];
         self.stopped_on_breakpoint_id = None;
+        self.breakpoints_need_update = true;
     }
 
     /// Initializes the executor stores.
@@ -54,7 +58,7 @@ impl ServerState {
 
     /// Finds the source location matching a VM program counter.
     pub fn vm_pc_to_source_location(&self, pc: u64) -> Result<(&PathBuf, i64), AdapterError> {
-        // FTry to find the source location by looking for the program counter in the source map.
+        // Try to find the source location by looking for the program counter in the source map.
         self.source_map
             .iter()
             .find_map(|(source_path, source_map)| {
@@ -98,7 +102,10 @@ impl ServerState {
     }
 
     /// Updates the breakpoints in the VM for all remaining [TestExecutor]s.
-    pub fn update_vm_breakpoints(&mut self) {
+    pub(crate) fn update_vm_breakpoints(&mut self) {
+        if !self.breakpoints_need_update {
+            return;
+        }
         let opcode_indexes = self
             .breakpoints
             .iter()
@@ -121,5 +128,10 @@ impl ServerState {
                 executor.interpreter.set_breakpoint(bp);
             });
         });
+    }
+
+    pub(crate) fn test_complete(&mut self, result: TestResult) {
+        self.test_results.push(result);
+        self.executors.remove(0);
     }
 }

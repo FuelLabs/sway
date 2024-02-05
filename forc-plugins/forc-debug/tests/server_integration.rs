@@ -187,12 +187,23 @@ fn test_server_launch_mode() {
     let (result, exit_code) = server.handle_command(Command::Continue(Default::default()));
     assert!(result.is_ok());
     assert_eq!(exit_code, Some(0));
+
+    // Test results should be logged
+    match output_capture.take_event().expect("received event") {
+        Event::Output(body) => {
+            assert!(matches!(body.category, None));
+            assert!(body.output.contains("test test_1 ... ok"));
+            assert!(body.output.contains("test test_2 ... ok"));
+            assert!(body.output.contains("test test_3 ... ok"));
+            assert!(body.output.contains("Result: OK. 3 passed. 0 failed"));
+        }
+        other => panic!("Expected Output event, got {:?}", other),
+    };
 }
 
 /// Asserts that the given event is a Stopped event with a breakpoint reason and the given breakpoint ID.
 fn assert_stopped_breakpoint_event(event: Option<Event>, breakpoint_id: i64) {
-    let event = event.expect("received event");
-    match event {
+    match event.expect("received event") {
         Event::Stopped(body) => {
             assert!(matches!(body.reason, StoppedEventReason::Breakpoint));
             assert_eq!(body.hit_breakpoint_ids, Some(vec![breakpoint_id]));
@@ -203,8 +214,7 @@ fn assert_stopped_breakpoint_event(event: Option<Event>, breakpoint_id: i64) {
 
 /// Asserts that the given event is a Stopped event with the right reason and no breakpoint ID.
 fn assert_stopped_next_event(event: Option<Event>) {
-    let event = event.expect("received event");
-    match event {
+    match event.expect("received event") {
         Event::Stopped(body) => {
             assert!(matches!(body.reason, StoppedEventReason::Step));
             assert_eq!(body.hit_breakpoint_ids, None);

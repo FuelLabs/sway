@@ -70,6 +70,7 @@ impl DapServer {
         self.state
             .breakpoints
             .insert(source_path_buf, breakpoints.clone());
+        self.state.breakpoints_need_update = true;
 
         Ok(breakpoints)
     }

@@ -19,7 +19,9 @@ impl DapServer {
             Some(breakpoint_id) => self.state.breakpoints.iter().find_map(|(_, breakpoints)| {
                 breakpoints.iter().find_map(|bp| {
                     if Some(breakpoint_id) == bp.id {
-                        return Some((bp.source.clone(), bp.line.unwrap()));
+                        if let Some(bp_line) = bp.line {
+                            return Some((bp.source.clone(), bp_line));
+                        }
                     }
                     None
                 })

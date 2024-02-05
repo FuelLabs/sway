@@ -1,10 +1,10 @@
 use crate::server::AdapterError;
 use crate::server::DapServer;
 use forc_pkg::{self, BuildProfile, Built, BuiltPackage, PackageManifestFile};
-use forc_test::execute::{DebugResult, TestExecutor};
+use forc_test::execute::TestExecutor;
 use forc_test::setup::TestSetup;
 use forc_test::BuiltTests;
-use std::{cmp::min, collections::HashMap, fs, path::PathBuf, sync::Arc};
+use std::{cmp::min, collections::HashMap, fs, sync::Arc};
 use sway_types::span::Position;
 
 impl DapServer {
@@ -41,23 +41,7 @@ impl DapServer {
         self.state.init_executors(executors);
 
         // Start debugging
-        self.state.update_vm_breakpoints();
-        while let Some(executor) = self.state.executors.first_mut() {
-            executor.interpreter.set_single_stepping(false);
-
-            match executor.start_debugging()? {
-                DebugResult::TestComplete(result) => {
-                    self.state.test_results.push(result);
-                }
-                DebugResult::Breakpoint(pc) => {
-                    return self.stop_on_breakpoint(pc);
-                }
-            };
-            self.state.executors.remove(0);
-        }
-
-        self.log_test_results();
-        Ok(false)
+        self.start_debugging_tests(false)
     }
 
     /// Builds the tests at the given [PathBuf] and stores the source maps.
@@ -109,8 +93,13 @@ impl DapServer {
 
         let project_name = pkg_manifest.project_name();
 
-        let outputs =
-            std::iter::once(build_plan.find_member_index(project_name).unwrap()).collect();
+        let outputs = std::iter::once(build_plan.find_member_index(project_name).ok_or(
+            AdapterError::BuildFailed {
+                phase: "find built project".into(),
+                reason: format!("{} not found in BuildPlan", project_name),
+            },
+        )?)
+        .collect();
 
         let built_packages = forc_pkg::build(
             &build_plan,
@@ -149,40 +138,45 @@ impl DapServer {
                 .collect::<HashMap<_, _>>();
 
             source_map.map.iter().for_each(|(instruction, sm_span)| {
-                let path_buf: &PathBuf = paths.get(sm_span.path.0).unwrap();
+                if let Some(path_buf) = paths.get(sm_span.path.0) {
+                    if let Some(source_code) = source_code.get(path_buf) {
+                        if let Some(start_pos) = Position::new(source_code, sm_span.range.start) {
+                            let (line, _) = start_pos.line_col();
+                            let (line, instruction) = (line as i64, *instruction as u64);
 
-                if let Some(source_code) = source_code.get(path_buf) {
-                    if let Some(start_pos) = Position::new(source_code, sm_span.range.start) {
-                        let (line, _) = start_pos.line_col();
-                        let (line, instruction) = (line as i64, *instruction as u64);
-
-                        self.state
-                            .source_map
-                            .entry(path_buf.clone())
-                            .and_modify(|new_map| {
-                                new_map
-                                    .entry(line)
-                                    .and_modify(|val| {
-                                        // Choose the first instruction that maps to this line
-                                        *val = min(instruction, *val);
-                                    })
-                                    .or_insert(instruction);
-                            })
-                            .or_insert(HashMap::from([(line, instruction)]));
+                            self.state
+                                .source_map
+                                .entry(path_buf.clone())
+                                .and_modify(|new_map| {
+                                    new_map
+                                        .entry(line)
+                                        .and_modify(|val| {
+                                            // Choose the first instruction that maps to this line
+                                            *val = min(instruction, *val);
+                                        })
+                                        .or_insert(instruction);
+                                })
+                                .or_insert(HashMap::from([(line, instruction)]));
+                        } else {
+                            self.error(format!(
+                                "Couldn't get position: {:?} in file: {:?}",
+                                sm_span.range.start, path_buf
+                            ));
+                        }
                     } else {
-                        self.error(format!(
-                            "Couldn't get position: {:?} in file: {:?}",
-                            sm_span.range.start, path_buf
-                        ));
+                        self.error(format!("Couldn't read file: {:?}", path_buf));
                     }
                 } else {
-                    self.error(format!("Couldn't read file: {:?}", path_buf));
+                    self.error(format!(
+                        "Path missing from source map: {:?}",
+                        sm_span.path.0
+                    ));
                 }
             });
         });
 
         // 3. Build the tests
-        let built_package = pkg_to_debug.ok_or_else(|| AdapterError::BuildFailed {
+        let built_package = pkg_to_debug.ok_or(AdapterError::BuildFailed {
             phase: "find package".into(),
             reason: format!("Couldn't find built package for {}", project_name),
         })?;

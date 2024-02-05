@@ -14,6 +14,7 @@ use pkg::manifest::ExperimentalFlags;
 use pkg::TestPassCondition;
 use pkg::{Built, BuiltPackage};
 use rand::{Rng, SeedableRng};
+use rayon::prelude::*;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::BuildTarget;
 use sway_types::Span;
@@ -355,7 +356,7 @@ impl<'a> PackageTests {
             pkg_with_tests
                 .bytecode
                 .entries
-                .iter()
+                .par_iter()
                 .filter_map(|entry| {
                     if let Some(test_entry) = entry.kind.test() {
                         // If a test filter is specified, only the tests containing the filter phrase in
