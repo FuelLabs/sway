@@ -8,7 +8,7 @@ fuelup update
 forc-lsp --version
 ```
 
-Second, confirm that your `$PATH` resolves to the forc-lsp in `$HOME/.fuelup/bin`.
+Second, confirm that your `$PATH` resolves to the `forc-lsp` binary in `$HOME/.fuelup/bin`.
 
 ```sh
 which forc-lsp
