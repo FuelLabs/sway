@@ -545,10 +545,7 @@ impl<'a> TypeCheckContext<'a> {
             } => {
                 let item_ref = self
                     .namespace
-                    .root.module
-		    .items()
-                    .implemented_traits
-                    .get_trait_item_for_type(handler, self.engines, &name, trait_type_id, None)?;
+		    .get_root_trait_item_for_type(handler, self.engines, &name, trait_type_id, None)?;
                 if let TyTraitItem::Type(type_ref) = item_ref {
                     let type_decl = self.engines.de().get_type(type_ref.id());
                     if let Some(ty) = &type_decl.ty {
@@ -680,7 +677,7 @@ impl<'a> TypeCheckContext<'a> {
         // check the visibility of the call path elements
         // we don't check the first prefix because direct children are always accessible
         for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
-            let module = self.namespace.root.module.check_submodule(handler, prefix)?;
+            let module = self.namespace.check_absolute_path_to_submodule(handler, prefix)?;
             if module.visibility.is_private() {
                 let prefix_last = prefix[prefix.len() - 1].clone();
                 handler.emit_err(CompileError::ImportPrivateModule {
@@ -915,8 +912,7 @@ impl<'a> TypeCheckContext<'a> {
         // grab the local module
         let local_module = self
             .namespace
-            .root_module()
-            .check_submodule(handler, &self.namespace.mod_path)?;
+            .check_absolute_path_to_submodule(handler, &self.namespace.mod_path)?;
 
         // grab the local items from the local module
         let local_items = local_module.items().get_items_for_type(self.engines, type_id);
@@ -938,8 +934,7 @@ impl<'a> TypeCheckContext<'a> {
         // grab the module where the type itself is declared
         let type_module = self
             .namespace
-            .root_module()
-            .check_submodule(handler, item_prefix)?;
+            .check_absolute_path_to_submodule(handler, item_prefix)?;
 
         // grab the items from where the type is declared
         let mut type_items = type_module.items().get_items_for_type(self.engines, type_id);

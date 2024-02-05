@@ -1058,7 +1058,7 @@ impl ty::TyExpression {
         let storage_key_ident = Ident::new_with_override("StorageKey".into(), span.clone());
 
         // Search for the struct declaration with the call path above.
-        let storage_key_decl_opt = ctx.namespace.root().module.resolve_symbol(
+        let storage_key_decl_opt = ctx.namespace.resolve_root_symbol(
             handler,
             engines,
             &storage_key_mod_path,
