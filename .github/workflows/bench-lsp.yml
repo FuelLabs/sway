@@ -1,0 +1,20 @@
+name: Benchmark LSP
+
+on:
+  pull_request:
+    paths:
+      - sway-core/**
+      - sway-lsp/**
+      - forc-plugins/forc-lsp/**
+
+jobs:
+  compare-master:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@v3
+      - uses: boa-dev/criterion-compare-action@v3.2.4
+        with:
+          cwd: "./sway-lsp"
+          branchName: ${{ github.base_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}

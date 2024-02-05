@@ -371,18 +371,6 @@ jobs:
       - name: Cargo Test sway-lib-std
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 
-  benchmark-sway-lsp:
-    name: Compare sway-lsp benchmarks against master
-    runs-on: ubuntu-latest
-    steps:
-      - uses: Swatinem/rust-cache@v2
-      - uses: actions/checkout@v3
-      - uses: boa-dev/criterion-compare-action@v3.2.4
-        with:
-          cwd: "./sway-lsp"
-          branchName: ${{ github.base_ref }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-
   forc-run-benchmarks:
     runs-on: ubuntu-latest
     permissions:
