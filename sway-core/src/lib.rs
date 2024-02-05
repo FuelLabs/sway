@@ -40,10 +40,7 @@ use std::sync::Arc;
 use sway_ast::AttributeDecl;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{
-    create_o1_pass_group, register_known_passes, Context, Kind, Module, PassGroup, PassManager,
-    ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, INLINE_MODULE_NAME, MEM2REG_NAME,
-    MEMCPYOPT_NAME, MISCDEMOTION_NAME, MODULEPRINTER_NAME, RETDEMOTION_NAME, SIMPLIFYCFG_NAME,
-    SROA_NAME,
+    create_o1_pass_group, optimize, register_known_passes, Context, Kind, Module, PassGroup, PassManager, ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, INLINE_MODULE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME, MODULEPRINTER_NAME, RETDEMOTION_NAME, SIMPLIFYCFG_NAME, SROA_NAME
 };
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
 use sway_types::SourceEngine;
@@ -481,10 +478,6 @@ pub fn parsed_to_ast(
 ) -> Result<ty::TyProgram, ErrorEmitted> {
     let experimental = build_config.map(|x| x.experimental).unwrap_or_default();
     let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
-    let (retrigger_compilation, optimized_build) = lsp_config
-        .as_ref()
-        .map(|lsp| (lsp.retrigger_compilation.clone(), lsp.optimized_build))
-        .unwrap_or((None, false));
 
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
@@ -521,7 +514,10 @@ pub fn parsed_to_ast(
     };
 
     // Skip collecting metadata if we triggered an optimised build from LSP.
-    let types_metadata = if !optimized_build {
+    let types_metadata = if !lsp_config
+        .as_ref()
+        .map(|lsp| lsp.optimized_build)
+        .unwrap_or(false) {
         // Collect information about the types used in this program
         let types_metadata_result = typed_program.collect_types_metadata(
             handler,
@@ -643,11 +639,6 @@ pub fn compile_to_ast(
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<Programs, ErrorEmitted> {
-    let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
-    let retrigger_compilation = lsp_config
-        .as_ref()
-        .map_or(None, |config| config.retrigger_compilation.clone());
-
     check_should_abort(handler, retrigger_compilation.clone())?;
 
     let query_engine = engines.qe();

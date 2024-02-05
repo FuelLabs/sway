@@ -201,7 +201,6 @@ pub struct ExperimentalFlags {
 
 #[derive(Clone, Debug, Default)]
 pub struct LspConfig {
-    pub retrigger_compilation: Option<Arc<AtomicBool>>,
     // This is set to true if compilation was triggered by a didChange LSP event. In this case, we
     // bypass collecting type metadata and skip DCA.
     //

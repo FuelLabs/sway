@@ -114,9 +114,9 @@ impl ServerState {
                         let mut engines_clone = session.engines.read().clone();
 
                         if let Some(version) = ctx.version {
-                            // Garbage collection is fairly expsensive so we only clear on every 4th keystroke.
+                            // Garbage collection is fairly expsensive so we only clear on every 3rd keystroke.
                             // Waiting too long to clear can cause a stack overflow to occur.
-                            if version % 4 == 0 {
+                            if version % 3 == 0 {
                                 // Call this on the engines clone so we don't clear types that are still in use
                                 // and might be needed in the case cancel compilation was triggered.
                                 if let Err(err) = session.garbage_collect(&mut engines_clone) {
@@ -129,7 +129,6 @@ impl ServerState {
                         }
 
                         let lsp_mode = Some(LspConfig {
-                            retrigger_compilation: Some(retrigger_compilation.clone()),
                             optimized_build: ctx.optimized_build,
                         });
 
