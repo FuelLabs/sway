@@ -21,6 +21,10 @@ on:
       - sway-lib-core/**
       - sway-lib-std/**
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   compare-master:
     runs-on: ubuntu-latest
