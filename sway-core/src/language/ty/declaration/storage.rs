@@ -98,8 +98,9 @@ impl TyStorageDecl {
             }
             None => {
                 return Err(handler.emit_err(CompileError::StorageFieldDoesNotExist {
-                    name: first_field.clone(),
-                    span: first_field.span(),
+                    field_name: first_field.into(),
+                    available_fields: storage_fields.iter().map(|sf| sf.name.clone()).collect(),
+                    storage_decl_span: self.span(),
                 }));
             }
         };
@@ -113,6 +114,13 @@ impl TyStorageDecl {
         previous_field = first_field;
         previous_field_type_id = initial_field_type;
 
+        // Storage cannot contain references, so there is no need for checking
+        // if the declaration is a reference to a struct. References can still
+        // be erroneously declared in the storage, and the type behind a concrete
+        // field access might be a reference to struct, but we do not treat that
+        // as a special case but just another one "not a struct".
+        // The FieldAccessOnNonStruct error message will explain that in the case
+        // of storage access, fields can be accessed only on structs.
         let get_struct_decl = |type_id: TypeId| match &*type_engine.get(type_id) {
             TypeInfo::Struct(decl_ref) => Some(decl_engine.get_struct(decl_ref)),
             _ => None,
@@ -191,8 +199,10 @@ impl TyStorageDecl {
                 }
                 None => {
                     return Err(handler.emit_err(CompileError::FieldAccessOnNonStruct {
-                        span: previous_field.span(),
                         actually: engines.help_out(previous_field_type_id).to_string(),
+                        storage_variable: Some(previous_field.to_string()),
+                        field_name: field.into(),
+                        span: previous_field.span(),
                     }))
                 }
             };

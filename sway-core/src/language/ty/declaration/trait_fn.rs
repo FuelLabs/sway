@@ -1,4 +1,7 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 
 use sway_types::{Ident, Named, Span, Spanned};
 
@@ -18,6 +21,26 @@ pub struct TyTraitFn {
     pub parameters: Vec<TyFunctionParameter>,
     pub return_type: TypeArgument,
     pub attributes: transform::AttributesMap,
+}
+
+impl DebugWithEngines for TyTraitFn {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(
+            f,
+            "{:?}({}):{}",
+            self.name,
+            self.parameters
+                .iter()
+                .map(|p| format!(
+                    "{}:{}",
+                    p.name.as_str(),
+                    engines.help_out(p.type_argument.initial_type_id)
+                ))
+                .collect::<Vec<_>>()
+                .join(", "),
+            engines.help_out(self.return_type.initial_type_id),
+        )
+    }
 }
 
 impl Named for TyTraitFn {

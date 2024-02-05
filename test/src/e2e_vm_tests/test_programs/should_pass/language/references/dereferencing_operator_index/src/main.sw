@@ -47,7 +47,7 @@ fn dereference_array_of_refs<T>()
     where T: TestInstance + Eq
 {
     let mut array = [T::new(), T::different()];
-    let mut array_of_refs = [&array, &array];
+    let array_of_refs = [&array, &array];
 
     let r_array_of_refs = &array_of_refs;
     let r_r_array_of_refs = &r_array_of_refs;
