@@ -1,6 +1,5 @@
 use crate::server::AdapterError;
 use crate::server::DapServer;
-use forc_test::execute::DebugResult;
 
 impl DapServer {
     /// Handles a `continue` request. Returns true if the server should continue running.

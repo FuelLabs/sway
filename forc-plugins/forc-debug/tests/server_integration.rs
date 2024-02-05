@@ -191,7 +191,7 @@ fn test_server_launch_mode() {
     // Test results should be logged
     match output_capture.take_event().expect("received event") {
         Event::Output(body) => {
-            assert!(matches!(body.category, None));
+            assert!(body.category.is_none());
             assert!(body.output.contains("test test_1 ... ok"));
             assert!(body.output.contains("test test_2 ... ok"));
             assert!(body.output.contains("test test_3 ... ok"));

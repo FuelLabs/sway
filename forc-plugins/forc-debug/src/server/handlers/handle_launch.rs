@@ -55,29 +55,25 @@ impl DapServer {
         // 1. Build the packages
         let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&self.state.program_path)
             .map_err(|err| AdapterError::BuildFailed {
-                phase: "read manifest file".into(),
-                reason: err.to_string(),
+                reason: format!("read manifest file: {:?}", err),
             })?;
         let pkg_manifest: PackageManifestFile =
             manifest_file
                 .clone()
                 .try_into()
                 .map_err(|err: anyhow::Error| AdapterError::BuildFailed {
-                    phase: "package manifest".into(),
-                    reason: err.to_string(),
+                    reason: format!("package manifest: {:?}", err),
                 })?;
         let member_manifests =
             manifest_file
                 .member_manifests()
                 .map_err(|err| AdapterError::BuildFailed {
-                    phase: "member manifests".into(),
-                    reason: err.to_string(),
+                    reason: format!("member manifests: {:?}", err),
                 })?;
         let lock_path = manifest_file
             .lock_path()
             .map_err(|err| AdapterError::BuildFailed {
-                phase: "lock path".into(),
-                reason: err.to_string(),
+                reason: format!("lock path: {:?}", err),
             })?;
         let build_plan = forc_pkg::BuildPlan::from_lock_and_manifests(
             &lock_path,
@@ -87,16 +83,14 @@ impl DapServer {
             Default::default(),
         )
         .map_err(|err| AdapterError::BuildFailed {
-            phase: "build plan".into(),
-            reason: err.to_string(),
+            reason: format!("build plan: {:?}", err),
         })?;
 
         let project_name = pkg_manifest.project_name();
 
         let outputs = std::iter::once(build_plan.find_member_index(project_name).ok_or(
             AdapterError::BuildFailed {
-                phase: "find built project".into(),
-                reason: format!("{} not found in BuildPlan", project_name),
+                reason: format!("find built project: {}", project_name),
             },
         )?)
         .collect();
@@ -112,8 +106,7 @@ impl DapServer {
             &outputs,
         )
         .map_err(|err| AdapterError::BuildFailed {
-            phase: "build packages".into(),
-            reason: err.to_string(),
+            reason: format!("build packages: {:?}", err),
         })?;
 
         // 2. Store the source maps
@@ -177,16 +170,14 @@ impl DapServer {
 
         // 3. Build the tests
         let built_package = pkg_to_debug.ok_or(AdapterError::BuildFailed {
-            phase: "find package".into(),
-            reason: format!("Couldn't find built package for {}", project_name),
+            reason: format!("find package: {}", project_name),
         })?;
 
         let built = Built::Package(Arc::from(built_package.clone()));
 
         let built_tests = BuiltTests::from_built(built, &build_plan).map_err(|err| {
             AdapterError::BuildFailed {
-                phase: "build tests".into(),
-                reason: err.to_string(),
+                reason: format!("build tests: {:?}", err),
             }
         })?;
 
@@ -194,14 +185,12 @@ impl DapServer {
             BuiltTests::Package(pkg_tests) => pkg_tests,
             BuiltTests::Workspace(_) => {
                 return Err(AdapterError::BuildFailed {
-                    phase: "package tests".into(),
-                    reason: "Workspace tests not supported".into(),
+                    reason: "package tests: workspace tests not supported".into(),
                 })
             }
         };
         let test_setup = pkg_tests.setup().map_err(|err| AdapterError::BuildFailed {
-            phase: "test setup".into(),
-            reason: err.to_string(),
+            reason: format!("test setup: {:?}", err),
         })?;
         self.state.built_package = Some(built_package.clone());
         self.state.test_setup = Some(test_setup.clone());

@@ -25,7 +25,7 @@ pub enum AdapterError {
     UnknownBreakpoint { pc: u64 },
 
     #[error("Build failed")]
-    BuildFailed { phase: String, reason: String },
+    BuildFailed { reason: String },
 
     #[error("No active test executor")]
     NoActiveTestExecutor,
