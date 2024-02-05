@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-9E6C1872754228C2"
+
+[[package]]
+name = "dereferencing_operator_dot_on_structs"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-9E6C1872754228C2"
+dependencies = ["core"]

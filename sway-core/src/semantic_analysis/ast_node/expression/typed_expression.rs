@@ -1672,10 +1672,10 @@ impl ty::TyExpression {
                     let method = decl_engine.get_trait_fn(decl_ref);
                     abi_items.push(TyImplItem::Fn(
                         decl_engine
-                            .insert(method.to_dummy_func(AbiMode::ImplAbiFn(
-                                abi_name.suffix.clone(),
-                                Some(*abi_ref.id()),
-                            )))
+                            .insert(method.to_dummy_func(
+                                AbiMode::ImplAbiFn(abi_name.suffix.clone(), Some(*abi_ref.id())),
+                                Some(return_type),
+                            ))
                             .with_parent(decl_engine, (*decl_ref.id()).into()),
                     ));
                 }
@@ -1851,6 +1851,7 @@ impl ty::TyExpression {
 
                     current_type = type_engine.get_unaliased(referenced_type_id);
                 }
+                TypeInfo::ErrorRecovery(err) => return Err(*err),
                 _ => {
                     return Err(handler.emit_err(CompileError::NotIndexable {
                         actually: engines.help_out(prefix_type_id).to_string(),
