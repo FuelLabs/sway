@@ -72,6 +72,16 @@ pub fn build_project(bin_name: &str) -> String {
 }
 
 #[macro_export]
+/// Run an arbitrary code block if running in the CLI_TEST environment
+macro_rules! if_cli_test {
+    ($($code:tt)*) => {
+        if option_env!("CLI_TEST").is_some() {
+            $($code)*
+        }
+    };
+}
+
+#[macro_export]
 /// Let the user format the help and parse it from that string into arguments to create the unit
 /// test.
 ///

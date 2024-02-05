@@ -1,6 +1,7 @@
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 use forc_tracing::println_warning;
+use forc_util::if_cli_test;
 use forc_wallet::{
     account::{derive_secret_key, new_at_index_cli},
     balance::{
@@ -41,7 +42,7 @@ pub enum WalletSelectionMode {
 fn prompt_address() -> Result<Bech32Address> {
     print!("Please provide the address of the wallet you are going to sign this transaction with:");
     std::io::stdout().flush()?;
-    if option_env!("CLI_TEST").is_some() {
+    if_cli_test! {
         return Ok(Bech32Address::new("test", *Bytes32::default()));
     }
     let mut buf = String::new();
@@ -52,7 +53,7 @@ fn prompt_address() -> Result<Bech32Address> {
 fn prompt_signature(tx_id: fuel_tx::Bytes32) -> Result<Signature> {
     println!("Transaction id to sign: {tx_id}");
     print!("Please provide the signature:");
-    if option_env!("CLI_TEST").is_some() {
+    if_cli_test! {
         return Ok(Signature::from_bytes(*Bytes64::default()));
     }
     std::io::stdout().flush()?;
@@ -64,7 +65,7 @@ fn prompt_signature(tx_id: fuel_tx::Bytes32) -> Result<Signature> {
 fn ask_user_yes_no_question(question: &str) -> Result<bool> {
     print!("{question}");
     std::io::stdout().flush()?;
-    if option_env!("CLI_TEST").is_some() {
+    if_cli_test! {
         return Ok(true);
     }
     let mut ans = String::new();
@@ -176,19 +177,17 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
         &mut self,
         provider: Provider,
         default_sign: bool,
-        signing_key: Option<SecretKey>,
+        mut signing_key: Option<SecretKey>,
         wallet_mode: WalletSelectionMode,
     ) -> Result<Tx> {
         let params = provider.chain_info().await?.consensus_parameters;
-        let signing_key = if option_env!("CLI_TEST").is_some() {
+        if_cli_test! {
             // This section should be removed once forc-wallet fully supports CLI_TEST env
             // variable.
             println_warning("Creating a new wallet for testing purposes");
             let secret_key = SecretKey::from_str(DEFAULT_PRIVATE_KEY)?;
-            Some(secret_key)
-        } else {
-            signing_key
-        };
+            signing_key = Some(secret_key);
+        }
 
         let signing_key = match (wallet_mode, signing_key, default_sign) {
             (WalletSelectionMode::ForcWallet, None, false) => {

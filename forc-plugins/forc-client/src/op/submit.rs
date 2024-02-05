@@ -1,6 +1,7 @@
 use crate::{cmd, util::node_url::get_node_url};
 use anyhow::Context;
 use forc_tracing::println_warning;
+use forc_util::if_cli_test;
 use fuel_core_client::client::{types::TransactionStatus, FuelClient};
 use fuel_crypto::fuel_types::canonical::Deserialize;
 
@@ -8,13 +9,14 @@ use fuel_crypto::fuel_types::canonical::Deserialize;
 pub async fn submit(cmd: cmd::Submit) -> anyhow::Result<()> {
     let tx = read_tx(&cmd.tx_path)?;
     let node_url = get_node_url(&cmd.network.node, &None)?;
-    if option_env!("CLI_TEST").is_some() {
+    if_cli_test! {
         println_warning(&format!(
             "Simulating a successful execution of tx: {:?}, to url {}",
             tx, node_url
         ));
         return Ok(());
     }
+
     let client = FuelClient::new(node_url)?;
     if cmd.network.await_ {
         let status = client
