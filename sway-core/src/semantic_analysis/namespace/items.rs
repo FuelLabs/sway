@@ -428,7 +428,6 @@ impl Items {
                                 index: *index,
                                 count: fields.len(),
                                 tuple_type: engines.help_out(symbol).to_string(),
-                                referencing_level: type_engine.get_referencing_level(symbol),
                                 span: index_span.clone(),
                                 prefix_span: full_span_for_error.clone(),
                             }));

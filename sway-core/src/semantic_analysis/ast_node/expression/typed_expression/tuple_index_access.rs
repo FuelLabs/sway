@@ -62,7 +62,6 @@ pub(crate) fn instantiate_tuple_index_access(
             index,
             count: type_args.len(),
             tuple_type: engines.help_out(prefix_type_id).to_string(),
-            referencing_level: type_engine.get_referencing_level(prefix_type_id),
             span: index_span,
             prefix_span,
         }));

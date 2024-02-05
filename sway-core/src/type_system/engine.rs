@@ -104,31 +104,6 @@ impl TypeEngine {
         }
     }
 
-    /// Returns the number of dereferencing operations needed to come from the type
-    /// specified with [TypeId] `id` to a type which is not a [TypeInfo::Ref].
-    /// If the type specified by `id` is not a reference, zero is returned.
-    /// In general, assuming the `T` is not a reference, the method returns:
-    ///       T -> 0
-    ///      &T -> 1
-    ///     &&T -> 2
-    ///  &...&T -> n, where n is the number of referencing operations
-    ///
-    /// Aliases are unaliased, and seen either as a [TypeInfo::Ref]
-    /// or a non-reference.
-    pub fn get_referencing_level(&self, id: TypeId) -> usize {
-        let mut referencing_level = 0;
-        let mut type_info = self.get_unaliased(id);
-
-        // We cannot have self-referencing references, so this loop always ends.
-        while let TypeInfo::Ref(referenced_type) = &*type_info {
-            referencing_level += 1;
-
-            type_info = self.get_unaliased(referenced_type.type_id);
-        }
-
-        referencing_level
-    }
-
     /// Make the types of `received` and `expected` equivalent (or produce an
     /// error if there is a conflict between them).
     ///

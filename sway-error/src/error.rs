@@ -565,12 +565,6 @@ pub enum CompileError {
         index: usize,
         count: usize,
         tuple_type: String,
-        /// Denotes if the tuple element access occurs over
-        /// references. The meaning of the `referencing_level` is:
-        ///   0 - no referencing. Element access directly on a tuple type.
-        ///   1 - single referencing. Element access over a reference to a tuple type.
-        ///   n - n levels of referencing. Element access over a reference to a reference ... to a tuple type.
-        referencing_level: usize,
         span: Span,
         prefix_span: Span,
     },
@@ -1831,19 +1825,12 @@ impl ToDiagnostic for CompileError {
                 },
                 help: vec![],
             },
-            TupleIndexOutOfBounds { index, count, tuple_type, referencing_level, span, prefix_span } => Diagnostic {
+            TupleIndexOutOfBounds { index, count, tuple_type, span, prefix_span } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Tuple index is out of bounds".to_string())),
                 issue: Issue::error(
                     source_engine,
                     span.clone(),
-                    format!("Tuple index {index} is out of bounds. The {}tuple has only {count} element{}.",
-                        if *referencing_level > 0 {
-                            "referenced "
-                        } else {
-                            ""
-                        },
-                        plural_s(*count)
-                    )
+                    format!("Tuple index {index} is out of bounds. The tuple has only {count} element{}.", plural_s(*count))
                 ),
                 hints: vec![
                     Hint::info(
@@ -1851,19 +1838,6 @@ impl ToDiagnostic for CompileError {
                         prefix_span.clone(),
                         format!("This expression has type \"{tuple_type}\".")
                     ),
-                    Hint::info(
-                        source_engine,
-                        prefix_span.clone(),
-                        format!("That is {} tuple of only {} element{}.",
-                            match *referencing_level {
-                                0 => "a",
-                                1 => "a reference to a",
-                                _ => "an indirect reference to a",
-                            },
-                            number_to_str(*count),
-                            plural_s(*count)
-                        )
-                    )
                 ],
                 help: vec![],
             },
