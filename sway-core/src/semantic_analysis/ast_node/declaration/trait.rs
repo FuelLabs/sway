@@ -137,7 +137,7 @@ impl TyTraitDecl {
                     let decl_ref = decl_engine.insert(method.clone());
                     dummy_interface_surface.push(ty::TyImplItem::Fn(
                         decl_engine
-                            .insert(method.to_dummy_func(AbiMode::NonAbi))
+                            .insert(method.to_dummy_func(AbiMode::NonAbi, Some(self_type)))
                             .with_parent(decl_engine, (*decl_ref.id()).into()),
                     ));
                     new_interface_surface.push(ty::TyTraitInterfaceItem::TraitFn(decl_ref));
@@ -202,9 +202,15 @@ impl TyTraitDecl {
         let mut new_items = vec![];
         for method_decl_id in methods.into_iter() {
             let method = engines.pe().get_function(&method_decl_id);
-            let method =
-                ty::TyFunctionDecl::type_check(handler, ctx.by_ref(), &method, true, false)
-                    .unwrap_or_else(|_| ty::TyFunctionDecl::error(&method));
+            let method = ty::TyFunctionDecl::type_check(
+                handler,
+                ctx.by_ref(),
+                &method,
+                true,
+                false,
+                Some(self_type_param.type_id),
+            )
+            .unwrap_or_else(|_| ty::TyFunctionDecl::error(&method));
             new_items.push(ty::TyTraitItem::Fn(decl_engine.insert(method)));
         }
 
@@ -428,7 +434,7 @@ impl TyTraitDecl {
                     all_items.push(TyImplItem::Fn(
                         ctx.engines
                             .de()
-                            .insert(method.to_dummy_func(AbiMode::NonAbi))
+                            .insert(method.to_dummy_func(AbiMode::NonAbi, Some(type_id)))
                             .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
                     ));
                 }

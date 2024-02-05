@@ -119,6 +119,8 @@ fn struct_parameter(p: S) {
     assert(p_ptr.read::<S>() == p);
 
     assert(*r_p_1 == *r_p_2);
+    
+    assert(r_p_1.x == r_p_2.x);
 }
 
 #[inline(never)]

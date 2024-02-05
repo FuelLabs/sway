@@ -122,6 +122,7 @@ impl TyDecl {
                     &fn_decl,
                     false,
                     false,
+                    None,
                 ) {
                     Ok(res) => res,
                     Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),

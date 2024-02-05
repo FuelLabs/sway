@@ -25,9 +25,16 @@ impl ty::TyFunctionDecl {
         fn_decl: &FunctionDeclaration,
         is_method: bool,
         is_in_impl_self: bool,
+        implementing_for_typeid: Option<TypeId>,
     ) -> Result<Self, ErrorEmitted> {
-        let mut ty_fn_decl =
-            Self::type_check_signature(handler, ctx.by_ref(), fn_decl, is_method, is_in_impl_self)?;
+        let mut ty_fn_decl = Self::type_check_signature(
+            handler,
+            ctx.by_ref(),
+            fn_decl,
+            is_method,
+            is_in_impl_self,
+            implementing_for_typeid,
+        )?;
         Self::type_check_body(handler, ctx, fn_decl, &mut ty_fn_decl)
     }
 
@@ -37,6 +44,7 @@ impl ty::TyFunctionDecl {
         fn_decl: &FunctionDeclaration,
         is_method: bool,
         is_in_impl_self: bool,
+        implementing_for_typeid: Option<TypeId>,
     ) -> Result<Self, ErrorEmitted> {
         let FunctionDeclaration {
             name,
@@ -139,6 +147,7 @@ impl ty::TyFunctionDecl {
             body: TyCodeBlock::default(),
             parameters: new_parameters,
             implementing_type: None,
+            implementing_for_typeid,
             span: span.clone(),
             call_path,
             attributes: attributes.clone(),
@@ -357,6 +366,7 @@ fn test_function_selector_behavior() {
         purity: Default::default(),
         name: Ident::dummy(),
         implementing_type: None,
+        implementing_for_typeid: None,
         body: ty::TyCodeBlock::default(),
         parameters: vec![],
         span: Span::dummy(),
@@ -380,6 +390,7 @@ fn test_function_selector_behavior() {
         purity: Default::default(),
         name: Ident::new_with_override("bar".into(), Span::dummy()),
         implementing_type: None,
+        implementing_for_typeid: None,
         body: ty::TyCodeBlock::default(),
         parameters: vec![
             ty::TyFunctionParameter {
