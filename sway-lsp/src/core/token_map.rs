@@ -51,16 +51,11 @@ impl<'a> TokenMap {
             500_000_000,
             1_000_000_000,
         ]; // Backoff times in nanoseconds
-        for (i, sleep) in backoff_times.iter().enumerate().take(MAX_RETRIES) {
+        for sleep in backoff_times.iter().take(MAX_RETRIES) {
             match self.try_get_mut(ident) {
                 TryResult::Present(token) => return Some(token),
                 TryResult::Absent => return None,
                 TryResult::Locked => {
-                    // tracing::warn!(
-                    //     "Failed to get token, retrying attmpt {}: {:#?}",
-                    //     i,
-                    //     ident.name
-                    // );
                     // Wait for the specified backoff time before retrying
                     let backoff_time = Duration::from_nanos(*sleep);
                     thread::sleep(backoff_time);
