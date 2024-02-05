@@ -41,12 +41,14 @@ pub(crate) fn instantiate_tuple_index_access(
             }
             TypeInfo::ErrorRecovery(err) => return Err(*err),
             _ => {
-                return Err(handler.emit_err(CompileError::TupleElementAccessOnNonTuple {
-                    actually: engines.help_out(prefix_type_id).to_string(),
-                    span: prefix_span,
-                    index,
-                    index_span,
-                }))
+                return Err(
+                    handler.emit_err(CompileError::TupleElementAccessOnNonTuple {
+                        actually: engines.help_out(prefix_type_id).to_string(),
+                        span: prefix_span,
+                        index,
+                        index_span,
+                    }),
+                )
             }
         };
     }
