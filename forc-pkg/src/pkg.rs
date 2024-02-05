@@ -179,7 +179,7 @@ pub struct CompiledPackage {
     pub program_abi: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: BuiltPackageBytecode,
-    pub namespace: namespace::Root,
+    pub namespace: namespace::Module,
     pub warnings: Vec<CompileWarning>,
     pub metrics: PerformanceData,
 }
@@ -1807,7 +1807,7 @@ pub fn compile(
     let storage_slots = typed_program.storage_slots.clone();
     let tree_type = typed_program.kind.tree_type();
 
-    let namespace = typed_program.root.namespace.root().clone();
+    let namespace = typed_program.root.namespace.clone();
 
     if handler.has_errors() {
         return fail(handler);
@@ -1926,7 +1926,7 @@ pub fn compile(
         storage_slots,
         tree_type,
         bytecode,
-        namespace,
+        namespace:namespace.root_module().clone(),
         warnings,
         metrics,
     };

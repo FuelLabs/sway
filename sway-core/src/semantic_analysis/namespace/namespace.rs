@@ -1,5 +1,5 @@
 use crate::{
-    language::{ty, CallPath, Visibility},
+    language::{ty, ty::TyTraitItem, CallPath, Visibility},
     Engines, Ident, TypeId,
 };
 
@@ -70,11 +70,45 @@ impl Namespace {
         &self.root
     }
 
-    /// A reference to the root module of the project namespace.
     pub fn root_module(&self) -> &Module {
-        &self.root.module
+	&self.root.module
     }
 
+    /// The name of the root module
+    pub fn root_module_name(&self) -> &Ident {
+	&self.root.module.name
+    }
+    
+    pub fn check_absolute_path_to_submodule(
+	&self,
+        handler: &Handler,
+        path: &[Ident],
+    ) -> Result<&Module, ErrorEmitted> {
+	self.root.module.check_submodule(handler, path)
+    }
+    
+    pub fn get_root_trait_item_for_type(
+	&self,
+        handler: &Handler,
+        engines: &Engines,
+        name: &Ident,
+        type_id: TypeId,
+        as_trait: Option<CallPath>,
+    ) -> Result<TyTraitItem, ErrorEmitted> {
+	self.root.module.items().implemented_traits.get_trait_item_for_type(handler, engines, name, type_id, as_trait)
+    }
+
+    pub fn resolve_root_symbol(
+	&self,
+        handler: &Handler,
+        engines: &Engines,
+        mod_path: &Path,
+        symbol: &Ident,
+        self_type: Option<TypeId>,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+	self.root.resolve_symbol(handler, engines, mod_path, symbol, self_type)
+    }
+    
     /// Access to the current [Module], i.e. the module at the inner `mod_path`.
     ///
     /// Note that the [Namespace] will automatically dereference to this [Module] when attempting
@@ -196,7 +230,7 @@ impl Namespace {
         src: &Path,
         is_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
-	self.root.module.tar_import(
+	self.root.module.star_import(
             handler,
             engines,
             src,

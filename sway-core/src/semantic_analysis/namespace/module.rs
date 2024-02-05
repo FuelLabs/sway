@@ -240,7 +240,7 @@ impl Module {
     /// This is used when an import path contains an asterisk.
     ///
     /// Paths are assumed to be relative to `self`.
-    pub(crate) fn tar_import(
+    pub(crate) fn star_import(
         &mut self,
         handler: &Handler,
         engines: &Engines,
