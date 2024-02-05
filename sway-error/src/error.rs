@@ -303,7 +303,7 @@ pub enum CompileError {
         field_name: IdentUnique,
         span: Span,
     },
-    #[error("This expression has type \"{actually}\", which is not a tuple. Elements can be access only on tuples.")]
+    #[error("This expression has type \"{actually}\", which is not a tuple. Elements can only be accessed on tuples.")]
     TupleElementAccessOnNonTuple {
         actually: String,
         span: Span,
