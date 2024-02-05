@@ -9,6 +9,8 @@ use crate::NodeTarget;
 
 forc_util::cli_examples! {
     [ Deploy a single contract => deploy "bc09bfa7a11a04ce42b0a5abf04fd437387ee49bf4561d575177e2946468b408" => r#".*Error making HTTP request.*"# ]
+    [ Deploy a single contract from a different path => deploy "bc09bfa7a11a04ce42b0a5abf04fd437387ee49bf4561d575177e2946468b408 --path ../tests/" => r#".*Error making HTTP request.*"# ]
+    [ Deploy to a custom network => deploy "--node-url https://beta-5.fuel.network/graphql" => ".*Refused to create a new wallet.*" ]
     [ Deploy a single contract from a different path => deploy "bc09bfa7a11a04ce42b0a5abf04fd437387ee49bf4561d575177e2946468b408 --path {path}" => r#".*Error making HTTP request.*"# ]
     [ Deploy to a custom network => deploy "--node-url https://beta-5.fuel.network/graphql" ]
     setup {
@@ -33,19 +35,16 @@ pub struct Command {
     pub node: NodeTarget,
     /// Optional 256-bit hexadecimal literal(s) to redeploy contracts.
     ///
-    /// For a single contract, use `--salt <SALT>`, eg.: forc deploy --salt
-    /// 0x0000000000000000000000000000000000000000000000000000000000000001
+    /// For a single contract, use `--salt <SALT>`, eg.: forc deploy --salt 0x0000000000000000000000000000000000000000000000000000000000000001
     ///
     /// For a workspace with multiple contracts, use `--salt <CONTRACT_NAME>:<SALT>`
     /// to specify a salt for each contract, eg.:
     ///
-    /// forc deploy --salt
-    /// contract_a:0x0000000000000000000000000000000000000000000000000000000000000001
+    /// forc deploy --salt contract_a:0x0000000000000000000000000000000000000000000000000000000000000001
     /// --salt contract_b:0x0000000000000000000000000000000000000000000000000000000000000002
     #[clap(long)]
     pub salt: Option<Vec<String>>,
-    /// Generate a default salt
-    /// (0x0000000000000000000000000000000000000000000000000000000000000000) for the contract.
+    /// Generate a default salt (0x0000000000000000000000000000000000000000000000000000000000000000) for the contract.
     /// Useful for CI, to create reproducable deployments.
     #[clap(long)]
     pub default_salt: bool,
@@ -53,8 +52,7 @@ pub struct Command {
     pub build_output: BuildOutput,
     #[clap(flatten)]
     pub build_profile: BuildProfile,
-    /// Sign the transaction with default signer that is pre-funded by fuel-core. Useful for
-    /// testing against local node.
+    /// Sign the transaction with default signer that is pre-funded by fuel-core. Useful for testing against local node.
     #[clap(long)]
     pub default_signer: bool,
     /// Deprecated in favor of `--default-signer`.
@@ -71,8 +69,8 @@ pub struct Command {
     /// the contract. You can override the initialization by providing the file path to a JSON file
     /// containing the overriden values.
     ///
-    /// The file format and key values should match the compiler-generated `*-storage_slots.json`
-    /// file in the output directory of the compiled contract.
+    /// The file format and key values should match the compiler-generated `*-storage_slots.json` file in the output
+    /// directory of the compiled contract.
     ///
     /// Example: `forc deploy --override-storage-slots my_override.json`
     ///
