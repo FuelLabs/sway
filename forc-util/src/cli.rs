@@ -82,7 +82,7 @@ pub fn build_project(bin_name: &str) -> String {
 ///
 /// Each example is also converted into a unit test. The test invokes the CLI command externall
 /// (there is no `#[cfg(test)]` since the command is an external process and unaware of the test
-/// context). The `option_env!("CLI_TEST").is_some()` macro can be used to detect if the command is
+/// context). The `option_env!("CLI_TEST").is_some()` expression can be used to detect if the command is
 /// being executed from the CLI_TEST environment and take a different path (for instance to mock a
 /// user given input response).
 ///
