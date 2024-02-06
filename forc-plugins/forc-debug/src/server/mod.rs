@@ -150,13 +150,19 @@ impl DapServer {
                 Err(e) => (Err(e), Some(1)),
             },
             Command::Disconnect(_) => (Ok(ResponseBody::Disconnect), Some(0)),
-            Command::Evaluate(_) => (
-                Ok(ResponseBody::Evaluate(responses::EvaluateResponse {
-                    result: "Evaluate expressions not supported".into(),
-                    ..Default::default()
-                })),
-                None,
-            ),
+            Command::Evaluate(args) => {
+                let result = match args.context {
+                    Some(types::EvaluateArgumentsContext::Variables) => args.expression.clone(),
+                    _ => "Evaluate expressions not supported in this context".into(),
+                };
+                (
+                    Ok(ResponseBody::Evaluate(responses::EvaluateResponse {
+                        result,
+                        ..Default::default()
+                    })),
+                    None,
+                )
+            }
             Command::Initialize(_) => (
                 Ok(ResponseBody::Initialize(types::Capabilities {
                     supports_breakpoint_locations_request: Some(true),

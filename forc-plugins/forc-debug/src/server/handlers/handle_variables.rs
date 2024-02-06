@@ -5,6 +5,10 @@ use crate::server::INSTRUCTIONS_VARIABLE_REF;
 use crate::server::REGISTERS_VARIABLE_REF;
 use dap::requests::VariablesArguments;
 use dap::types::Variable;
+use fuel_vm::fuel_asm::Imm06;
+use fuel_vm::fuel_asm::Imm12;
+use fuel_vm::fuel_asm::Imm18;
+use fuel_vm::fuel_asm::Imm24;
 use fuel_vm::fuel_asm::Instruction;
 use fuel_vm::fuel_asm::RawInstruction;
 use fuel_vm::fuel_asm::RegId;
@@ -28,7 +32,7 @@ impl DapServer {
             .enumerate()
             .map(|(index, value)| Variable {
                 name: register_name(index),
-                value: format!("{:<8}", value),
+                value: format!("0x{:X?}", value),
                 ..Default::default()
             })
             .collect::<Vec<_>>();
@@ -36,49 +40,30 @@ impl DapServer {
         // Slice out current opcode pc-4..pc and then parse using fuel-asm
         // to return the opcode and its arguments.
         let pc = executor.interpreter.registers()[RegId::PC] as usize;
-        let instruction_variables = if let Ok(instruction) =
-            Instruction::try_from(RawInstruction::from_be_bytes(
-                executor.interpreter.memory()[pc..pc + 4]
-                    .try_into()
-                    .unwrap(),
-            )) {
-            vec![
-                Variable {
-                    name: "Opcode".to_string(),
-                    value: format!("{:?}", instruction.opcode()),
-                    ..Default::default()
-                },
-                Variable {
-                    name: "ra".to_string(),
-                    value: ra(instruction)
-                        .map(|arg| format!("{:?}", arg))
-                        .unwrap_or_default(),
-                    ..Default::default()
-                },
-                Variable {
-                    name: "rb".to_string(),
-                    value: rb(instruction)
-                        .map(|arg| format!("{:?}", arg))
-                        .unwrap_or_default(),
-                    ..Default::default()
-                },
-                Variable {
-                    name: "rc".to_string(),
-                    value: rc(instruction)
-                        .map(|arg| format!("{:?}", arg))
-                        .unwrap_or_default(),
-                    ..Default::default()
-                },
-                Variable {
-                    name: "rd".to_string(),
-                    value: rd(instruction)
-                        .map(|arg| format!("{:?}", arg))
-                        .unwrap_or_default(),
-                    ..Default::default()
-                },
+        let instruction_variables = match Instruction::try_from(RawInstruction::from_be_bytes(
+            executor.interpreter.memory()[pc..pc + 4]
+                .try_into()
+                .unwrap(),
+        )) {
+            Ok(instruction) => vec![
+                ("Opcode", Some(format!("{:?}", instruction.opcode()))),
+                ("rA", ra(instruction)),
+                ("rB", rb(instruction)),
+                ("rC", rc(instruction)),
+                ("rD", rd(instruction)),
+                ("imm", imm(instruction)),
             ]
-        } else {
-            vec![]
+            .iter()
+            .filter_map(|(name, value)| match value {
+                Some(value) => Some(Variable {
+                    name: name.to_string(),
+                    value: value.to_string(),
+                    ..Default::default()
+                }),
+                None => None,
+            })
+            .collect(),
+            Err(_) => vec![],
         };
 
         match args.variables_reference {
@@ -89,8 +74,28 @@ impl DapServer {
     }
 }
 
-fn ra(instruction: Instruction) -> Option<RegId> {
-    match instruction {
+fn reg_id_to_string(reg_id: Option<RegId>) -> Option<String> {
+    reg_id.map(|reg_id| register_name(reg_id.into()))
+}
+
+fn imm06_to_string(value: Imm06) -> Option<String> {
+    Some(format!("0x{:X?}", value.to_u8()))
+}
+
+fn imm12_to_string(value: Imm12) -> Option<String> {
+    Some(format!("0x{:X?}", value.to_u16()))
+}
+
+fn imm18_to_string(value: Imm18) -> Option<String> {
+    Some(format!("0x{:X?}", value.to_u32()))
+}
+
+fn imm24_to_string(value: Imm24) -> Option<String> {
+    Some(format!("0x{:X?}", value.to_u32()))
+}
+
+fn ra(instruction: Instruction) -> Option<String> {
+    reg_id_to_string(match instruction {
         Instruction::ADD(op) => Some(op.ra()),
         Instruction::AND(op) => Some(op.ra()),
         Instruction::DIV(op) => Some(op.ra()),
@@ -193,11 +198,11 @@ fn ra(instruction: Instruction) -> Option<RegId> {
         Instruction::WQMM(op) => Some(op.ra()),
         Instruction::ECAL(op) => Some(op.ra()),
         _ => None,
-    }
+    })
 }
 
-fn rb(instruction: Instruction) -> Option<RegId> {
-    match instruction {
+fn rb(instruction: Instruction) -> Option<String> {
+    reg_id_to_string(match instruction {
         Instruction::ADD(op) => Some(op.rb()),
         Instruction::AND(op) => Some(op.rb()),
         Instruction::DIV(op) => Some(op.rb()),
@@ -285,11 +290,11 @@ fn rb(instruction: Instruction) -> Option<RegId> {
         Instruction::WQMM(op) => Some(op.rb()),
         Instruction::ECAL(op) => Some(op.rb()),
         _ => None,
-    }
+    })
 }
 
-fn rc(instruction: Instruction) -> Option<RegId> {
-    match instruction {
+fn rc(instruction: Instruction) -> Option<String> {
+    reg_id_to_string(match instruction {
         Instruction::ADD(op) => Some(op.rc()),
         Instruction::AND(op) => Some(op.rc()),
         Instruction::DIV(op) => Some(op.rc()),
@@ -347,11 +352,11 @@ fn rc(instruction: Instruction) -> Option<RegId> {
         Instruction::WQMM(op) => Some(op.rc()),
         Instruction::ECAL(op) => Some(op.rc()),
         _ => None,
-    }
+    })
 }
 
-fn rd(instruction: Instruction) -> Option<RegId> {
-    match instruction {
+fn rd(instruction: Instruction) -> Option<String> {
+    reg_id_to_string(match instruction {
         Instruction::MLDV(op) => Some(op.rd()),
         Instruction::MEQ(op) => Some(op.rd()),
         Instruction::CALL(op) => Some(op.rd()),
@@ -368,6 +373,55 @@ fn rd(instruction: Instruction) -> Option<RegId> {
         Instruction::WDMM(op) => Some(op.rd()),
         Instruction::WQMM(op) => Some(op.rd()),
         Instruction::ECAL(op) => Some(op.rd()),
+        _ => None,
+    })
+}
+
+fn imm(instruction: Instruction) -> Option<String> {
+    match instruction {
+        Instruction::ADDI(op) => imm12_to_string(op.imm12()),
+        Instruction::ANDI(op) => imm12_to_string(op.imm12()),
+        Instruction::DIVI(op) => imm12_to_string(op.imm12()),
+        Instruction::EXPI(op) => imm12_to_string(op.imm12()),
+        Instruction::MODI(op) => imm12_to_string(op.imm12()),
+        Instruction::MULI(op) => imm12_to_string(op.imm12()),
+        Instruction::ORI(op) => imm12_to_string(op.imm12()),
+        Instruction::SLLI(op) => imm12_to_string(op.imm12()),
+        Instruction::SRLI(op) => imm12_to_string(op.imm12()),
+        Instruction::SUBI(op) => imm12_to_string(op.imm12()),
+        Instruction::XORI(op) => imm12_to_string(op.imm12()),
+        Instruction::JNEI(op) => imm12_to_string(op.imm12()),
+        Instruction::LB(op) => imm12_to_string(op.imm12()),
+        Instruction::LW(op) => imm12_to_string(op.imm12()),
+        Instruction::SB(op) => imm12_to_string(op.imm12()),
+        Instruction::SW(op) => imm12_to_string(op.imm12()),
+        Instruction::MCPI(op) => imm12_to_string(op.imm12()),
+        Instruction::GTF(op) => imm12_to_string(op.imm12()),
+        Instruction::MCLI(op) => imm18_to_string(op.imm18()),
+        Instruction::GM(op) => imm18_to_string(op.imm18()),
+        Instruction::MOVI(op) => imm18_to_string(op.imm18()),
+        Instruction::JNZI(op) => imm18_to_string(op.imm18()),
+        Instruction::JMPF(op) => imm18_to_string(op.imm18()),
+        Instruction::JMPB(op) => imm18_to_string(op.imm18()),
+        Instruction::JNZF(op) => imm12_to_string(op.imm12()),
+        Instruction::JNZB(op) => imm12_to_string(op.imm12()),
+        Instruction::JNEF(op) => imm06_to_string(op.imm06()),
+        Instruction::JNEB(op) => imm06_to_string(op.imm06()),
+        Instruction::JI(op) => imm24_to_string(op.imm24()),
+        Instruction::CFEI(op) => imm24_to_string(op.imm24()),
+        Instruction::CFSI(op) => imm24_to_string(op.imm24()),
+        Instruction::PSHL(op) => imm24_to_string(op.imm24()),
+        Instruction::PSHH(op) => imm24_to_string(op.imm24()),
+        Instruction::POPL(op) => imm24_to_string(op.imm24()),
+        Instruction::POPH(op) => imm24_to_string(op.imm24()),
+        Instruction::WDCM(op) => imm06_to_string(op.imm06()),
+        Instruction::WQCM(op) => imm06_to_string(op.imm06()),
+        Instruction::WDOP(op) => imm06_to_string(op.imm06()),
+        Instruction::WQOP(op) => imm06_to_string(op.imm06()),
+        Instruction::WDML(op) => imm06_to_string(op.imm06()),
+        Instruction::WQML(op) => imm06_to_string(op.imm06()),
+        Instruction::WDDV(op) => imm06_to_string(op.imm06()),
+        Instruction::WQDV(op) => imm06_to_string(op.imm06()),
         _ => None,
     }
 }
