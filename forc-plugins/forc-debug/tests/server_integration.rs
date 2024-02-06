@@ -159,23 +159,23 @@ fn test_server_launch_mode() {
     }));
     match result.expect("instructions variables result") {
         ResponseBody::Variables(res) => {
-            assert_eq!(res.variables.len(), 5);
+            assert_eq!(res.variables.len(), 4);
         }
         other => panic!("Expected Variables response, got {:?}", other),
     }
     assert!(exit_code.is_none());
-
-    // Continue request, should hit 2nd breakpoint
-    let (result, exit_code) = server.handle_command(Command::Continue(Default::default()));
-    assert!(result.is_ok());
-    assert!(exit_code.is_none());
-    assert_stopped_breakpoint_event(output_capture.take_event(), 1);
 
     // Next request
     let (result, exit_code) = server.handle_command(Command::Next(Default::default()));
     assert!(result.is_ok());
     assert!(exit_code.is_none());
     assert_stopped_next_event(output_capture.take_event());
+
+    // Continue request, should hit 2nd breakpoint
+    let (result, exit_code) = server.handle_command(Command::Continue(Default::default()));
+    assert!(result.is_ok());
+    assert!(exit_code.is_none());
+    assert_stopped_breakpoint_event(output_capture.take_event(), 1);
 
     // Continue request, should hit 3rd breakpoint
     let (result, exit_code) = server.handle_command(Command::Continue(Default::default()));

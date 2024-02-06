@@ -1,10 +1,10 @@
-use crate::server::AdapterError;
-use crate::server::DapServer;
+use crate::server::{AdapterError, DapServer};
+use crate::types::Instruction;
 use forc_pkg::{self, BuildProfile, Built, BuiltPackage, PackageManifestFile};
 use forc_test::execute::TestExecutor;
 use forc_test::setup::TestSetup;
 use forc_test::BuiltTests;
-use std::{cmp::min, collections::HashMap, fs, sync::Arc};
+use std::{collections::HashMap, fs, sync::Arc};
 use sway_types::span::Position;
 
 impl DapServer {
@@ -135,7 +135,7 @@ impl DapServer {
                     if let Some(source_code) = source_code.get(path_buf) {
                         if let Some(start_pos) = Position::new(source_code, sm_span.range.start) {
                             let (line, _) = start_pos.line_col();
-                            let (line, instruction) = (line as i64, *instruction as u64);
+                            let (line, instruction) = (line as i64, *instruction as Instruction);
 
                             self.state
                                 .source_map
@@ -144,12 +144,15 @@ impl DapServer {
                                     new_map
                                         .entry(line)
                                         .and_modify(|val| {
-                                            // Choose the first instruction that maps to this line
-                                            *val = min(instruction, *val);
+                                            // Store the instructions in ascending order
+                                            match val.binary_search(&instruction) {
+                                                Ok(_) => {} // Ignore duplicates
+                                                Err(pos) => val.insert(pos, instruction),
+                                            }
                                         })
-                                        .or_insert(instruction);
+                                        .or_insert(vec![instruction]);
                                 })
-                                .or_insert(HashMap::from([(line, instruction)]));
+                                .or_insert(HashMap::from([(line, vec![instruction])]));
                         } else {
                             self.error(format!(
                                 "Couldn't get position: {:?} in file: {:?}",

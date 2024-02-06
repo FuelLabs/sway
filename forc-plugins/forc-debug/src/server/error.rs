@@ -1,3 +1,4 @@
+use crate::types::Instruction;
 use dap::requests::Command;
 use thiserror::Error;
 
@@ -19,10 +20,10 @@ pub enum AdapterError {
     MissingBreakpointLocation,
 
     #[error("Missing source map")]
-    MissingSourceMap { pc: u64 },
+    MissingSourceMap { pc: Instruction },
 
     #[error("Unknown breakpoint")]
-    UnknownBreakpoint { pc: u64 },
+    UnknownBreakpoint { pc: Instruction },
 
     #[error("Build failed")]
     BuildFailed { reason: String },

@@ -92,7 +92,7 @@ mod tests {
         if source_map {
             server.state.source_map.insert(
                 PathBuf::from(MOCK_SOURCE_PATH),
-                HashMap::from_iter(iter::once((MOCK_LINE, MOCK_INSTRUCTION))),
+                HashMap::from_iter(iter::once((MOCK_LINE, vec![MOCK_INSTRUCTION]))),
             );
         }
         if existing_bp {

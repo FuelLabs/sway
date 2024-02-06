@@ -54,13 +54,12 @@ impl DapServer {
                 ("imm", imm(instruction)),
             ]
             .iter()
-            .filter_map(|(name, value)| match value {
-                Some(value) => Some(Variable {
+            .filter_map(|(name, value)| {
+                value.as_ref().map(|value| Variable {
                     name: name.to_string(),
                     value: value.to_string(),
                     ..Default::default()
-                }),
-                None => None,
+                })
             })
             .collect(),
             Err(_) => vec![],

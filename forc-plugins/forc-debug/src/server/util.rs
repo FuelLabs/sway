@@ -1,3 +1,4 @@
+use crate::types::Instruction;
 use dap::types::Source;
 use fuel_vm::fuel_asm::RegId;
 use std::path::Path;
@@ -33,7 +34,7 @@ pub(crate) fn path_into_source(path: &Path) -> Source {
     }
 }
 
-pub(crate) fn current_instruction(registers: &[u64]) -> u64 {
+pub(crate) fn current_instruction(registers: &[u64]) -> Instruction {
     let pc = registers[RegId::PC];
     let is = registers[RegId::IS];
     pc - is

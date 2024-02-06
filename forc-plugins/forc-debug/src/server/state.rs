@@ -1,4 +1,6 @@
+use super::AdapterError;
 use crate::types::Breakpoints;
+use crate::types::Instruction;
 use crate::types::SourceMap;
 use dap::types::StartDebuggingRequestKind;
 use forc_pkg::BuiltPackage;
@@ -6,8 +8,6 @@ use forc_test::execute::TestExecutor;
 use forc_test::setup::TestSetup;
 use forc_test::TestResult;
 use std::path::PathBuf;
-
-use super::AdapterError;
 
 #[derive(Default, Debug, Clone)]
 /// The state of the DAP server.
@@ -57,22 +57,40 @@ impl ServerState {
     }
 
     /// Finds the source location matching a VM program counter.
-    pub fn vm_pc_to_source_location(&self, pc: u64) -> Result<(&PathBuf, i64), AdapterError> {
+    pub fn vm_pc_to_source_location(
+        &self,
+        pc: Instruction,
+    ) -> Result<(&PathBuf, i64), AdapterError> {
         // Try to find the source location by looking for the program counter in the source map.
         self.source_map
             .iter()
             .find_map(|(source_path, source_map)| {
-                let line = source_map.iter().find_map(|(&line, &instruction)| {
+                for (&line, instructions) in source_map.iter() {
                     // Divide by 4 to get the opcode offset rather than the program counter offset.
                     let instruction_offset = pc / 4;
-                    if instruction_offset == instruction {
-                        return Some(line);
+                    if instructions
+                        .iter()
+                        .any(|instruction| instruction_offset == *instruction)
+                    {
+                        return Some((source_path, line));
                     }
-                    None
-                });
-                if let Some(line) = line {
-                    return Some((source_path, line));
                 }
+
+                // let line = source_map.iter().find_map(|(&line, &instructions)| {
+                //     // Divide by 4 to get the opcode offset rather than the program counter offset.
+                //     let instruction_offset = pc / 4;
+                //     if instructions
+                //         .into_iter()
+                //         .find(|instruction| instruction_offset == *instruction)
+                //         .is_some()
+                //     {
+                //         return Some(line);
+                //     }
+                //     None
+                // });
+                // if let Some(line) = line {
+                //     return Some((source_path, line));
+                // }
                 None
             })
             .ok_or(AdapterError::MissingSourceMap { pc })
@@ -113,7 +131,13 @@ impl ServerState {
                 if let Some(source_map) = self.source_map.get(&PathBuf::from(source_path)) {
                     breakpoints
                         .iter()
-                        .filter_map(|bp| bp.line.and_then(|line| source_map.get(&line)))
+                        .filter_map(|bp| {
+                            bp.line.and_then(|line| {
+                                source_map
+                                    .get(&line)
+                                    .and_then(|instructions| instructions.first())
+                            })
+                        })
                         .collect::<Vec<_>>()
                 } else {
                     vec![]

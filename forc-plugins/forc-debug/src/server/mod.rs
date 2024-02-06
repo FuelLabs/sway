@@ -7,6 +7,7 @@ use self::error::AdapterError;
 use self::state::ServerState;
 use self::util::IdGenerator;
 use crate::types::DynResult;
+use crate::types::Instruction;
 use dap::events::OutputEventBody;
 use dap::events::{ExitedEventBody, StoppedEventBody};
 use dap::prelude::*;
@@ -340,7 +341,7 @@ impl DapServer {
         process::exit(exit_code as i32);
     }
 
-    fn stop(&mut self, pc: u64) -> Result<bool, AdapterError> {
+    fn stop(&mut self, pc: Instruction) -> Result<bool, AdapterError> {
         let (hit_breakpoint_ids, reason) =
             if let Ok(breakpoint_id) = self.state.vm_pc_to_breakpoint_id(pc) {
                 self.state.stopped_on_breakpoint_id = Some(breakpoint_id);
