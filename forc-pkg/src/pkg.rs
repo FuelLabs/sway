@@ -172,11 +172,6 @@ pub enum Built {
     Workspace(BuiltWorkspace),
 }
 
-pub struct BuiltWithPlan {
-    pub built: Built,
-    pub build_plan: BuildPlan,
-}
-
 /// The result of the `compile` function, i.e. compiling a single package.
 pub struct CompiledPackage {
     pub source_map: SourceMap,
