@@ -40,8 +40,8 @@ use std::sync::Arc;
 use sway_ast::AttributeDecl;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{
-    create_o1_pass_group, optimize, register_known_passes, Context, Kind, Module, PassGroup,
-    PassManager, ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, INLINE_MODULE_NAME, MEM2REG_NAME,
+    create_o1_pass_group, register_known_passes, Context, Kind, Module, PassGroup, PassManager,
+    ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, INLINE_MODULE_NAME, MEM2REG_NAME,
     MEMCPYOPT_NAME, MISCDEMOTION_NAME, MODULEPRINTER_NAME, RETDEMOTION_NAME, SIMPLIFYCFG_NAME,
     SROA_NAME,
 };

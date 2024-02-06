@@ -1,7 +1,4 @@
-use std::{
-    path::PathBuf,
-    sync::{atomic::AtomicBool, Arc},
-};
+use std::{path::PathBuf, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use strum::EnumString;
