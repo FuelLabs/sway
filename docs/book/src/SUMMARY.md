@@ -54,6 +54,7 @@
 - [Sway LSP](./lsp/index.md)
   - [Installation](./lsp/installation.md)
   - [Features](./lsp/features.md)
+  - [Troubleshooting](./lsp/troubleshooting.md)
 - [Sway Reference](./reference/index.md)
   - [Compiler Intrinsics](./reference/compiler_intrinsics.md)
   - [Attributes](./reference/attributes.md)

@@ -141,7 +141,7 @@ impl Items {
                     ) => {
                         handler.emit_err(CompileError::ConstantsCannotBeShadowed {
                             variable_or_constant: "Variable".to_string(),
-                            name: name.clone(),
+                            name: (&name).into(),
                             constant_span: constant_ident.span(),
                             constant_decl: if is_imported_constant {
                                 constant_decl.decl_span.clone()
@@ -163,7 +163,7 @@ impl Items {
                     ) => {
                         handler.emit_err(CompileError::ConstantsCannotBeShadowed {
                             variable_or_constant: "Constant".to_string(),
-                            name: name.clone(),
+                            name: (&name).into(),
                             constant_span: constant_ident.span(),
                             constant_decl: if is_imported_constant {
                                 constant_decl.decl_span.clone()
@@ -176,7 +176,7 @@ impl Items {
                     // constant shadowing a variable
                     (_, VariableDecl(variable_decl), _, _, ConstantDecl { .. }, _, _) => {
                         handler.emit_err(CompileError::ConstantShadowsVariable {
-                            name: name.clone(),
+                            name: (&name).into(),
                             variable_span: variable_decl.name.span(),
                         });
                     }
@@ -230,8 +230,9 @@ impl Items {
                         _,
                         GenericShadowingMode::Disallow,
                     ) => {
-                        handler
-                            .emit_err(CompileError::GenericShadowsGeneric { name: name.clone() });
+                        handler.emit_err(CompileError::GenericShadowsGeneric {
+                            name: (&name).into(),
+                        });
                     }
                     _ => {}
                 }
@@ -353,7 +354,6 @@ impl Items {
         let mut symbol = symbol.return_type(handler, engines)?;
         let mut symbol_span = base_name.span();
         let mut parent_rover = symbol;
-        let mut full_name_for_error = base_name.to_string();
         let mut full_span_for_error = base_name.span();
         for projection in projections {
             let resolved_type = match type_engine.to_typeinfo(symbol, &symbol_span) {
@@ -412,7 +412,6 @@ impl Items {
                     parent_rover = symbol;
                     symbol = field_type_id;
                     symbol_span = field_name.span().clone();
-                    full_name_for_error.push_str(field_name.as_str());
                     full_span_for_error =
                         Span::join(full_span_for_error, field_name.span().clone());
                 }
@@ -428,14 +427,15 @@ impl Items {
                             return Err(handler.emit_err(CompileError::TupleIndexOutOfBounds {
                                 index: *index,
                                 count: fields.len(),
-                                span: Span::join(full_span_for_error, index_span.clone()),
+                                tuple_type: engines.help_out(symbol).to_string(),
+                                span: index_span.clone(),
+                                prefix_span: full_span_for_error.clone(),
                             }));
                         }
                     };
                     parent_rover = symbol;
                     symbol = *field_type;
                     symbol_span = index_span.clone();
-                    full_name_for_error.push_str(&index.to_string());
                     full_span_for_error = Span::join(full_span_for_error, index_span.clone());
                 }
                 (
@@ -445,26 +445,42 @@ impl Items {
                     parent_rover = symbol;
                     symbol = elem_ty.type_id;
                     symbol_span = index_span.clone();
-                    full_span_for_error = index_span.clone();
+                    // `index_span` does not contain the enclosing square brackets.
+                    // Which means, if this array index access is the last one before the
+                    // erroneous expression, the `full_span_for_error` will be missing the
+                    // closing `]`. We can live with this small glitch so far. To fix it,
+                    // we would need to bring the full span of the index all the way from
+                    // the parsing stage. An effort that doesn't pay off at the moment.
+                    // TODO: Include the closing square bracket into the error span.
+                    full_span_for_error = Span::join(full_span_for_error, index_span.clone());
                 }
-                (actually, ty::ProjectionKind::StructField { .. }) => {
+                (actually, ty::ProjectionKind::StructField { name }) => {
                     return Err(handler.emit_err(CompileError::FieldAccessOnNonStruct {
-                        span: full_span_for_error,
                         actually: engines.help_out(actually).to_string(),
+                        storage_variable: None,
+                        field_name: name.into(),
+                        span: full_span_for_error,
                     }));
                 }
-                (actually, ty::ProjectionKind::TupleField { .. }) => {
-                    return Err(handler.emit_err(CompileError::NotATuple {
-                        name: full_name_for_error,
-                        span: full_span_for_error,
-                        actually: engines.help_out(actually).to_string(),
-                    }));
+                (
+                    actually,
+                    ty::ProjectionKind::TupleField {
+                        index, index_span, ..
+                    },
+                ) => {
+                    return Err(
+                        handler.emit_err(CompileError::TupleElementAccessOnNonTuple {
+                            actually: engines.help_out(actually).to_string(),
+                            span: full_span_for_error,
+                            index: *index,
+                            index_span: index_span.clone(),
+                        }),
+                    );
                 }
                 (actually, ty::ProjectionKind::ArrayIndex { .. }) => {
                     return Err(handler.emit_err(CompileError::NotIndexable {
-                        name: full_name_for_error,
-                        span: full_span_for_error,
                         actually: engines.help_out(actually).to_string(),
+                        span: full_span_for_error,
                     }));
                 }
             }

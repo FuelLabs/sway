@@ -386,7 +386,6 @@ impl ty::TySubmodule {
                 }
                 AstNodeContent::Declaration(_) => {}
                 AstNodeContent::Expression(_) => {}
-                AstNodeContent::ImplicitReturnExpression(_) => {}
                 AstNodeContent::IncludeStatement(_) => {}
                 AstNodeContent::Error(_, _) => {}
             }

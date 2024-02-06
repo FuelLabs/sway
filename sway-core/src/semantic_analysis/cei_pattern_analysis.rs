@@ -178,8 +178,7 @@ fn analyze_code_block_entry(
         ty::TyAstNodeContent::Declaration(decl) => {
             analyze_codeblock_decl(engines, decl, block_name, warnings)
         }
-        ty::TyAstNodeContent::Expression(expr)
-        | ty::TyAstNodeContent::ImplicitReturnExpression(expr) => {
+        ty::TyAstNodeContent::Expression(expr) => {
             analyze_expression(engines, expr, block_name, warnings)
         }
         ty::TyAstNodeContent::SideEffect(_) | ty::TyAstNodeContent::Error(_, _) => HashSet::new(),
@@ -303,6 +302,7 @@ fn analyze_expression(
         }
         StructFieldAccess { prefix: expr, .. }
         | TupleElemAccess { prefix: expr, .. }
+        | ImplicitReturn(expr)
         | Return(expr)
         | EnumTag { exp: expr }
         | UnsafeDowncast { exp: expr, .. }
@@ -473,10 +473,7 @@ fn warn_after_interaction(
 fn effects_of_codeblock_entry(engines: &Engines, ast_node: &ty::TyAstNode) -> HashSet<Effect> {
     match &ast_node.content {
         ty::TyAstNodeContent::Declaration(decl) => effects_of_codeblock_decl(engines, decl),
-        ty::TyAstNodeContent::Expression(expr)
-        | ty::TyAstNodeContent::ImplicitReturnExpression(expr) => {
-            effects_of_expression(engines, expr)
-        }
+        ty::TyAstNodeContent::Expression(expr) => effects_of_expression(engines, expr),
         ty::TyAstNodeContent::SideEffect(_) | ty::TyAstNodeContent::Error(_, _) => HashSet::new(),
     }
 }
@@ -558,6 +555,7 @@ fn effects_of_expression(engines: &Engines, expr: &ty::TyExpression) -> HashSet<
         | TupleElemAccess { prefix: expr, .. }
         | EnumTag { exp: expr }
         | UnsafeDowncast { exp: expr, .. }
+        | ImplicitReturn(expr)
         | Return(expr)
         | Ref(expr)
         | Deref(expr) => effects_of_expression(engines, expr),

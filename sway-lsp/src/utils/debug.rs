@@ -112,8 +112,7 @@ pub(crate) fn print_decl_engine_types(
                 }
                 _ => format!("{declaration:#?}"),
             },
-            ty::TyAstNodeContent::Expression(expression)
-            | ty::TyAstNodeContent::ImplicitReturnExpression(expression) => {
+            ty::TyAstNodeContent::Expression(expression) => {
                 format!("{expression:#?}")
             }
             ty::TyAstNodeContent::SideEffect(side_effect) => format!("{side_effect:#?}"),

@@ -91,11 +91,25 @@ pub enum TyExpressionVariant {
         prefix: Box<TyExpression>,
         field_to_access: TyStructField,
         field_instantiation_span: Span,
+        /// Final resolved type of the `prefix` part
+        /// of the expression. This will always be
+        /// a [TypeId] of a struct, never an alias
+        /// or a reference to a struct.
+        /// The original parent might be an alias
+        /// or a direct or indirect reference to a
+        /// struct.
         resolved_type_of_parent: TypeId,
     },
     TupleElemAccess {
         prefix: Box<TyExpression>,
         elem_to_access_num: usize,
+        /// Final resolved type of the `prefix` part
+        /// of the expression. This will always be
+        /// a [TypeId] of a tuple, never an alias
+        /// or a reference to a tuple.
+        /// The original parent might be an alias
+        /// or a direct or indirect reference to a
+        /// tuple.
         resolved_type_of_parent: TypeId,
         elem_to_access_span: Span,
     },
@@ -142,6 +156,7 @@ pub enum TyExpressionVariant {
     Break,
     Continue,
     Reassignment(Box<TyReassignment>),
+    ImplicitReturn(Box<TyExpression>),
     Return(Box<TyExpression>),
     Ref(Box<TyExpression>),
     Deref(Box<TyExpression>),
@@ -600,7 +615,7 @@ impl HashWithEngines for TyExpressionVariant {
             Self::Reassignment(exp) => {
                 exp.hash(state, engines);
             }
-            Self::Return(exp) => {
+            Self::ImplicitReturn(exp) | Self::Return(exp) => {
                 exp.hash(state, engines);
             }
             Self::Ref(exp) | Self::Deref(exp) => {
@@ -618,6 +633,7 @@ impl SubstTypes for TyExpressionVariant {
             FunctionApplication {
                 arguments,
                 ref mut fn_ref,
+                ref mut call_path_typeid,
                 ..
             } => {
                 arguments
@@ -627,6 +643,9 @@ impl SubstTypes for TyExpressionVariant {
                     .clone()
                     .subst_types_and_insert_new_with_parent(type_mapping, engines);
                 fn_ref.replace_id(*new_decl_ref.id());
+                if let Some(call_path_typeid) = call_path_typeid {
+                    call_path_typeid.subst(type_mapping, engines);
+                }
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).subst(type_mapping, engines);
@@ -749,7 +768,7 @@ impl SubstTypes for TyExpressionVariant {
             Break => (),
             Continue => (),
             Reassignment(reassignment) => reassignment.subst(type_mapping, engines),
-            Return(stmt) => stmt.subst(type_mapping, engines),
+            ImplicitReturn(expr) | Return(expr) => expr.subst(type_mapping, engines),
             Ref(exp) | Deref(exp) => exp.subst(type_mapping, engines),
         }
     }
@@ -771,15 +790,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     ref mut arguments,
                     ..
                 } => {
-                    let filter_type_opt = arguments.first().map(|(_, arg)| arg.return_type);
-
-                    if let Some(filter_type) = filter_type_opt {
-                        let filtered_decl_mapping =
-                            decl_mapping.filter_functions_by_self_type(filter_type, ctx.engines());
-                        fn_ref.replace_decls(&filtered_decl_mapping, handler, ctx)?;
-                    } else {
-                        fn_ref.replace_decls(decl_mapping, handler, ctx)?;
-                    };
+                    fn_ref.replace_decls(decl_mapping, handler, ctx)?;
 
                     let new_decl_ref = fn_ref.clone().replace_decls_and_insert_new_with_parent(
                         decl_mapping,
@@ -897,7 +908,9 @@ impl ReplaceDecls for TyExpressionVariant {
                 Reassignment(reassignment) => {
                     reassignment.replace_decls(decl_mapping, handler, ctx)?
                 }
-                Return(stmt) => stmt.replace_decls(decl_mapping, handler, ctx)?,
+                ImplicitReturn(expr) | Return(expr) => {
+                    expr.replace_decls(decl_mapping, handler, ctx)?
+                }
                 Ref(exp) | Deref(exp) => exp.replace_decls(decl_mapping, handler, ctx)?,
             }
 
@@ -1010,7 +1023,7 @@ impl TypeCheckAnalysis for TyExpressionVariant {
             TyExpressionVariant::Reassignment(node) => {
                 node.type_check_analyze(handler, ctx)?;
             }
-            TyExpressionVariant::Return(node) => {
+            TyExpressionVariant::ImplicitReturn(node) | TyExpressionVariant::Return(node) => {
                 node.type_check_analyze(handler, ctx)?;
             }
             TyExpressionVariant::Ref(exp) | TyExpressionVariant::Deref(exp) => {
@@ -1148,7 +1161,7 @@ impl TypeCheckFinalization for TyExpressionVariant {
                     }
                     node.type_check_finalize(handler, ctx)?;
                 }
-                TyExpressionVariant::Return(node) => {
+                TyExpressionVariant::ImplicitReturn(node) | TyExpressionVariant::Return(node) => {
                     node.type_check_finalize(handler, ctx)?;
                 }
                 TyExpressionVariant::Ref(exp) | TyExpressionVariant::Deref(exp) => {
@@ -1255,7 +1268,9 @@ impl UpdateConstantExpression for TyExpressionVariant {
             Reassignment(reassignment) => {
                 reassignment.update_constant_expression(engines, implementing_type)
             }
-            Return(stmt) => stmt.update_constant_expression(engines, implementing_type),
+            ImplicitReturn(expr) | Return(expr) => {
+                expr.update_constant_expression(engines, implementing_type)
+            }
             Ref(exp) | Deref(exp) => exp.update_constant_expression(engines, implementing_type),
         }
     }
@@ -1416,6 +1431,9 @@ impl DebugWithEngines for TyExpressionVariant {
                 }
                 format!("reassignment to {place}")
             }
+            TyExpressionVariant::ImplicitReturn(exp) => {
+                format!("implicit return {:?}", engines.help_out(&**exp))
+            }
             TyExpressionVariant::Return(exp) => {
                 format!("return {:?}", engines.help_out(&**exp))
             }
@@ -1535,6 +1553,7 @@ impl TyExpressionVariant {
                 .collect(),
             TyExpressionVariant::EnumTag { exp } => exp.gather_return_statements(),
             TyExpressionVariant::UnsafeDowncast { exp, .. } => exp.gather_return_statements(),
+            TyExpressionVariant::ImplicitReturn(exp) => exp.gather_return_statements(),
             TyExpressionVariant::Return(exp) => {
                 vec![exp]
             }

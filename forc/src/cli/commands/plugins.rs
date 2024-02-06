@@ -82,7 +82,7 @@ pub(crate) fn exec(command: PluginsCommand) -> ForcResult<()> {
 
 /// Find a plugin's description
 ///
-/// Given a cannonical plugin path, returns the description included in the `-h` opt.
+/// Given a canonical plugin path, returns the description included in the `-h` opt.
 /// Returns a generic description if a description cannot be found
 fn parse_description_for_plugin(plugin: &Path) -> String {
     use std::process::Command;

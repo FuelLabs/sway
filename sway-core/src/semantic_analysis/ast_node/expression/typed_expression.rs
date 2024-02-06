@@ -145,6 +145,7 @@ impl ty::TyExpression {
         let engines = ctx.engines();
         let expr_span = expr.span();
         let span = expr_span.clone();
+        let should_unify = !matches!(expr.kind, ExpressionKind::ImplicitReturn(_));
         let res = match expr.kind {
             // We've already emitted an error for the `::Error` case.
             ExpressionKind::Error(_, err) => Ok(ty::TyExpression::error(err, span, engines)),
@@ -376,6 +377,21 @@ impl ty::TyExpression {
             ExpressionKind::Reassignment(ReassignmentExpression { lhs, rhs }) => {
                 Self::type_check_reassignment(handler, ctx.by_ref(), lhs, *rhs, span)
             }
+            ExpressionKind::ImplicitReturn(expr) => {
+                let ctx = ctx
+                    .by_ref()
+                    .with_help_text("Implicit return must match up with block's type.");
+                let expr_span = expr.span();
+                let expr = ty::TyExpression::type_check(handler, ctx, *expr)
+                    .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span, engines));
+
+                let typed_expr = ty::TyExpression {
+                    return_type: expr.return_type,
+                    expression: ty::TyExpressionVariant::ImplicitReturn(Box::new(expr)),
+                    span,
+                };
+                Ok(typed_expr)
+            }
             ExpressionKind::Return(expr) => {
                 let ctx = ctx
                     // we use "unknown" here because return statements do not
@@ -413,8 +429,10 @@ impl ty::TyExpression {
             Err(e) => return Err(e),
         };
 
-        // if the return type cannot be cast into the annotation type then it is a type error
-        ctx.unify_with_type_annotation(handler, typed_expression.return_type, &expr_span);
+        if should_unify {
+            // if the return type cannot be cast into the annotation type then it is a type error
+            ctx.unify_with_type_annotation(handler, typed_expression.return_type, &expr_span);
+        }
 
         // The annotation may result in a cast, which is handled in the type engine.
         typed_expression.return_type = ctx
@@ -1654,10 +1672,10 @@ impl ty::TyExpression {
                     let method = decl_engine.get_trait_fn(decl_ref);
                     abi_items.push(TyImplItem::Fn(
                         decl_engine
-                            .insert(method.to_dummy_func(AbiMode::ImplAbiFn(
-                                abi_name.suffix.clone(),
-                                Some(*abi_ref.id()),
-                            )))
+                            .insert(method.to_dummy_func(
+                                AbiMode::ImplAbiFn(abi_name.suffix.clone(), Some(*abi_ref.id())),
+                                Some(return_type),
+                            ))
                             .with_parent(decl_engine, (*decl_ref.id()).into()),
                     ));
                 }
@@ -1799,65 +1817,71 @@ impl ty::TyExpression {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
-        let prefix_te = {
+        let mut current_prefix_te = Box::new({
             let ctx = ctx
                 .by_ref()
                 .with_help_text("")
                 .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
-            ty::TyExpression::type_check(handler, ctx, prefix.clone())?
-        };
 
-        fn get_array_type(ty: TypeId, type_engine: &TypeEngine) -> Option<TypeInfo> {
-            match &*type_engine.get(ty) {
-                TypeInfo::Array(..) => Some((*type_engine.get(ty)).clone()),
-                TypeInfo::Alias { ty, .. } => get_array_type(ty.type_id, type_engine),
-                _ => None,
-            }
+            ty::TyExpression::type_check(handler, ctx, prefix)?
+        });
+
+        let mut current_type = type_engine.get_unaliased(current_prefix_te.return_type);
+
+        let prefix_type_id = current_prefix_te.return_type;
+        let prefix_span = current_prefix_te.span.clone();
+
+        // Create the prefix part of the final array index expression.
+        // This might be an expression that directly evaluates to an array type,
+        // or an arbitrary number of dereferencing expressions where the last one
+        // dereference to an array type.
+        //
+        // We will either hit an array at the end or return an error, so the
+        // loop cannot be endless.
+        while !current_type.is_array() {
+            match &*current_type {
+                TypeInfo::Ref(referenced_type) => {
+                    let referenced_type_id = referenced_type.type_id;
+
+                    current_prefix_te = Box::new(ty::TyExpression {
+                        expression: ty::TyExpressionVariant::Deref(current_prefix_te),
+                        return_type: referenced_type_id,
+                        span: prefix_span.clone(),
+                    });
+
+                    current_type = type_engine.get_unaliased(referenced_type_id);
+                }
+                TypeInfo::ErrorRecovery(err) => return Err(*err),
+                _ => {
+                    return Err(handler.emit_err(CompileError::NotIndexable {
+                        actually: engines.help_out(prefix_type_id).to_string(),
+                        span: prefix_span,
+                    }))
+                }
+            };
         }
 
-        // If the return type is a static array then create a `ty::TyExpressionVariant::ArrayIndex`.
-        if let Some(TypeInfo::Array(elem_type, _)) =
-            get_array_type(prefix_te.return_type, type_engine)
-        {
+        let TypeInfo::Array(array_type_argument, _) = &*current_type else {
+            panic!("The current type must be an array.");
+        };
+
+        let index_te = {
             let type_info_u64 = TypeInfo::UnsignedInteger(IntegerBits::SixtyFour);
             let ctx = ctx
                 .with_help_text("")
                 .with_type_annotation(type_engine.insert(engines, type_info_u64, None));
-            let index_te = ty::TyExpression::type_check(handler, ctx, index)?;
 
-            Ok(ty::TyExpression {
-                expression: ty::TyExpressionVariant::ArrayIndex {
-                    prefix: Box::new(prefix_te),
-                    index: Box::new(index_te),
-                },
-                return_type: elem_type.type_id,
-                span,
-            })
-        } else {
-            // Otherwise convert into a method call 'index(self, index)' via the std::ops::Index trait.
-            let method_name = TypeBinding {
-                inner: MethodName::FromTrait {
-                    call_path: CallPath {
-                        prefixes: vec![
-                            Ident::new_with_override("core".into(), span.clone()),
-                            Ident::new_with_override("ops".into(), span.clone()),
-                        ],
-                        suffix: Ident::new_with_override("index".into(), span.clone()),
-                        is_absolute: true,
-                    },
-                },
-                type_arguments: TypeArgs::Regular(vec![]),
-                span: span.clone(),
-            };
-            type_check_method_application(
-                handler,
-                ctx,
-                method_name,
-                vec![],
-                vec![prefix, index],
-                span,
-            )
-        }
+            ty::TyExpression::type_check(handler, ctx, index)?
+        };
+
+        Ok(ty::TyExpression {
+            expression: ty::TyExpressionVariant::ArrayIndex {
+                prefix: current_prefix_te,
+                index: Box::new(index_te),
+            },
+            return_type: array_type_argument.type_id,
+            span,
+        })
     }
 
     fn type_check_intrinsic_function(

@@ -291,7 +291,9 @@ impl CollectTypesMetadata for TyExpression {
                     res.append(&mut content.collect_types_metadata(handler, ctx)?);
                 }
             }
-            Return(exp) => res.append(&mut exp.collect_types_metadata(handler, ctx)?),
+            ImplicitReturn(exp) | Return(exp) => {
+                res.append(&mut exp.collect_types_metadata(handler, ctx)?)
+            }
             Ref(exp) | Deref(exp) => res.append(&mut exp.collect_types_metadata(handler, ctx)?),
             // storage access can never be generic
             // variable expressions don't ever have return types themselves, they're stored in
@@ -397,6 +399,7 @@ impl DeterministicallyAborts for TyExpression {
             Reassignment(reassignment) => reassignment
                 .rhs
                 .deterministically_aborts(decl_engine, check_call_body),
+            ImplicitReturn(exp) => exp.deterministically_aborts(decl_engine, check_call_body),
             // TODO: Is this correct?
             // I'm not sure what this function is supposed to do exactly. It's called
             // "deterministically_aborts" which I thought meant it checks for an abort/panic, but

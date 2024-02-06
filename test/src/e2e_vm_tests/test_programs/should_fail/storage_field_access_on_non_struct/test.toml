@@ -1,34 +1,43 @@
 category = "fail"
 
-#check: $()error
+#check: $()Storage field does not exist
 #check: $()let _ = storage.not_in_storage.read();
-#check: $()Storage field not_in_storage does not exist
+#nextln: $()Storage field "not_in_storage" does not exist in the storage.
+#nextln: $()Available storage fields are "b" and "s_01".
 
-#check: $()error
+#check: $()Field access requires a struct
 #check: $()let _ = storage.b.prev_not_a_struct.read();
-#check: $()This is a bool, not a struct. Fields can only be accessed on structs.
+#nextln: $()Storage variable "b" has type "bool", which is not a struct.
+#nextln: $()Field access happens here, on "prev_not_a_struct".
+#check: $()Fields can only be accessed on storage variables that are structs.
 
-#check: $()error
+#check: $()Field access requires a struct
 #check: $()let _ = storage.s_01.x.prev_not_a_struct.read();
-#check: $()This is a u8, not a struct. Fields can only be accessed on structs.
+#nextln: $()Storage variable "x" has type "u8", which is not a struct.
+#nextln: $()Field access happens here, on "prev_not_a_struct".
+#check: $()Fields can only be accessed on storage variables that are structs.
 
 #check: $()Struct field does not exist
 #check: $()let _ = storage.s_01.non_existing_field.read();
 #check: $()Field "non_existing_field" does not exist in the struct "Struct01".
 #check: $()Available fields are "x" and "second".
 
-#check: $()error
+#check: $()Field access requires a struct
 #check: $()let _ = storage.s_01.second.x.prev_not_a_struct.read();
-#check: $()This is a u32, not a struct. Fields can only be accessed on structs.
+#nextln: $()Storage variable "x" has type "u32", which is not a struct.
+#nextln: $()Field access happens here, on "prev_not_a_struct".
+#check: $()Fields can only be accessed on storage variables that are structs.
 
 #check: $()Struct field does not exist
 #check: $()let _ = storage.s_01.second.non_existing_field.read();
 #check: $()Field "non_existing_field" does not exist in the struct "Struct02".
 #check: $()Available fields are "x" and "third".
 
-#check: $()error
+#check: $()Field access requires a struct
 #check: $()let _ = storage.s_01.second.third.x.prev_not_a_struct.read();
-#check: $()This is a u64, not a struct. Fields can only be accessed on structs.
+#nextln: $()Storage variable "x" has type "u64", which is not a struct.
+#nextln: $()Field access happens here, on "prev_not_a_struct".
+#check: $()Fields can only be accessed on storage variables that are structs.
 
 #check: $()Struct field does not exist
 #check: $()let _ = storage.s_01.second.third.non_existing_field.read();

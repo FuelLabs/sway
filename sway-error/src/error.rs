@@ -29,15 +29,23 @@ impl fmt::Display for InterfaceName {
 }
 
 // TODO: Since moving to using Idents instead of strings, there are a lot of redundant spans in
-//       this type.
-//       Beware!!! If we remove those redundant spans (and we should!) we can have a situation that
-//       deduplication of error messages might remove errors that are actually not duplicates because
-//       although they point to the same Ident (in terms of name), the span can be different.
-//       Deduplication works on hashes and Ident's hash contains only the name and not the span.
-//       That's why we should consider always using IdentUnique whenever we extract the span from
-//       the provided Ident.
-//       Using IdentUnique will also clearly communicate that we are extracting the span from the
-//       provided identifier.
+//       this type. When replacing Strings + Spans with Idents, be aware of the rule explained below.
+
+// When defining error structures that display identifiers, we prefer passing Idents over Strings.
+// The error span can come from that same Ident or can be a different span.
+// We handle those two cases in the following way:
+//   - If the error span equals Ident's span, we use IdentUnique and never the plain Ident.
+//   - If the error span is different then Ident's span, we pass Ident and Span as two separate fields.
+//
+// The reason for this rule is clearly communicating the difference of the two cases in every error,
+// as well as avoiding issues with the error message deduplication explained below.
+//
+// Deduplication of error messages might remove errors that are actually not duplicates because
+// although they point to the same Ident (in terms of the identifier's name), the span can be different.
+// Deduplication works on hashes and Ident's hash contains only the name and not the span.
+// That's why we always use IdentUnique whenever we extract the span from the provided Ident.
+// Using IdentUnique also clearly communicates that we are extracting the span from the
+// provided identifier.
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CompileError {
     #[error(
@@ -285,20 +293,25 @@ pub enum CompileError {
     },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span, name: String },
-    #[error("This is a {actually}, not a struct. Fields can only be accessed on structs.")]
-    FieldAccessOnNonStruct { actually: String, span: Span },
-    #[error("\"{name}\" is a {actually}, not a tuple. Elements can only be access on tuples.")]
-    NotATuple {
-        name: String,
-        span: Span,
+    #[error("This expression has type \"{actually}\", which is not a struct. Fields can only be accessed on structs.")]
+    FieldAccessOnNonStruct {
         actually: String,
-    },
-    #[error("\"{name}\" is a {actually}, which is not an indexable expression.")]
-    NotIndexable {
-        name: String,
+        /// Name of the storage variable, if the field access
+        /// happens within the access to a storage variable.
+        storage_variable: Option<String>,
+        /// Name of the field that is tried to be accessed.
+        field_name: IdentUnique,
         span: Span,
-        actually: String,
     },
+    #[error("This expression has type \"{actually}\", which is not a tuple. Elements can only be accessed on tuples.")]
+    TupleElementAccessOnNonTuple {
+        actually: String,
+        span: Span,
+        index: usize,
+        index_span: Span,
+    },
+    #[error("This expression has type \"{actually}\", which is not an indexable type.")]
+    NotIndexable { actually: String, span: Span },
     #[error("\"{name}\" is a {actually}, not an enum.")]
     NotAnEnum {
         name: String,
@@ -547,26 +560,31 @@ pub enum CompileError {
     InvalidOpcodeFromPredicate { opcode: String, span: Span },
     #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
     ArrayOutOfBounds { index: u64, count: u64, span: Span },
-    #[error("Tuple index out of bounds; the arity is {count} but the index is {index}.")]
+    #[error("Tuple index {index} is out of bounds. The tuple has {count} element{}.", plural_s(*count))]
     TupleIndexOutOfBounds {
         index: usize,
         count: usize,
+        tuple_type: String,
         span: Span,
+        prefix_span: Span,
     },
     #[error("Constants cannot be shadowed. {variable_or_constant} \"{name}\" shadows constant with the same name.")]
     ConstantsCannotBeShadowed {
         variable_or_constant: String,
-        name: Ident,
+        name: IdentUnique,
         constant_span: Span,
         constant_decl: Span,
         is_alias: bool,
     },
     #[error("Constants cannot shadow variables. The constant \"{name}\" shadows variable with the same name.")]
-    ConstantShadowsVariable { name: Ident, variable_span: Span },
+    ConstantShadowsVariable {
+        name: IdentUnique,
+        variable_span: Span,
+    },
     #[error("The imported symbol \"{name}\" shadows another symbol with the same name.")]
-    ShadowsOtherSymbol { name: Ident },
+    ShadowsOtherSymbol { name: IdentUnique },
     #[error("The name \"{name}\" is already used for a generic parameter in this scope.")]
-    GenericShadowsGeneric { name: Ident },
+    GenericShadowsGeneric { name: IdentUnique },
     #[error("Non-exhaustive match expression. Missing patterns {missing_patterns}")]
     MatchExpressionNonExhaustive {
         missing_patterns: String,
@@ -684,8 +702,12 @@ pub enum CompileError {
     UnrecognizedContractParam { param_name: String, span: Span },
     #[error("Attempting to specify a contract method parameter for a non-contract function call")]
     CallParamForNonContractCallMethod { span: Span },
-    #[error("Storage field {name} does not exist")]
-    StorageFieldDoesNotExist { name: Ident, span: Span },
+    #[error("Storage field \"{field_name}\" does not exist.")]
+    StorageFieldDoesNotExist {
+        field_name: IdentUnique,
+        available_fields: Vec<Ident>,
+        storage_decl_span: Span,
+    },
     #[error("No storage has been declared")]
     NoDeclaredStorage { span: Span },
     #[error("Multiple storage declarations were found")]
@@ -879,7 +901,7 @@ impl Spanned for CompileError {
             StructFieldDoesNotExist { field_name, .. } => field_name.span(),
             MethodNotFound { span, .. } => span.clone(),
             ModuleNotFound { span, .. } => span.clone(),
-            NotATuple { span, .. } => span.clone(),
+            TupleElementAccessOnNonTuple { span, .. } => span.clone(),
             NotAStruct { span, .. } => span.clone(),
             NotIndexable { span, .. } => span.clone(),
             FieldAccessOnNonStruct { span, .. } => span.clone(),
@@ -977,7 +999,7 @@ impl Spanned for CompileError {
             ContractCallParamRepeated { span, .. } => span.clone(),
             UnrecognizedContractParam { span, .. } => span.clone(),
             CallParamForNonContractCallMethod { span, .. } => span.clone(),
-            StorageFieldDoesNotExist { span, .. } => span.clone(),
+            StorageFieldDoesNotExist { field_name, .. } => field_name.span(),
             InvalidStorageOnlyTypeDecl { span, .. } => span.clone(),
             NoDeclaredStorage { span, .. } => span.clone(),
             MultipleStorageDeclarations { span, .. } => span.clone(),
@@ -1600,7 +1622,7 @@ impl ToDiagnostic for CompileError {
                     Hint::help(
                         source_engine,
                         field_name.span(),
-                        format!("Private fields can be {} only within the module in which their struct is declared.",
+                        format!("Private fields can only be {} within the module in which their struct is declared.",
                             match usage_context {
                                 StructInstantiation { .. } | StorageDeclaration { .. } => "initialized",
                                 StorageAccess | StructFieldAccess => "accessed",
@@ -1713,6 +1735,132 @@ impl ToDiagnostic for CompileError {
                 },
                 help: vec![],
             },
+            NotIndexable { actually, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Type is not indexable".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("This expression has type \"{actually}\", which is not an indexable type.")
+                ),
+                hints: vec![],
+                help: vec![
+                    "Index operator `[]` can be used only on indexable types.".to_string(),
+                    "In Sway, indexable types are:".to_string(),
+                    format!("{}- arrays. E.g., `[u64;3]`.", Indent::Single),
+                    format!("{}- references, direct or indirect, to arrays. E.g., `&[u64;3]` or `&&&[u64;3]`.", Indent::Single),
+                ],
+            },
+            FieldAccessOnNonStruct { actually, storage_variable, field_name, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Field access requires a struct".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("{} has type \"{actually}\", which is not a struct{}.",
+                        if let Some(storage_variable) = storage_variable {
+                            format!("Storage variable \"{storage_variable}\"")
+                        } else {
+                            "This expression".to_string()
+                        },
+                        if storage_variable.is_some() {
+                            ""
+                        } else {
+                            " or a reference to a struct"
+                        }
+                    )
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        field_name.span(),
+                        format!("Field access happens here, on \"{field_name}\".")
+                    )
+                ],
+                help: if storage_variable.is_some() {
+                    vec![
+                        "Fields can only be accessed on storage variables that are structs.".to_string(),
+                    ]
+                } else {
+                    vec![
+                        "In Sway, fields can be accessed on:".to_string(),
+                        format!("{}- structs. E.g., `my_struct.field`.", Indent::Single),
+                        format!("{}- references, direct or indirect, to structs. E.g., `(&my_struct).field` or `(&&&my_struct).field`.", Indent::Single),
+                    ]
+                }
+            },
+            StorageFieldDoesNotExist { field_name, available_fields, storage_decl_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Storage field does not exist".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    field_name.span(),
+                    format!("Storage field \"{field_name}\" does not exist in the storage.")
+                ),
+                hints: {
+                    let (hint, show_storage_decl) = if available_fields.is_empty() {
+                        ("The storage is empty. It doesn't have any fields.".to_string(), false)
+                    } else {
+                        const NUM_OF_FIELDS_TO_DISPLAY: usize = 4;
+                        match &available_fields[..] {
+                            [field] => (format!("Only available storage field is \"{field}\"."), false),
+                            _ => (format!("Available storage fields are {}.", sequence_to_str(available_fields, Enclosing::DoubleQuote, NUM_OF_FIELDS_TO_DISPLAY)),
+                                    available_fields.len() > NUM_OF_FIELDS_TO_DISPLAY
+                                ),
+                        }
+                    };
+
+                    let mut hints = vec![];
+
+                    hints.push(Hint::help(source_engine, field_name.span(), hint));
+
+                    if show_storage_decl {
+                        hints.push(Hint::info(
+                            source_engine,
+                            storage_decl_span.clone(),
+                            format!("Storage is declared here, and has {} fields.",
+                                number_to_str(available_fields.len())
+                            )
+                        ));
+                    }
+
+                    hints
+                },
+                help: vec![],
+            },
+            TupleIndexOutOfBounds { index, count, tuple_type, span, prefix_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Tuple index is out of bounds".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("Tuple index {index} is out of bounds. The tuple has only {count} element{}.", plural_s(*count))
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        prefix_span.clone(),
+                        format!("This expression has type \"{tuple_type}\".")
+                    ),
+                ],
+                help: vec![],
+            },
+            TupleElementAccessOnNonTuple { actually, span, index, index_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Tuple element access requires a tuple".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("This expression has type \"{actually}\", which is not a tuple or a reference to a tuple.")
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        index_span.clone(),
+                        format!("Tuple element access happens here, on the index {index}.")
+                    )
+                ],
+                help: vec![
+                    "In Sway, tuple elements can be accessed on:".to_string(),
+                    format!("{}- tuples. E.g., `my_tuple.1`.", Indent::Single),
+                    format!("{}- references, direct or indirect, to tuples. E.g., `(&my_tuple).1` or `(&&&my_tuple).1`.", Indent::Single),
+                ],
+            },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we
@@ -1756,7 +1904,7 @@ pub enum StructFieldUsageContext {
     StorageAccess,
     PatternMatching { has_rest_pattern: bool },
     StructFieldAccess,
-    // TODO: Distinguish between struct filed access and destructing
+    // TODO: Distinguish between struct field access and destructing
     //       once https://github.com/FuelLabs/sway/issues/5478 is implemented
     //       and provide specific suggestions for these two cases.
     //       (Destructing desugars to plain struct field access.)

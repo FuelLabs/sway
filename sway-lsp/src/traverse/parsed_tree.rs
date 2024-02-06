@@ -106,8 +106,7 @@ impl Parse for AstNode {
     fn parse(&self, ctx: &ParseContext) {
         match &self.content {
             AstNodeContent::Declaration(declaration) => declaration.parse(ctx),
-            AstNodeContent::Expression(expression)
-            | AstNodeContent::ImplicitReturnExpression(expression) => {
+            AstNodeContent::Expression(expression) => {
                 expression.parse(ctx);
             }
             AstNodeContent::UseStatement(use_statement) => use_statement.parse(ctx),
@@ -342,7 +341,7 @@ impl Parse for Expression {
             ExpressionKind::Reassignment(reassignment) => {
                 reassignment.parse(ctx);
             }
-            ExpressionKind::Return(expr) => {
+            ExpressionKind::ImplicitReturn(expr) | ExpressionKind::Return(expr) => {
                 expr.parse(ctx);
             }
             ExpressionKind::Ref(expr) | ExpressionKind::Deref(expr) => {
