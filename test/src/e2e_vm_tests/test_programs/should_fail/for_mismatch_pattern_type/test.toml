@@ -1,0 +1,7 @@
+category = "fail"
+
+# check: $()for (_n,_m) in vector.iter()
+# nextln: $()Mismatched types.
+# nextln: $()expected: (_, _)
+# nextln: $()found:    u64.
+# nextln: $()help: Function return type does not match up with local type annotation.

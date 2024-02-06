@@ -5,7 +5,7 @@ use ::alloc::{alloc, realloc};
 use ::assert::assert;
 use ::option::Option::{self, *};
 use ::convert::From;
-use ::iter::iterator::*;
+use ::iterator::*;
 
 struct RawVec<T> {
     pub ptr: raw_ptr,
@@ -590,7 +590,10 @@ impl<T> Vec<T> {
     }
 
     pub fn iter(self) -> VecIter<T> {
-        VecIter { values: self, index: 0 }
+        VecIter {
+            values: self,
+            index: 0,
+        }
     }
 }
 
@@ -645,7 +648,6 @@ pub struct VecIter<T> {
 
 impl<T> Iterator for VecIter<T> {
     type Item = T;
-
     fn next(ref mut self) -> Option<Self::Item> {
         if self.index >= self.values.len() {
             return None

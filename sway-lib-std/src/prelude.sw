@@ -13,9 +13,6 @@ use ::identity::Identity;
 // `StorageKey` API
 use ::storage::storage_key::*;
 
-// Iterator
-// use ::iterator::*;
-
 // Collections
 use ::storage::storage_map::*;
 use ::vec::{Vec, VecIter};

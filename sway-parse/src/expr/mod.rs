@@ -720,6 +720,19 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
             block,
         });
     }
+    if let Some(for_token) = parser.take() {
+        let value_pattern = parser.parse()?;
+        let in_token = parser.parse()?;
+        let iterator = parser.parse()?;
+        let block = parser.parse()?;
+        return Ok(Expr::For {
+            for_token,
+            value_pattern,
+            in_token,
+            iterator,
+            block,
+        });
+    }
     if parser.peek::<OpenAngleBracketToken>().is_some()
         || parser.peek::<DoubleColonToken>().is_some()
         || parser.peek::<Ident>().is_some()

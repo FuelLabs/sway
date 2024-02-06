@@ -587,6 +587,9 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::WhileLoop { body, condition } => {
                 self.compile_while_loop(context, md_mgr, body, condition, span_md_idx)
             }
+            ty::TyExpressionVariant::ForLoop { desugared } => {
+                self.compile_expression(context, md_mgr, desugared)
+            }
             ty::TyExpressionVariant::Break => {
                 match self.block_to_break_to {
                     // If `self.block_to_break_to` is not None, then it has been set inside
