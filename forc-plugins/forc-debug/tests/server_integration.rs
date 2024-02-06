@@ -2,7 +2,7 @@ use dap::{
     events::Event,
     requests::{Command, LaunchRequestArguments, SetBreakpointsArguments, VariablesArguments},
     responses::ResponseBody,
-    types::{Source, SourceBreakpoint, StoppedEventReason},
+    types::{Source, SourceBreakpoint, StoppedEventReason, Variable},
 };
 use forc_debug::server::{
     AdditionalData, DapServer, INSTRUCTIONS_VARIABLE_REF, REGISTERS_VARIABLE_REF,
@@ -63,7 +63,7 @@ fn test_server_launch_mode() {
 
     // Initialize request
     let (result, exit_code) = server.handle_command(Command::Initialize(Default::default()));
-    assert!(result.is_ok());
+    assert!(matches!(result, Ok(ResponseBody::Initialize(_))));
     assert!(exit_code.is_none());
 
     // Launch request
@@ -75,7 +75,7 @@ fn test_server_launch_mode() {
         additional_data: Some(additional_data),
         ..Default::default()
     }));
-    assert!(result.is_ok());
+    assert!(matches!(result, Ok(ResponseBody::Launch)));
     assert!(exit_code.is_none());
 
     // Set Breakpoints
@@ -111,7 +111,7 @@ fn test_server_launch_mode() {
 
     // Configuration Done request
     let (result, exit_code) = server.handle_command(Command::ConfigurationDone);
-    assert!(result.is_ok());
+    assert!(matches!(result, Ok(ResponseBody::ConfigurationDone)));
     assert!(exit_code.is_none());
 
     // Launch, should hit first breakpoint
@@ -121,12 +121,22 @@ fn test_server_launch_mode() {
 
     // Threads request
     let (result, exit_code) = server.handle_command(Command::Threads);
-    assert!(result.is_ok());
+    match result.expect("threads result") {
+        ResponseBody::Threads(res) => {
+            assert_eq!(res.threads.len(), 1);
+        }
+        other => panic!("Expected Threads response, got {:?}", other),
+    }
     assert!(exit_code.is_none());
 
     // Stack Trace request
     let (result, exit_code) = server.handle_command(Command::StackTrace(Default::default()));
-    assert!(result.is_ok());
+    match result.expect("stack trace result") {
+        ResponseBody::StackTrace(res) => {
+            assert_eq!(res.stack_frames.len(), 1);
+        }
+        other => panic!("Expected StackTrace response, got {:?}", other),
+    }
     assert!(exit_code.is_none());
 
     // Scopes request
@@ -159,7 +169,13 @@ fn test_server_launch_mode() {
     }));
     match result.expect("instructions variables result") {
         ResponseBody::Variables(res) => {
-            assert_eq!(res.variables.len(), 4);
+            let expected = vec![
+                ("Opcode", "SW"),
+                ("rA", "reg59"),
+                ("rB", "one"),
+                ("imm", "0x2"),
+            ];
+            assert_variables_eq(expected, res.variables);
         }
         other => panic!("Expected Variables response, got {:?}", other),
     }
@@ -221,4 +237,13 @@ fn assert_stopped_next_event(event: Option<Event>) {
         }
         other => panic!("Expected Stopped event, got {:?}", other),
     };
+}
+
+/// Asserts that the given variables match the expected (name, value) pairs.
+fn assert_variables_eq(expected: Vec<(&str, &str)>, actual: Vec<Variable>) {
+    assert_eq!(actual.len(), expected.len());
+    for (i, (name, value)) in expected.iter().enumerate() {
+        assert_eq!(actual[i].name, *name);
+        assert_eq!(actual[i].value, *value);
+    }
 }
