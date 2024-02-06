@@ -1,12 +1,9 @@
 name: Docs
 
 on:
-  push:
-    branches:
-      - master
   pull_request:
-  release:
-    types: [published]
+    paths:
+      - docs/**
 
 jobs:
   test:
