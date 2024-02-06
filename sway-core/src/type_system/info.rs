@@ -1053,13 +1053,6 @@ impl TypeInfo {
         }
     }
 
-    pub fn is_unit(&self) -> bool {
-        match self {
-            TypeInfo::Tuple(fields) => fields.is_empty(),
-            _ => false,
-        }
-    }
-
     // TODO-IG: Check all the usages of `is_copy_type`.
     pub fn is_copy_type(&self) -> bool {
         // XXX This is FuelVM specific.  We need to find the users of this method and determine
@@ -1084,7 +1077,14 @@ impl TypeInfo {
         }
     }
 
-    pub fn is_reference_type(&self) -> bool {
+    pub fn is_unit(&self) -> bool {
+        match self {
+            TypeInfo::Tuple(fields) => fields.is_empty(),
+            _ => false,
+        }
+    }
+
+    pub fn is_reference(&self) -> bool {
         matches!(self, TypeInfo::Ref(_))
     }
 
@@ -1094,6 +1094,10 @@ impl TypeInfo {
 
     pub fn is_struct(&self) -> bool {
         matches!(self, TypeInfo::Struct(_))
+    }
+
+    pub fn is_tuple(&self) -> bool {
+        matches!(self, TypeInfo::Tuple(_))
     }
 
     pub(crate) fn apply_type_arguments(
@@ -1293,46 +1297,6 @@ impl TypeInfo {
                 !decl.variants.is_empty()
             }
             _ => true,
-        }
-    }
-
-    /// Given a [TypeInfo] `self`, expect that `self` is a [TypeInfo::Tuple], or a
-    /// [TypeInfo::Alias] of a tuple type. Also, return the contents of the tuple.
-    ///
-    /// Note that this works recursively. That is, it supports situations where a tuple has a chain
-    /// of aliases such as:
-    ///
-    /// ```
-    /// type Alias1 = (u64, u64);
-    /// type Alias2 = Alias1;
-    ///
-    /// fn foo(t: Alias2) {
-    ///     let x = t.0;
-    /// }
-    /// ```
-    ///
-    /// Returns an error if `self` is not a [TypeInfo::Tuple] or a [TypeInfo::Alias] of a tuple
-    /// type, transitively.
-    pub(crate) fn expect_tuple(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        debug_span: &Span,
-    ) -> Result<Vec<TypeArgument>, ErrorEmitted> {
-        match self {
-            TypeInfo::Tuple(elems) => Ok(elems.to_vec()),
-            TypeInfo::Alias {
-                ty: TypeArgument { type_id, .. },
-                ..
-            } => engines
-                .te()
-                .get(*type_id)
-                .expect_tuple(handler, engines, debug_span),
-            TypeInfo::ErrorRecovery(err) => Err(*err),
-            a => Err(handler.emit_err(CompileError::NotATuple {
-                actually: engines.help_out(a).to_string(),
-                span: debug_span.clone(),
-            })),
         }
     }
 

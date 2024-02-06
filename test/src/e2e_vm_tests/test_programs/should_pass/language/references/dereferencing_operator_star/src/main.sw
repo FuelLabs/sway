@@ -106,24 +106,36 @@ fn dereference_tuple<T>()
 
     assert((*r_x).0 == T::new());
     assert((*r_x).1 == T::different());
+    assert((*r_x).0 == r_x.0);
+    assert((*r_x).1 == r_x.1);
 
     assert((**r_r_x).0 == T::new());
     assert((**r_r_x).1 == T::different());
+    assert((**r_r_x).0 == r_r_x.0);
+    assert((**r_r_x).1 == r_r_x.1);
 
     assert((***r_r_r_x).0 == T::new());
     assert((***r_r_r_x).1 == T::different());
+    assert((***r_r_r_x).0 == r_r_r_x.0);
+    assert((***r_r_r_x).1 == r_r_r_x.1);
 
     x.0 = T::different();
     x.1 = T::new();
 
     assert((*r_x).0 == T::different());
     assert((*r_x).1 == T::new());
+    assert((*r_x).0 == r_x.0);
+    assert((*r_x).1 == r_x.1);
 
     assert((**r_r_x).0 == T::different());
     assert((**r_r_x).1 == T::new());
+    assert((**r_r_x).0 == r_r_x.0);
+    assert((**r_r_x).1 == r_r_x.1);
 
     assert((***r_r_r_x).0 == T::different());
     assert((***r_r_r_x).1 == T::new());
+    assert((***r_r_r_x).0 == r_r_r_x.0);
+    assert((***r_r_r_x).1 == r_r_r_x.1);
 }
 
 #[inline(never)]

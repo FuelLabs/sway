@@ -52,7 +52,7 @@ pub(crate) fn instantiate_struct_field_access(
                     actually: engines.help_out(prefix_type_id).to_string(),
                     storage_variable: None,
                     field_name: (&field_to_access).into(),
-                    span: prefix_span.clone(),
+                    span: prefix_span,
                 }))
             }
         };
