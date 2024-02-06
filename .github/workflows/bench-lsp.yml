@@ -6,20 +6,8 @@ on:
     paths:
       - forc-plugins/forc-lsp/**
       - sway-lsp/**
-      # Dependencies of sway-lsp in this repository
       - forc-pkg/**
-      - forc-tracing/**
-      - forc-util/**
-      - sway-ast/**
       - sway-core/**
-      - sway-error/**
-      - sway-parse/**
-      - sway-types/**
-      - sway-utils/**
-      - swayfmt/**
-      # Changes to std and core could also affect performance
-      - sway-lib-core/**
-      - sway-lib-std/**
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
