@@ -128,6 +128,37 @@ fn struct_parameter_not_inlined(p: S) {
     struct_parameter(p)
 }
 
+impl Eq for (u64, u64) {
+    fn eq(self, other: Self) -> bool {
+        self.0 == other.0 && self.1 == other.1
+    }
+}
+
+#[inline(always)]
+fn tuple_parameter(p: (u64, u64)) {
+    let r_p_1 = &p;
+    let r_p_2 = &p;
+    
+    let p_ptr = asm(r: &p) { r: raw_ptr };
+    let r_p_1_ptr = asm(r: r_p_1) { r: raw_ptr };
+    let r_p_2_ptr = asm(r: r_p_2) { r: raw_ptr };
+
+    assert(p_ptr == r_p_1_ptr);
+    assert(p_ptr == r_p_2_ptr);
+
+    assert(p_ptr.read::<(u64, u64)>() == p);
+
+    assert(*r_p_1 == *r_p_2);
+    
+    assert(r_p_1.0 == r_p_2.0);
+    assert(r_p_1.1 == r_p_2.1);
+}
+
+#[inline(never)]
+fn tuple_parameter_not_inlined(p: (u64, u64)) {
+    tuple_parameter(p)
+}
+
 enum E {
     A: u8,
 }
@@ -208,6 +239,7 @@ fn test_all_inlined() {
     array_parameter([111u64, 222u64]);
     empty_struct_parameter(EmptyStruct { });
     struct_parameter(S { x: 123u8 });
+    tuple_parameter((111u64, 222u64));
     enum_parameter(E::A(123u8));
     generic_parameter();
 }
@@ -218,6 +250,7 @@ fn test_not_inlined() {
     array_parameter_not_inlined([111u64, 222u64]);
     empty_struct_parameter_not_inlined(EmptyStruct { });
     struct_parameter_not_inlined(S { x: 123u8 });
+    tuple_parameter_not_inlined((111u64, 222u64));
     enum_parameter_not_inlined(E::A(123u8));
     generic_parameter_not_inlined();
 }
