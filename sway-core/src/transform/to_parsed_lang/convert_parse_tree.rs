@@ -2092,19 +2092,20 @@ fn expr_to_expression(
             });
 
             // iterable.next() expression
+            // We use iterator.span() so errors can point to it.
             let set_value_opt_to_next_body_expr = Expression {
                 kind: ExpressionKind::MethodApplication(Box::new(MethodApplicationExpression {
                     arguments: vec![iterable_expr],
                     method_name_binding: TypeBinding {
                         inner: MethodName::FromModule {
-                            method_name: Ident::new_no_span("next".into()),
+                            method_name: Ident::new_with_override("next".into(), iterator.span()),
                         },
                         type_arguments: TypeArgs::Regular(vec![]),
-                        span: Span::dummy(),
+                        span: iterator.span(),
                     },
                     contract_call_params: vec![],
                 })),
-                span: Span::dummy(),
+                span: iterator.span(),
             };
 
             // Declare value_opt = iterable.next()

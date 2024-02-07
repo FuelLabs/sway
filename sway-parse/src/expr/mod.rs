@@ -723,7 +723,7 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
     if let Some(for_token) = parser.take() {
         let value_pattern = parser.parse()?;
         let in_token = parser.parse()?;
-        let iterator = parser.parse()?;
+        let iterator = Box::new(parse_condition(parser)?);
         let block = parser.parse()?;
         return Ok(Expr::For {
             for_token,
