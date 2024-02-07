@@ -215,7 +215,7 @@ impl BinaryLogarithm for u256 {
     fn log2(self) -> Self {
         use ::assert::*;
         assert(self != 0);
-        let (a,b,c,d) = asm(r1: self) {
+        let (a, b, c, d) = asm(r1: self) {
             r1: (u64, u64, u64, u64)
         };
         if a != 0 {
