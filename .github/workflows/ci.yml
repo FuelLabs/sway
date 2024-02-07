@@ -159,7 +159,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install Forc
-        run: cargo install --locked --debug --path ./forc
+        run: cargo install --force --locked --debug --path ./forc
       - name: Install Forc plugins
         run: |
           cargo install --locked --debug --path ./forc-plugins/forc-fmt
