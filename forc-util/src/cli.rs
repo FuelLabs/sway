@@ -87,10 +87,10 @@ macro_rules! if_cli_test {
 ///
 /// The list of examples is a list of tuples where the first element is the description of the test
 /// (in plain English) followed by the command to be executed and the arguments to be passed to the
-/// command. Optionally, the expected output of the command can be passed as well. This examples are
-/// part of the help message of the CLI.
+/// command. Optionally, the expected output of the command can be passed as well. These examples
+/// are part of the help message of the CLI.
 ///
-/// Each example is also converted into a unit test. The test invokes the CLI command externall
+/// Each example is also converted into a unit test. The test invokes the CLI command externally
 /// (there is no `#[cfg(test)]` since the command is an external process and unaware of the test
 /// context). The `option_env!("CLI_TEST").is_some()` expression can be used to detect if the
 /// command is being executed from the CLI_TEST environment and take a different path (for instance
