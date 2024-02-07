@@ -414,7 +414,10 @@ impl ty::TyExpression {
                 };
                 Ok(typed_expr)
             }
-            ExpressionKind::Ref(expr) => Self::type_check_ref(handler, ctx.by_ref(), expr, span),
+            ExpressionKind::Ref(RefExpression {
+                to_mutable_value,
+                value,
+            }) => Self::type_check_ref(handler, ctx.by_ref(), to_mutable_value, value, span),
             ExpressionKind::Deref(expr) => {
                 Self::type_check_deref(handler, ctx.by_ref(), expr, span)
             }
@@ -648,31 +651,47 @@ impl ty::TyExpression {
             ty::TyExpression::type_check(handler, ctx, condition.clone())
                 .unwrap_or_else(|err| ty::TyExpression::error(err, condition.span(), engines))
         };
+
+        // The final type checking and unification, as well as other semantic requirement like the same type
+        // in the `then` and `else` branch are done in the `instantiate_if_expression`.
+        // However, if there is an expectation coming from the context via `ctx.type_annotation()` we need
+        // to pass that contextual requirement to both branches in order to provide more specific contextual
+        // information. E.g., that `Option<u8>` is expected.
+        // But at the same time, we do not want to unify during type checking with that contextual information
+        // at this stage, because the unification will be done in the `instantiate_if_expression`.
+        // In order to pass the contextual information, but not to affect the original type with premature
+        // unification, we create two copies of the `ctx.type_annotation()` type and pass them as the
+        // expectation to both branches.
+        let type_annotation = (*type_engine.get(ctx.type_annotation())).clone();
+
         let then = {
             let ctx = ctx
                 .by_ref()
                 .with_help_text("")
                 .with_type_annotation(type_engine.insert(
                     engines,
-                    TypeInfo::Unknown,
+                    type_annotation.clone(),
                     then.span().source_id(),
                 ));
             ty::TyExpression::type_check(handler, ctx, then.clone())
                 .unwrap_or_else(|err| ty::TyExpression::error(err, then.span(), engines))
         };
+
         let r#else = r#else.map(|expr| {
             let ctx = ctx
                 .by_ref()
                 .with_help_text("")
                 .with_type_annotation(type_engine.insert(
                     engines,
-                    TypeInfo::Unknown,
+                    type_annotation,
                     expr.span().source_id(),
                 ));
             ty::TyExpression::type_check(handler, ctx, expr.clone())
                 .unwrap_or_else(|err| ty::TyExpression::error(err, expr.span(), engines))
         });
+
         let exp = instantiate_if_expression(handler, ctx, condition, then.clone(), r#else, span)?;
+
         Ok(exp)
     }
 
@@ -2058,21 +2077,34 @@ impl ty::TyExpression {
     fn type_check_ref(
         handler: &Handler,
         mut ctx: TypeCheckContext<'_>,
-        expr: Box<Expression>,
+        _to_mutable_value: bool,
+        value: Box<Expression>,
         span: Span,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let engines = ctx.engines();
         let type_engine = ctx.engines().te();
 
-        // We need to remove the type annotation, because the type expected from the context will
-        // be the reference type, and we are checking the referenced type.
+        // Get the type annotation.
+        // If the type provided by the context is a reference, we expect the type of the `value`
+        // to be the referenced type of that reference.
+        // Otherwise, we have a wrong expectation coming from the context. So we will pass a new
+        // `TypeInfo::Unknown` as the annotation, to allow the `value` to be evaluated
+        // without any expectations. That value will at the end not unify with the type
+        // annotation coming from the context and a type-mismatch error will be emitted.
+        let type_annotation = match &*type_engine.get(ctx.type_annotation()) {
+            TypeInfo::Ref(referenced_type) => referenced_type.type_id,
+            _ => type_engine.insert(engines, TypeInfo::Unknown, None),
+        };
+
         let ctx = ctx
             .by_ref()
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
+            .with_type_annotation(type_annotation)
             .with_help_text("");
-        let expr_span = expr.span();
-        let expr = ty::TyExpression::type_check(handler, ctx, *expr)
+
+        let expr_span = value.span();
+        let expr = ty::TyExpression::type_check(handler, ctx, *value)
             .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span.clone(), engines));
+
         let expr_type_argument: TypeArgument = expr.return_type.into();
         let typed_expr = ty::TyExpression {
             expression: ty::TyExpressionVariant::Ref(Box::new(expr)),
@@ -2092,14 +2124,24 @@ impl ty::TyExpression {
         let engines = ctx.engines();
         let type_engine = ctx.engines().te();
 
-        // We need to remove the type annotation, because the type expected from the context will
-        // be the referenced type, and we are checking the reference type.
-        let ctx = ctx
+        // Get the type annotation.
+        // If there is an expectation coming from the context, i.e., if the context
+        // type is not `TypeInfo::Unknown`, we expect the type of the `expr` to be a
+        // reference to the expected type.
+        // Otherwise, we pass a new `TypeInfo::Unknown` as the annotation, to allow the `expr`
+        // to be evaluated without any expectations.
+        let type_annotation = match &*type_engine.get(ctx.type_annotation()) {
+            TypeInfo::Unknown => type_engine.insert(engines, TypeInfo::Unknown, None),
+            _ => type_engine.insert(engines, TypeInfo::Ref(ctx.type_annotation().into()), None),
+        };
+
+        let deref_ctx = ctx
             .by_ref()
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
+            .with_type_annotation(type_annotation)
             .with_help_text("");
+
         let expr_span = expr.span();
-        let expr = ty::TyExpression::type_check(handler, ctx, *expr)
+        let expr = ty::TyExpression::type_check(handler, deref_ctx, *expr)
             .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span.clone(), engines));
 
         let expr_type = type_engine.get(expr.return_type);

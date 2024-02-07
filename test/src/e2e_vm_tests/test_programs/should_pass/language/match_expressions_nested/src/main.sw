@@ -53,6 +53,15 @@ fn main() -> u32 {
     let x = match_me(Foo::Bar(Zoom::Wow(1234)));
     assert(x == 1234);
 
+    let x: u8 = match_generic(FooG::Bar(ZoomG::Wow(21u8)));
+    assert(x == 42u8);
+
+    let x = match_generic(FooG::Bar(ZoomG::Wow(21u8)));
+    assert(x == 42u8);
+
+    let x = match_generic(FooG::Bar(ZoomG::Wow(21u32)));
+    assert(x == 42u32);
+
     let x = match_generic(FooG::Bar(ZoomG::Wow(21)));
     assert(x == 42);
 

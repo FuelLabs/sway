@@ -1,4 +1,9 @@
 category = "fail"
 
-# check: $()Instantiation of the struct "Data" is missing the field "value".
-# check: $()Field "val" does not exist in the struct "Data".
+#check: $()Struct field does not exist
+#check: $()val
+#nextln: $()Field "val" does not exist in the struct "Data".
+#nextln: $()Only available field is "value".
+
+#check: $()Struct instantiation has missing fields
+#check: $()Instantiation of the struct "Data" is missing the field "value".

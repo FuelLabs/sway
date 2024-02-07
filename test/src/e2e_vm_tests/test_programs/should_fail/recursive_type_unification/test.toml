@@ -6,4 +6,4 @@ category = "fail"
 # nextln: $()Mismatched types.
 # nextln: $()expected: V
 # nextln: $()found:    Option<V>.
-# nextln: $()help: Enum instantiator must match its declared variant type.
+# nextln: $()Implicit return must match up with block's type.

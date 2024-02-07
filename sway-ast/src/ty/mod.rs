@@ -24,6 +24,7 @@ pub enum Ty {
     },
     Ref {
         ampersand_token: AmpersandToken,
+        // TODO-IG: Extend to support references to mutable values.
         ty: Box<Ty>,
     },
     Never {

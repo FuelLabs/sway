@@ -9,7 +9,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{integer_bits::IntegerBits, span::Span, SourceId, Spanned};
+use sway_types::{integer_bits::IntegerBits, span::Span, SourceId};
 
 use std::{
     cmp::Ordering,
@@ -112,8 +112,7 @@ pub enum TypeInfo {
     ///
     /// This type would also be created in a case where the user wrote a type
     /// annotation with a wildcard type, like:
-    /// `let v: Vec<_> = iter.collect();`. However, this is not yet implemented
-    /// in Sway.
+    /// `let v: Vec<_> = iter.collect();`.
     ///
     /// The equivalent type in the Rust compiler is:
     /// https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_type_ir/sty.rs.html#208
@@ -283,6 +282,7 @@ impl HashWithEngines for TypeInfo {
 
 impl EqWithEngines for TypeInfo {}
 impl PartialEqWithEngines for TypeInfo {
+    // TODO-IG!: Equality of call paths.
     fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let type_engine = engines.te();
         match (self, other) {
@@ -323,16 +323,22 @@ impl PartialEqWithEngines for TypeInfo {
             (Self::Enum(l_decl_ref), Self::Enum(r_decl_ref)) => {
                 let l_decl = engines.de().get_enum(l_decl_ref);
                 let r_decl = engines.de().get_enum(r_decl_ref);
-                l_decl.call_path.suffix == r_decl.call_path.suffix
-                    && l_decl.call_path.suffix.span() == r_decl.call_path.suffix.span()
+                assert!(
+                    l_decl.call_path.is_absolute && r_decl.call_path.is_absolute,
+                    "The call paths of the enum declarations must always be absolute."
+                );
+                l_decl.call_path == r_decl.call_path
                     && l_decl.variants.eq(&r_decl.variants, engines)
                     && l_decl.type_parameters.eq(&r_decl.type_parameters, engines)
             }
             (Self::Struct(l_decl_ref), Self::Struct(r_decl_ref)) => {
                 let l_decl = engines.de().get_struct(l_decl_ref);
                 let r_decl = engines.de().get_struct(r_decl_ref);
-                l_decl.call_path.suffix == r_decl.call_path.suffix
-                    && l_decl.call_path.suffix.span() == r_decl.call_path.suffix.span()
+                assert!(
+                    l_decl.call_path.is_absolute && r_decl.call_path.is_absolute,
+                    "The call paths of the struct declarations must always be absolute."
+                );
+                l_decl.call_path == r_decl.call_path
                     && l_decl.fields.eq(&r_decl.fields, engines)
                     && l_decl.type_parameters.eq(&r_decl.type_parameters, engines)
             }
@@ -365,7 +371,7 @@ impl PartialEqWithEngines for TypeInfo {
                         .eq(&type_engine.get(r0.type_id), engines))
                     && l1.val() == r1.val()
             }
-            (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
+            (Self::Storage { fields: l_fields }, Self::Storage { fields: r_fields }) => {
                 l_fields.eq(r_fields, engines)
             }
             (
@@ -385,11 +391,11 @@ impl PartialEqWithEngines for TypeInfo {
                             .eq(&type_engine.get(r_ty.type_id), engines))
             }
             (
-                TypeInfo::TraitType {
+                Self::TraitType {
                     name: l_name,
                     trait_type_id: l_trait_type_id,
                 },
-                TypeInfo::TraitType {
+                Self::TraitType {
                     name: r_name,
                     trait_type_id: r_trait_type_id,
                 },
