@@ -7,6 +7,7 @@ pub trait Root {
 }
 
 impl Root for u256 {
+    /// Integer square root using [Newton's Method](https://en.wikipedia.org/wiki/Integer_square_root#Algorithm_using_Newton's_method).
     fn sqrt(self) -> Self {
         let mut x0 = self >> 1;
         if x0 == 0 {
@@ -211,6 +212,14 @@ impl BinaryLogarithm for u8 {
 }
 
 impl BinaryLogarithm for u256 {
+    /// Calculates the binary log.
+    /// 
+    /// Decompose to u64 and choose the most significant bits
+    /// among the four u64s.
+    /// 
+    /// # Panics
+    ///
+    /// Panics if the operand is 0.
     fn log2(self) -> Self {
         use ::assert::*;
         assert(self != 0);
