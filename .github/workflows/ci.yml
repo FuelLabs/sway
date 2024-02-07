@@ -152,14 +152,11 @@ jobs:
       - uses: buildjet/cache@v3
         with:
           path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
+            ~/.cargo/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install Forc
-        run: cargo install --force --locked --debug --path ./forc
+        run: cargo install --locked --debug --path ./forc
       - name: Install Forc plugins
         run: |
           cargo install --locked --debug --path ./forc-plugins/forc-fmt
@@ -376,10 +373,7 @@ jobs:
       - uses: buildjet/cache@v3
         with:
           path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
+            ~/.cargo/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Build All Tests
