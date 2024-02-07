@@ -92,17 +92,15 @@ macro_rules! if_cli_test {
 ///
 /// Each example is also converted into a unit test. The test invokes the CLI command externall
 /// (there is no `#[cfg(test)]` since the command is an external process and unaware of the test
-/// context). The `option_env!("CLI_TEST").is_some()` expression can be used to detect if the command is
-/// being executed from the CLI_TEST environment and take a different path (for instance to mock a
-/// user given input response).
+/// context). The `option_env!("CLI_TEST").is_some()` expression can be used to detect if the
+/// command is being executed from the CLI_TEST environment and take a different path (for instance
+/// to mock a user given input response).
 ///
-/// This macro also takes a list of examples and a setup and teardown block. The setup code block is
-/// executed once *before* and it is responsible to set the state of the system to the initial state
-/// that is expected for the CLI command to be executed, and teardown is executed once *after* all
-/// the tests are executed, and it is responsible to clean up the state of the system. Both blocks
-/// are optional.
+/// This macro also takes a list of examples and a setup block. The setup code block is executed
+/// once *before* and it is responsible to set the state of the system to the initial state
+/// that is expected for the CLI command to be executed.
 macro_rules! cli_examples {
-    ($( [ $($description:ident)* => $command:tt $args:expr $( => $output:expr )? ] )* $( setup { $($setup:tt)* } )? $(teardown { $($teardown:tt)* } )?) => {
+    ($( [ $($description:ident)* => $command:tt $args:expr $( => $output:expr )? ] )* $( setup { $($setup:tt)* } )?) => {
             #[cfg(test)]
             mod cli_examples {
             use $crate::serial_test;
@@ -111,14 +109,6 @@ macro_rules! cli_examples {
                 $(
                     {
                         $($setup)*
-                    }
-                )?
-            }
-
-            fn test_destroy() {
-                $(
-                    {
-                        $($teardown)*
                     }
                 )?
             }
@@ -145,7 +135,6 @@ macro_rules! cli_examples {
                     test_setup();
                     proc.current_dir(&tmp_dir);
                     let output = proc.output();
-                    test_destroy();
                     let _ = std::fs::remove_dir_all(&tmp_dir);
                     let output = output.expect("failed to run command");
 
