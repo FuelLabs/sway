@@ -197,23 +197,6 @@ impl Namespace {
         }
     }
 
-//    /// Import into this namespace a path that contains an asterisk.
-//    pub(crate) fn star_import(
-//        &mut self,
-//        handler: &Handler,
-//        engines: &Engines,
-//        src: &Path,
-//        is_absolute: bool,
-//    ) -> Result<(), ErrorEmitted> {
-//	self.root.module.star_import(
-//            handler,
-//            engines,
-//            src,
-//            &self.mod_path,
-//            is_absolute,
-//	)
-//    }
-
     /// Returns true if the module given by the `absolute_module_path` is external
     /// to the current package. External modules are imported in the `Forc.toml` file.
     pub(crate) fn module_is_external(&self, absolute_module_path: &Path) -> bool {
