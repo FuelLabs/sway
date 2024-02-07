@@ -6575,6 +6575,7 @@ dependencies = [
  "pretty_assertions",
  "proc-macro2",
  "quote",
+ "rand",
  "rayon",
  "regex",
  "ropey",
