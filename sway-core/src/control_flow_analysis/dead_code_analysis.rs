@@ -1772,6 +1772,17 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             }
             Ok(vec![while_loop_exit])
         }
+        ForLoop { desugared, .. } => connect_expression(
+            engines,
+            &desugared.expression,
+            graph,
+            leaves,
+            exit_node,
+            label,
+            tree_type,
+            expression_span,
+            options,
+        ),
         Break => {
             let break_node = graph.add_node("break".to_string().into());
             for leaf in leaves {

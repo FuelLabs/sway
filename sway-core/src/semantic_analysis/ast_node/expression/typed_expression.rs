@@ -358,6 +358,9 @@ impl ty::TyExpression {
             ExpressionKind::WhileLoop(WhileLoopExpression { condition, body }) => {
                 Self::type_check_while_loop(handler, ctx.by_ref(), *condition, body, span)
             }
+            ExpressionKind::ForLoop(ForLoopExpression { desugared }) => {
+                Self::type_check_for_loop(handler, ctx.by_ref(), *desugared)
+            }
             ExpressionKind::Break => {
                 let expr = ty::TyExpression {
                     expression: ty::TyExpressionVariant::Break,
@@ -1939,6 +1942,14 @@ impl ty::TyExpression {
             span,
         };
         Ok(exp)
+    }
+
+    fn type_check_for_loop(
+        handler: &Handler,
+        ctx: TypeCheckContext,
+        desugared: Expression,
+    ) -> Result<Self, ErrorEmitted> {
+        Self::type_check(handler, ctx, desugared)
     }
 
     fn type_check_reassignment(

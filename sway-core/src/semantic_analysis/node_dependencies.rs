@@ -656,6 +656,9 @@ impl Dependencies {
             }) => self
                 .gather_from_expr(engines, condition)
                 .gather_from_block(engines, body),
+            ExpressionKind::ForLoop(ForLoopExpression { desugared, .. }) => {
+                self.gather_from_expr(engines, desugared)
+            }
             ExpressionKind::Reassignment(reassignment) => {
                 self.gather_from_expr(engines, &reassignment.rhs)
             }

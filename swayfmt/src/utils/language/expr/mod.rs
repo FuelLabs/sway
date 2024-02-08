@@ -268,6 +268,29 @@ impl Format for Expr {
                     },
                 )?;
             }
+            Self::For {
+                for_token,
+                in_token,
+                value_pattern,
+                iterator,
+                block,
+            } => {
+                formatter.with_shape(
+                    formatter
+                        .shape
+                        .with_code_line_from(LineStyle::Normal, ExprKind::Function),
+                    |formatter| -> Result<(), FormatterError> {
+                        write!(formatted_code, "{} ", for_token.span().as_str())?;
+                        value_pattern.format(formatted_code, formatter)?;
+                        write!(formatted_code, "{} ", in_token.span().as_str())?;
+                        iterator.format(formatted_code, formatter)?;
+                        IfExpr::open_curly_brace(formatted_code, formatter)?;
+                        block.get().format(formatted_code, formatter)?;
+                        IfExpr::close_curly_brace(formatted_code, formatter)?;
+                        Ok(())
+                    },
+                )?;
+            }
             Self::FuncApp { func, args } => {
                 formatter.with_shape(
                     formatter
@@ -1011,6 +1034,20 @@ fn expr_leaf_spans(expr: &Expr) -> Vec<ByteSpan> {
         } => {
             let mut collected_spans = vec![ByteSpan::from(while_token.span())];
             collected_spans.append(&mut condition.leaf_spans());
+            collected_spans.append(&mut block.leaf_spans());
+            collected_spans
+        }
+        Expr::For {
+            for_token,
+            in_token,
+            value_pattern,
+            iterator,
+            block,
+        } => {
+            let mut collected_spans = vec![ByteSpan::from(for_token.span())];
+            collected_spans.append(&mut value_pattern.leaf_spans());
+            collected_spans.append(&mut vec![ByteSpan::from(in_token.span())]);
+            collected_spans.append(&mut iterator.leaf_spans());
             collected_spans.append(&mut block.leaf_spans());
             collected_spans
         }
