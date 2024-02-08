@@ -1036,7 +1036,9 @@ impl ty::TyExpression {
         }
 
         let storage_fields = ctx
-            .namespace.module().items()
+            .namespace
+            .module()
+            .items()
             .get_storage_field_descriptors(handler, decl_engine)?;
 
         // Do all namespace checking here!
@@ -1380,7 +1382,8 @@ impl ty::TyExpression {
             // Check if this could be a module
             is_module = {
                 let call_path_binding = unknown_call_path_binding.clone();
-                ctx.namespace.module()
+                ctx.namespace
+                    .module()
                     .check_submodule(
                         &module_probe_handler,
                         &[
@@ -2022,13 +2025,14 @@ impl ty::TyExpression {
                     }
                 };
                 let names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
-                let (ty_of_field, _ty_of_parent) = ctx.namespace.module().items().find_subfield_type(
-                    handler,
-                    ctx.engines(),
-                    ctx.namespace,
-                    &base_name,
-                    &names_vec,
-                )?;
+                let (ty_of_field, _ty_of_parent) =
+                    ctx.namespace.module().items().find_subfield_type(
+                        handler,
+                        ctx.engines(),
+                        ctx.namespace,
+                        &base_name,
+                        &names_vec,
+                    )?;
                 // type check the reassignment
                 let ctx = ctx.with_type_annotation(ty_of_field).with_help_text("");
                 let rhs_span = rhs.span();

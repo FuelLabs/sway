@@ -1932,7 +1932,7 @@ pub fn compile(
         storage_slots,
         tree_type,
         bytecode,
-        namespace:namespace.root_module().clone(),
+        namespace: namespace.root_module().clone(),
         warnings,
         metrics,
     };
@@ -2430,7 +2430,7 @@ pub fn build(
         }
 
         if let TreeType::Library = compiled.tree_type {
-            let mut namespace = namespace::Module::from(compiled.namespace);
+            let mut namespace = compiled.namespace;
             namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
             lib_namespace_map.insert(node, namespace);
         }

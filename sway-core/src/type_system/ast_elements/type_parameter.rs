@@ -348,7 +348,13 @@ impl TypeParameter {
         // When type parameter is from parent then it was already inserted.
         // Instead of inserting a type with same name we unify them.
         if type_parameter.is_from_parent {
-            if let Some(sy) = ctx.namespace.module().items().symbols.get(&type_parameter.name_ident) {
+            if let Some(sy) = ctx
+                .namespace
+                .module()
+                .items()
+                .symbols
+                .get(&type_parameter.name_ident)
+            {
                 match sy {
                     ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
                         type_id: sy_type_id,
@@ -458,7 +464,9 @@ impl TypeParameter {
 
                 // Check to see if the trait constraints are satisfied.
                 match ctx
-                    .namespace.module_mut().items_mut()
+                    .namespace
+                    .module_mut()
+                    .items_mut()
                     .implemented_traits
                     .check_if_trait_constraints_are_satisfied_for_type(
                         handler,

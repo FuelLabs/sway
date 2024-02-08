@@ -538,13 +538,19 @@ fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Modu
         Some(typed_program) => {
             // Create a module for core and copy the compiled modules into it.  Unfortunately we
             // can't get mutable access to move them out so they're cloned.
-            let core_module = typed_program.root.namespace.module().submodules().into_iter().fold(
-                namespace::Module::default(),
-                |mut core_mod, (name, sub_mod)| {
-                    core_mod.insert_submodule(name.clone(), sub_mod.clone());
-                    core_mod
-                },
-            );
+            let core_module = typed_program
+                .root
+                .namespace
+                .module()
+                .submodules()
+                .into_iter()
+                .fold(
+                    namespace::Module::default(),
+                    |mut core_mod, (name, sub_mod)| {
+                        core_mod.insert_submodule(name.clone(), sub_mod.clone());
+                        core_mod
+                    },
+                );
 
             // Create a module for std and insert the core module.
             let mut std_module = namespace::Module::default();

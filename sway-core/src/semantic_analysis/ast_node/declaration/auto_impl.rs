@@ -531,8 +531,8 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
             let handler = Handler::default();
             self.ctx
                 .namespace
-		.module_mut()
-		.items_mut()
+                .module_mut()
+                .items_mut()
                 .implemented_traits
                 .check_if_trait_constraints_are_satisfied_for_type(
                     &handler,

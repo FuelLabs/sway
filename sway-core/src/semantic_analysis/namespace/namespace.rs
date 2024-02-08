@@ -71,14 +71,14 @@ impl Namespace {
     }
 
     pub fn root_module(&self) -> &Module {
-	&self.root.module
+        &self.root.module
     }
 
     /// The name of the root module
     pub fn root_module_name(&self) -> &Option<Ident> {
-	&self.root.module.name
+        &self.root.module.name
     }
-    
+
     /// Access to the current [Module], i.e. the module at the inner `mod_path`.
     ///
     /// Note that the [Namespace] will automatically dereference to this [Module] when attempting
@@ -95,14 +95,55 @@ impl Namespace {
         &mut self.root.module[&self.mod_path]
     }
 
+    //    pub(crate) fn star_import(
+    //        &mut self,
+    //        handler: &Handler,
+    //        engines: &Engines,
+    //        src: &Path,
+    //        is_src_absolute: bool,
+    //    ) -> Result<(), ErrorEmitted> {
+    //	let dst = self.module_mut() ;
+    //        self.check_module_privacy(handler, src, dst)?;
+    //
+    //        let decl_engine = engines.de();
+    //
+    //        let src_mod = self.check_submodule(handler, src)?;
+    //
+    //        let implemented_traits = src_mod.items().implemented_traits.clone();
+    //        let mut symbols_and_decls = vec![];
+    //        for (symbol, decl) in src_mod.items().symbols.iter() {
+    //            if is_ancestor(src, dst) || decl.visibility(decl_engine).is_public() {
+    //                symbols_and_decls.push((symbol.clone(), decl.clone()));
+    //            }
+    //        }
+    //
+    //        let dst_mod = &mut self[dst];
+    //        dst_mod.items_mut()
+    //            .implemented_traits
+    //            .extend(implemented_traits, engines);
+    //        for symbol_and_decl in symbols_and_decls {
+    //            dst_mod.items_mut().use_synonyms.insert(
+    //                symbol_and_decl.0,
+    //                (
+    //                    src.to_vec(),
+    //                    GlobImport::Yes,
+    //                    symbol_and_decl.1,
+    //                    is_src_absolute,
+    //                ),
+    //            );
+    //        }
+    //
+    //        Ok(())
+    //    }
+
     pub fn check_absolute_path_to_submodule(
-	&self,
+        &self,
         handler: &Handler,
         path: &[Ident],
     ) -> Result<&Module, ErrorEmitted> {
-	self.root.module.check_submodule(handler, path)
+        self.root.module.check_submodule(handler, path)
     }
-    
+
     /// Returns true if the current module being checked is a direct or indirect submodule of
     /// the module given by the `absolute_module_path`.
     ///
@@ -166,27 +207,33 @@ impl Namespace {
     }
 
     pub fn get_root_trait_item_for_type(
-	&self,
+        &self,
         handler: &Handler,
         engines: &Engines,
         name: &Ident,
         type_id: TypeId,
         as_trait: Option<CallPath>,
     ) -> Result<TyTraitItem, ErrorEmitted> {
-	self.root.module.items().implemented_traits.get_trait_item_for_type(handler, engines, name, type_id, as_trait)
+        self.root
+            .module
+            .items()
+            .implemented_traits
+            .get_trait_item_for_type(handler, engines, name, type_id, as_trait)
     }
 
     pub fn resolve_root_symbol(
-	&self,
+        &self,
         handler: &Handler,
         engines: &Engines,
         mod_path: &Path,
         symbol: &Ident,
         self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-	self.root.module.resolve_symbol(handler, engines, mod_path, symbol, self_type)
+        self.root
+            .module
+            .resolve_symbol(handler, engines, mod_path, symbol, self_type)
     }
-    
+
     /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
     pub(crate) fn resolve_symbol(
         &self,
@@ -195,7 +242,8 @@ impl Namespace {
         symbol: &Ident,
         self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-        self.root.module
+        self.root
+            .module
             .resolve_symbol(handler, engines, &self.mod_path, symbol, self_type)
     }
 
@@ -207,7 +255,8 @@ impl Namespace {
         call_path: &CallPath,
         self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-        self.root.module
+        self.root
+            .module
             .resolve_call_path(handler, engines, &self.mod_path, call_path, self_type)
     }
 
@@ -224,7 +273,10 @@ impl Namespace {
         module_span: Span,
     ) -> SubmoduleNamespace {
         let init = self.init.clone();
-        self.module_mut().submodules.entry(mod_name.to_string()).or_insert(init);
+        self.module_mut()
+            .submodules
+            .entry(mod_name.to_string())
+            .or_insert(init);
         let submod_path: Vec<_> = self
             .mod_path
             .iter()
@@ -232,8 +284,8 @@ impl Namespace {
             .chain(Some(mod_name.clone()))
             .collect();
         let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
-	// self.module() now refers to a different module, so refetch
-	let new_module = self.module_mut();
+        // self.module() now refers to a different module, so refetch
+        let new_module = self.module_mut();
         new_module.name = Some(mod_name);
         new_module.span = Some(module_span);
         new_module.visibility = visibility;
@@ -243,5 +295,4 @@ impl Namespace {
             parent_mod_path,
         }
     }
-
 }

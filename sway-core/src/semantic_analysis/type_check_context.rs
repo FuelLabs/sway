@@ -463,7 +463,7 @@ impl<'a> TypeCheckContext<'a> {
             } => {
                 let type_decl_opt = if let Some(root_type_id) = root_type_id {
                     self.namespace
-			.module()
+                        .module()
                         .resolve_call_path_and_root_type_id(
                             handler,
                             self.engines,
@@ -543,9 +543,13 @@ impl<'a> TypeCheckContext<'a> {
                 name,
                 trait_type_id,
             } => {
-                let item_ref = self
-                    .namespace
-		    .get_root_trait_item_for_type(handler, self.engines, &name, trait_type_id, None)?;
+                let item_ref = self.namespace.get_root_trait_item_for_type(
+                    handler,
+                    self.engines,
+                    &name,
+                    trait_type_id,
+                    None,
+                )?;
                 if let TyTraitItem::Type(type_ref) = item_ref {
                     let type_decl = self.engines.de().get_type(type_ref.id());
                     if let Some(ty) = &type_decl.ty {
@@ -677,7 +681,9 @@ impl<'a> TypeCheckContext<'a> {
         // check the visibility of the call path elements
         // we don't check the first prefix because direct children are always accessible
         for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
-            let module = self.namespace.check_absolute_path_to_submodule(handler, prefix)?;
+            let module = self
+                .namespace
+                .check_absolute_path_to_submodule(handler, prefix)?;
             if module.visibility.is_private() {
                 let prefix_last = prefix[prefix.len() - 1].clone();
                 handler.emit_err(CompileError::ImportPrivateModule {
@@ -755,14 +761,17 @@ impl<'a> TypeCheckContext<'a> {
                 _ => None,
             };
 
-            self.namespace.root.module.resolve_call_path_and_root_type_id(
-                handler,
-                self.engines,
-                root_type_id,
-                as_trait_opt,
-                &qualified_call_path.call_path,
-                self.self_type(),
-            )
+            self.namespace
+                .root
+                .module
+                .resolve_call_path_and_root_type_id(
+                    handler,
+                    self.engines,
+                    root_type_id,
+                    as_trait_opt,
+                    &qualified_call_path.call_path,
+                    self.self_type(),
+                )
         } else {
             self.resolve_call_path_with_visibility_check_and_modpath(
                 handler,
@@ -915,7 +924,9 @@ impl<'a> TypeCheckContext<'a> {
             .check_absolute_path_to_submodule(handler, &self.namespace.mod_path)?;
 
         // grab the local items from the local module
-        let local_items = local_module.items().get_items_for_type(self.engines, type_id);
+        let local_items = local_module
+            .items()
+            .get_items_for_type(self.engines, type_id);
 
         // resolve the type
         let type_id = self
@@ -937,7 +948,9 @@ impl<'a> TypeCheckContext<'a> {
             .check_absolute_path_to_submodule(handler, item_prefix)?;
 
         // grab the items from where the type is declared
-        let mut type_items = type_module.items().get_items_for_type(self.engines, type_id);
+        let mut type_items = type_module
+            .items()
+            .get_items_for_type(self.engines, type_id);
 
         let mut items = local_items;
         items.append(&mut type_items);
@@ -1331,18 +1344,22 @@ impl<'a> TypeCheckContext<'a> {
         // this inserting and getting in `get_methods_for_type_and_trait_name`.
         let full_trait_name = trait_name.to_fullpath(self.namespace);
 
-        self.namespace.module_mut().items_mut().implemented_traits.insert(
-            handler,
-            full_trait_name,
-            trait_type_args,
-            type_id,
-            items,
-            impl_span,
-            trait_decl_span,
-            is_impl_self,
-            is_extending_existing_impl,
-            self.engines,
-        )
+        self.namespace
+            .module_mut()
+            .items_mut()
+            .implemented_traits
+            .insert(
+                handler,
+                full_trait_name,
+                trait_type_args,
+                type_id,
+                items,
+                impl_span,
+                trait_decl_span,
+                is_impl_self,
+                is_extending_existing_impl,
+                self.engines,
+            )
     }
 
     pub(crate) fn get_items_for_type_and_trait_name(
@@ -1363,7 +1380,9 @@ impl<'a> TypeCheckContext<'a> {
         // this get and inserting in `insert_trait_implementation`.
         let trait_name = trait_name.to_fullpath(self.namespace);
 
-        self.namespace.module().items()
+        self.namespace
+            .module()
+            .items()
             .implemented_traits
             .get_items_for_type_and_trait_name_and_trait_type_arguments(
                 self.engines,
@@ -1547,7 +1566,9 @@ impl<'a> TypeCheckContext<'a> {
     }
 
     pub(crate) fn insert_trait_implementation_for_type(&mut self, type_id: TypeId) {
-        self.namespace.module_mut().items_mut()
+        self.namespace
+            .module_mut()
+            .items_mut()
             .implemented_traits
             .insert_for_type(self.engines, type_id);
     }
@@ -1570,7 +1591,9 @@ impl<'a> TypeCheckContext<'a> {
     ) -> bool {
         let handler = Handler::default();
 
-        self.namespace.module_mut().items_mut()
+        self.namespace
+            .module_mut()
+            .items_mut()
             .implemented_traits
             .check_if_trait_constraints_are_satisfied_for_type(
                 &handler,
