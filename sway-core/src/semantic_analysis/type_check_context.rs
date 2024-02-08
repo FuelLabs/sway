@@ -48,6 +48,8 @@ pub struct TypeCheckContext<'a> {
     ///
     /// Assists type inference.
     type_annotation: TypeId,
+    /// Assists type inference.
+    function_type_annotation: TypeId,
     /// When true unify_with_type_annotation will use unify_with_generic instead of the default unify.
     /// This ensures that expected generic types are unified to more specific received types.
     unify_generic: bool,
@@ -118,6 +120,7 @@ impl<'a> TypeCheckContext<'a> {
             namespace,
             engines,
             type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
+            function_type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
             unify_generic: false,
             self_type: None,
             type_subst: TypeSubstMap::new(),
@@ -146,6 +149,7 @@ impl<'a> TypeCheckContext<'a> {
         TypeCheckContext {
             namespace: self.namespace,
             type_annotation: self.type_annotation,
+            function_type_annotation: self.function_type_annotation,
             unify_generic: self.unify_generic,
             self_type: self.self_type,
             type_subst: self.type_subst.clone(),
@@ -168,6 +172,7 @@ impl<'a> TypeCheckContext<'a> {
         TypeCheckContext {
             namespace,
             type_annotation: self.type_annotation,
+            function_type_annotation: self.function_type_annotation,
             unify_generic: self.unify_generic,
             self_type: self.self_type,
             type_subst: self.type_subst,
@@ -213,6 +218,14 @@ impl<'a> TypeCheckContext<'a> {
     pub(crate) fn with_type_annotation(self, type_annotation: TypeId) -> Self {
         Self {
             type_annotation,
+            ..self
+        }
+    }
+
+    /// Map this `TypeCheckContext` instance to a new one with the given type annotation.
+    pub(crate) fn with_function_type_annotation(self, function_type_annotation: TypeId) -> Self {
+        Self {
+            function_type_annotation,
             ..self
         }
     }
@@ -320,6 +333,10 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn type_annotation(&self) -> TypeId {
         self.type_annotation
+    }
+
+    pub(crate) fn function_type_annotation(&self) -> TypeId {
+        self.function_type_annotation
     }
 
     pub(crate) fn unify_generic(&self) -> bool {

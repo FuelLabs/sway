@@ -393,20 +393,12 @@ impl ty::TyExpression {
                 Ok(typed_expr)
             }
             ExpressionKind::Return(expr) => {
+                let function_type_annotation = ctx.function_type_annotation();
                 let ctx = ctx
-                    // we use "unknown" here because return statements do not
-                    // necessarily follow the type annotation of their immediate
-                    // surrounding context. Because a return statement is control flow
-                    // that breaks out to the nearest function, we need to type check
-                    // it against the surrounding function.
-                    // That is impossible here, as we don't have that information. It
-                    // is the responsibility of the function declaration to type check
-                    // all return statements contained within it.
                     .by_ref()
-                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
+                    .with_type_annotation(function_type_annotation)
                     .with_help_text(
-                        "Returned value must match up with the function return type \
-                        annotation.",
+                        "Return statement must return the declared function return type.",
                     );
                 let expr_span = expr.span();
                 let expr = ty::TyExpression::type_check(handler, ctx, *expr)
