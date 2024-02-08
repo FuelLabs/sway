@@ -95,47 +95,6 @@ impl Namespace {
         &mut self.root.module[&self.mod_path]
     }
 
-    //    pub(crate) fn star_import(
-    //        &mut self,
-    //        handler: &Handler,
-    //        engines: &Engines,
-    //        src: &Path,
-    //        is_src_absolute: bool,
-    //    ) -> Result<(), ErrorEmitted> {
-    //	let dst = self.module_mut() ;
-    //        self.check_module_privacy(handler, src, dst)?;
-    //
-    //        let decl_engine = engines.de();
-    //
-    //        let src_mod = self.check_submodule(handler, src)?;
-    //
-    //        let implemented_traits = src_mod.items().implemented_traits.clone();
-    //        let mut symbols_and_decls = vec![];
-    //        for (symbol, decl) in src_mod.items().symbols.iter() {
-    //            if is_ancestor(src, dst) || decl.visibility(decl_engine).is_public() {
-    //                symbols_and_decls.push((symbol.clone(), decl.clone()));
-    //            }
-    //        }
-    //
-    //        let dst_mod = &mut self[dst];
-    //        dst_mod.items_mut()
-    //            .implemented_traits
-    //            .extend(implemented_traits, engines);
-    //        for symbol_and_decl in symbols_and_decls {
-    //            dst_mod.items_mut().use_synonyms.insert(
-    //                symbol_and_decl.0,
-    //                (
-    //                    src.to_vec(),
-    //                    GlobImport::Yes,
-    //                    symbol_and_decl.1,
-    //                    is_src_absolute,
-    //                ),
-    //            );
-    //        }
-    //
-    //        Ok(())
-    //    }
-
     pub fn check_absolute_path_to_submodule(
         &self,
         handler: &Handler,
