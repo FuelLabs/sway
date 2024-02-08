@@ -12,12 +12,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+env: GITHUB_CONTEXT: ${{ toJSON(github) }}
+
 jobs:
   compare-master:
     runs-on: ubuntu-latest
     steps:
       - name: "echo gh context"
-        env: GITHUB_CONTEXT: ${{ toJSON(github) }}
         run: echo "$GITHUB_CONTEXT" 
       - uses: Swatinem/rust-cache@v2
       - uses: actions/checkout@v3
